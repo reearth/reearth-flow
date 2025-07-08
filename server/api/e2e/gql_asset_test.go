@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"testing"
 
 	"github.com/reearth/reearth-flow/api/internal/app/config"
@@ -20,31 +21,15 @@ func TestQueryAssets(t *testing.T) {
 		},
 	}, true, baseSeederUser, true)
 
-	// Create a test project first
-	createProjectQuery := fmt.Sprintf(`mutation { createProject(input: {workspaceId: "%s", name: "test project", description: "test", archived: false}){ project{ id } }}`, wId1)
+	// Query assets for the workspace
+	query := fmt.Sprintf(`query { assets(workspaceId: "%s", pagination: {page: 1, pageSize: 10}) { nodes { id fileName size contentType } totalCount } }`, wId1)
 	request := GraphQLRequest{
-		Query: createProjectQuery,
+		Query: query,
 	}
 	jsonData, err := json.Marshal(request)
 	assert.NoError(t, err)
 
 	o := e.POST("/api/graphql").
-		WithHeader("authorization", "Bearer test").
-		WithHeader("Content-Type", "application/json").
-		WithHeader("X-Reearth-Debug-User", uId1.String()).
-		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
-
-	projectID := o.Value("data").Object().Value("createProject").Object().Value("project").Object().Value("id").String().Raw()
-
-	// Query assets for the project
-	query := fmt.Sprintf(`query { assets(projectId: "%s", pagination: {page: 1, pageSize: 10}) { nodes { id fileName size contentType } totalCount } }`, projectID)
-	request = GraphQLRequest{
-		Query: query,
-	}
-	jsonData, err = json.Marshal(request)
-	assert.NoError(t, err)
-
-	o = e.POST("/api/graphql").
 		WithHeader("authorization", "Bearer test").
 		WithHeader("Content-Type", "application/json").
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
@@ -62,38 +47,25 @@ func TestCreateAsset(t *testing.T) {
 		},
 	}, true, baseSeederUser, true)
 
-	// Create a test project first
-	createProjectQuery := fmt.Sprintf(`mutation { createProject(input: {workspaceId: "%s", name: "test project", description: "test", archived: false}){ project{ id } }}`, wId1)
-	request := GraphQLRequest{
-		Query: createProjectQuery,
-	}
-	jsonData, err := json.Marshal(request)
-	assert.NoError(t, err)
-
-	o := e.POST("/api/graphql").
-		WithHeader("authorization", "Bearer test").
-		WithHeader("Content-Type", "application/json").
-		WithHeader("X-Reearth-Debug-User", uId1.String()).
-		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
-
-	projectID := o.Value("data").Object().Value("createProject").Object().Value("project").Object().Value("id").String().Raw()
-
 	// Create multipart form with file upload
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
 	// Add operations field
 	operations := fmt.Sprintf(`{
-		"query": "mutation CreateAsset($file: Upload!) { createAsset(input: {projectId: \"%s\", file: $file}) { asset { id fileName size contentType previewType } } }",
+		"query": "mutation CreateAsset($file: Upload!) { createAsset(input: {workspaceId: \"%s\", file: $file}) { asset { id fileName size contentType previewType } } }",
 		"variables": { "file": null }
-	}`, projectID)
+	}`, wId1)
 	_ = writer.WriteField("operations", operations)
 
 	// Add map field
 	_ = writer.WriteField("map", `{ "0": ["variables.file"] }`)
 
-	// Add file field
-	fileWriter, err := writer.CreateFormFile("0", "test.png")
+	// Add file field with proper content type
+	h := make(textproto.MIMEHeader)
+	h.Set("Content-Disposition", `form-data; name="0"; filename="test.png"`)
+	h.Set("Content-Type", "image/png")
+	fileWriter, err := writer.CreatePart(h)
 	assert.NoError(t, err)
 	_, err = fileWriter.Write([]byte("fake png content"))
 	assert.NoError(t, err)
@@ -102,7 +74,7 @@ func TestCreateAsset(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Send request
-	o = e.POST("/api/graphql").
+	o := e.POST("/api/graphql").
 		WithHeader("authorization", "Bearer test").
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithHeader("Content-Type", writer.FormDataContentType()).
@@ -117,6 +89,7 @@ func TestCreateAsset(t *testing.T) {
 	asset.Value("size").Number().Gt(0)
 	asset.Value("contentType").String().IsEqual("image/png")
 	asset.Value("previewType").String().IsEqual("IMAGE")
+	asset.Value("url").String().NotEmpty()
 }
 
 func TestRemoveAsset(t *testing.T) {
@@ -127,41 +100,28 @@ func TestRemoveAsset(t *testing.T) {
 		},
 	}, true, baseSeederUser, true)
 
-	// Create a test project first
-	createProjectQuery := fmt.Sprintf(`mutation { createProject(input: {workspaceId: "%s", name: "test project", description: "test", archived: false}){ project{ id } }}`, wId1)
-	request := GraphQLRequest{
-		Query: createProjectQuery,
-	}
-	jsonData, err := json.Marshal(request)
-	assert.NoError(t, err)
-
-	o := e.POST("/api/graphql").
-		WithHeader("authorization", "Bearer test").
-		WithHeader("Content-Type", "application/json").
-		WithHeader("X-Reearth-Debug-User", uId1.String()).
-		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
-
-	projectID := o.Value("data").Object().Value("createProject").Object().Value("project").Object().Value("id").String().Raw()
-
 	// Create an asset first
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
 	operations := fmt.Sprintf(`{
-		"query": "mutation CreateAsset($file: Upload!) { createAsset(input: {projectId: \"%s\", file: $file}) { asset { id } } }",
+		"query": "mutation CreateAsset($file: Upload!) { createAsset(input: {workspaceId: \"%s\", file: $file}) { asset { id url } } }",
 		"variables": { "file": null }
-	}`, projectID)
+	}`, wId1)
 	_ = writer.WriteField("operations", operations)
 	_ = writer.WriteField("map", `{ "0": ["variables.file"] }`)
 
-	fileWriter, err := writer.CreateFormFile("0", "test.png")
+	h := make(textproto.MIMEHeader)
+	h.Set("Content-Disposition", `form-data; name="0"; filename="test.png"`)
+	h.Set("Content-Type", "image/png")
+	fileWriter, err := writer.CreatePart(h)
 	assert.NoError(t, err)
 	_, err = fileWriter.Write([]byte("fake png content"))
 	assert.NoError(t, err)
 	err = writer.Close()
 	assert.NoError(t, err)
 
-	o = e.POST("/api/graphql").
+	o := e.POST("/api/graphql").
 		WithHeader("authorization", "Bearer test").
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithHeader("Content-Type", writer.FormDataContentType()).
@@ -175,10 +135,10 @@ func TestRemoveAsset(t *testing.T) {
 
 	// Remove the asset
 	removeQuery := fmt.Sprintf(`mutation { removeAsset(input: {assetId: "%s"}) { assetId } }`, assetID)
-	request = GraphQLRequest{
+	request := GraphQLRequest{
 		Query: removeQuery,
 	}
-	jsonData, err = json.Marshal(request)
+	jsonData, err := json.Marshal(request)
 	assert.NoError(t, err)
 
 	o = e.POST("/api/graphql").
@@ -187,10 +147,11 @@ func TestRemoveAsset(t *testing.T) {
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
 
+	// The removal should be successful now
 	o.Value("data").Object().Value("removeAsset").Object().Value("assetId").String().IsEqual(assetID)
 
 	// Verify asset is removed by trying to query it again
-	queryAssets := fmt.Sprintf(`query { assets(projectId: "%s", pagination: {page: 1, pageSize: 10}) { nodes { id } totalCount } }`, projectID)
+	queryAssets := fmt.Sprintf(`query { assets(workspaceId: "%s", pagination: {page: 1, pageSize: 10}) { nodes { id } totalCount } }`, wId1)
 	request = GraphQLRequest{
 		Query: queryAssets,
 	}
@@ -215,22 +176,6 @@ func TestAssetSorting(t *testing.T) {
 		},
 	}, true, baseSeederUser, true)
 
-	// Create a test project
-	createProjectQuery := fmt.Sprintf(`mutation { createProject(input: {workspaceId: "%s", name: "test project", description: "test", archived: false}){ project{ id } }}`, wId1)
-	request := GraphQLRequest{
-		Query: createProjectQuery,
-	}
-	jsonData, err := json.Marshal(request)
-	assert.NoError(t, err)
-
-	o := e.POST("/api/graphql").
-		WithHeader("authorization", "Bearer test").
-		WithHeader("Content-Type", "application/json").
-		WithHeader("X-Reearth-Debug-User", uId1.String()).
-		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
-
-	projectID := o.Value("data").Object().Value("createProject").Object().Value("project").Object().Value("id").String().Raw()
-
 	// Create multiple assets
 	fileNames := []string{"b.png", "a.png", "c.png"}
 	for _, fileName := range fileNames {
@@ -238,13 +183,16 @@ func TestAssetSorting(t *testing.T) {
 		writer := multipart.NewWriter(body)
 
 		operations := fmt.Sprintf(`{
-			"query": "mutation CreateAsset($file: Upload!) { createAsset(input: {projectId: \"%s\", file: $file}) { asset { id fileName } } }",
+			"query": "mutation CreateAsset($file: Upload!) { createAsset(input: {workspaceId: \"%s\", file: $file}) { asset { id fileName } } }",
 			"variables": { "file": null }
-		}`, projectID)
+		}`, wId1)
 		_ = writer.WriteField("operations", operations)
 		_ = writer.WriteField("map", `{ "0": ["variables.file"] }`)
 
-		fileWriter, err := writer.CreateFormFile("0", fileName)
+		h := make(textproto.MIMEHeader)
+		h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="0"; filename="%s"`, fileName))
+		h.Set("Content-Type", "image/png")
+		fileWriter, err := writer.CreatePart(h)
 		assert.NoError(t, err)
 		_, err = fileWriter.Write([]byte("fake content"))
 		assert.NoError(t, err)
@@ -261,14 +209,14 @@ func TestAssetSorting(t *testing.T) {
 	}
 
 	// Query with NAME sort
-	query := fmt.Sprintf(`query { assets(projectId: "%s", sort: NAME, pagination: {page: 1, pageSize: 10}) { nodes { fileName } } }`, projectID)
-	request = GraphQLRequest{
+	query := fmt.Sprintf(`query { assets(workspaceId: "%s", sort: NAME, pagination: {page: 1, pageSize: 10}) { nodes { fileName } } }`, wId1)
+	request := GraphQLRequest{
 		Query: query,
 	}
-	jsonData, err = json.Marshal(request)
+	jsonData, err := json.Marshal(request)
 	assert.NoError(t, err)
 
-	o = e.POST("/api/graphql").
+	o := e.POST("/api/graphql").
 		WithHeader("authorization", "Bearer test").
 		WithHeader("Content-Type", "application/json").
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
@@ -290,22 +238,6 @@ func TestAssetKeywordSearch(t *testing.T) {
 		},
 	}, true, baseSeederUser, true)
 
-	// Create a test project
-	createProjectQuery := fmt.Sprintf(`mutation { createProject(input: {workspaceId: "%s", name: "test project", description: "test", archived: false}){ project{ id } }}`, wId1)
-	request := GraphQLRequest{
-		Query: createProjectQuery,
-	}
-	jsonData, err := json.Marshal(request)
-	assert.NoError(t, err)
-
-	o := e.POST("/api/graphql").
-		WithHeader("authorization", "Bearer test").
-		WithHeader("Content-Type", "application/json").
-		WithHeader("X-Reearth-Debug-User", uId1.String()).
-		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
-
-	projectID := o.Value("data").Object().Value("createProject").Object().Value("project").Object().Value("id").String().Raw()
-
 	// Create assets with different names
 	fileNames := []string{"document.pdf", "image.png", "data.csv"}
 	for _, fileName := range fileNames {
@@ -313,13 +245,16 @@ func TestAssetKeywordSearch(t *testing.T) {
 		writer := multipart.NewWriter(body)
 
 		operations := fmt.Sprintf(`{
-			"query": "mutation CreateAsset($file: Upload!) { createAsset(input: {projectId: \"%s\", file: $file}) { asset { id } } }",
+			"query": "mutation CreateAsset($file: Upload!) { createAsset(input: {workspaceId: \"%s\", file: $file}) { asset { id } } }",
 			"variables": { "file": null }
-		}`, projectID)
+		}`, wId1)
 		_ = writer.WriteField("operations", operations)
 		_ = writer.WriteField("map", `{ "0": ["variables.file"] }`)
 
-		fileWriter, err := writer.CreateFormFile("0", fileName)
+		h := make(textproto.MIMEHeader)
+		h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="0"; filename="%s"`, fileName))
+		h.Set("Content-Type", "image/png")
+		fileWriter, err := writer.CreatePart(h)
 		assert.NoError(t, err)
 		_, err = fileWriter.Write([]byte("fake content"))
 		assert.NoError(t, err)
@@ -336,14 +271,14 @@ func TestAssetKeywordSearch(t *testing.T) {
 	}
 
 	// Search with keyword "image"
-	query := fmt.Sprintf(`query { assets(projectId: "%s", keyword: "image", pagination: {page: 1, pageSize: 10}) { nodes { fileName } totalCount } }`, projectID)
-	request = GraphQLRequest{
+	query := fmt.Sprintf(`query { assets(workspaceId: "%s", keyword: "image", pagination: {page: 1, pageSize: 10}) { nodes { fileName } totalCount } }`, wId1)
+	request := GraphQLRequest{
 		Query: query,
 	}
-	jsonData, err = json.Marshal(request)
+	jsonData, err := json.Marshal(request)
 	assert.NoError(t, err)
 
-	o = e.POST("/api/graphql").
+	o := e.POST("/api/graphql").
 		WithHeader("authorization", "Bearer test").
 		WithHeader("Content-Type", "application/json").
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
@@ -364,7 +299,7 @@ func TestWorkspaceAssetsQuery(t *testing.T) {
 	}, true, baseSeederUser, true)
 
 	// Query workspace with assets field - should return empty
-	query := fmt.Sprintf(`query { node(id: "%s", type: WORKSPACE) { ... on Workspace { assets(pagination: {page: 1, pageSize: 10}) { nodes { id } totalCount } } } }`, wId1)
+	query := fmt.Sprintf(`query { node(id: "%s", type: WORKSPACE) { ... on Workspace { id assets(pagination: {page: 1, pageSize: 10}) { nodes { id } totalCount } } } }`, wId1)
 	request := GraphQLRequest{
 		Query: query,
 	}
