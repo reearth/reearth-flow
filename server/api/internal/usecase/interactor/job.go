@@ -46,7 +46,11 @@ type NotificationPayload struct {
 	Outputs      []string `json:"outputs"`
 }
 
-func NewJob(r *repo.Container, gr *gateway.Container, permissionChecker gateway.PermissionChecker) interfaces.Job {
+func NewJob(
+	r *repo.Container,
+	gr *gateway.Container,
+	permissionChecker gateway.PermissionChecker,
+) interfaces.Job {
 	return &Job{
 		jobRepo:           r.Job,
 		workspaceRepo:     r.Workspace,
@@ -131,7 +135,11 @@ func (i *Job) Fetch(ctx context.Context, ids []id.JobID) ([]*job.Job, error) {
 	return i.jobRepo.FindByIDs(ctx, ids)
 }
 
-func (i *Job) FindByWorkspace(ctx context.Context, wsID accountdomain.WorkspaceID, p *interfaces.PaginationParam) ([]*job.Job, *interfaces.PageBasedInfo, error) {
+func (i *Job) FindByWorkspace(
+	ctx context.Context,
+	wsID accountdomain.WorkspaceID,
+	p *interfaces.PaginationParam,
+) ([]*job.Job, *interfaces.PageBasedInfo, error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, nil, err
 	}
@@ -226,8 +234,13 @@ func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
 			}
 
 			status := currentJob.Status()
-			if status == job.StatusCompleted || status == job.StatusFailed || status == job.StatusCancelled {
-				log.Infof("Job ID %s already in terminal state %s, stopping monitoring", jobID, status)
+			if status == job.StatusCompleted || status == job.StatusFailed ||
+				status == job.StatusCancelled {
+				log.Infof(
+					"Job ID %s already in terminal state %s, stopping monitoring",
+					jobID,
+					status,
+				)
 				return
 			}
 
@@ -263,9 +276,14 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 		return err
 	}
 
-	isTerminalState := newStatus == job.StatusCompleted || newStatus == job.StatusFailed || newStatus == job.StatusCancelled
+	isTerminalState := newStatus == job.StatusCompleted || newStatus == job.StatusFailed ||
+		newStatus == job.StatusCancelled
 	if isTerminalState {
-		log.Infof("Job %s transitioning to terminal state %s, handling completion", currentJob.ID(), newStatus)
+		log.Infof(
+			"Job %s transitioning to terminal state %s, handling completion",
+			currentJob.ID(),
+			newStatus,
+		)
 
 		currentJob.SetStatus(newStatus)
 
@@ -380,7 +398,11 @@ func (i *Job) saveJobState(ctx context.Context, j *job.Job) error {
 	return nil
 }
 
-func (i *Job) sendCompletionNotification(ctx context.Context, j *job.Job, notificationURL string) error {
+func (i *Job) sendCompletionNotification(
+	ctx context.Context,
+	j *job.Job,
+	notificationURL string,
+) error {
 	jobID := j.ID().String()
 
 	status := "failed"
@@ -446,7 +468,8 @@ func (i *Job) startMonitoringIfNeeded(jobID id.JobID) {
 	}
 
 	status := j.Status()
-	if status == job.StatusCompleted || status == job.StatusFailed || status == job.StatusCancelled {
+	if status == job.StatusCompleted || status == job.StatusFailed ||
+		status == job.StatusCancelled {
 		return
 	}
 
