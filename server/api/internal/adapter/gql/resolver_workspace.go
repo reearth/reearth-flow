@@ -17,19 +17,23 @@ func (r *Resolver) WorkspaceMember() WorkspaceMemberResolver {
 type workspaceResolver struct{ *Resolver }
 
 func (r *workspaceResolver) Assets(ctx context.Context, obj *gqlmodel.Workspace, pagination *gqlmodel.Pagination) (*gqlmodel.AssetConnection, error) {
-	if pagination != nil && pagination.Page != nil && pagination.PageSize != nil {
-		return loaders(ctx).Asset.FindByWorkspace(ctx, obj.ID, nil, nil, &gqlmodel.PageBasedPagination{
-			Page:     *pagination.Page,
-			PageSize: *pagination.PageSize,
-			OrderBy:  pagination.OrderBy,
-			OrderDir: pagination.OrderDir,
-		})
-	}
-	return nil, nil
+	// Assets are now project-based, not workspace-based
+	// Return empty connection for backward compatibility
+	return &gqlmodel.AssetConnection{
+		Nodes:      []*gqlmodel.Asset{},
+		PageInfo:   &gqlmodel.PageInfo{TotalCount: 0, CurrentPage: intPtr(1), TotalPages: intPtr(1)},
+		TotalCount: 0,
+	}, nil
 }
 
 func (r *workspaceResolver) AssetsPage(ctx context.Context, obj *gqlmodel.Workspace, pagination gqlmodel.PageBasedPagination) (*gqlmodel.AssetConnection, error) {
-	return loaders(ctx).Asset.FindByWorkspace(ctx, obj.ID, nil, nil, &pagination)
+	// Assets are now project-based, not workspace-based
+	// Return empty connection for backward compatibility
+	return &gqlmodel.AssetConnection{
+		Nodes:      []*gqlmodel.Asset{},
+		PageInfo:   &gqlmodel.PageInfo{TotalCount: 0, CurrentPage: intPtr(1), TotalPages: intPtr(1)},
+		TotalCount: 0,
+	}, nil
 }
 
 func (r *workspaceResolver) Projects(ctx context.Context, obj *gqlmodel.Workspace, includeArchived *bool, pagination *gqlmodel.Pagination) (*gqlmodel.ProjectConnection, error) {
@@ -68,4 +72,8 @@ type workspaceMemberResolver struct{ *Resolver }
 
 func (r *workspaceMemberResolver) User(ctx context.Context, obj *gqlmodel.WorkspaceMember) (*gqlmodel.User, error) {
 	return dataloaders(ctx).User.Load(obj.UserID)
+}
+
+func intPtr(i int) *int {
+	return &i
 }

@@ -40,16 +40,16 @@ func (i *Asset) Fetch(ctx context.Context, assets []id.AssetID) ([]*asset.Asset,
 	return i.repos.Asset.FindByIDs(ctx, assets)
 }
 
-func (i *Asset) FindByWorkspace(ctx context.Context, tid accountdomain.WorkspaceID, keyword *string, sort *asset.SortType, p *interfaces.PaginationParam) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
+func (i *Asset) FindByWorkspace(ctx context.Context, wid accountdomain.WorkspaceID, keyword *string, sort *asset.SortType, p *interfaces.PaginationParam) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, nil, err
 	}
 
 	return Run2(
 		ctx, i.repos,
-		Usecase().WithReadableWorkspaces(tid),
+		Usecase().WithReadableWorkspaces(wid),
 		func(ctx context.Context) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
-			return i.repos.Asset.FindByWorkspace(ctx, tid, repo.AssetFilter{
+			return i.repos.Asset.FindByWorkspace(ctx, wid, repo.AssetFilter{
 				Sort:       sort,
 				Keyword:    keyword,
 				Pagination: p,
@@ -72,13 +72,25 @@ func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam) (re
 		return nil, err
 	}
 
-	a, err := asset.New().
+	previewType := asset.DetectPreviewTypeFromFile(inp.File)
+
+	builder := asset.New().
 		NewID().
 		Workspace(inp.WorkspaceID).
+		CreatedByUser(inp.UserID).
+		FileName(path.Base(inp.File.Path)).
 		Name(path.Base(inp.File.Path)).
-		Size(size).
+		Size(uint64(size)).
 		URL(url.String()).
-		Build()
+		ContentType(inp.File.ContentType).
+		NewUUID().
+		CoreSupport(true)
+
+	if previewType != nil {
+		builder = builder.Type(*previewType)
+	}
+
+	a, err := builder.Build()
 	if err != nil {
 		return nil, err
 	}
