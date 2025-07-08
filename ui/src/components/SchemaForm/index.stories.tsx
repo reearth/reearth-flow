@@ -65,6 +65,61 @@ const fetcher = async (url: string) => {
   return await response.json();
 };
 
+export const NumberInputDemo = () => {
+  const numberSchema: RJSFSchema = {
+    $schema: "http://json-schema.org/draft-07/schema#",
+    title: "Number Input Demo",
+    type: "object",
+    properties: {
+      simpleNumber: {
+        type: "number",
+        title: "Simple Number",
+        description: "A basic number input",
+      },
+      integerOnly: {
+        type: "integer", 
+        title: "Integer Only",
+        description: "Integer input with min/max constraints",
+        minimum: 0,
+        maximum: 100,
+      },
+      stepNumber: {
+        type: "number",
+        title: "Number with Step",
+        description: "Number input with custom step",
+        minimum: 0,
+        maximum: 10,
+        multipleOf: 0.5,
+        default: 2.5,
+      },
+      textInput: {
+        type: "string",
+        format: "text",
+        title: "Text Input (for comparison)",
+        description: "This should render as a text input",
+      },
+      colorInput: {
+        type: "string",
+        format: "color",
+        title: "Color Input (for comparison)",
+        description: "This should render as a color picker",
+        default: "#ff0000",
+      },
+    },
+    required: ["simpleNumber"],
+  };
+
+  return (
+    <div className="w-[600px] rounded border p-4">
+      <h3 className="mb-4 text-lg font-semibold">Number Input Component Demo</h3>
+      <SchemaForm 
+        schema={numberSchema} 
+        onChange={(data) => console.log("Form data:", data)} 
+      />
+    </div>
+  );
+};
+
 export const Default = () => {
   const [actions, setActions] = useState<any[]>([]);
   const [selectedAction, setSelectedAction] = useState();

@@ -5,7 +5,6 @@ import {
   StrictRJSFSchema,
   WidgetProps,
 } from "@rjsf/utils";
-import { useState } from "react";
 
 import {
   DropdownMenu,
@@ -23,6 +22,7 @@ const SelectWidget = <
   options,
   disabled,
   readonly,
+  required,
   value,
   onChange,
   onBlur,
@@ -31,16 +31,14 @@ const SelectWidget = <
   rawErrors = [],
 }: WidgetProps<T, S, F>) => {
   const { enumOptions, enumDisabled } = options;
-  const [selectedLabel, setSelectedLabel] = useState(placeholder);
 
   const getCurrentLabel = () => {
     const option = enumOptions?.find((opt: any) => opt.value === value);
     return option ? option.label : placeholder;
   };
 
-  const handleSelect = (value: any, label: string) => {
-    setSelectedLabel(label);
-    onChange(value);
+  const handleSelect = (selectedValue: any) => {
+    onChange(selectedValue);
   };
 
   const handleBlur = () => onBlur?.(id, value);
@@ -54,9 +52,13 @@ const SelectWidget = <
         }`}
         disabled={readonly || disabled}
         onBlur={handleBlur}
-        onFocus={handleFocus}>
+        onFocus={handleFocus}
+        aria-label={placeholder || "Select an option"}
+        aria-required={required}
+        aria-invalid={rawErrors.length > 0}
+        aria-describedby={rawErrors.length > 0 ? `${id}-error` : undefined}>
         <span className={`${value ? "" : "text-muted-foreground"}`}>
-          {selectedLabel || getCurrentLabel()}
+          {getCurrentLabel()}
         </span>
         <ChevronDownIcon className="size-4" />
       </DropdownMenuTrigger>
@@ -67,7 +69,7 @@ const SelectWidget = <
             <DropdownMenuItem
               key={i}
               disabled={isDisabled}
-              onSelect={() => handleSelect(optionValue, label)}
+              onSelect={() => handleSelect(optionValue)}
               className={`${value === optionValue ? "bg-accent" : ""}`}>
               {label}
             </DropdownMenuItem>

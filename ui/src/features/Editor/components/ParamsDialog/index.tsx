@@ -1,3 +1,4 @@
+import { GearFineIcon } from "@phosphor-icons/react";
 import { useReactFlow } from "@xyflow/react";
 import { memo, useCallback, useEffect, useRef } from "react";
 
@@ -67,7 +68,12 @@ const ParamsDialog: React.FC<Props> = ({
     <Dialog open={!!openNode} onOpenChange={() => onOpenNode()}>
       <DialogContent size="2xl">
         <DialogHeader>
-          <DialogTitle>{t("Parameter Editor")}</DialogTitle>
+          <DialogTitle>
+            <div className="flex items-center gap-2">
+              <GearFineIcon />
+              {t("Node Editor")}
+            </div>
+          </DialogTitle>
         </DialogHeader>
         {openNode && (
           <ParamEditor
