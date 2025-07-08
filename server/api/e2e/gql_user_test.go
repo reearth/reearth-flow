@@ -114,7 +114,7 @@ func TestUpdateMe(t *testing.T) {
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object().Value("data").Object().Value("updateMe").Object().Value("me").Object()
 	o.Value("name").String().IsEqual("updated")
 	o.Value("email").String().IsEqual("hoge@test.com")
-	o.Value("lang").String().IsEqual("ja")
+	o.Value("lang").String().IsEqual("en")
 	o.Value("myWorkspaceId").String().IsEqual(wId1.String())
 }
 
