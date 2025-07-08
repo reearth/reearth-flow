@@ -18,11 +18,12 @@ import {
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { JobState } from "@flow/stores";
+import type { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 
 import { ThreeDViewer, TwoDViewer } from "./components";
 
 type Props = {
-  fileType: "geojson" | null;
+  fileType: SupportedDataTypes | null;
   selectedOutputData: any;
   debugJobState?: JobState;
   isLoadingData: boolean;
