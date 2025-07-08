@@ -7,7 +7,7 @@ import {
   MinusIcon,
   TerminalIcon,
 } from "@phosphor-icons/react";
-import { memo } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 
 import {
   ResizableHandle,
@@ -49,6 +49,20 @@ const DebugPanel: React.FC = () => {
     handleSelectedDataChange,
   } = useHooks();
   const t = useT();
+  const [tabValue, setTabValue] = useState("debug-logs");
+  const hasSwitchedToViewerRef = useRef(false);
+  useEffect(() => {
+    if (dataURLs && !hasSwitchedToViewerRef.current) {
+      setTabValue("debug-viewer");
+      hasSwitchedToViewerRef.current = true;
+    }
+
+    if (!dataURLs) {
+      setTabValue("debug-logs");
+      hasSwitchedToViewerRef.current = false;
+    }
+  }, [dataURLs]);
+
   return debugJobId ? (
     <div
       className={`pointer-events-auto w-[90vw] cursor-pointer rounded-md bg-secondary shadow-md shadow-secondary transition-all ${minimized ? "h-[24px]" : expanded ? "h-[90vh]" : "h-[500px]"}`}>
@@ -80,9 +94,11 @@ const DebugPanel: React.FC = () => {
       </div>
       <Tabs
         className={`pointer-events-auto h-full w-full rounded-md bg-secondary p-1 shadow-md shadow-secondary transition-all`}
-        defaultValue="debug-logs">
-        <div className="relative flex items-center p-1">
-          <div className="flex w-full items-center justify-start p-1">
+        value={tabValue}
+        defaultValue="debug-logs"
+        onValueChange={setTabValue}>
+        <div className="relative flex w-fit items-center p-1">
+          <div className="flex w-fit items-center justify-start p-1">
             <TabsList className="gap-2">
               <TabsTrigger
                 className="gap-1 bg-card font-thin"
@@ -109,7 +125,7 @@ const DebugPanel: React.FC = () => {
         <TabsContent
           className="h-[calc(100%-35px)] overflow-scroll"
           value="debug-logs">
-          <DebugLogs />{" "}
+          <DebugLogs debugJobId={debugJobId} />{" "}
         </TabsContent>
         {dataURLs && (
           <TabsContent
@@ -120,8 +136,8 @@ const DebugPanel: React.FC = () => {
               direction="horizontal">
               <ResizablePanel defaultSize={70} minSize={20}>
                 <Tabs defaultValue="data-viewer">
-                  <div className="relative flex items-center p-1">
-                    <div className="flex w-full items-center justify-start p-1">
+                  <div className="relative flex w-fit items-center p-1">
+                    <div className="flex w-fit items-center justify-start p-1">
                       <TabsList className="gap-2">
                         <TabsTrigger
                           className="gap-1 bg-card font-thin"

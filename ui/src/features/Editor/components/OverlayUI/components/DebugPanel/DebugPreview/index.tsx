@@ -20,7 +20,6 @@ import { useT } from "@flow/lib/i18n";
 import { JobState } from "@flow/stores";
 
 import { ThreeDViewer, TwoDViewer } from "./components";
-import useHooks from "./hooks";
 
 type Props = {
   fileType: "geojson" | null;
@@ -41,7 +40,6 @@ const DebugPreview: React.FC<Props> = ({
   onShowTempPossibleIssuesDialogClose,
 }) => {
   const t = useT();
-  const { handleTabChange } = useHooks();
 
   return debugJobState && dataURLs ? (
     <Tabs
@@ -50,17 +48,11 @@ const DebugPreview: React.FC<Props> = ({
       <div className="relative flex items-center">
         <div className="flex w-full items-center p-1">
           <TabsList className="gap-2">
-            <TabsTrigger
-              className="gap-1 bg-card"
-              value="2d-viewer"
-              onClick={handleTabChange}>
+            <TabsTrigger className="gap-1 bg-card" value="2d-viewer">
               <MapPinAreaIcon />
               <p className="text-sm font-thin select-none">{t("2D Viewer")}</p>
             </TabsTrigger>
-            <TabsTrigger
-              className="gap-1 bg-card"
-              value="3d-viewer"
-              onClick={handleTabChange}>
+            <TabsTrigger className="gap-1 bg-card" value="3d-viewer">
               <GlobeIcon />
               <p className="text-sm font-thin select-none">{t("3D Viewer")}</p>
             </TabsTrigger>

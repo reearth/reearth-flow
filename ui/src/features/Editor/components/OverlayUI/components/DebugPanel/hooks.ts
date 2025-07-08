@@ -193,19 +193,19 @@ export default () => {
 
   return {
     debugJobId,
-    selectedDataURL,
-    dataURLs,
+    debugJobState,
+    fileType,
     expanded,
     minimized,
-    selectedOutputData,
-    fileType,
-    debugJobState,
-    isLoadingData,
     showTempPossibleIssuesDialog,
-    handleShowTempPossibleIssuesDialogClose,
+    selectedDataURL,
+    dataURLs,
+    selectedOutputData,
+    isLoadingData,
     handleExpand,
     handleMinimize,
     handleTabChange,
+    handleShowTempPossibleIssuesDialogClose,
     handleSelectedDataChange,
   };
 };
