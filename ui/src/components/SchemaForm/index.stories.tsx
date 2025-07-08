@@ -5,6 +5,7 @@ import {
   ChevronRightIcon,
 } from "@radix-ui/react-icons";
 import { RJSFSchema } from "@rjsf/utils";
+import validator from "@rjsf/validator-ajv8";
 import type { Meta } from "@storybook/react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -15,6 +16,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../DropdownMenu";
+
+import { ThemedForm } from "./ThemedForm";
 
 import { SchemaForm } from ".";
 
@@ -65,6 +68,88 @@ const fetcher = async (url: string) => {
   return await response.json();
 };
 
+export const RangeWidgetDemo = () => {
+  const rangeSchema: RJSFSchema = {
+    $schema: "http://json-schema.org/draft-07/schema#",
+    title: "Range Widget Demo",
+    type: "object",
+    properties: {
+      basicRange: {
+        type: "number",
+        title: "Basic Range (0-100)",
+        description: "A simple range slider",
+        minimum: 0,
+        maximum: 100,
+        default: 50,
+      },
+      precisionRange: {
+        type: "number",
+        title: "Precision Range (0-10, step 0.1)",
+        description: "Range with decimal precision",
+        minimum: 0,
+        maximum: 10,
+        multipleOf: 0.1,
+        default: 5.5,
+      },
+      temperatureRange: {
+        type: "integer",
+        title: "Temperature (-20°C to 40°C)",
+        description: "Temperature range with negative values",
+        minimum: -20,
+        maximum: 40,
+        default: 20,
+      },
+      percentageRange: {
+        type: "number",
+        title: "Percentage (0-1, step 0.01)",
+        description: "Percentage as decimal (0.0 to 1.0)",
+        minimum: 0,
+        maximum: 1,
+        multipleOf: 0.01,
+        default: 0.75,
+      },
+      normalNumber: {
+        type: "number",
+        title: "Normal Number Input (for comparison)",
+        description: "This should render as a number input",
+        minimum: 0,
+        maximum: 100,
+        default: 25,
+      },
+    },
+  };
+
+  const rangeUiSchema = {
+    basicRange: {
+      "ui:widget": "range",
+    },
+    precisionRange: {
+      "ui:widget": "range",
+    },
+    temperatureRange: {
+      "ui:widget": "range",
+    },
+    percentageRange: {
+      "ui:widget": "range",
+    },
+    // normalNumber doesn't specify a widget, so it uses the default NumberInput
+  };
+
+  return (
+    <div className="w-[600px] rounded border p-4">
+      <h3 className="mb-4 text-lg font-semibold">
+        Range Widget Component Demo
+      </h3>
+      <ThemedForm
+        schema={rangeSchema}
+        uiSchema={rangeUiSchema}
+        validator={validator}
+        onChange={(data) => console.log("Range data:", data)}
+      />
+    </div>
+  );
+};
+
 export const NumberInputDemo = () => {
   const numberSchema: RJSFSchema = {
     $schema: "http://json-schema.org/draft-07/schema#",
@@ -77,7 +162,7 @@ export const NumberInputDemo = () => {
         description: "A basic number input",
       },
       integerOnly: {
-        type: "integer", 
+        type: "integer",
         title: "Integer Only",
         description: "Integer input with min/max constraints",
         minimum: 0,
@@ -111,10 +196,12 @@ export const NumberInputDemo = () => {
 
   return (
     <div className="w-[600px] rounded border p-4">
-      <h3 className="mb-4 text-lg font-semibold">Number Input Component Demo</h3>
-      <SchemaForm 
-        schema={numberSchema} 
-        onChange={(data) => console.log("Form data:", data)} 
+      <h3 className="mb-4 text-lg font-semibold">
+        Number Input Component Demo
+      </h3>
+      <SchemaForm
+        schema={numberSchema}
+        onChange={(data) => console.log("Form data:", data)}
       />
     </div>
   );

@@ -1,16 +1,20 @@
-import { 
-  ariaDescribedByIds, 
-  BaseInputTemplateProps, 
-  examplesId, 
-  FormContextType, 
-  RJSFSchema, 
-  StrictRJSFSchema 
+import {
+  ariaDescribedByIds,
+  BaseInputTemplateProps,
+  examplesId,
+  FormContextType,
+  RJSFSchema,
+  StrictRJSFSchema,
 } from "@rjsf/utils";
 import { ChangeEvent, useRef } from "react";
 
 import { TextArea } from "@flow/components";
 
-type DefaultTextAreaProps<T, S extends StrictRJSFSchema, F extends FormContextType> = {
+type DefaultTextAreaProps<
+  T,
+  S extends StrictRJSFSchema,
+  F extends FormContextType,
+> = {
   props: BaseInputTemplateProps<T, S, F>;
   inputProps: any;
   textFieldProps: any;

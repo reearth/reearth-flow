@@ -19,9 +19,9 @@ const AddButton = <
   ...props
 }: IconButtonProps<T, S, F>) => {
   return (
-    <Button 
-      {...props} 
-      size="icon" 
+    <Button
+      {...props}
+      size="icon"
       className={cn("ml-1", props.className)}
       aria-label="Add item">
       <PlusIcon />

@@ -71,14 +71,18 @@ const BaseInputTemplate = <
   }
 
   // Handle number types (integer, number) or explicit number format
-  if (schema.type === "number" || schema.type === "integer" || type === "number") {
+  if (
+    schema.type === "number" ||
+    schema.type === "integer" ||
+    type === "number"
+  ) {
     return <NumberInput props={props} inputProps={otherProps} />;
   }
 
   return (
-    <DefaultTextArea 
-      props={props} 
-      inputProps={otherProps} 
+    <DefaultTextArea
+      props={props}
+      inputProps={otherProps}
       textFieldProps={textFieldProps}
     />
   );

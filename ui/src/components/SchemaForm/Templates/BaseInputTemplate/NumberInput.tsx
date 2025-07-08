@@ -60,7 +60,6 @@ export const NumberInput = <
     // If parsing fails, don't update (maintains current value)
   };
 
-
   const displayValue =
     value !== null && value !== undefined ? String(value) : "";
 

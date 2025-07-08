@@ -87,9 +87,7 @@ const FieldTemplate = <
           </div>
         )}
         {help && (
-          <div className="mt-1 text-xs text-muted-foreground">
-            {help}
-          </div>
+          <div className="mt-1 text-xs text-muted-foreground">{help}</div>
         )}
       </div>
     </WrapIfAdditionalTemplate>

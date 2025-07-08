@@ -1,9 +1,18 @@
-import { BaseInputTemplateProps, FormContextType, RJSFSchema, StrictRJSFSchema } from "@rjsf/utils";
+import {
+  BaseInputTemplateProps,
+  FormContextType,
+  RJSFSchema,
+  StrictRJSFSchema,
+} from "@rjsf/utils";
 
 import { Button, Input } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 
-type ColorInputProps<T, S extends StrictRJSFSchema, F extends FormContextType> = {
+type ColorInputProps<
+  T,
+  S extends StrictRJSFSchema,
+  F extends FormContextType,
+> = {
   props: BaseInputTemplateProps<T, S, F>;
   inputProps: any;
 };
