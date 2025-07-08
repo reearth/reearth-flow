@@ -67,8 +67,10 @@ const DebugPanel: React.FC = () => {
 
   return debugJobId ? (
     <div
-      className={`pointer-events-auto w-[90vw] cursor-pointer rounded-md bg-secondary shadow-md shadow-secondary transition-all ${minimized ? "h-[24px]" : expanded || hideTabularViewer ? "h-[90vh]" : "h-[500px]"}`}>
-      <div className="flex items-center border-b p-1" onClick={handleExpand}>
+      className={`pointer-events-auto w-[80vw] cursor-pointer rounded-md bg-secondary shadow-md shadow-secondary transition-all ${minimized ? "h-[32px]" : expanded || hideTabularViewer ? "h-[80vh]" : "h-[500px]"}`}>
+      <div
+        className={`flex items-center ${minimized ? "" : "border-b"} p-1`}
+        onClick={handleExpand}>
         <div className="flex flex-1 items-center justify-center gap-2 ">
           <TerminalIcon />
           <p className="text-sm font-thin select-none">{t("Debug Run")}</p>
@@ -95,7 +97,7 @@ const DebugPanel: React.FC = () => {
         </div>
       </div>
       <Tabs
-        className={`pointer-events-auto h-full w-full rounded-md bg-secondary p-1 shadow-md shadow-secondary transition-all`}
+        className={`pointer-events-auto h-full w-full rounded-md bg-secondary p-1 shadow-md shadow-secondary transition-all ${minimized ? "hidden" : "block"}`}
         value={tabValue}
         defaultValue="debug-logs"
         onValueChange={setTabValue}>
