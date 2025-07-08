@@ -63,13 +63,9 @@ func (r *Asset) FindByIDs(ctx context.Context, ids id.AssetIDList) ([]*asset.Ass
 	return filterAssets(ids, res), nil
 }
 
-func (r *Asset) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, uFilter repo.AssetFilter) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
-	if !r.f.CanRead(id) {
-		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
-	}
-
+func (r *Asset) FindByWorkspace(ctx context.Context, wid accountdomain.WorkspaceID, uFilter repo.AssetFilter) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
 	var filter any = bson.M{
-		"workspace": id.String(),
+		"workspace": wid.String(),
 	}
 
 	if uFilter.Keyword != nil {
@@ -81,11 +77,7 @@ func (r *Asset) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceI
 	return r.paginate(ctx, filter, uFilter.Sort, uFilter.Pagination)
 }
 
-func (r *Asset) TotalSizeByWorkspace(ctx context.Context, wid accountdomain.WorkspaceID) (int64, error) {
-	if !r.f.CanRead(wid) {
-		return 0, repo.ErrOperationDenied
-	}
-
+func (r *Asset) TotalSizeByWorkspace(ctx context.Context, wid accountdomain.WorkspaceID) (uint64, error) {
 	c, err := r.client.Client().Aggregate(ctx, []bson.M{
 		{"$match": bson.M{"workspace": wid.String()}},
 		{"$group": bson.M{"_id": nil, "size": bson.M{"$sum": "$size"}}},
@@ -102,7 +94,7 @@ func (r *Asset) TotalSizeByWorkspace(ctx context.Context, wid accountdomain.Work
 	}
 
 	type resp struct {
-		Size int64
+		Size uint64
 	}
 	var res resp
 	if err := c.Decode(&res); err != nil {
@@ -139,7 +131,7 @@ func (r *Asset) paginate(ctx context.Context, filter any, sort *asset.SortType, 
 
 		opts := options.Find()
 		if sort != nil {
-			opts.SetSort(bson.D{{Key: string(*sort), Value: 1}})
+			opts.SetSort(bson.D{{Key: sort.Key, Value: 1}})
 		}
 
 		opts.SetSkip(int64(skip)).SetLimit(int64(limit))

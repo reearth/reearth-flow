@@ -10,13 +10,16 @@ import (
 )
 
 func (r *mutationResolver) CreateAsset(ctx context.Context, input gqlmodel.CreateAssetInput) (*gqlmodel.CreateAssetPayload, error) {
-	tid, err := gqlmodel.ToID[accountdomain.Workspace](input.WorkspaceID)
+	wid, err := gqlmodel.ToID[accountdomain.Workspace](input.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}
 
+	operator := getOperator(ctx)
+
 	res, err := usecases(ctx).Asset.Create(ctx, interfaces.CreateAssetParam{
-		WorkspaceID: tid,
+		WorkspaceID: wid,
+		UserID:      *operator.AcOperator.User,
 		File:        gqlmodel.FromFile(&input.File),
 	})
 	if err != nil {

@@ -20,6 +20,7 @@ const (
 
 type CreateAssetParam struct {
 	WorkspaceID accountdomain.WorkspaceID
+	UserID      accountdomain.UserID
 	File        *file.File
 }
 
