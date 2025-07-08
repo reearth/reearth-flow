@@ -230,10 +230,12 @@ const LogsTable = ({
               {table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className={`overflow-scroll ${row.original.status === "ERROR" ? "text-destructive" : row.original.status === "WARN" ? "text-warning" : ""}`}
+                  className={` ${row.original.status === "ERROR" ? "text-destructive" : row.original.status === "WARN" ? "text-warning" : ""}`}
                   data-state={row.getIsSelected() && "selected"}>
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell className="cursor-pointer" key={cell.id}>
+                    <TableCell
+                      className="cursor-pointer overflow-scroll"
+                      key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext(),
