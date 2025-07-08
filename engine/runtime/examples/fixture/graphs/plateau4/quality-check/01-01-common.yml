@@ -90,16 +90,6 @@ nodes:
               0
             }
 
-  - id: 7339fa49-1b0a-4208-8472-2ab97fe907cf
-    name: FeatureFilterByValidStatus
-    type: action
-    action: FeatureFilter
-    with:
-      conditions:
-        - expr: |
-            env.get("__value").status == "VALID"
-          outputPort: default
-
   - id: 05c85d95-c45c-406c-95b5-4a8a154f704f
     name: PLATEAU4.DomainOfDefinitionValidator
     type: subGraph
@@ -323,15 +313,10 @@ edges:
     to: e56c4680-859a-4ad3-bf4c-07040b3a5ff4
     fromPort: default
     toPort: default
-  - id: 9f855529-bc8b-46e3-a679-0b2c13d06092
-    from: e56c4680-859a-4ad3-bf4c-07040b3a5ff4
-    to: 7339fa49-1b0a-4208-8472-2ab97fe907cf
-    fromPort: summary
-    toPort: default
   - id: 833a0183-1795-491e-95d7-033d7512b070
-    from: 7339fa49-1b0a-4208-8472-2ab97fe907cf
+    from: e56c4680-859a-4ad3-bf4c-07040b3a5ff4
     to: 05c85d95-c45c-406c-95b5-4a8a154f704f
-    fromPort: default
+    fromPort: summary
     toPort: default
   - id: d44adfb3-082e-4e31-8e27-ac3a4f36303c
     from: e56c4680-859a-4ad3-bf4c-07040b3a5ff4
