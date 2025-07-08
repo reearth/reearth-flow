@@ -1,11 +1,20 @@
 type Asset implements Node {
-  contentType: String!
-  createdAt: DateTime!
   id: ID!
-  name: String!
-  size: FileSize!
-  url: String!
+  projectId: ID!
   workspaceId: ID!
+  createdAt: DateTime!
+  fileName: String!
+  size: FileSize!
+  contentType: String!
+  name: String!
+  url: String!
+  uuid: String!
+  previewType: PreviewType
+  coreSupport: Boolean!
+  flatFiles: Boolean!
+  public: Boolean!
+  archiveExtractionStatus: ArchiveExtractionStatus
+  Project: Project
   Workspace: Workspace
 }
 
@@ -15,10 +24,48 @@ enum AssetSortType {
   NAME
 }
 
+enum PreviewType {
+  IMAGE
+  IMAGE_SVG
+  GEO
+  GEO_3D_TILES
+  GEO_MVT
+  MODEL_3D
+  CSV
+  UNKNOWN
+  UNKNOWN_GEO
+  GEOJSON
+  GEOTIFF
+  GPX
+  KML
+  SHP
+  CZML
+  PDF
+  HTML
+  XML
+  TEXT
+  JSON
+  SHEET
+  ARCHIVE
+  GLTF
+  VIDEO
+  AUDIO
+  TMS
+  GPKG
+}
+
+enum ArchiveExtractionStatus {
+  SKIPPED
+  PENDING
+  IN_PROGRESS
+  DONE
+  FAILED
+}
+
 # InputType
 
 input CreateAssetInput {
-  workspaceId: ID!
+  projectId: ID!
   file: Upload!
 }
 
@@ -48,7 +95,7 @@ type AssetConnection {
 
 extend type Query {
   assets(
-    workspaceId: ID!
+    projectId: ID!
     keyword: String
     sort: AssetSortType
     pagination: PageBasedPagination!

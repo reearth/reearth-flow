@@ -66,12 +66,13 @@ func Lang(ctx context.Context, lang *language.Tag) string {
 		return defaultLang.String()
 	}
 
-	l := u.Lang()
-	if l.IsRoot() {
-		return defaultLang.String()
-	}
+	// l := u.Lang()
+	// if l.IsRoot() {
+	// 	return defaultLang.String()
+	// }
 
-	return l.String()
+	// return l.String()
+	return defaultLang.String()
 }
 
 func Operator(ctx context.Context) *usecase.Operator {

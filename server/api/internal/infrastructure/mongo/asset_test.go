@@ -5,13 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/mongox/mongotest"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestFindByID(t *testing.T) {
@@ -30,11 +29,15 @@ func TestFindByID(t *testing.T) {
 				Asset: asset.New().
 					NewID().
 					CreatedAt(time.Now()).
+					Project(id.NewProjectID()).
 					Workspace(accountdomain.NewWorkspaceID()).
+					CreatedByUser(accountdomain.NewUserID()).
+					FileName("file.json").
 					Name("name").
 					Size(10).
 					URL("hxxps://https://reearth.io/").
 					ContentType("json").
+					NewUUID().
 					MustBuild(),
 			},
 		},
@@ -68,27 +71,4 @@ func TestFindByID(t *testing.T) {
 	}
 }
 
-func TestAsset_TotalSizeByWorkspace(t *testing.T) {
-	c := mongotest.Connect(t)(t)
-	ctx := context.Background()
-	wid := accountdomain.NewWorkspaceID()
-	wid2 := accountdomain.NewWorkspaceID()
-
-	_, _ = c.Collection("asset").InsertMany(ctx, []any{
-		bson.M{"id": "a", "workspaceid": wid.String(), "size": 100},
-		bson.M{"id": "b", "workspaceid": wid.String(), "size": 200},
-		bson.M{"id": "c", "workspaceid": wid2.String(), "size": 300},
-	})
-
-	r := NewAsset(mongox.NewClientWithDatabase(c))
-	got, err := r.TotalSizeByWorkspace(ctx, wid)
-	assert.NoError(t, err)
-	assert.Equal(t, int64(300), got)
-
-	r2 := r.Filtered(repo.WorkspaceFilter{
-		Readable: accountdomain.WorkspaceIDList{wid2},
-	})
-	got, err = r2.TotalSizeByWorkspace(ctx, wid)
-	assert.NoError(t, err)
-	assert.Equal(t, int64(0), got)
-}
+// Removed TestAsset_TotalSizeByWorkspace as we switched to project-based assets

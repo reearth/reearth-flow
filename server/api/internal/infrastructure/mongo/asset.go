@@ -10,7 +10,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/rerror"
 	"go.mongodb.org/mongo-driver/bson"
@@ -19,7 +18,7 @@ import (
 )
 
 var (
-	assetIndexes       = []string{"workspace"}
+	assetIndexes       = []string{"project", "workspace"}
 	assetUniqueIndexes = []string{"id"}
 )
 
@@ -63,13 +62,9 @@ func (r *Asset) FindByIDs(ctx context.Context, ids id.AssetIDList) ([]*asset.Ass
 	return filterAssets(ids, res), nil
 }
 
-func (r *Asset) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, uFilter repo.AssetFilter) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
-	if !r.f.CanRead(id) {
-		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
-	}
-
+func (r *Asset) FindByProject(ctx context.Context, pid id.ProjectID, uFilter repo.AssetFilter) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
 	var filter any = bson.M{
-		"workspace": id.String(),
+		"project": pid.String(),
 	}
 
 	if uFilter.Keyword != nil {
@@ -81,13 +76,9 @@ func (r *Asset) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceI
 	return r.paginate(ctx, filter, uFilter.Sort, uFilter.Pagination)
 }
 
-func (r *Asset) TotalSizeByWorkspace(ctx context.Context, wid accountdomain.WorkspaceID) (int64, error) {
-	if !r.f.CanRead(wid) {
-		return 0, repo.ErrOperationDenied
-	}
-
+func (r *Asset) TotalSizeByProject(ctx context.Context, pid id.ProjectID) (uint64, error) {
 	c, err := r.client.Client().Aggregate(ctx, []bson.M{
-		{"$match": bson.M{"workspace": wid.String()}},
+		{"$match": bson.M{"project": pid.String()}},
 		{"$group": bson.M{"_id": nil, "size": bson.M{"$sum": "$size"}}},
 	})
 	if err != nil {
@@ -102,7 +93,7 @@ func (r *Asset) TotalSizeByWorkspace(ctx context.Context, wid accountdomain.Work
 	}
 
 	type resp struct {
-		Size int64
+		Size uint64
 	}
 	var res resp
 	if err := c.Decode(&res); err != nil {
@@ -139,7 +130,7 @@ func (r *Asset) paginate(ctx context.Context, filter any, sort *asset.SortType, 
 
 		opts := options.Find()
 		if sort != nil {
-			opts.SetSort(bson.D{{Key: string(*sort), Value: 1}})
+			opts.SetSort(bson.D{{Key: sort.Key, Value: 1}})
 		}
 
 		opts.SetSkip(int64(skip)).SetLimit(int64(limit))

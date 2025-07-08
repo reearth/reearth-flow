@@ -15,7 +15,6 @@ import (
 	"github.com/reearth/reearthx/idx"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/text/language"
 )
 
 var (
@@ -33,8 +32,6 @@ func baseSeederUser(ctx context.Context, r *repo.Container) error {
 		Name("e2e").
 		Email("e2e@e2e.com").
 		Auths([]user.Auth{*auth}).
-		Theme(user.ThemeDark).
-		Lang(language.Japanese).
 		Workspace(wId1).
 		MustBuild()
 	if err := r.User.Save(ctx, u); err != nil {

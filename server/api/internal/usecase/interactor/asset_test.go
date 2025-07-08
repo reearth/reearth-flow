@@ -12,8 +12,8 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
-	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/file"
+	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/account/accountdomain/workspace"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmemory"
@@ -32,8 +32,7 @@ func TestAsset_Create(t *testing.T) {
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
 	ctx = adapter.AttachUser(ctx, mockUser)
 
-	aid := asset.NewID()
-	defer asset.MockNewID(aid)()
+	// aid := asset.NewID() - removed as the ID is generated in the interactor
 
 	ws := workspace.New().NewID().MustBuild()
 
@@ -57,8 +56,15 @@ func TestAsset_Create(t *testing.T) {
 
 	buf := bytes.NewBufferString("Hello")
 	buflen := int64(buf.Len())
+	// Create a test project
+	proj := project.New().NewID().Workspace(ws.ID()).MustBuild()
+	projectRepo := memory.NewProject()
+	_ = projectRepo.Save(ctx, proj)
+	uc.repos.Project = projectRepo
+
 	res, err := uc.Create(ctx, interfaces.CreateAssetParam{
-		WorkspaceID: ws.ID(),
+		ProjectID: proj.ID(),
+		UserID:    mockUser.ID(),
 		File: &file.File{
 			Content:     io.NopCloser(buf),
 			Path:        "hoge.txt",
@@ -67,19 +73,17 @@ func TestAsset_Create(t *testing.T) {
 		},
 	})
 	assert.NoError(t, err)
-
-	want := asset.New().
-		ID(aid).
-		Workspace(ws.ID()).
-		URL(res.URL()).
-		CreatedAt(aid.Timestamp()).
-		Name("hoge.txt").
-		Size(buflen).
-		ContentType("").
-		MustBuild()
-
+	assert.NotNil(t, res)
+	assert.NotEmpty(t, res.ID())
+	assert.Equal(t, proj.ID(), res.Project())
+	assert.Equal(t, ws.ID(), res.Workspace())
+	assert.Equal(t, "hoge.txt", res.Name())
+	assert.Equal(t, uint64(buflen), res.Size())
+	assert.Equal(t, "", res.ContentType())
+	assert.NotEmpty(t, res.UUID())
+	assert.NotEmpty(t, res.URL())
+	
+	a, err := uc.repos.Asset.FindByID(ctx, res.ID())
 	assert.NoError(t, err)
-	assert.Equal(t, want, res)
-	a, _ := uc.repos.Asset.FindByID(ctx, aid)
-	assert.Equal(t, want, a)
+	assert.Equal(t, res, a)
 }

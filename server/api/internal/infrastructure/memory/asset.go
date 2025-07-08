@@ -9,7 +9,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/util"
 )
@@ -46,25 +45,21 @@ func (r *Asset) FindByIDs(_ context.Context, ids id.AssetIDList) ([]*asset.Asset
 	}), nil
 }
 
-func (r *Asset) FindByWorkspace(_ context.Context, wid accountdomain.WorkspaceID, filter repo.AssetFilter) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
-	if !r.f.CanRead(wid) {
-		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
-	}
-
+func (r *Asset) FindByProject(_ context.Context, pid id.ProjectID, filter repo.AssetFilter) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
 	result := r.data.FindAll(func(k id.AssetID, v *asset.Asset) bool {
-		return v.Workspace() == wid && (filter.Keyword == nil || strings.Contains(v.Name(), *filter.Keyword))
+		return v.Project() == pid && (filter.Keyword == nil || strings.Contains(v.Name(), *filter.Keyword))
 	})
 
 	if filter.Sort != nil {
 		s := *filter.Sort
 		sort.SliceStable(result, func(i, j int) bool {
-			if s == asset.SortTypeID {
+			if s.Key == "id" {
 				return result[i].ID().Compare(result[j].ID()) < 0
 			}
-			if s == asset.SortTypeSize {
+			if s.Key == "size" {
 				return result[i].Size() < result[j].Size()
 			}
-			if s == asset.SortTypeName {
+			if s.Key == "name" {
 				return strings.Compare(result[i].Name(), result[j].Name()) < 0
 			}
 			return false
@@ -94,13 +89,9 @@ func (r *Asset) FindByWorkspace(_ context.Context, wid accountdomain.WorkspaceID
 	return result, interfaces.NewPageBasedInfo(total, 1, int(total)), nil
 }
 
-func (r *Asset) TotalSizeByWorkspace(_ context.Context, wid accountdomain.WorkspaceID) (t int64, err error) {
-	if !r.f.CanRead(wid) {
-		return 0, nil
-	}
-
+func (r *Asset) TotalSizeByProject(_ context.Context, pid id.ProjectID) (t uint64, err error) {
 	r.data.Range(func(k id.AssetID, v *asset.Asset) bool {
-		if v.Workspace() == wid {
+		if v.Project() == pid {
 			t += v.Size()
 		}
 		return true
