@@ -19,16 +19,16 @@ const (
 )
 
 type CreateAssetParam struct {
-	ProjectID id.ProjectID
-	UserID    accountdomain.UserID
-	File      *file.File
+	WorkspaceID accountdomain.WorkspaceID
+	UserID      accountdomain.UserID
+	File        *file.File
 }
 
 var ErrCreateAssetFailed error = errors.New("failed to create asset")
 
 type Asset interface {
 	Fetch(context.Context, []id.AssetID) ([]*asset.Asset, error)
-	FindByProject(context.Context, id.ProjectID, *string, *asset.SortType, *PaginationParam) ([]*asset.Asset, *PageBasedInfo, error)
+	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *string, *asset.SortType, *PaginationParam) ([]*asset.Asset, *PageBasedInfo, error)
 	Create(context.Context, CreateAssetParam) (*asset.Asset, error)
 	Remove(context.Context, id.AssetID) (id.AssetID, error)
 }

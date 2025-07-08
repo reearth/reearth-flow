@@ -8,6 +8,13 @@ import (
 	reearthxasset "github.com/reearth/reearthx/asset/domain/asset"
 )
 
+// WorkspaceOnlyProjectID is a special project ID used for workspace-only assets
+// This is needed because reearthx requires a valid project ID
+var WorkspaceOnlyProjectID = func() id.ProjectID {
+	// Create a new project ID that we'll use as a marker for workspace-only assets
+	return id.NewProjectID()
+}()
+
 // Re-export types from reearthx
 type (
 	Asset                   = AssetWrapper // Use wrapper as the main Asset type
@@ -94,6 +101,12 @@ func (b *Builder) Project(v id.ProjectID) *Builder {
 
 func (b *Builder) Workspace(v accountdomain.WorkspaceID) *Builder {
 	b.rxBuilder = b.rxBuilder.Workspace(v)
+	// If no project is set yet, use a dummy project ID for workspace-based assets
+	// This is required because reearthx requires a valid project ID
+	if b.projectID == nil {
+		b.projectID = &WorkspaceOnlyProjectID
+		b.rxBuilder = b.rxBuilder.Project(ConvertProjectIDToReearthx(WorkspaceOnlyProjectID))
+	}
 	return b
 }
 

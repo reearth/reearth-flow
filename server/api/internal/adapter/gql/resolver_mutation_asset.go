@@ -6,10 +6,11 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearthx/account/accountdomain"
 )
 
 func (r *mutationResolver) CreateAsset(ctx context.Context, input gqlmodel.CreateAssetInput) (*gqlmodel.CreateAssetPayload, error) {
-	pid, err := gqlmodel.ToID[id.Project](input.ProjectID)
+	wid, err := gqlmodel.ToID[accountdomain.Workspace](input.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -17,9 +18,9 @@ func (r *mutationResolver) CreateAsset(ctx context.Context, input gqlmodel.Creat
 	operator := getOperator(ctx)
 
 	res, err := usecases(ctx).Asset.Create(ctx, interfaces.CreateAssetParam{
-		ProjectID: pid,
-		UserID:    *operator.AcOperator.User,
-		File:      gqlmodel.FromFile(&input.File),
+		WorkspaceID: wid,
+		UserID:      *operator.AcOperator.User,
+		File:        gqlmodel.FromFile(&input.File),
 	})
 	if err != nil {
 		return nil, err

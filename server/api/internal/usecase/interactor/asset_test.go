@@ -13,7 +13,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/file"
-	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/account/accountdomain/workspace"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmemory"
@@ -56,15 +55,9 @@ func TestAsset_Create(t *testing.T) {
 
 	buf := bytes.NewBufferString("Hello")
 	buflen := int64(buf.Len())
-	// Create a test project
-	proj := project.New().NewID().Workspace(ws.ID()).MustBuild()
-	projectRepo := memory.NewProject()
-	_ = projectRepo.Save(ctx, proj)
-	uc.repos.Project = projectRepo
-
 	res, err := uc.Create(ctx, interfaces.CreateAssetParam{
-		ProjectID: proj.ID(),
-		UserID:    mockUser.ID(),
+		WorkspaceID: ws.ID(),
+		UserID:      mockUser.ID(),
 		File: &file.File{
 			Content:     io.NopCloser(buf),
 			Path:        "hoge.txt",
@@ -75,7 +68,6 @@ func TestAsset_Create(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, res)
 	assert.NotEmpty(t, res.ID())
-	assert.Equal(t, proj.ID(), res.Project())
 	assert.Equal(t, ws.ID(), res.Workspace())
 	assert.Equal(t, "hoge.txt", res.Name())
 	assert.Equal(t, uint64(buflen), res.Size())

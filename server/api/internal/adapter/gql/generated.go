@@ -72,8 +72,6 @@ type ComplexityRoot struct {
 		ID                      func(childComplexity int) int
 		Name                    func(childComplexity int) int
 		PreviewType             func(childComplexity int) int
-		Project                 func(childComplexity int) int
-		ProjectID               func(childComplexity int) int
 		Public                  func(childComplexity int) int
 		Size                    func(childComplexity int) int
 		URL                     func(childComplexity int) int
@@ -314,7 +312,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Assets                func(childComplexity int, projectID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) int
+		Assets                func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) int
 		DeploymentByVersion   func(childComplexity int, input gqlmodel.GetByVersionInput) int
 		DeploymentHead        func(childComplexity int, input gqlmodel.GetHeadInput) int
 		DeploymentVersions    func(childComplexity int, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) int
@@ -495,7 +493,7 @@ type ProjectDocumentResolver interface {
 type QueryResolver interface {
 	Node(ctx context.Context, id gqlmodel.ID, typeArg gqlmodel.NodeType) (gqlmodel.Node, error)
 	Nodes(ctx context.Context, id []gqlmodel.ID, typeArg gqlmodel.NodeType) ([]gqlmodel.Node, error)
-	Assets(ctx context.Context, projectID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) (*gqlmodel.AssetConnection, error)
+	Assets(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) (*gqlmodel.AssetConnection, error)
 	Deployments(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error)
 	DeploymentByVersion(ctx context.Context, input gqlmodel.GetByVersionInput) (*gqlmodel.Deployment, error)
 	DeploymentHead(ctx context.Context, input gqlmodel.GetHeadInput) (*gqlmodel.Deployment, error)
@@ -620,20 +618,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Asset.PreviewType(childComplexity), true
-
-	case "Asset.Project":
-		if e.complexity.Asset.Project == nil {
-			break
-		}
-
-		return e.complexity.Asset.Project(childComplexity), true
-
-	case "Asset.projectId":
-		if e.complexity.Asset.ProjectID == nil {
-			break
-		}
-
-		return e.complexity.Asset.ProjectID(childComplexity), true
 
 	case "Asset.public":
 		if e.complexity.Asset.Public == nil {
@@ -1896,7 +1880,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Assets(childComplexity, args["projectId"].(gqlmodel.ID), args["keyword"].(*string), args["sort"].(*gqlmodel.AssetSortType), args["pagination"].(gqlmodel.PageBasedPagination)), true
+		return e.complexity.Query.Assets(childComplexity, args["workspaceId"].(gqlmodel.ID), args["keyword"].(*string), args["sort"].(*gqlmodel.AssetSortType), args["pagination"].(gqlmodel.PageBasedPagination)), true
 
 	case "Query.deploymentByVersion":
 		if e.complexity.Query.DeploymentByVersion == nil {
@@ -2675,7 +2659,6 @@ schema {
 `, BuiltIn: false},
 	{Name: "../../../gql/asset.graphql", Input: `type Asset implements Node {
   id: ID!
-  projectId: ID!
   workspaceId: ID!
   createdAt: DateTime!
   fileName: String!
@@ -2689,7 +2672,6 @@ schema {
   flatFiles: Boolean!
   public: Boolean!
   archiveExtractionStatus: ArchiveExtractionStatus
-  Project: Project
   Workspace: Workspace
 }
 
@@ -2740,7 +2722,7 @@ enum ArchiveExtractionStatus {
 # InputType
 
 input CreateAssetInput {
-  projectId: ID!
+  workspaceId: ID!
   file: Upload!
 }
 
@@ -2770,7 +2752,7 @@ type AssetConnection {
 
 extend type Query {
   assets(
-    projectId: ID!
+    workspaceId: ID!
     keyword: String
     sort: AssetSortType
     pagination: PageBasedPagination!
@@ -4682,11 +4664,11 @@ func (ec *executionContext) field_Query___type_argsName(
 func (ec *executionContext) field_Query_assets_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_assets_argsProjectID(ctx, rawArgs)
+	arg0, err := ec.field_Query_assets_argsWorkspaceID(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
-	args["projectId"] = arg0
+	args["workspaceId"] = arg0
 	arg1, err := ec.field_Query_assets_argsKeyword(ctx, rawArgs)
 	if err != nil {
 		return nil, err
@@ -4704,17 +4686,17 @@ func (ec *executionContext) field_Query_assets_args(ctx context.Context, rawArgs
 	args["pagination"] = arg3
 	return args, nil
 }
-func (ec *executionContext) field_Query_assets_argsProjectID(
+func (ec *executionContext) field_Query_assets_argsWorkspaceID(
 	ctx context.Context,
 	rawArgs map[string]any,
 ) (gqlmodel.ID, error) {
-	if _, ok := rawArgs["projectId"]; !ok {
+	if _, ok := rawArgs["workspaceId"]; !ok {
 		var zeroVal gqlmodel.ID
 		return zeroVal, nil
 	}
 
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
-	if tmp, ok := rawArgs["projectId"]; ok {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceId"))
+	if tmp, ok := rawArgs["workspaceId"]; ok {
 		return ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
 	}
 
@@ -5918,50 +5900,6 @@ func (ec *executionContext) fieldContext_Asset_id(_ context.Context, field graph
 	return fc, nil
 }
 
-func (ec *executionContext) _Asset_projectId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Asset) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Asset_projectId(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ProjectID, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(gqlmodel.ID)
-	fc.Result = res
-	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Asset_projectId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Asset",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ID does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Asset_workspaceId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Asset) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Asset_workspaceId(ctx, field)
 	if err != nil {
@@ -6528,79 +6466,6 @@ func (ec *executionContext) fieldContext_Asset_archiveExtractionStatus(_ context
 	return fc, nil
 }
 
-func (ec *executionContext) _Asset_Project(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Asset) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Asset_Project(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Project, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*gqlmodel.Project)
-	fc.Result = res
-	return ec.marshalOProject2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProject(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Asset_Project(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Asset",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "basicAuthPassword":
-				return ec.fieldContext_Project_basicAuthPassword(ctx, field)
-			case "basicAuthUsername":
-				return ec.fieldContext_Project_basicAuthUsername(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Project_createdAt(ctx, field)
-			case "description":
-				return ec.fieldContext_Project_description(ctx, field)
-			case "deployment":
-				return ec.fieldContext_Project_deployment(ctx, field)
-			case "id":
-				return ec.fieldContext_Project_id(ctx, field)
-			case "isArchived":
-				return ec.fieldContext_Project_isArchived(ctx, field)
-			case "isBasicAuthActive":
-				return ec.fieldContext_Project_isBasicAuthActive(ctx, field)
-			case "name":
-				return ec.fieldContext_Project_name(ctx, field)
-			case "parameters":
-				return ec.fieldContext_Project_parameters(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_Project_updatedAt(ctx, field)
-			case "sharedToken":
-				return ec.fieldContext_Project_sharedToken(ctx, field)
-			case "version":
-				return ec.fieldContext_Project_version(ctx, field)
-			case "workspace":
-				return ec.fieldContext_Project_workspace(ctx, field)
-			case "workspaceId":
-				return ec.fieldContext_Project_workspaceId(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Asset_Workspace(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Asset) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Asset_Workspace(ctx, field)
 	if err != nil {
@@ -6697,8 +6562,6 @@ func (ec *executionContext) fieldContext_AssetConnection_nodes(_ context.Context
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Asset_id(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Asset_projectId(ctx, field)
 			case "workspaceId":
 				return ec.fieldContext_Asset_workspaceId(ctx, field)
 			case "createdAt":
@@ -6725,8 +6588,6 @@ func (ec *executionContext) fieldContext_AssetConnection_nodes(_ context.Context
 				return ec.fieldContext_Asset_public(ctx, field)
 			case "archiveExtractionStatus":
 				return ec.fieldContext_Asset_archiveExtractionStatus(ctx, field)
-			case "Project":
-				return ec.fieldContext_Asset_Project(ctx, field)
 			case "Workspace":
 				return ec.fieldContext_Asset_Workspace(ctx, field)
 			}
@@ -6942,8 +6803,6 @@ func (ec *executionContext) fieldContext_CreateAssetPayload_asset(_ context.Cont
 			switch field.Name {
 			case "id":
 				return ec.fieldContext_Asset_id(ctx, field)
-			case "projectId":
-				return ec.fieldContext_Asset_projectId(ctx, field)
 			case "workspaceId":
 				return ec.fieldContext_Asset_workspaceId(ctx, field)
 			case "createdAt":
@@ -6970,8 +6829,6 @@ func (ec *executionContext) fieldContext_CreateAssetPayload_asset(_ context.Cont
 				return ec.fieldContext_Asset_public(ctx, field)
 			case "archiveExtractionStatus":
 				return ec.fieldContext_Asset_archiveExtractionStatus(ctx, field)
-			case "Project":
-				return ec.fieldContext_Asset_Project(ctx, field)
 			case "Workspace":
 				return ec.fieldContext_Asset_Workspace(ctx, field)
 			}
@@ -14265,7 +14122,7 @@ func (ec *executionContext) _Query_assets(ctx context.Context, field graphql.Col
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Assets(rctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["keyword"].(*string), fc.Args["sort"].(*gqlmodel.AssetSortType), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
+		return ec.resolvers.Query().Assets(rctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["keyword"].(*string), fc.Args["sort"].(*gqlmodel.AssetSortType), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -19873,20 +19730,20 @@ func (ec *executionContext) unmarshalInputCreateAssetInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"projectId", "file"}
+	fieldsInOrder := [...]string{"workspaceId", "file"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
-		case "projectId":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+		case "workspaceId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceId"))
 			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			it.ProjectID = data
+			it.WorkspaceID = data
 		case "file":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("file"))
 			data, err := ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, v)
@@ -21415,11 +21272,6 @@ func (ec *executionContext) _Asset(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "projectId":
-			out.Values[i] = ec._Asset_projectId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "workspaceId":
 			out.Values[i] = ec._Asset_workspaceId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -21479,8 +21331,6 @@ func (ec *executionContext) _Asset(ctx context.Context, sel ast.SelectionSet, ob
 			}
 		case "archiveExtractionStatus":
 			out.Values[i] = ec._Asset_archiveExtractionStatus(ctx, field, obj)
-		case "Project":
-			out.Values[i] = ec._Asset_Project(ctx, field, obj)
 		case "Workspace":
 			out.Values[i] = ec._Asset_Workspace(ctx, field, obj)
 		default:

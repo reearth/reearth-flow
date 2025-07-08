@@ -100,7 +100,6 @@ func ConvertToReearthx(
 ) (*reearthxasset.Asset, error) {
 	builder := reearthxasset.New().
 		NewID().
-		Project(ConvertProjectIDToReearthx(projectID)).
 		Workspace(workspaceID).
 		FileName(fileName).
 		Name(fileName).
@@ -143,7 +142,15 @@ func (w *AssetWrapper) ID() id.AssetID {
 }
 
 func (w *AssetWrapper) Project() id.ProjectID {
-	return ConvertProjectIDFromReearthx(w.asset.Project())
+	rxProject := w.asset.Project()
+	flowProject := ConvertProjectIDFromReearthx(rxProject)
+	
+	// If this is our special workspace-only project ID, return empty
+	if flowProject == WorkspaceOnlyProjectID {
+		return id.ProjectID{}
+	}
+	
+	return flowProject
 }
 
 func (w *AssetWrapper) Workspace() accountdomain.WorkspaceID {

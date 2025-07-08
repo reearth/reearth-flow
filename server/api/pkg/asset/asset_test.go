@@ -162,6 +162,28 @@ func TestAsset_List(t *testing.T) {
 	assert.Contains(t, ids, aid3)
 }
 
+func TestAsset_WorkspaceOnly(t *testing.T) {
+	ws := accountdomain.NewWorkspaceID()
+	uid := accountdomain.NewUserID()
+
+	// Test creating a workspace-only asset (no project)
+	a := New().
+		NewID().
+		Workspace(ws).
+		CreatedByUser(uid).
+		FileName("test.jpg").
+		Size(100).
+		URL("http://example.com/test").
+		NewUUID().
+		MustBuild()
+
+	assert.NotNil(t, a)
+	assert.NotNil(t, a.ID())
+	assert.Equal(t, ws, a.Workspace())
+	// Project should be empty/zero value
+	assert.Equal(t, id.ProjectID{}, a.Project())
+}
+
 func TestExtendedPreviewTypes(t *testing.T) {
 	// Test standard reearthx preview types
 	pt, ok := PreviewTypeFrom("image")

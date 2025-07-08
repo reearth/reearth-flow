@@ -10,6 +10,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/rerror"
 	"go.mongodb.org/mongo-driver/bson"
@@ -18,7 +19,7 @@ import (
 )
 
 var (
-	assetIndexes       = []string{"project", "workspace"}
+	assetIndexes       = []string{"workspace"}
 	assetUniqueIndexes = []string{"id"}
 )
 
@@ -62,9 +63,9 @@ func (r *Asset) FindByIDs(ctx context.Context, ids id.AssetIDList) ([]*asset.Ass
 	return filterAssets(ids, res), nil
 }
 
-func (r *Asset) FindByProject(ctx context.Context, pid id.ProjectID, uFilter repo.AssetFilter) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
+func (r *Asset) FindByWorkspace(ctx context.Context, wid accountdomain.WorkspaceID, uFilter repo.AssetFilter) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
 	var filter any = bson.M{
-		"project": pid.String(),
+		"workspace": wid.String(),
 	}
 
 	if uFilter.Keyword != nil {
@@ -76,9 +77,9 @@ func (r *Asset) FindByProject(ctx context.Context, pid id.ProjectID, uFilter rep
 	return r.paginate(ctx, filter, uFilter.Sort, uFilter.Pagination)
 }
 
-func (r *Asset) TotalSizeByProject(ctx context.Context, pid id.ProjectID) (uint64, error) {
+func (r *Asset) TotalSizeByWorkspace(ctx context.Context, wid accountdomain.WorkspaceID) (uint64, error) {
 	c, err := r.client.Client().Aggregate(ctx, []bson.M{
-		{"$match": bson.M{"project": pid.String()}},
+		{"$match": bson.M{"workspace": wid.String()}},
 		{"$group": bson.M{"_id": nil, "size": bson.M{"$sum": "$size"}}},
 	})
 	if err != nil {

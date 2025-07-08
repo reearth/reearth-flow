@@ -1,6 +1,5 @@
 type Asset implements Node {
   id: ID!
-  projectId: ID!
   workspaceId: ID!
   createdAt: DateTime!
   fileName: String!
@@ -14,7 +13,6 @@ type Asset implements Node {
   flatFiles: Boolean!
   public: Boolean!
   archiveExtractionStatus: ArchiveExtractionStatus
-  Project: Project
   Workspace: Workspace
 }
 
@@ -65,7 +63,7 @@ enum ArchiveExtractionStatus {
 # InputType
 
 input CreateAssetInput {
-  projectId: ID!
+  workspaceId: ID!
   file: Upload!
 }
 
@@ -95,7 +93,7 @@ type AssetConnection {
 
 extend type Query {
   assets(
-    projectId: ID!
+    workspaceId: ID!
     keyword: String
     sort: AssetSortType
     pagination: PageBasedPagination!

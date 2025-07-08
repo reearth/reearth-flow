@@ -34,7 +34,6 @@ type AddMemberToWorkspacePayload struct {
 
 type Asset struct {
 	ID                      ID                       `json:"id"`
-	ProjectID               ID                       `json:"projectId"`
 	WorkspaceID             ID                       `json:"workspaceId"`
 	CreatedAt               time.Time                `json:"createdAt"`
 	FileName                string                   `json:"fileName"`
@@ -48,7 +47,6 @@ type Asset struct {
 	FlatFiles               bool                     `json:"flatFiles"`
 	Public                  bool                     `json:"public"`
 	ArchiveExtractionStatus *ArchiveExtractionStatus `json:"archiveExtractionStatus,omitempty"`
-	Project                 *Project                 `json:"Project,omitempty"`
 	Workspace               *Workspace               `json:"Workspace,omitempty"`
 }
 
@@ -70,8 +68,8 @@ type CancelJobPayload struct {
 }
 
 type CreateAssetInput struct {
-	ProjectID ID             `json:"projectId"`
-	File      graphql.Upload `json:"file"`
+	WorkspaceID ID             `json:"workspaceId"`
+	File        graphql.Upload `json:"file"`
 }
 
 type CreateAssetPayload struct {
