@@ -86,7 +86,6 @@ const ColorInput = <
         <ActionArea
           value={value}
           defaultValue={defaultValue}
-          onChange={onChange}
           onEditorOpen={onEditorOpen}
           onReset={handleReset}
         />

@@ -12,6 +12,7 @@ import { useT } from "@flow/lib/i18n";
 import { Node } from "@flow/types";
 
 import { ParamEditor, ValueEditorDialog } from "./components";
+import { FieldContext, setValueAtPath } from "./utils/fieldUtils";
 
 type Props = {
   readonly?: boolean;
@@ -35,6 +36,9 @@ const ParamsDialog: React.FC<Props> = ({
   const t = useT();
 
   const [openValueEditor, setOpenValueEditor] = useState(false);
+  const [currentFieldContext, setCurrentFieldContext] = useState<
+    FieldContext | undefined
+  >(undefined);
 
   const handleUpdate = useCallback(
     async (nodeId: string, data: any, type: "params" | "customizations") => {
@@ -66,6 +70,18 @@ const ParamsDialog: React.FC<Props> = ({
     }
   }, [setViewport, getViewport, openNode]);
 
+  const [updatedParams, setUpdatedParams] = useState(openNode?.data.params);
+
+  useEffect(() => {
+    if (openNode && !updatedParams) {
+      setUpdatedParams(openNode.data.params);
+    }
+  }, [openNode, updatedParams]);
+
+  const handleParamChange = (data: any) => {
+    setUpdatedParams(data);
+  };
+
   return (
     <>
       <Dialog open={!!openNode} onOpenChange={() => onOpenNode()}>
@@ -84,17 +100,41 @@ const ParamsDialog: React.FC<Props> = ({
               nodeId={openNode.id}
               nodeMeta={openNode.data}
               nodeType={openNode.type}
+              nodeParams={updatedParams}
+              onParamsUpdate={handleParamChange}
               onUpdate={handleUpdate}
               onWorkflowRename={onWorkflowRename}
-              onValueEditorOpen={() => setOpenValueEditor(true)}
+              onValueEditorOpen={(fieldContext) => {
+                setCurrentFieldContext(fieldContext);
+                setOpenValueEditor(true);
+              }}
             />
           )}
         </DialogContent>
       </Dialog>
-      <ValueEditorDialog
-        open={openValueEditor}
-        onClose={() => setOpenValueEditor(false)}
-      />
+      {currentFieldContext && (
+        <ValueEditorDialog
+          open={openValueEditor}
+          fieldContext={currentFieldContext}
+          onClose={() => {
+            setOpenValueEditor(false);
+            setCurrentFieldContext(undefined);
+          }}
+          onValueSubmit={(value) => {
+            if (currentFieldContext && openNode) {
+              // Update the node's params with the new value
+              const currentParams = openNode.data.params || {};
+              const updatedParams = setValueAtPath(
+                currentParams,
+                currentFieldContext.path,
+                value,
+              );
+              // Update the local state with the new params
+              handleParamChange?.(updatedParams);
+            }
+          }}
+        />
+      )}
     </>
   );
 };

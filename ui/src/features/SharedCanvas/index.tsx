@@ -82,11 +82,13 @@ const SharedCanvas: React.FC<Props> = ({
             />
           </div>
         </div>
-        <ParamsDialog
-          readonly
-          openNode={openNode}
-          onOpenNode={handleOpenNode}
-        />
+        {openNode && (
+          <ParamsDialog
+            readonly
+            openNode={openNode}
+            onOpenNode={handleOpenNode}
+          />
+        )}
       </EditorProvider>
     </div>
   );

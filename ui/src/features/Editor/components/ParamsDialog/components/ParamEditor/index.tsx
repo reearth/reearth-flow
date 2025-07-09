@@ -18,29 +18,33 @@ import { useNodeSchemaGenerate } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
-import type { NodeData } from "@flow/types";
+import type { NodeData, NodeParams } from "@flow/types";
+
+import { FieldContext } from "../../utils/fieldUtils";
 
 type Props = {
   readonly?: boolean;
   nodeId: string;
   nodeMeta: NodeData;
   nodeType: string;
-  nodeParameters?: unknown; // TODO: define type
+  nodeParams?: NodeParams;
+  onParamsUpdate: (data: any) => void;
   onUpdate: (
     nodeId: string,
     data: any,
     type: "params" | "customizations",
   ) => Promise<void>;
   onWorkflowRename?: (id: string, name: string) => void;
-  onValueEditorOpen: () => void;
+  onValueEditorOpen: (fieldContext: FieldContext) => void;
 };
 
 const ParamEditor: React.FC<Props> = ({
   readonly,
   nodeId,
   nodeMeta,
+  nodeParams,
   nodeType,
-  // nodeParameters = [{ id: "param1", name: "Param 1", value: "Value 1", type: "string"}],
+  onParamsUpdate,
   onUpdate,
   onWorkflowRename,
   onValueEditorOpen,
@@ -65,16 +69,11 @@ const ParamEditor: React.FC<Props> = ({
     [createdAction?.parameter],
   );
 
-  const [updatedParams, setUpdatedParams] = useState(nodeMeta.params);
   const [updatedCustomization, setUpdatedCustomization] = useState(
     nodeMeta.customizations,
   );
   const [isParamsValid, setIsParamsValid] = useState(true);
   const [isCustomizationsValid, setIsCustomizationsValid] = useState(true);
-
-  const handleParamChange = (data: any) => {
-    setUpdatedParams(data);
-  };
 
   const handleCustomizationChange = (data: any) => {
     setUpdatedCustomization(data);
@@ -94,7 +93,7 @@ const ParamEditor: React.FC<Props> = ({
 
   const handleUpdate = () => {
     if (activeTab === "params" && isParamsValid) {
-      onUpdate(nodeId, updatedParams, "params");
+      onUpdate(nodeId, nodeParams, "params");
     } else if (activeTab === "customizations" && isCustomizationsValid) {
       if (nodeType === "subworkflow" && nodeMeta.subworkflowId) {
         onUpdate(nodeId, updatedCustomization, "customizations");
@@ -153,8 +152,8 @@ const ParamEditor: React.FC<Props> = ({
                 <SchemaForm
                   readonly={readonly}
                   schema={patchedSchemaParams}
-                  defaultFormData={updatedParams}
-                  onChange={handleParamChange}
+                  defaultFormData={nodeParams}
+                  onChange={onParamsUpdate}
                   onValidationChange={handleParamsValidationChange}
                   onEditorOpen={onValueEditorOpen}
                 />

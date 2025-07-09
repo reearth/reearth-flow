@@ -57,11 +57,13 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
             onNodeSettings={handleNodeSettings}
           />
         </div>
-        <ParamsDialog
-          readonly
-          openNode={openNode}
-          onOpenNode={handleOpenNode}
-        />
+        {openNode && (
+          <ParamsDialog
+            readonly
+            openNode={openNode}
+            onOpenNode={handleOpenNode}
+          />
+        )}
       </EditorProvider>
     </div>
   );

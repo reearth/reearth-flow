@@ -7,6 +7,7 @@ import {
 import validator from "@rjsf/validator-ajv8";
 import { useState, useEffect } from "react";
 
+import { FieldContext } from "@flow/features/Editor/components/ParamsDialog/utils/fieldUtils";
 import { useT } from "@flow/lib/i18n";
 
 import { SchemaFormErrorBoundary } from "./components/SchemaFormErrorBoundary";
@@ -19,7 +20,7 @@ type SchemaFormProps = {
   onChange: (data: any) => void;
   onError?: (errors: RJSFValidationError[]) => void;
   onValidationChange?: (isValid: boolean) => void;
-  onEditorOpen?: () => void;
+  onEditorOpen?: (fieldContext: FieldContext) => void;
 };
 
 const SchemaForm: React.FC<SchemaFormProps> = ({
