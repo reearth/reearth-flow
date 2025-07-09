@@ -60,19 +60,23 @@ const DebugPanel: React.FC<Props> = ({
   const t = useT();
   const [tabValue, setTabValue] = useState("debug-logs");
   const hasSwitchedToViewerRef = useRef(false);
+  const debugJobIdRef = useRef(debugJobId);
+
   useEffect(() => {
     if (dataURLs && !hasSwitchedToViewerRef.current) {
       setTabValue("debug-viewer");
       hasSwitchedToViewerRef.current = true;
     }
 
+    if (debugJobId !== debugJobIdRef.current) {
+      debugJobIdRef.current = debugJobId;
+    }
+
     if (!dataURLs) {
       setTabValue("debug-logs");
       hasSwitchedToViewerRef.current = false;
     }
-  }, [dataURLs]);
-
-  console.log("fullscreenDebug", fullscreenDebug);
+  }, [dataURLs, debugJobId]);
 
   return debugJobId ? (
     <Tabs
@@ -151,7 +155,7 @@ const DebugPanel: React.FC<Props> = ({
       <TabsContent
         value="debug-logs"
         className="h-[calc(100%-35px)] overflow-scroll"
-        forceMount={true}
+        forceMount={debugJobIdRef.current !== debugJobId ? undefined : true}
         hidden={tabValue !== "debug-logs"}>
         <DebugLogs debugJobId={debugJobId} />{" "}
       </TabsContent>
