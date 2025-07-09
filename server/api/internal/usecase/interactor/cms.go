@@ -163,13 +163,11 @@ func (i *cmsInteractor) GetCMSModelExportURL(ctx context.Context, projectID, mod
 		return "", fmt.Errorf("CMS gateway not configured")
 	}
 
-	// First get the project to check permissions
 	project, err := i.gateways.CMS.GetProject(ctx, projectID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get CMS project: %w", err)
 	}
 
-	// Check if user has access to the workspace
 	authInfo := adapter.GetAuthInfo(ctx)
 	allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
 		fmt.Sprintf("workspace:%s", project.WorkspaceID), "read")
