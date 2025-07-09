@@ -121,9 +121,7 @@ impl Stream for WarpStream {
                         }
                         self.poll_next(cx)
                     }
-                    Message::Pong(_) | Message::Text(_) => {
-                        self.poll_next(cx)
-                    }
+                    Message::Pong(_) | Message::Text(_) => self.poll_next(cx),
                     Message::Close(_) => Poll::Ready(None),
                 },
                 Err(e) => Poll::Ready(Some(Err(Error::Other(e.into())))),
