@@ -18,25 +18,11 @@ var WorkspaceOnlyProjectID = func() id.ProjectID {
 // Re-export types from reearthx
 type (
 	Asset                   = AssetWrapper // Use wrapper as the main Asset type
-	PreviewType             = reearthxasset.PreviewType
 	ArchiveExtractionStatus = reearthxasset.ArchiveExtractionStatus
 	SortType                = reearthxasset.SortType
 )
 
 // Re-export constants from reearthx
-const (
-	// Re-export preview types from reearthx
-	PreviewTypeUnknown    = reearthxasset.PreviewTypeUnknown
-	PreviewTypeImage      = reearthxasset.PreviewTypeImage
-	PreviewTypeImageSvg   = reearthxasset.PreviewTypeImageSvg
-	PreviewTypeGeo        = reearthxasset.PreviewTypeGeo
-	PreviewTypeGeo3dTiles = reearthxasset.PreviewTypeGeo3dTiles
-	PreviewTypeGeoMvt     = reearthxasset.PreviewTypeGeoMvt
-	PreviewTypeModel3d    = reearthxasset.PreviewTypeModel3d
-	PreviewTypeCSV        = reearthxasset.PreviewTypeCSV
-	// Extended preview types are defined in preview_type_extended.go
-)
-
 const (
 	ArchiveExtractionStatusPending    = reearthxasset.ArchiveExtractionStatusPending
 	ArchiveExtractionStatusInProgress = reearthxasset.ArchiveExtractionStatusInProgress
@@ -55,8 +41,6 @@ var (
 
 // Re-export functions from reearthx
 var (
-	DetectPreviewType           = reearthxasset.DetectPreviewType
-	PreviewTypeFrom             = ExtendedPreviewTypeFrom // Use our extended version
 	ArchiveExtractionStatusFrom = reearthxasset.ArchiveExtractionStatusFrom
 )
 
@@ -164,11 +148,6 @@ func (b *Builder) NewUUID() *Builder {
 	return b
 }
 
-func (b *Builder) Type(v PreviewType) *Builder {
-	b.rxBuilder = b.rxBuilder.Type(&v)
-	return b
-}
-
 func (b *Builder) Thread(v *id.ThreadID) *Builder {
 	b.threadID = v
 	if v != nil {
@@ -189,11 +168,6 @@ func (b *Builder) FlatFiles(v bool) *Builder {
 
 func (b *Builder) Public(v bool) *Builder {
 	b.rxBuilder = b.rxBuilder.Public(v)
-	return b
-}
-
-func (b *Builder) CoreSupport(v bool) *Builder {
-	b.rxBuilder = b.rxBuilder.CoreSupport(v)
 	return b
 }
 

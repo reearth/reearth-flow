@@ -109,7 +109,7 @@ func (r *Asset) Save(_ context.Context, a *asset.Asset) error {
 	return nil
 }
 
-func (r *Asset) Remove(_ context.Context, id id.AssetID) error {
+func (r *Asset) Delete(_ context.Context, id id.AssetID) error {
 	a, _ := r.data.Load(id)
 	if a == nil {
 		return nil

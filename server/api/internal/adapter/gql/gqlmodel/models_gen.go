@@ -70,6 +70,7 @@ type CancelJobPayload struct {
 type CreateAssetInput struct {
 	WorkspaceID ID             `json:"workspaceId"`
 	File        graphql.Upload `json:"file"`
+	Name        *string        `json:"name,omitempty"`
 }
 
 type CreateAssetPayload struct {
@@ -114,6 +115,14 @@ type DeclareParameterInput struct {
 	DefaultValue any           `json:"defaultValue,omitempty"`
 	Config       JSON          `json:"config,omitempty"`
 	Index        *int          `json:"index,omitempty"`
+}
+
+type DeleteAssetInput struct {
+	AssetID ID `json:"assetId"`
+}
+
+type DeleteAssetPayload struct {
+	AssetID ID `json:"assetId"`
 }
 
 type DeleteDeploymentInput struct {
@@ -375,14 +384,6 @@ type ProjectSnapshotMetadata struct {
 type Query struct {
 }
 
-type RemoveAssetInput struct {
-	AssetID ID `json:"assetId"`
-}
-
-type RemoveAssetPayload struct {
-	AssetID ID `json:"assetId"`
-}
-
 type RemoveMemberFromWorkspaceInput struct {
 	WorkspaceID ID `json:"workspaceId"`
 	UserID      ID `json:"userId"`
@@ -476,6 +477,15 @@ type UnshareProjectInput struct {
 
 type UnshareProjectPayload struct {
 	ProjectID ID `json:"projectId"`
+}
+
+type UpdateAssetInput struct {
+	AssetID ID      `json:"assetId"`
+	Name    *string `json:"name,omitempty"`
+}
+
+type UpdateAssetPayload struct {
+	Asset *Asset `json:"asset"`
 }
 
 type UpdateDeploymentInput struct {

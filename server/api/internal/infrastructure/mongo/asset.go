@@ -111,7 +111,7 @@ func (r *Asset) Save(ctx context.Context, asset *asset.Asset) error {
 	return r.client.SaveOne(ctx, id, doc)
 }
 
-func (r *Asset) Remove(ctx context.Context, id id.AssetID) error {
+func (r *Asset) Delete(ctx context.Context, id id.AssetID) error {
 	return r.client.RemoveOne(ctx, r.writeFilter(bson.M{
 		"id": id.String(),
 	}))

@@ -22,5 +22,5 @@ type Asset interface {
 	FindByIDs(context.Context, id.AssetIDList) ([]*asset.Asset, error)
 	TotalSizeByWorkspace(context.Context, accountdomain.WorkspaceID) (uint64, error)
 	Save(context.Context, *asset.Asset) error
-	Remove(context.Context, id.AssetID) error
+	Delete(context.Context, id.AssetID) error
 }
