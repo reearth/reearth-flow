@@ -16,7 +16,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::sync::mpsc;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, warn};
 use yrs::sync::Error;
 
 #[cfg(feature = "auth")]
@@ -115,16 +115,14 @@ impl Stream for WarpStream {
                                 if let Err(e) = tx.send(pong_msg).await {
                                     warn!("Failed to send pong message: {}", e);
                                 } else {
-                                    info!("Pong response sent");
+                                    debug!("Pong response sent");
                                 }
                             });
                         }
-                        cx.waker().wake_by_ref();
-                        Poll::Pending
+                        self.poll_next(cx)
                     }
                     Message::Pong(_) | Message::Text(_) => {
-                        cx.waker().wake_by_ref();
-                        Poll::Pending
+                        self.poll_next(cx)
                     }
                     Message::Close(_) => Poll::Ready(None),
                 },
@@ -208,16 +206,20 @@ async fn handle_socket(
         error!("Failed to increment connections: {}", e);
     }
 
-    // tracing::info!("WebSocket connection established for document '{}'", doc_id);
+    let connection_result = tokio::select! {
+        result = conn => result,
+        _ = tokio::time::sleep(tokio::time::Duration::from_secs(86400)) => {
+            warn!("Connection timeout for document '{}' - possible stale connection", doc_id);
+            Err(yrs::sync::Error::Other("Connection timeout".into()))
+        }
+    };
 
-    if let Err(e) = conn.await {
+    if let Err(e) = connection_result {
         error!(
             "WebSocket connection error for document '{}': {}",
             doc_id, e
         );
     }
-
-    // tracing::info!("WebSocket connection closed for document '{}'", doc_id);
 
     let _ = bcast.decrement_connections().await;
 
