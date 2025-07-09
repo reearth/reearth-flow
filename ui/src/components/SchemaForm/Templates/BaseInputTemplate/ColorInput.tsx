@@ -1,3 +1,4 @@
+import { ArrowUDownLeftIcon, PencilLineIcon } from "@phosphor-icons/react";
 import {
   BaseInputTemplateProps,
   FormContextType,
@@ -6,7 +7,7 @@ import {
 } from "@rjsf/utils";
 import { useCallback, useRef } from "react";
 
-import { Button, Input } from "@flow/components";
+import { IconButton, Input } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 
 const ColorInput = <
@@ -14,7 +15,9 @@ const ColorInput = <
   S extends StrictRJSFSchema = RJSFSchema,
   F extends FormContextType = FormContextType,
 >(
-  props: BaseInputTemplateProps<T, S, F>,
+  props: BaseInputTemplateProps<T, S, F> & {
+    onEditorOpen?: () => void;
+  },
 ) => {
   const {
     id,
@@ -27,6 +30,7 @@ const ColorInput = <
     onChange,
     onBlur,
     onFocus,
+    onEditorOpen,
     options,
     schema,
     rawErrors = [],
@@ -60,6 +64,14 @@ const ColorInput = <
     onChange(defaultValue.current);
   }, [onChange]);
 
+  const handleEditorOpen = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      onEditorOpen?.();
+    },
+    [onEditorOpen],
+  );
+
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
@@ -80,18 +92,19 @@ const ColorInput = <
           aria-describedby={rawErrors.length > 0 ? `${id}-error` : undefined}
           className={rawErrors.length > 0 ? "border-destructive" : ""}
         />
-        {value !== defaultValue.current && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleReset}
-            disabled={readonly || disabled}
-            className="h-9 px-2"
-            aria-label={`Reset value to default: ${defaultValue.current}`}>
-            {t("Reset Value")}
-          </Button>
-        )}
+        <IconButton
+          icon={<PencilLineIcon />}
+          tooltipText={t("Open Editor")}
+          onClick={handleEditorOpen}
+          disabled={!onEditorOpen}
+        />
+        <IconButton
+          icon={<ArrowUDownLeftIcon />}
+          disabled={value === defaultValue.current}
+          tooltipText={t("Reset to Default")}
+          aria-label={`Reset value to default: ${defaultValue.current}`}
+          onClick={handleReset}
+        />
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { GearFineIcon } from "@phosphor-icons/react";
 import { useReactFlow } from "@xyflow/react";
-import { memo, useCallback, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 import {
   Dialog,
@@ -11,7 +11,7 @@ import {
 import { useT } from "@flow/lib/i18n";
 import { Node } from "@flow/types";
 
-import { ParamEditor } from "./components";
+import { ParamEditor, ValueEditorDialog } from "./components";
 
 type Props = {
   readonly?: boolean;
@@ -33,6 +33,8 @@ const ParamsDialog: React.FC<Props> = ({
   onWorkflowRename,
 }) => {
   const t = useT();
+
+  const [openValueEditor, setOpenValueEditor] = useState(false);
 
   const handleUpdate = useCallback(
     async (nodeId: string, data: any, type: "params" | "customizations") => {
@@ -65,28 +67,35 @@ const ParamsDialog: React.FC<Props> = ({
   }, [setViewport, getViewport, openNode]);
 
   return (
-    <Dialog open={!!openNode} onOpenChange={() => onOpenNode()}>
-      <DialogContent size="2xl">
-        <DialogHeader>
-          <DialogTitle>
-            <div className="flex items-center gap-2">
-              <GearFineIcon />
-              {t("Node Editor")}
-            </div>
-          </DialogTitle>
-        </DialogHeader>
-        {openNode && (
-          <ParamEditor
-            readonly={readonly}
-            nodeId={openNode.id}
-            nodeMeta={openNode.data}
-            nodeType={openNode.type}
-            onUpdate={handleUpdate}
-            onWorkflowRename={onWorkflowRename}
-          />
-        )}
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={!!openNode} onOpenChange={() => onOpenNode()}>
+        <DialogContent size="2xl">
+          <DialogHeader>
+            <DialogTitle>
+              <div className="flex items-center gap-2">
+                <GearFineIcon weight="thin" />
+                {t("Node Editor")}
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          {openNode && (
+            <ParamEditor
+              readonly={readonly}
+              nodeId={openNode.id}
+              nodeMeta={openNode.data}
+              nodeType={openNode.type}
+              onUpdate={handleUpdate}
+              onWorkflowRename={onWorkflowRename}
+              onValueEditorOpen={() => setOpenValueEditor(true)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+      <ValueEditorDialog
+        open={openValueEditor}
+        onClose={() => setOpenValueEditor(false)}
+      />
+    </>
   );
 };
 

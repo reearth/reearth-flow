@@ -17,20 +17,23 @@ const BaseInputTemplate = <
 >(
   props: BaseInputTemplateProps<T, S, F>,
 ) => {
-  const { schema } = props;
+  const { schema, formContext } = props;
+
+  // Extract onEditorOpen from formContext
+  const { onEditorOpen } = (formContext as any) || {};
 
   // Handle color inputs
   if (schema.format === "color") {
-    return <ColorInput {...props} />;
+    return <ColorInput {...props} onEditorOpen={onEditorOpen} />;
   }
 
   // Handle number and integer inputs
   if (schema.type === "number" || schema.type === "integer") {
-    return <NumberInput {...props} />;
+    return <NumberInput {...props} onEditorOpen={onEditorOpen} />;
   }
 
   // Default to text input for strings and other types
-  return <TextInput {...props} />;
+  return <TextInput {...props} onEditorOpen={onEditorOpen} />;
 };
 
 export { BaseInputTemplate };

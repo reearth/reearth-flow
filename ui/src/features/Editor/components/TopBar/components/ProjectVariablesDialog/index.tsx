@@ -288,7 +288,6 @@ const ProjectVariableDialog: React.FC<Props> = ({
           </div>
         </DialogContent>
       </Dialog>
-
       <VariableEditDialog
         isOpen={!!editingVariable}
         variable={editingVariable}

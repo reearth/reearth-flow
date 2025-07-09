@@ -19,6 +19,7 @@ type SchemaFormProps = {
   onChange: (data: any) => void;
   onError?: (errors: RJSFValidationError[]) => void;
   onValidationChange?: (isValid: boolean) => void;
+  onEditorOpen?: () => void;
 };
 
 const SchemaForm: React.FC<SchemaFormProps> = ({
@@ -28,6 +29,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
   onChange,
   onError,
   onValidationChange,
+  onEditorOpen,
 }) => {
   const t = useT();
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +88,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
         formData={defaultFormData}
         validator={validator}
         uiSchema={{ "ui:submitButtonOptions": { norender: true } }} // We handle submissions outside of this component
+        formContext={{ onEditorOpen }}
         onChange={handleChange}
         onError={handleError}
       />
