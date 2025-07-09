@@ -74,42 +74,17 @@ const ValueEditorDialog: React.FC<Props> = ({
           <DialogTitle>
             <div className="flex items-center gap-2">
               <PencilLineIcon weight="thin" />
-              {t("Value Editor")}
+              {t("Value Editor")} -{" "}
+              {fieldContext?.fieldName || t("Unknown Field")}{" "}
+              {fieldContext?.schema?.type
+                ? `(${getFieldTypeDisplay(fieldContext.schema)})`
+                : ""}
             </div>
           </DialogTitle>
         </DialogHeader>
         <div className="flex h-[400px]">
           <div className="w-[200px] border-r bg-secondary p-4">
-            {fieldContext && (
-              <div className="space-y-3">
-                <div>
-                  <h4 className="text-sm font-medium text-foreground/90">
-                    {t("Field")}
-                  </h4>
-                  <p className="text-sm text-foreground/70">
-                    {fieldContext.fieldName}
-                  </p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-foreground/90">
-                    {t("Type")}
-                  </h4>
-                  <p className="text-sm text-foreground/70">
-                    {getFieldTypeDisplay(fieldContext.schema)}
-                  </p>
-                </div>
-                {fieldContext.schema?.description && (
-                  <div>
-                    <h4 className="text-sm font-medium text-foreground/90">
-                      {t("Description")}
-                    </h4>
-                    <p className="text-xs text-foreground/60">
-                      {fieldContext.schema.description}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Rhai script stuff here */}
           </div>
           <div className="flex flex-1 flex-col">
             <TextArea
