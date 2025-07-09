@@ -72,23 +72,22 @@ func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam) (re
 		return nil, err
 	}
 
-	previewType := asset.DetectPreviewTypeFromFile(inp.File)
+	// Use custom name if provided, otherwise use filename
+	name := path.Base(inp.File.Path)
+	if inp.Name != nil && *inp.Name != "" {
+		name = *inp.Name
+	}
 
 	builder := asset.New().
 		NewID().
 		Workspace(inp.WorkspaceID).
 		CreatedByUser(inp.UserID).
 		FileName(path.Base(inp.File.Path)).
-		Name(path.Base(inp.File.Path)).
+		Name(name).
 		Size(uint64(size)).
 		URL(url.String()).
 		ContentType(inp.File.ContentType).
-		NewUUID().
-		CoreSupport(true)
-
-	if previewType != nil {
-		builder = builder.Type(*previewType)
-	}
+		NewUUID()
 
 	a, err := builder.Build()
 	if err != nil {
@@ -102,7 +101,75 @@ func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam) (re
 	return a, nil
 }
 
-func (i *Asset) Remove(ctx context.Context, aid id.AssetID) (result id.AssetID, err error) {
+func (i *Asset) Update(ctx context.Context, inp interfaces.UpdateAssetParam) (result *asset.Asset, err error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
+	return Run1(
+		ctx, i.repos,
+		Usecase().Transaction(),
+		func(ctx context.Context) (*asset.Asset, error) {
+			oldAsset, err := i.repos.Asset.FindByID(ctx, inp.AssetID)
+			if err != nil {
+				return nil, err
+			}
+
+			// Check if name needs to be updated
+			if inp.Name == nil || *inp.Name == "" || *inp.Name == oldAsset.Name() {
+				// No changes needed, return existing asset
+				return oldAsset, nil
+			}
+
+			// Since reearthx assets are immutable for name, we need to rebuild the asset
+			// with the new name while preserving all other properties
+			builder := asset.New().
+				ID(oldAsset.ID()).
+				Workspace(oldAsset.Workspace()).
+				CreatedAt(oldAsset.CreatedAt()).
+				FileName(oldAsset.FileName()).
+				Name(*inp.Name). // Use the new name
+				Size(oldAsset.Size()).
+				URL(oldAsset.URL()).
+				ContentType(oldAsset.ContentType()).
+				UUID(oldAsset.UUID()).
+				FlatFiles(oldAsset.FlatFiles()).
+				Public(oldAsset.Public())
+
+			// Set user or integration
+			if oldAsset.User() != nil {
+				builder = builder.CreatedByUser(*oldAsset.User())
+			} else if oldAsset.Integration() != nil {
+				builder = builder.CreatedByIntegration(oldAsset.Integration())
+			}
+
+			// Set thread if present
+			if oldAsset.Thread() != nil {
+				builder = builder.Thread(oldAsset.Thread())
+			}
+
+			// Set archive extraction status if present
+			if oldAsset.ArchiveExtractionStatus() != nil {
+				builder = builder.ArchiveExtractionStatus(*oldAsset.ArchiveExtractionStatus())
+			}
+
+			// Build the updated asset
+			updatedAsset, err := builder.Build()
+			if err != nil {
+				return nil, err
+			}
+
+			// Save the updated asset
+			if err := i.repos.Asset.Save(ctx, updatedAsset); err != nil {
+				return nil, err
+			}
+
+			return updatedAsset, nil
+		},
+	)
+}
+
+func (i *Asset) Delete(ctx context.Context, aid id.AssetID) (result id.AssetID, err error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return aid, err
 	}
@@ -117,12 +184,12 @@ func (i *Asset) Remove(ctx context.Context, aid id.AssetID) (result id.AssetID, 
 			}
 
 			if url, _ := url.Parse(asset.URL()); url != nil {
-				if err := i.gateways.File.RemoveAsset(ctx, url); err != nil {
+				if err := i.gateways.File.DeleteAsset(ctx, url); err != nil {
 					return aid, err
 				}
 			}
 
-			return aid, i.repos.Asset.Remove(ctx, aid)
+			return aid, i.repos.Asset.Delete(ctx, aid)
 		},
 	)
 }

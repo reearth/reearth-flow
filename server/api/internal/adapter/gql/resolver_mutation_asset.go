@@ -21,6 +21,7 @@ func (r *mutationResolver) CreateAsset(ctx context.Context, input gqlmodel.Creat
 		WorkspaceID: wid,
 		UserID:      *operator.AcOperator.User,
 		File:        gqlmodel.FromFile(&input.File),
+		Name:        input.Name,
 	})
 	if err != nil {
 		return nil, err
@@ -29,16 +30,33 @@ func (r *mutationResolver) CreateAsset(ctx context.Context, input gqlmodel.Creat
 	return &gqlmodel.CreateAssetPayload{Asset: gqlmodel.ToAsset(res)}, nil
 }
 
-func (r *mutationResolver) RemoveAsset(ctx context.Context, input gqlmodel.RemoveAssetInput) (*gqlmodel.RemoveAssetPayload, error) {
+func (r *mutationResolver) UpdateAsset(ctx context.Context, input gqlmodel.UpdateAssetInput) (*gqlmodel.UpdateAssetPayload, error) {
 	aid, err := gqlmodel.ToID[id.Asset](input.AssetID)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err2 := usecases(ctx).Asset.Remove(ctx, aid)
+	res, err := usecases(ctx).Asset.Update(ctx, interfaces.UpdateAssetParam{
+		AssetID: aid,
+		Name:    input.Name,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &gqlmodel.UpdateAssetPayload{Asset: gqlmodel.ToAsset(res)}, nil
+}
+
+func (r *mutationResolver) DeleteAsset(ctx context.Context, input gqlmodel.DeleteAssetInput) (*gqlmodel.DeleteAssetPayload, error) {
+	aid, err := gqlmodel.ToID[id.Asset](input.AssetID)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err2 := usecases(ctx).Asset.Delete(ctx, aid)
 	if err2 != nil {
 		return nil, err2
 	}
 
-	return &gqlmodel.RemoveAssetPayload{AssetID: gqlmodel.IDFrom(res)}, nil
+	return &gqlmodel.DeleteAssetPayload{AssetID: gqlmodel.IDFrom(res)}, nil
 }

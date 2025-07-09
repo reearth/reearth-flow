@@ -53,7 +53,7 @@ func TestCreateAsset(t *testing.T) {
 
 	// Add operations field
 	operations := fmt.Sprintf(`{
-		"query": "mutation CreateAsset($file: Upload!) { createAsset(input: {workspaceId: \"%s\", file: $file}) { asset { id fileName size contentType previewType url } } }",
+		"query": "mutation CreateAsset($file: Upload!) { createAsset(input: {workspaceId: \"%s\", file: $file}) { asset { id fileName size contentType url } } }",
 		"variables": { "file": null }
 	}`, wId1)
 	_ = writer.WriteField("operations", operations)
@@ -88,11 +88,10 @@ func TestCreateAsset(t *testing.T) {
 	asset.Value("fileName").String().IsEqual("test.png")
 	asset.Value("size").Number().Gt(0)
 	asset.Value("contentType").String().IsEqual("image/png")
-	asset.Value("previewType").String().IsEqual("IMAGE")
 	asset.Value("url").String().NotEmpty()
 }
 
-func TestRemoveAsset(t *testing.T) {
+func TestDeleteAsset(t *testing.T) {
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
@@ -133,10 +132,10 @@ func TestRemoveAsset(t *testing.T) {
 
 	assetID := o.Value("data").Object().Value("createAsset").Object().Value("asset").Object().Value("id").String().Raw()
 
-	// Remove the asset
-	removeQuery := fmt.Sprintf(`mutation { removeAsset(input: {assetId: "%s"}) { assetId } }`, assetID)
+	// Delete the asset
+	deleteQuery := fmt.Sprintf(`mutation { deleteAsset(input: {assetId: "%s"}) { assetId } }`, assetID)
 	request := GraphQLRequest{
-		Query: removeQuery,
+		Query: deleteQuery,
 	}
 	jsonData, err := json.Marshal(request)
 	assert.NoError(t, err)
@@ -147,8 +146,8 @@ func TestRemoveAsset(t *testing.T) {
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
 
-	// The removal should be successful now
-	o.Value("data").Object().Value("removeAsset").Object().Value("assetId").String().IsEqual(assetID)
+	// The deletion should be successful now
+	o.Value("data").Object().Value("deleteAsset").Object().Value("assetId").String().IsEqual(assetID)
 
 	// Verify asset is removed by trying to query it again
 	queryAssets := fmt.Sprintf(`query { assets(workspaceId: "%s", pagination: {page: 1, pageSize: 10}) { nodes { id } totalCount } }`, wId1)
@@ -164,7 +163,7 @@ func TestRemoveAsset(t *testing.T) {
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
 
-	// Should have 0 assets after removal
+	// Should have 0 assets after deletion
 	o.Value("data").Object().Value("assets").Object().Value("totalCount").Number().IsEqual(0)
 }
 

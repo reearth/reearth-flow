@@ -22,12 +22,10 @@ type AssetDocument struct {
 	URL                     string
 	ContentType             string
 	UUID                    string
-	PreviewType             *string
 	Thread                  *string
 	ArchiveExtractionStatus *string
 	FlatFiles               bool
 	Public                  bool
-	CoreSupport             bool
 }
 
 type AssetConsumer = Consumer[*AssetDocument, *asset.Asset]
@@ -52,7 +50,6 @@ func NewAsset(asset *asset.Asset) (*AssetDocument, string) {
 		UUID:        asset.UUID(),
 		FlatFiles:   asset.FlatFiles(),
 		Public:      asset.Public(),
-		CoreSupport: asset.CoreSupport(),
 	}
 
 	// Only set project if it's not empty
@@ -69,11 +66,6 @@ func NewAsset(asset *asset.Asset) (*AssetDocument, string) {
 	if i := asset.Integration(); i != nil {
 		iid := i.String()
 		doc.Integration = &iid
-	}
-
-	if pt := asset.PreviewType(); pt != nil {
-		pts := pt.String()
-		doc.PreviewType = &pts
 	}
 
 	if t := asset.Thread(); t != nil {
@@ -110,8 +102,7 @@ func (d *AssetDocument) Model() (*asset.Asset, error) {
 		ContentType(d.ContentType).
 		UUID(d.UUID).
 		FlatFiles(d.FlatFiles).
-		Public(d.Public).
-		CoreSupport(d.CoreSupport)
+		Public(d.Public)
 
 	// Only set project if it exists
 	if d.Project != nil {
@@ -134,13 +125,6 @@ func (d *AssetDocument) Model() (*asset.Asset, error) {
 			return nil, err
 		}
 		b = b.CreatedByIntegration(&iid)
-	}
-
-	if d.PreviewType != nil {
-		pt, ok := asset.PreviewTypeFrom(*d.PreviewType)
-		if ok {
-			b = b.Type(pt)
-		}
 	}
 
 	if d.Thread != nil {

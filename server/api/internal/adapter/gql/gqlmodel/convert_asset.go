@@ -19,8 +19,6 @@ func ToAsset(a *asset.Asset) *Asset {
 		Name:                    a.Name(),
 		URL:                     a.URL(),
 		UUID:                    a.UUID(),
-		PreviewType:             ToPreviewType(a.PreviewType()),
-		CoreSupport:             a.CoreSupport(),
 		FlatFiles:               a.FlatFiles(),
 		Public:                  a.Public(),
 		ArchiveExtractionStatus: ToArchiveExtractionStatus(a.ArchiveExtractionStatus()),
@@ -42,77 +40,6 @@ func AssetSortTypeFrom(ast *AssetSortType) *asset.SortType {
 		result = asset.SortTypeSIZE
 	default:
 		result = asset.SortTypeID
-	}
-	return &result
-}
-
-func ToPreviewType(pt *asset.PreviewType) *PreviewType {
-	if pt == nil {
-		return nil
-	}
-
-	var result PreviewType
-	switch *pt {
-	case asset.PreviewTypeImage:
-		result = PreviewTypeImage
-	case asset.PreviewTypeImageSvg:
-		result = PreviewTypeImageSVG
-	case asset.PreviewTypeGeo:
-		result = PreviewTypeGeo
-	case asset.PreviewTypeGeo3dTiles:
-		result = PreviewTypeGeo3dTiles
-	case asset.PreviewTypeGeoMvt:
-		result = PreviewTypeGeoMvt
-	case asset.PreviewTypeModel3d:
-		result = PreviewTypeModel3d
-	case asset.PreviewTypeCSV:
-		result = PreviewTypeCSV
-	case asset.PreviewTypeUnknown:
-		result = PreviewTypeUnknown
-	default:
-		// Handle extended preview types using string comparison
-		switch string(*pt) {
-		case "unknown_geo":
-			result = PreviewTypeUnknownGeo
-		case "geojson":
-			result = PreviewTypeGeojson
-		case "geotiff":
-			result = PreviewTypeGeotiff
-		case "gpx":
-			result = PreviewTypeGpx
-		case "kml":
-			result = PreviewTypeKml
-		case "shapefile":
-			result = PreviewTypeShp
-		case "czml":
-			result = PreviewTypeCzml
-		case "pdf":
-			result = PreviewTypePDF
-		case "html":
-			result = PreviewTypeHTML
-		case "xml":
-			result = PreviewTypeXML
-		case "text":
-			result = PreviewTypeText
-		case "json":
-			result = PreviewTypeJSON
-		case "sheet":
-			result = PreviewTypeSheet
-		case "archive":
-			result = PreviewTypeArchive
-		case "gltf":
-			result = PreviewTypeGltf
-		case "video":
-			result = PreviewTypeVideo
-		case "audio":
-			result = PreviewTypeAudio
-		case "tms":
-			result = PreviewTypeTms
-		case "gpkg":
-			result = PreviewTypeGpkg
-		default:
-			result = PreviewTypeUnknown
-		}
 	}
 	return &result
 }

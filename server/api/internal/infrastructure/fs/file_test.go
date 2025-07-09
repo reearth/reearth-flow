@@ -61,7 +61,7 @@ func TestFile_UploadAsset(t *testing.T) {
 	assert.Equal(t, "aaa", string(c))
 }
 
-func TestFile_RemoveAsset(t *testing.T) {
+func TestFile_DeleteAsset(t *testing.T) {
 	cases := []struct {
 		Name    string
 		URL     string
@@ -94,7 +94,7 @@ func TestFile_RemoveAsset(t *testing.T) {
 			f, _ := NewFile(fs, "https://example.com/assets", "https://example.com/workflows")
 
 			u, _ := url.Parse(tc.URL)
-			err := f.RemoveAsset(context.Background(), u)
+			err := f.DeleteAsset(context.Background(), u)
 
 			if tc.Err == nil {
 				assert.NoError(t, err)

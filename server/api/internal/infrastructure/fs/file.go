@@ -165,7 +165,7 @@ func (f *fileRepo) UploadAsset(ctx context.Context, file *file.File) (*url.URL, 
 	return getFileURL(f.assetUrlBase, filename), size, nil
 }
 
-func (f *fileRepo) RemoveAsset(ctx context.Context, u *url.URL) error {
+func (f *fileRepo) DeleteAsset(ctx context.Context, u *url.URL) error {
 	if u == nil {
 		return nil
 	}

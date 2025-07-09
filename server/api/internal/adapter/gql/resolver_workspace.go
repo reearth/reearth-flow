@@ -6,14 +6,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 )
 
-func (r *Resolver) Workspace() WorkspaceResolver {
-	return &workspaceResolver{r}
-}
-
-func (r *Resolver) WorkspaceMember() WorkspaceMemberResolver {
-	return &workspaceMemberResolver{r}
-}
-
 type workspaceResolver struct{ *Resolver }
 
 func (r *workspaceResolver) Assets(ctx context.Context, obj *gqlmodel.Workspace, pagination *gqlmodel.Pagination) (*gqlmodel.AssetConnection, error) {

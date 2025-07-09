@@ -7,10 +7,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 )
 
-func (r *Resolver) Subscription() SubscriptionResolver {
-	return &subscriptionResolver{r}
-}
-
 type subscriptionResolver struct{ *Resolver }
 
 func (r *subscriptionResolver) JobStatus(ctx context.Context, jobID gqlmodel.ID) (<-chan gqlmodel.JobStatus, error) {
