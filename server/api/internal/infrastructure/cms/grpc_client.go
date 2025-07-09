@@ -32,8 +32,7 @@ func NewGRPCClient(endpoint, token, userID string) (gateway.CMS, error) {
 		return nil, fmt.Errorf("CMS endpoint is required")
 	}
 
-	// Create gRPC connection without timeout to keep connection alive
-	conn, err := grpc.Dial(endpoint,
+	conn, err := grpc.NewClient(endpoint,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
@@ -51,7 +50,6 @@ func NewGRPCClient(endpoint, token, userID string) (gateway.CMS, error) {
 	}, nil
 }
 
-// addAuthMetadata adds authentication metadata to the context
 func (c *grpcClient) addAuthMetadata(ctx context.Context) context.Context {
 	md := metadata.New(map[string]string{
 		"authorization": fmt.Sprintf("Bearer %s", c.token),
@@ -60,7 +58,6 @@ func (c *grpcClient) addAuthMetadata(ctx context.Context) context.Context {
 	return metadata.NewOutgoingContext(ctx, md)
 }
 
-// GetProject retrieves a project by ID or alias
 func (c *grpcClient) GetProject(ctx context.Context, projectIDOrAlias string) (*cms.Project, error) {
 	ctx = c.addAuthMetadata(ctx)
 
@@ -74,7 +71,6 @@ func (c *grpcClient) GetProject(ctx context.Context, projectIDOrAlias string) (*
 	return convertProtoToProject(resp.Project), nil
 }
 
-// ListProjects lists projects
 func (c *grpcClient) ListProjects(ctx context.Context, input cms.ListProjectsInput) ([]*cms.Project, int32, error) {
 	ctx = c.addAuthMetadata(ctx)
 
@@ -94,7 +90,6 @@ func (c *grpcClient) ListProjects(ctx context.Context, input cms.ListProjectsInp
 	return projects, resp.TotalCount, nil
 }
 
-// ListModels lists models for a project
 func (c *grpcClient) ListModels(ctx context.Context, input cms.ListModelsInput) ([]*cms.Model, int32, error) {
 	ctx = c.addAuthMetadata(ctx)
 
@@ -113,7 +108,6 @@ func (c *grpcClient) ListModels(ctx context.Context, input cms.ListModelsInput) 
 	return models, resp.TotalCount, nil
 }
 
-// ListItems lists items for a model
 func (c *grpcClient) ListItems(ctx context.Context, input cms.ListItemsInput) (*cms.ListItemsOutput, error) {
 	ctx = c.addAuthMetadata(ctx)
 
