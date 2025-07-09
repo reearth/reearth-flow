@@ -116,7 +116,7 @@ nodes:
         - attribute: feature_type
           valueAttribute: featureType
         - attribute: name
-          valueAttribute: name
+          valueAttribute: missing
 
   - id: 23f7da40-5f92-4c14-a4fe-7a160361be6b
     name: FeatureWriterByRequired
