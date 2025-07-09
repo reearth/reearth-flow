@@ -18,7 +18,6 @@ export default () => {
 
   const prevIntermediateDataUrls = useRef<string[] | undefined>(undefined);
   const [expanded, setExpanded] = useState(false);
-  const [hideTabularViewer, setHideTabularViewer] = useState(false);
   const [minimized, setMinimized] = useState(false);
 
   const [currentProject] = useCurrentProject();
@@ -181,10 +180,6 @@ export default () => {
     setExpanded((prev) => !prev);
   };
 
-  const handleHideTabularViewer = () => {
-    setHideTabularViewer((prev) => !prev);
-  };
-
   const handleMinimize = (e: MouseEvent) => {
     e.stopPropagation();
     setMinimized((prev) => !prev);
@@ -201,7 +196,6 @@ export default () => {
     debugJobState,
     fileType,
     expanded,
-    hideTabularViewer,
     minimized,
     showTempPossibleIssuesDialog,
     selectedDataURL,
@@ -209,7 +203,6 @@ export default () => {
     selectedOutputData,
     isLoadingData,
     handleExpand,
-    handleHideTabularViewer,
     handleMinimize,
     handleTabChange,
     handleShowTempPossibleIssuesDialogClose,

@@ -1,10 +1,4 @@
-import {
-  CornersInIcon,
-  CornersOutIcon,
-  GlobeIcon,
-  MapPinAreaIcon,
-  WarningIcon,
-} from "@phosphor-icons/react";
+import { GlobeIcon, MapPinAreaIcon, WarningIcon } from "@phosphor-icons/react";
 import { memo } from "react";
 
 import {
@@ -36,8 +30,6 @@ type Props = {
   dataURLs?: { key: string; name: string }[];
   showTempPossibleIssuesDialog: boolean;
   onShowTempPossibleIssuesDialogClose: () => void;
-  hideTabularViewer?: boolean;
-  onHideTabularViewer?: () => void;
 };
 const DebugPreview: React.FC<Props> = ({
   fileType,
@@ -46,15 +38,13 @@ const DebugPreview: React.FC<Props> = ({
   dataURLs,
   isLoadingData,
   showTempPossibleIssuesDialog,
-  hideTabularViewer,
   onShowTempPossibleIssuesDialogClose,
-  onHideTabularViewer,
 }) => {
   const t = useT();
 
   return debugJobState && dataURLs ? (
     <Tabs
-      className={`pointer-events-auto h-full w-full rounded-md bg-secondary p-1 shadow-md shadow-secondary   transition-all`}
+      className={`pointer-events-auto h-full w-full rounded-md bg-secondary p-1 shadow-md shadow-secondary transition-all`}
       defaultValue="2d-viewer">
       <div className="relative flex items-center">
         <div className="flex w-full items-center p-1">
@@ -72,15 +62,6 @@ const DebugPreview: React.FC<Props> = ({
                   {t("3D Viewer")}
                 </p>
               </TabsTrigger>
-            </div>
-            <div
-              className="cursor-pointer rounded p-1 hover:bg-primary"
-              onClick={onHideTabularViewer}>
-              {hideTabularViewer ? (
-                <CornersInIcon weight="light" />
-              ) : (
-                <CornersOutIcon weight="light" />
-              )}
             </div>
           </TabsList>
         </div>

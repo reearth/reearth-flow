@@ -2,8 +2,11 @@ import {
   CaretDownIcon,
   CaretUpIcon,
   CodeIcon,
+  CornersInIcon,
+  CornersOutIcon,
   EyeIcon,
   MinusIcon,
+  TerminalIcon,
 } from "@phosphor-icons/react";
 import { memo, useEffect, useRef, useState } from "react";
 
@@ -28,13 +31,20 @@ import DebugPreview from "./DebugPreview";
 import { DataTable } from "./DebugPreview/components";
 import useHooks from "./hooks";
 
-const DebugPanel: React.FC = () => {
+type Props = {
+  fullscreenDebug: boolean;
+  onFullScreenExpand: () => void;
+};
+
+const DebugPanel: React.FC<Props> = ({
+  fullscreenDebug,
+  onFullScreenExpand,
+}) => {
   const {
     debugJobId,
     debugJobState,
     fileType,
     expanded,
-    hideTabularViewer,
     minimized,
     showTempPossibleIssuesDialog,
     selectedDataURL,
@@ -42,7 +52,6 @@ const DebugPanel: React.FC = () => {
     selectedOutputData,
     isLoadingData,
     handleExpand,
-    handleHideTabularViewer,
     handleMinimize,
     handleTabChange,
     handleShowTempPossibleIssuesDialogClose,
@@ -63,9 +72,11 @@ const DebugPanel: React.FC = () => {
     }
   }, [dataURLs]);
 
+  console.log("fullscreenDebug", fullscreenDebug);
+
   return debugJobId ? (
     <Tabs
-      className={`pointer-events-auto w-[95vw] overflow-hidden rounded-md bg-secondary shadow-md shadow-secondary transition-all ${minimized ? "h-[36px]" : expanded || hideTabularViewer ? "h-[80vh]" : "h-[500px]"}`}
+      className={`pointer-events-auto w-[95vw] overflow-hidden rounded-md bg-secondary shadow-md shadow-secondary transition-all ${minimized ? "h-[36px]" : fullscreenDebug ? "h-[100vh] w-[100vw]" : expanded ? "h-[80vh]" : "h-[500px]"}`}
       value={tabValue}
       defaultValue="debug-logs"
       onDoubleClick={handleExpand}
@@ -97,21 +108,23 @@ const DebugPanel: React.FC = () => {
             </TabsList>
           </div>
         </div>
-        <div className="flex flex-1 items-center justify-center gap-2 ">
-          {/* <TerminalIcon />
-          <p className="text-sm font-thin select-none">{t("Debug Run")}</p> */}
+        <div className="mr-[120px] flex flex-1 items-center justify-center gap-2">
+          <TerminalIcon />
+          <p className="text-sm font-thin select-none">{t("Debug Run")}</p>
         </div>
         <div className="flex items-center gap-2">
-          <div
-            className="rounded p-1 hover:bg-primary"
-            onClick={handleMinimize}>
-            {minimized ? (
-              <CaretUpIcon weight="light" />
-            ) : (
-              <MinusIcon weight="light" />
-            )}
-          </div>
-          {!minimized && (
+          {!fullscreenDebug && (
+            <div
+              className="rounded p-1 hover:bg-primary"
+              onClick={handleMinimize}>
+              {minimized ? (
+                <CaretUpIcon weight="light" />
+              ) : (
+                <MinusIcon weight="light" />
+              )}
+            </div>
+          )}
+          {!minimized && !fullscreenDebug && (
             <div
               className="rounded p-1 hover:bg-primary"
               onClick={handleExpand}>
@@ -119,6 +132,17 @@ const DebugPanel: React.FC = () => {
                 <CaretDownIcon weight="light" />
               ) : (
                 <CaretUpIcon weight="light" />
+              )}
+            </div>
+          )}
+          {!minimized && (
+            <div
+              className="rounded p-1 hover:bg-primary"
+              onClick={onFullScreenExpand}>
+              {fullscreenDebug ? (
+                <CornersInIcon weight="light" />
+              ) : (
+                <CornersOutIcon weight="light" />
               )}
             </div>
           )}
@@ -137,73 +161,50 @@ const DebugPanel: React.FC = () => {
           forceMount={true}
           hidden={tabValue !== "debug-viewer"}
           className="h-[calc(100%-35px)] overflow-scroll">
-          {hideTabularViewer ? (
-            <DebugPreview
-              debugJobState={debugJobState}
-              dataURLs={dataURLs}
-              fileType={fileType}
-              selectedOutputData={selectedOutputData}
-              isLoadingData={isLoadingData}
-              showTempPossibleIssuesDialog={showTempPossibleIssuesDialog}
-              onHideTabularViewer={handleHideTabularViewer}
-              hideTabularViewer={hideTabularViewer}
-              onShowTempPossibleIssuesDialogClose={
-                handleShowTempPossibleIssuesDialogClose
-              }
-            />
-          ) : (
-            <ResizablePanelGroup
-              className="h-full w-full"
-              direction="horizontal">
-              <ResizablePanel defaultSize={70} minSize={20}>
-                <Tabs defaultValue="data-viewer">
-                  <div className="relative flex w-fit items-center p-1">
-                    <div className="flex w-fit items-center justify-start p-1">
-                      <div className="top-1 left-1">
-                        <Select
-                          defaultValue={dataURLs[0].key}
-                          value={selectedDataURL}
-                          onValueChange={handleSelectedDataChange}>
-                          <SelectTrigger className="h-[26px] max-w-[200px] border-none text-xs font-bold">
-                            <SelectValue
-                              placeholder={t("Select Data to Preview")}
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {dataURLs.map(({ key, name }) => (
-                              <SelectItem key={key} value={key}>
-                                {name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+          <ResizablePanelGroup className="h-full w-full" direction="horizontal">
+            <ResizablePanel defaultSize={70} minSize={20}>
+              <Tabs defaultValue="data-viewer">
+                <div className="relative flex w-fit items-center p-1">
+                  <div className="flex w-fit items-center justify-start p-1">
+                    <div className="top-1 left-1">
+                      <Select
+                        defaultValue={dataURLs[0].key}
+                        value={selectedDataURL}
+                        onValueChange={handleSelectedDataChange}>
+                        <SelectTrigger className="h-[26px] max-w-[200px] border-none text-xs font-bold">
+                          <SelectValue
+                            placeholder={t("Select Data to Preview")}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {dataURLs.map(({ key, name }) => (
+                            <SelectItem key={key} value={key}>
+                              {name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
-                </Tabs>
-                <DataTable
-                  fileContent={selectedOutputData}
-                  fileType={fileType}
-                />
-              </ResizablePanel>
-              <ResizableHandle />
-              <ResizablePanel defaultSize={30} minSize={20}>
-                <DebugPreview
-                  debugJobState={debugJobState}
-                  dataURLs={dataURLs}
-                  fileType={fileType}
-                  selectedOutputData={selectedOutputData}
-                  isLoadingData={isLoadingData}
-                  showTempPossibleIssuesDialog={showTempPossibleIssuesDialog}
-                  onHideTabularViewer={handleHideTabularViewer}
-                  hideTabularViewer={hideTabularViewer}
-                  onShowTempPossibleIssuesDialogClose={
-                    handleShowTempPossibleIssuesDialogClose
-                  }
-                />
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          )}
+                </div>
+              </Tabs>
+              <DataTable fileContent={selectedOutputData} fileType={fileType} />
+            </ResizablePanel>
+            <ResizableHandle />
+            <ResizablePanel defaultSize={30} minSize={20}>
+              <DebugPreview
+                debugJobState={debugJobState}
+                dataURLs={dataURLs}
+                fileType={fileType}
+                selectedOutputData={selectedOutputData}
+                isLoadingData={isLoadingData}
+                showTempPossibleIssuesDialog={showTempPossibleIssuesDialog}
+                onShowTempPossibleIssuesDialogClose={
+                  handleShowTempPossibleIssuesDialogClose
+                }
+              />
+            </ResizablePanel>
+          </ResizablePanelGroup>
         </TabsContent>
       )}
     </Tabs>
