@@ -116,10 +116,10 @@ const DebugPanel: React.FC<Props> = ({
           <TerminalIcon />
           <p className="text-sm font-thin select-none">{t("Debug Run")}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 p-1">
           {!fullscreenDebug && (
             <div
-              className="rounded p-1 hover:bg-primary"
+              className="cursor-pointer rounded p-1 hover:bg-primary"
               onClick={handleMinimize}>
               {minimized ? (
                 <CaretUpIcon weight="light" />
@@ -130,7 +130,7 @@ const DebugPanel: React.FC<Props> = ({
           )}
           {!minimized && !fullscreenDebug && (
             <div
-              className="rounded p-1 hover:bg-primary"
+              className="cursor-pointer rounded p-1 hover:bg-primary"
               onClick={handleExpand}>
               {expanded ? (
                 <CaretDownIcon weight="light" />
@@ -141,7 +141,7 @@ const DebugPanel: React.FC<Props> = ({
           )}
           {!minimized && (
             <div
-              className="rounded p-1 hover:bg-primary"
+              className="cursor-pointer rounded p-1 hover:bg-primary"
               onClick={onFullScreenExpand}>
               {fullscreenDebug ? (
                 <CornersInIcon weight="light" />
@@ -194,8 +194,8 @@ const DebugPanel: React.FC<Props> = ({
               </Tabs>
               <DataTable fileContent={selectedOutputData} fileType={fileType} />
             </ResizablePanel>
-            <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 data-resize-handle-[state=drag]:border-2 m-[0px] border border-border/50 transition hover:border-[2px] hover:border-logo/70" />
-            <ResizablePanel defaultSize={30} minSize={20} className="">
+            <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 relative m-[0px] border border-border/50 transition hover:border-logo/70" />
+            <ResizablePanel defaultSize={30} minSize={20}>
               <DebugPreview
                 debugJobState={debugJobState}
                 dataURLs={dataURLs}
