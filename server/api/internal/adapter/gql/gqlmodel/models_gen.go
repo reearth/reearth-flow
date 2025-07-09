@@ -42,8 +42,6 @@ type Asset struct {
 	Name                    string                   `json:"name"`
 	URL                     string                   `json:"url"`
 	UUID                    string                   `json:"uuid"`
-	PreviewType             *PreviewType             `json:"previewType,omitempty"`
-	CoreSupport             bool                     `json:"coreSupport"`
 	FlatFiles               bool                     `json:"flatFiles"`
 	Public                  bool                     `json:"public"`
 	ArchiveExtractionStatus *ArchiveExtractionStatus `json:"archiveExtractionStatus,omitempty"`
@@ -740,7 +738,20 @@ func (e AssetSortType) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
-<<<<<<< HEAD
+func (e *AssetSortType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e AssetSortType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
 type CMSSchemaFieldType string
 
 const (
@@ -795,7 +806,7 @@ func (e CMSSchemaFieldType) String() string {
 	return string(e)
 }
 
-func (e *CMSSchemaFieldType) UnmarshalGQL(v interface{}) error {
+func (e *CMSSchemaFieldType) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -810,6 +821,20 @@ func (e *CMSSchemaFieldType) UnmarshalGQL(v interface{}) error {
 
 func (e CMSSchemaFieldType) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *CMSSchemaFieldType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e CMSSchemaFieldType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type CMSVisibility string
@@ -836,7 +861,7 @@ func (e CMSVisibility) String() string {
 	return string(e)
 }
 
-func (e *CMSVisibility) UnmarshalGQL(v interface{}) error {
+func (e *CMSVisibility) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -851,8 +876,9 @@ func (e *CMSVisibility) UnmarshalGQL(v interface{}) error {
 
 func (e CMSVisibility) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
-=======
-func (e *AssetSortType) UnmarshalJSON(b []byte) error {
+}
+
+func (e *CMSVisibility) UnmarshalJSON(b []byte) error {
 	s, err := strconv.Unquote(string(b))
 	if err != nil {
 		return err
@@ -860,11 +886,10 @@ func (e *AssetSortType) UnmarshalJSON(b []byte) error {
 	return e.UnmarshalGQL(s)
 }
 
-func (e AssetSortType) MarshalJSON() ([]byte, error) {
+func (e CMSVisibility) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
->>>>>>> main
 }
 
 type EventSourceType string
@@ -1279,111 +1304,6 @@ func (e *ParameterType) UnmarshalJSON(b []byte) error {
 }
 
 func (e ParameterType) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	e.MarshalGQL(&buf)
-	return buf.Bytes(), nil
-}
-
-type PreviewType string
-
-const (
-	PreviewTypeImage      PreviewType = "IMAGE"
-	PreviewTypeImageSVG   PreviewType = "IMAGE_SVG"
-	PreviewTypeGeo        PreviewType = "GEO"
-	PreviewTypeGeo3dTiles PreviewType = "GEO_3D_TILES"
-	PreviewTypeGeoMvt     PreviewType = "GEO_MVT"
-	PreviewTypeModel3d    PreviewType = "MODEL_3D"
-	PreviewTypeCSV        PreviewType = "CSV"
-	PreviewTypeUnknown    PreviewType = "UNKNOWN"
-	PreviewTypeUnknownGeo PreviewType = "UNKNOWN_GEO"
-	PreviewTypeGeojson    PreviewType = "GEOJSON"
-	PreviewTypeGeotiff    PreviewType = "GEOTIFF"
-	PreviewTypeGpx        PreviewType = "GPX"
-	PreviewTypeKml        PreviewType = "KML"
-	PreviewTypeShp        PreviewType = "SHP"
-	PreviewTypeCzml       PreviewType = "CZML"
-	PreviewTypePDF        PreviewType = "PDF"
-	PreviewTypeHTML       PreviewType = "HTML"
-	PreviewTypeXML        PreviewType = "XML"
-	PreviewTypeText       PreviewType = "TEXT"
-	PreviewTypeJSON       PreviewType = "JSON"
-	PreviewTypeSheet      PreviewType = "SHEET"
-	PreviewTypeArchive    PreviewType = "ARCHIVE"
-	PreviewTypeGltf       PreviewType = "GLTF"
-	PreviewTypeVideo      PreviewType = "VIDEO"
-	PreviewTypeAudio      PreviewType = "AUDIO"
-	PreviewTypeTms        PreviewType = "TMS"
-	PreviewTypeGpkg       PreviewType = "GPKG"
-)
-
-var AllPreviewType = []PreviewType{
-	PreviewTypeImage,
-	PreviewTypeImageSVG,
-	PreviewTypeGeo,
-	PreviewTypeGeo3dTiles,
-	PreviewTypeGeoMvt,
-	PreviewTypeModel3d,
-	PreviewTypeCSV,
-	PreviewTypeUnknown,
-	PreviewTypeUnknownGeo,
-	PreviewTypeGeojson,
-	PreviewTypeGeotiff,
-	PreviewTypeGpx,
-	PreviewTypeKml,
-	PreviewTypeShp,
-	PreviewTypeCzml,
-	PreviewTypePDF,
-	PreviewTypeHTML,
-	PreviewTypeXML,
-	PreviewTypeText,
-	PreviewTypeJSON,
-	PreviewTypeSheet,
-	PreviewTypeArchive,
-	PreviewTypeGltf,
-	PreviewTypeVideo,
-	PreviewTypeAudio,
-	PreviewTypeTms,
-	PreviewTypeGpkg,
-}
-
-func (e PreviewType) IsValid() bool {
-	switch e {
-	case PreviewTypeImage, PreviewTypeImageSVG, PreviewTypeGeo, PreviewTypeGeo3dTiles, PreviewTypeGeoMvt, PreviewTypeModel3d, PreviewTypeCSV, PreviewTypeUnknown, PreviewTypeUnknownGeo, PreviewTypeGeojson, PreviewTypeGeotiff, PreviewTypeGpx, PreviewTypeKml, PreviewTypeShp, PreviewTypeCzml, PreviewTypePDF, PreviewTypeHTML, PreviewTypeXML, PreviewTypeText, PreviewTypeJSON, PreviewTypeSheet, PreviewTypeArchive, PreviewTypeGltf, PreviewTypeVideo, PreviewTypeAudio, PreviewTypeTms, PreviewTypeGpkg:
-		return true
-	}
-	return false
-}
-
-func (e PreviewType) String() string {
-	return string(e)
-}
-
-func (e *PreviewType) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = PreviewType(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid PreviewType", str)
-	}
-	return nil
-}
-
-func (e PreviewType) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-func (e *PreviewType) UnmarshalJSON(b []byte) error {
-	s, err := strconv.Unquote(string(b))
-	if err != nil {
-		return err
-	}
-	return e.UnmarshalGQL(s)
-}
-
-func (e PreviewType) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
