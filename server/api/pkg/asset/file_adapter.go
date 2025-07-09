@@ -16,13 +16,3 @@ func ConvertFileToReearthx(f *flowfile.File) *reearthxfile.File {
 		ContentType: f.ContentType,
 	}
 }
-
-func DetectPreviewTypeFromFile(f *flowfile.File) *PreviewType {
-	rxFile := ConvertFileToReearthx(f)
-	rxPT := DetectPreviewType(rxFile)
-	if rxPT == nil {
-		return nil
-	}
-	pt := PreviewType(*rxPT)
-	return &pt
-}

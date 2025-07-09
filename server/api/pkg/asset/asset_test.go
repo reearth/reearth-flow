@@ -16,7 +16,6 @@ func TestAsset_Builder(t *testing.T) {
 	uid := accountdomain.NewUserID()
 	now := time.Now()
 
-	previewType := PreviewTypeImage
 	status := ArchiveExtractionStatusDone
 	tid := id.NewThreadID()
 
@@ -32,12 +31,10 @@ func TestAsset_Builder(t *testing.T) {
 		URL("https://example.com/test.png").
 		ContentType("image/png").
 		UUID("test-uuid").
-		Type(previewType).
 		Thread(&tid).
 		ArchiveExtractionStatus(status).
 		FlatFiles(true).
 		Public(true).
-		CoreSupport(true).
 		MustBuild()
 
 	assert.Equal(t, aid, a.ID())
@@ -51,12 +48,10 @@ func TestAsset_Builder(t *testing.T) {
 	assert.Equal(t, "https://example.com/test.png", a.URL())
 	assert.Equal(t, "image/png", a.ContentType())
 	assert.Equal(t, "test-uuid", a.UUID())
-	assert.Equal(t, &previewType, a.PreviewType())
 	assert.Equal(t, &tid, a.Thread())
 	assert.Equal(t, &status, a.ArchiveExtractionStatus())
 	assert.True(t, a.FlatFiles())
 	assert.True(t, a.Public())
-	assert.True(t, a.CoreSupport())
 }
 
 func TestAsset_NilHandling(t *testing.T) {
@@ -80,12 +75,10 @@ func TestAsset_NilHandling(t *testing.T) {
 	assert.NotNil(t, a.Workspace())
 	assert.Equal(t, &uid, a.User())
 	assert.Nil(t, a.Integration())
-	assert.Nil(t, a.PreviewType())
 	assert.Nil(t, a.Thread())
 	assert.Nil(t, a.ArchiveExtractionStatus())
 	assert.False(t, a.FlatFiles())
 	assert.False(t, a.Public())
-	assert.False(t, a.CoreSupport())
 }
 
 func TestAsset_CreatedByIntegration(t *testing.T) {
@@ -182,25 +175,4 @@ func TestAsset_WorkspaceOnly(t *testing.T) {
 	assert.Equal(t, ws, a.Workspace())
 	// Project should be empty/zero value
 	assert.Equal(t, id.ProjectID{}, a.Project())
-}
-
-func TestExtendedPreviewTypes(t *testing.T) {
-	// Test standard reearthx preview types
-	pt, ok := PreviewTypeFrom("image")
-	assert.True(t, ok)
-	assert.Equal(t, PreviewTypeImage, pt)
-
-	// Test extended preview types
-	pt, ok = PreviewTypeFrom("geojson")
-	assert.True(t, ok)
-	assert.Equal(t, PreviewTypeGeoJSON, pt)
-
-	pt, ok = PreviewTypeFrom("pdf")
-	assert.True(t, ok)
-	assert.Equal(t, PreviewTypePDF, pt)
-
-	// Test unknown type
-	pt, ok = PreviewTypeFrom("unknown_type")
-	assert.False(t, ok)
-	assert.Equal(t, PreviewTypeUnknown, pt)
 }

@@ -6,10 +6,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 )
 
-func (r *Resolver) Query() QueryResolver {
-	return &queryResolver{r}
-}
-
 type queryResolver struct{ *Resolver }
 
 func (r *queryResolver) Assets(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, sortType *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) (*gqlmodel.AssetConnection, error) {

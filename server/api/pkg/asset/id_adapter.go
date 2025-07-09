@@ -91,12 +91,10 @@ func ConvertToReearthx(
 	size uint64,
 	url string,
 	contentType string,
-	previewType *reearthxasset.PreviewType,
 	threadID *id.ThreadID,
 	archiveExtractionStatus *reearthxasset.ArchiveExtractionStatus,
 	flatFiles bool,
 	public bool,
-	coreSupport bool,
 ) (*reearthxasset.Asset, error) {
 	builder := reearthxasset.New().
 		NewID().
@@ -108,8 +106,7 @@ func ConvertToReearthx(
 		ContentType(contentType).
 		NewUUID().
 		FlatFiles(flatFiles).
-		Public(public).
-		CoreSupport(coreSupport)
+		Public(public)
 
 	if userID != nil {
 		builder = builder.CreatedByUser(*userID)
@@ -118,10 +115,6 @@ func ConvertToReearthx(
 	if integrationID != nil {
 		rxID := ConvertIntegrationIDToReearthx(integrationID)
 		builder = builder.CreatedByIntegration(*rxID)
-	}
-
-	if previewType != nil {
-		builder = builder.Type(previewType)
 	}
 
 	if threadID != nil {
@@ -193,10 +186,6 @@ func (w *AssetWrapper) UUID() string {
 	return w.asset.UUID()
 }
 
-func (w *AssetWrapper) PreviewType() *reearthxasset.PreviewType {
-	return w.asset.PreviewType()
-}
-
 func (w *AssetWrapper) Thread() *id.ThreadID {
 	return ConvertThreadIDFromReearthx(w.asset.Thread())
 }
@@ -207,10 +196,6 @@ func (w *AssetWrapper) ArchiveExtractionStatus() *reearthxasset.ArchiveExtractio
 
 func (w *AssetWrapper) FlatFiles() bool {
 	return w.asset.FlatFiles()
-}
-
-func (w *AssetWrapper) CoreSupport() bool {
-	return w.asset.CoreSupport()
 }
 
 func (w *AssetWrapper) Public() bool {

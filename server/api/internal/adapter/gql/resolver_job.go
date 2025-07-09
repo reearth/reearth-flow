@@ -7,10 +7,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 )
 
-func (r *Resolver) Job() JobResolver {
-	return &jobResolver{r}
-}
-
 type jobResolver struct{ *Resolver }
 
 func (r *jobResolver) Deployment(ctx context.Context, obj *gqlmodel.Job) (*gqlmodel.Deployment, error) {
