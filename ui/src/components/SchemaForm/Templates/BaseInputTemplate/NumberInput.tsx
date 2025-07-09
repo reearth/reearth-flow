@@ -4,28 +4,18 @@ import {
   RJSFSchema,
   StrictRJSFSchema,
 } from "@rjsf/utils";
-import { ChangeEvent, useCallback } from "react";
+import { useCallback, useRef } from "react";
 
 import { Button, Input } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 
-type NumberInputProps<
-  T,
-  S extends StrictRJSFSchema,
-  F extends FormContextType,
-> = {
-  props: BaseInputTemplateProps<T, S, F>;
-  inputProps: any;
-};
-
-export const NumberInput = <
+const NumberInput = <
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
   F extends FormContextType = FormContextType,
->({
-  props,
-  inputProps,
-}: NumberInputProps<T, S, F>) => {
+>(
+  props: BaseInputTemplateProps<T, S, F>,
+) => {
   const {
     id,
     placeholder,
@@ -35,36 +25,52 @@ export const NumberInput = <
     disabled,
     value,
     onChange,
-    onChangeOverride,
+    onBlur,
+    onFocus,
     options,
     schema,
     rawErrors = [],
   } = props;
-
   const t = useT();
-  const defaultValue = schema.default ?? "";
-  const { step, min, max } = inputProps.inputProps || {};
+  const defaultValue = useRef(value || schema.default || "");
 
   const handleChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
-      const inputValue = e.target.value;
-
-      if (inputValue === "") {
-        return onChangeOverride || onChange(options.emptyValue);
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const rawValue = e.target.value;
+      if (rawValue === "") {
+        onChange(options.emptyValue);
+        return;
       }
 
-      const numericValue = parseFloat(inputValue);
-      if (!isNaN(numericValue)) {
-        return onChangeOverride || onChange(numericValue);
-      }
+      const isInteger = schema.type === "integer";
+      const parsed = isInteger ? parseInt(rawValue, 10) : parseFloat(rawValue);
 
-      // If parsing fails, don't update (maintains current value)
+      if (!isNaN(parsed)) {
+        onChange(parsed);
+      }
     },
-    [onChangeOverride, onChange, options.emptyValue],
+    [onChange, options.emptyValue, schema.type],
   );
 
-  const displayValue =
-    value !== null && value !== undefined ? String(value) : "";
+  const handleBlur = useCallback(
+    (e: React.FocusEvent<HTMLInputElement>) => {
+      onBlur?.(id, e.target.value);
+    },
+    [onBlur, id],
+  );
+
+  const handleFocus = useCallback(
+    (e: React.FocusEvent<HTMLInputElement>) => {
+      onFocus?.(id, e.target.value);
+    },
+    [onFocus, id],
+  );
+
+  const handleReset = useCallback(() => {
+    onChange(defaultValue.current);
+  }, [onChange]);
+
+  const step = schema.multipleOf || (schema.type === "integer" ? 1 : "any");
 
   return (
     <div className="flex flex-col gap-2">
@@ -77,34 +83,33 @@ export const NumberInput = <
           autoFocus={autofocus}
           required={required}
           disabled={readonly || disabled}
-          value={displayValue}
+          value={value || value === 0 ? value : ""}
           onChange={handleChange}
+          onBlur={handleBlur}
+          onFocus={handleFocus}
+          min={schema.minimum}
+          max={schema.maximum}
           step={step}
-          min={min}
-          max={max}
           aria-required={required}
           aria-invalid={rawErrors.length > 0}
           aria-describedby={rawErrors.length > 0 ? `${id}-error` : undefined}
+          className={rawErrors.length > 0 ? "border-destructive" : ""}
         />
-        {value !== defaultValue && defaultValue !== "" && (
+        {value !== defaultValue.current && (
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => onChange(defaultValue)}
+            onClick={handleReset}
             disabled={readonly || disabled}
             className="h-9 px-2"
-            aria-label={`Reset value to default: ${defaultValue}`}>
-            {t("Reset")}
+            aria-label={`Reset value to default: ${defaultValue.current}`}>
+            {t("Reset Value")}
           </Button>
         )}
       </div>
-      {rawErrors.length > 0 &&
-        rawErrors.map((error, i) => (
-          <p key={i} className="text-xs text-destructive" id={`${id}-error`}>
-            {error}
-          </p>
-        ))}
     </div>
   );
 };
+
+export { NumberInput };

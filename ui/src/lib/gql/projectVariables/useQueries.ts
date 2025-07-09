@@ -27,7 +27,7 @@ export const useQueries = () => {
         const projectVars: AnyProjectVariable[] = parameters
           .filter(isDefined)
           .map((p) => toProjectVariable(p));
-        console.log("project vars", projectVars);
+
         return projectVars;
       },
       enabled: !!projectId,
