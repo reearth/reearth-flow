@@ -95,10 +95,6 @@ func (r *mutationResolver) PreviewSnapshot(ctx context.Context, projectID gqlmod
 
 type projectDocumentResolver struct{ *Resolver }
 
-func (r *Resolver) ProjectDocument() ProjectDocumentResolver {
-	return &projectDocumentResolver{r}
-}
-
 func (r *projectDocumentResolver) Updates(ctx context.Context, obj *gqlmodel.ProjectDocument) ([]int, error) {
 	return obj.Updates, nil
 }

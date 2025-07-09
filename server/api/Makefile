@@ -1,5 +1,6 @@
 lint:
-	golangci-lint run --fix
+	# Temporary workaround until golangci-lint supports Go 1.24
+	./lint-wrapper.sh
 
 test:
 	go test -race -short -v ./...

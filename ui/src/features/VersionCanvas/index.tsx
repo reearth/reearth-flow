@@ -4,7 +4,7 @@ import { Map as YMap } from "yjs";
 import Canvas from "@flow/features/Canvas";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 
-import { ParamsPanel, WorkflowTabs } from "../Editor/components";
+import { ParamsDialog, WorkflowTabs } from "../Editor/components";
 import { EditorContextType, EditorProvider } from "../Editor/editorContext";
 
 import useHooks from "./hooks";
@@ -57,7 +57,11 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
             onNodeSettings={handleNodeSettings}
           />
         </div>
-        <ParamsPanel readonly openNode={openNode} onOpenNode={handleOpenNode} />
+        <ParamsDialog
+          readonly
+          openNode={openNode}
+          onOpenNode={handleOpenNode}
+        />
       </EditorProvider>
     </div>
   );
