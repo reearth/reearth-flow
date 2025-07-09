@@ -231,8 +231,7 @@ impl RedisStore {
         instance_id: &str,
         last_read_id: &Arc<Mutex<String>>,
     ) -> Result<Vec<Bytes>> {
-        // Reduced from 1600ms to 500ms for better responsiveness
-        let block_ms = 500;
+        let block_ms = 1000;
 
         let read_id = {
             let last_id = last_read_id.lock().await;
