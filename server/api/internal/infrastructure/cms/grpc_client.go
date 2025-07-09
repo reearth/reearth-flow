@@ -18,12 +18,14 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
+var _ gateway.CMS = (*grpcClient)(nil)
+
 type grpcClient struct {
 	conn     *grpc.ClientConn
 	client   proto.ReEarthCMSClient
 	endpoint string
-	token    string // M2M token for authentication
-	userID   string // User ID for metadata
+	token    string
+	userID   string
 }
 
 func NewGRPCClient(endpoint, token, userID string) (gateway.CMS, error) {
