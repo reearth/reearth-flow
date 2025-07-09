@@ -16,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../DropdownMenu";
+import { TooltipProvider } from "../Tooltip";
 
 import { ThemedForm } from "./ThemedForm";
 
@@ -23,6 +24,13 @@ import { SchemaForm } from ".";
 
 const meta = {
   component: SchemaForm,
+  decorators: [
+    (Story) => (
+      <TooltipProvider>
+        <Story />
+      </TooltipProvider>
+    ),
+  ],
   parameters: {
     layout: "centered",
   },
