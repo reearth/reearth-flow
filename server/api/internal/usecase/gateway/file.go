@@ -22,7 +22,7 @@ var (
 type File interface {
 	ReadAsset(context.Context, string) (io.ReadCloser, error)
 	UploadAsset(context.Context, *file.File) (*url.URL, int64, error)
-	RemoveAsset(context.Context, *url.URL) error
+	DeleteAsset(context.Context, *url.URL) error
 	ReadWorkflow(context.Context, string) (io.ReadCloser, error)
 	UploadWorkflow(context.Context, *file.File) (*url.URL, error)
 	RemoveWorkflow(context.Context, *url.URL) error

@@ -7,7 +7,7 @@ import { YWorkflow } from "@flow/lib/yjs/types";
 import {
   TopBar,
   OverlayUI,
-  ParamsPanel,
+  ParamsDialog,
   NodeDeletionDialog,
 } from "./components";
 import { EditorContextType, EditorProvider } from "./editorContext";
@@ -139,7 +139,7 @@ export default function Editor({
               />
             </OverlayUI>
           </div>
-          <ParamsPanel
+          <ParamsDialog
             openNode={openNode}
             onOpenNode={handleOpenNode}
             onDataSubmit={handleNodeDataUpdate}

@@ -6,10 +6,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 )
 
-func (r *Resolver) Query() QueryResolver {
-	return &queryResolver{r}
-}
-
 type queryResolver struct{ *Resolver }
 
 func (r *queryResolver) Assets(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, sortType *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) (*gqlmodel.AssetConnection, error) {
@@ -141,4 +137,8 @@ func (r *queryResolver) SearchUser(ctx context.Context, nameOrEmail string) (*gq
 
 func (r *queryResolver) Triggers(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.TriggerConnection, error) {
 	return loaders(ctx).Trigger.FindByWorkspacePage(ctx, workspaceID, pagination)
+}
+
+func (r *queryResolver) Parameters(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.Parameter, error) {
+	return loaders(ctx).Parameter.FindByProject(ctx, projectID)
 }

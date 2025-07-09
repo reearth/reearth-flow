@@ -83,7 +83,7 @@ export default () => {
                   job?.id === pj.jobId &&
                   !pj.tempWorkflowHasPossibleIssuesFlag
                 ) {
-                  const tempFlag = !!job.outputURLs?.length;
+                  const tempFlag = !job.outputURLs?.length;
                   setShowTempPossibleIssuesDialog(tempFlag);
                   return {
                     ...pj,

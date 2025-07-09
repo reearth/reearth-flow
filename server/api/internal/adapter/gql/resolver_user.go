@@ -6,10 +6,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 )
 
-func (r *Resolver) Me() MeResolver {
-	return &meResolver{r}
-}
-
 type meResolver struct{ *Resolver }
 
 func (r *meResolver) MyWorkspace(ctx context.Context, obj *gqlmodel.Me) (*gqlmodel.Workspace, error) {
