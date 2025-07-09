@@ -26,7 +26,6 @@ type grpcClient struct {
 	userID   string // User ID for metadata
 }
 
-// NewGRPCClient creates a new CMS gRPC client
 func NewGRPCClient(endpoint, token, userID string) (gateway.CMS, error) {
 	if endpoint == "" {
 		return nil, fmt.Errorf("CMS endpoint is required")
@@ -132,7 +131,6 @@ func (c *grpcClient) ListItems(ctx context.Context, input cms.ListItemsInput) (*
 	}, nil
 }
 
-// GetModelGeoJSONExportURL gets the GeoJSON export URL for a model
 func (c *grpcClient) GetModelGeoJSONExportURL(ctx context.Context, input cms.ExportInput) (*cms.ExportOutput, error) {
 	ctx = c.addAuthMetadata(ctx)
 
@@ -149,15 +147,12 @@ func (c *grpcClient) GetModelGeoJSONExportURL(ctx context.Context, input cms.Exp
 	}, nil
 }
 
-// Close closes the gRPC connection
 func (c *grpcClient) Close() error {
 	if c.conn != nil {
 		return c.conn.Close()
 	}
 	return nil
 }
-
-// Converter functions between proto and domain types
 
 func convertProtoToProject(p *proto.Project) *cms.Project {
 	if p == nil {
@@ -234,7 +229,6 @@ func convertProtoToSchemaField(f *proto.SchemaField) cms.SchemaField {
 }
 
 func convertProtoToSchemaFieldType(t proto.SchemaFieldType) cms.SchemaFieldType {
-	// Direct mapping between proto and domain enums
 	return cms.SchemaFieldType(t)
 }
 
@@ -259,7 +253,6 @@ func convertAnyToInterface(a *anypb.Any) interface{} {
 		return nil
 	}
 
-	// Handle common well-known types
 	switch a.TypeUrl {
 	case "type.googleapis.com/google.protobuf.StringValue":
 		var sv wrapperspb.StringValue
@@ -322,14 +315,12 @@ func convertAnyToInterface(a *anypb.Any) interface{} {
 		}
 	}
 
-	// Try to unmarshal as a generic message
 	var msg protobuf.Message
 	if err := anypb.UnmarshalTo(a, msg, protobuf.UnmarshalOptions{}); err == nil {
 		log.Debugf("Successfully unmarshaled Any type: %s", a.TypeUrl)
 		return msg
 	}
 
-	// If all else fails, log warning and return the raw value
 	log.Warnf("Unable to unmarshal Any type: %s, returning raw value", a.TypeUrl)
 	return a.Value
 }
