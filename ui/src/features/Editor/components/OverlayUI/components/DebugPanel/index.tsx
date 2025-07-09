@@ -194,8 +194,8 @@ const DebugPanel: React.FC<Props> = ({
               </Tabs>
               <DataTable fileContent={selectedOutputData} fileType={fileType} />
             </ResizablePanel>
-            <ResizableHandle />
-            <ResizablePanel defaultSize={30} minSize={20}>
+            <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 data-resize-handle-[state=drag]:border-2 m-[0px] border border-border/50 transition hover:border-[2px] hover:border-logo/70" />
+            <ResizablePanel defaultSize={30} minSize={20} className="">
               <DebugPreview
                 debugJobState={debugJobState}
                 dataURLs={dataURLs}
