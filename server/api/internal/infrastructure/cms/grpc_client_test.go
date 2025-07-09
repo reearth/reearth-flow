@@ -143,7 +143,7 @@ func TestConvertAnyToInterface(t *testing.T) {
 				any, _ := anypb.New(ts)
 				return any
 			},
-			expected: nil, // Will be checked separately as time comparison needs tolerance
+			expected: nil,
 		},
 		{
 			name: "struct value",
