@@ -1,4 +1,3 @@
-import { ArrowUDownLeftIcon, PencilLineIcon } from "@phosphor-icons/react";
 import {
   BaseInputTemplateProps,
   FormContextType,
@@ -7,8 +6,9 @@ import {
 } from "@rjsf/utils";
 import { useCallback, useRef } from "react";
 
-import { IconButton, Input } from "@flow/components";
-import { useT } from "@flow/lib/i18n";
+import { Input } from "@flow/components";
+
+import ActionArea from "../../components/ActionArea";
 
 const TextInput = <
   T = any,
@@ -35,7 +35,6 @@ const TextInput = <
     schema,
     rawErrors = [],
   } = props;
-  const t = useT();
   const defaultValue = useRef(value || schema.default || "");
 
   const handleChange = useCallback(
@@ -64,14 +63,6 @@ const TextInput = <
     onChange(defaultValue.current);
   }, [onChange]);
 
-  const handleEditorOpen = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.preventDefault();
-      onEditorOpen?.();
-    },
-    [onEditorOpen],
-  );
-
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
@@ -92,18 +83,12 @@ const TextInput = <
           aria-describedby={rawErrors.length > 0 ? `${id}-error` : undefined}
           className={rawErrors.length > 0 ? "border-destructive" : ""}
         />
-        <IconButton
-          icon={<PencilLineIcon />}
-          tooltipText={t("Open Editor")}
-          onClick={handleEditorOpen}
-          disabled={!onEditorOpen}
-        />
-        <IconButton
-          icon={<ArrowUDownLeftIcon />}
-          disabled={value === defaultValue.current}
-          tooltipText={t("Reset to Default")}
-          aria-label={`Reset value to default: ${defaultValue.current}`}
-          onClick={handleReset}
+        <ActionArea
+          value={value}
+          defaultValue={defaultValue}
+          type={schema.type}
+          onEditorOpen={onEditorOpen}
+          onReset={handleReset}
         />
       </div>
     </div>
