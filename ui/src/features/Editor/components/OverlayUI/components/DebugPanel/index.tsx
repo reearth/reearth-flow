@@ -63,13 +63,13 @@ const DebugPanel: React.FC<Props> = ({
   const debugJobIdRef = useRef(debugJobId);
 
   useEffect(() => {
+    if (debugJobId !== debugJobIdRef.current) {
+      debugJobIdRef.current = debugJobId;
+    }
+
     if (dataURLs && !hasSwitchedToViewerRef.current) {
       setTabValue("debug-viewer");
       hasSwitchedToViewerRef.current = true;
-    }
-
-    if (debugJobId !== debugJobIdRef.current) {
-      debugJobIdRef.current = debugJobId;
     }
 
     if (!dataURLs) {
