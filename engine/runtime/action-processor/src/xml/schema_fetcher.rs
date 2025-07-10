@@ -21,8 +21,8 @@ impl HttpSchemaFetcher {
     pub fn new() -> Self {
         Self {
             client: Arc::new(Mutex::new(None)),
-            max_retries: 3,
-            retry_delay: Duration::from_millis(1000),
+            max_retries: 2,
+            retry_delay: Duration::from_millis(0),
         }
     }
 
@@ -161,8 +161,8 @@ mod tests {
     #[test]
     fn test_http_schema_fetcher_creation() {
         let fetcher = HttpSchemaFetcher::new();
-        assert_eq!(fetcher.max_retries, 3);
-        assert_eq!(fetcher.retry_delay, Duration::from_millis(1000));
+        assert_eq!(fetcher.max_retries, 2);
+        assert_eq!(fetcher.retry_delay, Duration::from_millis(0));
     }
 
     #[test]

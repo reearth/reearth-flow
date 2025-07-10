@@ -68,9 +68,29 @@ impl FileSystemSchemaCache {
     }
 
     fn get_full_path(&self, key: &str) -> PathBuf {
-        // Replace directory separators in key to avoid path traversal
-        let safe_key = key.replace(['/', '\\'], "_");
-        self.root_path.join(format!("{safe_key}.xsd"))
+        // Replace backslashes to avoid path traversal issues
+        let safe_key = key.replace('\\', "_");
+
+        // Split by forward slash and build proper path for the platform
+        let path_parts: Vec<&str> = safe_key.split('/').collect();
+
+        // Build path using proper platform separators
+        let mut path = self.root_path.clone();
+        for (i, part) in path_parts.iter().enumerate() {
+            if i == path_parts.len() - 1 {
+                // Last part is the filename
+                if part.ends_with(".xsd") {
+                    path = path.join(part);
+                } else {
+                    path = path.join(format!("{}.xsd", part));
+                }
+            } else {
+                // Directory parts
+                path = path.join(part);
+            }
+        }
+
+        path
     }
 }
 
@@ -181,20 +201,19 @@ mod tests {
         let temp_dir = env::temp_dir().join(format!("xml_cache_test_{}", uuid::Uuid::new_v4()));
         let cache = FileSystemSchemaCache::new(temp_dir.clone()).unwrap();
 
-        // Test that directory separators are replaced
+        // Test that forward slashes are preserved for directory structure
         let key_with_slashes = "path/to/schema";
-        let key_with_backslashes = "path\\to\\schema";
-
         let path1 = cache.get_schema_path(key_with_slashes).unwrap();
+
+        // Forward slashes should be preserved
+        assert_eq!(path1.file_name().unwrap().to_str().unwrap(), "schema.xsd");
+        assert!(path1.to_str().unwrap().contains("path/to/"));
+
+        // Test that backslashes are replaced for safety
+        let key_with_backslashes = "path\\to\\schema";
         let path2 = cache.get_schema_path(key_with_backslashes).unwrap();
 
-        // Both should result in safe filenames
-        assert!(path1
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .contains("path_to_schema"));
+        // Backslashes should be replaced
         assert!(path2
             .file_name()
             .unwrap()
@@ -236,6 +255,49 @@ mod tests {
         let content = b"factory content";
 
         cache.put_schema(key, content).unwrap();
+        let retrieved = cache.get_schema(key).unwrap();
+        assert_eq!(retrieved, Some(content.to_vec()));
+
+        // Cleanup
+        std::fs::remove_dir_all(temp_dir).ok();
+    }
+
+    #[test]
+    fn test_filesystem_cache_cross_platform_paths() {
+        let temp_dir = env::temp_dir().join(format!("xml_cache_test_{}", uuid::Uuid::new_v4()));
+        let cache = FileSystemSchemaCache::new(temp_dir.clone()).unwrap();
+
+        // Test that paths work correctly on all platforms
+        let key = "xmlvalidator-schema/12345678/citygml/2.0/cityGMLBase";
+        let path = cache.get_schema_path(key).unwrap();
+
+        // Path should use platform-specific separators
+        let path_str = path.to_str().unwrap();
+
+        // Check that the file has .xsd extension
+        assert!(path_str.ends_with(".xsd"));
+
+        // Check that the path structure is preserved
+        #[cfg(windows)]
+        {
+            assert!(
+                path_str.contains("xmlvalidator-schema\\12345678\\citygml\\2.0\\cityGMLBase.xsd")
+            );
+        }
+        #[cfg(not(windows))]
+        {
+            assert!(path_str.contains("xmlvalidator-schema/12345678/citygml/2.0/cityGMLBase.xsd"));
+        }
+
+        // Test that we can actually create and read from such paths
+        let content = b"test schema content";
+        cache.put_schema(key, content).unwrap();
+
+        // Verify the file was created with correct structure
+        assert!(path.exists());
+        assert!(path.parent().unwrap().exists()); // 2.0 directory
+        assert!(path.parent().unwrap().parent().unwrap().exists()); // citygml directory
+
         let retrieved = cache.get_schema(key).unwrap();
         assert_eq!(retrieved, Some(content.to_vec()));
 

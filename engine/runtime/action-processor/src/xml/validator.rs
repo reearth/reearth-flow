@@ -33,6 +33,18 @@ use super::schema_resolver::XmlSchemaResolver;
 static SUCCESS_PORT: Lazy<Port> = Lazy::new(|| Port::new("success"));
 static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
 
+/// Remove XML declaration from content to prevent "multiple XML declaration" errors
+/// when schemas are included by other schemas
+fn remove_xml_declaration(content: &str) -> &str {
+    let trimmed = content.trim_start();
+    if trimmed.starts_with("<?xml") {
+        if let Some(end_pos) = trimmed.find("?>") {
+            return trimmed[end_pos + 2..].trim_start();
+        }
+    }
+    content
+}
+
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 struct ValidationResult {
@@ -366,13 +378,27 @@ impl Processor for XmlValidator {
 
 impl XmlValidator {
     /// Generate a cache key for a schema URL
-    /// Uses HashMap's DefaultHasher to create a stable hash
+    /// Preserves directory structure for relative path references
     fn generate_cache_key(url: &str) -> String {
-        let hash = {
-            let mut hasher = std::collections::hash_map::DefaultHasher::new();
-            url.hash(&mut hasher);
-            format!("{:x}", hasher.finish())
-        };
+        // Remove protocol and host to get path-like structure
+        if let Some(protocol_end) = url.find("://") {
+            let after_protocol = &url[protocol_end + 3..];
+            // Find the start of the path (after host)
+            if let Some(path_start) = after_protocol.find('/') {
+                let path = &after_protocol[path_start + 1..];
+                // Use a hash of the host as prefix to avoid conflicts
+                let host = &after_protocol[..path_start];
+                let mut hasher = std::collections::hash_map::DefaultHasher::new();
+                host.hash(&mut hasher);
+                let host_hash = format!("{:x}", hasher.finish());
+                // Preserve directory structure by keeping the path as-is
+                return format!("xmlvalidator-schema/{}/{}", &host_hash[..8], path);
+            }
+        }
+        // Fallback to simple hash-based approach
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        url.hash(&mut hasher);
+        let hash = format!("{:x}", hasher.finish());
         let filename = url.split('/').next_back().unwrap_or("schema.xsd");
         format!("xmlvalidator-schema/{}-{}", &hash[..8], filename)
     }
@@ -445,23 +471,66 @@ impl XmlValidator {
                 // Rewrite schemaLocation attributes to point to cached files
                 for (import_url, import_path) in &url_to_cache_path {
                     if url != import_url {
-                        // Replace absolute URLs with cached file paths
+                        // Calculate relative path from current schema to imported schema
+                        let current_path = url_to_cache_path.get(url).unwrap();
+                        let relative_path = if let (Some(current_parent), Some(import_parent)) =
+                            (current_path.parent(), import_path.parent())
+                        {
+                            if current_parent == import_parent {
+                                // Same directory - use just the filename
+                                import_path
+                                    .file_name()
+                                    .unwrap()
+                                    .to_str()
+                                    .unwrap()
+                                    .to_string()
+                            } else {
+                                // Different directories - use absolute file:// URL
+                                format!("file://{}", import_path.display())
+                            }
+                        } else {
+                            format!("file://{}", import_path.display())
+                        };
+
+                        // Replace absolute URLs with appropriate paths
                         content = content.replace(
                             &format!(r#"schemaLocation="{import_url}""#),
-                            &format!(r#"schemaLocation="file://{}""#, import_path.display()),
+                            &format!(r#"schemaLocation="{}""#, relative_path),
                         );
                         content = content.replace(
                             &format!(r#"schemaLocation='{import_url}'"#),
-                            &format!(r#"schemaLocation='file://{}'"#, import_path.display()),
+                            &format!(r#"schemaLocation='{}'"#, relative_path),
                         );
+
+                        // Also handle relative paths in the original schema
+                        // Replace relative imports that might be in the schema
+                        if let Some(last_slash) = import_url.rfind('/') {
+                            let import_filename = &import_url[last_slash + 1..];
+                            content = content.replace(
+                                &format!(r#"schemaLocation="{}""#, import_filename),
+                                &format!(r#"schemaLocation="{}""#, relative_path),
+                            );
+                            content = content.replace(
+                                &format!(r#"schemaLocation='{}'"#, import_filename),
+                                &format!(r#"schemaLocation='{}'"#, relative_path),
+                            );
+                        }
                     }
                 }
 
                 let cache_key = Self::generate_cache_key(url);
 
+                // Remove XML declaration from non-root schemas to prevent
+                // "multiple XML declaration" errors when schemas are included
+                let final_content = if url != &target {
+                    remove_xml_declaration(&content).to_string()
+                } else {
+                    content
+                };
+
                 // Save rewritten schema content to cache
                 self.schema_cache
-                    .put_schema(&cache_key, content.as_bytes())?;
+                    .put_schema(&cache_key, final_content.as_bytes())?;
             }
 
             // Create validation context from the cached root schema
@@ -2021,5 +2090,165 @@ mod tests {
 
         // Cleanup
         std::fs::remove_dir_all(temp_dir).ok();
+    }
+
+    #[test]
+    fn test_xml_validator_complex_schema_handling() {
+        // Comprehensive test for complex schema handling including:
+        // 1. PLATEAU CityGML with multiple namespaces
+        // 2. Deep schema dependencies with relative paths
+        // 3. Real-world schema fetching simulation
+
+        // Part 1: Test with mock schemas for controlled testing
+        let mut fetcher = MockSchemaFetcher::new();
+
+        // Setup mock schemas with dependencies
+        let citygml_base = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+           xmlns:gml="http://www.opengis.net/gml"
+           targetNamespace="http://www.opengis.net/citygml/2.0"
+           elementFormDefault="qualified">
+    <xs:import namespace="http://www.opengis.net/gml" schemaLocation="gml.xsd"/>
+    <xs:element name="CityModel" type="xs:anyType"/>
+</xs:schema>"#;
+
+        let gml_simplified = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://www.opengis.net/gml"
+           elementFormDefault="qualified">
+    <xs:element name="boundedBy" type="xs:anyType"/>
+    <xs:element name="Envelope" type="xs:anyType"/>
+</xs:schema>"#;
+
+        // Mock responses for controlled testing
+        fetcher.responses.insert(
+            "http://schemas.opengis.net/citygml/2.0/cityGMLBase.xsd".to_string(),
+            Ok(citygml_base.to_string()),
+        );
+        fetcher.responses.insert(
+            "http://schemas.opengis.net/citygml/2.0/gml.xsd".to_string(),
+            Ok(gml_simplified.to_string()),
+        );
+
+        // Test complex XML with multiple namespaces (similar to PLATEAU)
+        let complex_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:core="http://www.opengis.net/citygml/2.0" 
+                xmlns:gml="http://www.opengis.net/gml" 
+                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                xsi:schemaLocation="http://www.opengis.net/citygml/2.0 http://schemas.opengis.net/citygml/2.0/cityGMLBase.xsd">
+    <gml:boundedBy>
+        <gml:Envelope>Test</gml:Envelope>
+    </gml:boundedBy>
+</core:CityModel>"#;
+
+        let mock_fetcher = Arc::new(fetcher);
+        let mut validator =
+            create_xml_validator_with_mock_fetcher(ValidationType::SyntaxAndSchema, mock_fetcher);
+
+        let feature = create_feature_with_xml(complex_xml);
+        let ctx = utils::create_default_execute_context(&feature);
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+
+        let result = validator.process(ctx, &fw);
+        assert!(result.is_ok(), "Processing should succeed");
+
+        match &fw {
+            ProcessorChannelForwarder::Noop(noop_fw) => {
+                let send_ports = noop_fw.send_ports.lock().unwrap();
+                assert!(!send_ports.is_empty(), "Should have sent output");
+
+                // Should successfully validate with mocked schemas
+                assert_eq!(
+                    send_ports[0], *SUCCESS_PORT,
+                    "Should validate successfully with proper schema dependency resolution"
+                );
+            }
+            _ => panic!("Expected Noop forwarder"),
+        }
+
+        // Part 2: Test deep schema dependencies (A->B->C pattern)
+        let mut deep_fetcher = MockSchemaFetcher::new();
+
+        let schema_a = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://example.com/a"
+           xmlns:b="http://example.com/b"
+           elementFormDefault="qualified">
+    <xs:import namespace="http://example.com/b" schemaLocation="schemas/b.xsd"/>
+    <xs:element name="RootA">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="b:ElementB"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>"#;
+
+        let schema_b = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://example.com/b"
+           xmlns:c="http://example.com/c"
+           elementFormDefault="qualified">
+    <xs:import namespace="http://example.com/c" schemaLocation="c.xsd"/>
+    <xs:element name="ElementB" type="c:TypeC"/>
+</xs:schema>"#;
+
+        let schema_c = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://example.com/c">
+    <xs:simpleType name="TypeC">
+        <xs:restriction base="xs:string">
+            <xs:pattern value="[A-Z]+"/>
+        </xs:restriction>
+    </xs:simpleType>
+</xs:schema>"#;
+
+        deep_fetcher.responses.insert(
+            "http://example.com/a.xsd".to_string(),
+            Ok(schema_a.to_string()),
+        );
+        deep_fetcher.responses.insert(
+            "http://example.com/schemas/b.xsd".to_string(),
+            Ok(schema_b.to_string()),
+        );
+        deep_fetcher.responses.insert(
+            "http://example.com/schemas/c.xsd".to_string(),
+            Ok(schema_c.to_string()),
+        );
+
+        let deep_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<a:RootA xmlns:a="http://example.com/a"
+         xmlns:b="http://example.com/b"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://example.com/a http://example.com/a.xsd">
+    <b:ElementB>VALID</b:ElementB>
+</a:RootA>"#;
+
+        let deep_mock_fetcher = Arc::new(deep_fetcher);
+        let mut deep_validator = create_xml_validator_with_mock_fetcher(
+            ValidationType::SyntaxAndSchema,
+            deep_mock_fetcher,
+        );
+
+        let deep_feature = create_feature_with_xml(deep_xml);
+        let deep_ctx = utils::create_default_execute_context(&deep_feature);
+        let deep_fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+
+        let deep_result = deep_validator.process(deep_ctx, &deep_fw);
+        assert!(
+            deep_result.is_ok(),
+            "Deep dependency processing should succeed"
+        );
+
+        match &deep_fw {
+            ProcessorChannelForwarder::Noop(noop_fw) => {
+                let send_ports = noop_fw.send_ports.lock().unwrap();
+                assert_eq!(
+                    send_ports[0], *SUCCESS_PORT,
+                    "Should validate successfully with deep schema dependencies"
+                );
+            }
+            _ => panic!("Expected Noop forwarder"),
+        }
     }
 }
