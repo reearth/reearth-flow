@@ -78,7 +78,7 @@ pub fn setup_logging_and_tracing() -> crate::errors::Result<()> {
             .with_timer(time_format.clone());
 
         let console_layer = tracing_subscriber::fmt::layer()
-            .event_format(event_format)
+            .event_format(event_format.clone())
             .with_ansi(true)
             .with_writer(std::io::stdout);
 
