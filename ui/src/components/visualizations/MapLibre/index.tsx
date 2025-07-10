@@ -90,7 +90,6 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
           />
         )}
       </Map>
-
       {selectedFeature && (
         <MapSidePanel
           selectedFeature={selectedFeature}
