@@ -27,6 +27,7 @@ type Job struct {
 	startedAt     time.Time
 	status        Status
 	workspace     WorkspaceID
+	version       int
 }
 
 func NewJob(id ID, deployment DeploymentID, workspace WorkspaceID, gcpJobID string) *Job {
@@ -38,6 +39,7 @@ func NewJob(id ID, deployment DeploymentID, workspace WorkspaceID, gcpJobID stri
 		status:      StatusPending,
 		startedAt:   time.Now(),
 		workspace:   workspace,
+		version:     0,
 	}
 }
 
@@ -87,6 +89,10 @@ func (j *Job) MetadataURL() string {
 
 func (j *Job) OutputURLs() []string {
 	return j.outputURLs
+}
+
+func (j *Job) Version() int {
+	return j.version
 }
 
 func (j *Job) SetID(id ID) {
@@ -139,4 +145,12 @@ func (j *Job) SetMetadataURL(metadataURL string) {
 
 func (j *Job) SetOutputURLs(outputURLs []string) {
 	j.outputURLs = outputURLs
+}
+
+func (j *Job) SetVersion(version int) {
+	j.version = version
+}
+
+func (j *Job) IncrementVersion() {
+	j.version++
 }
