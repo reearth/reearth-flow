@@ -50,20 +50,26 @@ const AssetCard: React.FC<Props> = ({
     <Card
       className="group relative cursor-pointer border-transparent bg-secondary hover:border-border"
       key={id}>
-      <CardContent className="relative flex h-[80px] items-center justify-center p-0">
-        <FileIcon className="group:hover:opacity-90 absolute size-[80px]  translate-x-24 opacity-50" />
+      <CardContent className="flex h-[60px] items-start justify-end p-0">
+        <FileIcon
+          weight="thin"
+          size={65}
+          className="group:hover:opacity-90 opacity-50"
+        />
       </CardContent>
-      <CardHeader className="px-2 py-1">
-        <CardTitle className="truncate dark:font-extralight">{name}</CardTitle>
+      <CardHeader className="px-1 py-0.5">
+        <CardTitle className="text-md truncate dark:font-extralight">
+          {name}
+        </CardTitle>
       </CardHeader>
-      <CardFooter className="flex px-2 pb-1">
+      <CardFooter className="px-1 pb-0.5">
         <p className="text-xs text-zinc-400 dark:font-thin">
           {t("Uploaded At:")} {createdAt}
         </p>
       </CardFooter>
       <div
         className={`absolute inset-0 ${persistOverlay ? "flex flex-col" : "hidden"} rounded-lg group-hover:flex group-hover:flex-col`}>
-        <div className="flex h-[80px] items-center justify-center rounded-t-lg bg-black/30 p-4 backdrop-blur-xs" />
+        <div className="flex h-[60px] items-center justify-center rounded-t-lg bg-black/30 p-4 backdrop-blur-xs" />
         <div className="flex flex-1 justify-end rounded-b-lg">
           <DropdownMenu
             modal={false}
@@ -99,7 +105,6 @@ const AssetCard: React.FC<Props> = ({
                   <DownloadIcon weight="light" />
                 </DropdownMenuItem>
               </a>
-
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="justify-between gap-4 text-destructive"

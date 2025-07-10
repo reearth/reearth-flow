@@ -97,13 +97,12 @@ const AssetsListView: React.FC<Props> = ({
     },
   ];
   return (
-    <div className="overflow-scroll">
+    <div className="h-full flex-col overflow-hidden">
       <Table
         columns={columns}
         data={assets}
         selectColumns
         showFiltering
-        enablePagination
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         totalPages={totalPages}

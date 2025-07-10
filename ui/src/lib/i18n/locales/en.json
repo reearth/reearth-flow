@@ -147,7 +147,7 @@
   "Download Asset": "",
   "Delete Asset": "",
   "Are you absolutely sure?": "",
-  "This action cannot be undone. This will permanently delete your asset. Deletion of an asset could cause issues projects or deployments that are referencing this asset.": "",
+  "This action cannot be undone. Deleting this asset will permanently remove it from your account and may cause issues with any projects or deployments that reference it. Please ensure this asset is no longer in use before proceeding.": "",
   "Name": "",
   "Give your asset name": "",
   "Update Asset": "",

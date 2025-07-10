@@ -147,7 +147,7 @@
   "Download Asset": "   Télécharger l'actif",
   "Delete Asset": " Supprimer l'actif",
   "Are you absolutely sure?": "Êtes-vous absolument sûr ?",
-  "This action cannot be undone. This will permanently delete your asset. Deletion of an asset could cause issues projects or deployments that are referencing this asset.": "Cette action ne peut pas être annulée. Cela supprimera définitivement votre actif. La suppression d'un actif pourrait causer des problèmes dans les projets ou déploiements qui font référence à cet actif.",
+  "This action cannot be undone. Deleting this asset will permanently remove it from your account and may cause issues with any projects or deployments that reference it. Please ensure this asset is no longer in use before proceeding.": "Cette action ne peut pas être annulée. La suppression de cet actif le retirera définitivement de votre compte et peut causer des problèmes avec tout projet ou déploiement qui y fait référence. Veuillez vous assurer que cet actif n'est plus utilisé avant de continuer.",
   "Name": "Nom",
   "Give your asset name": " Donnez un nom à votre actif",
   "Update Asset": "Mettre à jour l'actif",

@@ -147,7 +147,7 @@
   "Download Asset": "下载资产",
   "Delete Asset": "删除资产",
   "Are you absolutely sure?": "你确定吗？",
-  "This action cannot be undone. This will permanently delete your asset. Deletion of an asset could cause issues projects or deployments that are referencing this asset.": "此操作无法撤销。这将永久删除您的资产。删除资产可能会导致引用此资产的项目或部署出现问题。",
+  "This action cannot be undone. Deleting this asset will permanently remove it from your account and may cause issues with any projects or deployments that reference it. Please ensure this asset is no longer in use before proceeding.": "此操作无法撤销。删除此资产将永久从您的帐户中删除它，并可能导致任何引用它的项目或部署出现问题。请确保在继续之前不再使用此资产。",
   "Name": "名称",
   "Give your asset name": "给您的资产命名",
   "Update Asset": "更新资产",

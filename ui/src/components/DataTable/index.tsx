@@ -228,7 +228,7 @@ function DataTable<TData, TValue>({
             </DropdownMenu>
           )}
         </div>
-        <div className="rounded-md border">
+        <div className="overflow-auto rounded-md border">
           <div
             ref={parentRef}
             className="h-full overflow-auto rounded-md border">

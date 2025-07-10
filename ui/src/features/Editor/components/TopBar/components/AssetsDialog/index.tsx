@@ -13,6 +13,7 @@ import {
   DialogTitle,
   Button,
   IconButton,
+  Pagination,
 } from "@flow/components";
 import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
 import { useT } from "@flow/lib/i18n";
@@ -61,7 +62,7 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
 
   return (
     <Dialog open={true} onOpenChange={onDialogClose}>
-      <DialogContent className=" max-h-[800px] w-full max-w-4xl overflow-hidden">
+      <DialogContent className="max-h-[800px] w-full max-w-4xl overflow-hidden">
         <DialogTitle className="flex items-center font-thin">
           <HardDriveIcon size={24} className="mr-2 inline-block font-thin" />
           {t("Assets")}
@@ -98,19 +99,16 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
             </div>
           </div>
 
-          <DialogContentSection className="flex max-h-[500px] flex-col overflow-hidden">
+          <DialogContentSection className="flex h-[500px] flex-col overflow-hidden">
             {layoutView === "grid" ? (
               <AssetsGridView
                 assets={assets}
                 isFetching={isFetching}
-                currentPage={currentPage}
-                totalPages={totalPages}
                 sortOptions={sortOptions}
                 currentSortValue={currentSortValue}
                 searchTerm={searchTerm}
                 setAssetToBeDeleted={setAssetToBeDeleted}
                 setAssetToBeEdited={setAssetToBeEdited}
-                setCurrentPage={setCurrentPage}
                 setSearchTerm={setSearchTerm}
                 onSortChange={handleSortChange}
                 onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
@@ -133,6 +131,15 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
                 onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
                 onAssetDownload={handleAssetDownload}
               />
+            )}
+            {assets && assets.length > 0 && (
+              <div className="mb-3">
+                <Pagination
+                  currentPage={currentPage}
+                  setCurrentPage={setCurrentPage}
+                  totalPages={totalPages}
+                />
+              </div>
             )}
           </DialogContentSection>
         </DialogContentWrapper>

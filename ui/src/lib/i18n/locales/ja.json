@@ -147,7 +147,7 @@
   "Download Asset": "アセットをダウンロード",
   "Delete Asset": "アセットを削除",
   "Are you absolutely sure?": "本当によろしいですか？",
-  "This action cannot be undone. This will permanently delete your asset. Deletion of an asset could cause issues projects or deployments that are referencing this asset.": "この操作は元に戻すことができません。この操作はアセットを完全に削除します。アセットの削除は、このアセットを参照しているプロジェクトやデプロイメントに問題を引き起こす可能性があります。",
+  "This action cannot be undone. Deleting this asset will permanently remove it from your account and may cause issues with any projects or deployments that reference it. Please ensure this asset is no longer in use before proceeding.": "この操作は元に戻すことができません。このアセットを削除すると、アカウントから完全に削除され、参照しているプロジェクトやデプロイメントに問題が発生する可能性があります。続行する前に、このアセットが使用されていないことを確認してください。",
   "Name": "名前",
   "Give your asset name": "アセット名を入力",
   "Update Asset": "アセットを更新",

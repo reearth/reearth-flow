@@ -19,7 +19,7 @@ export enum AssetQueryKeys {
   GetAssets = "getAssets",
 }
 
-export const ASSET_FETCH_RATE = 15;
+export const ASSET_FETCH_RATE = 30;
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
