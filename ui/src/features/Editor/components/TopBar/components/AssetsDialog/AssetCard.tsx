@@ -3,6 +3,7 @@ import {
   DotsThreeVerticalIcon,
   DownloadIcon,
   FileIcon,
+  PencilIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
 import { useState } from "react";
@@ -30,6 +31,7 @@ type Props = {
     asset: Asset,
   ) => void;
   setAssetToBeDeleted: (asset: string | undefined) => void;
+  setAssetToBeEdited: (asset: Asset | undefined) => void;
 };
 
 const AssetCard: React.FC<Props> = ({
@@ -37,6 +39,7 @@ const AssetCard: React.FC<Props> = ({
   onCopyUrlToClipBoard,
   onAssetDownload,
   setAssetToBeDeleted,
+  setAssetToBeEdited,
 }) => {
   const t = useT();
   const [persistOverlay, setPersistOverlay] = useState(false);
@@ -48,7 +51,7 @@ const AssetCard: React.FC<Props> = ({
       className="group relative cursor-pointer border-transparent bg-secondary hover:border-border"
       key={id}>
       <CardContent className="relative flex h-[80px] items-center justify-center p-0">
-        <FileIcon className="absolute group:hover:opacity-90 size-[80px]  translate-x-24 opacity-50" />
+        <FileIcon className="group:hover:opacity-90 absolute size-[80px]  translate-x-24 opacity-50" />
       </CardContent>
       <CardHeader className="px-2 py-1">
         <CardTitle className="truncate dark:font-extralight">{name}</CardTitle>
@@ -73,6 +76,14 @@ const AssetCard: React.FC<Props> = ({
             <DropdownMenuContent
               align="end"
               onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem
+                className="justify-between gap-2 text-warning"
+                disabled={!url}
+                onClick={() => setAssetToBeEdited(asset)}>
+                {t("Edit Asset")}
+                <PencilIcon weight="light" />
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="justify-between gap-2"
                 disabled={!url}

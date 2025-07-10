@@ -12,7 +12,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const t = useT();
   const { toast } = useToast();
-  const { useGetAssets, createAsset, removeAsset } = useAsset();
+  const { useGetAssets, createAsset, updateAsset, deleteAsset } = useAsset();
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [currentOrderBy, setCurrentOrderBy] = useState<AssetOrderBy>(
     AssetOrderBy.CreatedAt,
@@ -28,9 +28,14 @@ export default ({ workspaceId }: { workspaceId: string }) => {
       refetch();
     },
   });
+
+  const [assetToBeEdited, setAssetToBeEdited] = useState<Asset | undefined>(
+    undefined,
+  );
   const [assetToBeDeleted, setAssetToBeDeleted] = useState<string | undefined>(
     undefined,
   );
+
   const [layoutView, setLayoutView] = useState<"grid" | "list">("grid");
 
   const { page, refetch, isFetching } = useGetAssets(workspaceId, searchTerm, {
@@ -100,9 +105,23 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     [createAsset, workspaceId],
   );
 
+  const handleAssetUpdate = useCallback(
+    async (updatedName: string) => {
+      if (!assetToBeEdited) return;
+
+      await updateAsset({
+        assetId: assetToBeEdited.id,
+        name: updatedName,
+      });
+
+      setAssetToBeEdited(undefined);
+    },
+    [assetToBeEdited, updateAsset],
+  );
+
   const handleAssetDelete = async (id: string) => {
     setAssetToBeDeleted(undefined);
-    await removeAsset({ assetId: id });
+    await deleteAsset({ assetId: id });
   };
 
   const handleSortChange = useCallback((newSortValue: string) => {
@@ -164,6 +183,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     isFetching,
     fileInputRef,
     assetToBeDeleted,
+    assetToBeEdited,
     currentPage,
     totalPages,
     currentSortValue,
@@ -171,10 +191,12 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     searchTerm,
     layoutView,
     setAssetToBeDeleted,
+    setAssetToBeEdited,
     setCurrentPage,
     setSearchTerm,
     handleAssetUploadClick,
     handleAssetCreate,
+    handleAssetUpdate,
     handleAssetDelete,
     handleSortChange,
     handleGridView,

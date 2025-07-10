@@ -15,9 +15,9 @@ const AssetDeletionDialog: React.FC<Props> = ({
   const t = useT();
   return (
     <ConfirmationDialog
-      title={t("Are you sure you want to delete this asset?")}
+      title={t("Are you absolutely sure?")}
       description={t(
-        "This action cannot be undone. The asset will be permanently deleted. Warning: If this asset is being used in any projects or deployments, deleting it may cause those to malfunction.",
+        "This action cannot be undone. This will permanently delete your asset. Deletion of an asset could cause issues projects or deployments that are referencing this asset.",
       )}
       isOpen={!!assetToBeDeleted}
       confirmDisabled={!assetToBeDeleted}

@@ -4,6 +4,7 @@ import {
   type JobFragment,
   type JobStatus as GraphqlJobStatus,
   type NodeStatus as GraphqlNodeStatus,
+  type ArchiveExtractionStatus as GraphqlArchiveExtractionStatus,
   type TriggerFragment,
   type LogFragment,
   type ProjectDocumentFragment,
@@ -32,6 +33,7 @@ import type {
   Member,
   Asset,
   ProjectSnapshot,
+  ArchiveExtractionStatus,
 } from "@flow/types";
 import { formatDate, formatFileSize } from "@flow/utils";
 
@@ -147,12 +149,19 @@ export const toProjectSnapShot = (
 
 export const toAsset = (asset: AssetFragment): Asset => ({
   id: asset.id,
-  name: asset.name,
   workspaceId: asset.workspaceId,
   createdAt: formatDate(asset.createdAt),
-  contentType: asset.contentType,
+  fileName: asset.fileName,
   size: formatFileSize(asset.size),
+  contentType: asset.contentType,
+  name: asset.name,
   url: asset.url,
+  uuid: asset.uuid,
+  flatFiles: asset.flatFiles,
+  public: asset.public,
+  archiveExtractionStatus: asset.archiveExtractionStatus
+    ? toArchiveExtractionStatus(asset.archiveExtractionStatus)
+    : "pending",
 });
 
 export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
@@ -279,5 +288,23 @@ export const toGqlParameterType = (
     //   return ParameterType.WebConnection;
     default:
       return undefined;
+  }
+};
+
+export const toArchiveExtractionStatus = (
+  status: GraphqlArchiveExtractionStatus,
+): ArchiveExtractionStatus => {
+  switch (status) {
+    case "DONE":
+      return "done";
+    case "FAILED":
+      return "failed";
+    case "IN_PROGRESS":
+      return "in_progress";
+    case "SKIPPED":
+      return "skipped";
+    case "PENDING":
+    default:
+      return "pending";
   }
 };

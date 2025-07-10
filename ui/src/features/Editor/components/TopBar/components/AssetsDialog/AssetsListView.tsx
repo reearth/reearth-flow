@@ -1,4 +1,9 @@
-import { CopyIcon, DownloadIcon, TrashIcon } from "@phosphor-icons/react";
+import {
+  CopyIcon,
+  DownloadIcon,
+  PencilIcon,
+  TrashIcon,
+} from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 
 import { IconButton } from "@flow/components";
@@ -17,6 +22,7 @@ type Props = {
   searchTerm?: string;
   setCurrentPage?: (page: number) => void;
   setAssetToBeDeleted: (asset: string | undefined) => void;
+  setAssetToBeEdited: (asset: Asset | undefined) => void;
   setSearchTerm: (term: string) => void;
   onSortChange: (value: string) => void;
   onCopyUrlToClipBoard: (url: string) => void;
@@ -34,6 +40,7 @@ const AssetsListView: React.FC<Props> = ({
   searchTerm,
   setCurrentPage,
   setAssetToBeDeleted,
+  setAssetToBeEdited,
   setSearchTerm,
   onSortChange,
   onCopyUrlToClipBoard,
@@ -64,6 +71,10 @@ const AssetsListView: React.FC<Props> = ({
       header: t("Quick Actions"),
       cell: (row) => (
         <div className="flex gap-1">
+          <IconButton
+            icon={<PencilIcon />}
+            onClick={() => setAssetToBeEdited(row.row.original)}
+          />
           <IconButton
             icon={<CopyIcon />}
             onClick={(e) => {

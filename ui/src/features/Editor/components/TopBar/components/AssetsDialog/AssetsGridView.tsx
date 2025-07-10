@@ -24,6 +24,7 @@ type Props = {
   currentSortValue: string;
   searchTerm?: string;
   setAssetToBeDeleted: (asset: string | undefined) => void;
+  setAssetToBeEdited: (asset: Asset | undefined) => void;
   setCurrentPage?: (page: number) => void;
   setSearchTerm: (term: string) => void;
   onSortChange: (value: string) => void;
@@ -42,6 +43,7 @@ const AssetsGridView: React.FC<Props> = ({
   currentSortValue,
   searchTerm,
   setAssetToBeDeleted,
+  setAssetToBeEdited,
   setCurrentPage,
   setSearchTerm,
   onSortChange,
@@ -83,6 +85,7 @@ const AssetsGridView: React.FC<Props> = ({
               onCopyUrlToClipBoard={onCopyUrlToClipBoard}
               onAssetDownload={onAssetDownload}
               setAssetToBeDeleted={setAssetToBeDeleted}
+              setAssetToBeEdited={setAssetToBeEdited}
             />
           ))}
         </div>

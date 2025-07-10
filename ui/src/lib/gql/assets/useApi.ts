@@ -1,15 +1,23 @@
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
-import { Asset, CreateAsset, RemoveAsset } from "@flow/types";
+import { Asset, CreateAsset, DeleteAsset, UpdateAsset } from "@flow/types";
 import type { PaginationOptions } from "@flow/types/paginationOptions";
 
-import { CreateAssetInput, RemoveAssetInput } from "../__gen__/graphql";
+import {
+  CreateAssetInput,
+  UpdateAssetInput,
+  DeleteAssetInput,
+} from "../__gen__/graphql";
 
 import { useQueries } from "./useQueries";
 
 export const useAsset = () => {
-  const { useGetAssetsQuery, createAssetMutation, removeAssetMutation } =
-    useQueries();
+  const {
+    useGetAssetsQuery,
+    createAssetMutation,
+    updateAssetMutation,
+    deleteAssetMutation,
+  } = useQueries();
   const { toast } = useToast();
   const t = useT();
   const useGetAssets = (
@@ -47,10 +55,29 @@ export const useAsset = () => {
     }
   };
 
-  const removeAsset = async (
-    assetId: RemoveAssetInput,
-  ): Promise<RemoveAsset> => {
-    const { mutateAsync, ...rest } = removeAssetMutation;
+  const updateAsset = async (input: UpdateAssetInput): Promise<UpdateAsset> => {
+    const { mutateAsync, ...rest } = updateAssetMutation;
+    try {
+      const asset: Asset | undefined = await mutateAsync(input);
+      toast({
+        title: t("Asset Updated"),
+        description: t("Asset has been successfully updated."),
+      });
+      return { asset, ...rest };
+    } catch (_err) {
+      toast({
+        title: t("Asset Could Not Be Updated"),
+        description: t("There was an error when updating the asset."),
+        variant: "destructive",
+      });
+      return { asset: undefined, ...rest };
+    }
+  };
+
+  const deleteAsset = async (
+    assetId: DeleteAssetInput,
+  ): Promise<DeleteAsset> => {
+    const { mutateAsync, ...rest } = deleteAssetMutation;
     try {
       const data = await mutateAsync(assetId);
       toast({
@@ -73,6 +100,7 @@ export const useAsset = () => {
   return {
     useGetAssets,
     createAsset,
-    removeAsset,
+    updateAsset,
+    deleteAsset,
   };
 };

@@ -7,7 +7,11 @@ import {
 } from "@flow/types/paginationOptions";
 import { isDefined } from "@flow/utils";
 
-import { CreateAssetInput, RemoveAssetInput } from "../__gen__/graphql";
+import {
+  CreateAssetInput,
+  UpdateAssetInput,
+  DeleteAssetInput,
+} from "../__gen__/graphql";
 import { toAsset } from "../convert";
 import { useGraphQLContext } from "../provider";
 
@@ -72,27 +76,43 @@ export const useQueries = () => {
     },
   });
 
-  const removeAssetMutation = useMutation({
-    mutationFn: async (input: RemoveAssetInput) => {
-      const data = await graphQLContext?.RemoveAsset({
+  const updateAssetMutation = useMutation({
+    mutationFn: async (input: UpdateAssetInput) => {
+      const data = await graphQLContext?.UpdateAsset({
+        input,
+      });
+
+      if (data?.updateAsset?.asset) {
+        return toAsset(data.updateAsset.asset);
+      }
+    },
+    onSuccess: (variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [AssetQueryKeys.GetAssets, variables?.workspaceId],
+      });
+    },
+  });
+
+  const deleteAssetMutation = useMutation({
+    mutationFn: async (input: DeleteAssetInput) => {
+      const data = await graphQLContext?.DeleteAsset({
         input,
       });
 
       return {
-        assetId: data?.removeAsset?.assetId,
+        assetId: data?.deleteAsset?.assetId,
       };
     },
 
-    onSuccess: (asset) => {
-      queryClient.invalidateQueries({
-        queryKey: [AssetQueryKeys.GetAssets, asset.assetId],
-      });
+    onSuccess: () => {
+      queryClient.invalidateQueries();
     },
   });
 
   return {
     useGetAssetsQuery,
     createAssetMutation,
-    removeAssetMutation,
+    updateAssetMutation,
+    deleteAssetMutation,
   };
 };

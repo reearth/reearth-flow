@@ -6,20 +6,36 @@ export enum AssetOrderBy {
   Size = "size",
 }
 
+export type ArchiveExtractionStatus =
+  | "skipped"
+  | "pending"
+  | "in_progress"
+  | "done"
+  | "failed";
+
 export type Asset = {
   id: string;
-  name: string;
   workspaceId: string;
   createdAt: string;
-  contentType: string;
+  fileName: string;
   size: string;
+  contentType: string;
+  name: string;
   url: string;
+  uuid: string;
+  flatFiles: boolean;
+  public: boolean;
+  archiveExtractionStatus: ArchiveExtractionStatus;
 };
 
 export type CreateAsset = {
   asset?: Asset;
 } & ApiResponse;
 
-export type RemoveAsset = {
+export type UpdateAsset = {
+  asset?: Asset;
+} & ApiResponse;
+
+export type DeleteAsset = {
   assetId?: string;
 } & ApiResponse;

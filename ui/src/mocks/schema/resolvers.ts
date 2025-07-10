@@ -845,16 +845,37 @@ export const resolvers = {
       // Mock asset creation
       const newAsset: MockAsset = {
         id: generateId("asset"),
-        name: "uploaded-file.png",
+        name: "New Asset",
         contentType: "image/png",
+        fileName: "asset-1.png",
         size: 1024,
         url: "https://assets.reearth.io/asset-1.png",
         workspaceId: args.input.workspaceId,
         createdAt: new Date().toISOString(),
+        uuid: "uuid-1",
+        flatFiles: false,
+        public: true,
       };
 
       assets.push(newAsset);
       return { asset: newAsset };
+    },
+
+    updateAsset: (_: any, args: { input: any }) => {
+      const { input } = args;
+      const assetIndex = assets.findIndex((a) => a.id === input.assetId);
+
+      if (assetIndex === -1) {
+        throw new Error("Asset not found");
+      }
+
+      const updatedAsset = {
+        ...assets[assetIndex],
+        name: input.name,
+      };
+
+      assets[assetIndex] = updatedAsset;
+      return { asset: updatedAsset };
     },
 
     deleteAsset: (_: any, args: { input: { assetId: string } }) => {

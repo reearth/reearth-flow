@@ -19,6 +19,7 @@ import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 
 import { AssetDeletionDialog } from "./AssetDeletionDialog";
+import { AssetEditDialog } from "./AssetEditDialog";
 import { AssetsGridView } from "./AssetsGridView";
 import { AssetsListView } from "./AssetsListView";
 import useHooks from "./hooks";
@@ -36,6 +37,7 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
     isFetching,
     fileInputRef,
     assetToBeDeleted,
+    assetToBeEdited,
     currentPage,
     totalPages,
     currentSortValue,
@@ -43,10 +45,12 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
     searchTerm,
     layoutView,
     setAssetToBeDeleted,
+    setAssetToBeEdited,
     setCurrentPage,
     setSearchTerm,
     handleAssetUploadClick,
     handleAssetCreate,
+    handleAssetUpdate,
     handleAssetDelete,
     handleSortChange,
     handleGridView,
@@ -105,6 +109,7 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
                 currentSortValue={currentSortValue}
                 searchTerm={searchTerm}
                 setAssetToBeDeleted={setAssetToBeDeleted}
+                setAssetToBeEdited={setAssetToBeEdited}
                 setCurrentPage={setCurrentPage}
                 setSearchTerm={setSearchTerm}
                 onSortChange={handleSortChange}
@@ -121,6 +126,7 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
                 currentSortValue={currentSortValue}
                 searchTerm={searchTerm}
                 setAssetToBeDeleted={setAssetToBeDeleted}
+                setAssetToBeEdited={setAssetToBeEdited}
                 setCurrentPage={setCurrentPage}
                 setSearchTerm={setSearchTerm}
                 onSortChange={handleSortChange}
@@ -136,6 +142,13 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
         setAssetToBeDeleted={setAssetToBeDeleted}
         onDeleteAsset={handleAssetDelete}
       />
+      {assetToBeEdited && (
+        <AssetEditDialog
+          assetToBeEdited={assetToBeEdited}
+          setAssetToBeEdited={setAssetToBeEdited}
+          onUpdateAsset={handleAssetUpdate}
+        />
+      )}
       <input
         type="file"
         accept={ALLOWED_ASSET_IMPORT_EXTENSIONS}

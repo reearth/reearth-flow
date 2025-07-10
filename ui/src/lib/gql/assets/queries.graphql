@@ -28,8 +28,16 @@ mutation CreateAsset($input: CreateAssetInput!) {
   }
 }
 
-mutation RemoveAsset($input: RemoveAssetInput!) {
-  removeAsset(input: $input) {
+mutation UpdateAsset($input: UpdateAssetInput!) {
+  updateAsset(input: $input) {
+    asset {
+      ...Asset
+    }
+  }
+}
+
+mutation DeleteAsset($input: DeleteAssetInput!) {
+  deleteAsset(input: $input) {
     assetId
   }
 }
