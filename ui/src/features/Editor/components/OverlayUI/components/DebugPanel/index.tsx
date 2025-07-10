@@ -78,7 +78,7 @@ const DebugPanel: React.FC = () => {
     <div
       className={`absolute ${fullscreenDebug ? "bottom-0 left-0" : "bottom-4 left-4 "}  z-30 flex items-end`}>
       <Tabs
-        className={`pointer-events-auto w-[95vw] overflow-hidden rounded-md bg-secondary shadow-md shadow-secondary transition-all ${minimized ? "h-[38px]" : fullscreenDebug ? "h-[100vh] w-[100vw]" : expanded ? "h-[80vh]" : "h-[500px]"}`}
+        className={`pointer-events-auto w-[95vw] rounded-md bg-secondary shadow-md shadow-secondary transition-all ${minimized ? "h-[38px]" : fullscreenDebug ? "h-[100vh] w-[100vw]" : expanded ? "h-[80vh]" : "h-[500px]"}`}
         value={tabValue}
         defaultValue="debug-logs"
         onDoubleClick={handleExpand}
@@ -114,7 +114,7 @@ const DebugPanel: React.FC = () => {
           <div className="flex items-center gap-2 p-1">
             {!fullscreenDebug && (
               <div
-                className="cursor-pointer rounded p-1 hover:bg-primary"
+                className=" rounded p-1 hover:bg-primary"
                 onClick={handleMinimize}>
                 {minimized ? (
                   <CaretUpIcon weight="light" />

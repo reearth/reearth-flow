@@ -43,7 +43,7 @@ const DebugPreview: React.FC<Props> = ({
   const t = useT();
 
   return debugJobState && dataURLs ? (
-    <Tabs className={`h-full w-full p-1`} defaultValue="2d-viewer">
+    <Tabs className="h-full w-full p-1" defaultValue="2d-viewer">
       <div className="p-1">
         <TabsList className="flex w-full justify-between p-1">
           <div className="flex gap-2">
