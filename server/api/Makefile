@@ -1,5 +1,6 @@
 lint:
-	golangci-lint run --fix
+	# Temporary workaround until golangci-lint supports Go 1.24
+	./lint-wrapper.sh
 
 test:
 	go test -race -short -v ./...
@@ -29,5 +30,3 @@ all: gen-thrift
 gen-thrift:
 	@echo "Generating Thrift code..."
 	@thrift -r --gen go:package_prefix=github.com/reearth/reearth-flow/api/ -out . thrift/document.thrift
-
-

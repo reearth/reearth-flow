@@ -165,7 +165,7 @@ func (f *fileRepo) UploadAsset(ctx context.Context, file *file.File) (*url.URL, 
 	return getFileURL(f.assetUrlBase, filename), size, nil
 }
 
-func (f *fileRepo) RemoveAsset(ctx context.Context, u *url.URL) error {
+func (f *fileRepo) DeleteAsset(ctx context.Context, u *url.URL) error {
 	if u == nil {
 		return nil
 	}
@@ -290,7 +290,14 @@ func (f *fileRepo) validateURL(u *url.URL, base *url.URL) bool {
 	if u == nil || base == nil {
 		return false
 	}
+
+	// Handle the case where base path is empty (e.g., https://example.com)
+	basePath := base.Path
+	if basePath == "" {
+		basePath = "/"
+	}
+
 	return u.Scheme == base.Scheme &&
 		u.Host == base.Host &&
-		path.Dir(u.Path) == base.Path
+		path.Dir(u.Path) == basePath
 }

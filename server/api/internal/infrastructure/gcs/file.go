@@ -93,7 +93,7 @@ func (f *fileRepo) UploadAsset(ctx context.Context, file *file.File) (*url.URL, 
 	return u, s, nil
 }
 
-func (f *fileRepo) RemoveAsset(ctx context.Context, u *url.URL) error {
+func (f *fileRepo) DeleteAsset(ctx context.Context, u *url.URL) error {
 	log.Infofc(ctx, "gcs: asset deleted: %s", u)
 
 	sn := getGCSObjectNameFromURL(f.base, u, gcsAssetBasePath)
