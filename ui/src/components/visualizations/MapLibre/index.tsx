@@ -14,7 +14,6 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { GeoJsonDataSource } from "./sources";
 
 type Props = {
-  className?: string;
   fileContent: any | null;
   fileType: SupportedDataTypes | null;
 };
@@ -25,7 +24,7 @@ type MapSidePanelProps = {
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
 };
 
-const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
+const MapLibre: React.FC<Props> = ({ fileContent, fileType }) => {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<any>(null);
 
@@ -69,36 +68,33 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
   }, [selectedFeature]);
 
   return (
-    <div className={`relative size-full ${className}`}>
-      <Map
-        ref={(instance) => {
-          if (instance) mapRef.current = instance.getMap();
-        }}
-        mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
-        style={{ width: "100%", height: "100%" }}
-        maplibreLogo={true}
-        interactiveLayerIds={["polygon-layer", "line-layer"]}
-        onClick={(e) => {
-          setSelectedFeature(e.features?.[0]);
-        }}
-        onLoad={handleMapLoad}>
-        {fileType === "geojson" && (
-          <GeoJsonDataSource
-            fileType={fileType}
-            fileContent={fileContent}
-            onSelectedFeature={setSelectedFeature}
-          />
-        )}
-        {/* <FullscreenControl position="top-right" /> */}
-        {selectedFeature && (
-          <MapSidePanel
-            selectedFeature={selectedFeature}
-            setSelectedFeature={setSelectedFeature}
-            onFlyToSelectedFeature={handleFlyToSelectedFeature}
-          />
-        )}
-      </Map>
-    </div>
+    <Map
+      ref={(instance) => {
+        if (instance) mapRef.current = instance.getMap();
+      }}
+      mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+      style={{ width: "100%", height: "100%" }}
+      maplibreLogo={true}
+      interactiveLayerIds={["polygon-layer", "line-layer"]}
+      onClick={(e) => {
+        setSelectedFeature(e.features?.[0]);
+      }}
+      onLoad={handleMapLoad}>
+      {fileType === "geojson" && (
+        <GeoJsonDataSource
+          fileType={fileType}
+          fileContent={fileContent}
+          onSelectedFeature={setSelectedFeature}
+        />
+      )}
+      {selectedFeature && (
+        <MapSidePanel
+          selectedFeature={selectedFeature}
+          setSelectedFeature={setSelectedFeature}
+          onFlyToSelectedFeature={handleFlyToSelectedFeature}
+        />
+      )}
+    </Map>
   );
 };
 

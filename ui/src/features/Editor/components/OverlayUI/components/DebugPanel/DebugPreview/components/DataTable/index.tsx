@@ -20,8 +20,8 @@ const DataTable: React.FC<Props> = ({ fileContent, fileType }) => {
         "Table Viewer Could Not Be Loaded. Check if the data is valid.",
       )}
       textSize="sm">
-      <div className="box-border flex h-full flex-1">
-        <div className="mx-1 mt-0 mb-1 box-border flex-1 overflow-scroll p-1">
+      <div className="flex h-full flex-1">
+        <div className="mx-1 mt-0 mb-1 box-border overflow-scroll p-1">
           <Table
             columns={tableColumns}
             data={tableData}

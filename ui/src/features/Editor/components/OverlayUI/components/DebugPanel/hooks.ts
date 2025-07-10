@@ -17,6 +17,7 @@ export default () => {
   const t = useT();
 
   const prevIntermediateDataUrls = useRef<string[] | undefined>(undefined);
+  const [fullscreenDebug, setFullscreenDebug] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [minimized, setMinimized] = useState(false);
 
@@ -191,10 +192,14 @@ export default () => {
     }
   };
 
+  const handleFullscreenExpand = () => {
+    setFullscreenDebug((prev) => !prev);
+  };
   return {
     debugJobId,
     debugJobState,
     fileType,
+    fullscreenDebug,
     expanded,
     minimized,
     showTempPossibleIssuesDialog,
@@ -202,6 +207,7 @@ export default () => {
     dataURLs,
     selectedOutputData,
     isLoadingData,
+    handleFullscreenExpand,
     handleExpand,
     handleMinimize,
     handleTabChange,

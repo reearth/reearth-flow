@@ -43,28 +43,20 @@ const DebugPreview: React.FC<Props> = ({
   const t = useT();
 
   return debugJobState && dataURLs ? (
-    <Tabs
-      className={`pointer-events-auto h-full w-full rounded-md bg-secondary p-1 shadow-md shadow-secondary transition-all`}
-      defaultValue="2d-viewer">
-      <div className="relative flex items-center">
-        <div className="flex w-full items-center p-1">
-          <TabsList className="flex w-full justify-between">
-            <div className="flex gap-2">
-              <TabsTrigger className="gap-1 bg-card" value="2d-viewer">
-                <MapPinAreaIcon />
-                <p className="text-sm font-thin select-none">
-                  {t("2D Viewer")}
-                </p>
-              </TabsTrigger>
-              <TabsTrigger className="gap-1 bg-card" value="3d-viewer">
-                <GlobeIcon />
-                <p className="text-sm font-thin select-none">
-                  {t("3D Viewer")}
-                </p>
-              </TabsTrigger>
-            </div>
-          </TabsList>
-        </div>
+    <Tabs className={`h-full w-full p-1`} defaultValue="2d-viewer">
+      <div className="p-1">
+        <TabsList className="flex w-full justify-between p-1">
+          <div className="flex gap-2">
+            <TabsTrigger className="gap-1 bg-card" value="2d-viewer">
+              <MapPinAreaIcon />
+              <p className="text-sm font-thin select-none">{t("2D Viewer")}</p>
+            </TabsTrigger>
+            <TabsTrigger className="gap-1 bg-card" value="3d-viewer">
+              <GlobeIcon />
+              <p className="text-sm font-thin select-none">{t("3D Viewer")}</p>
+            </TabsTrigger>
+          </div>
+        </TabsList>
       </div>
       {isLoadingData ? (
         <LoadingSkeleton />

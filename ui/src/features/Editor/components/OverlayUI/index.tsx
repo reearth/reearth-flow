@@ -56,15 +56,10 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   children: canvas,
 }) => {
   const [showLayoutOptions, setShowLayoutOptions] = useState(false);
-  const [fullscreenDebug, setFullscreenDebug] = useState(false);
 
   const handleLayoutOptionsToggle = useCallback(() => {
     setShowLayoutOptions((prev) => !prev);
   }, []);
-
-  const handleFullscreenExpand = () => {
-    setFullscreenDebug((prev) => !prev);
-  };
 
   return (
     <>
@@ -92,13 +87,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           </div>
         </div>
         <div id="right-top" className="absolute top-4 right-4" />
-        <div
-          className={`pointer-events-none absolute inset-y-2 ${fullscreenDebug ? "bottom-0 left-0" : "bottom-4 left-4 "}   z-30 flex items-end`}>
-          <DebugPanel
-            fullscreenDebug={fullscreenDebug}
-            onFullScreenExpand={handleFullscreenExpand}
-          />
-        </div>
+        <DebugPanel />
         <div className="pointer-events-none absolute right-4 bottom-4 flex flex-row-reverse items-end gap-4">
           <CanvasActionBar />
         </div>
