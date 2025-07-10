@@ -4,6 +4,7 @@ import (
 	"github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/util"
 	"github.com/samber/lo"
+	"golang.org/x/text/language"
 )
 
 func ToUser(u *user.User) *User {
@@ -40,11 +41,16 @@ func ToMe(u *user.User) *Me {
 		return nil
 	}
 
+	lang := language.English // Default language
+	if u.Metadata() != nil {
+		lang = u.Metadata().Lang()
+	}
+
 	return &Me{
 		ID:            IDFrom(u.ID()),
 		Name:          u.Name(),
 		Email:         u.Email(),
-		Lang:          u.Lang(),
+		Lang:          lang,
 		MyWorkspaceID: IDFrom(u.Workspace()),
 		Auths: util.Map(u.Auths(), func(a user.Auth) string {
 			return a.Provider

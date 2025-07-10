@@ -10,13 +10,18 @@ func ToAsset(a *asset.Asset) *Asset {
 	}
 
 	return &Asset{
-		ID:          IDFrom(a.ID()),
-		CreatedAt:   a.CreatedAt(),
-		WorkspaceID: IDFrom(a.Workspace()),
-		Name:        a.Name(),
-		Size:        a.Size(),
-		URL:         a.URL(),
-		ContentType: a.ContentType(),
+		ID:                      IDFrom(a.ID()),
+		WorkspaceID:             IDFrom(a.Workspace()),
+		CreatedAt:               a.CreatedAt(),
+		FileName:                a.FileName(),
+		Size:                    int64(a.Size()),
+		ContentType:             a.ContentType(),
+		Name:                    a.Name(),
+		URL:                     a.URL(),
+		UUID:                    a.UUID(),
+		FlatFiles:               a.FlatFiles(),
+		Public:                  a.Public(),
+		ArchiveExtractionStatus: ToArchiveExtractionStatus(a.ArchiveExtractionStatus()),
 	}
 }
 
@@ -25,13 +30,39 @@ func AssetSortTypeFrom(ast *AssetSortType) *asset.SortType {
 		return nil
 	}
 
+	var result asset.SortType
 	switch *ast {
 	case AssetSortTypeDate:
-		return &asset.SortTypeID
+		result = asset.SortTypeID
 	case AssetSortTypeName:
-		return &asset.SortTypeName
+		result = asset.SortTypeNAME
 	case AssetSortTypeSize:
-		return &asset.SortTypeSize
+		result = asset.SortTypeSIZE
+	default:
+		result = asset.SortTypeID
 	}
-	return &asset.SortTypeID
+	return &result
+}
+
+func ToArchiveExtractionStatus(s *asset.ArchiveExtractionStatus) *ArchiveExtractionStatus {
+	if s == nil {
+		return nil
+	}
+
+	var result ArchiveExtractionStatus
+	switch *s {
+	case asset.ArchiveExtractionStatusSkipped:
+		result = ArchiveExtractionStatusSkipped
+	case asset.ArchiveExtractionStatusPending:
+		result = ArchiveExtractionStatusPending
+	case asset.ArchiveExtractionStatusInProgress:
+		result = ArchiveExtractionStatusInProgress
+	case asset.ArchiveExtractionStatusDone:
+		result = ArchiveExtractionStatusDone
+	case asset.ArchiveExtractionStatusFailed:
+		result = ArchiveExtractionStatusFailed
+	default:
+		result = ArchiveExtractionStatusSkipped
+	}
+	return &result
 }

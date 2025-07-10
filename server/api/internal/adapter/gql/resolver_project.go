@@ -7,10 +7,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 )
 
-func (r *Resolver) Project() ProjectResolver {
-	return &projectResolver{r}
-}
-
 type projectResolver struct{ *Resolver }
 
 func (r *projectResolver) Deployment(ctx context.Context, obj *gqlmodel.Project) (*gqlmodel.Deployment, error) {
