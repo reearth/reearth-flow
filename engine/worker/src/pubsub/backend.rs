@@ -17,7 +17,6 @@ impl PubSubBackendError {
     }
 }
 
-#[derive(Clone)]
 pub(crate) enum PubSubBackend {
     Google(google::CloudPubSub),
     Noop(noop::NoopPubSub),

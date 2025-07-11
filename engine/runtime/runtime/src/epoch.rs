@@ -1,6 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use chrono::{DateTime, NaiveDateTime};
+use chrono::DateTime;
 
 #[derive(Clone, Debug)]
 pub struct EpochCommonInfo {
@@ -29,9 +29,7 @@ impl SourceTime {
     pub fn from_chrono<Tz: chrono::TimeZone>(date: &DateTime<Tz>, accuracy: u64) -> Self {
         Self {
             millis_since_epoch: date
-                .naive_utc()
-                .signed_duration_since(NaiveDateTime::UNIX_EPOCH)
-                .num_milliseconds()
+                .timestamp_millis()
                 .try_into()
                 .expect("Only source times after 1970-01-01 00:00 are supported"),
             accuracy,
