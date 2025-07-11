@@ -11,6 +11,7 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -51,7 +52,7 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        None
+        Some(schemars::schema_for!(BuildingUsageAttributeValidatorParam))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -170,7 +171,7 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct BuildingUsageAttributeValidatorParam {
     codelists_path: Option<String>,
