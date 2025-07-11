@@ -601,7 +601,80 @@ Maps attributes
 ### Description
 Bounds Extractor
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BoundsExtractorParam",
+  "type": "object",
+  "properties": {
+    "xmax": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "xmin": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "ymax": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "ymin": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "zmax": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "zmin": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports
@@ -3160,7 +3233,21 @@ Extracts BuildingInstallationGeometryType
 ### Description
 This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BuildingUsageAttributeValidatorParam",
+  "type": "object",
+  "properties": {
+    "codelistsPath": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports
@@ -3265,7 +3352,57 @@ Detect unmatched xlink for PLATEAU
 ### Description
 Extracts attributes from XML fragments based on a schema definition
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "XmlAttributeExtractorParam",
+  "type": "object",
+  "properties": {
+    "addNsprefixToFeatureTypes": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "cityCode": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "exceptFeatureTypes": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      }
+    },
+    "extractDmGeometryAsXmlFragment": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "schemaJson": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "targetPackages": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports
