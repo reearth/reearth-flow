@@ -59,7 +59,7 @@ This is a **DAG-based geospatial workflow execution engine** with the following 
 ### Action System
 Actions are implemented using factory patterns with three traits:
 - `SourceFactory` - Data ingestion (files, databases, synthetic data)
-- `ProcessorFactory` - Data transformation (geometry ops, attribute manipulation)  
+- `ProcessorFactory` - Data transformation (geometry ops, attribute manipulation)
 - `SinkFactory` - Data export (various file formats, 3D tiles, vector tiles)
 
 Each action defines input/output ports, JSON schema for validation, and parameter handling.
@@ -164,3 +164,34 @@ ls <working_dir>/projects/<project>/jobs/<job_id>/action-log/
 ## Git Commit Guidelines
 
 When creating git commits, do not include Claude Code attribution or "Generated with Claude Code" messages in commit messages. Keep commit messages clean and focused on the actual changes made.
+
+## Development Memo
+
+- **Implementation Guideline**: After completing implementation, always run `cargo test`, `cargo make clippy` and `cargo fmt --all`
+- Clippy Reminder: When using clippy, use `cargo make clippy`. Make sure to run it as the last step after completing modifications.
+
+## Runtime Architecture Deep Dive
+
+### Actor Model Implementation
+The engine implements an actor model where each node (source, processor, sink) runs in its own OS thread:
+
+1. **Async Context Separation**:
+   - CLI entry: `cargo run --package reearth-flow-cli -- run`
+   - Runner: `runtime.block_on(orchestrator.run_all(...))`
+   - Orchestrator: `runtime.spawn_blocking(move || run_dag_executor(...))`
+   - Each node spawned with `std::thread::Builder::new().spawn()`
+
+2. **Why This Design**:
+   - **Action simplicity**: Actions can be written synchronously without async complexity
+   - **True parallelism**: Each node runs on its own OS thread
+   - **Isolation**: Blocking operations in one node don't affect others
+   - **Message passing**: Actors communicate via channels (crossbeam)
+
+3. **Tokio's Role**:
+   - **Event system**: Async event handlers for logging, monitoring
+   - **Shutdown coordination**: `tokio::sync::watch` for graceful shutdown
+   - **I/O efficiency**: Async I/O for sources reading files/network
+   - **spawn_blocking management**: Tokio manages the thread pool
+
+## Commit Message Guidelines
+- Keep commit messages concise with just a subject line, without Claude Code attribution or detailed explanations.
