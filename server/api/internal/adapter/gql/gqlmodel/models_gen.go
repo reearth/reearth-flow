@@ -42,8 +42,6 @@ type Asset struct {
 	Name                    string                   `json:"name"`
 	URL                     string                   `json:"url"`
 	UUID                    string                   `json:"uuid"`
-	PreviewType             *PreviewType             `json:"previewType,omitempty"`
-	CoreSupport             bool                     `json:"coreSupport"`
 	FlatFiles               bool                     `json:"flatFiles"`
 	Public                  bool                     `json:"public"`
 	ArchiveExtractionStatus *ArchiveExtractionStatus `json:"archiveExtractionStatus,omitempty"`
