@@ -22,7 +22,7 @@ require (
 	github.com/labstack/echo/v4 v4.13.3
 	github.com/ravilushqa/otelgqlgen v0.17.0
 	github.com/redis/go-redis/v9 v9.2.0
-	github.com/reearth/reearthx v0.0.0-20250111113556-b591434b9280
+	github.com/reearth/reearthx v0.0.0-20241223040908-a4fea80b9c63
 	github.com/samber/lo v1.50.0
 	github.com/spf13/afero v1.14.0
 	github.com/square/mongo-lock v0.0.0-20230808145049-cfcf499f6bf0
