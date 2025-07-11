@@ -4,13 +4,17 @@ import {
   type JobFragment,
   type JobStatus as GraphqlJobStatus,
   type NodeStatus as GraphqlNodeStatus,
+  type ArchiveExtractionStatus as GraphqlArchiveExtractionStatus,
   type TriggerFragment,
   type LogFragment,
   type ProjectDocumentFragment,
   type NodeExecutionFragment,
   type ProjectSnapshotMetadataFragment,
   type ParameterFragment,
+  type AssetFragment,
+  type WorkspaceFragment,
   ParameterType,
+  ProjectSnapshotFragment,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
 import type {
   Log,
@@ -27,11 +31,11 @@ import type {
   AnyProjectVariable,
   Workspace,
   Member,
+  Asset,
   ProjectSnapshot,
+  ArchiveExtractionStatus,
 } from "@flow/types";
-import { formatDate } from "@flow/utils";
-
-import { ProjectSnapshotFragment, WorkspaceFragment } from "./__gen__/graphql";
+import { formatDate, formatFileSize } from "@flow/utils";
 
 export const toProject = (project: ProjectFragment): Project => ({
   id: project.id,
@@ -141,6 +145,23 @@ export const toProjectSnapShot = (
   timestamp: projectSnapshot.timestamp,
   version: projectSnapshot.version,
   updates: projectSnapshot.updates,
+});
+
+export const toAsset = (asset: AssetFragment): Asset => ({
+  id: asset.id,
+  workspaceId: asset.workspaceId,
+  createdAt: formatDate(asset.createdAt),
+  fileName: asset.fileName,
+  size: formatFileSize(asset.size),
+  contentType: asset.contentType,
+  name: asset.name,
+  url: asset.url,
+  uuid: asset.uuid,
+  flatFiles: asset.flatFiles,
+  public: asset.public,
+  archiveExtractionStatus: asset.archiveExtractionStatus
+    ? toArchiveExtractionStatus(asset.archiveExtractionStatus)
+    : "pending",
 });
 
 export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
@@ -267,5 +288,23 @@ export const toGqlParameterType = (
     //   return ParameterType.WebConnection;
     default:
       return undefined;
+  }
+};
+
+export const toArchiveExtractionStatus = (
+  status: GraphqlArchiveExtractionStatus,
+): ArchiveExtractionStatus => {
+  switch (status) {
+    case "DONE":
+      return "done";
+    case "FAILED":
+      return "failed";
+    case "IN_PROGRESS":
+      return "in_progress";
+    case "SKIPPED":
+      return "skipped";
+    case "PENDING":
+    default:
+      return "pending";
   }
 };

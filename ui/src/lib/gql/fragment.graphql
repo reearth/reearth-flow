@@ -94,6 +94,21 @@ fragment Job on Job {
   }
 }
 
+fragment Asset on Asset {
+  id
+  workspaceId
+  createdAt
+  fileName
+  size
+  contentType
+  name
+  url
+  uuid
+  flatFiles
+  public
+  archiveExtractionStatus
+}
+
 fragment ProjectDocument on ProjectDocument {
   id
   timestamp

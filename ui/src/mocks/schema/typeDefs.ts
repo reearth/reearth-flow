@@ -144,15 +144,29 @@ export const typeDefs = `
   }
 
   # Asset Types
+
+  enum ArchiveExtractionStatus {
+    SKIPPED
+    PENDING
+    IN_PROGRESS
+    DONE
+    FAILED
+  }
+
   type Asset implements Node {
-    Workspace: Workspace
-    contentType: String!
-    createdAt: DateTime!
     id: ID!
-    name: String!
-    size: FileSize!
-    url: String!
     workspaceId: ID!
+    createdAt: DateTime!
+    fileName: String!
+    size: FileSize!
+    contentType: String!
+    name: String!
+    url: String!
+    uuid: String!
+    flatFiles: Boolean!
+    public: Boolean!
+    archiveExtractionStatus: ArchiveExtractionStatus
+    Workspace: Workspace
   }
 
   enum AssetSortType {
@@ -465,6 +479,12 @@ export const typeDefs = `
   input CreateAssetInput {
     workspaceId: ID!
     file: Upload!
+    name: String
+  }
+
+  input UpdateAssetInput {
+    assetId: ID!
+    name: String
   }
 
   input DeleteAssetInput {
@@ -542,7 +562,12 @@ export const typeDefs = `
   }
 
   # Payload Types - Asset
-  type AssetPayload {
+
+  type CreateAssetPayload {
+    asset: Asset!
+  }
+
+  type UpdateAssetPayload {
     asset: Asset!
   }
 
@@ -555,13 +580,13 @@ export const typeDefs = `
     # Core queries
     node(id: ID!, type: NodeType!): Node
     nodes(id: [ID!]!, type: NodeType!): [Node]!
-    
+
     # User queries
     me: Me
     searchUser(nameOrEmail: String!): User
-    
+
     # Workspace queries - implicit through Me.workspaces
-    
+
     # Project queries
     projects(
       workspaceId: ID!
@@ -570,7 +595,7 @@ export const typeDefs = `
     ): ProjectConnection!
     projectSharingInfo(projectId: ID!): ProjectSharingInfoPayload!
     sharedProject(token: String!): SharedProjectPayload!
-    
+
     # Asset queries
     assets(
       workspaceId: ID!
@@ -578,25 +603,25 @@ export const typeDefs = `
       keyword: String
       sort: AssetSortType
     ): AssetConnection!
-    
+
     # Deployment queries
     deployments(workspaceId: ID!, pagination: PageBasedPagination!): DeploymentConnection!
     deploymentByVersion(input: GetByVersionInput!): Deployment
     deploymentHead(input: GetHeadInput!): Deployment
     deploymentVersions(workspaceId: ID!, projectId: ID): [Deployment!]!
-    
+
     # Job queries
     jobs(workspaceId: ID!, pagination: PageBasedPagination!): JobConnection!
     job(id: ID!): Job
-    
+
     # Node execution queries
     nodeExecution(jobId: ID!, nodeId: ID!): NodeExecution
-    
+
     # Document queries
     latestProjectSnapshot(projectId: ID!): ProjectDocument
     projectSnapshot(projectId: ID!, version: String!): ProjectSnapshot!
     projectHistory(projectId: ID!, pagination: PageBasedPagination!): [ProjectSnapshotMetadata!]!
-    
+
     # Trigger queries
     triggers(workspaceId: ID!, pagination: PageBasedPagination!): TriggerConnection!
   }
@@ -607,7 +632,7 @@ export const typeDefs = `
     updateMe(input: UpdateMeInput!): UpdateMePayload
     removeMyAuth(input: RemoveMyAuthInput!): UpdateMePayload
     deleteMe(input: DeleteMeInput!): DeleteMePayload
-    
+
     # Workspace mutations
     createWorkspace(input: CreateWorkspaceInput!): CreateWorkspacePayload
     deleteWorkspace(input: DeleteWorkspaceInput!): DeleteWorkspacePayload
@@ -615,29 +640,30 @@ export const typeDefs = `
     addMemberToWorkspace(input: AddMemberToWorkspaceInput!): AddMemberToWorkspacePayload
     removeMemberFromWorkspace(input: RemoveMemberFromWorkspaceInput!): RemoveMemberFromWorkspacePayload
     updateMemberOfWorkspace(input: UpdateMemberOfWorkspaceInput!): UpdateMemberOfWorkspacePayload
-    
+
     # Project mutations
     createProject(input: CreateProjectInput!): ProjectPayload
     updateProject(input: UpdateProjectInput!): ProjectPayload
     deleteProject(input: DeleteProjectInput!): DeleteProjectPayload
     runProject(input: RunProjectInput!): RunProjectPayload
-    
+
     # Parameter mutations
     declareParameter(projectId: ID!, input: DeclareParameterInput!): Parameter!
     updateParameterValue(paramId: ID!, input: UpdateParameterValueInput!): Parameter!
     updateParameterOrder(projectId: ID!, input: UpdateParameterOrderInput!): [Parameter!]!
     removeParameter(input: RemoveParameterInput!): Boolean!
-    
+
     # Asset mutations
-    createAsset(input: CreateAssetInput!): AssetPayload
+    createAsset(input: CreateAssetInput!): CreateAssetPayload
+    updateAsset(input: UpdateAssetInput!): UpdateAssetPayload
     deleteAsset(input: DeleteAssetInput!): DeleteAssetPayload
-    
+
     # Deployment mutations
     createDeployment(input: CreateDeploymentInput!): DeploymentPayload
     updateDeployment(input: UpdateDeploymentInput!): DeploymentPayload
     deleteDeployment(input: DeleteDeploymentInput!): DeleteDeploymentPayload
     executeDeployment(input: ExecuteDeploymentInput!): JobPayload
-    
+
     # Job mutations
     cancelJob(input: CancelJobInput!): CancelJobPayload!
   }
@@ -645,7 +671,7 @@ export const typeDefs = `
   type Subscription {
     # Job subscriptions
     jobStatus(jobId: ID!): JobStatus!
-    
+
     # Log subscriptions
     logs(jobId: ID!): Log
   }
