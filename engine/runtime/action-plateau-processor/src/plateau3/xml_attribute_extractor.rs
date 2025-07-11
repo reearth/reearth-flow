@@ -15,6 +15,7 @@ use reearth_flow_runtime::{
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use regex::Regex;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
@@ -405,7 +406,7 @@ impl ProcessorFactory for XmlAttributeExtractorFactory {
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        None
+        Some(schemars::schema_for!(XmlAttributeExtractorParam))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -479,7 +480,7 @@ pub struct XmlAttributeExtractor {
     features_group: HashMap<String, Vec<Feature>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct XmlAttributeExtractorParam {
     city_code: Option<String>,
