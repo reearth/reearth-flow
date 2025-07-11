@@ -41,11 +41,16 @@ func ToMe(u *user.User) *Me {
 		return nil
 	}
 
+	lang := language.English // Default language
+	if u.Metadata() != nil {
+		lang = u.Metadata().Lang()
+	}
+
 	return &Me{
 		ID:            IDFrom(u.ID()),
 		Name:          u.Name(),
 		Email:         u.Email(),
-		Lang:          language.English, // Default language - User type doesn't have Lang() method
+		Lang:          lang,
 		MyWorkspaceID: IDFrom(u.Workspace()),
 		Auths: util.Map(u.Auths(), func(a user.Auth) string {
 			return a.Provider
