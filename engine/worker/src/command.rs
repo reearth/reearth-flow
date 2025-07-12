@@ -180,6 +180,9 @@ impl RunWorkerCommand {
                     handler.send_workflow_definition_error(&e);
                 }
                 tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+                self.cleanup(&meta, &storage_resolver).await?;
+
                 return Err(crate::errors::Error::failed_to_create_workflow(e));
             }
         };
