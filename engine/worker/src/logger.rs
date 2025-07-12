@@ -42,20 +42,7 @@ static PUBSUB_PUBLISHER: OnceCell<PubSubBackend> = OnceCell::new();
 static WORKFLOW_ID: OnceCell<Uuid> = OnceCell::new();
 static JOB_ID: OnceCell<Uuid> = OnceCell::new();
 static TOKIO_RUNTIME_HANDLE: OnceCell<Handle> = OnceCell::new();
-static USER_FACING_LOG_HANDLER: OnceCell<Arc<UserFacingLogHandler>> = OnceCell::new();
-
-pub fn analyze_workflow_for_step_mapping(
-    workflow_yaml: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
-    if let Some(handler) = USER_FACING_LOG_HANDLER.get() {
-        // Parse workflow to get the name
-        let workflow: serde_yaml::Value = serde_yaml::from_str(workflow_yaml)?;
-        if let Some(name) = workflow.get("name").and_then(|v| v.as_str()) {
-            handler.set_workflow_name(name.to_string());
-        }
-    }
-    Ok(())
-}
+pub static USER_FACING_LOG_HANDLER: OnceCell<Arc<UserFacingLogHandler>> = OnceCell::new();
 
 pub fn set_pubsub_context(
     publisher: PubSubBackend,

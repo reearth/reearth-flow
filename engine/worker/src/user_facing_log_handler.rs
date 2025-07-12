@@ -16,7 +16,6 @@ use crate::pubsub::backend::PubSubBackend;
 use crate::pubsub::publisher::Publisher;
 use crate::types::user_facing_log_event::{UserFacingLogEvent, UserFacingLogLevel};
 
-
 #[derive(Clone, Debug)]
 pub struct WorkflowExecutionInfo {
     pub workflow_name: String,
@@ -76,23 +75,55 @@ impl UserFacingLogHandler {
         }
     }
 
-
     pub fn set_workflow_name(&self, workflow_name: String) {
         let mut workflow_info = self.workflow_info.write();
         *workflow_info = Some(WorkflowExecutionInfo { workflow_name });
+    }
+
+    pub fn send_workflow_definition_error(&self, error: &dyn std::error::Error) {
+        let display_message = Self::format_workflow_definition_error(error);
+
+        let event = UserFacingLogEvent {
+            workflow_id: self.workflow_id,
+            job_id: self.job_id,
+            timestamp: Utc::now(),
+            level: UserFacingLogLevel::Error,
+            node_name: None,
+            display_message,
+        };
+
+        self.publish_event(event);
+    }
+
+    fn format_workflow_definition_error(error: &dyn std::error::Error) -> String {
+        format!("Workflow definition error: {}", error)
     }
 
     fn publish_event(&self, event: UserFacingLogEvent) {
         self.write_to_file(&event);
 
         let publisher = self.publisher.clone();
-        self.tokio_handle.spawn(async move {
-            let result = match publisher {
-                PubSubBackend::Google(p) => p.publish(event).await.map_err(|e| e.to_string()),
-                PubSubBackend::Noop(p) => p.publish(event).await.map_err(|e| format!("{e:?}")),
-            };
-            if let Err(e) = result {
-                tracing::error!("Failed to publish user-facing log event: {}", e);
+        let event_clone = event.clone();
+        let handle = self.tokio_handle.clone();
+
+        handle.spawn(async move {
+            let timeout_duration = std::time::Duration::from_secs(5);
+            let result = tokio::time::timeout(timeout_duration, async move {
+                match publisher {
+                    PubSubBackend::Google(p) => {
+                        p.publish(event_clone).await.map_err(|e| e.to_string())
+                    }
+                    PubSubBackend::Noop(p) => {
+                        p.publish(event_clone).await.map_err(|e| format!("{e:?}"))
+                    }
+                }
+            })
+            .await;
+
+            match result {
+                Ok(Ok(())) => {}
+                Ok(Err(e)) => tracing::error!("Failed to publish user-facing log event: {}", e),
+                Err(_) => tracing::error!("Timeout while publishing user-facing log event"),
             }
         });
     }
