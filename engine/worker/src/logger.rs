@@ -48,7 +48,11 @@ pub fn analyze_workflow_for_step_mapping(
     workflow_yaml: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(handler) = USER_FACING_LOG_HANDLER.get() {
-        handler.analyze_workflow_and_set_step_mapping(workflow_yaml)?;
+        // Parse workflow to get the name
+        let workflow: serde_yaml::Value = serde_yaml::from_str(workflow_yaml)?;
+        if let Some(name) = workflow.get("name").and_then(|v| v.as_str()) {
+            handler.set_workflow_name(name.to_string());
+        }
     }
     Ok(())
 }
