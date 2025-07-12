@@ -309,7 +309,7 @@ impl UserFacingLogHandler {
                         timestamp: Utc::now(),
                         level: UserFacingLogLevel::Info,
                         node_name: None,
-                        display_message: format!("Workflow {workflow_name} - Started..."),
+                        display_message: format!("{workflow_name} Workflow - Started..."),
                     })
                 } else {
                     None
