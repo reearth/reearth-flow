@@ -90,6 +90,66 @@ nodes:
               0
             }
 
+  - id: a5b4c3d2-1e0f-4a9b-8c7d-6e5f4a3b2c1d
+    name: AttributeMapperNotWellFormedXml
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Index
+          expr: env.get("__value").index
+        - attribute: Folder
+          expr: env.get("__value").udxDirs
+        - attribute: Filename
+          expr: env.get("__value").name
+        # - attribute: line
+        #   expr: env.get("__value").xmlError[0].line
+        # - attribute: col
+        #   expr: env.get("__value").xmlError[0].col
+        - attribute: type
+          expr: env.get("__value").xmlError[0].errorType
+        - attribute: desc
+          expr: env.get("__value").xmlError[0].message
+
+  - id: d9e8f7a6-5b4c-4a3d-9e2f-1c8b7a6e5d4c
+    name: FeatureWriterNotWellFormedXmlCsv
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_L01エラー.csv")
+
+  - id: b3f2e7a5-8d19-4c9a-91f6-4a8b5c7e2f3d
+    name: AttributeMapperInvalidXml
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Index
+          expr: env.get("__value").index
+        - attribute: Folder
+          expr: env.get("__value").udxDirs
+        - attribute: Filename
+          expr: env.get("__value").name
+        - attribute: line
+          expr: env.get("__value").xmlError[0].line
+        # - attribute: col
+        #   expr: env.get("__value").xmlError[0].col
+        - attribute: type
+          expr: env.get("__value").xmlError[0].errorType
+        - attribute: desc
+          expr: env.get("__value").xmlError[0].message
+
+  - id: f8e2a1b4-7c3d-4e9f-a2b5-8f6c9d3e1a7b
+    name: FeatureWriterInvalidXmlCsv
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_L02エラー.csv")
+
   - id: 05c85d95-c45c-406c-95b5-4a8a154f704f
     name: PLATEAU4.DomainOfDefinitionValidator
     type: subGraph
@@ -322,6 +382,36 @@ edges:
     from: e56c4680-859a-4ad3-bf4c-07040b3a5ff4
     to: aa7828b4-54f5-41c7-9ab7-15653010200c
     fromPort: summary
+    toPort: default
+  - id: c8f9a2b1-5e4d-4a7c-9b8e-1f6a3b2c5d4e
+    from: e56c4680-859a-4ad3-bf4c-07040b3a5ff4
+    to: b3f2e7a5-8d19-4c9a-91f6-4a8b5c7e2f3d
+    fromPort: invalid
+    toPort: default
+  - id: a9b8c7d6-3e2f-4a5b-9c8d-7e6f5a4b3c2d
+    from: b3f2e7a5-8d19-4c9a-91f6-4a8b5c7e2f3d
+    to: f8e2a1b4-7c3d-4e9f-a2b5-8f6c9d3e1a7b
+    fromPort: default
+    toPort: default
+  - id: d8c7b6a5-4e3f-4a2d-9c1b-8e7f6a5d4c3b
+    from: f8e2a1b4-7c3d-4e9f-a2b5-8f6c9d3e1a7b
+    to: f9359716-5c5a-43e5-b197-d1df171d5684
+    fromPort: default
+    toPort: default
+  - id: c4b3a2d1-0e9f-4a8b-7c6d-5e4f3a2b1c0d
+    from: e56c4680-859a-4ad3-bf4c-07040b3a5ff4
+    to: a5b4c3d2-1e0f-4a9b-8c7d-6e5f4a3b2c1d
+    fromPort: not_well_formed
+    toPort: default
+  - id: e5f4d3c2-1b0a-4e9f-8d7c-6b5a4e3d2c1b
+    from: a5b4c3d2-1e0f-4a9b-8c7d-6e5f4a3b2c1d
+    to: d9e8f7a6-5b4c-4a3d-9e2f-1c8b7a6e5d4c
+    fromPort: default
+    toPort: default
+  - id: f6e5d4c3-2b1a-4e0f-9d8c-7b6a5e4d3c2b
+    from: d9e8f7a6-5b4c-4a3d-9e2f-1c8b7a6e5d4c
+    to: f9359716-5c5a-43e5-b197-d1df171d5684
+    fromPort: default
     toPort: default
   - id: 55f394c4-4f62-4feb-a86e-219c4c1fa52e
     from: 05c85d95-c45c-406c-95b5-4a8a154f704f
