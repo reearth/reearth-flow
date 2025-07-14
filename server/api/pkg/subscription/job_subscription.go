@@ -64,3 +64,15 @@ func (m *JobManager) Notify(jobID string, status job.Status) {
 		}
 	}
 }
+
+func (m *JobManager) CloseAll(jobID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if subs, ok := m.subscribers[jobID]; ok {
+		for _, ch := range subs {
+			close(ch)
+		}
+		delete(m.subscribers, jobID)
+	}
+}

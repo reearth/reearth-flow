@@ -98,6 +98,7 @@ export function useSubscriptionSetup<Data = any, CachedData = any>(
   const queryClientRef = useRef<ReturnType<typeof useQueryClient> | undefined>(
     undefined,
   );
+  const unsubscribeRef = useRef<(() => void) | undefined>(undefined);
 
   queryClientRef.current = useQueryClient();
   wsClientRef.current = getWebSocketClient(disabled)(
@@ -107,7 +108,16 @@ export function useSubscriptionSetup<Data = any, CachedData = any>(
   );
 
   useEffect(() => {
-    if (isSubscribedRef.current || disabled) return;
+    // Clean up existing subscription if disabled
+    if (disabled && unsubscribeRef.current) {
+      console.info(`Cleaning up subscription for ${subscriptionKey} (disabled)`);
+      unsubscribeRef.current();
+      unsubscribeRef.current = undefined;
+      isSubscribedRef.current = false;
+      return;
+    }
+
+    if (isSubscribedRef.current || disabled || !wsClientRef.current) return;
 
     isSubscribedRef.current = true;
     // Set up subscription only once
@@ -140,14 +150,18 @@ export function useSubscriptionSetup<Data = any, CachedData = any>(
         complete: () => {
           console.info(`Subscription completed for ${subscriptionKey}`);
           isSubscribedRef.current = false;
-          unsubscribe?.();
+          unsubscribeRef.current = undefined;
         },
       },
     );
 
+    unsubscribeRef.current = unsubscribe;
+
     return () => {
+      console.info(`Cleaning up subscription for ${subscriptionKey}`);
       isSubscribedRef.current = false;
       unsubscribe?.();
+      unsubscribeRef.current = undefined;
     };
   }, [disabled, variables, secondaryCacheKey, subscriptionKey, dataFormatter]);
 }

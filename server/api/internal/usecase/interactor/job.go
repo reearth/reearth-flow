@@ -106,6 +106,8 @@ func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
 
 	i.subscriptions.Notify(j.ID().String(), j.Status())
 	i.monitor.Remove(j.ID().String())
+	// Close all subscription channels when job is cancelled
+	i.subscriptions.CloseAll(j.ID().String())
 
 	return j, nil
 }
@@ -197,6 +199,8 @@ func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
 			if status == job.StatusCompleted || status == job.StatusFailed || status == job.StatusCancelled {
 				log.Infof("Job ID %s already in terminal state %s, stopping monitoring", jobID, status)
 				i.monitor.Remove(jobID)
+				// Close all subscription channels for this job
+				i.subscriptions.CloseAll(jobID)
 				return
 			}
 
@@ -231,6 +235,8 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 			log.Errorfc(ctx, "job: completion handling failed: %v", err)
 		}
 		i.monitor.Remove(j.ID().String())
+		// Close all subscription channels when job reaches terminal state
+		i.subscriptions.CloseAll(j.ID().String())
 	}
 
 	return nil
@@ -412,6 +418,15 @@ func (i *Job) startMonitoringIfNeeded(jobID id.JobID) {
 	j, err := i.jobRepo.FindByID(context.Background(), jobID)
 	if err != nil {
 		log.Errorfc(context.Background(), "job: failed to find job for monitoring: %v", err)
+		return
+	}
+
+	// Don't start monitoring if job is already in terminal state
+	if j.Status() == job.StatusCompleted || j.Status() == job.StatusFailed || j.Status() == job.StatusCancelled {
+		log.Infof("Job %s already in terminal state %s, not starting monitoring", jobID, j.Status())
+		delete(i.activeWatchers, jobKey)
+		// Close any lingering subscription channels
+		i.subscriptions.CloseAll(jobKey)
 		return
 	}
 
