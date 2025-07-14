@@ -44,6 +44,7 @@ type DataTableProps<TData, TValue> = {
   data?: TData[];
   selectColumns?: boolean;
   showFiltering?: boolean;
+  showOrdering?: boolean;
   enablePagination?: boolean;
   totalPages?: number;
   condensed?: boolean;
@@ -65,6 +66,7 @@ function DataTable<TData, TValue>({
   data,
   selectColumns = false,
   showFiltering = false,
+  showOrdering = true,
   enablePagination = false,
   totalPages = 1,
   condensed,
@@ -185,12 +187,13 @@ function DataTable<TData, TValue>({
               </SelectContent>
             </Select>
           ) : (
-            <Select
-              value={currentOrder || "DESC"}
-              onValueChange={handleOrderChange}>
-              <SelectTrigger className="h-[32px] w-[100px]">
-                <SelectValue placeholder={orderDirections.ASC} />
-              </SelectTrigger>
+            currentOrder && showOrdering && (
+              <Select
+                value={currentOrder || "DESC"}
+                onValueChange={handleOrderChange}>
+                <SelectTrigger className="h-[32px] w-[100px]">
+                  <SelectValue placeholder={orderDirections.ASC} />
+                </SelectTrigger>
               <SelectContent>
                 {Object.entries(orderDirections).map(([value, label]) => (
                   <SelectItem key={value} value={value}>
@@ -198,7 +201,8 @@ function DataTable<TData, TValue>({
                   </SelectItem>
                 ))}
               </SelectContent>
-            </Select>
+              </Select>
+            )
           )}
           {selectColumns && (
             <DropdownMenu>

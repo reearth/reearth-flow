@@ -17,6 +17,7 @@ export default () => {
   const t = useT();
 
   const prevIntermediateDataUrls = useRef<string[] | undefined>(undefined);
+  const [fullscreenDebug, setFullscreenDebug] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [minimized, setMinimized] = useState(false);
 
@@ -27,6 +28,12 @@ export default () => {
   const debugJobState = useMemo(
     () =>
       debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id),
+    [debugRunState, currentProject],
+  );
+  const debugJobId = useMemo(
+    () =>
+      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id)
+        ?.jobId,
     [debugRunState, currentProject],
   );
 
@@ -185,20 +192,26 @@ export default () => {
     }
   };
 
+  const handleFullscreenExpand = () => {
+    setFullscreenDebug((prev) => !prev);
+  };
   return {
-    selectedDataURL,
-    dataURLs,
+    debugJobId,
+    debugJobState,
+    fileType,
+    fullscreenDebug,
     expanded,
     minimized,
-    selectedOutputData,
-    fileType,
-    debugJobState,
-    isLoadingData,
     showTempPossibleIssuesDialog,
-    handleShowTempPossibleIssuesDialogClose,
+    selectedDataURL,
+    dataURLs,
+    selectedOutputData,
+    isLoadingData,
+    handleFullscreenExpand,
     handleExpand,
     handleMinimize,
     handleTabChange,
+    handleShowTempPossibleIssuesDialogClose,
     handleSelectedDataChange,
   };
 };
