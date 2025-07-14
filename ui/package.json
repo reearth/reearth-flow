@@ -63,7 +63,7 @@
     "@rjsf/validator-ajv8": "5.24.12",
     "@tailwindcss/vite": "4.1.11",
     "@tanstack/react-query": "5.83.0",
-    "@tanstack/react-router": "1.116.0",
+    "@tanstack/react-router": "1.117.0",
     "@tanstack/react-table": "8.21.3",
     "@tanstack/react-virtual": "3.13.12",
     "@turf/bbox": "7.2.0",
