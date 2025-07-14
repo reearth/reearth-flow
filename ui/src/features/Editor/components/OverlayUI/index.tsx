@@ -15,9 +15,8 @@ import {
   Infobar,
   NodePickerDialog,
   LayoutOptionsDialog,
-  DebugLogs,
-  DebugPreview,
   JobStatus,
+  DebugPanel,
 } from "./components";
 
 type OverlayUIProps = {
@@ -88,12 +87,9 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           </div>
         </div>
         <div id="right-top" className="absolute top-4 right-4" />
-        <div className="pointer-events-none absolute inset-y-2 bottom-4 left-4 flex items-end">
-          <DebugLogs />
-        </div>
+        <DebugPanel />
         <div className="pointer-events-none absolute right-4 bottom-4 flex flex-row-reverse items-end gap-4">
           <CanvasActionBar />
-          <DebugPreview />
         </div>
         {hoveredDetails && <Infobar hoveredDetails={hoveredDetails} />}
       </div>

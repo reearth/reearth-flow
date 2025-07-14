@@ -44,6 +44,7 @@ type DataTableProps<TData, TValue> = {
   data?: TData[];
   selectColumns?: boolean;
   showFiltering?: boolean;
+  showOrdering?: boolean;
   enablePagination?: boolean;
   totalPages?: number;
   condensed?: boolean;
@@ -65,6 +66,7 @@ function DataTable<TData, TValue>({
   data,
   selectColumns = false,
   showFiltering = false,
+  showOrdering = true,
   enablePagination = false,
   totalPages = 1,
   condensed,
@@ -171,7 +173,7 @@ function DataTable<TData, TValue>({
               className="max-w-sm"
             />
           )}
-          {sortOptions && onSortChange ? (
+          {showOrdering && sortOptions && onSortChange ? (
             <Select value={currentSortValue} onValueChange={onSortChange}>
               <SelectTrigger className="h-[32px] w-[150px]">
                 <SelectValue />
