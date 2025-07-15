@@ -335,6 +335,32 @@ nodes:
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_common.json")
 
+  - id: 4f2a8b1e-3c7d-4e9f-a2b5-8f6c9d3e1a7b
+    name: AttributeMapperGmlIdNotWellFormed
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Index
+          expr: env.get("__value").index
+        - attribute: Folder
+          expr: env.get("__value").udxDirs
+        - attribute: Filename
+          expr: env.get("__value").name
+        - attribute: XMLTag
+          expr: env.get("__value").tag
+        - attribute: GmlId
+          expr: env.get("__value").gmlId
+
+  - id: 8e5f9a2b-4c3d-4e7f-b8a5-9d6e4f3a2b1c
+    name: FeatureWriterGmlIdNotWellFormed
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_GML_ID書式不正.csv")
+
   - id: f9359716-5c5a-43e5-b197-d1df171d5684
     name: OutputRouter
     type: action
@@ -463,8 +489,23 @@ edges:
     to: f9359716-5c5a-43e5-b197-d1df171d5684
     fromPort: default
     toPort: default
+  - id: 7b9e4c2f-1a8d-4e5f-9c7b-3f6a2d8e4c1b
+    from: 05c85d95-c45c-406c-95b5-4a8a154f704f
+    to: 4f2a8b1e-3c7d-4e9f-a2b5-8f6c9d3e1a7b
+    fromPort: gmlIdNotWellFormed
+    toPort: default
   - id: 80b23cb2-e43f-4447-a1ce-2d5af5844b04
     from: 50de9474-378b-4878-b85d-516cf8a55547
+    to: f9359716-5c5a-43e5-b197-d1df171d5684
+    fromPort: default
+    toPort: default
+  - id: 6a3d8f2e-5b1c-4f9e-8d7a-2c5b4f8e3d1a
+    from: 4f2a8b1e-3c7d-4e9f-a2b5-8f6c9d3e1a7b
+    to: 8e5f9a2b-4c3d-4e7f-b8a5-9d6e4f3a2b1c
+    fromPort: default
+    toPort: default
+  - id: 3d7e8f4a-2b9c-4d5e-a6f7-8c1b4e9f3d2a
+    from: 8e5f9a2b-4c3d-4e7f-b8a5-9d6e4f3a2b1c
     to: f9359716-5c5a-43e5-b197-d1df171d5684
     fromPort: default
     toPort: default
