@@ -158,6 +158,7 @@ pub fn create_filesystem_cache(root_path: PathBuf) -> Result<Arc<dyn SchemaCache
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
     use std::env;
 
     #[test]
@@ -323,5 +324,108 @@ mod tests {
         assert!(!cache.is_available());
         assert!(!cache.is_cached("test"));
         assert!(cache.get_schema_path("test").is_err());
+    }
+
+    #[test]
+    fn test_schema_cache_hit() {
+        // Test that schemas are cached and reused properly
+        let temp_dir = env::temp_dir().join(format!("xml_cache_hit_test_{}", uuid::Uuid::new_v4()));
+        let cache = create_filesystem_cache(temp_dir.clone()).unwrap();
+
+        let schema_key = "https://example.com/cached.xsd";
+        let schema_content = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+    <xs:element name="test" type="xs:string"/>
+</xs:schema>"#;
+
+        // First access - cache miss
+        assert!(!cache.is_cached(schema_key));
+
+        // Put schema in cache
+        cache
+            .put_schema(schema_key, schema_content.as_bytes())
+            .unwrap();
+
+        // Second access - cache hit
+        assert!(cache.is_cached(schema_key));
+
+        // Verify content is retrievable
+        let retrieved = cache.get_schema(schema_key).unwrap();
+        assert_eq!(retrieved, Some(schema_content.as_bytes().to_vec()));
+
+        // Get path should work
+        let path = cache.get_schema_path(schema_key).unwrap();
+        assert!(path.exists());
+
+        // Cleanup
+        std::fs::remove_dir_all(temp_dir).ok();
+    }
+
+    #[test]
+    fn test_cache_directory_structure_preservation() {
+        // Test that cache preserves directory structure for schema dependencies
+        let temp_dir = env::temp_dir().join(format!("xml_cache_dir_test_{}", uuid::Uuid::new_v4()));
+        let cache = create_filesystem_cache(temp_dir.clone()).unwrap();
+
+        // Test with nested path
+        let schema_key = "example.com/schemas/dep/dependency.xsd";
+        let schema_content = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+    <xs:element name="item" type="xs:string"/>
+</xs:schema>"#;
+
+        cache
+            .put_schema(schema_key, schema_content.as_bytes())
+            .unwrap();
+
+        // Verify directory structure is preserved
+        let path = cache.get_schema_path(schema_key).unwrap();
+        assert!(path.exists());
+        assert!(path.to_str().unwrap().contains("schemas"));
+        assert!(path.to_str().unwrap().contains("dep"));
+
+        // Verify parent directories exist
+        assert!(path.parent().unwrap().exists());
+        assert!(path.parent().unwrap().parent().unwrap().exists());
+
+        // Cleanup
+        std::fs::remove_dir_all(temp_dir).ok();
+    }
+
+    #[test]
+    fn test_multiple_schema_caching() {
+        // Test caching multiple schemas with different paths
+        let temp_dir =
+            env::temp_dir().join(format!("xml_multi_cache_test_{}", uuid::Uuid::new_v4()));
+        let cache = create_filesystem_cache(temp_dir.clone()).unwrap();
+
+        let schemas = HashMap::from([
+            (
+                "schema1.xsd",
+                "<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\"/>",
+            ),
+            (
+                "path/to/schema2.xsd",
+                "<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\"/>",
+            ),
+            (
+                "deep/path/to/schema3.xsd",
+                "<xs:schema xmlns:xs=\"http://www.w3.org/2001/XMLSchema\"/>",
+            ),
+        ]);
+
+        // Cache all schemas
+        for (key, content) in &schemas {
+            cache.put_schema(key, content.as_bytes()).unwrap();
+        }
+
+        // Verify all are cached
+        for key in schemas.keys() {
+            assert!(cache.is_cached(key));
+            assert!(cache.get_schema_path(key).unwrap().exists());
+        }
+
+        // Cleanup
+        std::fs::remove_dir_all(temp_dir).ok();
     }
 }

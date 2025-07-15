@@ -279,4 +279,200 @@ mod tests {
         // Cleanup
         std::fs::remove_dir_all(temp_dir).ok();
     }
+
+    #[test]
+    fn test_schema_with_multiple_xml_declarations() {
+        // This test reproduces an issue where multiple schemas are imported and each contains
+        // its own XML declaration. When inlined, this causes parse errors.
+        let main_schema = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:dep1="http://example.com/dep1"
+           xmlns:dep2="http://example.com/dep2"
+           targetNamespace="http://example.com/main">
+    <xs:import namespace="http://example.com/dep1" 
+               schemaLocation="http://example.com/dep1.xsd"/>
+    <xs:import namespace="http://example.com/dep2" 
+               schemaLocation="http://example.com/dep2.xsd"/>
+</xs:schema>"#;
+
+        let dep1_schema = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://example.com/dep1">
+    <xs:element name="item1" type="xs:string"/>
+</xs:schema>"#;
+
+        let dep2_schema = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://example.com/dep2">
+    <xs:element name="item2" type="xs:string"/>
+</xs:schema>"#;
+
+        let fetcher = MockSchemaFetcher::new()
+            .with_response("http://example.com/main.xsd", Ok(main_schema.to_string()))
+            .with_response("http://example.com/dep1.xsd", Ok(dep1_schema.to_string()))
+            .with_response("http://example.com/dep2.xsd", Ok(dep2_schema.to_string()));
+
+        let temp_dir =
+            env::temp_dir().join(format!("schema_multi_decl_test_{}", uuid::Uuid::new_v4()));
+        let cache = create_filesystem_cache(temp_dir.clone()).unwrap();
+
+        let rewriter = SchemaRewriter::new(cache.clone());
+        let resolver = XmlSchemaResolver::new(Arc::new(fetcher));
+
+        // Process schemas - should handle multiple XML declarations properly
+        let result = rewriter.process_and_cache_schemas("http://example.com/main.xsd", &resolver);
+        assert!(
+            result.is_ok(),
+            "Should process schemas with multiple imports"
+        );
+
+        let cached_path = result.unwrap();
+        let cached_content = std::fs::read_to_string(&cached_path).unwrap();
+
+        // Verify no XML declarations in the middle of content
+        let decl_count = cached_content.matches("<?xml").count();
+        assert_eq!(
+            decl_count, 1,
+            "Should only have one XML declaration at the start"
+        );
+
+        // Cleanup
+        std::fs::remove_dir_all(temp_dir).ok();
+    }
+
+    #[test]
+    fn test_nested_schema_dependencies() {
+        // Reproduce the error: "failed to load external entity"
+        // This occurs when a schema imports another schema, and the imported schema URL fails to load
+        let main_schema = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:level1="http://example.com/level1"
+           targetNamespace="http://example.com/main">
+    <xs:import namespace="http://example.com/level1" 
+               schemaLocation="http://example.com/level1.xsd"/>
+</xs:schema>"#;
+
+        let level1_schema = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:level2="http://example.com/level2"
+           targetNamespace="http://example.com/level1">
+    <xs:import namespace="http://example.com/level2" 
+               schemaLocation="http://example.com/level2.xsd"/>
+    <xs:element name="level1item" type="xs:string"/>
+</xs:schema>"#;
+
+        // Deliberately omit level2.xsd to simulate fetch failure
+        let fetcher = MockSchemaFetcher::new()
+            .with_response("http://example.com/main.xsd", Ok(main_schema.to_string()))
+            .with_response(
+                "http://example.com/level1.xsd",
+                Ok(level1_schema.to_string()),
+            )
+            .with_response(
+                "http://example.com/level2.xsd",
+                Err(super::super::errors::XmlProcessorError::Validator(
+                    "Schema fetch failed".to_string(),
+                )),
+            );
+
+        let temp_dir = env::temp_dir().join(format!("schema_nested_test_{}", uuid::Uuid::new_v4()));
+        let cache = create_filesystem_cache(temp_dir.clone()).unwrap();
+
+        let rewriter = SchemaRewriter::new(cache.clone());
+        let resolver = XmlSchemaResolver::new(Arc::new(fetcher));
+
+        // This should fail due to missing dependency
+        let result = rewriter.process_and_cache_schemas("http://example.com/main.xsd", &resolver);
+        assert!(
+            result.is_err(),
+            "Should fail when nested dependency cannot be fetched"
+        );
+
+        // Cleanup
+        std::fs::remove_dir_all(temp_dir).ok();
+    }
+
+    #[test]
+    fn test_resolved_nested_dependencies() {
+        // Test successful validation when all nested schema dependencies are resolved
+        let main_schema = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:level1="http://example.com/level1"
+           targetNamespace="http://example.com/main">
+    <xs:import namespace="http://example.com/level1" 
+               schemaLocation="http://example.com/level1.xsd"/>
+    <xs:element name="root">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="level1:item"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>"#;
+
+        let level1_schema = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:level2="http://example.com/level2"
+           targetNamespace="http://example.com/level1">
+    <xs:import namespace="http://example.com/level2" 
+               schemaLocation="http://example.com/level2.xsd"/>
+    <xs:element name="item">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="level2:subitem"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>"#;
+
+        let level2_schema = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://example.com/level2">
+    <xs:element name="subitem" type="xs:string"/>
+</xs:schema>"#;
+
+        // Provide all schemas
+        let fetcher = MockSchemaFetcher::new()
+            .with_response("http://example.com/main.xsd", Ok(main_schema.to_string()))
+            .with_response(
+                "http://example.com/level1.xsd",
+                Ok(level1_schema.to_string()),
+            )
+            .with_response(
+                "http://example.com/level2.xsd",
+                Ok(level2_schema.to_string()),
+            );
+
+        let temp_dir =
+            env::temp_dir().join(format!("schema_resolved_test_{}", uuid::Uuid::new_v4()));
+        let cache = create_filesystem_cache(temp_dir.clone()).unwrap();
+
+        let rewriter = SchemaRewriter::new(cache.clone());
+        let resolver = XmlSchemaResolver::new(Arc::new(fetcher));
+
+        // Process all schemas successfully
+        let result = rewriter.process_and_cache_schemas("http://example.com/main.xsd", &resolver);
+        assert!(
+            result.is_ok(),
+            "Should succeed when all dependencies are resolved"
+        );
+
+        let cached_path = result.unwrap();
+        assert!(cached_path.exists());
+
+        // Verify all imports were rewritten to local files
+        let cached_content = std::fs::read_to_string(&cached_path).unwrap();
+        assert!(cached_content.contains("schemaLocation=\"file://"));
+        assert!(!cached_content.contains("http://example.com/level1.xsd"));
+
+        // Check that level1 schema was also properly cached and rewritten
+        let level1_cache_key = generate_cache_key("http://example.com/level1.xsd");
+        let level1_path = cache.get_schema_path(&level1_cache_key).unwrap();
+        let level1_content = std::fs::read_to_string(&level1_path).unwrap();
+        assert!(level1_content.contains("schemaLocation=\"file://"));
+        assert!(!level1_content.contains("http://example.com/level2.xsd"));
+
+        // Cleanup
+        std::fs::remove_dir_all(temp_dir).ok();
+    }
 }
