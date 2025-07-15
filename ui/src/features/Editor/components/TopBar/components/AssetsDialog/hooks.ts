@@ -90,6 +90,9 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     async (e: ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
+      const reader = new FileReader();
+
+      reader.readAsText(file);
 
       if (!workspaceId) return console.error("Missing current workspace");
 
