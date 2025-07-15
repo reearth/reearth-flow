@@ -25,7 +25,10 @@ use serde_json::Value;
 use super::cache::{create_filesystem_cache, SchemaCache};
 use super::errors::{Result, XmlProcessorError};
 use super::namespace::recursive_check_namespace;
-use super::schema_composer::{generate_catalog, generate_catalog_cache_key, generate_composite_cache_key, generate_wrapper_schema};
+use super::schema_composer::{
+    generate_catalog, generate_catalog_cache_key, generate_composite_cache_key,
+    generate_wrapper_schema,
+};
 use super::schema_fetcher::{HttpSchemaFetcher, SchemaFetcher};
 use super::schema_resolver::XmlSchemaResolver;
 use super::schema_rewriter::SchemaRewriter;
@@ -417,7 +420,10 @@ impl XmlValidator {
                 match resolver.resolve_schema_dependencies(&target) {
                     Ok(resolution) => {
                         // Then process and cache all resolved schemas
-                        match self.schema_rewriter.process_and_cache_schemas(&target, &resolution) {
+                        match self
+                            .schema_rewriter
+                            .process_and_cache_schemas(&target, &resolution)
+                        {
                             Ok(cached_path) => {
                                 cached_paths.insert(location.clone(), cached_path.clone());
                                 all_mappings.insert(target.clone(), cached_path);
@@ -465,8 +471,7 @@ impl XmlValidator {
         }
 
         // Generate wrapper schema
-        let wrapper_content =
-            generate_wrapper_schema(schema_locations, &cached_paths);
+        let wrapper_content = generate_wrapper_schema(schema_locations, &cached_paths);
 
         // Save wrapper schema and create context
         let wrapper_cache_key = generate_composite_cache_key(schema_locations);

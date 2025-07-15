@@ -30,7 +30,10 @@ impl SchemaRewriter {
             return self.cache.get_schema_path(&target_cache_key);
         }
 
-        tracing::debug!("Processing {} schemas for caching", resolution.schemas.len());
+        tracing::debug!(
+            "Processing {} schemas for caching",
+            resolution.schemas.len()
+        );
 
         // Build URL to cache path mapping for all schemas
         let mut url_to_cache_path = HashMap::new();
@@ -233,8 +236,10 @@ mod tests {
         let resolver = XmlSchemaResolver::new(Arc::new(fetcher));
 
         // First resolve schemas
-        let resolution = resolver.resolve_schema_dependencies("http://example.com/main.xsd").unwrap();
-        
+        let resolution = resolver
+            .resolve_schema_dependencies("http://example.com/main.xsd")
+            .unwrap();
+
         // Then process schemas
         let result = rewriter.process_and_cache_schemas("http://example.com/main.xsd", &resolution);
         assert!(result.is_ok());
@@ -269,14 +274,18 @@ mod tests {
         let resolver = XmlSchemaResolver::new(Arc::new(fetcher));
 
         // Resolve schemas once
-        let resolution = resolver.resolve_schema_dependencies("http://example.com/test.xsd").unwrap();
-        
+        let resolution = resolver
+            .resolve_schema_dependencies("http://example.com/test.xsd")
+            .unwrap();
+
         // First call should fetch and cache
-        let result1 = rewriter.process_and_cache_schemas("http://example.com/test.xsd", &resolution);
+        let result1 =
+            rewriter.process_and_cache_schemas("http://example.com/test.xsd", &resolution);
         assert!(result1.is_ok());
 
         // Second call should hit cache
-        let result2 = rewriter.process_and_cache_schemas("http://example.com/test.xsd", &resolution);
+        let result2 =
+            rewriter.process_and_cache_schemas("http://example.com/test.xsd", &resolution);
         assert!(result2.is_ok());
         assert_eq!(result1.unwrap(), result2.unwrap());
 
@@ -324,8 +333,10 @@ mod tests {
         let resolver = XmlSchemaResolver::new(Arc::new(fetcher));
 
         // Resolve schemas first
-        let resolution = resolver.resolve_schema_dependencies("http://example.com/main.xsd").unwrap();
-        
+        let resolution = resolver
+            .resolve_schema_dependencies("http://example.com/main.xsd")
+            .unwrap();
+
         // Process schemas - should handle multiple XML declarations properly
         let result = rewriter.process_and_cache_schemas("http://example.com/main.xsd", &resolution);
         assert!(
@@ -458,8 +469,10 @@ mod tests {
         let resolver = XmlSchemaResolver::new(Arc::new(fetcher));
 
         // First resolve schemas
-        let resolution = resolver.resolve_schema_dependencies("http://example.com/main.xsd").unwrap();
-        
+        let resolution = resolver
+            .resolve_schema_dependencies("http://example.com/main.xsd")
+            .unwrap();
+
         // Process all schemas successfully
         let result = rewriter.process_and_cache_schemas("http://example.com/main.xsd", &resolution);
         assert!(

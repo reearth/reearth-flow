@@ -6,97 +6,97 @@ pub fn generate_wrapper_schema(
     schema_locations: &[(String, String)],
     cached_paths: &HashMap<String, PathBuf>,
 ) -> String {
-        let imports = schema_locations
-            .iter()
-            .filter_map(|(namespace, location)| {
-                // Use cached path if available, otherwise use original location
-                let resolved_location = cached_paths
-                    .get(location)
-                    .and_then(|p| p.to_str())
-                    .unwrap_or(location);
+    let imports = schema_locations
+        .iter()
+        .filter_map(|(namespace, location)| {
+            // Use cached path if available, otherwise use original location
+            let resolved_location = cached_paths
+                .get(location)
+                .and_then(|p| p.to_str())
+                .unwrap_or(location);
 
-                // Skip empty namespaces
-                if namespace.is_empty() {
-                    None
-                } else {
-                    Some(format!(
-                        r#"  <xs:import namespace="{}" schemaLocation="{}"/>"#,
-                        namespace, resolved_location
-                    ))
-                }
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
+            // Skip empty namespaces
+            if namespace.is_empty() {
+                None
+            } else {
+                Some(format!(
+                    r#"  <xs:import namespace="{}" schemaLocation="{}"/>"#,
+                    namespace, resolved_location
+                ))
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
 
-        format!(
-            r#"<?xml version="1.0" encoding="UTF-8"?>
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            elementFormDefault="qualified"
            attributeFormDefault="unqualified">
 {}
 </xs:schema>"#,
-            imports
-        )
+        imports
+    )
 }
 
 /// Generate an XML catalog file for schema resolution
 pub fn generate_catalog(mappings: &HashMap<String, PathBuf>) -> String {
-        let entries = mappings
-            .iter()
-            .filter_map(|(url, path)| {
-                path.to_str()
-                    .map(|p| format!(r#"  <uri name="{}" uri="file://{}"/>"#, url, p))
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
+    let entries = mappings
+        .iter()
+        .filter_map(|(url, path)| {
+            path.to_str()
+                .map(|p| format!(r#"  <uri name="{}" uri="file://{}"/>"#, url, p))
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
 
-        format!(
-            r#"<?xml version="1.0" encoding="UTF-8"?>
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE catalog PUBLIC "-//OASIS//DTD XML Catalogs V1.1//EN"
   "http://www.oasis-open.org/committees/entity/release/1.1/catalog.dtd">
 <catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
 {}
 </catalog>"#,
-            entries
-        )
+        entries
+    )
 }
 
 /// Generate a unique cache key for a combination of schemas
 /// Uses both namespace URIs and schema locations for uniqueness
 pub fn generate_composite_cache_key(schema_locations: &[(String, String)]) -> String {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
 
-        let mut hasher = DefaultHasher::new();
+    let mut hasher = DefaultHasher::new();
 
-        // Sort to ensure consistent key generation
-        let mut sorted_locations = schema_locations.to_vec();
-        sorted_locations.sort();
+    // Sort to ensure consistent key generation
+    let mut sorted_locations = schema_locations.to_vec();
+    sorted_locations.sort();
 
-        // Hash both namespace URI and schema location
-        for (namespace_uri, schema_location) in sorted_locations {
-            namespace_uri.hash(&mut hasher);
-            schema_location.hash(&mut hasher);
-        }
+    // Hash both namespace URI and schema location
+    for (namespace_uri, schema_location) in sorted_locations {
+        namespace_uri.hash(&mut hasher);
+        schema_location.hash(&mut hasher);
+    }
 
-        format!("wrapper_schema_{:x}", hasher.finish())
+    format!("wrapper_schema_{:x}", hasher.finish())
 }
 
 /// Generate a unique cache key for catalog based on namespace URIs and URLs
 pub fn generate_catalog_cache_key(mappings: &HashMap<String, PathBuf>) -> String {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
 
-        let mut hasher = DefaultHasher::new();
+    let mut hasher = DefaultHasher::new();
 
-        // Sort mappings to ensure consistent key generation
-        let mut sorted_mappings: Vec<_> = mappings.iter().collect();
-        sorted_mappings.sort_by_key(|(url, _)| *url);
+    // Sort mappings to ensure consistent key generation
+    let mut sorted_mappings: Vec<_> = mappings.iter().collect();
+    sorted_mappings.sort_by_key(|(url, _)| *url);
 
-        for (url, path) in sorted_mappings {
-            url.hash(&mut hasher);
-            path.to_string_lossy().hash(&mut hasher);
-        }
+    for (url, path) in sorted_mappings {
+        url.hash(&mut hasher);
+        path.to_string_lossy().hash(&mut hasher);
+    }
 
     format!("catalog_{:x}", hasher.finish())
 }
