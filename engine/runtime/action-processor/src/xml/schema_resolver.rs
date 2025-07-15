@@ -46,6 +46,8 @@ impl XmlSchemaResolver {
         let mut to_process = vec![root_url.to_string()];
         let mut schemas = HashMap::new();
 
+        tracing::debug!("Starting schema resolution for: {}", root_url);
+
         // Phase 1: Collect all dependencies recursively
         while let Some(url) = to_process.pop() {
             if visited.contains(&url) {
@@ -53,15 +55,19 @@ impl XmlSchemaResolver {
             }
             visited.insert(url.clone());
 
+            tracing::debug!("Processing schema: {}", url);
+
             // Fetch schema content
             let content = self.fetch_with_cache(&url)?;
 
             // Extract dependencies from the schema
             let dependencies = self.extract_dependencies(&content, &url)?;
+            tracing::debug!("Found {} dependencies for {}", dependencies.len(), url);
 
             // Add unvisited dependencies to processing queue
             for dep in &dependencies {
                 if !visited.contains(dep) {
+                    tracing::debug!("Adding dependency to queue: {}", dep);
                     to_process.push(dep.clone());
                 }
             }
@@ -75,6 +81,8 @@ impl XmlSchemaResolver {
                 },
             );
         }
+
+        tracing::debug!("Resolved {} total schemas", schemas.len());
 
         Ok(SchemaResolutionResult {
             schemas,
@@ -93,7 +101,17 @@ impl XmlSchemaResolver {
         }
 
         // Fetch if not cached
-        let content = self.fetcher.fetch_schema(url)?;
+        tracing::debug!("Fetching schema from: {}", url);
+        let content = match self.fetcher.fetch_schema(url) {
+            Ok(content) => {
+                tracing::debug!("Successfully fetched schema from: {}", url);
+                content
+            }
+            Err(e) => {
+                tracing::warn!("Failed to fetch schema from {}: {}", url, e);
+                return Err(e);
+            }
+        };
 
         // Store in cache
         {
@@ -131,9 +149,13 @@ impl XmlSchemaResolver {
 
         // Check if this is an import or include element
         if tag.ends_with(":import") || tag.ends_with(":include") {
+            tracing::debug!("Found import/include element: {}", tag);
             if let Some(schema_location) = self.get_attribute(node, "schemaLocation") {
                 let resolved_url = self.resolve_url(base_url, &schema_location)?;
+                tracing::debug!("Resolved dependency: {} -> {}", schema_location, resolved_url);
                 dependencies.push(resolved_url);
+            } else {
+                tracing::debug!("No schemaLocation attribute found for {}", tag);
             }
         }
 
