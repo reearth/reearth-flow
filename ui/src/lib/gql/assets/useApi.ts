@@ -39,12 +39,7 @@ export const useAsset = () => {
   const createAsset = async (input: CreateAssetInput): Promise<CreateAsset> => {
     const { mutateAsync, ...rest } = createAssetMutation;
     const formData = new FormData();
-    formData.append(
-      "file",
-      new File([input.file], input.file.name, {
-        type: input.file.type,
-      }),
-    );
+    formData.append("file", input.file);
 
     try {
       const asset: Asset | undefined = await mutateAsync({

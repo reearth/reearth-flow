@@ -60,9 +60,13 @@ export const useQueries = () => {
     });
 
   const createAssetMutation = useMutation({
-    mutationFn: async (input: CreateAssetInput) => {
+    mutationFn: async ({ file, name, workspaceId }: CreateAssetInput) => {
       const data = await graphQLContext?.CreateAsset({
-        input,
+        input: {
+          file: file.get("file"),
+          name,
+          workspaceId,
+        },
       });
 
       if (data?.createAsset?.asset) {
