@@ -4722,7 +4722,7 @@ __metadata:
     "@tailwindcss/vite": "npm:4.1.11"
     "@tanstack/react-query": "npm:5.83.0"
     "@tanstack/react-query-devtools": "npm:5.83.0"
-    "@tanstack/react-router": "npm:1.127.3"
+    "@tanstack/react-router": "npm:1.116.0"
     "@tanstack/react-table": "npm:8.21.3"
     "@tanstack/react-virtual": "npm:3.13.12"
     "@tanstack/router-devtools": "npm:1.127.3"
@@ -4751,13 +4751,13 @@ __metadata:
     embla-carousel-react: "npm:8.6.0"
     eslint: "npm:9.31.0"
     eslint-config-reearth: "npm:0.3.8"
-    eslint-plugin-better-tailwindcss: "npm:3.6.0"
+    eslint-plugin-better-tailwindcss: "npm:3.6.1"
     eslint-plugin-import: "npm:2.32.0"
     eslint-plugin-storybook: "npm:9.0.16"
     file-saver: "npm:2.0.5"
     graphql: "npm:16.11.0"
     graphql-request: "npm:7.2.0"
-    graphql-ws: "npm:6.0.5"
+    graphql-ws: "npm:6.0.6"
     i18next: "npm:25.3.2"
     i18next-browser-languagedetector: "npm:8.2.0"
     i18next-parser: "npm:9.3.0"
@@ -5313,6 +5313,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tanstack/history@npm:1.115.0":
+  version: 1.115.0
+  resolution: "@tanstack/history@npm:1.115.0"
+  checksum: 10c0/d9daa348a81a03478c95727cb68002a9b70a5871089d4d3a111cea9b2647f6c159b8f04b13dcd302fafa7077ec28cc1ec878e1daf23d38e72534d649d5db7fd5
+  languageName: node
+  linkType: hard
+
 "@tanstack/history@npm:1.121.34":
   version: 1.121.34
   resolution: "@tanstack/history@npm:1.121.34"
@@ -5370,20 +5377,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/react-router@npm:1.127.3":
-  version: 1.127.3
-  resolution: "@tanstack/react-router@npm:1.127.3"
+"@tanstack/react-router@npm:1.116.0":
+  version: 1.116.0
+  resolution: "@tanstack/react-router@npm:1.116.0"
   dependencies:
-    "@tanstack/history": "npm:1.121.34"
+    "@tanstack/history": "npm:1.115.0"
     "@tanstack/react-store": "npm:^0.7.0"
-    "@tanstack/router-core": "npm:1.127.3"
-    isbot: "npm:^5.1.22"
+    "@tanstack/router-core": "npm:1.115.3"
+    jsesc: "npm:^3.1.0"
     tiny-invariant: "npm:^1.3.3"
     tiny-warning: "npm:^1.0.3"
   peerDependencies:
     react: ">=18.0.0 || >=19.0.0"
     react-dom: ">=18.0.0 || >=19.0.0"
-  checksum: 10c0/27290603986911f23f1f70bf60541217ed09852f17dfcd0e9cf7dab57c4b0e57fde163a8c2327b3624926c42ce170e284eec100c7e6e343dbbd93084ce8b6cba
+  checksum: 10c0/3ee5ddd987de3711be4621f746eaf737d6a89f87fb898d92a27b1fdea65c0f968a8d58dd9aae545d256ff857d417c412bcf0301d3f71dd611a55c495a6f0442d
   languageName: node
   linkType: hard
 
@@ -5424,7 +5431,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/router-core@npm:1.127.3, @tanstack/router-core@npm:^1.127.3":
+"@tanstack/router-core@npm:1.115.3":
+  version: 1.115.3
+  resolution: "@tanstack/router-core@npm:1.115.3"
+  dependencies:
+    "@tanstack/history": "npm:1.115.0"
+    "@tanstack/store": "npm:^0.7.0"
+    tiny-invariant: "npm:^1.3.3"
+  checksum: 10c0/9aca89618c47c38aaee9e69d8f6293e2ddf9b6bd86a5637daa4cb4e62ca29d5f06ed94142a84e0411aeb74844da897569c355715d607af5755850a45c3405712
+  languageName: node
+  linkType: hard
+
+"@tanstack/router-core@npm:^1.127.3":
   version: 1.127.3
   resolution: "@tanstack/router-core@npm:1.127.3"
   dependencies:
@@ -9074,9 +9092,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-better-tailwindcss@npm:3.6.0":
-  version: 3.6.0
-  resolution: "eslint-plugin-better-tailwindcss@npm:3.6.0"
+"eslint-plugin-better-tailwindcss@npm:3.6.1":
+  version: 3.6.1
+  resolution: "eslint-plugin-better-tailwindcss@npm:3.6.1"
   dependencies:
     "@eslint/css-tree": "npm:^3.6.1"
     enhanced-resolve: "npm:^5.18.2"
@@ -9088,7 +9106,7 @@ __metadata:
   peerDependencies:
     eslint: ^7.0.0 || ^8.0.0 || ^9.0.0
     tailwindcss: ^3.3.0 || ^4.1.6
-  checksum: 10c0/e8ecc74a22f801fa322c7aad6f1b1f45307471f03aa8ce47e0709691ac7f1b49df1abde1f5cdb9df329f05fa62352363e1be636671b6b6a0d5195e01d70be4a7
+  checksum: 10c0/e471cc847bdd27ce967f0db8c37a5f552f8802284ba814a28b5304ccfc53f6e992ecde7f11a19bb485644d5803aafee84f0d3fc043263eaf9ab6d43f6481384c
   languageName: node
   linkType: hard
 
@@ -10183,9 +10201,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"graphql-ws@npm:6.0.5":
-  version: 6.0.5
-  resolution: "graphql-ws@npm:6.0.5"
+"graphql-ws@npm:6.0.6":
+  version: 6.0.6
+  resolution: "graphql-ws@npm:6.0.6"
   peerDependencies:
     "@fastify/websocket": ^10 || ^11
     crossws: ~0.3
@@ -10201,7 +10219,7 @@ __metadata:
       optional: true
     ws:
       optional: true
-  checksum: 10c0/7b882a4f47be2c67e8ae2357fb84ac7026ed8d6152eebb164aed53b8d1234f123a9a6d036fd53c8aea97a6197c7f748861205dc289ff418666cd0446571635e9
+  checksum: 10c0/4d1f18245fd2c56670156d910bc45a6fd456291b6e9b96d98e3d7fd464e1b406cfb4e68b4aafeb875c366d63d8f204b488b57729d622cd8d97e0387d0cd38dcf
   languageName: node
   linkType: hard
 
@@ -11062,13 +11080,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"isbot@npm:^5.1.22":
-  version: 5.1.28
-  resolution: "isbot@npm:5.1.28"
-  checksum: 10c0/1e9417986613e4b493e57e20b813d7e0130c845657ff14a11d39e4bf326056065850bf52773767f2681c0b7b146ba833d4686db16017dfbadd85a206c8396d90
-  languageName: node
-  linkType: hard
-
 "isexe@npm:^2.0.0":
   version: 2.0.0
   resolution: "isexe@npm:2.0.0"
@@ -11284,7 +11295,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jsesc@npm:^3.0.2":
+"jsesc@npm:^3.0.2, jsesc@npm:^3.1.0":
   version: 3.1.0
   resolution: "jsesc@npm:3.1.0"
   bin:
