@@ -74,6 +74,15 @@ func (r *mutationResolver) FlushProjectToGcs(ctx context.Context, projectId gqlm
 	return &result, nil
 }
 
+func (r *mutationResolver) ClearProject(ctx context.Context, projectId gqlmodel.ID) (*bool, error) {
+	err := interactor.ClearDoc(ctx, string(projectId))
+	if err != nil {
+		return nil, err
+	}
+	result := true
+	return &result, nil
+}
+
 type projectDocumentResolver struct{ *Resolver }
 
 func (r *Resolver) ProjectDocument() ProjectDocumentResolver {
