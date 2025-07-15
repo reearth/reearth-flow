@@ -21,8 +21,6 @@ const WorkspaceIdWrapper: React.FC<Props> = ({ children }) => {
   const { useGetWorkspace } = useWorkspace();
   const { workspace, isLoading } = useGetWorkspace(workspaceId);
 
-  console.log("ASDLFKASLDFKJ");
-
   useEffect(() => {
     if (!workspace) return;
     setCurrentWorkspace(workspace);

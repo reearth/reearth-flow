@@ -31,12 +31,10 @@ const WorkspaceRoute = () => {
   const { getAccessToken } = useAuth();
 
   const [accessToken, setAccessToken] = useState<string | undefined>(undefined);
-  console.log("WorkspaceRoute: Initializing access token...");
 
   useEffect(() => {
     (async () => {
       const token = await getAccessToken();
-      console.log("Access Token:", token);
       setAccessToken(token);
     })();
   }, [getAccessToken]);
