@@ -97,7 +97,11 @@ impl FileSystemSchemaCache {
 impl SchemaCache for FileSystemSchemaCache {
     fn put_schema(&self, key: &str, content: &[u8]) -> Result<()> {
         let path = self.get_full_path(key);
-        tracing::debug!("Saving schema to cache: key={}, path={}", key, path.display());
+        tracing::debug!(
+            "Saving schema to cache: key={}, path={}",
+            key,
+            path.display()
+        );
 
         // Create parent directories if needed
         if let Some(parent) = path.parent() {
@@ -114,7 +118,7 @@ impl SchemaCache for FileSystemSchemaCache {
                 path.display()
             ))
         })?;
-        
+
         tracing::debug!("Successfully saved schema to {}", path.display());
         Ok(())
     }

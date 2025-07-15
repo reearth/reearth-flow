@@ -152,7 +152,11 @@ impl XmlSchemaResolver {
             tracing::debug!("Found import/include element: {}", tag);
             if let Some(schema_location) = self.get_attribute(node, "schemaLocation") {
                 let resolved_url = self.resolve_url(base_url, &schema_location)?;
-                tracing::debug!("Resolved dependency: {} -> {}", schema_location, resolved_url);
+                tracing::debug!(
+                    "Resolved dependency: {} -> {}",
+                    schema_location,
+                    resolved_url
+                );
                 dependencies.push(resolved_url);
             } else {
                 tracing::debug!("No schemaLocation attribute found for {}", tag);

@@ -4,4 +4,5 @@ pub(crate) mod fragmenter;
 pub(crate) mod mapping;
 pub(crate) mod schema_fetcher;
 pub(crate) mod schema_resolver;
+pub(crate) mod schema_rewriter;
 pub(crate) mod validator;

@@ -2,7 +2,7 @@ use core::fmt;
 use std::{
     collections::{HashMap, HashSet},
     fmt::{Debug, Formatter},
-    hash::{Hash, Hasher},
+    hash::Hash,
     path::Path,
     str::FromStr,
     sync::Arc,
@@ -29,21 +29,10 @@ use super::cache::{create_filesystem_cache, SchemaCache};
 use super::errors::{Result, XmlProcessorError};
 use super::schema_fetcher::{HttpSchemaFetcher, SchemaFetcher};
 use super::schema_resolver::XmlSchemaResolver;
+use super::schema_rewriter::SchemaRewriter;
 
 static SUCCESS_PORT: Lazy<Port> = Lazy::new(|| Port::new("success"));
 static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
-
-/// Remove XML declaration from content to prevent "multiple XML declaration" errors
-/// when schemas are included by other schemas
-fn remove_xml_declaration(content: &str) -> &str {
-    let trimmed = content.trim_start();
-    if trimmed.starts_with("<?xml") {
-        if let Some(end_pos) = trimmed.find("?>") {
-            return trimmed[end_pos + 2..].trim_start();
-        }
-    }
-    content
-}
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
@@ -161,12 +150,14 @@ impl ProcessorFactory for XmlValidatorFactory {
         // let schema_cache = create_schema_cache(ctx.node_cache());
         let cache_dir = std::env::temp_dir().join("reearth-flow-xmlvalidator-schema");
         let schema_cache = create_filesystem_cache(cache_dir)?;
+        let schema_rewriter = SchemaRewriter::new(schema_cache.clone());
 
         let process = XmlValidator {
             params,
             schema_store: Arc::new(parking_lot::RwLock::new(HashMap::new())),
             schema_fetcher,
             schema_cache,
+            schema_rewriter,
         };
         Ok(Box::new(process))
     }
@@ -203,6 +194,7 @@ pub struct XmlValidator {
     schema_store: Arc<parking_lot::RwLock<SchemaStore>>,
     schema_fetcher: Arc<dyn SchemaFetcher>,
     schema_cache: Arc<dyn SchemaCache>,
+    schema_rewriter: SchemaRewriter,
 }
 
 impl Debug for XmlValidator {
@@ -377,32 +369,6 @@ impl Processor for XmlValidator {
 }
 
 impl XmlValidator {
-    /// Generate a cache key for a schema URL
-    /// Preserves directory structure for relative path references
-    fn generate_cache_key(url: &str) -> String {
-        // Remove protocol and host to get path-like structure
-        if let Some(protocol_end) = url.find("://") {
-            let after_protocol = &url[protocol_end + 3..];
-            // Find the start of the path (after host)
-            if let Some(path_start) = after_protocol.find('/') {
-                let path = &after_protocol[path_start + 1..];
-                // Use a hash of the host as prefix to avoid conflicts
-                let host = &after_protocol[..path_start];
-                let mut hasher = std::collections::hash_map::DefaultHasher::new();
-                host.hash(&mut hasher);
-                let host_hash = format!("{:x}", hasher.finish());
-                // Preserve directory structure by keeping the path as-is
-                return format!("xmlvalidator-schema/{}/{}", &host_hash[..8], path);
-            }
-        }
-        // Fallback to simple hash-based approach
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        url.hash(&mut hasher);
-        let hash = format!("{:x}", hasher.finish());
-        let filename = url.split('/').next_back().unwrap_or("schema.xsd");
-        format!("xmlvalidator-schema/{}-{}", &hash[..8], filename)
-    }
-
     fn resolve_schema_target(&self, location: &str, feature: &Feature) -> Option<String> {
         if !location.contains(PROTOCOL_SEPARATOR) && !location.starts_with('/') {
             let base_path = self.get_base_path(feature)?;
@@ -431,139 +397,23 @@ impl XmlValidator {
                 return Ok(None);
             }
 
-            // Check if the root schema is already cached
-            let root_cache_key = Self::generate_cache_key(&target);
-
-            let mut url_to_cache_path = HashMap::new();
-
-            // If root schema is already cached, use it directly
-            // Note: We assume if the root is cached, its dependencies are also cached
-            // since they are fetched together during resolution
-            if self.schema_cache.is_cached(&root_cache_key) {
-                let cached_root_path = self.schema_cache.get_schema_path(&root_cache_key)?;
-                return Ok(Some(
-                    xml::create_xml_schema_validation_context(
-                        cached_root_path
-                            .to_str()
-                            .ok_or_else(|| {
-                                XmlProcessorError::Validator("Invalid path".to_string())
-                            })?
-                            .to_string(),
-                    )
-                    .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?,
-                ));
-            }
-
-            // If not cached, fetch the schema and all its dependencies
-            tracing::debug!("Resolving schema dependencies for: {}", target);
-            let resolution = resolver.resolve_schema_dependencies(&target)?;
-            tracing::debug!("Resolved {} schemas", resolution.schemas.len());
-
-            // Build URL to cache path mapping for all schemas
-            for url in resolution.schemas.keys() {
-                let cache_key = Self::generate_cache_key(url);
-                let cached_path = self.schema_cache.get_schema_path(&cache_key)?;
-                url_to_cache_path.insert(url.clone(), cached_path);
-            }
-
-            // Second pass: save schemas with rewritten import/include paths
-            for (url, resolved_schema) in &resolution.schemas {
-                let mut content = resolved_schema.content.clone();
-
-                // Rewrite schemaLocation attributes to point to cached files
-                for (import_url, import_path) in &url_to_cache_path {
-                    if url != import_url {
-                        // Calculate relative path from current schema to imported schema
-                        let current_path = url_to_cache_path.get(url).unwrap();
-                        let relative_path = if let (Some(current_parent), Some(import_parent)) =
-                            (current_path.parent(), import_path.parent())
-                        {
-                            if current_parent == import_parent {
-                                // Same directory - use just the filename
-                                import_path
-                                    .file_name()
-                                    .unwrap()
-                                    .to_str()
-                                    .unwrap()
-                                    .to_string()
-                            } else {
-                                // Different directories - use absolute file:// URL
-                                format!("file://{}", import_path.display())
-                            }
-                        } else {
-                            format!("file://{}", import_path.display())
-                        };
-
-                        // Replace absolute URLs with appropriate paths
-                        let old_pattern1 = format!(r#"schemaLocation="{import_url}""#);
-                        let new_pattern1 = format!(r#"schemaLocation="{}""#, relative_path);
-                        if content.contains(&old_pattern1) {
-                            tracing::debug!("Replacing {} with {}", old_pattern1, new_pattern1);
-                            content = content.replace(&old_pattern1, &new_pattern1);
-                        }
-                        
-                        let old_pattern2 = format!(r#"schemaLocation='{import_url}'"#);
-                        let new_pattern2 = format!(r#"schemaLocation='{}'"#, relative_path);
-                        if content.contains(&old_pattern2) {
-                            tracing::debug!("Replacing {} with {}", old_pattern2, new_pattern2);
-                            content = content.replace(&old_pattern2, &new_pattern2);
-                        }
-
-                        // Also handle relative paths in the original schema
-                        // Replace relative imports that might be in the schema
-                        if let Some(last_slash) = import_url.rfind('/') {
-                            let import_filename = &import_url[last_slash + 1..];
-                            content = content.replace(
-                                &format!(r#"schemaLocation="{}""#, import_filename),
-                                &format!(r#"schemaLocation="{}""#, relative_path),
-                            );
-                            content = content.replace(
-                                &format!(r#"schemaLocation='{}'"#, import_filename),
-                                &format!(r#"schemaLocation='{}'"#, relative_path),
-                            );
-                        }
-                    }
-                }
-
-                let cache_key = Self::generate_cache_key(url);
-
-                // Log original imports/includes
-                if content.contains("schemaLocation") {
-                    tracing::debug!("Schema {} contains schemaLocation references", url);
-                }
-
-                // Remove XML declaration from non-root schemas to prevent
-                // "multiple XML declaration" errors when schemas are included
-                let final_content = if url != &target {
-                    remove_xml_declaration(&content).to_string()
-                } else {
-                    content
-                };
-
-                // Save rewritten schema content to cache
-                tracing::debug!("Saving schema to cache: {} -> {}", url, cache_key);
-                let cache_path = self.schema_cache.get_schema_path(&cache_key)?;
-                tracing::debug!("Cache path for {}: {:?}", url, cache_path);
-                self.schema_cache
-                    .put_schema(&cache_key, final_content.as_bytes())?;
-            }
-
-            // Create validation context from the cached root schema
-            let cached_root_path = url_to_cache_path.get(&target).ok_or_else(|| {
-                XmlProcessorError::Validator("Root schema not found in cache".to_string())
-            })?;
+            // Use SchemaRewriter to process and cache schemas
+            let cached_root_path = self
+                .schema_rewriter
+                .process_and_cache_schemas(&target, resolver)?;
 
             let root_path_str = cached_root_path
                 .to_str()
-                .ok_or_else(|| {
-                    XmlProcessorError::Validator("Invalid cache path".to_string())
-                })?;
-            
-            tracing::debug!("Creating validation context from cached schema: {}", root_path_str);
-            
+                .ok_or_else(|| XmlProcessorError::Validator("Invalid cache path".to_string()))?;
+
+            tracing::debug!(
+                "Creating validation context from cached schema: {}",
+                root_path_str
+            );
+
             Ok(Some(
                 xml::create_xml_schema_validation_context(root_path_str.to_string())
-                .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?,
+                    .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?,
             ))
         } else {
             // For local files, use direct validation
@@ -598,7 +448,9 @@ impl XmlValidator {
             for (_ns, location) in schema_locations.iter() {
                 if !location.starts_with("http://") && !location.starts_with("https://") {
                     tracing::debug!("Processing local schema location: {}", location);
-                    if let Some(context) = self.process_schema_location(location, feature, &resolver)? {
+                    if let Some(context) =
+                        self.process_schema_location(location, feature, &resolver)?
+                    {
                         validation_context = Some(context);
                         break; // Use the first successfully processed local schema
                     }
@@ -692,7 +544,7 @@ impl XmlValidator {
 
         let schema_locations = xml::parse_schema_locations(document)
             .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?;
-        
+
         tracing::debug!("Parsed schema locations: {:?}", schema_locations);
 
         let result = if !self.schema_store.read().contains_key(&schema_locations) {
@@ -793,6 +645,7 @@ mod tests {
     use crate::tests::utils;
     use crate::xml::cache::{create_filesystem_cache, NoOpSchemaCache};
     use crate::xml::schema_fetcher::MockSchemaFetcher;
+    use crate::xml::schema_rewriter::generate_cache_key;
     use indexmap::IndexMap;
     use reearth_flow_runtime::forwarder::{NoopChannelForwarder, ProcessorChannelForwarder};
     use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry};
@@ -816,12 +669,14 @@ mod tests {
             }
             _ => Arc::new(NoOpSchemaCache),
         };
+        let schema_rewriter = SchemaRewriter::new(schema_cache.clone());
 
         XmlValidator {
             params,
             schema_store: Arc::new(parking_lot::RwLock::new(HashMap::new())),
             schema_fetcher,
             schema_cache,
+            schema_rewriter,
         }
     }
 
@@ -844,12 +699,14 @@ mod tests {
             }
             _ => Arc::new(NoOpSchemaCache),
         };
+        let schema_rewriter = SchemaRewriter::new(schema_cache.clone());
 
         XmlValidator {
             params,
             schema_store: Arc::new(parking_lot::RwLock::new(HashMap::new())),
             schema_fetcher: fetcher,
             schema_cache,
+            schema_rewriter,
         }
     }
 
@@ -1573,7 +1430,7 @@ mod tests {
             // Check that building schema was cached in filesystem
             let building_schema_url =
                 "http://schemas.opengis.net/citygml/building/2.0/building.xsd";
-            let cache_key = XmlValidator::generate_cache_key(building_schema_url);
+            let cache_key = generate_cache_key(building_schema_url);
 
             assert!(
                 validator.schema_cache.is_cached(&cache_key),
@@ -2009,13 +1866,16 @@ mod tests {
         };
 
         let schema_fetcher = Arc::new(HttpSchemaFetcher::new());
+        let schema_cache: Arc<dyn SchemaCache> = Arc::new(NoOpSchemaCache); // No cache means validation should be skipped
+        let schema_rewriter = SchemaRewriter::new(schema_cache.clone());
 
         // Create validator without schema cache
         let mut validator = XmlValidator {
             params,
             schema_store: Arc::new(parking_lot::RwLock::new(HashMap::new())),
             schema_fetcher,
-            schema_cache: Arc::new(NoOpSchemaCache), // No cache means validation should be skipped
+            schema_cache,
+            schema_rewriter,
         };
 
         // XML with invalid schema that would normally fail validation
@@ -2088,12 +1948,14 @@ mod tests {
         };
 
         let schema_fetcher = Arc::new(HttpSchemaFetcher::new());
+        let schema_rewriter = SchemaRewriter::new(schema_cache.clone());
 
         let mut validator = XmlValidator {
             params,
             schema_store: Arc::new(parking_lot::RwLock::new(HashMap::new())),
             schema_fetcher,
             schema_cache,
+            schema_rewriter,
         };
 
         // Test with valid XML
@@ -2352,7 +2214,7 @@ mod tests {
             ProcessorChannelForwarder::Noop(noop_fw) => {
                 let send_ports = noop_fw.send_ports.lock().unwrap();
                 assert!(!send_ports.is_empty(), "Should have sent output");
-                
+
                 // Should succeed because HTTP schema is used (which expects httpElement)
                 assert_eq!(
                     send_ports[0], *SUCCESS_PORT,
@@ -2402,15 +2264,22 @@ mod tests {
 
         // Create mock fetcher with both schemas
         let mock_fetcher = MockSchemaFetcher::new()
-            .with_response("http://example.com/schemas/main.xsd", Ok(main_schema.to_string()))
-            .with_response("http://example.com/schemas/dep/dependency.xsd", Ok(dep_schema.to_string()));
+            .with_response(
+                "http://example.com/schemas/main.xsd",
+                Ok(main_schema.to_string()),
+            )
+            .with_response(
+                "http://example.com/schemas/dep/dependency.xsd",
+                Ok(dep_schema.to_string()),
+            );
 
         let feature = create_feature_with_xml(xml_content);
-        
+
         // Create validator with filesystem cache
         let temp_dir = env::temp_dir().join(format!("xml_validator_test_{}", uuid::Uuid::new_v4()));
         let schema_cache = create_filesystem_cache(temp_dir.clone()).unwrap();
-        
+        let schema_rewriter = SchemaRewriter::new(schema_cache.clone());
+
         let mut validator = XmlValidator {
             params: XmlValidatorParam {
                 attribute: Attribute::new("xml_content"),
@@ -2420,6 +2289,7 @@ mod tests {
             schema_store: Arc::new(parking_lot::RwLock::new(HashMap::new())),
             schema_fetcher: Arc::new(mock_fetcher),
             schema_cache,
+            schema_rewriter,
         };
 
         let ctx = utils::create_default_execute_context(&feature);
@@ -2429,20 +2299,32 @@ mod tests {
         assert!(result.is_ok(), "XML validation processing should succeed");
 
         // Check that schemas are cached with proper directory structure
-        let main_cache_key = XmlValidator::generate_cache_key("http://example.com/schemas/main.xsd");
-        let dep_cache_key = XmlValidator::generate_cache_key("http://example.com/schemas/dep/dependency.xsd");
-        
+        let main_cache_key = generate_cache_key("http://example.com/schemas/main.xsd");
+        let dep_cache_key = generate_cache_key("http://example.com/schemas/dep/dependency.xsd");
+
         // Verify directory structure is preserved
-        assert!(main_cache_key.contains("schemas/main.xsd"), "Main schema cache key should preserve path");
-        assert!(dep_cache_key.contains("schemas/dep/dependency.xsd"), "Dependency cache key should preserve path");
-        
+        assert!(
+            main_cache_key.contains("schemas/main.xsd"),
+            "Main schema cache key should preserve path"
+        );
+        assert!(
+            dep_cache_key.contains("schemas/dep/dependency.xsd"),
+            "Dependency cache key should preserve path"
+        );
+
         // Check cached files exist
-        let main_path = validator.schema_cache.get_schema_path(&main_cache_key).unwrap();
-        let dep_path = validator.schema_cache.get_schema_path(&dep_cache_key).unwrap();
-        
+        let main_path = validator
+            .schema_cache
+            .get_schema_path(&main_cache_key)
+            .unwrap();
+        let dep_path = validator
+            .schema_cache
+            .get_schema_path(&dep_cache_key)
+            .unwrap();
+
         assert!(main_path.exists(), "Main schema should be cached");
         assert!(dep_path.exists(), "Dependency schema should be cached");
-        
+
         // Verify the import path was rewritten to local file
         let cached_main = std::fs::read_to_string(&main_path).unwrap();
         assert!(
