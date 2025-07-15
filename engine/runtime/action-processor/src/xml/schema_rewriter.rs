@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use super::cache::SchemaCache;
 use super::errors::{Result, XmlProcessorError};
-use super::schema_resolver::XmlSchemaResolver;
+use super::schema_resolver::SchemaResolutionResult;
 
 /// Handles schema rewriting and caching operations
 #[derive(Clone)]
@@ -16,12 +16,12 @@ impl SchemaRewriter {
         Self { cache }
     }
 
-    /// Process schemas: fetch, rewrite imports, and cache them
+    /// Process schemas: rewrite imports and cache them
     /// Returns the path to the cached root schema
     pub fn process_and_cache_schemas(
         &self,
         target_url: &str,
-        resolver: &XmlSchemaResolver,
+        resolution: &SchemaResolutionResult,
     ) -> Result<std::path::PathBuf> {
         // Check if already cached
         let target_cache_key = generate_cache_key(target_url);
@@ -30,10 +30,7 @@ impl SchemaRewriter {
             return self.cache.get_schema_path(&target_cache_key);
         }
 
-        // Resolve all schema dependencies
-        tracing::debug!("Resolving schema dependencies for: {}", target_url);
-        let resolution = resolver.resolve_schema_dependencies(target_url)?;
-        tracing::debug!("Resolved {} schemas", resolution.schemas.len());
+        tracing::debug!("Processing {} schemas for caching", resolution.schemas.len());
 
         // Build URL to cache path mapping for all schemas
         let mut url_to_cache_path = HashMap::new();
@@ -44,12 +41,12 @@ impl SchemaRewriter {
         }
 
         // Process and cache each schema
-        for (url, resolved_schema) in resolution.schemas {
+        for (url, resolved_schema) in &resolution.schemas {
             // Rewrite import paths in schema content
             let mut content = resolved_schema.content.clone();
-            content = rewrite_schema_imports(&content, &url, &url_to_cache_path)?;
+            content = rewrite_schema_imports(&content, url, &url_to_cache_path)?;
 
-            let cache_key = generate_cache_key(&url);
+            let cache_key = generate_cache_key(url);
 
             // Log original imports/includes
             if content.contains("schemaLocation") {
@@ -178,6 +175,7 @@ mod tests {
     use super::*;
     use crate::xml::cache::create_filesystem_cache;
     use crate::xml::schema_fetcher::MockSchemaFetcher;
+    use crate::xml::schema_resolver::XmlSchemaResolver;
     use std::env;
 
     #[test]
@@ -234,8 +232,11 @@ mod tests {
         let rewriter = SchemaRewriter::new(cache.clone());
         let resolver = XmlSchemaResolver::new(Arc::new(fetcher));
 
-        // Process schemas
-        let result = rewriter.process_and_cache_schemas("http://example.com/main.xsd", &resolver);
+        // First resolve schemas
+        let resolution = resolver.resolve_schema_dependencies("http://example.com/main.xsd").unwrap();
+        
+        // Then process schemas
+        let result = rewriter.process_and_cache_schemas("http://example.com/main.xsd", &resolution);
         assert!(result.is_ok());
 
         let cached_path = result.unwrap();
@@ -267,12 +268,15 @@ mod tests {
         let rewriter = SchemaRewriter::new(cache.clone());
         let resolver = XmlSchemaResolver::new(Arc::new(fetcher));
 
+        // Resolve schemas once
+        let resolution = resolver.resolve_schema_dependencies("http://example.com/test.xsd").unwrap();
+        
         // First call should fetch and cache
-        let result1 = rewriter.process_and_cache_schemas("http://example.com/test.xsd", &resolver);
+        let result1 = rewriter.process_and_cache_schemas("http://example.com/test.xsd", &resolution);
         assert!(result1.is_ok());
 
         // Second call should hit cache
-        let result2 = rewriter.process_and_cache_schemas("http://example.com/test.xsd", &resolver);
+        let result2 = rewriter.process_and_cache_schemas("http://example.com/test.xsd", &resolution);
         assert!(result2.is_ok());
         assert_eq!(result1.unwrap(), result2.unwrap());
 
@@ -319,8 +323,11 @@ mod tests {
         let rewriter = SchemaRewriter::new(cache.clone());
         let resolver = XmlSchemaResolver::new(Arc::new(fetcher));
 
+        // Resolve schemas first
+        let resolution = resolver.resolve_schema_dependencies("http://example.com/main.xsd").unwrap();
+        
         // Process schemas - should handle multiple XML declarations properly
-        let result = rewriter.process_and_cache_schemas("http://example.com/main.xsd", &resolver);
+        let result = rewriter.process_and_cache_schemas("http://example.com/main.xsd", &resolution);
         assert!(
             result.is_ok(),
             "Should process schemas with multiple imports"
@@ -378,13 +385,13 @@ mod tests {
         let temp_dir = env::temp_dir().join(format!("schema_nested_test_{}", uuid::Uuid::new_v4()));
         let cache = create_filesystem_cache(temp_dir.clone()).unwrap();
 
-        let rewriter = SchemaRewriter::new(cache.clone());
+        let _rewriter = SchemaRewriter::new(cache.clone());
         let resolver = XmlSchemaResolver::new(Arc::new(fetcher));
 
-        // This should fail due to missing dependency
-        let result = rewriter.process_and_cache_schemas("http://example.com/main.xsd", &resolver);
+        // This should fail when resolving dependencies
+        let resolution_result = resolver.resolve_schema_dependencies("http://example.com/main.xsd");
         assert!(
-            result.is_err(),
+            resolution_result.is_err(),
             "Should fail when nested dependency cannot be fetched"
         );
 
@@ -450,8 +457,11 @@ mod tests {
         let rewriter = SchemaRewriter::new(cache.clone());
         let resolver = XmlSchemaResolver::new(Arc::new(fetcher));
 
+        // First resolve schemas
+        let resolution = resolver.resolve_schema_dependencies("http://example.com/main.xsd").unwrap();
+        
         // Process all schemas successfully
-        let result = rewriter.process_and_cache_schemas("http://example.com/main.xsd", &resolver);
+        let result = rewriter.process_and_cache_schemas("http://example.com/main.xsd", &resolution);
         assert!(
             result.is_ok(),
             "Should succeed when all dependencies are resolved"

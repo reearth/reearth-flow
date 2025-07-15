@@ -25,6 +25,7 @@ use serde_json::Value;
 use super::cache::{create_filesystem_cache, SchemaCache};
 use super::errors::{Result, XmlProcessorError};
 use super::namespace::recursive_check_namespace;
+use super::schema_composer::{generate_catalog, generate_catalog_cache_key, generate_composite_cache_key, generate_wrapper_schema};
 use super::schema_fetcher::{HttpSchemaFetcher, SchemaFetcher};
 use super::schema_resolver::XmlSchemaResolver;
 use super::schema_rewriter::SchemaRewriter;
@@ -95,7 +96,6 @@ impl ProcessorFactory for XmlValidatorFactory {
         let cache_dir = std::env::temp_dir().join("reearth-flow-xmlvalidator-schema");
         let schema_cache = create_filesystem_cache(cache_dir)?;
         let schema_rewriter = SchemaRewriter::new(schema_cache.clone());
-
         let process = XmlValidator {
             params,
             schema_store: Arc::new(parking_lot::RwLock::new(HashMap::new())),
@@ -398,73 +398,94 @@ impl XmlValidator {
         feature: &Feature,
     ) -> Result<xml::XmlSchemaValidationContext> {
         let resolver = XmlSchemaResolver::new(self.schema_fetcher.clone());
+        let mut cached_paths = HashMap::new();
+        let mut all_mappings = HashMap::new();
 
-        // Sort schema locations to prioritize HTTP/HTTPS schemas
-        let mut sorted_locations: Vec<_> = schema_locations.iter().collect();
-        sorted_locations.sort_by_key(|(_ns, location)| {
-            if location.starts_with("http://") || location.starts_with("https://") {
-                0 // HTTP/HTTPS schemas have higher priority
+        // Process and cache all schemas
+        for (_ns, location) in schema_locations {
+            let target = match self.resolve_schema_target(location, feature) {
+                Some(t) if !t.is_empty() => t,
+                _ => continue,
+            };
+
+            if target.starts_with("http://") || target.starts_with("https://") {
+                if !self.schema_cache.is_available() {
+                    continue;
+                }
+
+                // First resolve the schema and its dependencies
+                match resolver.resolve_schema_dependencies(&target) {
+                    Ok(resolution) => {
+                        // Then process and cache all resolved schemas
+                        match self.schema_rewriter.process_and_cache_schemas(&target, &resolution) {
+                            Ok(cached_path) => {
+                                cached_paths.insert(location.clone(), cached_path.clone());
+                                all_mappings.insert(target.clone(), cached_path);
+                            }
+                            Err(e) => {
+                                tracing::warn!("Failed to cache schema {}: {}", target, e);
+                                continue;
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!("Failed to resolve schema {}: {}", target, e);
+                        continue;
+                    }
+                }
             } else {
-                1 // Local schemas have lower priority
-            }
-        });
-
-        // Process schema locations in priority order
-        for (_ns, location) in sorted_locations {
-            tracing::debug!("Processing schema location: {}", location);
-            if let Some(context) = self.process_schema_location(location, feature, &resolver)? {
-                return Ok(context);
+                // Local file
+                if let Ok(path) = std::path::PathBuf::from(&target).canonicalize() {
+                    cached_paths.insert(location.clone(), path.clone());
+                    all_mappings.insert(target.clone(), path);
+                }
             }
         }
 
-        Err(XmlProcessorError::Validator(
-            "No schema context created".to_string(),
-        ))
-    }
+        // Generate and save catalog
+        if !all_mappings.is_empty() {
+            let catalog_content = generate_catalog(&all_mappings);
+            let catalog_cache_key = generate_catalog_cache_key(&all_mappings);
 
-    fn process_schema_location(
-        &self,
-        location: &str,
-        feature: &Feature,
-        resolver: &XmlSchemaResolver,
-    ) -> Result<Option<xml::XmlSchemaValidationContext>> {
-        let target = match self.resolve_schema_target(location, feature) {
-            Some(t) if !t.is_empty() => t,
-            _ => return Ok(None),
-        };
-
-        // For HTTP(S) schemas, we need to cache them locally for libxml to use
-        if target.starts_with("http://") || target.starts_with("https://") {
-            if !self.schema_cache.is_available() {
-                // Skip HTTPS schema validation if no cache available
-                return Ok(None);
+            match self
+                .schema_cache
+                .put_schema(&catalog_cache_key, catalog_content.as_bytes())
+            {
+                Ok(()) => {
+                    if let Ok(catalog_path) = self.schema_cache.get_schema_path(&catalog_cache_key)
+                    {
+                        tracing::debug!("Created XML catalog at: {:?}", catalog_path);
+                        std::env::set_var("XML_CATALOG_FILES", &catalog_path);
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to create catalog: {}", e);
+                }
             }
-
-            // Use SchemaRewriter to process and cache schemas
-            let cached_root_path = self
-                .schema_rewriter
-                .process_and_cache_schemas(&target, resolver)?;
-
-            let root_path_str = cached_root_path
-                .to_str()
-                .ok_or_else(|| XmlProcessorError::Validator("Invalid cache path".to_string()))?;
-
-            tracing::debug!(
-                "Creating validation context from cached schema: {}",
-                root_path_str
-            );
-
-            Ok(Some(
-                xml::create_xml_schema_validation_context(root_path_str.to_string())
-                    .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?,
-            ))
-        } else {
-            // For local files, use direct validation
-            Ok(Some(
-                xml::create_xml_schema_validation_context(target)
-                    .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?,
-            ))
         }
+
+        // Generate wrapper schema
+        let wrapper_content =
+            generate_wrapper_schema(schema_locations, &cached_paths);
+
+        // Save wrapper schema and create context
+        let wrapper_cache_key = generate_composite_cache_key(schema_locations);
+        self.schema_cache
+            .put_schema(&wrapper_cache_key, wrapper_content.as_bytes())?;
+        let wrapper_path = self.schema_cache.get_schema_path(&wrapper_cache_key)?;
+
+        let wrapper_path_str = wrapper_path
+            .to_str()
+            .ok_or_else(|| XmlProcessorError::Validator("Invalid wrapper path".to_string()))?;
+
+        tracing::debug!(
+            "Creating validation context from wrapper schema: {}",
+            wrapper_path_str
+        );
+
+        xml::create_xml_schema_validation_context(wrapper_path_str.to_string()).map_err(|e| {
+            XmlProcessorError::Validator(format!("Failed to create validation context: {:?}", e))
+        })
     }
 
     fn resolve_schema_target(&self, location: &str, feature: &Feature) -> Option<String> {

@@ -21,8 +21,6 @@ pub struct ResolvedSchema {
 #[derive(Debug)]
 pub struct SchemaResolutionResult {
     pub schemas: HashMap<String, ResolvedSchema>,
-    #[allow(dead_code)]
-    pub root_schema: String,
 }
 
 /// Resolves XML Schema dependencies by recursively fetching and processing
@@ -84,10 +82,7 @@ impl XmlSchemaResolver {
 
         tracing::debug!("Resolved {} total schemas", schemas.len());
 
-        Ok(SchemaResolutionResult {
-            schemas,
-            root_schema: root_url.to_string(),
-        })
+        Ok(SchemaResolutionResult { schemas })
     }
 
     /// Fetch schema content with caching
@@ -264,7 +259,6 @@ mod tests {
 
         assert_eq!(result.schemas.len(), 1);
         assert!(result.schemas.contains_key("http://example.com/schema.xsd"));
-        assert_eq!(result.root_schema, "http://example.com/schema.xsd");
     }
 
     #[test]
