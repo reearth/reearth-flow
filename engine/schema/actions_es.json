@@ -599,7 +599,78 @@
       "name": "BoundsExtractor",
       "type": "processor",
       "description": "Extrae los límites",
-      "parameter": null,
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "BoundsExtractorParam",
+        "type": "object",
+        "properties": {
+          "xmax": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "xmin": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ymax": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ymin": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "zmax": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "zmin": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "default"
@@ -3175,7 +3246,19 @@
       "name": "PLATEAU3.BuildingUsageAttributeValidator",
       "type": "processor",
       "description": "Este procesador valida los atributos de uso de edificios comprobando la presencia de atributos requeridos y garantizando la corrección de los códigos de ciudad. Si se encuentran problemas, produce errores a través de los puertos lBldgError y codeError.",
-      "parameter": null,
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "BuildingUsageAttributeValidatorParam",
+        "type": "object",
+        "properties": {
+          "codelistsPath": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "builtin": false,
       "inputPorts": [
         "default"
@@ -3294,7 +3377,55 @@
       "name": "PLATEAU3.XMLAttributeExtractor",
       "type": "processor",
       "description": "Extrae atributos de fragmentos XML basándose en una definición de esquema",
-      "parameter": null,
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "XmlAttributeExtractorParam",
+        "type": "object",
+        "properties": {
+          "addNsprefixToFeatureTypes": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "cityCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "exceptFeatureTypes": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "extractDmGeometryAsXmlFragment": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "schemaJson": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "targetPackages": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "builtin": false,
       "inputPorts": [
         "default"

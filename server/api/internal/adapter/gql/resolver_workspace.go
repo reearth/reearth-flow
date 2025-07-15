@@ -6,14 +6,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 )
 
-func (r *Resolver) Workspace() WorkspaceResolver {
-	return &workspaceResolver{r}
-}
-
-func (r *Resolver) WorkspaceMember() WorkspaceMemberResolver {
-	return &workspaceMemberResolver{r}
-}
-
 type workspaceResolver struct{ *Resolver }
 
 func (r *workspaceResolver) Assets(ctx context.Context, obj *gqlmodel.Workspace, pagination *gqlmodel.Pagination) (*gqlmodel.AssetConnection, error) {
@@ -25,7 +17,10 @@ func (r *workspaceResolver) Assets(ctx context.Context, obj *gqlmodel.Workspace,
 			OrderDir: pagination.OrderDir,
 		})
 	}
-	return nil, nil
+	return loaders(ctx).Asset.FindByWorkspace(ctx, obj.ID, nil, nil, &gqlmodel.PageBasedPagination{
+		Page:     1,
+		PageSize: 30,
+	})
 }
 
 func (r *workspaceResolver) AssetsPage(ctx context.Context, obj *gqlmodel.Workspace, pagination gqlmodel.PageBasedPagination) (*gqlmodel.AssetConnection, error) {
@@ -68,4 +63,8 @@ type workspaceMemberResolver struct{ *Resolver }
 
 func (r *workspaceMemberResolver) User(ctx context.Context, obj *gqlmodel.WorkspaceMember) (*gqlmodel.User, error) {
 	return dataloaders(ctx).User.Load(obj.UserID)
+}
+
+func intPtr(i int) *int {
+	return &i
 }

@@ -73,14 +73,12 @@ func Init(r *repo.Container) error {
 		func() error { return r.Job.(*Job).Init(ctx) },
 		func() error { return r.NodeExecution.(*NodeExecution).Init(ctx) },
 		func() error { return r.Parameter.(*Parameter).Init(ctx) },
-		func() error { return r.Permittable.(*accountmongo.Permittable).Init(ctx) }, // TODO: Delete this once the permission check migration is complete.
+		func() error { return r.Permittable.(*accountmongo.Permittable).Init() }, // TODO: Delete this once the permission check migration is complete.
 		func() error { return r.Project.(*Project).Init(ctx) },
 		func() error { return r.ProjectAccess.(*ProjectAccess).Init(ctx) },
-		func() error { return r.Role.(*accountmongo.Role).Init(ctx) }, // TODO: Delete this once the permission check migration is complete.
+		func() error { return r.Role.(*accountmongo.Role).Init() }, // TODO: Delete this once the permission check migration is complete.
 		func() error { return r.Trigger.(*Trigger).Init(ctx) },
-		func() error { return r.User.(*accountmongo.User).Init() },
 		func() error { return r.Workflow.(*Workflow).Init(ctx) },
-		func() error { return r.Workspace.(*accountmongo.Workspace).Init() },
 	)
 }
 

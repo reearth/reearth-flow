@@ -27,6 +27,3 @@ metadata.json
 runtime/common/test.zip
 
 tmp/
-example.yml
-logs/
-/*.sh
