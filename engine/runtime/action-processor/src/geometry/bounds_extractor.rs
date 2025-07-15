@@ -65,7 +65,7 @@ impl ProcessorFactory for BoundsExtractorFactory {
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        None
+        Some(schemars::schema_for!(BoundsExtractorParam))
     }
 
     fn categories(&self) -> &[&'static str] {

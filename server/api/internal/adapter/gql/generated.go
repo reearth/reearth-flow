@@ -65,13 +65,11 @@ type ComplexityRoot struct {
 	Asset struct {
 		ArchiveExtractionStatus func(childComplexity int) int
 		ContentType             func(childComplexity int) int
-		CoreSupport             func(childComplexity int) int
 		CreatedAt               func(childComplexity int) int
 		FileName                func(childComplexity int) int
 		FlatFiles               func(childComplexity int) int
 		ID                      func(childComplexity int) int
 		Name                    func(childComplexity int) int
-		PreviewType             func(childComplexity int) int
 		Public                  func(childComplexity int) int
 		Size                    func(childComplexity int) int
 		URL                     func(childComplexity int) int
@@ -576,13 +574,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Asset.ContentType(childComplexity), true
 
-	case "Asset.coreSupport":
-		if e.complexity.Asset.CoreSupport == nil {
-			break
-		}
-
-		return e.complexity.Asset.CoreSupport(childComplexity), true
-
 	case "Asset.createdAt":
 		if e.complexity.Asset.CreatedAt == nil {
 			break
@@ -617,13 +608,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Asset.Name(childComplexity), true
-
-	case "Asset.previewType":
-		if e.complexity.Asset.PreviewType == nil {
-			break
-		}
-
-		return e.complexity.Asset.PreviewType(childComplexity), true
 
 	case "Asset.public":
 		if e.complexity.Asset.Public == nil {
@@ -2693,8 +2677,6 @@ schema {
   name: String!
   url: String!
   uuid: String!
-  previewType: PreviewType
-  coreSupport: Boolean!
   flatFiles: Boolean!
   public: Boolean!
   archiveExtractionStatus: ArchiveExtractionStatus
@@ -2705,36 +2687,6 @@ enum AssetSortType {
   DATE
   SIZE
   NAME
-}
-
-enum PreviewType {
-  IMAGE
-  IMAGE_SVG
-  GEO
-  GEO_3D_TILES
-  GEO_MVT
-  MODEL_3D
-  CSV
-  UNKNOWN
-  UNKNOWN_GEO
-  GEOJSON
-  GEOTIFF
-  GPX
-  KML
-  SHP
-  CZML
-  PDF
-  HTML
-  XML
-  TEXT
-  JSON
-  SHEET
-  ARCHIVE
-  GLTF
-  VIDEO
-  AUDIO
-  TMS
-  GPKG
 }
 
 enum ArchiveExtractionStatus {
@@ -6317,91 +6269,6 @@ func (ec *executionContext) fieldContext_Asset_uuid(_ context.Context, field gra
 	return fc, nil
 }
 
-func (ec *executionContext) _Asset_previewType(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Asset) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Asset_previewType(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.PreviewType, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*gqlmodel.PreviewType)
-	fc.Result = res
-	return ec.marshalOPreviewType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPreviewType(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Asset_previewType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Asset",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type PreviewType does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Asset_coreSupport(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Asset) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Asset_coreSupport(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.CoreSupport, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Asset_coreSupport(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Asset",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Asset_flatFiles(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Asset) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Asset_flatFiles(ctx, field)
 	if err != nil {
@@ -6643,10 +6510,6 @@ func (ec *executionContext) fieldContext_AssetConnection_nodes(_ context.Context
 				return ec.fieldContext_Asset_url(ctx, field)
 			case "uuid":
 				return ec.fieldContext_Asset_uuid(ctx, field)
-			case "previewType":
-				return ec.fieldContext_Asset_previewType(ctx, field)
-			case "coreSupport":
-				return ec.fieldContext_Asset_coreSupport(ctx, field)
 			case "flatFiles":
 				return ec.fieldContext_Asset_flatFiles(ctx, field)
 			case "public":
@@ -6884,10 +6747,6 @@ func (ec *executionContext) fieldContext_CreateAssetPayload_asset(_ context.Cont
 				return ec.fieldContext_Asset_url(ctx, field)
 			case "uuid":
 				return ec.fieldContext_Asset_uuid(ctx, field)
-			case "previewType":
-				return ec.fieldContext_Asset_previewType(ctx, field)
-			case "coreSupport":
-				return ec.fieldContext_Asset_coreSupport(ctx, field)
 			case "flatFiles":
 				return ec.fieldContext_Asset_flatFiles(ctx, field)
 			case "public":
@@ -17055,10 +16914,6 @@ func (ec *executionContext) fieldContext_UpdateAssetPayload_asset(_ context.Cont
 				return ec.fieldContext_Asset_url(ctx, field)
 			case "uuid":
 				return ec.fieldContext_Asset_uuid(ctx, field)
-			case "previewType":
-				return ec.fieldContext_Asset_previewType(ctx, field)
-			case "coreSupport":
-				return ec.fieldContext_Asset_coreSupport(ctx, field)
 			case "flatFiles":
 				return ec.fieldContext_Asset_flatFiles(ctx, field)
 			case "public":
@@ -21547,13 +21402,6 @@ func (ec *executionContext) _Asset(ctx context.Context, sel ast.SelectionSet, ob
 			}
 		case "uuid":
 			out.Values[i] = ec._Asset_uuid(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "previewType":
-			out.Values[i] = ec._Asset_previewType(ctx, field, obj)
-		case "coreSupport":
-			out.Values[i] = ec._Asset_coreSupport(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -27191,22 +27039,6 @@ func (ec *executionContext) marshalOPreviewSnapshot2ᚖgithubᚗcomᚋreearthᚋ
 		return graphql.Null
 	}
 	return ec._PreviewSnapshot(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalOPreviewType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPreviewType(ctx context.Context, v any) (*gqlmodel.PreviewType, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var res = new(gqlmodel.PreviewType)
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOPreviewType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPreviewType(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.PreviewType) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return v
 }
 
 func (ec *executionContext) marshalOProject2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProject(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.Project) graphql.Marshaler {
