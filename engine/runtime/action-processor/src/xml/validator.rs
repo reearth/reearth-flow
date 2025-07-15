@@ -455,7 +455,9 @@ impl XmlValidator {
             }
 
             // If not cached, fetch the schema and all its dependencies
+            tracing::debug!("Resolving schema dependencies for: {}", target);
             let resolution = resolver.resolve_schema_dependencies(&target)?;
+            tracing::debug!("Resolved {} schemas", resolution.schemas.len());
 
             // Build URL to cache path mapping for all schemas
             for url in resolution.schemas.keys() {
@@ -493,14 +495,19 @@ impl XmlValidator {
                         };
 
                         // Replace absolute URLs with appropriate paths
-                        content = content.replace(
-                            &format!(r#"schemaLocation="{import_url}""#),
-                            &format!(r#"schemaLocation="{}""#, relative_path),
-                        );
-                        content = content.replace(
-                            &format!(r#"schemaLocation='{import_url}'"#),
-                            &format!(r#"schemaLocation='{}'"#, relative_path),
-                        );
+                        let old_pattern1 = format!(r#"schemaLocation="{import_url}""#);
+                        let new_pattern1 = format!(r#"schemaLocation="{}""#, relative_path);
+                        if content.contains(&old_pattern1) {
+                            tracing::debug!("Replacing {} with {}", old_pattern1, new_pattern1);
+                            content = content.replace(&old_pattern1, &new_pattern1);
+                        }
+                        
+                        let old_pattern2 = format!(r#"schemaLocation='{import_url}'"#);
+                        let new_pattern2 = format!(r#"schemaLocation='{}'"#, relative_path);
+                        if content.contains(&old_pattern2) {
+                            tracing::debug!("Replacing {} with {}", old_pattern2, new_pattern2);
+                            content = content.replace(&old_pattern2, &new_pattern2);
+                        }
 
                         // Also handle relative paths in the original schema
                         // Replace relative imports that might be in the schema
@@ -520,6 +527,11 @@ impl XmlValidator {
 
                 let cache_key = Self::generate_cache_key(url);
 
+                // Log original imports/includes
+                if content.contains("schemaLocation") {
+                    tracing::debug!("Schema {} contains schemaLocation references", url);
+                }
+
                 // Remove XML declaration from non-root schemas to prevent
                 // "multiple XML declaration" errors when schemas are included
                 let final_content = if url != &target {
@@ -529,6 +541,9 @@ impl XmlValidator {
                 };
 
                 // Save rewritten schema content to cache
+                tracing::debug!("Saving schema to cache: {} -> {}", url, cache_key);
+                let cache_path = self.schema_cache.get_schema_path(&cache_key)?;
+                tracing::debug!("Cache path for {}: {:?}", url, cache_path);
                 self.schema_cache
                     .put_schema(&cache_key, final_content.as_bytes())?;
             }
@@ -538,15 +553,16 @@ impl XmlValidator {
                 XmlProcessorError::Validator("Root schema not found in cache".to_string())
             })?;
 
+            let root_path_str = cached_root_path
+                .to_str()
+                .ok_or_else(|| {
+                    XmlProcessorError::Validator("Invalid cache path".to_string())
+                })?;
+            
+            tracing::debug!("Creating validation context from cached schema: {}", root_path_str);
+            
             Ok(Some(
-                xml::create_xml_schema_validation_context(
-                    cached_root_path
-                        .to_str()
-                        .ok_or_else(|| {
-                            XmlProcessorError::Validator("Invalid cache path".to_string())
-                        })?
-                        .to_string(),
-                )
+                xml::create_xml_schema_validation_context(root_path_str.to_string())
                 .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?,
             ))
         } else {
@@ -566,10 +582,27 @@ impl XmlValidator {
         let resolver = XmlSchemaResolver::new(self.schema_fetcher.clone());
         let mut validation_context = None;
 
-        // Process each schema location and resolve all dependencies
+        // First, try to process HTTP/HTTPS schemas as they are the main validation schemas
         for (_ns, location) in schema_locations.iter() {
-            if let Some(context) = self.process_schema_location(location, feature, &resolver)? {
-                validation_context = Some(context);
+            if location.starts_with("http://") || location.starts_with("https://") {
+                tracing::debug!("Processing HTTP schema location: {}", location);
+                if let Some(context) = self.process_schema_location(location, feature, &resolver)? {
+                    validation_context = Some(context);
+                    break; // Use the first successfully processed HTTP schema
+                }
+            }
+        }
+
+        // If no HTTP schema was processed, try local schemas
+        if validation_context.is_none() {
+            for (_ns, location) in schema_locations.iter() {
+                if !location.starts_with("http://") && !location.starts_with("https://") {
+                    tracing::debug!("Processing local schema location: {}", location);
+                    if let Some(context) = self.process_schema_location(location, feature, &resolver)? {
+                        validation_context = Some(context);
+                        break; // Use the first successfully processed local schema
+                    }
+                }
             }
         }
 
@@ -659,6 +692,8 @@ impl XmlValidator {
 
         let schema_locations = xml::parse_schema_locations(document)
             .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?;
+        
+        tracing::debug!("Parsed schema locations: {:?}", schema_locations);
 
         let result = if !self.schema_store.read().contains_key(&schema_locations) {
             // Get or create validation context
@@ -2250,5 +2285,172 @@ mod tests {
             }
             _ => panic!("Expected Noop forwarder"),
         }
+    }
+
+    #[test]
+    fn test_http_schema_priority_over_local() {
+        // Test that HTTP schemas are processed before local schemas
+        let http_schema = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://example.com/test"
+           xmlns="http://example.com/test"
+           elementFormDefault="qualified">
+    <xs:element name="root">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="httpElement" type="xs:string"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>"#;
+
+        let local_schema = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://example.com/test"
+           xmlns="http://example.com/test"
+           elementFormDefault="qualified">
+    <xs:element name="root">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="localElement" type="xs:string"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>"#;
+
+        // XML that validates against HTTP schema but not local schema
+        let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
+<root xmlns="http://example.com/test"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://example.com/test file:///tmp/local.xsd
+                          http://example.com/test http://example.com/test.xsd">
+    <httpElement>This validates against HTTP schema</httpElement>
+</root>"#;
+
+        // Create a mock fetcher that returns the HTTP schema
+        let mock_fetcher = MockSchemaFetcher::new()
+            .with_response("http://example.com/test.xsd", Ok(http_schema.to_string()));
+
+        let feature = create_feature_with_xml(xml_content);
+        let mut validator = create_xml_validator_with_mock_fetcher(
+            ValidationType::SyntaxAndSchema,
+            Arc::new(mock_fetcher),
+        );
+
+        // Also create a local schema file to ensure HTTP is still preferred
+        let temp_dir = env::temp_dir();
+        let local_schema_path = temp_dir.join("local.xsd");
+        std::fs::write(&local_schema_path, local_schema).unwrap();
+
+        let ctx = utils::create_default_execute_context(&feature);
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+
+        let result = validator.process(ctx, &fw);
+        assert!(result.is_ok(), "XML validation processing should succeed");
+
+        match fw {
+            ProcessorChannelForwarder::Noop(noop_fw) => {
+                let send_ports = noop_fw.send_ports.lock().unwrap();
+                assert!(!send_ports.is_empty(), "Should have sent output");
+                
+                // Should succeed because HTTP schema is used (which expects httpElement)
+                assert_eq!(
+                    send_ports[0], *SUCCESS_PORT,
+                    "Should validate successfully against HTTP schema, not local schema"
+                );
+            }
+            _ => panic!("Expected NoopChannelForwarder"),
+        }
+
+        // Cleanup
+        std::fs::remove_file(local_schema_path).ok();
+    }
+
+    #[test]
+    fn test_schema_cache_preserves_directory_structure() {
+        // Test that the cache preserves directory structure for schema dependencies
+        let main_schema = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:dep="http://example.com/dep"
+           targetNamespace="http://example.com/main"
+           elementFormDefault="qualified">
+    <xs:import namespace="http://example.com/dep" 
+               schemaLocation="http://example.com/schemas/dep/dependency.xsd"/>
+    <xs:element name="root">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="dep:item"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>"#;
+
+        let dep_schema = r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://example.com/dep"
+           elementFormDefault="qualified">
+    <xs:element name="item" type="xs:string"/>
+</xs:schema>"#;
+
+        let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
+<root xmlns="http://example.com/main"
+      xmlns:dep="http://example.com/dep"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://example.com/main http://example.com/schemas/main.xsd">
+    <dep:item>test</dep:item>
+</root>"#;
+
+        // Create mock fetcher with both schemas
+        let mock_fetcher = MockSchemaFetcher::new()
+            .with_response("http://example.com/schemas/main.xsd", Ok(main_schema.to_string()))
+            .with_response("http://example.com/schemas/dep/dependency.xsd", Ok(dep_schema.to_string()));
+
+        let feature = create_feature_with_xml(xml_content);
+        
+        // Create validator with filesystem cache
+        let temp_dir = env::temp_dir().join(format!("xml_validator_test_{}", uuid::Uuid::new_v4()));
+        let schema_cache = create_filesystem_cache(temp_dir.clone()).unwrap();
+        
+        let mut validator = XmlValidator {
+            params: XmlValidatorParam {
+                attribute: Attribute::new("xml_content"),
+                input_type: XmlInputType::Text,
+                validation_type: ValidationType::SyntaxAndSchema,
+            },
+            schema_store: Arc::new(parking_lot::RwLock::new(HashMap::new())),
+            schema_fetcher: Arc::new(mock_fetcher),
+            schema_cache,
+        };
+
+        let ctx = utils::create_default_execute_context(&feature);
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+
+        let result = validator.process(ctx, &fw);
+        assert!(result.is_ok(), "XML validation processing should succeed");
+
+        // Check that schemas are cached with proper directory structure
+        let main_cache_key = XmlValidator::generate_cache_key("http://example.com/schemas/main.xsd");
+        let dep_cache_key = XmlValidator::generate_cache_key("http://example.com/schemas/dep/dependency.xsd");
+        
+        // Verify directory structure is preserved
+        assert!(main_cache_key.contains("schemas/main.xsd"), "Main schema cache key should preserve path");
+        assert!(dep_cache_key.contains("schemas/dep/dependency.xsd"), "Dependency cache key should preserve path");
+        
+        // Check cached files exist
+        let main_path = validator.schema_cache.get_schema_path(&main_cache_key).unwrap();
+        let dep_path = validator.schema_cache.get_schema_path(&dep_cache_key).unwrap();
+        
+        assert!(main_path.exists(), "Main schema should be cached");
+        assert!(dep_path.exists(), "Dependency schema should be cached");
+        
+        // Verify the import path was rewritten to local file
+        let cached_main = std::fs::read_to_string(&main_path).unwrap();
+        assert!(
+            cached_main.contains(&format!("schemaLocation=\"file://{}", dep_path.display())),
+            "Import should be rewritten to local file path"
+        );
+
+        // Cleanup
+        std::fs::remove_dir_all(temp_dir).ok();
     }
 }
