@@ -91,6 +91,22 @@ type (
 		Worker_PubSubNodeStatusTopic           string   `envconfig:"WORKER_PUBSUB_NODE_STATUS_TOPIC" default:"flow-node-status" pp:",omitempty"`
 		Worker_TaskCount                       string   `envconfig:"WORKER_TASK_COUNT" default:"1" pp:",omitempty"`
 
+		Worker_AsyncqRedisAddr     string `envconfig:"REEARTH_FLOW_ASYNCQ_REDIS_ADDR" default:"localhost:6379" pp:",omitempty"`
+		Worker_AsyncqRedisPassword string `envconfig:"REEARTH_FLOW_ASYNCQ_REDIS_PASSWORD" default:"" pp:",omitempty"`
+		Worker_AsyncqRedisDB       int    `envconfig:"REEARTH_FLOW_ASYNCQ_REDIS_DB" default:"0" pp:",omitempty"`
+		Worker_AsyncqConcurrency   int    `envconfig:"REEARTH_FLOW_ASYNCQ_CONCURRENCY" default:"10" pp:",omitempty"`
+		Worker_AsyncqMaxRetry      int    `envconfig:"REEARTH_FLOW_ASYNCQ_MAX_RETRY" default:"3" pp:",omitempty"`
+
+		Batch_Type           string `envconfig:"BATCH_TYPE" default:"asyncq" pp:",omitempty"`
+		Batch_Redis_URL      string `envconfig:"BATCH_REDIS_URL" pp:",omitempty"`
+		Batch_Redis_Password string `envconfig:"BATCH_REDIS_PASSWORD" pp:",omitempty"`
+		Batch_Redis_DB       int    `envconfig:"BATCH_REDIS_DB" default:"0" pp:",omitempty"`
+		Batch_Concurrency    int    `envconfig:"BATCH_CONCURRENCY" default:"10" pp:",omitempty"`
+		Batch_MaxRetry       int    `envconfig:"BATCH_MAX_RETRY" default:"3" pp:",omitempty"`
+		Batch_Queue_Critical int    `envconfig:"BATCH_QUEUE_CRITICAL" default:"6" pp:",omitempty"`
+		Batch_Queue_Default  int    `envconfig:"BATCH_QUEUE_DEFAULT" default:"3" pp:",omitempty"`
+		Batch_Queue_Low      int    `envconfig:"BATCH_QUEUE_LOW" default:"1" pp:",omitempty"`
+
 		// websocket
 		WebsocketThriftServerURL string `envconfig:"REEARTH_FLOW_WEBSOCKET_THRIFT_SERVER_URL" default:"http://localhost:8000" pp:",omitempty"`
 	}

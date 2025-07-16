@@ -14,7 +14,6 @@ import (
 	"github.com/reearth/reearthx/log"
 )
 
-// AsyncqWorker handles asyncq job processing
 type AsyncqWorker struct {
 	server       *asynq.Server
 	mux          *asynq.ServeMux
@@ -24,7 +23,6 @@ type AsyncqWorker struct {
 	batchGateway gateway.Batch
 }
 
-// NewAsyncqWorker creates a new asyncq worker
 func NewAsyncqWorker(
 	config *Config,
 	jobRepo repo.Job,
@@ -53,18 +51,15 @@ func NewAsyncqWorker(
 		batchGateway: batchGateway,
 	}
 
-	// Register task handlers
 	worker.registerHandlers()
 
 	return worker
 }
 
-// registerHandlers registers task handlers with the mux
 func (w *AsyncqWorker) registerHandlers() {
 	w.mux.HandleFunc(TypeWorkflowJob, w.HandleWorkflowJob)
 }
 
-// HandleWorkflowJob handles workflow job execution
 func (w *AsyncqWorker) HandleWorkflowJob(ctx context.Context, task *asynq.Task) error {
 	payload, err := ParseWorkflowJobPayload(task)
 	if err != nil {
@@ -73,7 +68,6 @@ func (w *AsyncqWorker) HandleWorkflowJob(ctx context.Context, task *asynq.Task) 
 
 	log.Infof("Processing workflow job: %s", payload.JobID)
 
-	// Parse IDs
 	jobID, err := id.JobIDFrom(payload.JobID)
 	if err != nil {
 		return fmt.Errorf("invalid job ID: %w", err)
@@ -94,22 +88,18 @@ func (w *AsyncqWorker) HandleWorkflowJob(ctx context.Context, task *asynq.Task) 
 		return fmt.Errorf("invalid deployment ID: %w", err)
 	}
 
-	// Get job from repository
 	j, err := w.jobRepo.FindByID(ctx, jobID)
 	if err != nil {
 		return fmt.Errorf("job not found: %w", err)
 	}
 
-	// Update job status to running
 	j.SetStatus(job.StatusRunning)
 	if err := w.jobRepo.Save(ctx, j); err != nil {
 		log.Warnf("Failed to update job status to running: %v", err)
 	}
 
-	// Execute the workflow job
 	err = w.executeWorkflow(ctx, payload, jobID, projectID, workspaceID, deploymentID)
 
-	// Update job status based on execution result
 	if err != nil {
 		j.SetStatus(job.StatusFailed)
 		now := time.Now()
@@ -135,7 +125,6 @@ func (w *AsyncqWorker) HandleWorkflowJob(ctx context.Context, task *asynq.Task) 
 	return err
 }
 
-// executeWorkflow executes the actual workflow
 func (w *AsyncqWorker) executeWorkflow(
 	ctx context.Context,
 	payload WorkflowJobPayload,
@@ -144,52 +133,126 @@ func (w *AsyncqWorker) executeWorkflow(
 	workspaceID accountdomain.WorkspaceID,
 	deploymentID id.DeploymentID,
 ) error {
-	// This is where we would call the actual workflow execution
-	// For now, we'll simulate the workflow execution
-
-	log.Infof("Starting workflow execution for job %s", jobID)
+	log.Infof("Starting workflow execution for job %s via GCP Batch", jobID)
 	log.Infof("Workflow URL: %s", payload.WorkflowURL)
 	log.Infof("Metadata URL: %s", payload.MetadataURL)
 
-	// Simulate workflow execution time
-	// In a real implementation, this would:
-	// 1. Download the workflow from the URL
-	// 2. Parse the workflow definition
-	// 3. Execute the workflow using the runtime engine
-	// 4. Handle any errors or outputs
-
-	// For demonstration, we'll just wait a bit
-	time.Sleep(5 * time.Second)
-
-	// Simulate success/failure based on debug flag
-	if payload.Debug {
-		log.Infof("Debug mode enabled, simulating successful execution")
-		return nil
+	gcpJobName, err := w.batchGateway.SubmitJob(
+		ctx,
+		jobID,
+		payload.WorkflowURL,
+		payload.MetadataURL,
+		payload.Variables,
+		projectID,
+		workspaceID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to submit job to GCP Batch: %w", err)
 	}
 
-	// In a real implementation, this would return the actual execution result
-	log.Infof("Workflow execution completed for job %s", jobID)
+	log.Infof("Job %s submitted to GCP Batch with name: %s", jobID, gcpJobName)
+
+	j, err := w.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		return fmt.Errorf("failed to find job: %w", err)
+	}
+	j.SetGCPJobID(gcpJobName)
+	if err := w.jobRepo.Save(ctx, j); err != nil {
+		log.Warnf("Failed to update job with GCP job name: %v", err)
+	}
+
+	return w.monitorGCPBatchJob(ctx, gcpJobName, jobID)
+}
+
+func (w *AsyncqWorker) monitorGCPBatchJob(ctx context.Context, gcpJobName string, jobID id.JobID) error {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	log.Infof("Starting monitoring of GCP Batch job %s", gcpJobName)
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Infof("Context cancelled for job %s", jobID)
+			return ctx.Err()
+		case <-ticker.C:
+			status, err := w.batchGateway.GetJobStatus(ctx, gcpJobName)
+			if err != nil {
+				log.Errorf("Failed to get GCP Batch job status: %v", err)
+				continue
+			}
+
+			log.Debugf("GCP Batch job %s status: %s", gcpJobName, status)
+
+			if err := w.updateJobStatus(ctx, jobID, status); err != nil {
+				log.Errorf("Failed to update job status: %v", err)
+			}
+
+			switch status {
+			case gateway.JobStatusCompleted:
+				log.Infof("GCP Batch job %s completed successfully", gcpJobName)
+				return nil
+			case gateway.JobStatusFailed:
+				log.Errorf("GCP Batch job %s failed", gcpJobName)
+				return fmt.Errorf("GCP Batch job failed")
+			case gateway.JobStatusCancelled:
+				log.Infof("GCP Batch job %s was cancelled", gcpJobName)
+				return fmt.Errorf("GCP Batch job was cancelled")
+			default:
+				continue
+			}
+		}
+	}
+}
+
+func (w *AsyncqWorker) updateJobStatus(ctx context.Context, jobID id.JobID, status gateway.JobStatus) error {
+	j, err := w.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		return err
+	}
+
+	var jobStatus job.Status
+	switch status {
+	case gateway.JobStatusPending:
+		jobStatus = job.StatusPending
+	case gateway.JobStatusRunning:
+		jobStatus = job.StatusRunning
+	case gateway.JobStatusCompleted:
+		jobStatus = job.StatusCompleted
+	case gateway.JobStatusFailed:
+		jobStatus = job.StatusFailed
+	case gateway.JobStatusCancelled:
+		jobStatus = job.StatusCancelled
+	default:
+		jobStatus = job.StatusPending
+	}
+
+	if j.Status() != jobStatus {
+		j.SetStatus(jobStatus)
+		if jobStatus == job.StatusCompleted || jobStatus == job.StatusFailed || jobStatus == job.StatusCancelled {
+			now := time.Now()
+			j.SetCompletedAt(&now)
+		}
+		return w.jobRepo.Save(ctx, j)
+	}
+
 	return nil
 }
 
-// updateJobArtifacts updates job artifacts after completion
 func (w *AsyncqWorker) updateJobArtifacts(ctx context.Context, j *job.Job) error {
 	jobID := j.ID().String()
 
-	// Get output artifacts
 	outputs, err := w.fileGateway.ListJobArtifacts(ctx, jobID)
 	if err != nil {
 		return fmt.Errorf("failed to list job artifacts: %w", err)
 	}
 	j.SetOutputURLs(outputs)
 
-	// Get log URL
 	logURL := w.fileGateway.GetJobLogURL(jobID)
 	if logURL != "" {
 		j.SetLogsURL(logURL)
 	}
 
-	// Get worker log URL
 	workerLogURL := w.fileGateway.GetJobWorkerLogURL(jobID)
 	if workerLogURL != "" {
 		j.SetWorkerLogsURL(workerLogURL)
@@ -198,25 +261,21 @@ func (w *AsyncqWorker) updateJobArtifacts(ctx context.Context, j *job.Job) error
 	return nil
 }
 
-// Start starts the asyncq worker
 func (w *AsyncqWorker) Start() error {
 	log.Info("Starting asyncq worker server")
 	return w.server.Start(w.mux)
 }
 
-// Stop stops the asyncq worker gracefully
 func (w *AsyncqWorker) Stop() {
 	log.Info("Stopping asyncq worker server")
 	w.server.Stop()
 }
 
-// Shutdown shuts down the asyncq worker
 func (w *AsyncqWorker) Shutdown() {
 	log.Info("Shutting down asyncq worker server")
 	w.server.Shutdown()
 }
 
-// Run starts the worker and blocks until shutdown
 func (w *AsyncqWorker) Run() error {
 	log.Info("Running asyncq worker server")
 	return w.server.Run(w.mux)

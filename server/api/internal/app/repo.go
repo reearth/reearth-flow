@@ -2,10 +2,12 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
+	"github.com/reearth/reearth-flow/api/internal/infrastructure/asyncq"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/auth0"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/fs"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcpbatch"
@@ -78,19 +80,15 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 	if err != nil {
 		log.Fatalf("Failed to init mongo: %+v\n", err)
 	}
-	// Redis
+
 	gateways.Redis = initRedis(ctx, conf)
 
-	// File
 	gateways.File = initFile(ctx, conf)
 
-	// Batch
 	gateways.Batch = initBatch(ctx, conf)
 
-	// Scheduler
 	gateways.Scheduler = initScheduler(ctx, conf)
 
-	// Auth0
 	auth0 := auth0.New(conf.Auth0.Domain, conf.Auth0.ClientID, conf.Auth0.ClientSecret)
 	gateways.Authenticator = auth0
 	acGateways.Authenticator = auth0
@@ -123,34 +121,64 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		return nil
 	}
 
+	log.Infof("Initializing Asyncq + GCP Batch hybrid mode")
+
+	_, err := initGCPBatch(ctx, conf)
+	if err != nil {
+		log.Fatalf("Failed to initialize GCP Batch for hybrid mode: %v", err)
+	}
+
+	asyncqConfig := &asyncq.Config{
+		RedisAddr:     conf.Worker_AsyncqRedisAddr,
+		RedisPassword: conf.Worker_AsyncqRedisPassword,
+		RedisDB:       conf.Worker_AsyncqRedisDB,
+		Concurrency:   conf.Worker_AsyncqConcurrency,
+		MaxRetry:      conf.Worker_AsyncqMaxRetry,
+		Queues: map[string]int{
+			"critical": 6,
+			"default":  3,
+			"low":      1,
+		},
+	}
+
+	asyncqBatch, err := asyncq.NewAsyncqBatch(asyncqConfig)
+	if err != nil {
+		log.Fatalf("Failed to initialize Asyncq batch: %v", err)
+	}
+
+	log.Infof("Hybrid mode initialized: Asyncq queue with GCP Batch execution")
+	return asyncqBatch
+}
+
+func initGCPBatch(ctx context.Context, conf *config.Config) (gateway.Batch, error) {
 	if conf.GCPProject == "" {
-		log.Fatal("GCP project ID is required")
+		return nil, fmt.Errorf("GCP project ID is required")
 	}
 	if conf.GCPRegion == "" {
-		log.Fatal("GCP region is required")
+		return nil, fmt.Errorf("GCP region is required")
 	}
 
 	bootDiskSize, err := strconv.Atoi(conf.Worker_BootDiskSizeGB)
 	if err != nil {
-		log.Fatalf("invalid boot disk size: %v", err)
+		return nil, fmt.Errorf("invalid boot disk size: %v", err)
 	}
 
 	computeCpuMilli, err := strconv.Atoi(conf.Worker_ComputeCpuMilli)
 	if err != nil {
-		log.Fatalf("invalid boot disk size: %v", err)
+		return nil, fmt.Errorf("invalid compute CPU milli: %v", err)
 	}
 
 	computeMemoryMib, err := strconv.Atoi(conf.Worker_ComputeMemoryMib)
 	if err != nil {
-		log.Fatalf("invalid task count: %v", err)
+		return nil, fmt.Errorf("invalid compute memory MiB: %v", err)
 	}
 
 	taskCount, err := strconv.Atoi(conf.Worker_TaskCount)
 	if err != nil {
-		log.Fatalf("invalid task count: %v", err)
+		return nil, fmt.Errorf("invalid task count: %v", err)
 	}
 
-	config := gcpbatch.BatchConfig{
+	batchConfig := gcpbatch.BatchConfig{
 		AllowedLocations:                conf.Worker_AllowedLocations,
 		BinaryPath:                      conf.Worker_BinaryPath,
 		BootDiskSizeGB:                  bootDiskSize,
@@ -170,12 +198,7 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		TaskCount:                       taskCount,
 	}
 
-	batchRepo, err = gcpbatch.NewBatch(ctx, config)
-	if err != nil {
-		log.Fatalf("failed to create Batch repository: %v", err)
-	}
-
-	return
+	return gcpbatch.NewBatch(ctx, batchConfig)
 }
 
 func initRedis(ctx context.Context, conf *config.Config) gateway.Redis {
