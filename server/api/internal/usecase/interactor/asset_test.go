@@ -57,7 +57,6 @@ func TestAsset_Create(t *testing.T) {
 	buflen := int64(buf.Len())
 	res, err := uc.Create(ctx, interfaces.CreateAssetParam{
 		WorkspaceID: ws.ID(),
-		UserID:      mockUser.ID(),
 		File: &file.File{
 			Content:     io.NopCloser(buf),
 			Path:        "hoge.txt",
