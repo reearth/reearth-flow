@@ -160,76 +160,79 @@ function DataTable<TData, TValue>({
   return (
     <div className="flex h-full flex-col justify-between">
       <div className="flex h-full flex-col">
-        <div
-          className={`flex items-center gap-4 ${condensed ? "py-1" : "py-3"}`}>
-          {showFiltering && (
-            <Input
-              placeholder={t("Search") + "..."}
-              value={globalFilter}
-              onChange={(e) => {
-                const value = String(e.target.value);
-                handleSearch(value);
-              }}
-              className="max-w-sm"
-            />
-          )}
-          {showOrdering && sortOptions && onSortChange ? (
-            <Select value={currentSortValue} onValueChange={onSortChange}>
-              <SelectTrigger className="h-[32px] w-[150px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {sortOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Select
-              value={currentOrder || "DESC"}
-              onValueChange={handleOrderChange}>
-              <SelectTrigger className="h-[32px] w-[100px]">
-                <SelectValue placeholder={orderDirections.ASC} />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(orderDirections).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          {selectColumns && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="ml-auto">
-                  {t("Columns")}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {table
-                  .getAllColumns()
-                  .filter((column) => column.getCanHide())
-                  .map((column) => {
-                    return (
-                      <DropdownMenuCheckboxItem
-                        key={column.id}
-                        className="capitalize"
-                        checked={column.getIsVisible()}
-                        onCheckedChange={(value) =>
-                          column.toggleVisibility(!!value)
-                        }>
-                        {column.columnDef.header?.toString()}
-                      </DropdownMenuCheckboxItem>
-                    );
-                  })}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
+        {(showOrdering || showFiltering || selectColumns) && (
+          <div
+            className={`flex items-center gap-4 ${condensed ? "py-1" : "py-3"}`}>
+            {showFiltering && (
+              <Input
+                placeholder={t("Search") + "..."}
+                value={globalFilter}
+                onChange={(e) => {
+                  const value = String(e.target.value);
+                  handleSearch(value);
+                }}
+                className="max-w-sm"
+              />
+            )}
+            {showOrdering && sortOptions && onSortChange ? (
+              <Select value={currentSortValue} onValueChange={onSortChange}>
+                <SelectTrigger className="h-[32px] w-[150px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : showOrdering ? (
+              <Select
+                value={currentOrder || "DESC"}
+                onValueChange={handleOrderChange}>
+                <SelectTrigger className="h-[32px] w-[100px]">
+                  <SelectValue placeholder={orderDirections.ASC} />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(orderDirections).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : null}
+
+            {selectColumns && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="ml-auto">
+                    {t("Columns")}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {table
+                    .getAllColumns()
+                    .filter((column) => column.getCanHide())
+                    .map((column) => {
+                      return (
+                        <DropdownMenuCheckboxItem
+                          key={column.id}
+                          className="capitalize"
+                          checked={column.getIsVisible()}
+                          onCheckedChange={(value) =>
+                            column.toggleVisibility(!!value)
+                          }>
+                          {column.columnDef.header?.toString()}
+                        </DropdownMenuCheckboxItem>
+                      );
+                    })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        )}
         <div className="overflow-auto rounded-md border">
           <div
             ref={parentRef}

@@ -17,14 +17,10 @@ type Props = {
   isFetching: boolean;
   currentPage: number;
   totalPages: number;
-  sortOptions: { value: string; label: string }[];
-  currentSortValue: string;
-  searchTerm?: string;
   setCurrentPage?: (page: number) => void;
   setAssetToBeDeleted: (asset: string | undefined) => void;
   setAssetToBeEdited: (asset: Asset | undefined) => void;
   setSearchTerm: (term: string) => void;
-  onSortChange: (value: string) => void;
   onCopyUrlToClipBoard: (url: string) => void;
   onAssetDownload: (
     e: React.MouseEvent<HTMLAnchorElement>,
@@ -35,14 +31,9 @@ const AssetsListView: React.FC<Props> = ({
   assets,
   currentPage,
   totalPages,
-  sortOptions,
-  currentSortValue,
-  searchTerm,
   setCurrentPage,
   setAssetToBeDeleted,
   setAssetToBeEdited,
-  setSearchTerm,
-  onSortChange,
   onCopyUrlToClipBoard,
   onAssetDownload,
 }) => {
@@ -97,17 +88,11 @@ const AssetsListView: React.FC<Props> = ({
       <Table
         columns={columns}
         data={assets}
-        selectColumns
-        showFiltering
+        showOrdering={false}
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
         totalPages={totalPages}
         resultsPerPage={resultsPerPage}
-        sortOptions={sortOptions}
-        currentSortValue={currentSortValue}
-        onSortChange={onSortChange}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
       />
     </div>
   );

@@ -14,6 +14,12 @@ import {
   Button,
   IconButton,
   Pagination,
+  Input,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
 } from "@flow/components";
 import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
 import { useT } from "@flow/lib/i18n";
@@ -68,8 +74,31 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
           {t("Assets")}
         </DialogTitle>
         <DialogContentWrapper>
-          <div className="mb-3 flex items-center justify-between overflow-auto">
+          <div className="mb-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 py-3">
+                <Input
+                  placeholder={t("Search") + "..."}
+                  value={searchTerm ?? ""}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="h-[36px] max-w-sm"
+                />
+                <Select
+                  value={currentSortValue}
+                  onValueChange={handleSortChange}>
+                  <SelectTrigger className="h-[36px] w-[150px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sortOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <IconButton
                 size="icon"
                 variant="outline"
@@ -87,6 +116,7 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
                 icon={<SquaresFourIcon size={"18px"} />}
               />
             </div>
+
             <Button variant="default" onClick={handleAssetUploadClick}>
               <UploadSimpleIcon weight="thin" />
               <p className="text-xs dark:font-light">{t("Upload Asset")}</p>
@@ -100,14 +130,10 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
                 isFetching={isFetching}
                 currentPage={currentPage}
                 totalPages={totalPages}
-                sortOptions={sortOptions}
-                currentSortValue={currentSortValue}
-                searchTerm={searchTerm}
                 setAssetToBeDeleted={setAssetToBeDeleted}
                 setAssetToBeEdited={setAssetToBeEdited}
                 setCurrentPage={setCurrentPage}
                 setSearchTerm={setSearchTerm}
-                onSortChange={handleSortChange}
                 onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
                 onAssetDownload={handleAssetDownload}
               />
@@ -115,13 +141,8 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
               <AssetsGridView
                 assets={assets}
                 isFetching={isFetching}
-                sortOptions={sortOptions}
-                currentSortValue={currentSortValue}
-                searchTerm={searchTerm}
                 setAssetToBeDeleted={setAssetToBeDeleted}
                 setAssetToBeEdited={setAssetToBeEdited}
-                setSearchTerm={setSearchTerm}
-                onSortChange={handleSortChange}
                 onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
                 onAssetDownload={handleAssetDownload}
               />

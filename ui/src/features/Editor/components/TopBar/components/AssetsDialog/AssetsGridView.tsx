@@ -1,13 +1,4 @@
-import {
-  FlowLogo,
-  Input,
-  LoadingSkeleton,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@flow/components";
+import { FlowLogo, LoadingSkeleton } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { useT } from "@flow/lib/i18n";
 import type { Asset } from "@flow/types";
@@ -17,13 +8,8 @@ import { AssetCard } from "./AssetCard";
 type Props = {
   assets?: Asset[];
   isFetching: boolean;
-  sortOptions: { value: string; label: string }[];
-  currentSortValue: string;
-  searchTerm?: string;
   setAssetToBeDeleted: (asset: string | undefined) => void;
   setAssetToBeEdited: (asset: Asset | undefined) => void;
-  setSearchTerm: (term: string) => void;
-  onSortChange: (value: string) => void;
   onCopyUrlToClipBoard: (url: string) => void;
   onAssetDownload: (
     e: React.MouseEvent<HTMLAnchorElement>,
@@ -33,13 +19,8 @@ type Props = {
 const AssetsGridView: React.FC<Props> = ({
   assets,
   isFetching,
-  sortOptions,
-  currentSortValue,
-  searchTerm,
   setAssetToBeDeleted,
   setAssetToBeEdited,
-  setSearchTerm,
-  onSortChange,
   onCopyUrlToClipBoard,
   onAssetDownload,
 }) => {
@@ -47,26 +28,6 @@ const AssetsGridView: React.FC<Props> = ({
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex items-center gap-4 py-3">
-        <Input
-          placeholder={t("Search") + "..."}
-          value={searchTerm ?? ""}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm"
-        />
-        <Select value={currentSortValue} onValueChange={onSortChange}>
-          <SelectTrigger className="h-[32px] w-[150px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {sortOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
       <div className="overflow-y-auto">
         {isFetching ? (
           <LoadingSkeleton className="flex h-[500px] justify-center" />
