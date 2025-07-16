@@ -69,34 +69,28 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
         </DialogTitle>
         <DialogContentWrapper>
           <div className="mb-3 flex items-center justify-between overflow-auto">
-            <Button
-              className="flex gap-2"
-              variant="default"
-              onClick={handleAssetUploadClick}>
+            <div className="flex items-center gap-2">
+              <IconButton
+                size="icon"
+                variant="outline"
+                className={layoutView === "list" ? "bg-accent" : ""}
+                tooltipText={t("List Layout")}
+                onClick={handleListView}
+                icon={<ListIcon size={"18px"} />}
+              />
+              <IconButton
+                size="icon"
+                variant="outline"
+                className={layoutView === "grid" ? "bg-accent" : ""}
+                tooltipText={t("Grid Layout")}
+                onClick={handleGridView}
+                icon={<SquaresFourIcon size={"18px"} />}
+              />
+            </div>
+            <Button variant="default" onClick={handleAssetUploadClick}>
               <UploadSimpleIcon weight="thin" />
               <p className="text-xs dark:font-light">{t("Upload Asset")}</p>
             </Button>
-
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <IconButton
-                  size="icon"
-                  variant="outline"
-                  className={layoutView === "list" ? "bg-accent" : ""}
-                  tooltipText={t("List Layout")}
-                  onClick={handleListView}
-                  icon={<ListIcon size={"18px"} />}
-                />
-                <IconButton
-                  size="icon"
-                  variant="outline"
-                  className={layoutView === "grid" ? "bg-accent" : ""}
-                  tooltipText={t("Grid Layout")}
-                  onClick={handleGridView}
-                  icon={<SquaresFourIcon size={"18px"} />}
-                />
-              </div>
-            </div>
           </div>
 
           <DialogContentSection className="flex h-[500px] flex-col overflow-hidden">
