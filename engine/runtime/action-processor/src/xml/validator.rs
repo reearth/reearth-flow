@@ -489,7 +489,7 @@ impl XmlValidator {
         );
 
         xml::create_xml_schema_validation_context(wrapper_path_str.to_string()).map_err(|e| {
-            XmlProcessorError::Validator(format!("Failed to create validation context: {:?}", e))
+            XmlProcessorError::Validator(format!("Failed to create validation context: {e:?}"))
         })
     }
 

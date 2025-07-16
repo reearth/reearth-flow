@@ -20,8 +20,7 @@ pub fn generate_wrapper_schema(
                 None
             } else {
                 Some(format!(
-                    r#"  <xs:import namespace="{}" schemaLocation="{}"/>"#,
-                    namespace, resolved_location
+                    r#"  <xs:import namespace="{namespace}" schemaLocation="{resolved_location}"/>"#
                 ))
             }
         })
@@ -33,9 +32,8 @@ pub fn generate_wrapper_schema(
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            elementFormDefault="qualified"
            attributeFormDefault="unqualified">
-{}
-</xs:schema>"#,
-        imports
+{imports}
+</xs:schema>"#
     )
 }
 
@@ -45,7 +43,7 @@ pub fn generate_catalog(mappings: &HashMap<String, PathBuf>) -> String {
         .iter()
         .filter_map(|(url, path)| {
             path.to_str()
-                .map(|p| format!(r#"  <uri name="{}" uri="file://{}"/>"#, url, p))
+                .map(|p| format!(r#"  <uri name="{url}" uri="file://{p}"/>"#))
         })
         .collect::<Vec<_>>()
         .join("\n");
@@ -55,9 +53,8 @@ pub fn generate_catalog(mappings: &HashMap<String, PathBuf>) -> String {
 <!DOCTYPE catalog PUBLIC "-//OASIS//DTD XML Catalogs V1.1//EN"
   "http://www.oasis-open.org/committees/entity/release/1.1/catalog.dtd">
 <catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
-{}
-</catalog>"#,
-        entries
+{entries}
+</catalog>"#
     )
 }
 

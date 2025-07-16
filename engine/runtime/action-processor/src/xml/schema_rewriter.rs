@@ -93,24 +93,23 @@ fn rewrite_schema_imports(
 
         let cache_path_str = cache_path.to_str().ok_or_else(|| {
             XmlProcessorError::Validator(format!(
-                "Invalid cache path for {}: {:?}",
-                import_url, cache_path
+                "Invalid cache path for {import_url}: {cache_path:?}"
             ))
         })?;
 
         // Always use absolute file:// URLs
-        let replacement_path = format!("file://{}", cache_path_str);
+        let replacement_path = format!("file://{cache_path_str}");
 
         // Replace absolute URLs with appropriate paths
         let old_pattern1 = format!(r#"schemaLocation="{import_url}""#);
-        let new_pattern1 = format!(r#"schemaLocation="{}""#, replacement_path);
+        let new_pattern1 = format!(r#"schemaLocation="{replacement_path}""#);
         if content.contains(&old_pattern1) {
             tracing::debug!("Replacing {} with {}", old_pattern1, new_pattern1);
             content = content.replace(&old_pattern1, &new_pattern1);
         }
 
         let old_pattern2 = format!(r#"schemaLocation='{import_url}'"#);
-        let new_pattern2 = format!(r#"schemaLocation='{}'"#, replacement_path);
+        let new_pattern2 = format!(r#"schemaLocation='{replacement_path}'"#);
         if content.contains(&old_pattern2) {
             tracing::debug!("Replacing {} with {}", old_pattern2, new_pattern2);
             content = content.replace(&old_pattern2, &new_pattern2);
@@ -122,12 +121,12 @@ fn rewrite_schema_imports(
             let import_filename = &import_url[last_slash + 1..];
             content = content
                 .replace(
-                    &format!(r#"schemaLocation="{}""#, import_filename),
-                    &format!(r#"schemaLocation="{}""#, replacement_path),
+                    &format!(r#"schemaLocation="{import_filename}""#),
+                    &format!(r#"schemaLocation="{replacement_path}""#),
                 )
                 .replace(
-                    &format!(r#"schemaLocation='{}'"#, import_filename),
-                    &format!(r#"schemaLocation='{}'"#, replacement_path),
+                    &format!(r#"schemaLocation='{import_filename}'"#),
+                    &format!(r#"schemaLocation='{replacement_path}'"#),
                 );
         }
     }

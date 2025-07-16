@@ -82,7 +82,7 @@ impl FileSystemSchemaCache {
                 if part.ends_with(".xsd") {
                     path = path.join(part);
                 } else {
-                    path = path.join(format!("{}.xsd", part));
+                    path = path.join(format!("{part}.xsd"));
                 }
             } else {
                 // Directory parts
