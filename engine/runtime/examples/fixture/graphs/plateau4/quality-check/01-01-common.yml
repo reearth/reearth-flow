@@ -361,6 +361,32 @@ nodes:
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_GML_ID書式不正.csv")
 
+  - id: 5e4f3a2b-1c0d-4e9f-a2b5-8f6c9d3e1a7b
+    name: AttributeMapperGmlIdNotUnique
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Index
+          expr: env.get("__value").index
+        - attribute: Folder
+          expr: env.get("__value").udxDirs
+        - attribute: Filename
+          expr: env.get("__value").name
+        - attribute: XMLTag
+          expr: env.get("__value").tag
+        - attribute: GmlId
+          expr: env.get("__value").gmlId
+
+  - id: 9d6e4f3a-2b1c-4e0f-9d8c-7b6a5e4d3c2b
+    name: FeatureWriterGmlIdNotUnique
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_GML_ID重複.csv")
+
   - id: f9359716-5c5a-43e5-b197-d1df171d5684
     name: OutputRouter
     type: action
@@ -506,6 +532,21 @@ edges:
     toPort: default
   - id: 3d7e8f4a-2b9c-4d5e-a6f7-8c1b4e9f3d2a
     from: 8e5f9a2b-4c3d-4e7f-b8a5-9d6e4f3a2b1c
+    to: f9359716-5c5a-43e5-b197-d1df171d5684
+    fromPort: default
+    toPort: default
+  - id: 7a8b9c4d-2e3f-4a5b-9c8d-7e6f5a4b3c2d
+    from: 05c85d95-c45c-406c-95b5-4a8a154f704f
+    to: 5e4f3a2b-1c0d-4e9f-a2b5-8f6c9d3e1a7b
+    fromPort: gmlIdNotUnique
+    toPort: default
+  - id: 8b9c4d5e-3f4a-4b5c-9d8e-7f6a5b4c3d2e
+    from: 5e4f3a2b-1c0d-4e9f-a2b5-8f6c9d3e1a7b
+    to: 9d6e4f3a-2b1c-4e0f-9d8c-7b6a5e4d3c2b
+    fromPort: default
+    toPort: default
+  - id: 9c4d5e6f-4a5b-4c5d-9e8f-7a6b5c4d3e2f
+    from: 9d6e4f3a-2b1c-4e0f-9d8c-7b6a5e4d3c2b
     to: f9359716-5c5a-43e5-b197-d1df171d5684
     fromPort: default
     toPort: default

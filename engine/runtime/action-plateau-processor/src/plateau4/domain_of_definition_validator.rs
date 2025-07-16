@@ -743,6 +743,30 @@ fn process_member_node(
         vec![HashMap::from([
             ("tag".to_string(), tag.clone()),
             ("xpath".to_string(), tag.clone()),
+            (
+                "index".to_string(),
+                feature
+                    .attributes
+                    .get(&Attribute::new("index"))
+                    .map(|v| v.to_string())
+                    .unwrap_or_default(),
+            ),
+            (
+                "udxDirs".to_string(),
+                feature
+                    .attributes
+                    .get(&Attribute::new("udxDirs"))
+                    .map(|v| v.to_string())
+                    .unwrap_or_default(),
+            ),
+            (
+                "name".to_string(),
+                feature
+                    .attributes
+                    .get(&Attribute::new("name"))
+                    .map(|v| v.to_string())
+                    .unwrap_or_default(),
+            ),
         ])],
     );
     // 2. gml:id collection of lower-level elements
@@ -764,6 +788,30 @@ fn process_member_node(
                 (
                     "xpath".to_string(),
                     get_xpath(&gml_id_child, Some(member), None),
+                ),
+                (
+                    "index".to_string(),
+                    feature
+                        .attributes
+                        .get(&Attribute::new("index"))
+                        .map(|v| v.to_string())
+                        .unwrap_or_default(),
+                ),
+                (
+                    "udxDirs".to_string(),
+                    feature
+                        .attributes
+                        .get(&Attribute::new("udxDirs"))
+                        .map(|v| v.to_string())
+                        .unwrap_or_default(),
+                ),
+                (
+                    "name".to_string(),
+                    feature
+                        .attributes
+                        .get(&Attribute::new("name"))
+                        .map(|v| v.to_string())
+                        .unwrap_or_default(),
                 ),
             ])],
         );
