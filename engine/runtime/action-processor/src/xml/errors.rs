@@ -1,7 +1,7 @@
 use thiserror::Error;
 
-#[derive(Error, Debug)]
-pub(super) enum XmlProcessorError {
+#[derive(Error, Debug, Clone)]
+pub(crate) enum XmlProcessorError {
     #[error("Xml Fragmenter Factory error: {0}")]
     FragmenterFactory(String),
     #[error("Xml Fragmenter error: {0}")]
@@ -12,4 +12,4 @@ pub(super) enum XmlProcessorError {
     Validator(String),
 }
 
-pub(super) type Result<T, E = XmlProcessorError> = std::result::Result<T, E>;
+pub(crate) type Result<T, E = XmlProcessorError> = std::result::Result<T, E>;

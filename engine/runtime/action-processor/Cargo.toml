@@ -41,6 +41,7 @@ petgraph.workspace = true
 quick-xml.workspace = true
 rayon.workspace = true
 regex.workspace = true
+reqwest.workspace = true
 rhai.workspace = true
 rstar.workspace = true
 schemars.workspace = true
