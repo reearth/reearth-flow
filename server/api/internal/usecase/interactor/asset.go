@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"path"
 
+	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -78,10 +79,16 @@ func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam) (re
 		name = *inp.Name
 	}
 
+	// Get user ID from context
+	user := adapter.User(ctx)
+	if user == nil {
+		return nil, interfaces.ErrOperationDenied
+	}
+
 	builder := asset.New().
 		NewID().
 		Workspace(inp.WorkspaceID).
-		CreatedByUser(inp.UserID).
+		CreatedByUser(user.ID()).
 		FileName(path.Base(inp.File.Path)).
 		Name(name).
 		Size(uint64(size)).

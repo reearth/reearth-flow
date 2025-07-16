@@ -127,7 +127,6 @@ const DeploymentManager: React.FC = () => {
                 columns={columns}
                 data={deployments}
                 selectColumns
-                showFiltering
                 enablePagination
                 onRowClick={handleDeploymentSelect}
                 currentPage={currentPage}
