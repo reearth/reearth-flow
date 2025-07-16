@@ -13,22 +13,18 @@ import (
 	"github.com/reearth/reearthx/log"
 )
 
-// AsyncqBatch implements gateway.Batch interface using asyncq
 type AsyncqBatch struct {
 	client     *asynq.Client
 	inspector  *asynq.Inspector
 	config     *Config
 	jobTracker *jobTracker
-	mu         sync.RWMutex
 }
 
-// jobTracker tracks job statuses
 type jobTracker struct {
 	jobs map[string]*JobStatus
 	mu   sync.RWMutex
 }
 
-// JobStatus represents the status of a job
 type JobStatus struct {
 	ID          string
 	TaskID      string
@@ -39,7 +35,6 @@ type JobStatus struct {
 	Error       error
 }
 
-// NewAsyncqBatch creates a new asyncq batch implementation
 func NewAsyncqBatch(config *Config) (*AsyncqBatch, error) {
 	redisOpt := config.GetRedisClientOpt()
 
@@ -54,7 +49,6 @@ func NewAsyncqBatch(config *Config) (*AsyncqBatch, error) {
 	}, nil
 }
 
-// SubmitJob submits a job to the asyncq queue
 func (b *AsyncqBatch) SubmitJob(
 	ctx context.Context,
 	jobID id.JobID,
@@ -63,10 +57,8 @@ func (b *AsyncqBatch) SubmitJob(
 	projectID id.ProjectID,
 	workspaceID accountdomain.WorkspaceID,
 ) (string, error) {
-	// Create deployment ID if not provided
 	deploymentID := id.NewDeploymentID()
 
-	// Create task
 	task, err := NewWorkflowJobTask(
 		jobID,
 		workflowURL,
@@ -82,21 +74,18 @@ func (b *AsyncqBatch) SubmitJob(
 		return "", fmt.Errorf("failed to create task: %w", err)
 	}
 
-	// Configure task options
 	opts := []asynq.Option{
 		asynq.MaxRetry(b.config.MaxRetry),
 		asynq.Queue("default"),
 		asynq.Timeout(30 * time.Minute),
-		asynq.Unique(24 * time.Hour), // Prevent duplicate jobs
+		asynq.Unique(24 * time.Hour),
 	}
 
-	// Enqueue task
 	info, err := b.client.EnqueueContext(ctx, task, opts...)
 	if err != nil {
 		return "", fmt.Errorf("failed to enqueue task: %w", err)
 	}
 
-	// Track job status
 	b.jobTracker.mu.Lock()
 	jobKey := jobID.String()
 	b.jobTracker.jobs[jobKey] = &JobStatus{
@@ -113,14 +102,11 @@ func (b *AsyncqBatch) SubmitJob(
 	return info.ID, nil
 }
 
-// GetJobStatus retrieves the status of a job
 func (b *AsyncqBatch) GetJobStatus(ctx context.Context, jobName string) (gateway.JobStatus, error) {
-	// Try to get from job tracker first
 	b.jobTracker.mu.RLock()
 	if jobStatus, exists := b.jobTracker.jobs[jobName]; exists {
 		b.jobTracker.mu.RUnlock()
 
-		// Try to get updated status from asyncq
 		if updatedStatus, err := b.getTaskStatus(ctx, jobStatus.TaskID); err == nil {
 			b.updateJobStatus(jobName, updatedStatus)
 			return updatedStatus, nil
@@ -130,13 +116,10 @@ func (b *AsyncqBatch) GetJobStatus(ctx context.Context, jobName string) (gateway
 	}
 	b.jobTracker.mu.RUnlock()
 
-	// If not found in tracker, try to find by task ID
 	return b.getTaskStatus(ctx, jobName)
 }
 
-// getTaskStatus gets task status from asyncq inspector
 func (b *AsyncqBatch) getTaskStatus(ctx context.Context, taskID string) (gateway.JobStatus, error) {
-	// Check pending tasks
 	pendingTasks, err := b.inspector.ListPendingTasks("default")
 	if err == nil {
 		for _, task := range pendingTasks {
@@ -146,7 +129,6 @@ func (b *AsyncqBatch) getTaskStatus(ctx context.Context, taskID string) (gateway
 		}
 	}
 
-	// Check active tasks
 	activeTasks, err := b.inspector.ListActiveTasks("default")
 	if err == nil {
 		for _, task := range activeTasks {
@@ -156,7 +138,6 @@ func (b *AsyncqBatch) getTaskStatus(ctx context.Context, taskID string) (gateway
 		}
 	}
 
-	// Check completed tasks
 	completedTasks, err := b.inspector.ListCompletedTasks("default")
 	if err == nil {
 		for _, task := range completedTasks {
@@ -166,7 +147,6 @@ func (b *AsyncqBatch) getTaskStatus(ctx context.Context, taskID string) (gateway
 		}
 	}
 
-	// Check retry tasks (not failed tasks)
 	retryTasks, err := b.inspector.ListRetryTasks("default")
 	if err == nil {
 		for _, task := range retryTasks {
@@ -179,7 +159,6 @@ func (b *AsyncqBatch) getTaskStatus(ctx context.Context, taskID string) (gateway
 	return gateway.JobStatusUnknown, fmt.Errorf("task not found: %s", taskID)
 }
 
-// updateJobStatus updates the job status in tracker
 func (b *AsyncqBatch) updateJobStatus(jobName string, status gateway.JobStatus) {
 	b.jobTracker.mu.Lock()
 	defer b.jobTracker.mu.Unlock()
@@ -195,7 +174,6 @@ func (b *AsyncqBatch) updateJobStatus(jobName string, status gateway.JobStatus) 
 	}
 }
 
-// ListJobs lists jobs for a project
 func (b *AsyncqBatch) ListJobs(ctx context.Context, projectID id.ProjectID) ([]gateway.JobInfo, error) {
 	var jobs []gateway.JobInfo
 
@@ -218,7 +196,6 @@ func (b *AsyncqBatch) ListJobs(ctx context.Context, projectID id.ProjectID) ([]g
 	return jobs, nil
 }
 
-// CancelJob cancels a job
 func (b *AsyncqBatch) CancelJob(ctx context.Context, jobName string) error {
 	b.jobTracker.mu.Lock()
 	defer b.jobTracker.mu.Unlock()
@@ -228,14 +205,11 @@ func (b *AsyncqBatch) CancelJob(ctx context.Context, jobName string) error {
 		return fmt.Errorf("job not found: %s", jobName)
 	}
 
-	// Try to delete the task instead of cancel
 	err := b.inspector.DeleteTask("default", jobStatus.TaskID)
 	if err != nil {
 		log.Warnf("Failed to delete task %s: %v", jobStatus.TaskID, err)
-		// Don't return error, just update status
 	}
 
-	// Update job status
 	jobStatus.Status = gateway.JobStatusCancelled
 	jobStatus.UpdatedAt = time.Now()
 	now := time.Now()
@@ -246,7 +220,6 @@ func (b *AsyncqBatch) CancelJob(ctx context.Context, jobName string) error {
 	return nil
 }
 
-// Close closes the asyncq batch client
 func (b *AsyncqBatch) Close() error {
 	err1 := b.client.Close()
 	err2 := b.inspector.Close()
@@ -261,12 +234,10 @@ func (b *AsyncqBatch) Close() error {
 	return nil
 }
 
-// GetJobTracker returns the job tracker for testing
 func (b *AsyncqBatch) GetJobTracker() *jobTracker {
 	return b.jobTracker
 }
 
-// SetJobStatus sets job status manually (for testing)
 func (b *AsyncqBatch) SetJobStatus(jobName string, status gateway.JobStatus) {
 	b.updateJobStatus(jobName, status)
 }

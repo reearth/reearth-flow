@@ -7,7 +7,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// Config represents the configuration for asyncq
 type Config struct {
 	RedisAddr      string                                      `json:"redis_addr"`
 	RedisPassword  string                                      `json:"redis_password"`
@@ -18,7 +17,6 @@ type Config struct {
 	Queues         map[string]int                              `json:"queues"`
 }
 
-// DefaultConfig returns a default configuration
 func DefaultConfig() *Config {
 	return &Config{
 		RedisAddr:      "localhost:6379",
@@ -35,7 +33,6 @@ func DefaultConfig() *Config {
 	}
 }
 
-// GetRedisClientOpt returns redis client options
 func (c *Config) GetRedisClientOpt() asynq.RedisClientOpt {
 	return asynq.RedisClientOpt{
 		Addr:     c.RedisAddr,
@@ -44,7 +41,6 @@ func (c *Config) GetRedisClientOpt() asynq.RedisClientOpt {
 	}
 }
 
-// GetRedisConnOpt returns redis connection options for go-redis
 func (c *Config) GetRedisConnOpt() *redis.Options {
 	return &redis.Options{
 		Addr:     c.RedisAddr,

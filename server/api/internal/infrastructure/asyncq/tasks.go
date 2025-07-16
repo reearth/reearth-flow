@@ -10,12 +10,10 @@ import (
 	"github.com/reearth/reearthx/account/accountdomain"
 )
 
-// Task types
 const (
 	TypeWorkflowJob = "workflow:job"
 )
 
-// WorkflowJobPayload represents the payload for workflow job execution
 type WorkflowJobPayload struct {
 	JobID           string                 `json:"job_id"`
 	WorkflowURL     string                 `json:"workflow_url"`
@@ -28,7 +26,6 @@ type WorkflowJobPayload struct {
 	Debug           bool                   `json:"debug"`
 }
 
-// JobOptions represents options for job execution
 type JobOptions struct {
 	MaxRetry       int                                         `json:"max_retry"`
 	Queue          string                                      `json:"queue"`
@@ -40,12 +37,10 @@ type JobOptions struct {
 	RetryDelayFunc func(int, error, *asynq.Task) time.Duration `json:"-"`
 }
 
-// UniqueOptions represents options for unique tasks
 type UniqueOptions struct {
 	TTL time.Duration `json:"ttl"`
 }
 
-// NewWorkflowJobTask creates a new workflow job task
 func NewWorkflowJobTask(
 	jobID id.JobID,
 	workflowURL, metadataURL string,
@@ -76,14 +71,12 @@ func NewWorkflowJobTask(
 	return asynq.NewTask(TypeWorkflowJob, payloadBytes), nil
 }
 
-// ParseWorkflowJobPayload parses the payload from an asynq task
 func ParseWorkflowJobPayload(task *asynq.Task) (WorkflowJobPayload, error) {
 	var payload WorkflowJobPayload
 	err := json.Unmarshal(task.Payload(), &payload)
 	return payload, err
 }
 
-// TaskInfo represents information about a task
 type TaskInfo struct {
 	ID            string                 `json:"id"`
 	Type          string                 `json:"type"`
@@ -98,5 +91,4 @@ type TaskInfo struct {
 	NextProcessAt *time.Time             `json:"next_process_at,omitempty"`
 }
 
-// TaskHandler represents a function that handles tasks
 type TaskHandler func(ctx context.Context, task *asynq.Task) error

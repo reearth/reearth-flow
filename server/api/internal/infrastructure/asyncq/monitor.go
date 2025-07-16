@@ -14,7 +14,6 @@ import (
 	"github.com/reearth/reearthx/log"
 )
 
-// AsyncqMonitor provides monitoring functionality for asyncq jobs
 type AsyncqMonitor struct {
 	inspector      *asynq.Inspector
 	jobRepo        repo.Job
@@ -26,7 +25,6 @@ type AsyncqMonitor struct {
 	mu             sync.RWMutex
 }
 
-// MonitorConfig holds configuration for monitoring a specific job
 type MonitorConfig struct {
 	JobID           string
 	NotificationURL *string
@@ -35,7 +33,6 @@ type MonitorConfig struct {
 	Cancel          context.CancelFunc
 }
 
-// NewAsyncqMonitor creates a new asyncq monitor
 func NewAsyncqMonitor(
 	config *Config,
 	jobRepo repo.Job,
@@ -57,14 +54,12 @@ func NewAsyncqMonitor(
 	}
 }
 
-// StartMonitoring starts monitoring a job
 func (m *AsyncqMonitor) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *string) error {
 	jobID := j.ID().String()
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Check if already monitoring
 	if _, exists := m.activeMonitors[jobID]; exists {
 		log.Debugf("Job %s is already being monitored", jobID)
 		if notificationURL != nil {
@@ -73,7 +68,6 @@ func (m *AsyncqMonitor) StartMonitoring(ctx context.Context, j *job.Job, notific
 		return nil
 	}
 
-	// Create monitoring context
 	monitorCtx, cancel := context.WithCancel(context.Background())
 
 	config := &MonitorConfig{
@@ -86,14 +80,12 @@ func (m *AsyncqMonitor) StartMonitoring(ctx context.Context, j *job.Job, notific
 
 	m.activeMonitors[jobID] = config
 
-	// Start monitoring goroutine
 	go m.monitorJob(monitorCtx, j, config)
 
 	log.Infof("Started monitoring job %s", jobID)
 	return nil
 }
 
-// StopMonitoring stops monitoring a job
 func (m *AsyncqMonitor) StopMonitoring(jobID string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -105,7 +97,6 @@ func (m *AsyncqMonitor) StopMonitoring(jobID string) {
 	}
 }
 
-// monitorJob monitors a specific job
 func (m *AsyncqMonitor) monitorJob(ctx context.Context, j *job.Job, config *MonitorConfig) {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
@@ -124,7 +115,6 @@ func (m *AsyncqMonitor) monitorJob(ctx context.Context, j *job.Job, config *Moni
 				return
 			}
 
-			// Check job status
 			if err := m.checkJobStatus(ctx, j, config); err != nil {
 				log.Errorf("Error checking job status for %s: %v", config.JobID, err)
 				continue
@@ -135,38 +125,31 @@ func (m *AsyncqMonitor) monitorJob(ctx context.Context, j *job.Job, config *Moni
 	}
 }
 
-// checkJobStatus checks the current status of a job
 func (m *AsyncqMonitor) checkJobStatus(ctx context.Context, j *job.Job, config *MonitorConfig) error {
-	// Get current job state from database
 	currentJob, err := m.jobRepo.FindByID(ctx, j.ID())
 	if err != nil {
 		return err
 	}
 
-	// Check if job is in terminal state
 	status := currentJob.Status()
 	if status == job.StatusCompleted || status == job.StatusFailed || status == job.StatusCancelled {
 		log.Infof("Job %s reached terminal state %s", config.JobID, status)
 
-		// Handle completion
 		if err := m.handleJobCompletion(ctx, currentJob, config); err != nil {
 			log.Errorf("Error handling job completion for %s: %v", config.JobID, err)
 		}
 
-		// Notify subscribers
 		m.subscriptions.Notify(config.JobID, status)
 
 		return nil
 	}
 
-	// For non-terminal states, check asyncq task status
 	taskStatus, err := m.getTaskStatus(ctx, currentJob.GCPJobID())
 	if err != nil {
 		log.Debugf("Could not get task status for job %s: %v", config.JobID, err)
-		return nil // Don't fail monitoring for this
+		return nil
 	}
 
-	// Update job status if changed
 	if taskStatus != status {
 		currentJob.SetStatus(taskStatus)
 		if err := m.jobRepo.Save(ctx, currentJob); err != nil {
@@ -180,9 +163,7 @@ func (m *AsyncqMonitor) checkJobStatus(ctx context.Context, j *job.Job, config *
 	return nil
 }
 
-// getTaskStatus gets task status from asyncq
 func (m *AsyncqMonitor) getTaskStatus(ctx context.Context, taskID string) (job.Status, error) {
-	// Check active tasks
 	activeTasks, err := m.inspector.ListActiveTasks("default")
 	if err == nil {
 		for _, task := range activeTasks {
@@ -192,7 +173,6 @@ func (m *AsyncqMonitor) getTaskStatus(ctx context.Context, taskID string) (job.S
 		}
 	}
 
-	// Check completed tasks
 	completedTasks, err := m.inspector.ListCompletedTasks("default")
 	if err == nil {
 		for _, task := range completedTasks {
@@ -202,7 +182,6 @@ func (m *AsyncqMonitor) getTaskStatus(ctx context.Context, taskID string) (job.S
 		}
 	}
 
-	// Check retry tasks
 	retryTasks, err := m.inspector.ListRetryTasks("default")
 	if err == nil {
 		for _, task := range retryTasks {
@@ -212,7 +191,6 @@ func (m *AsyncqMonitor) getTaskStatus(ctx context.Context, taskID string) (job.S
 		}
 	}
 
-	// Check archived tasks
 	archivedTasks, err := m.inspector.ListArchivedTasks("default")
 	if err == nil {
 		for _, task := range archivedTasks {
@@ -225,19 +203,15 @@ func (m *AsyncqMonitor) getTaskStatus(ctx context.Context, taskID string) (job.S
 	return job.StatusPending, nil
 }
 
-// handleJobCompletion handles job completion tasks
 func (m *AsyncqMonitor) handleJobCompletion(ctx context.Context, j *job.Job, config *MonitorConfig) error {
-	// Update job artifacts
 	if err := m.updateJobArtifacts(ctx, j); err != nil {
 		log.Errorf("Failed to update job artifacts for %s: %v", config.JobID, err)
 	}
 
-	// Save job state
 	if err := m.jobRepo.Save(ctx, j); err != nil {
 		return err
 	}
 
-	// Send notification if configured
 	if config.NotificationURL != nil && *config.NotificationURL != "" {
 		if err := m.sendCompletionNotification(ctx, j, *config.NotificationURL); err != nil {
 			log.Errorf("Failed to send completion notification for %s: %v", config.JobID, err)
@@ -247,18 +221,15 @@ func (m *AsyncqMonitor) handleJobCompletion(ctx context.Context, j *job.Job, con
 	return nil
 }
 
-// updateJobArtifacts updates job artifacts
 func (m *AsyncqMonitor) updateJobArtifacts(ctx context.Context, j *job.Job) error {
 	jobID := j.ID().String()
 
-	// Get output artifacts
 	outputs, err := m.fileGateway.ListJobArtifacts(ctx, jobID)
 	if err != nil {
 		return err
 	}
 	j.SetOutputURLs(outputs)
 
-	// Get log URLs
 	logURL := m.fileGateway.GetJobLogURL(jobID)
 	if logURL != "" {
 		j.SetLogsURL(logURL)
@@ -272,7 +243,6 @@ func (m *AsyncqMonitor) updateJobArtifacts(ctx context.Context, j *job.Job) erro
 	return nil
 }
 
-// sendCompletionNotification sends completion notification
 func (m *AsyncqMonitor) sendCompletionNotification(ctx context.Context, j *job.Job, notificationURL string) error {
 	jobID := j.ID().String()
 
@@ -304,12 +274,10 @@ func (m *AsyncqMonitor) sendCompletionNotification(ctx context.Context, j *job.J
 	return m.notifier.Send(notificationURL, payload)
 }
 
-// Close closes the monitor
 func (m *AsyncqMonitor) Close() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Cancel all active monitors
 	for jobID, config := range m.activeMonitors {
 		config.Cancel()
 		delete(m.activeMonitors, jobID)
@@ -318,7 +286,6 @@ func (m *AsyncqMonitor) Close() error {
 	return m.inspector.Close()
 }
 
-// GetActiveMonitors returns the list of active monitors
 func (m *AsyncqMonitor) GetActiveMonitors() map[string]*MonitorConfig {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
