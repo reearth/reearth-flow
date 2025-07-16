@@ -36,7 +36,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     undefined,
   );
 
-  const [layoutView, setLayoutView] = useState<"grid" | "list">("grid");
+  const [layoutView, setLayoutView] = useState<"list" | "grid">("list");
 
   const { page, refetch, isFetching } = useGetAssets(workspaceId, searchTerm, {
     page: currentPage,

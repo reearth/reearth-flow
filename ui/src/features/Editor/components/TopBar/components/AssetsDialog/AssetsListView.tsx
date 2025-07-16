@@ -63,10 +63,6 @@ const AssetsListView: React.FC<Props> = ({
       header: t("Size"),
     },
     {
-      accessorKey: "url",
-      header: t("Path"),
-    },
-    {
       accessorKey: "quickActions",
       header: t("Quick Actions"),
       cell: (row) => (

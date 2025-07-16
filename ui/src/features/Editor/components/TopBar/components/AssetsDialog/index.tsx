@@ -82,39 +82,25 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
                 <IconButton
                   size="icon"
                   variant="outline"
-                  className={layoutView === "grid" ? "bg-accent" : ""}
-                  tooltipText={t("Grid Layout")}
-                  onClick={handleGridView}
-                  icon={<SquaresFourIcon size={"18px"} />}
-                />
-                <IconButton
-                  size="icon"
-                  variant="outline"
                   className={layoutView === "list" ? "bg-accent" : ""}
                   tooltipText={t("List Layout")}
                   onClick={handleListView}
                   icon={<ListIcon size={"18px"} />}
+                />
+                <IconButton
+                  size="icon"
+                  variant="outline"
+                  className={layoutView === "grid" ? "bg-accent" : ""}
+                  tooltipText={t("Grid Layout")}
+                  onClick={handleGridView}
+                  icon={<SquaresFourIcon size={"18px"} />}
                 />
               </div>
             </div>
           </div>
 
           <DialogContentSection className="flex h-[500px] flex-col overflow-hidden">
-            {layoutView === "grid" ? (
-              <AssetsGridView
-                assets={assets}
-                isFetching={isFetching}
-                sortOptions={sortOptions}
-                currentSortValue={currentSortValue}
-                searchTerm={searchTerm}
-                setAssetToBeDeleted={setAssetToBeDeleted}
-                setAssetToBeEdited={setAssetToBeEdited}
-                setSearchTerm={setSearchTerm}
-                onSortChange={handleSortChange}
-                onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
-                onAssetDownload={handleAssetDownload}
-              />
-            ) : (
+            {layoutView === "list" ? (
               <AssetsListView
                 assets={assets}
                 isFetching={isFetching}
@@ -126,6 +112,20 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
                 setAssetToBeDeleted={setAssetToBeDeleted}
                 setAssetToBeEdited={setAssetToBeEdited}
                 setCurrentPage={setCurrentPage}
+                setSearchTerm={setSearchTerm}
+                onSortChange={handleSortChange}
+                onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
+                onAssetDownload={handleAssetDownload}
+              />
+            ) : (
+              <AssetsGridView
+                assets={assets}
+                isFetching={isFetching}
+                sortOptions={sortOptions}
+                currentSortValue={currentSortValue}
+                searchTerm={searchTerm}
+                setAssetToBeDeleted={setAssetToBeDeleted}
+                setAssetToBeEdited={setAssetToBeEdited}
                 setSearchTerm={setSearchTerm}
                 onSortChange={handleSortChange}
                 onCopyUrlToClipBoard={handleCopyUrlToClipBoard}

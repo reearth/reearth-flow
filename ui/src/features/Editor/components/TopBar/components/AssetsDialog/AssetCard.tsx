@@ -44,7 +44,7 @@ const AssetCard: React.FC<Props> = ({
   const t = useT();
   const [persistOverlay, setPersistOverlay] = useState(false);
 
-  const { id, name, createdAt, url } = asset;
+  const { id, name, createdAt, size, url } = asset;
 
   return (
     <Card
@@ -62,12 +62,13 @@ const AssetCard: React.FC<Props> = ({
           {name}
         </CardTitle>
       </CardHeader>
-      <CardFooter className="px-1 pb-0.5">
+      <CardFooter className="flex flex-col items-start px-1 pb-0.5">
         <p className="text-xs text-zinc-400 dark:font-thin">{createdAt}</p>
+        <p className="text-xs text-zinc-400 dark:font-thin">{size}</p>
       </CardFooter>
       <div
         className={`absolute inset-0 ${persistOverlay ? "flex flex-col" : "hidden"} rounded-lg group-hover:flex group-hover:flex-col`}>
-        <div className="flex h-[75px] items-center justify-center rounded-t-lg bg-black/30 p-4 backdrop-blur-xs" />
+        <div className="flex h-[75px] items-center justify-center rounded-t-lg bg-black/30 p-4" />
         <div className="flex flex-1 justify-end rounded-b-lg">
           <DropdownMenu
             modal={false}
