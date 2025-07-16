@@ -50,26 +50,24 @@ const AssetCard: React.FC<Props> = ({
     <Card
       className="group relative cursor-pointer border-transparent bg-secondary hover:border-border"
       key={id}>
-      <CardContent className="flex h-[60px] items-start justify-end p-0">
+      <CardContent className="flex items-start justify-center p-2">
         <FileIcon
           weight="thin"
-          size={65}
+          size={70}
           className="group:hover:opacity-90 opacity-50"
         />
       </CardContent>
       <CardHeader className="px-1 py-0.5">
-        <CardTitle className="text-md truncate dark:font-extralight">
+        <CardTitle className="truncate text-xs dark:font-extralight">
           {name}
         </CardTitle>
       </CardHeader>
       <CardFooter className="px-1 pb-0.5">
-        <p className="text-xs text-zinc-400 dark:font-thin">
-          {t("Uploaded At:")} {createdAt}
-        </p>
+        <p className="text-xs text-zinc-400 dark:font-thin">{createdAt}</p>
       </CardFooter>
       <div
         className={`absolute inset-0 ${persistOverlay ? "flex flex-col" : "hidden"} rounded-lg group-hover:flex group-hover:flex-col`}>
-        <div className="flex h-[60px] items-center justify-center rounded-t-lg bg-black/30 p-4 backdrop-blur-xs" />
+        <div className="flex h-[75px] items-center justify-center rounded-t-lg bg-black/30 p-4 backdrop-blur-xs" />
         <div className="flex flex-1 justify-end rounded-b-lg">
           <DropdownMenu
             modal={false}
@@ -80,7 +78,7 @@ const AssetCard: React.FC<Props> = ({
               <DotsThreeVerticalIcon className="size-[24px]" />
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              align="end"
+              align="center"
               onClick={(e) => e.stopPropagation()}>
               <DropdownMenuItem
                 className="justify-between gap-2 text-warning"
