@@ -32,6 +32,7 @@ type Props = {
   ) => void;
   setAssetToBeDeleted: (asset: string | undefined) => void;
   setAssetToBeEdited: (asset: Asset | undefined) => void;
+  onDoubleClick?: (asset: Asset) => void;
 };
 
 const AssetCard: React.FC<Props> = ({
@@ -40,16 +41,24 @@ const AssetCard: React.FC<Props> = ({
   onAssetDownload,
   setAssetToBeDeleted,
   setAssetToBeEdited,
+  onDoubleClick,
 }) => {
   const t = useT();
   const [persistOverlay, setPersistOverlay] = useState(false);
 
   const { id, name, createdAt, size, url } = asset;
 
+  const handleDoubleClick = () => {
+    if (onDoubleClick) {
+      onDoubleClick(asset);
+    }
+  };
+
   return (
     <Card
       className="group relative cursor-pointer border-transparent bg-secondary hover:border-border"
-      key={id}>
+      key={id}
+      onDoubleClick={handleDoubleClick}>
       <CardContent className="flex items-start justify-center p-2">
         <FileIcon
           weight="thin"

@@ -102,6 +102,17 @@ src/features/
 
 ## Key Development Patterns
 
+### Development Workflow & Quality Assurance
+
+**IMPORTANT: Before marking any task as complete, ALWAYS run the following commands:**
+
+```bash
+yarn lint           # Check for code quality issues
+yarn type           # Verify TypeScript compilation
+yarn format:write   # Apply Prettier formatting (CRITICAL for CI/CD)
+yarn test --run     # Ensure all tests pass
+```
+
 ### Workflow Data Flow
 
 1. **UI creates workflows** via visual editor (ReactFlow)

@@ -8,7 +8,15 @@ import { Asset, AssetOrderBy } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
-export default ({ workspaceId }: { workspaceId: string }) => {
+export default ({
+  workspaceId,
+  onDialogClose,
+  onAssetDoubleClick,
+}: {
+  workspaceId: string;
+  onDialogClose: () => void;
+  onAssetDoubleClick?: (asset: Asset) => void;
+}) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const t = useT();
   const { toast } = useToast();
@@ -177,6 +185,23 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     [],
   );
 
+  const handleAssetDoubleClick = useCallback(
+    (asset: Asset) => {
+      if (onAssetDoubleClick) {
+        onAssetDoubleClick(asset);
+      } else {
+        const v = asset.url;
+        copyToClipboard(v);
+        toast({
+          title: t("Copied to clipboard"),
+          description: t("asset's URL copied to clipboard"),
+        });
+      }
+      onDialogClose();
+    },
+    [onAssetDoubleClick, t, toast, onDialogClose],
+  );
+
   return {
     assets,
     isFetching,
@@ -202,5 +227,6 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     handleListView,
     handleCopyUrlToClipBoard,
     handleAssetDownload,
+    handleAssetDoubleClick,
   };
 };

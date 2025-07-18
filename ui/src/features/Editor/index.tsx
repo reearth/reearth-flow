@@ -139,12 +139,14 @@ export default function Editor({
               />
             </OverlayUI>
           </div>
-          <ParamsDialog
-            openNode={openNode}
-            onOpenNode={handleOpenNode}
-            onDataSubmit={handleNodeDataUpdate}
-            onWorkflowRename={handleWorkflowRename}
-          />
+          {openNode && (
+            <ParamsDialog
+              openNode={openNode}
+              onOpenNode={handleOpenNode}
+              onDataSubmit={handleNodeDataUpdate}
+              onWorkflowRename={handleWorkflowRename}
+            />
+          )}
           {showBeforeDeleteDialog && (
             <NodeDeletionDialog
               showBeforeDeleteDialog={showBeforeDeleteDialog}

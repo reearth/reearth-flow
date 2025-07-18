@@ -16,7 +16,7 @@ const CopyButton = <
   props: IconButtonProps<T, S, F>,
 ) => {
   return (
-    <Button size="icon" {...props}>
+    <Button size="icon" {...props} aria-label="Copy item">
       <CopyIcon />
     </Button>
   );

@@ -66,7 +66,6 @@ const FieldTemplate = <
       schema={schema}
       uiSchema={uiSchema}
       registry={registry}>
-      {/* TODO: handle errors and required param  */}
       <div className="my-4 w-full">
         {displayLabel && (
           <Label htmlFor={id}>
@@ -78,12 +77,18 @@ const FieldTemplate = <
         )}
         {children}
         {rawDescription && (
-          <div id={id} className="mt-1 text-xs">
+          <div id={id} className="mt-1 text-xs text-muted-foreground">
             {description}
           </div>
         )}
-        {errors}
-        {help}
+        {errors && (
+          <div className="mt-1 text-xs text-destructive" role="alert">
+            {errors}
+          </div>
+        )}
+        {help && (
+          <div className="mt-1 text-xs text-muted-foreground">{help}</div>
+        )}
       </div>
     </WrapIfAdditionalTemplate>
   );
