@@ -69,7 +69,12 @@ const AssetsDialog: React.FC<Props> = ({
     handleListView,
     handleCopyUrlToClipBoard,
     handleAssetDownload,
-  } = useHooks({ workspaceId: currentWorkspace?.id ?? "" });
+    handleAssetDoubleClick,
+  } = useHooks({
+    workspaceId: currentWorkspace?.id ?? "",
+    onDialogClose,
+    onAssetDoubleClick,
+  });
 
   return (
     <Dialog open={true} onOpenChange={onDialogClose}>
@@ -141,7 +146,7 @@ const AssetsDialog: React.FC<Props> = ({
                 setSearchTerm={setSearchTerm}
                 onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
                 onAssetDownload={handleAssetDownload}
-                onAssetDoubleClick={onAssetDoubleClick}
+                onAssetDoubleClick={handleAssetDoubleClick}
               />
             ) : (
               <AssetsGridView

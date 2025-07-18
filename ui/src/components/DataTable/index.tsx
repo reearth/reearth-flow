@@ -1,6 +1,7 @@
 import {
   ColumnDef,
   PaginationState,
+  Row,
   SortingState,
   VisibilityState,
   flexRender,
@@ -27,6 +28,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@flow/components";
+import { useDoubleClick } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { OrderDirection } from "@flow/types/paginationOptions";
 
@@ -49,6 +51,7 @@ type DataTableProps<TData, TValue> = {
   totalPages?: number;
   condensed?: boolean;
   onRowClick?: (row: TData) => void;
+  onRowDoubleClick?: (row: TData) => void;
   currentPage?: number;
   setCurrentPage?: (page: number) => void;
   resultsPerPage?: number;
@@ -71,6 +74,7 @@ function DataTable<TData, TValue>({
   totalPages = 1,
   condensed,
   onRowClick,
+  onRowDoubleClick,
   currentPage = 1,
   setCurrentPage,
   resultsPerPage,
@@ -156,6 +160,31 @@ function DataTable<TData, TValue>({
     getScrollElement: () => parentRef.current,
     estimateSize: () => 24,
   });
+
+  const handleRowDoubleClick = (row: Row<TData>) => {
+    onRowDoubleClick?.(row.original);
+  };
+
+  const [handleSingleClick, handleDoubleClick] = useDoubleClick<
+    Row<TData>,
+    Row<TData>
+  >(
+    onRowClick
+      ? (row?: Row<TData>) => {
+          if (row) {
+            row.toggleSelected();
+            onRowClick(row.original);
+          }
+        }
+      : undefined,
+    onRowDoubleClick
+      ? (row?: Row<TData>) => {
+          if (row) {
+            handleRowDoubleClick(row);
+          }
+        }
+      : undefined,
+  );
 
   return (
     <div className="flex h-full flex-col justify-between">
@@ -272,10 +301,16 @@ function DataTable<TData, TValue>({
                           transform: `translateY(${virtualRow.start - idx * virtualRow.size}px)`,
                         }}
                         data-state={row.getIsSelected() && "selected"}
-                        onClick={() => {
-                          row.toggleSelected();
-                          onRowClick?.(row.original);
-                        }}>
+                        onClick={
+                          handleSingleClick
+                            ? () => handleSingleClick(row)
+                            : undefined
+                        }
+                        onDoubleClick={
+                          handleDoubleClick
+                            ? () => handleDoubleClick(row)
+                            : undefined
+                        }>
                         {row.getVisibleCells().map((cell) => (
                           <TableCell
                             key={cell.id}
