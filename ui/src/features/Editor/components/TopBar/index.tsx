@@ -3,6 +3,7 @@ import { memo } from "react";
 import { Doc } from "yjs";
 
 import { IconButton } from "@flow/components";
+import AssetsDialog from "@flow/features/AssetsDialog";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
 import { Project } from "@flow/types";
@@ -14,7 +15,6 @@ import {
   Breadcrumb,
   DebugActionBar,
   HomeMenu,
-  AssetsDialog,
   ProjectVariableDialog,
 } from "./components";
 import useHooks from "./hooks";
