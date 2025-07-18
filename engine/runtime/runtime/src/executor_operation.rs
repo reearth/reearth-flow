@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use reearth_flow_eval_expr::engine::Engine;
+use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Feature;
 use tracing::{error_span, info_span};
@@ -208,6 +209,7 @@ pub struct NodeContext {
     pub storage_resolver: Arc<StorageResolver>,
     pub kv_store: Arc<dyn KvStore>,
     pub event_hub: EventHub,
+    pub node_cache: Option<Arc<State>>,
 }
 
 impl From<Context> for NodeContext {
@@ -217,6 +219,7 @@ impl From<Context> for NodeContext {
             storage_resolver: ctx.storage_resolver,
             kv_store: ctx.kv_store,
             event_hub: ctx.event_hub,
+            node_cache: None,
         }
     }
 }
@@ -228,6 +231,7 @@ impl From<ExecutorContext> for NodeContext {
             storage_resolver: ctx.storage_resolver,
             kv_store: ctx.kv_store,
             event_hub: ctx.event_hub,
+            node_cache: None,
         }
     }
 }
@@ -239,6 +243,7 @@ impl Default for NodeContext {
             storage_resolver: Arc::new(StorageResolver::new()),
             kv_store: Arc::new(crate::kvs::create_kv_store()),
             event_hub: EventHub::new(30),
+            node_cache: None,
         }
     }
 }
@@ -249,12 +254,14 @@ impl NodeContext {
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn KvStore>,
         event_hub: EventHub,
+        node_cache: Option<Arc<State>>,
     ) -> Self {
         Self {
             expr_engine,
             storage_resolver,
             kv_store,
             event_hub,
+            node_cache,
         }
     }
 
@@ -273,6 +280,12 @@ impl NodeContext {
             kv_store: self.kv_store.clone(),
             event_hub: self.event_hub.clone(),
         }
+    }
+
+    /// Get the node-specific cache storage
+    /// Returns None if node_id is not set or cache initialization failed
+    pub fn node_cache(&self) -> Option<Arc<State>> {
+        self.node_cache.clone()
     }
 }
 
