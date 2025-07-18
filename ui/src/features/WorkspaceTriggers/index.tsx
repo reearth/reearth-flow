@@ -113,7 +113,6 @@ const TriggerManager: React.FC = () => {
                 columns={columns}
                 data={triggers}
                 selectColumns
-                showFiltering
                 enablePagination
                 onRowClick={handleTriggerSelect}
                 currentPage={currentPage}

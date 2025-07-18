@@ -1,4 +1,11 @@
+pub(crate) mod cache;
 pub(crate) mod errors;
 pub(crate) mod fragmenter;
 pub(crate) mod mapping;
+pub(crate) mod namespace;
+pub(crate) mod schema_composer;
+pub(crate) mod schema_fetcher;
+pub(crate) mod schema_resolver;
+pub(crate) mod schema_rewriter;
+pub(crate) mod types;
 pub(crate) mod validator;

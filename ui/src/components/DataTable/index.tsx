@@ -11,7 +11,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import {
   DropdownMenu,
@@ -41,7 +41,7 @@ import {
 
 type DataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[];
-  data: TData[];
+  data?: TData[];
   selectColumns?: boolean;
   showFiltering?: boolean;
   showOrdering?: boolean;
@@ -54,6 +54,11 @@ type DataTableProps<TData, TValue> = {
   resultsPerPage?: number;
   currentOrder?: OrderDirection;
   setCurrentOrder?: (order: OrderDirection) => void;
+  sortOptions?: { value: string; label: string }[];
+  currentSortValue?: string;
+  onSortChange?: (value: string) => void;
+  searchTerm?: string;
+  setSearchTerm?: (term: string) => void;
 };
 
 function DataTable<TData, TValue>({
@@ -71,16 +76,36 @@ function DataTable<TData, TValue>({
   resultsPerPage,
   currentOrder = OrderDirection.Desc,
   setCurrentOrder,
+  sortOptions,
+  currentSortValue,
+  onSortChange,
+  searchTerm,
+  setSearchTerm,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
-  const [globalFilter, setGlobalFilter] = useState("");
+  const [globalFilter, setGlobalFilter] = useState<string>("");
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: resultsPerPage ?? 10,
   });
+
+  useMemo(() => {
+    if (searchTerm !== undefined) {
+      setGlobalFilter(searchTerm);
+    }
+  }, [searchTerm, setGlobalFilter]);
+
+  const handleSearch = useCallback(
+    (value: string) => {
+      if (setSearchTerm) {
+        setSearchTerm(value);
+      }
+    },
+    [setSearchTerm],
+  );
 
   const defaultData = useMemo(() => [], []);
   const table = useReactTable({
@@ -135,61 +160,80 @@ function DataTable<TData, TValue>({
   return (
     <div className="flex h-full flex-col justify-between">
       <div className="flex h-full flex-col">
-        <div
-          className={`flex items-center gap-4 ${condensed ? "py-1" : "py-3"}`}>
-          {showFiltering && (
-            <Input
-              placeholder={t("Search") + "..."}
-              value={globalFilter ?? ""}
-              onChange={(e) => setGlobalFilter(String(e.target.value))}
-              className="max-w-sm"
-            />
-          )}
-          {currentOrder && showOrdering && (
-            <Select
-              value={currentOrder || "DESC"}
-              onValueChange={handleOrderChange}>
-              <SelectTrigger className="h-[32px] w-[100px]">
-                <SelectValue placeholder={orderDirections.ASC} />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(orderDirections).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          {selectColumns && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="ml-auto">
-                  {t("Columns")}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {table
-                  .getAllColumns()
-                  .filter((column) => column.getCanHide())
-                  .map((column) => {
-                    return (
-                      <DropdownMenuCheckboxItem
-                        key={column.id}
-                        className="capitalize"
-                        checked={column.getIsVisible()}
-                        onCheckedChange={(value) =>
-                          column.toggleVisibility(!!value)
-                        }>
-                        {column.columnDef.header?.toString()}
-                      </DropdownMenuCheckboxItem>
-                    );
-                  })}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
-        <div className="rounded-md border">
+        {(showOrdering || showFiltering || selectColumns) && (
+          <div
+            className={`flex items-center gap-4 ${condensed ? "py-1" : "py-3"}`}>
+            {showFiltering && (
+              <Input
+                placeholder={t("Search") + "..."}
+                value={globalFilter}
+                onChange={(e) => {
+                  const value = String(e.target.value);
+                  handleSearch(value);
+                }}
+                className="max-w-sm"
+              />
+            )}
+            {showOrdering && sortOptions && onSortChange ? (
+              <Select value={currentSortValue} onValueChange={onSortChange}>
+                <SelectTrigger className="h-[32px] w-[150px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {sortOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : showOrdering ? (
+              <Select
+                value={currentOrder || "DESC"}
+                onValueChange={handleOrderChange}>
+                <SelectTrigger className="h-[32px] w-[100px]">
+                  <SelectValue placeholder={orderDirections.ASC} />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(orderDirections).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : null}
+
+            {selectColumns && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="ml-auto">
+                    {t("Columns")}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {table
+                    .getAllColumns()
+                    .filter((column) => column.getCanHide())
+                    .map((column) => {
+                      return (
+                        <DropdownMenuCheckboxItem
+                          key={column.id}
+                          className="capitalize"
+                          checked={column.getIsVisible()}
+                          onCheckedChange={(value) =>
+                            column.toggleVisibility(!!value)
+                          }>
+                          {column.columnDef.header?.toString()}
+                        </DropdownMenuCheckboxItem>
+                      );
+                    })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        )}
+        <div className="overflow-auto rounded-md border">
           <div
             ref={parentRef}
             className="h-full overflow-auto rounded-md border">
@@ -260,7 +304,7 @@ function DataTable<TData, TValue>({
         </div>
       </div>
 
-      {enablePagination && (
+      {enablePagination && rows.length > 0 && (
         <Pagination
           currentPage={currentPage}
           setCurrentPage={setCurrentPage}

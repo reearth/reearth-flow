@@ -15,14 +15,8 @@ func (r *mutationResolver) CreateAsset(ctx context.Context, input gqlmodel.Creat
 		return nil, err
 	}
 
-	operator := getOperator(ctx)
-	if operator == nil || operator.AcOperator == nil || operator.AcOperator.User == nil {
-		return nil, interfaces.ErrOperationDenied
-	}
-
 	res, err := usecases(ctx).Asset.Create(ctx, interfaces.CreateAssetParam{
 		WorkspaceID: wid,
-		UserID:      *operator.AcOperator.User,
 		File:        gqlmodel.FromFile(&input.File),
 		Name:        input.Name,
 	})
@@ -34,11 +28,6 @@ func (r *mutationResolver) CreateAsset(ctx context.Context, input gqlmodel.Creat
 }
 
 func (r *mutationResolver) UpdateAsset(ctx context.Context, input gqlmodel.UpdateAssetInput) (*gqlmodel.UpdateAssetPayload, error) {
-	operator := getOperator(ctx)
-	if operator == nil || operator.AcOperator == nil || operator.AcOperator.User == nil {
-		return nil, interfaces.ErrOperationDenied
-	}
-
 	aid, err := gqlmodel.ToID[id.Asset](input.AssetID)
 	if err != nil {
 		return nil, err
@@ -56,11 +45,6 @@ func (r *mutationResolver) UpdateAsset(ctx context.Context, input gqlmodel.Updat
 }
 
 func (r *mutationResolver) DeleteAsset(ctx context.Context, input gqlmodel.DeleteAssetInput) (*gqlmodel.DeleteAssetPayload, error) {
-	operator := getOperator(ctx)
-	if operator == nil || operator.AcOperator == nil || operator.AcOperator.User == nil {
-		return nil, interfaces.ErrOperationDenied
-	}
-
 	aid, err := gqlmodel.ToID[id.Asset](input.AssetID)
 	if err != nil {
 		return nil, err

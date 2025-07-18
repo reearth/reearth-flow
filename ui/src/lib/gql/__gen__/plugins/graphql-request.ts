@@ -39,15 +39,28 @@ export type AddMemberToWorkspacePayload = {
   workspace: Workspace;
 };
 
+export enum ArchiveExtractionStatus {
+  Done = 'DONE',
+  Failed = 'FAILED',
+  InProgress = 'IN_PROGRESS',
+  Pending = 'PENDING',
+  Skipped = 'SKIPPED'
+}
+
 export type Asset = Node & {
   __typename?: 'Asset';
   Workspace?: Maybe<Workspace>;
+  archiveExtractionStatus?: Maybe<ArchiveExtractionStatus>;
   contentType: Scalars['String']['output'];
   createdAt: Scalars['DateTime']['output'];
+  fileName: Scalars['String']['output'];
+  flatFiles: Scalars['Boolean']['output'];
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
+  public: Scalars['Boolean']['output'];
   size: Scalars['FileSize']['output'];
   url: Scalars['String']['output'];
+  uuid: Scalars['String']['output'];
   workspaceId: Scalars['ID']['output'];
 };
 
@@ -75,6 +88,7 @@ export type CancelJobPayload = {
 
 export type CreateAssetInput = {
   file: Scalars['Upload']['input'];
+  name?: InputMaybe<Scalars['String']['input']>;
   workspaceId: Scalars['ID']['input'];
 };
 
@@ -122,6 +136,15 @@ export type DeclareParameterInput = {
   public: Scalars['Boolean']['input'];
   required: Scalars['Boolean']['input'];
   type: ParameterType;
+};
+
+export type DeleteAssetInput = {
+  assetId: Scalars['ID']['input'];
+};
+
+export type DeleteAssetPayload = {
+  __typename?: 'DeleteAssetPayload';
+  assetId: Scalars['ID']['output'];
 };
 
 export type DeleteDeploymentInput = {
@@ -289,6 +312,7 @@ export type Mutation = {
   createTrigger: Trigger;
   createWorkspace?: Maybe<CreateWorkspacePayload>;
   declareParameter: Parameter;
+  deleteAsset?: Maybe<DeleteAssetPayload>;
   deleteDeployment?: Maybe<DeleteDeploymentPayload>;
   deleteMe?: Maybe<DeleteMePayload>;
   deleteProject?: Maybe<DeleteProjectPayload>;
@@ -296,7 +320,6 @@ export type Mutation = {
   deleteWorkspace?: Maybe<DeleteWorkspacePayload>;
   executeDeployment?: Maybe<JobPayload>;
   previewSnapshot?: Maybe<PreviewSnapshot>;
-  removeAsset?: Maybe<RemoveAssetPayload>;
   removeMemberFromWorkspace?: Maybe<RemoveMemberFromWorkspacePayload>;
   removeMyAuth?: Maybe<UpdateMePayload>;
   removeParameter: Scalars['Boolean']['output'];
@@ -307,6 +330,7 @@ export type Mutation = {
   shareProject?: Maybe<ShareProjectPayload>;
   signup?: Maybe<SignupPayload>;
   unshareProject?: Maybe<UnshareProjectPayload>;
+  updateAsset?: Maybe<UpdateAssetPayload>;
   updateDeployment?: Maybe<DeploymentPayload>;
   updateMe?: Maybe<UpdateMePayload>;
   updateMemberOfWorkspace?: Maybe<UpdateMemberOfWorkspacePayload>;
@@ -360,6 +384,11 @@ export type MutationDeclareParameterArgs = {
 };
 
 
+export type MutationDeleteAssetArgs = {
+  input: DeleteAssetInput;
+};
+
+
 export type MutationDeleteDeploymentArgs = {
   input: DeleteDeploymentInput;
 };
@@ -394,11 +423,6 @@ export type MutationPreviewSnapshotArgs = {
   name?: InputMaybe<Scalars['String']['input']>;
   projectId: Scalars['ID']['input'];
   version: Scalars['Int']['input'];
-};
-
-
-export type MutationRemoveAssetArgs = {
-  input: RemoveAssetInput;
 };
 
 
@@ -450,6 +474,11 @@ export type MutationSignupArgs = {
 
 export type MutationUnshareProjectArgs = {
   input: UnshareProjectInput;
+};
+
+
+export type MutationUpdateAssetArgs = {
+  input: UpdateAssetInput;
 };
 
 
@@ -797,15 +826,6 @@ export type QueryTriggersArgs = {
   workspaceId: Scalars['ID']['input'];
 };
 
-export type RemoveAssetInput = {
-  assetId: Scalars['ID']['input'];
-};
-
-export type RemoveAssetPayload = {
-  __typename?: 'RemoveAssetPayload';
-  assetId: Scalars['ID']['output'];
-};
-
 export type RemoveMemberFromWorkspaceInput = {
   userId: Scalars['ID']['input'];
   workspaceId: Scalars['ID']['input'];
@@ -940,6 +960,16 @@ export type UnshareProjectPayload = {
   projectId: Scalars['ID']['output'];
 };
 
+export type UpdateAssetInput = {
+  assetId: Scalars['ID']['input'];
+  name?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type UpdateAssetPayload = {
+  __typename?: 'UpdateAssetPayload';
+  asset: Asset;
+};
+
 export type UpdateDeploymentInput = {
   deploymentId: Scalars['ID']['input'];
   description?: InputMaybe<Scalars['String']['input']>;
@@ -1048,6 +1078,36 @@ export type WorkspaceMember = {
   userId: Scalars['ID']['output'];
 };
 
+export type GetAssetsQueryVariables = Exact<{
+  workspaceId: Scalars['ID']['input'];
+  keyword?: InputMaybe<Scalars['String']['input']>;
+  pagination: PageBasedPagination;
+}>;
+
+
+export type GetAssetsQuery = { __typename?: 'Query', assets: { __typename?: 'AssetConnection', totalCount: number, nodes: Array<{ __typename?: 'Asset', id: string, workspaceId: string, createdAt: any, fileName: string, size: any, contentType: string, name: string, url: string, uuid: string, flatFiles: boolean, public: boolean, archiveExtractionStatus?: ArchiveExtractionStatus | null } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
+
+export type CreateAssetMutationVariables = Exact<{
+  input: CreateAssetInput;
+}>;
+
+
+export type CreateAssetMutation = { __typename?: 'Mutation', createAsset?: { __typename?: 'CreateAssetPayload', asset: { __typename?: 'Asset', id: string, workspaceId: string, createdAt: any, fileName: string, size: any, contentType: string, name: string, url: string, uuid: string, flatFiles: boolean, public: boolean, archiveExtractionStatus?: ArchiveExtractionStatus | null } } | null };
+
+export type UpdateAssetMutationVariables = Exact<{
+  input: UpdateAssetInput;
+}>;
+
+
+export type UpdateAssetMutation = { __typename?: 'Mutation', updateAsset?: { __typename?: 'UpdateAssetPayload', asset: { __typename?: 'Asset', id: string, workspaceId: string, createdAt: any, fileName: string, size: any, contentType: string, name: string, url: string, uuid: string, flatFiles: boolean, public: boolean, archiveExtractionStatus?: ArchiveExtractionStatus | null } } | null };
+
+export type DeleteAssetMutationVariables = Exact<{
+  input: DeleteAssetInput;
+}>;
+
+
+export type DeleteAssetMutation = { __typename?: 'Mutation', deleteAsset?: { __typename?: 'DeleteAssetPayload', assetId: string } | null };
+
 export type CreateDeploymentMutationVariables = Exact<{
   input: CreateDeploymentInput;
 }>;
@@ -1149,6 +1209,8 @@ export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: a
 export type NodeExecutionFragment = { __typename?: 'NodeExecution', id: string, nodeId: string, jobId: string, status: NodeStatus, createdAt?: any | null, startedAt?: any | null, completedAt?: any | null };
 
 export type JobFragment = { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, debug?: boolean | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null };
+
+export type AssetFragment = { __typename?: 'Asset', id: string, workspaceId: string, createdAt: any, fileName: string, size: any, contentType: string, name: string, url: string, uuid: string, flatFiles: boolean, public: boolean, archiveExtractionStatus?: ArchiveExtractionStatus | null };
 
 export type ProjectDocumentFragment = { __typename?: 'ProjectDocument', id: string, timestamp: any, updates: Array<number>, version: number };
 
@@ -1536,6 +1598,22 @@ export const JobFragmentDoc = gql`
   }
 }
     `;
+export const AssetFragmentDoc = gql`
+    fragment Asset on Asset {
+  id
+  workspaceId
+  createdAt
+  fileName
+  size
+  contentType
+  name
+  url
+  uuid
+  flatFiles
+  public
+  archiveExtractionStatus
+}
+    `;
 export const ProjectDocumentFragmentDoc = gql`
     fragment ProjectDocument on ProjectDocument {
   id
@@ -1564,6 +1642,46 @@ export const LogFragmentDoc = gql`
   timestamp
   logLevel
   message
+}
+    `;
+export const GetAssetsDocument = gql`
+    query GetAssets($workspaceId: ID!, $keyword: String, $pagination: PageBasedPagination!) {
+  assets(workspaceId: $workspaceId, keyword: $keyword, pagination: $pagination) {
+    totalCount
+    nodes {
+      ...Asset
+    }
+    pageInfo {
+      totalCount
+      currentPage
+      totalPages
+    }
+  }
+}
+    ${AssetFragmentDoc}`;
+export const CreateAssetDocument = gql`
+    mutation CreateAsset($input: CreateAssetInput!) {
+  createAsset(input: $input) {
+    asset {
+      ...Asset
+    }
+  }
+}
+    ${AssetFragmentDoc}`;
+export const UpdateAssetDocument = gql`
+    mutation UpdateAsset($input: UpdateAssetInput!) {
+  updateAsset(input: $input) {
+    asset {
+      ...Asset
+    }
+  }
+}
+    ${AssetFragmentDoc}`;
+export const DeleteAssetDocument = gql`
+    mutation DeleteAsset($input: DeleteAssetInput!) {
+  deleteAsset(input: $input) {
+    assetId
+  }
 }
     `;
 export const CreateDeploymentDocument = gql`
@@ -2018,6 +2136,18 @@ const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationTy
 
 export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
   return {
+    GetAssets(variables: GetAssetsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetAssetsQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetAssetsQuery>({ document: GetAssetsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetAssets', 'query', variables);
+    },
+    CreateAsset(variables: CreateAssetMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateAssetMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<CreateAssetMutation>({ document: CreateAssetDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateAsset', 'mutation', variables);
+    },
+    UpdateAsset(variables: UpdateAssetMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateAssetMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UpdateAssetMutation>({ document: UpdateAssetDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateAsset', 'mutation', variables);
+    },
+    DeleteAsset(variables: DeleteAssetMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<DeleteAssetMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<DeleteAssetMutation>({ document: DeleteAssetDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'DeleteAsset', 'mutation', variables);
+    },
     CreateDeployment(variables: CreateDeploymentMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateDeploymentMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateDeploymentMutation>({ document: CreateDeploymentDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateDeployment', 'mutation', variables);
     },

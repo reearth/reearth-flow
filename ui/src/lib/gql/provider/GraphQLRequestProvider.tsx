@@ -43,7 +43,7 @@ export const GraphQLRequestProvider = ({
     }
     const graphQLClient = new GraphQLClient(endpoint, {
       headers,
-      requestMiddleware: requestMiddleware,
+      requestMiddleware: requestMiddleware(headers),
     });
 
     const sdk = getSdk(graphQLClient);
