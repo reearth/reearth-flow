@@ -387,6 +387,58 @@ nodes:
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_GML_ID重複.csv")
 
+  - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d2
+    name: AttributeMapperExtentsValidation
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Index
+          expr: env.get("__value").index
+        - attribute: Folder
+          expr: env.get("__value").udxDirs
+        - attribute: Filename
+          expr: env.get("__value").name
+        - attribute: GmlId
+          expr: env.get("__value").gmlId
+        # min
+        - attribute: Min Latitude
+          expr: env.get("__value").minLatitude
+        - attribute: Min Longitude
+          expr: env.get("__value").minLongitude
+        - attribute: Min Elevation
+          expr: env.get("__value").minElevation
+        # max
+        - attribute: Max Latitude
+          expr: env.get("__value").maxLatitude
+        - attribute: Max Longitude
+          expr: env.get("__value").maxLongitude
+        - attribute: Max Elevation
+          expr: env.get("__value").maxElevation
+        # lower
+        - attribute: Lower Latitude
+          expr: env.get("__value").lowerLatitude
+        - attribute: Lower Longitude
+          expr: env.get("__value").lowerLongitude
+        - attribute: Lower Elevation
+          expr: env.get("__value").lowerElevation
+        # upper
+        - attribute: Upper Latitude
+          expr: env.get("__value").upperLatitude
+        - attribute: Upper Longitude
+          expr: env.get("__value").upperLongitude
+        - attribute: Upper Elevation
+          expr: env.get("__value").upperElevation
+
+  - id: 1df16bdd-a8f2-5ace-b503-98a877daa7e3
+    name: FeatureWriterExtentsValidation
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_L06エラー.csv")
+
   - id: f9359716-5c5a-43e5-b197-d1df171d5684
     name: OutputRouter
     type: action
@@ -547,6 +599,21 @@ edges:
     toPort: default
   - id: 9c4d5e6f-4a5b-4c5d-9e8f-7a6b5c4d3e2f
     from: 9d6e4f3a-2b1c-4e0f-9d8c-7b6a5e4d3c2b
+    to: f9359716-5c5a-43e5-b197-d1df171d5684
+    fromPort: default
+    toPort: default
+  - id: aa1bb2cc-3dd4-4ee5-9ff6-7aa8bb9cc0dd
+    from: 05c85d95-c45c-406c-95b5-4a8a154f704f
+    to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d2
+    fromPort: extentsValidation
+    toPort: default
+  - id: bb2cc3dd-4ee5-5ff6-a007-8bb9cc0dd1ee
+    from: 0cf15acc-f7d1-4fbd-a502-97f766cff6d2
+    to: 1df16bdd-a8f2-5ace-b503-98a877daa7e3
+    fromPort: default
+    toPort: default
+  - id: cc3dd4ee-5ff6-6007-b118-9cc0dd1ee2ff
+    from: 1df16bdd-a8f2-5ace-b503-98a877daa7e3
     to: f9359716-5c5a-43e5-b197-d1df171d5684
     fromPort: default
     toPort: default
