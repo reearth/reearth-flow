@@ -36,7 +36,7 @@ export function setValueAtPath(obj: any, path: string[], value: any): any {
     return value;
   }
 
-  const newObj = { ...obj };
+  const newObj = Array.isArray(obj) ? [...obj] : { ...obj };
   let current = newObj;
 
   // Navigate to the parent of the target field
@@ -45,7 +45,10 @@ export function setValueAtPath(obj: any, path: string[], value: any): any {
     if (!(key in current)) {
       current[key] = {};
     } else {
-      current[key] = { ...current[key] };
+      // Preserve array structure when cloning
+      current[key] = Array.isArray(current[key]) 
+        ? [...current[key]] 
+        : { ...current[key] };
     }
     current = current[key];
   }
