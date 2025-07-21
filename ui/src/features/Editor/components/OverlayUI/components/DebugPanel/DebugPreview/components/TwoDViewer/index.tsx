@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { RenderFallback } from "@flow/components";
 import { MapLibre } from "@flow/components/visualizations/MapLibre";
 import { useT } from "@flow/lib/i18n";
@@ -19,4 +21,4 @@ const TwoDViewer: React.FC<Props> = ({ fileContent, fileType }) => {
   );
 };
 
-export { TwoDViewer };
+export default memo(TwoDViewer);

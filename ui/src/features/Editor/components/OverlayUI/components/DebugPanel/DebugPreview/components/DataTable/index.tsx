@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { RenderFallback, DataTable as Table } from "@flow/components";
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useT } from "@flow/lib/i18n";
@@ -36,4 +38,4 @@ const DataTable: React.FC<Props> = ({ fileContent, fileType }) => {
   );
 };
 
-export { DataTable };
+export default memo(DataTable);

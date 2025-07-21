@@ -77,17 +77,13 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
         mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
         style={{ width: "100%", height: "100%" }}
         maplibreLogo={true}
-        interactiveLayerIds={["polygon-layer", "line-layer"]}
+        interactiveLayerIds={["point-layer", "line-layer", "polygon-layer"]}
         onClick={(e) => {
           setSelectedFeature(e.features?.[0]);
         }}
         onLoad={handleMapLoad}>
         {fileType === "geojson" && (
-          <GeoJsonDataSource
-            fileType={fileType}
-            fileContent={fileContent}
-            onSelectedFeature={setSelectedFeature}
-          />
+          <GeoJsonDataSource fileType={fileType} fileContent={fileContent} />
         )}
       </Map>
       {selectedFeature && (

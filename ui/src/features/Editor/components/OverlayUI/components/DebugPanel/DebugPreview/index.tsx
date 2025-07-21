@@ -20,7 +20,8 @@ import { useT } from "@flow/lib/i18n";
 import { JobState } from "@flow/stores";
 import type { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 
-import { ThreeDViewer, TwoDViewer } from "./components";
+import ThreeDViewer from "./components/ThreeDViewer";
+import TwoDViewer from "./components/TwoDViewer";
 
 type Props = {
   fileType: SupportedDataTypes | null;

@@ -28,7 +28,7 @@ import { useT } from "@flow/lib/i18n";
 
 import DebugLogs from "./DebugLogs";
 import DebugPreview from "./DebugPreview";
-import { DataTable } from "./DebugPreview/components";
+import DataTable from "./DebugPreview/components/DataTable";
 import useHooks from "./hooks";
 
 const DebugPanel: React.FC = () => {

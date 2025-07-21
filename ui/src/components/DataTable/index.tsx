@@ -236,7 +236,8 @@ function DataTable<TData, TValue>({
         <div className="overflow-auto rounded-md border">
           <div
             ref={parentRef}
-            className="h-full overflow-auto rounded-md border">
+            className="h-full overflow-auto rounded-md border"
+            style={{ contain: "paint", willChange: "transform" }}>
             <Table>
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
