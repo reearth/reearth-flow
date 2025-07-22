@@ -36,6 +36,7 @@ type Props = {
   ) => Promise<void>;
   onWorkflowRename?: (id: string, name: string) => void;
   onValueEditorOpen: (fieldContext: FieldContext) => void;
+  onAssetsOpen?: (fieldContext: FieldContext) => void;
 };
 
 const ParamEditor: React.FC<Props> = ({
@@ -48,6 +49,7 @@ const ParamEditor: React.FC<Props> = ({
   onUpdate,
   onWorkflowRename,
   onValueEditorOpen,
+  onAssetsOpen,
 }) => {
   const t = useT();
   const { useGetActionById } = useAction(i18n.language);
@@ -156,6 +158,7 @@ const ParamEditor: React.FC<Props> = ({
                   onChange={onParamsUpdate}
                   onValidationChange={handleParamsValidationChange}
                   onEditorOpen={onValueEditorOpen}
+                  onAssetsOpen={onAssetsOpen}
                 />
               )}
             </div>

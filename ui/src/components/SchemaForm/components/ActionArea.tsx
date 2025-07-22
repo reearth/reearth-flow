@@ -13,6 +13,7 @@ type Props = {
   defaultValue: RefObject<any>;
   type?: any;
   onEditorOpen?: () => void;
+  onAssetsOpen?: () => void;
   onReset?: () => void;
 };
 
@@ -21,6 +22,7 @@ const ActionArea: React.FC<Props> = ({
   defaultValue,
   type,
   onEditorOpen,
+  onAssetsOpen,
   onReset,
 }) => {
   const t = useT();
@@ -33,14 +35,22 @@ const ActionArea: React.FC<Props> = ({
     [onEditorOpen],
   );
 
+  const handleAssetsOpen = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      onAssetsOpen?.();
+    },
+    [onAssetsOpen],
+  );
+
   return (
     <div className="flex items-center">
       {type === "string" && (
         <IconButton
           icon={<FileIcon />}
           tooltipText={t("Select Asset")}
-          // onClick={handleAssetsOpen}
-          disabled
+          onClick={handleAssetsOpen}
+          disabled={!onAssetsOpen}
         />
       )}
       <IconButton

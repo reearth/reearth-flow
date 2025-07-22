@@ -8,8 +8,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@flow/components";
+import AssetsDialog from "@flow/features/AssetsDialog";
 import { useT } from "@flow/lib/i18n";
-import { Node } from "@flow/types";
+import { Asset, Node } from "@flow/types";
 
 import { ParamEditor, ValueEditorDialog } from "./components";
 import { FieldContext, setValueAtPath } from "./utils/fieldUtils";
@@ -36,6 +37,7 @@ const ParamsDialog: React.FC<Props> = ({
   const t = useT();
 
   const [openValueEditor, setOpenValueEditor] = useState(false);
+  const [showAssets, setShowAssets] = useState(false);
   const [currentFieldContext, setCurrentFieldContext] = useState<
     FieldContext | undefined
   >(undefined);
@@ -82,6 +84,25 @@ const ParamsDialog: React.FC<Props> = ({
     setUpdatedParams(data);
   };
 
+  const handleValueChange = (value: any) => {
+    if (currentFieldContext && openNode) {
+      // Update the node's params with the new value
+      const currentParams = openNode.data.params || {};
+      const updatedParams = setValueAtPath(
+        currentParams,
+        currentFieldContext.path,
+        value,
+      );
+      // Update the local state with the new params
+      handleParamChange?.(updatedParams);
+    }
+  };
+
+  const handleAssetDoubleClick = (asset: Asset) => {
+    const v = asset.url;
+    handleValueChange(v);
+  };
+
   return (
     <>
       <Dialog open={!!openNode} onOpenChange={() => onOpenNode()}>
@@ -108,6 +129,10 @@ const ParamsDialog: React.FC<Props> = ({
                 setCurrentFieldContext(fieldContext);
                 setOpenValueEditor(true);
               }}
+              onAssetsOpen={(fieldContext) => {
+                setCurrentFieldContext(fieldContext);
+                setShowAssets(true);
+              }}
             />
           )}
         </DialogContent>
@@ -120,19 +145,16 @@ const ParamsDialog: React.FC<Props> = ({
             setOpenValueEditor(false);
             setCurrentFieldContext(undefined);
           }}
-          onValueSubmit={(value) => {
-            if (currentFieldContext && openNode) {
-              // Update the node's params with the new value
-              const currentParams = openNode.data.params || {};
-              const updatedParams = setValueAtPath(
-                currentParams,
-                currentFieldContext.path,
-                value,
-              );
-              // Update the local state with the new params
-              handleParamChange?.(updatedParams);
-            }
+          onValueSubmit={handleValueChange}
+        />
+      )}
+      {showAssets && currentFieldContext && (
+        <AssetsDialog
+          onDialogClose={() => {
+            setShowAssets(false);
+            setCurrentFieldContext(undefined);
           }}
+          onAssetDoubleClick={handleAssetDoubleClick}
         />
       )}
     </>

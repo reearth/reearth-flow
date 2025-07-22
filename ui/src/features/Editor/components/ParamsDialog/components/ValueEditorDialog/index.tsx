@@ -9,7 +9,9 @@ import {
   DialogTitle,
   TextArea,
 } from "@flow/components";
+import { useProjectVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
+import { useCurrentProject } from "@flow/stores";
 
 import { FieldContext } from "../../utils/fieldUtils";
 
@@ -28,6 +30,12 @@ const ValueEditorDialog: React.FC<Props> = ({
 }) => {
   const t = useT();
   const [value, setValue] = useState(fieldContext.value);
+
+  const [currentProject] = useCurrentProject();
+
+  const { useGetProjectVariables } = useProjectVariables();
+
+  const { projectVariables } = useGetProjectVariables(currentProject?.id);
 
   const handleSubmit = useCallback(() => {
     if (!onValueSubmit) return;
@@ -85,6 +93,15 @@ const ValueEditorDialog: React.FC<Props> = ({
         <div className="flex h-[400px]">
           <div className="w-[200px] border-r bg-secondary p-4">
             {/* Rhai script stuff here */}
+            {projectVariables?.map((variable) => (
+              <div
+                key={variable.id}
+                className="cursor-pointer rounded-md p-2 transition-colors hover:bg-accent"
+                // onClick={() => setValue(variable.value)}
+              >
+                {variable.name}
+              </div>
+            ))}
           </div>
           <div className="flex flex-1 flex-col">
             <TextArea

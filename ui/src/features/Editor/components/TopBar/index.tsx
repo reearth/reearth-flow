@@ -128,7 +128,6 @@ const TopBar: React.FC<Props> = ({
       )}
       {showDialog === "projectVariables" && (
         <ProjectVariableDialog
-          isOpen={showDialog === "projectVariables"}
           currentProjectVariables={currentProjectVariables}
           projectId={currentProject?.id}
           onClose={handleDialogClose}

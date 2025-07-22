@@ -16,6 +16,7 @@ import { TextInput } from "./BaseInputTemplate/TextInput";
 
 export type ExtendedFormContext = FormContextType & {
   onEditorOpen?: (fieldContext: FieldContext) => void;
+  onAssetsOpen?: (fieldContext: FieldContext) => void;
 };
 
 /** The `BaseInputTemplate` handles all input types directly */
@@ -29,7 +30,8 @@ const BaseInputTemplate = <
   const { schema, formContext, id, name, value } = props;
 
   // Extract onEditorOpen from formContext
-  const { onEditorOpen } = (formContext as ExtendedFormContext) || {};
+  const { onEditorOpen, onAssetsOpen } =
+    (formContext as ExtendedFormContext) || {};
 
   // Create a field-specific onEditorOpen handler
   const handleEditorOpen = onEditorOpen
@@ -39,18 +41,43 @@ const BaseInputTemplate = <
       }
     : undefined;
 
+  const handleAssetsOpen = onAssetsOpen
+    ? () => {
+        const fieldContext = createFieldContext({ id, name, value, schema });
+        onAssetsOpen(fieldContext);
+      }
+    : undefined;
+
   // Handle color inputs
   if (schema.format === "color") {
-    return <ColorInput {...props} onEditorOpen={handleEditorOpen} />;
+    return (
+      <ColorInput
+        {...props}
+        onEditorOpen={handleEditorOpen}
+        onAssetsOpen={handleAssetsOpen}
+      />
+    );
   }
 
   // Handle number and integer inputs
   if (schema.type === "number" || schema.type === "integer") {
-    return <NumberInput {...props} onEditorOpen={handleEditorOpen} />;
+    return (
+      <NumberInput
+        {...props}
+        onEditorOpen={handleEditorOpen}
+        onAssetsOpen={handleAssetsOpen}
+      />
+    );
   }
 
   // Default to text input for strings and other types
-  return <TextInput {...props} onEditorOpen={handleEditorOpen} />;
+  return (
+    <TextInput
+      {...props}
+      onEditorOpen={handleEditorOpen}
+      onAssetsOpen={handleAssetsOpen}
+    />
+  );
 };
 
 export { BaseInputTemplate };

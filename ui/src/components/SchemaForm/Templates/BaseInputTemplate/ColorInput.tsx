@@ -17,6 +17,7 @@ const ColorInput = <
 >(
   props: BaseInputTemplateProps<T, S, F> & {
     onEditorOpen?: () => void;
+    onAssetsOpen?: () => void;
   },
 ) => {
   const {
@@ -31,6 +32,7 @@ const ColorInput = <
     onBlur,
     onFocus,
     onEditorOpen,
+    onAssetsOpen,
     options,
     schema,
     rawErrors = [],
@@ -87,6 +89,7 @@ const ColorInput = <
           value={value}
           defaultValue={defaultValue}
           onEditorOpen={onEditorOpen}
+          onAssetsOpen={onAssetsOpen}
           onReset={handleReset}
         />
       </div>
