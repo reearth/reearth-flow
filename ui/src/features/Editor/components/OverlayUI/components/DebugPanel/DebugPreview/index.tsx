@@ -1,8 +1,9 @@
 import { GlobeIcon, MapPinAreaIcon, WarningIcon } from "@phosphor-icons/react";
-import { memo } from "react";
+import { memo, useState } from "react";
 
 import {
   Button,
+  Checkbox,
   Dialog,
   DialogContent,
   DialogContentSection,
@@ -42,21 +43,43 @@ const DebugPreview: React.FC<Props> = ({
   onShowTempPossibleIssuesDialogClose,
 }) => {
   const t = useT();
+  const [enableClustering, setEnableClustering] = useState<boolean>(true);
+  const [tabValue, setTabValue] = useState<string>("2d-viewer");
 
   return debugJobState && dataURLs ? (
-    <Tabs className="h-full w-full p-1" defaultValue="2d-viewer">
+    <Tabs
+      className="h-full w-full p-1"
+      defaultValue={tabValue}
+      onValueChange={setTabValue}>
       <div className="p-1">
         <TabsList className="flex w-full justify-between p-1">
           <div className="flex gap-2">
-            <TabsTrigger className="gap-1 bg-card" value="2d-viewer">
+            <TabsTrigger
+              className="gap-1 bg-card"
+              value="2d-viewer"
+              onClick={() => setTabValue("2d-viewer")}>
               <MapPinAreaIcon />
               <p className="text-sm font-thin select-none">{t("2D Viewer")}</p>
             </TabsTrigger>
-            <TabsTrigger className="gap-1 bg-card" value="3d-viewer">
+            <TabsTrigger
+              className="gap-1 bg-card"
+              value="3d-viewer"
+              onClick={() => setTabValue("3d-viewer")}>
               <GlobeIcon />
               <p className="text-sm font-thin select-none">{t("3D Viewer")}</p>
             </TabsTrigger>
           </div>
+          {tabValue === "2d-viewer" && (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={enableClustering}
+                onCheckedChange={(checked) => setEnableClustering(!!checked)}
+              />
+              <span className="text-sm font-thin select-none">
+                {t("Enable Clustering")}
+              </span>
+            </div>
+          )}
         </TabsList>
       </div>
       {isLoadingData ? (
@@ -66,7 +89,12 @@ const DebugPreview: React.FC<Props> = ({
           <TabsContent
             className="m-0 h-[calc(100%-32px)] p-1"
             value="2d-viewer">
-            <TwoDViewer fileContent={selectedOutputData} fileType={fileType} />
+            <TwoDViewer
+              key={`2d-viewer-${enableClustering}`}
+              fileContent={selectedOutputData}
+              fileType={fileType}
+              enableClustering={enableClustering}
+            />
           </TabsContent>
           <TabsContent
             className="m-0 h-[calc(100%-32px)] p-1"

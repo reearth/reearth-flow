@@ -8,15 +8,24 @@ import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 type Props = {
   fileContent: any | null;
   fileType: SupportedDataTypes | null;
+  enableClustering?: boolean;
 };
 
-const TwoDViewer: React.FC<Props> = ({ fileContent, fileType }) => {
+const TwoDViewer: React.FC<Props> = ({
+  fileContent,
+  fileType,
+  enableClustering,
+}) => {
   const t = useT();
   return (
     <RenderFallback
       message={t("2D Viewer Could Not Be Loaded. Check if the data is valid.")}
       textSize="sm">
-      <MapLibre fileContent={fileContent} fileType={fileType} />
+      <MapLibre
+        fileContent={fileContent}
+        fileType={fileType}
+        enableClustering={enableClustering}
+      />
     </RenderFallback>
   );
 };

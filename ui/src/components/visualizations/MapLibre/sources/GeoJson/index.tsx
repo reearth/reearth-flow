@@ -7,9 +7,14 @@ type Props = {
     GeoJSON.Geometry,
     GeoJSON.GeoJsonProperties
   >;
+  enableClustering?: boolean;
 };
 
-const GeoJsonDataSource: React.FC<Props> = ({ fileType, fileContent }) => {
+const GeoJsonDataSource: React.FC<Props> = ({
+  fileType,
+  fileContent,
+  enableClustering,
+}) => {
   const pointLayer: LayerProps = useMemo(
     () => ({
       id: "point-layer",
@@ -51,8 +56,37 @@ const GeoJsonDataSource: React.FC<Props> = ({ fileType, fileContent }) => {
     [],
   );
 
+  const clusterLayer: LayerProps = {
+    id: "clusters",
+    type: "circle",
+    filter: ["has", "point_count"],
+
+    paint: {
+      "circle-color": [
+        "step",
+        ["get", "point_count"],
+        "#51bbd6",
+        100,
+        "#f1f075",
+        750,
+        "#f28cb1",
+      ],
+      "circle-radius": ["step", ["get", "point_count"], 20, 100, 30, 750, 40],
+    },
+  };
+
+  const clusterCountLayer: LayerProps = {
+    id: "cluster-count",
+    type: "symbol",
+    filter: ["has", "point_count"],
+    layout: {
+      "text-field": "{point_count_abbreviated}",
+      "text-size": 12,
+    },
+  };
+
   return (
-    <Source type={fileType} data={fileContent}>
+    <Source type={fileType} data={fileContent} cluster={enableClustering}>
       {fileContent?.features?.some(
         (feature: GeoJSON.Feature) => feature.geometry.type === "Point",
       ) && <Layer {...pointLayer} />}
@@ -64,6 +98,9 @@ const GeoJsonDataSource: React.FC<Props> = ({ fileType, fileContent }) => {
       {fileContent?.features?.some(
         (feature: GeoJSON.Feature) => feature.geometry.type === "Polygon",
       ) && <Layer {...polygonLayer} />}
+
+      <Layer {...clusterLayer} />
+      <Layer {...clusterCountLayer} />
     </Source>
   );
 };

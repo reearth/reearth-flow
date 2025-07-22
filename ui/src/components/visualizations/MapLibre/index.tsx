@@ -17,6 +17,7 @@ type Props = {
   className?: string;
   fileContent: any | null;
   fileType: SupportedDataTypes | null;
+  enableClustering?: boolean;
 };
 
 type MapSidePanelProps = {
@@ -25,10 +26,14 @@ type MapSidePanelProps = {
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
 };
 
-const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
+const MapLibre: React.FC<Props> = ({
+  className,
+  fileContent,
+  fileType,
+  enableClustering,
+}) => {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<any>(null);
-
   const dataBounds = useMemo(() => {
     if (!fileContent) return null;
 
@@ -83,7 +88,11 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
         }}
         onLoad={handleMapLoad}>
         {fileType === "geojson" && (
-          <GeoJsonDataSource fileType={fileType} fileContent={fileContent} />
+          <GeoJsonDataSource
+            fileType={fileType}
+            fileContent={fileContent}
+            enableClustering={enableClustering}
+          />
         )}
       </Map>
       {selectedFeature && (
