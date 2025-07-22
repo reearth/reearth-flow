@@ -347,9 +347,9 @@ nodes:
           expr: env.get("__value").udxDirs
         - attribute: Filename
           expr: env.get("__value").name
-        - attribute: XMLTag
+        - attribute: XML Tag
           expr: env.get("__value").tag
-        - attribute: GmlId
+        - attribute: gml:id
           expr: env.get("__value").gmlId
 
   - id: 8e5f9a2b-4c3d-4e7f-b8a5-9d6e4f3a2b1c
@@ -373,9 +373,9 @@ nodes:
           expr: env.get("__value").udxDirs
         - attribute: Filename
           expr: env.get("__value").name
-        - attribute: XMLTag
+        - attribute: XML Tag
           expr: env.get("__value").tag
-        - attribute: GmlId
+        - attribute: gml:id
           expr: env.get("__value").gmlId
 
   - id: 9d6e4f3a-2b1c-4e0f-9d8c-7b6a5e4d3c2b
@@ -399,7 +399,7 @@ nodes:
           expr: env.get("__value").udxDirs
         - attribute: Filename
           expr: env.get("__value").name
-        - attribute: GmlId
+        - attribute: gml:id
           expr: env.get("__value").gmlId
         # min
         - attribute: Min Latitude
@@ -451,7 +451,7 @@ nodes:
           expr: env.get("__value").udxDirs
         - attribute: Filename
           expr: env.get("__value").name
-        - attribute: GmlId
+        - attribute: gml:id
           expr: env.get("__value").gmlId
         - attribute: XML Tag
           expr: env.get("__value").tag
