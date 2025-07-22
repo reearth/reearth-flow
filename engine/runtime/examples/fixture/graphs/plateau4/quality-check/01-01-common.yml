@@ -439,6 +439,38 @@ nodes:
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_L06エラー.csv")
 
+  - id: 6c8d9e2f-4a5b-4c7d-8e9f-2a3b4c5d6e7f
+    name: AttributeMapperCodeValidation
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Index
+          expr: env.get("__value").index
+        - attribute: Folder
+          expr: env.get("__value").udxDirs
+        - attribute: Filename
+          expr: env.get("__value").name
+        - attribute: GmlId
+          expr: env.get("__value").gmlId
+        - attribute: XML Tag
+          expr: env.get("__value").tag
+        - attribute: XPath
+          expr: env.get("__value").xpath
+        - attribute: CodeSpace
+          expr: env.get("__value").codeSpace
+        - attribute: Code
+          expr: env.get("__value").codeSpaceValue
+
+  - id: 7d9e0f3a-5b6c-4d8e-9f0a-3b4c5d6e7f8a
+    name: FeatureWriterCodeValidation
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_L04エラー.csv")
+
   - id: f9359716-5c5a-43e5-b197-d1df171d5684
     name: OutputRouter
     type: action
@@ -614,6 +646,21 @@ edges:
     toPort: default
   - id: cc3dd4ee-5ff6-6007-b118-9cc0dd1ee2ff
     from: 1df16bdd-a8f2-5ace-b503-98a877daa7e3
+    to: f9359716-5c5a-43e5-b197-d1df171d5684
+    fromPort: default
+    toPort: default
+  - id: dd4ee5ff-6007-7118-c229-0dd1ee2ff3aa
+    from: 05c85d95-c45c-406c-95b5-4a8a154f704f
+    to: 6c8d9e2f-4a5b-4c7d-8e9f-2a3b4c5d6e7f
+    fromPort: codeValidation
+    toPort: default
+  - id: ee5ff600-7118-8229-d33a-1ee2ff3aa4bb
+    from: 6c8d9e2f-4a5b-4c7d-8e9f-2a3b4c5d6e7f
+    to: 7d9e0f3a-5b6c-4d8e-9f0a-3b4c5d6e7f8a
+    fromPort: default
+    toPort: default
+  - id: ff600711-8229-9330-e44b-2ff3aa4bb5cc
+    from: 7d9e0f3a-5b6c-4d8e-9f0a-3b4c5d6e7f8a
     to: f9359716-5c5a-43e5-b197-d1df171d5684
     fromPort: default
     toPort: default
