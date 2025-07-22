@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -49,6 +49,8 @@ static VALID_SRS_NAME_FOR_UNF: Lazy<Vec<&'static str>> = Lazy::new(|| {
         "http://www.opengis.net/def/crs/EPSG/0/10174",
     ]
 });
+
+static FILE_STATS_PORT: Lazy<Port> = Lazy::new(|| Port::new("file_stats"));
 
 static XML_NAMESPACES: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     HashMap::from([
@@ -299,7 +301,11 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
+        vec![
+            DEFAULT_PORT.clone(),
+            REJECTED_PORT.clone(),
+            FILE_STATS_PORT.clone(),
+        ]
     }
 
     fn build(
@@ -312,6 +318,7 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
         let process = DomainOfDefinitionValidator {
             feature_buffer: vec![],
             codelists: None,
+            filenames: HashSet::new(),
         };
         Ok(Box::new(process))
     }
@@ -323,6 +330,7 @@ type FeatureBuffer = Vec<(Vec<Feature>, HashMap<String, Vec<HashMap<String, Stri
 pub struct DomainOfDefinitionValidator {
     feature_buffer: FeatureBuffer,
     codelists: Option<HashMap<String, HashMap<String, String>>>,
+    filenames: HashSet<String>,
 }
 
 impl Processor for DomainOfDefinitionValidator {
@@ -336,6 +344,13 @@ impl Processor for DomainOfDefinitionValidator {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
+
+        // Collect file name for statistics output
+        if let Some(AttributeValue::String(name)) = feature.attributes.get(&Attribute::new("name"))
+        {
+            self.filenames.insert(name.clone());
+        }
+
         if self.codelists.is_none() {
             let codelists =
                 create_codelist(Arc::clone(&ctx.storage_resolver), feature).map_err(|e| {
@@ -360,6 +375,40 @@ impl Processor for DomainOfDefinitionValidator {
                 }
             }
         }
+
+        // Count duplicate gml:id occurrences per file
+        let mut duplicate_gml_id_count = HashMap::<String, usize>::new();
+
+        for attributes in gml_ids.values() {
+            if attributes.len() > 1 {
+                // Count each file containing duplicate gml:ids
+                for attribute in attributes.iter() {
+                    if let Some(name) = attribute.get("name") {
+                        *duplicate_gml_id_count.entry(name.clone()).or_insert(0) += 1;
+                    }
+                }
+            }
+        }
+
+        // Output statistics for all files (including those with 0 duplicates)
+        for filename in &self.filenames {
+            let duplicate_count = duplicate_gml_id_count.get(filename).unwrap_or(&0);
+
+            let mut result_feature = Feature::new();
+            result_feature.insert("filename", AttributeValue::String(filename.clone()));
+            result_feature.insert(
+                "gmlIdDuplicateCount",
+                AttributeValue::Number(Number::from(*duplicate_count)),
+            );
+
+            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                &ctx,
+                result_feature,
+                FILE_STATS_PORT.clone(),
+            ));
+        }
+
+        // Output individual duplicate gml:id details
         let mut dup_id = 0;
         for (gml_id, attributes) in gml_ids {
             if attributes.len() <= 1 {

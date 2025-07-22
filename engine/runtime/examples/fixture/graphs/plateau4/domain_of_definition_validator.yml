@@ -110,6 +110,13 @@ nodes:
     with:
       routingPort: invalidLodXGeometry
 
+  - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d9
+    name: FileStatsRouter
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: fileStats
+
 edges:
   - id: 7779cb5a-0dfc-4726-9c2f-6e32e196520d
     from: dfcdb977-e929-41b9-a3de-e368d158b5b9
@@ -165,4 +172,9 @@ edges:
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d8
     fromPort: inCorrectCodeSpace
+    toPort: default
+  - id: 41141e61-6815-4556-b247-05c4e5de8bb9
+    from: 747d2fa3-2527-4324-b630-92fba84a548c
+    to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d9
+    fromPort: file_stats
     toPort: default
