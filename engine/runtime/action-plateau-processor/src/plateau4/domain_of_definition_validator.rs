@@ -850,35 +850,38 @@ fn process_member_node(
             .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
         let code = codelists.get(&code_space_path.to_string());
         let code_value = code_space_member.get_content();
-        let mut valid = false;
-        let mut exists_code_list = false;
+
         if let Some(code) = code {
-            exists_code_list = true;
             if code.contains_key(code_value.as_str()) {
-                valid = true;
                 response.correct_code_values += 1;
-            } else {
-                response.code_value_errors += 1;
+                continue;
             }
+
+            response.code_value_errors += 1;
+            handle_code_validation_failure(
+                ctx,
+                fw,
+                "CodeValidation",
+                &base_feature,
+                &code_space_member,
+                member,
+                &code_space,
+                &code_value,
+                &mut result,
+            );
         } else {
             response.code_space_errors += 1;
-        }
-        if !valid {
-            let mut result_feature = base_feature.clone();
-            result_feature.insert("existsCodeList", AttributeValue::Bool(exists_code_list));
-            result_feature.insert("flag", AttributeValue::String("CodeValidation".to_string()));
-            result_feature.insert(
-                "tag",
-                AttributeValue::String(xml::get_readonly_node_tag(&code_space_member)),
+            handle_code_validation_failure(
+                ctx,
+                fw,
+                "inCorrectCodeSpace",
+                &base_feature,
+                &code_space_member,
+                member,
+                &code_space,
+                &code_value,
+                &mut result,
             );
-            result_feature.insert(
-                "xpath",
-                AttributeValue::String(get_xpath(&code_space_member, Some(member), None)),
-            );
-            result_feature.insert("codeSpace", AttributeValue::String(code_space));
-            result_feature.insert("codeSpaceValue", AttributeValue::String(code_value));
-            result.push(result_feature.clone());
-            fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
         }
     }
     // L06: Geographical coverage verification
@@ -1337,4 +1340,35 @@ fn create_detail_codelist(
         })
         .collect::<HashMap<String, String>>();
     Ok(result)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn handle_code_validation_failure(
+    ctx: &ExecutorContext,
+    fw: &ProcessorChannelForwarder,
+    flag: &str,
+    base_feature: &Feature,
+    code_space_member: &XmlRoNode,
+    member: &XmlRoNode,
+    code_space: &str,
+    code_value: &str,
+    result: &mut Vec<Feature>,
+) {
+    let mut result_feature = base_feature.clone();
+    result_feature.insert("flag", AttributeValue::String(flag.to_string()));
+    result_feature.insert(
+        "tag",
+        AttributeValue::String(xml::get_readonly_node_tag(code_space_member)),
+    );
+    result_feature.insert(
+        "xpath",
+        AttributeValue::String(get_xpath(code_space_member, Some(member), None)),
+    );
+    result_feature.insert("codeSpace", AttributeValue::String(code_space.to_string()));
+    result_feature.insert(
+        "codeSpaceValue",
+        AttributeValue::String(code_value.to_string()),
+    );
+    result.push(result_feature.clone());
+    fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
 }

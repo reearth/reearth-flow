@@ -471,6 +471,38 @@ nodes:
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_L04エラー.csv")
 
+  - id: 8e7f0a3b-6c5d-4e8f-9f0a-4b5c6d7e8f9a
+    name: AttributeMapperInCorrectCodeSpace
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Index
+          expr: env.get("__value").index
+        - attribute: Folder
+          expr: env.get("__value").udxDirs
+        - attribute: Filename
+          expr: env.get("__value").name
+        - attribute: FeatureType
+          expr: env.get("__value").featureType
+        - attribute: XPath
+          expr: env.get("__value").xpath
+        - attribute: XML Tag
+          expr: env.get("__value").tag
+        - attribute: gml:id
+          expr: env.get("__value").gmlId
+        - attribute: CodeSpace
+          expr: env.get("__value").codeSpace
+
+  - id: 9f0a4b5c-7d6e-4f9a-a0b1-5c6d7e8f9a0b
+    name: FeatureWriterInCorrectCodeSpace
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_不正なcodeSpace.csv")
+
   - id: f9359716-5c5a-43e5-b197-d1df171d5684
     name: OutputRouter
     type: action
@@ -661,6 +693,21 @@ edges:
     toPort: default
   - id: ff600711-8229-9330-e44b-2ff3aa4bb5cc
     from: 7d9e0f3a-5b6c-4d8e-9f0a-3b4c5d6e7f8a
+    to: f9359716-5c5a-43e5-b197-d1df171d5684
+    fromPort: default
+    toPort: default
+  - id: 0071182a-930e-44b2-ff3a-a4bb5cc6dd77
+    from: 05c85d95-c45c-406c-95b5-4a8a154f704f
+    to: 8e7f0a3b-6c5d-4e8f-9f0a-4b5c6d7e8f9a
+    fromPort: inCorrectCodeSpace
+    toPort: default
+  - id: 1182a930-e44b-2ff3-aa4b-b5cc6dd77ee8
+    from: 8e7f0a3b-6c5d-4e8f-9f0a-4b5c6d7e8f9a
+    to: 9f0a4b5c-7d6e-4f9a-a0b1-5c6d7e8f9a0b
+    fromPort: default
+    toPort: default
+  - id: 2a930e44-b2ff-3aa4-bb5c-c6dd77ee8ff9
+    from: 9f0a4b5c-7d6e-4f9a-a0b1-5c6d7e8f9a0b
     to: f9359716-5c5a-43e5-b197-d1df171d5684
     fromPort: default
     toPort: default
