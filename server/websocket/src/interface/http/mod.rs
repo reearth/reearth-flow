@@ -1,7 +1,12 @@
-pub mod handler;
-pub mod route;
-mod types;
+pub mod controllers;
+pub mod dto;
+pub mod middleware;
+pub mod routes;
+pub mod validators;
 
-pub use handler::DocumentHandler;
-pub use route::document_routes;
-pub use types::{Document, DocumentResponse, HistoryItem, HistoryResponse, RollbackRequest};
+// Re-export commonly used items following DDD structure
+pub use controllers::DocumentController;
+pub use dto::*;
+pub use middleware::*;
+pub use routes::document_routes;
+pub use validators::*;
