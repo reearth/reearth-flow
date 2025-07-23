@@ -492,20 +492,26 @@ fn process_feature(
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
     let xml_ctx = xml::create_context(&xml_document)
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-    let envelopes = xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//gml:Envelope", &root_node)
-        .map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
-            ))
-        })?;
+    let envelopes = xml::find_readonly_nodes_by_xpath(
+        &xml_ctx,
+        ".//*[namespace-uri()='http://www.opengis.net/gml' and local-name()='Envelope']",
+        &root_node,
+    )
+    .map_err(|e| {
+        PlateauProcessorError::DomainOfDefinitionValidator(format!(
+            "Failed to evaluate xpath at {}:{}: {e:?}",
+            file!(),
+            line!()
+        ))
+    })?;
     response.envelope = parse_envelope(envelopes)
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
 
     let members =
-        xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//core:cityObjectMember/*", &root_node)
+        xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//*[namespace-uri()='http://www.opengis.net/citygml/2.0' and local-name()='cityObjectMember']/*", &root_node)
             .map_err(|e| {
                 PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                    "Failed to evaluate xpath with {e:?}"
+                    "Failed to evaluate xpath at {}:{}: {e:?}", file!(), line!()
                 ))
             })?;
     for member in members.iter() {
@@ -528,12 +534,12 @@ fn process_feature(
 
     let members = xml::find_readonly_nodes_by_xpath(
         &xml_ctx,
-        ".//core:cityObjectMember/grp:CityObjectGroup",
+        ".//*[namespace-uri()='http://www.opengis.net/citygml/2.0' and local-name()='cityObjectMember']/*[namespace-uri()='http://www.opengis.net/citygml/cityobjectgroup/2.0' and local-name()='CityObjectGroup']",
         &root_node,
     )
     .map_err(|e| {
         PlateauProcessorError::DomainOfDefinitionValidator(format!(
-            "Failed to evaluate xpath with {e:?}"
+            "Failed to evaluate xpath at {}:{}: {e:?}", file!(), line!()
         ))
     })?;
     for member in members.iter() {
@@ -541,10 +547,16 @@ fn process_feature(
         let gml_id = member
             .get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner()).unwrap())
             .unwrap_or_default();
-        let xlinks = xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//*[@xlink:href]", &root_node)
-            .map_err(|e| {
+        let xlinks = xml::find_readonly_nodes_by_xpath(
+            &xml_ctx,
+            ".//*[@*[namespace-uri()='http://www.w3.org/1999/xlink' and local-name()='href']]",
+            &root_node,
+        )
+        .map_err(|e| {
             PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
+                "Failed to evaluate xpath at {}:{}: {e:?}",
+                file!(),
+                line!()
             ))
         })?;
         for xlink in xlinks {
@@ -819,12 +831,18 @@ fn process_member_node(
         ])],
     );
     // 2. gml:id collection of lower-level elements
-    let gml_id_children = xml::find_readonly_nodes_by_xpath(xml_ctx, ".//*[@gml:id]", member)
-        .map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
-            ))
-        })?;
+    let gml_id_children = xml::find_readonly_nodes_by_xpath(
+        xml_ctx,
+        ".//*[@*[namespace-uri()='http://www.opengis.net/gml' and local-name()='id']]",
+        member,
+    )
+    .map_err(|e| {
+        PlateauProcessorError::DomainOfDefinitionValidator(format!(
+            "Failed to evaluate xpath at {}:{}: {e:?}",
+            file!(),
+            line!()
+        ))
+    })?;
     for gml_id_child in gml_id_children {
         let gml_id = gml_id_child
             .get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner()).unwrap())
@@ -876,7 +894,9 @@ fn process_member_node(
     let code_space_children =
         xml::find_readonly_nodes_by_xpath(xml_ctx, ".//*[@codeSpace]", member).map_err(|e| {
             PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
+                "Failed to evaluate xpath at {}:{}: {e:?}",
+                file!(),
+                line!()
             ))
         })?;
     let city_gml_path = feature.attributes.get(&Attribute::new("path")).ok_or(
@@ -934,18 +954,30 @@ fn process_member_node(
         }
     }
     // L06: Geographical coverage verification
-    let mut pos_children = xml::find_readonly_nodes_by_xpath(xml_ctx, ".//gml:pos", member)
-        .map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
-            ))
-        })?;
-    let pos_list_children = xml::find_readonly_nodes_by_xpath(xml_ctx, ".//gml:posList", member)
-        .map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
-            ))
-        })?;
+    let mut pos_children = xml::find_readonly_nodes_by_xpath(
+        xml_ctx,
+        ".//*[namespace-uri()='http://www.opengis.net/gml' and local-name()='pos']",
+        member,
+    )
+    .map_err(|e| {
+        PlateauProcessorError::DomainOfDefinitionValidator(format!(
+            "Failed to evaluate xpath at {}:{}: {e:?}",
+            file!(),
+            line!()
+        ))
+    })?;
+    let pos_list_children = xml::find_readonly_nodes_by_xpath(
+        xml_ctx,
+        ".//*[namespace-uri()='http://www.opengis.net/gml' and local-name()='posList']",
+        member,
+    )
+    .map_err(|e| {
+        PlateauProcessorError::DomainOfDefinitionValidator(format!(
+            "Failed to evaluate xpath at {}:{}: {e:?}",
+            file!(),
+            line!()
+        ))
+    })?;
     let mut positions = Vec::<f64>::new();
     pos_children.extend(pos_list_children);
     for child in pos_children {
@@ -1067,12 +1099,18 @@ fn process_member_node(
         }
     }
     // T03: Extraction of xlink:hrefs with no referent or whose referent is not a valid geometry object
-    let xlink_children = xml::find_readonly_nodes_by_xpath(xml_ctx, ".//*[@xlink:href]", member)
-        .map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
-            ))
-        })?;
+    let xlink_children = xml::find_readonly_nodes_by_xpath(
+        xml_ctx,
+        ".//*[@*[namespace-uri()='http://www.w3.org/1999/xlink' and local-name()='href']]",
+        member,
+    )
+    .map_err(|e| {
+        PlateauProcessorError::DomainOfDefinitionValidator(format!(
+            "Failed to evaluate xpath at {}:{}: {e:?}",
+            file!(),
+            line!()
+        ))
+    })?;
     for child in xlink_children
         .iter()
         .filter(|&child| xml::get_readonly_node_tag(child) != "core:CityObjectGroup")
@@ -1105,13 +1143,18 @@ fn process_member_node(
                 let root_node = xml::get_root_readonly_node(&xml_document).map_err(|e| {
                     PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
                 })?;
-                let gml_id_children =
-                    xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//*[@gml:id]", &root_node)
-                        .map_err(|e| {
-                            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                                "Failed to evaluate xpath with {e:?}"
-                            ))
-                        })?;
+                let gml_id_children = xml::find_readonly_nodes_by_xpath(
+                    &xml_ctx,
+                    ".//*[@*[namespace-uri()='http://www.opengis.net/gml' and local-name()='id']]",
+                    &root_node,
+                )
+                .map_err(|e| {
+                    PlateauProcessorError::DomainOfDefinitionValidator(format!(
+                        "Failed to evaluate xpath at {}:{}: {e:?}",
+                        file!(),
+                        line!()
+                    ))
+                })?;
                 gml_id_children.iter().for_each(|gml_id_node| {
                     let Some(gml_id) = gml_id_node.get_attribute_ns(
                         "id",
@@ -1219,7 +1262,9 @@ fn process_member_node(
 
         let children = xml::find_readonly_nodes_by_xpath(xml_ctx, &xpath, member).map_err(|e| {
             PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
+                "Failed to evaluate xpath at {}:{}: {e:?}",
+                file!(),
+                line!()
             ))
         })?;
         for child in children {
@@ -1235,7 +1280,9 @@ fn process_member_node(
                 )
                 .map_err(|e| {
                     PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                        "Failed to evaluate xpath with {e:?}"
+                        "Failed to evaluate xpath at {}:{}: {e:?}",
+                        file!(),
+                        line!()
                     ))
                 })?;
                 if gml.is_empty() {
@@ -1369,12 +1416,18 @@ fn create_detail_codelist(
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
     let root = xml::get_root_readonly_node(&xml_document)
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-    let definitions =
-        xml::find_readonly_nodes_by_xpath(&ctx, ".//gml:Definition", &root).map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
-            ))
-        })?;
+    let definitions = xml::find_readonly_nodes_by_xpath(
+        &ctx,
+        ".//*[namespace-uri()='http://www.opengis.net/gml' and local-name()='Definition']",
+        &root,
+    )
+    .map_err(|e| {
+        PlateauProcessorError::DomainOfDefinitionValidator(format!(
+            "Failed to evaluate xpath at {}:{}: {e:?}",
+            file!(),
+            line!()
+        ))
+    })?;
     let result = definitions
         .iter()
         .flat_map(|node| {

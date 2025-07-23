@@ -30,6 +30,45 @@ static FEATURE_TYPE_TO_PART_XPATH: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     ])
 });
 
+static NAMESPACE_MAP: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
+    HashMap::from([
+        ("app", "http://www.opengis.net/citygml/appearance/2.0"),
+        ("bldg", "http://www.opengis.net/citygml/building/2.0"),
+        ("brid", "http://www.opengis.net/citygml/bridge/2.0"),
+        ("core", "http://www.opengis.net/citygml/2.0"),
+        ("dem", "http://www.opengis.net/citygml/relief/2.0"),
+        ("frn", "http://www.opengis.net/citygml/cityfurniture/2.0"),
+        ("gen", "http://www.opengis.net/citygml/generics/2.0"),
+        ("gml", "http://www.opengis.net/gml"),
+        ("grp", "http://www.opengis.net/citygml/cityobjectgroup/2.0"),
+        ("luse", "http://www.opengis.net/citygml/landuse/2.0"),
+        ("tex", "http://www.opengis.net/citygml/texturedsurface/2.0"),
+        ("tran", "http://www.opengis.net/citygml/transportation/2.0"),
+        ("tun", "http://www.opengis.net/citygml/tunnel/2.0"),
+        ("urf", "http://www.opengis.net/citygml/cityobjectgroup/2.0"),
+        ("uro", "https://www.geospatial.jp/iur/uro/3.0"),
+        ("veg", "http://www.opengis.net/citygml/vegetation/2.0"),
+        ("wtr", "http://www.opengis.net/citygml/waterbody/2.0"),
+        ("xAL", "urn:oasis:names:tc:ciq:xsdschema:xAL:2.0"),
+        ("xlink", "http://www.w3.org/1999/xlink"),
+        ("xsi", "http://www.w3.org/2001/XMLSchema-instance"),
+    ])
+});
+
+fn convert_xpath_prefixes_to_namespace_uri(xpath: &str) -> String {
+    let mut converted = xpath.to_string();
+
+    // Handle common namespace prefixes found in PLATEAU data
+    // Convert "gen:stringAttribute" to "*[namespace-uri()='http://www.opengis.net/citygml/generics/2.0' and local-name()='stringAttribute']"
+    if let Some((prefix, element)) = xpath.split_once(':') {
+        if let Some(uri) = NAMESPACE_MAP.get(prefix) {
+            converted = format!("*[namespace-uri()='{uri}' and local-name()='{element}']");
+        }
+    }
+
+    converted
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct MissingAttributeDetectorFactory;
 
@@ -402,13 +441,17 @@ impl MissingAttributeDetector {
             .get_mut(&feature_type)
         {
             for xpath in target_attributes.clone().iter() {
-                let node = xml::find_readonly_nodes_by_xpath(&xml_ctx, xpath, &root_node).map_err(
-                    |e| {
-                        PlateauProcessorError::MissingAttributeDetector(format!(
-                            "Failed to find node by xpath: {e}"
-                        ))
-                    },
-                )?;
+                let converted_xpath = convert_xpath_prefixes_to_namespace_uri(xpath);
+                let node =
+                    xml::find_readonly_nodes_by_xpath(&xml_ctx, &converted_xpath, &root_node)
+                        .map_err(|e| {
+                            PlateauProcessorError::MissingAttributeDetector(format!(
+                                "Failed to find node by xpath '{}' at {}:{}: {e}",
+                                xpath,
+                                file!(),
+                                line!()
+                            ))
+                        })?;
                 if !node.is_empty() {
                     target_attributes.remove(xpath);
                 }
@@ -426,13 +469,20 @@ impl MissingAttributeDetector {
                         0 => {}
                         1 => {
                             let xpath = format!(".//{}", paths[0]);
-                            let node =
-                                xml::find_readonly_nodes_by_xpath(&xml_ctx, &xpath, &root_node)
-                                    .map_err(|e| {
-                                        PlateauProcessorError::MissingAttributeDetector(format!(
-                                            "Failed to find node by xpath: {e}"
-                                        ))
-                                    })?;
+                            let converted_xpath = convert_xpath_prefixes_to_namespace_uri(&xpath);
+                            let node = xml::find_readonly_nodes_by_xpath(
+                                &xml_ctx,
+                                &converted_xpath,
+                                &root_node,
+                            )
+                            .map_err(|e| {
+                                PlateauProcessorError::MissingAttributeDetector(format!(
+                                    "Failed to find node by xpath '{}' at {}:{}: {e}",
+                                    xpath,
+                                    file!(),
+                                    line!()
+                                ))
+                            })?;
 
                             if node.is_empty() {
                                 missing_required.push(paths[0].clone());
@@ -442,13 +492,21 @@ impl MissingAttributeDetector {
                             let mut hit = true;
                             for p in &paths[..paths.len() - 1] {
                                 let xpath = format!(".//{p}");
-                                let node =
-                                    xml::find_readonly_nodes_by_xpath(&xml_ctx, &xpath, &root_node)
-                                        .map_err(|e| {
-                                            PlateauProcessorError::MissingAttributeDetector(
-                                                format!("Failed to find node by xpath: {e}"),
-                                            )
-                                        })?;
+                                let converted_xpath =
+                                    convert_xpath_prefixes_to_namespace_uri(&xpath);
+                                let node = xml::find_readonly_nodes_by_xpath(
+                                    &xml_ctx,
+                                    &converted_xpath,
+                                    &root_node,
+                                )
+                                .map_err(|e| {
+                                    PlateauProcessorError::MissingAttributeDetector(format!(
+                                        "Failed to find node by xpath '{}' at {}:{}: {e}",
+                                        xpath,
+                                        file!(),
+                                        line!()
+                                    ))
+                                })?;
                                 if node.is_empty() {
                                     hit = false;
                                     break;
@@ -456,13 +514,21 @@ impl MissingAttributeDetector {
                             }
                             if hit {
                                 let xpath = format!(".//{}", paths[paths.len() - 1]);
-                                let node =
-                                    xml::find_readonly_nodes_by_xpath(&xml_ctx, &xpath, &root_node)
-                                        .map_err(|e| {
-                                            PlateauProcessorError::MissingAttributeDetector(
-                                                format!("Failed to find node by xpath: {e}"),
-                                            )
-                                        })?;
+                                let converted_xpath =
+                                    convert_xpath_prefixes_to_namespace_uri(&xpath);
+                                let node = xml::find_readonly_nodes_by_xpath(
+                                    &xml_ctx,
+                                    &converted_xpath,
+                                    &root_node,
+                                )
+                                .map_err(|e| {
+                                    PlateauProcessorError::MissingAttributeDetector(format!(
+                                        "Failed to find node by xpath '{}' at {}:{}: {e}",
+                                        xpath,
+                                        file!(),
+                                        line!()
+                                    ))
+                                })?;
                                 if node.is_empty() {
                                     let joined = paths.join("/");
                                     missing_required.push(joined);
@@ -486,13 +552,20 @@ impl MissingAttributeDetector {
                         0 => {}
                         1 => {
                             let xpath = format!(".//{}", paths[0]);
-                            let node =
-                                xml::find_readonly_nodes_by_xpath(&xml_ctx, &xpath, &root_node)
-                                    .map_err(|e| {
-                                        PlateauProcessorError::MissingAttributeDetector(format!(
-                                            "Failed to find node by xpath: {e}"
-                                        ))
-                                    })?;
+                            let converted_xpath = convert_xpath_prefixes_to_namespace_uri(&xpath);
+                            let node = xml::find_readonly_nodes_by_xpath(
+                                &xml_ctx,
+                                &converted_xpath,
+                                &root_node,
+                            )
+                            .map_err(|e| {
+                                PlateauProcessorError::MissingAttributeDetector(format!(
+                                    "Failed to find node by xpath '{}' at {}:{}: {e}",
+                                    xpath,
+                                    file!(),
+                                    line!()
+                                ))
+                            })?;
 
                             if node.is_empty() {
                                 missing_conditional.push(paths[0].clone());
@@ -502,13 +575,21 @@ impl MissingAttributeDetector {
                             let mut hit = true;
                             for p in &paths[..paths.len() - 1] {
                                 let xpath = format!(".//{p}");
-                                let node =
-                                    xml::find_readonly_nodes_by_xpath(&xml_ctx, &xpath, &root_node)
-                                        .map_err(|e| {
-                                            PlateauProcessorError::MissingAttributeDetector(
-                                                format!("Failed to find node by xpath: {e}"),
-                                            )
-                                        })?;
+                                let converted_xpath =
+                                    convert_xpath_prefixes_to_namespace_uri(&xpath);
+                                let node = xml::find_readonly_nodes_by_xpath(
+                                    &xml_ctx,
+                                    &converted_xpath,
+                                    &root_node,
+                                )
+                                .map_err(|e| {
+                                    PlateauProcessorError::MissingAttributeDetector(format!(
+                                        "Failed to find node by xpath '{}' at {}:{}: {e}",
+                                        xpath,
+                                        file!(),
+                                        line!()
+                                    ))
+                                })?;
                                 if node.is_empty() {
                                     hit = false;
                                     break;
@@ -516,13 +597,21 @@ impl MissingAttributeDetector {
                             }
                             if hit {
                                 let xpath = format!(".//{}", paths[paths.len() - 1]);
-                                let node =
-                                    xml::find_readonly_nodes_by_xpath(&xml_ctx, &xpath, &root_node)
-                                        .map_err(|e| {
-                                            PlateauProcessorError::MissingAttributeDetector(
-                                                format!("Failed to find node by xpath: {e}"),
-                                            )
-                                        })?;
+                                let converted_xpath =
+                                    convert_xpath_prefixes_to_namespace_uri(&xpath);
+                                let node = xml::find_readonly_nodes_by_xpath(
+                                    &xml_ctx,
+                                    &converted_xpath,
+                                    &root_node,
+                                )
+                                .map_err(|e| {
+                                    PlateauProcessorError::MissingAttributeDetector(format!(
+                                        "Failed to find node by xpath '{}' at {}:{}: {e}",
+                                        xpath,
+                                        file!(),
+                                        line!()
+                                    ))
+                                })?;
                                 if node.is_empty() {
                                     let joined = paths.join("/");
                                     missing_conditional.push(joined);
@@ -536,10 +625,14 @@ impl MissingAttributeDetector {
         let xpath = FEATURE_TYPE_TO_PART_XPATH.get(feature_type.as_str());
 
         let severity = if let Some(xpath) = xpath {
-            let node =
-                xml::find_readonly_nodes_by_xpath(&xml_ctx, xpath, &root_node).map_err(|e| {
+            let converted_xpath = convert_xpath_prefixes_to_namespace_uri(xpath);
+            let node = xml::find_readonly_nodes_by_xpath(&xml_ctx, &converted_xpath, &root_node)
+                .map_err(|e| {
                     PlateauProcessorError::MissingAttributeDetector(format!(
-                        "Failed to find node by xpath: {e}"
+                        "Failed to find node by xpath '{}' at {}:{}: {e}",
+                        xpath,
+                        file!(),
+                        line!()
                     ))
                 })?;
             if node.is_empty() {
