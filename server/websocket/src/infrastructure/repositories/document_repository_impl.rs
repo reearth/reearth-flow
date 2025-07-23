@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use crate::domain::models::{Document, DocumentId};
+use crate::domain::entity::{Document, DocumentId};
 use crate::domain::repositories::DocumentRepository;
 use crate::infrastructure::storage::kv::get_oid;
 use crate::infrastructure::BroadcastPool;

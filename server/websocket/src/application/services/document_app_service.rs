@@ -3,7 +3,8 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
-use crate::domain::{DocumentId, DocumentService};
+use crate::domain::DocumentId;
+use crate::application::services::DocumentService;
 use crate::infrastructure::storage::gcs::UpdateInfo;
 use crate::infrastructure::storage::kv::DocOps;
 use crate::infrastructure::BroadcastPool;

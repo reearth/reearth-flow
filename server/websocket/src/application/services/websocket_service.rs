@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::application::dto::AppState;
 use crate::application::services::{Config, DocumentAppService};
-use crate::domain::services::DocumentService;
+use crate::application::services::DocumentService;
 use crate::infrastructure::repositories::DocumentRepositoryImpl;
 use crate::infrastructure::{BroadcastPool, GcsStore, RedisStore};
 

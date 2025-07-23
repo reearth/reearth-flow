@@ -1,4 +1,4 @@
-use crate::domain::models::{BroadcastMessage, DocumentId};
+use crate::domain::entity::{BroadcastMessage, DocumentId};
 use crate::domain::repositories::BroadcastRepository;
 use anyhow::Result;
 use bytes::Bytes;

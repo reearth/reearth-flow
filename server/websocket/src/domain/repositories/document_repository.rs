@@ -1,4 +1,4 @@
-use crate::domain::models::{Document, DocumentId};
+use crate::domain::entity::{Document, DocumentId};
 use anyhow::Result;
 use async_trait::async_trait;
 

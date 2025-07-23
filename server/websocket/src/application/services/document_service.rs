@@ -1,4 +1,4 @@
-use crate::domain::models::{Document, DocumentId};
+use crate::domain::entity::{Document, DocumentId};
 use crate::domain::repositories::DocumentRepository;
 use anyhow::Result;
 use std::sync::Arc;

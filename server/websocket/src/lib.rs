@@ -4,11 +4,13 @@ pub mod infrastructure;
 pub mod interface;
 
 pub use domain::{
-    BroadcastMessage, BroadcastService, ConnectionId, ConnectionInfo, Document, DocumentId,
-    DocumentService, MessageType,
+    BroadcastMessage, ConnectionId, ConnectionInfo, Document, DocumentId, MessageType,
 };
 
-pub use application::{AppState, Config, ConfigService, DocumentAppService, WebSocketService};
+pub use application::{
+    AppState, BroadcastService, Config, ConfigService, DocumentAppService, DocumentService,
+    WebSocketService,
+};
 
 pub use infrastructure::{BroadcastGroup, BroadcastPool, Connection, GcsStore, RedisStore};
 
