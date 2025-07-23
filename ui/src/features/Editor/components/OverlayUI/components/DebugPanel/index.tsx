@@ -53,14 +53,21 @@ const DebugPanel: React.FC = () => {
   } = useHooks();
   const t = useT();
   const [tabValue, setTabValue] = useState("debug-logs");
-  // const mapRef = useRef<maplibregl.Map | null>(null);
 
   const [selectedFeature, setSelectedFeature] = useState<any>(null);
   const [enableClustering, setEnableClustering] = useState<boolean>(true);
+  const [shouldFlyToFeature, setShouldFlyToFeature] = useState<boolean>(false);
 
   const handleSelectedFeature = useCallback((value: any) => {
     setEnableClustering(false);
     setSelectedFeature(value);
+    setShouldFlyToFeature(false);
+  }, []);
+
+  const handleSelectedFeatureWithFly = useCallback((value: any) => {
+    setEnableClustering(false);
+    setSelectedFeature(value);
+    setShouldFlyToFeature(true);
   }, []);
 
   const hasSwitchedToViewerRef = useRef(false);
@@ -199,6 +206,7 @@ const DebugPanel: React.FC = () => {
                   fileType={fileType}
                   selectedFeature={selectedFeature}
                   onSelectedFeature={handleSelectedFeature}
+                  onDoubleClickFeature={handleSelectedFeatureWithFly}
                 />
               </ResizablePanel>
               <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 relative m-[0px] border border-border/50 transition hover:border-logo/70" />
@@ -217,6 +225,7 @@ const DebugPanel: React.FC = () => {
                   onSelectedFeature={setSelectedFeature}
                   enableClustering={enableClustering}
                   onEnableClusteringChange={setEnableClustering}
+                  shouldFlyToFeature={shouldFlyToFeature}
                 />
               </ResizablePanel>
             </ResizablePanelGroup>

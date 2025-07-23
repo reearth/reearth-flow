@@ -23,6 +23,7 @@ export const WithPoint: Story = {
     className: "h-[500px]",
     fileContent: pointGeoJsonData,
     fileType: "geojson",
+    onSelectedFeature: () => {},
   },
 };
 
@@ -31,6 +32,7 @@ export const WithLineString: Story = {
     className: "h-[500px]",
     fileContent: lineStringGeoJsonData,
     fileType: "geojson",
+    onSelectedFeature: () => {},
   },
 };
 
@@ -39,6 +41,7 @@ export const WithPolygon: Story = {
     className: "h-[500px]",
     fileContent: polygonGeoJsonData,
     fileType: "geojson",
+    onSelectedFeature: () => {},
   },
 };
 
@@ -47,6 +50,7 @@ export const WithMixture: Story = {
     className: "h-[500px]",
     fileContent: mixtureGeoJsonData,
     fileType: "geojson",
+    onSelectedFeature: () => {},
   },
 };
 
@@ -58,5 +62,6 @@ export const EmptyData: Story = {
       features: [],
     },
     fileType: "geojson",
+    onSelectedFeature: () => {},
   },
 };

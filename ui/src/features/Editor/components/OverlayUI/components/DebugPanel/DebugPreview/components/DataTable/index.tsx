@@ -10,6 +10,7 @@ type Props = {
   fileType: SupportedDataTypes | null;
   selectedFeature: any;
   onSelectedFeature: (value: any) => void;
+  onDoubleClickFeature?: (value: any) => void;
 };
 
 const DataTable: React.FC<Props> = ({
@@ -17,6 +18,7 @@ const DataTable: React.FC<Props> = ({
   fileType,
   selectedFeature,
   onSelectedFeature,
+  onDoubleClickFeature,
 }) => {
   const { tableData, tableColumns } = useDataColumnizer({
     parsedData: fileContent,
@@ -40,6 +42,7 @@ const DataTable: React.FC<Props> = ({
             showOrdering={false}
             selectedRow={selectedFeature}
             onSelectedRow={onSelectedFeature}
+            onDoubleClickRow={onDoubleClickFeature}
           />
         </div>
       </div>

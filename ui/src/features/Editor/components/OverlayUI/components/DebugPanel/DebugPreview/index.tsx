@@ -1,9 +1,14 @@
-import { GlobeIcon, MapPinAreaIcon, WarningIcon } from "@phosphor-icons/react";
+import {
+  DotsThreeVerticalIcon,
+  GlobeIcon,
+  MapPinAreaIcon,
+  TargetIcon,
+  WarningIcon,
+} from "@phosphor-icons/react";
 import { memo, useState } from "react";
 
 import {
   Button,
-  Checkbox,
   Dialog,
   DialogContent,
   DialogContentSection,
@@ -11,6 +16,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
   LoadingSkeleton,
   Tabs,
   TabsContent,
@@ -36,6 +47,7 @@ type Props = {
   onShowTempPossibleIssuesDialogClose: () => void;
   selectedFeature: any;
   onSelectedFeature: (value: any) => void;
+  shouldFlyToFeature?: boolean;
 };
 const DebugPreview: React.FC<Props> = ({
   fileType,
@@ -49,9 +61,11 @@ const DebugPreview: React.FC<Props> = ({
   onEnableClusteringChange,
   selectedFeature,
   onSelectedFeature,
+  shouldFlyToFeature,
 }) => {
   const t = useT();
   const [tabValue, setTabValue] = useState<string>("2d-viewer");
+  const [fitDataToBounds, setFitDataToBounds] = useState<boolean>(false);
 
   return debugJobState && dataURLs ? (
     <Tabs
@@ -77,17 +91,30 @@ const DebugPreview: React.FC<Props> = ({
             </TabsTrigger>
           </div>
           {tabValue === "2d-viewer" && (
-            <div className="flex items-center gap-2">
-              <Checkbox
-                checked={enableClustering}
-                onCheckedChange={(checked) =>
-                  onEnableClusteringChange(!!checked)
-                }
-              />
-              <span className="text-sm font-thin select-none">
-                {t("Enable Clustering")}
-              </span>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <IconButton
+                  className="w-[25px]"
+                  tooltipText={t("Additional actions")}
+                  tooltipOffset={12}
+                  icon={<DotsThreeVerticalIcon size={18} />}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuCheckboxItem
+                  checked={enableClustering}
+                  onCheckedChange={(checked) =>
+                    onEnableClusteringChange(!!checked)
+                  }>
+                  {t("Enable Clustering")}
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuItem
+                  onClick={() => setFitDataToBounds(!fitDataToBounds)}>
+                  <TargetIcon />
+                  {t("Center Data")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </TabsList>
       </div>
@@ -105,6 +132,9 @@ const DebugPreview: React.FC<Props> = ({
               enableClustering={enableClustering}
               selectedFeature={selectedFeature}
               onSelectedFeature={onSelectedFeature}
+              shouldFlyToFeature={shouldFlyToFeature}
+              fitDataToBounds={fitDataToBounds}
+              onFitDataToBoundsChange={setFitDataToBounds}
             />
           </TabsContent>
           <TabsContent

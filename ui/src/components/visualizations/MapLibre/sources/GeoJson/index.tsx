@@ -17,7 +17,6 @@ const GeoJsonDataSource: React.FC<Props> = ({
   enableClustering,
   selectedFeatureId,
 }) => {
-  console.log("GEO JSON FEATURE", selectedFeatureId);
   const pointLayer: LayerProps = useMemo(
     () => ({
       id: "point-layer",
@@ -45,12 +44,21 @@ const GeoJsonDataSource: React.FC<Props> = ({
       id: "line-layer",
       type: "line",
       paint: {
-        "line-color": "#3f3f45",
-        "line-width": 2,
+        "line-color": selectedFeatureId
+          ? [
+              "case",
+              ["==", ["get", "id"], selectedFeatureId],
+              "#ff69b4",
+              "#3f3f45",
+            ]
+          : "#3f3f45",
+        "line-width": selectedFeatureId
+          ? ["case", ["==", ["get", "id"], selectedFeatureId], 4, 2]
+          : 2,
       },
       filter: ["==", ["geometry-type"], "LineString"],
     }),
-    [],
+    [selectedFeatureId],
   );
 
   const polygonLayer: LayerProps = useMemo(
@@ -58,12 +66,21 @@ const GeoJsonDataSource: React.FC<Props> = ({
       id: "polygon-layer",
       type: "fill",
       paint: {
-        "fill-color": "#3f3f45",
-        "fill-opacity": 0.8,
+        "fill-color": selectedFeatureId
+          ? [
+              "case",
+              ["==", ["get", "id"], selectedFeatureId],
+              "#ff69b4",
+              "#3f3f45",
+            ]
+          : "#3f3f45",
+        "fill-opacity": selectedFeatureId
+          ? ["case", ["==", ["get", "id"], selectedFeatureId], 0.9, 0.8]
+          : 0.8,
       },
       filter: ["==", ["geometry-type"], "Polygon"],
     }),
-    [],
+    [selectedFeatureId],
   );
 
   const clusterLayer: LayerProps = {

@@ -11,6 +11,9 @@ type Props = {
   enableClustering?: boolean;
   selectedFeature: any;
   onSelectedFeature: (value: any) => void;
+  shouldFlyToFeature?: boolean;
+  fitDataToBounds?: boolean;
+  onFitDataToBoundsChange?: (value: boolean) => void;
 };
 
 const TwoDViewer: React.FC<Props> = ({
@@ -19,6 +22,9 @@ const TwoDViewer: React.FC<Props> = ({
   enableClustering,
   selectedFeature,
   onSelectedFeature,
+  shouldFlyToFeature,
+  fitDataToBounds,
+  onFitDataToBoundsChange,
 }) => {
   const t = useT();
   return (
@@ -31,6 +37,9 @@ const TwoDViewer: React.FC<Props> = ({
         enableClustering={enableClustering}
         selectedFeature={selectedFeature}
         onSelectedFeature={onSelectedFeature}
+        shouldFlyToFeature={shouldFlyToFeature}
+        fitDataToBounds={fitDataToBounds}
+        onFitDataToBoundsChange={onFitDataToBoundsChange}
       />
     </RenderFallback>
   );

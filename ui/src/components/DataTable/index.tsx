@@ -61,6 +61,7 @@ type DataTableProps<TData, TValue> = {
   setSearchTerm?: (term: string) => void;
   selectedRow?: any;
   onSelectedRow?: (value: any) => void;
+  onDoubleClickRow?: (value: any) => void;
 };
 
 function DataTable<TData, TValue>({
@@ -85,6 +86,7 @@ function DataTable<TData, TValue>({
   setSearchTerm,
   selectedRow,
   onSelectedRow,
+  onDoubleClickRow,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -270,7 +272,7 @@ function DataTable<TData, TValue>({
                     return (
                       <TableRow
                         onDoubleClick={() => {
-                          onSelectedRow?.(row.original);
+                          onDoubleClickRow?.(row.original);
                         }}
                         key={row.id}
                         // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
@@ -281,8 +283,10 @@ function DataTable<TData, TValue>({
                         }}
                         data-state={row.getIsSelected() && "selected"}
                         onClick={() => {
+                          table.resetRowSelection();
                           row.toggleSelected();
                           onRowClick?.(row.original);
+                          onSelectedRow?.(row.original);
                         }}>
                         {row.getVisibleCells().map((cell) => (
                           <TableCell
