@@ -7,7 +7,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/auth0"
-	"github.com/reearth/reearth-flow/api/internal/infrastructure/cms"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/fs"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcpbatch"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcpscheduler"
@@ -17,6 +16,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interactor"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
+	"github.com/reearth/reearth-flow/api/internal/infrastructure/reearthcms"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmongo"
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
@@ -232,7 +232,7 @@ func initCMS(ctx context.Context, conf *config.Config) gateway.CMS {
 		log.Warn("CMS: no authentication token provided")
 	}
 
-	cmsClient, err := cms.NewGRPCClient(conf.CMS_Endpoint, conf.CMS_Token, conf.CMS_UserID)
+	cmsClient, err := reearthcms.NewClient(conf.CMS_Endpoint, conf.CMS_Token, conf.CMS_UserID)
 	if err != nil {
 		log.Errorf("failed to create CMS client: %v", err)
 		return nil
