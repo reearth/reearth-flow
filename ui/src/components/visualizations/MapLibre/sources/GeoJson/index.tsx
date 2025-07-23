@@ -8,26 +8,36 @@ type Props = {
     GeoJSON.GeoJsonProperties
   >;
   enableClustering?: boolean;
+  selectedFeatureId?: string;
 };
 
 const GeoJsonDataSource: React.FC<Props> = ({
   fileType,
   fileContent,
   enableClustering,
+  selectedFeatureId,
 }) => {
+  console.log("GEO JSON FEATURE", selectedFeatureId);
   const pointLayer: LayerProps = useMemo(
     () => ({
       id: "point-layer",
       type: "circle",
       paint: {
         "circle-radius": 5,
-        "circle-color": "#3f3f45",
+        "circle-color": selectedFeatureId
+          ? [
+              "case",
+              ["==", ["get", "id"], selectedFeatureId],
+              "#ff69b4",
+              "#3f3f45",
+            ]
+          : "#3f3f45",
         "circle-stroke-color": "#fff",
         "circle-stroke-width": 1,
       },
       filter: ["==", ["geometry-type"], "Point"],
     }),
-    [],
+    [selectedFeatureId],
   );
 
   const lineStringLayer: LayerProps = useMemo(
@@ -86,7 +96,11 @@ const GeoJsonDataSource: React.FC<Props> = ({
   };
 
   return (
-    <Source type={fileType} data={fileContent} cluster={enableClustering}>
+    <Source
+      type={fileType}
+      data={fileContent}
+      cluster={enableClustering}
+      promoteId="id">
       {fileContent?.features?.some(
         (feature: GeoJSON.Feature) => feature.geometry.type === "Point",
       ) && <Layer {...pointLayer} />}

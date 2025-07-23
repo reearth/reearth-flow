@@ -59,6 +59,8 @@ type DataTableProps<TData, TValue> = {
   onSortChange?: (value: string) => void;
   searchTerm?: string;
   setSearchTerm?: (term: string) => void;
+  selectedRow?: any;
+  onSelectedRow?: (value: any) => void;
 };
 
 function DataTable<TData, TValue>({
@@ -81,6 +83,8 @@ function DataTable<TData, TValue>({
   onSortChange,
   searchTerm,
   setSearchTerm,
+  selectedRow,
+  onSelectedRow,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -246,7 +250,7 @@ function DataTable<TData, TValue>({
                       return (
                         <TableHead
                           key={header.id}
-                          className={`${condensed ? "h-8" : "h-10"} whitespace-nowrap`}>
+                          className={`${condensed ? "h-8" : "h-10"}`}>
                           {header.isPlaceholder
                             ? null
                             : flexRender(
@@ -265,9 +269,12 @@ function DataTable<TData, TValue>({
                     const row = rows[virtualRow.index];
                     return (
                       <TableRow
+                        onDoubleClick={() => {
+                          onSelectedRow?.(row.original);
+                        }}
                         key={row.id}
                         // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
-                        className="after:border-line-200 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b relative cursor-pointer border-0"
+                        className={`after:border-line-200 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b relative cursor-pointer border-0 ${selectedRow?.id === row.id ? "bg-secondary/50" : ""}`}
                         style={{
                           height: `${virtualRow.size}px`,
                           transform: `translateY(${virtualRow.start - idx * virtualRow.size}px)`,

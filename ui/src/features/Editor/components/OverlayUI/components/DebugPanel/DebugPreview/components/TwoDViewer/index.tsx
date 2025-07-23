@@ -9,12 +9,16 @@ type Props = {
   fileContent: any | null;
   fileType: SupportedDataTypes | null;
   enableClustering?: boolean;
+  selectedFeature: any;
+  onSelectedFeature: (value: any) => void;
 };
 
 const TwoDViewer: React.FC<Props> = ({
   fileContent,
   fileType,
   enableClustering,
+  selectedFeature,
+  onSelectedFeature,
 }) => {
   const t = useT();
   return (
@@ -25,6 +29,8 @@ const TwoDViewer: React.FC<Props> = ({
         fileContent={fileContent}
         fileType={fileType}
         enableClustering={enableClustering}
+        selectedFeature={selectedFeature}
+        onSelectedFeature={onSelectedFeature}
       />
     </RenderFallback>
   );

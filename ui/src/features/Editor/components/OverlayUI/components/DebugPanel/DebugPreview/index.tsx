@@ -31,7 +31,11 @@ type Props = {
   isLoadingData: boolean;
   dataURLs?: { key: string; name: string }[];
   showTempPossibleIssuesDialog: boolean;
+  enableClustering?: boolean;
+  onEnableClusteringChange: (value: boolean) => void;
   onShowTempPossibleIssuesDialogClose: () => void;
+  selectedFeature: any;
+  onSelectedFeature: (value: any) => void;
 };
 const DebugPreview: React.FC<Props> = ({
   fileType,
@@ -41,9 +45,12 @@ const DebugPreview: React.FC<Props> = ({
   isLoadingData,
   showTempPossibleIssuesDialog,
   onShowTempPossibleIssuesDialogClose,
+  enableClustering,
+  onEnableClusteringChange,
+  selectedFeature,
+  onSelectedFeature,
 }) => {
   const t = useT();
-  const [enableClustering, setEnableClustering] = useState<boolean>(true);
   const [tabValue, setTabValue] = useState<string>("2d-viewer");
 
   return debugJobState && dataURLs ? (
@@ -73,7 +80,9 @@ const DebugPreview: React.FC<Props> = ({
             <div className="flex items-center gap-2">
               <Checkbox
                 checked={enableClustering}
-                onCheckedChange={(checked) => setEnableClustering(!!checked)}
+                onCheckedChange={(checked) =>
+                  onEnableClusteringChange(!!checked)
+                }
               />
               <span className="text-sm font-thin select-none">
                 {t("Enable Clustering")}
@@ -94,6 +103,8 @@ const DebugPreview: React.FC<Props> = ({
               fileContent={selectedOutputData}
               fileType={fileType}
               enableClustering={enableClustering}
+              selectedFeature={selectedFeature}
+              onSelectedFeature={onSelectedFeature}
             />
           </TabsContent>
           <TabsContent

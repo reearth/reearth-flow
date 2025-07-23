@@ -8,7 +8,7 @@ import {
   MinusIcon,
   TerminalIcon,
 } from "@phosphor-icons/react";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 import {
   ResizableHandle,
@@ -53,6 +53,16 @@ const DebugPanel: React.FC = () => {
   } = useHooks();
   const t = useT();
   const [tabValue, setTabValue] = useState("debug-logs");
+  // const mapRef = useRef<maplibregl.Map | null>(null);
+
+  const [selectedFeature, setSelectedFeature] = useState<any>(null);
+  const [enableClustering, setEnableClustering] = useState<boolean>(true);
+
+  const handleSelectedFeature = useCallback((value: any) => {
+    setEnableClustering(false);
+    setSelectedFeature(value);
+  }, []);
+
   const hasSwitchedToViewerRef = useRef(false);
   const debugJobIdRef = useRef(debugJobId);
 
@@ -81,9 +91,10 @@ const DebugPanel: React.FC = () => {
         className={`pointer-events-auto w-[95vw] rounded-md bg-secondary shadow-md shadow-secondary transition-all ${minimized ? "h-[38px]" : fullscreenDebug ? "h-[100vh] w-[100vw]" : expanded ? "h-[80vh]" : "h-[500px]"}`}
         value={tabValue}
         defaultValue="debug-logs"
-        onDoubleClick={handleExpand}
         onValueChange={setTabValue}>
-        <div className={`flex ${minimized ? "" : "border-b"} p-1`}>
+        <div
+          className={`flex ${minimized ? "" : "border-b"} p-1`}
+          onDoubleClick={handleExpand}>
           <div className="flex w-fit items-center justify-start p-1">
             <TabsList className="gap-2">
               <TabsTrigger
@@ -186,6 +197,8 @@ const DebugPanel: React.FC = () => {
                 <DataTable
                   fileContent={selectedOutputData}
                   fileType={fileType}
+                  selectedFeature={selectedFeature}
+                  onSelectedFeature={handleSelectedFeature}
                 />
               </ResizablePanel>
               <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 relative m-[0px] border border-border/50 transition hover:border-logo/70" />
@@ -200,6 +213,10 @@ const DebugPanel: React.FC = () => {
                   onShowTempPossibleIssuesDialogClose={
                     handleShowTempPossibleIssuesDialogClose
                   }
+                  selectedFeature={selectedFeature}
+                  onSelectedFeature={setSelectedFeature}
+                  enableClustering={enableClustering}
+                  onEnableClusteringChange={setEnableClustering}
                 />
               </ResizablePanel>
             </ResizablePanelGroup>

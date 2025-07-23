@@ -8,9 +8,16 @@ import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 type Props = {
   fileContent: any | null;
   fileType: SupportedDataTypes | null;
+  selectedFeature: any;
+  onSelectedFeature: (value: any) => void;
 };
 
-const DataTable: React.FC<Props> = ({ fileContent, fileType }) => {
+const DataTable: React.FC<Props> = ({
+  fileContent,
+  fileType,
+  selectedFeature,
+  onSelectedFeature,
+}) => {
   const { tableData, tableColumns } = useDataColumnizer({
     parsedData: fileContent,
     type: fileType,
@@ -31,6 +38,8 @@ const DataTable: React.FC<Props> = ({ fileContent, fileType }) => {
             selectColumns
             showFiltering
             showOrdering={false}
+            selectedRow={selectedFeature}
+            onSelectedRow={onSelectedFeature}
           />
         </div>
       </div>
