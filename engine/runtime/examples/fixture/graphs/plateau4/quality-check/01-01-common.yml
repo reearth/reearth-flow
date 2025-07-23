@@ -525,6 +525,34 @@ nodes:
         - attribute: duplicateGmlIdCount
           expr: env.get("__value").duplicateGmlIdCount ?? 0
 
+  - id: b4c5d6e7-8f9a-0b1c-2d3e-4f5a6b7c8d9e
+    name: AttributeMapperXlinkNoReference
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Index
+          expr: env.get("__value").index
+        - attribute: Folder
+          expr: env.get("__value").udxDirs
+        - attribute: Filename
+          expr: env.get("__value").name
+        - attribute: XPath
+          expr: env.get("__value").xpath
+        - attribute: XML Tag
+          expr: env.get("__value").tag
+        - attribute: xlink:href
+          expr: env.get("__value").xlinkHref
+
+  - id: c5d6e7f8-9a0b-1c2d-3e4f-5a6b7c8d9e0f
+    name: FeatureWriterXlinkNoReference
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_xlink参照先なし.csv")
+
   - id: c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: FeatureMerger03
     type: action
@@ -750,4 +778,19 @@ edges:
     from: c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     to: f19638b9-679a-4dd9-9a39-3cf2a82c6ff5
     fromPort: merged
+    toPort: default
+  - id: 6e374c88-f633-7ee8-ff9f-01bb3c2d3d2d
+    from: 05c85d95-c45c-406c-95b5-4a8a154f704f
+    to: b4c5d6e7-8f9a-0b1c-2d3e-4f5a6b7c8d9e
+    fromPort: xlinkNoReference
+    toPort: default
+  - id: 7f485d99-0744-8ff9-00a0-12cc4d3e4e3e
+    from: b4c5d6e7-8f9a-0b1c-2d3e-4f5a6b7c8d9e
+    to: c5d6e7f8-9a0b-1c2d-3e4f-5a6b7c8d9e0f
+    fromPort: default
+    toPort: default
+  - id: 8059eaa1-1855-900a-11b1-23dd5e4f5f4f
+    from: c5d6e7f8-9a0b-1c2d-3e4f-5a6b7c8d9e0f
+    to: f9359716-5c5a-43e5-b197-d1df171d5684
+    fromPort: default
     toPort: default
