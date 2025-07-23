@@ -397,7 +397,7 @@ impl Processor for DomainOfDefinitionValidator {
             let mut result_feature = Feature::new();
             result_feature.insert("filename", AttributeValue::String(filename.clone()));
             result_feature.insert(
-                "gmlIdDuplicateCount",
+                "duplicateGmlIdCount",
                 AttributeValue::Number(Number::from(*duplicate_count)),
             );
 
@@ -1555,7 +1555,7 @@ mod tests {
                             Some(AttributeValue::Number(count)),
                         ) = (
                             feature.get(&Attribute::new("filename")),
-                            feature.get(&Attribute::new("gmlIdDuplicateCount")),
+                            feature.get(&Attribute::new("duplicateGmlIdCount")),
                         ) {
                             Some((filename.clone(), count.as_u64().unwrap_or(0)))
                         } else {
