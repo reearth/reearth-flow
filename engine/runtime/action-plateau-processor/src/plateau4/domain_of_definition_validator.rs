@@ -1225,7 +1225,7 @@ fn process_member_node(
                 let mut result_feature = base_feature.clone();
                 result_feature.insert(
                     "flag",
-                    AttributeValue::String("XLink_NoReference".to_string()),
+                    AttributeValue::String("XLink_InvalidObjectType".to_string()),
                 );
                 result_feature.insert(
                     "tag",
