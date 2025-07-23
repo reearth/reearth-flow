@@ -4,12 +4,8 @@ use time::OffsetDateTime;
 use yrs::{Doc, Transact};
 
 use crate::infrastructure::storage::gcs::UpdateInfo;
-use crate::domain::entity::DocumentId;
-use crate::infrastructure::storage::kv::DocOps;
 use crate::infrastructure::{GcsStore, RedisStore};
 
-/// 文档存储服务 - DDD 应用层服务
-/// 负责文档的存储、加载和快照管理
 pub struct DocumentStorageService {
     gcs_store: Arc<GcsStore>,
     redis_store: Arc<RedisStore>,
@@ -23,50 +19,112 @@ impl DocumentStorageService {
         }
     }
 
-    /// 获取存储引用
-    pub fn get_store(&self) -> Arc<GcsStore> {
-        self.gcs_store.clone()
-    }
-
-    /// 保存快照
     pub async fn save_snapshot(&self, doc_id: &str) -> Result<()> {
-        // 通过 GCS 存储保存快照
-        // 这里需要实现具体的快照保存逻辑
         tracing::info!("Saving snapshot for document: {}", doc_id);
-        // TODO: 实现快照保存逻辑
-        Ok(())
-    }
 
-    /// 刷新到 GCS
-    pub async fn flush_to_gcs(&self, doc_id: &str) -> Result<()> {
-        // 将数据刷新到 GCS 存储
-        tracing::info!("Flushing document to GCS: {}", doc_id);
-        // TODO: 实现 GCS 刷新逻辑
-        Ok(())
-    }
-
-    /// 加载文档
-    pub async fn load_document(&self, doc_id: &str) -> Result<Option<Doc>> {
-        let storage = &self.gcs_store;
-
-        match storage.load_doc_v2(doc_id).await {
-            Ok(doc) => Ok(Some(doc)),
-            Err(_) => {
-                let doc = Doc::new();
-                let mut txn = doc.transact_mut();
-                let loaded = storage.load_doc(doc_id, &mut txn).await?;
-
-                if loaded {
-                    drop(txn);
-                    Ok(Some(doc))
-                } else {
-                    Ok(None)
-                }
+        match self.gcs_store.trim_updates_logarithmic(doc_id, 4).await {
+            Ok(Some(_doc)) => {
+                tracing::info!("Successfully created snapshot for document: {}", doc_id);
+                Ok(())
+            }
+            Ok(None) => {
+                tracing::warn!(
+                    "No updates found to create snapshot for document: {}",
+                    doc_id
+                );
+                Ok(())
+            }
+            Err(e) => {
+                tracing::error!("Failed to create snapshot for document {}: {:?}", doc_id, e);
+                Err(e)
             }
         }
     }
 
-    /// 获取最新更新元数据
+    pub async fn flush_to_gcs(&self, doc_id: &str) -> Result<()> {
+        tracing::info!("Flushing document to GCS: {}", doc_id);
+
+        if !self.redis_store.check_stream_exists(doc_id).await? {
+            tracing::debug!("No stream data found for document: {}", doc_id);
+            return Ok(());
+        }
+
+        let stream_data = self.redis_store.read_all_stream_data(doc_id).await?;
+
+        if stream_data.is_empty() {
+            tracing::debug!("No stream data to flush for document: {}", doc_id);
+            return Ok(());
+        }
+
+        tracing::info!(
+            "Flushing {} updates to GCS for document: {}",
+            stream_data.len(),
+            doc_id
+        );
+
+        for update_bytes in stream_data {
+            match self
+                .gcs_store
+                .push_update(doc_id, &update_bytes, &self.redis_store)
+                .await
+            {
+                Ok(version) => {
+                    tracing::debug!(
+                        "Successfully pushed update version {} for document: {}",
+                        version,
+                        doc_id
+                    );
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "Failed to push update to GCS for document {}: {:?}",
+                        doc_id,
+                        e
+                    );
+                    return Err(e);
+                }
+            }
+        }
+
+        tracing::info!(
+            "Successfully flushed all updates to GCS for document: {}",
+            doc_id
+        );
+        Ok(())
+    }
+
+    pub async fn load_document(&self, doc_id: &str) -> Result<Option<Doc>> {
+        tracing::info!("Loading document: {}", doc_id);
+
+        let updates = match self.gcs_store.get_updates(doc_id).await {
+            Ok(updates) => updates,
+            Err(e) => {
+                tracing::error!("Failed to get updates for document {}: {:?}", doc_id, e);
+                return Err(e);
+            }
+        };
+
+        if updates.is_empty() {
+            tracing::debug!("No updates found for document: {}", doc_id);
+            return Ok(None);
+        }
+
+        let doc = Doc::new();
+
+        {
+            let mut txn = doc.transact_mut();
+            for update_info in updates {
+                if let Err(e) = txn.apply_update(update_info.update) {
+                    tracing::error!("Failed to apply update for document {}: {:?}", doc_id, e);
+                    return Err(anyhow::anyhow!("Failed to apply update: {:?}", e));
+                }
+            }
+        }
+
+        tracing::info!("Successfully loaded document: {}", doc_id);
+        Ok(Some(doc))
+    }
+
     pub async fn get_latest_update_metadata(
         &self,
         doc_id: &str,
@@ -75,19 +133,16 @@ impl DocumentStorageService {
         storage.get_latest_update_metadata(doc_id).await
     }
 
-    /// 获取更新列表
     pub async fn get_updates(&self, doc_id: &str) -> Result<Vec<UpdateInfo>> {
         let storage = &self.gcs_store;
         storage.get_updates(doc_id).await
     }
 
-    /// 获取更新元数据列表
     pub async fn get_updates_metadata(&self, doc_id: &str) -> Result<Vec<(u32, OffsetDateTime)>> {
         let storage = &self.gcs_store;
         storage.get_updates_metadata(doc_id).await
     }
 
-    /// 根据版本获取更新
     pub async fn get_updates_by_version(
         &self,
         doc_id: &str,
