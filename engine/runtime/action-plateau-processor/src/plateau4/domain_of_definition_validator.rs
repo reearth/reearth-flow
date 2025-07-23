@@ -1421,3 +1421,245 @@ fn handle_code_validation_failure(
     result.push(result_feature.clone());
     fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use indexmap::IndexMap;
+    use reearth_flow_eval_expr::engine::Engine;
+    use reearth_flow_runtime::{
+        event::EventHub,
+        executor_operation::{ExecutorContext, NodeContext},
+        forwarder::{NoopChannelForwarder, ProcessorChannelForwarder},
+        kvs,
+        kvs::create_kv_store,
+        node::{ProcessorFactory, DEFAULT_PORT},
+    };
+    use reearth_flow_storage::resolve::StorageResolver;
+    use reearth_flow_types::Feature;
+    use std::collections::HashMap;
+    use std::env;
+    use std::fs;
+    use std::io::Write;
+    use std::sync::Arc;
+
+    fn create_default_execute_context(feature: Feature) -> ExecutorContext {
+        ExecutorContext::new(
+            feature,
+            DEFAULT_PORT.clone(),
+            Arc::new(Engine::new()),
+            Arc::new(StorageResolver::new()),
+            Arc::new(kvs::create_kv_store()),
+            EventHub::new(30),
+        )
+    }
+
+    fn create_default_node_context() -> NodeContext {
+        let expr_engine = Arc::new(Engine::new());
+        let storage_resolver = Arc::new(StorageResolver::new());
+        let kv_store = Arc::new(create_kv_store());
+        let event_hub = EventHub::new(1024);
+        NodeContext::new(expr_engine, storage_resolver, kv_store, event_hub)
+    }
+
+    fn create_gml_file(file_path: &str, gml_id: &str) -> std::io::Result<()> {
+        let gml_content = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:brid="http://www.opengis.net/citygml/bridge/2.0" xmlns:tran="http://www.opengis.net/citygml/transportation/2.0" xmlns:frn="http://www.opengis.net/citygml/cityfurniture/2.0" xmlns:wtr="http://www.opengis.net/citygml/waterbody/2.0" xmlns:sch="http://www.ascc.net/xml/schematron" xmlns:veg="http://www.opengis.net/citygml/vegetation/2.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:tun="http://www.opengis.net/citygml/tunnel/2.0" xmlns:tex="http://www.opengis.net/citygml/texturedsurface/2.0" xmlns:gml="http://www.opengis.net/gml" xmlns:app="http://www.opengis.net/citygml/appearance/2.0" xmlns:gen="http://www.opengis.net/citygml/generics/2.0" xmlns:dem="http://www.opengis.net/citygml/relief/2.0" xmlns:luse="http://www.opengis.net/citygml/landuse/2.0" xmlns:uro="https://www.geospatial.jp/iur/uro/3.1" xmlns:xAL="urn:oasis:names:tc:ciq:xsdschema:xAL:2.0" xmlns:bldg="http://www.opengis.net/citygml/building/2.0" xmlns:smil20="http://www.w3.org/2001/SMIL20/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:smil20lang="http://www.w3.org/2001/SMIL20/Language" xmlns:pbase="http://www.opengis.net/citygml/profiles/base/2.0" xmlns:core="http://www.opengis.net/citygml/2.0" xmlns:grp="http://www.opengis.net/citygml/cityobjectgroup/2.0" xsi:schemaLocation="http://www.opengis.net/citygml/2.0 http://schemas.opengis.net/citygml/2.0/cityGMLBase.xsd http://www.opengis.net/citygml/building/2.0 http://schemas.opengis.net/citygml/building/2.0/building.xsd http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/base/gml.xsd">
+    <gml:boundedBy>
+        <gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
+            <gml:lowerCorner>36.6470041354812 137.05268308385453 0</gml:lowerCorner>
+            <gml:upperCorner>36.647798243275254 137.0537094956814 105.03314</gml:upperCorner>
+        </gml:Envelope>
+    </gml:boundedBy>
+    <core:cityObjectMember>
+        <bldg:Building gml:id="{gml_id}">
+            <core:creationDate>2025-03-21</core:creationDate>
+            <bldg:class codeSpace="../../codelists/Building_class.xml">3003</bldg:class>
+            <bldg:usage codeSpace="../../codelists/Building_usage.xml">411</bldg:usage>
+            <bldg:yearOfConstruction>0001</bldg:yearOfConstruction>
+            <bldg:measuredHeight uom="m">8.6</bldg:measuredHeight>
+            <bldg:storeysAboveGround>9999</bldg:storeysAboveGround>
+            <bldg:storeysBelowGround>9999</bldg:storeysBelowGround>
+            <bldg:lod0RoofEdge>
+                <gml:MultiSurface>
+                    <gml:surfaceMember>
+                        <gml:Polygon>
+                            <gml:exterior>
+                                <gml:LinearRing>
+                                    <gml:posList>36.64773967207627 137.0537094956814 0 36.647798243275254 137.05370057460766 0 36.64778832538864 137.053600937653 0 36.64772975430324 137.053609970643 0 36.64773967207627 137.0537094956814 0</gml:posList>
+                                </gml:LinearRing>
+                            </gml:exterior>
+                        </gml:Polygon>
+                    </gml:surfaceMember>
+                </gml:MultiSurface>
+            </bldg:lod0RoofEdge>
+        </bldg:Building>
+    </core:cityObjectMember>
+</core:CityModel>"#
+        );
+
+        if let Some(parent) = std::path::Path::new(file_path).parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let mut file = fs::File::create(file_path)?;
+        file.write_all(gml_content.as_bytes())?;
+        Ok(())
+    }
+
+    fn create_test_feature(
+        name: &str,
+        file_path: &str,
+        codelists_dir: &std::path::Path,
+    ) -> Feature {
+        let mut attributes = IndexMap::new();
+        attributes.insert(
+            Attribute::new("name"),
+            AttributeValue::String(name.to_string()),
+        );
+        attributes.insert(
+            Attribute::new("package"),
+            AttributeValue::String("bldg".to_string()),
+        );
+        attributes.insert(
+            Attribute::new("dirCodelists"),
+            AttributeValue::String(format!("file://{}", codelists_dir.display())),
+        );
+        attributes.insert(
+            Attribute::new("path"),
+            AttributeValue::String(file_path.to_string()),
+        );
+
+        let mut feature = Feature::new();
+        feature.attributes = attributes;
+        feature
+    }
+
+    // Helper function to extract file_stats outputs from ProcessorChannelForwarder
+    fn extract_file_stats_outputs(
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<HashMap<String, u64>, BoxedError> {
+        match fw {
+            ProcessorChannelForwarder::Noop(noop_fw) => {
+                let send_ports = noop_fw.send_ports.lock().unwrap();
+                let send_features = noop_fw.send_features.lock().unwrap();
+
+                let file_stats_outputs: HashMap<String, u64> = send_ports
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, port)| port.as_ref() == "file_stats")
+                    .map(|(i, _)| &send_features[i])
+                    .filter_map(|feature| {
+                        if let (
+                            Some(AttributeValue::String(filename)),
+                            Some(AttributeValue::Number(count)),
+                        ) = (
+                            feature.get(&Attribute::new("filename")),
+                            feature.get(&Attribute::new("gmlIdDuplicateCount")),
+                        ) {
+                            Some((filename.clone(), count.as_u64().unwrap_or(0)))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                Ok(file_stats_outputs)
+            }
+            ProcessorChannelForwarder::ChannelManager(_) => {
+                Err("Expected Noop forwarder for testing".into())
+            }
+        }
+    }
+
+    // Helper function to setup and run processor with given GML file configs
+    fn run_processor_test(
+        gml_configs: Vec<(&str, &str)>, // (filename, gml_id) pairs
+    ) -> Result<HashMap<String, u64>, BoxedError> {
+        let temp_dir = env::temp_dir().join(format!(
+            "domain_of_definition_validator_test_{}",
+            uuid::Uuid::new_v4()
+        ));
+
+        let codelists_dir = temp_dir.join("codelists");
+        fs::create_dir_all(&codelists_dir)?;
+
+        // Create GML files and collect features
+        let mut features = Vec::new();
+        for (filename, gml_id) in gml_configs {
+            let file_path = temp_dir.join(filename);
+            create_gml_file(&file_path.to_string_lossy(), gml_id)?;
+            features.push(create_test_feature(
+                filename,
+                &format!("file://{}", file_path.display()),
+                &codelists_dir,
+            ));
+        }
+
+        // Create processor
+        let factory = DomainOfDefinitionValidatorFactory {};
+        let ctx = create_default_node_context();
+        let mut processor: Box<dyn Processor> =
+            factory.build(ctx, EventHub::new(1024), "test".to_string(), None)?;
+
+        // Process features
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        for feature in features {
+            let ctx = create_default_execute_context(feature);
+            processor.process(ctx, &fw)?;
+        }
+
+        // Call finish to trigger file_stats output
+        let ctx = create_default_node_context();
+        processor.finish(ctx, &fw)?;
+
+        // Extract results
+        let file_stats_outputs = extract_file_stats_outputs(&fw)?;
+
+        // Clean up test files
+        fs::remove_dir_all(&temp_dir)?;
+
+        Ok(file_stats_outputs)
+    }
+
+    #[test]
+    fn test_gml_id_duplicate_detection() -> Result<(), BoxedError> {
+        // Create test GML files:
+        let gml_id_1 = format!("bldg_{}", uuid::Uuid::new_v4());
+        let gml_id_2 = format!("bldg_{}", uuid::Uuid::new_v4());
+        let gml_configs = vec![
+            ("file1.gml", gml_id_1.as_str()),
+            ("file2.gml", gml_id_1.as_str()),
+            ("file3.gml", gml_id_2.as_str()),
+        ];
+
+        let file_stats_outputs = run_processor_test(gml_configs)?;
+
+        // Assert the expected duplicate counts:
+        assert_eq!(file_stats_outputs.get("file1.gml"), Some(&1));
+        assert_eq!(file_stats_outputs.get("file2.gml"), Some(&1));
+        assert_eq!(file_stats_outputs.get("file3.gml"), Some(&0));
+        Ok(())
+    }
+
+    #[test]
+    fn test_gml_id_no_duplicates() -> Result<(), BoxedError> {
+        // Create test GML files with all unique gml:ids:
+        let gml_id_1 = format!("bldg_{}", uuid::Uuid::new_v4());
+        let gml_id_2 = format!("bldg_{}", uuid::Uuid::new_v4());
+        let gml_id_3 = format!("bldg_{}", uuid::Uuid::new_v4());
+        let gml_configs = vec![
+            ("file1.gml", gml_id_1.as_str()),
+            ("file2.gml", gml_id_2.as_str()),
+            ("file3.gml", gml_id_3.as_str()),
+        ];
+
+        let file_stats_outputs = run_processor_test(gml_configs)?;
+
+        // Assert the expected duplicate counts:
+        assert_eq!(file_stats_outputs.get("file1.gml"), Some(&0));
+        assert_eq!(file_stats_outputs.get("file2.gml"), Some(&0));
+        assert_eq!(file_stats_outputs.get("file3.gml"), Some(&0));
+        Ok(())
+    }
+}
