@@ -4,4 +4,4 @@ pub mod storage_repository;
 
 pub use broadcast_repository::BroadcastRepository;
 pub use document_repository::DocumentRepository;
-pub use storage_repository::StorageRepository;
+pub use storage_repository::{KVEntry, KVStore};
