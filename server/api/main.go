@@ -28,18 +28,13 @@ func main() {
 	fmt.Println()
 
 	// Create properly configured CMS client with authentication and TLS
-	cmsClient, err := reearthcms.NewClient(endpoint, token, userID)
+	cmsClient, err := reearthcms.NewClient(endpoint, token, true)
 	if err != nil {
 		log.Fatalf("Failed to create CMS client: %v", err)
 	}
 
 	// Create context
 	ctx := context.Background()
-	
-	// Authentication is now properly configured via metadata
-	fmt.Printf("Note: Token %s... and userID %s are configured for authentication\n", token[:10], userID)
-
-	// Test counters
 	successCount := 0
 	totalTests := 0
 

@@ -24,7 +24,6 @@ service ReEarthCMS {
 // Authentication should be implemented using gRPC interceptors
 // M2M tokens should be passed in metadata with key "authorization"
 // Format: "Bearer <token>"
-// UserId should be passed in metadata with key "user-id Core messages
 message Project {
   string id = 1;
   string name = 2;

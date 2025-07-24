@@ -97,7 +97,7 @@ type (
 		// cms
 		CMS_Endpoint string `envconfig:"REEARTH_CMS_ENDPOINT" pp:",omitempty"`
 		CMS_Token    string `envconfig:"REEARTH_CMS_TOKEN" pp:",omitempty"`
-		CMS_UserID   string `envconfig:"REEARTH_CMS_USER_ID" pp:",omitempty"`
+		CMS_TLS      string `envconfig:"REEARTH_CMS_TLS" pp:",omitempty"`
 	}
 )
 

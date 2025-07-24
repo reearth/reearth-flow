@@ -13,10 +13,10 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcs"
 	mongorepo "github.com/reearth/reearth-flow/api/internal/infrastructure/mongo"
 	redisrepo "github.com/reearth/reearth-flow/api/internal/infrastructure/redis"
+	"github.com/reearth/reearth-flow/api/internal/infrastructure/reearthcms"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interactor"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
-	"github.com/reearth/reearth-flow/api/internal/infrastructure/reearthcms"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmongo"
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
@@ -232,7 +232,8 @@ func initCMS(ctx context.Context, conf *config.Config) gateway.CMS {
 		log.Warn("CMS: no authentication token provided")
 	}
 
-	cmsClient, err := reearthcms.NewClient(conf.CMS_Endpoint, conf.CMS_Token, conf.CMS_UserID)
+	// Try with the service name from proto file
+	cmsClient, err := reearthcms.NewClient(conf.CMS_Endpoint, conf.CMS_Token, true)
 	if err != nil {
 		log.Errorf("failed to create CMS client: %v", err)
 		return nil

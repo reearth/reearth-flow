@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"time"
+	"strings"
 
-	"google.golang.org/grpc/metadata"
+	"crypto/tls"
 
 	"github.com/cloudwego/kitex/client"
-	"github.com/cloudwego/kitex/pkg/remote/trans/nphttp2/grpc"
+	"google.golang.org/grpc/metadata"
+
 	"github.com/cloudwego/kitex/transport"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	v1 "github.com/reearth/reearth-flow/api/kitex_gen/reearth/cms/v1"
@@ -20,46 +21,44 @@ import (
 type Client struct {
 	kitexClient reearthcms.Client
 	token       string
-	userID      string
 }
 
-func NewClient(endpoint, token, userID string) (gateway.CMS, error) {
-	log.Printf("Creating Kitex client for endpoint: %s", endpoint)
-	log.Printf("Token: %s...", token[:10])
-	log.Printf("UserID: %s", userID)
-	
-	// Configure keepalive parameters for stable connection
-	keepaliveParams := grpc.ClientKeepalive{
-		Time:                30 * time.Second, // Send keepalive pings every 30 seconds
-		Timeout:             5 * time.Second,  // Wait 5 seconds for ping ack before considering the connection dead
-		PermitWithoutStream: true,             // Allow keepalive pings even when there are no active streams
+func NewClient(endpoint, token string, use_tls bool) (gateway.CMS, error) {
+
+	var tlsConfig *tls.Config
+
+	if use_tls {
+		tlsConfig = &tls.Config{
+			ServerName: trim_port(endpoint),
+		}
 	}
-	
+
 	kitexClient, err := reearthcms.NewClient(
 		endpoint,
 		client.WithHostPorts(endpoint),
 		client.WithTransportProtocol(transport.GRPC),
-		client.WithConnectTimeout(10*time.Second),
-		client.WithRPCTimeout(30*time.Second),
-		client.WithGRPCKeepaliveParams(keepaliveParams),
+		client.WithGRPCTLSConfig(tlsConfig),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kitex client: %w", err)
 	}
-	
-	log.Println("Kitex client created successfully")
+
 	return &Client{
 		kitexClient: kitexClient,
 		token:       token,
-		userID:      userID,
 	}, nil
 }
 
+func trim_port(endpoint string) string {
+	parts := strings.Split(endpoint, ":")
+	if len(parts) > 1 {
+		return parts[0]
+	}
+	return endpoint
+}
+
 func (c *Client) addAuthMetadata(ctx context.Context) context.Context {
-	return metadata.AppendToOutgoingContext(ctx,
-		"authorization", fmt.Sprintf("Bearer %s", c.token),
-		"user-id", c.userID,
-	)
+	return metadata.AppendToOutgoingContext(ctx, "authorization", fmt.Sprintf("Bearer %s", c.token))
 }
 
 func (c *Client) GetProject(ctx context.Context, projectIDOrAlias string) (*cms.Project, error) {
