@@ -7,6 +7,7 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/reearthcms"
 	"github.com/reearth/reearth-flow/api/pkg/cms"
+	"github.com/bytedance/gopkg/cloud/metainfo"
 )
 
 func main() {
@@ -35,6 +36,7 @@ func main() {
 
 	// Create context
 	ctx := context.Background()
+	ctx = metainfo.WithPersistentValue(ctx, "authorization", fmt.Sprintf("Bearer %s", token))
 	successCount := 0
 	totalTests := 0
 

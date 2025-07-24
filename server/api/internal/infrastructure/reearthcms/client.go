@@ -9,7 +9,6 @@ import (
 	"crypto/tls"
 
 	"github.com/cloudwego/kitex/client"
-	"google.golang.org/grpc/metadata"
 
 	"github.com/cloudwego/kitex/transport"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -58,7 +57,7 @@ func trim_port(endpoint string) string {
 }
 
 func (c *Client) addAuthMetadata(ctx context.Context) context.Context {
-	return metadata.AppendToOutgoingContext(ctx, "authorization", fmt.Sprintf("Bearer %s", c.token))
+	return ctx
 }
 
 func (c *Client) GetProject(ctx context.Context, projectIDOrAlias string) (*cms.Project, error) {
