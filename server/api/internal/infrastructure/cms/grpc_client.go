@@ -3,14 +3,17 @@ package cms
 import (
 	"context"
 	"fmt"
+	"strings"
+
+	"crypto/tls"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/cms"
 	"github.com/reearth/reearth-flow/api/pkg/cms/proto"
 	"github.com/reearth/reearthx/log"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/metadata"
 	protobuf "google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -21,47 +24,48 @@ import (
 var _ gateway.CMS = (*grpcClient)(nil)
 
 type grpcClient struct {
-	conn     *grpc.ClientConn
 	client   proto.ReEarthCMSClient
-	endpoint string
-	token    string
-	userID   string
 }
 
-func NewGRPCClient(endpoint, token, userID string) (gateway.CMS, error) {
+func NewGRPCClient(endpoint, token string, use_tls bool) (gateway.CMS, error) {
 	if endpoint == "" {
 		return nil, fmt.Errorf("CMS endpoint is required")
 	}
-
-	conn, err := grpc.NewClient(endpoint,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to CMS gRPC server: %w", err)
+	
+	var conn *grpc.ClientConn
+	var err error
+	
+	if use_tls {
+		config := &tls.Config{
+			ServerName: trim_port(endpoint),
+		}
+		creds := credentials.NewTLS(config)
+		conn, err = grpc.NewClient(endpoint,
+			grpc.WithTransportCredentials(creds), // Use TLS credentials, not insecure
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect to CMS gRPC server: %w", err)
+		}
+	} else {
+		conn, err = grpc.NewClient(endpoint,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect to CMS gRPC server: %w", err)
+		}
 	}
-
+	
 	client := proto.NewReEarthCMSClient(conn)
-
 	return &grpcClient{
-		conn:     conn,
-		client:   client,
-		endpoint: endpoint,
-		token:    token,
-		userID:   userID,
+		client: client,
 	}, nil
 }
 
-func (c *grpcClient) addAuthMetadata(ctx context.Context) context.Context {
-	md := metadata.New(map[string]string{
-		"authorization": fmt.Sprintf("Bearer %s", c.token),
-		"user-id":       c.userID,
-	})
-	return metadata.NewOutgoingContext(ctx, md)
+func trim_port(endpoint string) string {
+	return strings.Split(endpoint, ":")[0]
 }
 
 func (c *grpcClient) GetProject(ctx context.Context, projectIDOrAlias string) (*cms.Project, error) {
-	ctx = c.addAuthMetadata(ctx)
-
 	resp, err := c.client.GetProject(ctx, &proto.ProjectRequest{
 		ProjectIdOrAlias: projectIDOrAlias,
 	})
@@ -73,8 +77,6 @@ func (c *grpcClient) GetProject(ctx context.Context, projectIDOrAlias string) (*
 }
 
 func (c *grpcClient) ListProjects(ctx context.Context, input cms.ListProjectsInput) ([]*cms.Project, int32, error) {
-	ctx = c.addAuthMetadata(ctx)
-
 	resp, err := c.client.ListProjects(ctx, &proto.ListProjectsRequest{
 		WorkspaceId: input.WorkspaceID,
 		PublicOnly:  input.PublicOnly,
@@ -92,8 +94,6 @@ func (c *grpcClient) ListProjects(ctx context.Context, input cms.ListProjectsInp
 }
 
 func (c *grpcClient) ListModels(ctx context.Context, input cms.ListModelsInput) ([]*cms.Model, int32, error) {
-	ctx = c.addAuthMetadata(ctx)
-
 	resp, err := c.client.ListModels(ctx, &proto.ListModelsRequest{
 		ProjectId: input.ProjectID,
 	})
@@ -110,8 +110,6 @@ func (c *grpcClient) ListModels(ctx context.Context, input cms.ListModelsInput) 
 }
 
 func (c *grpcClient) ListItems(ctx context.Context, input cms.ListItemsInput) (*cms.ListItemsOutput, error) {
-	ctx = c.addAuthMetadata(ctx)
-
 	resp, err := c.client.ListItems(ctx, &proto.ListItemsRequest{
 		ModelId:   input.ModelID,
 		ProjectId: input.ProjectID,
@@ -134,8 +132,6 @@ func (c *grpcClient) ListItems(ctx context.Context, input cms.ListItemsInput) (*
 }
 
 func (c *grpcClient) GetModelGeoJSONExportURL(ctx context.Context, input cms.ExportInput) (*cms.ExportOutput, error) {
-	ctx = c.addAuthMetadata(ctx)
-
 	resp, err := c.client.GetModelGeoJSONExportURL(ctx, &proto.ExportRequest{
 		ProjectId: input.ProjectID,
 		ModelId:   input.ModelID,
@@ -149,12 +145,6 @@ func (c *grpcClient) GetModelGeoJSONExportURL(ctx context.Context, input cms.Exp
 	}, nil
 }
 
-func (c *grpcClient) Close() error {
-	if c.conn != nil {
-		return c.conn.Close()
-	}
-	return nil
-}
 
 func convertProtoToProject(p *proto.Project) *cms.Project {
 	if p == nil {

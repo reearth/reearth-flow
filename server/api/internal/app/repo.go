@@ -232,7 +232,7 @@ func initCMS(ctx context.Context, conf *config.Config) gateway.CMS {
 		log.Warn("CMS: no authentication token provided")
 	}
 
-	cmsClient, err := cms.NewGRPCClient(conf.CMS_Endpoint, conf.CMS_Token, conf.CMS_UserID)
+	cmsClient, err := cms.NewGRPCClient(conf.CMS_Endpoint, conf.CMS_Token, conf.CMS_UseTLS)
 	if err != nil {
 		log.Errorf("failed to create CMS client: %v", err)
 		return nil
