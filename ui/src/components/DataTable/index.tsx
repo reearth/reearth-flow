@@ -83,7 +83,6 @@ function DataTable<TData, TValue>({
   onSortChange,
   searchTerm,
   setSearchTerm,
-  selectedRow,
   onRowDoubleClick,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
@@ -274,7 +273,7 @@ function DataTable<TData, TValue>({
                         }}
                         key={row.id}
                         // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
-                        className={`after:border-line-200 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b relative cursor-pointer border-0 ${selectedRow?.id === row.id ? "bg-secondary/50" : ""}`}
+                        className="after:border-line-200 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b relative cursor-pointer border-0"
                         style={{
                           height: `${virtualRow.size}px`,
                           transform: `translateY(${virtualRow.start - idx * virtualRow.size}px)`,

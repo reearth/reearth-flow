@@ -54,10 +54,12 @@ const MapLibre: React.FC<Props> = ({
     if (!fileContent?.features) return null;
 
     return new Map(
-      fileContent.features.map((f: any) => {
-        const id = f.id ?? f.properties?.originalId;
-        return id !== undefined ? ([id, f] as [string | number, any]) : null;
-      }),
+      fileContent.features
+        .map((f: any) => {
+          const id = f.id ?? f.properties?.originalId;
+          return id !== undefined ? ([id, f] as [string | number, any]) : null;
+        })
+        .filter(Boolean),
     );
   }, [fileContent?.features]);
 
@@ -87,6 +89,11 @@ const MapLibre: React.FC<Props> = ({
     let normalizedId = featureId;
     if (typeof featureId === "string") {
       normalizedId = JSON.parse(featureId);
+      try {
+        normalizedId = JSON.parse(featureId);
+      } catch {
+        normalizedId = featureId;
+      }
     }
 
     return featureMap.get(normalizedId) || null;
@@ -168,6 +175,7 @@ const MapLibre: React.FC<Props> = ({
         onLoad={() => handleMapLoad()}>
         {fileType === "geojson" && (
           <GeoJsonDataSource
+            key={`geojson-source-${enableClustering}`}
             fileType={fileType}
             fileContent={fileContent}
             enableClustering={enableClustering}

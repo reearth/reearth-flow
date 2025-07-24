@@ -128,7 +128,6 @@ const DebugPreview: React.FC<Props> = ({
             className="m-0 h-[calc(100%-32px)] p-1"
             value="2d-viewer">
             <TwoDViewer
-              key={`2d-viewer-${enableClustering}`}
               fileContent={selectedOutputData}
               fileType={fileType}
               enableClustering={enableClustering}
