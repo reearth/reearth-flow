@@ -56,6 +56,7 @@ const TopBar: React.FC<Props> = ({
 }) => {
   const t = useT();
   const {
+    isMainWorkflow,
     showDialog,
     currentProjectVariables,
     handleProjectVariableAdd,
@@ -65,12 +66,13 @@ const TopBar: React.FC<Props> = ({
     handleProjectVariablesBatchDelete,
     handleDialogOpen,
     handleDialogClose,
-  } = useHooks();
+  } = useHooks({ openWorkflows, currentWorkflowId });
   const [currentProject] = useCurrentProject();
 
   return (
-    <div className="flex w-[100vw] shrink-0 justify-between gap-2 bg-secondary">
-      <div className="flex items-center gap-1">
+    <div className="flex w-[100vw] shrink-0 justify-between bg-secondary">
+      <div
+        className={`flex items-center gap-1 border-b px-5 ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
         <HomeMenu
           dropdownPosition="bottom"
           dropdownAlign="end"
@@ -99,12 +101,14 @@ const TopBar: React.FC<Props> = ({
       <div className="flex h-full flex-1 gap-2 overflow-hidden">
         <WorkflowTabs
           currentWorkflowId={currentWorkflowId}
+          isMainWorkflow={isMainWorkflow}
           openWorkflows={openWorkflows}
           onWorkflowClose={onWorkflowClose}
           onWorkflowChange={onWorkflowChange}
         />
       </div>
-      <div className="flex h-full items-center justify-center gap-2 self-center p-1 select-none">
+      <div
+        className={`flex h-full items-center justify-center gap-2 self-center border-b p-1 select-none ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
         <div className="h-4/5 border-r" />
         <DebugActionBar
           onDebugRunStart={onDebugRunStart}

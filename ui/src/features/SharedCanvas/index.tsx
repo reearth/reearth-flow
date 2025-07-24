@@ -32,7 +32,6 @@ const SharedCanvas: React.FC<Props> = ({
 }) => {
   const {
     currentWorkflowId,
-    isSubworkflow,
     nodes,
     edges,
     openWorkflows,
@@ -74,7 +73,6 @@ const SharedCanvas: React.FC<Props> = ({
           <div className="relative flex flex-1 flex-col">
             <Canvas
               readonly
-              isSubworkflow={isSubworkflow}
               onWorkflowOpen={handleWorkflowOpen}
               nodes={nodes}
               edges={edges}

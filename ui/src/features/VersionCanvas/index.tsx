@@ -16,7 +16,7 @@ type Props = {
 const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
   const {
     currentWorkflowId,
-    isSubworkflow,
+    isMainWorkflow,
     nodes,
     edges,
     openWorkflows,
@@ -41,6 +41,7 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
       <EditorProvider value={editorContext}>
         <div className="h-[44px] w-full bg-secondary">
           <WorkflowTabs
+            isMainWorkflow={isMainWorkflow}
             openWorkflows={openWorkflows}
             currentWorkflowId={currentWorkflowId}
             onWorkflowClose={handleWorkflowClose}
@@ -50,7 +51,6 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
         <div className="relative flex flex-1">
           <Canvas
             readonly
-            isSubworkflow={isSubworkflow}
             onWorkflowOpen={handleWorkflowOpen}
             nodes={nodes}
             edges={edges}

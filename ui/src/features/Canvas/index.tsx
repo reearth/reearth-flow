@@ -30,7 +30,6 @@ const snapGrid: SnapGrid = [gridSize, gridSize];
 
 type Props = {
   readonly?: boolean;
-  isSubworkflow: boolean;
   nodes: Node[];
   edges: Edge[];
   selectedEdgeIds?: string[];
@@ -52,7 +51,6 @@ type Props = {
 
 const Canvas: React.FC<Props> = ({
   readonly,
-  isSubworkflow,
   nodes,
   edges,
   selectedEdgeIds,
@@ -99,7 +97,6 @@ const Canvas: React.FC<Props> = ({
 
   return (
     <ReactFlow
-      className={`${isSubworkflow ? "border-t-2 border-node-subworkflow" : ""}`}
       ref={paneRef}
       // Readonly props START
       nodesConnectable={!readonly}
@@ -140,9 +137,9 @@ const Canvas: React.FC<Props> = ({
       onBeforeDelete={onBeforeDelete}>
       <Background
         className="bg-background"
-        variant={BackgroundVariant["Lines"]}
+        variant={BackgroundVariant["Dots"]}
         gap={gridSize}
-        color="rgba(63, 63, 70, 0.4)"
+        color="rgba(63, 63, 70, 1)"
       />
       {contextMenu && (
         <CanvasContextMenu

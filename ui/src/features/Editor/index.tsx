@@ -31,7 +31,6 @@ export default function Editor({
 }: Props) {
   const {
     currentWorkflowId,
-    isSubworkflow,
     openWorkflows,
     currentProject,
     nodes,
@@ -118,7 +117,6 @@ export default function Editor({
               onWorkflowRedo={handleWorkflowRedo}
               onLayoutChange={handleLayoutChange}>
               <Canvas
-                isSubworkflow={isSubworkflow}
                 nodes={nodes}
                 edges={edges}
                 selectedEdgeIds={selectedEdgeIds}
