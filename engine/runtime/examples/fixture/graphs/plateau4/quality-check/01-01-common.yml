@@ -503,13 +503,6 @@ nodes:
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_不正なcodeSpace.csv")
 
-  - id: f9359716-5c5a-43e5-b197-d1df171d5684
-    name: OutputRouter
-    type: action
-    action: OutputRouter
-    with:
-      routingPort: default
-
   - id: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
     name: AttributeMapperFileStats
     type: action
@@ -587,6 +580,34 @@ nodes:
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_T03エラー.csv")
 
+  - id: f8a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
+    name: AttributeMapperInvalidLodXGeometry
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Index
+          expr: env.get("__value").index
+        - attribute: Folder
+          expr: env.get("__value").udxDirs
+        - attribute: Filename
+          expr: env.get("__value").name
+        - attribute: FeatureType
+          expr: env.get("__value").featureType
+        - attribute: gml:id
+          expr: env.get("__value").gmlId
+        - attribute: InvalidGeometry
+          expr: env.get("__value").invalidGeometry
+
+  - id: a9b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
+    name: FeatureWriterInvalidLodXGeometry
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通_L-frn-01エラー.csv")
+
   - id: c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: FeatureMerger03
     type: action
@@ -596,6 +617,13 @@ nodes:
         env.get("__value").name
       supplierAttributeValue: |
         env.get("__value").filename
+
+  - id: f9359716-5c5a-43e5-b197-d1df171d5684
+    name: OutputRouter
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: default
 
 edges:
   - id: 7c5a60ec-66cb-4ee0-9793-88c1f57b495c
@@ -840,6 +868,21 @@ edges:
     toPort: default
   - id: b38cdd44-4b88-c33d-44e4-56008171727a
     from: e7f8a9b0-1c2d-3e4f-5a6b-7c8d9e0f1a2b
+    to: f9359716-5c5a-43e5-b197-d1df171d5684
+    fromPort: default
+    toPort: default
+  - id: c49dee55-5c99-d44e-55f5-670192828283
+    from: 05c85d95-c45c-406c-95b5-4a8a154f704f
+    to: f8a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
+    fromPort: invalidLodXGeometry
+    toPort: default
+  - id: d5aeef66-6daa-e55f-66a6-781a93939394
+    from: f8a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
+    to: a9b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
+    fromPort: default
+    toPort: default
+  - id: e6bffa77-7ebb-f660-77b7-892ba4a4a4a5
+    from: a9b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
     to: f9359716-5c5a-43e5-b197-d1df171d5684
     fromPort: default
     toPort: default

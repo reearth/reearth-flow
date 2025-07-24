@@ -1305,6 +1305,7 @@ fn process_member_node(
                         ["gml:MultiSurface", "gml:Solid"].contains(&gml_tag.as_str())
                     }
                 } else if parent_tag.contains(":DmG") {
+                    // DmGeometricAttribute
                     [
                         "gml:Point",
                         "gml:MultiPoint",
@@ -1313,6 +1314,7 @@ fn process_member_node(
                     ]
                     .contains(&gml_tag.as_str())
                 } else if parent_tag.contains(":DmA") {
+                    // DmAnnoation
                     gml_tag == "gml:Point"
                 } else {
                     ["gml:MultiSurface", "gml:Solid"].contains(&gml_tag.as_str())
