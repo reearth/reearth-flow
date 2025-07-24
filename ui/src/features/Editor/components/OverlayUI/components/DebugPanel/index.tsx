@@ -218,14 +218,15 @@ const DebugPanel: React.FC = () => {
                   selectedOutputData={selectedOutputData}
                   isLoadingData={isLoadingData}
                   showTempPossibleIssuesDialog={showTempPossibleIssuesDialog}
+                  selectedFeature={selectedFeature}
+                  enableClustering={enableClustering}
+                  shouldFlyToFeature={shouldFlyToFeature}
                   onShowTempPossibleIssuesDialogClose={
                     handleShowTempPossibleIssuesDialogClose
                   }
-                  selectedFeature={selectedFeature}
                   onSelectedFeature={setSelectedFeature}
-                  enableClustering={enableClustering}
                   onEnableClusteringChange={setEnableClustering}
-                  shouldFlyToFeature={shouldFlyToFeature}
+                  onShouldFlyToFeatureChange={setShouldFlyToFeature}
                 />
               </ResizablePanel>
             </ResizablePanelGroup>

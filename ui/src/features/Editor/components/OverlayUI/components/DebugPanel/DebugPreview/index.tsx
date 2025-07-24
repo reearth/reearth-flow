@@ -42,12 +42,13 @@ type Props = {
   isLoadingData: boolean;
   dataURLs?: { key: string; name: string }[];
   showTempPossibleIssuesDialog: boolean;
-  enableClustering?: boolean;
-  onEnableClusteringChange: (value: boolean) => void;
-  onShowTempPossibleIssuesDialogClose: () => void;
   selectedFeature: any;
-  onSelectedFeature: (value: any) => void;
+  enableClustering?: boolean;
   shouldFlyToFeature?: boolean;
+  onShowTempPossibleIssuesDialogClose: () => void;
+  onSelectedFeature: (value: any) => void;
+  onEnableClusteringChange: (value: boolean) => void;
+  onShouldFlyToFeatureChange?: (value: boolean) => void;
 };
 const DebugPreview: React.FC<Props> = ({
   fileType,
@@ -56,12 +57,13 @@ const DebugPreview: React.FC<Props> = ({
   dataURLs,
   isLoadingData,
   showTempPossibleIssuesDialog,
-  onShowTempPossibleIssuesDialogClose,
   enableClustering,
-  onEnableClusteringChange,
-  selectedFeature,
-  onSelectedFeature,
   shouldFlyToFeature,
+  selectedFeature,
+  onShowTempPossibleIssuesDialogClose,
+  onSelectedFeature,
+  onEnableClusteringChange,
+  onShouldFlyToFeatureChange,
 }) => {
   const t = useT();
   const [tabValue, setTabValue] = useState<string>("2d-viewer");
@@ -131,10 +133,11 @@ const DebugPreview: React.FC<Props> = ({
               fileType={fileType}
               enableClustering={enableClustering}
               selectedFeature={selectedFeature}
-              onSelectedFeature={onSelectedFeature}
               shouldFlyToFeature={shouldFlyToFeature}
               fitDataToBounds={fitDataToBounds}
+              onSelectedFeature={onSelectedFeature}
               onFitDataToBoundsChange={setFitDataToBounds}
+              onShouldFlyToFeatureChange={onShouldFlyToFeatureChange}
             />
           </TabsContent>
           <TabsContent

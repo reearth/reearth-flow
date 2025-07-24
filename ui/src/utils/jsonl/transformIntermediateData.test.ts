@@ -72,7 +72,7 @@ describe("intermediateDataTransform", () => {
       const expected = {
         id: "123",
         type: "Feature",
-        properties: { name: "Test Point" },
+        properties: { originalId: "123", name: "Test Point" },
         geometry: {
           type: "Point",
           coordinates: [10, 20],
@@ -107,7 +107,7 @@ describe("intermediateDataTransform", () => {
       const expected = {
         id: "123",
         type: "Feature",
-        properties: { name: "Test Polygon" },
+        properties: { originalId: "123", name: "Test Polygon" },
         geometry: {
           type: "Polygon",
           coordinates: [
@@ -165,7 +165,7 @@ describe("intermediateDataTransform", () => {
       const expected = {
         id: "123",
         type: "Feature",
-        properties: { name: "Test Polygon with Hole" },
+        properties: { originalId: "123", name: "Test Polygon with Hole" },
         geometry: {
           type: "Polygon",
           coordinates: [
@@ -219,7 +219,7 @@ describe("intermediateDataTransform", () => {
       const expected = {
         id: "123",
         type: "Feature",
-        properties: { name: "Test LineString" },
+        properties: { originalId: "123", name: "Test LineString" },
         geometry: {
           type: "LineString",
           coordinates: [
@@ -253,7 +253,7 @@ describe("intermediateDataTransform", () => {
       const expected = {
         id: "123",
         type: "Feature",
-        properties: { name: "Test MultiPoint" },
+        properties: { originalId: "123", name: "Test MultiPoint" },
         geometry: {
           type: "MultiPoint",
           coordinates: [
@@ -312,7 +312,7 @@ describe("intermediateDataTransform", () => {
       const expected = {
         id: "123",
         type: "Feature",
-        properties: { name: "Test MultiPolygon" },
+        properties: { originalId: "123", name: "Test MultiPolygon" },
         geometry: {
           type: "MultiPolygon",
           coordinates: [
@@ -373,7 +373,7 @@ describe("intermediateDataTransform", () => {
       const expected = {
         id: "123",
         type: "Feature",
-        properties: { name: "Test MultiLineString" },
+        properties: { originalId: "123", name: "Test MultiLineString" },
         geometry: {
           type: "MultiLineString",
           coordinates: [
@@ -412,7 +412,7 @@ describe("intermediateDataTransform", () => {
       const expected = {
         id: "123",
         type: "Feature",
-        properties: { name: "Test Triangle" },
+        properties: { originalId: "123", name: "Test Triangle" },
         geometry: {
           type: "Polygon",
           coordinates: [
@@ -448,7 +448,7 @@ describe("intermediateDataTransform", () => {
       const expected = {
         id: "123",
         type: "Feature",
-        properties: { name: "Test Rectangle" },
+        properties: { originalId: "123", name: "Test Rectangle" },
         geometry: {
           type: "Polygon",
           coordinates: [
@@ -486,7 +486,7 @@ describe("intermediateDataTransform", () => {
       const expected = {
         id: "123",
         type: "Feature",
-        properties: { name: "Test Unknown" },
+        properties: { originalId: "123", name: "Test Unknown" },
         geometry: unknownGeometry,
       };
 

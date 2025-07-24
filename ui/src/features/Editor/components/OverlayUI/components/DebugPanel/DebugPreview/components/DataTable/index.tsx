@@ -41,8 +41,8 @@ const DataTable: React.FC<Props> = ({
             showFiltering
             showOrdering={false}
             selectedRow={selectedFeature}
-            onSelectedRow={onSelectedFeature}
-            onDoubleClickRow={onDoubleClickFeature}
+            onRowClick={onSelectedFeature}
+            onRowDoubleClick={onDoubleClickFeature}
           />
         </div>
       </div>

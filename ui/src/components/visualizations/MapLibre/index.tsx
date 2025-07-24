@@ -4,7 +4,7 @@ import bbox from "@turf/bbox";
 import maplibregl, { LngLatBounds } from "maplibre-gl";
 import * as React from "react";
 import { useRef, useEffect, useState, useMemo, useCallback } from "react";
-import { Map } from "react-map-gl/maplibre";
+import { Map as MapLibreMap } from "react-map-gl/maplibre";
 
 import { Button, IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -18,18 +18,21 @@ type Props = {
   fileContent: any | null;
   fileType: SupportedDataTypes | null;
   enableClustering?: boolean;
-  selectedFeature?: any;
-  onSelectedFeature: (value: any) => void;
+  selectedFeature?:
+    | any
+    | { id?: string | number; properties?: { originalId?: string | number } };
   shouldFlyToFeature?: boolean;
   fitDataToBounds?: boolean;
+  onSelectedFeature: (value: any) => void;
   onFitDataToBoundsChange?: (value: boolean) => void;
+  onShouldFlyToFeatureChange?: (value: boolean) => void;
 };
 
 type MapSidePanelProps = {
   selectedFeature: any;
   onShowFeaturePanel: (value: boolean) => void;
-  onSelectedFeature: (value: any) => void;
-  onFlyToSelectedFeature?: (selectedFeature: any) => void;
+  onSelectedFeature: (value: any | null) => void;
+  onFlyToSelectedFeature?: () => void;
 };
 
 const MapLibre: React.FC<Props> = ({
@@ -38,13 +41,25 @@ const MapLibre: React.FC<Props> = ({
   fileType,
   enableClustering,
   selectedFeature,
-  onSelectedFeature,
-  shouldFlyToFeature = true,
+  shouldFlyToFeature,
   fitDataToBounds,
+  onSelectedFeature,
   onFitDataToBoundsChange,
+  onShouldFlyToFeatureChange,
 }) => {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [showFeaturePanel, setShowFeaturePanel] = useState<boolean>(false);
+
+  const featureMap = useMemo(() => {
+    if (!fileContent?.features) return null;
+
+    return new Map(
+      fileContent.features.map((f: any) => {
+        const id = f.id ?? f.properties?.originalId;
+        return id !== undefined ? ([id, f] as [string | number, any]) : null;
+      }),
+    );
+  }, [fileContent?.features]);
 
   const dataBounds = useMemo(() => {
     if (!fileContent) return null;
@@ -58,31 +73,24 @@ const MapLibre: React.FC<Props> = ({
     }
   }, [fileContent]);
 
-  const actualSelectedFeature = useMemo(() => {
-    if (!selectedFeature || !fileContent) return null;
+  const convertedSelectedFeature = useMemo(() => {
+    if (!selectedFeature || !featureMap) return null;
 
-    if (selectedFeature.geometry) return selectedFeature;
-
-    const featureId = selectedFeature.id || selectedFeature.properties?.id;
-    if (featureId && fileContent.features) {
-      const normalizedId =
-        typeof featureId === "string"
-          ? (() => {
-              try {
-                return JSON.parse(featureId);
-              } catch {
-                return featureId;
-              }
-            })()
-          : featureId;
-
-      return (
-        fileContent.features.find((f: any) => f.id === normalizedId) || null
-      );
+    if ("geometry" in selectedFeature && selectedFeature.geometry) {
+      return selectedFeature;
     }
 
-    return null;
-  }, [selectedFeature, fileContent]);
+    const featureId =
+      selectedFeature.id ?? selectedFeature.properties?.originalId;
+    if (featureId === undefined) return null;
+
+    let normalizedId = featureId;
+    if (typeof featureId === "string") {
+      normalizedId = JSON.parse(featureId);
+    }
+
+    return featureMap.get(normalizedId) || null;
+  }, [selectedFeature, featureMap]);
 
   const handleMapLoad = useCallback(
     (onCenter?: boolean) => {
@@ -98,9 +106,9 @@ const MapLibre: React.FC<Props> = ({
   );
 
   const handleFlyToSelectedFeature = useCallback(() => {
-    if (mapRef.current && actualSelectedFeature) {
+    if (mapRef.current && convertedSelectedFeature) {
       try {
-        const [minLng, minLat, maxLng, maxLat] = bbox(actualSelectedFeature);
+        const [minLng, minLat, maxLng, maxLat] = bbox(convertedSelectedFeature);
         mapRef.current.fitBounds(
           [
             [minLng, minLat],
@@ -113,13 +121,19 @@ const MapLibre: React.FC<Props> = ({
         console.error("Error computing bbox for selectedFeature:", err);
       }
     }
-  }, [actualSelectedFeature]);
+  }, [convertedSelectedFeature]);
 
   useEffect(() => {
-    if (actualSelectedFeature && shouldFlyToFeature) {
+    if (convertedSelectedFeature && shouldFlyToFeature) {
       handleFlyToSelectedFeature();
+      onShouldFlyToFeatureChange?.(false);
     }
-  }, [actualSelectedFeature, shouldFlyToFeature, handleFlyToSelectedFeature]);
+  }, [
+    convertedSelectedFeature,
+    shouldFlyToFeature,
+    handleFlyToSelectedFeature,
+    onShouldFlyToFeatureChange,
+  ]);
 
   useEffect(() => {
     if (fitDataToBounds) {
@@ -130,7 +144,7 @@ const MapLibre: React.FC<Props> = ({
 
   return (
     <div className={`relative size-full ${className}`}>
-      <Map
+      <MapLibreMap
         ref={(instance) => {
           if (instance) mapRef.current = instance.getMap();
         }}
@@ -139,8 +153,15 @@ const MapLibre: React.FC<Props> = ({
         maplibreLogo={true}
         interactiveLayerIds={["point-layer", "line-layer", "polygon-layer"]}
         onClick={(e) => {
-          if (e.features) {
+          if (e.features?.[0]) {
             onSelectedFeature(e.features[0]);
+            setShowFeaturePanel(true);
+          }
+        }}
+        onDblClick={(e) => {
+          if (e.features?.[0]) {
+            onSelectedFeature(e.features[0]);
+            onShouldFlyToFeatureChange?.(true);
             setShowFeaturePanel(true);
           }
         }}
@@ -150,13 +171,13 @@ const MapLibre: React.FC<Props> = ({
             fileType={fileType}
             fileContent={fileContent}
             enableClustering={enableClustering}
-            selectedFeatureId={actualSelectedFeature?.id}
+            selectedFeatureId={convertedSelectedFeature?.id}
           />
         )}
-      </Map>
-      {showFeaturePanel && actualSelectedFeature && (
+      </MapLibreMap>
+      {showFeaturePanel && convertedSelectedFeature && (
         <MapSidePanel
-          selectedFeature={actualSelectedFeature}
+          selectedFeature={convertedSelectedFeature}
           onShowFeaturePanel={setShowFeaturePanel}
           onSelectedFeature={onSelectedFeature}
           onFlyToSelectedFeature={handleFlyToSelectedFeature}
@@ -177,6 +198,13 @@ const MapSidePanel: React.FC<MapSidePanelProps> = ({
     onShowFeaturePanel(false);
     onSelectedFeature(null);
   }, [onSelectedFeature, onShowFeaturePanel]);
+
+  const featureProperties = useMemo(() => {
+    return Object.entries(selectedFeature.properties || {}).filter(
+      ([key]) => key !== "originalId",
+    );
+  }, [selectedFeature.properties]);
+
   return (
     <div className="absolute top-4 right-4 z-10 h-4/6 w-80 overflow-auto rounded-md border-l bg-background opacity-97 shadow-lg">
       <div className="flex items-center justify-between border-b p-4">
@@ -197,20 +225,18 @@ const MapSidePanel: React.FC<MapSidePanelProps> = ({
 
       <div className="max-h-full overflow-auto p-0 text-sm text-foreground">
         <div className="min-w-[24rem] divide-y divide-border border-t border-border">
-          {Object.entries(selectedFeature.properties || {})
-            .filter(([key]) => key !== "id")
-            .map(([key, value]) => (
-              <div key={key} className="grid grid-cols-2 gap-2 px-4 py-2">
-                <span className="font-medium break-words">{key}</span>
-                <span className="w-fit text-right break-all whitespace-pre-wrap">
-                  {Array.isArray(value)
-                    ? value.join(", ")
-                    : typeof value === "object" && value !== null
-                      ? JSON.stringify(value, null, 2)
-                      : String(value)}
-                </span>
-              </div>
-            ))}
+          {featureProperties.map(([key, value]) => (
+            <div key={key} className="grid grid-cols-2 gap-2 px-4 py-2">
+              <span className="font-medium break-words">{key}</span>
+              <span className="w-fit text-right break-all whitespace-pre-wrap">
+                {Array.isArray(value)
+                  ? value.join(", ")
+                  : typeof value === "object" && value !== null
+                    ? JSON.stringify(value, null, 2)
+                    : String(value)}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     </div>

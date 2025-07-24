@@ -47,13 +47,15 @@ export default ({
                 header: `geometry.${geometry}`,
               }) as ColumnDef<any>,
           ),
-          ...Array.from(allProps).map(
-            (prop) =>
-              ({
-                accessorKey: `properties${prop}`,
-                header: `properties.${prop}`,
-              }) as ColumnDef<any>,
-          ),
+          ...Array.from(allProps)
+            .filter((prop) => prop !== "originalId")
+            .map(
+              (prop) =>
+                ({
+                  accessorKey: `properties${prop}`,
+                  header: `properties.${prop}`,
+                }) as ColumnDef<any>,
+            ),
         ];
 
         // Transform features for table display

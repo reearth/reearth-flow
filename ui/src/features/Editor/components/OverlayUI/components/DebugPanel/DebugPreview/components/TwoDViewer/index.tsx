@@ -10,10 +10,11 @@ type Props = {
   fileType: SupportedDataTypes | null;
   enableClustering?: boolean;
   selectedFeature: any;
-  onSelectedFeature: (value: any) => void;
   shouldFlyToFeature?: boolean;
   fitDataToBounds?: boolean;
+  onSelectedFeature: (value: any) => void;
   onFitDataToBoundsChange?: (value: boolean) => void;
+  onShouldFlyToFeatureChange?: (value: boolean) => void;
 };
 
 const TwoDViewer: React.FC<Props> = ({
@@ -21,10 +22,11 @@ const TwoDViewer: React.FC<Props> = ({
   fileType,
   enableClustering,
   selectedFeature,
-  onSelectedFeature,
   shouldFlyToFeature,
   fitDataToBounds,
+  onSelectedFeature,
   onFitDataToBoundsChange,
+  onShouldFlyToFeatureChange,
 }) => {
   const t = useT();
   return (
@@ -36,10 +38,11 @@ const TwoDViewer: React.FC<Props> = ({
         fileType={fileType}
         enableClustering={enableClustering}
         selectedFeature={selectedFeature}
-        onSelectedFeature={onSelectedFeature}
         shouldFlyToFeature={shouldFlyToFeature}
         fitDataToBounds={fitDataToBounds}
+        onSelectedFeature={onSelectedFeature}
         onFitDataToBoundsChange={onFitDataToBoundsChange}
+        onShouldFlyToFeatureChange={onShouldFlyToFeatureChange}
       />
     </RenderFallback>
   );

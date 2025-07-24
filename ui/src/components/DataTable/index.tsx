@@ -60,8 +60,7 @@ type DataTableProps<TData, TValue> = {
   searchTerm?: string;
   setSearchTerm?: (term: string) => void;
   selectedRow?: any;
-  onSelectedRow?: (value: any) => void;
-  onDoubleClickRow?: (value: any) => void;
+  onRowDoubleClick?: (value: any) => void;
 };
 
 function DataTable<TData, TValue>({
@@ -85,8 +84,7 @@ function DataTable<TData, TValue>({
   searchTerm,
   setSearchTerm,
   selectedRow,
-  onSelectedRow,
-  onDoubleClickRow,
+  onRowDoubleClick,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -272,7 +270,7 @@ function DataTable<TData, TValue>({
                     return (
                       <TableRow
                         onDoubleClick={() => {
-                          onDoubleClickRow?.(row.original);
+                          onRowDoubleClick?.(row.original);
                         }}
                         key={row.id}
                         // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
@@ -286,18 +284,19 @@ function DataTable<TData, TValue>({
                           table.resetRowSelection();
                           row.toggleSelected();
                           onRowClick?.(row.original);
-                          onSelectedRow?.(row.original);
                         }}>
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell
-                            key={cell.id}
-                            className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext(),
-                            )}
-                          </TableCell>
-                        ))}
+                        {row.getVisibleCells().map((cell) => {
+                          return (
+                            <TableCell
+                              key={cell.id}
+                              className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext(),
+                              )}
+                            </TableCell>
+                          );
+                        })}
                       </TableRow>
                     );
                   })

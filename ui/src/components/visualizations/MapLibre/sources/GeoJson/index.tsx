@@ -27,7 +27,7 @@ const GeoJsonDataSource: React.FC<Props> = ({
           ? [
               "case",
               ["==", ["get", "originalId"], selectedFeatureId],
-              "#ff69b4",
+              "#00a340",
               "#3f3f45",
             ]
           : "#3f3f45",
@@ -48,7 +48,7 @@ const GeoJsonDataSource: React.FC<Props> = ({
           ? [
               "case",
               ["==", ["get", "originalId"], selectedFeatureId],
-              "#ff69b4",
+              "#00a340",
               "#3f3f45",
             ]
           : "#3f3f45",
@@ -70,7 +70,7 @@ const GeoJsonDataSource: React.FC<Props> = ({
           ? [
               "case",
               ["==", ["get", "originalId"], selectedFeatureId],
-              "#ff69b4",
+              "#00a340",
               "#3f3f45",
             ]
           : "#3f3f45",
