@@ -23,6 +23,20 @@ import (
 
 var _ gateway.CMS = (*grpcClient)(nil)
 
+type tokenAuth struct {
+    token string
+}
+
+func (t *tokenAuth) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+    return map[string]string{
+        "authorization": fmt.Sprintf("Bearer %s", t.token),
+    }, nil
+}
+
+func (t *tokenAuth) RequireTransportSecurity() bool {
+    return true
+}
+
 type grpcClient struct {
 	client   proto.ReEarthCMSClient
 }
@@ -35,24 +49,25 @@ func NewGRPCClient(endpoint, token string, use_tls bool) (gateway.CMS, error) {
 	var conn *grpc.ClientConn
 	var err error
 	
+	var opts []grpc.DialOption
+	
 	if use_tls {
 		config := &tls.Config{
 			ServerName: trim_port(endpoint),
 		}
 		creds := credentials.NewTLS(config)
-		conn, err = grpc.NewClient(endpoint,
-			grpc.WithTransportCredentials(creds), // Use TLS credentials, not insecure
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to connect to CMS gRPC server: %w", err)
-		}
+		opts = append(opts, grpc.WithTransportCredentials(creds))
 	} else {
-		conn, err = grpc.NewClient(endpoint,
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to connect to CMS gRPC server: %w", err)
-		}
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	}
+	
+	if token != "" {
+		opts = append(opts, grpc.WithPerRPCCredentials(&tokenAuth{token}))
+	}
+	
+	conn, err = grpc.NewClient(endpoint, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to CMS gRPC server: %w", err)
 	}
 	
 	client := proto.NewReEarthCMSClient(conn)
