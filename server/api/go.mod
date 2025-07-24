@@ -11,6 +11,9 @@ require (
 	github.com/99designs/gqlgen v0.17.73
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.27.0
 	github.com/avast/retry-go/v4 v4.6.1
+	github.com/bytedance/gopkg v0.1.2
+	github.com/cloudwego/kitex v0.14.1
+	github.com/cloudwego/prutal v0.1.2
 	github.com/gavv/httpexpect/v2 v2.16.0
 	github.com/go-redis/redismock/v9 v9.2.0
 	github.com/google/uuid v1.6.0
@@ -43,7 +46,6 @@ require (
 	golang.org/x/oauth2 v0.29.0
 	golang.org/x/text v0.25.0
 	google.golang.org/api v0.229.0
-	google.golang.org/grpc v1.71.1
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/square/go-jose.v2 v2.6.0
 )
@@ -53,7 +55,6 @@ require (
 	cloud.google.com/go/monitoring v1.24.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.25.0 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.49.0 // indirect
-	github.com/bytedance/gopkg v0.1.2 // indirect
 	github.com/bytedance/sonic v1.13.3 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -64,10 +65,8 @@ require (
 	github.com/cloudwego/frugal v0.2.5 // indirect
 	github.com/cloudwego/gopkg v0.1.5 // indirect
 	github.com/cloudwego/iasm v0.2.0 // indirect
-	github.com/cloudwego/kitex v0.14.1 // indirect
 	github.com/cloudwego/localsession v0.1.2 // indirect
 	github.com/cloudwego/netpoll v0.7.1 // indirect
-	github.com/cloudwego/prutal v0.1.2 // indirect
 	github.com/cloudwego/runtimex v0.1.1 // indirect
 	github.com/cloudwego/thriftgo v0.4.2 // indirect
 	github.com/cncf/xds/go v0.0.0-20241223141626-cff3c89139a3 // indirect
@@ -94,6 +93,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.60.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.35.0 // indirect
 	golang.org/x/arch v0.14.0 // indirect
+	google.golang.org/grpc v1.71.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 

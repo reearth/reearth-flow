@@ -8,8 +8,10 @@ import (
 
 	"crypto/tls"
 
+	"github.com/bytedance/gopkg/cloud/metainfo"
 	"github.com/cloudwego/kitex/client"
-
+	"github.com/cloudwego/kitex/pkg/endpoint"
+	"github.com/cloudwego/kitex/pkg/remote"
 	"github.com/cloudwego/kitex/transport"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	v1 "github.com/reearth/reearth-flow/api/kitex_gen/reearth/cms/v1"
@@ -17,26 +19,67 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/cms"
 )
 
+var _ gateway.CMS = (*Client)(nil)
+// tokenMetaHandler adds Bearer token to gRPC metadata
+type tokenMetaHandler struct {
+	token string
+}
+
+func (h *tokenMetaHandler) WriteMeta(ctx context.Context, msg remote.Message) (context.Context, error) {
+	if h.token != "" {
+		ctx = metainfo.WithPersistentValue(ctx, "authorization", fmt.Sprintf("Bearer %s", h.token))
+	}
+	return ctx, nil
+}
+
+func (h *tokenMetaHandler) ReadMeta(ctx context.Context, msg remote.Message) (context.Context, error) {
+	// No-op for client-side read
+	return ctx, nil
+}
+
+// tokenMiddleware adds Bearer token using middleware approach
+func tokenMiddleware(token string) endpoint.Middleware {
+	return func(next endpoint.Endpoint) endpoint.Endpoint {
+		return func(ctx context.Context, req, resp interface{}) (err error) {
+			if token != "" {
+				ctx = metainfo.WithPersistentValue(ctx, "authorization", fmt.Sprintf("Bearer %s", token))
+			}
+			return next(ctx, req, resp)
+		}
+	}
+}
+
 type Client struct {
 	kitexClient reearthcms.Client
-	token       string
 }
 
 func NewClient(endpoint, token string, use_tls bool) (gateway.CMS, error) {
+	if endpoint == "" {
+		return nil, fmt.Errorf("CMS endpoint is required")
+	}
 
-	var tlsConfig *tls.Config
+	var options []client.Option
+
+
+	options = append(options, client.WithTransportProtocol(transport.GRPC))
 
 	if use_tls {
-		tlsConfig = &tls.Config{
+		tlsConfig := &tls.Config{
 			ServerName: trim_port(endpoint),
 		}
+		options = append(options, client.WithGRPCTLSConfig(tlsConfig))
 	}
+
+	if token != "" {
+		options = append(options, client.WithMiddleware(tokenMiddleware(token)))
+		options = append(options, client.WithMetaHandler(&tokenMetaHandler{token: token}))
+	}
+
+	options = append(options, client.WithHostPorts(endpoint))
 
 	kitexClient, err := reearthcms.NewClient(
 		endpoint,
-		client.WithHostPorts(endpoint),
-		client.WithTransportProtocol(transport.GRPC),
-		client.WithGRPCTLSConfig(tlsConfig),
+		options...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kitex client: %w", err)
@@ -44,7 +87,6 @@ func NewClient(endpoint, token string, use_tls bool) (gateway.CMS, error) {
 
 	return &Client{
 		kitexClient: kitexClient,
-		token:       token,
 	}, nil
 }
 
@@ -56,12 +98,8 @@ func trim_port(endpoint string) string {
 	return endpoint
 }
 
-func (c *Client) addAuthMetadata(ctx context.Context) context.Context {
-	return ctx
-}
 
 func (c *Client) GetProject(ctx context.Context, projectIDOrAlias string) (*cms.Project, error) {
-	ctx = c.addAuthMetadata(ctx)
 	req := &v1.ProjectRequest{
 		ProjectIdOrAlias: projectIDOrAlias,
 	}
@@ -81,7 +119,6 @@ func (c *Client) GetProject(ctx context.Context, projectIDOrAlias string) (*cms.
 }
 
 func (c *Client) ListProjects(ctx context.Context, input cms.ListProjectsInput) ([]*cms.Project, int32, error) {
-	ctx = c.addAuthMetadata(ctx)
 	req := &v1.ListProjectsRequest{
 		WorkspaceId: input.WorkspaceID,
 		PublicOnly:  input.PublicOnly,
@@ -101,7 +138,6 @@ func (c *Client) ListProjects(ctx context.Context, input cms.ListProjectsInput) 
 }
 
 func (c *Client) ListModels(ctx context.Context, input cms.ListModelsInput) ([]*cms.Model, int32, error) {
-	ctx = c.addAuthMetadata(ctx)
 	req := &v1.ListModelsRequest{
 		ProjectId: input.ProjectID,
 	}
@@ -120,7 +156,6 @@ func (c *Client) ListModels(ctx context.Context, input cms.ListModelsInput) ([]*
 }
 
 func (c *Client) ListItems(ctx context.Context, input cms.ListItemsInput) (*cms.ListItemsOutput, error) {
-	ctx = c.addAuthMetadata(ctx)
 	req := &v1.ListItemsRequest{
 		ModelId:   input.ModelID,
 		ProjectId: input.ProjectID,
@@ -153,7 +188,6 @@ func (c *Client) ListItems(ctx context.Context, input cms.ListItemsInput) (*cms.
 }
 
 func (c *Client) GetModelGeoJSONExportURL(ctx context.Context, input cms.ExportInput) (*cms.ExportOutput, error) {
-	ctx = c.addAuthMetadata(ctx)
 	req := &v1.ExportRequest{
 		ProjectId: input.ProjectID,
 		ModelId:   input.ModelID,
