@@ -58,28 +58,13 @@ const MapLibre: React.FC<Props> = ({
     }
   }, [fileContent]);
 
-  const normalizedFileContent = useMemo(() => {
-    if (!fileContent) return null;
-
-    return {
-      ...fileContent,
-      features: fileContent.features.map((f: any) => ({
-        ...f,
-        properties: {
-          id: f.id,
-          ...f.properties,
-        },
-      })),
-    };
-  }, [fileContent]);
-
   const actualSelectedFeature = useMemo(() => {
-    if (!selectedFeature || !normalizedFileContent) return null;
+    if (!selectedFeature || !fileContent) return null;
 
     if (selectedFeature.geometry) return selectedFeature;
 
     const featureId = selectedFeature.id || selectedFeature.properties?.id;
-    if (featureId && normalizedFileContent.features) {
+    if (featureId && fileContent.features) {
       const normalizedId =
         typeof featureId === "string"
           ? (() => {
@@ -92,14 +77,12 @@ const MapLibre: React.FC<Props> = ({
           : featureId;
 
       return (
-        normalizedFileContent.features.find(
-          (f: any) => f.id === normalizedId,
-        ) || null
+        fileContent.features.find((f: any) => f.id === normalizedId) || null
       );
     }
 
     return null;
-  }, [selectedFeature, normalizedFileContent]);
+  }, [selectedFeature, fileContent]);
 
   const handleMapLoad = useCallback(
     (onCenter?: boolean) => {
@@ -157,7 +140,6 @@ const MapLibre: React.FC<Props> = ({
         interactiveLayerIds={["point-layer", "line-layer", "polygon-layer"]}
         onClick={(e) => {
           if (e.features) {
-            console.log("Stripped ID", e.features[0]);
             onSelectedFeature(e.features[0]);
             setShowFeaturePanel(true);
           }
@@ -166,7 +148,7 @@ const MapLibre: React.FC<Props> = ({
         {fileType === "geojson" && (
           <GeoJsonDataSource
             fileType={fileType}
-            fileContent={normalizedFileContent}
+            fileContent={fileContent}
             enableClustering={enableClustering}
             selectedFeatureId={actualSelectedFeature?.id}
           />
