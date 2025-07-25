@@ -95,9 +95,9 @@ type (
 		WebsocketThriftServerURL string `envconfig:"REEARTH_FLOW_WEBSOCKET_THRIFT_SERVER_URL" default:"http://localhost:8000" pp:",omitempty"`
 
 		// cms
-		CMS_Endpoint string `envconfig:"REEARTH_CMS_ENDPOINT" pp:",omitempty"`
-		CMS_Token    string `envconfig:"REEARTH_CMS_TOKEN" pp:",omitempty"`
-		CMS_UseTLS   bool   `envconfig:"REEARTH_CMS_USE_TLS" default:"false" pp:",omitempty"`
+		CMS_Endpoint string `envconfig:"REEARTH_DASHBOARD_GRPC_ENDPOINT_CMS" pp:",omitempty"`
+		CMS_Token    string `envconfig:"REEARTH_DASHBOARD_GRPC_TOKEN_CMS" pp:",omitempty"`
+		CMS_UseTLS   bool   `envconfig:"REEARTH_DASHBOARD_GRPC_USE_TLS" default:"false" pp:",omitempty"`
 	}
 )
 
@@ -155,7 +155,7 @@ func (c *Config) Print() string {
 }
 
 func (c *Config) secrets() []string {
-	s := []string{c.DB, c.Auth0.ClientSecret, c.CMS_Token}
+	s := []string{c.DB, c.Auth0.ClientSecret}
 	for _, ac := range c.DB_Users {
 		s = append(s, ac.URI)
 	}
@@ -253,3 +253,5 @@ func addHTTPScheme(host string) string {
 	}
 	return host
 }
+
+
