@@ -81,7 +81,7 @@ const TopBar: React.FC<Props> = ({
         <div className="pr-4 pl-2">
           <Breadcrumb />
         </div>
-        <div className="flex items-center gap-2 rounded-md p-1">
+        <div className="flex items-center gap-2 rounded-md">
           <IconButton
             className="h-[35px]"
             variant="outline"
