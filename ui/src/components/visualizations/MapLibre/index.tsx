@@ -132,6 +132,7 @@ const MapLibre: React.FC<Props> = ({
   useEffect(() => {
     if (convertedSelectedFeature && shouldFlyToFeature) {
       handleFlyToSelectedFeature();
+      setShowFeaturePanel(true);
       onShouldFlyToFeatureChange?.(false);
     }
   }, [
