@@ -53,7 +53,6 @@ export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {
 
   const {
     openWorkflows,
-    isMainWorkflow,
     handleWorkflowOpen,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,
@@ -91,7 +90,6 @@ export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {
 
   return {
     currentWorkflowId,
-    isMainWorkflow,
     nodes,
     edges,
     openWorkflows,

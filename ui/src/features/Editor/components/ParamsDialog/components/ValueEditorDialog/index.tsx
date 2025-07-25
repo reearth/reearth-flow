@@ -1,4 +1,5 @@
 import { PencilLineIcon } from "@phosphor-icons/react";
+import { QuestionIcon } from "@phosphor-icons/react/dist/ssr";
 import { useCallback, useState } from "react";
 
 import {
@@ -8,6 +9,9 @@ import {
   DialogHeader,
   DialogTitle,
   TextArea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@flow/components";
 import { useProjectVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
@@ -75,6 +79,13 @@ const ValueEditorDialog: React.FC<Props> = ({
     return "text";
   };
 
+  const fieldType = getFieldTypeDisplay(fieldContext.schema);
+
+  const handleProjectVariableSet = useCallback((variable: any) => {
+    const v = `env.get("${variable.name}")`;
+    setValue(v);
+  }, []);
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent size="xl">
@@ -84,24 +95,57 @@ const ValueEditorDialog: React.FC<Props> = ({
               <PencilLineIcon weight="thin" />
               {t("Value Editor")} -{" "}
               {fieldContext?.fieldName || t("Unknown Field")}{" "}
-              {fieldContext?.schema?.type
-                ? `(${getFieldTypeDisplay(fieldContext.schema)})`
-                : ""}
+              {fieldType ? `(${fieldType})` : ""}
             </div>
           </DialogTitle>
         </DialogHeader>
         <div className="flex h-[400px]">
-          <div className="w-[200px] border-r bg-secondary p-4">
-            {/* Rhai script stuff here */}
-            {projectVariables?.map((variable) => (
-              <div
-                key={variable.id}
-                className="cursor-pointer rounded-md p-2 transition-colors hover:bg-accent"
-                // onClick={() => setValue(variable.value)}
-              >
-                {variable.name}
-              </div>
-            ))}
+          <div className="flex w-[200px] flex-col justify-between gap-2 border-r bg-secondary p-4">
+            <div className="w-full">
+              {/* Rhai script stuff here */}
+              <p className="mb-2 text-sm text-muted-foreground">
+                {t("Project Variables")}
+              </p>
+              {projectVariables?.map((variable) => (
+                <Button
+                  key={variable.id}
+                  variant="ghost"
+                  className="w-full justify-start text-left"
+                  // disabled={variable.type !== fieldType}
+                  onClick={() => handleProjectVariableSet(variable)}>
+                  {variable.name} ({variable.type})
+                </Button>
+              ))}
+            </div>
+            <div>
+              <Tooltip>
+                <TooltipTrigger>
+                  <QuestionIcon />
+                </TooltipTrigger>
+                <TooltipContent
+                  className="flex flex-col gap-2"
+                  side="top"
+                  align="start">
+                  <p>{t("For Advanced Users")}</p>
+                  <p className="max-w-[200px] text-xs text-muted-foreground">
+                    {t(
+                      "For people familiar with Rhai, you can write Rhai directly here.",
+                    )}
+                  </p>
+                  <p className="max-w-[200px] text-xs text-muted-foreground">
+                    {t(
+                      "Furthermore, you can use custom functions to access project variables, such as ",
+                    )}{" "}
+                    <code>env.get('variable_name')</code>.
+                  </p>
+                  <p className="max-w-[200px] text-xs text-muted-foreground">
+                    {t(
+                      "For more information, please refer to the documentation.",
+                    )}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </div>
           <div className="flex flex-1 flex-col">
             <TextArea

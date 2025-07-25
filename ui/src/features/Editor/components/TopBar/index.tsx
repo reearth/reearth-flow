@@ -101,7 +101,6 @@ const TopBar: React.FC<Props> = ({
       <div className="flex h-full flex-1 gap-2 overflow-hidden">
         <WorkflowTabs
           currentWorkflowId={currentWorkflowId}
-          isMainWorkflow={isMainWorkflow}
           openWorkflows={openWorkflows}
           onWorkflowClose={onWorkflowClose}
           onWorkflowChange={onWorkflowChange}

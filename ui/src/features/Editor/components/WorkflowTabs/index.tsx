@@ -9,7 +9,6 @@ import WorkflowTab from "./WorkflowTab";
 
 type Props = {
   currentWorkflowId: string;
-  isMainWorkflow: boolean;
   openWorkflows: {
     id: string;
     name: string;
@@ -20,12 +19,13 @@ type Props = {
 
 const WorkflowTabs: React.FC<Props> = ({
   currentWorkflowId,
-  isMainWorkflow,
   openWorkflows,
   onWorkflowClose,
   onWorkflowChange,
 }) => {
   const t = useT();
+
+  const isMainWorkflow = currentWorkflowId === DEFAULT_ENTRY_GRAPH_ID;
 
   const subWorkflows: Workflow[] | undefined = openWorkflows?.slice(1);
 
