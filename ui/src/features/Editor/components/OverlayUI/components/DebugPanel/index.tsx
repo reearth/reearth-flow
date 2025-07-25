@@ -78,7 +78,7 @@ const DebugPanel: React.FC = () => {
     <div
       className={`absolute ${fullscreenDebug ? "bottom-0 left-0" : "bottom-4 left-4 "}  z-30 flex items-end`}>
       <Tabs
-        className={`pointer-events-auto w-[95vw] rounded-md bg-secondary shadow-md shadow-secondary transition-all ${minimized ? "h-[38px]" : fullscreenDebug ? "h-[100vh] w-[100vw]" : expanded ? "h-[80vh]" : "h-[500px]"}`}
+        className={`pointer-events-auto w-[95vw] rounded-md bg-secondary/70 shadow-md shadow-secondary backdrop-blur-xs transition-all ${minimized ? "h-[38px]" : fullscreenDebug ? "h-[100vh] w-[100vw]" : expanded ? "h-[80vh]" : "h-[500px]"}`}
         value={tabValue}
         defaultValue="debug-logs"
         onDoubleClick={handleExpand}

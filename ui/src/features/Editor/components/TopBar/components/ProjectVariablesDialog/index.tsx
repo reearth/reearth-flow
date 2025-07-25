@@ -259,7 +259,7 @@ const ProjectVariableDialog: React.FC<Props> = ({
               </DialogTitle>
             </DialogHeader>
             <div className="flex h-full min-h-0">
-              <DialogContentSection className="flex min-h-0 flex-3 flex-col bg-card">
+              <DialogContentSection className="flex min-h-0 flex-3 flex-col">
                 <DialogContentSection className="min-h-0 flex-1 overflow-hidden">
                   <ProjectVariablesTable
                     projectVariables={localProjectVariables}

@@ -70,27 +70,27 @@ const TopBar: React.FC<Props> = ({
   const [currentProject] = useCurrentProject();
 
   return (
-    <div className="flex w-[100vw] shrink-0 justify-between bg-secondary">
+    <div className="flex h-[50px] w-[100vw] shrink-0 justify-between bg-secondary">
       <div
         className={`flex items-center gap-1 border-b px-5 ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
         <HomeMenu
           dropdownPosition="bottom"
           dropdownAlign="end"
-          dropdownAlignOffset={-140}
+          dropdownAlignOffset={-148}
         />
         <div className="pr-4 pl-2">
           <Breadcrumb />
         </div>
         <div className="flex items-center gap-2 rounded-md p-1">
           <IconButton
-            className="h-[30px]"
+            className="h-[35px]"
             variant="outline"
             tooltipText={t("Project Variables")}
             icon={<ChalkboardTeacherIcon weight="thin" size={18} />}
             onClick={() => handleDialogOpen("projectVariables")}
           />
           <IconButton
-            className="h-[30px]"
+            className="h-[35px]"
             variant="outline"
             tooltipText={t("Assets")}
             icon={<HardDriveIcon weight="thin" size={18} />}
