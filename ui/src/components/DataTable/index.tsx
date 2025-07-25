@@ -300,7 +300,7 @@ function DataTable<TData, TValue>({
                           row.toggleSelected();
                           onRowClick?.(row.original);
                         }}>
-                        {row.getVisibleCells().map((cell) => {
+                        {row.getVisibleCells().map((cell: any) => {
                           return (
                             <TableCell
                               key={cell.id}
