@@ -83,12 +83,11 @@ const MapLibre: React.FC<Props> = ({
     }
 
     const featureId =
-      selectedFeature.id ?? selectedFeature.properties?.originalId;
+      selectedFeature.properties?.originalId ?? selectedFeature.id;
     if (featureId === undefined) return null;
 
     let normalizedId = featureId;
     if (typeof featureId === "string") {
-      normalizedId = JSON.parse(featureId);
       try {
         normalizedId = JSON.parse(featureId);
       } catch {
@@ -162,7 +161,9 @@ const MapLibre: React.FC<Props> = ({
         onClick={(e) => {
           if (e.features?.[0]) {
             onSelectedFeature(e.features[0]);
-            setShowFeaturePanel(true);
+          } else {
+            onSelectedFeature(undefined);
+            setShowFeaturePanel(false);
           }
         }}
         onDblClick={(e) => {

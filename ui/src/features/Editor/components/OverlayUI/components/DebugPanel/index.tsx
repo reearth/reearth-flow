@@ -58,11 +58,18 @@ const DebugPanel: React.FC = () => {
   const [enableClustering, setEnableClustering] = useState<boolean>(true);
   const [shouldFlyToFeature, setShouldFlyToFeature] = useState<boolean>(false);
 
-  const handleSelectedFeature = useCallback((value: any) => {
-    setEnableClustering(false);
-    setSelectedFeature(value);
-    setShouldFlyToFeature(false);
-  }, []);
+  const handleSelectedFeature = useCallback(
+    (value: any) => {
+      if (selectedFeature && value && selectedFeature.id === value.id) {
+        setSelectedFeature(null);
+      } else {
+        setEnableClustering(false);
+        setSelectedFeature(value);
+        setShouldFlyToFeature(false);
+      }
+    },
+    [selectedFeature],
+  );
 
   const handleSelectedFeatureWithFly = useCallback((value: any) => {
     setEnableClustering(false);

@@ -61,6 +61,7 @@ type DataTableProps<TData, TValue> = {
   setSearchTerm?: (term: string) => void;
   selectedRow?: any;
   onRowDoubleClick?: (value: any) => void;
+  useStrictSelectedRow?: boolean;
 };
 
 function DataTable<TData, TValue>({
@@ -83,6 +84,8 @@ function DataTable<TData, TValue>({
   onSortChange,
   searchTerm,
   setSearchTerm,
+  selectedRow,
+  useStrictSelectedRow,
   onRowDoubleClick,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
@@ -265,7 +268,13 @@ function DataTable<TData, TValue>({
               <TableBody>
                 {rows.length ? (
                   virtualizer.getVirtualItems().map((virtualRow, idx) => {
-                    const row = rows[virtualRow.index];
+                    const row = rows[virtualRow.index] as any;
+                    let isSelected = false;
+                    if (selectedRow) {
+                      isSelected =
+                        selectedRow?.id.replace(/[^a-zA-Z0-9]/g, "") ===
+                        row.original?.id.replace(/[^a-zA-Z0-9]/g, "");
+                    }
                     return (
                       <TableRow
                         onDoubleClick={() => {
@@ -278,9 +287,16 @@ function DataTable<TData, TValue>({
                           height: `${virtualRow.size}px`,
                           transform: `translateY(${virtualRow.start - idx * virtualRow.size}px)`,
                         }}
-                        data-state={row.getIsSelected() && "selected"}
+                        data-state={
+                          useStrictSelectedRow
+                            ? selectedRow && isSelected
+                              ? "selected"
+                              : undefined
+                            : row.getIsSelected()
+                              ? "selected"
+                              : undefined
+                        }
                         onClick={() => {
-                          table.resetRowSelection();
                           row.toggleSelected();
                           onRowClick?.(row.original);
                         }}>

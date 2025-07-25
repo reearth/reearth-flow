@@ -43,6 +43,7 @@ const DataTable: React.FC<Props> = ({
             selectedRow={selectedFeature}
             onRowClick={onSelectedFeature}
             onRowDoubleClick={onDoubleClickFeature}
+            useStrictSelectedRow
           />
         </div>
       </div>
