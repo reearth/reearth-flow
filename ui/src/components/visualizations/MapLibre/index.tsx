@@ -1,10 +1,9 @@
 import { MapPinAreaIcon } from "@phosphor-icons/react";
 import { Cross2Icon } from "@radix-ui/react-icons";
-import bbox from "@turf/bbox";
-import maplibregl, { LngLatBounds } from "maplibre-gl";
+import maplibregl from "maplibre-gl";
 import * as React from "react";
-import { useRef, useEffect, useState, useMemo, useCallback } from "react";
-import { Map as MapLibreMap } from "react-map-gl/maplibre";
+import { useState, useMemo, useCallback } from "react";
+import { Map } from "react-map-gl/maplibre";
 
 import { Button, IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -21,18 +20,18 @@ type Props = {
   selectedFeature?:
     | any
     | { id?: string | number; properties?: { _originalId?: string | number } };
-  shouldFlyToFeature?: boolean;
-  fitDataToBounds?: boolean;
+  convertedSelectedFeature?: any;
+  mapRef: React.RefObject<maplibregl.Map | null>;
+  onMapLoad: (onCenter?: boolean) => void;
   onSelectedFeature: (value: any) => void;
-  onFitDataToBoundsChange?: (value: boolean) => void;
-  onShouldFlyToFeatureChange?: (value: boolean) => void;
+  onFlyToSelectedFeature?: (selectedFeature: any) => void;
 };
 
 type MapSidePanelProps = {
   selectedFeature: any;
   onShowFeaturePanel: (value: boolean) => void;
   onSelectedFeature: (value: any | null) => void;
-  onFlyToSelectedFeature?: () => void;
+  onFlyToSelectedFeature?: (selectedFeature: any) => void;
 };
 
 const MapLibre: React.FC<Props> = ({
@@ -40,118 +39,17 @@ const MapLibre: React.FC<Props> = ({
   fileContent,
   fileType,
   enableClustering,
-  selectedFeature,
-  shouldFlyToFeature,
-  fitDataToBounds,
+  convertedSelectedFeature,
+  mapRef,
+  onMapLoad,
   onSelectedFeature,
-  onFitDataToBoundsChange,
-  onShouldFlyToFeatureChange,
+  onFlyToSelectedFeature,
 }) => {
-  const mapRef = useRef<maplibregl.Map | null>(null);
   const [showFeaturePanel, setShowFeaturePanel] = useState<boolean>(false);
-
-  const featureMap = useMemo(() => {
-    if (!fileContent?.features) return null;
-
-    return new Map(
-      fileContent.features
-        .map((f: any) => {
-          const id = f.id ?? f.properties?._originalId;
-          return id !== undefined ? ([id, f] as [string | number, any]) : null;
-        })
-        .filter(Boolean),
-    );
-  }, [fileContent?.features]);
-
-  const dataBounds = useMemo(() => {
-    if (!fileContent) return null;
-
-    try {
-      const [minLng, minLat, maxLng, maxLat] = bbox(fileContent);
-      return new LngLatBounds([minLng, minLat], [maxLng, maxLat]);
-    } catch (err) {
-      console.error("Error computing bbox:", err);
-      return null;
-    }
-  }, [fileContent]);
-
-  const convertedSelectedFeature = useMemo(() => {
-    if (!selectedFeature || !featureMap) return null;
-
-    if ("geometry" in selectedFeature && selectedFeature.geometry) {
-      return selectedFeature;
-    }
-    console.log("TEST", selectedFeature, featureMap);
-    const featureId =
-      selectedFeature.properties?._originalId ?? selectedFeature.id;
-    if (featureId === undefined) return null;
-
-    let normalizedId = featureId;
-    if (typeof featureId === "string") {
-      try {
-        normalizedId = JSON.parse(featureId);
-      } catch {
-        normalizedId = featureId;
-      }
-    }
-
-    return featureMap.get(normalizedId) || null;
-  }, [selectedFeature, featureMap]);
-
-  const handleMapLoad = useCallback(
-    (onCenter?: boolean) => {
-      if (mapRef.current && dataBounds) {
-        mapRef.current.fitBounds(dataBounds, {
-          padding: 40,
-          duration: onCenter ? 500 : 0,
-          maxZoom: 16,
-        });
-      }
-    },
-    [dataBounds],
-  );
-
-  const handleFlyToSelectedFeature = useCallback(() => {
-    if (mapRef.current && convertedSelectedFeature) {
-      try {
-        const [minLng, minLat, maxLng, maxLat] = bbox(convertedSelectedFeature);
-        mapRef.current.fitBounds(
-          [
-            [minLng, minLat],
-            [maxLng, maxLat],
-          ],
-
-          { padding: 40, duration: 500, maxZoom: 24 },
-        );
-      } catch (err) {
-        console.error("Error computing bbox for selectedFeature:", err);
-      }
-    }
-  }, [convertedSelectedFeature]);
-
-  useEffect(() => {
-    if (convertedSelectedFeature && shouldFlyToFeature) {
-      handleFlyToSelectedFeature();
-      setShowFeaturePanel(true);
-      onShouldFlyToFeatureChange?.(false);
-    }
-  }, [
-    convertedSelectedFeature,
-    shouldFlyToFeature,
-    handleFlyToSelectedFeature,
-    onShouldFlyToFeatureChange,
-  ]);
-
-  useEffect(() => {
-    if (fitDataToBounds) {
-      handleMapLoad(true);
-      onFitDataToBoundsChange?.(false);
-    }
-  }, [fitDataToBounds, onFitDataToBoundsChange, handleMapLoad]);
 
   return (
     <div className={`relative size-full ${className}`}>
-      <MapLibreMap
+      <Map
         ref={(instance) => {
           if (instance) mapRef.current = instance.getMap();
         }}
@@ -160,7 +58,6 @@ const MapLibre: React.FC<Props> = ({
         maplibreLogo={true}
         interactiveLayerIds={["point-layer", "line-layer", "polygon-layer"]}
         onClick={(e) => {
-          console.log("Map clicked:", e.features);
           if (e.features?.[0]) {
             onSelectedFeature(e.features[0]);
           } else {
@@ -171,11 +68,11 @@ const MapLibre: React.FC<Props> = ({
         onDblClick={(e) => {
           if (e.features?.[0]) {
             onSelectedFeature(e.features[0]);
-            onShouldFlyToFeatureChange?.(true);
+            onFlyToSelectedFeature?.(e.features[0]);
             setShowFeaturePanel(true);
           }
         }}
-        onLoad={() => handleMapLoad()}>
+        onLoad={() => onMapLoad()}>
         {fileType === "geojson" && (
           <GeoJsonDataSource
             key={`geojson-source-${enableClustering}`}
@@ -185,13 +82,13 @@ const MapLibre: React.FC<Props> = ({
             selectedFeatureId={convertedSelectedFeature?.id}
           />
         )}
-      </MapLibreMap>
+      </Map>
       {showFeaturePanel && convertedSelectedFeature && (
         <MapSidePanel
           selectedFeature={convertedSelectedFeature}
           onShowFeaturePanel={setShowFeaturePanel}
           onSelectedFeature={onSelectedFeature}
-          onFlyToSelectedFeature={handleFlyToSelectedFeature}
+          onFlyToSelectedFeature={onFlyToSelectedFeature}
         />
       )}
     </div>
@@ -221,7 +118,7 @@ const MapSidePanel: React.FC<MapSidePanelProps> = ({
       <div className="flex items-center justify-between border-b p-4">
         <div className="flex items-center gap-2">
           <IconButton
-            onClick={onFlyToSelectedFeature}
+            onClick={() => onFlyToSelectedFeature?.(selectedFeature)}
             icon={<MapPinAreaIcon className="size-5" />}
           />
           <h2 className="text-lg font-semibold">{t("Feature Info")}</h2>

@@ -10,11 +10,11 @@ type Props = {
   fileType: SupportedDataTypes | null;
   enableClustering?: boolean;
   selectedFeature: any;
-  shouldFlyToFeature?: boolean;
-  fitDataToBounds?: boolean;
+  convertedSelectedFeature?: any;
+  mapRef: React.RefObject<maplibregl.Map | null>;
   onSelectedFeature: (value: any) => void;
-  onFitDataToBoundsChange?: (value: boolean) => void;
-  onShouldFlyToFeatureChange?: (value: boolean) => void;
+  onMapLoad: (onCenter?: boolean) => void;
+  onFlyToSelectedFeature?: (selectedFeature: any) => void;
 };
 
 const TwoDViewer: React.FC<Props> = ({
@@ -22,11 +22,11 @@ const TwoDViewer: React.FC<Props> = ({
   fileType,
   enableClustering,
   selectedFeature,
-  shouldFlyToFeature,
-  fitDataToBounds,
+  convertedSelectedFeature,
+  mapRef,
+  onMapLoad,
   onSelectedFeature,
-  onFitDataToBoundsChange,
-  onShouldFlyToFeatureChange,
+  onFlyToSelectedFeature,
 }) => {
   const t = useT();
   return (
@@ -38,11 +38,11 @@ const TwoDViewer: React.FC<Props> = ({
         fileType={fileType}
         enableClustering={enableClustering}
         selectedFeature={selectedFeature}
-        shouldFlyToFeature={shouldFlyToFeature}
-        fitDataToBounds={fitDataToBounds}
+        convertedSelectedFeature={convertedSelectedFeature}
+        mapRef={mapRef}
+        onMapLoad={onMapLoad}
         onSelectedFeature={onSelectedFeature}
-        onFitDataToBoundsChange={onFitDataToBoundsChange}
-        onShouldFlyToFeatureChange={onShouldFlyToFeatureChange}
+        onFlyToSelectedFeature={onFlyToSelectedFeature}
       />
     </RenderFallback>
   );

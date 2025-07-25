@@ -34,6 +34,7 @@ import type { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 
 import ThreeDViewer from "./components/ThreeDViewer";
 import TwoDViewer from "./components/TwoDViewer";
+import useHooks from "./hooks";
 
 type Props = {
   fileType: SupportedDataTypes | null;
@@ -43,12 +44,13 @@ type Props = {
   dataURLs?: { key: string; name: string }[];
   showTempPossibleIssuesDialog: boolean;
   selectedFeature: any;
+  convertedSelectedFeature: any;
   enableClustering?: boolean;
-  shouldFlyToFeature?: boolean;
+  mapRef: React.RefObject<maplibregl.Map | null>;
   onShowTempPossibleIssuesDialogClose: () => void;
   onSelectedFeature: (value: any) => void;
   onEnableClusteringChange: (value: boolean) => void;
-  onShouldFlyToFeatureChange?: (value: boolean) => void;
+  onFlyToSelectedFeature?: (selectedFeature: any) => void;
 };
 const DebugPreview: React.FC<Props> = ({
   fileType,
@@ -58,16 +60,21 @@ const DebugPreview: React.FC<Props> = ({
   isLoadingData,
   showTempPossibleIssuesDialog,
   enableClustering,
-  shouldFlyToFeature,
+  mapRef,
   selectedFeature,
+  convertedSelectedFeature,
   onShowTempPossibleIssuesDialogClose,
   onSelectedFeature,
   onEnableClusteringChange,
-  onShouldFlyToFeatureChange,
+  onFlyToSelectedFeature,
 }) => {
   const t = useT();
   const [tabValue, setTabValue] = useState<string>("2d-viewer");
-  const [fitDataToBounds, setFitDataToBounds] = useState<boolean>(false);
+
+  const { handleMapLoad } = useHooks({
+    mapRef,
+    selectedOutputData,
+  });
 
   return debugJobState && dataURLs ? (
     <Tabs
@@ -110,8 +117,7 @@ const DebugPreview: React.FC<Props> = ({
                   }>
                   {t("Enable Clustering")}
                 </DropdownMenuCheckboxItem>
-                <DropdownMenuItem
-                  onClick={() => setFitDataToBounds(!fitDataToBounds)}>
+                <DropdownMenuItem onClick={() => handleMapLoad(true)}>
                   <TargetIcon />
                   {t("Center Data")}
                 </DropdownMenuItem>
@@ -132,11 +138,11 @@ const DebugPreview: React.FC<Props> = ({
               fileType={fileType}
               enableClustering={enableClustering}
               selectedFeature={selectedFeature}
-              shouldFlyToFeature={shouldFlyToFeature}
-              fitDataToBounds={fitDataToBounds}
+              convertedSelectedFeature={convertedSelectedFeature}
+              mapRef={mapRef}
+              onMapLoad={handleMapLoad}
               onSelectedFeature={onSelectedFeature}
-              onFitDataToBoundsChange={setFitDataToBounds}
-              onShouldFlyToFeatureChange={onShouldFlyToFeatureChange}
+              onFlyToSelectedFeature={onFlyToSelectedFeature}
             />
           </TabsContent>
           <TabsContent

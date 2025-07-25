@@ -20,6 +20,9 @@ export default () => {
   const [fullscreenDebug, setFullscreenDebug] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [minimized, setMinimized] = useState(false);
+  const [enableClustering, setEnableClustering] = useState<boolean>(true);
+  const [selectedFeature, setSelectedFeature] = useState<any>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
 
   const [currentProject] = useCurrentProject();
 
@@ -199,6 +202,7 @@ export default () => {
     debugJobId,
     debugJobState,
     fileType,
+    mapRef,
     fullscreenDebug,
     expanded,
     minimized,
@@ -207,6 +211,10 @@ export default () => {
     dataURLs,
     selectedOutputData,
     isLoadingData,
+    enableClustering,
+    selectedFeature,
+    setSelectedFeature,
+    setEnableClustering,
     handleFullscreenExpand,
     handleExpand,
     handleMinimize,

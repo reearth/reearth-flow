@@ -9,16 +9,16 @@ type Props = {
   fileContent: any | null;
   fileType: SupportedDataTypes | null;
   selectedFeature: any;
-  onSelectedFeature: (value: any) => void;
-  onDoubleClickFeature?: (value: any) => void;
+  onSingleClick: (value: any) => void;
+  onDoubleClick?: (value: any) => void;
 };
 
 const DataTable: React.FC<Props> = ({
   fileContent,
   fileType,
   selectedFeature,
-  onSelectedFeature,
-  onDoubleClickFeature,
+  onSingleClick,
+  onDoubleClick,
 }) => {
   const { tableData, tableColumns } = useDataColumnizer({
     parsedData: fileContent,
@@ -41,8 +41,8 @@ const DataTable: React.FC<Props> = ({
             showFiltering
             showOrdering={false}
             selectedRow={selectedFeature}
-            onRowClick={onSelectedFeature}
-            onRowDoubleClick={onDoubleClickFeature}
+            onRowClick={onSingleClick}
+            onRowDoubleClick={onDoubleClick}
             useStrictSelectedRow
           />
         </div>
