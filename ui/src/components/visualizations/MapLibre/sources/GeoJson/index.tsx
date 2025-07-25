@@ -26,7 +26,7 @@ const GeoJsonDataSource: React.FC<Props> = ({
         "circle-color": selectedFeatureId
           ? [
               "case",
-              ["==", ["get", "originalId"], selectedFeatureId],
+              ["==", ["get", "_originalId"], selectedFeatureId],
               "#00a340",
               "#3f3f45",
             ]
@@ -47,13 +47,13 @@ const GeoJsonDataSource: React.FC<Props> = ({
         "line-color": selectedFeatureId
           ? [
               "case",
-              ["==", ["get", "originalId"], selectedFeatureId],
+              ["==", ["get", "_originalId"], selectedFeatureId],
               "#00a340",
               "#3f3f45",
             ]
           : "#3f3f45",
         "line-width": selectedFeatureId
-          ? ["case", ["==", ["get", "originalId"], selectedFeatureId], 4, 2]
+          ? ["case", ["==", ["get", "_originalId"], selectedFeatureId], 4, 2]
           : 2,
       },
       filter: ["==", ["geometry-type"], "LineString"],
@@ -69,13 +69,18 @@ const GeoJsonDataSource: React.FC<Props> = ({
         "fill-color": selectedFeatureId
           ? [
               "case",
-              ["==", ["get", "originalId"], selectedFeatureId],
+              ["==", ["get", "_originalId"], selectedFeatureId],
               "#00a340",
               "#3f3f45",
             ]
           : "#3f3f45",
         "fill-opacity": selectedFeatureId
-          ? ["case", ["==", ["get", "originalId"], selectedFeatureId], 0.9, 0.8]
+          ? [
+              "case",
+              ["==", ["get", "_originalId"], selectedFeatureId],
+              0.9,
+              0.8,
+            ]
           : 0.8,
       },
       filter: ["==", ["geometry-type"], "Polygon"],
@@ -123,9 +128,7 @@ const GeoJsonDataSource: React.FC<Props> = ({
       type={fileType}
       data={fileContent}
       cluster={enableClustering}
-      promoteId="originalId">
-      <Layer {...clusterLayer} />
-      <Layer {...clusterCountLayer} />
+      promoteId="_originalId">
       {fileContent?.features?.some(
         (feature: GeoJSON.Feature) => feature.geometry.type === "Point",
       ) && <Layer {...pointLayer} />}
@@ -137,6 +140,8 @@ const GeoJsonDataSource: React.FC<Props> = ({
       {fileContent?.features?.some(
         (feature: GeoJSON.Feature) => feature.geometry.type === "Polygon",
       ) && <Layer {...polygonLayer} />}
+      <Layer {...clusterLayer} />
+      <Layer {...clusterCountLayer} />
     </Source>
   );
 };

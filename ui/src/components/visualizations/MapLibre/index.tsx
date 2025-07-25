@@ -20,7 +20,7 @@ type Props = {
   enableClustering?: boolean;
   selectedFeature?:
     | any
-    | { id?: string | number; properties?: { originalId?: string | number } };
+    | { id?: string | number; properties?: { _originalId?: string | number } };
   shouldFlyToFeature?: boolean;
   fitDataToBounds?: boolean;
   onSelectedFeature: (value: any) => void;
@@ -56,7 +56,7 @@ const MapLibre: React.FC<Props> = ({
     return new Map(
       fileContent.features
         .map((f: any) => {
-          const id = f.id ?? f.properties?.originalId;
+          const id = f.id ?? f.properties?._originalId;
           return id !== undefined ? ([id, f] as [string | number, any]) : null;
         })
         .filter(Boolean),
@@ -81,9 +81,9 @@ const MapLibre: React.FC<Props> = ({
     if ("geometry" in selectedFeature && selectedFeature.geometry) {
       return selectedFeature;
     }
-
+    console.log("TEST", selectedFeature, featureMap);
     const featureId =
-      selectedFeature.properties?.originalId ?? selectedFeature.id;
+      selectedFeature.properties?._originalId ?? selectedFeature.id;
     if (featureId === undefined) return null;
 
     let normalizedId = featureId;
@@ -159,6 +159,7 @@ const MapLibre: React.FC<Props> = ({
         maplibreLogo={true}
         interactiveLayerIds={["point-layer", "line-layer", "polygon-layer"]}
         onClick={(e) => {
+          console.log("Map clicked:", e.features);
           if (e.features?.[0]) {
             onSelectedFeature(e.features[0]);
           } else {
@@ -210,7 +211,7 @@ const MapSidePanel: React.FC<MapSidePanelProps> = ({
 
   const featureProperties = useMemo(() => {
     return Object.entries(selectedFeature.properties || {}).filter(
-      ([key]) => key !== "originalId",
+      ([key]) => key !== "_originalId",
     );
   }, [selectedFeature.properties]);
 

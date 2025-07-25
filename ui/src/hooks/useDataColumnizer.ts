@@ -15,7 +15,7 @@ export default ({
   const [columns, setColumns] = useState<ColumnDef<any>[]>([]);
 
   const handleDataLoaded = useCallback(() => {
-    const EXCLUDED_PROPERTIES = ["originalId"];
+    const EXCLUDED_PROPERTIES = ["_originalId"];
 
     if (type === "geojson") {
       // Extract features and their properties from GeoJSON
