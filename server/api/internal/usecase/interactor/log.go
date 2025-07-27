@@ -9,7 +9,9 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
+	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/log"
 	"github.com/reearth/reearth-flow/api/pkg/subscription"
 	reearth_log "github.com/reearth/reearthx/log"
@@ -17,15 +19,17 @@ import (
 
 type LogInteractor struct {
 	logsGatewayRedis  gateway.Redis
+	jobRepo           repo.Job
 	subscriptions     *subscription.LogManager
 	watchers          map[string]context.CancelFunc
 	mu                sync.Mutex
 	permissionChecker gateway.PermissionChecker
 }
 
-func NewLogInteractor(lgRedis gateway.Redis, permissionChecker gateway.PermissionChecker) interfaces.Log {
+func NewLogInteractor(lgRedis gateway.Redis, jobRepo repo.Job, permissionChecker gateway.PermissionChecker) interfaces.Log {
 	return &LogInteractor{
 		logsGatewayRedis:  lgRedis,
+		jobRepo:           jobRepo,
 		subscriptions:     subscription.NewLogManager(),
 		watchers:          make(map[string]context.CancelFunc),
 		permissionChecker: permissionChecker,
@@ -113,6 +117,23 @@ func (li *LogInteractor) runLogMonitoringLoop(ctx context.Context, jobID id.JobI
 			if li.subscriptions.CountSubscribers(jobKey) == 0 {
 				li.stopWatchingLogs(jobKey)
 				return
+			}
+
+			currentJob, err := li.jobRepo.FindByID(context.Background(), jobID)
+			if err != nil {
+				reearth_log.Warnfc(ctx, "log: failed to get job status: %v", err)
+				continue
+			}
+
+			if currentJob != nil {
+				status := currentJob.Status()
+				if status == job.StatusCompleted || status == job.StatusFailed ||
+					status == job.StatusCancelled {
+					reearth_log.Debugfc(ctx, "log: job %s is in terminal state %s, stopping log monitoring",
+						jobID, status)
+					li.stopWatchingLogs(jobKey)
+					return
+				}
 			}
 
 			now := time.Now().UTC()
