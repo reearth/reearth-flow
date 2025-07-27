@@ -162,3 +162,5 @@ impl<const N: usize> From<Key<N>> for Vec<u8> {
 //        unsafe { MdbValue::new(bytes, self.0.len()) }
 //    }
 //}
+
+pub type Error = anyhow::Error;
