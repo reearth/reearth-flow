@@ -83,6 +83,8 @@ const ValueEditorDialog: React.FC<Props> = ({
     return "text";
   };
 
+  console.log("Field Context:", fieldContext);
+
   const fieldType = getFieldTypeDisplay(fieldContext.schema);
 
   const handleProjectVariableSet = useCallback((variable: any) => {
@@ -104,18 +106,20 @@ const ValueEditorDialog: React.FC<Props> = ({
               <div className="flex items-center gap-2">
                 <PencilLineIcon weight="thin" />
                 {t("Value Editor")} -{" "}
-                {fieldContext?.fieldName || t("Unknown Field")}{" "}
+                {fieldContext.schema.title ||
+                  fieldContext?.fieldName ||
+                  t("Unknown Field")}{" "}
                 {fieldType ? `(${fieldType})` : ""}
               </div>
             </DialogTitle>
           </DialogHeader>
           <div className="flex h-[400px]">
-            <div className="flex w-[200px] flex-col justify-between gap-2 border-r bg-secondary p-4">
-              <div className="flex w-full flex-col gap-1">
+            <div className="flex flex-col gap-6 border-r p-4">
+              <div className="flex flex-col gap-1">
                 <p className="mb-2 text-sm text-muted-foreground">
                   {t("Assets")}
                 </p>
-                <div className="flex gap-1">
+                <div className="flex justify-center gap-2">
                   <Button variant="outline" onClick={() => setShowAssets(true)}>
                     {t("Asset")}
                   </Button>
@@ -126,7 +130,7 @@ const ValueEditorDialog: React.FC<Props> = ({
                   </Button>
                 </div>
               </div>
-              <div className="w-full">
+              <div className="flex flex-1 flex-col">
                 {/* Rhai script stuff here */}
                 <p className="mb-2 text-sm text-muted-foreground">
                   {t("Project Variables")}
