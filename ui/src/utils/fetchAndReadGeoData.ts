@@ -1,3 +1,4 @@
+import { parseGeoJson } from "./geojson";
 import { parseJSONL } from "./jsonl";
 import { intermediateDataTransform } from "./jsonl/transformIntermediateData";
 
@@ -24,8 +25,13 @@ export async function fetchAndReadData(fileUrl: string): Promise<{
     const fileExtension = fileUrl.split(".").pop()?.toLowerCase();
     if (fileExtension === "geojson") {
       const content = await response.text();
-      const parsedData = JSON.parse(content);
-      return { fileContent: parsedData, type: "geojson", error: null };
+      const parsedGeoJson = parseGeoJson(content);
+
+      return {
+        fileContent: parsedGeoJson,
+        type: "geojson",
+        error: null,
+      };
     } else if (fileExtension === "jsonl") {
       const text = await response.text();
       const parsedJSONL = parseJSONL(text, {

@@ -59,6 +59,9 @@ type DataTableProps<TData, TValue> = {
   onSortChange?: (value: string) => void;
   searchTerm?: string;
   setSearchTerm?: (term: string) => void;
+  selectedRow?: any;
+  onRowDoubleClick?: (value: any) => void;
+  useStrictSelectedRow?: boolean;
 };
 
 function DataTable<TData, TValue>({
@@ -81,6 +84,9 @@ function DataTable<TData, TValue>({
   onSortChange,
   searchTerm,
   setSearchTerm,
+  selectedRow,
+  useStrictSelectedRow,
+  onRowDoubleClick,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -236,7 +242,8 @@ function DataTable<TData, TValue>({
         <div className="overflow-auto rounded-md border">
           <div
             ref={parentRef}
-            className="h-full overflow-auto rounded-md border">
+            className="h-full overflow-auto rounded-md border"
+            style={{ contain: "paint", willChange: "transform" }}>
             <Table>
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
@@ -245,7 +252,7 @@ function DataTable<TData, TValue>({
                       return (
                         <TableHead
                           key={header.id}
-                          className={`${condensed ? "h-8" : "h-10"} whitespace-nowrap`}>
+                          className={`${condensed ? "h-8" : "h-10"}`}>
                           {header.isPlaceholder
                             ? null
                             : flexRender(
@@ -261,9 +268,24 @@ function DataTable<TData, TValue>({
               <TableBody>
                 {rows.length ? (
                   virtualizer.getVirtualItems().map((virtualRow, idx) => {
-                    const row = rows[virtualRow.index];
+                    const row = rows[virtualRow.index] as any;
+                    let isSelected = false;
+                    if (selectedRow) {
+                      isSelected =
+                        String(selectedRow?.id || "").replace(
+                          /[^a-zA-Z0-9]/g,
+                          "",
+                        ) ===
+                        String(row.original?.id || "").replace(
+                          /[^a-zA-Z0-9]/g,
+                          "",
+                        );
+                    }
                     return (
                       <TableRow
+                        onDoubleClick={() => {
+                          onRowDoubleClick?.(row.original);
+                        }}
                         key={row.id}
                         // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
                         className="after:border-line-200 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b relative cursor-pointer border-0"
@@ -271,21 +293,31 @@ function DataTable<TData, TValue>({
                           height: `${virtualRow.size}px`,
                           transform: `translateY(${virtualRow.start - idx * virtualRow.size}px)`,
                         }}
-                        data-state={row.getIsSelected() && "selected"}
+                        data-state={
+                          useStrictSelectedRow
+                            ? selectedRow && isSelected
+                              ? "selected"
+                              : undefined
+                            : row.getIsSelected()
+                              ? "selected"
+                              : undefined
+                        }
                         onClick={() => {
                           row.toggleSelected();
                           onRowClick?.(row.original);
                         }}>
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell
-                            key={cell.id}
-                            className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext(),
-                            )}
-                          </TableCell>
-                        ))}
+                        {row.getVisibleCells().map((cell: any) => {
+                          return (
+                            <TableCell
+                              key={cell.id}
+                              className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext(),
+                              )}
+                            </TableCell>
+                          );
+                        })}
                       </TableRow>
                     );
                   })
