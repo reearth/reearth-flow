@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { CesiumViewer, RenderFallback } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
@@ -25,4 +27,4 @@ const ThreeDViewer: React.FC<Props> = ({
   );
 };
 
-export { ThreeDViewer };
+export default memo(ThreeDViewer);

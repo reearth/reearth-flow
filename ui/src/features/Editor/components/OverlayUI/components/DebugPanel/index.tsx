@@ -28,7 +28,7 @@ import { useT } from "@flow/lib/i18n";
 
 import DebugLogs from "./DebugLogs";
 import DebugPreview from "./DebugPreview";
-import { DataTable } from "./DebugPreview/components";
+import DataTable from "./DebugPreview/components/DataTable";
 import useHooks from "./hooks";
 
 const DebugPanel: React.FC = () => {
@@ -36,6 +36,7 @@ const DebugPanel: React.FC = () => {
     debugJobId,
     debugJobState,
     fileType,
+    mapRef,
     fullscreenDebug,
     expanded,
     minimized,
@@ -44,15 +45,24 @@ const DebugPanel: React.FC = () => {
     dataURLs,
     selectedOutputData,
     isLoadingData,
+    enableClustering,
+    selectedFeature,
+    setSelectedFeature,
+    setConvertedSelectedFeature,
+    setEnableClustering,
     handleFullscreenExpand,
     handleExpand,
     handleMinimize,
     handleTabChange,
     handleShowTempPossibleIssuesDialogClose,
     handleSelectedDataChange,
+    handleRowSingleClick,
+    handleRowDoubleClick,
+    handleFlyToSelectedFeature,
   } = useHooks();
   const t = useT();
   const [tabValue, setTabValue] = useState("debug-logs");
+
   const hasSwitchedToViewerRef = useRef(false);
   const debugJobIdRef = useRef(debugJobId);
 
@@ -81,9 +91,10 @@ const DebugPanel: React.FC = () => {
         className={`pointer-events-auto w-[95vw] rounded-md bg-secondary/70 shadow-md shadow-secondary backdrop-blur-xs transition-all ${minimized ? "h-[38px]" : fullscreenDebug ? "h-[100vh] w-[100vw]" : expanded ? "h-[80vh]" : "h-[500px]"}`}
         value={tabValue}
         defaultValue="debug-logs"
-        onDoubleClick={handleExpand}
         onValueChange={setTabValue}>
-        <div className={`flex ${minimized ? "" : "border-b"} p-1`}>
+        <div
+          className={`flex ${minimized ? "" : "border-b"} p-1`}
+          onDoubleClick={handleExpand}>
           <div className="flex w-fit items-center justify-start p-1">
             <TabsList className="gap-2">
               <TabsTrigger
@@ -186,6 +197,9 @@ const DebugPanel: React.FC = () => {
                 <DataTable
                   fileContent={selectedOutputData}
                   fileType={fileType}
+                  selectedFeature={selectedFeature}
+                  onSingleClick={handleRowSingleClick}
+                  onDoubleClick={handleRowDoubleClick}
                 />
               </ResizablePanel>
               <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 relative m-[0px] border border-border/50 transition hover:border-logo/70" />
@@ -197,9 +211,16 @@ const DebugPanel: React.FC = () => {
                   selectedOutputData={selectedOutputData}
                   isLoadingData={isLoadingData}
                   showTempPossibleIssuesDialog={showTempPossibleIssuesDialog}
+                  selectedFeature={selectedFeature}
+                  enableClustering={enableClustering}
+                  mapRef={mapRef}
+                  onConvertedSelectedFeature={setConvertedSelectedFeature}
                   onShowTempPossibleIssuesDialogClose={
                     handleShowTempPossibleIssuesDialogClose
                   }
+                  onSelectedFeature={setSelectedFeature}
+                  onEnableClusteringChange={setEnableClustering}
+                  onFlyToSelectedFeature={handleFlyToSelectedFeature}
                 />
               </ResizablePanel>
             </ResizablePanelGroup>
