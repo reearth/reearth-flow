@@ -17,7 +17,6 @@ const TextInput = <
 >(
   props: BaseInputTemplateProps<T, S, F> & {
     onEditorOpen?: () => void;
-    onAssetsOpen?: () => void;
   },
 ) => {
   const {
@@ -32,7 +31,6 @@ const TextInput = <
     onBlur,
     onFocus,
     onEditorOpen,
-    onAssetsOpen,
     options,
     schema,
     rawErrors = [],
@@ -88,9 +86,7 @@ const TextInput = <
         <ActionArea
           value={value}
           defaultValue={defaultValue}
-          type={schema.type}
           onEditorOpen={onEditorOpen}
-          onAssetsOpen={onAssetsOpen}
           onReset={handleReset}
         />
       </div>

@@ -17,7 +17,6 @@ const NumberInput = <
 >(
   props: BaseInputTemplateProps<T, S, F> & {
     onEditorOpen?: () => void;
-    onAssetsOpen?: () => void;
   },
 ) => {
   const {
@@ -32,7 +31,6 @@ const NumberInput = <
     onBlur,
     onFocus,
     onEditorOpen,
-    onAssetsOpen,
     options,
     schema,
     rawErrors = [],
@@ -104,7 +102,6 @@ const NumberInput = <
           value={value}
           defaultValue={defaultValue}
           onEditorOpen={onEditorOpen}
-          onAssetsOpen={onAssetsOpen}
           onReset={handleReset}
         />
       </div>

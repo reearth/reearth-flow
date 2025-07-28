@@ -1,8 +1,4 @@
-import {
-  ArrowUDownLeftIcon,
-  FileIcon,
-  PencilLineIcon,
-} from "@phosphor-icons/react";
+import { ArrowUDownLeftIcon, PencilLineIcon } from "@phosphor-icons/react";
 import { RefObject, useCallback } from "react";
 
 import { IconButton } from "@flow/components/buttons";
@@ -11,18 +7,14 @@ import { useT } from "@flow/lib/i18n";
 type Props = {
   value: any;
   defaultValue: RefObject<any>;
-  type?: any;
   onEditorOpen?: () => void;
-  onAssetsOpen?: () => void;
   onReset?: () => void;
 };
 
 const ActionArea: React.FC<Props> = ({
   value,
   defaultValue,
-  type,
   onEditorOpen,
-  onAssetsOpen,
   onReset,
 }) => {
   const t = useT();
@@ -35,24 +27,8 @@ const ActionArea: React.FC<Props> = ({
     [onEditorOpen],
   );
 
-  const handleAssetsOpen = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.preventDefault();
-      onAssetsOpen?.();
-    },
-    [onAssetsOpen],
-  );
-
   return (
     <div className="flex items-center">
-      {type === "string" && (
-        <IconButton
-          icon={<FileIcon />}
-          tooltipText={t("Select Asset")}
-          onClick={handleAssetsOpen}
-          disabled={!onAssetsOpen}
-        />
-      )}
       <IconButton
         icon={<PencilLineIcon />}
         tooltipText={t("Open Editor")}
