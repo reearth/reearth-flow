@@ -16,10 +16,21 @@ export type DialogOptions =
   | "projectVariables"
   | undefined;
 
-export default () => {
+export default ({
+  openWorkflows,
+  currentWorkflowId,
+}: {
+  openWorkflows: { id: string; name: string }[];
+  currentWorkflowId: string;
+}) => {
   const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
   const handleDialogOpen = (dialog: DialogOptions) => setShowDialog(dialog);
   const handleDialogClose = () => setShowDialog(undefined);
+
+  const isMainWorkflow = useMemo(
+    () => openWorkflows?.[0]?.id === currentWorkflowId,
+    [openWorkflows, currentWorkflowId],
+  );
 
   const {
     useGetProjectVariables,
@@ -130,6 +141,7 @@ export default () => {
   );
 
   return {
+    isMainWorkflow,
     showDialog,
     currentProjectVariables,
     handleProjectVariableAdd,

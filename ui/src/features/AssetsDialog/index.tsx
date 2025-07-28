@@ -24,6 +24,7 @@ import {
 import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
+import { Asset } from "@flow/types";
 
 import { AssetDeletionDialog } from "./AssetDeletionDialog";
 import { AssetEditDialog } from "./AssetEditDialog";
@@ -33,9 +34,13 @@ import useHooks from "./hooks";
 
 type Props = {
   onDialogClose: () => void;
+  onAssetDoubleClick?: (asset: Asset) => void;
 };
 
-const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
+const AssetsDialog: React.FC<Props> = ({
+  onDialogClose,
+  onAssetDoubleClick,
+}) => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
 
@@ -64,10 +69,15 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
     handleListView,
     handleCopyUrlToClipBoard,
     handleAssetDownload,
-  } = useHooks({ workspaceId: currentWorkspace?.id ?? "" });
+    handleAssetDoubleClick,
+  } = useHooks({
+    workspaceId: currentWorkspace?.id ?? "",
+    onDialogClose,
+    onAssetDoubleClick,
+  });
 
   return (
-    <Dialog open={true} onOpenChange={onDialogClose}>
+    <Dialog open onOpenChange={onDialogClose}>
       <DialogContent className="max-h-[800px] w-full max-w-4xl overflow-hidden">
         <DialogTitle className="flex items-center font-thin">
           <HardDriveIcon size={24} className="mr-2 inline-block font-thin" />
@@ -136,6 +146,7 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
                 setSearchTerm={setSearchTerm}
                 onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
                 onAssetDownload={handleAssetDownload}
+                onAssetDoubleClick={handleAssetDoubleClick}
               />
             ) : (
               <AssetsGridView
@@ -145,6 +156,7 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
                 setAssetToBeEdited={setAssetToBeEdited}
                 onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
                 onAssetDownload={handleAssetDownload}
+                onAssetDoubleClick={onAssetDoubleClick}
               />
             )}
             {assets && assets.length > 0 && (

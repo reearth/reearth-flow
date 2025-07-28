@@ -1,6 +1,7 @@
 import {
   ColumnDef,
   PaginationState,
+  Row,
   SortingState,
   VisibilityState,
   flexRender,
@@ -27,6 +28,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@flow/components";
+import { useDoubleClick } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { OrderDirection } from "@flow/types/paginationOptions";
 
@@ -48,20 +50,20 @@ type DataTableProps<TData, TValue> = {
   enablePagination?: boolean;
   totalPages?: number;
   condensed?: boolean;
-  onRowClick?: (row: TData) => void;
   currentPage?: number;
-  setCurrentPage?: (page: number) => void;
   resultsPerPage?: number;
   currentOrder?: OrderDirection;
-  setCurrentOrder?: (order: OrderDirection) => void;
   sortOptions?: { value: string; label: string }[];
   currentSortValue?: string;
-  onSortChange?: (value: string) => void;
   searchTerm?: string;
-  setSearchTerm?: (term: string) => void;
   selectedRow?: any;
-  onRowDoubleClick?: (value: any) => void;
   useStrictSelectedRow?: boolean;
+  onRowClick?: (row: TData) => void;
+  onRowDoubleClick?: (row: TData) => void;
+  setCurrentPage?: (page: number) => void;
+  setCurrentOrder?: (order: OrderDirection) => void;
+  onSortChange?: (value: string) => void;
+  setSearchTerm?: (term: string) => void;
 };
 
 function DataTable<TData, TValue>({
@@ -73,20 +75,20 @@ function DataTable<TData, TValue>({
   enablePagination = false,
   totalPages = 1,
   condensed,
-  onRowClick,
   currentPage = 1,
-  setCurrentPage,
   resultsPerPage,
   currentOrder = OrderDirection.Desc,
-  setCurrentOrder,
   sortOptions,
   currentSortValue,
-  onSortChange,
   searchTerm,
-  setSearchTerm,
   selectedRow,
   useStrictSelectedRow,
+  onRowClick,
   onRowDoubleClick,
+  setCurrentPage,
+  setCurrentOrder,
+  onSortChange,
+  setSearchTerm,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -162,6 +164,31 @@ function DataTable<TData, TValue>({
     getScrollElement: () => parentRef.current,
     estimateSize: () => 24,
   });
+
+  const handleRowDoubleClick = (row: Row<TData>) => {
+    onRowDoubleClick?.(row.original);
+  };
+
+  const [handleSingleClick, handleDoubleClick] = useDoubleClick<
+    Row<TData>,
+    Row<TData>
+  >(
+    onRowClick
+      ? (row?: Row<TData>) => {
+          if (row) {
+            row.toggleSelected();
+            onRowClick(row.original);
+          }
+        }
+      : undefined,
+    onRowDoubleClick
+      ? (row?: Row<TData>) => {
+          if (row) {
+            handleRowDoubleClick(row);
+          }
+        }
+      : undefined,
+  );
 
   return (
     <div className="flex h-full flex-col justify-between">
@@ -283,9 +310,6 @@ function DataTable<TData, TValue>({
                     }
                     return (
                       <TableRow
-                        onDoubleClick={() => {
-                          onRowDoubleClick?.(row.original);
-                        }}
                         key={row.id}
                         // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
                         className="after:border-line-200 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b relative cursor-pointer border-0"
@@ -302,22 +326,26 @@ function DataTable<TData, TValue>({
                               ? "selected"
                               : undefined
                         }
-                        onClick={() => {
-                          row.toggleSelected();
-                          onRowClick?.(row.original);
-                        }}>
-                        {row.getVisibleCells().map((cell: any) => {
-                          return (
-                            <TableCell
-                              key={cell.id}
-                              className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>
-                              {flexRender(
-                                cell.column.columnDef.cell,
-                                cell.getContext(),
-                              )}
-                            </TableCell>
-                          );
-                        })}
+                        onClick={
+                          handleSingleClick
+                            ? () => handleSingleClick(row)
+                            : undefined
+                        }
+                        onDoubleClick={
+                          handleDoubleClick
+                            ? () => handleDoubleClick(row)
+                            : undefined
+                        }>
+                        {row.getVisibleCells().map((cell: any) => (
+                          <TableCell
+                            key={cell.id}
+                            className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext(),
+                            )}
+                          </TableCell>
+                        ))}
                       </TableRow>
                     );
                   })

@@ -29,7 +29,6 @@ type PendingChange =
     };
 
 export default ({
-  isOpen,
   currentProjectVariables,
   projectId,
   onClose,
@@ -39,7 +38,6 @@ export default ({
   onDeleteBatch,
   onBatchUpdate,
 }: {
-  isOpen: boolean;
   currentProjectVariables?: ProjectVariable[];
   projectId?: string;
   onClose: () => void;
@@ -128,7 +126,7 @@ export default ({
       setLocalProjectVariables([...currentProjectVariables]);
       setPendingChanges([]);
     }
-  }, [currentProjectVariables, isOpen, getUserFacingName]);
+  }, [currentProjectVariables, getUserFacingName]);
 
   const handleLocalAdd = useCallback(
     (type: VarType) => {
