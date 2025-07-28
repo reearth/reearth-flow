@@ -309,14 +309,6 @@ export default ({
       const copyData = await prepareCopyData(node);
       if (!copyData) return;
 
-      // if (copyData.nodes.some((n) => n.type === "reader")) {
-      //   return toast({
-      //     title: t("Reader node cannot be copied"),
-      //     description: t("Only one reader can be present in any project."),
-      //     variant: "default",
-      //   });
-      // }
-
       await copy({
         ...copyData,
       });
