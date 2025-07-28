@@ -120,43 +120,32 @@ func (b *AsyncqBatch) GetJobStatus(ctx context.Context, jobName string) (gateway
 }
 
 func (b *AsyncqBatch) getTaskStatus(ctx context.Context, taskID string) (gateway.JobStatus, error) {
-	pendingTasks, err := b.inspector.ListPendingTasks("default")
-	if err == nil {
-		for _, task := range pendingTasks {
-			if task.ID == taskID {
-				return gateway.JobStatusPending, nil
-			}
+	taskInfo, err := b.inspector.GetTaskInfo("default", taskID)
+	if err != nil {
+		if fmt.Sprintf("%v", err) == "asynq: task not found" {
+			return gateway.JobStatusUnknown, fmt.Errorf("task not found: %s", taskID)
 		}
+		return gateway.JobStatusUnknown, fmt.Errorf("failed to get task info: %w", err)
 	}
 
-	activeTasks, err := b.inspector.ListActiveTasks("default")
-	if err == nil {
-		for _, task := range activeTasks {
-			if task.ID == taskID {
-				return gateway.JobStatusRunning, nil
-			}
-		}
+	switch taskInfo.State {
+	case asynq.TaskStatePending:
+		return gateway.JobStatusPending, nil
+	case asynq.TaskStateActive:
+		return gateway.JobStatusRunning, nil
+	case asynq.TaskStateCompleted:
+		return gateway.JobStatusCompleted, nil
+	case asynq.TaskStateRetry:
+		return gateway.JobStatusFailed, nil
+	case asynq.TaskStateArchived:
+		return gateway.JobStatusFailed, nil
+	case asynq.TaskStateScheduled:
+		return gateway.JobStatusPending, nil
+	case asynq.TaskStateAggregating:
+		return gateway.JobStatusPending, nil
+	default:
+		return gateway.JobStatusUnknown, fmt.Errorf("unknown task state: %s", taskInfo.State)
 	}
-
-	completedTasks, err := b.inspector.ListCompletedTasks("default")
-	if err == nil {
-		for _, task := range completedTasks {
-			if task.ID == taskID {
-				return gateway.JobStatusCompleted, nil
-			}
-		}
-	}
-
-	retryTasks, err := b.inspector.ListRetryTasks("default")
-	if err == nil {
-		for _, task := range retryTasks {
-			if task.ID == taskID {
-				return gateway.JobStatusFailed, nil
-			}
-		}
-	}
-
-	return gateway.JobStatusUnknown, fmt.Errorf("task not found: %s", taskID)
 }
 
 func (b *AsyncqBatch) updateJobStatus(jobName string, status gateway.JobStatus) {
