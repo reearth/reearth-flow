@@ -86,6 +86,7 @@ func (b *BatchRepo) SubmitJob(
 	variables map[string]interface{},
 	projectID id.ProjectID,
 	workspaceID accountdomain.WorkspaceID,
+	deploymentID id.DeploymentID,
 ) (string, error) {
 	formattedJobID := formatJobID(jobID.String())
 

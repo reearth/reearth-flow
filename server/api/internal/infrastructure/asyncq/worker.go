@@ -145,6 +145,7 @@ func (w *AsyncqWorker) executeWorkflow(
 		payload.Variables,
 		projectID,
 		workspaceID,
+		deploymentID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to submit job to GCP Batch: %w", err)

@@ -56,8 +56,8 @@ func (b *AsyncqBatch) SubmitJob(
 	variables map[string]interface{},
 	projectID id.ProjectID,
 	workspaceID accountdomain.WorkspaceID,
+	deploymentID id.DeploymentID,
 ) (string, error) {
-	deploymentID := id.NewDeploymentID()
 
 	task, err := NewWorkflowJobTask(
 		jobID,
