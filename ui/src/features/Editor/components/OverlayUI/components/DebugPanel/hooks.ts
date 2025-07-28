@@ -212,8 +212,7 @@ export default () => {
               [minLng, minLat],
               [maxLng, maxLat],
             ],
-
-            { padding: 40, duration: 500, maxZoom: 24 },
+            { padding: 0, duration: 500, maxZoom: 15 },
           );
         } catch (err) {
           console.error("Error computing bbox for selectedFeature:", err);
