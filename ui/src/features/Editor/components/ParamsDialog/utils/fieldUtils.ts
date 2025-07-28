@@ -46,8 +46,8 @@ export function setValueAtPath(obj: any, path: string[], value: any): any {
       current[key] = {};
     } else {
       // Preserve array structure when cloning
-      current[key] = Array.isArray(current[key]) 
-        ? [...current[key]] 
+      current[key] = Array.isArray(current[key])
+        ? [...current[key]]
         : { ...current[key] };
     }
     current = current[key];
