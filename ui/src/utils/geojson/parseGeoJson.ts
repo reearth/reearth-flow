@@ -7,7 +7,6 @@ export function parseGeoJson(content: string) {
     features: parsedData.features.map((f: any) => ({
       ...f,
       properties: {
-        _originalId: f.id,
         ...f.properties,
       },
     })),

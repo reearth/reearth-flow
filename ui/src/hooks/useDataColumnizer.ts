@@ -15,8 +15,6 @@ export default ({
   const [columns, setColumns] = useState<ColumnDef<any>[]>([]);
 
   const handleDataLoaded = useCallback(() => {
-    const EXCLUDED_PROPERTIES = ["_originalId"];
-
     if (type === "geojson") {
       // Extract features and their properties from GeoJSON
       const features = parsedData.features || [];
@@ -50,15 +48,13 @@ export default ({
                 header: `geometry.${geometry}`,
               }) as ColumnDef<any>,
           ),
-          ...Array.from(allProps)
-            .filter((prop) => !EXCLUDED_PROPERTIES.includes(prop))
-            .map(
-              (prop) =>
-                ({
-                  accessorKey: `properties${prop}`,
-                  header: `properties.${prop}`,
-                }) as ColumnDef<any>,
-            ),
+          ...Array.from(allProps).map(
+            (prop) =>
+              ({
+                accessorKey: `properties${prop}`,
+                header: `properties.${prop}`,
+              }) as ColumnDef<any>,
+          ),
         ];
 
         // Transform features for table display

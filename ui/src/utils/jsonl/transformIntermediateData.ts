@@ -13,7 +13,7 @@ export function intermediateDataTransform(parsedData: any) {
       return {
         id: parsedData.id,
         type: "Feature",
-        properties: { _originalId: parsedData.id, ...parsedData.attributes },
+        properties: { ...parsedData.attributes },
         geometry: handle2DGeometry(parsedData.geometry.value.flowGeometry2D),
       };
     }

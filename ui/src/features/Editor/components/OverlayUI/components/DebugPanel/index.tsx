@@ -60,20 +60,38 @@ const DebugPanel: React.FC = () => {
   const t = useT();
   const [tabValue, setTabValue] = useState("debug-logs");
 
-  const featureMap = useMemo(() => {
-    if (!selectedOutputData?.features) return null;
+  const { featureMap, processedOutputData } = useMemo(() => {
+    if (!selectedOutputData?.features) {
+      return { featureMap: null, processedOutputData: selectedOutputData };
+    }
 
-    return new Map(
-      selectedOutputData.features
-        .map((f: any) => {
-          const id = f.id ?? f.properties?._originalId;
-          return id !== undefined ? ([id, f] as [string | number, any]) : null;
-        })
-        .filter(Boolean),
-    );
-  }, [selectedOutputData?.features]);
+    const map = new Map<string | number, any>();
+    const processedFeatures = selectedOutputData.features.map((f: any) => {
+      const processedFeature = {
+        ...f,
+        properties: {
+          _originalId: f.id,
+          ...f.properties,
+        },
+      };
 
-  const handleConvertFeature = useCallback(
+      if (f.id !== undefined) {
+        map.set(f.id, processedFeature);
+      }
+
+      return processedFeature;
+    });
+
+    return {
+      featureMap: map,
+      processedOutputData: {
+        ...selectedOutputData,
+        features: processedFeatures,
+      },
+    };
+  }, [selectedOutputData]);
+
+  const convertFeature = useCallback(
     (feature: any) => {
       if (!feature || !featureMap) return null;
 
@@ -99,8 +117,8 @@ const DebugPanel: React.FC = () => {
   );
 
   const convertedSelectedFeature = useMemo(() => {
-    return handleConvertFeature(selectedFeature);
-  }, [selectedFeature, handleConvertFeature]);
+    return convertFeature(selectedFeature);
+  }, [selectedFeature, convertFeature]);
 
   const handleFlyToSelectedFeature = useCallback(
     (selectedFeature: any) => {
@@ -138,13 +156,13 @@ const DebugPanel: React.FC = () => {
     (value: any) => {
       setEnableClustering(false);
       setSelectedFeature(value);
-      handleFlyToSelectedFeature(handleConvertFeature(value));
+      handleFlyToSelectedFeature(convertFeature(value));
     },
     [
       handleFlyToSelectedFeature,
       setSelectedFeature,
       setEnableClustering,
-      handleConvertFeature,
+      convertFeature,
     ],
   );
 
@@ -293,7 +311,7 @@ const DebugPanel: React.FC = () => {
                   debugJobState={debugJobState}
                   dataURLs={dataURLs}
                   fileType={fileType}
-                  selectedOutputData={selectedOutputData}
+                  selectedOutputData={processedOutputData}
                   isLoadingData={isLoadingData}
                   showTempPossibleIssuesDialog={showTempPossibleIssuesDialog}
                   selectedFeature={selectedFeature}
