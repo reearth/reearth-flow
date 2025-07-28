@@ -147,3 +147,36 @@ fragment ProjectSnapshot on ProjectSnapshot {
   updates
   version
 }
+
+fragment CMSProject on CMSProject {
+  id
+  name
+  alias
+  description
+  license
+  readme
+  workspaceId
+  visibility
+  createdAt
+  updatedAt
+}
+
+fragment CMSModel on CMSModel {
+  id
+  name
+  alias
+  description
+  editorUrl
+  key
+  schema
+  publicApiEp
+  createdAt
+  updatedAt
+}
+
+fragment CMSItem on CMSItem {
+  id
+  fields
+  createdAt
+  updatedAt
+}

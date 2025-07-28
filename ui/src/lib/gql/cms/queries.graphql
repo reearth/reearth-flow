@@ -1,0 +1,39 @@
+query GetCmsProject($projectIdOrAlias: ID!) {
+  cmsProject(projectIdOrAlias: $projectIdOrAlias) {
+    cmsProject {
+      ...CMSProject
+    }
+  }
+}
+
+query GetCmsProjects($workspaceId: ID!, $publicOnly: Boolean) {
+  cmsProjects(workspaceId: $workspaceId, publicOnly: $publicOnly) {
+    ...CMSProject
+  }
+}
+
+query GetCmsModels($projectId: ID!) {
+  cmsModels(projectId: $projectId) {
+    ...CMSModel
+  }
+}
+
+query GetCmsItems($projectId: ID!, $modelId: ID!, $page: Int, $pageSize: Int) {
+  cmsItems(
+    projectId: $projectId
+    modelId: $modelId
+    page: $page
+    pageSize: $pageSize
+  ) {
+    items {
+      ...CMSItem
+    }
+    totalCount
+  }
+}
+
+query GetCmsModelExportUrl($projectId: ID!, $modelId: ID!) {
+  cmsModelExportUrl(projectId: $projectId, modelId: $modelId) {
+    url
+  }
+}
