@@ -1,6 +1,6 @@
 import maplibregl from "maplibre-gl";
 import * as React from "react";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { Map } from "react-map-gl/maplibre";
 
 import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
