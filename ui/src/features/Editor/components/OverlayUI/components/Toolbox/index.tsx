@@ -35,7 +35,6 @@ type Props = {
   canUndo: boolean;
   canRedo: boolean;
   isMainWorkflow: boolean;
-  hasReader?: boolean;
   onRedo: () => void;
   onUndo: () => void;
   onLayoutChange: () => void;
@@ -45,7 +44,6 @@ const Toolbox: React.FC<Props> = ({
   canUndo,
   canRedo,
   isMainWorkflow,
-  hasReader,
   onRedo,
   onUndo,
   onLayoutChange,
@@ -56,7 +54,6 @@ const Toolbox: React.FC<Props> = ({
       id: "reader" as const,
       name: t("Reader Node"),
       icon: <DatabaseIcon weight="thin" size={16} />,
-      disabled: !isMainWorkflow || hasReader,
     },
     {
       id: "transformer" as const,

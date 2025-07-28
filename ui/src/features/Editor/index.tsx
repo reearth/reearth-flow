@@ -43,7 +43,6 @@ export default function Editor({
     canRedo,
     allowedToDeploy,
     isMainWorkflow,
-    hasReader,
     deferredDeleteRef,
     showBeforeDeleteDialog,
     handleWorkflowAdd,
@@ -110,7 +109,6 @@ export default function Editor({
               canUndo={canUndo}
               canRedo={canRedo}
               isMainWorkflow={isMainWorkflow}
-              hasReader={hasReader}
               onNodesAdd={handleNodesAdd}
               onNodePickerClose={handleNodePickerClose}
               onWorkflowUndo={handleWorkflowUndo}
