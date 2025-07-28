@@ -82,7 +82,7 @@ export default ({
     setCurrentWorkflowId,
   });
 
-  const { hoveredDetails, handleNodeHover, handleEdgeHover } = useUIState({});
+  const { hoveredDetails, handleNodeHover, handleEdgeHover } = useUIState();
 
   useEffect(() => {
     fitView({ padding: 0.5 });
