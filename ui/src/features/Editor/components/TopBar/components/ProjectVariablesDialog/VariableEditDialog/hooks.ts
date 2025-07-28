@@ -34,7 +34,6 @@ export default ({
 
   const handleSave = useCallback(() => {
     if (localVariable && hasChanges) {
-      console.log("Saving variable:", localVariable);
       onUpdate(localVariable);
     }
     onClose();

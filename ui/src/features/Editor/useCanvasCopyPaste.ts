@@ -9,11 +9,8 @@ import {
 import { useCallback } from "react";
 
 import { useCopyPaste } from "@flow/hooks/useCopyPaste";
-import { useT } from "@flow/lib/i18n";
 import type { Edge, Node, NodeChange, Workflow } from "@flow/types";
 import { generateUUID } from "@flow/utils";
-
-import { useToast } from "../NotificationSystem/useToast";
 
 export default ({
   nodes,
@@ -39,8 +36,6 @@ export default ({
   handleEdgesChange: (changes: EdgeChange[]) => void;
 }) => {
   const { copy, paste } = useCopyPaste();
-  const { toast } = useToast();
-  const t = useT();
   const { x, y, zoom } = useViewport();
   const { screenToFlowPosition } = useReactFlow();
 
@@ -314,19 +309,11 @@ export default ({
       const copyData = await prepareCopyData(node);
       if (!copyData) return;
 
-      if (copyData.nodes.some((n) => n.type === "reader")) {
-        return toast({
-          title: t("Reader node cannot be copied"),
-          description: t("Only one reader can be present in any project."),
-          variant: "default",
-        });
-      }
-
       await copy({
         ...copyData,
       });
     },
-    [copy, prepareCopyData, toast, t],
+    [copy, prepareCopyData],
   );
 
   const handleCut = useCallback(
@@ -365,17 +352,6 @@ export default ({
         nodes: [],
         edges: [],
       };
-      // Check for cut to ensure only one reader can be pasted
-      if (
-        pastedNodes.some((p: Node) => p.type === "reader") &&
-        nodes.some((n) => n.type === "reader")
-      ) {
-        return toast({
-          title: t("Reader node cannot be pasted"),
-          description: t("Only one reader can be present in any project."),
-          variant: "default",
-        });
-      }
 
       const newNodes = newNodeCreation(
         pastedNodes,
@@ -434,8 +410,6 @@ export default ({
       newEdgeCreation,
       newWorkflowCreation,
       handleWorkflowUpdate,
-      t,
-      toast,
     ],
   );
 

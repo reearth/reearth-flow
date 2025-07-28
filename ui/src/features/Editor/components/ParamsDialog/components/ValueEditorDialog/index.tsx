@@ -83,8 +83,6 @@ const ValueEditorDialog: React.FC<Props> = ({
     return "text";
   };
 
-  console.log("Field Context:", fieldContext);
-
   const fieldType = getFieldTypeDisplay(fieldContext.schema);
 
   const handleProjectVariableSet = useCallback((variable: any) => {

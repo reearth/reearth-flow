@@ -28,7 +28,6 @@ type OverlayUIProps = {
   canUndo: boolean;
   canRedo: boolean;
   isMainWorkflow: boolean;
-  hasReader?: boolean;
   onNodesAdd: (nodes: Node[]) => void;
   onNodePickerClose: () => void;
   onWorkflowUndo: () => void;
@@ -47,7 +46,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   canUndo,
   canRedo,
   isMainWorkflow,
-  hasReader,
   onNodesAdd,
   onNodePickerClose,
   onWorkflowUndo,
@@ -79,7 +77,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
               canUndo={canUndo}
               canRedo={canRedo}
               isMainWorkflow={isMainWorkflow}
-              hasReader={hasReader}
               onLayoutChange={handleLayoutOptionsToggle}
               onRedo={onWorkflowRedo}
               onUndo={onWorkflowUndo}
