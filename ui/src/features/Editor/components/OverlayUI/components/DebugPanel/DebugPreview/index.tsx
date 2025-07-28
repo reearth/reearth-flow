@@ -5,7 +5,7 @@ import {
   TargetIcon,
   WarningIcon,
 } from "@phosphor-icons/react";
-import { memo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 
 import {
   Button,
@@ -41,10 +41,10 @@ type Props = {
   selectedOutputData: any;
   debugJobState?: JobState;
   isLoadingData: boolean;
+  onConvertedSelectedFeature: (value: any) => void;
   dataURLs?: { key: string; name: string }[];
   showTempPossibleIssuesDialog: boolean;
   selectedFeature: any;
-  convertedSelectedFeature: any;
   enableClustering?: boolean;
   mapRef: React.RefObject<maplibregl.Map | null>;
   onShowTempPossibleIssuesDialogClose: () => void;
@@ -57,12 +57,12 @@ const DebugPreview: React.FC<Props> = ({
   debugJobState,
   selectedOutputData,
   dataURLs,
+  onConvertedSelectedFeature,
   isLoadingData,
   showTempPossibleIssuesDialog,
   enableClustering,
   mapRef,
   selectedFeature,
-  convertedSelectedFeature,
   onShowTempPossibleIssuesDialogClose,
   onSelectedFeature,
   onEnableClusteringChange,
@@ -75,6 +75,68 @@ const DebugPreview: React.FC<Props> = ({
     mapRef,
     selectedOutputData,
   });
+
+  const { featureMap, processedOutputData } = useMemo(() => {
+    if (!selectedOutputData?.features) {
+      return { featureMap: null, processedOutputData: selectedOutputData };
+    }
+
+    const map = new Map<string | number, any>();
+    const processedFeatures = selectedOutputData.features.map((f: any) => {
+      const processedFeature = {
+        ...f,
+        properties: {
+          _originalId: f.id,
+          ...f.properties,
+        },
+      };
+
+      if (f.id !== undefined) {
+        map.set(f.id, processedFeature);
+      }
+
+      return processedFeature;
+    });
+
+    return {
+      featureMap: map,
+      processedOutputData: {
+        ...selectedOutputData,
+        features: processedFeatures,
+      },
+    };
+  }, [selectedOutputData]);
+
+  const convertFeature = useCallback(
+    (feature: any) => {
+      if (!feature || !featureMap) return null;
+
+      if ("geometry" in feature && feature.geometry) {
+        return feature;
+      }
+
+      const featureId = feature.properties?._originalId ?? feature.id;
+      if (featureId === undefined) return null;
+
+      let normalizedId = featureId;
+      if (typeof featureId === "string") {
+        try {
+          normalizedId = JSON.parse(featureId);
+        } catch {
+          normalizedId = featureId;
+        }
+      }
+
+      return featureMap.get(normalizedId) || null;
+    },
+    [featureMap],
+  );
+
+  const convertedSelectedFeature = useMemo(() => {
+    const converted = convertFeature(selectedFeature);
+    onConvertedSelectedFeature(converted);
+    return converted;
+  }, [selectedFeature, onConvertedSelectedFeature, convertFeature]);
 
   return debugJobState && dataURLs ? (
     <Tabs
@@ -134,10 +196,9 @@ const DebugPreview: React.FC<Props> = ({
             className="m-0 h-[calc(100%-32px)] p-1"
             value="2d-viewer">
             <TwoDViewer
-              fileContent={selectedOutputData}
+              fileContent={processedOutputData}
               fileType={fileType}
               enableClustering={enableClustering}
-              selectedFeature={selectedFeature}
               convertedSelectedFeature={convertedSelectedFeature}
               mapRef={mapRef}
               onMapLoad={handleMapLoad}

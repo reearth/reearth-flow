@@ -8,8 +8,7 @@ import {
   MinusIcon,
   TerminalIcon,
 } from "@phosphor-icons/react";
-import bbox from "@turf/bbox";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 
 import {
   ResizableHandle,
@@ -49,6 +48,7 @@ const DebugPanel: React.FC = () => {
     enableClustering,
     selectedFeature,
     setSelectedFeature,
+    setConvertedSelectedFeature,
     setEnableClustering,
     handleFullscreenExpand,
     handleExpand,
@@ -56,115 +56,12 @@ const DebugPanel: React.FC = () => {
     handleTabChange,
     handleShowTempPossibleIssuesDialogClose,
     handleSelectedDataChange,
+    handleRowSingleClick,
+    handleRowDoubleClick,
+    handleFlyToSelectedFeature,
   } = useHooks();
   const t = useT();
   const [tabValue, setTabValue] = useState("debug-logs");
-
-  const { featureMap, processedOutputData } = useMemo(() => {
-    if (!selectedOutputData?.features) {
-      return { featureMap: null, processedOutputData: selectedOutputData };
-    }
-
-    const map = new Map<string | number, any>();
-    const processedFeatures = selectedOutputData.features.map((f: any) => {
-      const processedFeature = {
-        ...f,
-        properties: {
-          _originalId: f.id,
-          ...f.properties,
-        },
-      };
-
-      if (f.id !== undefined) {
-        map.set(f.id, processedFeature);
-      }
-
-      return processedFeature;
-    });
-
-    return {
-      featureMap: map,
-      processedOutputData: {
-        ...selectedOutputData,
-        features: processedFeatures,
-      },
-    };
-  }, [selectedOutputData]);
-
-  const convertFeature = useCallback(
-    (feature: any) => {
-      if (!feature || !featureMap) return null;
-
-      if ("geometry" in feature && feature.geometry) {
-        return feature;
-      }
-
-      const featureId = feature.properties?._originalId ?? feature.id;
-      if (featureId === undefined) return null;
-
-      let normalizedId = featureId;
-      if (typeof featureId === "string") {
-        try {
-          normalizedId = JSON.parse(featureId);
-        } catch {
-          normalizedId = featureId;
-        }
-      }
-
-      return featureMap.get(normalizedId) || null;
-    },
-    [featureMap],
-  );
-
-  const convertedSelectedFeature = useMemo(() => {
-    return convertFeature(selectedFeature);
-  }, [selectedFeature, convertFeature]);
-
-  const handleFlyToSelectedFeature = useCallback(
-    (selectedFeature: any) => {
-      if (mapRef.current && selectedFeature) {
-        try {
-          const [minLng, minLat, maxLng, maxLat] = bbox(selectedFeature);
-          mapRef.current.fitBounds(
-            [
-              [minLng, minLat],
-              [maxLng, maxLat],
-            ],
-
-            { padding: 40, duration: 500, maxZoom: 24 },
-          );
-        } catch (err) {
-          console.error("Error computing bbox for selectedFeature:", err);
-        }
-      }
-    },
-    [mapRef],
-  );
-  const handleSingleClick = useCallback(
-    (value: any) => {
-      if (selectedFeature && value && selectedFeature.id === value.id) {
-        setSelectedFeature(null);
-      } else {
-        setEnableClustering(false);
-        setSelectedFeature(value);
-      }
-    },
-    [selectedFeature, setSelectedFeature, setEnableClustering],
-  );
-
-  const handleDoubleClick = useCallback(
-    (value: any) => {
-      setEnableClustering(false);
-      setSelectedFeature(value);
-      handleFlyToSelectedFeature(convertFeature(value));
-    },
-    [
-      handleFlyToSelectedFeature,
-      setSelectedFeature,
-      setEnableClustering,
-      convertFeature,
-    ],
-  );
 
   const hasSwitchedToViewerRef = useRef(false);
   const debugJobIdRef = useRef(debugJobId);
@@ -301,8 +198,8 @@ const DebugPanel: React.FC = () => {
                   fileContent={selectedOutputData}
                   fileType={fileType}
                   selectedFeature={selectedFeature}
-                  onSingleClick={handleSingleClick}
-                  onDoubleClick={handleDoubleClick}
+                  onSingleClick={handleRowSingleClick}
+                  onDoubleClick={handleRowDoubleClick}
                 />
               </ResizablePanel>
               <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 relative m-[0px] border border-border/50 transition hover:border-logo/70" />
@@ -311,13 +208,13 @@ const DebugPanel: React.FC = () => {
                   debugJobState={debugJobState}
                   dataURLs={dataURLs}
                   fileType={fileType}
-                  selectedOutputData={processedOutputData}
+                  selectedOutputData={selectedOutputData}
                   isLoadingData={isLoadingData}
                   showTempPossibleIssuesDialog={showTempPossibleIssuesDialog}
                   selectedFeature={selectedFeature}
-                  convertedSelectedFeature={convertedSelectedFeature}
                   enableClustering={enableClustering}
                   mapRef={mapRef}
+                  onConvertedSelectedFeature={setConvertedSelectedFeature}
                   onShowTempPossibleIssuesDialogClose={
                     handleShowTempPossibleIssuesDialogClose
                   }

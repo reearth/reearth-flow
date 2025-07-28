@@ -17,9 +17,6 @@ type Props = {
   fileContent: any | null;
   fileType: SupportedDataTypes | null;
   enableClustering?: boolean;
-  selectedFeature?:
-    | any
-    | { id?: string | number; properties?: { _originalId?: string | number } };
   convertedSelectedFeature?: any;
   mapRef: React.RefObject<maplibregl.Map | null>;
   onMapLoad: (onCenter?: boolean) => void;
