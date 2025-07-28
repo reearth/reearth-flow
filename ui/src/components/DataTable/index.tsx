@@ -272,8 +272,8 @@ function DataTable<TData, TValue>({
                     let isSelected = false;
                     if (selectedRow) {
                       isSelected =
-                        selectedRow?.id.replace(/[^a-zA-Z0-9]/g, "") ===
-                        row.original?.id.replace(/[^a-zA-Z0-9]/g, "");
+                        String(selectedRow?.id || "").replace(/[^a-zA-Z0-9]/g, "") ===
+                        String(row.original?.id || "").replace(/[^a-zA-Z0-9]/g, "");
                     }
                     return (
                       <TableRow
