@@ -2,12 +2,11 @@ package cms
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
-
-	"crypto/tls"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/cms"
@@ -56,9 +55,10 @@ func getGlobalPool() *ConnectionPool {
 	})
 	return globalPool
 }
+
 func (p *ConnectionPool) getConnection(endpoint, token string, useTLS bool) (*grpc.ClientConn, error) {
 	key := fmt.Sprintf("%s|%s|%t", endpoint, token, useTLS)
-	
+
 	p.mu.RLock()
 	if pooled, exists := p.connections[key]; exists {
 		if pooled.conn.GetState() == connectivity.Ready || pooled.conn.GetState() == connectivity.Idle {
@@ -69,10 +69,10 @@ func (p *ConnectionPool) getConnection(endpoint, token string, useTLS bool) (*gr
 		}
 	}
 	p.mu.RUnlock()
-	
+
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	
+
 	if pooled, exists := p.connections[key]; exists {
 		if pooled.conn.GetState() == connectivity.Ready || pooled.conn.GetState() == connectivity.Idle {
 			pooled.lastUsed = time.Now()
@@ -83,7 +83,7 @@ func (p *ConnectionPool) getConnection(endpoint, token string, useTLS bool) (*gr
 		delete(p.connections, key)
 	}
 	var opts []grpc.DialOption
-	
+
 	if useTLS {
 		config := &tls.Config{
 			ServerName: trimPort(endpoint),
@@ -93,11 +93,11 @@ func (p *ConnectionPool) getConnection(endpoint, token string, useTLS bool) (*gr
 	} else {
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
-	
+
 	if token != "" {
 		opts = append(opts, grpc.WithPerRPCCredentials(&tokenAuth{token}))
 	}
-	
+
 	opts = append(opts,
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
 			Time:                30 * time.Second,
@@ -109,25 +109,25 @@ func (p *ConnectionPool) getConnection(endpoint, token string, useTLS bool) (*gr
 			grpc.MaxCallSendMsgSize(4*1024*1024),
 		),
 	)
-	
+
 	conn, err := grpc.NewClient(endpoint, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to CMS gRPC server: %w", err)
 	}
-	
+
 	p.connections[key] = &pooledConnection{
 		conn:     conn,
 		lastUsed: time.Now(),
 		refCount: 1,
 	}
-	
+
 	return conn, nil
 }
 
 func (p *ConnectionPool) cleanup() {
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		p.mu.Lock()
 		now := time.Now()
@@ -144,10 +144,10 @@ func (p *ConnectionPool) cleanup() {
 
 func (p *ConnectionPool) releaseConnection(endpoint, token string, useTLS bool) {
 	key := fmt.Sprintf("%s|%s|%t", endpoint, token, useTLS)
-	
+
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	
+
 	if pooled, exists := p.connections[key]; exists {
 		if pooled.refCount > 0 {
 			pooled.refCount--
@@ -156,17 +156,17 @@ func (p *ConnectionPool) releaseConnection(endpoint, token string, useTLS bool) 
 }
 
 type tokenAuth struct {
-    token string
+	token string
 }
 
 func (t *tokenAuth) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
-    return map[string]string{
-        "authorization": fmt.Sprintf("Bearer %s", t.token),
-    }, nil
+	return map[string]string{
+		"authorization": fmt.Sprintf("Bearer %s", t.token),
+	}, nil
 }
 
 func (t *tokenAuth) RequireTransportSecurity() bool {
-    return true
+	return true
 }
 
 type grpcClient struct {
@@ -181,13 +181,13 @@ func NewGRPCClient(endpoint, token string, use_tls bool) (gateway.CMS, error) {
 	if endpoint == "" {
 		return nil, fmt.Errorf("CMS endpoint is required")
 	}
-	
+
 	pool := getGlobalPool()
 	conn, err := pool.getConnection(endpoint, token, use_tls)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	client := proto.NewReEarthCMSClient(conn)
 	return &grpcClient{
 		client:   client,
@@ -287,7 +287,6 @@ func (c *grpcClient) GetModelGeoJSONExportURL(ctx context.Context, input cms.Exp
 		URL: resp.Url,
 	}, nil
 }
-
 
 func convertProtoToProject(p *proto.Project) *cms.Project {
 	if p == nil {
