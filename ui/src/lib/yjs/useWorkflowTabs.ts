@@ -13,6 +13,10 @@ export default ({
   rawWorkflows: Workflow[];
   setCurrentWorkflowId: (id: string) => void;
 }) => {
+  const isMainWorkflow = useMemo(() => {
+    return currentWorkflowId === DEFAULT_ENTRY_GRAPH_ID;
+  }, [currentWorkflowId]);
+
   const [workflowNames, setWorkflowsNames] = useState(
     rawWorkflows.map((w) => ({ id: w.id, name: w.name })),
   );
@@ -88,6 +92,7 @@ export default ({
   );
 
   return {
+    isMainWorkflow,
     openWorkflows,
     workflowNames,
     handleWorkflowOpen,
