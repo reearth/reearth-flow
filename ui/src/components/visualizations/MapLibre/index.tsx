@@ -46,7 +46,28 @@ const MapLibre: React.FC<Props> = ({
   onFlyToSelectedFeature,
 }) => {
   const [showFeaturePanel, setShowFeaturePanel] = useState<boolean>(false);
+  const handleMapClick = useCallback(
+    (e: maplibregl.MapLayerMouseEvent) => {
+      if (e.features?.[0]) {
+        onSelectedFeature(e.features[0]);
+      } else {
+        onSelectedFeature(undefined);
+        setShowFeaturePanel(false);
+      }
+    },
+    [onSelectedFeature, setShowFeaturePanel],
+  );
 
+  const handleMapDoubleClick = useCallback(
+    (e: maplibregl.MapLayerMouseEvent) => {
+      if (e.features?.[0]) {
+        onSelectedFeature(e.features[0]);
+        onFlyToSelectedFeature?.(e.features[0]);
+        setShowFeaturePanel(true);
+      }
+    },
+    [onSelectedFeature, onFlyToSelectedFeature, setShowFeaturePanel],
+  );
   return (
     <div className={`relative size-full ${className}`}>
       <Map
@@ -57,21 +78,8 @@ const MapLibre: React.FC<Props> = ({
         style={{ width: "100%", height: "100%" }}
         maplibreLogo={true}
         interactiveLayerIds={["point-layer", "line-layer", "polygon-layer"]}
-        onClick={(e) => {
-          if (e.features?.[0]) {
-            onSelectedFeature(e.features[0]);
-          } else {
-            onSelectedFeature(undefined);
-            setShowFeaturePanel(false);
-          }
-        }}
-        onDblClick={(e) => {
-          if (e.features?.[0]) {
-            onSelectedFeature(e.features[0]);
-            onFlyToSelectedFeature?.(e.features[0]);
-            setShowFeaturePanel(true);
-          }
-        }}
+        onClick={handleMapClick}
+        onDblClick={handleMapDoubleClick}
         onLoad={() => onMapLoad()}>
         {fileType === "geojson" && (
           <GeoJsonDataSource

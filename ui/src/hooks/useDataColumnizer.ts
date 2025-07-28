@@ -38,7 +38,6 @@ export default ({
         });
 
         // Create columns for table
-
         const tableColumns: ColumnDef<any>[] = [
           { accessorKey: "id", header: "id" },
           ...Array.from(allGeometry).map(
