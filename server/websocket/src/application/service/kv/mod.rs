@@ -31,7 +31,7 @@
 //! 01{oid:4}3{name:M}0  - document meta key pattern
 //! ```
 
-use crate::domain::entity::keys::{Error, SUB_UPDATE};
+use crate::domain::entity::keys::{key_update_end, Error, SUB_UPDATE};
 
 use crate::domain::entity::keys::{
     doc_oid_name, key_doc, key_doc_end, key_doc_start, key_meta, key_meta_end, key_meta_start,
@@ -45,12 +45,13 @@ use anyhow;
 use anyhow::Result;
 use async_trait::async_trait;
 use google_cloud_storage::http::objects::list::ListObjectsRequest;
+use google_cloud_storage::http::objects::Object;
 use hex;
 use std::convert::TryInto;
 use time::OffsetDateTime;
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
-use yrs::{Doc, ReadTxn, StateVector, Transact, Transaction, TransactionMut, Update};
+use yrs::{Doc, ReadTxn, StateVector, Transact, Transaction, TransactionMut, Update, WriteTxn};
 
 use super::first_zero_bit;
 
@@ -376,119 +377,25 @@ where
     async fn create_snapshot_from_version<K: AsRef<[u8]> + ?Sized + Sync>(
         &self,
         doc_id: &K,
-        version: u64,
-    ) -> Result<Option<Doc>> {
-        let target_version = version as u32;
-
+        txn: &mut TransactionMut<'_>,
+        version: u32,
+    ) -> Result<()> {
         let oid = match get_oid(self, doc_id.as_ref()).await? {
             Some(oid) => oid,
-            None => return Ok(None),
+            None => return Ok(()),
         };
 
-        let prefix_bytes: Vec<u8> = [V1, KEYSPACE_DOC]
-            .iter()
-            .chain(&oid.to_be_bytes())
-            .chain(&[SUB_UPDATE])
-            .copied()
-            .collect::<Vec<_>>();
-        let prefix_str = hex::encode(&prefix_bytes);
+        let start = key_doc_start(oid)?;
+        let end = key_update_end(oid, version)?;
 
-        let mut all_objects = Vec::new();
-        let mut page_token = None;
+        let filtered_objects = self.iter_range(&start, &end).await?;
 
-        loop {
-            let request = ListObjectsRequest {
-                bucket: self.bucket.clone(),
-                prefix: Some(prefix_str.clone()),
-                page_token: page_token.clone(),
-                ..Default::default()
-            };
-
-            let response = self.client.list_objects(&request).await?;
-            let items = response.items.unwrap_or_default();
-            all_objects.extend(items);
-
-            if let Some(token) = response.next_page_token {
-                page_token = Some(token);
-            } else {
-                break;
-            }
+        for obj in filtered_objects {
+            let update = Update::decode_v1(obj.value())?;
+            let _ = txn.apply_update(update);
         }
 
-        let mut filtered_objects = Vec::new();
-        for obj in all_objects {
-            let key_bytes = hex::decode(&obj.name)?;
-
-            if key_bytes.len() < 12 {
-                continue;
-            }
-
-            let clock_bytes: [u8; 4] = key_bytes[7..11].try_into()?;
-            let clock = u32::from_be_bytes(clock_bytes);
-
-            if clock <= target_version {
-                filtered_objects.push((obj, clock));
-            }
-        }
-
-        if filtered_objects.is_empty() {
-            return Ok(None);
-        }
-
-        filtered_objects.sort_by_key(|(_, clock)| *clock);
-
-        let doc = Doc::new();
-        let mut txn = doc.transact_mut();
-        let mut updates_applied = false;
-
-        for chunk in filtered_objects.chunks(BATCH_SIZE) {
-            let chunk_futures = chunk.iter().map(|(obj, _)| {
-                let bucket = self.bucket.clone();
-                let object = obj.name.clone();
-
-                async move {
-                    let request = GetObjectRequest {
-                        bucket,
-                        object: object.clone(),
-                        ..Default::default()
-                    };
-
-                    match self
-                        .client
-                        .download_object(&request, &Range::default())
-                        .await
-                    {
-                        Ok(data) => {
-                            if let Ok(update) = Update::decode_v1(&data) {
-                                Some(update)
-                            } else {
-                                error!("Failed to decode update from object: {}", object);
-                                None
-                            }
-                        }
-                        Err(e) => {
-                            error!("Failed to download object {}: {:?}", object, e);
-                            None
-                        }
-                    }
-                }
-            });
-
-            let batch_results = join_all(chunk_futures).await;
-
-            for update in batch_results.into_iter().flatten() {
-                let _ = txn.apply_update(update);
-                updates_applied = true;
-            }
-        }
-
-        drop(txn);
-
-        if updates_applied {
-            Ok(Some(doc))
-        } else {
-            Ok(None)
-        }
+        Ok(())
     }
 
     async fn get_last_checkpoint(&self, doc_id: &str) -> Result<Option<u32>, Error> {

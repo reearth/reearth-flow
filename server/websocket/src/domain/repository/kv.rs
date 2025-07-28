@@ -19,8 +19,6 @@ pub trait KVStore: Send + Sync {
     /// Type returned from the implementation.
     type Return: AsRef<[u8]> + Send;
 
-    type Object: Send + Sync + 'static;
-
     /// Return a value stored under given `key` or `None` if key was not found.
     async fn get(&self, key: &[u8]) -> Result<Option<Self::Return>, Self::Error>;
 
@@ -52,6 +50,4 @@ pub trait KVStore: Send + Sync {
     /// In example: in a key collection of `{1,2,5,7}`, this method with the key parameter of `4`
     /// should return value of `2`.
     async fn peek_back(&self, key: &[u8]) -> Result<Option<Self::Entry>, Self::Error>;
-
-    async fn list_all_projects(&self, key: &[u8]) -> Result<Vec<Self::Object>, Self::Error>;
 }

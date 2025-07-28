@@ -90,7 +90,6 @@ impl KVStore for GcsStore {
     type Cursor = GcsRange;
     type Entry = GcsEntry;
     type Return = Vec<u8>;
-    type Object = Object;
 
     async fn get(&self, key: &[u8]) -> Result<Option<Self::Return>, Self::Error> {
         let key_hex = hex::encode(key);
@@ -189,24 +188,25 @@ impl KVStore for GcsStore {
     }
 
     async fn iter_range(&self, from: &[u8], to: &[u8]) -> Result<Self::Cursor, Self::Error> {
-        let from_hex = hex::encode(from);
-        let to_hex = hex::encode(to);
+        let from_hex: String = hex::encode(from);
+        let to_hex: String = hex::encode(to);
 
-        let common_prefix = find_common_prefix(&from_hex, &to_hex);
+        let common_prefix: String = find_common_prefix(&from_hex, &to_hex);
 
-        let mut all_objects = Vec::new();
-        let mut page_token = None;
+        let mut all_objects: Vec<Object> = Vec::new();
+        let mut page_token: Option<String> = None;
 
         loop {
-            let request = ListObjectsRequest {
+            let request: ListObjectsRequest = ListObjectsRequest {
                 bucket: self.bucket.clone(),
                 prefix: Some(common_prefix.clone()),
                 page_token: page_token.clone(),
                 ..Default::default()
             };
 
-            let response = self.client.list_objects(&request).await?;
-            let items = response.items.unwrap_or_default();
+            let response: google_cloud_storage::http::objects::list::ListObjectsResponse =
+                self.client.list_objects(&request).await?;
+            let items: Vec<Object> = response.items.unwrap_or_default();
 
             let filtered_items = items.into_iter().filter(|obj| {
                 obj.name.as_str() >= from_hex.as_str() && obj.name.as_str() <= to_hex.as_str()
@@ -221,16 +221,16 @@ impl KVStore for GcsStore {
             }
         }
 
-        all_objects.sort_by(|a, b| a.name.cmp(&b.name));
+        all_objects.sort_by(|a: &Object, b: &Object| a.name.cmp(&b.name));
 
-        let mut all_values = Vec::with_capacity(all_objects.len());
+        let mut all_values: Vec<Option<Vec<u8>>> = Vec::with_capacity(all_objects.len());
 
         for chunk in all_objects.chunks(BATCH_SIZE) {
             let chunk_futures = chunk.iter().map(|obj| {
-                let bucket = self.bucket.clone();
-                let object = obj.name.clone();
+                let bucket: String = self.bucket.clone();
+                let object: String = obj.name.clone();
                 async move {
-                    let request = GetObjectRequest {
+                    let request: GetObjectRequest = GetObjectRequest {
                         bucket,
                         object,
                         ..Default::default()
@@ -244,9 +244,13 @@ impl KVStore for GcsStore {
                 }
             });
 
-            let batch_results = join_all(chunk_futures).await;
+            let batch_results: Vec<(
+                String,
+                std::result::Result<Vec<u8>, google_cloud_storage::http::Error>,
+            )> = join_all(chunk_futures).await;
 
-            let mut result_map = std::collections::HashMap::new();
+            let mut result_map: std::collections::HashMap<String, Option<Vec<u8>>> =
+                std::collections::HashMap::new();
             for (name, result) in batch_results {
                 if let Ok(data) = result {
                     result_map.insert(name, Some(data));
@@ -325,32 +329,6 @@ impl KVStore for GcsStore {
             debug!("No objects found for peek_back with key: {:?}", key);
             Ok(None)
         }
-    }
-
-    async fn list_all_projects(&self, key: &[u8]) -> Result<Vec<Self::Object>, Self::Error> {
-        let mut all_objects = Vec::new();
-        let mut page_token = None;
-
-        loop {
-            let request = ListObjectsRequest {
-                bucket: self.bucket.clone(),
-                prefix: Some(hex::encode(key)),
-                page_token: page_token.clone(),
-                ..Default::default()
-            };
-
-            let response = self.client.list_objects(&request).await?;
-            let items = response.items.unwrap_or_default();
-            all_objects.extend(items);
-
-            if let Some(token) = response.next_page_token {
-                page_token = Some(token);
-            } else {
-                break;
-            }
-        }
-
-        Ok(all_objects)
     }
 }
 
