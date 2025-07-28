@@ -8,3 +8,4 @@ export * from "./openLinkInNewTab";
 export * from "./timestamp";
 export * from "./fileSize";
 export * from "./projectVariables";
+export * from "./removeWhiteSpace";

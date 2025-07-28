@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Input } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { AnyProjectVariable, VarType } from "@flow/types";
+import { removeWhiteSpace } from "@flow/utils";
 
 export const NameInput: React.FC<{
   variable: AnyProjectVariable;
@@ -32,7 +33,8 @@ export const NameInput: React.FC<{
       value={localValue}
       onChange={(e) => {
         e.stopPropagation();
-        setLocalValue(e.currentTarget.value);
+        const cleansedValue = removeWhiteSpace(e.currentTarget.value);
+        setLocalValue(cleansedValue);
       }}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
