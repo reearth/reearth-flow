@@ -960,3 +960,502 @@ fn validate_data_quality_attributes(
 
     Ok((c07_errors, c08_errors))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::object_list::{ObjectList, ObjectListValue};
+    use indexmap::IndexMap;
+    use reearth_flow_eval_expr::engine::Engine;
+    use reearth_flow_runtime::{
+        event::EventHub,
+        executor_operation::{ExecutorContext, NodeContext},
+        forwarder::{NoopChannelForwarder, ProcessorChannelForwarder},
+        kvs::create_kv_store,
+        node::ProcessorFactory,
+    };
+    use reearth_flow_storage::resolve::StorageResolver;
+    use reearth_flow_types::Feature;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    #[test]
+    fn test_with_valid_input() -> Result<(), BoxedError> {
+        // Arrange
+        let feature = create_feature_with_valid_xml();
+
+        // Act
+        let fw = run_processor_with_feature(feature)?;
+        let required_outputs = extract_outputs_by_port(&fw, "required")?;
+
+        // Assert
+        assert_eq!(required_outputs.len(), 0);
+        Ok(())
+    }
+
+    #[test]
+    fn test_c05_missing_required_attribute() -> Result<(), BoxedError> {
+        // Arrange
+        let feature = create_feature_with_missing_required_attribute();
+
+        // Act
+        let fw = run_processor_with_feature(feature)?;
+        let required_outputs = extract_outputs_by_port(&fw, "required")?;
+
+        // Assert
+        // Verify that C05 error was detected for missing required attribute
+        assert_eq!(
+            required_outputs.len(),
+            1,
+            "Expected exactly one required attribute error"
+        );
+
+        let error_output = &required_outputs[0];
+        assert_eq!(
+            error_output.get(&Attribute::new("missing")),
+            Some(&AttributeValue::String("core:creationDate".to_string())),
+            "Expected missing attribute to be core:creationDate"
+        );
+
+        assert_eq!(
+            error_output.get(&Attribute::new("featureType")),
+            Some(&AttributeValue::String("bldg:Building".to_string())),
+            "Expected feature type to be bldg:Building"
+        );
+
+        assert_eq!(
+            error_output.get(&Attribute::new("severity")),
+            Some(&AttributeValue::String("Error".to_string())),
+            "Expected severity to be Error"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_c06_missing_target_attribute() -> Result<(), BoxedError> {
+        // Arrange
+        let feature = create_feature_with_missing_target_attribute();
+
+        // Act
+        let fw = run_processor_with_feature(feature)?;
+        let summary_outputs = extract_outputs_by_port(&fw, "summary")?;
+
+        // Assert
+        assert_eq!(
+            summary_outputs.len(),
+            1,
+            "Expected exactly one summary output"
+        );
+
+        let summary = &summary_outputs[0];
+        let data_file_data = match summary.get(&Attribute::new("dataFileData")).unwrap() {
+            AttributeValue::Array(arr) => arr,
+            _ => panic!("Expected dataFileData to be an array"),
+        };
+
+        let expected = AttributeValue::Map(HashMap::from([
+            (
+                "name".to_string(),
+                AttributeValue::String("C06_現われない属性等".to_string()),
+            ),
+            (
+                "count".to_string(),
+                AttributeValue::Number(serde_json::Number::from(1)),
+            ),
+        ]));
+        data_file_data
+            .iter()
+            .find(|item| **item == expected)
+            .expect("Expected C06 entry in summary");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_c07_missing_geometry_src_desc() -> Result<(), BoxedError> {
+        // Arrange
+        let feature = create_feature_with_missing_geometry_src_desc();
+
+        // Act
+        let fw = run_processor_with_feature(feature)?;
+        let c07_outputs = extract_outputs_by_port(&fw, "data_quality_c07")?;
+
+        // Assert
+        assert_eq!(c07_outputs.len(), 1, "Expected exactly one C07 output");
+
+        let c07_output = &c07_outputs[0];
+        assert_eq!(
+            c07_output.get(&Attribute::new("lod")),
+            Some(&AttributeValue::String("LOD1".to_string())),
+            "Expected LOD to be LOD1"
+        );
+
+        assert_eq!(
+            c07_output.get(&Attribute::new("missing")),
+            Some(&AttributeValue::String(
+                "uro:DataQualityAttribute/uro:geometrySrcDescLod1".to_string()
+            )),
+            "Expected missing attribute to be geometrySrcDescLod1"
+        );
+
+        assert_eq!(
+            c07_output.get(&Attribute::new("featureType")),
+            Some(&AttributeValue::String("bldg:Building".to_string())),
+            "Expected feature type to be bldg:Building"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_c08_missing_public_survey_attribute() -> Result<(), BoxedError> {
+        // Arrange
+        let feature = create_feature_with_missing_public_survey_attribute();
+
+        // Act
+        let fw = run_processor_with_feature(feature)?;
+        let c08_outputs = extract_outputs_by_port(&fw, "data_quality_c08")?;
+
+        // Assert
+        assert_eq!(c08_outputs.len(), 2, "Expected exactly two C08 outputs");
+
+        c08_outputs
+            .iter()
+            .find(|output| {
+                matches!(
+                    output.get(&Attribute::new("missing")),
+                    Some(AttributeValue::String(missing))
+                    if missing == "uro:PublicSurveyDataQualityAttribute/uro:srcScaleLod1"
+                )
+            })
+            .expect("Expected srcScaleLod1 error");
+
+        c08_outputs
+            .iter()
+            .find(|output| {
+                matches!(
+                    output.get(&Attribute::new("missing")),
+                    Some(AttributeValue::String(missing))
+                    if missing == "uro:PublicSurveyDataQualityAttribute/uro:publicSurveySrcDescLod1"
+                )
+            })
+            .expect("Expected publicSurveySrcDescLod1 error");
+
+        Ok(())
+    }
+
+    //
+    // Create test feature
+    //
+
+    // Feature creation functions for different test scenarios
+    fn create_feature_with_valid_xml() -> Feature {
+        let gml_id = format!("bldg_{}", uuid::Uuid::new_v4());
+        let xml_fragment = format!(
+            r#"
+<bldg:Building xmlns:bldg="http://www.opengis.net/citygml/building/2.0"
+    xmlns:core="http://www.opengis.net/citygml/2.0"
+    xmlns:gml="http://www.opengis.net/gml"
+    xmlns:uro="https://www.geospatial.jp/iur/uro/3.0"
+    gml:id="{gml_id}">
+  <core:creationDate>2025-03-21</core:creationDate>
+  <bldg:class>3003</bldg:class>
+  <bldg:usage>411</bldg:usage>
+</bldg:Building>"#
+        );
+
+        create_feature_with_custom_object_list(
+            "test.gml",
+            "bldg",
+            &xml_fragment,
+            &gml_id,
+            vec!["core:creationDate".to_string()],
+            vec![],
+            vec![],
+        )
+    }
+
+    fn create_feature_with_missing_required_attribute() -> Feature {
+        let gml_id = format!("bldg_{}", uuid::Uuid::new_v4());
+        let xml_fragment = format!(
+            r#"
+<bldg:Building xmlns:bldg="http://www.opengis.net/citygml/building/2.0"
+    xmlns:core="http://www.opengis.net/citygml/2.0"
+    xmlns:gml="http://www.opengis.net/gml"
+    xmlns:uro="https://www.geospatial.jp/iur/uro/3.0"
+    gml:id="{gml_id}">
+  <!-- Missing required attribute: core:creationDate -->
+  <bldg:class>3003</bldg:class>
+  <bldg:usage>411</bldg:usage>
+</bldg:Building>"#
+        );
+
+        create_feature_with_custom_object_list(
+            "test.gml",
+            "bldg",
+            &xml_fragment,
+            &gml_id,
+            vec!["core:creationDate".to_string()],
+            vec![],
+            vec![],
+        )
+    }
+
+    fn create_feature_with_missing_target_attribute() -> Feature {
+        let gml_id = format!("bldg_{}", uuid::Uuid::new_v4());
+        let xml_fragment = format!(
+            r#"
+<bldg:Building xmlns:bldg="http://www.opengis.net/citygml/building/2.0"
+    xmlns:core="http://www.opengis.net/citygml/2.0"
+    xmlns:gml="http://www.opengis.net/gml"
+    xmlns:uro="https://www.geospatial.jp/iur/uro/3.0"
+    gml:id="{gml_id}">
+  <core:creationDate>2025-03-21</core:creationDate>
+  <bldg:class>3003</bldg:class>
+  <bldg:usage>411</bldg:usage>
+</bldg:Building>"#
+        );
+
+        create_feature_with_custom_object_list(
+            "test.gml",
+            "bldg",
+            &xml_fragment,
+            &gml_id,
+            vec!["core:creationDate".to_string()],
+            vec!["bldg:measuredHeight".to_string()], // This attribute is missing from XML
+            vec![],
+        )
+    }
+
+    // C07
+    fn create_feature_with_missing_geometry_src_desc() -> Feature {
+        let gml_id = format!("bldg_{}", uuid::Uuid::new_v4());
+        let xml_fragment = format!(
+            r#"
+<bldg:Building xmlns:bldg="http://www.opengis.net/citygml/building/2.0"
+    xmlns:core="http://www.opengis.net/citygml/2.0"
+    xmlns:gml="http://www.opengis.net/gml"
+    xmlns:uro="https://www.geospatial.jp/iur/uro/3.0"
+    gml:id="{gml_id}">
+  <core:creationDate>2025-03-21</core:creationDate>
+  <bldg:class>3003</bldg:class>
+  <bldg:usage>411</bldg:usage>
+  <bldg:lod1Solid>
+    <gml:Solid>
+      <gml:exterior>
+        <gml:CompositeSurface>
+          <gml:surfaceMember>
+            <gml:Polygon>
+              <gml:exterior>
+                <gml:LinearRing>
+                  <gml:posList>0 0 0 1 0 0 1 1 0 0 1 0 0 0 0</gml:posList>
+                </gml:LinearRing>
+              </gml:exterior>
+            </gml:Polygon>
+          </gml:surfaceMember>
+        </gml:CompositeSurface>
+      </gml:exterior>
+    </gml:Solid>
+  </bldg:lod1Solid>
+  <uro:bldgDataQualityAttribute>
+    <uro:DataQualityAttribute>
+      <!-- Missing geometrySrcDescLod1 -->
+    </uro:DataQualityAttribute>
+  </uro:bldgDataQualityAttribute>
+</bldg:Building>"#
+        );
+
+        create_feature_with_custom_object_list(
+            "test.gml",
+            "bldg",
+            &xml_fragment,
+            &gml_id,
+            vec!["core:creationDate".to_string()],
+            vec![],
+            vec![],
+        )
+    }
+
+    // C08
+    fn create_feature_with_missing_public_survey_attribute() -> Feature {
+        let gml_id = format!("bldg_{}", uuid::Uuid::new_v4());
+        let xml_fragment = format!(
+            r#"
+<bldg:Building xmlns:bldg="http://www.opengis.net/citygml/building/2.0"
+    xmlns:core="http://www.opengis.net/citygml/2.0"
+    xmlns:gml="http://www.opengis.net/gml"
+    xmlns:uro="https://www.geospatial.jp/iur/uro/3.0"
+    gml:id="{gml_id}">
+  <core:creationDate>2025-03-21</core:creationDate>
+  <bldg:class>3003</bldg:class>
+  <bldg:usage>411</bldg:usage>
+  <bldg:lod1Solid>
+    <gml:Solid>
+      <gml:exterior>
+        <gml:CompositeSurface>
+          <gml:surfaceMember>
+            <gml:Polygon>
+              <gml:exterior>
+                <gml:LinearRing>
+                  <gml:posList>0 0 0 1 0 0 1 1 0 0 1 0 0 0 0</gml:posList>
+                </gml:LinearRing>
+              </gml:exterior>
+            </gml:Polygon>
+          </gml:surfaceMember>
+        </gml:CompositeSurface>
+      </gml:exterior>
+    </gml:Solid>
+  </bldg:lod1Solid>
+  <uro:bldgDataQualityAttribute>
+    <uro:DataQualityAttribute>
+      <uro:geometrySrcDescLod1>000</uro:geometrySrcDescLod1>
+      <!-- Missing publicSurveyDataQualityAttribute with PublicSurveyDataQualityAttribute -->
+    </uro:DataQualityAttribute>
+  </uro:bldgDataQualityAttribute>
+</bldg:Building>"#
+        );
+
+        create_feature_with_custom_object_list(
+            "test.gml",
+            "bldg",
+            &xml_fragment,
+            &gml_id,
+            vec!["core:creationDate".to_string()],
+            vec![],
+            vec![],
+        )
+    }
+
+    fn create_feature_with_custom_object_list(
+        name: &str,
+        package: &str,
+        xml_content: &str,
+        gml_id: &str,
+        required: Vec<String>,
+        target: Vec<String>,
+        conditional: Vec<String>,
+    ) -> Feature {
+        let mut attributes = IndexMap::new();
+        attributes.insert(
+            Attribute::new("name"),
+            AttributeValue::String(name.to_string()),
+        );
+        attributes.insert(
+            Attribute::new("package"),
+            AttributeValue::String(package.to_string()),
+        );
+        attributes.insert(
+            Attribute::new("path"),
+            AttributeValue::String("file://test.gml".to_string()),
+        );
+        attributes.insert(
+            Attribute::new("xmlFragment"),
+            AttributeValue::String(xml_content.to_string()),
+        );
+        attributes.insert(
+            Attribute::new("gmlId"),
+            AttributeValue::String(gml_id.to_string()),
+        );
+
+        let object_list_value = ObjectListValue {
+            required,
+            target,
+            conditional,
+        };
+
+        let mut object_list_types = HashMap::new();
+        object_list_types.insert("bldg:Building".to_string(), object_list_value);
+        let object_list = ObjectList::new(object_list_types);
+
+        let object_list_map =
+            HashMap::from([(package.to_string(), AttributeValue::from(object_list))]);
+
+        attributes.insert(
+            Attribute::new("objectList"),
+            AttributeValue::Map(object_list_map),
+        );
+
+        let mut feature = Feature::new();
+        feature.attributes = attributes;
+        feature
+    }
+
+    //
+    // Run processor
+    //
+
+    fn run_processor_with_feature(
+        feature: Feature,
+    ) -> Result<ProcessorChannelForwarder, BoxedError> {
+        let factory = MissingAttributeDetectorFactory {};
+        let params_map = HashMap::from([(
+            "packageAttribute".to_string(),
+            serde_json::Value::String("package".to_string()),
+        )]);
+
+        let ctx = create_default_node_context();
+        let mut processor: Box<dyn Processor> = factory.build(
+            ctx,
+            EventHub::new(1024),
+            "test".to_string(),
+            Some(params_map),
+        )?;
+
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        let ctx = create_default_execute_context(feature);
+        processor.process(ctx, &fw)?;
+
+        let ctx = create_default_node_context();
+        processor.finish(ctx, &fw)?;
+
+        Ok(fw)
+    }
+
+    fn extract_outputs_by_port(
+        fw: &ProcessorChannelForwarder,
+        port_name: &str,
+    ) -> Result<Vec<Feature>, BoxedError> {
+        match fw {
+            ProcessorChannelForwarder::Noop(noop_fw) => {
+                let send_ports = noop_fw.send_ports.lock().unwrap();
+                let send_features = noop_fw.send_features.lock().unwrap();
+
+                let outputs: Vec<Feature> = send_ports
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, port)| port.as_ref() == port_name)
+                    .map(|(i, _)| send_features[i].clone())
+                    .collect();
+
+                Ok(outputs)
+            }
+            ProcessorChannelForwarder::ChannelManager(_) => {
+                Err("Expected Noop forwarder for testing".into())
+            }
+        }
+    }
+
+    //
+    // Create context
+    //
+
+    fn create_default_execute_context(feature: Feature) -> ExecutorContext {
+        ExecutorContext::new(
+            feature,
+            DEFAULT_PORT.clone(),
+            Arc::new(Engine::new()),
+            Arc::new(StorageResolver::new()),
+            Arc::new(create_kv_store()),
+            EventHub::new(30),
+        )
+    }
+
+    fn create_default_node_context() -> NodeContext {
+        let expr_engine = Arc::new(Engine::new());
+        let storage_resolver = Arc::new(StorageResolver::new());
+        let kv_store = Arc::new(create_kv_store());
+        let event_hub = EventHub::new(1024);
+        NodeContext::new(expr_engine, storage_resolver, kv_store, event_hub)
+    }
+}
