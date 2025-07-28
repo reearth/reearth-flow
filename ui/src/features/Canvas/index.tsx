@@ -104,6 +104,7 @@ const Canvas: React.FC<Props> = ({
       elementsSelectable={!readonly}
       reconnectRadius={!readonly ? 10 : 0}
       // Readonly props END
+      attributionPosition="bottom-left"
       nodeDragThreshold={2}
       snapToGrid
       snapGrid={snapGrid}
