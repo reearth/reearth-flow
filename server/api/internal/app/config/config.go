@@ -253,5 +253,3 @@ func addHTTPScheme(host string) string {
 	}
 	return host
 }
-
-
