@@ -42,10 +42,7 @@ pub(crate) async fn run_flow(
     workflow_id: String,
     params: HashMap<String, String>,
 ) -> Result<(), crate::errors::Error> {
-    debug!(
-        "Running workflow: workflow id = {:?}, params = {:?}",
-        workflow_id, params
-    );
+    debug!("Running workflow: workflow id = {workflow_id:?}, params = {params:?}");
 
     // Execute workflow
     match handler::run_flow(workflow_id, params).await {
@@ -54,7 +51,7 @@ pub(crate) async fn run_flow(
             Ok(())
         }
         Err(e) => {
-            log::error!("Workflow execution failed: {:?}", e);
+            log::error!("Workflow execution failed: {e:?}");
             Err(e)
         }
     }
