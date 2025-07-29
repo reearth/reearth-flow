@@ -3476,6 +3476,7 @@ Validates domain of definition of CityGML features
 ### Output Ports
 * default
 * rejected
+* duplicate_gml_id_stats
 ### Category
 * PLATEAU
 
@@ -3548,6 +3549,8 @@ Detect missing attributes
 * summary
 * required
 * target
+* data_quality_c07
+* data_quality_c08
 ### Category
 * PLATEAU
 
