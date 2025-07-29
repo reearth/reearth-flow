@@ -1,5 +1,7 @@
 use crate::domain::entity::redis::RedisConfig;
+use crate::domain::repository::redis::{RedisRepository, RedisConnection};
 use anyhow::Result;
+use async_trait::async_trait;
 use bytes::Bytes;
 use deadpool::Runtime;
 use deadpool_redis::{Config, Pool};
@@ -151,6 +153,12 @@ impl RedisStore {
         let _: () = conn.set(key, value).await?;
 
         Ok(())
+    }
+
+    pub async fn get(&self, key: &str) -> Result<Option<String>> {
+        let mut conn = self.pool.get().await?;
+        let result: Option<String> = conn.get(key).await?;
+        Ok(result)
     }
 
     pub async fn exists(&self, key: &str) -> Result<bool> {
@@ -678,5 +686,182 @@ impl RedisStore {
             .await?;
 
         Ok(result == 1)
+    }
+}
+
+// Wrapper for Redis multiplexed connection to implement RedisConnection trait
+pub struct RedisConnectionWrapper {
+    conn: redis::aio::MultiplexedConnection,
+    store: RedisStore,
+}
+
+#[async_trait]
+impl RedisConnection for RedisConnectionWrapper {
+    type Error = anyhow::Error;
+    
+    async fn publish_update(
+        &mut self,
+        stream_key: &str,
+        update: &[u8],
+        instance_id: &str,
+    ) -> Result<(), Self::Error> {
+        self.store.publish_update(&mut self.conn, stream_key, update, instance_id).await
+    }
+    
+    async fn publish_update_with_ttl(
+        &mut self,
+        stream_key: &str,
+        update: &[u8],
+        instance_id: &str,
+        ttl: u64,
+    ) -> Result<(), Self::Error> {
+        self.store.publish_update_with_ttl(&mut self.conn, stream_key, update, instance_id, ttl).await
+    }
+    
+    async fn read_and_filter(
+        &mut self,
+        stream_key: &str,
+        count: usize,
+        instance_id: &str,
+        last_read_id: &Arc<Mutex<String>>,
+    ) -> Result<Vec<Bytes>, Self::Error> {
+        self.store.read_and_filter(&mut self.conn, stream_key, count, instance_id, last_read_id).await
+    }
+}
+
+#[async_trait]
+impl RedisRepository for RedisStore {
+    type Error = anyhow::Error;
+    
+    // Basic key-value operations
+    async fn set(&self, key: &str, value: &str) -> Result<(), Self::Error> {
+        self.set(key, value).await
+    }
+    
+    async fn get(&self, key: &str) -> Result<Option<String>, Self::Error> {
+        self.get(key).await
+    }
+    
+    async fn del(&self, key: &str) -> Result<(), Self::Error> {
+        self.del(key).await
+    }
+    
+    async fn exists(&self, key: &str) -> Result<bool, Self::Error> {
+        self.exists(key).await
+    }
+    
+    async fn set_nx(&self, key: &str, value: &str) -> Result<bool, Self::Error> {
+        self.set_nx(key, value).await
+    }
+    
+    async fn expire(&self, key: &str, ttl_seconds: u64) -> Result<(), Self::Error> {
+        self.expire(key, ttl_seconds).await
+    }
+    
+    // Lock operations
+    async fn acquire_lock(
+        &self,
+        lock_key: &str,
+        lock_value: &str,
+        ttl_seconds: u64,
+    ) -> Result<bool, Self::Error> {
+        self.acquire_lock(lock_key, lock_value, ttl_seconds).await
+    }
+    
+    async fn release_lock(&self, lock_key: &str, lock_value: &str) -> Result<(), Self::Error> {
+        self.release_lock(lock_key, lock_value).await
+    }
+    
+    // Document-specific operations
+    async fn register_doc_instance(
+        &self,
+        doc_id: &str,
+        instance_id: &str,
+        ttl_seconds: u64,
+    ) -> Result<bool, Self::Error> {
+        self.register_doc_instance(doc_id, instance_id, ttl_seconds).await
+    }
+    
+    async fn get_doc_instance(&self, doc_id: &str) -> Result<Option<String>, Self::Error> {
+        self.get_doc_instance(doc_id).await
+    }
+    
+    async fn acquire_doc_lock(&self, doc_id: &str, instance_id: &str) -> Result<bool, Self::Error> {
+        self.acquire_doc_lock(doc_id, instance_id).await
+    }
+    
+    async fn release_doc_lock(&self, doc_id: &str, instance_id: &str) -> Result<bool, Self::Error> {
+        self.release_doc_lock(doc_id, instance_id).await
+    }
+    
+    // Stream operations
+    async fn publish_update(
+        &self,
+        stream_key: &str,
+        update: &[u8],
+        instance_id: &str,
+    ) -> Result<(), Self::Error> {
+        let mut conn = self.create_dedicated_connection().await?;
+        self.publish_update(&mut conn, stream_key, update, instance_id).await
+    }
+    
+    async fn publish_update_with_ttl(
+        &self,
+        stream_key: &str,
+        update: &[u8],
+        instance_id: &str,
+        ttl: u64,
+    ) -> Result<(), Self::Error> {
+        let mut conn = self.create_dedicated_connection().await?;
+        self.publish_update_with_ttl(&mut conn, stream_key, update, instance_id, ttl).await
+    }
+    
+    async fn read_and_filter(
+        &self,
+        stream_key: &str,
+        count: usize,
+        instance_id: &str,
+        last_read_id: &Arc<Mutex<String>>,
+    ) -> Result<Vec<Bytes>, Self::Error> {
+        let mut conn = self.create_dedicated_connection().await?;
+        self.read_and_filter(&mut conn, stream_key, count, instance_id, last_read_id).await
+    }
+    
+    async fn delete_stream(&self, doc_id: &str) -> Result<(), Self::Error> {
+        self.delete_stream(doc_id).await
+    }
+    
+    // Instance heartbeat operations
+    async fn update_instance_heartbeat(
+        &self,
+        doc_id: &str,
+        instance_id: &str,
+    ) -> Result<(), Self::Error> {
+        self.update_instance_heartbeat(doc_id, instance_id).await
+    }
+    
+    async fn get_active_instances(
+        &self,
+        doc_id: &str,
+        timeout_secs: u64,
+    ) -> Result<i64, Self::Error> {
+        self.get_active_instances(doc_id, timeout_secs).await
+    }
+    
+    async fn remove_instance_heartbeat(
+        &self,
+        doc_id: &str,
+        instance_id: &str,
+    ) -> Result<bool, Self::Error> {
+        self.remove_instance_heartbeat(doc_id, instance_id).await
+    }
+    
+    // Connection management
+    async fn create_dedicated_connection(&self) -> Result<Box<dyn RedisConnection>, Self::Error> {
+        let conn = self.create_dedicated_connection().await?;
+        Ok(Box::new(RedisConnectionWrapper {
+            conn,
+            store: self.clone(),
+        }))
     }
 }
