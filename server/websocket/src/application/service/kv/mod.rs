@@ -45,13 +45,12 @@ use anyhow;
 use anyhow::Result;
 use async_trait::async_trait;
 use google_cloud_storage::http::objects::list::ListObjectsRequest;
-use google_cloud_storage::http::objects::Object;
 use hex;
 use std::convert::TryInto;
 use time::OffsetDateTime;
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
-use yrs::{Doc, ReadTxn, StateVector, Transact, Transaction, TransactionMut, Update, WriteTxn};
+use yrs::{Doc, ReadTxn, StateVector, Transact, Transaction, TransactionMut, Update};
 
 use super::first_zero_bit;
 
