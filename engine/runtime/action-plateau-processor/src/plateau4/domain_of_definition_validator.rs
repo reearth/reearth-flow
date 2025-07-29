@@ -1480,42 +1480,18 @@ fn handle_code_validation_failure(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tests::utils::{create_default_execute_context, create_default_node_context};
     use indexmap::IndexMap;
-    use reearth_flow_eval_expr::engine::Engine;
     use reearth_flow_runtime::{
         event::EventHub,
-        executor_operation::{ExecutorContext, NodeContext},
         forwarder::{NoopChannelForwarder, ProcessorChannelForwarder},
-        kvs,
-        kvs::create_kv_store,
-        node::{ProcessorFactory, DEFAULT_PORT},
+        node::ProcessorFactory,
     };
-    use reearth_flow_storage::resolve::StorageResolver;
     use reearth_flow_types::Feature;
     use std::collections::HashMap;
     use std::env;
     use std::fs;
     use std::io::Write;
-    use std::sync::Arc;
-
-    fn create_default_execute_context(feature: Feature) -> ExecutorContext {
-        ExecutorContext::new(
-            feature,
-            DEFAULT_PORT.clone(),
-            Arc::new(Engine::new()),
-            Arc::new(StorageResolver::new()),
-            Arc::new(kvs::create_kv_store()),
-            EventHub::new(30),
-        )
-    }
-
-    fn create_default_node_context() -> NodeContext {
-        let expr_engine = Arc::new(Engine::new());
-        let storage_resolver = Arc::new(StorageResolver::new());
-        let kv_store = Arc::new(create_kv_store());
-        let event_hub = EventHub::new(1024);
-        NodeContext::new(expr_engine, storage_resolver, kv_store, event_hub)
-    }
 
     fn create_gml_file(file_path: &str, gml_id: &str) -> std::io::Result<()> {
         let gml_content = format!(
