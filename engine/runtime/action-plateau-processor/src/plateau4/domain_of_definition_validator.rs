@@ -50,7 +50,7 @@ static VALID_SRS_NAME_FOR_UNF: Lazy<Vec<&'static str>> = Lazy::new(|| {
     ]
 });
 
-static FILE_STATS_PORT: Lazy<Port> = Lazy::new(|| Port::new("file_stats"));
+static DUPLICATE_GML_ID_STATS_PORT: Lazy<Port> = Lazy::new(|| Port::new("duplicate_gml_id_stats"));
 
 static XML_NAMESPACES: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     HashMap::from([
@@ -304,7 +304,7 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
         vec![
             DEFAULT_PORT.clone(),
             REJECTED_PORT.clone(),
-            FILE_STATS_PORT.clone(),
+            DUPLICATE_GML_ID_STATS_PORT.clone(),
         ]
     }
 
@@ -404,7 +404,7 @@ impl Processor for DomainOfDefinitionValidator {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
                 result_feature,
-                FILE_STATS_PORT.clone(),
+                DUPLICATE_GML_ID_STATS_PORT.clone(),
             ));
         }
 
@@ -1578,7 +1578,7 @@ mod tests {
                 let file_stats_outputs: HashMap<String, u64> = send_ports
                     .iter()
                     .enumerate()
-                    .filter(|(_, port)| port.as_ref() == "file_stats")
+                    .filter(|(_, port)| port.as_ref() == "duplicate_gml_id_stats")
                     .map(|(i, _)| &send_features[i])
                     .filter_map(|feature| {
                         if let (
