@@ -3504,7 +3504,8 @@
       ],
       "outputPorts": [
         "default",
-        "rejected"
+        "rejected",
+        "duplicate_gml_id_stats"
       ],
       "categories": [
         "PLATEAU"
@@ -3576,7 +3577,9 @@
       "outputPorts": [
         "summary",
         "required",
-        "target"
+        "target",
+        "data_quality_c07",
+        "data_quality_c08"
       ],
       "categories": [
         "PLATEAU"
