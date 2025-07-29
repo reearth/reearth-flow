@@ -26,6 +26,9 @@ nodes:
             env.get("__value").flag == "CodeValidation"
           outputPort: codeValidation
         - expr: |
+            env.get("__value").flag == "inCorrectCodeSpace"
+          outputPort: inCorrectCodeSpace
+        - expr: |
             env.get("__value").flag == "ExtentsValidation"
           outputPort: extentsValidation
         - expr: |
@@ -58,6 +61,13 @@ nodes:
     with:
       routingPort: codeValidation
 
+  - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d8
+    name: InCorrectCodeSpaceRouter
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: inCorrectCodeSpace
+
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d2
     name: ExtentsValidationRouter
     type: action
@@ -87,11 +97,11 @@ nodes:
       routingPort: xlinkNoReference
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d6
-    name: XLinkInvalidObjectTypeRouter
+    name: XlinkInvalidObjectTypeRouter
     type: action
     action: OutputRouter
     with:
-      routingPort: xLinkInvalidObjectType
+      routingPort: xlinkInvalidObjectType
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d7
     name: InvalidLodXGeometryRouter
@@ -99,6 +109,13 @@ nodes:
     action: OutputRouter
     with:
       routingPort: invalidLodXGeometry
+
+  - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d9
+    name: FileStatsRouter
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: fileStats
 
 edges:
   - id: 7779cb5a-0dfc-4726-9c2f-6e32e196520d
@@ -150,4 +167,14 @@ edges:
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d7
     fromPort: invalidLodXGeometry
+    toPort: default
+  - id: 41141e61-6815-4556-b247-05c4e5de8bb8
+    from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
+    to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d8
+    fromPort: inCorrectCodeSpace
+    toPort: default
+  - id: 41141e61-6815-4556-b247-05c4e5de8bb9
+    from: 747d2fa3-2527-4324-b630-92fba84a548c
+    to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d9
+    fromPort: duplicate_gml_id_stats
     toPort: default
