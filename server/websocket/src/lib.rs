@@ -57,8 +57,6 @@ pub use conf::Config;
 pub use group::BroadcastGroup;
 pub use pool::BroadcastPool;
 pub use server::{ensure_bucket, start_server};
-pub use storage::gcs::GcsStore;
-pub use storage::kv::DocOps;
 
 pub mod application;
 pub mod domain;
