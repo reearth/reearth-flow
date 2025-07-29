@@ -86,7 +86,7 @@ const DebugPanel: React.FC = () => {
 
   return debugJobId ? (
     <div
-      className={`absolute ${fullscreenDebug ? "bottom-3 left-1" : "bottom-4 left-4 "} z-30 flex items-end`}>
+      className={`${fullscreenDebug ? "fixed inset-0" : ""} z-30 flex items-end`}>
       <Tabs
         className={`pointer-events-auto w-[95vw] rounded-md bg-secondary/70 shadow-md shadow-secondary backdrop-blur transition-all ${minimized ? "h-[38px]" : fullscreenDebug ? "h-[100vh] w-[100vw]" : expanded ? "h-[60vh]" : "h-[40vh]"}`}
         value={tabValue}

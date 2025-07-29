@@ -84,8 +84,12 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           </div>
         </div>
         <div id="right-top" className="absolute top-4 right-4" />
-        <DebugPanel />
-        <div className="pointer-events-none absolute right-4 bottom-4 flex flex-row-reverse items-end gap-4">
+        <div id="left-bottom" className="absolute bottom-4 left-4">
+          <DebugPanel />
+        </div>
+        <div
+          id="right-bottom"
+          className="pointer-events-none absolute right-4 bottom-4 flex flex-row-reverse items-end gap-4">
           <CanvasActionBar />
         </div>
         {hoveredDetails && <Infobar hoveredDetails={hoveredDetails} />}
