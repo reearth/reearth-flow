@@ -90,7 +90,7 @@ const HomeMenu: React.FC<Props> = ({
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="min-w-[175px] bg-primary/50 backdrop-blur-lg"
+          className="min-w-[175px] bg-primary/50 backdrop-blur"
           side={dropdownPosition}
           align={dropdownAlign}
           sideOffset={dropdownPositionOffset ?? 5}

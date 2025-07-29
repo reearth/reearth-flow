@@ -1,18 +1,11 @@
 import { type XYPosition } from "@xyflow/react";
 import { memo, useCallback, useState } from "react";
 
-import type {
-  ActionNodeType,
-  Algorithm,
-  Direction,
-  Edge,
-  Node,
-} from "@flow/types";
+import type { ActionNodeType, Algorithm, Direction, Node } from "@flow/types";
 
 import {
   CanvasActionBar,
   Toolbox,
-  Infobar,
   NodePickerDialog,
   LayoutOptionsDialog,
   JobStatus,
@@ -20,7 +13,6 @@ import {
 } from "./components";
 
 type OverlayUIProps = {
-  hoveredDetails: Node | Edge | undefined;
   nodePickerOpen?: {
     position: XYPosition;
     nodeType: ActionNodeType;
@@ -41,7 +33,6 @@ type OverlayUIProps = {
 };
 
 const OverlayUI: React.FC<OverlayUIProps> = ({
-  hoveredDetails,
   nodePickerOpen,
   canUndo,
   canRedo,
@@ -92,7 +83,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           className="pointer-events-none absolute right-4 bottom-4 flex flex-row-reverse items-end gap-4">
           <CanvasActionBar />
         </div>
-        {hoveredDetails && <Infobar hoveredDetails={hoveredDetails} />}
       </div>
       <LayoutOptionsDialog
         isOpen={showLayoutOptions}
