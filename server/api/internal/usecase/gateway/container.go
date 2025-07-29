@@ -6,5 +6,4 @@ type Container struct {
 	Batch         Batch
 	Redis         Redis
 	Scheduler     Scheduler
-	CMS           CMS
 }

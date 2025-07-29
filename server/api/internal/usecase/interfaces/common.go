@@ -23,7 +23,6 @@ var (
 
 type Container struct {
 	Asset         Asset
-	CMS           CMS
 	Deployment    Deployment
 	EdgeExecution EdgeExecution
 	Job           Job
