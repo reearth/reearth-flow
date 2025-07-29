@@ -32,7 +32,7 @@ const DataTable: React.FC<Props> = ({
       )}
       textSize="sm">
       <div className="flex h-full flex-1">
-        <div className="mx-1 mt-0 mb-1 box-border overflow-scroll p-1">
+        <div className="overflow-scroll">
           <Table
             columns={tableColumns}
             data={tableData}

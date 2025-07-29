@@ -85,7 +85,9 @@ const ActionBar: React.FC<Props> = ({
                 onClick={() => onDialogOpen("share")}
               />
             </PopoverTrigger>
-            <PopoverContent sideOffset={16}>
+            <PopoverContent
+              sideOffset={16}
+              className="bg-primary/50 backdrop-blur">
               {showDialog === "share" && (
                 <SharePopover onProjectShare={onProjectShare} />
               )}
@@ -101,7 +103,7 @@ const ActionBar: React.FC<Props> = ({
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              className="min-w-[170px] rounded-md bg-primary/50 p-1 text-popover-foreground shadow-md backdrop-blur-lg select-none"
+              className="min-w-[170px] bg-primary/50 backdrop-blur select-none"
               align="end"
               sideOffset={14}
               alignOffset={2}>

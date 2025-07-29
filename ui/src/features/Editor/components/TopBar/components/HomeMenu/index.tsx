@@ -1,7 +1,10 @@
 import {
   ArrowSquareOutIcon,
+  BookIcon,
   BroadcastIcon,
   CaretDownIcon,
+  GavelIcon,
+  InfoIcon,
   KeyboardIcon,
   RocketIcon,
   SignOutIcon,
@@ -65,6 +68,10 @@ const HomeMenu: React.FC<Props> = ({
 
   const handleTosPageOpen = openLinkInNewTab(tosUrl ?? "");
   const handleDocumentationPageOpen = openLinkInNewTab(documentationUrl ?? "");
+
+  const handleAboutDialogOpen = useCallback(() => {
+    alert(t("About dialog is not implemented yet."));
+  }, [t]);
 
   useShortcuts([
     {
@@ -132,19 +139,31 @@ const HomeMenu: React.FC<Props> = ({
           <DropdownMenuSeparator />
           {tosUrl && (
             <DropdownMenuItem className="gap-3" onClick={handleTosPageOpen}>
-              <ArrowSquareOutIcon weight="light" />
-              <p>{t("Terms of Service")}</p>
+              <GavelIcon weight="light" />
+              <div className="flex items-center gap-1">
+                <p>{t("Terms of Service")}</p>
+                <ArrowSquareOutIcon className="size-4" />
+              </div>
             </DropdownMenuItem>
           )}
           {documentationUrl && (
             <DropdownMenuItem
               className="gap-3"
               onClick={handleDocumentationPageOpen}>
-              <ArrowSquareOutIcon weight="light" />
-              <p>{t("Documentation")}</p>
+              <BookIcon weight="light" />
+              <div className="flex items-center gap-1">
+                <p>{t("Documentation")}</p>
+                <ArrowSquareOutIcon weight="light" />
+              </div>
             </DropdownMenuItem>
           )}
-          {/* <UserMenu className="w-full" /> */}
+          <DropdownMenuItem
+            className="gap-3"
+            onClick={handleAboutDialogOpen}
+            disabled>
+            <InfoIcon weight="light" />
+            <p>{t("About")}</p>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="gap-3 text-warning"

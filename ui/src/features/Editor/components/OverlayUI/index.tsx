@@ -66,7 +66,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         {canvas}
         <div
           id="top-middle"
-          className="pointer-events-none absolute inset-x-0 top-2 flex shrink-0 justify-center *:pointer-events-auto">
+          className="pointer-events-none absolute inset-x-0 top-4 flex shrink-0 justify-center *:pointer-events-auto">
           <JobStatus />
         </div>
         <div

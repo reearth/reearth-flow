@@ -168,7 +168,7 @@ const Toolbox: React.FC<Props> = ({
   };
 
   return (
-    <div className="self-start rounded-md bg-secondary/70 p-2 shadow-md shadow-secondary backdrop-blur-xs">
+    <div className="self-start rounded-md border border-primary bg-secondary/70 p-2 shadow-md shadow-secondary backdrop-blur-xs">
       <div className="flex flex-col flex-wrap gap-2 rounded-md transition-all">
         {availableTools.map((tool, idx) =>
           tool.id === "break" ? (
