@@ -217,4 +217,3 @@ func initScheduler(ctx context.Context, conf *config.Config) gateway.Scheduler {
 	log.Infofc(ctx, "Scheduler enabled for project %s in region %s targeting %s", conf.GCPProject, conf.GCPRegion, conf.Host)
 	return scheduler
 }
-
