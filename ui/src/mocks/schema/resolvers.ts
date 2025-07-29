@@ -1,4 +1,12 @@
 import { MockAsset, mockAssets } from "../data/asset";
+import {
+  mockCmsProjects,
+  mockCmsModels,
+  mockCmsItems,
+  type MockCMSProject,
+  type MockCMSModel,
+  type MockCMSItem,
+} from "../data/cms";
 import { mockDeployments, type MockDeployment } from "../data/deployments";
 import { mockJobs, mockLogs, type MockJob, type MockLog } from "../data/jobs";
 import {
@@ -23,6 +31,9 @@ let projects = [...mockProjects];
 const jobs = [...mockJobs];
 let deployments = [...mockDeployments];
 const logs = [...mockLogs];
+const cmsProjects = [...mockCmsProjects];
+const cmsModels = [...mockCmsModels];
+const cmsItems = [...mockCmsItems];
 
 // Helper functions
 const generateId = (prefix: string) =>
@@ -300,6 +311,53 @@ export const resolvers = {
     //   workspaces.find((w) => w.id === asset.workspaceId),
   },
 
+  // CMS Type resolvers
+  CMSProject: {
+    id: (cmsProject: MockCMSProject) => cmsProject.id,
+    name: (cmsProject: MockCMSProject) => cmsProject.name,
+    alias: (cmsProject: MockCMSProject) => cmsProject.alias,
+    description: (cmsProject: MockCMSProject) => cmsProject.description,
+    license: (cmsProject: MockCMSProject) => cmsProject.license,
+    readme: (cmsProject: MockCMSProject) => cmsProject.readme,
+    workspaceId: (cmsProject: MockCMSProject) => cmsProject.workspaceId,
+    visibility: (cmsProject: MockCMSProject) => cmsProject.visibility,
+    createdAt: (cmsProject: MockCMSProject) => cmsProject.createdAt,
+    updatedAt: (cmsProject: MockCMSProject) => cmsProject.updatedAt,
+  },
+
+  CMSModel: {
+    id: (cmsModel: MockCMSModel) => cmsModel.id,
+    projectId: (cmsModel: MockCMSModel) => cmsModel.projectId,
+    name: (cmsModel: MockCMSModel) => cmsModel.name,
+    description: (cmsModel: MockCMSModel) => cmsModel.description,
+    key: (cmsModel: MockCMSModel) => cmsModel.key,
+    schema: (cmsModel: MockCMSModel) => cmsModel.schema,
+    publicApiEp: (cmsModel: MockCMSModel) => cmsModel.publicApiEp,
+    editorUrl: (cmsModel: MockCMSModel) => cmsModel.editorUrl,
+    createdAt: (cmsModel: MockCMSModel) => cmsModel.createdAt,
+    updatedAt: (cmsModel: MockCMSModel) => cmsModel.updatedAt,
+  },
+
+  CMSSchema: {
+    schemaId: (schema: any) => schema.schemaId,
+    fields: (schema: any) => schema.fields,
+  },
+
+  CMSSchemaField: {
+    fieldId: (field: any) => field.fieldId,
+    name: (field: any) => field.name,
+    type: (field: any) => field.type,
+    key: (field: any) => field.key,
+    description: (field: any) => field.description,
+  },
+
+  CMSItem: {
+    id: (cmsItem: MockCMSItem) => cmsItem.id,
+    fields: (cmsItem: MockCMSItem) => cmsItem.fields,
+    createdAt: (cmsItem: MockCMSItem) => cmsItem.createdAt,
+    updatedAt: (cmsItem: MockCMSItem) => cmsItem.updatedAt,
+  },
+
   // Query resolvers
   Query: {
     node: (_: any, args: { id: string; type: string }) => {
@@ -493,6 +551,57 @@ export const resolvers = {
     triggers: (_: any, args: { workspaceId: string; pagination: any }) => {
       // No triggers in mock data yet
       return paginateResults([], args.pagination);
+    },
+
+    // CMS queries
+    cmsProject: (_: any, args: { projectIdOrAlias: string }) => {
+      return cmsProjects.find(
+        (p) =>
+          p.id === args.projectIdOrAlias || p.alias === args.projectIdOrAlias,
+      );
+    },
+
+    cmsProjects: (
+      _: any,
+      args: { workspaceId: string; publicOnly?: boolean },
+    ) => {
+      return cmsProjects.filter((p) => {
+        if (p.workspaceId !== args.workspaceId) return false;
+        if (args.publicOnly && p.visibility !== "PUBLIC") return false;
+        return true;
+      });
+    },
+
+    cmsModels: (_: any, args: { projectId: string }) => {
+      return cmsModels.filter((m) => m.projectId === args.projectId);
+    },
+
+    cmsItems: (
+      _: any,
+      args: {
+        projectId: string;
+        modelId: string;
+        page?: number;
+        pageSize?: number;
+      },
+    ) => {
+      // For simplicity, return all mock items regardless of projectId/modelId
+      const page = args.page || 1;
+      const pageSize = args.pageSize || 10;
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+
+      return {
+        items: cmsItems.slice(startIndex, endIndex),
+        totalCount: cmsItems.length,
+      };
+    },
+
+    cmsModelExportUrl: (
+      _: any,
+      args: { projectId: string; modelId: string },
+    ) => {
+      return `https://cms.reearth-flow.com/api/export/${args.projectId}/${args.modelId}`;
     },
   },
 

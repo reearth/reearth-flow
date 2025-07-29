@@ -1,5 +1,3 @@
-import { ApiResponse } from "./api";
-
 enum CMSVisibility {
   PUBLIC = "PUBLIC",
   PRIVATE = "PRIVATE",
@@ -70,14 +68,3 @@ export type CMSItem = {
   createdAt: string;
   updatedAt: string;
 };
-export type GetCMSProject = {
-  cmsProjects?: CMSProject;
-} & ApiResponse;
-
-export type GetCMSProjects = {
-  cmsProjects?: CMSProject[];
-} & ApiResponse;
-
-export type GetCMSModelExportUrl = {
-  url: string;
-} & ApiResponse;
