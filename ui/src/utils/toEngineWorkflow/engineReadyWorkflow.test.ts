@@ -54,7 +54,11 @@ describe("createEngineReadyWorkflow", () => {
 
     const result = createEngineReadyWorkflow("somename", [], []);
     expect(result).toEqual(mockConsolidatedWorkflow);
-    expect(consolidateWorkflows).toHaveBeenCalledWith("somename-workflow", [], []);
+    expect(consolidateWorkflows).toHaveBeenCalledWith(
+      "somename-workflow",
+      [],
+      [],
+    );
   });
 
   it("should return undefined when consolidateWorkflows returns undefined", () => {
@@ -78,8 +82,22 @@ describe("createEngineReadyWorkflow", () => {
       { id: "workflow1", name: "Workflow 1", nodes: [], edges: [] },
     ];
     const mockProjectVariables: ProjectVariable[] = [
-      { id: "1", name: "var1", defaultValue: "value1", type: "text", required: false, public: true },
-      { id: "2", name: "var2", defaultValue: "value2", type: "text", required: false, public: true },
+      {
+        id: "1",
+        name: "var1",
+        defaultValue: "value1",
+        type: "text",
+        required: false,
+        public: true,
+      },
+      {
+        id: "2",
+        name: "var2",
+        defaultValue: "value2",
+        type: "text",
+        required: false,
+        public: true,
+      },
     ];
     const mockConsolidatedWorkflow = {
       id: "consolidated-id",
@@ -90,7 +108,11 @@ describe("createEngineReadyWorkflow", () => {
 
     (consolidateWorkflows as any).mockReturnValue(mockConsolidatedWorkflow);
 
-    const result = createEngineReadyWorkflow("test", mockProjectVariables, mockWorkflows);
+    const result = createEngineReadyWorkflow(
+      "test",
+      mockProjectVariables,
+      mockWorkflows,
+    );
     expect(result).toEqual(mockConsolidatedWorkflow);
     expect(consolidateWorkflows).toHaveBeenCalledWith(
       "test-workflow",
