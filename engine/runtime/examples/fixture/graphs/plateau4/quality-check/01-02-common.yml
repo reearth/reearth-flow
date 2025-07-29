@@ -116,7 +116,7 @@ nodes:
         - attribute: feature_type
           valueAttribute: featureType
         - attribute: name
-          valueAttribute: name
+          valueAttribute: missing
 
   - id: 23f7da40-5f92-4c14-a4fe-7a160361be6b
     name: FeatureWriterByRequired
@@ -125,7 +125,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01-2_必須属性等_必須属性等の欠落_" + env.get("__value")["package"] + ".csv")
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01-2_必須属性等_C05必須属性等の欠落_" + env.get("__value")["package"] + ".csv")
 
   - id: f70fe4c6-9dcf-4657-80fb-3edb59eae80d
     name: AttributeMapperTarget
@@ -147,7 +147,69 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01-2_必須属性等_現われなかった属性等_" + env.get("__value")["package"] + ".csv")
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01-2_必須属性等_C06現われない属性等_" + env.get("__value")["package"] + ".csv")
+
+  - id: 8f12a3b4-c5d6-4e78-9f01-2a3b4c5d6e7f
+    name: AttributeMapperC07
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: package
+          valueAttribute: package
+        - attribute: dirs
+          valueAttribute: udxDirs
+        - attribute: filename
+          expr: |
+            file::extract_filename(env.get("__value")["path"])
+        - attribute: gml_id
+          valueAttribute: gmlId
+        - attribute: feature_type
+          valueAttribute: featureType
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: name
+          valueAttribute: missing
+
+  - id: 9e23b4c5-d6e7-4f89-a012-3b4c5d6e7f8a
+    name: FeatureWriterByC07
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01-2_必須属性等_C07品質属性_" + env.get("__value")["package"] + ".csv")
+
+  - id: a134b5c6-e7f8-4a90-b123-4c5d6e7f8a9b
+    name: AttributeMapperC08
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: package
+          valueAttribute: package
+        - attribute: dirs
+          valueAttribute: udxDirs
+        - attribute: filename
+          expr: |
+            file::extract_filename(env.get("__value")["path"])
+        - attribute: gml_id
+          valueAttribute: gmlId
+        - attribute: feature_type
+          valueAttribute: featureType
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: name
+          valueAttribute: missing
+
+  - id: b245c6d7-f8a9-4b01-c234-5d6e7f8a9b0c
+    name: FeatureWriterByC08
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01-2_必須属性等_C08公共測量品質属性_" + env.get("__value")["package"] + ".csv")
 
   - id: da1eaeee-4a50-4b6b-afee-3cfaf4887613
     name: OutputRouter
@@ -234,6 +296,36 @@ edges:
     toPort: default
   - id: 2a92e502-aa6d-49b7-91ee-15d2d69547de
     from: c528f544-4a0f-43dd-9fd8-725d546963b8
+    to: da1eaeee-4a50-4b6b-afee-3cfaf4887613
+    fromPort: default
+    toPort: default
+  - id: c3d4e5f6-a7b8-4c9d-a0e1-f2a3b4c5d6e7
+    from: 7dd338ed-f9e4-408d-bcdf-39e4141126ba
+    to: 8f12a3b4-c5d6-4e78-9f01-2a3b4c5d6e7f
+    fromPort: data_quality_c07
+    toPort: default
+  - id: d4e5f6a7-b8c9-4d0e-b1f2-a3b4c5d6e7f8
+    from: 8f12a3b4-c5d6-4e78-9f01-2a3b4c5d6e7f
+    to: 9e23b4c5-d6e7-4f89-a012-3b4c5d6e7f8a
+    fromPort: default
+    toPort: default
+  - id: e5f6a7b8-c9d0-4e1f-c2a3-b4c5d6e7f8a9
+    from: 7dd338ed-f9e4-408d-bcdf-39e4141126ba
+    to: a134b5c6-e7f8-4a90-b123-4c5d6e7f8a9b
+    fromPort: data_quality_c08
+    toPort: default
+  - id: f6a7b8c9-d0e1-4f2a-d3b4-c5d6e7f8a9b0
+    from: a134b5c6-e7f8-4a90-b123-4c5d6e7f8a9b
+    to: b245c6d7-f8a9-4b01-c234-5d6e7f8a9b0c
+    fromPort: default
+    toPort: default
+  - id: a7b8c9d0-e1f2-4a3b-e4c5-d6e7f8a9b0c1
+    from: 9e23b4c5-d6e7-4f89-a012-3b4c5d6e7f8a
+    to: da1eaeee-4a50-4b6b-afee-3cfaf4887613
+    fromPort: default
+    toPort: default
+  - id: b8c9d0e1-f2a3-4b4c-f5d6-e7f8a9b0c1d2
+    from: b245c6d7-f8a9-4b01-c234-5d6e7f8a9b0c
     to: da1eaeee-4a50-4b6b-afee-3cfaf4887613
     fromPort: default
     toPort: default
