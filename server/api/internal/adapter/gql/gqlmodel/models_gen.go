@@ -57,6 +57,57 @@ type AssetConnection struct {
 	TotalCount int       `json:"totalCount"`
 }
 
+type CMSItem struct {
+	ID        ID        `json:"id"`
+	Fields    JSON      `json:"fields"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+type CMSItemsConnection struct {
+	Items      []*CMSItem `json:"items"`
+	TotalCount int        `json:"totalCount"`
+}
+
+type CMSModel struct {
+	ID          ID         `json:"id"`
+	ProjectID   ID         `json:"projectId"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Key         string     `json:"key"`
+	Schema      *CMSSchema `json:"schema"`
+	PublicAPIEp string     `json:"publicApiEp"`
+	EditorURL   string     `json:"editorUrl"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	UpdatedAt   time.Time  `json:"updatedAt"`
+}
+
+type CMSProject struct {
+	ID          ID            `json:"id"`
+	Name        string        `json:"name"`
+	Alias       string        `json:"alias"`
+	Description *string       `json:"description,omitempty"`
+	License     *string       `json:"license,omitempty"`
+	Readme      *string       `json:"readme,omitempty"`
+	WorkspaceID ID            `json:"workspaceId"`
+	Visibility  CMSVisibility `json:"visibility"`
+	CreatedAt   time.Time     `json:"createdAt"`
+	UpdatedAt   time.Time     `json:"updatedAt"`
+}
+
+type CMSSchema struct {
+	SchemaID ID                `json:"schemaId"`
+	Fields   []*CMSSchemaField `json:"fields"`
+}
+
+type CMSSchemaField struct {
+	FieldID     ID                 `json:"fieldId"`
+	Name        string             `json:"name"`
+	Type        CMSSchemaFieldType `json:"type"`
+	Key         string             `json:"key"`
+	Description *string            `json:"description,omitempty"`
+}
+
 type CancelJobInput struct {
 	JobID ID `json:"jobId"`
 }
@@ -696,6 +747,146 @@ func (e *AssetSortType) UnmarshalJSON(b []byte) error {
 }
 
 func (e AssetSortType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type CMSSchemaFieldType string
+
+const (
+	CMSSchemaFieldTypeText           CMSSchemaFieldType = "TEXT"
+	CMSSchemaFieldTypeTextarea       CMSSchemaFieldType = "TEXTAREA"
+	CMSSchemaFieldTypeRichtext       CMSSchemaFieldType = "RICHTEXT"
+	CMSSchemaFieldTypeMarkdowntext   CMSSchemaFieldType = "MARKDOWNTEXT"
+	CMSSchemaFieldTypeAsset          CMSSchemaFieldType = "ASSET"
+	CMSSchemaFieldTypeDate           CMSSchemaFieldType = "DATE"
+	CMSSchemaFieldTypeBool           CMSSchemaFieldType = "BOOL"
+	CMSSchemaFieldTypeSelect         CMSSchemaFieldType = "SELECT"
+	CMSSchemaFieldTypeTag            CMSSchemaFieldType = "TAG"
+	CMSSchemaFieldTypeInteger        CMSSchemaFieldType = "INTEGER"
+	CMSSchemaFieldTypeNumber         CMSSchemaFieldType = "NUMBER"
+	CMSSchemaFieldTypeReference      CMSSchemaFieldType = "REFERENCE"
+	CMSSchemaFieldTypeCheckbox       CMSSchemaFieldType = "CHECKBOX"
+	CMSSchemaFieldTypeURL            CMSSchemaFieldType = "URL"
+	CMSSchemaFieldTypeGroup          CMSSchemaFieldType = "GROUP"
+	CMSSchemaFieldTypeGeometryobject CMSSchemaFieldType = "GEOMETRYOBJECT"
+	CMSSchemaFieldTypeGeometryeditor CMSSchemaFieldType = "GEOMETRYEDITOR"
+)
+
+var AllCMSSchemaFieldType = []CMSSchemaFieldType{
+	CMSSchemaFieldTypeText,
+	CMSSchemaFieldTypeTextarea,
+	CMSSchemaFieldTypeRichtext,
+	CMSSchemaFieldTypeMarkdowntext,
+	CMSSchemaFieldTypeAsset,
+	CMSSchemaFieldTypeDate,
+	CMSSchemaFieldTypeBool,
+	CMSSchemaFieldTypeSelect,
+	CMSSchemaFieldTypeTag,
+	CMSSchemaFieldTypeInteger,
+	CMSSchemaFieldTypeNumber,
+	CMSSchemaFieldTypeReference,
+	CMSSchemaFieldTypeCheckbox,
+	CMSSchemaFieldTypeURL,
+	CMSSchemaFieldTypeGroup,
+	CMSSchemaFieldTypeGeometryobject,
+	CMSSchemaFieldTypeGeometryeditor,
+}
+
+func (e CMSSchemaFieldType) IsValid() bool {
+	switch e {
+	case CMSSchemaFieldTypeText, CMSSchemaFieldTypeTextarea, CMSSchemaFieldTypeRichtext, CMSSchemaFieldTypeMarkdowntext, CMSSchemaFieldTypeAsset, CMSSchemaFieldTypeDate, CMSSchemaFieldTypeBool, CMSSchemaFieldTypeSelect, CMSSchemaFieldTypeTag, CMSSchemaFieldTypeInteger, CMSSchemaFieldTypeNumber, CMSSchemaFieldTypeReference, CMSSchemaFieldTypeCheckbox, CMSSchemaFieldTypeURL, CMSSchemaFieldTypeGroup, CMSSchemaFieldTypeGeometryobject, CMSSchemaFieldTypeGeometryeditor:
+		return true
+	}
+	return false
+}
+
+func (e CMSSchemaFieldType) String() string {
+	return string(e)
+}
+
+func (e *CMSSchemaFieldType) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CMSSchemaFieldType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CMSSchemaFieldType", str)
+	}
+	return nil
+}
+
+func (e CMSSchemaFieldType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *CMSSchemaFieldType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e CMSSchemaFieldType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type CMSVisibility string
+
+const (
+	CMSVisibilityPublic  CMSVisibility = "PUBLIC"
+	CMSVisibilityPrivate CMSVisibility = "PRIVATE"
+)
+
+var AllCMSVisibility = []CMSVisibility{
+	CMSVisibilityPublic,
+	CMSVisibilityPrivate,
+}
+
+func (e CMSVisibility) IsValid() bool {
+	switch e {
+	case CMSVisibilityPublic, CMSVisibilityPrivate:
+		return true
+	}
+	return false
+}
+
+func (e CMSVisibility) String() string {
+	return string(e)
+}
+
+func (e *CMSVisibility) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CMSVisibility(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CMSVisibility", str)
+	}
+	return nil
+}
+
+func (e CMSVisibility) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *CMSVisibility) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e CMSVisibility) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
