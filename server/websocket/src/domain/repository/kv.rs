@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use time::OffsetDateTime;
 
 /// Trait used by [KVStore] to define key-value entry tuples returned by cursor iterators.
 pub trait KVEntry {
@@ -50,4 +51,10 @@ pub trait KVStore: Send + Sync {
     /// In example: in a key collection of `{1,2,5,7}`, this method with the key parameter of `4`
     /// should return value of `2`.
     async fn peek_back(&self, key: &[u8]) -> Result<Option<Self::Entry>, Self::Error>;
+
+    async fn get_metadata(
+        &self,
+        from: &[u8],
+        to: &[u8],
+    ) -> Result<Option<Vec<(u32, OffsetDateTime)>>, Self::Error>;
 }

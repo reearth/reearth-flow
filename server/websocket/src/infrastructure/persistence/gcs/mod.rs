@@ -12,6 +12,7 @@ use google_cloud_storage::{
     http::objects::Object,
 };
 use hex;
+use time::OffsetDateTime;
 use tracing::debug;
 
 use crate::domain::entity::gcs::GcsConfig;
@@ -329,6 +330,56 @@ impl KVStore for GcsStore {
             debug!("No objects found for peek_back with key: {:?}", key);
             Ok(None)
         }
+    }
+
+    async fn get_metadata(
+        &self,
+        from: &[u8],
+        to: &[u8],
+    ) -> Result<Option<Vec<(u32, OffsetDateTime)>>, Self::Error> {
+        let from_hex = hex::encode(from);
+        let to_hex = hex::encode(to);
+
+        let common_prefix: String = find_common_prefix(&from_hex, &to_hex);
+
+        let mut all_objects = Vec::new();
+        let mut page_token = None;
+
+        loop {
+            let request = ListObjectsRequest {
+                bucket: self.bucket.clone(),
+                prefix: Some(common_prefix.clone()),
+                page_token: page_token.clone(),
+                ..Default::default()
+            };
+
+            let response = self.client.list_objects(&request).await?;
+            let items = response.items.unwrap_or_default();
+            all_objects.extend(items);
+
+            if let Some(token) = response.next_page_token {
+                page_token = Some(token);
+            } else {
+                break;
+            }
+        }
+
+        let mut metadata: Vec<(u32, OffsetDateTime)> = Vec::new();
+        for obj in all_objects {
+            if let Ok(key_bytes) = hex::decode(&obj.name) {
+                if key_bytes.len() >= 12 {
+                    let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap_or_default();
+                    let clock = u32::from_be_bytes(clock_bytes);
+                    let timestamp = obj.updated.unwrap_or_else(OffsetDateTime::now_utc);
+
+                    metadata.push((clock, timestamp));
+                }
+            }
+        }
+
+        metadata.sort_by_key(|(clock, _)| std::cmp::Reverse(*clock));
+
+        Ok(Some(metadata))
     }
 }
 
