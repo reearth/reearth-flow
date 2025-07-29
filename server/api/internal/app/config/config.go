@@ -93,6 +93,11 @@ type (
 
 		// websocket
 		WebsocketThriftServerURL string `envconfig:"REEARTH_FLOW_WEBSOCKET_THRIFT_SERVER_URL" default:"http://localhost:8000" pp:",omitempty"`
+
+		// cms
+		CMS_Endpoint string `envconfig:"REEARTH_DASHBOARD_GRPC_ENDPOINT_CMS" pp:",omitempty"`
+		CMS_Token    string `envconfig:"REEARTH_DASHBOARD_GRPC_TOKEN_CMS" pp:",omitempty"`
+		CMS_UseTLS   bool   `envconfig:"REEARTH_DASHBOARD_GRPC_USE_TLS" default:"false" pp:",omitempty"`
 	}
 )
 

@@ -38,6 +38,7 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 
 	return interfaces.Container{
 		Asset:         NewAsset(r, g, permissionChecker),
+		CMS:           NewCMS(r, g, permissionChecker),
 		Job:           job,
 		Deployment:    NewDeployment(r, g, job, permissionChecker),
 		EdgeExecution: NewEdgeExecution(r, g, permissionChecker),
