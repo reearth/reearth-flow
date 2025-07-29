@@ -272,9 +272,11 @@ function DataTable<TData, TValue>({
             className="h-full overflow-auto rounded-md border"
             style={{ contain: "paint", willChange: "transform" }}>
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 z-10 bg-background/50 backdrop-blur-2xl">
                 {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
+                  <TableRow
+                    key={headerGroup.id}
+                    className="bg-background/50 backdrop-blur-2xl">
                     {headerGroup.headers.map((header) => {
                       return (
                         <TableHead

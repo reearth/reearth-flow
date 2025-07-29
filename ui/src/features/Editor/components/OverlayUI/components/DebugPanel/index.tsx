@@ -86,9 +86,9 @@ const DebugPanel: React.FC = () => {
 
   return debugJobId ? (
     <div
-      className={`absolute ${fullscreenDebug ? "bottom-0 left-0" : "bottom-4 left-4 "}  z-30 flex items-end`}>
+      className={`absolute ${fullscreenDebug ? "bottom-3 left-1" : "bottom-4 left-4 "} z-30 flex items-end`}>
       <Tabs
-        className={`pointer-events-auto w-[95vw] rounded-md bg-secondary/70 shadow-md shadow-secondary backdrop-blur-xs transition-all ${minimized ? "h-[38px]" : fullscreenDebug ? "h-[100vh] w-[100vw]" : expanded ? "h-[80vh]" : "h-[500px]"}`}
+        className={`pointer-events-auto w-[95vw] rounded-md bg-secondary/70 shadow-md shadow-secondary backdrop-blur transition-all ${minimized ? "h-[38px]" : fullscreenDebug ? "h-[100vh] w-[100vw]" : expanded ? "h-[60vh]" : "h-[40vh]"}`}
         value={tabValue}
         defaultValue="debug-logs"
         onValueChange={setTabValue}>
@@ -125,7 +125,7 @@ const DebugPanel: React.FC = () => {
           <div className="flex items-center gap-2 p-1">
             {!fullscreenDebug && (
               <div
-                className=" rounded p-1 hover:bg-primary"
+                className="cursor-pointer rounded p-1 hover:bg-primary"
                 onClick={handleMinimize}>
                 {minimized ? (
                   <CaretUpIcon weight="light" />
@@ -172,7 +172,10 @@ const DebugPanel: React.FC = () => {
             hidden={tabValue !== "debug-viewer"}
             className="h-[calc(100%-35px)] overflow-scroll">
             <ResizablePanelGroup direction="horizontal">
-              <ResizablePanel defaultSize={70} minSize={20}>
+              <ResizablePanel
+                defaultSize={70}
+                minSize={20}
+                className="flex flex-col">
                 <Tabs defaultValue="data-viewer">
                   <div className="top-1 left-1 p-1 pt-2">
                     <Select
@@ -194,13 +197,15 @@ const DebugPanel: React.FC = () => {
                     </Select>
                   </div>
                 </Tabs>
-                <DataTable
-                  fileContent={selectedOutputData}
-                  fileType={fileType}
-                  selectedFeature={selectedFeature}
-                  onSingleClick={handleRowSingleClick}
-                  onDoubleClick={handleRowDoubleClick}
-                />
+                <div className="min-h-0 flex-1">
+                  <DataTable
+                    fileContent={selectedOutputData}
+                    fileType={fileType}
+                    selectedFeature={selectedFeature}
+                    onSingleClick={handleRowSingleClick}
+                    onDoubleClick={handleRowDoubleClick}
+                  />
+                </div>
               </ResizablePanel>
               <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 relative m-[0px] border border-border/50 transition hover:border-logo/70" />
               <ResizablePanel defaultSize={30} minSize={20}>
