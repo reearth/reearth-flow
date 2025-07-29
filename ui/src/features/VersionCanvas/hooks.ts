@@ -26,12 +26,6 @@ export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {
 
   const currentYWorkflow = yWorkflows.get(currentWorkflowId);
 
-  const isSubworkflow = useMemo(() => {
-    if (!currentYWorkflow) return false;
-    const workflowId = currentYWorkflow.get("id")?.toJSON();
-    return workflowId !== DEFAULT_ENTRY_GRAPH_ID;
-  }, [currentYWorkflow]);
-
   const rawNodes = useY(currentYWorkflow?.get("nodes") ?? new YMap()) as Record<
     string,
     Node
@@ -59,7 +53,6 @@ export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {
 
   const {
     openWorkflows,
-    isMainWorkflow,
     handleWorkflowOpen,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,
@@ -69,7 +62,7 @@ export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {
     setCurrentWorkflowId,
   });
 
-  const { hoveredDetails, handleNodeHover, handleEdgeHover } = useUIState({});
+  const { hoveredDetails, handleNodeHover, handleEdgeHover } = useUIState();
 
   useEffect(() => {
     fitView({ padding: 0.5 });
@@ -97,15 +90,13 @@ export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {
 
   return {
     currentWorkflowId,
-    isSubworkflow,
     nodes,
     edges,
     openWorkflows,
-    isMainWorkflow,
     openNode,
+    hoveredDetails,
     handleOpenNode,
     handleNodeSettings,
-    hoveredDetails,
     handleNodeHover,
     handleEdgeHover,
     handleWorkflowOpen,

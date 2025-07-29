@@ -210,14 +210,12 @@ const ProjectVariablesTable: React.FC<Props> = ({
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}>
         <Table className={`rounded-md bg-inherit ${className}`}>
-          <TableHeader className="sticky top-0 z-10 bg-background">
+          <TableHeader className="sticky top-0 z-10 bg-background/50">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
-                <TableHead className="w-10 bg-background" />
+                <TableHead className="w-10" />
                 {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    className="h-8 bg-background whitespace-nowrap">
+                  <TableHead key={header.id} className="h-8 whitespace-nowrap">
                     {header.isPlaceholder
                       ? null
                       : flexRender(

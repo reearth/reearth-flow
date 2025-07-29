@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { RenderFallback, DataTable as Table } from "@flow/components";
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useT } from "@flow/lib/i18n";
@@ -6,9 +8,18 @@ import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 type Props = {
   fileContent: any | null;
   fileType: SupportedDataTypes | null;
+  selectedFeature: any;
+  onSingleClick: (value: any) => void;
+  onDoubleClick?: (value: any) => void;
 };
 
-const DataTable: React.FC<Props> = ({ fileContent, fileType }) => {
+const DataTable: React.FC<Props> = ({
+  fileContent,
+  fileType,
+  selectedFeature,
+  onSingleClick,
+  onDoubleClick,
+}) => {
   const { tableData, tableColumns } = useDataColumnizer({
     parsedData: fileContent,
     type: fileType,
@@ -29,6 +40,10 @@ const DataTable: React.FC<Props> = ({ fileContent, fileType }) => {
             selectColumns
             showFiltering
             showOrdering={false}
+            selectedRow={selectedFeature}
+            onRowClick={onSingleClick}
+            onRowDoubleClick={onDoubleClick}
+            useStrictSelectedRow
           />
         </div>
       </div>
@@ -36,4 +51,4 @@ const DataTable: React.FC<Props> = ({ fileContent, fileType }) => {
   );
 };
 
-export { DataTable };
+export default memo(DataTable);

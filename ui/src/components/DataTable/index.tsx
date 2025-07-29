@@ -1,6 +1,7 @@
 import {
   ColumnDef,
   PaginationState,
+  Row,
   SortingState,
   VisibilityState,
   flexRender,
@@ -27,6 +28,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@flow/components";
+import { useDoubleClick } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { OrderDirection } from "@flow/types/paginationOptions";
 
@@ -48,16 +50,19 @@ type DataTableProps<TData, TValue> = {
   enablePagination?: boolean;
   totalPages?: number;
   condensed?: boolean;
-  onRowClick?: (row: TData) => void;
   currentPage?: number;
-  setCurrentPage?: (page: number) => void;
   resultsPerPage?: number;
   currentOrder?: OrderDirection;
-  setCurrentOrder?: (order: OrderDirection) => void;
   sortOptions?: { value: string; label: string }[];
   currentSortValue?: string;
-  onSortChange?: (value: string) => void;
   searchTerm?: string;
+  selectedRow?: any;
+  useStrictSelectedRow?: boolean;
+  onRowClick?: (row: TData) => void;
+  onRowDoubleClick?: (row: TData) => void;
+  setCurrentPage?: (page: number) => void;
+  setCurrentOrder?: (order: OrderDirection) => void;
+  onSortChange?: (value: string) => void;
   setSearchTerm?: (term: string) => void;
 };
 
@@ -70,16 +75,19 @@ function DataTable<TData, TValue>({
   enablePagination = false,
   totalPages = 1,
   condensed,
-  onRowClick,
   currentPage = 1,
-  setCurrentPage,
   resultsPerPage,
   currentOrder = OrderDirection.Desc,
-  setCurrentOrder,
   sortOptions,
   currentSortValue,
-  onSortChange,
   searchTerm,
+  selectedRow,
+  useStrictSelectedRow,
+  onRowClick,
+  onRowDoubleClick,
+  setCurrentPage,
+  setCurrentOrder,
+  onSortChange,
   setSearchTerm,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
@@ -156,6 +164,31 @@ function DataTable<TData, TValue>({
     getScrollElement: () => parentRef.current,
     estimateSize: () => 24,
   });
+
+  const handleRowDoubleClick = (row: Row<TData>) => {
+    onRowDoubleClick?.(row.original);
+  };
+
+  const [handleSingleClick, handleDoubleClick] = useDoubleClick<
+    Row<TData>,
+    Row<TData>
+  >(
+    onRowClick
+      ? (row?: Row<TData>) => {
+          if (row) {
+            row.toggleSelected();
+            onRowClick(row.original);
+          }
+        }
+      : undefined,
+    onRowDoubleClick
+      ? (row?: Row<TData>) => {
+          if (row) {
+            handleRowDoubleClick(row);
+          }
+        }
+      : undefined,
+  );
 
   return (
     <div className="flex h-full flex-col justify-between">
@@ -236,7 +269,8 @@ function DataTable<TData, TValue>({
         <div className="overflow-auto rounded-md border">
           <div
             ref={parentRef}
-            className="h-full overflow-auto rounded-md border">
+            className="h-full overflow-auto rounded-md border"
+            style={{ contain: "paint", willChange: "transform" }}>
             <Table>
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
@@ -245,7 +279,7 @@ function DataTable<TData, TValue>({
                       return (
                         <TableHead
                           key={header.id}
-                          className={`${condensed ? "h-8" : "h-10"} whitespace-nowrap`}>
+                          className={`${condensed ? "h-8" : "h-10"}`}>
                           {header.isPlaceholder
                             ? null
                             : flexRender(
@@ -261,7 +295,19 @@ function DataTable<TData, TValue>({
               <TableBody>
                 {rows.length ? (
                   virtualizer.getVirtualItems().map((virtualRow, idx) => {
-                    const row = rows[virtualRow.index];
+                    const row = rows[virtualRow.index] as any;
+                    let isSelected = false;
+                    if (selectedRow) {
+                      isSelected =
+                        String(selectedRow?.id || "").replace(
+                          /[^a-zA-Z0-9]/g,
+                          "",
+                        ) ===
+                        String(row.original?.id || "").replace(
+                          /[^a-zA-Z0-9]/g,
+                          "",
+                        );
+                    }
                     return (
                       <TableRow
                         key={row.id}
@@ -271,12 +317,26 @@ function DataTable<TData, TValue>({
                           height: `${virtualRow.size}px`,
                           transform: `translateY(${virtualRow.start - idx * virtualRow.size}px)`,
                         }}
-                        data-state={row.getIsSelected() && "selected"}
-                        onClick={() => {
-                          row.toggleSelected();
-                          onRowClick?.(row.original);
-                        }}>
-                        {row.getVisibleCells().map((cell) => (
+                        data-state={
+                          useStrictSelectedRow
+                            ? selectedRow && isSelected
+                              ? "selected"
+                              : undefined
+                            : row.getIsSelected()
+                              ? "selected"
+                              : undefined
+                        }
+                        onClick={
+                          handleSingleClick
+                            ? () => handleSingleClick(row)
+                            : undefined
+                        }
+                        onDoubleClick={
+                          handleDoubleClick
+                            ? () => handleDoubleClick(row)
+                            : undefined
+                        }>
+                        {row.getVisibleCells().map((cell: any) => (
                           <TableCell
                             key={cell.id}
                             className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>

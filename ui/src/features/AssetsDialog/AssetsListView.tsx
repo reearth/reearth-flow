@@ -26,6 +26,7 @@ type Props = {
     e: React.MouseEvent<HTMLAnchorElement>,
     asset: Asset,
   ) => void;
+  onAssetDoubleClick?: (asset: Asset) => void;
 };
 const AssetsListView: React.FC<Props> = ({
   assets,
@@ -36,6 +37,7 @@ const AssetsListView: React.FC<Props> = ({
   setAssetToBeEdited,
   onCopyUrlToClipBoard,
   onAssetDownload,
+  onAssetDoubleClick,
 }) => {
   const t = useT();
 
@@ -93,6 +95,7 @@ const AssetsListView: React.FC<Props> = ({
         setCurrentPage={setCurrentPage}
         totalPages={totalPages}
         resultsPerPage={resultsPerPage}
+        onRowDoubleClick={onAssetDoubleClick}
       />
     </div>
   );

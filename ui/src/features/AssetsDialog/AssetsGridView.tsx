@@ -15,6 +15,7 @@ type Props = {
     e: React.MouseEvent<HTMLAnchorElement>,
     asset: Asset,
   ) => void;
+  onAssetDoubleClick?: (asset: Asset) => void;
 };
 const AssetsGridView: React.FC<Props> = ({
   assets,
@@ -23,6 +24,7 @@ const AssetsGridView: React.FC<Props> = ({
   setAssetToBeEdited,
   onCopyUrlToClipBoard,
   onAssetDownload,
+  onAssetDoubleClick,
 }) => {
   const t = useT();
 
@@ -41,6 +43,7 @@ const AssetsGridView: React.FC<Props> = ({
                 onAssetDownload={onAssetDownload}
                 setAssetToBeDeleted={setAssetToBeDeleted}
                 setAssetToBeEdited={setAssetToBeEdited}
+                onDoubleClick={onAssetDoubleClick}
               />
             ))}
           </div>

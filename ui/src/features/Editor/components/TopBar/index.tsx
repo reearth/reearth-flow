@@ -3,6 +3,7 @@ import { memo } from "react";
 import { Doc } from "yjs";
 
 import { IconButton } from "@flow/components";
+import AssetsDialog from "@flow/features/AssetsDialog";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
 import { Project } from "@flow/types";
@@ -14,7 +15,6 @@ import {
   Breadcrumb,
   DebugActionBar,
   HomeMenu,
-  AssetsDialog,
   ProjectVariableDialog,
 } from "./components";
 import useHooks from "./hooks";
@@ -56,6 +56,7 @@ const TopBar: React.FC<Props> = ({
 }) => {
   const t = useT();
   const {
+    isMainWorkflow,
     showDialog,
     currentProjectVariables,
     handleProjectVariableAdd,
@@ -65,30 +66,31 @@ const TopBar: React.FC<Props> = ({
     handleProjectVariablesBatchDelete,
     handleDialogOpen,
     handleDialogClose,
-  } = useHooks();
+  } = useHooks({ openWorkflows, currentWorkflowId });
   const [currentProject] = useCurrentProject();
 
   return (
-    <div className="flex w-[100vw] shrink-0 justify-between gap-2 bg-secondary">
-      <div className="flex items-center gap-1">
+    <div className="flex h-[50px] w-[100vw] shrink-0 justify-between bg-secondary">
+      <div
+        className={`flex items-center gap-1 border-b px-5 ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
         <HomeMenu
           dropdownPosition="bottom"
           dropdownAlign="end"
-          dropdownAlignOffset={-140}
+          dropdownAlignOffset={-148}
         />
         <div className="pr-4 pl-2">
           <Breadcrumb />
         </div>
-        <div className="flex items-center gap-2 rounded-md p-1">
+        <div className="flex items-center gap-2 rounded-md">
           <IconButton
-            className="h-[30px]"
+            className="h-[35px]"
             variant="outline"
             tooltipText={t("Project Variables")}
             icon={<ChalkboardTeacherIcon weight="thin" size={18} />}
             onClick={() => handleDialogOpen("projectVariables")}
           />
           <IconButton
-            className="h-[30px]"
+            className="h-[35px]"
             variant="outline"
             tooltipText={t("Assets")}
             icon={<HardDriveIcon weight="thin" size={18} />}
@@ -104,7 +106,8 @@ const TopBar: React.FC<Props> = ({
           onWorkflowChange={onWorkflowChange}
         />
       </div>
-      <div className="flex h-full items-center justify-center gap-2 self-center p-1 select-none">
+      <div
+        className={`flex h-full items-center justify-center gap-2 self-center border-b p-1 select-none ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
         <div className="h-4/5 border-r" />
         <DebugActionBar
           onDebugRunStart={onDebugRunStart}
@@ -128,7 +131,6 @@ const TopBar: React.FC<Props> = ({
       )}
       {showDialog === "projectVariables" && (
         <ProjectVariableDialog
-          isOpen={showDialog === "projectVariables"}
           currentProjectVariables={currentProjectVariables}
           projectId={currentProject?.id}
           onClose={handleDialogClose}
