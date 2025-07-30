@@ -108,7 +108,7 @@ const ActionBar: React.FC<Props> = ({
               sideOffset={14}
               alignOffset={2}>
               <DropdownMenuItem
-                className="flex items-center justify-between rounded-sm px-2 py-1.5 text-xs"
+                className="flex items-center justify-between"
                 onSelect={(e) => {
                   e.preventDefault();
                 }}
@@ -126,7 +126,7 @@ const ActionBar: React.FC<Props> = ({
                 </div>
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="flex items-center justify-between rounded-sm px-2 py-1.5 text-xs"
+                className="flex items-center justify-between"
                 onClick={() => onDialogOpen("version")}>
                 <div className="flex items-center gap-1">
                   <ClockCounterClockwiseIcon weight="light" />
@@ -134,7 +134,7 @@ const ActionBar: React.FC<Props> = ({
                 </div>
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="flex items-center justify-between rounded-sm px-2 py-1.5 text-xs"
+                className="flex items-center justify-between"
                 onClick={onProjectExport}>
                 <div className="flex items-center gap-1">
                   <ExportIcon weight="light" />

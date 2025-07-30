@@ -79,8 +79,8 @@ const AssetsDialog: React.FC<Props> = ({
   return (
     <Dialog open onOpenChange={onDialogClose}>
       <DialogContent className="max-h-[800px] w-full max-w-4xl overflow-hidden">
-        <DialogTitle className="flex items-center font-thin">
-          <HardDriveIcon size={24} className="mr-2 inline-block font-thin" />
+        <DialogTitle className="flex items-center gap-2">
+          <HardDriveIcon />
           {t("Assets")}
         </DialogTitle>
         <DialogContentWrapper>
