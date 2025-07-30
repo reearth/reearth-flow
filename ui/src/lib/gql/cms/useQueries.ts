@@ -40,7 +40,7 @@ export const useQueries = () => {
       queryKey: [CmsQueryKeys.GetCmsProject, projectIdOrAlias],
       queryFn: () =>
         graphQLContext?.GetCmsProjectByIdOrAlias({
-          projectIdOrAlias: projectIdOrAlias ?? "",
+          projectIdOrAlias,
         }),
       enabled: !!projectIdOrAlias,
       select: (data) =>
@@ -96,8 +96,8 @@ export const useQueries = () => {
       queryKey: [CmsQueryKeys.GetCmsModelExportUrl, modelId],
       queryFn: async () => {
         const data = await graphQLContext?.GetCmsModelExportUrl({
-          projectId: projectId,
-          modelId: modelId,
+          projectId,
+          modelId,
         });
         if (!data) return;
 
