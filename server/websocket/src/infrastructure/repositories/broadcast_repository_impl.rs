@@ -1,6 +1,7 @@
+use crate::domain::entity::document_name::DocumentName;
+use crate::domain::entity::instance_id::InstanceId;
 use crate::domain::entity::BroadcastGroup;
 use crate::domain::repository::BroadcastRepository;
-use crate::domain::value_object::{DocumentName, InstanceId};
 use anyhow::Result;
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -33,29 +34,26 @@ impl BroadcastRepository for BroadcastRepositoryImpl {
         instance_id: InstanceId,
     ) -> Result<Arc<BroadcastGroup>> {
         let key = document_name.as_str().to_string();
-        
+
         // Create the domain entity
         let group = Arc::new(BroadcastGroup::new(document_name, instance_id));
-        
+
         // Create broadcast channel for this group
         let (sender, _) = broadcast::channel(self.buffer_capacity);
-        
+
         // Store both group and channel
         {
             let mut groups = self.groups.write().await;
             let mut channels = self.channels.write().await;
-            
+
             groups.insert(key.clone(), group.clone());
             channels.insert(key, sender);
         }
-        
+
         Ok(group)
     }
 
-    async fn get_group(
-        &self,
-        document_name: &DocumentName,
-    ) -> Result<Option<Arc<BroadcastGroup>>> {
+    async fn get_group(&self, document_name: &DocumentName) -> Result<Option<Arc<BroadcastGroup>>> {
         let key = document_name.as_str();
         let groups = self.groups.read().await;
         Ok(groups.get(key).cloned())
@@ -63,39 +61,32 @@ impl BroadcastRepository for BroadcastRepositoryImpl {
 
     async fn remove_group(&self, document_name: &DocumentName) -> Result<()> {
         let key = document_name.as_str();
-        
+
         let mut groups = self.groups.write().await;
         let mut channels = self.channels.write().await;
-        
+
         groups.remove(key);
         channels.remove(key);
-        
+
         Ok(())
     }
 
-    async fn broadcast_message(
-        &self,
-        document_name: &DocumentName,
-        message: Bytes,
-    ) -> Result<()> {
+    async fn broadcast_message(&self, document_name: &DocumentName, message: Bytes) -> Result<()> {
         let key = document_name.as_str();
         let channels = self.channels.read().await;
-        
+
         if let Some(sender) = channels.get(key) {
             // Ignore error if no receivers (channel is empty)
             let _ = sender.send(message);
         }
-        
+
         Ok(())
     }
 
-    async fn subscribe(
-        &self,
-        document_name: &DocumentName,
-    ) -> Result<broadcast::Receiver<Bytes>> {
+    async fn subscribe(&self, document_name: &DocumentName) -> Result<broadcast::Receiver<Bytes>> {
         let key = document_name.as_str();
         let channels = self.channels.read().await;
-        
+
         if let Some(sender) = channels.get(key) {
             Ok(sender.subscribe())
         } else {

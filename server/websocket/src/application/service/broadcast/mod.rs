@@ -1,6 +1,10 @@
+use crate::domain::entity::document_name::DocumentName;
+use crate::domain::entity::instance_id::InstanceId;
 use crate::domain::entity::BroadcastGroup;
-use crate::domain::repository::{BroadcastRepository, DocumentStorageRepository, RedisStreamRepository};
-use crate::domain::value_object::{DocumentName, InstanceId};
+use crate::domain::repository::{
+    BroadcastRepository, DocumentStorageRepository, RedisStreamRepository,
+};
+
 use anyhow::Result;
 use bytes::Bytes;
 use std::sync::Arc;
@@ -37,7 +41,9 @@ impl BroadcastGroupService {
         }
 
         // Create new group if it doesn't exist
-        self.broadcast_repo.create_group(document_name, instance_id).await
+        self.broadcast_repo
+            .create_group(document_name, instance_id)
+            .await
     }
 
     /// Handle connection increment for a group
@@ -49,13 +55,13 @@ impl BroadcastGroupService {
     /// Handle connection decrement for a group
     pub async fn decrement_connections(&self, group: &BroadcastGroup) -> Result<usize> {
         let count = group.decrement_connections();
-        
+
         // If no more connections, consider cleanup
         if count == 0 {
             // Could trigger cleanup logic here
             tracing::debug!("Group {} has no more connections", group.document_name());
         }
-        
+
         Ok(count)
     }
 
@@ -74,23 +80,18 @@ impl BroadcastGroupService {
         document_name: &DocumentName,
         message: Bytes,
     ) -> Result<()> {
-        self.broadcast_repo.broadcast_message(document_name, message).await
+        self.broadcast_repo
+            .broadcast_message(document_name, message)
+            .await
     }
 
     /// Save document snapshot
-    pub async fn save_snapshot(
-        &self,
-        document_name: &DocumentName,
-        data: &[u8],
-    ) -> Result<()> {
+    pub async fn save_snapshot(&self, document_name: &DocumentName, data: &[u8]) -> Result<()> {
         self.storage_repo.save_snapshot(document_name, data).await
     }
 
     /// Load document from storage
-    pub async fn load_document(
-        &self,
-        document_name: &DocumentName,
-    ) -> Result<Option<Vec<u8>>> {
+    pub async fn load_document(&self, document_name: &DocumentName) -> Result<Option<Vec<u8>>> {
         self.storage_repo.load_document(document_name).await
     }
 
@@ -111,5 +112,4 @@ impl BroadcastGroupService {
     ) -> Result<Vec<(String, Vec<u8>)>> {
         self.redis_repo.read_updates(document_name, last_id).await
     }
-
 }

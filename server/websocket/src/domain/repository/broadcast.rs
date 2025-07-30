@@ -1,5 +1,6 @@
+use crate::domain::entity::document_name::DocumentName;
+use crate::domain::entity::instance_id::InstanceId;
 use crate::domain::entity::BroadcastGroup;
-use crate::domain::value_object::{DocumentName, InstanceId};
 use anyhow::Result;
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -16,20 +17,13 @@ pub trait BroadcastRepository: Send + Sync {
     ) -> Result<Arc<BroadcastGroup>>;
 
     /// Get an existing broadcast group
-    async fn get_group(
-        &self,
-        document_name: &DocumentName,
-    ) -> Result<Option<Arc<BroadcastGroup>>>;
+    async fn get_group(&self, document_name: &DocumentName) -> Result<Option<Arc<BroadcastGroup>>>;
 
     /// Remove a broadcast group
     async fn remove_group(&self, document_name: &DocumentName) -> Result<()>;
 
     /// Broadcast message to all subscribers in a group
-    async fn broadcast_message(
-        &self,
-        document_name: &DocumentName,
-        message: Bytes,
-    ) -> Result<()>;
+    async fn broadcast_message(&self, document_name: &DocumentName, message: Bytes) -> Result<()>;
 
     /// Subscribe to messages for a document
     async fn subscribe(
@@ -42,17 +36,10 @@ pub trait BroadcastRepository: Send + Sync {
 #[async_trait]
 pub trait DocumentStorageRepository: Send + Sync {
     /// Save document snapshot to storage
-    async fn save_snapshot(
-        &self,
-        document_name: &DocumentName,
-        data: &[u8],
-    ) -> Result<()>;
+    async fn save_snapshot(&self, document_name: &DocumentName, data: &[u8]) -> Result<()>;
 
     /// Load document from storage
-    async fn load_document(
-        &self,
-        document_name: &DocumentName,
-    ) -> Result<Option<Vec<u8>>>;
+    async fn load_document(&self, document_name: &DocumentName) -> Result<Option<Vec<u8>>>;
 
     /// Flush updates to storage
     async fn flush_updates(
@@ -66,11 +53,7 @@ pub trait DocumentStorageRepository: Send + Sync {
 #[async_trait]
 pub trait RedisStreamRepository: Send + Sync {
     /// Add update to Redis stream
-    async fn add_update(
-        &self,
-        document_name: &DocumentName,
-        update: &[u8],
-    ) -> Result<String>;
+    async fn add_update(&self, document_name: &DocumentName, update: &[u8]) -> Result<String>;
 
     /// Read updates from Redis stream
     async fn read_updates(
@@ -80,15 +63,8 @@ pub trait RedisStreamRepository: Send + Sync {
     ) -> Result<Vec<(String, Vec<u8>)>>;
 
     /// Get last read ID for a document
-    async fn get_last_read_id(
-        &self,
-        document_name: &DocumentName,
-    ) -> Result<Option<String>>;
+    async fn get_last_read_id(&self, document_name: &DocumentName) -> Result<Option<String>>;
 
     /// Set last read ID for a document
-    async fn set_last_read_id(
-        &self,
-        document_name: &DocumentName,
-        id: &str,
-    ) -> Result<()>;
+    async fn set_last_read_id(&self, document_name: &DocumentName, id: &str) -> Result<()>;
 }

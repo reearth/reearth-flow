@@ -1,5 +1,5 @@
+use crate::domain::entity::document_name::DocumentName;
 use crate::domain::repository::DocumentStorageRepository;
-use crate::domain::value_object::DocumentName;
 use crate::storage::gcs::GcsStore;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -18,19 +18,12 @@ impl DocumentStorageRepositoryImpl {
 
 #[async_trait]
 impl DocumentStorageRepository for DocumentStorageRepositoryImpl {
-    async fn save_snapshot(
-        &self,
-        document_name: &DocumentName,
-        data: &[u8],
-    ) -> Result<()> {
+    async fn save_snapshot(&self, document_name: &DocumentName, data: &[u8]) -> Result<()> {
         let key = format!("documents/{}/snapshot", document_name.as_str());
         self.gcs_store.put(&key, data).await
     }
 
-    async fn load_document(
-        &self,
-        document_name: &DocumentName,
-    ) -> Result<Option<Vec<u8>>> {
+    async fn load_document(&self, document_name: &DocumentName) -> Result<Option<Vec<u8>>> {
         let key = format!("documents/{}/snapshot", document_name.as_str());
         match self.gcs_store.get(&key).await {
             Ok(data) => Ok(Some(data)),
