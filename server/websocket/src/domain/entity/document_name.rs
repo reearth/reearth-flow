@@ -11,7 +11,10 @@ impl DocumentName {
         if name.len() > 255 {
             return Err("Document name cannot exceed 255 characters");
         }
-        if !name.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.') {
+        if !name
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.')
+        {
             return Err("Document name can only contain alphanumeric characters, hyphens, underscores, and dots");
         }
         Ok(Self(name))
@@ -19,6 +22,10 @@ impl DocumentName {
 
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.0.into_bytes()
     }
 }
 

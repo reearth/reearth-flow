@@ -9,32 +9,24 @@ use bytes::Bytes;
 use std::sync::Arc;
 
 /// Application service for managing broadcast groups
-pub struct BroadcastGroupService {
-    broadcast_repo: Arc<dyn BroadcastRepository>,
-    storage_repo: Arc<
-        dyn kv::KVStore<
-            Error = anyhow::Error,
-            Return = Bytes,
-            Entry = (String, Bytes),
-            Cursor = tokio::sync::broadcast::Receiver<Bytes>,
-        >,
-    >,
-    redis_repo: Arc<dyn redis::RedisRepository<Error = anyhow::Error>>,
+pub struct BroadcastGroupService<S, R, B>
+where
+    S: kv::KVStore + Send + Sync + 'static,
+    R: redis::RedisRepository + Send + Sync + 'static,
+    B: BroadcastRepository + Send + Sync + 'static,
+{
+    broadcast_repo: Arc<B>,
+    storage_repo: Arc<S>,
+    redis_repo: Arc<R>,
 }
 
-impl BroadcastGroupService {
-    pub fn new(
-        broadcast_repo: Arc<dyn BroadcastRepository>,
-        storage_repo: Arc<
-            dyn kv::KVStore<
-                Error = anyhow::Error,
-                Return = Bytes,
-                Entry = (String, Bytes),
-                Cursor = tokio::sync::broadcast::Receiver<Bytes>,
-            >,
-        >,
-        redis_repo: Arc<dyn redis::RedisRepository<Error = anyhow::Error>>,
-    ) -> Self {
+impl<S, R, B> BroadcastGroupService<S, R, B>
+where
+    S: kv::KVStore + Send + Sync + 'static,
+    R: redis::RedisRepository + Send + Sync + 'static,
+    B: BroadcastRepository + Send + Sync + 'static,
+{
+    pub fn new(broadcast_repo: Arc<B>, storage_repo: Arc<S>, redis_repo: Arc<R>) -> Self {
         Self {
             broadcast_repo,
             storage_repo,
@@ -100,12 +92,16 @@ impl BroadcastGroupService {
 
     /// Save document snapshot
     pub async fn save_snapshot(&self, document_name: &DocumentName, data: &[u8]) -> Result<()> {
-        self.storage_repo.upsert(document_name.as_str(), data).await
+        self.storage_repo
+            .upsert(document_name.into_bytes().as_ref(), data)
+            .await
     }
 
     /// Load document from storage
     pub async fn load_document(&self, document_name: &DocumentName) -> Result<Option<Vec<u8>>> {
-        self.storage_repo.get(document_name.as_str()).await
+        self.storage_repo
+            .get(document_name.into_bytes().as_ref())
+            .await
     }
 
     /// Add update to Redis stream
@@ -124,10 +120,28 @@ impl BroadcastGroupService {
     pub async fn read_updates_from_stream(
         &self,
         document_name: &DocumentName,
-        last_id: &str,
+        instance_id: &InstanceId,
+        count: usize,
+        last_read_id: &Arc<tokio::sync::Mutex<String>>,
     ) -> Result<Vec<(String, Vec<u8>)>> {
-        self.redis_repo
-            .read_and_filter(document_name, last_id)
-            .await
+        let updates = self
+            .redis_repo
+            .read_and_filter(
+                document_name.as_str(),
+                count,
+                instance_id.as_str(),
+                last_read_id,
+            )
+            .await?;
+
+        // Convert Vec<Bytes> to Vec<(String, Vec<u8>)>
+        // For now, we'll use a simple index as the string key
+        let result = updates
+            .into_iter()
+            .enumerate()
+            .map(|(i, bytes)| (i.to_string(), bytes.to_vec()))
+            .collect();
+
+        Ok(result)
     }
 }
