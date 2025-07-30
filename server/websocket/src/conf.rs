@@ -5,7 +5,7 @@ use std::path::Path;
 use thiserror::Error;
 use tracing::{info, warn};
 
-use crate::{storage::gcs::GcsConfig, storage::redis::RedisConfig};
+use crate::domain::entity::{gcs::GcsConfig, redis::RedisConfig};
 
 const DEFAULT_REDIS_URL: &str = "redis://127.0.0.1:6379";
 const DEFAULT_REDIS_TTL: u64 = 43200;

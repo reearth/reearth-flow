@@ -64,6 +64,9 @@ where
         // If no more connections, consider cleanup
         if count == 0 {
             // Could trigger cleanup logic here
+            self.broadcast_repo
+                .remove_group(&group.document_name())
+                .await?;
             tracing::debug!("Group {} has no more connections", group.document_name());
         }
 
@@ -91,14 +94,21 @@ where
     }
 
     /// Save document snapshot
-    pub async fn save_snapshot(&self, document_name: &DocumentName, data: &[u8]) -> Result<()> {
+    pub async fn save_snapshot(
+        &self,
+        document_name: DocumentName,
+        data: &[u8],
+    ) -> Result<(), S::Error> {
         self.storage_repo
             .upsert(document_name.into_bytes().as_ref(), data)
             .await
     }
 
     /// Load document from storage
-    pub async fn load_document(&self, document_name: &DocumentName) -> Result<Option<Vec<u8>>> {
+    pub async fn load_document(
+        &self,
+        document_name: DocumentName,
+    ) -> Result<Option<S::Return>, S::Error> {
         self.storage_repo
             .get(document_name.into_bytes().as_ref())
             .await
@@ -110,9 +120,9 @@ where
         document_name: &DocumentName,
         instance_id: &InstanceId,
         update: &[u8],
-    ) -> Result<String> {
+    ) -> Result<(), R::Error> {
         self.redis_repo
-            .publish_update(document_name, update, instance_id)
+            .publish_update(document_name.as_str(), update, instance_id.as_str())
             .await
     }
 
@@ -123,7 +133,7 @@ where
         instance_id: &InstanceId,
         count: usize,
         last_read_id: &Arc<tokio::sync::Mutex<String>>,
-    ) -> Result<Vec<(String, Vec<u8>)>> {
+    ) -> Result<Vec<Bytes>, R::Error> {
         let updates = self
             .redis_repo
             .read_and_filter(
@@ -134,14 +144,6 @@ where
             )
             .await?;
 
-        // Convert Vec<Bytes> to Vec<(String, Vec<u8>)>
-        // For now, we'll use a simple index as the string key
-        let result = updates
-            .into_iter()
-            .enumerate()
-            .map(|(i, bytes)| (i.to_string(), bytes.to_vec()))
-            .collect();
-
-        Ok(result)
+        Ok(updates)
     }
 }
