@@ -38,12 +38,13 @@ where
     pub async fn get_or_create_group(
         &self,
         document_name: DocumentName,
-        instance_id: InstanceId,
     ) -> Result<Arc<BroadcastGroup>> {
         // Try to get existing group first
         if let Some(group) = self.broadcast_repo.get_group(&document_name).await? {
             return Ok(group);
         }
+
+        let instance_id = InstanceId::new();
 
         // Create new group if it doesn't exist
         self.broadcast_repo
@@ -54,6 +55,11 @@ where
     /// Handle connection increment for a group
     pub async fn increment_connections(&self, group: &BroadcastGroup) -> Result<usize> {
         let count = group.increment_connections();
+        self.redis_repo.register_doc_instance(
+            &group.document_name().as_str(),
+            &group.instance_id().as_str(),
+            60,
+        );
         Ok(count)
     }
 
