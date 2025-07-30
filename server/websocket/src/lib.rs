@@ -8,7 +8,6 @@ mod broadcast;
 pub mod conf;
 pub mod conn;
 pub mod doc;
-pub mod storage;
 pub mod tools;
 pub mod ws;
 

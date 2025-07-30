@@ -40,7 +40,6 @@ use crate::domain::entity::keys::{
 use crate::domain::repository::kv::KVEntry;
 use crate::domain::repository::kv::KVStore;
 use crate::infrastructure::RedisStore;
-use crate::storage::gcs::UpdateInfo;
 use crate::tools::{compress_brotli, decompress_brotli};
 use anyhow;
 use anyhow::Result;
