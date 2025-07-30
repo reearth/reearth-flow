@@ -17,7 +17,7 @@ export const useCms = () => {
     };
   };
 
-  const useGetCmsProject = (projectIdOrAlias?: string) => {
+  const useGetCmsProject = (projectIdOrAlias: string) => {
     const { data, ...rest } =
       useGetCmsProjectByIdOrAliasQuery(projectIdOrAlias);
     return {
