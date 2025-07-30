@@ -73,7 +73,7 @@ export const useQueries = () => {
     pageSize?: number,
   ) =>
     useQuery({
-      queryKey: [CmsQueryKeys.GetCmsItems, projectId],
+      queryKey: [CmsQueryKeys.GetCmsItems, projectId, modelId, page, pageSize],
       queryFn: async () => {
         const data = await graphQLContext?.GetCmsItems({
           projectId,

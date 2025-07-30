@@ -64,7 +64,7 @@ export type MockCmsModel = {
 
 export type MockCmsItem = {
   id: string;
-  fields: JSON;
+  fields: Record<string, any>;
   createdAt: string;
   updatedAt: string;
 };
@@ -147,15 +147,21 @@ export const mockCmsModels: MockCmsModel[] = [
 export const mockCmsItems: MockCmsItem[] = [
   {
     id: "item-001",
-    fields: JSON.parse('{"name": "City Tower", "height": 150, "floors": 42}'),
+    fields: {
+      name: "City Tower",
+      height: 150,
+      floors: 42,
+    },
     createdAt: "2023-01-25T14:20:00Z",
     updatedAt: "2023-04-28T09:10:00Z",
   },
   {
     id: "item-002",
-    fields: JSON.parse(
-      '{"type": "air_quality", "location": "downtown", "active": true}',
-    ),
+    fields: {
+      type: "air_quality",
+      location: "downtown",
+      active: true,
+    },
     createdAt: "2023-02-18T15:40:00Z",
     updatedAt: "2023-05-22T10:25:00Z",
   },

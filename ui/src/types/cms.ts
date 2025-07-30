@@ -60,7 +60,7 @@ export type CmsModel = {
 
 export type CmsItem = {
   id: string;
-  fields: JSON;
+  fields: Record<string, any>;
   createdAt: string;
   updatedAt: string;
 };
