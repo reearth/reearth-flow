@@ -1,9 +1,9 @@
-enum MockCMSVisibility {
+enum MockCmsVisibility {
   PUBLIC = "PUBLIC",
   PRIVATE = "PRIVATE",
 }
 
-enum MockCMSSchemaFieldType {
+enum MockCmsSchemaFieldType {
   TEXT = "TEXT",
   TEXTAREA = "TEXTAREA",
   RICHTEXT = "RICHTEXT",
@@ -23,20 +23,20 @@ enum MockCMSSchemaFieldType {
   GEOMETRYEDITOR = "GEOMETRYEDITOR",
 }
 
-type MockCMSSchemaField = {
+type MockCmsSchemaField = {
   fieldId: string;
   name: string;
-  type: MockCMSSchemaFieldType;
+  type: MockCmsSchemaFieldType;
   key: string;
   description: string;
 };
 
 type MockCMSSchema = {
   schemaId: string;
-  fields: MockCMSSchemaField[];
+  fields: MockCmsSchemaField[];
 };
 
-export type MockCMSProject = {
+export type MockCmsProject = {
   id: string;
   name: string;
   alias: string;
@@ -44,12 +44,12 @@ export type MockCMSProject = {
   license?: string;
   readme?: string;
   workspaceId: string;
-  visibility: MockCMSVisibility;
+  visibility: MockCmsVisibility;
   createdAt: string;
   updatedAt: string;
 };
 
-export type MockCMSModel = {
+export type MockCmsModel = {
   id: string;
   projectId: string;
   name: string;
@@ -62,14 +62,14 @@ export type MockCMSModel = {
   updatedAt: string;
 };
 
-export type MockCMSItem = {
+export type MockCmsItem = {
   id: string;
   fields: JSON;
   createdAt: string;
   updatedAt: string;
 };
 
-export const mockCmsProjects: MockCMSProject[] = [
+export const mockCmsProjects: MockCmsProject[] = [
   {
     id: "proj-001",
     name: "Urban Development",
@@ -79,7 +79,7 @@ export const mockCmsProjects: MockCMSProject[] = [
     readme:
       "# Urban Development\nThis project contains data about urban development plans.",
     workspaceId: "ws-001",
-    visibility: MockCMSVisibility.PUBLIC,
+    visibility: MockCmsVisibility.PUBLIC,
     createdAt: "2023-01-15T08:30:00Z",
     updatedAt: "2023-04-22T14:15:00Z",
   },
@@ -89,13 +89,13 @@ export const mockCmsProjects: MockCMSProject[] = [
     alias: "env-monitor",
     description: "Environmental data collection and analysis",
     workspaceId: "ws-001",
-    visibility: MockCMSVisibility.PRIVATE,
+    visibility: MockCmsVisibility.PRIVATE,
     createdAt: "2023-02-10T09:45:00Z",
     updatedAt: "2023-05-18T11:20:00Z",
   },
 ];
 
-export const mockCmsModels: MockCMSModel[] = [
+export const mockCmsModels: MockCmsModel[] = [
   {
     id: "model-001",
     projectId: "proj-001",
@@ -108,7 +108,7 @@ export const mockCmsModels: MockCMSModel[] = [
         {
           fieldId: "field-001",
           name: "Building Name",
-          type: MockCMSSchemaFieldType.TEXT,
+          type: MockCmsSchemaFieldType.TEXT,
           key: "name",
           description: "Name of the building",
         },
@@ -131,7 +131,7 @@ export const mockCmsModels: MockCMSModel[] = [
         {
           fieldId: "field-002",
           name: "Sensor Type",
-          type: MockCMSSchemaFieldType.SELECT,
+          type: MockCmsSchemaFieldType.SELECT,
           key: "type",
           description: "Type of environmental sensor",
         },
@@ -144,7 +144,7 @@ export const mockCmsModels: MockCMSModel[] = [
   },
 ];
 
-export const mockCmsItems: MockCMSItem[] = [
+export const mockCmsItems: MockCmsItem[] = [
   {
     id: "item-001",
     fields: JSON.parse('{"name": "City Tower", "height": 150, "floors": 42}'),

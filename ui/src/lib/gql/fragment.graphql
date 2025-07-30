@@ -148,7 +148,7 @@ fragment ProjectSnapshot on ProjectSnapshot {
   version
 }
 
-fragment CMSProject on CMSProject {
+fragment CmsProject on CMSProject {
   id
   name
   alias
@@ -161,20 +161,29 @@ fragment CMSProject on CMSProject {
   updatedAt
 }
 
-fragment CMSModel on CMSModel {
+fragment CmsModel on CMSModel {
   id
+  projectId
   name
-  alias
   description
   editorUrl
   key
-  schema
+  schema {
+    schemaId
+    fields {
+      fieldId
+      key
+      type
+      name
+      description
+    }
+  }
   publicApiEp
   createdAt
   updatedAt
 }
 
-fragment CMSItem on CMSItem {
+fragment CmsItem on CMSItem {
   id
   fields
   createdAt

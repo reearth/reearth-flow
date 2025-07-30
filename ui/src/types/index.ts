@@ -18,3 +18,4 @@ export * from "./document";
 export * from "./workflow";
 export * from "./workspace";
 export * from "./user";
+export * from "./cms";

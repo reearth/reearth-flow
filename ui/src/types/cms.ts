@@ -1,68 +1,64 @@
-enum CMSVisibility {
-  PUBLIC = "PUBLIC",
-  PRIVATE = "PRIVATE",
-}
+export type CmsVisibility = "public" | "private";
 
-enum CMSSchemaFieldType {
-  TEXT = "TEXT",
-  TEXTAREA = "TEXTAREA",
-  RICHTEXT = "RICHTEXT",
-  MARKDOWNTEXT = "MARKDOWNTEXT",
-  ASSET = "ASSET",
-  DATE = "DATE",
-  BOOL = "BOOL",
-  SELECT = "SELECT",
-  TAG = "TAG",
-  INTEGER = "INTEGER",
-  NUMBER = "NUMBER",
-  REFERENCE = "REFERENCE",
-  CHECKBOX = "CHECKBOX",
-  URL = "URL",
-  GROUP = "GROUP",
-  GEOMETRYOBJECT = "GEOMETRYOBJECT",
-  GEOMETRYEDITOR = "GEOMETRYEDITOR",
-}
+export type CmsSchemaFieldType =
+  | "text"
+  | "text_area"
+  | "rich_text"
+  | "mark_down_text"
+  | "asset"
+  | "date"
+  | "bool"
+  | "select"
+  | "tag"
+  | "integer"
+  | "number"
+  | "reference"
+  | "checkbox"
+  | "url"
+  | "group"
+  | "geometry_object"
+  | "geometry_editor";
 
-type CMSSchemaField = {
+export type CmsSchemaField = {
   fieldId: string;
   name: string;
-  type: CMSSchemaFieldType;
+  type: CmsSchemaFieldType;
   key: string;
-  description: string;
+  description?: string;
 };
 
-type CMSSchema = {
+export type CmsSchema = {
   schemaId: string;
-  fields: CMSSchemaField;
+  fields: CmsSchemaField[];
 };
 
-export type CMSProject = {
+export type CmsProject = {
   id: string;
   name: string;
   alias: string;
-  description?: string;
-  license?: string;
-  readme?: string;
+  description?: string | null;
+  license?: string | null;
+  readme?: string | null;
   workspaceId: string;
-  visibility: CMSVisibility;
+  visibility: CmsVisibility;
   createdAt: string;
   updatedAt: string;
 };
 
-export type CMSModel = {
+export type CmsModel = {
   id: string;
   projectId: string;
   name: string;
   description: string;
   key: string;
-  schema: CMSSchema;
+  schema: CmsSchema;
   publicApiEp: string;
   editorUrl: string;
   createdAt: string;
   updatedAt: string;
 };
 
-export type CMSItem = {
+export type CmsItem = {
   id: string;
   fields: JSON;
   createdAt: string;

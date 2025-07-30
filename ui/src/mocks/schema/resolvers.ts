@@ -3,9 +3,9 @@ import {
   mockCmsProjects,
   mockCmsModels,
   mockCmsItems,
-  type MockCMSProject,
-  type MockCMSModel,
-  type MockCMSItem,
+  type MockCmsProject,
+  type MockCmsModel,
+  type MockCmsItem,
 } from "../data/cms";
 import { mockDeployments, type MockDeployment } from "../data/deployments";
 import { mockJobs, mockLogs, type MockJob, type MockLog } from "../data/jobs";
@@ -313,29 +313,29 @@ export const resolvers = {
 
   // CMS Type resolvers
   CMSProject: {
-    id: (cmsProject: MockCMSProject) => cmsProject.id,
-    name: (cmsProject: MockCMSProject) => cmsProject.name,
-    alias: (cmsProject: MockCMSProject) => cmsProject.alias,
-    description: (cmsProject: MockCMSProject) => cmsProject.description,
-    license: (cmsProject: MockCMSProject) => cmsProject.license,
-    readme: (cmsProject: MockCMSProject) => cmsProject.readme,
-    workspaceId: (cmsProject: MockCMSProject) => cmsProject.workspaceId,
-    visibility: (cmsProject: MockCMSProject) => cmsProject.visibility,
-    createdAt: (cmsProject: MockCMSProject) => cmsProject.createdAt,
-    updatedAt: (cmsProject: MockCMSProject) => cmsProject.updatedAt,
+    id: (cmsProject: MockCmsProject) => cmsProject.id,
+    name: (cmsProject: MockCmsProject) => cmsProject.name,
+    alias: (cmsProject: MockCmsProject) => cmsProject.alias,
+    description: (cmsProject: MockCmsProject) => cmsProject.description,
+    license: (cmsProject: MockCmsProject) => cmsProject.license,
+    readme: (cmsProject: MockCmsProject) => cmsProject.readme,
+    workspaceId: (cmsProject: MockCmsProject) => cmsProject.workspaceId,
+    visibility: (cmsProject: MockCmsProject) => cmsProject.visibility,
+    createdAt: (cmsProject: MockCmsProject) => cmsProject.createdAt,
+    updatedAt: (cmsProject: MockCmsProject) => cmsProject.updatedAt,
   },
 
   CMSModel: {
-    id: (cmsModel: MockCMSModel) => cmsModel.id,
-    projectId: (cmsModel: MockCMSModel) => cmsModel.projectId,
-    name: (cmsModel: MockCMSModel) => cmsModel.name,
-    description: (cmsModel: MockCMSModel) => cmsModel.description,
-    key: (cmsModel: MockCMSModel) => cmsModel.key,
-    schema: (cmsModel: MockCMSModel) => cmsModel.schema,
-    publicApiEp: (cmsModel: MockCMSModel) => cmsModel.publicApiEp,
-    editorUrl: (cmsModel: MockCMSModel) => cmsModel.editorUrl,
-    createdAt: (cmsModel: MockCMSModel) => cmsModel.createdAt,
-    updatedAt: (cmsModel: MockCMSModel) => cmsModel.updatedAt,
+    id: (cmsModel: MockCmsModel) => cmsModel.id,
+    projectId: (cmsModel: MockCmsModel) => cmsModel.projectId,
+    name: (cmsModel: MockCmsModel) => cmsModel.name,
+    description: (cmsModel: MockCmsModel) => cmsModel.description,
+    key: (cmsModel: MockCmsModel) => cmsModel.key,
+    schema: (cmsModel: MockCmsModel) => cmsModel.schema,
+    publicApiEp: (cmsModel: MockCmsModel) => cmsModel.publicApiEp,
+    editorUrl: (cmsModel: MockCmsModel) => cmsModel.editorUrl,
+    createdAt: (cmsModel: MockCmsModel) => cmsModel.createdAt,
+    updatedAt: (cmsModel: MockCmsModel) => cmsModel.updatedAt,
   },
 
   CMSSchema: {
@@ -352,10 +352,10 @@ export const resolvers = {
   },
 
   CMSItem: {
-    id: (cmsItem: MockCMSItem) => cmsItem.id,
-    fields: (cmsItem: MockCMSItem) => cmsItem.fields,
-    createdAt: (cmsItem: MockCMSItem) => cmsItem.createdAt,
-    updatedAt: (cmsItem: MockCMSItem) => cmsItem.updatedAt,
+    id: (cmsItem: MockCmsItem) => cmsItem.id,
+    fields: (cmsItem: MockCmsItem) => cmsItem.fields,
+    createdAt: (cmsItem: MockCmsItem) => cmsItem.createdAt,
+    updatedAt: (cmsItem: MockCmsItem) => cmsItem.updatedAt,
   },
 
   // Query resolvers

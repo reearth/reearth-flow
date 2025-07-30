@@ -1,20 +1,18 @@
-query GetCmsProject($projectIdOrAlias: ID!) {
+query GetCmsProjectByIdOrAlias($projectIdOrAlias: ID!) {
   cmsProject(projectIdOrAlias: $projectIdOrAlias) {
-    cmsProject {
-      ...CMSProject
-    }
+    ...CmsProject
   }
 }
 
 query GetCmsProjects($workspaceId: ID!, $publicOnly: Boolean) {
   cmsProjects(workspaceId: $workspaceId, publicOnly: $publicOnly) {
-    ...CMSProject
+    ...CmsProject
   }
 }
 
 query GetCmsModels($projectId: ID!) {
   cmsModels(projectId: $projectId) {
-    ...CMSModel
+    ...CmsModel
   }
 }
 
@@ -26,14 +24,12 @@ query GetCmsItems($projectId: ID!, $modelId: ID!, $page: Int, $pageSize: Int) {
     pageSize: $pageSize
   ) {
     items {
-      ...CMSItem
+      ...CmsItem
     }
     totalCount
   }
 }
 
 query GetCmsModelExportUrl($projectId: ID!, $modelId: ID!) {
-  cmsModelExportUrl(projectId: $projectId, modelId: $modelId) {
-    url
-  }
+  cmsModelExportUrl(projectId: $projectId, modelId: $modelId)
 }
