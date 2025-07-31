@@ -77,6 +77,88 @@ export enum AssetSortType {
   Size = 'SIZE'
 }
 
+export type CmsItem = {
+  __typename?: 'CMSItem';
+  createdAt: Scalars['DateTime']['output'];
+  fields: Scalars['JSON']['output'];
+  id: Scalars['ID']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+export type CmsItemsConnection = {
+  __typename?: 'CMSItemsConnection';
+  items: Array<CmsItem>;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type CmsModel = {
+  __typename?: 'CMSModel';
+  createdAt: Scalars['DateTime']['output'];
+  description: Scalars['String']['output'];
+  editorUrl: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  key: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  projectId: Scalars['ID']['output'];
+  publicApiEp: Scalars['String']['output'];
+  schema: CmsSchema;
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+export type CmsProject = {
+  __typename?: 'CMSProject';
+  alias: Scalars['String']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  description?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  license?: Maybe<Scalars['String']['output']>;
+  name: Scalars['String']['output'];
+  readme?: Maybe<Scalars['String']['output']>;
+  updatedAt: Scalars['DateTime']['output'];
+  visibility: CmsVisibility;
+  workspaceId: Scalars['ID']['output'];
+};
+
+export type CmsSchema = {
+  __typename?: 'CMSSchema';
+  fields: Array<CmsSchemaField>;
+  schemaId: Scalars['ID']['output'];
+};
+
+export type CmsSchemaField = {
+  __typename?: 'CMSSchemaField';
+  description?: Maybe<Scalars['String']['output']>;
+  fieldId: Scalars['ID']['output'];
+  key: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  type: CmsSchemaFieldType;
+};
+
+export enum CmsSchemaFieldType {
+  Asset = 'ASSET',
+  Bool = 'BOOL',
+  Checkbox = 'CHECKBOX',
+  Date = 'DATE',
+  Geometryeditor = 'GEOMETRYEDITOR',
+  Geometryobject = 'GEOMETRYOBJECT',
+  Group = 'GROUP',
+  Integer = 'INTEGER',
+  Markdowntext = 'MARKDOWNTEXT',
+  Number = 'NUMBER',
+  Reference = 'REFERENCE',
+  Richtext = 'RICHTEXT',
+  Select = 'SELECT',
+  Tag = 'TAG',
+  Text = 'TEXT',
+  Textarea = 'TEXTAREA',
+  Url = 'URL'
+}
+
+export enum CmsVisibility {
+  Private = 'PRIVATE',
+  Public = 'PUBLIC'
+}
+
 export type CancelJobInput = {
   jobId: Scalars['ID']['input'];
 };
@@ -697,6 +779,11 @@ export type ProjectSnapshotMetadata = {
 export type Query = {
   __typename?: 'Query';
   assets: AssetConnection;
+  cmsItems: CmsItemsConnection;
+  cmsModelExportUrl: Scalars['String']['output'];
+  cmsModels: Array<CmsModel>;
+  cmsProject?: Maybe<CmsProject>;
+  cmsProjects: Array<CmsProject>;
   deploymentByVersion?: Maybe<Deployment>;
   deploymentHead?: Maybe<Deployment>;
   deploymentVersions: Array<Deployment>;
@@ -723,6 +810,36 @@ export type QueryAssetsArgs = {
   keyword?: InputMaybe<Scalars['String']['input']>;
   pagination: PageBasedPagination;
   sort?: InputMaybe<AssetSortType>;
+  workspaceId: Scalars['ID']['input'];
+};
+
+
+export type QueryCmsItemsArgs = {
+  modelId: Scalars['ID']['input'];
+  page?: InputMaybe<Scalars['Int']['input']>;
+  pageSize?: InputMaybe<Scalars['Int']['input']>;
+  projectId: Scalars['ID']['input'];
+};
+
+
+export type QueryCmsModelExportUrlArgs = {
+  modelId: Scalars['ID']['input'];
+  projectId: Scalars['ID']['input'];
+};
+
+
+export type QueryCmsModelsArgs = {
+  projectId: Scalars['ID']['input'];
+};
+
+
+export type QueryCmsProjectArgs = {
+  projectIdOrAlias: Scalars['ID']['input'];
+};
+
+
+export type QueryCmsProjectsArgs = {
+  publicOnly?: InputMaybe<Scalars['Boolean']['input']>;
   workspaceId: Scalars['ID']['input'];
 };
 
@@ -1108,6 +1225,46 @@ export type DeleteAssetMutationVariables = Exact<{
 
 export type DeleteAssetMutation = { __typename?: 'Mutation', deleteAsset?: { __typename?: 'DeleteAssetPayload', assetId: string } | null };
 
+export type GetCmsProjectByIdOrAliasQueryVariables = Exact<{
+  projectIdOrAlias: Scalars['ID']['input'];
+}>;
+
+
+export type GetCmsProjectByIdOrAliasQuery = { __typename?: 'Query', cmsProject?: { __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, createdAt: any, updatedAt: any } | null };
+
+export type GetCmsProjectsQueryVariables = Exact<{
+  workspaceId: Scalars['ID']['input'];
+  publicOnly?: InputMaybe<Scalars['Boolean']['input']>;
+}>;
+
+
+export type GetCmsProjectsQuery = { __typename?: 'Query', cmsProjects: Array<{ __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, createdAt: any, updatedAt: any }> };
+
+export type GetCmsModelsQueryVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+}>;
+
+
+export type GetCmsModelsQuery = { __typename?: 'Query', cmsModels: Array<{ __typename?: 'CMSModel', id: string, projectId: string, name: string, description: string, editorUrl: string, key: string, publicApiEp: string, createdAt: any, updatedAt: any, schema: { __typename?: 'CMSSchema', schemaId: string, fields: Array<{ __typename?: 'CMSSchemaField', fieldId: string, key: string, type: CmsSchemaFieldType, name: string, description?: string | null }> } }> };
+
+export type GetCmsItemsQueryVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+  modelId: Scalars['ID']['input'];
+  page?: InputMaybe<Scalars['Int']['input']>;
+  pageSize?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type GetCmsItemsQuery = { __typename?: 'Query', cmsItems: { __typename?: 'CMSItemsConnection', totalCount: number, items: Array<{ __typename?: 'CMSItem', id: string, fields: any, createdAt: any, updatedAt: any }> } };
+
+export type GetCmsModelExportUrlQueryVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+  modelId: Scalars['ID']['input'];
+}>;
+
+
+export type GetCmsModelExportUrlQuery = { __typename?: 'Query', cmsModelExportUrl: string };
+
 export type CreateDeploymentMutationVariables = Exact<{
   input: CreateDeploymentInput;
 }>;
@@ -1219,6 +1376,12 @@ export type ProjectSnapshotMetadataFragment = { __typename?: 'ProjectSnapshotMet
 export type ProjectSnapshotFragment = { __typename?: 'ProjectSnapshot', timestamp: any, updates: Array<number>, version: number };
 
 export type LogFragment = { __typename?: 'Log', jobId: string, nodeId?: string | null, timestamp: any, logLevel: LogLevel, message: string };
+
+export type CmsProjectFragment = { __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, createdAt: any, updatedAt: any };
+
+export type CmsModelFragment = { __typename?: 'CMSModel', id: string, projectId: string, name: string, description: string, editorUrl: string, key: string, publicApiEp: string, createdAt: any, updatedAt: any, schema: { __typename?: 'CMSSchema', schemaId: string, fields: Array<{ __typename?: 'CMSSchemaField', fieldId: string, key: string, type: CmsSchemaFieldType, name: string, description?: string | null }> } };
+
+export type CmsItemFragment = { __typename?: 'CMSItem', id: string, fields: any, createdAt: any, updatedAt: any };
 
 export type GetJobsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
@@ -1644,6 +1807,51 @@ export const LogFragmentDoc = gql`
   message
 }
     `;
+export const CmsProjectFragmentDoc = gql`
+    fragment CmsProject on CMSProject {
+  id
+  name
+  alias
+  description
+  license
+  readme
+  workspaceId
+  visibility
+  createdAt
+  updatedAt
+}
+    `;
+export const CmsModelFragmentDoc = gql`
+    fragment CmsModel on CMSModel {
+  id
+  projectId
+  name
+  description
+  editorUrl
+  key
+  schema {
+    schemaId
+    fields {
+      fieldId
+      key
+      type
+      name
+      description
+    }
+  }
+  publicApiEp
+  createdAt
+  updatedAt
+}
+    `;
+export const CmsItemFragmentDoc = gql`
+    fragment CmsItem on CMSItem {
+  id
+  fields
+  createdAt
+  updatedAt
+}
+    `;
 export const GetAssetsDocument = gql`
     query GetAssets($workspaceId: ID!, $keyword: String, $pagination: PageBasedPagination!) {
   assets(workspaceId: $workspaceId, keyword: $keyword, pagination: $pagination) {
@@ -1682,6 +1890,47 @@ export const DeleteAssetDocument = gql`
   deleteAsset(input: $input) {
     assetId
   }
+}
+    `;
+export const GetCmsProjectByIdOrAliasDocument = gql`
+    query GetCmsProjectByIdOrAlias($projectIdOrAlias: ID!) {
+  cmsProject(projectIdOrAlias: $projectIdOrAlias) {
+    ...CmsProject
+  }
+}
+    ${CmsProjectFragmentDoc}`;
+export const GetCmsProjectsDocument = gql`
+    query GetCmsProjects($workspaceId: ID!, $publicOnly: Boolean) {
+  cmsProjects(workspaceId: $workspaceId, publicOnly: $publicOnly) {
+    ...CmsProject
+  }
+}
+    ${CmsProjectFragmentDoc}`;
+export const GetCmsModelsDocument = gql`
+    query GetCmsModels($projectId: ID!) {
+  cmsModels(projectId: $projectId) {
+    ...CmsModel
+  }
+}
+    ${CmsModelFragmentDoc}`;
+export const GetCmsItemsDocument = gql`
+    query GetCmsItems($projectId: ID!, $modelId: ID!, $page: Int, $pageSize: Int) {
+  cmsItems(
+    projectId: $projectId
+    modelId: $modelId
+    page: $page
+    pageSize: $pageSize
+  ) {
+    items {
+      ...CmsItem
+    }
+    totalCount
+  }
+}
+    ${CmsItemFragmentDoc}`;
+export const GetCmsModelExportUrlDocument = gql`
+    query GetCmsModelExportUrl($projectId: ID!, $modelId: ID!) {
+  cmsModelExportUrl(projectId: $projectId, modelId: $modelId)
 }
     `;
 export const CreateDeploymentDocument = gql`
@@ -2147,6 +2396,21 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     DeleteAsset(variables: DeleteAssetMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<DeleteAssetMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<DeleteAssetMutation>({ document: DeleteAssetDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'DeleteAsset', 'mutation', variables);
+    },
+    GetCmsProjectByIdOrAlias(variables: GetCmsProjectByIdOrAliasQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetCmsProjectByIdOrAliasQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetCmsProjectByIdOrAliasQuery>({ document: GetCmsProjectByIdOrAliasDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetCmsProjectByIdOrAlias', 'query', variables);
+    },
+    GetCmsProjects(variables: GetCmsProjectsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetCmsProjectsQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetCmsProjectsQuery>({ document: GetCmsProjectsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetCmsProjects', 'query', variables);
+    },
+    GetCmsModels(variables: GetCmsModelsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetCmsModelsQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetCmsModelsQuery>({ document: GetCmsModelsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetCmsModels', 'query', variables);
+    },
+    GetCmsItems(variables: GetCmsItemsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetCmsItemsQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetCmsItemsQuery>({ document: GetCmsItemsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetCmsItems', 'query', variables);
+    },
+    GetCmsModelExportUrl(variables: GetCmsModelExportUrlQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetCmsModelExportUrlQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetCmsModelExportUrlQuery>({ document: GetCmsModelExportUrlDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetCmsModelExportUrl', 'query', variables);
     },
     CreateDeployment(variables: CreateDeploymentMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateDeploymentMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateDeploymentMutation>({ document: CreateDeploymentDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateDeployment', 'mutation', variables);

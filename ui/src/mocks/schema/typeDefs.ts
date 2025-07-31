@@ -301,6 +301,78 @@ export const typeDefs = `
     sharedToken: String!
   }
 
+  # CMS Types
+
+  type CMSProject {
+    id: ID!
+    name: String!
+    alias: String!
+    description: String
+    license: String
+    readme: String
+    workspaceId: ID!
+    visibility: CMSVisibility!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+  }
+
+  enum CMSVisibility {
+    PUBLIC
+    PRIVATE
+  }
+
+  type CMSModel {
+    id: ID!
+    projectId: ID!
+    name: String!
+    description: String!
+    key: String!
+    schema: CMSSchema!
+    publicApiEp: String!
+    editorUrl: String!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+  }
+  type CMSSchema {
+    schemaId: ID!
+    fields: [CMSSchemaField!]!
+  }
+
+  type CMSSchemaField {
+    fieldId: ID!
+    name: String!
+    type: CMSSchemaFieldType!
+    key: String!
+    description: String!
+  }
+
+  enum CMSSchemaFieldType {
+    TEXT
+    TEXTAREA
+    RICHTEXT
+    MARKDOWNTEXT
+    ASSET
+    DATE
+    BOOL
+    SELECT
+    TAG
+    INTEGER
+    NUMBER
+    REFERENCE
+    CHECKBOX
+    URL
+    GROUP
+    GEOMETRYOBJECT
+    GEOMETRYEDITOR
+  }
+
+  type CMSItem {
+    id: ID!
+    fields: JSON!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+  }
+
   # Connection Types
   type AssetConnection {
     nodes: [Asset]!
@@ -329,6 +401,11 @@ export const typeDefs = `
   type TriggerConnection {
     nodes: [Trigger]!
     pageInfo: PageInfo!
+    totalCount: Int!
+  }
+
+  type CMSItemsConnection {
+    items: [CMSItem!]!
     totalCount: Int!
   }
 
@@ -624,6 +701,13 @@ export const typeDefs = `
 
     # Trigger queries
     triggers(workspaceId: ID!, pagination: PageBasedPagination!): TriggerConnection!
+
+    # CMS queries
+    cmsProject(projectIdOrAlias: ID!): CMSProject
+    cmsProjects(workspaceId: ID!, publicOnly: Boolean): [CMSProject!]!
+    cmsModels(projectId: ID!): [CMSModel!]!
+    cmsItems(projectId: ID!, modelId: ID!, page: Int, pageSize: Int): CMSItemsConnection!
+    cmsModelExportUrl(projectId: ID!, modelId: ID!): String!
   }
 
   type Mutation {

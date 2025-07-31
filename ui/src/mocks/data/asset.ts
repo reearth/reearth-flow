@@ -1,26 +1,6 @@
-export type MockArchiveExtractionStatus =
-  | "skipped"
-  | "pending"
-  | "in_progress"
-  | "done"
-  | "failed";
+import { AssetFragment } from "@flow/lib/gql/__gen__/graphql";
 
-export type MockAsset = {
-  id: string;
-  workspaceId: string;
-  createdAt: string;
-  fileName: string;
-  size: number;
-  contentType: string;
-  name: string;
-  url: string;
-  uuid: string;
-  flatFiles: boolean;
-  public: boolean;
-  // archiveExtractionStatus: MockArchiveExtractionStatus;
-};
-
-export const mockAssets: MockAsset[] = [
+export const mockAssets: AssetFragment[] = [
   {
     id: "asset-1",
     workspaceId: "workspace-1",

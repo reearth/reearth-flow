@@ -84,8 +84,12 @@ impl ChannelManager {
             let mut sender_port = HashMap::new();
             for sender in &self.senders {
                 for (port, ports) in &sender.port_mapping {
-                    sender_port.entry(port.clone()).or_insert_with(Vec::new);
-                    sender_port.get_mut(port).unwrap().extend(ports.clone());
+                    let entry = sender_port.entry(port.clone()).or_insert_with(Vec::new);
+                    for port_item in ports {
+                        if !entry.contains(port_item) {
+                            entry.push(port_item.clone());
+                        }
+                    }
                 }
             }
             sender_port

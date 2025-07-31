@@ -17,7 +17,7 @@ impl LodMask {
     }
 
     pub fn remove_lod(&mut self, lod_no: u8) {
-        self.0 |= 1 << lod_no;
+        self.0 &= !(1 << lod_no);
     }
 
     pub fn has_lod(&self, lod_no: u8) -> bool {
@@ -93,6 +93,7 @@ impl BitAnd for LodMask {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn test_lod_mask() {
         let mut mask = LodMask::default();
@@ -119,5 +120,33 @@ mod tests {
         mask2.add_lod(3);
         assert!((mask & mask2).has_lod(3));
         assert!(!(mask & mask2).has_lod(1));
+    }
+
+    #[test]
+    fn test_add_lod() {
+        let mut mask = LodMask::default();
+        assert!((0..=3).all(|lod| !mask.has_lod(lod)));
+
+        mask.add_lod(0);
+        assert!(mask.has_lod(0));
+        assert!((1..=3).all(|lod| !mask.has_lod(lod)));
+
+        mask.add_lod(2);
+        assert!([0, 2].iter().all(|&lod| mask.has_lod(lod)));
+        assert!([1, 3].iter().all(|&lod| !mask.has_lod(lod)));
+    }
+
+    #[test]
+    fn test_remove_lod() {
+        let mut mask = LodMask::all();
+        assert!((0..=3).all(|lod| mask.has_lod(lod)));
+
+        mask.remove_lod(3);
+        assert!(!mask.has_lod(3));
+        assert!((0..=2).all(|lod| mask.has_lod(lod)));
+
+        mask.remove_lod(1);
+        assert!([1, 3].iter().all(|&lod| !mask.has_lod(lod)));
+        assert!([0, 2].iter().all(|&lod| mask.has_lod(lod)));
     }
 }
