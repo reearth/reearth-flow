@@ -1,10 +1,4 @@
-// User type according to GraphQL schema
-export type MockUser = {
-  id: string;
-  name: string;
-  email: string;
-  host?: string;
-};
+import { User as GraphqlUser } from "@flow/lib/gql/__gen__/graphql";
 
 // Me type according to GraphQL schema
 export type MockMe = {
@@ -16,7 +10,7 @@ export type MockMe = {
   myWorkspaceId: string;
 };
 
-export const mockUsers: MockUser[] = [
+export const mockUsers: GraphqlUser[] = [
   {
     id: "user-1",
     name: "admin",
@@ -48,7 +42,7 @@ export const mockUsers: MockUser[] = [
   },
 ];
 
-export const getCurrentUser = (): MockUser => mockUsers[0];
+export const getCurrentUser = (): GraphqlUser => mockUsers[0];
 
 export const getCurrentMe = (): MockMe => ({
   id: "user-1",

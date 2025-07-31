@@ -22,6 +22,7 @@ import {
   SelectItem,
 } from "@flow/components";
 import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
+import { useCms } from "@flow/lib/gql/cms/useApi";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Asset } from "@flow/types";
@@ -75,7 +76,24 @@ const AssetsDialog: React.FC<Props> = ({
     onDialogClose,
     onAssetDoubleClick,
   });
+  const {
+    useGetCmsProjects,
+    useGetCmsProject,
+    useGetCmsItems,
+    useGetCmsModelExportUrl,
+    useGetCmsModels,
+  } = useCms();
 
+  const { page } = useGetCmsProjects("ws-001", false);
+  const { page: models } = useGetCmsModels("proj-001");
+  const { cmsProject } = useGetCmsProject("proj-001");
+  const { page: items } = useGetCmsItems("proj-001", "model-001");
+  const { page: exportUrl } = useGetCmsModelExportUrl("proj-001", "model-001");
+  console.log("CMS Projects:", page?.cmsProjects);
+  console.log("CMS MODELs:", models?.cmsModels);
+  console.log("CMS Project:", cmsProject);
+  console.log("CMS ITEMS:", items?.cmsItems);
+  console.log("CMS EXPORT URL:", exportUrl?.cmsModelExportUrl);
   return (
     <Dialog open onOpenChange={onDialogClose}>
       <DialogContent className="max-h-[800px] w-full max-w-4xl overflow-hidden">

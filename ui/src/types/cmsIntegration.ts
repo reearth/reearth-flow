@@ -36,9 +36,9 @@ export type CmsProject = {
   id: string;
   name: string;
   alias: string;
-  description?: string | null;
-  license?: string | null;
-  readme?: string | null;
+  description?: string;
+  license?: string;
+  readme?: string;
   workspaceId: string;
   visibility: CmsVisibility;
   createdAt: string;

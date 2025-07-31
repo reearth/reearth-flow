@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { CmsItem, CmsModel, CmsProject } from "@flow/types/cms";
+import { CmsItem, CmsModel, CmsProject } from "@flow/types/cmsIntegration";
 import { isDefined } from "@flow/utils";
 
 import { toCmsItem, toCmsModel, toCmsProject } from "../convert";

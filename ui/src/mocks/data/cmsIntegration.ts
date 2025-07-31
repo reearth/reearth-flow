@@ -1,75 +1,12 @@
-enum MockCmsVisibility {
-  PUBLIC = "PUBLIC",
-  PRIVATE = "PRIVATE",
-}
+import {
+  CmsModelFragment,
+  CmsProjectFragment,
+  CmsItemFragment,
+  CmsVisibility as GraphqlCmsVisibility,
+  CmsSchemaFieldType as GraphQlCmsSchemaFieldType,
+} from "@flow/lib/gql/__gen__/graphql";
 
-enum MockCmsSchemaFieldType {
-  TEXT = "TEXT",
-  TEXTAREA = "TEXTAREA",
-  RICHTEXT = "RICHTEXT",
-  MARKDOWNTEXT = "MARKDOWNTEXT",
-  ASSET = "ASSET",
-  DATE = "DATE",
-  BOOL = "BOOL",
-  SELECT = "SELECT",
-  TAG = "TAG",
-  INTEGER = "INTEGER",
-  NUMBER = "NUMBER",
-  REFERENCE = "REFERENCE",
-  CHECKBOX = "CHECKBOX",
-  URL = "URL",
-  GROUP = "GROUP",
-  GEOMETRYOBJECT = "GEOMETRYOBJECT",
-  GEOMETRYEDITOR = "GEOMETRYEDITOR",
-}
-
-type MockCmsSchemaField = {
-  fieldId: string;
-  name: string;
-  type: MockCmsSchemaFieldType;
-  key: string;
-  description: string;
-};
-
-type MockCMSSchema = {
-  schemaId: string;
-  fields: MockCmsSchemaField[];
-};
-
-export type MockCmsProject = {
-  id: string;
-  name: string;
-  alias: string;
-  description?: string;
-  license?: string;
-  readme?: string;
-  workspaceId: string;
-  visibility: MockCmsVisibility;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type MockCmsModel = {
-  id: string;
-  projectId: string;
-  name: string;
-  description: string;
-  key: string;
-  schema: MockCMSSchema;
-  publicApiEp: string;
-  editorUrl: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type MockCmsItem = {
-  id: string;
-  fields: Record<string, any>;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export const mockCmsProjects: MockCmsProject[] = [
+export const mockCmsProjects: CmsProjectFragment[] = [
   {
     id: "proj-001",
     name: "Urban Development",
@@ -79,7 +16,7 @@ export const mockCmsProjects: MockCmsProject[] = [
     readme:
       "# Urban Development\nThis project contains data about urban development plans.",
     workspaceId: "ws-001",
-    visibility: MockCmsVisibility.PUBLIC,
+    visibility: GraphqlCmsVisibility.Private,
     createdAt: "2023-01-15T08:30:00Z",
     updatedAt: "2023-04-22T14:15:00Z",
   },
@@ -89,13 +26,13 @@ export const mockCmsProjects: MockCmsProject[] = [
     alias: "env-monitor",
     description: "Environmental data collection and analysis",
     workspaceId: "ws-001",
-    visibility: MockCmsVisibility.PRIVATE,
+    visibility: GraphqlCmsVisibility.Public,
     createdAt: "2023-02-10T09:45:00Z",
     updatedAt: "2023-05-18T11:20:00Z",
   },
 ];
 
-export const mockCmsModels: MockCmsModel[] = [
+export const mockCmsModels: CmsModelFragment[] = [
   {
     id: "model-001",
     projectId: "proj-001",
@@ -108,7 +45,7 @@ export const mockCmsModels: MockCmsModel[] = [
         {
           fieldId: "field-001",
           name: "Building Name",
-          type: MockCmsSchemaFieldType.TEXT,
+          type: GraphQlCmsSchemaFieldType.Text,
           key: "name",
           description: "Name of the building",
         },
@@ -131,7 +68,7 @@ export const mockCmsModels: MockCmsModel[] = [
         {
           fieldId: "field-002",
           name: "Sensor Type",
-          type: MockCmsSchemaFieldType.SELECT,
+          type: GraphQlCmsSchemaFieldType.Select,
           key: "type",
           description: "Type of environmental sensor",
         },
@@ -144,7 +81,7 @@ export const mockCmsModels: MockCmsModel[] = [
   },
 ];
 
-export const mockCmsItems: MockCmsItem[] = [
+export const mockCmsItems: CmsItemFragment[] = [
   {
     id: "item-001",
     fields: {

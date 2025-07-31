@@ -1,19 +1,9 @@
-// Mock workspaces data
+import {
+  WorkspaceFragment,
+  Role as GraphqlRole,
+} from "@flow/lib/gql/__gen__/graphql";
 
-export type MockWorkspace = {
-  id: string;
-  name: string;
-  personal: boolean;
-  members: MockWorkspaceMember[];
-  createdAt: string;
-};
-
-export type MockWorkspaceMember = {
-  userId: string;
-  role: "OWNER" | "MAINTAINER" | "WRITER" | "READER";
-};
-
-export const mockWorkspaces: MockWorkspace[] = [
+export const mockWorkspaces: WorkspaceFragment[] = [
   {
     id: "workspace-1",
     name: "Personal Workspace",
@@ -21,10 +11,9 @@ export const mockWorkspaces: MockWorkspace[] = [
     members: [
       {
         userId: "user-1",
-        role: "OWNER",
+        role: GraphqlRole.Owner,
       },
     ],
-    createdAt: "2024-01-01T00:00:00Z",
   },
   {
     id: "workspace-2",
@@ -33,18 +22,17 @@ export const mockWorkspaces: MockWorkspace[] = [
     members: [
       {
         userId: "user-1",
-        role: "OWNER",
+        role: GraphqlRole.Owner,
       },
       {
         userId: "user-2",
-        role: "MAINTAINER",
+        role: GraphqlRole.Maintainer,
       },
       {
         userId: "user-3",
-        role: "WRITER",
+        role: GraphqlRole.Writer,
       },
     ],
-    createdAt: "2024-01-02T00:00:00Z",
   },
   {
     id: "workspace-3",
@@ -53,18 +41,17 @@ export const mockWorkspaces: MockWorkspace[] = [
     members: [
       {
         userId: "user-4",
-        role: "OWNER",
+        role: GraphqlRole.Owner,
       },
       {
         userId: "user-1",
-        role: "MAINTAINER",
+        role: GraphqlRole.Maintainer,
       },
       {
         userId: "user-5",
-        role: "READER",
+        role: GraphqlRole.Reader,
       },
     ],
-    createdAt: "2024-01-03T00:00:00Z",
   },
   {
     id: "workspace-4",
@@ -73,13 +60,12 @@ export const mockWorkspaces: MockWorkspace[] = [
     members: [
       {
         userId: "user-3",
-        role: "OWNER",
+        role: GraphqlRole.Owner,
       },
       {
         userId: "user-2",
-        role: "WRITER",
+        role: GraphqlRole.Writer,
       },
     ],
-    createdAt: "2024-01-04T00:00:00Z",
   },
 ];

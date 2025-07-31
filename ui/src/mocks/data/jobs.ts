@@ -1,35 +1,23 @@
-export type MockJob = {
-  id: string;
-  deploymentId: string;
-  workspaceId: string;
-  status: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED";
-  debug: boolean;
-  startedAt: string;
-  completedAt?: string;
-  logsURL?: string;
-  workerLogsURL?: string;
-  outputURLs: string[];
-};
+import {
+  JobFragment,
+  JobStatus as GraphqlJobStatus,
+  LogFragment,
+  LogLevel as GraphqlLogLevel,
+} from "@flow/lib/gql/__gen__/graphql";
 
-export type MockLog = {
-  jobId: string;
-  nodeId?: string;
-  timestamp: string;
-  logLevel: "ERROR" | "WARN" | "INFO" | "DEBUG" | "TRACE";
-  message: string;
-};
-
-export const mockJobs: MockJob[] = [
+export const mockJobs: JobFragment[] = [
   {
     id: "job-1",
-    deploymentId: "deployment-1",
+    deployment: {
+      id: "deployment-1",
+      description: "Initial deployment of data processing pipeline",
+    },
     workspaceId: "workspace-1",
-    status: "COMPLETED",
+    status: GraphqlJobStatus.Completed,
     debug: false,
     startedAt: "2024-01-15T10:00:00Z",
     completedAt: "2024-01-15T10:05:30Z",
     logsURL: "https://logs.reearth.io/job-1",
-    workerLogsURL: "https://logs.reearth.io/worker/job-1",
     outputURLs: [
       "https://output.reearth.io/job-1/result.json",
       "https://output.reearth.io/job-1/processed_data.geojson",
@@ -37,143 +25,157 @@ export const mockJobs: MockJob[] = [
   },
   {
     id: "job-2",
-    deploymentId: "deployment-2",
+    deployment: {
+      id: "deployment-2",
+      description: "Real-time analytics deployment with improved performance",
+    },
     workspaceId: "workspace-2",
-    status: "RUNNING",
+    status: GraphqlJobStatus.Running,
     debug: true,
     startedAt: "2024-01-28T14:20:00Z",
+    completedAt: null,
     logsURL: "https://logs.reearth.io/job-2",
-    workerLogsURL: "https://logs.reearth.io/worker/job-2",
     outputURLs: [],
   },
   {
     id: "job-3",
-    deploymentId: "deployment-3",
+    deployment: {
+      id: "deployment-3",
+      description: "Failed ML workflow deployment",
+    },
     workspaceId: "workspace-2",
-    status: "FAILED",
+    status: GraphqlJobStatus.Failed,
     debug: false,
     startedAt: "2024-01-25T09:15:00Z",
     completedAt: "2024-01-25T09:18:45Z",
     logsURL: "https://logs.reearth.io/job-3",
-    workerLogsURL: "https://logs.reearth.io/worker/job-3",
     outputURLs: [],
   },
   {
     id: "job-4",
-    deploymentId: "deployment-4",
+    deployment: {
+      id: "deployment-4",
+      description: "Dashboard deployment in progress",
+    },
     workspaceId: "workspace-3",
-    status: "PENDING",
+    status: GraphqlJobStatus.Pending,
     debug: false,
     startedAt: "2024-01-28T16:00:00Z",
+    completedAt: null,
+    logsURL: null,
     outputURLs: [],
   },
   {
     id: "job-5",
-    deploymentId: "deployment-5",
+    deployment: {
+      id: "deployment-5",
+      description: "Legacy migration deployment",
+    },
     workspaceId: "workspace-1",
-    status: "CANCELLED",
+    status: GraphqlJobStatus.Cancelled,
     debug: false,
     startedAt: "2024-01-20T11:30:00Z",
     completedAt: "2024-01-20T11:35:15Z",
+    logsURL: null,
     outputURLs: [],
   },
 ];
 
-export const mockLogs: MockLog[] = [
+export const mockLogs: LogFragment[] = [
   {
     jobId: "job-1",
     timestamp: "2024-01-15T10:00:10Z",
-    logLevel: "INFO",
+    logLevel: GraphqlLogLevel.Info,
     message: "Job started successfully",
   },
   {
     jobId: "job-1",
     timestamp: "2024-01-15T10:01:00Z",
-    logLevel: "INFO",
+    logLevel: GraphqlLogLevel.Info,
     message: "Processing input data",
   },
   {
     jobId: "job-1",
     timestamp: "2024-01-15T10:03:20Z",
-    logLevel: "INFO",
+    logLevel: GraphqlLogLevel.Info,
     message: "Data transformation completed",
   },
   {
     jobId: "job-1",
     timestamp: "2024-01-15T10:05:30Z",
-    logLevel: "INFO",
+    logLevel: GraphqlLogLevel.Info,
     message: "Job completed successfully",
   },
   {
     jobId: "job-2",
     timestamp: "2024-01-28T14:20:05Z",
-    logLevel: "INFO",
+    logLevel: GraphqlLogLevel.Info,
     message: "Job started in debug mode",
   },
   {
     jobId: "job-2",
     timestamp: "2024-01-28T14:20:30Z",
-    logLevel: "DEBUG",
+    logLevel: GraphqlLogLevel.Debug,
     message: "Initializing ML model",
   },
   {
     jobId: "job-2",
     timestamp: "2024-01-28T14:22:15Z",
-    logLevel: "INFO",
+    logLevel: GraphqlLogLevel.Info,
     message: "Loading training data",
   },
   {
     jobId: "job-2",
     timestamp: "2024-01-28T14:25:45Z",
-    logLevel: "INFO",
+    logLevel: GraphqlLogLevel.Info,
     message: "Model training in progress",
   },
   {
     jobId: "job-3",
     timestamp: "2024-01-25T09:15:10Z",
-    logLevel: "INFO",
+    logLevel: GraphqlLogLevel.Info,
     message: "Job started",
   },
   {
     jobId: "job-3",
     timestamp: "2024-01-25T09:16:00Z",
-    logLevel: "WARN",
+    logLevel: GraphqlLogLevel.Warn,
     message: "Input validation warnings detected",
   },
   {
     jobId: "job-3",
     timestamp: "2024-01-25T09:18:30Z",
-    logLevel: "ERROR",
+    logLevel: GraphqlLogLevel.Error,
     message: "Failed to connect to external API",
   },
   {
     jobId: "job-3",
     timestamp: "2024-01-25T09:18:45Z",
-    logLevel: "ERROR",
+    logLevel: GraphqlLogLevel.Error,
     message: "Job failed due to external dependency error",
   },
   {
     jobId: "job-4",
     timestamp: "2024-01-28T16:00:00Z",
-    logLevel: "INFO",
+    logLevel: GraphqlLogLevel.Info,
     message: "Job queued for execution",
   },
   {
     jobId: "job-5",
     timestamp: "2024-01-20T11:30:05Z",
-    logLevel: "INFO",
+    logLevel: GraphqlLogLevel.Info,
     message: "Job started",
   },
   {
     jobId: "job-5",
     timestamp: "2024-01-20T11:32:00Z",
-    logLevel: "INFO",
+    logLevel: GraphqlLogLevel.Info,
     message: "Processing data batch 1 of 10",
   },
   {
     jobId: "job-5",
     timestamp: "2024-01-20T11:35:15Z",
-    logLevel: "WARN",
+    logLevel: GraphqlLogLevel.Warn,
     message: "Job cancelled by user request",
   },
 ];

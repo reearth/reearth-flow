@@ -180,9 +180,9 @@ export const toCmsProject = (cmsProject: CmsProjectFragment): CmsProject => ({
   workspaceId: cmsProject.workspaceId,
   name: cmsProject.name,
   alias: cmsProject.alias,
-  description: cmsProject.description ?? null,
-  license: cmsProject.license ?? null,
-  readme: cmsProject.readme ?? null,
+  description: cmsProject.description ?? undefined,
+  license: cmsProject.license ?? undefined,
+  readme: cmsProject.readme ?? undefined,
   visibility: cmsProject.visibility
     ? toCmsVisibility(cmsProject.visibility)
     : "public",
