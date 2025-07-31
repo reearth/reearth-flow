@@ -4182,7 +4182,7 @@
         "required": [
           "processorType",
           "programmingLanguage",
-          "sourceCodeFilePath"
+          "source"
         ],
         "properties": {
           "processorType": {
@@ -4191,7 +4191,7 @@
           "programmingLanguage": {
             "$ref": "#/definitions/ProgrammingLanguage"
           },
-          "sourceCodeFilePath": {
+          "source": {
             "$ref": "#/definitions/Expr"
           }
         },

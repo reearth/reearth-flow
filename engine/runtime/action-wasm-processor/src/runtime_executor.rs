@@ -102,12 +102,12 @@ impl WasmRuntimeExecutorFactory {
         })?;
 
         let expr_engine = Arc::clone(&ctx.expr_engine);
-        let source_code_file_path = expr_engine
-            .eval::<String>(params.source_code_file_path.clone().into_inner().as_str())
+        let source = expr_engine
+            .eval::<String>(params.source.clone().into_inner().as_str())
             .map_err(|e| WasmProcessorError::RuntimeExecutorFactory(format!("{e:?}")))?;
 
-        let (local_source_path, _temp_py_file_holder) = if source_code_file_path.starts_with("http://") || source_code_file_path.starts_with("https://") {
-            let source_uri = Uri::from_str(&source_code_file_path)
+        let (local_source_path, _temp_py_file_holder) = if source.starts_with("http://") || source.starts_with("https://") {
+            let source_uri = Uri::from_str(&source)
                 .map_err(|e| WasmProcessorError::RuntimeExecutorFactory(format!("Invalid URL: {e}")))?;
             
             let storage = ctx.storage_resolver.resolve(&source_uri)
@@ -133,7 +133,7 @@ impl WasmRuntimeExecutorFactory {
             let temp_path = temp_py_file.path().to_string_lossy().to_string();
             (temp_path, Some(temp_py_file))
         } else {
-            (source_code_file_path, None)
+            (source, None)
         };
 
         let wasm_binary = match params.programming_language {
@@ -179,7 +179,7 @@ pub(crate) struct WasmRuntimeExecutor {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct WasmRuntimeExecutorParam {
-    source_code_file_path: Expr,
+    source: Expr,
     processor_type: ProcessorType,
     programming_language: ProgrammingLanguage,
 }
