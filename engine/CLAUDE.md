@@ -46,6 +46,7 @@ This is a **DAG-based geospatial workflow execution engine** with the following 
 - **Three node types**: Sources (data input), Processors (transformation), Sinks (output)
 - **Multi-threaded execution**: Each node runs in its own thread with channel-based communication
 - **Feature-centric**: Primary data unit is a `Feature` with attributes, geometry, and metadata
+- **UUID Requirements**: All workflow IDs (workflow, graph, node, edge) must use valid UUID format
 
 ### Key Directories
 - `runtime/runtime/` - Core execution engine, DAG construction, thread orchestration
