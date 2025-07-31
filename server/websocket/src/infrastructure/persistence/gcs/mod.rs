@@ -1,9 +1,9 @@
+use crate::domain::entity::gcs::GcsStore;
 use crate::domain::repository::kv::KVEntry;
 use crate::domain::repository::kv::KVStore;
 use anyhow::Result;
 use futures::future::join_all;
 use google_cloud_storage::{
-    client::{Client, ClientConfig},
     http::objects::delete::DeleteObjectRequest,
     http::objects::download::Range,
     http::objects::get::GetObjectRequest,
@@ -14,8 +14,6 @@ use google_cloud_storage::{
 use hex;
 use time::OffsetDateTime;
 use tracing::debug;
-
-use crate::domain::entity::gcs::GcsConfig;
 
 const BATCH_SIZE: usize = 50;
 
@@ -39,49 +37,6 @@ fn find_common_prefix(a: &str, b: &str) -> String {
         }
     } else {
         a.chars().take(common_len).collect()
-    }
-}
-
-pub struct GcsStore {
-    #[allow(dead_code)]
-    pub client: Client,
-    pub bucket: String,
-}
-
-impl std::fmt::Debug for GcsStore {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("GcsStore")
-            .field("bucket", &self.bucket)
-            .finish_non_exhaustive()
-    }
-}
-
-impl GcsStore {
-    pub async fn new(bucket: String) -> Result<Self, google_cloud_storage::http::Error> {
-        let config = ClientConfig::default();
-        let client = Client::new(config);
-        Ok(Self { client, bucket })
-    }
-
-    pub async fn new_with_config(config: GcsConfig) -> Result<Self> {
-        let client_config = if let Some(endpoint) = &config.endpoint {
-            let mut client_config = ClientConfig::default().anonymous();
-            client_config.storage_endpoint = endpoint.clone();
-            client_config
-        } else {
-            ClientConfig::default().with_auth().await?
-        };
-
-        let client = Client::new(client_config);
-
-        Ok(Self {
-            client,
-            bucket: config.bucket_name,
-        })
-    }
-
-    pub async fn with_client(client: Client, bucket: String) -> Self {
-        Self { client, bucket }
     }
 }
 
