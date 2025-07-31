@@ -131,7 +131,7 @@ async fn ws_handler(
     Query(query): Query<AuthQuery>,
     State(state): State<ServerState>,
 ) -> Response<Body> {
-    crate::ws::ws_handler(ws, Path(doc_id), Query(query), State(state.app_state)).await
+    crate::interface::ws::ws_handler(ws, Path(doc_id), Query(query), State(state.app_state)).await
 }
 
 #[cfg(not(feature = "auth"))]

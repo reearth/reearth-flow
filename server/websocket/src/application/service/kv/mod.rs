@@ -31,15 +31,15 @@
 //! 01{oid:4}3{name:M}0  - document meta key pattern
 //! ```
 
-use crate::domain::entity::keys::{key_update_end, Error};
+use crate::domain::value_objects::keys::{key_update_end, Error};
 
-use crate::domain::entity::keys::{
+use crate::domain::entity::redis::RedisStore;
+use crate::domain::repository::kv::KVEntry;
+use crate::domain::repository::kv::KVStore;
+use crate::domain::value_objects::keys::{
     doc_oid_name, key_doc, key_doc_end, key_doc_start, key_meta, key_meta_end, key_meta_start,
     key_oid, key_state_vector, key_update, Key, KEYSPACE_DOC, KEYSPACE_OID, OID, V1,
 };
-use crate::domain::repository::kv::KVEntry;
-use crate::domain::repository::kv::KVStore;
-use crate::infrastructure::RedisStore;
 use crate::tools::{compress_brotli, decompress_brotli};
 use anyhow;
 use anyhow::Result;

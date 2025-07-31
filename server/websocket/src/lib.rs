@@ -9,7 +9,6 @@ pub mod conf;
 pub mod conn;
 pub mod doc;
 pub mod tools;
-pub mod ws;
 
 pub use broadcast::group;
 pub use broadcast::pool;
