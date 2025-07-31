@@ -13,6 +13,11 @@ import {
   type ParameterFragment,
   type AssetFragment,
   type WorkspaceFragment,
+  type CmsProjectFragment,
+  type CmsModelFragment,
+  type CmsItemFragment,
+  type CmsVisibility as GraphqlCmsVisibility,
+  type CmsSchemaFieldType as GraphQlCmsSchemaFieldType,
   ParameterType,
   ProjectSnapshotFragment,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
@@ -34,6 +39,12 @@ import type {
   Asset,
   ProjectSnapshot,
   ArchiveExtractionStatus,
+  CmsProject,
+  CmsVisibility,
+  CmsModel,
+  CmsItem,
+  CmsSchemaField,
+  CmsSchemaFieldType,
 } from "@flow/types";
 import { formatDate, formatFileSize } from "@flow/utils";
 
@@ -162,6 +173,52 @@ export const toAsset = (asset: AssetFragment): Asset => ({
   archiveExtractionStatus: asset.archiveExtractionStatus
     ? toArchiveExtractionStatus(asset.archiveExtractionStatus)
     : "pending",
+});
+
+export const toCmsProject = (cmsProject: CmsProjectFragment): CmsProject => ({
+  id: cmsProject.id,
+  workspaceId: cmsProject.workspaceId,
+  name: cmsProject.name,
+  alias: cmsProject.alias,
+  description: cmsProject.description ?? undefined,
+  license: cmsProject.license ?? undefined,
+  readme: cmsProject.readme ?? undefined,
+  visibility: cmsProject.visibility
+    ? toCmsVisibility(cmsProject.visibility)
+    : "public",
+  createdAt: formatDate(cmsProject.createdAt),
+  updatedAt: formatDate(cmsProject.updatedAt),
+});
+
+export const toCmsModel = (cmsModel: CmsModelFragment): CmsModel => ({
+  id: cmsModel.id,
+  projectId: cmsModel.projectId,
+  name: cmsModel.name,
+  description: cmsModel.description,
+  key: cmsModel.key,
+  editorUrl: cmsModel.editorUrl,
+  publicApiEp: cmsModel.publicApiEp,
+  schema: {
+    schemaId: cmsModel.schema.schemaId,
+    fields: cmsModel.schema.fields.map(
+      (field): CmsSchemaField => ({
+        fieldId: field.fieldId,
+        name: field.name,
+        type: field.type ? toCmsSchemaFieldType(field.type) : "text",
+        key: field.key,
+        description: field.description ?? undefined,
+      }),
+    ),
+  },
+  createdAt: formatDate(cmsModel.createdAt),
+  updatedAt: formatDate(cmsModel.updatedAt),
+});
+
+export const toCmsItem = (cmsItem: CmsItemFragment): CmsItem => ({
+  id: cmsItem.id,
+  fields: cmsItem.fields,
+  createdAt: formatDate(cmsItem.createdAt),
+  updatedAt: formatDate(cmsItem.updatedAt),
 });
 
 export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
@@ -306,5 +363,57 @@ export const toArchiveExtractionStatus = (
     case "PENDING":
     default:
       return "pending";
+  }
+};
+
+export const toCmsVisibility = (
+  visibility: GraphqlCmsVisibility,
+): CmsVisibility => {
+  switch (visibility) {
+    case "PRIVATE":
+      return "private";
+    default:
+      return "public";
+  }
+};
+
+export const toCmsSchemaFieldType = (
+  type: GraphQlCmsSchemaFieldType,
+): CmsSchemaFieldType => {
+  switch (type) {
+    case "TEXTAREA":
+      return "text_area";
+    case "RICHTEXT":
+      return "rich_text";
+    case "MARKDOWNTEXT":
+      return "mark_down_text";
+    case "ASSET":
+      return "asset";
+    case "DATE":
+      return "date";
+    case "BOOL":
+      return "bool";
+    case "SELECT":
+      return "select";
+    case "TAG":
+      return "tag";
+    case "INTEGER":
+      return "integer";
+    case "NUMBER":
+      return "number";
+    case "REFERENCE":
+      return "reference";
+    case "CHECKBOX":
+      return "checkbox";
+    case "URL":
+      return "url";
+    case "GROUP":
+      return "group";
+    case "GEOMETRYOBJECT":
+      return "geometry_object";
+    case "GEOMETRYEDITOR":
+      return "geometry_editor";
+    default:
+      return "text";
   }
 };
