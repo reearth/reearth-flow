@@ -2,6 +2,8 @@
 id: 00caad2a-9f7d-4189-b479-153fa9ea36dc
 name: "WasmRuntimeExecutorExample"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+with:
+  currentPath: runtime/examples/fixture/workflow/requirement/plateau4/b005-3
 graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point
@@ -26,7 +28,7 @@ graphs:
         with:
           processorType: "Attribute"
           programmingLanguage: "Python"
-          sourceCodeFilePath: |
+          source: |
             "runtime/examples/fixture/workflow/requirement/plateau4/b005-3/files/sample.py"
 
       - id: 756F498A-7A5C-4579-AB1C-FCBBA8121869
