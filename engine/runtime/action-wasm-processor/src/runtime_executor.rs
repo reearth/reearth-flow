@@ -106,30 +106,51 @@ impl WasmRuntimeExecutorFactory {
             .eval::<String>(params.source.clone().into_inner().as_str())
             .map_err(|e| WasmProcessorError::RuntimeExecutorFactory(format!("{e:?}")))?;
 
-        let (local_source_path, _temp_py_file_holder) = if source.starts_with("http://") || source.starts_with("https://") {
-            let source_uri = Uri::from_str(&source)
-                .map_err(|e| WasmProcessorError::RuntimeExecutorFactory(format!("Invalid URL: {e}")))?;
-            
-            let storage = ctx.storage_resolver.resolve(&source_uri)
-                .map_err(|e| WasmProcessorError::RuntimeExecutorFactory(format!("Failed to resolve URL: {e}")))?;
-            
-            let content = storage.get(source_uri.path().as_path()).await
-                .map_err(|e| WasmProcessorError::RuntimeExecutorFactory(format!("Failed to download from URL: {e}")))?
-                .bytes().await
-                .map_err(|e| WasmProcessorError::RuntimeExecutorFactory(format!("Failed to read content: {e}")))?;
-            
+        let (local_source_path, _temp_py_file_holder) = if source.starts_with("http://")
+            || source.starts_with("https://")
+        {
+            let source_uri = Uri::from_str(&source).map_err(|e| {
+                WasmProcessorError::RuntimeExecutorFactory(format!("Invalid URL: {e}"))
+            })?;
+
+            let storage = ctx.storage_resolver.resolve(&source_uri).map_err(|e| {
+                WasmProcessorError::RuntimeExecutorFactory(format!("Failed to resolve URL: {e}"))
+            })?;
+
+            let content = storage
+                .get(source_uri.path().as_path())
+                .await
+                .map_err(|e| {
+                    WasmProcessorError::RuntimeExecutorFactory(format!(
+                        "Failed to download from URL: {e}"
+                    ))
+                })?
+                .bytes()
+                .await
+                .map_err(|e| {
+                    WasmProcessorError::RuntimeExecutorFactory(format!(
+                        "Failed to read content: {e}"
+                    ))
+                })?;
+
             let mut temp_py_file = NamedTempFile::new().map_err(|e| {
-                WasmProcessorError::RuntimeExecutorFactory(format!("Failed to create temporary Python file: {e}"))
+                WasmProcessorError::RuntimeExecutorFactory(format!(
+                    "Failed to create temporary Python file: {e}"
+                ))
             })?;
-            
+
             temp_py_file.write_all(&content).map_err(|e| {
-                WasmProcessorError::RuntimeExecutorFactory(format!("Failed to write Python file: {e}"))
+                WasmProcessorError::RuntimeExecutorFactory(format!(
+                    "Failed to write Python file: {e}"
+                ))
             })?;
-            
+
             temp_py_file.flush().map_err(|e| {
-                WasmProcessorError::RuntimeExecutorFactory(format!("Failed to flush Python file: {e}"))
+                WasmProcessorError::RuntimeExecutorFactory(format!(
+                    "Failed to flush Python file: {e}"
+                ))
             })?;
-            
+
             let temp_path = temp_py_file.path().to_string_lossy().to_string();
             (temp_path, Some(temp_py_file))
         } else {
