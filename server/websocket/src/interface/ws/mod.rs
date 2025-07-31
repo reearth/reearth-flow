@@ -138,6 +138,36 @@ pub async fn ws_handler(
 ) -> Response {
     let doc_id = normalize_doc_id(&doc_id);
 
+    #[cfg(feature = "auth")]
+    let user_token = Some(query.token.clone());
+
+    #[cfg(not(feature = "auth"))]
+    let user_token: Option<String> = None;
+
+    #[cfg(feature = "auth")]
+    {
+        let authorized = state.auth.verify_token(&query.token).await;
+        match authorized {
+            Ok(true) => {
+                debug!("Token verified successfully");
+            }
+            Ok(false) => {
+                error!("Token verification failed");
+                return Response::builder()
+                    .status(401)
+                    .body(axum::body::Body::empty())
+                    .unwrap();
+            }
+            Err(e) => {
+                error!("Token verification error: {}", e);
+                return Response::builder()
+                    .status(500)
+                    .body(axum::body::Body::empty())
+                    .unwrap();
+            }
+        }
+    }
+
     let bcast = match state.pool.get_group(&doc_id).await {
         Ok(group) => group,
         Err(e) => {
@@ -149,14 +179,17 @@ pub async fn ws_handler(
         }
     };
 
-    ws.on_upgrade(move |socket| handle_socket(socket, bcast, doc_id, Arc::clone(&state.pool)))
+    ws.on_upgrade(move |socket| {
+        handle_socket(socket, bcast, doc_id, user_token, Arc::clone(&state.pool))
+    })
 }
 
 async fn handle_socket(
     socket: axum::extract::ws::WebSocket,
-    bcast: Arc<crate::application::service::broadcast::BroadcastGroupService>,
+    bcast: Arc<super::BroadcastGroup>,
     doc_id: String,
     user_token: Option<String>,
+    pool: Arc<super::BroadcastPool>,
 ) {
     let (sender, receiver) = socket.split();
 

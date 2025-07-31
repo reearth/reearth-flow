@@ -1,6 +1,6 @@
-use crate::domain::entity::connection_id::ConnectionId;
-use crate::domain::entity::document_name::DocumentName;
-use crate::domain::entity::instance_id::InstanceId;
+use crate::domain::value_objects::connection_id::ConnectionId;
+use crate::domain::value_objects::document_name::DocumentName;
+use crate::domain::value_objects::instance_id::InstanceId;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 

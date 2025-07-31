@@ -1,6 +1,6 @@
-use crate::domain::entity::document_name::DocumentName;
-use crate::domain::entity::instance_id::InstanceId;
 use crate::domain::entity::BroadcastGroup;
+use crate::domain::value_objects::document_name::DocumentName;
+use crate::domain::value_objects::instance_id::InstanceId;
 use anyhow::Result;
 use async_trait::async_trait;
 use bytes::Bytes;
