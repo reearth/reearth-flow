@@ -1,10 +1,12 @@
 pub mod group;
+pub mod group_ddd;
 pub mod pool;
-mod publish;
 pub mod sub;
 pub mod types;
 
-use publish::Publish;
-
-// Re-export the DDD version as the new default
+// Re-export both the original and DDD versions
 pub use group::BroadcastGroup;
+pub use group_ddd::{BroadcastGroupDDD, BroadcastGroupDDDFactory};
+
+// Re-export types for convenience
+pub use types::BroadcastConfig as LegacyBroadcastConfig;
