@@ -18,7 +18,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.85" # Remember to update clippy.toml as well
-version = "0.0.75"
+version = "0.0.77"
 
 [profile.dev]
 opt-level = 0
@@ -65,10 +65,15 @@ reearth-flow-storage = { path = "runtime/storage" }
 reearth-flow-telemetry = { path = "runtime/telemetry" }
 reearth-flow-types = { path = "runtime/types" }
 
-nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.2", features = ["serde", "serde_json"] }
+nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.2", features = [
+  "serde",
+  "serde_json",
+] }
 nusamai-czml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.2" }
 nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.2" }
-nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.2", features = ["serde"] }
+nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.2", features = [
+  "serde",
+] }
 nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.2" }
 nusamai-shapefile = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.2" }
 
@@ -81,7 +86,10 @@ async-trait = "0.1.87"
 async_zip = { version = "0.0.17", features = ["full"] }
 atlas-packer = { git = "https://github.com/reearth/atlas-packer", tag = "v0.0.2" }
 base64 = "0.22.1"
-bincode = { version = "2.0.1", default-features = false, features = ["serde", "std"] }
+bincode = { version = "2.0.1", default-features = false, features = [
+  "serde",
+  "std",
+] }
 bytemuck = { version = "1.22.0", features = ["derive"] }
 byteorder = "1.5.0"
 bytes = { version = "1.10.1", features = ["serde"] }
@@ -111,7 +119,13 @@ geojson = "0.24.2"
 glam = "0.30.0"
 hashbrown = { version = "0.15.2", features = ["serde"] }
 home = "0.5.11"
-image = { version = "0.25.5", default-features = false, features = ["jpeg", "png", "rayon", "tiff", "webp"] }
+image = { version = "0.25.5", default-features = false, features = [
+  "jpeg",
+  "png",
+  "rayon",
+  "tiff",
+  "webp",
+] }
 indexmap = { version = "2.8.0", features = ["rayon", "serde"] }
 indoc = "2.0.6"
 itertools = "0.14.0"
@@ -125,12 +139,31 @@ num_cpus = "1.16.0"
 nutype = { version = "0.6.1", features = ["schemars08", "serde"] }
 object_store = "0.12.0"
 once_cell = "1.21.0"
-opendal = { version = "0.52.0", features = ["layers-metrics", "services-fs", "services-gcs", "services-http"] }
-opentelemetry = { version = "0.28.0", default-features = false, features = ["metrics", "trace"] }
-opentelemetry-otlp = { version = "0.28.0", default-features = false, features = ["grpc-tonic", "metrics", "trace"] }
+opendal = { version = "0.52.0", features = [
+  "layers-metrics",
+  "services-fs",
+  "services-gcs",
+  "services-http",
+] }
+opentelemetry = { version = "0.28.0", default-features = false, features = [
+  "metrics",
+  "trace",
+] }
+opentelemetry-otlp = { version = "0.28.0", default-features = false, features = [
+  "grpc-tonic",
+  "metrics",
+  "trace",
+] }
 opentelemetry-semantic-conventions = "0.28.0"
-opentelemetry-stdout = { version = "0.28.0", default-features = false, features = ["metrics", "trace"] }
-opentelemetry_sdk = { version = "0.28.0", default-features = false, features = ["metrics", "rt-tokio", "trace"] }
+opentelemetry-stdout = { version = "0.28.0", default-features = false, features = [
+  "metrics",
+  "trace",
+] }
+opentelemetry_sdk = { version = "0.28.0", default-features = false, features = [
+  "metrics",
+  "rt-tokio",
+  "trace",
+] }
 parking_lot = "0.12.3"
 petgraph = "0.6.5"
 pretty_assertions = "1.4.1"
@@ -139,8 +172,16 @@ quick-xml = { version = "0.37.2", features = ["serialize"] }
 rand = "0.9.0"
 rayon = "1.10.0"
 regex = "1.11.1"
-reqwest = { version = "0.12.12", default-features = false, features = ["blocking", "rustls-tls"] }
-rhai = { version = "1.21.0", features = ["internals", "metadata", "serde", "sync"] }
+reqwest = { version = "0.12.12", default-features = false, features = [
+  "blocking",
+  "rustls-tls",
+] }
+rhai = { version = "1.21.0", features = [
+  "internals",
+  "metadata",
+  "serde",
+  "sync",
+] }
 rmp-serde = "1.3.0"
 robust = "1.1.0"
 rstar = "0.12.2"
@@ -153,11 +194,22 @@ serde_json = { version = "1.0.140", features = ["arbitrary_precision"] }
 serde_yaml = "0.9.34"
 sha2 = "0.10.8"
 shapefile = "0.6.0"
-slog = { version = "2.7.0", features = ["max_level_trace", "release_max_level_trace"] }
+slog = { version = "2.7.0", features = [
+  "max_level_trace",
+  "release_max_level_trace",
+] }
 slog-async = "2.8.0"
 slog-term = "2.9.1"
 sloggers = { version = "2.2.0", default-features = false }
-sqlx = { version = "0.8.3", features = ["any", "chrono", "mysql", "postgres", "runtime-tokio", "sqlite", "tls-rustls"] }
+sqlx = { version = "0.8.3", features = [
+  "any",
+  "chrono",
+  "mysql",
+  "postgres",
+  "runtime-tokio",
+  "sqlite",
+  "tls-rustls",
+] }
 strum = "0.27.1"
 strum_macros = "0.27.1"
 tempfile = "3.18.0"
@@ -170,7 +222,10 @@ tokio-util = { version = "0.7.13", features = ["full"] }
 toml = "0.8.20"
 tracing = "0.1.41"
 tracing-appender = "0.2.3"
-tracing-opentelemetry = { version = "0.29.0", default-features = false, features = ["metrics", "tracing-log"] }
+tracing-opentelemetry = { version = "0.29.0", default-features = false, features = [
+  "metrics",
+  "tracing-log",
+] }
 tracing-subscriber = { version = "0.3.19", features = [
   "env-filter",
   "json",
