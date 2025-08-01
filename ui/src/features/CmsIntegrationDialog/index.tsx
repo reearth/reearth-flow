@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, LayoutIcon } from "@phosphor-icons/react";
+import { ArrowLeftIcon, EyeIcon, LayoutIcon } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 
@@ -13,12 +13,14 @@ import {
   LoadingSkeleton,
   DataTable as Table,
   FlowLogo,
+  IconButton,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import type { CmsProject, CmsModel, CmsItem } from "@flow/types/cmsIntegration";
 
+import CmsItemDetailDialog from "./CmsItemDetailsDialog";
 import CmsModelCard from "./CmsModelCard";
 import CmsProjectCard from "./CmsProjectCard";
 import useHooks from "./hooks";
@@ -39,6 +41,8 @@ const CmsIntegrationDialog: React.FC<Props> = ({
     null,
   );
   const [selectedModel, setSelectedModel] = useState<CmsModel | null>(null);
+  const [selectedItem, setSelectedItem] = useState<CmsItem | null>(null);
+  const [isItemDetailOpen, setIsItemDetailOpen] = useState(false);
 
   const {
     cmsProjects,
@@ -80,6 +84,16 @@ const CmsIntegrationDialog: React.FC<Props> = ({
     setViewMode("models");
   };
 
+  const handleItemView = (item: CmsItem) => {
+    setSelectedItem(item);
+    setIsItemDetailOpen(true);
+  };
+
+  const handleItemDetailClose = () => {
+    setIsItemDetailOpen(false);
+    setSelectedItem(null);
+  };
+
   const columns: ColumnDef<CmsItem>[] = selectedModel
     ? [
         {
@@ -109,6 +123,19 @@ const CmsIntegrationDialog: React.FC<Props> = ({
         {
           accessorKey: "updatedAt",
           header: t("Updated At"),
+        },
+        {
+          accessorKey: "quickActions",
+          header: t("Quick Actions"),
+          cell: ({ row }) => (
+            <div className="flex gap-1">
+              <IconButton
+                icon={<EyeIcon />}
+                onClick={() => handleItemView(row.original)}
+                title={t("View Details")}
+              />
+            </div>
+          ),
         },
       ]
     : [];
@@ -229,6 +256,14 @@ const CmsIntegrationDialog: React.FC<Props> = ({
           </DialogContentSection>
         </DialogContentWrapper>
       </DialogContent>
+      {selectedItem && selectedModel && (
+        <CmsItemDetailDialog
+          cmsItem={selectedItem}
+          cmsModel={selectedModel}
+          open={isItemDetailOpen}
+          onClose={handleItemDetailClose}
+        />
+      )}
     </Dialog>
   );
 };
