@@ -15,8 +15,8 @@ export const mockCmsProjects: CmsProjectFragment[] = [
     license: "MIT",
     readme:
       "# Urban Development\nThis project contains data about urban development plans.",
-    workspaceId: "ws-001",
-    visibility: GraphqlCmsVisibility.Private,
+    workspaceId: "workspace-1",
+    visibility: GraphqlCmsVisibility.Public,
     createdAt: "2023-01-15T08:30:00Z",
     updatedAt: "2023-04-22T14:15:00Z",
   },
@@ -25,8 +25,8 @@ export const mockCmsProjects: CmsProjectFragment[] = [
     name: "Environmental Monitoring",
     alias: "env-monitor",
     description: "Environmental data collection and analysis",
-    workspaceId: "ws-001",
-    visibility: GraphqlCmsVisibility.Public,
+    workspaceId: "workspace-1",
+    visibility: GraphqlCmsVisibility.Private,
     createdAt: "2023-02-10T09:45:00Z",
     updatedAt: "2023-05-18T11:20:00Z",
   },
@@ -81,9 +81,14 @@ export const mockCmsModels: CmsModelFragment[] = [
   },
 ];
 
-export const mockCmsItems: CmsItemFragment[] = [
+export const mockCmsItems: (CmsItemFragment & {
+  projectId: string;
+  modelId: string;
+})[] = [
   {
     id: "item-001",
+    projectId: "proj-001",
+    modelId: "model-001",
     fields: {
       name: "City Tower",
       height: 150,
@@ -94,6 +99,8 @@ export const mockCmsItems: CmsItemFragment[] = [
   },
   {
     id: "item-002",
+    projectId: "proj-002",
+    modelId: "model-002",
     fields: {
       type: "air_quality",
       location: "downtown",
@@ -101,5 +108,17 @@ export const mockCmsItems: CmsItemFragment[] = [
     },
     createdAt: "2023-02-18T15:40:00Z",
     updatedAt: "2023-05-22T10:25:00Z",
+  },
+  {
+    id: "item-003",
+    projectId: "proj-001",
+    modelId: "model-001",
+    fields: {
+      name: "Metro Plaza",
+      height: 85,
+      floors: 25,
+    },
+    createdAt: "2023-01-30T11:15:00Z",
+    updatedAt: "2023-04-30T14:20:00Z",
   },
 ];

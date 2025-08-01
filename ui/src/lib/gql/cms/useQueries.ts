@@ -14,6 +14,8 @@ export enum CmsQueryKeys {
   GetCmsModelExportUrl = "getCmsModelExportUrl",
 }
 
+export const CMS_ITEMS_FETCH_RATE = 30;
+
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
 

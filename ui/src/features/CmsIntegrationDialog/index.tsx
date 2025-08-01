@@ -44,7 +44,7 @@ const CmsIntegrationDialog: React.FC<Props> = ({
     cmsProjects,
     cmsModels,
     cmsItems,
-    cmsItemsTotalCount,
+    cmsItemsTotalPages,
     currentPage,
     setCurrentPage,
     isLoading,
@@ -118,7 +118,7 @@ const CmsIntegrationDialog: React.FC<Props> = ({
       <DialogContent className="max-h-[90vh] w-full max-w-6xl overflow-hidden">
         <DialogTitle className="flex items-center font-normal">
           <LayoutIcon size={24} className="mr-2 inline-block" />
-          {t("CMS")}
+          {t("CMS Integration")}
           {viewMode === "models" && selectedProject && (
             <div>
               <span className="mx-2 text-muted-foreground">/</span>
@@ -216,7 +216,7 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                       data={cmsItems || []}
                       currentPage={currentPage}
                       setCurrentPage={setCurrentPage}
-                      totalPages={Math.ceil(cmsItemsTotalCount / 10)}
+                      totalPages={cmsItemsTotalPages}
                       resultsPerPage={10}
                       onRowDoubleClick={onCmsItemDoubleClick}
                       showOrdering={false}

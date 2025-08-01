@@ -577,15 +577,19 @@ export const resolvers = {
         pageSize?: number;
       },
     ) => {
-      // For simplicity, return all mock items regardless of projectId/modelId
+      // Filter items by projectId and modelId
+      const filteredItems = cmsItems.filter(
+        (item) => item.projectId === args.projectId && item.modelId === args.modelId
+      );
+      
       const page = args.page || 1;
       const pageSize = args.pageSize || 10;
       const startIndex = (page - 1) * pageSize;
       const endIndex = startIndex + pageSize;
 
       return {
-        items: cmsItems.slice(startIndex, endIndex),
-        totalCount: cmsItems.length,
+        items: filteredItems.slice(startIndex, endIndex),
+        totalCount: filteredItems.length,
       };
     },
 

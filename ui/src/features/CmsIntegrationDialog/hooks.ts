@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { useCms } from "@flow/lib/gql/cms";
+import { CMS_ITEMS_FETCH_RATE } from "@flow/lib/gql/cms/useQueries";
 
 type ViewMode = "projects" | "models" | "items";
 
@@ -26,10 +27,14 @@ export default ({
     projectId || "",
     modelId || "",
     currentPage,
-    1,
+    CMS_ITEMS_FETCH_RATE,
   );
   const cmsItems = projectId && modelId ? itemsQuery.page?.cmsItems || [] : [];
   const cmsItemsTotalCount = itemsQuery.page?.totalCount || 0;
+
+  const cmsItemsTotalPages = Math.ceil(
+    cmsItemsTotalCount / CMS_ITEMS_FETCH_RATE,
+  );
 
   const isLoading =
     projectsQuery.isFetching ||
@@ -40,7 +45,7 @@ export default ({
     cmsProjects,
     cmsModels,
     cmsItems,
-    cmsItemsTotalCount,
+    cmsItemsTotalPages,
     currentPage,
     setCurrentPage,
     isLoading,
