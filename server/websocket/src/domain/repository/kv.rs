@@ -12,7 +12,7 @@ pub trait KVEntry {
 #[async_trait]
 pub trait KVStore: Send + Sync {
     /// Error type returned from the implementation.
-    type Error: Send + Sync + 'static;
+    type Error: std::error::Error + Send + Sync + 'static;
     /// Cursor type used to iterate over the ordered range of key-value entries.
     type Cursor: Iterator<Item = Self::Entry> + Send;
     /// Entry type returned by cursor.

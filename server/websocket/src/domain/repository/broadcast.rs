@@ -5,7 +5,6 @@ use anyhow::Result;
 use async_trait::async_trait;
 use bytes::Bytes;
 use std::sync::Arc;
-use yrs::sync::Awareness;
 
 /// Repository interface for broadcast group operations
 #[async_trait]
