@@ -579,9 +579,10 @@ export const resolvers = {
     ) => {
       // Filter items by projectId and modelId
       const filteredItems = cmsItems.filter(
-        (item) => item.projectId === args.projectId && item.modelId === args.modelId
+        (item) =>
+          item.projectId === args.projectId && item.modelId === args.modelId,
       );
-      
+
       const page = args.page || 1;
       const pageSize = args.pageSize || 10;
       const startIndex = (page - 1) * pageSize;
