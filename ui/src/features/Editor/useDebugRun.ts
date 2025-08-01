@@ -1,7 +1,7 @@
 import { useReactFlow } from "@xyflow/react";
 import { useCallback } from "react";
 
-import { useProject } from "@flow/lib/gql";
+import { useProject, useProjectVariables } from "@flow/lib/gql";
 import { useJob } from "@flow/lib/gql/job";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { JobState, useCurrentProject } from "@flow/stores";
@@ -10,6 +10,8 @@ import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineRe
 
 export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
   const [currentProject] = useCurrentProject();
+  const { useGetProjectVariables } = useProjectVariables();
+  const { projectVariables } = useGetProjectVariables(currentProject?.id ?? "");
 
   const { fitView } = useReactFlow();
 
@@ -23,6 +25,7 @@ export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
 
     const engineReadyWorkflow = createEngineReadyWorkflow(
       currentProject.name,
+      projectVariables,
       rawWorkflows,
     );
 
@@ -68,6 +71,7 @@ export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
     }
   }, [
     currentProject,
+    projectVariables,
     rawWorkflows,
     debugRunState?.jobs,
     fitView,

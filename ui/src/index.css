@@ -274,3 +274,7 @@
 .react-flow__node-note {
   z-index: -1 !important;
 }
+
+#cesiumContainer {
+  clip-path: inset(0 round calc(var(--radius) /* 0.25rem = 4px */ - 2px));
+}

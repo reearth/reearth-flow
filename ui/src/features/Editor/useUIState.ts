@@ -1,41 +1,9 @@
 import { XYPosition } from "@xyflow/react";
-import { MouseEvent, useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 
-import { ActionNodeType, Edge, Node } from "@flow/types";
-import { cancellableDebounce } from "@flow/utils";
+import type { ActionNodeType } from "@flow/types";
 
 export default () => {
-  const [hoveredDetails, setHoveredDetails] = useState<
-    Node | Edge | undefined
-  >();
-
-  const hoverActionDebounce = cancellableDebounce(
-    (callback: () => void) => callback(),
-    100,
-  );
-
-  const handleNodeHover = useCallback(
-    (e: MouseEvent, node?: Node) => {
-      hoverActionDebounce.cancel();
-      if (e.type === "mouseleave" && hoveredDetails) {
-        hoverActionDebounce(() => setHoveredDetails(undefined));
-      } else {
-        setHoveredDetails(node);
-      }
-    },
-    [hoveredDetails, hoverActionDebounce],
-  );
-
-  const handleEdgeHover = useCallback(
-    (e: MouseEvent, edge?: Edge) => {
-      if (e.type === "mouseleave" && hoveredDetails) {
-        setHoveredDetails(undefined);
-      } else {
-        setHoveredDetails(edge);
-      }
-    },
-    [hoveredDetails],
-  );
   const [nodePickerOpen, setNodePickerOpen] = useState<
     { position: XYPosition; nodeType: ActionNodeType } | undefined
   >(undefined);
@@ -78,9 +46,6 @@ export default () => {
   return {
     nodePickerOpen,
     rightPanelContent,
-    hoveredDetails,
-    handleNodeHover,
-    handleEdgeHover,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleRightPanelOpen,

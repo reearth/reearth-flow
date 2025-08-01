@@ -9,8 +9,6 @@ import { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { Edge, Node } from "@flow/types";
 
-import useUIState from "../Editor/useUIState";
-
 export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {
   const { fitView } = useReactFlow();
 
@@ -62,8 +60,6 @@ export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {
     setCurrentWorkflowId,
   });
 
-  const { hoveredDetails, handleNodeHover, handleEdgeHover } = useUIState();
-
   useEffect(() => {
     fitView({ padding: 0.5 });
   }, [fitView]);
@@ -94,11 +90,8 @@ export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {
     edges,
     openWorkflows,
     openNode,
-    hoveredDetails,
     handleOpenNode,
     handleNodeSettings,
-    handleNodeHover,
-    handleEdgeHover,
     handleWorkflowOpen,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,

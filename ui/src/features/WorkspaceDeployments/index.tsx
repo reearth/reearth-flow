@@ -109,9 +109,9 @@ const DeploymentManager: React.FC = () => {
           />
         </div>
       ) : (
-        <div className="flex h-full flex-1 flex-col">
-          <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pt-4 pb-2">
-            <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
+        <>
+          <div className="flex flex-1 flex-col gap-4 px-6 pt-4 pb-2">
+            <div className="flex h-[50px] items-center gap-2 border-b pb-4">
               <p className="text-lg dark:font-extralight">{t("Deployments")}</p>
               <Button
                 className="flex gap-2"
@@ -123,19 +123,21 @@ const DeploymentManager: React.FC = () => {
             {isFetching ? (
               <LoadingSkeleton />
             ) : deployments && deployments.length > 0 ? (
-              <Table
-                columns={columns}
-                data={deployments}
-                selectColumns
-                enablePagination
-                onRowClick={handleDeploymentSelect}
-                currentPage={currentPage}
-                setCurrentPage={setCurrentPage}
-                totalPages={totalPages}
-                resultsPerPage={resultsPerPage}
-                currentOrder={currentOrder}
-                setCurrentOrder={setCurrentOrder}
-              />
+              <div className="h-full flex-1 overflow-hidden">
+                <Table
+                  columns={columns}
+                  data={deployments}
+                  selectColumns
+                  enablePagination
+                  onRowClick={handleDeploymentSelect}
+                  currentPage={currentPage}
+                  setCurrentPage={setCurrentPage}
+                  totalPages={totalPages}
+                  resultsPerPage={resultsPerPage}
+                  currentOrder={currentOrder}
+                  setCurrentOrder={setCurrentOrder}
+                />
+              </div>
             ) : (
               <BasicBoiler
                 text={t("No Deployments")}
@@ -146,7 +148,7 @@ const DeploymentManager: React.FC = () => {
           {openDeploymentAddDialog && (
             <DeploymentAddDialog setShowDialog={setOpenDeploymentAddDialog} />
           )}
-        </div>
+        </>
       )}
       {deploymentToBeEdited && (
         <DeploymentEditDialog

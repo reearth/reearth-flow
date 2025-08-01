@@ -72,25 +72,23 @@ const TopBar: React.FC<Props> = ({
   return (
     <div className="flex h-[50px] w-[100vw] shrink-0 justify-between bg-secondary">
       <div
-        className={`flex items-center gap-1 border-b px-5 ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
+        className={`flex items-center gap-1 border-b pr-2 pl-1 ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
         <HomeMenu
           dropdownPosition="bottom"
           dropdownAlign="end"
-          dropdownAlignOffset={-148}
+          dropdownAlignOffset={-170}
         />
-        <div className="pr-4 pl-2">
+        <div className="pr-2">
           <Breadcrumb />
         </div>
         <div className="flex items-center gap-2 rounded-md">
           <IconButton
-            className="h-[35px]"
             variant="outline"
             tooltipText={t("Project Variables")}
             icon={<ChalkboardTeacherIcon weight="thin" size={18} />}
             onClick={() => handleDialogOpen("projectVariables")}
           />
           <IconButton
-            className="h-[35px]"
             variant="outline"
             tooltipText={t("Assets")}
             icon={<HardDriveIcon weight="thin" size={18} />}
@@ -107,7 +105,7 @@ const TopBar: React.FC<Props> = ({
         />
       </div>
       <div
-        className={`flex h-full items-center justify-center gap-2 self-center border-b p-1 select-none ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
+        className={`flex h-full items-center justify-center gap-2 self-center border-b px-1 select-none ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
         <div className="h-4/5 border-r" />
         <DebugActionBar
           onDebugRunStart={onDebugRunStart}
