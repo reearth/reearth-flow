@@ -142,9 +142,18 @@ impl BuilderDag {
                         node.node.action().to_string(),
                     ));
                 }
+                // Node cache is None during DAG building phase - it's only needed during execution
+                // when we have actual job IDs and can create node-specific cache directories
+                let node_ctx = NodeContext::new(
+                    ctx.expr_engine.clone(),
+                    ctx.storage_resolver.clone(),
+                    ctx.kv_store.clone(),
+                    ctx.event_hub.clone(),
+                    None,
+                );
                 let mut sink = sink
                     .build(
-                        ctx.clone(),
+                        node_ctx,
                         ctx.event_hub.clone(),
                         node.node.action().to_string(),
                         node.with.clone(),
@@ -196,9 +205,18 @@ impl BuilderDag {
                             node.node.action().to_string(),
                         ));
                     }
+                    // Node cache is None during DAG building phase - it's only needed during execution
+                    // when we have actual job IDs and can create node-specific cache directories
+                    let node_ctx = NodeContext::new(
+                        ctx.expr_engine.clone(),
+                        ctx.storage_resolver.clone(),
+                        ctx.kv_store.clone(),
+                        ctx.event_hub.clone(),
+                        None,
+                    );
                     let source = source
                         .build(
-                            ctx.clone(),
+                            node_ctx,
                             ctx.event_hub.clone(),
                             node.node.action().to_string(),
                             node.with.clone(),
@@ -234,9 +252,18 @@ impl BuilderDag {
                             node.node.action().to_string(),
                         ));
                     }
+                    // Node cache is None during DAG building phase - it's only needed during execution
+                    // when we have actual job IDs and can create node-specific cache directories
+                    let node_ctx = NodeContext::new(
+                        ctx.expr_engine.clone(),
+                        ctx.storage_resolver.clone(),
+                        ctx.kv_store.clone(),
+                        ctx.event_hub.clone(),
+                        None,
+                    );
                     let processor = processor
                         .build(
-                            ctx.clone(),
+                            node_ctx,
                             ctx.event_hub.clone(),
                             node.node.action().to_string(),
                             node.with.clone(),
