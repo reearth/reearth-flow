@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
-id: 83307700-04b9-490c-b6a1-11b93e7f7a8a
+id: f2e8a945-7b3c-4d1e-9a8f-3c5b7e9d2f84
 name: "PLATEAU4-quality-check-02-bldg-workflow"
-entryGraphId: 34bf873b-3364-46b0-8153-efeb9568bb3c
+entryGraphId: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
 with:
   cityGmlPath:
   codelists:
@@ -9,14 +9,12 @@ with:
   objectLists:
   outputPath:
 graphs:
-  - !include ../../../../graphs/plateau4/xml_validator.yml
-  - !include ../../../../graphs/plateau4/domain_of_definition_validator.yml
-  - !include ../../../../graphs/plateau4/quality-check/01-01-common.yml
-  - !include ../../../../graphs/plateau4/quality-check/01-02-common.yml
-  - id: 34bf873b-3364-46b0-8153-efeb9568bb3c
+  - !include ../../../../graphs/lod_splitter_with_dm.yml
+  - !include ../../../../graphs/lod_splitter_with_dm_2.yml
+  - id: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
     name: entry_point
     nodes:
-      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+      - id: 4d7b9e2a-5c8f-41d6-b9a3-7e1c5f8d2b9a
         name: FeatureCreator
         type: action
         action: FeatureCreator
@@ -33,42 +31,220 @@ graphs:
               },
             ]
 
-      - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
-        name: PLATEAU4.CommonQualityCheck-01-01-common
-        type: subGraph
-        subGraphId: 5db64758-df36-486d-86bd-437b72fd9fc8
-
-      - id: 9309842a-a3a7-4d1b-9216-ef523a6b4789
-        name: PLATEAU4.CommonQualityCheck-01-02-common
-        type: subGraph
-        subGraphId: b7a4c316-112e-4473-bd25-4c158db4e561
-
-      - id: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
-        name: ZipFileWriter
+      - id: c7315341-26b3-4405-9d02-039d721cd225
+        name: DirectoryDecompressor
         type: action
-        action: ZipFileWriter
+        action: DirectoryDecompressor
         with:
-          output: |
-            file::join_path(env.get("outputPath"), file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip")
+          archiveAttributes:
+            - codelists
+            - schemas
+
+      - id: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
+        name: FeatureFilePathExtractor
+        type: action
+        action: FeatureFilePathExtractor
+        with:
+          destPrefix: "udx"
+          sourceDataset: |
+            env.get("__value")["cityGmlPath"]
+          extractArchive: true
+
+      - id: 0daf7972-4d58-4ccd-a576-f3dfc418f749
+        name: FeatureFilterByGml
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").extension == "gml"
+              outputPort: default
+
+      - id: 151fbadf-1b40-4264-a003-f6f11f6af2d6
+        name: FeatureCounterFileIndex
+        type: action
+        action: FeatureCounter
+        with:
+          countStart: 1
+          outputAttribute: fileIndex
+
+      - id: 7e833060-f8c4-458b-a8cc-8c817527f25b
+        name: PLATEAU4.UDXFolderExtractor
+        type: action
+        action: PLATEAU4.UDXFolderExtractor
+        with:
+          cityGmlPath: |
+            env.get("__value")["path"]
+          codelistsPath: "codelists"
+          schemasPath: "schemas"
+
+      - id: 3f7b2a9d-1c8e-4a6f-b5d3-9e2c7a4f8b1d
+        name: FeatureCityGmlReader
+        type: action
+        action: FeatureCityGmlReader
+        with:
+          format: citygml
+          dataset: |
+            env.get("__value")["path"]
+
+      - id: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
+        name: AttributeManager
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            # rename
+            - attribute: path
+              method: rename
+              value: gmlPath
+            - attribute: name
+              method: rename
+              value: gmlFilename
+
+            # for debug
+            - attribute: __cityGmlAttrs
+              method: convert
+              value: |
+                env.get("__value").cityGmlAttributes
+
+            # remove
+            - attribute: cityGmlPath
+              method: remove
+            - attribute: root
+              method: remove
+            - attribute: package
+              method: remove
+            - attribute: admin
+              method: remove
+            - attribute: area
+              method: remove
+            - attribute: udxDirs
+              method: remove
+            - attribute: dirRoot
+              method: remove
+            - attribute: dirSchemas
+              method: remove
+            - attribute: extension
+              method: remove
+            - attribute: codelists
+              method: remove
+            - attribute: objectListPath
+              method: remove
+            - attribute: baseCityCode
+              method: remove
+            - attribute: cityCode
+              method: remove
+            - attribute: schemas
+              method: remove
+
+      - id: a8a7e7f8-8d73-4078-9cff-4476924f2ad7
+        name: FeatureSorter
+        type: action
+        action: FeatureSorter
+        with:
+          attributes: [fileIndex]
+          order: ascending
+
+      - id: 5a7b1469-217a-4d4b-bb01-971a9f9140d8
+        name: FeatureCounterFeatureIndex
+        type: action
+        action: FeatureCounter
+        with:
+          countStart: 0
+          outputAttribute: featureIndex
+
+      - id: 2b8c4e7a-9f1d-4a3b-c6e8-5d2a7b9c1e4f
+        name: FeatureFilter
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: "true"
+              outputPort: default
+            - expr: |
+                env.get("__value").gmlName == "bldg:BuildingPart"
+              outputPort: building_part
+
+      - id: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b
+        name: Dummy2
+        type: action
+        action: AttributeManager
+        with:
+          operations: []
+
+      - id: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+        name: PLATEAU3.LodSplitterWithDM
+        type: subGraph
+        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+
+      - id: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f
+        name: PLATEAU4.LODSplitterWithDM_2
+        type: subGraph
+        subGraphId: 5a2c8e4f-7b9d-4a3e-c1f6-8d2a5b7c9e4f
 
     edges:
-      - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
-        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
-        to: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+      - id: 8c9e2f4a-7b1d-4e5c-a3f2-9d8b6c4e1a7f
+        from: 4d7b9e2a-5c8f-41d6-b9a3-7e1c5f8d2b9a
+        to: c7315341-26b3-4405-9d02-039d721cd225
         fromPort: default
         toPort: default
-      - id: f47c77ad-c465-48cf-bdf5-36e385ffbd41
-        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
-        to: 9309842a-a3a7-4d1b-9216-ef523a6b4789
+      - id: f3a7b2e5-4c8d-4f9a-bce2-5f1a8d3b9c6e
+        from: c7315341-26b3-4405-9d02-039d721cd225
+        to: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
         fromPort: default
         toPort: default
-      - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
-        from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
-        to: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
+      - id: 2d6e9b4c-a5f8-4e2d-b7c3-8a1f4e7b2d5c
+        from: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
+        to: 0daf7972-4d58-4ccd-a576-f3dfc418f749
         fromPort: default
         toPort: default
-      - id: f69a4e59-b7b8-4fab-97cd-112b4d1e4a53
-        from: 9309842a-a3a7-4d1b-9216-ef523a6b4789
-        to: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
+      - id: 7a2e5c8f-3b9d-4c6a-e5f1-2d8c7b4a9e3f
+        from: 0daf7972-4d58-4ccd-a576-f3dfc418f749
+        to: 151fbadf-1b40-4264-a003-f6f11f6af2d6
         fromPort: default
+        toPort: default
+      - id: 9f4c7a2e-6b1d-4f8c-a2e5-3d9f6c8a1e4b
+        from: 151fbadf-1b40-4264-a003-f6f11f6af2d6
+        to: 7e833060-f8c4-458b-a8cc-8c817527f25b
+        fromPort: default
+        toPort: default
+      - id: 4b7e2a9c-5f1d-4a8e-f2c6-7b4a1e8d5c9f
+        from: 7e833060-f8c4-458b-a8cc-8c817527f25b
+        to: 3f7b2a9d-1c8e-4a6f-b5d3-9e2c7a4f8b1d
+        fromPort: default
+        toPort: default
+      - id: 3c8f1a5e-6b2d-4e9c-a7f4-1b8e5d2c9a6f
+        from: 3f7b2a9d-1c8e-4a6f-b5d3-9e2c7a4f8b1d
+        to: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
+        fromPort: default
+        toPort: default
+      - id: 7f34f420-3b27-44a8-b83f-0ef80a86045e
+        from: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
+        to: a8a7e7f8-8d73-4078-9cff-4476924f2ad7
+        fromPort: default
+        toPort: default
+      - id: 1cc52f00-2a52-4d4e-bc6a-c83629276766
+        from: a8a7e7f8-8d73-4078-9cff-4476924f2ad7
+        to: 5a7b1469-217a-4d4b-bb01-971a9f9140d8
+        fromPort: default
+        toPort: default
+      - id: a4b7e1d9-2c8f-4a5b-d3e6-9c2a5b8e1d4f
+        from: 5a7b1469-217a-4d4b-bb01-971a9f9140d8
+        to: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b
+        fromPort: default
+        toPort: default
+      - id: 525487a5-0a23-4fa8-9767-41d429b87e9d
+        from: 5a7b1469-217a-4d4b-bb01-971a9f9140d8
+        to: 2b8c4e7a-9f1d-4a3b-c6e8-5d2a7b9c1e4f
+        fromPort: default
+        toPort: default
+      - id: f8d2c5a9-3e1b-4c7f-a6d8-9b5e2c4f1a7d
+        from: 2b8c4e7a-9f1d-4a3b-c6e8-5d2a7b9c1e4f
+        to: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+        fromPort: default
+        toPort: default
+      - id: 9c4e7a2f-6b1d-4e8c-a5f3-2d8c9b4a1e7f
+        from: 2b8c4e7a-9f1d-4a3b-c6e8-5d2a7b9c1e4f
+        to: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f
+        fromPort: building_part
         toPort: default

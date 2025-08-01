@@ -1,7 +1,7 @@
 [package]
 description = "Re:Earth Flow GIS Quality Checker"
 name = "plateau-gis-quality-checker"
-version = "0.0.73"
+version = "0.0.75"
 
 authors.workspace = true
 edition.workspace = true
@@ -33,7 +33,11 @@ once_cell.workspace = true
 rust-embed = "8.6.0"
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-tauri = { version = "1.6.8", features = ["dialog-all", "fs-read-dir", "shell-open"] }
+tauri = { version = "1.6.8", features = [
+  "dialog-all",
+  "fs-read-dir",
+  "shell-open",
+] }
 tauri-plugin-log = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
 thiserror.workspace = true
 uuid.workspace = true
