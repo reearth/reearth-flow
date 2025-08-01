@@ -1343,7 +1343,7 @@ mod tests {
         );
         attributes.insert(
             Attribute::new("path"),
-            AttributeValue::String("file://test.gml".to_string()),
+            AttributeValue::String("file:///test.gml".to_string()),
         );
         attributes.insert(
             Attribute::new("xmlFragment"),

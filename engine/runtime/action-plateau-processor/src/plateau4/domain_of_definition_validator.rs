@@ -1489,9 +1489,9 @@ mod tests {
     };
     use reearth_flow_types::Feature;
     use std::collections::HashMap;
-    use std::env;
     use std::fs;
     use std::io::Write;
+    use tempfile::TempDir;
 
     fn create_gml_file(file_path: &str, gml_id: &str) -> std::io::Result<()> {
         let gml_content = format!(
@@ -1607,18 +1607,15 @@ mod tests {
     fn run_processor_test(
         gml_configs: Vec<(&str, &str)>, // (filename, gml_id) pairs
     ) -> Result<HashMap<String, u64>, BoxedError> {
-        let temp_dir = env::temp_dir().join(format!(
-            "domain_of_definition_validator_test_{}",
-            uuid::Uuid::new_v4()
-        ));
+        let temp_dir = TempDir::with_prefix("domain_of_definition_validator_test_")?;
 
-        let codelists_dir = temp_dir.join("codelists");
+        let codelists_dir = temp_dir.path().join("codelists");
         fs::create_dir_all(&codelists_dir)?;
 
         // Create GML files and collect features
         let mut features = Vec::new();
         for (filename, gml_id) in gml_configs {
-            let file_path = temp_dir.join(filename);
+            let file_path = temp_dir.path().join(filename);
             create_gml_file(&file_path.to_string_lossy(), gml_id)?;
             features.push(create_test_feature(
                 filename,
@@ -1646,9 +1643,6 @@ mod tests {
 
         // Extract results
         let file_stats_outputs = extract_file_stats_outputs(&fw)?;
-
-        // Clean up test files
-        fs::remove_dir_all(&temp_dir)?;
 
         Ok(file_stats_outputs)
     }
