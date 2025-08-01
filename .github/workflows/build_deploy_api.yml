@@ -38,7 +38,7 @@ jobs:
       - name: Build API
         run: |
           cd server/api
-          go build -v -o reearth-flow-api ./cmd/reearth-flow
+          go build -v -o reearth-flow-api .
 
       - name: Create distribution directory
         run: |
