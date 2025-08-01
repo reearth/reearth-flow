@@ -265,10 +265,10 @@ function DataTable<TData, TValue>({
           )}
         </div>
       )}
-      <div className="overflow-auto rounded-md border">
+      <div className="flex-1 overflow-auto">
         <div
           ref={parentRef}
-          className="h-full overflow-auto"
+          className="overflow-auto rounded-md border"
           style={{ contain: "paint", willChange: "transform" }}>
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-background/50 backdrop-blur-2xl">
