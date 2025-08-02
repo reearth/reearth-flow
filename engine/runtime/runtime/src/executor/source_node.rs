@@ -3,7 +3,7 @@ use std::{
     fmt::Debug,
     future::Future,
     pin::pin,
-    sync::Arc,
+    sync::{atomic::AtomicU64, Arc},
     time::{self, Duration},
 };
 
@@ -102,27 +102,61 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
 
             let mut source = source_runner.source;
             let sender = source_runner.sender;
+            let node_name = source_runner.node_name;
 
             handles.push(Some(self.runtime.spawn(async move {
-                let now = time::Instant::now();
-                let result = source.start(ctx, sender).await;
-                event_hub.info_log(
-                    Some(span.clone()),
-                    format!(
-                        "{:?} finish source complete. elapsed = {:?}",
-                        source.name(),
-                        now.elapsed()
-                    ),
+                let node_span = info_span!(
+                    parent: &span,
+                    "source_node",
+                    "node.id" = source_node_handle.id.to_string().as_str(),
+                    "node.name" = node_name.as_str(),
                 );
 
-                event_hub.send(Event::NodeStatusChanged {
-                    node_handle: source_node_handle,
-                    status: NodeStatus::Completed,
-                    feature_id: None,
-                });
+                event_hub.info_log_with_node_info(
+                    Some(node_span.clone()),
+                    source_node_handle.clone(),
+                    node_name.clone(),
+                    format!("{} source start...", source.name()),
+                );
+                let now = time::Instant::now();
+                let result = source.start(ctx, sender).await;
 
-                tracing::info!("Waiting for final status to propagate for all source nodes");
-                std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
+                if result.is_ok() {
+                    let message = format!(
+                        "{} source finish. elapsed = {:?}",
+                        source.name(),
+                        now.elapsed()
+                    );
+
+                    event_hub.info_log_with_node_info(
+                        Some(node_span.clone()),
+                        source_node_handle.clone(),
+                        node_name.clone(),
+                        message,
+                    );
+
+                    event_hub.send(Event::NodeStatusChanged {
+                        node_handle: source_node_handle,
+                        status: NodeStatus::Completed,
+                        feature_id: None,
+                    });
+
+                    tracing::info!("Waiting for final status to propagate for all source nodes");
+                    std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
+                } else if let Err(ref e) = result {
+                    event_hub.error_log_with_node_info(
+                        Some(node_span.clone()),
+                        source_node_handle.clone(),
+                        node_name.clone(),
+                        format!("{} source error: {:?}", source.name(), e),
+                    );
+
+                    event_hub.send(Event::NodeStatusChanged {
+                        node_handle: source_node_handle,
+                        status: NodeStatus::Failed,
+                        feature_id: None,
+                    });
+                }
 
                 result
             })));
@@ -239,6 +273,10 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                         IngestionMessage::OperationEvent { feature, .. } => {
                             source.state = SourceState::NonRestartable;
 
+                            source
+                                .features_produced
+                                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
                             self.event_hub.send(Event::NodeStatusChanged {
                                 node_handle: source.channel_manager.owner().clone(),
                                 status: NodeStatus::Processing,
@@ -265,12 +303,16 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
 struct RunningSource {
     channel_manager: ChannelManager,
     state: SourceState,
+    #[allow(dead_code)]
+    node_name: String,
+    features_produced: Arc<AtomicU64>,
 }
 
 #[derive(Debug)]
 struct SourceRunner {
     source: Box<dyn Source>,
     sender: Sender<(Port, IngestionMessage)>,
+    node_name: String,
 }
 
 /// Returns if the operation is sent successfully.
@@ -307,6 +349,7 @@ pub async fn create_source_node<F>(
         }
         let node = dag.node_weight_mut(node_index);
         let node_handle = node.handle.clone();
+        let node_name = node.name.clone();
         let NodeKind::Source(source) = node.kind.take().unwrap() else {
             continue;
         };
@@ -320,15 +363,22 @@ pub async fn create_source_node<F>(
             runtime.clone(),
             dag.event_hub().clone(),
         );
+        let features_produced = Arc::new(AtomicU64::new(0));
         sources.push(RunningSource {
             channel_manager,
             state: SourceState::NotStarted,
+            node_name: node_name.clone(),
+            features_produced: features_produced.clone(),
         });
 
         let (sender, receiver) = channel(options.channel_buffer_sz);
         let ctx = ctx.clone();
         source.initialize(ctx).await;
-        source_runners.push(SourceRunner { source, sender });
+        source_runners.push(SourceRunner {
+            source,
+            sender,
+            node_name,
+        });
         receivers.push(receiver);
     }
 

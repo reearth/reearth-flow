@@ -1,3 +1,4 @@
+mod action_log_parser;
 mod artifact;
 mod asset;
 mod command;
@@ -7,6 +8,7 @@ mod factory;
 mod logger;
 mod pubsub;
 mod types;
+mod user_facing_log_handler;
 
 use std::env;
 
