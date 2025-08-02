@@ -14,6 +14,8 @@ export enum CmsQueryKeys {
   GetCmsModelExportUrl = "getCmsModelExportUrl",
 }
 
+export const CMS_ITEMS_FETCH_RATE = 30;
+
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
 
@@ -82,11 +84,13 @@ export const useQueries = () => {
           pageSize: pageSize,
         });
         if (!data) return;
-
-        const cmsItems: CmsItem[] = data.cmsItems.items
+        const {
+          cmsItems: { items, totalCount },
+        } = data;
+        const cmsItems: CmsItem[] = items
           .filter(isDefined)
-          .map((cmsItem: any) => toCmsItem(cmsItem));
-        return { cmsItems };
+          .map((cmsItem: CmsItem) => toCmsItem(cmsItem));
+        return { cmsItems, totalCount };
       },
       enabled: !!modelId,
     });
