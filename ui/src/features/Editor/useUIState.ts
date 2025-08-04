@@ -4,7 +4,7 @@ import { MouseEvent, useCallback, useState } from "react";
 import { ActionNodeType, Edge, Node } from "@flow/types";
 import { cancellableDebounce } from "@flow/utils";
 
-export default ({ hasReader }: { hasReader?: boolean }) => {
+export default () => {
   const [hoveredDetails, setHoveredDetails] = useState<
     Node | Edge | undefined
   >();
@@ -46,10 +46,7 @@ export default ({ hasReader }: { hasReader?: boolean }) => {
       nodeType?: ActionNodeType,
       isMainWorkflow?: boolean,
     ) => {
-      if (isMainWorkflow === false && nodeType === "reader" && !hasReader) {
-        return;
-      }
-      if (isMainWorkflow && nodeType === "reader" && hasReader) {
+      if (isMainWorkflow === false && nodeType === "reader") {
         return;
       }
 
@@ -61,7 +58,7 @@ export default ({ hasReader }: { hasReader?: boolean }) => {
         !position || !nodeType ? undefined : { position, nodeType },
       );
     },
-    [hasReader],
+    [],
   );
 
   const handleNodePickerClose = useCallback(

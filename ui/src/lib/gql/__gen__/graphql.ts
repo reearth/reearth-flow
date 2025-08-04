@@ -38,15 +38,28 @@ export type AddMemberToWorkspacePayload = {
   workspace: Workspace;
 };
 
+export enum ArchiveExtractionStatus {
+  Done = 'DONE',
+  Failed = 'FAILED',
+  InProgress = 'IN_PROGRESS',
+  Pending = 'PENDING',
+  Skipped = 'SKIPPED'
+}
+
 export type Asset = Node & {
   __typename?: 'Asset';
   Workspace?: Maybe<Workspace>;
+  archiveExtractionStatus?: Maybe<ArchiveExtractionStatus>;
   contentType: Scalars['String']['output'];
   createdAt: Scalars['DateTime']['output'];
+  fileName: Scalars['String']['output'];
+  flatFiles: Scalars['Boolean']['output'];
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
+  public: Scalars['Boolean']['output'];
   size: Scalars['FileSize']['output'];
   url: Scalars['String']['output'];
+  uuid: Scalars['String']['output'];
   workspaceId: Scalars['ID']['output'];
 };
 
@@ -63,6 +76,88 @@ export enum AssetSortType {
   Size = 'SIZE'
 }
 
+export type CmsItem = {
+  __typename?: 'CMSItem';
+  createdAt: Scalars['DateTime']['output'];
+  fields: Scalars['JSON']['output'];
+  id: Scalars['ID']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+export type CmsItemsConnection = {
+  __typename?: 'CMSItemsConnection';
+  items: Array<CmsItem>;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type CmsModel = {
+  __typename?: 'CMSModel';
+  createdAt: Scalars['DateTime']['output'];
+  description: Scalars['String']['output'];
+  editorUrl: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  key: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  projectId: Scalars['ID']['output'];
+  publicApiEp: Scalars['String']['output'];
+  schema: CmsSchema;
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+export type CmsProject = {
+  __typename?: 'CMSProject';
+  alias: Scalars['String']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  description?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  license?: Maybe<Scalars['String']['output']>;
+  name: Scalars['String']['output'];
+  readme?: Maybe<Scalars['String']['output']>;
+  updatedAt: Scalars['DateTime']['output'];
+  visibility: CmsVisibility;
+  workspaceId: Scalars['ID']['output'];
+};
+
+export type CmsSchema = {
+  __typename?: 'CMSSchema';
+  fields: Array<CmsSchemaField>;
+  schemaId: Scalars['ID']['output'];
+};
+
+export type CmsSchemaField = {
+  __typename?: 'CMSSchemaField';
+  description?: Maybe<Scalars['String']['output']>;
+  fieldId: Scalars['ID']['output'];
+  key: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  type: CmsSchemaFieldType;
+};
+
+export enum CmsSchemaFieldType {
+  Asset = 'ASSET',
+  Bool = 'BOOL',
+  Checkbox = 'CHECKBOX',
+  Date = 'DATE',
+  Geometryeditor = 'GEOMETRYEDITOR',
+  Geometryobject = 'GEOMETRYOBJECT',
+  Group = 'GROUP',
+  Integer = 'INTEGER',
+  Markdowntext = 'MARKDOWNTEXT',
+  Number = 'NUMBER',
+  Reference = 'REFERENCE',
+  Richtext = 'RICHTEXT',
+  Select = 'SELECT',
+  Tag = 'TAG',
+  Text = 'TEXT',
+  Textarea = 'TEXTAREA',
+  Url = 'URL'
+}
+
+export enum CmsVisibility {
+  Private = 'PRIVATE',
+  Public = 'PUBLIC'
+}
+
 export type CancelJobInput = {
   jobId: Scalars['ID']['input'];
 };
@@ -74,6 +169,7 @@ export type CancelJobPayload = {
 
 export type CreateAssetInput = {
   file: Scalars['Upload']['input'];
+  name?: InputMaybe<Scalars['String']['input']>;
   workspaceId: Scalars['ID']['input'];
 };
 
@@ -121,6 +217,15 @@ export type DeclareParameterInput = {
   public: Scalars['Boolean']['input'];
   required: Scalars['Boolean']['input'];
   type: ParameterType;
+};
+
+export type DeleteAssetInput = {
+  assetId: Scalars['ID']['input'];
+};
+
+export type DeleteAssetPayload = {
+  __typename?: 'DeleteAssetPayload';
+  assetId: Scalars['ID']['output'];
 };
 
 export type DeleteDeploymentInput = {
@@ -288,6 +393,7 @@ export type Mutation = {
   createTrigger: Trigger;
   createWorkspace?: Maybe<CreateWorkspacePayload>;
   declareParameter: Parameter;
+  deleteAsset?: Maybe<DeleteAssetPayload>;
   deleteDeployment?: Maybe<DeleteDeploymentPayload>;
   deleteMe?: Maybe<DeleteMePayload>;
   deleteProject?: Maybe<DeleteProjectPayload>;
@@ -295,7 +401,6 @@ export type Mutation = {
   deleteWorkspace?: Maybe<DeleteWorkspacePayload>;
   executeDeployment?: Maybe<JobPayload>;
   previewSnapshot?: Maybe<PreviewSnapshot>;
-  removeAsset?: Maybe<RemoveAssetPayload>;
   removeMemberFromWorkspace?: Maybe<RemoveMemberFromWorkspacePayload>;
   removeMyAuth?: Maybe<UpdateMePayload>;
   removeParameter: Scalars['Boolean']['output'];
@@ -306,6 +411,7 @@ export type Mutation = {
   shareProject?: Maybe<ShareProjectPayload>;
   signup?: Maybe<SignupPayload>;
   unshareProject?: Maybe<UnshareProjectPayload>;
+  updateAsset?: Maybe<UpdateAssetPayload>;
   updateDeployment?: Maybe<DeploymentPayload>;
   updateMe?: Maybe<UpdateMePayload>;
   updateMemberOfWorkspace?: Maybe<UpdateMemberOfWorkspacePayload>;
@@ -359,6 +465,11 @@ export type MutationDeclareParameterArgs = {
 };
 
 
+export type MutationDeleteAssetArgs = {
+  input: DeleteAssetInput;
+};
+
+
 export type MutationDeleteDeploymentArgs = {
   input: DeleteDeploymentInput;
 };
@@ -393,11 +504,6 @@ export type MutationPreviewSnapshotArgs = {
   name?: InputMaybe<Scalars['String']['input']>;
   projectId: Scalars['ID']['input'];
   version: Scalars['Int']['input'];
-};
-
-
-export type MutationRemoveAssetArgs = {
-  input: RemoveAssetInput;
 };
 
 
@@ -449,6 +555,11 @@ export type MutationSignupArgs = {
 
 export type MutationUnshareProjectArgs = {
   input: UnshareProjectInput;
+};
+
+
+export type MutationUpdateAssetArgs = {
+  input: UpdateAssetInput;
 };
 
 
@@ -667,6 +778,11 @@ export type ProjectSnapshotMetadata = {
 export type Query = {
   __typename?: 'Query';
   assets: AssetConnection;
+  cmsItems: CmsItemsConnection;
+  cmsModelExportUrl: Scalars['String']['output'];
+  cmsModels: Array<CmsModel>;
+  cmsProject?: Maybe<CmsProject>;
+  cmsProjects: Array<CmsProject>;
   deploymentByVersion?: Maybe<Deployment>;
   deploymentHead?: Maybe<Deployment>;
   deploymentVersions: Array<Deployment>;
@@ -693,6 +809,36 @@ export type QueryAssetsArgs = {
   keyword?: InputMaybe<Scalars['String']['input']>;
   pagination: PageBasedPagination;
   sort?: InputMaybe<AssetSortType>;
+  workspaceId: Scalars['ID']['input'];
+};
+
+
+export type QueryCmsItemsArgs = {
+  modelId: Scalars['ID']['input'];
+  page?: InputMaybe<Scalars['Int']['input']>;
+  pageSize?: InputMaybe<Scalars['Int']['input']>;
+  projectId: Scalars['ID']['input'];
+};
+
+
+export type QueryCmsModelExportUrlArgs = {
+  modelId: Scalars['ID']['input'];
+  projectId: Scalars['ID']['input'];
+};
+
+
+export type QueryCmsModelsArgs = {
+  projectId: Scalars['ID']['input'];
+};
+
+
+export type QueryCmsProjectArgs = {
+  projectIdOrAlias: Scalars['ID']['input'];
+};
+
+
+export type QueryCmsProjectsArgs = {
+  publicOnly?: InputMaybe<Scalars['Boolean']['input']>;
   workspaceId: Scalars['ID']['input'];
 };
 
@@ -794,15 +940,6 @@ export type QuerySharedProjectArgs = {
 export type QueryTriggersArgs = {
   pagination: PageBasedPagination;
   workspaceId: Scalars['ID']['input'];
-};
-
-export type RemoveAssetInput = {
-  assetId: Scalars['ID']['input'];
-};
-
-export type RemoveAssetPayload = {
-  __typename?: 'RemoveAssetPayload';
-  assetId: Scalars['ID']['output'];
 };
 
 export type RemoveMemberFromWorkspaceInput = {
@@ -939,6 +1076,16 @@ export type UnshareProjectPayload = {
   projectId: Scalars['ID']['output'];
 };
 
+export type UpdateAssetInput = {
+  assetId: Scalars['ID']['input'];
+  name?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type UpdateAssetPayload = {
+  __typename?: 'UpdateAssetPayload';
+  asset: Asset;
+};
+
 export type UpdateDeploymentInput = {
   deploymentId: Scalars['ID']['input'];
   description?: InputMaybe<Scalars['String']['input']>;
@@ -1046,6 +1193,97 @@ export type WorkspaceMember = {
   user?: Maybe<User>;
   userId: Scalars['ID']['output'];
 };
+
+export type GetAssetsQueryVariables = Exact<{
+  workspaceId: Scalars['ID']['input'];
+  keyword?: InputMaybe<Scalars['String']['input']>;
+  pagination: PageBasedPagination;
+}>;
+
+
+export type GetAssetsQuery = { __typename?: 'Query', assets: { __typename?: 'AssetConnection', totalCount: number, nodes: Array<(
+      { __typename?: 'Asset' }
+      & { ' $fragmentRefs'?: { 'AssetFragment': AssetFragment } }
+    ) | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
+
+export type CreateAssetMutationVariables = Exact<{
+  input: CreateAssetInput;
+}>;
+
+
+export type CreateAssetMutation = { __typename?: 'Mutation', createAsset?: { __typename?: 'CreateAssetPayload', asset: (
+      { __typename?: 'Asset' }
+      & { ' $fragmentRefs'?: { 'AssetFragment': AssetFragment } }
+    ) } | null };
+
+export type UpdateAssetMutationVariables = Exact<{
+  input: UpdateAssetInput;
+}>;
+
+
+export type UpdateAssetMutation = { __typename?: 'Mutation', updateAsset?: { __typename?: 'UpdateAssetPayload', asset: (
+      { __typename?: 'Asset' }
+      & { ' $fragmentRefs'?: { 'AssetFragment': AssetFragment } }
+    ) } | null };
+
+export type DeleteAssetMutationVariables = Exact<{
+  input: DeleteAssetInput;
+}>;
+
+
+export type DeleteAssetMutation = { __typename?: 'Mutation', deleteAsset?: { __typename?: 'DeleteAssetPayload', assetId: string } | null };
+
+export type GetCmsProjectByIdOrAliasQueryVariables = Exact<{
+  projectIdOrAlias: Scalars['ID']['input'];
+}>;
+
+
+export type GetCmsProjectByIdOrAliasQuery = { __typename?: 'Query', cmsProject?: (
+    { __typename?: 'CMSProject' }
+    & { ' $fragmentRefs'?: { 'CmsProjectFragment': CmsProjectFragment } }
+  ) | null };
+
+export type GetCmsProjectsQueryVariables = Exact<{
+  workspaceId: Scalars['ID']['input'];
+  publicOnly?: InputMaybe<Scalars['Boolean']['input']>;
+}>;
+
+
+export type GetCmsProjectsQuery = { __typename?: 'Query', cmsProjects: Array<(
+    { __typename?: 'CMSProject' }
+    & { ' $fragmentRefs'?: { 'CmsProjectFragment': CmsProjectFragment } }
+  )> };
+
+export type GetCmsModelsQueryVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+}>;
+
+
+export type GetCmsModelsQuery = { __typename?: 'Query', cmsModels: Array<(
+    { __typename?: 'CMSModel' }
+    & { ' $fragmentRefs'?: { 'CmsModelFragment': CmsModelFragment } }
+  )> };
+
+export type GetCmsItemsQueryVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+  modelId: Scalars['ID']['input'];
+  page?: InputMaybe<Scalars['Int']['input']>;
+  pageSize?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type GetCmsItemsQuery = { __typename?: 'Query', cmsItems: { __typename?: 'CMSItemsConnection', totalCount: number, items: Array<(
+      { __typename?: 'CMSItem' }
+      & { ' $fragmentRefs'?: { 'CmsItemFragment': CmsItemFragment } }
+    )> } };
+
+export type GetCmsModelExportUrlQueryVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+  modelId: Scalars['ID']['input'];
+}>;
+
+
+export type GetCmsModelExportUrlQuery = { __typename?: 'Query', cmsModelExportUrl: string };
 
 export type CreateDeploymentMutationVariables = Exact<{
   input: CreateDeploymentInput;
@@ -1170,6 +1408,8 @@ export type NodeExecutionFragment = { __typename?: 'NodeExecution', id: string, 
 
 export type JobFragment = { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, debug?: boolean | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null } & { ' $fragmentName'?: 'JobFragment' };
 
+export type AssetFragment = { __typename?: 'Asset', id: string, workspaceId: string, createdAt: any, fileName: string, size: any, contentType: string, name: string, url: string, uuid: string, flatFiles: boolean, public: boolean, archiveExtractionStatus?: ArchiveExtractionStatus | null } & { ' $fragmentName'?: 'AssetFragment' };
+
 export type ProjectDocumentFragment = { __typename?: 'ProjectDocument', id: string, timestamp: any, updates: Array<number>, version: number } & { ' $fragmentName'?: 'ProjectDocumentFragment' };
 
 export type ProjectSnapshotMetadataFragment = { __typename?: 'ProjectSnapshotMetadata', timestamp: any, version: number } & { ' $fragmentName'?: 'ProjectSnapshotMetadataFragment' };
@@ -1177,6 +1417,12 @@ export type ProjectSnapshotMetadataFragment = { __typename?: 'ProjectSnapshotMet
 export type ProjectSnapshotFragment = { __typename?: 'ProjectSnapshot', timestamp: any, updates: Array<number>, version: number } & { ' $fragmentName'?: 'ProjectSnapshotFragment' };
 
 export type LogFragment = { __typename?: 'Log', jobId: string, nodeId?: string | null, timestamp: any, logLevel: LogLevel, message: string } & { ' $fragmentName'?: 'LogFragment' };
+
+export type CmsProjectFragment = { __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, createdAt: any, updatedAt: any } & { ' $fragmentName'?: 'CmsProjectFragment' };
+
+export type CmsModelFragment = { __typename?: 'CMSModel', id: string, projectId: string, name: string, description: string, editorUrl: string, key: string, publicApiEp: string, createdAt: any, updatedAt: any, schema: { __typename?: 'CMSSchema', schemaId: string, fields: Array<{ __typename?: 'CMSSchemaField', fieldId: string, key: string, type: CmsSchemaFieldType, name: string, description?: string | null }> } } & { ' $fragmentName'?: 'CmsModelFragment' };
+
+export type CmsItemFragment = { __typename?: 'CMSItem', id: string, fields: any, createdAt: any, updatedAt: any } & { ' $fragmentName'?: 'CmsItemFragment' };
 
 export type GetJobsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
@@ -1534,10 +1780,23 @@ export const ParameterFragmentDoc = {"kind":"Document","definitions":[{"kind":"F
 export const TriggerFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Trigger"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Trigger"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"lastTriggered"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"deploymentId"}},{"kind":"Field","name":{"kind":"Name","value":"deployment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Deployment"}}]}},{"kind":"Field","name":{"kind":"Name","value":"eventSource"}},{"kind":"Field","name":{"kind":"Name","value":"authToken"}},{"kind":"Field","name":{"kind":"Name","value":"timeInterval"}},{"kind":"Field","name":{"kind":"Name","value":"description"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Deployment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Deployment"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"projectId"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"workflowUrl"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"project"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]} as unknown as DocumentNode<TriggerFragment, unknown>;
 export const NodeExecutionFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"NodeExecution"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"NodeExecution"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"nodeId"}},{"kind":"Field","name":{"kind":"Name","value":"jobId"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"startedAt"}},{"kind":"Field","name":{"kind":"Name","value":"completedAt"}}]}}]} as unknown as DocumentNode<NodeExecutionFragment, unknown>;
 export const JobFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Job"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Job"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"startedAt"}},{"kind":"Field","name":{"kind":"Name","value":"completedAt"}},{"kind":"Field","name":{"kind":"Name","value":"logsURL"}},{"kind":"Field","name":{"kind":"Name","value":"outputURLs"}},{"kind":"Field","name":{"kind":"Name","value":"debug"}},{"kind":"Field","name":{"kind":"Name","value":"deployment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"description"}}]}}]}}]} as unknown as DocumentNode<JobFragment, unknown>;
+export const AssetFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Asset"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Asset"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"fileName"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"contentType"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"uuid"}},{"kind":"Field","name":{"kind":"Name","value":"flatFiles"}},{"kind":"Field","name":{"kind":"Name","value":"public"}},{"kind":"Field","name":{"kind":"Name","value":"archiveExtractionStatus"}}]}}]} as unknown as DocumentNode<AssetFragment, unknown>;
 export const ProjectDocumentFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"ProjectDocument"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ProjectDocument"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"updates"}},{"kind":"Field","name":{"kind":"Name","value":"version"}}]}}]} as unknown as DocumentNode<ProjectDocumentFragment, unknown>;
 export const ProjectSnapshotMetadataFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"ProjectSnapshotMetadata"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ProjectSnapshotMetadata"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"version"}}]}}]} as unknown as DocumentNode<ProjectSnapshotMetadataFragment, unknown>;
 export const ProjectSnapshotFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"ProjectSnapshot"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ProjectSnapshot"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"updates"}},{"kind":"Field","name":{"kind":"Name","value":"version"}}]}}]} as unknown as DocumentNode<ProjectSnapshotFragment, unknown>;
 export const LogFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Log"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Log"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"jobId"}},{"kind":"Field","name":{"kind":"Name","value":"nodeId"}},{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"logLevel"}},{"kind":"Field","name":{"kind":"Name","value":"message"}}]}}]} as unknown as DocumentNode<LogFragment, unknown>;
+export const CmsProjectFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"CmsProject"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"CMSProject"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"alias"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"license"}},{"kind":"Field","name":{"kind":"Name","value":"readme"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"visibility"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]} as unknown as DocumentNode<CmsProjectFragment, unknown>;
+export const CmsModelFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"CmsModel"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"CMSModel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"projectId"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"editorUrl"}},{"kind":"Field","name":{"kind":"Name","value":"key"}},{"kind":"Field","name":{"kind":"Name","value":"schema"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"schemaId"}},{"kind":"Field","name":{"kind":"Name","value":"fields"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"fieldId"}},{"kind":"Field","name":{"kind":"Name","value":"key"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"publicApiEp"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]} as unknown as DocumentNode<CmsModelFragment, unknown>;
+export const CmsItemFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"CmsItem"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"CMSItem"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"fields"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]} as unknown as DocumentNode<CmsItemFragment, unknown>;
+export const GetAssetsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAssets"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"keyword"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"pagination"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"PageBasedPagination"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"workspaceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"keyword"},"value":{"kind":"Variable","name":{"kind":"Name","value":"keyword"}}},{"kind":"Argument","name":{"kind":"Name","value":"pagination"},"value":{"kind":"Variable","name":{"kind":"Name","value":"pagination"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalCount"}},{"kind":"Field","name":{"kind":"Name","value":"nodes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Asset"}}]}},{"kind":"Field","name":{"kind":"Name","value":"pageInfo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalCount"}},{"kind":"Field","name":{"kind":"Name","value":"currentPage"}},{"kind":"Field","name":{"kind":"Name","value":"totalPages"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Asset"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Asset"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"fileName"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"contentType"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"uuid"}},{"kind":"Field","name":{"kind":"Name","value":"flatFiles"}},{"kind":"Field","name":{"kind":"Name","value":"public"}},{"kind":"Field","name":{"kind":"Name","value":"archiveExtractionStatus"}}]}}]} as unknown as DocumentNode<GetAssetsQuery, GetAssetsQueryVariables>;
+export const CreateAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateAssetInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Asset"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Asset"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Asset"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"fileName"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"contentType"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"uuid"}},{"kind":"Field","name":{"kind":"Name","value":"flatFiles"}},{"kind":"Field","name":{"kind":"Name","value":"public"}},{"kind":"Field","name":{"kind":"Name","value":"archiveExtractionStatus"}}]}}]} as unknown as DocumentNode<CreateAssetMutation, CreateAssetMutationVariables>;
+export const UpdateAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateAssetInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Asset"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Asset"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Asset"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"fileName"}},{"kind":"Field","name":{"kind":"Name","value":"size"}},{"kind":"Field","name":{"kind":"Name","value":"contentType"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"uuid"}},{"kind":"Field","name":{"kind":"Name","value":"flatFiles"}},{"kind":"Field","name":{"kind":"Name","value":"public"}},{"kind":"Field","name":{"kind":"Name","value":"archiveExtractionStatus"}}]}}]} as unknown as DocumentNode<UpdateAssetMutation, UpdateAssetMutationVariables>;
+export const DeleteAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DeleteAssetInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assetId"}}]}}]}}]} as unknown as DocumentNode<DeleteAssetMutation, DeleteAssetMutationVariables>;
+export const GetCmsProjectByIdOrAliasDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetCmsProjectByIdOrAlias"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"projectIdOrAlias"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"cmsProject"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"projectIdOrAlias"},"value":{"kind":"Variable","name":{"kind":"Name","value":"projectIdOrAlias"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"CmsProject"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"CmsProject"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"CMSProject"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"alias"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"license"}},{"kind":"Field","name":{"kind":"Name","value":"readme"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"visibility"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]} as unknown as DocumentNode<GetCmsProjectByIdOrAliasQuery, GetCmsProjectByIdOrAliasQueryVariables>;
+export const GetCmsProjectsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetCmsProjects"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"publicOnly"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"cmsProjects"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"workspaceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"publicOnly"},"value":{"kind":"Variable","name":{"kind":"Name","value":"publicOnly"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"CmsProject"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"CmsProject"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"CMSProject"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"alias"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"license"}},{"kind":"Field","name":{"kind":"Name","value":"readme"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"visibility"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]} as unknown as DocumentNode<GetCmsProjectsQuery, GetCmsProjectsQueryVariables>;
+export const GetCmsModelsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetCmsModels"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"cmsModels"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"projectId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"CmsModel"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"CmsModel"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"CMSModel"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"projectId"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"editorUrl"}},{"kind":"Field","name":{"kind":"Name","value":"key"}},{"kind":"Field","name":{"kind":"Name","value":"schema"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"schemaId"}},{"kind":"Field","name":{"kind":"Name","value":"fields"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"fieldId"}},{"kind":"Field","name":{"kind":"Name","value":"key"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"publicApiEp"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]} as unknown as DocumentNode<GetCmsModelsQuery, GetCmsModelsQueryVariables>;
+export const GetCmsItemsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetCmsItems"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"modelId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"page"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"pageSize"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"cmsItems"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"projectId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}}},{"kind":"Argument","name":{"kind":"Name","value":"modelId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"modelId"}}},{"kind":"Argument","name":{"kind":"Name","value":"page"},"value":{"kind":"Variable","name":{"kind":"Name","value":"page"}}},{"kind":"Argument","name":{"kind":"Name","value":"pageSize"},"value":{"kind":"Variable","name":{"kind":"Name","value":"pageSize"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"items"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"CmsItem"}}]}},{"kind":"Field","name":{"kind":"Name","value":"totalCount"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"CmsItem"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"CMSItem"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"fields"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]} as unknown as DocumentNode<GetCmsItemsQuery, GetCmsItemsQueryVariables>;
+export const GetCmsModelExportUrlDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetCmsModelExportUrl"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"modelId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"cmsModelExportUrl"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"projectId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}}},{"kind":"Argument","name":{"kind":"Name","value":"modelId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"modelId"}}}]}]}}]} as unknown as DocumentNode<GetCmsModelExportUrlQuery, GetCmsModelExportUrlQueryVariables>;
 export const CreateDeploymentDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateDeployment"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateDeploymentInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createDeployment"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deployment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Deployment"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Deployment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Deployment"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"projectId"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"workflowUrl"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"project"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]} as unknown as DocumentNode<CreateDeploymentMutation, CreateDeploymentMutationVariables>;
 export const UpdateDeploymentDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateDeployment"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateDeploymentInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateDeployment"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deployment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Deployment"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Deployment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Deployment"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"projectId"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"workflowUrl"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"project"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]} as unknown as DocumentNode<UpdateDeploymentMutation, UpdateDeploymentMutationVariables>;
 export const DeleteDeploymentDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteDeployment"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DeleteDeploymentInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteDeployment"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deploymentId"}}]}}]}}]} as unknown as DocumentNode<DeleteDeploymentMutation, DeleteDeploymentMutationVariables>;

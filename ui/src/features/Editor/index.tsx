@@ -31,7 +31,6 @@ export default function Editor({
 }: Props) {
   const {
     currentWorkflowId,
-    isSubworkflow,
     openWorkflows,
     currentProject,
     nodes,
@@ -44,7 +43,6 @@ export default function Editor({
     canRedo,
     allowedToDeploy,
     isMainWorkflow,
-    hasReader,
     deferredDeleteRef,
     showBeforeDeleteDialog,
     handleWorkflowAdd,
@@ -111,14 +109,12 @@ export default function Editor({
               canUndo={canUndo}
               canRedo={canRedo}
               isMainWorkflow={isMainWorkflow}
-              hasReader={hasReader}
               onNodesAdd={handleNodesAdd}
               onNodePickerClose={handleNodePickerClose}
               onWorkflowUndo={handleWorkflowUndo}
               onWorkflowRedo={handleWorkflowRedo}
               onLayoutChange={handleLayoutChange}>
               <Canvas
-                isSubworkflow={isSubworkflow}
                 nodes={nodes}
                 edges={edges}
                 selectedEdgeIds={selectedEdgeIds}
@@ -139,12 +135,14 @@ export default function Editor({
               />
             </OverlayUI>
           </div>
-          <ParamsDialog
-            openNode={openNode}
-            onOpenNode={handleOpenNode}
-            onDataSubmit={handleNodeDataUpdate}
-            onWorkflowRename={handleWorkflowRename}
-          />
+          {openNode && (
+            <ParamsDialog
+              openNode={openNode}
+              onOpenNode={handleOpenNode}
+              onDataSubmit={handleNodeDataUpdate}
+              onWorkflowRename={handleWorkflowRename}
+            />
+          )}
           {showBeforeDeleteDialog && (
             <NodeDeletionDialog
               showBeforeDeleteDialog={showBeforeDeleteDialog}

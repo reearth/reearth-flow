@@ -24,6 +24,9 @@ tools/czml/json/**
 output.png
 sample.xlsx
 metadata.json
+runtime/common/test.zip
 
 tmp/
 example.yml
+logs/
+/*.sh

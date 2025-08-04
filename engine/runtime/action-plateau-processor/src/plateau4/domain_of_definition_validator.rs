@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -49,6 +49,8 @@ static VALID_SRS_NAME_FOR_UNF: Lazy<Vec<&'static str>> = Lazy::new(|| {
         "http://www.opengis.net/def/crs/EPSG/0/10174",
     ]
 });
+
+static DUPLICATE_GML_ID_STATS_PORT: Lazy<Port> = Lazy::new(|| Port::new("duplicateGmlIdStats"));
 
 static XML_NAMESPACES: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     HashMap::from([
@@ -299,7 +301,11 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
+        vec![
+            DEFAULT_PORT.clone(),
+            REJECTED_PORT.clone(),
+            DUPLICATE_GML_ID_STATS_PORT.clone(),
+        ]
     }
 
     fn build(
@@ -312,6 +318,7 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
         let process = DomainOfDefinitionValidator {
             feature_buffer: vec![],
             codelists: None,
+            filenames: HashSet::new(),
         };
         Ok(Box::new(process))
     }
@@ -323,6 +330,7 @@ type FeatureBuffer = Vec<(Vec<Feature>, HashMap<String, Vec<HashMap<String, Stri
 pub struct DomainOfDefinitionValidator {
     feature_buffer: FeatureBuffer,
     codelists: Option<HashMap<String, HashMap<String, String>>>,
+    filenames: HashSet<String>,
 }
 
 impl Processor for DomainOfDefinitionValidator {
@@ -336,6 +344,13 @@ impl Processor for DomainOfDefinitionValidator {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
+
+        // Collect file name for statistics output
+        if let Some(AttributeValue::String(name)) = feature.attributes.get(&Attribute::new("name"))
+        {
+            self.filenames.insert(name.clone());
+        }
+
         if self.codelists.is_none() {
             let codelists =
                 create_codelist(Arc::clone(&ctx.storage_resolver), feature).map_err(|e| {
@@ -360,6 +375,40 @@ impl Processor for DomainOfDefinitionValidator {
                 }
             }
         }
+
+        // Count duplicate gml:id occurrences per file
+        let mut duplicate_gml_id_count = HashMap::<String, usize>::new();
+
+        for attributes in gml_ids.values() {
+            if attributes.len() > 1 {
+                // Count each file containing duplicate gml:ids
+                for attribute in attributes.iter() {
+                    if let Some(name) = attribute.get("name") {
+                        *duplicate_gml_id_count.entry(name.clone()).or_insert(0) += 1;
+                    }
+                }
+            }
+        }
+
+        // Output statistics for all files (including those with 0 duplicates)
+        for filename in &self.filenames {
+            let duplicate_count = duplicate_gml_id_count.get(filename).unwrap_or(&0);
+
+            let mut result_feature = Feature::new();
+            result_feature.insert("filename", AttributeValue::String(filename.clone()));
+            result_feature.insert(
+                "duplicateGmlIdCount",
+                AttributeValue::Number(Number::from(*duplicate_count)),
+            );
+
+            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                &ctx,
+                result_feature,
+                DUPLICATE_GML_ID_STATS_PORT.clone(),
+            ));
+        }
+
+        // Output individual duplicate gml:id details
         let mut dup_id = 0;
         for (gml_id, attributes) in gml_ids {
             if attributes.len() <= 1 {
@@ -443,20 +492,26 @@ fn process_feature(
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
     let xml_ctx = xml::create_context(&xml_document)
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-    let envelopes = xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//gml:Envelope", &root_node)
-        .map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
-            ))
-        })?;
+    let envelopes = xml::find_readonly_nodes_by_xpath(
+        &xml_ctx,
+        ".//*[namespace-uri()='http://www.opengis.net/gml' and local-name()='Envelope']",
+        &root_node,
+    )
+    .map_err(|e| {
+        PlateauProcessorError::DomainOfDefinitionValidator(format!(
+            "Failed to evaluate xpath at {}:{}: {e:?}",
+            file!(),
+            line!()
+        ))
+    })?;
     response.envelope = parse_envelope(envelopes)
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
 
     let members =
-        xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//core:cityObjectMember/*", &root_node)
+        xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//*[namespace-uri()='http://www.opengis.net/citygml/2.0' and local-name()='cityObjectMember']/*", &root_node)
             .map_err(|e| {
                 PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                    "Failed to evaluate xpath with {e:?}"
+                    "Failed to evaluate xpath at {}:{}: {e:?}", file!(), line!()
                 ))
             })?;
     for member in members.iter() {
@@ -479,12 +534,12 @@ fn process_feature(
 
     let members = xml::find_readonly_nodes_by_xpath(
         &xml_ctx,
-        ".//core:cityObjectMember/grp:CityObjectGroup",
+        ".//*[namespace-uri()='http://www.opengis.net/citygml/2.0' and local-name()='cityObjectMember']/*[namespace-uri()='http://www.opengis.net/citygml/cityobjectgroup/2.0' and local-name()='CityObjectGroup']",
         &root_node,
     )
     .map_err(|e| {
         PlateauProcessorError::DomainOfDefinitionValidator(format!(
-            "Failed to evaluate xpath with {e:?}"
+            "Failed to evaluate xpath at {}:{}: {e:?}", file!(), line!()
         ))
     })?;
     for member in members.iter() {
@@ -492,10 +547,16 @@ fn process_feature(
         let gml_id = member
             .get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner()).unwrap())
             .unwrap_or_default();
-        let xlinks = xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//*[@xlink:href]", &root_node)
-            .map_err(|e| {
+        let xlinks = xml::find_readonly_nodes_by_xpath(
+            &xml_ctx,
+            ".//*[@*[namespace-uri()='http://www.w3.org/1999/xlink' and local-name()='href']]",
+            &root_node,
+        )
+        .map_err(|e| {
             PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
+                "Failed to evaluate xpath at {}:{}: {e:?}",
+                file!(),
+                line!()
             ))
         })?;
         for xlink in xlinks {
@@ -743,15 +804,45 @@ fn process_member_node(
         vec![HashMap::from([
             ("tag".to_string(), tag.clone()),
             ("xpath".to_string(), tag.clone()),
+            (
+                "index".to_string(),
+                feature
+                    .attributes
+                    .get(&Attribute::new("index"))
+                    .map(|v| v.to_string())
+                    .unwrap_or_default(),
+            ),
+            (
+                "udxDirs".to_string(),
+                feature
+                    .attributes
+                    .get(&Attribute::new("udxDirs"))
+                    .map(|v| v.to_string())
+                    .unwrap_or_default(),
+            ),
+            (
+                "name".to_string(),
+                feature
+                    .attributes
+                    .get(&Attribute::new("name"))
+                    .map(|v| v.to_string())
+                    .unwrap_or_default(),
+            ),
         ])],
     );
     // 2. gml:id collection of lower-level elements
-    let gml_id_children = xml::find_readonly_nodes_by_xpath(xml_ctx, ".//*[@gml:id]", member)
-        .map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
-            ))
-        })?;
+    let gml_id_children = xml::find_readonly_nodes_by_xpath(
+        xml_ctx,
+        ".//*[@*[namespace-uri()='http://www.opengis.net/gml' and local-name()='id']]",
+        member,
+    )
+    .map_err(|e| {
+        PlateauProcessorError::DomainOfDefinitionValidator(format!(
+            "Failed to evaluate xpath at {}:{}: {e:?}",
+            file!(),
+            line!()
+        ))
+    })?;
     for gml_id_child in gml_id_children {
         let gml_id = gml_id_child
             .get_attribute_ns("id", std::str::from_utf8(GML31_NS.into_inner()).unwrap())
@@ -764,6 +855,30 @@ fn process_member_node(
                 (
                     "xpath".to_string(),
                     get_xpath(&gml_id_child, Some(member), None),
+                ),
+                (
+                    "index".to_string(),
+                    feature
+                        .attributes
+                        .get(&Attribute::new("index"))
+                        .map(|v| v.to_string())
+                        .unwrap_or_default(),
+                ),
+                (
+                    "udxDirs".to_string(),
+                    feature
+                        .attributes
+                        .get(&Attribute::new("udxDirs"))
+                        .map(|v| v.to_string())
+                        .unwrap_or_default(),
+                ),
+                (
+                    "name".to_string(),
+                    feature
+                        .attributes
+                        .get(&Attribute::new("name"))
+                        .map(|v| v.to_string())
+                        .unwrap_or_default(),
                 ),
             ])],
         );
@@ -779,7 +894,9 @@ fn process_member_node(
     let code_space_children =
         xml::find_readonly_nodes_by_xpath(xml_ctx, ".//*[@codeSpace]", member).map_err(|e| {
             PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
+                "Failed to evaluate xpath at {}:{}: {e:?}",
+                file!(),
+                line!()
             ))
         })?;
     let city_gml_path = feature.attributes.get(&Attribute::new("path")).ok_or(
@@ -802,50 +919,65 @@ fn process_member_node(
             .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
         let code = codelists.get(&code_space_path.to_string());
         let code_value = code_space_member.get_content();
-        let mut valid = false;
-        let mut exists_code_list = false;
+
         if let Some(code) = code {
-            exists_code_list = true;
             if code.contains_key(code_value.as_str()) {
-                valid = true;
                 response.correct_code_values += 1;
-            } else {
-                response.code_value_errors += 1;
+                continue;
             }
+
+            response.code_value_errors += 1;
+            handle_code_validation_failure(
+                ctx,
+                fw,
+                "CodeValidation",
+                &base_feature,
+                &code_space_member,
+                member,
+                &code_space,
+                &code_value,
+                &mut result,
+            );
         } else {
             response.code_space_errors += 1;
-        }
-        if !valid {
-            let mut result_feature = base_feature.clone();
-            result_feature.insert("existsCodeList", AttributeValue::Bool(exists_code_list));
-            result_feature.insert("flag", AttributeValue::String("CodeValidation".to_string()));
-            result_feature.insert(
-                "tag",
-                AttributeValue::String(xml::get_readonly_node_tag(&code_space_member)),
+            handle_code_validation_failure(
+                ctx,
+                fw,
+                "inCorrectCodeSpace",
+                &base_feature,
+                &code_space_member,
+                member,
+                &code_space,
+                &code_value,
+                &mut result,
             );
-            result_feature.insert(
-                "xpath",
-                AttributeValue::String(get_xpath(&code_space_member, Some(member), None)),
-            );
-            result_feature.insert("codeSpace", AttributeValue::String(code_space));
-            result_feature.insert("codeSpaceValue", AttributeValue::String(code_value));
-            result.push(result_feature.clone());
-            fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
         }
     }
     // L06: Geographical coverage verification
-    let mut pos_children = xml::find_readonly_nodes_by_xpath(xml_ctx, ".//gml:pos", member)
-        .map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
-            ))
-        })?;
-    let pos_list_children = xml::find_readonly_nodes_by_xpath(xml_ctx, ".//gml:posList", member)
-        .map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
-            ))
-        })?;
+    let mut pos_children = xml::find_readonly_nodes_by_xpath(
+        xml_ctx,
+        ".//*[namespace-uri()='http://www.opengis.net/gml' and local-name()='pos']",
+        member,
+    )
+    .map_err(|e| {
+        PlateauProcessorError::DomainOfDefinitionValidator(format!(
+            "Failed to evaluate xpath at {}:{}: {e:?}",
+            file!(),
+            line!()
+        ))
+    })?;
+    let pos_list_children = xml::find_readonly_nodes_by_xpath(
+        xml_ctx,
+        ".//*[namespace-uri()='http://www.opengis.net/gml' and local-name()='posList']",
+        member,
+    )
+    .map_err(|e| {
+        PlateauProcessorError::DomainOfDefinitionValidator(format!(
+            "Failed to evaluate xpath at {}:{}: {e:?}",
+            file!(),
+            line!()
+        ))
+    })?;
     let mut positions = Vec::<f64>::new();
     pos_children.extend(pos_list_children);
     for child in pos_children {
@@ -967,12 +1099,18 @@ fn process_member_node(
         }
     }
     // T03: Extraction of xlink:hrefs with no referent or whose referent is not a valid geometry object
-    let xlink_children = xml::find_readonly_nodes_by_xpath(xml_ctx, ".//*[@xlink:href]", member)
-        .map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
-            ))
-        })?;
+    let xlink_children = xml::find_readonly_nodes_by_xpath(
+        xml_ctx,
+        ".//*[@*[namespace-uri()='http://www.w3.org/1999/xlink' and local-name()='href']]",
+        member,
+    )
+    .map_err(|e| {
+        PlateauProcessorError::DomainOfDefinitionValidator(format!(
+            "Failed to evaluate xpath at {}:{}: {e:?}",
+            file!(),
+            line!()
+        ))
+    })?;
     for child in xlink_children
         .iter()
         .filter(|&child| xml::get_readonly_node_tag(child) != "core:CityObjectGroup")
@@ -1005,13 +1143,18 @@ fn process_member_node(
                 let root_node = xml::get_root_readonly_node(&xml_document).map_err(|e| {
                     PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
                 })?;
-                let gml_id_children =
-                    xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//*[@gml:id]", &root_node)
-                        .map_err(|e| {
-                            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                                "Failed to evaluate xpath with {e:?}"
-                            ))
-                        })?;
+                let gml_id_children = xml::find_readonly_nodes_by_xpath(
+                    &xml_ctx,
+                    ".//*[@*[namespace-uri()='http://www.opengis.net/gml' and local-name()='id']]",
+                    &root_node,
+                )
+                .map_err(|e| {
+                    PlateauProcessorError::DomainOfDefinitionValidator(format!(
+                        "Failed to evaluate xpath at {}:{}: {e:?}",
+                        file!(),
+                        line!()
+                    ))
+                })?;
                 gml_id_children.iter().for_each(|gml_id_node| {
                     let Some(gml_id) = gml_id_node.get_attribute_ns(
                         "id",
@@ -1082,7 +1225,7 @@ fn process_member_node(
                 let mut result_feature = base_feature.clone();
                 result_feature.insert(
                     "flag",
-                    AttributeValue::String("XLink_NoReference".to_string()),
+                    AttributeValue::String("XLink_InvalidObjectType".to_string()),
                 );
                 result_feature.insert(
                     "tag",
@@ -1119,7 +1262,9 @@ fn process_member_node(
 
         let children = xml::find_readonly_nodes_by_xpath(xml_ctx, &xpath, member).map_err(|e| {
             PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
+                "Failed to evaluate xpath at {}:{}: {e:?}",
+                file!(),
+                line!()
             ))
         })?;
         for child in children {
@@ -1135,7 +1280,9 @@ fn process_member_node(
                 )
                 .map_err(|e| {
                     PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                        "Failed to evaluate xpath with {e:?}"
+                        "Failed to evaluate xpath at {}:{}: {e:?}",
+                        file!(),
+                        line!()
                     ))
                 })?;
                 if gml.is_empty() {
@@ -1158,6 +1305,7 @@ fn process_member_node(
                         ["gml:MultiSurface", "gml:Solid"].contains(&gml_tag.as_str())
                     }
                 } else if parent_tag.contains(":DmG") {
+                    // DmGeometricAttribute
                     [
                         "gml:Point",
                         "gml:MultiPoint",
@@ -1166,6 +1314,7 @@ fn process_member_node(
                     ]
                     .contains(&gml_tag.as_str())
                 } else if parent_tag.contains(":DmA") {
+                    // DmAnnoation
                     gml_tag == "gml:Point"
                 } else {
                     ["gml:MultiSurface", "gml:Solid"].contains(&gml_tag.as_str())
@@ -1269,12 +1418,18 @@ fn create_detail_codelist(
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
     let root = xml::get_root_readonly_node(&xml_document)
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
-    let definitions =
-        xml::find_readonly_nodes_by_xpath(&ctx, ".//gml:Definition", &root).map_err(|e| {
-            PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
-            ))
-        })?;
+    let definitions = xml::find_readonly_nodes_by_xpath(
+        &ctx,
+        ".//*[namespace-uri()='http://www.opengis.net/gml' and local-name()='Definition']",
+        &root,
+    )
+    .map_err(|e| {
+        PlateauProcessorError::DomainOfDefinitionValidator(format!(
+            "Failed to evaluate xpath at {}:{}: {e:?}",
+            file!(),
+            line!()
+        ))
+    })?;
     let result = definitions
         .iter()
         .flat_map(|node| {
@@ -1289,4 +1444,247 @@ fn create_detail_codelist(
         })
         .collect::<HashMap<String, String>>();
     Ok(result)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn handle_code_validation_failure(
+    ctx: &ExecutorContext,
+    fw: &ProcessorChannelForwarder,
+    flag: &str,
+    base_feature: &Feature,
+    code_space_member: &XmlRoNode,
+    member: &XmlRoNode,
+    code_space: &str,
+    code_value: &str,
+    result: &mut Vec<Feature>,
+) {
+    let mut result_feature = base_feature.clone();
+    result_feature.insert("flag", AttributeValue::String(flag.to_string()));
+    result_feature.insert(
+        "tag",
+        AttributeValue::String(xml::get_readonly_node_tag(code_space_member)),
+    );
+    result_feature.insert(
+        "xpath",
+        AttributeValue::String(get_xpath(code_space_member, Some(member), None)),
+    );
+    result_feature.insert("codeSpace", AttributeValue::String(code_space.to_string()));
+    result_feature.insert(
+        "codeSpaceValue",
+        AttributeValue::String(code_value.to_string()),
+    );
+    result.push(result_feature.clone());
+    fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tests::utils::{create_default_execute_context, create_default_node_context};
+    use indexmap::IndexMap;
+    use reearth_flow_runtime::{
+        event::EventHub,
+        forwarder::{NoopChannelForwarder, ProcessorChannelForwarder},
+        node::ProcessorFactory,
+    };
+    use reearth_flow_types::Feature;
+    use std::collections::HashMap;
+    use std::fs;
+    use std::io::Write;
+    use tempfile::TempDir;
+
+    fn create_gml_file(file_path: &str, gml_id: &str) -> std::io::Result<()> {
+        let gml_content = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:brid="http://www.opengis.net/citygml/bridge/2.0" xmlns:tran="http://www.opengis.net/citygml/transportation/2.0" xmlns:frn="http://www.opengis.net/citygml/cityfurniture/2.0" xmlns:wtr="http://www.opengis.net/citygml/waterbody/2.0" xmlns:sch="http://www.ascc.net/xml/schematron" xmlns:veg="http://www.opengis.net/citygml/vegetation/2.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:tun="http://www.opengis.net/citygml/tunnel/2.0" xmlns:tex="http://www.opengis.net/citygml/texturedsurface/2.0" xmlns:gml="http://www.opengis.net/gml" xmlns:app="http://www.opengis.net/citygml/appearance/2.0" xmlns:gen="http://www.opengis.net/citygml/generics/2.0" xmlns:dem="http://www.opengis.net/citygml/relief/2.0" xmlns:luse="http://www.opengis.net/citygml/landuse/2.0" xmlns:uro="https://www.geospatial.jp/iur/uro/3.1" xmlns:xAL="urn:oasis:names:tc:ciq:xsdschema:xAL:2.0" xmlns:bldg="http://www.opengis.net/citygml/building/2.0" xmlns:smil20="http://www.w3.org/2001/SMIL20/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:smil20lang="http://www.w3.org/2001/SMIL20/Language" xmlns:pbase="http://www.opengis.net/citygml/profiles/base/2.0" xmlns:core="http://www.opengis.net/citygml/2.0" xmlns:grp="http://www.opengis.net/citygml/cityobjectgroup/2.0" xsi:schemaLocation="http://www.opengis.net/citygml/2.0 http://schemas.opengis.net/citygml/2.0/cityGMLBase.xsd http://www.opengis.net/citygml/building/2.0 http://schemas.opengis.net/citygml/building/2.0/building.xsd http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/base/gml.xsd">
+    <gml:boundedBy>
+        <gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
+            <gml:lowerCorner>36.6470041354812 137.05268308385453 0</gml:lowerCorner>
+            <gml:upperCorner>36.647798243275254 137.0537094956814 105.03314</gml:upperCorner>
+        </gml:Envelope>
+    </gml:boundedBy>
+    <core:cityObjectMember>
+        <bldg:Building gml:id="{gml_id}">
+            <core:creationDate>2025-03-21</core:creationDate>
+            <bldg:class codeSpace="../../codelists/Building_class.xml">3003</bldg:class>
+            <bldg:usage codeSpace="../../codelists/Building_usage.xml">411</bldg:usage>
+            <bldg:yearOfConstruction>0001</bldg:yearOfConstruction>
+            <bldg:measuredHeight uom="m">8.6</bldg:measuredHeight>
+            <bldg:storeysAboveGround>9999</bldg:storeysAboveGround>
+            <bldg:storeysBelowGround>9999</bldg:storeysBelowGround>
+            <bldg:lod0RoofEdge>
+                <gml:MultiSurface>
+                    <gml:surfaceMember>
+                        <gml:Polygon>
+                            <gml:exterior>
+                                <gml:LinearRing>
+                                    <gml:posList>36.64773967207627 137.0537094956814 0 36.647798243275254 137.05370057460766 0 36.64778832538864 137.053600937653 0 36.64772975430324 137.053609970643 0 36.64773967207627 137.0537094956814 0</gml:posList>
+                                </gml:LinearRing>
+                            </gml:exterior>
+                        </gml:Polygon>
+                    </gml:surfaceMember>
+                </gml:MultiSurface>
+            </bldg:lod0RoofEdge>
+        </bldg:Building>
+    </core:cityObjectMember>
+</core:CityModel>"#
+        );
+
+        if let Some(parent) = std::path::Path::new(file_path).parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let mut file = fs::File::create(file_path)?;
+        file.write_all(gml_content.as_bytes())?;
+        Ok(())
+    }
+
+    fn create_test_feature(
+        name: &str,
+        file_path: &str,
+        codelists_dir: &std::path::Path,
+    ) -> Feature {
+        let mut attributes = IndexMap::new();
+        attributes.insert(
+            Attribute::new("name"),
+            AttributeValue::String(name.to_string()),
+        );
+        attributes.insert(
+            Attribute::new("package"),
+            AttributeValue::String("bldg".to_string()),
+        );
+        attributes.insert(
+            Attribute::new("dirCodelists"),
+            AttributeValue::String(format!("file://{}", codelists_dir.display())),
+        );
+        attributes.insert(
+            Attribute::new("path"),
+            AttributeValue::String(file_path.to_string()),
+        );
+
+        let mut feature = Feature::new();
+        feature.attributes = attributes;
+        feature
+    }
+
+    // Helper function to extract file_stats outputs from ProcessorChannelForwarder
+    fn extract_file_stats_outputs(
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<HashMap<String, u64>, BoxedError> {
+        match fw {
+            ProcessorChannelForwarder::Noop(noop_fw) => {
+                let send_ports = noop_fw.send_ports.lock().unwrap();
+                let send_features = noop_fw.send_features.lock().unwrap();
+
+                let file_stats_outputs: HashMap<String, u64> = send_ports
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, port)| port.as_ref() == "duplicateGmlIdStats")
+                    .map(|(i, _)| &send_features[i])
+                    .filter_map(|feature| {
+                        if let (
+                            Some(AttributeValue::String(filename)),
+                            Some(AttributeValue::Number(count)),
+                        ) = (
+                            feature.get(&Attribute::new("filename")),
+                            feature.get(&Attribute::new("duplicateGmlIdCount")),
+                        ) {
+                            Some((filename.clone(), count.as_u64().unwrap_or(0)))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                Ok(file_stats_outputs)
+            }
+            ProcessorChannelForwarder::ChannelManager(_) => {
+                Err("Expected Noop forwarder for testing".into())
+            }
+        }
+    }
+
+    // Helper function to setup and run processor with given GML file configs
+    fn run_processor_test(
+        gml_configs: Vec<(&str, &str)>, // (filename, gml_id) pairs
+    ) -> Result<HashMap<String, u64>, BoxedError> {
+        let temp_dir = TempDir::with_prefix("domain_of_definition_validator_test_")?;
+
+        let codelists_dir = temp_dir.path().join("codelists");
+        fs::create_dir_all(&codelists_dir)?;
+
+        // Create GML files and collect features
+        let mut features = Vec::new();
+        for (filename, gml_id) in gml_configs {
+            let file_path = temp_dir.path().join(filename);
+            create_gml_file(&file_path.to_string_lossy(), gml_id)?;
+            features.push(create_test_feature(
+                filename,
+                &format!("file://{}", file_path.display()),
+                &codelists_dir,
+            ));
+        }
+
+        // Create processor
+        let factory = DomainOfDefinitionValidatorFactory {};
+        let ctx = create_default_node_context();
+        let mut processor: Box<dyn Processor> =
+            factory.build(ctx, EventHub::new(1024), "test".to_string(), None)?;
+
+        // Process features
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        for feature in features {
+            let ctx = create_default_execute_context(feature);
+            processor.process(ctx, &fw)?;
+        }
+
+        // Call finish to trigger file_stats output
+        let ctx = create_default_node_context();
+        processor.finish(ctx, &fw)?;
+
+        // Extract results
+        let file_stats_outputs = extract_file_stats_outputs(&fw)?;
+
+        Ok(file_stats_outputs)
+    }
+
+    #[test]
+    fn test_gml_id_duplicate_detection() -> Result<(), BoxedError> {
+        // Create test GML files:
+        let gml_id_1 = format!("bldg_{}", uuid::Uuid::new_v4());
+        let gml_id_2 = format!("bldg_{}", uuid::Uuid::new_v4());
+        let gml_configs = vec![
+            ("file1.gml", gml_id_1.as_str()),
+            ("file2.gml", gml_id_1.as_str()),
+            ("file3.gml", gml_id_2.as_str()),
+        ];
+
+        let file_stats_outputs = run_processor_test(gml_configs)?;
+
+        // Assert the expected duplicate counts:
+        assert_eq!(file_stats_outputs.get("file1.gml"), Some(&1));
+        assert_eq!(file_stats_outputs.get("file2.gml"), Some(&1));
+        assert_eq!(file_stats_outputs.get("file3.gml"), Some(&0));
+        Ok(())
+    }
+
+    #[test]
+    fn test_gml_id_no_duplicates() -> Result<(), BoxedError> {
+        // Create test GML files with all unique gml:ids:
+        let gml_id_1 = format!("bldg_{}", uuid::Uuid::new_v4());
+        let gml_id_2 = format!("bldg_{}", uuid::Uuid::new_v4());
+        let gml_id_3 = format!("bldg_{}", uuid::Uuid::new_v4());
+        let gml_configs = vec![
+            ("file1.gml", gml_id_1.as_str()),
+            ("file2.gml", gml_id_2.as_str()),
+            ("file3.gml", gml_id_3.as_str()),
+        ];
+
+        let file_stats_outputs = run_processor_test(gml_configs)?;
+
+        // Assert the expected duplicate counts:
+        assert_eq!(file_stats_outputs.get("file1.gml"), Some(&0));
+        assert_eq!(file_stats_outputs.get("file2.gml"), Some(&0));
+        assert_eq!(file_stats_outputs.get("file3.gml"), Some(&0));
+        Ok(())
+    }
 }

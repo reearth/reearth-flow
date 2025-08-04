@@ -18,13 +18,16 @@ export function generateWidgets<
   F extends FormContextType = FormContextType,
 >(): RegistryWidgetsType<T, S, F> {
   return {
+    // Standard widgets that RJSF expects by default
     CheckboxWidget,
     CheckboxesWidget,
     RadioWidget,
     RangeWidget,
     SelectWidget,
     TextareaWidget,
+    // Note: Basic inputs (text, number, color) are now handled by BaseInputTemplate
   };
 }
 
-export default generateWidgets();
+const GeneratedWidgets = generateWidgets();
+export default GeneratedWidgets;

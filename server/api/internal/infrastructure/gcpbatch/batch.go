@@ -39,10 +39,26 @@ type BatchConfig struct {
 }
 
 type BatchClient interface {
-	CreateJob(ctx context.Context, req *batchpb.CreateJobRequest, opts ...gax.CallOption) (*batchpb.Job, error)
-	GetJob(ctx context.Context, req *batchpb.GetJobRequest, opts ...gax.CallOption) (*batchpb.Job, error)
-	ListJobs(ctx context.Context, req *batchpb.ListJobsRequest, opts ...gax.CallOption) *batch.JobIterator
-	DeleteJob(ctx context.Context, req *batchpb.DeleteJobRequest, opts ...gax.CallOption) (*batch.DeleteJobOperation, error)
+	CreateJob(
+		ctx context.Context,
+		req *batchpb.CreateJobRequest,
+		opts ...gax.CallOption,
+	) (*batchpb.Job, error)
+	GetJob(
+		ctx context.Context,
+		req *batchpb.GetJobRequest,
+		opts ...gax.CallOption,
+	) (*batchpb.Job, error)
+	ListJobs(
+		ctx context.Context,
+		req *batchpb.ListJobsRequest,
+		opts ...gax.CallOption,
+	) *batch.JobIterator
+	DeleteJob(
+		ctx context.Context,
+		req *batchpb.DeleteJobRequest,
+		opts ...gax.CallOption,
+	) (*batch.DeleteJobOperation, error)
 	Close() error
 }
 
@@ -63,10 +79,22 @@ func NewBatch(ctx context.Context, config BatchConfig) (gateway.Batch, error) {
 	}, nil
 }
 
-func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL, metadataURL string, variables map[string]interface{}, projectID id.ProjectID, workspaceID accountdomain.WorkspaceID) (string, error) {
+func (b *BatchRepo) SubmitJob(
+	ctx context.Context,
+	jobID id.JobID,
+	workflowsURL, metadataURL string,
+	variables map[string]interface{},
+	projectID id.ProjectID,
+	workspaceID accountdomain.WorkspaceID,
+) (string, error) {
 	formattedJobID := formatJobID(jobID.String())
 
-	jobName := fmt.Sprintf("projects/%s/locations/%s/jobs/%s", b.config.ProjectID, b.config.Region, formattedJobID)
+	jobName := fmt.Sprintf(
+		"projects/%s/locations/%s/jobs/%s",
+		b.config.ProjectID,
+		b.config.Region,
+		formattedJobID,
+	)
 	parent := fmt.Sprintf("projects/%s/locations/%s", b.config.ProjectID, b.config.Region)
 
 	binaryPath := b.config.BinaryPath
@@ -130,6 +158,8 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 				"FLOW_WORKER_LOG_STREAM_TOPIC":                  b.config.PubSubLogStreamTopic,
 				"FLOW_WORKER_JOB_COMPLETE_TOPIC":                b.config.PubSubJobCompleteTopic,
 				"FLOW_WORKER_NODE_STATUS_TOPIC":                 b.config.PubSubNodeStatusTopic,
+				"RUST_LOG":                                      "debug",
+				"RUST_BACKTRACE":                                "full",
 			},
 		},
 	}
@@ -223,6 +253,11 @@ func (b *BatchRepo) GetJobStatus(ctx context.Context, jobName string) (gateway.J
 
 	job, err := b.client.GetJob(ctx, req)
 	if err != nil {
+		if strings.Contains(err.Error(), "NotFound") || strings.Contains(err.Error(), "404") {
+			log.Debugfc(ctx, "Job not found (possibly deleted): %s", jobName)
+			return gateway.JobStatusCancelled, nil
+		}
+
 		if strings.Contains(err.Error(), "RESOURCE_PROJECT_INVALID") {
 			log.Debugfc(ctx, "Detected project invalid error, inspecting job name: %s", jobName)
 
@@ -239,11 +274,18 @@ func (b *BatchRepo) GetJobStatus(ctx context.Context, jobName string) (gateway.J
 			}
 
 			job, err = b.client.GetJob(ctx, retryReq)
-			if err == nil {
-				status := convertGCPStatusToGatewayStatus(job.Status.State)
-				return status, nil
+			if err != nil {
+				if strings.Contains(err.Error(), "NotFound") ||
+					strings.Contains(err.Error(), "404") {
+					log.Debugfc(ctx, "Job not found after retry (possibly deleted): %s", fixedName)
+					return gateway.JobStatusCancelled, nil
+				}
+				log.Debugfc(ctx, "Retry failed: %v", err)
+				return gateway.JobStatusUnknown, fmt.Errorf("failed to get job status: %v", err)
 			}
-			log.Debugfc(ctx, "Retry failed: %v", err)
+
+			status := convertGCPStatusToGatewayStatus(job.Status.State)
+			return status, nil
 		}
 
 		return gateway.JobStatusUnknown, fmt.Errorf("failed to get job status: %v", err)
@@ -257,7 +299,10 @@ func (b *BatchRepo) Close() error {
 	return b.client.Close()
 }
 
-func (b *BatchRepo) ListJobs(ctx context.Context, projectID id.ProjectID) ([]gateway.JobInfo, error) {
+func (b *BatchRepo) ListJobs(
+	ctx context.Context,
+	projectID id.ProjectID,
+) ([]gateway.JobInfo, error) {
 	req := &batchpb.ListJobsRequest{
 		Parent: fmt.Sprintf("projects/%s/locations/%s", b.config.ProjectID, b.config.Region),
 		Filter: fmt.Sprintf("labels.project_id=%s", projectID.String()),
@@ -314,6 +359,8 @@ func convertGCPStatusToGatewayStatus(gcpStatus batchpb.JobStatus_State) gateway.
 		return gateway.JobStatusCompleted
 	case batchpb.JobStatus_FAILED:
 		return gateway.JobStatusFailed
+	case batchpb.JobStatus_DELETION_IN_PROGRESS:
+		return gateway.JobStatusCancelled
 	default:
 		return gateway.JobStatusUnknown
 	}

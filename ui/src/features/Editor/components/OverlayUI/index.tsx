@@ -15,9 +15,8 @@ import {
   Infobar,
   NodePickerDialog,
   LayoutOptionsDialog,
-  DebugLogs,
-  DebugPreview,
   JobStatus,
+  DebugPanel,
 } from "./components";
 
 type OverlayUIProps = {
@@ -29,7 +28,6 @@ type OverlayUIProps = {
   canUndo: boolean;
   canRedo: boolean;
   isMainWorkflow: boolean;
-  hasReader?: boolean;
   onNodesAdd: (nodes: Node[]) => void;
   onNodePickerClose: () => void;
   onWorkflowUndo: () => void;
@@ -48,7 +46,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   canUndo,
   canRedo,
   isMainWorkflow,
-  hasReader,
   onNodesAdd,
   onNodePickerClose,
   onWorkflowUndo,
@@ -80,7 +77,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
               canUndo={canUndo}
               canRedo={canRedo}
               isMainWorkflow={isMainWorkflow}
-              hasReader={hasReader}
               onLayoutChange={handleLayoutOptionsToggle}
               onRedo={onWorkflowRedo}
               onUndo={onWorkflowUndo}
@@ -88,12 +84,9 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           </div>
         </div>
         <div id="right-top" className="absolute top-4 right-4" />
-        <div className="pointer-events-none absolute inset-y-2 bottom-4 left-4 flex items-end">
-          <DebugLogs />
-        </div>
+        <DebugPanel />
         <div className="pointer-events-none absolute right-4 bottom-4 flex flex-row-reverse items-end gap-4">
           <CanvasActionBar />
-          <DebugPreview />
         </div>
         {hoveredDetails && <Infobar hoveredDetails={hoveredDetails} />}
       </div>

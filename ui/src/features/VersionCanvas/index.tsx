@@ -16,7 +16,6 @@ type Props = {
 const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
   const {
     currentWorkflowId,
-    isSubworkflow,
     nodes,
     edges,
     openWorkflows,
@@ -50,18 +49,19 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
         <div className="relative flex flex-1">
           <Canvas
             readonly
-            isSubworkflow={isSubworkflow}
             onWorkflowOpen={handleWorkflowOpen}
             nodes={nodes}
             edges={edges}
             onNodeSettings={handleNodeSettings}
           />
         </div>
-        <ParamsDialog
-          readonly
-          openNode={openNode}
-          onOpenNode={handleOpenNode}
-        />
+        {openNode && (
+          <ParamsDialog
+            readonly
+            openNode={openNode}
+            onOpenNode={handleOpenNode}
+          />
+        )}
       </EditorProvider>
     </div>
   );

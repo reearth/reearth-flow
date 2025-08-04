@@ -94,6 +94,21 @@ fragment Job on Job {
   }
 }
 
+fragment Asset on Asset {
+  id
+  workspaceId
+  createdAt
+  fileName
+  size
+  contentType
+  name
+  url
+  uuid
+  flatFiles
+  public
+  archiveExtractionStatus
+}
+
 fragment ProjectDocument on ProjectDocument {
   id
   timestamp
@@ -131,4 +146,46 @@ fragment ProjectSnapshot on ProjectSnapshot {
   timestamp
   updates
   version
+}
+
+fragment CmsProject on CMSProject {
+  id
+  name
+  alias
+  description
+  license
+  readme
+  workspaceId
+  visibility
+  createdAt
+  updatedAt
+}
+
+fragment CmsModel on CMSModel {
+  id
+  projectId
+  name
+  description
+  editorUrl
+  key
+  schema {
+    schemaId
+    fields {
+      fieldId
+      key
+      type
+      name
+      description
+    }
+  }
+  publicApiEp
+  createdAt
+  updatedAt
+}
+
+fragment CmsItem on CMSItem {
+  id
+  fields
+  createdAt
+  updatedAt
 }

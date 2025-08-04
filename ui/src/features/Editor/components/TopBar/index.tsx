@@ -1,16 +1,12 @@
 import { ChalkboardTeacherIcon, HardDriveIcon } from "@phosphor-icons/react";
-import { memo, useState, useCallback, useMemo } from "react";
+import { memo } from "react";
 import { Doc } from "yjs";
 
 import { IconButton } from "@flow/components";
-import { useProjectVariables } from "@flow/lib/gql";
+import AssetsDialog from "@flow/features/AssetsDialog";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
-import {
-  ProjectVariable as ProjectVariableType,
-  Project,
-  AnyProjectVariable,
-} from "@flow/types";
+import { Project } from "@flow/types";
 
 import { WorkflowTabs } from "..";
 
@@ -21,6 +17,7 @@ import {
   HomeMenu,
   ProjectVariableDialog,
 } from "./components";
+import useHooks from "./hooks";
 
 type Props = {
   currentWorkflowId: string;
@@ -58,151 +55,46 @@ const TopBar: React.FC<Props> = ({
   onWorkflowChange,
 }) => {
   const t = useT();
-  const [showProjectVarsDialog, setShowProjectVarsDialog] = useState(false);
+  const {
+    isMainWorkflow,
+    showDialog,
+    currentProjectVariables,
+    handleProjectVariableAdd,
+    handleProjectVariableChange,
+    handleProjectVariablesBatchUpdate,
+    handleProjectVariableDelete,
+    handleProjectVariablesBatchDelete,
+    handleDialogOpen,
+    handleDialogClose,
+  } = useHooks({ openWorkflows, currentWorkflowId });
   const [currentProject] = useCurrentProject();
 
-  const {
-    useGetProjectVariables,
-    createProjectVariable,
-    updateMultipleProjectVariables,
-    deleteProjectVariable,
-    deleteProjectVariables,
-  } = useProjectVariables();
-
-  const { projectVariables } = useGetProjectVariables(currentProject?.id);
-
-  const currentProjectVariables = useMemo(
-    () => projectVariables ?? [],
-    [projectVariables],
-  );
-
-  const handleProjectVariableAdd = useCallback(
-    async (projectVariable: ProjectVariableType) => {
-      if (!currentProject) return;
-
-      await createProjectVariable(
-        currentProject.id,
-        projectVariable.name,
-        projectVariable.defaultValue,
-        projectVariable.type,
-        projectVariable.required,
-        projectVariable.public,
-        currentProjectVariables.length,
-        projectVariable.config,
-      );
-    },
-    [currentProject, createProjectVariable, currentProjectVariables.length],
-  );
-
-  const handleProjectVariableChange = useCallback(
-    async (projectVariable: ProjectVariableType) => {
-      if (!currentProject) return;
-
-      await updateMultipleProjectVariables({
-        projectId: currentProject.id,
-        updates: [
-          {
-            paramId: projectVariable.id,
-            name: projectVariable.name,
-            defaultValue: projectVariable.defaultValue,
-            type: projectVariable.type,
-            required: projectVariable.required,
-            publicValue: projectVariable.public,
-            config: projectVariable.config,
-          },
-        ],
-      });
-    },
-    [updateMultipleProjectVariables, currentProject],
-  );
-
-  const handleProjectVariablesBatchUpdate = useCallback(
-    async (input: {
-      projectId: string;
-      creates?: {
-        name: string;
-        defaultValue: any;
-        type: ProjectVariableType["type"];
-        required: boolean;
-        publicValue: boolean;
-        index?: number;
-        config?: AnyProjectVariable["config"];
-      }[];
-      updates?: {
-        paramId: string;
-        name?: string;
-        defaultValue?: any;
-        type?: ProjectVariableType["type"];
-        required?: boolean;
-        publicValue?: boolean;
-        config?: AnyProjectVariable["config"];
-      }[];
-      deletes?: string[];
-    }) => {
-      await updateMultipleProjectVariables(input);
-    },
-    [updateMultipleProjectVariables],
-  );
-
-  const handleProjectVariableDelete = useCallback(
-    async (id: string) => {
-      if (!currentProject) return;
-
-      try {
-        await deleteProjectVariable(id, currentProject.id);
-      } catch (error) {
-        console.error("Failed to delete project variable:", error);
-      }
-    },
-    [deleteProjectVariable, currentProject],
-  );
-
-  const handleProjectVariablesBatchDelete = useCallback(
-    async (ids: string[]) => {
-      if (!currentProject) return;
-
-      try {
-        await deleteProjectVariables(currentProject.id, ids);
-      } catch (error) {
-        console.error("Failed to delete project variables:", error);
-      }
-    },
-    [deleteProjectVariables, currentProject],
-  );
-
-  const handleShowProjectVarsDialog = useCallback(() => {
-    setShowProjectVarsDialog(true);
-  }, []);
-
-  const handleCloseProjectVarsDialog = useCallback(() => {
-    setShowProjectVarsDialog(false);
-  }, []);
-
   return (
-    <div className="flex w-[100vw] shrink-0 justify-between gap-2 bg-secondary">
-      <div className="flex items-center gap-1">
+    <div className="flex h-[50px] w-[100vw] shrink-0 justify-between bg-secondary">
+      <div
+        className={`flex items-center gap-1 border-b px-5 ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
         <HomeMenu
           dropdownPosition="bottom"
           dropdownAlign="end"
-          dropdownAlignOffset={-140}
+          dropdownAlignOffset={-148}
         />
         <div className="pr-4 pl-2">
           <Breadcrumb />
         </div>
-        <div className="flex items-center gap-2 rounded-md p-1">
+        <div className="flex items-center gap-2 rounded-md">
           <IconButton
-            className="h-[30px]"
+            className="h-[35px]"
             variant="outline"
             tooltipText={t("Project Variables")}
             icon={<ChalkboardTeacherIcon weight="thin" size={18} />}
-            onClick={handleShowProjectVarsDialog}
+            onClick={() => handleDialogOpen("projectVariables")}
           />
           <IconButton
-            className="h-[30px]"
+            className="h-[35px]"
             variant="outline"
-            tooltipText={t("Resources")}
+            tooltipText={t("Assets")}
             icon={<HardDriveIcon weight="thin" size={18} />}
-            disabled
+            onClick={() => handleDialogOpen("assets")}
           />
         </div>
       </div>
@@ -214,7 +106,8 @@ const TopBar: React.FC<Props> = ({
           onWorkflowChange={onWorkflowChange}
         />
       </div>
-      <div className="flex h-full items-center justify-center gap-2 self-center p-1 select-none">
+      <div
+        className={`flex h-full items-center justify-center gap-2 self-center border-b p-1 select-none ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
         <div className="h-4/5 border-r" />
         <DebugActionBar
           onDebugRunStart={onDebugRunStart}
@@ -225,22 +118,29 @@ const TopBar: React.FC<Props> = ({
           project={project}
           yDoc={yDoc}
           allowedToDeploy={allowedToDeploy}
+          showDialog={showDialog}
           onProjectShare={onProjectShare}
           onProjectExport={onProjectExport}
           onWorkflowDeployment={onWorkflowDeployment}
+          onDialogOpen={handleDialogOpen}
+          onDialogClose={handleDialogClose}
         />
       </div>
-      <ProjectVariableDialog
-        isOpen={showProjectVarsDialog}
-        currentProjectVariables={currentProjectVariables}
-        onClose={handleCloseProjectVarsDialog}
-        onAdd={handleProjectVariableAdd}
-        onChange={handleProjectVariableChange}
-        onDelete={handleProjectVariableDelete}
-        onDeleteBatch={handleProjectVariablesBatchDelete}
-        onBatchUpdate={handleProjectVariablesBatchUpdate}
-        projectId={currentProject?.id}
-      />
+      {showDialog === "assets" && (
+        <AssetsDialog onDialogClose={handleDialogClose} />
+      )}
+      {showDialog === "projectVariables" && (
+        <ProjectVariableDialog
+          currentProjectVariables={currentProjectVariables}
+          projectId={currentProject?.id}
+          onClose={handleDialogClose}
+          onAdd={handleProjectVariableAdd}
+          onChange={handleProjectVariableChange}
+          onDelete={handleProjectVariableDelete}
+          onDeleteBatch={handleProjectVariablesBatchDelete}
+          onBatchUpdate={handleProjectVariablesBatchUpdate}
+        />
+      )}
     </div>
   );
 };

@@ -29,7 +29,6 @@ type PendingChange =
     };
 
 export default ({
-  isOpen,
   currentProjectVariables,
   projectId,
   onClose,
@@ -39,7 +38,6 @@ export default ({
   onDeleteBatch,
   onBatchUpdate,
 }: {
-  isOpen: boolean;
   currentProjectVariables?: ProjectVariable[];
   projectId?: string;
   onClose: () => void;
@@ -128,7 +126,7 @@ export default ({
       setLocalProjectVariables([...currentProjectVariables]);
       setPendingChanges([]);
     }
-  }, [currentProjectVariables, isOpen, getUserFacingName]);
+  }, [currentProjectVariables, getUserFacingName]);
 
   const handleLocalAdd = useCallback(
     (type: VarType) => {
@@ -143,8 +141,6 @@ export default ({
         public: true,
       };
 
-      console.log("Adding new variable (handleLocalAdd):", newVariable);
-
       setLocalProjectVariables((prev) => [...prev, newVariable]);
       setPendingChanges((prev) => [
         ...prev,
@@ -155,7 +151,6 @@ export default ({
   );
 
   const handleLocalUpdate = useCallback((updatedVariable: ProjectVariable) => {
-    console.log("Updating variable (handleLocalUpdate):", updatedVariable);
     setLocalProjectVariables((prev) =>
       prev.map((variable) =>
         variable.id === updatedVariable.id ? updatedVariable : variable,
@@ -324,14 +319,6 @@ export default ({
           paramId: change.paramId,
           newIndex: change.newIndex,
         }));
-
-        console.log("Submitting batch update:", {
-          projectId,
-          creates,
-          updates,
-          deletes,
-          reorders,
-        });
 
         await onBatchUpdate({
           projectId,

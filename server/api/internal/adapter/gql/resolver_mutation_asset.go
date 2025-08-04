@@ -15,11 +15,8 @@ func (r *mutationResolver) CreateAsset(ctx context.Context, input gqlmodel.Creat
 		return nil, err
 	}
 
-	operator := getOperator(ctx)
-
 	res, err := usecases(ctx).Asset.Create(ctx, interfaces.CreateAssetParam{
 		WorkspaceID: wid,
-		UserID:      *operator.AcOperator.User,
 		File:        gqlmodel.FromFile(&input.File),
 		Name:        input.Name,
 	})

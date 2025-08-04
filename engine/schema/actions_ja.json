@@ -599,7 +599,78 @@
       "name": "BoundsExtractor",
       "type": "processor",
       "description": "境界を抽出する",
-      "parameter": null,
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "BoundsExtractorParam",
+        "type": "object",
+        "properties": {
+          "xmax": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "xmin": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ymax": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ymin": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "zmax": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "zmin": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "default"
@@ -3175,7 +3246,19 @@
       "name": "PLATEAU3.BuildingUsageAttributeValidator",
       "type": "processor",
       "description": "必要な属性の存在や都市コードの正しさを確認し、建物利用属性を検証する。問題があればlBldgErrorおよびcodeErrorポートを通じてエラーを出力する。",
-      "parameter": null,
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "BuildingUsageAttributeValidatorParam",
+        "type": "object",
+        "properties": {
+          "codelistsPath": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "builtin": false,
       "inputPorts": [
         "default"
@@ -3294,7 +3377,55 @@
       "name": "PLATEAU3.XMLAttributeExtractor",
       "type": "processor",
       "description": "スキーマ定義に基づいてXML断片から属性を抽出する",
-      "parameter": null,
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "XmlAttributeExtractorParam",
+        "type": "object",
+        "properties": {
+          "addNsprefixToFeatureTypes": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "cityCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "exceptFeatureTypes": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "extractDmGeometryAsXmlFragment": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "schemaJson": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "targetPackages": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "builtin": false,
       "inputPorts": [
         "default"
@@ -3373,7 +3504,8 @@
       ],
       "outputPorts": [
         "default",
-        "rejected"
+        "rejected",
+        "duplicateGmlIdStats"
       ],
       "categories": [
         "PLATEAU"
@@ -3445,7 +3577,9 @@
       "outputPorts": [
         "summary",
         "required",
-        "target"
+        "target",
+        "dataQualityC07",
+        "dataQualityC08"
       ],
       "categories": [
         "PLATEAU"
@@ -4048,7 +4182,7 @@
         "required": [
           "processorType",
           "programmingLanguage",
-          "sourceCodeFilePath"
+          "source"
         ],
         "properties": {
           "processorType": {
@@ -4057,7 +4191,7 @@
           "programmingLanguage": {
             "$ref": "#/definitions/ProgrammingLanguage"
           },
-          "sourceCodeFilePath": {
+          "source": {
             "$ref": "#/definitions/Expr"
           }
         },

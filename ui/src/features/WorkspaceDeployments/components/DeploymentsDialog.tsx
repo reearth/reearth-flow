@@ -73,7 +73,6 @@ const DeploymentsDialog: React.FC<Props> = ({
                 columns={columns}
                 data={deployments}
                 selectColumns
-                showFiltering
                 enablePagination
                 onRowClick={(deployment) => {
                   handleSelectDeployment(deployment);

@@ -69,7 +69,6 @@ const JobsManager: React.FC = () => {
             columns={columns}
             data={jobs}
             selectColumns
-            showFiltering
             enablePagination
             onRowClick={handleJobSelect}
             currentPage={currentPage}

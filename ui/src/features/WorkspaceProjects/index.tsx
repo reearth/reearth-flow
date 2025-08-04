@@ -131,7 +131,7 @@ const ProjectsManager: React.FC = () => {
           <Select
             value={currentOrder || "DESC"}
             onValueChange={handleOrderChange}>
-            <SelectTrigger className="w-[100px]">
+            <SelectTrigger className="h-[32px] w-[100px]">
               <SelectValue placeholder={orderDirections.ASC} />
             </SelectTrigger>
             <SelectContent>

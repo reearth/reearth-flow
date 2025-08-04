@@ -31,7 +31,6 @@ import { ProjectVariablesTable } from "./ProjectVariablesTable";
 import VariableEditDialog from "./VariableEditDialog";
 
 type Props = {
-  isOpen: boolean;
   currentProjectVariables?: AnyProjectVariable[];
   onClose: () => void;
   onAdd: (projectVariable: AnyProjectVariable) => Promise<void>;
@@ -84,7 +83,6 @@ const allVarTypes: VarType[] = [
 ];
 
 const ProjectVariableDialog: React.FC<Props> = ({
-  isOpen,
   currentProjectVariables,
   projectId,
   onClose,
@@ -111,7 +109,6 @@ const ProjectVariableDialog: React.FC<Props> = ({
     handleEditVariable,
     handleCloseEdit,
   } = useProjectVariablesDialog({
-    isOpen,
     currentProjectVariables,
     projectId,
     onClose,
@@ -221,7 +218,7 @@ const ProjectVariableDialog: React.FC<Props> = ({
 
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={handleCancel}>
+      <Dialog open onOpenChange={handleCancel}>
         <DialogContent
           className="h-[50vh]"
           size="2xl"
@@ -262,7 +259,7 @@ const ProjectVariableDialog: React.FC<Props> = ({
               </DialogTitle>
             </DialogHeader>
             <div className="flex h-full min-h-0">
-              <DialogContentSection className="flex min-h-0 flex-3 flex-col bg-card">
+              <DialogContentSection className="flex min-h-0 flex-3 flex-col">
                 <DialogContentSection className="min-h-0 flex-1 overflow-hidden">
                   <ProjectVariablesTable
                     projectVariables={localProjectVariables}
@@ -288,7 +285,6 @@ const ProjectVariableDialog: React.FC<Props> = ({
           </div>
         </DialogContent>
       </Dialog>
-
       <VariableEditDialog
         isOpen={!!editingVariable}
         variable={editingVariable}

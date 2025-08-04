@@ -13,7 +13,6 @@ import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useProjectExport, useProjectSave, useShortcuts } from "@flow/hooks";
 import { useSharedProject } from "@flow/lib/gql";
-import { checkForReader } from "@flow/lib/reactFlow";
 import { useYjsStore } from "@flow/lib/yjs";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
@@ -97,12 +96,6 @@ export default ({
     resolve: (val: boolean) => void;
   } | null>(null);
 
-  const isSubworkflow = useMemo(() => {
-    if (!currentYWorkflow) return false;
-    const workflowId = currentYWorkflow.get("id")?.toJSON();
-    return workflowId !== DEFAULT_ENTRY_GRAPH_ID;
-  }, [currentYWorkflow]);
-
   const rawNodes = useY(currentYWorkflow?.get("nodes") ?? new YMap()) as Record<
     string,
     Node
@@ -145,8 +138,6 @@ export default ({
       })),
     [rawEdges, selectedEdgeIds],
   );
-
-  const hasReader = checkForReader(nodes);
 
   const {
     openWorkflows,
@@ -209,7 +200,7 @@ export default ({
     handleNodePickerOpen,
     handleNodePickerClose,
     handleRightPanelOpen,
-  } = useUIState({ hasReader });
+  } = useUIState();
 
   const { allowedToDeploy, handleWorkflowDeployment } = useDeployment({
     currentNodes: nodes,
@@ -358,7 +349,6 @@ export default ({
   };
 
   return {
-    isSubworkflow,
     currentWorkflowId,
     openWorkflows,
     currentProject,
@@ -373,7 +363,6 @@ export default ({
     canUndo,
     canRedo,
     isMainWorkflow,
-    hasReader,
     deferredDeleteRef,
     showBeforeDeleteDialog,
     handleRightPanelOpen,

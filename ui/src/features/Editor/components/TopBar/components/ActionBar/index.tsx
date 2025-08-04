@@ -20,12 +20,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@flow/components";
+import { useProjectSave } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { Project } from "@flow/types";
 
+import type { DialogOptions } from "../../hooks";
+
 import { DeployDialog, SharePopover } from "./components";
 import { VersionDialog } from "./components/Version/VersionDialog";
-import useHooks from "./hooks";
 
 const tooltipOffset = 6;
 
@@ -33,32 +35,32 @@ type Props = {
   project?: Project;
   yDoc: Doc | null;
   allowedToDeploy: boolean;
+  showDialog: DialogOptions;
   onWorkflowDeployment: (
     description: string,
     deploymentId?: string,
   ) => Promise<void>;
   onProjectShare: (share: boolean) => void;
   onProjectExport: () => void;
+  onDialogOpen: (dialog: DialogOptions) => void;
+  onDialogClose: () => void;
 };
 
 const ActionBar: React.FC<Props> = ({
   project,
   yDoc,
   allowedToDeploy,
+  showDialog,
   onWorkflowDeployment,
   onProjectShare,
   onProjectExport,
+  onDialogOpen,
+  onDialogClose,
 }) => {
   const t = useT();
-  const {
-    showDialog,
-    isSaving,
-    handleShowDeployDialog,
-    handleShowVersionDialog,
-    handleShowSharePopover,
-    handleDialogClose,
-    handleProjectSnapshotSave,
-  } = useHooks({ projectId: project?.id ?? "" });
+  const { handleProjectSnapshotSave, isSaving } = useProjectSave({
+    projectId: project?.id ?? "",
+  });
 
   return (
     <>
@@ -68,22 +70,22 @@ const ActionBar: React.FC<Props> = ({
             tooltipText={t("Deploy project's workflow")}
             tooltipOffset={tooltipOffset}
             icon={<RocketIcon weight="thin" size={18} />}
-            onClick={handleShowDeployDialog}
+            onClick={() => onDialogOpen("deploy")}
           />
           <Popover
             open={showDialog === "share"}
             onOpenChange={(open) => {
-              if (!open) handleDialogClose();
+              if (!open) onDialogClose();
             }}>
             <PopoverTrigger asChild>
               <IconButton
                 tooltipText={t("Share Project")}
                 tooltipOffset={tooltipOffset}
                 icon={<PaperPlaneTiltIcon weight="thin" size={18} />}
-                onClick={handleShowSharePopover}
+                onClick={() => onDialogOpen("share")}
               />
             </PopoverTrigger>
-            <PopoverContent>
+            <PopoverContent sideOffset={16}>
               {showDialog === "share" && (
                 <SharePopover onProjectShare={onProjectShare} />
               )}
@@ -99,9 +101,9 @@ const ActionBar: React.FC<Props> = ({
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              className="min-w-[170px] rounded-md bg-primary p-1 text-popover-foreground shadow-md select-none"
+              className="min-w-[170px] rounded-md bg-primary/50 p-1 text-popover-foreground shadow-md backdrop-blur-lg select-none"
               align="end"
-              sideOffset={10}
+              sideOffset={14}
               alignOffset={2}>
               <DropdownMenuItem
                 className="flex items-center justify-between rounded-sm px-2 py-1.5 text-xs"
@@ -123,7 +125,7 @@ const ActionBar: React.FC<Props> = ({
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="flex items-center justify-between rounded-sm px-2 py-1.5 text-xs"
-                onClick={handleShowVersionDialog}>
+                onClick={() => onDialogOpen("version")}>
                 <div className="flex items-center gap-1">
                   <ClockCounterClockwiseIcon weight="light" />
                   <p>{t("Version History")}</p>
@@ -145,13 +147,13 @@ const ActionBar: React.FC<Props> = ({
         <VersionDialog
           project={project}
           yDoc={yDoc}
-          onDialogClose={handleDialogClose}
+          onDialogClose={onDialogClose}
         />
       )}
       {showDialog === "deploy" && (
         <DeployDialog
           allowedToDeploy={allowedToDeploy}
-          onDialogClose={handleDialogClose}
+          onDialogClose={onDialogClose}
           onWorkflowDeployment={onWorkflowDeployment}
         />
       )}

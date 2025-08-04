@@ -457,7 +457,9 @@ fn process_feature(
     let envelopes = xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//gml:Envelope", &root_node)
         .map_err(|e| {
             PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
+                "Failed to evaluate xpath at {}:{}: {e:?}",
+                file!(),
+                line!()
             ))
         })?;
     response.envelope = parse_envelope(envelopes)
@@ -467,7 +469,9 @@ fn process_feature(
         xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//core:cityObjectMember/*", &root_node)
             .map_err(|e| {
                 PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                    "Failed to evaluate xpath with {e:?}"
+                    "Failed to evaluate xpath at {}:{}: {e:?}",
+                    file!(),
+                    line!()
                 ))
             })?;
     for member in members.iter() {
@@ -495,7 +499,9 @@ fn process_feature(
     )
     .map_err(|e| {
         PlateauProcessorError::DomainOfDefinitionValidator(format!(
-            "Failed to evaluate xpath with {e:?}"
+            "Failed to evaluate xpath at {}:{}: {e:?}",
+            file!(),
+            line!()
         ))
     })?;
     for member in members.iter() {
@@ -506,7 +512,9 @@ fn process_feature(
         let xlinks = xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//*[@xlink:href]", &root_node)
             .map_err(|e| {
             PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
+                "Failed to evaluate xpath at {}:{}: {e:?}",
+                file!(),
+                line!()
             ))
         })?;
         for xlink in xlinks {
@@ -760,7 +768,9 @@ fn process_member_node(
     let gml_id_children = xml::find_readonly_nodes_by_xpath(xml_ctx, ".//*[@gml:id]", member)
         .map_err(|e| {
             PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
+                "Failed to evaluate xpath at {}:{}: {e:?}",
+                file!(),
+                line!()
             ))
         })?;
     for gml_id_child in gml_id_children {
@@ -790,7 +800,9 @@ fn process_member_node(
     let code_space_children =
         xml::find_readonly_nodes_by_xpath(xml_ctx, ".//*[@codeSpace]", member).map_err(|e| {
             PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
+                "Failed to evaluate xpath at {}:{}: {e:?}",
+                file!(),
+                line!()
             ))
         })?;
     let city_gml_path = feature
@@ -851,13 +863,17 @@ fn process_member_node(
     let mut pos_children = xml::find_readonly_nodes_by_xpath(xml_ctx, ".//gml:pos", member)
         .map_err(|e| {
             PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
+                "Failed to evaluate xpath at {}:{}: {e:?}",
+                file!(),
+                line!()
             ))
         })?;
     let pos_list_children = xml::find_readonly_nodes_by_xpath(xml_ctx, ".//gml:posList", member)
         .map_err(|e| {
             PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
+                "Failed to evaluate xpath at {}:{}: {e:?}",
+                file!(),
+                line!()
             ))
         })?;
     let mut positions = Vec::<f64>::new();
@@ -984,7 +1000,9 @@ fn process_member_node(
     let xlink_children = xml::find_readonly_nodes_by_xpath(xml_ctx, ".//*[@xlink:href]", member)
         .map_err(|e| {
             PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
+                "Failed to evaluate xpath at {}:{}: {e:?}",
+                file!(),
+                line!()
             ))
         })?;
     for child in xlink_children
@@ -1023,7 +1041,9 @@ fn process_member_node(
                     xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//*[@gml:id]", &root_node)
                         .map_err(|e| {
                             PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                                "Failed to evaluate xpath with {e:?}"
+                                "Failed to evaluate xpath at {}:{}: {e:?}",
+                                file!(),
+                                line!()
                             ))
                         })?;
                 gml_id_children.iter().for_each(|gml_id_node| {
@@ -1133,7 +1153,9 @@ fn process_member_node(
 
         let children = xml::find_readonly_nodes_by_xpath(xml_ctx, &xpath, member).map_err(|e| {
             PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
+                "Failed to evaluate xpath at {}:{}: {e:?}",
+                file!(),
+                line!()
             ))
         })?;
         for child in children {
@@ -1149,7 +1171,9 @@ fn process_member_node(
                 )
                 .map_err(|e| {
                     PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                        "Failed to evaluate xpath with {e:?}"
+                        "Failed to evaluate xpath at {}:{}: {e:?}",
+                        file!(),
+                        line!()
                     ))
                 })?;
                 if gml.is_empty() {
@@ -1286,7 +1310,9 @@ fn create_detail_codelist(
     let definitions =
         xml::find_readonly_nodes_by_xpath(&ctx, ".//gml:Definition", &root).map_err(|e| {
             PlateauProcessorError::DomainOfDefinitionValidator(format!(
-                "Failed to evaluate xpath with {e:?}"
+                "Failed to evaluate xpath at {}:{}: {e:?}",
+                file!(),
+                line!()
             ))
         })?;
     let result = definitions
