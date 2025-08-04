@@ -55,7 +55,11 @@ RUN \
     python3-pip && \
     rm -rf /var/lib/apt/lists/*
 
-RUN python3.11 -m pip install --upgrade pip && pip install py2wasm
+RUN python3.11 -m venv /opt/venv
+
+ENV PATH="/opt/venv/bin:$PATH"
+
+RUN pip install --upgrade pip && pip install py2wasm
 
 COPY --chmod=0755 --from=builder /tmp/reearth-flow-worker /bin
 
