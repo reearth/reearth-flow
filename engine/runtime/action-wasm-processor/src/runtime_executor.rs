@@ -186,6 +186,9 @@ impl WasmRuntimeExecutorFactory {
                 binary
             }
         };
+        
+        // Explicitly drop the temporary file holder after py2wasm execution
+        drop(_temp_py_file_holder);
 
         Ok(wasm_binary)
     }
