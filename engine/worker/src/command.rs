@@ -158,12 +158,28 @@ impl RunWorkerCommand {
             }
         };
 
+        let total_nodes = workflow.graphs.iter().map(|g| g.nodes.len()).sum::<usize>();
+
         let job_status_handler: Arc<dyn reearth_flow_runtime::event::EventHandler> = match &pubsub {
             PubSubBackend::Google(pubsub) => {
-                Arc::new(JobStatusHandler::new(workflow.id, meta.job_id, pubsub.clone()))
+                let mut handler = JobStatusHandler::new(workflow.id, meta.job_id, pubsub.clone());
+                handler.set_total_nodes(total_nodes);
+                let handler_arc = Arc::new(handler);
+                let handler_clone = handler_arc.clone();
+                tokio::spawn(async move {
+                    handler_clone.send_starting_status().await;
+                });
+                handler_arc
             }
             PubSubBackend::Noop(pubsub) => {
-                Arc::new(JobStatusHandler::new(workflow.id, meta.job_id, pubsub.clone()))
+                let mut handler = JobStatusHandler::new(workflow.id, meta.job_id, pubsub.clone());
+                handler.set_total_nodes(total_nodes);
+                let handler_arc = Arc::new(handler);
+                let handler_clone = handler_arc.clone();
+                tokio::spawn(async move {
+                    handler_clone.send_starting_status().await;
+                });
+                handler_arc
             }
         };
 

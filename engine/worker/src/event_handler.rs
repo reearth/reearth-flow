@@ -88,6 +88,19 @@ impl<P: Publisher> JobStatusHandler<P> {
         }
     }
 
+    pub(crate) fn set_total_nodes(&mut self, total: usize) {
+        *self.total_nodes.lock() = Some(total);
+        tracing::info!(
+            "JobStatusHandler initialized with {} total nodes for job {}",
+            total,
+            self.job_id
+        );
+    }
+
+    pub async fn send_starting_status(&self) {
+        self.send_job_status(PublishJobStatus::Starting, None).await;
+    }
+
     async fn send_job_status(&self, status: PublishJobStatus, message: Option<String>) {
         let failed_nodes = if status == PublishJobStatus::Failed {
             let failed = self.failed_nodes.lock().clone();
