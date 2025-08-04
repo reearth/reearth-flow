@@ -143,6 +143,7 @@ message ListItemsRequest {
   string project_id = 2;
   optional int32 page = 3;
   optional int32 page_size = 4;
+  optional string keyword = 5;
 }
 
 message ExportRequest {

@@ -118,7 +118,7 @@ func (i *cmsInteractor) ListCMSModels(ctx context.Context, projectID string) ([]
 	})
 }
 
-func (i *cmsInteractor) ListCMSItems(ctx context.Context, projectID, modelID string, page, pageSize *int32) (*cms.ListItemsOutput, error) {
+func (i *cmsInteractor) ListCMSItems(ctx context.Context, projectID, modelID string, keyword *string, page, pageSize *int32) (*cms.ListItemsOutput, error) {
 	op := adapter.Operator(ctx)
 	if op == nil {
 		return nil, fmt.Errorf("operator not found")
@@ -148,6 +148,7 @@ func (i *cmsInteractor) ListCMSItems(ctx context.Context, projectID, modelID str
 	return i.gateways.CMS.ListItems(ctx, cms.ListItemsInput{
 		ProjectID: projectID,
 		ModelID:   modelID,
+		Keyword:   keyword,
 		Page:      page,
 		PageSize:  pageSize,
 	})

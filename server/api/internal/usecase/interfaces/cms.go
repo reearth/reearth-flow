@@ -13,7 +13,7 @@ type CMS interface {
 
 	ListCMSModels(ctx context.Context, projectID string) ([]*cms.Model, int32, error)
 
-	ListCMSItems(ctx context.Context, projectID, modelID string, page, pageSize *int32) (*cms.ListItemsOutput, error)
+	ListCMSItems(ctx context.Context, projectID, modelID string, keyword *string, page, pageSize *int32) (*cms.ListItemsOutput, error)
 
 	GetCMSModelExportURL(ctx context.Context, projectID, modelID string) (string, error)
 }

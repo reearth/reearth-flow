@@ -43,7 +43,7 @@ func (r *queryResolver) CmsModels(ctx context.Context, projectID gqlmodel.ID) ([
 	return util.Map(models, gqlmodel.CMSModelFrom), nil
 }
 
-func (r *queryResolver) CmsItems(ctx context.Context, projectID gqlmodel.ID, modelID gqlmodel.ID, page *int, pageSize *int) (*gqlmodel.CMSItemsConnection, error) {
+func (r *queryResolver) CmsItems(ctx context.Context, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) (*gqlmodel.CMSItemsConnection, error) {
 	var pageInt32 *int32
 	var pageSizeInt32 *int32
 
@@ -56,7 +56,7 @@ func (r *queryResolver) CmsItems(ctx context.Context, projectID gqlmodel.ID, mod
 		pageSizeInt32 = &v
 	}
 
-	output, err := usecases(ctx).CMS.ListCMSItems(ctx, string(projectID), string(modelID), pageInt32, pageSizeInt32)
+	output, err := usecases(ctx).CMS.ListCMSItems(ctx, string(projectID), string(modelID), keyword, pageInt32, pageSizeInt32)
 	if err != nil {
 		log.Errorfc(ctx, "failed to list CMS items: %v", err)
 		return nil, err

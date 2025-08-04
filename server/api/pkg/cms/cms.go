@@ -93,6 +93,7 @@ type ListItemsInput struct {
 	ProjectID string
 	Page      *int32
 	PageSize  *int32
+	Keyword   *string
 }
 
 type ListItemsOutput struct {
