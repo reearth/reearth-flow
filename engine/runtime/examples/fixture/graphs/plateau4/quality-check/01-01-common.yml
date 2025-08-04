@@ -684,7 +684,7 @@ edges:
   - id: c4b3a2d1-0e9f-4a8b-7c6d-5e4f3a2b1c0d
     from: e56c4680-859a-4ad3-bf4c-07040b3a5ff4
     to: a5b4c3d2-1e0f-4a9b-8c7d-6e5f4a3b2c1d
-    fromPort: not_well_formed
+    fromPort: notWellFormed
     toPort: default
   - id: e5f4d3c2-1b0a-4e9f-8d7c-6b5a4e3d2c1b
     from: a5b4c3d2-1e0f-4a9b-8c7d-6e5f4a3b2c1d

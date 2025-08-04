@@ -50,7 +50,7 @@ static VALID_SRS_NAME_FOR_UNF: Lazy<Vec<&'static str>> = Lazy::new(|| {
     ]
 });
 
-static DUPLICATE_GML_ID_STATS_PORT: Lazy<Port> = Lazy::new(|| Port::new("duplicate_gml_id_stats"));
+static DUPLICATE_GML_ID_STATS_PORT: Lazy<Port> = Lazy::new(|| Port::new("duplicateGmlIdStats"));
 
 static XML_NAMESPACES: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     HashMap::from([
@@ -1578,7 +1578,7 @@ mod tests {
                 let file_stats_outputs: HashMap<String, u64> = send_ports
                     .iter()
                     .enumerate()
-                    .filter(|(_, port)| port.as_ref() == "duplicate_gml_id_stats")
+                    .filter(|(_, port)| port.as_ref() == "duplicateGmlIdStats")
                     .map(|(i, _)| &send_features[i])
                     .filter_map(|feature| {
                         if let (

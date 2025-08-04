@@ -162,7 +162,7 @@ graphs:
               outputPort: default
             - expr: |
                 env.get("__value").gmlName == "bldg:BuildingPart"
-              outputPort: building_part
+              outputPort: buildingPart
 
       - id: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b
         name: Dummy2
@@ -245,5 +245,5 @@ graphs:
       - id: 9c4e7a2f-6b1d-4e8c-a5f3-2d8c9b4a1e7f
         from: 2b8c4e7a-9f1d-4a3b-c6e8-5d2a7b9c1e4f
         to: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f
-        fromPort: building_part
+        fromPort: buildingPart
         toPort: default
