@@ -25,6 +25,7 @@ export default ({
 
   const [yDocState, setYDocState] = useState<Y.Doc | null>(null);
   const [isSynced, setIsSynced] = useState(false);
+  const [awareness, setAwareness] = useState<any>(null);
   
   const yWebSocketProviderRef = useRef<WebsocketProvider | null>(null);
 
@@ -51,6 +52,7 @@ export default ({
         );
         
         yWebSocketProviderRef.current = yWebSocketProvider;
+        setAwareness(yWebSocketProvider.awareness);
 
         yWebSocketProvider.once("sync", () => {
           const metadata = yDoc.getMap("metadata");
@@ -82,6 +84,7 @@ export default ({
       setIsSynced(false);
       yWebSocketProvider?.destroy();
       yWebSocketProviderRef.current = null;
+      setAwareness(null);
     };
   }, [projectId, workflowId, isProtected, getAccessToken]);
 
@@ -145,8 +148,6 @@ export default ({
 
   // Start the recursive tracking
   recursivelyTrackSharedType(yWorkflows);
-
-  const awareness = yWebSocketProviderRef.current?.awareness;
 
   return {
     yWorkflows,

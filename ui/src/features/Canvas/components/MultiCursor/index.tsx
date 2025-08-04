@@ -35,31 +35,48 @@ const getUserColor = (userId: number): string => {
 
 const MultiCursor: React.FC<MultiCursorProps> = ({ yDoc, awareness, currentUserName }) => {
   const [cursors, setCursors] = useState<Map<number, Cursor>>(new Map());
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, flowToScreenPosition } = useReactFlow();
 
   // Handle awareness updates
   useEffect(() => {
     if (!yDoc || !awareness) return;
+    
+    // Expose awareness to window for debugging
+    if (typeof window !== 'undefined') {
+      (window as any).awareness = awareness;
+      (window as any).yDoc = yDoc;
+    }
 
     const handleAwarenessUpdate = () => {
       const states = awareness.getStates();
       const newCursors = new Map<number, Cursor>();
+      
+      console.log('Awareness update - Total clients:', states.size);
+      console.log('My client ID:', yDoc.clientID);
 
       states.forEach((state: any, clientId: number) => {
+        console.log(`Client ${clientId} state:`, state);
+        
         // Skip self
         if (clientId === yDoc.clientID) return;
 
         if (state.cursor) {
-          newCursors.set(clientId, {
-            id: clientId,
+          // Convert flow coordinates to screen coordinates
+          const screenPos = flowToScreenPosition({
             x: state.cursor.x,
             y: state.cursor.y,
+          });
+          newCursors.set(clientId, {
+            id: clientId,
+            x: screenPos.x,
+            y: screenPos.y,
             name: state.user?.name || `User ${clientId}`,
             color: getUserColor(clientId),
           });
         }
       });
 
+      console.log('Active cursors:', newCursors.size);
       setCursors(newCursors);
     };
 
@@ -71,7 +88,7 @@ const MultiCursor: React.FC<MultiCursorProps> = ({ yDoc, awareness, currentUserN
     return () => {
       awareness.off("update", handleAwarenessUpdate);
     };
-  }, [yDoc, awareness]);
+  }, [yDoc, awareness, flowToScreenPosition]);
 
   // Broadcast own cursor position
   const handleMouseMove = useCallback(
@@ -84,10 +101,16 @@ const MultiCursor: React.FC<MultiCursorProps> = ({ yDoc, awareness, currentUserN
       
       // Convert screen coordinates to flow coordinates
       const flowPos = screenToFlowPosition({ x, y });
+      
+      console.log('Sending cursor position:', flowPos);
+      console.log('User name:', currentUserName || `User ${yDoc.clientID}`);
 
-      awareness.setLocalStateField("cursor", flowPos);
-      awareness.setLocalStateField("user", {
-        name: currentUserName || `User ${yDoc.clientID}`,
+      // Set local state with both cursor and user info
+      awareness.setLocalState({
+        cursor: flowPos,
+        user: {
+          name: currentUserName || `User ${yDoc.clientID}`,
+        },
       });
     },
     [yDoc, awareness, currentUserName, screenToFlowPosition]
@@ -97,7 +120,12 @@ const MultiCursor: React.FC<MultiCursorProps> = ({ yDoc, awareness, currentUserN
   const handleMouseLeave = useCallback(() => {
     if (!yDoc || !awareness) return;
 
-    awareness.setLocalStateField("cursor", null);
+    // Clear cursor but keep user info
+    const currentState = awareness.getLocalState();
+    awareness.setLocalState({
+      ...currentState,
+      cursor: null,
+    });
   }, [awareness, yDoc]);
 
   return (
