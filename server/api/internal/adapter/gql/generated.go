@@ -367,7 +367,7 @@ type ComplexityRoot struct {
 
 	Query struct {
 		Assets                func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) int
-		CmsItems              func(childComplexity int, projectID gqlmodel.ID, modelID gqlmodel.ID, page *int, pageSize *int) int
+		CmsItems              func(childComplexity int, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) int
 		CmsModelExportURL     func(childComplexity int, projectID gqlmodel.ID, modelID gqlmodel.ID) int
 		CmsModels             func(childComplexity int, projectID gqlmodel.ID) int
 		CmsProject            func(childComplexity int, projectIDOrAlias gqlmodel.ID) int
@@ -557,7 +557,7 @@ type QueryResolver interface {
 	CmsProject(ctx context.Context, projectIDOrAlias gqlmodel.ID) (*gqlmodel.CMSProject, error)
 	CmsProjects(ctx context.Context, workspaceID gqlmodel.ID, publicOnly *bool) ([]*gqlmodel.CMSProject, error)
 	CmsModels(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.CMSModel, error)
-	CmsItems(ctx context.Context, projectID gqlmodel.ID, modelID gqlmodel.ID, page *int, pageSize *int) (*gqlmodel.CMSItemsConnection, error)
+	CmsItems(ctx context.Context, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) (*gqlmodel.CMSItemsConnection, error)
 	CmsModelExportURL(ctx context.Context, projectID gqlmodel.ID, modelID gqlmodel.ID) (string, error)
 	Deployments(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error)
 	DeploymentByVersion(ctx context.Context, input gqlmodel.GetByVersionInput) (*gqlmodel.Deployment, error)
@@ -2193,7 +2193,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.CmsItems(childComplexity, args["projectId"].(gqlmodel.ID), args["modelId"].(gqlmodel.ID), args["page"].(*int), args["pageSize"].(*int)), true
+		return e.complexity.Query.CmsItems(childComplexity, args["projectId"].(gqlmodel.ID), args["modelId"].(gqlmodel.ID), args["keyword"].(*string), args["page"].(*int), args["pageSize"].(*int)), true
 
 	case "Query.cmsModelExportUrl":
 		if e.complexity.Query.CmsModelExportURL == nil {
@@ -3196,7 +3196,7 @@ extend type Query {
   cmsModels(projectId: ID!): [CMSModel!]!
   
   # List CMS items for a model
-  cmsItems(projectId: ID!, modelId: ID!, page: Int, pageSize: Int): CMSItemsConnection!
+  cmsItems(projectId: ID!, modelId: ID!, keyword: String, page: Int, pageSize: Int): CMSItemsConnection!
   
   # Get GeoJSON export URL for a CMS model
   cmsModelExportUrl(projectId: ID!, modelId: ID!): String!
@@ -5236,16 +5236,21 @@ func (ec *executionContext) field_Query_cmsItems_args(ctx context.Context, rawAr
 		return nil, err
 	}
 	args["modelId"] = arg1
-	arg2, err := ec.field_Query_cmsItems_argsPage(ctx, rawArgs)
+	arg2, err := ec.field_Query_cmsItems_argsKeyword(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
-	args["page"] = arg2
-	arg3, err := ec.field_Query_cmsItems_argsPageSize(ctx, rawArgs)
+	args["keyword"] = arg2
+	arg3, err := ec.field_Query_cmsItems_argsPage(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
-	args["pageSize"] = arg3
+	args["page"] = arg3
+	arg4, err := ec.field_Query_cmsItems_argsPageSize(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["pageSize"] = arg4
 	return args, nil
 }
 func (ec *executionContext) field_Query_cmsItems_argsProjectID(
@@ -5281,6 +5286,24 @@ func (ec *executionContext) field_Query_cmsItems_argsModelID(
 	}
 
 	var zeroVal gqlmodel.ID
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_cmsItems_argsKeyword(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*string, error) {
+	if _, ok := rawArgs["keyword"]; !ok {
+		var zeroVal *string
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("keyword"))
+	if tmp, ok := rawArgs["keyword"]; ok {
+		return ec.unmarshalOString2ᚖstring(ctx, tmp)
+	}
+
+	var zeroVal *string
 	return zeroVal, nil
 }
 
@@ -16608,7 +16631,7 @@ func (ec *executionContext) _Query_cmsItems(ctx context.Context, field graphql.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().CmsItems(rctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["modelId"].(gqlmodel.ID), fc.Args["page"].(*int), fc.Args["pageSize"].(*int))
+		return ec.resolvers.Query().CmsItems(rctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["modelId"].(gqlmodel.ID), fc.Args["keyword"].(*string), fc.Args["page"].(*int), fc.Args["pageSize"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

@@ -176,5 +176,5 @@ edges:
   - id: 41141e61-6815-4556-b247-05c4e5de8bb9
     from: 747d2fa3-2527-4324-b630-92fba84a548c
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d9
-    fromPort: duplicate_gml_id_stats
+    fromPort: duplicateGmlIdStats
     toPort: default

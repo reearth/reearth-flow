@@ -89,7 +89,7 @@ extend type Query {
   cmsModels(projectId: ID!): [CMSModel!]!
   
   # List CMS items for a model
-  cmsItems(projectId: ID!, modelId: ID!, page: Int, pageSize: Int): CMSItemsConnection!
+  cmsItems(projectId: ID!, modelId: ID!, keyword: String, page: Int, pageSize: Int): CMSItemsConnection!
   
   # Get GeoJSON export URL for a CMS model
   cmsModelExportUrl(projectId: ID!, modelId: ID!): String!
