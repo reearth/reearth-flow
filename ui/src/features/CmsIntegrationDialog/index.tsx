@@ -1,5 +1,6 @@
 import { CaretLeftIcon, EyeIcon, StackIcon } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
+import { useCallback } from "react";
 
 import {
   Dialog,
@@ -65,20 +66,23 @@ const CmsIntegrationDialog: React.FC<Props> = ({
     workspaceId: currentWorkspace?.id ?? "",
   });
 
-  const getItemAssets = (item: CmsItem) => {
-    if (!selectedModel) return [];
+  const getItemAssets = useCallback(
+    (item: CmsItem) => {
+      if (!selectedModel) return [];
 
-    const assets: { key: string; value: string; field: any }[] = [];
-    Object.entries(item.fields).forEach(([key, value]) => {
-      const fieldSchema = selectedModel.schema.fields.find(
-        (f) => f.key === key,
-      );
-      if (fieldSchema?.type === "asset" && value) {
-        assets.push({ key, value, field: fieldSchema });
-      }
-    });
-    return assets;
-  };
+      const assets: { key: string; value: string; field: any }[] = [];
+      Object.entries(item.fields).forEach(([key, value]) => {
+        const fieldSchema = selectedModel.schema.fields.find(
+          (f) => f.key === key,
+        );
+        if (fieldSchema?.type === "asset" && value) {
+          assets.push({ key, value, field: fieldSchema });
+        }
+      });
+      return assets;
+    },
+    [selectedModel],
+  );
 
   const columns: ColumnDef<CmsItem>[] = selectedModel
     ? [
@@ -153,21 +157,24 @@ const CmsIntegrationDialog: React.FC<Props> = ({
         </DialogTitle>
         <DialogContentWrapper>
           <DialogContentSection className="flex h-[600px] flex-col overflow-hidden">
-            {viewMode !== "itemDetails" && viewMode !== "itemsAssets" && (
-              <div className="mb-3 flex items-center gap-4">
-                {viewMode !== "projects" && (
-                  <Button
-                    className="p-2.5"
-                    onClick={
-                      viewMode === "models"
-                        ? handleBackToProjects
-                        : handleBackToModels
-                    }
-                    variant="outline">
-                    <CaretLeftIcon />
-                  </Button>
-                )}
-                {viewMode !== "items" && (
+            <div className="mb-3 flex items-center gap-2">
+              {viewMode !== "projects" && (
+                <Button
+                  className="p-2.5"
+                  onClick={
+                    viewMode === "models"
+                      ? handleBackToProjects
+                      : viewMode === "items"
+                        ? handleBackToModels
+                        : handleBackToItems
+                  }
+                  variant="outline">
+                  <CaretLeftIcon />
+                </Button>
+              )}
+              {viewMode !== "items" &&
+                viewMode !== "itemDetails" &&
+                viewMode !== "itemAssets" && (
                   <Input
                     placeholder={t("Search") + "..."}
                     value={searchTerm ?? ""}
@@ -175,9 +182,7 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                     className="h-[36px] max-w-sm"
                   />
                 )}
-              </div>
-            )}
-
+            </div>
             <ScrollArea className="flex-1">
               {viewMode === "projects" && (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -262,15 +267,13 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                 cmsItem={selectedItem}
                 cmsModel={selectedModel}
                 onCmsItemValue={onCmsItemValue}
-                onBack={handleBackToItems}
               />
             )}
-            {viewMode === "itemsAssets" && selectedItem && selectedModel && (
+            {viewMode === "itemAssets" && selectedItem && selectedModel && (
               <CmsAssetSelector
                 cmsItem={selectedItem}
                 cmsModel={selectedModel}
                 onAssetSelect={onCmsItemValue || (() => {})}
-                onBack={handleBackToItems}
               />
             )}
           </DialogContentSection>

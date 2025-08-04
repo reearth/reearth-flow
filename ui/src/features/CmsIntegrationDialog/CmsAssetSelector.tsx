@@ -2,12 +2,10 @@ import {
   FileIcon,
   DotsThreeVerticalIcon,
   ClipboardTextIcon,
-  CaretLeftIcon,
 } from "@phosphor-icons/react";
 import { useCallback, useState } from "react";
 
 import {
-  Button,
   Card,
   CardContent,
   CardFooter,
@@ -28,14 +26,12 @@ type Props = {
   cmsItem: CmsItem;
   cmsModel: CmsModel;
   onAssetSelect: (assetUrl: string) => void;
-  onBack: () => void;
 };
 
 const CmsAssetSelector: React.FC<Props> = ({
   cmsItem,
   cmsModel,
   onAssetSelect,
-  onBack,
 }) => {
   const t = useT();
   const { toast } = useToast();
@@ -77,11 +73,6 @@ const CmsAssetSelector: React.FC<Props> = ({
 
   return (
     <div className="flex h-[600px] flex-col gap-4">
-      <div className="flex">
-        <Button className="flex p-2.5" variant="outline" onClick={onBack}>
-          <CaretLeftIcon />
-        </Button>
-      </div>
       <ScrollArea className="flex-1">
         <div className="grid min-w-0 grid-cols-5 gap-2 pb-2">
           {assets.map((asset) => (

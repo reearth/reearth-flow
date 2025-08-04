@@ -1,4 +1,4 @@
-import { CaretLeftIcon } from "@phosphor-icons/react";
+import { useCallback } from "react";
 
 import { Button, ScrollArea } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -12,55 +12,52 @@ type Props = {
   cmsItem: CmsItem;
   cmsModel: CmsModel;
   onCmsItemValue?: (value: string) => void;
-  onBack: () => void;
 };
 
 const CmsItemDetails: React.FC<Props> = ({
   cmsItem,
   cmsModel,
   onCmsItemValue,
-  onBack,
 }) => {
   const t = useT();
 
-  const renderFieldValue = (value: any, fieldType: CmsSchemaFieldType) => {
-    if (value === null || value === undefined) {
-      return <span className="text-muted-foreground">-</span>;
-    }
+  const renderFieldValue = useCallback(
+    (value: any, fieldType: CmsSchemaFieldType) => {
+      if (value === null || value === undefined) {
+        return <span className="text-muted-foreground">-</span>;
+      }
 
-    if (typeof value === "object") {
-      return (
-        <pre className="max-h-40 overflow-auto rounded border bg-muted p-2 text-sm">
-          {JSON.stringify(value, null, 2)}
-        </pre>
-      );
-    }
+      if (typeof value === "object") {
+        return (
+          <pre className="max-h-40 overflow-auto rounded border bg-muted p-2 text-sm">
+            {JSON.stringify(value, null, 2)}
+          </pre>
+        );
+      }
 
-    if (
-      fieldType === "url" ||
-      (fieldType === "asset" && typeof value === "string")
-    ) {
-      return (
-        <a
-          href={value}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 underline hover:text-blue-800">
-          {value}
-        </a>
-      );
-    }
+      if (
+        fieldType === "url" ||
+        (fieldType === "asset" && typeof value === "string")
+      ) {
+        return (
+          <a
+            href={value}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline hover:text-blue-800">
+            {value}
+          </a>
+        );
+      }
 
-    return <span className="break-words">{String(value)}</span>;
-  };
+      return <span className="break-words">{String(value)}</span>;
+    },
+    [],
+  );
 
   return (
     <div className="flex h-[600px] flex-col gap-4 overflow-hidden">
       <div className="space-y-4">
-        <Button className="p-2.5" variant="outline" onClick={onBack}>
-          <CaretLeftIcon />
-        </Button>
-
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className="text-sm font-medium text-muted-foreground">

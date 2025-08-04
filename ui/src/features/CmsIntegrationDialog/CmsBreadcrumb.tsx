@@ -4,7 +4,7 @@ import { Button } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import type { CmsProject, CmsModel, CmsItem } from "@flow/types/cmsIntegration";
 
-type ViewMode = "projects" | "models" | "items" | "itemDetails" | "itemsAssets";
+import { ViewMode } from "./hooks";
 
 type Props = {
   viewMode: ViewMode;
@@ -67,7 +67,7 @@ const CmsBreadcrumb: React.FC<Props> = ({
               {selectedItem.id}
             </Button>
             <span className="mx-2 text-muted-foreground">/</span>
-            {viewMode === "itemsAssets" && (
+            {viewMode === "itemAssets" && (
               <span className="dark:font-thin">{t("Assets")}</span>
             )}
             {viewMode === "itemDetails" && (
