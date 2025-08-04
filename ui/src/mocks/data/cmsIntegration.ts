@@ -34,7 +34,7 @@ export const mockCmsModels: CmsModelFragment[] = [
           name: "Name",
           type: GraphQlCmsSchemaFieldType.Text,
           key: "name",
-          description: "Name",
+          description: "Name of the building or area",
         },
         {
           fieldId: "field-002",
@@ -195,7 +195,6 @@ export const mockCmsItems: (CmsItemFragment & {
       name: "Singapore Marina Sensor",
       location: "Singapore",
       data_url: "https://data.gov.sg/sensors/marina-bay",
-      cityGml: "https://assets.gov.sg/citygml/marina-district.gml",
     },
     createdAt: "2023-04-15T09:55:00Z",
     updatedAt: "2023-06-25T11:40:00Z",

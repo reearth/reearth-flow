@@ -4,7 +4,7 @@ import { useCms } from "@flow/lib/gql/cms";
 import { CMS_ITEMS_FETCH_RATE } from "@flow/lib/gql/cms/useQueries";
 import { CmsItem, CmsModel, CmsProject } from "@flow/types";
 
-type ViewMode = "projects" | "models" | "items";
+type ViewMode = "projects" | "models" | "items" | "itemDetails" | "itemsAssets";
 
 export default ({ workspaceId }: { workspaceId: string }) => {
   const { useGetCmsProjects, useGetCmsModels, useGetCmsItems } = useCms();
@@ -78,22 +78,26 @@ export default ({ workspaceId }: { workspaceId: string }) => {
   const handleBackToProjects = () => {
     setSelectedProject(null);
     setSelectedModel(null);
+    setSelectedItem(null);
     setViewMode("projects");
   };
 
   const handleBackToModels = () => {
     setSelectedModel(null);
+    setSelectedItem(null);
     setViewMode("models");
   };
 
   const handleItemView = (item: CmsItem) => {
     setSelectedItem(item);
-    setIsItemDetailOpen(true);
+
+    setViewMode("itemDetails");
   };
 
   const handleItemDetailClose = () => {
     setIsItemDetailOpen(false);
     setSelectedItem(null);
+    setViewMode("items");
   };
 
   return {

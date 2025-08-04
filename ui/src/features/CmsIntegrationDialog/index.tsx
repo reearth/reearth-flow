@@ -1,4 +1,4 @@
-import { EyeIcon, LayoutIcon } from "@phosphor-icons/react";
+import { EyeIcon, HandPointingIcon, LayoutIcon } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 
 import {
@@ -21,19 +21,19 @@ import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import type { CmsItem } from "@flow/types/cmsIntegration";
 
-import CmsItemDetailDialog from "./CmsItemDetailsDialog";
+import CmsItemDetails from "./CmsItemDetails";
 import CmsModelCard from "./CmsModelCard";
 import CmsProjectCard from "./CmsProjectCard";
 import useHooks from "./hooks";
 
 type Props = {
   onDialogClose: () => void;
-  onCmsItemDoubleClick?: (cmsItem: CmsItem) => void;
+  onCmsItemValue?: (value: string) => void;
 };
 
 const CmsIntegrationDialog: React.FC<Props> = ({
   onDialogClose,
-  onCmsItemDoubleClick,
+  onCmsItemValue,
 }) => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
@@ -50,7 +50,6 @@ const CmsIntegrationDialog: React.FC<Props> = ({
     searchTerm,
     isLoading,
     viewMode,
-    isItemDetailOpen,
     setSearchTerm,
     setCurrentPage,
     handleProjectSelect,
@@ -58,7 +57,6 @@ const CmsIntegrationDialog: React.FC<Props> = ({
     handleBackToProjects,
     handleBackToModels,
     handleItemView,
-    handleItemDetailClose,
   } = useHooks({
     workspaceId: currentWorkspace?.id ?? "",
   });
@@ -103,6 +101,22 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                 onClick={() => handleItemView(row.original)}
                 title={t("View Details")}
               />
+              {Object.entries(row.original.fields).map(([key, value]) => {
+                const fieldSchema = selectedModel?.schema.fields.find(
+                  (f) => f.key === key,
+                );
+                if (fieldSchema?.type === "asset" && value) {
+                  return (
+                    <IconButton
+                      key={key}
+                      icon={<HandPointingIcon />}
+                      onClick={() => onCmsItemValue?.(value)}
+                      title={t("Select Asset")}
+                    />
+                  );
+                }
+                return null;
+              })}
             </div>
           ),
         },
@@ -115,7 +129,7 @@ const CmsIntegrationDialog: React.FC<Props> = ({
         <DialogTitle className="flex items-center font-normal">
           <LayoutIcon size={24} className="mr-2 inline-block" />
           <span className="px-4 py-2 pr-1 pl-1 ">{t("CMS Integration")}</span>
-          {viewMode === "models" && selectedProject && (
+          {selectedProject && (
             <div>
               <span className="mx-2 text-muted-foreground">/</span>
               <Button
@@ -126,15 +140,8 @@ const CmsIntegrationDialog: React.FC<Props> = ({
               </Button>
             </div>
           )}
-          {viewMode === "items" && selectedProject && selectedModel && (
+          {selectedProject && selectedModel && (
             <div>
-              <span className="mx-2 text-muted-foreground">/</span>
-              <Button
-                variant="ghost"
-                onClick={handleBackToProjects}
-                className="text-md pr-1 pl-1 font-normal dark:font-thin">
-                {selectedProject.name}
-              </Button>
               <span className="mx-2 text-muted-foreground">/</span>
               <Button
                 variant="ghost"
@@ -144,10 +151,16 @@ const CmsIntegrationDialog: React.FC<Props> = ({
               </Button>
             </div>
           )}
+          {selectedItem && (
+            <div>
+              <span className="mx-2 text-muted-foreground">/</span>
+              <span className="px-4 py-2 pr-1 pl-1 ">{selectedItem.id}</span>
+            </div>
+          )}
         </DialogTitle>
         <DialogContentWrapper>
           <DialogContentSection className="flex h-[600px] flex-col overflow-hidden">
-            {viewMode !== "items" && (
+            {viewMode !== "itemDetails" && (
               <Input
                 placeholder={t("Search") + "..."}
                 value={searchTerm ?? ""}
@@ -155,7 +168,6 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                 className="mb-4 h-[36px] max-w-sm"
               />
             )}
-
             <ScrollArea className="flex-1">
               {viewMode === "projects" && (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -219,7 +231,7 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                       data={cmsItems || []}
                       totalPages={cmsItemsTotalPages}
                       resultsPerPage={10}
-                      onRowDoubleClick={onCmsItemDoubleClick}
+                      onRowDoubleClick={handleItemView}
                       showOrdering={false}
                       searchTerm={searchTerm}
                       setSearchTerm={setSearchTerm}
@@ -235,17 +247,16 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                 </div>
               </div>
             )}
+            {viewMode === "itemDetails" && selectedItem && selectedModel && (
+              <CmsItemDetails
+                cmsItem={selectedItem}
+                cmsModel={selectedModel}
+                onCmsItemValue={onCmsItemValue}
+              />
+            )}
           </DialogContentSection>
         </DialogContentWrapper>
       </DialogContent>
-      {selectedItem && selectedModel && (
-        <CmsItemDetailDialog
-          cmsItem={selectedItem}
-          cmsModel={selectedModel}
-          open={isItemDetailOpen}
-          onClose={handleItemDetailClose}
-        />
-      )}
     </Dialog>
   );
 };

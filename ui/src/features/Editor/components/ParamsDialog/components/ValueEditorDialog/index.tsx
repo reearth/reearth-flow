@@ -18,7 +18,7 @@ import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
 import { useProjectVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
-import { Asset, CmsItem } from "@flow/types";
+import { Asset } from "@flow/types";
 
 import { FieldContext } from "../../utils/fieldUtils";
 
@@ -99,8 +99,8 @@ const ValueEditorDialog: React.FC<Props> = ({
     setValue?.(v);
   };
 
-  const handleCmsItemDoubleClick = (cmsItem: CmsItem) => {
-    const v = cmsItem;
+  const handleCmsItemValue = (cmsItemAssetUrl: string) => {
+    const v = cmsItemAssetUrl;
     setValue?.(v);
     handleDialogClose();
   };
@@ -214,7 +214,7 @@ const ValueEditorDialog: React.FC<Props> = ({
       {showDialog === "cms" && fieldContext && (
         <CmsIntegrationDialog
           onDialogClose={handleDialogClose}
-          onCmsItemDoubleClick={handleCmsItemDoubleClick}
+          onCmsItemValue={handleCmsItemValue}
         />
       )}
     </>
