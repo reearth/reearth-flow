@@ -17,4 +17,5 @@ type Job interface {
 	StartMonitoring(context.Context, *job.Job, *string) error
 	Subscribe(context.Context, id.JobID) (chan job.Status, error)
 	Unsubscribe(id.JobID, chan job.Status)
+	UpdateJobStatusFromEvent(id.JobID, job.Status) error
 }
