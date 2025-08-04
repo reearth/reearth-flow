@@ -42,9 +42,13 @@ export default ({
           params.token = token;
         }
 
+        const roomName = `${projectId}:${workflowId}`;
+        console.log('Connecting to WebSocket room:', roomName);
+        console.log('WebSocket URL:', websocket);
+        
         yWebSocketProvider = new WebsocketProvider(
           websocket,
-          `${projectId}:${workflowId}`,
+          roomName,
           yDoc,
           {
             params,
