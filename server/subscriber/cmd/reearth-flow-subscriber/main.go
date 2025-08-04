@@ -20,8 +20,10 @@ import (
 
 	flow_pubsub "github.com/reearth/reearth-flow/subscriber/internal/adapter/pubsub"
 	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure"
+	flow_http "github.com/reearth/reearth-flow/subscriber/internal/infrastructure/http"
 	flow_mongo "github.com/reearth/reearth-flow/subscriber/internal/infrastructure/mongo"
 	flow_redis "github.com/reearth/reearth-flow/subscriber/internal/infrastructure/redis"
+	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure/storage"
 	"github.com/reearth/reearth-flow/subscriber/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/subscriber/internal/usecase/interactor"
 )
@@ -72,8 +74,9 @@ func main() {
 	// Initialize MongoDB client and node storage if needed
 	var mongoClient *mongo.Client
 	var nodeStorage gateway.NodeStorage
+	var jobStorage gateway.JobStorage
 
-	if conf.NodeSubscriptionID != "" {
+	if conf.NodeSubscriptionID != "" || conf.JobStatusSubscriptionID != "" {
 		mongoClient, err = mongo.Connect(ctx, options.Client().ApplyURI(conf.DB).SetMonitor(otelmongo.NewMonitor()))
 		if err != nil {
 			log.Fatalf("Failed to connect to MongoDB: %v", err)
@@ -93,7 +96,16 @@ func main() {
 			conf.GCSBucket,
 			conf.AssetBaseURL,
 		)
-		nodeStorage = infrastructure.NewNodeStorageImpl(redisStorage, mongoStorage)
+
+		if conf.NodeSubscriptionID != "" {
+			nodeStorage = infrastructure.NewNodeStorageImpl(redisStorage, mongoStorage)
+		}
+
+		if conf.JobStatusSubscriptionID != "" {
+			jobRedisStorage := flow_redis.NewJobStorageRedis(redisClient)
+			jobMongoStorage := flow_mongo.NewJobStorageMongo(mongoClient, databaseName, "jobs")
+			jobStorage = storage.NewJobStorageImpl(jobRedisStorage, jobMongoStorage)
+		}
 	}
 
 	// Set up subscribers with respective subscriptions
@@ -141,6 +153,29 @@ func main() {
 		log.Println("Node storage not properly initialized, node subscriber will not be started")
 	} else {
 		log.Println("Node subscription ID not provided, node subscriber will not be started")
+	}
+
+	if conf.JobStatusSubscriptionID != "" && jobStorage != nil {
+		jobSub := pubsubClient.Subscription(conf.JobStatusSubscriptionID)
+		jobSubAdapter := flow_pubsub.NewRealSubscription(jobSub)
+		apiGateway := flow_http.NewAPIGateway(conf.APIServerURL)
+		jobSubscriberUC := interactor.NewJobSubscriberUseCase(jobStorage, apiGateway)
+		jobSubscriber := flow_pubsub.NewJobStatusSubscriber(jobSubAdapter, jobSubscriberUC)
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			log.Println("[subscriber] Starting job status subscriber...")
+			if err := jobSubscriber.StartListening(ctx); err != nil {
+				log.Printf("[subscriber] Job status subscriber error: %v", err)
+				cancel()
+			}
+			log.Println("[subscriber] Job status subscriber stopped")
+		}()
+	} else if conf.JobStatusSubscriptionID != "" {
+		log.Println("Job storage not properly initialized, job status subscriber will not be started")
+	} else {
+		log.Println("Job status subscription ID not provided, job status subscriber will not be started")
 	}
 
 	// Set up HTTP server
