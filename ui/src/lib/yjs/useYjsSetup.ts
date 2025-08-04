@@ -25,6 +25,8 @@ export default ({
 
   const [yDocState, setYDocState] = useState<Y.Doc | null>(null);
   const [isSynced, setIsSynced] = useState(false);
+  
+  const yWebSocketProviderRef = useRef<WebsocketProvider | null>(null);
 
   useEffect(() => {
     const yDoc = new Y.Doc();
@@ -47,6 +49,8 @@ export default ({
             params,
           },
         );
+        
+        yWebSocketProviderRef.current = yWebSocketProvider;
 
         yWebSocketProvider.once("sync", () => {
           const metadata = yDoc.getMap("metadata");
@@ -77,6 +81,7 @@ export default ({
     return () => {
       setIsSynced(false);
       yWebSocketProvider?.destroy();
+      yWebSocketProviderRef.current = null;
     };
   }, [projectId, workflowId, isProtected, getAccessToken]);
 
@@ -141,11 +146,14 @@ export default ({
   // Start the recursive tracking
   recursivelyTrackSharedType(yWorkflows);
 
+  const awareness = yWebSocketProviderRef.current?.awareness;
+
   return {
     yWorkflows,
     isSynced,
     undoManager,
     undoTrackerActionWrapper,
     yDocState,
+    awareness,
   };
 };
