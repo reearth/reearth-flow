@@ -1,4 +1,4 @@
-import { CaretLeftIcon, EyeIcon, LayoutIcon } from "@phosphor-icons/react";
+import { EyeIcon, LayoutIcon } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 
 import {
@@ -114,46 +114,48 @@ const CmsIntegrationDialog: React.FC<Props> = ({
       <DialogContent className="max-h-[90vh] w-full max-w-6xl overflow-hidden">
         <DialogTitle className="flex items-center font-normal">
           <LayoutIcon size={24} className="mr-2 inline-block" />
-          {t("CMS Integration")}
+          <span className="px-4 py-2 pr-1 pl-1 ">{t("CMS Integration")}</span>
           {viewMode === "models" && selectedProject && (
             <div>
               <span className="mx-2 text-muted-foreground">/</span>
-              <span className="text-lg">{selectedProject.name}</span>
+              <Button
+                variant="ghost"
+                onClick={handleBackToProjects}
+                className="text-md pr-1 pl-1 font-normal dark:font-thin">
+                {selectedProject.name}
+              </Button>
             </div>
           )}
           {viewMode === "items" && selectedProject && selectedModel && (
             <div>
               <span className="mx-2 text-muted-foreground">/</span>
-              <span className="text-lg">{selectedProject.name}</span>
+              <Button
+                variant="ghost"
+                onClick={handleBackToProjects}
+                className="text-md pr-1 pl-1 font-normal dark:font-thin">
+                {selectedProject.name}
+              </Button>
               <span className="mx-2 text-muted-foreground">/</span>
-              <span className="text-lg">{selectedModel.name}</span>
+              <Button
+                variant="ghost"
+                onClick={handleBackToModels}
+                className="text-md pr-1 pl-1 font-normal dark:font-thin">
+                {selectedModel.name}
+              </Button>
             </div>
           )}
         </DialogTitle>
         <DialogContentWrapper>
           <DialogContentSection className="flex h-[600px] flex-col overflow-hidden">
-            <div className="mb-4 flex items-center gap-4">
-              {viewMode !== "projects" && (
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={
-                    viewMode === "models"
-                      ? handleBackToProjects
-                      : handleBackToModels
-                  }>
-                  <CaretLeftIcon />
-                </Button>
-              )}
-              {viewMode !== "items" && (
-                <Input
-                  placeholder={t("Search") + "..."}
-                  value={searchTerm ?? ""}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-[36px] max-w-sm"
-                />
-              )}
-            </div>
+            {viewMode !== "items" && (
+              <Input
+                placeholder={t("Search") + "..."}
+                value={searchTerm ?? ""}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="mb-4 h-[36px] max-w-sm"
+              />
+            )}
+
             <ScrollArea className="flex-1">
               {viewMode === "projects" && (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -180,7 +182,6 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                   )}
                 </div>
               )}
-
               {viewMode === "models" && selectedProject && (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {isLoading ? (
@@ -220,6 +221,8 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                       resultsPerPage={10}
                       onRowDoubleClick={onCmsItemDoubleClick}
                       showOrdering={false}
+                      searchTerm={searchTerm}
+                      setSearchTerm={setSearchTerm}
                     />
                   )}
                 </div>
