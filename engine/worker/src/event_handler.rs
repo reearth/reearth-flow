@@ -5,6 +5,7 @@ use reearth_flow_runtime::node::NodeHandle;
 use reearth_flow_runtime::node::NodeStatus;
 use uuid::Uuid;
 
+use crate::types::job_status_event::{JobStatus as PublishJobStatus, JobStatusEvent};
 use crate::types::node_status_event::{NodeStatus as PublishNodeStatus, NodeStatusEvent};
 use crate::{
     pubsub::publisher::Publisher,
@@ -62,6 +63,136 @@ impl reearth_flow_runtime::event::EventHandler for NodeFailureHandler {
         }
     }
 }
+
+#[derive(Debug)]
+pub(crate) struct JobStatusHandler<P: Publisher> {
+    pub(crate) workflow_id: Uuid,
+    pub(crate) job_id: Uuid,
+    pub(crate) publisher: P,
+    pub(crate) job_started: Arc<Mutex<bool>>,
+    pub(crate) total_nodes: Arc<Mutex<Option<usize>>>,
+    pub(crate) completed_nodes: Arc<Mutex<usize>>,
+    pub(crate) failed_nodes: Arc<Mutex<Vec<String>>>,
+}
+
+impl<P: Publisher> JobStatusHandler<P> {
+    pub(crate) fn new(workflow_id: Uuid, job_id: Uuid, publisher: P) -> Self {
+        Self {
+            workflow_id,
+            job_id,
+            publisher,
+            job_started: Arc::new(Mutex::new(false)),
+            total_nodes: Arc::new(Mutex::new(None)),
+            completed_nodes: Arc::new(Mutex::new(0)),
+            failed_nodes: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+
+    async fn send_job_status(&self, status: PublishJobStatus, message: Option<String>) {
+        let failed_nodes = if status == PublishJobStatus::Failed {
+            let failed = self.failed_nodes.lock().clone();
+            if failed.is_empty() {
+                None
+            } else {
+                Some(failed)
+            }
+        } else {
+            None
+        };
+
+        let job_status_event = JobStatusEvent::new(
+            self.workflow_id,
+            self.job_id,
+            status.clone(),
+            message,
+            failed_nodes,
+        );
+
+        if let Err(e) = self.publisher.publish(job_status_event).await {
+            tracing::error!(
+                "Failed to publish job status event: {:?}, error: {}",
+                status,
+                e
+            );
+        } else {
+            tracing::info!("Published job status event: {:?}", status);
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for JobStatusHandler<P> {
+    async fn on_event(&self, event: &reearth_flow_runtime::event::Event) {
+        match event {
+            reearth_flow_runtime::event::Event::SourceFlushed => {
+                let mut started = self.job_started.lock();
+                if !*started {
+                    *started = true;
+                    drop(started);
+                    self.send_job_status(PublishJobStatus::Running, None).await;
+                }
+            }
+            reearth_flow_runtime::event::Event::ProcessorFinished { .. } => {
+                let mut completed = self.completed_nodes.lock();
+                *completed += 1;
+                let completed_count = *completed;
+                drop(completed);
+
+                // Check if all nodes are completed
+                if let Some(total) = *self.total_nodes.lock() {
+                    if completed_count >= total && self.failed_nodes.lock().is_empty() {
+                        self.send_job_status(PublishJobStatus::Completed, None)
+                            .await;
+                    }
+                }
+            }
+            reearth_flow_runtime::event::Event::ProcessorFailed { node, .. } => {
+                let mut failed = self.failed_nodes.lock();
+                failed.push(node.id.to_string());
+                drop(failed);
+
+                self.send_job_status(
+                    PublishJobStatus::Failed,
+                    Some(format!("Node {} failed", node.id)),
+                )
+                .await;
+            }
+            reearth_flow_runtime::event::Event::SinkFinished { .. } => {
+                let mut completed = self.completed_nodes.lock();
+                *completed += 1;
+                let completed_count = *completed;
+                drop(completed);
+
+                // Check if all nodes are completed
+                if let Some(total) = *self.total_nodes.lock() {
+                    if completed_count >= total && self.failed_nodes.lock().is_empty() {
+                        self.send_job_status(PublishJobStatus::Completed, None)
+                            .await;
+                    }
+                }
+            }
+            reearth_flow_runtime::event::Event::SinkFinishFailed { name } => {
+                let mut failed = self.failed_nodes.lock();
+                failed.push(name.clone());
+                drop(failed);
+
+                self.send_job_status(
+                    PublishJobStatus::Failed,
+                    Some(format!("Sink {} failed", name)),
+                )
+                .await;
+            }
+            _ => {}
+        }
+    }
+
+    async fn on_shutdown(&self) {
+        tracing::info!("JobStatusHandler shutting down. Closing publisher...");
+        self.publisher.shutdown().await;
+        tracing::info!("JobStatusHandler publisher shutdown complete");
+    }
+}
+
 pub(crate) struct EventHandler<P: Publisher> {
     pub(crate) workflow_id: Uuid,
     pub(crate) job_id: Uuid,

@@ -166,78 +166,35 @@ func (w *AsyncqWorker) executeWorkflow(
 }
 
 func (w *AsyncqWorker) monitorGCPBatchJob(ctx context.Context, gcpJobName string, jobID id.JobID) error {
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
 
-	log.Infof("Starting monitoring of GCP Batch job %s", gcpJobName)
+	log.Infof("Event-driven monitoring initiated for GCP Batch job %s (polling disabled)", gcpJobName)
 
-	for {
-		select {
-		case <-ctx.Done():
-			log.Infof("Context cancelled for job %s", jobID)
-			return ctx.Err()
-		case <-ticker.C:
-			status, err := w.batchGateway.GetJobStatus(ctx, gcpJobName)
-			if err != nil {
-				log.Errorf("Failed to get GCP Batch job status: %v", err)
-				continue
-			}
+	select {
+	case <-ctx.Done():
+		log.Infof("Context cancelled for job %s", jobID)
+		return ctx.Err()
+	case <-time.After(24 * time.Hour): // Maximum timeout
+		log.Warnf("Job monitoring timeout reached for job %s", jobID)
 
-			log.Debugf("GCP Batch job %s status: %s", gcpJobName, status)
-
-			if err := w.updateJobStatus(ctx, jobID, status); err != nil {
-				log.Errorf("Failed to update job status: %v", err)
-			}
-
-			switch status {
-			case gateway.JobStatusCompleted:
-				log.Infof("GCP Batch job %s completed successfully", gcpJobName)
+		if j, err := w.jobRepo.FindByID(ctx, jobID); err == nil {
+			switch j.Status() {
+			case job.StatusCompleted:
+				log.Infof("Job %s completed (detected via event system)", jobID)
 				return nil
-			case gateway.JobStatusFailed:
-				log.Errorf("GCP Batch job %s failed", gcpJobName)
-				return fmt.Errorf("GCP Batch job failed")
-			case gateway.JobStatusCancelled:
-				log.Infof("GCP Batch job %s was cancelled", gcpJobName)
-				return fmt.Errorf("GCP Batch job was cancelled")
+			case job.StatusFailed:
+				log.Errorf("Job %s failed (detected via event system)", jobID)
+				return fmt.Errorf("job failed")
+			case job.StatusCancelled:
+				log.Infof("Job %s was cancelled (detected via event system)", jobID)
+				return fmt.Errorf("job was cancelled")
 			default:
-				continue
+				log.Warnf("Job %s timeout in status %s - possible event system failure", jobID, j.Status())
+				return fmt.Errorf("job monitoring timeout")
 			}
 		}
-	}
-}
 
-func (w *AsyncqWorker) updateJobStatus(ctx context.Context, jobID id.JobID, status gateway.JobStatus) error {
-	j, err := w.jobRepo.FindByID(ctx, jobID)
-	if err != nil {
-		return err
+		return fmt.Errorf("job monitoring timeout - could not determine final status")
 	}
-
-	var jobStatus job.Status
-	switch status {
-	case gateway.JobStatusPending:
-		jobStatus = job.StatusPending
-	case gateway.JobStatusRunning:
-		jobStatus = job.StatusRunning
-	case gateway.JobStatusCompleted:
-		jobStatus = job.StatusCompleted
-	case gateway.JobStatusFailed:
-		jobStatus = job.StatusFailed
-	case gateway.JobStatusCancelled:
-		jobStatus = job.StatusCancelled
-	default:
-		jobStatus = job.StatusPending
-	}
-
-	if j.Status() != jobStatus {
-		j.SetStatus(jobStatus)
-		if jobStatus == job.StatusCompleted || jobStatus == job.StatusFailed || jobStatus == job.StatusCancelled {
-			now := time.Now()
-			j.SetCompletedAt(&now)
-		}
-		return w.jobRepo.Save(ctx, j)
-	}
-
-	return nil
 }
 
 func (w *AsyncqWorker) updateJobArtifacts(ctx context.Context, j *job.Job) error {

@@ -11,7 +11,7 @@ use reearth_flow_types::Workflow;
 use crate::{
     artifact::upload_artifact,
     asset::download_asset,
-    event_handler::{EventHandler, NodeFailureHandler},
+    event_handler::{EventHandler, JobStatusHandler, NodeFailureHandler},
     factory::ALL_ACTION_FACTORIES,
     logger::enable_file_logging,
     pubsub::{backend::PubSubBackend, publisher::Publisher},
@@ -149,14 +149,24 @@ impl RunWorkerCommand {
             .await
             .map_err(crate::errors::Error::init)?;
 
-        let handler: Arc<dyn reearth_flow_runtime::event::EventHandler> = match pubsub {
+        let handler: Arc<dyn reearth_flow_runtime::event::EventHandler> = match &pubsub {
             PubSubBackend::Google(pubsub) => {
-                Arc::new(EventHandler::new(workflow.id, meta.job_id, pubsub))
+                Arc::new(EventHandler::new(workflow.id, meta.job_id, pubsub.clone()))
             }
             PubSubBackend::Noop(pubsub) => {
-                Arc::new(EventHandler::new(workflow.id, meta.job_id, pubsub))
+                Arc::new(EventHandler::new(workflow.id, meta.job_id, pubsub.clone()))
             }
         };
+
+        let job_status_handler: Arc<dyn reearth_flow_runtime::event::EventHandler> = match &pubsub {
+            PubSubBackend::Google(pubsub) => {
+                Arc::new(JobStatusHandler::new(workflow.id, meta.job_id, pubsub.clone()))
+            }
+            PubSubBackend::Noop(pubsub) => {
+                Arc::new(JobStatusHandler::new(workflow.id, meta.job_id, pubsub.clone()))
+            }
+        };
+
         let workflow_id = workflow.id;
         let node_failure_handler = Arc::new(NodeFailureHandler::new());
         let result = AsyncRunner::run_with_event_handler(
@@ -166,7 +176,7 @@ impl RunWorkerCommand {
             logger_factory,
             storage_resolver.clone(),
             state,
-            vec![handler, node_failure_handler.clone()],
+            vec![handler, job_status_handler, node_failure_handler.clone()],
         )
         .await;
         let job_result = match result {

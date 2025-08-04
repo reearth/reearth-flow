@@ -228,11 +228,8 @@ func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *
 }
 
 func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-
 	jobID := j.ID().String()
-	log.Infof("Starting continuous monitoring for job ID %s", jobID)
+	log.Infof("Starting pure event-driven monitoring for job ID %s (polling disabled)", jobID)
 
 	defer func() {
 		i.watchersMu.Lock()
@@ -240,118 +237,31 @@ func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
 		i.watchersMu.Unlock()
 		i.monitor.Remove(jobID)
 		i.cleanupJobLock(jobID)
-		log.Infof("Monitoring cleanup completed for job ID %s", jobID)
+		log.Infof("Event-driven monitoring cleanup completed for job ID %s", jobID)
 	}()
 
 	maxDuration := 24 * time.Hour
-	startTime := time.Now()
 
-	for {
-		select {
-		case <-ctx.Done():
-			log.Infof("Monitoring stopped by context cancellation for job ID %s", jobID)
-			return
-		case <-ticker.C:
-			if time.Since(startTime) > maxDuration {
-				log.Warnf("Exceeded maximum monitoring duration for job ID %s", jobID)
-				return
-			}
+	select {
+	case <-ctx.Done():
+		log.Infof("Event-driven monitoring stopped by context cancellation for job ID %s", jobID)
+		return
+	case <-time.After(maxDuration):
+		log.Warnf("Exceeded maximum monitoring duration for job ID %s (pure event-driven mode)", jobID)
 
-			currentJob, err := i.jobRepo.FindByID(context.Background(), j.ID())
-			if err != nil {
-				log.Errorf("Failed to fetch current job state for job ID %s: %v", jobID, err)
-				continue
-			}
-
-			status := currentJob.Status()
-			if status == job.StatusCompleted || status == job.StatusFailed ||
-				status == job.StatusCancelled {
-				log.Infof(
-					"Job ID %s already in terminal state %s, stopping monitoring",
-					jobID,
-					status,
-				)
-				return
-			}
-
-			if err := i.checkJobStatus(ctx, currentJob); err != nil {
-				log.Errorfc(ctx, "job: status check failed: %v", err)
+		if currentJob, err := i.jobRepo.FindByID(context.Background(), j.ID()); err == nil {
+			if currentJob.Status() == job.StatusCompleted ||
+				currentJob.Status() == job.StatusFailed ||
+				currentJob.Status() == job.StatusCancelled {
+				log.Infof("Job ID %s is in terminal state %s, monitoring complete",
+					jobID, currentJob.Status())
+			} else {
+				log.Warnf("Job ID %s still in non-terminal state %s after timeout - possible event system failure",
+					jobID, currentJob.Status())
 			}
 		}
+		return
 	}
-}
-
-func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
-	status, err := i.batch.GetJobStatus(ctx, j.GCPJobID())
-	if err != nil {
-		return err
-	}
-
-	newStatus := job.Status(status)
-
-	jobLock := i.getJobLock(j.ID().String())
-	jobLock.Lock()
-	defer jobLock.Unlock()
-
-	currentJob, err := i.jobRepo.FindByID(ctx, j.ID())
-	if err != nil {
-		return fmt.Errorf("failed to fetch current job state: %w", err)
-	}
-
-	statusChanged := currentJob.Status() != newStatus
-	if !statusChanged {
-		return nil
-	}
-
-	if err := i.updateJobStatus(ctx, currentJob, newStatus); err != nil {
-		return err
-	}
-
-	isTerminalState := newStatus == job.StatusCompleted || newStatus == job.StatusFailed ||
-		newStatus == job.StatusCancelled
-	if isTerminalState {
-		log.Infof(
-			"Job %s transitioning to terminal state %s, handling completion",
-			currentJob.ID(),
-			newStatus,
-		)
-
-		currentJob.SetStatus(newStatus)
-
-		if err := i.handleJobCompletion(ctx, currentJob); err != nil {
-			log.Errorfc(ctx, "job: completion handling failed: %v", err)
-		}
-	}
-
-	return nil
-}
-
-func (i *Job) updateJobStatus(ctx context.Context, j *job.Job, status job.Status) error {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return err
-	}
-
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return err
-	}
-
-	var txErr error
-	defer func() {
-		if err2 := tx.End(ctx); err2 != nil && txErr == nil {
-			log.Errorfc(ctx, "transaction end failed: %v", err2)
-		}
-	}()
-
-	j.SetStatus(status)
-	if err := i.jobRepo.Save(ctx, j); err != nil {
-		txErr = err
-		return err
-	}
-
-	tx.Commit()
-	i.subscriptions.Notify(j.ID().String(), j.Status())
-	return nil
 }
 
 func (i *Job) handleJobCompletion(ctx context.Context, j *job.Job) error {
@@ -470,6 +380,55 @@ func (i *Job) sendCompletionNotification(
 	log.Debugfc(ctx, "job: sending notification for jobID=%s to URL=%s", jobID, notificationURL)
 
 	return i.notifier.Send(notificationURL, payload)
+}
+
+func (i *Job) UpdateJobStatusFromEvent(jobID id.JobID, status job.Status) error {
+	ctx := context.Background()
+
+	j, err := i.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		return fmt.Errorf("failed to find job: %w", err)
+	}
+
+	if j.Status() == status {
+		return nil
+	}
+
+	log.Infof("Updating job %s status from %s to %s via event", jobID, j.Status(), status)
+
+	tx, err := i.transaction.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	defer func() {
+		if err2 := tx.End(ctx); err2 != nil {
+			log.Errorfc(ctx, "transaction end failed: %v", err2)
+		}
+	}()
+
+	j.SetStatus(status)
+
+	if status == job.StatusCompleted || status == job.StatusFailed || status == job.StatusCancelled {
+		now := time.Now()
+		j.SetCompletedAt(&now)
+	}
+
+	if err := i.jobRepo.Save(ctx, j); err != nil {
+		return fmt.Errorf("failed to save job: %w", err)
+	}
+
+	tx.Commit()
+
+	i.subscriptions.Notify(j.ID().String(), j.Status())
+
+	if status == job.StatusCompleted || status == job.StatusFailed || status == job.StatusCancelled {
+		if err := i.handleJobCompletion(ctx, j); err != nil {
+			log.Errorfc(ctx, "job: completion handling failed: %v", err)
+		}
+	}
+
+	return nil
 }
 
 func (i *Job) Subscribe(ctx context.Context, jobID id.JobID) (chan job.Status, error) {

@@ -115,92 +115,11 @@ func (m *AsyncqMonitor) monitorJob(ctx context.Context, j *job.Job, config *Moni
 				return
 			}
 
-			if err := m.checkJobStatus(ctx, j, config); err != nil {
-				log.Errorf("Error checking job status for %s: %v", config.JobID, err)
-				continue
-			}
+			log.Debugf("AsyncQ Monitor heartbeat for job %s (event-driven mode)", config.JobID)
 
 			config.LastChecked = time.Now()
 		}
 	}
-}
-
-func (m *AsyncqMonitor) checkJobStatus(ctx context.Context, j *job.Job, config *MonitorConfig) error {
-	currentJob, err := m.jobRepo.FindByID(ctx, j.ID())
-	if err != nil {
-		return err
-	}
-
-	status := currentJob.Status()
-	if status == job.StatusCompleted || status == job.StatusFailed || status == job.StatusCancelled {
-		log.Infof("Job %s reached terminal state %s", config.JobID, status)
-
-		if err := m.handleJobCompletion(ctx, currentJob, config); err != nil {
-			log.Errorf("Error handling job completion for %s: %v", config.JobID, err)
-		}
-
-		m.subscriptions.Notify(config.JobID, status)
-
-		return nil
-	}
-
-	taskStatus, err := m.getTaskStatus(ctx, currentJob.GCPJobID())
-	if err != nil {
-		log.Debugf("Could not get task status for job %s: %v", config.JobID, err)
-		return nil
-	}
-
-	if taskStatus != status {
-		currentJob.SetStatus(taskStatus)
-		if err := m.jobRepo.Save(ctx, currentJob); err != nil {
-			log.Errorf("Failed to update job status for %s: %v", config.JobID, err)
-		} else {
-			log.Infof("Updated job %s status to %s", config.JobID, taskStatus)
-			m.subscriptions.Notify(config.JobID, taskStatus)
-		}
-	}
-
-	return nil
-}
-
-func (m *AsyncqMonitor) getTaskStatus(ctx context.Context, taskID string) (job.Status, error) {
-	activeTasks, err := m.inspector.ListActiveTasks("default")
-	if err == nil {
-		for _, task := range activeTasks {
-			if task.ID == taskID {
-				return job.StatusRunning, nil
-			}
-		}
-	}
-
-	completedTasks, err := m.inspector.ListCompletedTasks("default")
-	if err == nil {
-		for _, task := range completedTasks {
-			if task.ID == taskID {
-				return job.StatusCompleted, nil
-			}
-		}
-	}
-
-	retryTasks, err := m.inspector.ListRetryTasks("default")
-	if err == nil {
-		for _, task := range retryTasks {
-			if task.ID == taskID {
-				return job.StatusFailed, nil
-			}
-		}
-	}
-
-	archivedTasks, err := m.inspector.ListArchivedTasks("default")
-	if err == nil {
-		for _, task := range archivedTasks {
-			if task.ID == taskID {
-				return job.StatusFailed, nil
-			}
-		}
-	}
-
-	return job.StatusPending, nil
 }
 
 func (m *AsyncqMonitor) handleJobCompletion(ctx context.Context, j *job.Job, config *MonitorConfig) error {

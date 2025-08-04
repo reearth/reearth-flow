@@ -106,61 +106,11 @@ func (b *AsyncqBatch) GetJobStatus(ctx context.Context, jobName string) (gateway
 	b.jobTracker.mu.RLock()
 	if jobStatus, exists := b.jobTracker.jobs[jobName]; exists {
 		b.jobTracker.mu.RUnlock()
-
-		if updatedStatus, err := b.getTaskStatus(ctx, jobStatus.TaskID); err == nil {
-			b.updateJobStatus(jobName, updatedStatus)
-			return updatedStatus, nil
-		}
-
 		return jobStatus.Status, nil
 	}
 	b.jobTracker.mu.RUnlock()
 
-	return b.getTaskStatus(ctx, jobName)
-}
-
-func (b *AsyncqBatch) getTaskStatus(ctx context.Context, taskID string) (gateway.JobStatus, error) {
-	taskInfo, err := b.inspector.GetTaskInfo("default", taskID)
-	if err != nil {
-		if fmt.Sprintf("%v", err) == "asynq: task not found" {
-			return gateway.JobStatusUnknown, fmt.Errorf("task not found: %s", taskID)
-		}
-		return gateway.JobStatusUnknown, fmt.Errorf("failed to get task info: %w", err)
-	}
-
-	switch taskInfo.State {
-	case asynq.TaskStatePending:
-		return gateway.JobStatusPending, nil
-	case asynq.TaskStateActive:
-		return gateway.JobStatusRunning, nil
-	case asynq.TaskStateCompleted:
-		return gateway.JobStatusCompleted, nil
-	case asynq.TaskStateRetry:
-		return gateway.JobStatusFailed, nil
-	case asynq.TaskStateArchived:
-		return gateway.JobStatusFailed, nil
-	case asynq.TaskStateScheduled:
-		return gateway.JobStatusPending, nil
-	case asynq.TaskStateAggregating:
-		return gateway.JobStatusPending, nil
-	default:
-		return gateway.JobStatusUnknown, fmt.Errorf("unknown task state: %s", taskInfo.State)
-	}
-}
-
-func (b *AsyncqBatch) updateJobStatus(jobName string, status gateway.JobStatus) {
-	b.jobTracker.mu.Lock()
-	defer b.jobTracker.mu.Unlock()
-
-	if jobStatus, exists := b.jobTracker.jobs[jobName]; exists {
-		jobStatus.Status = status
-		jobStatus.UpdatedAt = time.Now()
-
-		if status == gateway.JobStatusCompleted || status == gateway.JobStatusFailed || status == gateway.JobStatusCancelled {
-			now := time.Now()
-			jobStatus.CompletedAt = &now
-		}
-	}
+	return gateway.JobStatusUnknown, fmt.Errorf("job not found in cache: %s", jobName)
 }
 
 func (b *AsyncqBatch) ListJobs(ctx context.Context, projectID id.ProjectID) ([]gateway.JobInfo, error) {
@@ -228,5 +178,16 @@ func (b *AsyncqBatch) GetJobTracker() *jobTracker {
 }
 
 func (b *AsyncqBatch) SetJobStatus(jobName string, status gateway.JobStatus) {
-	b.updateJobStatus(jobName, status)
+	b.jobTracker.mu.Lock()
+	defer b.jobTracker.mu.Unlock()
+
+	if jobStatus, exists := b.jobTracker.jobs[jobName]; exists {
+		jobStatus.Status = status
+		jobStatus.UpdatedAt = time.Now()
+
+		if status == gateway.JobStatusCompleted || status == gateway.JobStatusFailed || status == gateway.JobStatusCancelled {
+			now := time.Now()
+			jobStatus.CompletedAt = &now
+		}
+	}
 }
