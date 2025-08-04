@@ -19,7 +19,7 @@ import {
 } from "@flow/lib/reactFlow";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
-import { CanvasContextMenu } from "./components";
+import { CanvasContextMenu, MultiCursor } from "./components";
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
@@ -33,6 +33,9 @@ type Props = {
   nodes: Node[];
   edges: Edge[];
   selectedEdgeIds?: string[];
+  yDoc?: any;
+  awareness?: any;
+  currentUserName?: string;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onWorkflowOpen?: (workflowId: string) => void;
   onNodesAdd?: (newNode: Node[]) => void;
@@ -54,6 +57,9 @@ const Canvas: React.FC<Props> = ({
   nodes,
   edges,
   selectedEdgeIds,
+  yDoc,
+  awareness,
+  currentUserName,
   onWorkflowAdd,
   onWorkflowOpen,
   onNodesAdd,
@@ -96,14 +102,22 @@ const Canvas: React.FC<Props> = ({
   });
 
   return (
-    <ReactFlow
-      ref={paneRef}
-      // Readonly props START
-      nodesConnectable={!readonly}
-      nodesFocusable={!readonly}
-      elementsSelectable={!readonly}
-      reconnectRadius={!readonly ? 10 : 0}
-      // Readonly props END
+    <div className="relative h-full w-full">
+      {!readonly && yDoc && awareness && (
+        <MultiCursor
+          yDoc={yDoc}
+          awareness={awareness}
+          currentUserName={currentUserName}
+        />
+      )}
+      <ReactFlow
+        ref={paneRef}
+        // Readonly props START
+        nodesConnectable={!readonly}
+        nodesFocusable={!readonly}
+        elementsSelectable={!readonly}
+        reconnectRadius={!readonly ? 10 : 0}
+        // Readonly props END
       attributionPosition="bottom-left"
       nodeDragThreshold={2}
       snapToGrid
@@ -159,6 +173,7 @@ const Canvas: React.FC<Props> = ({
         />
       )}
     </ReactFlow>
+    </div>
   );
 };
 
