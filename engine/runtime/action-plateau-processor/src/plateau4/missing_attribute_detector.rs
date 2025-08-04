@@ -21,8 +21,8 @@ use std::collections::{HashMap, HashSet};
 static SUMMARY_PORT: Lazy<Port> = Lazy::new(|| Port::new("summary"));
 static REQUIRED_PORT: Lazy<Port> = Lazy::new(|| Port::new("required"));
 static TARGET_PORT: Lazy<Port> = Lazy::new(|| Port::new("target"));
-static DATA_QUALITY_C07_PORT: Lazy<Port> = Lazy::new(|| Port::new("data_quality_c07"));
-static DATA_QUALITY_C08_PORT: Lazy<Port> = Lazy::new(|| Port::new("data_quality_c08"));
+static DATA_QUALITY_C07_PORT: Lazy<Port> = Lazy::new(|| Port::new("dataQualityC07"));
+static DATA_QUALITY_C08_PORT: Lazy<Port> = Lazy::new(|| Port::new("dataQualityC08"));
 
 static FEATURE_TYPE_TO_PART_XPATH: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     HashMap::from([
@@ -1075,7 +1075,7 @@ mod tests {
 
         // Act
         let fw = run_processor_with_feature(feature)?;
-        let c07_outputs = extract_outputs_by_port(&fw, "data_quality_c07")?;
+        let c07_outputs = extract_outputs_by_port(&fw, "dataQualityC07")?;
 
         // Assert
         assert_eq!(c07_outputs.len(), 1, "Expected exactly one C07 output");
@@ -1111,7 +1111,7 @@ mod tests {
 
         // Act
         let fw = run_processor_with_feature(feature)?;
-        let c08_outputs = extract_outputs_by_port(&fw, "data_quality_c08")?;
+        let c08_outputs = extract_outputs_by_port(&fw, "dataQualityC08")?;
 
         // Assert
         assert_eq!(c08_outputs.len(), 2, "Expected exactly two C08 outputs");
