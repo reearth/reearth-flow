@@ -3,6 +3,7 @@ use crate::pubsub::message::EncodableMessage;
 #[derive(thiserror::Error, Debug)]
 pub enum NoopPubSubError {}
 
+#[derive(Clone)]
 pub struct NoopPubSub {}
 
 #[async_trait::async_trait]

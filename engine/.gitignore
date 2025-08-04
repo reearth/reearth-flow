@@ -25,6 +25,7 @@ output.png
 sample.xlsx
 metadata.json
 runtime/common/test.zip
+example.yml
 
 tmp/
 example.yml
