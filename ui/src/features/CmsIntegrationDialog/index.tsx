@@ -1,6 +1,5 @@
-import { ArrowLeftIcon, EyeIcon, LayoutIcon } from "@phosphor-icons/react";
+import { CaretLeftIcon, EyeIcon, LayoutIcon } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
-import { useState } from "react";
 
 import {
   Dialog,
@@ -14,11 +13,13 @@ import {
   DataTable as Table,
   FlowLogo,
   IconButton,
+  Pagination,
+  Input,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
-import type { CmsProject, CmsModel, CmsItem } from "@flow/types/cmsIntegration";
+import type { CmsItem } from "@flow/types/cmsIntegration";
 
 import CmsItemDetailDialog from "./CmsItemDetailsDialog";
 import CmsModelCard from "./CmsModelCard";
@@ -37,62 +38,30 @@ const CmsIntegrationDialog: React.FC<Props> = ({
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
 
-  const [selectedProject, setSelectedProject] = useState<CmsProject | null>(
-    null,
-  );
-  const [selectedModel, setSelectedModel] = useState<CmsModel | null>(null);
-  const [selectedItem, setSelectedItem] = useState<CmsItem | null>(null);
-  const [isItemDetailOpen, setIsItemDetailOpen] = useState(false);
-
   const {
-    cmsProjects,
-    cmsModels,
+    selectedProject,
+    selectedModel,
+    selectedItem,
+    filteredProjects,
+    filteredModels,
     cmsItems,
     cmsItemsTotalPages,
     currentPage,
-    setCurrentPage,
+    searchTerm,
     isLoading,
     viewMode,
-    setViewMode,
+    isItemDetailOpen,
+    setSearchTerm,
+    setCurrentPage,
+    handleProjectSelect,
+    handleModelSelect,
+    handleBackToProjects,
+    handleBackToModels,
+    handleItemView,
+    handleItemDetailClose,
   } = useHooks({
     workspaceId: currentWorkspace?.id ?? "",
-    projectId: selectedProject?.id,
-    modelId: selectedModel?.id,
   });
-
-  const handleProjectSelect = (project: CmsProject) => {
-    if (!project?.id) return;
-    setSelectedProject(project);
-    setSelectedModel(null);
-    setViewMode("models");
-  };
-
-  const handleModelSelect = (model: CmsModel) => {
-    if (!model?.id) return;
-    setSelectedModel(model);
-    setViewMode("items");
-  };
-
-  const handleBackToProjects = () => {
-    setSelectedProject(null);
-    setSelectedModel(null);
-    setViewMode("projects");
-  };
-
-  const handleBackToModels = () => {
-    setSelectedModel(null);
-    setViewMode("models");
-  };
-
-  const handleItemView = (item: CmsItem) => {
-    setSelectedItem(item);
-    setIsItemDetailOpen(true);
-  };
-
-  const handleItemDetailClose = () => {
-    setIsItemDetailOpen(false);
-    setSelectedItem(null);
-  };
 
   const columns: ColumnDef<CmsItem>[] = selectedModel
     ? [
@@ -163,29 +132,34 @@ const CmsIntegrationDialog: React.FC<Props> = ({
         </DialogTitle>
         <DialogContentWrapper>
           <DialogContentSection className="flex h-[600px] flex-col overflow-hidden">
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {viewMode !== "projects" && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={
-                      viewMode === "models"
-                        ? handleBackToProjects
-                        : handleBackToModels
-                    }>
-                    <ArrowLeftIcon size={16} className="mr-1" />
-                    {t("Back")}
-                  </Button>
-                )}
-              </div>
+            <div className="mb-4 flex items-center gap-4">
+              {viewMode !== "projects" && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={
+                    viewMode === "models"
+                      ? handleBackToProjects
+                      : handleBackToModels
+                  }>
+                  <CaretLeftIcon />
+                </Button>
+              )}
+              {viewMode !== "items" && (
+                <Input
+                  placeholder={t("Search") + "..."}
+                  value={searchTerm ?? ""}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="h-[36px] max-w-sm"
+                />
+              )}
             </div>
             <ScrollArea className="flex-1">
               {viewMode === "projects" && (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {isLoading ? (
                     <LoadingSkeleton />
-                  ) : cmsProjects.length === 0 ? (
+                  ) : filteredProjects.length === 0 ? (
                     <div className="col-span-full py-8 text-center text-muted-foreground">
                       <BasicBoiler
                         text={t("No Projects Found")}
@@ -194,7 +168,7 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                       />
                     </div>
                   ) : (
-                    cmsProjects.map((project) => {
+                    filteredProjects.map((project) => {
                       return (
                         <CmsProjectCard
                           key={project.id}
@@ -211,7 +185,7 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {isLoading ? (
                     <LoadingSkeleton />
-                  ) : cmsModels.length === 0 ? (
+                  ) : filteredModels.length === 0 ? (
                     <div className="col-span-full py-8 text-center text-muted-foreground">
                       <BasicBoiler
                         text={t("No Models Found")}
@@ -220,7 +194,7 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                       />
                     </div>
                   ) : (
-                    cmsModels.map((model) => {
+                    filteredModels.map((model) => {
                       return (
                         <CmsModelCard
                           key={model.id}
@@ -232,27 +206,32 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                   )}
                 </div>
               )}
-
-              {viewMode === "items" && selectedModel && (
-                <div className="h-full">
+            </ScrollArea>
+            {viewMode === "items" && selectedModel && (
+              <div className="flex flex-col overflow-hidden">
+                <div className="overflow-hidden">
                   {isLoading ? (
                     <LoadingSkeleton />
                   ) : (
                     <Table
                       columns={columns}
                       data={cmsItems || []}
-                      currentPage={currentPage}
-                      setCurrentPage={setCurrentPage}
                       totalPages={cmsItemsTotalPages}
                       resultsPerPage={10}
                       onRowDoubleClick={onCmsItemDoubleClick}
                       showOrdering={false}
-                      enablePagination
                     />
                   )}
                 </div>
-              )}
-            </ScrollArea>
+                <div className="mb-3">
+                  <Pagination
+                    currentPage={currentPage}
+                    setCurrentPage={setCurrentPage}
+                    totalPages={cmsItemsTotalPages}
+                  />
+                </div>
+              </div>
+            )}
           </DialogContentSection>
         </DialogContentWrapper>
       </DialogContent>
