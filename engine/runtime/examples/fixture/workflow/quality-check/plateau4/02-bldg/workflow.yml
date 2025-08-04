@@ -10,7 +10,6 @@ with:
   outputPath:
 graphs:
   - !include ../../../../graphs/lod_splitter_with_dm.yml
-  - !include ../../../../graphs/lod_splitter_with_dm_2.yml
   - id: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
     name: entry_point
     nodes:
@@ -178,9 +177,9 @@ graphs:
         subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
 
       - id: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f
-        name: PLATEAU4.LODSplitterWithDM_2
+        name: PLATEAU3.LODSplitterWithDM2
         type: subGraph
-        subGraphId: 5a2c8e4f-7b9d-4a3e-c1f6-8d2a5b7c9e4f
+        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
 
     edges:
       - id: 8c9e2f4a-7b1d-4e5c-a3f2-9d8b6c4e1a7f
