@@ -33,6 +33,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     currentPage,
     CMS_ITEMS_FETCH_RATE,
   );
+
   const cmsItems =
     selectedProject?.id && selectedModel?.id
       ? itemsQuery.page?.cmsItems || []
@@ -62,42 +63,69 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     (selectedProject?.id && modelsQuery.isFetching) ||
     (selectedProject?.id && selectedModel?.id && itemsQuery.isFetching);
 
+  const navigateTo = (
+    mode: ViewMode,
+    options?: {
+      project?: CmsProject | null;
+      model?: CmsModel | null;
+      item?: CmsItem | null;
+    },
+  ) => {
+    const { project, model, item } = options || {};
+
+    switch (mode) {
+      case "projects":
+        setSelectedProject(null);
+        setSelectedModel(null);
+        setSelectedItem(null);
+        break;
+      case "models":
+        setSelectedProject(project || selectedProject);
+        setSelectedModel(null);
+        setSelectedItem(null);
+        break;
+      case "items":
+        setSelectedProject(project || selectedProject);
+        setSelectedModel(model || selectedModel);
+        setSelectedItem(null);
+        break;
+      case "itemDetails":
+      case "itemsAssets":
+        setSelectedProject(project || selectedProject);
+        setSelectedModel(model || selectedModel);
+        setSelectedItem(item || null);
+        break;
+    }
+
+    setViewMode(mode);
+    setSearchTerm("");
+  };
+
   const handleProjectSelect = (project: CmsProject) => {
     if (!project?.id) return;
-    setSelectedProject(project);
-    setSelectedModel(null);
-    setViewMode("models");
+    navigateTo("models", { project });
   };
 
   const handleModelSelect = (model: CmsModel) => {
     if (!model?.id) return;
-    setSelectedModel(model);
-    setViewMode("items");
-  };
-
-  const handleBackToProjects = () => {
-    setSelectedProject(null);
-    setSelectedModel(null);
-    setSelectedItem(null);
-    setViewMode("projects");
-  };
-
-  const handleBackToModels = () => {
-    setSelectedModel(null);
-    setSelectedItem(null);
-    setViewMode("models");
+    navigateTo("items", { model });
   };
 
   const handleItemView = (item: CmsItem) => {
-    setSelectedItem(item);
-
-    setViewMode("itemDetails");
+    navigateTo("itemDetails", { item });
   };
+
+  const handleAssetView = (item: CmsItem) => {
+    navigateTo("itemsAssets", { item });
+  };
+
+  const handleBackToProjects = () => navigateTo("projects");
+  const handleBackToModels = () => navigateTo("models");
+  const handleBackToItems = () => navigateTo("items");
 
   const handleItemDetailClose = () => {
     setIsItemDetailOpen(false);
-    setSelectedItem(null);
-    setViewMode("items");
+    navigateTo("items");
   };
 
   return {
@@ -120,6 +148,8 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     handleBackToProjects,
     handleBackToModels,
     handleItemView,
+    handleAssetView,
     handleItemDetailClose,
+    handleBackToItems,
   };
 };

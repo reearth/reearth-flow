@@ -1,3 +1,5 @@
+import { CaretLeftIcon } from "@phosphor-icons/react";
+
 import { Button, ScrollArea } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import type {
@@ -10,12 +12,14 @@ type Props = {
   cmsItem: CmsItem;
   cmsModel: CmsModel;
   onCmsItemValue?: (value: string) => void;
+  onBack: () => void;
 };
 
 const CmsItemDetails: React.FC<Props> = ({
   cmsItem,
   cmsModel,
   onCmsItemValue,
+  onBack,
 }) => {
   const t = useT();
 
@@ -53,7 +57,10 @@ const CmsItemDetails: React.FC<Props> = ({
   return (
     <div className="flex h-[600px] flex-col gap-4 overflow-hidden">
       <div className="space-y-4">
-        <h3 className="text-lg font-medium">{t("Information")}</h3>
+        <Button className="p-2.5" variant="outline" onClick={onBack}>
+          <CaretLeftIcon />
+        </Button>
+
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className="text-sm font-medium text-muted-foreground">
