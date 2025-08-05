@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 
 import { RenderFallback, DataTable as Table } from "@flow/components";
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
@@ -25,6 +25,7 @@ const DataTable: React.FC<Props> = ({
     type: fileType,
   });
   const t = useT();
+  const [searchTerm, setSearchTerm] = useState<string>("");
   return (
     <RenderFallback
       message={t(
@@ -40,10 +41,13 @@ const DataTable: React.FC<Props> = ({
             selectColumns
             showFiltering
             showOrdering={false}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
             selectedRow={selectedFeature}
             onRowClick={onSingleClick}
             onRowDoubleClick={onDoubleClick}
             useStrictSelectedRow
+            isVirtualized
           />
         </div>
       </div>

@@ -1,7 +1,6 @@
 import {
   ColumnDef,
   PaginationState,
-  Row,
   SortingState,
   VisibilityState,
   flexRender,
@@ -12,7 +11,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   DropdownMenu,
@@ -28,7 +27,6 @@ import {
   SelectContent,
   SelectItem,
 } from "@flow/components";
-import { useDoubleClick } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { OrderDirection } from "@flow/types/paginationOptions";
 
@@ -58,6 +56,7 @@ type DataTableProps<TData, TValue> = {
   searchTerm?: string;
   selectedRow?: any;
   useStrictSelectedRow?: boolean;
+  isVirtualized?: boolean;
   onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
   setCurrentPage?: (page: number) => void;
@@ -83,6 +82,7 @@ function DataTable<TData, TValue>({
   searchTerm,
   selectedRow,
   useStrictSelectedRow,
+  isVirtualized,
   onRowClick,
   onRowDoubleClick,
   setCurrentPage,
@@ -164,32 +164,29 @@ function DataTable<TData, TValue>({
     getScrollElement: () => parentRef.current,
     estimateSize: () => 24,
   });
+  const hasScrolledRef = useRef(false);
 
-  const handleRowDoubleClick = (row: Row<TData>) => {
-    onRowDoubleClick?.(row.original);
-  };
+  const selectedRowIndex = useMemo(() => {
+    if (!selectedRow || !data) return -1;
+    return data.findIndex(
+      (row: any) =>
+        row.id.replace(/[^a-zA-Z0-9]/g, "") ===
+        selectedRow.id.replace(/[^a-zA-Z0-9]/g, ""),
+    );
+  }, [selectedRow, data]);
 
-  const [handleSingleClick, handleDoubleClick] = useDoubleClick<
-    Row<TData>,
-    Row<TData>
-  >(
-    onRowClick
-      ? (row?: Row<TData>) => {
-          if (row) {
-            row.toggleSelected();
-            onRowClick(row.original);
-          }
-        }
-      : undefined,
-    onRowDoubleClick
-      ? (row?: Row<TData>) => {
-          if (row) {
-            handleRowDoubleClick(row);
-          }
-        }
-      : undefined,
-  );
+  useEffect(() => {
+    if (selectedRowIndex === -1) {
+      hasScrolledRef.current = false;
+      return;
+    }
 
+    virtualizer.scrollToIndex(selectedRowIndex, {
+      align: "start",
+      behavior: "auto",
+    });
+    hasScrolledRef.current = true;
+  }, [selectedRowIndex, virtualizer]);
   return (
     <div className="flex h-full flex-col justify-between">
       <div className="flex h-full flex-col">
@@ -271,95 +268,169 @@ function DataTable<TData, TValue>({
             ref={parentRef}
             className="h-full overflow-auto rounded-md border"
             style={{ contain: "paint", willChange: "transform" }}>
-            <Table>
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                      return (
-                        <TableHead
-                          key={header.id}
-                          className={`${condensed ? "h-8" : "h-10"}`}>
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext(),
-                              )}
-                        </TableHead>
-                      );
-                    })}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {rows.length ? (
-                  virtualizer.getVirtualItems().map((virtualRow, idx) => {
-                    const row = rows[virtualRow.index] as any;
-                    let isSelected = false;
-                    if (selectedRow) {
-                      isSelected =
-                        String(selectedRow?.id || "").replace(
-                          /[^a-zA-Z0-9]/g,
-                          "",
-                        ) ===
-                        String(row.original?.id || "").replace(
-                          /[^a-zA-Z0-9]/g,
-                          "",
+            {isVirtualized ? (
+              <div
+                className="w-full caption-bottom overflow-auto text-xs"
+                style={{
+                  height: `${virtualizer.getTotalSize()}px`,
+                  width: "100%",
+                  position: "relative",
+                }}>
+                <TableHeader>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => {
+                        return (
+                          <TableHead
+                            key={header.id}
+                            className={`${condensed ? "h-8" : "h-10"}`}>
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(
+                                  header.column.columnDef.header,
+                                  header.getContext(),
+                                )}
+                          </TableHead>
                         );
-                    }
-                    return (
-                      <TableRow
-                        key={row.id}
-                        // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
-                        className="after:border-line-200 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b relative cursor-pointer border-0"
-                        style={{
-                          height: `${virtualRow.size}px`,
-                          transform: `translateY(${virtualRow.start - idx * virtualRow.size}px)`,
-                        }}
-                        data-state={
-                          useStrictSelectedRow
-                            ? selectedRow && isSelected
-                              ? "selected"
-                              : undefined
-                            : row.getIsSelected()
-                              ? "selected"
-                              : undefined
-                        }
-                        onClick={
-                          handleSingleClick
-                            ? () => handleSingleClick(row)
-                            : undefined
-                        }
-                        onDoubleClick={
-                          handleDoubleClick
-                            ? () => handleDoubleClick(row)
-                            : undefined
-                        }>
-                        {row.getVisibleCells().map((cell: any) => (
-                          <TableCell
-                            key={cell.id}
-                            className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext(),
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={columns.length}
-                      className="h-24 text-center">
-                      {t("No Results")}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                      })}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {rows.length ? (
+                    virtualizer.getVirtualItems().map((virtualRow, idx) => {
+                      const row = rows[virtualRow.index] as any;
+                      const isSelected = selectedRowIndex === virtualRow.index;
+                      return (
+                        <TableRow
+                          onDoubleClick={() => {
+                            onRowDoubleClick?.(row.original);
+                          }}
+                          key={row.id}
+                          // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
+                          className="after:border-line-200 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b relative cursor-pointer border-0"
+                          style={{
+                            height: `${virtualRow.size}px`,
+                            transform: `translateY(${virtualRow.start - idx * virtualRow.size}px)`,
+                          }}
+                          data-state={
+                            useStrictSelectedRow
+                              ? selectedRow && isSelected
+                                ? "selected"
+                                : undefined
+                              : row.getIsSelected()
+                                ? "selected"
+                                : undefined
+                          }
+                          onClick={() => {
+                            row.toggleSelected();
+                            onRowClick?.(row.original);
+                          }}>
+                          {row.getVisibleCells().map((cell: any) => {
+                            return (
+                              <TableCell
+                                key={cell.id}
+                                className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext(),
+                                )}
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={columns.length}
+                        className="h-24 text-center">
+                        {t("No Results")}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => {
+                        return (
+                          <TableHead
+                            key={header.id}
+                            className={`${condensed ? "h-8" : "h-10"}`}>
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(
+                                  header.column.columnDef.header,
+                                  header.getContext(),
+                                )}
+                          </TableHead>
+                        );
+                      })}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {rows.length ? (
+                    virtualizer.getVirtualItems().map((virtualRow, idx) => {
+                      const row = rows[virtualRow.index] as any;
+                      const isSelected = selectedRowIndex === virtualRow.index;
+                      return (
+                        <TableRow
+                          onDoubleClick={() => {
+                            onRowDoubleClick?.(row.original);
+                          }}
+                          key={row.id}
+                          // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
+                          className="after:border-line-200 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b relative cursor-pointer border-0"
+                          style={{
+                            height: `${virtualRow.size}px`,
+                            transform: `translateY(${virtualRow.start - idx * virtualRow.size}px)`,
+                          }}
+                          data-state={
+                            useStrictSelectedRow
+                              ? selectedRow && isSelected
+                                ? "selected"
+                                : undefined
+                              : row.getIsSelected()
+                                ? "selected"
+                                : undefined
+                          }
+                          onClick={() => {
+                            row.toggleSelected();
+                            onRowClick?.(row.original);
+                          }}>
+                          {row.getVisibleCells().map((cell: any) => {
+                            return (
+                              <TableCell
+                                key={cell.id}
+                                className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext(),
+                                )}
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={columns.length}
+                        className="h-24 text-center">
+                        {t("No Results")}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </div>
         </div>
       </div>
