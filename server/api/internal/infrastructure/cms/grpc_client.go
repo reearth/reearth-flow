@@ -15,7 +15,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 	protobuf "google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -84,16 +83,11 @@ func (p *ConnectionPool) getConnection(endpoint, token string, useTLS bool) (*gr
 	}
 	var opts []grpc.DialOption
 
-	if useTLS {
-		config := &tls.Config{
-			ServerName: trimPort(endpoint),
-		}
-		creds := credentials.NewTLS(config)
-		opts = append(opts, grpc.WithTransportCredentials(creds))
-	} else {
-		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	config := &tls.Config{
+		ServerName: trimPort(endpoint),
 	}
-
+	creds := credentials.NewTLS(config)
+	opts = append(opts, grpc.WithTransportCredentials(creds))
 	if token != "" {
 		opts = append(opts, grpc.WithPerRPCCredentials(&tokenAuth{token}))
 	}
