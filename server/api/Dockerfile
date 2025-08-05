@@ -11,7 +11,7 @@ RUN apk add --update --no-cache \
 
 WORKDIR /reearth-flow
 
-COPY server/api/go.mod server/api/go.sum server/api/main.go /reearth-flow/
+COPY server/api/go.mod server/api/go.sum /reearth-flow/
 RUN go mod download
 
 COPY server/api/cmd/ /reearth-flow/cmd/
