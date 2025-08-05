@@ -172,18 +172,17 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                   <CaretLeftIcon />
                 </Button>
               )}
-              {viewMode !== "items" &&
-                viewMode !== "itemDetails" &&
-                viewMode !== "itemAssets" && (
-                  <Input
-                    placeholder={t("Search") + "..."}
-                    value={searchTerm ?? ""}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="h-[36px] max-w-sm"
-                  />
-                )}
+              {viewMode !== "itemDetails" && viewMode !== "itemAssets" && (
+                <Input
+                  placeholder={t("Search") + "..."}
+                  value={searchTerm ?? ""}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="h-[36px] max-w-sm"
+                />
+              )}
             </div>
-            <ScrollArea className="flex-1">
+            <ScrollArea
+              className={`${viewMode === "items" ? "hidden" : "flex-1"}`}>
               {viewMode === "projects" && (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {isLoading ? (

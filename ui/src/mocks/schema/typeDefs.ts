@@ -706,7 +706,7 @@ export const typeDefs = `
     cmsProject(projectIdOrAlias: ID!): CMSProject
     cmsProjects(workspaceId: ID!, publicOnly: Boolean): [CMSProject!]!
     cmsModels(projectId: ID!): [CMSModel!]!
-    cmsItems(projectId: ID!, modelId: ID!, page: Int, pageSize: Int): CMSItemsConnection!
+    cmsItems(projectId: ID!, modelId: ID!, keyword: String, page: Int, pageSize: Int): CMSItemsConnection!
     cmsModelExportUrl(projectId: ID!, modelId: ID!): String!
   }
 

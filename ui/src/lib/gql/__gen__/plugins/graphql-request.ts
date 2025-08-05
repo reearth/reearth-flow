@@ -815,6 +815,7 @@ export type QueryAssetsArgs = {
 
 
 export type QueryCmsItemsArgs = {
+  keyword?: InputMaybe<Scalars['String']['input']>;
   modelId: Scalars['ID']['input'];
   page?: InputMaybe<Scalars['Int']['input']>;
   pageSize?: InputMaybe<Scalars['Int']['input']>;
@@ -1250,6 +1251,7 @@ export type GetCmsModelsQuery = { __typename?: 'Query', cmsModels: Array<{ __typ
 export type GetCmsItemsQueryVariables = Exact<{
   projectId: Scalars['ID']['input'];
   modelId: Scalars['ID']['input'];
+  keyword?: InputMaybe<Scalars['String']['input']>;
   page?: InputMaybe<Scalars['Int']['input']>;
   pageSize?: InputMaybe<Scalars['Int']['input']>;
 }>;
@@ -1914,10 +1916,11 @@ export const GetCmsModelsDocument = gql`
 }
     ${CmsModelFragmentDoc}`;
 export const GetCmsItemsDocument = gql`
-    query GetCmsItems($projectId: ID!, $modelId: ID!, $page: Int, $pageSize: Int) {
+    query GetCmsItems($projectId: ID!, $modelId: ID!, $keyword: String, $page: Int, $pageSize: Int) {
   cmsItems(
     projectId: $projectId
     modelId: $modelId
+    keyword: $keyword
     page: $page
     pageSize: $pageSize
   ) {

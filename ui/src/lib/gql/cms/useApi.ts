@@ -37,12 +37,14 @@ export const useCms = () => {
   const useGetCmsItems = (
     projectId: string,
     modelId: string,
+    keyword?: string,
     page?: number,
     pageSize?: number,
   ) => {
     const { data, ...rest } = useGetCmsItemsQuery(
       projectId,
       modelId,
+      keyword,
       page,
       pageSize,
     );

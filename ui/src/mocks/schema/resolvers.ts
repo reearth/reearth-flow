@@ -573,15 +573,29 @@ export const resolvers = {
       args: {
         projectId: string;
         modelId: string;
+        keyword?: string;
         page?: number;
         pageSize?: number;
       },
     ) => {
       // Filter items by projectId and modelId
-      const filteredItems = cmsItems.filter(
+
+      let filteredItems = cmsItems.filter(
         (item) =>
           item.projectId === args.projectId && item.modelId === args.modelId,
       );
+
+      if (args.keyword && args.keyword.trim() !== "") {
+        filteredItems = filteredItems.filter((item) => {
+          // Search through all string properties of the item
+          return Object.entries(item as any).some(([_, value]) => {
+            if (typeof value === "string" && args.keyword) {
+              return value.toLowerCase().includes(args.keyword.toLowerCase());
+            }
+            return false;
+          });
+        });
+      }
 
       const page = args.page || 1;
       const pageSize = args.pageSize || 10;

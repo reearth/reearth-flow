@@ -16,10 +16,17 @@ query GetCmsModels($projectId: ID!) {
   }
 }
 
-query GetCmsItems($projectId: ID!, $modelId: ID!, $page: Int, $pageSize: Int) {
+query GetCmsItems(
+  $projectId: ID!
+  $modelId: ID!
+  $keyword: String
+  $page: Int
+  $pageSize: Int
+) {
   cmsItems(
     projectId: $projectId
     modelId: $modelId
+    keyword: $keyword
     page: $page
     pageSize: $pageSize
   ) {

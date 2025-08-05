@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { useDebouncedSearch } from "@flow/hooks";
 import { useCms } from "@flow/lib/gql/cms";
 import { CMS_ITEMS_FETCH_RATE } from "@flow/lib/gql/cms/useQueries";
 import { CmsItem, CmsModel, CmsProject } from "@flow/types";
@@ -20,7 +21,6 @@ export default ({ workspaceId }: { workspaceId: string }) => {
   const [selectedItem, setSelectedItem] = useState<CmsItem | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [searchTerm, setSearchTerm] = useState<string>("");
   const [viewMode, setViewMode] = useState<ViewMode>("projects");
   const [isItemDetailOpen, setIsItemDetailOpen] = useState(false);
 
@@ -32,9 +32,18 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     ? modelsQuery.page?.cmsModels || []
     : [];
 
+  const { searchTerm, setSearchTerm } = useDebouncedSearch({
+    initialSearchTerm: "",
+    delay: 500,
+    onDebounced: () => {
+      itemsQuery.refetch();
+    },
+  });
+
   const itemsQuery = useGetCmsItems(
     selectedProject?.id || "",
     selectedModel?.id || "",
+    searchTerm,
     currentPage,
     CMS_ITEMS_FETCH_RATE,
   );

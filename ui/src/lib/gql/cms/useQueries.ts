@@ -71,6 +71,7 @@ export const useQueries = () => {
   const useGetCmsItemsQuery = (
     projectId: string,
     modelId: string,
+    keyword?: string,
     page?: number,
     pageSize?: number,
   ) =>
@@ -80,6 +81,7 @@ export const useQueries = () => {
         const data = await graphQLContext?.GetCmsItems({
           projectId,
           modelId,
+          keyword,
           page: page,
           pageSize: pageSize,
         });
