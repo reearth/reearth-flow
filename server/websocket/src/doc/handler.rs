@@ -309,53 +309,6 @@ impl DocumentHandler {
         }
     }
 
-    pub async fn get_history_by_version(
-        Path((doc_id, version)): Path<(String, u64)>,
-        State(state): State<Arc<AppState>>,
-    ) -> Response {
-        let storage = state.pool.get_store();
-        let version_u32 = version as u32;
-
-        let result = async {
-            let update_info = storage.get_updates_by_version(&doc_id, version_u32).await?;
-
-            match update_info {
-                Some(info) => {
-                    let item = HistoryItem::from(info);
-                    Ok::<_, anyhow::Error>(item)
-                }
-                None => Err(anyhow::anyhow!("History version not found")),
-            }
-        }
-        .await;
-
-        match result {
-            Ok(item) => {
-                let response = HistoryResponse {
-                    updates: item.updates,
-                    version: item.version,
-                    timestamp: item.timestamp.to_rfc3339(),
-                };
-
-                Json(response).into_response()
-            }
-            Err(err) => {
-                error!(
-                    "Failed to get history for document {} version {}: {}",
-                    doc_id, version, err
-                );
-
-                let status_code = if err.to_string().contains("not found") {
-                    StatusCode::NOT_FOUND
-                } else {
-                    StatusCode::INTERNAL_SERVER_ERROR
-                };
-
-                (status_code, format!("Error: {err}")).into_response()
-            }
-        }
-    }
-
     pub async fn flush_to_gcs(
         Path(doc_id): Path<String>,
         State(state): State<Arc<AppState>>,

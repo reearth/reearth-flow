@@ -8,9 +8,7 @@ mod broadcast;
 pub mod conf;
 pub mod conn;
 pub mod doc;
-pub mod storage;
 pub mod tools;
-pub mod ws;
 
 pub use broadcast::group;
 pub use broadcast::pool;
@@ -57,5 +55,8 @@ pub use conf::Config;
 pub use group::BroadcastGroup;
 pub use pool::BroadcastPool;
 pub use server::{ensure_bucket, start_server};
-pub use storage::gcs::GcsStore;
-pub use storage::kv::DocOps;
+
+pub mod application;
+pub mod domain;
+pub mod infrastructure;
+pub mod interface;
