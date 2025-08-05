@@ -64,7 +64,7 @@ const AssetsManager: React.FC = () => {
   return (
     <div className="flex h-full flex-1 flex-col px-6 pt-4 pb-2">
       <div className="flex h-[50px] flex-shrink-0 items-center justify-between gap-2 border-b pb-4">
-        <p className="text-lg dark:font-extralight">{t("Assets")}</p>
+        <p className="text-lg dark:font-extralight">{t("Assets Manager")}</p>
         <Button
           className="flex gap-2"
           variant="default"

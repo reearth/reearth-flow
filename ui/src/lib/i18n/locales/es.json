@@ -320,6 +320,7 @@
   "Light": "Claro",
   "Dark": "Oscuro",
   "System": "Sistema",
+  "Assets Manager": "Administrador de activos",
   "Create a deployment from file": "Crear un despliegue desde un archivo",
   "Workflow file: ": "Archivo de flujo de trabajo: ",
   "There is a problem with file you tried to upload. Please verify its contents and try again.": "Hay un problema con el archivo que intentaste subir. Por favor, verifica su contenido e inténtalo de nuevo.",

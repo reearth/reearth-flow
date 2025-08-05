@@ -320,6 +320,7 @@
   "Light": "浅色",
   "Dark": "深色",
   "System": "系统",
+  "Assets Manager": "资产管理器",
   "Create a deployment from file": "从文件创建部署",
   "Workflow file: ": "工作流文件: ",
   "There is a problem with file you tried to upload. Please verify its contents and try again.": "您尝试上传的文件存在问题。请验证其内容并重试。",
