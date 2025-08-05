@@ -49,8 +49,16 @@ RUN \
     apt-get update && \
     apt-get install -y \
     ca-certificates \
-    libxml2 && \
+    libxml2 \
+    python3.11 \
+    python3.11-venv && \
     rm -rf /var/lib/apt/lists/*
+
+RUN python3.11 -m venv /opt/venv && \
+    /opt/venv/bin/pip install --upgrade pip && \
+    /opt/venv/bin/pip install py2wasm
+
+ENV PATH="/opt/venv/bin:$PATH"
 
 COPY --chmod=0755 --from=builder /tmp/reearth-flow-worker /bin
 

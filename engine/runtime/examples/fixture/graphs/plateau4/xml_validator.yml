@@ -78,7 +78,7 @@ nodes:
     type: action
     action: OutputRouter
     with:
-      routingPort: not_well_formed
+      routingPort: notWellFormed
 
 edges:
   - id: f9ede89b-a599-4b07-bbc2-e2c1399ae91f
