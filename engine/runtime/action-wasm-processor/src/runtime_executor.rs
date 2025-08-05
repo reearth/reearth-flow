@@ -102,9 +102,10 @@ impl WasmRuntimeExecutorFactory {
         })?;
 
         let expr_engine = Arc::clone(&ctx.expr_engine);
+        let scope = expr_engine.new_scope();
         let source = expr_engine
-            .eval::<String>(params.source.clone().into_inner().as_str())
-            .map_err(|e| WasmProcessorError::RuntimeExecutorFactory(format!("{e:?}")))?;
+            .eval_scope::<String>(params.source.as_ref(), &scope)
+            .unwrap_or_else(|_| params.source.to_string());
 
         let (local_source_path, _temp_py_file_holder) = if source.starts_with("http://")
             || source.starts_with("https://")
