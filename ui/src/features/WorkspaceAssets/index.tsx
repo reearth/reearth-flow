@@ -19,10 +19,12 @@ import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 
-import { AssetDeletionDialog } from "../AssetsDialog/AssetDeletionDialog";
-import { AssetEditDialog } from "../AssetsDialog/AssetEditDialog";
-import { AssetsGridView } from "../AssetsDialog/AssetsGridView";
-import { AssetsListView } from "../AssetsDialog/AssetsListView";
+import {
+  AssetDeletionDialog,
+  AssetEditDialog,
+  AssetsGridView,
+  AssetsListView,
+} from "../AssetsDialog/components";
 
 import useHooks from "./hooks";
 
@@ -60,8 +62,8 @@ const AssetsManager: React.FC = () => {
   });
 
   return (
-    <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pt-4 pb-2">
-      <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
+    <div className="flex h-full flex-1 flex-col px-6 pt-4 pb-2">
+      <div className="flex h-[50px] flex-shrink-0 items-center justify-between gap-2 border-b pb-4">
         <p className="text-lg dark:font-extralight">{t("Assets")}</p>
         <Button
           className="flex gap-2"
@@ -71,8 +73,8 @@ const AssetsManager: React.FC = () => {
           <p className="text-xs dark:font-light">{t("Upload Asset")}</p>
         </Button>
       </div>
-      <div className="flex w-full flex-1 flex-col">
-        <div className="flex items-center justify-between">
+      <div className="mt-4 flex min-h-0 w-full flex-1 flex-col gap-4">
+        <div className="flex flex-shrink-0 items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 py-3">
               <Input
@@ -112,7 +114,7 @@ const AssetsManager: React.FC = () => {
             />
           </div>
         </div>
-        <div className="flex flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col">
           {layoutView === "list" ? (
             <AssetsListView
               assets={assets}
@@ -140,7 +142,7 @@ const AssetsManager: React.FC = () => {
         </div>
 
         {assets && assets.length > 0 && (
-          <div className="mt-4">
+          <div className="mt-4 flex-shrink-0">
             <Pagination
               currentPage={currentPage}
               setCurrentPage={setCurrentPage}

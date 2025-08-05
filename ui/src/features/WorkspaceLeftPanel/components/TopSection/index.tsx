@@ -10,7 +10,6 @@ import {
   DeploymentManager,
   ProjectManager,
   JobManager,
-  AssetManager,
   TriggerManager,
 } from "./components";
 
@@ -47,7 +46,6 @@ const TopSection: React.FC<Props> = ({ route }) => {
         <DeploymentManager selected={route === "deployments"} />
         <TriggerManager selected={route === "triggers"} />
         <JobManager selected={route === "jobs"} />
-        <AssetManager selected={route === "assets"} />
       </div>
     </div>
   );
