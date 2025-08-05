@@ -71,11 +71,10 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
             .into());
         };
         let expr_engine = Arc::clone(&ctx.expr_engine);
-        let compiled_params = CompiledFeatureCityGmlReaderParam {
+        let params = CompiledFeatureCityGmlReaderParam {
             dataset: expr_engine
                 .compile(params.dataset.as_ref())
                 .map_err(|e| FeatureProcessorError::FileCityGmlReaderFactory(format!("{e:?}")))?,
-            original_dataset: params.dataset.clone(),
             flatten: params.flatten,
         };
         let threads_num = {
@@ -92,7 +91,7 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
             .unwrap();
         let process = FeatureCityGmlReader {
             global_params: with,
-            params: compiled_params,
+            params,
             join_handles: Vec::new(),
             thread_pool: Arc::new(parking_lot::Mutex::new(pool)),
         };
@@ -122,7 +121,6 @@ pub struct FeatureCityGmlReaderParam {
 #[derive(Debug, Clone)]
 struct CompiledFeatureCityGmlReaderParam {
     dataset: rhai::AST,
-    original_dataset: Expr,
     flatten: Option<bool>,
 }
 
@@ -141,7 +139,6 @@ impl Processor for FeatureCityGmlReader {
         let ctx = ctx.as_context();
         let global_params = self.global_params.clone();
         let dataset = self.params.dataset.clone();
-        let original_dataset = self.params.original_dataset.clone();
         let flatten = self.params.flatten;
         let pool = self.thread_pool.lock();
         let (tx, rx) = std::sync::mpsc::channel();
@@ -153,7 +150,6 @@ impl Processor for FeatureCityGmlReader {
                 fw,
                 feature,
                 dataset,
-                original_dataset,
                 flatten,
                 global_params.clone(),
             );

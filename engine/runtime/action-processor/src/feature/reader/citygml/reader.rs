@@ -28,16 +28,17 @@ pub(super) fn read_citygml(
     fw: ProcessorChannelForwarder,
     feature: Feature,
     dataset: rhai::AST,
-    original_dataset: reearth_flow_types::Expr,
     flatten: Option<bool>,
     global_params: Option<HashMap<String, serde_json::Value>>,
 ) -> Result<(), crate::feature::errors::FeatureProcessorError> {
     let code_resolver = nusamai_plateau::codelist::Resolver::new();
     let expr_engine = Arc::clone(&ctx.expr_engine);
     let scope = feature.new_scope(expr_engine.clone(), &global_params);
-    let city_gml_path = scope
-        .eval_ast::<String>(&dataset)
-        .unwrap_or_else(|_| original_dataset.to_string());
+    let city_gml_path = scope.eval_ast::<String>(&dataset).map_err(|e| {
+        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!(
+            "Failed to evaluate expr: {e}"
+        ))
+    })?;
     let input_path = Uri::from_str(city_gml_path.as_str()).map_err(|e| {
         crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
     })?;
