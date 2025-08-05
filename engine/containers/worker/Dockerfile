@@ -51,7 +51,8 @@ RUN \
     ca-certificates \
     libxml2 \
     python3.11 \
-    python3.11-venv && \
+    python3.11-venv \
+    patchelf && \
     rm -rf /var/lib/apt/lists/*
 
 RUN python3.11 -m venv /opt/venv && \
