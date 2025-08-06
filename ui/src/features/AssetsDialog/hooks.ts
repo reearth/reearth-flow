@@ -31,7 +31,7 @@ export default ({
 
   const { searchTerm, setSearchTerm } = useDebouncedSearch({
     initialSearchTerm: "",
-    delay: 500,
+    delay: 300,
     onDebounced: () => {
       refetch();
     },
@@ -165,11 +165,7 @@ export default ({
         const link = document.createElement("a");
         link.href = blobUrl;
 
-        const contentDisposition = response.headers.get("Content-Disposition");
-        const fileName =
-          contentDisposition?.split("filename=")[1] ??
-          asset.url.split("/").pop() ??
-          asset.name;
+        const fileName = `${asset.name}.${asset.url.split("/").pop()?.split(".").pop()}`;
 
         link.download = fileName.replace(/"/g, "");
         document.body.appendChild(link);
