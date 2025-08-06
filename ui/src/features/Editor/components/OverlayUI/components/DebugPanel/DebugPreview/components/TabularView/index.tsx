@@ -1,6 +1,7 @@
 import { memo, useState } from "react";
 
-import { RenderFallback, DataTable as Table } from "@flow/components";
+import { RenderFallback } from "@flow/components";
+import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useT } from "@flow/lib/i18n";
 import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
@@ -13,7 +14,7 @@ type Props = {
   onDoubleClick?: (value: any) => void;
 };
 
-const DataTable: React.FC<Props> = ({
+const TabularView: React.FC<Props> = ({
   fileContent,
   fileType,
   selectedFeature,
@@ -34,7 +35,7 @@ const DataTable: React.FC<Props> = ({
       textSize="sm">
       <div className="flex h-full flex-1">
         <div className="mx-1 mt-0 mb-1 box-border overflow-scroll p-1">
-          <Table
+          <VirtualizedTable
             columns={tableColumns}
             data={tableData}
             condensed
@@ -47,7 +48,6 @@ const DataTable: React.FC<Props> = ({
             onRowClick={onSingleClick}
             onRowDoubleClick={onDoubleClick}
             useStrictSelectedRow
-            isVirtualized
           />
         </div>
       </div>
@@ -55,4 +55,4 @@ const DataTable: React.FC<Props> = ({
   );
 };
 
-export default memo(DataTable);
+export default memo(TabularView);

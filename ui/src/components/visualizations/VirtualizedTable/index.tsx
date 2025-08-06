@@ -11,7 +11,8 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useCallback, useMemo, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   DropdownMenu,
@@ -26,19 +27,15 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
+  TableRow,
+  TableCell,
+  TableBody,
+  TableHead,
+  TableHeader,
 } from "@flow/components";
 import { useDoubleClick } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { OrderDirection } from "@flow/types/paginationOptions";
-
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../Table";
 
 type DataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[];
@@ -55,6 +52,8 @@ type DataTableProps<TData, TValue> = {
   sortOptions?: { value: string; label: string }[];
   currentSortValue?: string;
   searchTerm?: string;
+  selectedRow?: any;
+  useStrictSelectedRow?: boolean;
   onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
   setCurrentPage?: (page: number) => void;
@@ -63,7 +62,7 @@ type DataTableProps<TData, TValue> = {
   setSearchTerm?: (term: string) => void;
 };
 
-function DataTable<TData, TValue>({
+function VirtualizedTable<TData, TValue>({
   columns,
   data,
   selectColumns = false,
@@ -78,6 +77,8 @@ function DataTable<TData, TValue>({
   sortOptions,
   currentSortValue,
   searchTerm,
+  selectedRow,
+  useStrictSelectedRow,
   onRowClick,
   onRowDoubleClick,
   setCurrentPage,
@@ -178,7 +179,39 @@ function DataTable<TData, TValue>({
     ASC: t("Oldest"),
   };
 
+  const parentRef = useRef<HTMLDivElement>(null);
   const { rows } = table.getRowModel();
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 24,
+  });
+  const hasScrolledRef = useRef(false);
+
+  const selectedRowIndex = useMemo(() => {
+    if (!selectedRow || !data) return -1;
+    return data.findIndex(
+      (row: any) =>
+        row.id.replace(/[^a-zA-Z0-9]/g, "") ===
+        selectedRow.id.replace(/[^a-zA-Z0-9]/g, ""),
+    );
+  }, [selectedRow, data]);
+
+  useEffect(() => {
+    if (selectedRowIndex === -1) {
+      hasScrolledRef.current = false;
+      return;
+    }
+
+    if (selectedRow.properties?._originalId) {
+      virtualizer.scrollToIndex(selectedRowIndex, {
+        align: "start",
+        behavior: "auto",
+      });
+    }
+
+    hasScrolledRef.current = true;
+  }, [selectedRowIndex, selectedRow, virtualizer]);
 
   return (
     <div className="flex h-full flex-col justify-between">
@@ -257,8 +290,17 @@ function DataTable<TData, TValue>({
           </div>
         )}
         <div className="overflow-auto rounded-md border">
-          <div className="h-full overflow-auto rounded-md border">
-            <Table>
+          <div
+            ref={parentRef}
+            className="h-full overflow-auto rounded-md border"
+            style={{ contain: "paint", willChange: "transform" }}>
+            <div
+              className="w-full caption-bottom overflow-auto text-xs"
+              style={{
+                height: `${virtualizer.getTotalSize()}px`,
+                width: "100%",
+                position: "relative",
+              }}>
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>
@@ -281,11 +323,27 @@ function DataTable<TData, TValue>({
               </TableHeader>
               <TableBody>
                 {rows.length ? (
-                  rows.map((row) => {
+                  virtualizer.getVirtualItems().map((virtualRow, idx) => {
+                    const row = rows[virtualRow.index] as any;
+                    const isSelected = selectedRowIndex === virtualRow.index;
                     return (
                       <TableRow
                         key={row.id}
-                        data-state={row.getIsSelected()}
+                        // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
+                        className="after:border-line-200 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b relative cursor-pointer border-0"
+                        style={{
+                          height: `${virtualRow.size}px`,
+                          transform: `translateY(${virtualRow.start - idx * virtualRow.size}px)`,
+                        }}
+                        data-state={
+                          useStrictSelectedRow
+                            ? selectedRow && isSelected
+                              ? "selected"
+                              : undefined
+                            : row.getIsSelected()
+                              ? "selected"
+                              : undefined
+                        }
                         onClick={
                           handleSingleClick
                             ? () => handleSingleClick(row)
@@ -321,7 +379,7 @@ function DataTable<TData, TValue>({
                   </TableRow>
                 )}
               </TableBody>
-            </Table>
+            </div>
           </div>
         </div>
       </div>
@@ -337,6 +395,4 @@ function DataTable<TData, TValue>({
   );
 }
 
-DataTable.displayName = "DataTable";
-
-export { DataTable };
+export { VirtualizedTable };

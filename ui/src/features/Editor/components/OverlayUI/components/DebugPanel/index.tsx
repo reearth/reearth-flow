@@ -28,7 +28,7 @@ import { useT } from "@flow/lib/i18n";
 
 import DebugLogs from "./DebugLogs";
 import DebugPreview from "./DebugPreview";
-import DataTable from "./DebugPreview/components/DataTable";
+import TabularView from "./DebugPreview/components/TabularView";
 import useHooks from "./hooks";
 
 const DebugPanel: React.FC = () => {
@@ -194,7 +194,7 @@ const DebugPanel: React.FC = () => {
                     </Select>
                   </div>
                 </Tabs>
-                <DataTable
+                <TabularView
                   fileContent={selectedOutputData}
                   fileType={fileType}
                   selectedFeature={selectedFeature}
