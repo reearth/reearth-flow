@@ -193,7 +193,7 @@ const DebugPreview: React.FC<Props> = ({
       ) : (
         <>
           <TabsContent
-            className="m-0 h-[calc(100%-32px)] overflow-hidden rounded-md bg-red-300"
+            className="m-0 h-[calc(100%-32px)] overflow-hidden rounded-md"
             value="2d-viewer">
             <TwoDViewer
               fileContent={processedOutputData}
