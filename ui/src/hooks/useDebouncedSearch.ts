@@ -12,8 +12,8 @@ export default ({
   delay = 300,
   onDebounced,
 }: Props) => {
+  const lastSearchTerm = useRef(initialSearchTerm);
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
-  const isFirstRun = useRef(true);
 
   const onDebouncedRef = useRef(onDebounced);
   useEffect(() => {
@@ -27,10 +27,8 @@ export default ({
   );
 
   useEffect(() => {
-    if (isFirstRun.current) {
-      isFirstRun.current = false;
-      if (initialSearchTerm === "") return;
-    }
+    if (searchTerm === lastSearchTerm.current) return;
+    lastSearchTerm.current = searchTerm;
     debounced.current(searchTerm);
   }, [searchTerm, initialSearchTerm]);
 
