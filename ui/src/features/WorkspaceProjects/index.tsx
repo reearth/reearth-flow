@@ -103,16 +103,16 @@ const ProjectsManager: React.FC = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuGroup>
-                  <DropdownMenuItem onClick={handleProjectImportClick}>
-                    <p className="text-sm">
-                      {t("Project ")}
-                      <span className="font-thin">(flow.zip)</span>
-                    </p>
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleWorkflowImportClick}>
                     <p className="text-sm">
                       {t("Workflow ")}
                       <span className="font-thin">(yaml or json)</span>
+                    </p>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleProjectImportClick}>
+                    <p className="text-sm">
+                      {t("Project ")}
+                      <span className="font-thin">(flow.zip)</span>
                     </p>
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
