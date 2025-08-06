@@ -135,7 +135,8 @@ const ActionBar: React.FC<Props> = ({
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="flex items-center justify-between"
-                onClick={onProjectExport}>
+                onClick={onProjectExport}
+                disabled>
                 <div className="flex items-center gap-1">
                   <ExportIcon weight="light" />
                   <p>{t("Export Project")}</p>
