@@ -81,12 +81,12 @@ const AssetsDialog: React.FC<Props> = ({
   return (
     <Dialog open onOpenChange={onDialogClose}>
       <DialogContent className="max-h-[800px] w-full max-w-4xl overflow-hidden">
-        <DialogTitle className="flex items-center font-thin">
-          <HardDriveIcon size={24} className="mr-2 inline-block font-thin" />
+        <DialogTitle className="flex items-center gap-2">
+          <HardDriveIcon />
           {t("Assets")}
         </DialogTitle>
         <DialogContentWrapper>
-          <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 py-3">
                 <Input
@@ -135,7 +135,7 @@ const AssetsDialog: React.FC<Props> = ({
             </Button>
           </div>
 
-          <DialogContentSection className="flex h-[500px] flex-col overflow-hidden">
+          <DialogContentSection className="flex min-h-[350px] flex-col overflow-hidden">
             {layoutView === "list" ? (
               <AssetsListView
                 assets={assets}

@@ -39,11 +39,9 @@ type Props = {
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onBeforeDelete?: (args: { nodes: Node[] }) => Promise<boolean>;
   onNodeSettings?: (e: MouseEvent | undefined, nodeId: string) => void;
-  onNodeHover?: (e: MouseEvent, node?: Node) => void;
   onNodePickerOpen?: (position: XYPosition, nodeType?: ActionNodeType) => void;
   onEdgesAdd?: (newEdges: Edge[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
-  onEdgeHover?: (e: MouseEvent, edge?: Edge) => void;
   onCopy?: (node?: Node) => void;
   onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: () => void;
@@ -60,8 +58,6 @@ const Canvas: React.FC<Props> = ({
   onNodesChange,
   onBeforeDelete,
   onNodeSettings,
-  onNodeHover,
-  onEdgeHover,
   onEdgesAdd,
   onEdgesChange,
   onNodePickerOpen,
@@ -123,16 +119,12 @@ const Canvas: React.FC<Props> = ({
       onNodeDragStart={handleCloseContextmenu}
       onNodeDragStop={handleNodeDragStop}
       onNodesDelete={handleNodesDelete}
-      onNodeMouseEnter={onNodeHover}
-      onNodeMouseLeave={onNodeHover}
       onNodeContextMenu={handleNodeContextMenu}
       onSelectionContextMenu={handleSelectionContextMenu}
       onPaneContextMenu={handlePaneContextMenu}
       onMoveStart={handleCloseContextmenu}
       onDrop={handleNodeDrop}
       onDragOver={handleNodeDragOver}
-      onEdgeMouseEnter={onEdgeHover}
-      onEdgeMouseLeave={onEdgeHover}
       onConnect={handleConnect}
       onReconnect={handleReconnect}
       onBeforeDelete={onBeforeDelete}>

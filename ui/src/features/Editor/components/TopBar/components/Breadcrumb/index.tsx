@@ -30,7 +30,7 @@ const Breadcrumb: React.FC = () => {
       <div className="flex items-center gap-2">
         {/* <SquaresFourIcon weight="thin" size={18} /> */}
         <p
-          className={`max-w-[500px] truncate text-sm transition-all delay-0 duration-500 dark:font-light ${isHovered?.includes("project") ? "max-w-[50vw] delay-500 select-text" : undefined}`}
+          className={`max-w-[500px] min-w-[100px] truncate text-center text-sm transition-all delay-0 duration-500 dark:font-light ${isHovered?.includes("project") ? "max-w-[50vw] delay-500 select-text" : undefined}`}
           onMouseEnter={() => setIsHovered((h) => [...(h ?? []), "project"])}>
           {currentProject?.name}
         </p>
