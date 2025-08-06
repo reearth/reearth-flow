@@ -168,7 +168,7 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                         ? handleBackToModels
                         : handleBackToItems
                   }
-                  variant="outline">
+                  variant="ghost">
                   <CaretLeftIcon />
                 </Button>
               )}
