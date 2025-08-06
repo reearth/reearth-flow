@@ -138,7 +138,8 @@ const ProjectCard: React.FC<Props> = ({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="justify-between gap-2"
-                onClick={handleProjectExportFromCard}>
+                onClick={handleProjectExportFromCard}
+                disabled>
                 {t("Export Project")}
                 <ExportIcon weight="light" />
               </DropdownMenuItem>
