@@ -24,6 +24,19 @@ const (
 	VisibilityPrivate
 )
 
+type Asset struct {
+	ID                      string
+	UUID                    string
+	ProjectID               string
+	Filename                string
+	Size                    uint64
+	PreviewType             *string
+	URL                     string
+	ArchiveExtractionStatus *string
+	Public                  bool
+	CreatedAt               time.Time
+}
+
 type Model struct {
 	ID          string
 	ProjectID   string
@@ -79,26 +92,74 @@ type Item struct {
 	UpdatedAt time.Time
 }
 
+type PageInfo struct {
+	Page     int32
+	PageSize int32
+}
+
+type SortInfo struct {
+	Key      string
+	Reverted bool
+}
+
 type ListProjectsInput struct {
-	WorkspaceID string
-	PublicOnly  bool
+	WorkspaceIDs []string
+	PublicOnly   bool
+	PageInfo     *PageInfo
+	SortInfo     *SortInfo
+}
+
+type ListProjectsOutput struct {
+	Projects   []*Project
+	TotalCount int64
+	PageInfo   *PageInfo
+}
+
+type GetAssetInput struct {
+	AssetID string
+}
+
+type ListAssetsInput struct {
+	ProjectID string
+	PageInfo  *PageInfo
+	SortInfo  *SortInfo
+}
+
+type ListAssetsOutput struct {
+	Assets     []*Asset
+	TotalCount int64
+	PageInfo   *PageInfo
+}
+
+type GetModelInput struct {
+	ProjectIDOrAlias string
+	ModelIDOrAlias   string
 }
 
 type ListModelsInput struct {
 	ProjectID string
+	PageInfo  *PageInfo
+	SortInfo  *SortInfo
+}
+
+type ListModelsOutput struct {
+	Models     []*Model
+	TotalCount int64
+	PageInfo   *PageInfo
 }
 
 type ListItemsInput struct {
 	ModelID   string
 	ProjectID string
-	Page      *int32
-	PageSize  *int32
 	Keyword   *string
+	PageInfo  *PageInfo
+	SortInfo  *SortInfo
 }
 
 type ListItemsOutput struct {
 	Items      []Item
-	TotalCount int32
+	TotalCount int64
+	PageInfo   *PageInfo
 }
 
 type ExportInput struct {

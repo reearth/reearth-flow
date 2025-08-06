@@ -5,7 +5,7 @@ package reearth.cms.v1;
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/any.proto";
 
-option go_package = "github.com/reearth/reearth-flow/api/pkg/cms/proto";
+option go_package = "proto/v1";
 
 service ReEarthCMS {
   // Main operations
@@ -15,6 +15,9 @@ service ReEarthCMS {
   rpc CheckAliasAvailability(AliasAvailabilityRequest) returns (AliasAvailabilityResponse) {}
   rpc GetProject(ProjectRequest) returns (ProjectResponse) {}
   rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse) {}
+  rpc GetAsset(AssetRequest) returns (AssetResponse) {}
+  rpc ListAssets(ListAssetsRequest) returns (ListAssetsResponse) {}
+  rpc GetModel(ModelRequest) returns (ModelResponse) {}
   rpc ListModels(ListModelsRequest) returns (ListModelsResponse) {}
   rpc ListItems(ListItemsRequest) returns (ListItemsResponse) {}
   rpc GetModelGeoJSONExportURL(ExportRequest) returns (ExportURLResponse) {}
@@ -24,7 +27,9 @@ service ReEarthCMS {
 // Authentication should be implemented using gRPC interceptors
 // M2M tokens should be passed in metadata with key "authorization"
 // Format: "Bearer <token>"
-// UserId should be passed in metadata with key "user-id Core messages
+// UserId should be passed in metadata with key "user-id"
+
+// Core messages
 message Project {
   string id = 1;
   string name = 2;
@@ -41,6 +46,19 @@ message Project {
 enum Visibility {
   PUBLIC = 0;
   PRIVATE = 1;
+}
+
+message Asset {
+  string id = 1;
+  string uuid = 2;
+  string project_id = 3;
+  string filename = 4;
+  uint64 size = 5;
+  optional string preview_type = 6;
+  string url = 7;
+  optional string archive_extraction_status = 8;
+  bool public = 9;
+  google.protobuf.Timestamp created_at = 10;
 }
 
 message Model {
@@ -63,25 +81,7 @@ message Item {
   google.protobuf.Timestamp updated_at = 6;
 }
 
-enum SchemaFieldType {
-  Text = 0;
-  TextArea = 1;
-  RichText = 2;
-  MarkdownText = 3;
-  Asset = 4;
-  Date = 5;
-  Bool = 6;
-  Select = 7;
-  Tag = 8;
-  Integer = 9;
-  Number = 10;
-  Reference = 11;
-  Checkbox = 12;
-  URL = 13;
-  Group = 14;
-  GeometryObject = 15;
-  GeometryEditor = 16;
-}
+
 
 message Schema {
   string schema_id = 1;
@@ -89,14 +89,44 @@ message Schema {
 }
 
 message SchemaField {
+  enum Type {
+    Text = 0;
+    TextArea = 1;
+    RichText = 2;
+    MarkdownText = 3;
+    Asset = 4;
+    Date = 5;
+    Bool = 6;
+    Select = 7;
+    Tag = 8;
+    Integer = 9;
+    Number = 10;
+    Reference = 11;
+    Checkbox = 12;
+    URL = 13;
+    Group = 14;
+    GeometryObject = 15;
+    GeometryEditor = 16;
+  }
+
   string field_id = 1;
   string name = 2;
-  SchemaFieldType type = 3;
+  Type type = 3;
   string key = 4;
   optional string description = 5;
 }
 
 // Request messages
+message PageInfo {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message SortInfo {
+  string key = 1;
+  bool reverted = 2;
+}
+
 message ProjectRequest {
   string project_id_or_alias = 1;
 }
@@ -130,20 +160,43 @@ message DeleteProjectRequest {
 }
 
 message ListProjectsRequest {
-  string workspace_id = 1;
-  bool public_only = 2;
+  repeated string workspace_ids = 1;
+  bool public_only = 3;
+
+  optional PageInfo page_info = 100;
+  optional SortInfo sort_info = 101;
+}
+
+message AssetRequest {
+  string asset_id = 1;
+}
+
+message ListAssetsRequest {
+  string project_id = 1;
+
+  optional PageInfo page_info = 100;
+  optional SortInfo sort_info = 101;
+}
+
+message ModelRequest {
+  string project_id_or_alias = 1;
+  string model_id_or_alias = 2;
 }
 
 message ListModelsRequest {
   string project_id = 1;
+
+  optional PageInfo page_info = 100;
+  optional SortInfo sort_info = 101;
 }
 
 message ListItemsRequest {
   string model_id = 1;
   string project_id = 2;
-  optional int32 page = 3;
-  optional int32 page_size = 4;
-  optional string keyword = 5;
+  optional string keyword = 3;
+
+  optional PageInfo page_info = 100;
+  optional SortInfo sort_info = 101;
 }
 
 message ExportRequest {
@@ -166,19 +219,40 @@ message DeleteProjectResponse {
 
 message ListProjectsResponse {
   repeated Project projects = 1;
-  int32 total_count = 2;
+  int64 total_count = 2;
+
+  PageInfo page_info = 100;
+}
+
+message AssetResponse {
+  Asset asset = 1;
+}
+
+message ListAssetsResponse {
+  repeated Asset assets = 1;
+  int64 total_count = 2;
+
+  PageInfo page_info = 100;
+}
+
+message ModelResponse {
+  Model model = 1;
 }
 
 message ListModelsResponse {
   repeated Model models = 1;
-  int32 total_count = 2;
+  int64 total_count = 2;
+
+  PageInfo page_info = 100;
 }
 
 message ListItemsResponse {
   repeated Item items = 1;
-  int32 total_count = 2;
+  int64 total_count = 2;
+
+  PageInfo page_info = 100;
 }
 
 message ExportURLResponse {
   string url = 1;
-} 
+}

@@ -57,6 +57,25 @@ type AssetConnection struct {
 	TotalCount int       `json:"totalCount"`
 }
 
+type CMSAsset struct {
+	ID                      ID        `json:"id"`
+	UUID                    string    `json:"uuid"`
+	ProjectID               ID        `json:"projectId"`
+	Filename                string    `json:"filename"`
+	Size                    int       `json:"size"`
+	PreviewType             *string   `json:"previewType,omitempty"`
+	URL                     string    `json:"url"`
+	ArchiveExtractionStatus *string   `json:"archiveExtractionStatus,omitempty"`
+	Public                  bool      `json:"public"`
+	CreatedAt               time.Time `json:"createdAt"`
+}
+
+type CMSAssetsConnection struct {
+	Assets     []*CMSAsset  `json:"assets"`
+	TotalCount int          `json:"totalCount"`
+	PageInfo   *CMSPageInfo `json:"pageInfo"`
+}
+
 type CMSItem struct {
 	ID        ID        `json:"id"`
 	Fields    JSON      `json:"fields"`
@@ -80,6 +99,17 @@ type CMSModel struct {
 	EditorURL   string     `json:"editorUrl"`
 	CreatedAt   time.Time  `json:"createdAt"`
 	UpdatedAt   time.Time  `json:"updatedAt"`
+}
+
+type CMSModelsConnection struct {
+	Models     []*CMSModel  `json:"models"`
+	TotalCount int          `json:"totalCount"`
+	PageInfo   *CMSPageInfo `json:"pageInfo"`
+}
+
+type CMSPageInfo struct {
+	Page     int `json:"page"`
+	PageSize int `json:"pageSize"`
 }
 
 type CMSProject struct {
