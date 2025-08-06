@@ -21,9 +21,9 @@ export const consolidateWorkflows = (
 
   const newEntryId = generateUUID();
 
-  const withVariables = projectVariables
-    .map((variable) => ({ [variable.name]: variable.defaultValue }))
-    .reduce((acc, curr) => ({ ...acc, ...curr }), {});
+  const withVariables = Object.fromEntries(
+    projectVariables.map((v) => [v.name, v.defaultValue]),
+  );
 
   const convertedWorkflows = workflows.map((wf) => {
     return wf.id === DEFAULT_ENTRY_GRAPH_ID ? { ...wf, id: newEntryId } : wf;
