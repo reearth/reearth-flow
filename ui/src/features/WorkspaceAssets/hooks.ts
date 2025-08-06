@@ -174,14 +174,9 @@ export default ({ workspaceId }: { workspaceId: string }) => {
 
   const handleAssetDoubleClick = useCallback(
     (asset: Asset) => {
-      const v = asset.url;
-      copyToClipboard(v);
-      toast({
-        title: t("Copied to clipboard"),
-        description: t("asset's URL copied to clipboard"),
-      });
+      setAssetToBeEdited(asset);
     },
-    [t, toast],
+    [setAssetToBeEdited],
   );
 
   return {

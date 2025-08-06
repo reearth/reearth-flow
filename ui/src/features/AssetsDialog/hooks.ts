@@ -51,6 +51,7 @@ export default ({
     orderDir: currentOrderDir,
     orderBy: currentOrderBy,
   });
+
   const totalPages = page?.totalPages as number;
 
   const assets = page?.assets;
@@ -185,17 +186,12 @@ export default ({
     (asset: Asset) => {
       if (onAssetDoubleClick) {
         onAssetDoubleClick(asset);
+        onDialogClose();
       } else {
-        const v = asset.url;
-        copyToClipboard(v);
-        toast({
-          title: t("Copied to clipboard"),
-          description: t("asset's URL copied to clipboard"),
-        });
+        setAssetToBeEdited(asset);
       }
-      onDialogClose();
     },
-    [onAssetDoubleClick, t, toast, onDialogClose],
+    [onAssetDoubleClick, setAssetToBeEdited, onDialogClose],
   );
 
   return {

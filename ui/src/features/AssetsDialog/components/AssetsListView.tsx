@@ -6,8 +6,7 @@ import {
 } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 
-import { FlowLogo, IconButton, LoadingSkeleton } from "@flow/components";
-import BasicBoiler from "@flow/components/BasicBoiler";
+import { IconButton } from "@flow/components";
 import { DataTable as Table } from "@flow/components/DataTable";
 import { ASSET_FETCH_RATE } from "@flow/lib/gql/assets/useQueries";
 import { useT } from "@flow/lib/i18n";
@@ -33,7 +32,6 @@ const AssetsListView: React.FC<Props> = ({
   assets,
   currentPage,
   totalPages,
-  isFetching,
   setCurrentPage,
   setAssetToBeDeleted,
   setAssetToBeEdited,
@@ -89,27 +87,16 @@ const AssetsListView: React.FC<Props> = ({
   ];
   return (
     <div className="h-full flex-col overflow-hidden">
-      {isFetching ? (
-        <LoadingSkeleton className="flex h-full justify-center" />
-      ) : assets && assets.length > 0 ? (
-        <Table
-          columns={columns}
-          data={assets}
-          showOrdering={false}
-          currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
-          totalPages={totalPages}
-          resultsPerPage={resultsPerPage}
-          onRowDoubleClick={onAssetDoubleClick}
-        />
-      ) : (
-        <div className="flex h-full items-center justify-center">
-          <BasicBoiler
-            text={t("No Assets")}
-            icon={<FlowLogo className=" mb-3 size-16 text-accent" />}
-          />
-        </div>
-      )}
+      <Table
+        columns={columns}
+        data={assets}
+        showOrdering={false}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        totalPages={totalPages}
+        resultsPerPage={resultsPerPage}
+        onRowDoubleClick={onAssetDoubleClick}
+      />
     </div>
   );
 };

@@ -137,6 +137,7 @@ const AssetsManager: React.FC = () => {
               setAssetToBeEdited={setAssetToBeEdited}
               onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
               onAssetDownload={handleAssetDownload}
+              onAssetDoubleClick={handleAssetDoubleClick}
             />
           )}
         </div>

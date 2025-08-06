@@ -158,7 +158,7 @@ const AssetsDialog: React.FC<Props> = ({
                 setAssetToBeEdited={setAssetToBeEdited}
                 onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
                 onAssetDownload={handleAssetDownload}
-                onAssetDoubleClick={onAssetDoubleClick}
+                onAssetDoubleClick={handleAssetDoubleClick}
               />
             )}
             {assets && assets.length > 0 && (
