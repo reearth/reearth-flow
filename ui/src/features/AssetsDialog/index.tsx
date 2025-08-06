@@ -84,7 +84,7 @@ const AssetsDialog: React.FC<Props> = ({
           {t("Assets")}
         </DialogTitle>
         <DialogContentWrapper>
-          <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 py-3">
                 <Input
