@@ -85,7 +85,9 @@ const ActionBar: React.FC<Props> = ({
                 onClick={() => onDialogOpen("share")}
               />
             </PopoverTrigger>
-            <PopoverContent sideOffset={16}>
+            <PopoverContent
+              sideOffset={16}
+              className="bg-primary/50 backdrop-blur">
               {showDialog === "share" && (
                 <SharePopover onProjectShare={onProjectShare} />
               )}
@@ -101,12 +103,12 @@ const ActionBar: React.FC<Props> = ({
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              className="min-w-[170px] rounded-md bg-primary/50 p-1 text-popover-foreground shadow-md backdrop-blur-lg select-none"
+              className="min-w-[170px] bg-primary/50 backdrop-blur select-none"
               align="end"
               sideOffset={14}
               alignOffset={2}>
               <DropdownMenuItem
-                className="flex items-center justify-between rounded-sm px-2 py-1.5 text-xs"
+                className="flex items-center justify-between"
                 onSelect={(e) => {
                   e.preventDefault();
                 }}
@@ -124,7 +126,7 @@ const ActionBar: React.FC<Props> = ({
                 </div>
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="flex items-center justify-between rounded-sm px-2 py-1.5 text-xs"
+                className="flex items-center justify-between"
                 onClick={() => onDialogOpen("version")}>
                 <div className="flex items-center gap-1">
                   <ClockCounterClockwiseIcon weight="light" />
@@ -132,8 +134,9 @@ const ActionBar: React.FC<Props> = ({
                 </div>
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="flex items-center justify-between rounded-sm px-2 py-1.5 text-xs"
-                onClick={onProjectExport}>
+                className="flex items-center justify-between"
+                onClick={onProjectExport}
+                disabled>
                 <div className="flex items-center gap-1">
                   <ExportIcon weight="light" />
                   <p>{t("Export Project")}</p>

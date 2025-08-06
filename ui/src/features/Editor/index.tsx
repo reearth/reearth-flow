@@ -37,7 +37,6 @@ export default function Editor({
     edges,
     selectedEdgeIds,
     openNode,
-    hoveredDetails,
     nodePickerOpen,
     canUndo,
     canRedo,
@@ -57,14 +56,12 @@ export default function Editor({
     handleBeforeDeleteNodes,
     handleDeleteDialogClose,
     handleNodeDataUpdate,
-    handleNodeHover,
     handleNodeSettings,
     handleOpenNode,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleEdgesAdd,
     handleEdgesChange,
-    handleEdgeHover,
     handleWorkflowRedo,
     handleWorkflowUndo,
     handleWorkflowRename,
@@ -104,7 +101,6 @@ export default function Editor({
         <div className="relative flex flex-1">
           <div className="flex flex-1 flex-col">
             <OverlayUI
-              hoveredDetails={hoveredDetails}
               nodePickerOpen={nodePickerOpen}
               canUndo={canUndo}
               canRedo={canRedo}
@@ -123,12 +119,10 @@ export default function Editor({
                 onNodesAdd={handleNodesAdd}
                 onBeforeDelete={handleBeforeDeleteNodes}
                 onNodesChange={handleNodesChange}
-                onNodeHover={handleNodeHover}
                 onNodeSettings={handleNodeSettings}
                 onNodePickerOpen={handleNodePickerOpen}
                 onEdgesAdd={handleEdgesAdd}
                 onEdgesChange={handleEdgesChange}
-                onEdgeHover={handleEdgeHover}
                 onCopy={handleCopy}
                 onCut={handleCut}
                 onPaste={handlePaste}
