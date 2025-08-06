@@ -85,6 +85,7 @@ const AssetsListView: React.FC<Props> = ({
       ),
     },
   ];
+
   return (
     <div className="h-full flex-1 overflow-hidden">
       <Table
