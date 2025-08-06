@@ -183,62 +183,76 @@ const CmsIntegrationDialog: React.FC<Props> = ({
             </div>
             <ScrollArea
               className={`${viewMode === "items" ? "hidden" : "flex-1"}`}>
-              {viewMode === "projects" && (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {isLoading ? (
-                    <LoadingSkeleton />
-                  ) : filteredProjects.length === 0 ? (
-                    <div className="col-span-full py-8 text-center text-muted-foreground">
-                      <BasicBoiler
-                        text={t("No Projects Found")}
-                        className="[&>div>p]:text-md size-4 pt-60"
-                        icon={<FlowLogo className="size-14 text-accent" />}
-                      />
-                    </div>
-                  ) : (
-                    filteredProjects.map((project) => {
-                      return (
-                        <CmsProjectCard
-                          key={project.id}
-                          project={project}
-                          onProjectSelect={handleProjectSelect}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {viewMode === "projects" && (
+                  <>
+                    {isLoading ? (
+                      <div className="col-span-full py-8 pt-50 text-muted-foreground">
+                        <LoadingSkeleton />
+                      </div>
+                    ) : filteredProjects.length === 0 ? (
+                      <div className="col-span-full py-8 text-center text-muted-foreground">
+                        <BasicBoiler
+                          text={t("No Projects Found")}
+                          className="[&>div>p]:text-md size-4 pt-60"
+                          icon={<FlowLogo className="size-14 text-accent" />}
                         />
-                      );
-                    })
-                  )}
-                </div>
-              )}
-              {viewMode === "models" && selectedProject && (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {isLoading ? (
-                    <LoadingSkeleton />
-                  ) : filteredModels.length === 0 ? (
-                    <div className="col-span-full py-8 text-center text-muted-foreground">
-                      <BasicBoiler
-                        text={t("No Models Found")}
-                        className="[&>div>p]:text-md size-4 pt-60"
-                        icon={<FlowLogo className="size-14 text-accent" />}
-                      />
-                    </div>
-                  ) : (
-                    filteredModels.map((model) => {
-                      return (
-                        <CmsModelCard
-                          key={model.id}
-                          model={model}
-                          onModelSelect={handleModelSelect}
+                      </div>
+                    ) : (
+                      filteredProjects.map((project) => {
+                        return (
+                          <CmsProjectCard
+                            key={project.id}
+                            project={project}
+                            onProjectSelect={handleProjectSelect}
+                          />
+                        );
+                      })
+                    )}
+                  </>
+                )}
+                {viewMode === "models" && selectedProject && (
+                  <>
+                    {isLoading ? (
+                      <div className="col-span-full py-8 pt-50 text-center text-muted-foreground">
+                        <LoadingSkeleton />
+                      </div>
+                    ) : filteredModels.length === 0 ? (
+                      <div className="col-span-full py-8 text-center text-muted-foreground">
+                        <BasicBoiler
+                          text={t("No Models Found")}
+                          className="[&>div>p]:text-md size-4 pt-60"
+                          icon={<FlowLogo className="size-14 text-accent" />}
                         />
-                      );
-                    })
-                  )}
-                </div>
-              )}
+                      </div>
+                    ) : (
+                      filteredModels.map((model) => {
+                        return (
+                          <CmsModelCard
+                            key={model.id}
+                            model={model}
+                            onModelSelect={handleModelSelect}
+                          />
+                        );
+                      })
+                    )}
+                  </>
+                )}
+              </div>
             </ScrollArea>
             {viewMode === "items" && selectedModel && (
-              <div className="flex flex-col overflow-hidden">
-                <div className="overflow-hidden">
+              <>
+                <div className="h-full flex-1 overflow-hidden">
                   {isLoading ? (
                     <LoadingSkeleton />
+                  ) : cmsItems.length === 0 ? (
+                    <div className="col-span-full py-8 text-center text-muted-foreground">
+                      <BasicBoiler
+                        text={t("No Items Found")}
+                        className="[&>div>p]:text-md size-4 pt-60"
+                        icon={<FlowLogo className="size-14 text-accent" />}
+                      />
+                    </div>
                   ) : (
                     <Table
                       columns={columns}
@@ -259,7 +273,7 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                     totalPages={cmsItemsTotalPages}
                   />
                 </div>
-              </div>
+              </>
             )}
             {viewMode === "itemDetails" && selectedItem && selectedModel && (
               <CmsItemDetails

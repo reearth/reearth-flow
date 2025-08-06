@@ -22,7 +22,8 @@ const CmsModelCard: React.FC<Props> = ({ model, onModelSelect }) => {
   return (
     <Card
       key={model.id}
-      className="cursor-pointer transition-shadow hover:shadow-md">
+      className="cursor-pointer transition-shadow hover:shadow-md"
+      onDoubleClick={() => onModelSelect(model)}>
       <CardHeader className="p-2">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -30,6 +31,7 @@ const CmsModelCard: React.FC<Props> = ({ model, onModelSelect }) => {
               <DatabaseIcon size={16} />
               {model.name}
             </CardTitle>
+
             <CardDescription className="text-sm text-muted-foreground">
               {model.description}
             </CardDescription>
