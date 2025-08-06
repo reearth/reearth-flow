@@ -1,6 +1,7 @@
 import {
   ColumnDef,
   PaginationState,
+  Row,
   SortingState,
   VisibilityState,
   flexRender,
@@ -27,6 +28,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@flow/components";
+import { useDoubleClick } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { OrderDirection } from "@flow/types/paginationOptions";
 
@@ -153,6 +155,31 @@ function DataTable<TData, TValue>({
     );
   };
 
+  const handleRowDoubleClick = (row: Row<TData>) => {
+    onRowDoubleClick?.(row.original);
+  };
+
+  const [handleSingleClick, handleDoubleClick] = useDoubleClick<
+    Row<TData>,
+    Row<TData>
+  >(
+    onRowClick
+      ? (row?: Row<TData>) => {
+          if (row) {
+            row.toggleSelected();
+            onRowClick(row.original);
+          }
+        }
+      : undefined,
+    onRowDoubleClick
+      ? (row?: Row<TData>) => {
+          if (row) {
+            handleRowDoubleClick(row);
+          }
+        }
+      : undefined,
+  );
+
   const orderDirections: Record<OrderDirection, string> = {
     DESC: t("Newest"),
     ASC: t("Oldest"),
@@ -187,6 +214,7 @@ function DataTable<TData, TValue>({
     });
     hasScrolledRef.current = true;
   }, [selectedRowIndex, virtualizer]);
+
   return (
     <div className="flex h-full flex-col justify-between">
       <div className="flex h-full flex-col">
@@ -303,9 +331,6 @@ function DataTable<TData, TValue>({
                       const isSelected = selectedRowIndex === virtualRow.index;
                       return (
                         <TableRow
-                          onDoubleClick={() => {
-                            onRowDoubleClick?.(row.original);
-                          }}
                           key={row.id}
                           // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
                           className="after:border-line-200 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b relative cursor-pointer border-0"
@@ -322,10 +347,16 @@ function DataTable<TData, TValue>({
                                 ? "selected"
                                 : undefined
                           }
-                          onClick={() => {
-                            row.toggleSelected();
-                            onRowClick?.(row.original);
-                          }}>
+                          onClick={
+                            handleSingleClick
+                              ? () => handleSingleClick(row)
+                              : undefined
+                          }
+                          onDoubleClick={
+                            handleDoubleClick
+                              ? () => handleDoubleClick(row)
+                              : undefined
+                          }>
                           {row.getVisibleCells().map((cell: any) => {
                             return (
                               <TableCell
@@ -381,9 +412,6 @@ function DataTable<TData, TValue>({
                       const isSelected = selectedRowIndex === virtualRow.index;
                       return (
                         <TableRow
-                          onDoubleClick={() => {
-                            onRowDoubleClick?.(row.original);
-                          }}
                           key={row.id}
                           // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
                           className="after:border-line-200 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b relative cursor-pointer border-0"
@@ -400,10 +428,16 @@ function DataTable<TData, TValue>({
                                 ? "selected"
                                 : undefined
                           }
-                          onClick={() => {
-                            row.toggleSelected();
-                            onRowClick?.(row.original);
-                          }}>
+                          onClick={
+                            handleSingleClick
+                              ? () => handleSingleClick(row)
+                              : undefined
+                          }
+                          onDoubleClick={
+                            handleDoubleClick
+                              ? () => handleDoubleClick(row)
+                              : undefined
+                          }>
                           {row.getVisibleCells().map((cell: any) => {
                             return (
                               <TableCell
