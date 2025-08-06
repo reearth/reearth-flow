@@ -13,6 +13,7 @@ export default ({
   onDebounced,
 }: Props) => {
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
+  const isFirstRun = useRef(true);
 
   const onDebouncedRef = useRef(onDebounced);
   useEffect(() => {
@@ -26,8 +27,12 @@ export default ({
   );
 
   useEffect(() => {
+    if (isFirstRun.current) {
+      isFirstRun.current = false;
+      if (initialSearchTerm === "") return;
+    }
     debounced.current(searchTerm);
-  }, [searchTerm]);
+  }, [searchTerm, initialSearchTerm]);
 
   return {
     searchTerm,

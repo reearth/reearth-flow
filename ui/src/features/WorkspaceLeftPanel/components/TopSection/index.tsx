@@ -42,7 +42,7 @@ const TopSection: React.FC<Props> = ({ route }) => {
         <div className="h-px bg-primary" />
       </div>
       <WorkspaceMenu />
-      <div className="flex flex-1 flex-col gap-2 px-4">
+      <div className="flex flex-col gap-2 px-4">
         <ProjectManager selected={route === "projects"} />
         <DeploymentManager selected={route === "deployments"} />
         <TriggerManager selected={route === "triggers"} />
