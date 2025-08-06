@@ -10,8 +10,6 @@ import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import useYNode from "@flow/lib/yjs/useYNode";
 import type { Edge, Node } from "@flow/types";
 
-import useUIState from "../Editor/useUIState";
-
 export default ({
   yWorkflows,
   undoTrackerActionWrapper,
@@ -82,8 +80,6 @@ export default ({
     setCurrentWorkflowId,
   });
 
-  const { hoveredDetails, handleNodeHover, handleEdgeHover } = useUIState();
-
   useEffect(() => {
     fitView({ padding: 0.5 });
   }, [fitView]);
@@ -114,13 +110,10 @@ export default ({
     edges,
     openWorkflows,
     isMainWorkflow,
-    hoveredDetails,
     openNode,
-    handleNodeHover,
     handleNodesChange: handleYNodesChange,
     handleOpenNode,
     handleNodeSettings,
-    handleEdgeHover,
     handleWorkflowOpen,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,

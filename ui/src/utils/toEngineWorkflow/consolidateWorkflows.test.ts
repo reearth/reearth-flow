@@ -59,12 +59,13 @@ describe("consolidateWorkflows", () => {
 
     vi.mocked(createSubGraphs).mockReturnValue(mockSubGraphs);
 
-    const result = consolidateWorkflows("somename", mockWorkflows);
+    const result = consolidateWorkflows("somename", [], mockWorkflows);
 
     expect(result).toEqual({
       id: "uuid-2",
       name: "somename",
       entryGraphId: "uuid-1",
+      with: {},
       graphs: mockSubGraphs,
     });
 
@@ -78,7 +79,7 @@ describe("consolidateWorkflows", () => {
       { id: "sub2", name: "Sub Workflow 2", nodes: [], edges: [] },
     ];
 
-    const result = consolidateWorkflows("somename", mockWorkflows);
+    const result = consolidateWorkflows("somename", [], mockWorkflows);
 
     expect(result).toBeUndefined();
     expect(createSubGraphs).not.toHaveBeenCalled();
@@ -88,7 +89,7 @@ describe("consolidateWorkflows", () => {
   it("should return undefined when workflows array is empty", () => {
     const mockWorkflows: Workflow[] = [];
 
-    const result = consolidateWorkflows("somename", mockWorkflows);
+    const result = consolidateWorkflows("somename", [], mockWorkflows);
 
     expect(result).toBeUndefined();
     expect(createSubGraphs).not.toHaveBeenCalled();

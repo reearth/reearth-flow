@@ -46,7 +46,7 @@ export default ({
     try {
       await handleProjectImport({
         yDocBinary,
-        projectName: sharedProject.name + t(" (import)"),
+        projectName: sharedProject.name,
         projectDescription: sharedProject.description,
         workspace: selectedWorkspace,
         accessToken,
