@@ -64,12 +64,14 @@ const paginateResults = <T>(
   if (keyword && keyword.trim() !== "") {
     filteredItems = filteredItems.filter((item) => {
       // Search through all string properties of the item
-      return Object.entries(item as any).some(([_, value]) => {
-        if (typeof value === "string") {
-          return value.toLowerCase().includes(keyword.toLowerCase());
-        }
-        return false;
-      });
+      return Object.entries(item as Record<string, unknown>).some(
+        ([_, value]) => {
+          if (typeof value === "string") {
+            return value.toLowerCase().includes(keyword.toLowerCase());
+          }
+          return false;
+        },
+      );
     });
   }
 
