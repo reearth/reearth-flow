@@ -306,7 +306,6 @@
   "Import into Workspace": "导入到工作区",
   "Project Import Failed": "项目导入失败",
   "Project could not be imported into the selected workspace": "项目无法导入到所选工作区",
-  " (import)": "（导入）",
   "Project Imported": "项目已导入",
   "{{project}} has successfully been imported into {{workspace}}": "{{project}}已成功导入到{{workspace}}",
   "Shared Project": "共享项目",

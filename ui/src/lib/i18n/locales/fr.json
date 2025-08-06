@@ -306,7 +306,6 @@
   "Import into Workspace": "Importer dans l'espace de travail",
   "Project Import Failed": "Échec de l'importation du projet",
   "Project could not be imported into the selected workspace": "Le projet n'a pas pu être importé dans l'espace de travail sélectionné",
-  " (import)": " (importation)",
   "Project Imported": "Projet importé",
   "{{project}} has successfully been imported into {{workspace}}": "{{project}} a été importé avec succès dans {{workspace}}",
   "Shared Project": "Projet partagé",

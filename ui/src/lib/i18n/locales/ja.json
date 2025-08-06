@@ -306,7 +306,6 @@
   "Import into Workspace": "ワークスペースにインポート",
   "Project Import Failed": "プロジェクトインポート失敗",
   "Project could not be imported into the selected workspace": "プロジェクトを選択したワークスペースにインポートできませんでした",
-  " (import)": " (インポート)",
   "Project Imported": "プロジェクトインポート完了",
   "{{project}} has successfully been imported into {{workspace}}": "{{project}}が{{workspace}}に正常にインポートされました",
   "Shared Project": " 共有プロジェクト",
