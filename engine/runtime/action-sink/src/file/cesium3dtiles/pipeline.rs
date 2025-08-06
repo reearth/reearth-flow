@@ -536,6 +536,8 @@ pub(super) fn tile_writing_stage(
                 primitives,
                 features.len(),
                 metadata_encoder,
+                // Some(true),
+                None
             )
             .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
 

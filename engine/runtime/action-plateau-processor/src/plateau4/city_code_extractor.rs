@@ -104,7 +104,7 @@ impl Processor for CityCodeExtractor {
             .attributes
             .get(&self.city_code_attribute)
             .ok_or(PlateauProcessorError::CityCodeExtractor(
-                "cityCode attribute empty".to_string(),
+                format!("cityCode attribute empty: {}", self.city_code_attribute),
             ))
             .cloned()?
         else {
