@@ -26,10 +26,12 @@ import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Asset } from "@flow/types";
 
-import { AssetDeletionDialog } from "./AssetDeletionDialog";
-import { AssetEditDialog } from "./AssetEditDialog";
-import { AssetsGridView } from "./AssetsGridView";
-import { AssetsListView } from "./AssetsListView";
+import {
+  AssetDeletionDialog,
+  AssetEditDialog,
+  AssetsGridView,
+  AssetsListView,
+} from "./components";
 import useHooks from "./hooks";
 
 type Props = {
@@ -156,7 +158,7 @@ const AssetsDialog: React.FC<Props> = ({
                 setAssetToBeEdited={setAssetToBeEdited}
                 onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
                 onAssetDownload={handleAssetDownload}
-                onAssetDoubleClick={onAssetDoubleClick}
+                onAssetDoubleClick={handleAssetDoubleClick}
               />
             )}
             {assets && assets.length > 0 && (
