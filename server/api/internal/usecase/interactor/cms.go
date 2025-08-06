@@ -43,15 +43,15 @@ func (i *cmsInteractor) GetCMSProject(ctx context.Context, projectIDOrAlias stri
 		return nil, fmt.Errorf("failed to get CMS project: %w", err)
 	}
 
-	authInfo := adapter.GetAuthInfo(ctx)
-	allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
-		fmt.Sprintf("workspace:%s", project.WorkspaceID), "read")
-	if err != nil {
-		return nil, fmt.Errorf("failed to check permission: %w", err)
-	}
-	if !allowed {
-		return nil, fmt.Errorf("permission denied: cannot access workspace %s", project.WorkspaceID)
-	}
+	// authInfo := adapter.GetAuthInfo(ctx)
+	// allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
+	// 	fmt.Sprintf("workspace:%s", project.WorkspaceID), "read")
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to check permission: %w", err)
+	// }
+	// if !allowed {
+	// 	return nil, fmt.Errorf("permission denied: cannot access workspace %s", project.WorkspaceID)
+	// }
 
 	return project, nil
 }
@@ -66,17 +66,17 @@ func (i *cmsInteractor) ListCMSProjects(ctx context.Context, workspaceID string,
 		return nil, 0, fmt.Errorf("CMS gateway not configured")
 	}
 
-	if !publicOnly {
-		authInfo := adapter.GetAuthInfo(ctx)
-		allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
-			fmt.Sprintf("workspace:%s", workspaceID), "read")
-		if err != nil {
-			return nil, 0, fmt.Errorf("failed to check permission: %w", err)
-		}
-		if !allowed {
-			return nil, 0, fmt.Errorf("permission denied: cannot access workspace %s", workspaceID)
-		}
-	}
+	// if !publicOnly {
+	// 	authInfo := adapter.GetAuthInfo(ctx)
+	// 	allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
+	// 		fmt.Sprintf("workspace:%s", workspaceID), "read")
+	// 	if err != nil {
+	// 		return nil, 0, fmt.Errorf("failed to check permission: %w", err)
+	// 	}
+	// 	if !allowed {
+	// 		return nil, 0, fmt.Errorf("permission denied: cannot access workspace %s", workspaceID)
+	// 	}
+	// }
 
 	log.Debugfc(ctx, "Listing CMS projects for workspace: %s, publicOnly: %v", workspaceID, publicOnly)
 
@@ -96,20 +96,20 @@ func (i *cmsInteractor) ListCMSModels(ctx context.Context, projectID string) ([]
 		return nil, 0, fmt.Errorf("CMS gateway not configured")
 	}
 
-	project, err := i.gateways.CMS.GetProject(ctx, projectID)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to get CMS project: %w", err)
-	}
+	// project, err := i.gateways.CMS.GetProject(ctx, projectID)
+	// if err != nil {
+	// 	return nil, 0, fmt.Errorf("failed to get CMS project: %w", err)
+	// }
 
-	authInfo := adapter.GetAuthInfo(ctx)
-	allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
-		fmt.Sprintf("workspace:%s", project.WorkspaceID), "read")
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to check permission: %w", err)
-	}
-	if !allowed {
-		return nil, 0, fmt.Errorf("permission denied: cannot access workspace %s", project.WorkspaceID)
-	}
+	// authInfo := adapter.GetAuthInfo(ctx)
+	// allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
+	// 	fmt.Sprintf("workspace:%s", project.WorkspaceID), "read")
+	// if err != nil {
+	// 	return nil, 0, fmt.Errorf("failed to check permission: %w", err)
+	// }
+	// if !allowed {
+	// 	return nil, 0, fmt.Errorf("permission denied: cannot access workspace %s", project.WorkspaceID)
+	// }
 
 	log.Debugfc(ctx, "Listing CMS models for project: %s", projectID)
 
@@ -128,20 +128,20 @@ func (i *cmsInteractor) ListCMSItems(ctx context.Context, projectID, modelID str
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
 
-	project, err := i.gateways.CMS.GetProject(ctx, projectID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get CMS project: %w", err)
-	}
+	// project, err := i.gateways.CMS.GetProject(ctx, projectID)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to get CMS project: %w", err)
+	// }
 
-	authInfo := adapter.GetAuthInfo(ctx)
-	allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
-		fmt.Sprintf("workspace:%s", project.WorkspaceID), "read")
-	if err != nil {
-		return nil, fmt.Errorf("failed to check permission: %w", err)
-	}
-	if !allowed {
-		return nil, fmt.Errorf("permission denied: cannot access workspace %s", project.WorkspaceID)
-	}
+	// authInfo := adapter.GetAuthInfo(ctx)
+	// allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
+	// 	fmt.Sprintf("workspace:%s", project.WorkspaceID), "read")
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to check permission: %w", err)
+	// }
+	// if !allowed {
+	// 	return nil, fmt.Errorf("permission denied: cannot access workspace %s", project.WorkspaceID)
+	// }
 
 	log.Debugfc(ctx, "Listing CMS items for model: %s in project: %s", modelID, projectID)
 
@@ -164,22 +164,22 @@ func (i *cmsInteractor) GetCMSModelExportURL(ctx context.Context, projectID, mod
 		return "", fmt.Errorf("CMS gateway not configured")
 	}
 
-	project, err := i.gateways.CMS.GetProject(ctx, projectID)
-	if err != nil {
-		return "", fmt.Errorf("failed to get CMS project: %w", err)
-	}
+	// project, err := i.gateways.CMS.GetProject(ctx, projectID)
+	// if err != nil {
+	// 	return "", fmt.Errorf("failed to get CMS project: %w", err)
+	// }
 
-	authInfo := adapter.GetAuthInfo(ctx)
-	allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
-		fmt.Sprintf("workspace:%s", project.WorkspaceID), "read")
-	if err != nil {
-		return "", fmt.Errorf("failed to check permission: %w", err)
-	}
-	if !allowed {
-		return "", fmt.Errorf("permission denied: cannot access workspace %s", project.WorkspaceID)
-	}
+	// authInfo := adapter.GetAuthInfo(ctx)
+	// allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
+	// 	fmt.Sprintf("workspace:%s", project.WorkspaceID), "read")
+	// if err != nil {
+	// 	return "", fmt.Errorf("failed to check permission: %w", err)
+	// }
+	// if !allowed {
+	// 	return "", fmt.Errorf("permission denied: cannot access workspace %s", project.WorkspaceID)
+	// }
 
-	log.Debugfc(ctx, "Getting CMS model export URL for model: %s in project: %s", modelID, projectID)
+	// log.Debugfc(ctx, "Getting CMS model export URL for model: %s in project: %s", modelID, projectID)
 
 	output, err := i.gateways.CMS.GetModelGeoJSONExportURL(ctx, cms.ExportInput{
 		ProjectID: projectID,
