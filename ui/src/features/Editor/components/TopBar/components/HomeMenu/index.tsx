@@ -4,6 +4,7 @@ import {
   BroadcastIcon,
   CaretDownIcon,
   GavelIcon,
+  HardDriveIcon,
   InfoIcon,
   KeyboardIcon,
   RocketIcon,
@@ -55,9 +56,10 @@ const HomeMenu: React.FC<Props> = ({
   const { logout: handleLogout } = useAuth();
 
   const handleNavigationToDashboard = useCallback(
-    (page: "projects" | "deployments" | "triggers" | "jobs") => () => {
-      navigate({ to: `/workspaces/${workspaceId}/${page}` });
-    },
+    (page: "projects" | "deployments" | "triggers" | "jobs" | "assets") =>
+      () => {
+        navigate({ to: `/workspaces/${workspaceId}/${page}` });
+      },
     [workspaceId, navigate],
   );
 
@@ -123,6 +125,13 @@ const HomeMenu: React.FC<Props> = ({
               <p>{t("Jobs")}</p>
             </DropdownMenuItem>
           </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="gap-3"
+            onClick={handleNavigationToDashboard("assets")}>
+            <HardDriveIcon weight="light" />
+            <p>{t("Assets")}</p>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="gap-3"
