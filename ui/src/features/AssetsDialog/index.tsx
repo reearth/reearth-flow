@@ -87,12 +87,6 @@ const AssetsDialog: React.FC<Props> = ({
           <div className="mb-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 py-3">
-                <Input
-                  placeholder={t("Search") + "..."}
-                  value={searchTerm ?? ""}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-[36px] max-w-sm"
-                />
                 <Select
                   value={currentSortValue}
                   onValueChange={handleSortChange}>
@@ -107,6 +101,12 @@ const AssetsDialog: React.FC<Props> = ({
                     ))}
                   </SelectContent>
                 </Select>
+                <Input
+                  placeholder={t("Search") + "..."}
+                  value={searchTerm ?? ""}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="h-[36px] max-w-sm"
+                />
               </div>
 
               <IconButton
