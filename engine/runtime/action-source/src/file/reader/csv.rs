@@ -12,6 +12,8 @@ use tokio::sync::mpsc::Sender;
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CsvReaderParam {
+    /// # Header Row Offset
+    /// Skip this many rows from the beginning to find the header row (0 = first row is header)
     pub(crate) offset: Option<usize>,
 }
 
