@@ -264,7 +264,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         }
     }
 
-    fn receiver_name(&self, index: usize) -> Cow<str> {
+    fn receiver_name(&self, index: usize) -> Cow<'_, str> {
         Cow::Owned(self.node_handles[index].to_string())
     }
 
