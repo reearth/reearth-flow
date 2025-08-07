@@ -2,13 +2,11 @@ package main
 
 import (
 	"context"
-	"flag"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/reearth/reearth-flow/api/internal/app"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/asyncq"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/fs"
@@ -26,34 +24,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
 )
 
-var version = ""
-
 func main() {
-	workerOnly := flag.Bool("worker-only", false, "Run only worker mode")
-	appOnly := flag.Bool("app-only", false, "Run only app mode")
-	flag.Parse()
-
-	if *workerOnly {
-		runWorker()
-		return
-	}
-
-	if *appOnly {
-		app.Start(debug, version)
-		return
-	}
-
-	log.Info("Starting both app and worker...")
-
-	go func() {
-		log.Info("Starting worker in background...")
-		runWorker()
-	}()
-
-	app.Start(debug, version)
-}
-
-func runWorker() {
 	log.Info("Starting asyncq worker...")
 
 	ctx := context.Background()
