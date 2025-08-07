@@ -1,6 +1,7 @@
 package gqlmodel
 
 import (
+	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
 	"github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/util"
 	"github.com/samber/lo"
@@ -55,5 +56,22 @@ func ToMe(u *user.User) *Me {
 		Auths: util.Map(u.Auths(), func(a user.Auth) string {
 			return a.Provider
 		}),
+	}
+}
+
+// TODO: Keep using ToMe during the migration period.
+// After migration, ToMe will be updated to handle FlowUser (from flow/pkg) and ToMeFromFlow will be removed.
+func ToMeFromFlow(u *pkguser.User) *Me {
+	if u == nil {
+		return nil
+	}
+
+	return &Me{
+		ID:            ID(u.ID()),
+		Name:          u.Name(),
+		Email:         u.Email(),
+		Lang:          u.Metadata().Lang(),
+		MyWorkspaceID: ID(u.MyWorkspaceID()),
+		Auths:         u.Auths(),
 	}
 }
