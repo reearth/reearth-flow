@@ -32,7 +32,7 @@ impl ProcessorFactory for ClipperFactory {
     }
 
     fn description(&self) -> &str {
-        "Divides Candidate features using Clipper features, so that Candidates and parts of Candidates that are inside or outside of the Clipper features are output separately"
+        "Clip Features Using Boundary Shapes"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
