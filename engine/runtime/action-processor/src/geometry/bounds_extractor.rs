@@ -61,7 +61,7 @@ impl ProcessorFactory for BoundsExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Bounds Extractor"
+        "Extract Bounding Box Coordinates from Feature Geometry"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -109,14 +109,27 @@ impl ProcessorFactory for BoundsExtractorFactory {
     }
 }
 
+/// # BoundsExtractor Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct BoundsExtractorParam {
+    /// # Minimum X Attribute
+    /// Attribute name for storing the minimum X coordinate (defaults to "xmin")
     xmin: Option<Attribute>,
+    /// # Maximum X Attribute  
+    /// Attribute name for storing the maximum X coordinate (defaults to "xmax")
     xmax: Option<Attribute>,
+    /// # Minimum Y Attribute
+    /// Attribute name for storing the minimum Y coordinate (defaults to "ymin")
     ymin: Option<Attribute>,
+    /// # Maximum Y Attribute
+    /// Attribute name for storing the maximum Y coordinate (defaults to "ymax")
     ymax: Option<Attribute>,
+    /// # Minimum Z Attribute
+    /// Attribute name for storing the minimum Z coordinate (defaults to "zmin")
     zmin: Option<Attribute>,
+    /// # Maximum Z Attribute
+    /// Attribute name for storing the maximum Z coordinate (defaults to "zmax")
     zmax: Option<Attribute>,
 }
 

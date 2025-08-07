@@ -25,7 +25,7 @@ impl ProcessorFactory for AttributeAggregatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Aggregates features by attributes"
+        "Group and Aggregate Features by Attributes"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -125,6 +125,8 @@ struct AttributeAggregator {
     buffer: HashMap<AttributeValue, i64>, // string is tab
 }
 
+/// # AttributeAggregator Parameters
+/// Configure how features are grouped and aggregated based on attribute values
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeAggregatorParam {
@@ -159,12 +161,17 @@ struct CompliledAggregateAttribute {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-/// # Method to use for aggregation
 enum Method {
+    /// # Maximum Value
+    /// Find the maximum value in the group
     #[serde(rename = "max")]
     Max,
+    /// # Minimum Value
+    /// Find the minimum value in the group
     #[serde(rename = "min")]
     Min,
+    /// # Count Items
+    /// Count the number of features in the group
     #[serde(rename = "count")]
     Count,
 }

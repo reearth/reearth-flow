@@ -4,16 +4,18 @@
 ### Type
 * processor
 ### Description
-Overlays an area on another area
+Perform Area Overlay Analysis
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AreaOnAreaOverlayerParam",
+  "title": "AreaOnAreaOverlayer Parameters",
+  "description": "Configure how area overlay analysis is performed",
   "type": "object",
   "properties": {
     "groupBy": {
-      "title": "Group by",
+      "title": "Group By Attributes",
+      "description": "Optional attributes to group features by during overlay analysis",
       "type": [
         "array",
         "null"
@@ -43,12 +45,13 @@ Overlays an area on another area
 ### Type
 * processor
 ### Description
-Aggregates features by attributes
+Group and Aggregate Features by Attributes
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeAggregatorParam",
+  "title": "AttributeAggregator Parameters",
+  "description": "Configure how features are grouped and aggregated based on attribute values",
   "type": "object",
   "required": [
     "aggregateAttributes",
@@ -145,12 +148,31 @@ Aggregates features by attributes
       "type": "string"
     },
     "Method": {
-      "title": "Method to use for aggregation",
-      "type": "string",
-      "enum": [
-        "max",
-        "min",
-        "count"
+      "oneOf": [
+        {
+          "title": "Maximum Value",
+          "description": "Find the maximum value in the group",
+          "type": "string",
+          "enum": [
+            "max"
+          ]
+        },
+        {
+          "title": "Minimum Value",
+          "description": "Find the minimum value in the group",
+          "type": "string",
+          "enum": [
+            "min"
+          ]
+        },
+        {
+          "title": "Count Items",
+          "description": "Count the number of features in the group",
+          "type": "string",
+          "enum": [
+            "count"
+          ]
+        }
       ]
     }
   }
@@ -167,16 +189,18 @@ Aggregates features by attributes
 ### Type
 * processor
 ### Description
-Flattens features by attributes
+Join Array Attributes Into Single Values
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeBulkArrayJoinerParam",
+  "title": "AttributeBulkArrayJoiner Parameters",
+  "description": "Configure which array attributes to join into single values",
   "type": "object",
   "properties": {
     "ignoreAttributes": {
-      "title": "Attributes to ignore",
+      "title": "Attributes to Ignore",
+      "description": "List of attribute names to skip during array joining process",
       "type": [
         "array",
         "null"
@@ -204,12 +228,12 @@ Flattens features by attributes
 ### Type
 * processor
 ### Description
-Converts attributes from conversion table
+Transform Feature Attributes Using Lookup Tables
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeConversionTableParam",
+  "title": "AttributeConversionTable Parameters",
   "type": "object",
   "required": [
     "format",
@@ -218,6 +242,7 @@ Converts attributes from conversion table
   "properties": {
     "dataset": {
       "title": "Dataset URI",
+      "description": "Path or URI to external conversion table file",
       "anyOf": [
         {
           "$ref": "#/definitions/Expr"
@@ -228,7 +253,8 @@ Converts attributes from conversion table
       ]
     },
     "format": {
-      "title": "Format of conversion table",
+      "title": "Table Format",
+      "description": "Format of the conversion table (CSV, TSV, or JSON)",
       "allOf": [
         {
           "$ref": "#/definitions/ConversionTableFormat"
@@ -236,14 +262,16 @@ Converts attributes from conversion table
       ]
     },
     "inline": {
-      "title": "Inline conversion table",
+      "title": "Inline Table Data",
+      "description": "Conversion table data provided directly as string content",
       "type": [
         "string",
         "null"
       ]
     },
     "rules": {
-      "title": "Rules to convert attributes",
+      "title": "Conversion Rules",
+      "description": "List of rules defining how to map attributes using the conversion table",
       "type": "array",
       "items": {
         "$ref": "#/definitions/AttributeConversionTableRule"
@@ -316,19 +344,20 @@ Converts attributes from conversion table
 ### Type
 * processor
 ### Description
-Filters features by duplicate attributes
+Remove Duplicate Features Based on Attribute Values
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeDuplicateFilterParam",
+  "title": "AttributeDuplicateFilter Parameters",
   "type": "object",
   "required": [
     "filterBy"
   ],
   "properties": {
     "filterBy": {
-      "title": "Attributes to filter by",
+      "title": "Filter Attributes",
+      "description": "Attributes used to identify duplicate features - features with identical values for these attributes will be deduplicated",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Attribute"
@@ -353,19 +382,20 @@ Filters features by duplicate attributes
 ### Type
 * processor
 ### Description
-Extracts file path information from attributes
+Extract File System Information from Path Attributes
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeFilePathInfoExtractor",
+  "title": "AttributeFilePathInfoExtractor Parameters",
   "type": "object",
   "required": [
     "attribute"
   ],
   "properties": {
     "attribute": {
-      "title": "Attribute to extract file path from",
+      "title": "Source Path Attribute",
+      "description": "Attribute containing the file path to analyze for extracting file system information",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -392,19 +422,20 @@ Extracts file path information from attributes
 ### Type
 * processor
 ### Description
-Flattens features by attributes
+Flatten Nested Object Attributes into Top-Level Attributes
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeFlattenerParam",
+  "title": "AttributeFlattener Parameters",
   "type": "object",
   "required": [
     "attributes"
   ],
   "properties": {
     "attributes": {
-      "title": "Attributes to flatten",
+      "title": "Attributes to Flatten",
+      "description": "Map/object attributes that should be flattened - their nested properties will become top-level attributes",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Attribute"
@@ -429,19 +460,20 @@ Flattens features by attributes
 ### Type
 * processor
 ### Description
-Manages attributes
+Create, Convert, Rename, and Remove Feature Attributes
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeManagerParam",
+  "title": "AttributeManager Parameters",
   "type": "object",
   "required": [
     "operations"
   ],
   "properties": {
     "operations": {
-      "title": "Operations to perform",
+      "title": "Attribute Operations",
+      "description": "List of operations to perform on feature attributes (create, convert, rename, remove)",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Operation"
@@ -507,19 +539,20 @@ Manages attributes
 ### Type
 * processor
 ### Description
-Maps attributes
+Transform Feature Attributes Using Expressions and Mappings
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeMapperParam",
+  "title": "AttributeMapper Parameters",
   "type": "object",
   "required": [
     "mappers"
   ],
   "properties": {
     "mappers": {
-      "title": "Mappers",
+      "title": "Attribute Mappers",
+      "description": "List of mapping rules to transform attributes using expressions or value copying",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Mapper"
@@ -599,15 +632,17 @@ Maps attributes
 ### Type
 * processor
 ### Description
-Bounds Extractor
+Extract Bounding Box Coordinates from Feature Geometry
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "BoundsExtractorParam",
+  "title": "BoundsExtractor Parameters",
   "type": "object",
   "properties": {
     "xmax": {
+      "title": "Maximum X Attribute",
+      "description": "Attribute name for storing the maximum X coordinate (defaults to \"xmax\")",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -618,6 +653,8 @@ Bounds Extractor
       ]
     },
     "xmin": {
+      "title": "Minimum X Attribute",
+      "description": "Attribute name for storing the minimum X coordinate (defaults to \"xmin\")",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -628,6 +665,8 @@ Bounds Extractor
       ]
     },
     "ymax": {
+      "title": "Maximum Y Attribute",
+      "description": "Attribute name for storing the maximum Y coordinate (defaults to \"ymax\")",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -638,6 +677,8 @@ Bounds Extractor
       ]
     },
     "ymin": {
+      "title": "Minimum Y Attribute",
+      "description": "Attribute name for storing the minimum Y coordinate (defaults to \"ymin\")",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -648,6 +689,8 @@ Bounds Extractor
       ]
     },
     "zmax": {
+      "title": "Maximum Z Attribute",
+      "description": "Attribute name for storing the maximum Z coordinate (defaults to \"zmax\")",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -658,6 +701,8 @@ Bounds Extractor
       ]
     },
     "zmin": {
+      "title": "Minimum Z Attribute",
+      "description": "Attribute name for storing the minimum Z coordinate (defaults to \"zmin\")",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -887,7 +932,7 @@ Rename Feature Attributes in Bulk
 ### Type
 * processor
 ### Description
-Replaces the geometry of the feature with a point that is either in the center of the feature's bounding box, at the center of mass of the feature, or somewhere guaranteed to be inside the feature's area.
+Replace Feature Geometry with Center Point
 ### Parameters
 * No parameters
 ### Input Ports
@@ -902,12 +947,12 @@ Replaces the geometry of the feature with a point that is either in the center o
 ### Type
 * sink
 ### Description
-Writes features to a file
+Export Features as Cesium 3D Tiles for Web Visualization
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Cesium3DTilesWriterParam",
+  "title": "Cesium3DTilesWriter Parameters",
   "type": "object",
   "required": [
     "maxZoom",
@@ -916,12 +961,16 @@ Writes features to a file
   ],
   "properties": {
     "attachTexture": {
+      "title": "Attach Textures",
+      "description": "Whether to include texture information in the generated tiles",
       "type": [
         "boolean",
         "null"
       ]
     },
     "compressOutput": {
+      "title": "Compressed Output Path",
+      "description": "Optional path for compressed archive output",
       "anyOf": [
         {
           "$ref": "#/definitions/Expr"
@@ -932,17 +981,27 @@ Writes features to a file
       ]
     },
     "maxZoom": {
+      "title": "Maximum Zoom Level",
+      "description": "Maximum zoom level for tile generation (0-24)",
       "type": "integer",
       "format": "uint8",
       "minimum": 0.0
     },
     "minZoom": {
+      "title": "Minimum Zoom Level",
+      "description": "Minimum zoom level for tile generation (0-24)",
       "type": "integer",
       "format": "uint8",
       "minimum": 0.0
     },
     "output": {
-      "$ref": "#/definitions/Expr"
+      "title": "Output Path",
+      "description": "Directory path where the 3D tiles will be written",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
     }
   },
   "definitions": {
@@ -980,7 +1039,7 @@ Clip Features Using Boundary Shapes
 ### Type
 * processor
 ### Description
-Checks if curves form closed loops
+Filter LineString Features by Closed/Open Status
 ### Parameters
 * No parameters
 ### Input Ports
@@ -996,15 +1055,17 @@ Checks if curves form closed loops
 ### Type
 * processor
 ### Description
-Creates a convex hull based on a group of input features.
+Generate Convex Hull Polygons from Grouped Features
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ConvexHullAccumulatorParam",
+  "title": "ConvexHullAccumulator Parameters",
   "type": "object",
   "properties": {
     "groupBy": {
+      "title": "Group By Attributes",
+      "description": "Attributes used to group features before creating convex hulls - each group gets its own hull",
       "type": [
         "array",
         "null"
@@ -1126,18 +1187,20 @@ Read Features from CSV or TSV File
 ### Type
 * sink
 ### Description
-Writes features to a Czml file
+Export Features as CZML for Cesium Visualization
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CzmlWriterParam",
+  "title": "CzmlWriter Parameters",
   "type": "object",
   "required": [
     "output"
   ],
   "properties": {
     "groupBy": {
+      "title": "Group By Attributes",
+      "description": "Attributes used to group features into separate CZML files",
       "type": [
         "array",
         "null"
@@ -1147,7 +1210,13 @@ Writes features to a Czml file
       }
     },
     "output": {
-      "$ref": "#/definitions/Expr"
+      "title": "Output File Path",
+      "description": "Path where the CZML file will be written",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
     }
   },
   "definitions": {
