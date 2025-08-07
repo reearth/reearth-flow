@@ -116,7 +116,7 @@ const ParamEditor: React.FC<Props> = ({
         onValueChange={setActiveTab}
         value={activeTab}
         className="flex h-full">
-        <TabsList className="flex h-full flex-col justify-start gap-2 rounded-none bg-secondary/50 p-2 backdrop-blur">
+        <TabsList className="flex h-full w-[200px] flex-col justify-start gap-2 rounded-none p-2">
           {createdAction?.parameter && (
             <TabsTrigger
               className="h-[30px] w-full justify-start gap-2"
@@ -138,6 +138,7 @@ const ParamEditor: React.FC<Props> = ({
             <p>{t("Details")}</p>
           </TabsTrigger>
         </TabsList>
+        <div className="h-full self-center border-r border-primary" />
         <TabsContent className="px-6 py-4" value="params" asChild>
           <div className="flex size-full min-h-0 flex-col justify-between gap-4">
             <div className="min-h-0 overflow-scroll rounded px-2 pt-1">

@@ -57,7 +57,7 @@ const SelectWidget = <
   return (
     <DropdownMenu modal={true}>
       <DropdownMenuTrigger
-        className={`flex h-8 w-full items-center justify-between rounded border bg-background px-3 hover:bg-accent ${
+        className={`flex h-8 max-w-[564px] items-center justify-between gap-2 rounded border bg-background px-3 hover:bg-accent ${
           rawErrors.length > 0 ? "border-destructive" : ""
         }`}
         disabled={readonly || disabled}
@@ -68,7 +68,7 @@ const SelectWidget = <
         aria-invalid={rawErrors.length > 0}
         aria-describedby={rawErrors.length > 0 ? `${id}-error` : undefined}>
         <span className={`${value ? "" : "text-muted-foreground"}`}>
-          {getCurrentLabel()}
+          {getCurrentLabel() || placeholder}
         </span>
         <ChevronDownIcon className="size-4" />
       </DropdownMenuTrigger>

@@ -21,11 +21,11 @@ const TitleFieldTemplate = <
   required,
 }: TitleFieldProps<T, S, F>) => {
   return (
-    <Label id={id} className="my-1 first-letter:uppercase">
-      <div className="mb-1">
-        {title} {required && <span className="text-destructive"> * </span>}
+    <Label id={id} className="mt-2 mb-4 first-letter:uppercase">
+      <div className="flex flex-row items-center gap-1">
+        <p className="font-light">{title}</p>
+        {required && <p className="font-thin text-destructive">*</p>}
       </div>
-      <div className="border-b" />
     </Label>
   );
 };
