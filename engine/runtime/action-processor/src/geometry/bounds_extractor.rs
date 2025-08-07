@@ -116,7 +116,7 @@ pub(crate) struct BoundsExtractorParam {
     /// # Minimum X Attribute
     /// Attribute name for storing the minimum X coordinate (defaults to "xmin")
     xmin: Option<Attribute>,
-    /// # Maximum X Attribute  
+    /// # Maximum X Attribute
     /// Attribute name for storing the maximum X coordinate (defaults to "xmax")
     xmax: Option<Attribute>,
     /// # Minimum Y Attribute
