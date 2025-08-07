@@ -12,6 +12,7 @@ import { memo, useEffect, useRef, useState } from "react";
 
 import {
   IconButton,
+  LoadingTableSkeleton,
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
@@ -203,13 +204,23 @@ const DebugPanel: React.FC = () => {
                   </div>
                 </Tabs>
                 <div className="min-h-0 flex-1">
-                  <DataTable
-                    fileContent={selectedOutputData}
-                    fileType={fileType}
-                    selectedFeature={selectedFeature}
-                    onSingleClick={handleRowSingleClick}
-                    onDoubleClick={handleRowDoubleClick}
-                  />
+                  {isLoadingData ? (
+                    <LoadingTableSkeleton
+                      fetchRate={30}
+                      amountOfColumns={10}
+                      condensed
+                      hasColumns
+                      hasFilter
+                    />
+                  ) : (
+                    <DataTable
+                      fileContent={selectedOutputData}
+                      fileType={fileType}
+                      selectedFeature={selectedFeature}
+                      onSingleClick={handleRowSingleClick}
+                      onDoubleClick={handleRowDoubleClick}
+                    />
+                  )}
                 </div>
               </ResizablePanel>
               <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 mx-2 h-[30%] w-1 self-center rounded-md border border-accent bg-accent transition hover:border-transparent hover:bg-logo/70" />

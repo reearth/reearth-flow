@@ -12,13 +12,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   FlowLogo,
-  LoadingSkeleton,
   Pagination,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Skeleton,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import {
@@ -26,6 +26,7 @@ import {
   ALLOWED_WORKFLOW_FILE_EXTENSIONS,
 } from "@flow/global-constants";
 import { useWorkflowImport } from "@flow/hooks";
+import { PROJECT_FETCH_AMOUNT } from "@flow/lib/gql/project/useQueries";
 import { useT } from "@flow/lib/i18n";
 
 import {
@@ -146,7 +147,11 @@ const ProjectsManager: React.FC = () => {
           </Select>
         )}
         {isFetching || isProjectImporting || isDuplicating ? (
-          <LoadingSkeleton />
+          <div className="grid min-w-0 grid-cols-1 gap-2 overflow-scroll sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {Array.from({ length: PROJECT_FETCH_AMOUNT }).map((_) => (
+              <Skeleton className="h-[170px]" />
+            ))}
+          </div>
         ) : projects && projects.length > 0 ? (
           <div
             className="grid min-w-0 grid-cols-1 gap-2 overflow-scroll sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"

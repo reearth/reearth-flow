@@ -2,7 +2,7 @@ import { ColumnDef } from "@tanstack/react-table";
 
 import {
   FlowLogo,
-  LoadingSkeleton,
+  LoadingTableSkeleton,
   DataTable as Table,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
@@ -63,7 +63,12 @@ const JobsManager: React.FC = () => {
           <p className="text-lg dark:font-extralight">{t("Jobs")}</p>
         </div>
         {isFetching ? (
-          <LoadingSkeleton />
+          <LoadingTableSkeleton
+            fetchRate={JOBS_FETCH_RATE}
+            amountOfColumns={columns.length}
+            hasColumns
+            hasOrdering
+          />
         ) : jobs && jobs.length > 0 ? (
           <Table
             columns={columns}
