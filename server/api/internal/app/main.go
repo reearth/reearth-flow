@@ -12,7 +12,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
-	"github.com/reearth/reearth-flow/api/internal/infrastructure/auth"
 	authserver "github.com/reearth/reearth-flow/api/internal/infrastructure/auth"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gql"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
@@ -66,7 +65,7 @@ func Start(debug bool, version string) {
 	}
 
 	// AccountGQLClient
-	accountGQLClient := gql.NewClient(conf.AccountsApiHost, auth.DynamicAuthTransport{})
+	accountGQLClient := gql.NewClient(conf.AccountsApiHost, authserver.DynamicAuthTransport{})
 
 	serverCfg := &ServerConfig{
 		Config:            conf,

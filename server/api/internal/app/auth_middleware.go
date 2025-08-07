@@ -75,7 +75,7 @@ func conditionalGraphQLAuthMiddleware(
 ) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			var middlewares []echo.MiddlewareFunc = defaultMWs
+			middlewares := defaultMWs
 
 			if c.Path() == "/api/graphql" && c.Request().Method == http.MethodPost {
 				var body struct {
