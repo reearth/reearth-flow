@@ -14,7 +14,7 @@ type Props = {
   onDoubleClick?: (value: any) => void;
 };
 
-const TabularView: React.FC<Props> = ({
+const TableViewer: React.FC<Props> = ({
   fileContent,
   fileType,
   selectedFeature,
@@ -54,4 +54,4 @@ const TabularView: React.FC<Props> = ({
   );
 };
 
-export default memo(TabularView);
+export default memo(TableViewer);

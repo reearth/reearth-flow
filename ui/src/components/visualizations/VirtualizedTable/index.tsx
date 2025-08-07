@@ -135,11 +135,12 @@ function VirtualizedTable<TData, TValue>({
   });
 
   const selectedRowIndex = useMemo(() => {
-    if (!selectedRow || !data) return -1;
+    if (!selectedRow?.properties?._originalId || !data) return -1;
+    console.log("selectedRow", selectedRow);
     return data.findIndex(
       (row: any) =>
-        row.id.replace(/[^a-zA-Z0-9]/g, "") ===
-        selectedRow.id.replace(/[^a-zA-Z0-9]/g, ""),
+        row.id?.replace(/[^a-zA-Z0-9]/g, "") ===
+        selectedRow.id?.replace(/[^a-zA-Z0-9]/g, ""),
     );
   }, [selectedRow, data]);
 

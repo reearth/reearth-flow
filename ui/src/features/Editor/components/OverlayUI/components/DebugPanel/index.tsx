@@ -29,7 +29,7 @@ import { useT } from "@flow/lib/i18n";
 
 import DebugLogs from "./DebugLogs";
 import DebugPreview from "./DebugPreview";
-import TabularView from "./DebugPreview/components/TabularView";
+import TableViewer from "./DebugPreview/components/TableViewer";
 import useHooks from "./hooks";
 
 const DebugPanel: React.FC = () => {
@@ -203,7 +203,7 @@ const DebugPanel: React.FC = () => {
                   </div>
                 </Tabs>
                 <div className="min-h-0 flex-1">
-                  <TabularView
+                  <TableViewer
                     fileContent={selectedOutputData}
                     fileType={fileType}
                     selectedFeature={selectedFeature}
