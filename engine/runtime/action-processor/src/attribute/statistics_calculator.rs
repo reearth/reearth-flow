@@ -26,7 +26,7 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Calculates statistics of features"
+        "Calculates statistical aggregations on feature attributes with customizable expressions"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -108,14 +108,17 @@ struct CompiledCalculation {
     expr: rhai::AST,
 }
 
+/// # StatisticsCalculator Parameters
+///
+/// Configuration for calculating statistical aggregations on feature attributes.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct StatisticsCalculatorParam {
-    /// # Name of the attribute to aggregate by
+    /// Name of the attribute containing the aggregate group name
     aggregate_name: Option<Attribute>,
-    /// # Attribute to aggregate by
+    /// Attribute to group features by for aggregation
     aggregate_attribute: Option<Attribute>,
-    /// # Calculations to perform
+    /// List of statistical calculations to perform on grouped features
     calculations: Vec<Calculation>,
 }
 

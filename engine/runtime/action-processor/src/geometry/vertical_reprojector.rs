@@ -24,7 +24,7 @@ impl ProcessorFactory for VerticalReprojectorFactory {
     }
 
     fn description(&self) -> &str {
-        "Reprojects the geometry of a feature to a specified coordinate system"
+        "Reproject Vertical Coordinates Between Datums"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -80,9 +80,13 @@ enum VerticalReprojectorType {
     Jgd2011ToWgs84,
 }
 
+/// # Vertical Reprojector Parameters
+/// Configure the type of vertical datum conversion to apply
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct VerticalReprojectorParam {
+    /// # Reprojector Type
+    /// The type of vertical coordinate transformation to apply
     reprojector_type: VerticalReprojectorType,
 }
 

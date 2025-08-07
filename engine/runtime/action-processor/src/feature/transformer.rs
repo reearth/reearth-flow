@@ -25,7 +25,7 @@ impl ProcessorFactory for FeatureTransformerFactory {
     }
 
     fn description(&self) -> &str {
-        "Transforms features by expressions"
+        "Applies transformation expressions to modify feature attributes and properties"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -92,17 +92,20 @@ struct FeatureTransformer {
     transformers: Vec<CompiledTransform>,
 }
 
+/// # FeatureTransformer Parameters
+///
+/// Configuration for applying transformation expressions to features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct FeatureTransformerParam {
-    /// # Transformers to apply
+    /// List of transformation expressions to apply to each feature
     transformers: Vec<Transform>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct Transform {
-    /// # Expression to transform the feature
+    /// Expression that modifies the feature (can access and modify attributes, geometry, etc.)
     expr: Expr,
 }
 

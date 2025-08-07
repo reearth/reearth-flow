@@ -24,7 +24,7 @@ impl ProcessorFactory for HoleCounterFactory {
     }
 
     fn description(&self) -> &str {
-        "Counts the number of holes in a geometry and adds it as an attribute."
+        "Count Polygon Holes to Attribute"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -72,9 +72,13 @@ impl ProcessorFactory for HoleCounterFactory {
     }
 }
 
+/// # Hole Counter Parameters
+/// Configure where to store the count of holes found in polygon geometries
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct HoleCounterParam {
+    /// # Output Attribute
+    /// Name of the attribute where the hole count will be stored as a number
     output_attribute: Attribute,
 }
 

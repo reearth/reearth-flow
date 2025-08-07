@@ -28,7 +28,7 @@ impl ProcessorFactory for ConvexHullAccumulatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Creates a convex hull based on a group of input features."
+        "Generate Convex Hull Polygons from Grouped Features"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -80,9 +80,12 @@ impl ProcessorFactory for ConvexHullAccumulatorFactory {
     }
 }
 
+/// # ConvexHullAccumulator Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ConvexHullAccumulatorParam {
+    /// # Group By Attributes
+    /// Attributes used to group features before creating convex hulls - each group gets its own hull
     group_by: Option<Vec<Attribute>>,
 }
 

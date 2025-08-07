@@ -23,7 +23,7 @@ impl ProcessorFactory for PlanarityFilterFactory {
     }
 
     fn description(&self) -> &str {
-        "Filter geometry by type"
+        "Filter Features by Geometry Planarity"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

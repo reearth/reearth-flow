@@ -15,7 +15,7 @@ impl SinkFactory for EchoSinkFactory {
     }
 
     fn description(&self) -> &str {
-        "Echo features"
+        "Debug Echo Features to Logs"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

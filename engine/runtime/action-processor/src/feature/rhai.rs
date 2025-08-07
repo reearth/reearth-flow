@@ -24,7 +24,7 @@ impl ProcessorFactory for RhaiCallerFactory {
     }
 
     fn description(&self) -> &str {
-        "Calls Rhai script"
+        "Executes Rhai script expressions to conditionally process and transform features"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -91,12 +91,15 @@ struct RhaiCaller {
     process: rhai::AST,
 }
 
+/// # RhaiCaller Parameters
+///
+/// Configuration for executing Rhai scripts on features with conditional processing.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct RhaiCallerParam {
-    /// # Rhai script to determine if the feature is the target
+    /// Rhai script expression to determine if the feature should be processed (returns boolean)
     is_target: Expr,
-    /// # Rhai script to process the feature
+    /// Rhai script expression to process and transform the feature when target condition is met
     process: Expr,
 }
 

@@ -26,7 +26,7 @@ impl ProcessorFactory for CenterPointReplacerFactory {
     }
 
     fn description(&self) -> &str {
-        "Replaces the geometry of the feature with a point that is either in the center of the feature's bounding box, at the center of mass of the feature, or somewhere guaranteed to be inside the feature's area."
+        "Replace Feature Geometry with Center Point"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

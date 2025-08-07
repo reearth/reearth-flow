@@ -24,7 +24,7 @@ impl ProcessorFactory for GeometryReplacerFactory {
     }
 
     fn description(&self) -> &str {
-        "Replaces the geometry of a feature with a new geometry."
+        "Replace Feature Geometry from Attribute"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -71,9 +71,13 @@ impl ProcessorFactory for GeometryReplacerFactory {
     }
 }
 
+/// # Geometry Replacer Parameters
+/// Configure which attribute contains the geometry data to replace the feature's current geometry
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GeometryReplacer {
+    /// # Source Attribute
+    /// Name of the attribute containing the compressed geometry data to use as the new geometry
     source_attribute: Attribute,
 }
 

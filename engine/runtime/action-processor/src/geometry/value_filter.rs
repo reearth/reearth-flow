@@ -25,7 +25,7 @@ impl ProcessorFactory for GeometryValueFilterFactory {
     }
 
     fn description(&self) -> &str {
-        "Filter geometry by value"
+        "Filter Features by Geometry Value Type"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

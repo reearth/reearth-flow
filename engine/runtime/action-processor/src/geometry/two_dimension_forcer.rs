@@ -20,7 +20,7 @@ impl ProcessorFactory for TwoDimensionForcerFactory {
     }
 
     fn description(&self) -> &str {
-        "Forces a geometry to be two dimensional."
+        "Force 3D Geometry to 2D by Removing Z-Coordinates"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
