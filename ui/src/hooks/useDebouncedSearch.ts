@@ -12,6 +12,7 @@ export default ({
   delay = 300,
   onDebounced,
 }: Props) => {
+  const lastSearchTerm = useRef(initialSearchTerm);
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
 
   const onDebouncedRef = useRef(onDebounced);
@@ -26,8 +27,10 @@ export default ({
   );
 
   useEffect(() => {
+    if (searchTerm === lastSearchTerm.current) return;
+    lastSearchTerm.current = searchTerm;
     debounced.current(searchTerm);
-  }, [searchTerm]);
+  }, [searchTerm, initialSearchTerm]);
 
   return {
     searchTerm,

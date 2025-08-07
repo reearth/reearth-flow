@@ -49,5 +49,7 @@ const getRoute = (pathname: string): RouteOption => {
             ? "jobs"
             : pathname.includes("triggers")
               ? "triggers"
-              : "projects";
+              : pathname.includes("assets")
+                ? "assets"
+                : "projects";
 };

@@ -11,6 +11,7 @@ import {
 import { memo, useEffect, useRef, useState } from "react";
 
 import {
+  IconButton,
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
@@ -86,16 +87,14 @@ const DebugPanel: React.FC = () => {
 
   return debugJobId ? (
     <div
-      className={`absolute ${fullscreenDebug ? "bottom-0 left-0" : "bottom-4 left-4 "}  z-30 flex items-end`}>
+      className={`${fullscreenDebug ? "fixed inset-0" : ""} z-30 flex items-end`}>
       <Tabs
-        className={`pointer-events-auto w-[95vw] rounded-md bg-secondary/70 shadow-md shadow-secondary backdrop-blur-xs transition-all ${minimized ? "h-[38px]" : fullscreenDebug ? "h-[100vh] w-[100vw]" : expanded ? "h-[80vh]" : "h-[500px]"}`}
+        className={`pointer-events-auto w-[95vw] rounded-md border border-primary bg-secondary/70 p-2 shadow-md shadow-secondary backdrop-blur transition-all ${minimized ? "h-[42px]" : fullscreenDebug ? "h-[100vh] w-[100vw]" : expanded ? "h-[60vh]" : "h-[40vh]"}`}
         value={tabValue}
         defaultValue="debug-logs"
         onValueChange={setTabValue}>
-        <div
-          className={`flex ${minimized ? "" : "border-b"} p-1`}
-          onDoubleClick={handleExpand}>
-          <div className="flex w-fit items-center justify-start p-1">
+        <div className="flex justify-between pb-2" onDoubleClick={handleExpand}>
+          <div className="flex w-fit items-center">
             <TabsList className="gap-2">
               <TabsTrigger
                 className="gap-1 bg-card font-thin"
@@ -118,49 +117,55 @@ const DebugPanel: React.FC = () => {
               </TabsTrigger>
             </TabsList>
           </div>
-          <div className="mr-[120px] flex flex-1 items-center justify-center gap-2">
+          <div className="mr-[120px] flex items-center justify-center gap-2">
             <TerminalIcon />
             <p className="text-sm font-thin select-none">{t("Debug Run")}</p>
           </div>
-          <div className="flex items-center gap-2 p-1">
+          <div className="flex items-center">
             {!fullscreenDebug && (
-              <div
-                className=" rounded p-1 hover:bg-primary"
-                onClick={handleMinimize}>
-                {minimized ? (
-                  <CaretUpIcon weight="light" />
-                ) : (
-                  <MinusIcon weight="light" />
-                )}
-              </div>
+              <IconButton
+                className="h-[25px] cursor-pointer rounded hover:bg-primary"
+                icon={
+                  minimized ? (
+                    <CaretUpIcon weight="light" />
+                  ) : (
+                    <MinusIcon weight="light" />
+                  )
+                }
+                onClick={handleMinimize}
+              />
             )}
             {!minimized && !fullscreenDebug && (
-              <div
-                className="cursor-pointer rounded p-1 hover:bg-primary"
-                onClick={handleExpand}>
-                {expanded ? (
-                  <CaretDownIcon weight="light" />
-                ) : (
-                  <CaretUpIcon weight="light" />
-                )}
-              </div>
+              <IconButton
+                className="h-[25px] cursor-pointer rounded hover:bg-primary"
+                icon={
+                  expanded ? (
+                    <CaretDownIcon weight="light" />
+                  ) : (
+                    <CaretUpIcon weight="light" />
+                  )
+                }
+                onClick={handleExpand}
+              />
             )}
             {!minimized && (
-              <div
-                className="cursor-pointer rounded p-1 hover:bg-primary"
-                onClick={handleFullscreenExpand}>
-                {fullscreenDebug ? (
-                  <CornersInIcon weight="light" />
-                ) : (
-                  <CornersOutIcon weight="light" />
-                )}
-              </div>
+              <IconButton
+                className="h-[25px] cursor-pointer rounded hover:bg-primary"
+                icon={
+                  fullscreenDebug ? (
+                    <CornersInIcon weight="light" />
+                  ) : (
+                    <CornersOutIcon weight="light" />
+                  )
+                }
+                onClick={handleFullscreenExpand}
+              />
             )}
           </div>
         </div>
         <TabsContent
           value="debug-logs"
-          className="h-[calc(100%-35px)] overflow-scroll"
+          className="h-[calc(100%-30px)] overflow-scroll"
           forceMount={debugJobIdRef.current !== debugJobId ? undefined : true}
           hidden={tabValue !== "debug-logs"}>
           <DebugLogs debugJobId={debugJobId} />
@@ -170,16 +175,19 @@ const DebugPanel: React.FC = () => {
             value="debug-viewer"
             forceMount={true}
             hidden={tabValue !== "debug-viewer"}
-            className="h-[calc(100%-35px)] overflow-scroll">
+            className="h-[calc(100%-30px)] overflow-scroll">
             <ResizablePanelGroup direction="horizontal">
-              <ResizablePanel defaultSize={70} minSize={20}>
+              <ResizablePanel
+                defaultSize={70}
+                minSize={20}
+                className="flex flex-col">
                 <Tabs defaultValue="data-viewer">
-                  <div className="top-1 left-1 p-1 pt-2">
+                  <div className="py-2">
                     <Select
                       defaultValue={dataURLs[0].key}
                       value={selectedDataURL}
                       onValueChange={handleSelectedDataChange}>
-                      <SelectTrigger className="h-[26px] max-w-[200px] border-none text-xs font-bold">
+                      <SelectTrigger className="h-[26px] w-auto max-w-[250px] text-xs font-bold">
                         <SelectValue
                           placeholder={t("Select Data to Preview")}
                         />
@@ -194,15 +202,17 @@ const DebugPanel: React.FC = () => {
                     </Select>
                   </div>
                 </Tabs>
-                <DataTable
-                  fileContent={selectedOutputData}
-                  fileType={fileType}
-                  selectedFeature={selectedFeature}
-                  onSingleClick={handleRowSingleClick}
-                  onDoubleClick={handleRowDoubleClick}
-                />
+                <div className="min-h-0 flex-1">
+                  <DataTable
+                    fileContent={selectedOutputData}
+                    fileType={fileType}
+                    selectedFeature={selectedFeature}
+                    onSingleClick={handleRowSingleClick}
+                    onDoubleClick={handleRowDoubleClick}
+                  />
+                </div>
               </ResizablePanel>
-              <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 relative m-[0px] border border-border/50 transition hover:border-logo/70" />
+              <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 mx-2 h-[30%] w-1 self-center rounded-md border border-accent bg-accent transition hover:border-transparent hover:bg-logo/70" />
               <ResizablePanel defaultSize={30} minSize={20}>
                 <DebugPreview
                   debugJobState={debugJobState}

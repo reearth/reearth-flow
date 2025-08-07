@@ -111,12 +111,12 @@ const ParamEditor: React.FC<Props> = ({
     activeTab === "params" ? isParamsValid : isCustomizationsValid;
 
   return (
-    <div className="flex h-[60vh] flex-col gap-4 bg-card">
+    <div className="flex h-[60vh] flex-col gap-4">
       <Tabs
         onValueChange={setActiveTab}
         value={activeTab}
         className="flex h-full">
-        <TabsList className="flex h-full flex-col justify-start gap-2 rounded-none bg-secondary p-2">
+        <TabsList className="flex h-full flex-col justify-start gap-2 rounded-none bg-secondary/50 p-2 backdrop-blur">
           {createdAction?.parameter && (
             <TabsTrigger
               className="h-[30px] w-full justify-start gap-2"

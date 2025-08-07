@@ -140,10 +140,10 @@ const DebugPreview: React.FC<Props> = ({
 
   return debugJobState && dataURLs ? (
     <Tabs
-      className="h-full w-full p-1"
+      className="h-full w-full"
       defaultValue={tabValue}
       onValueChange={setTabValue}>
-      <div className="p-1">
+      <div className="py-1">
         <TabsList className="flex w-full justify-between p-1">
           <div className="flex gap-2">
             <TabsTrigger
@@ -193,7 +193,7 @@ const DebugPreview: React.FC<Props> = ({
       ) : (
         <>
           <TabsContent
-            className="m-0 h-[calc(100%-32px)] p-1"
+            className="m-0 h-[calc(100%-32px)] overflow-hidden rounded-md"
             value="2d-viewer">
             <TwoDViewer
               fileContent={processedOutputData}
@@ -207,8 +207,9 @@ const DebugPreview: React.FC<Props> = ({
             />
           </TabsContent>
           <TabsContent
-            className="m-0 h-[calc(100%-32px)] p-1"
-            value="3d-viewer">
+            className="m-0 h-[calc(100%-32px)]"
+            value="3d-viewer"
+            id="cesiumContainer">
             <ThreeDViewer
               fileContent={selectedOutputData}
               fileType={fileType}

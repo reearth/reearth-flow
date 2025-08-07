@@ -8,15 +8,7 @@ import { Asset, AssetOrderBy } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
-export default ({
-  workspaceId,
-  onDialogClose,
-  onAssetDoubleClick,
-}: {
-  workspaceId: string;
-  onDialogClose: () => void;
-  onAssetDoubleClick?: (asset: Asset) => void;
-}) => {
+export default ({ workspaceId }: { workspaceId: string }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const t = useT();
   const { toast } = useToast();
@@ -51,7 +43,6 @@ export default ({
     orderDir: currentOrderDir,
     orderBy: currentOrderBy,
   });
-
   const totalPages = page?.totalPages as number;
 
   const assets = page?.assets;
@@ -167,8 +158,7 @@ export default ({
         link.href = blobUrl;
 
         const fileName = `${asset.name}.${asset.url.split("/").pop()?.split(".").pop()}`;
-
-        link.download = fileName.replace(/"/g, "");
+        link.download = fileName.replace(/"/g, " ");
         document.body.appendChild(link);
         link.click();
 
@@ -184,14 +174,9 @@ export default ({
 
   const handleAssetDoubleClick = useCallback(
     (asset: Asset) => {
-      if (onAssetDoubleClick) {
-        onAssetDoubleClick(asset);
-        onDialogClose();
-      } else {
-        setAssetToBeEdited(asset);
-      }
+      setAssetToBeEdited(asset);
     },
-    [onAssetDoubleClick, setAssetToBeEdited, onDialogClose],
+    [setAssetToBeEdited],
   );
 
   return {

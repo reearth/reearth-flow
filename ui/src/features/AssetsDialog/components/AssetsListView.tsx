@@ -85,8 +85,9 @@ const AssetsListView: React.FC<Props> = ({
       ),
     },
   ];
+
   return (
-    <div className="h-full flex-col overflow-hidden">
+    <div className="h-full flex-1 overflow-hidden">
       <Table
         columns={columns}
         data={assets}
