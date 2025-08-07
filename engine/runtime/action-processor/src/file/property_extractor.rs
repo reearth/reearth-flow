@@ -24,7 +24,7 @@ impl ProcessorFactory for FilePropertyExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Extracts properties from a file"
+        "Extracts file system properties (type, size, timestamps) from files"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -131,10 +131,13 @@ impl From<FileProperty> for HashMap<Attribute, AttributeValue> {
     }
 }
 
+/// # FilePropertyExtractor Parameters
+/// 
+/// Configuration for extracting file system properties from files.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct FilePropertyExtractor {
-    /// # Attribute to extract file path from
+    /// Attribute name containing the file path to analyze for properties
     file_path_attribute: String,
 }
 

@@ -26,7 +26,7 @@ impl SinkFactory for ShapefileWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to a Shapefile"
+        "Writes geographic features to ESRI Shapefile format with optional grouping"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -84,10 +84,15 @@ pub(crate) struct ShapefileWriter {
     pub(super) buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
+/// # ShapefileWriter Parameters
+/// 
+/// Configuration for writing features to ESRI Shapefile format.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ShapefileWriterParam {
+    /// Output path or expression for the Shapefile to create
     pub(super) output: Expr,
+    /// Optional attributes to group features by, creating separate files for each group
     pub(super) group_by: Option<Vec<Attribute>>,
 }
 

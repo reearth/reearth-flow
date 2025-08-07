@@ -26,7 +26,7 @@ impl ProcessorFactory for GeometryCoercerFactory {
     }
 
     fn description(&self) -> &str {
-        "Coerces the geometry of a feature to a specific geometry"
+        "Coerces and converts feature geometries to specified target geometry types"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -78,10 +78,13 @@ enum CoercerType {
     LineString,
 }
 
+/// # GeometryCoercer Parameters
+/// 
+/// Configuration for coercing geometries to specific target types.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct GeometryCoercer {
-    /// The type of geometry to coerce to
+    /// Target geometry type to coerce features to (e.g., LineString)
     coercer_type: CoercerType,
 }
 

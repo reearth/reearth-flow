@@ -27,7 +27,7 @@ impl ProcessorFactory for XmlFragmenterFactory {
     }
 
     fn description(&self) -> &str {
-        "Fragment XML"
+        "Fragments large XML documents into smaller pieces based on specified element patterns"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -112,10 +112,14 @@ pub struct PropertySchema {
     pub(super) attribute: Attribute,
 }
 
+/// # XMLFragmenter Parameters
+/// 
+/// Configuration for fragmenting XML documents into smaller pieces.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(tag = "source", rename_all = "camelCase")]
 pub enum XmlFragmenterParam {
     #[serde(rename = "url")]
+    /// URL-based source configuration for XML fragmenting
     Url {
         #[serde(flatten)]
         property: PropertySchema,

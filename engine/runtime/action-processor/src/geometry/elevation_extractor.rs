@@ -23,7 +23,7 @@ impl ProcessorFactory for ElevationExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Extracts a feature’s first z coordinate value, storing it in an attribute."
+        "Extract Z-Coordinate Elevation to Attribute"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -71,9 +71,13 @@ impl ProcessorFactory for ElevationExtractorFactory {
     }
 }
 
+/// # Elevation Extractor Parameters
+/// Configure where to store the extracted elevation value from geometry coordinates
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ElevationExtractorParam {
+    /// # Output Attribute
+    /// Name of the attribute where the extracted elevation value will be stored
     output_attribute: Attribute,
 }
 

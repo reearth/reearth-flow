@@ -28,7 +28,7 @@ impl ProcessorFactory for WasmRuntimeExecutorFactory {
     }
 
     fn description(&self) -> &str {
-        "Compiles scripts into .wasm and runs at the wasm runtime"
+        "Compiles scripts (Python) into WebAssembly and executes them in a WASM runtime"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -198,11 +198,17 @@ pub(crate) struct WasmRuntimeExecutor {
     wasm_binary: Vec<u8>,
 }
 
+/// # WasmRuntimeExecutor Parameters
+/// 
+/// Configuration for compiling and executing scripts in WebAssembly runtime.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct WasmRuntimeExecutorParam {
+    /// Script source code or path to compile to WebAssembly
     source: Expr,
+    /// Type of processor to create (Source, Processor, or Sink)
     processor_type: ProcessorType,
+    /// Programming language of the source script (currently supports Python)
     programming_language: ProgrammingLanguage,
 }
 

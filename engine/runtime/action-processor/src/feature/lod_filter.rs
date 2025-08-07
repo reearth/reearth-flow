@@ -31,7 +31,7 @@ impl ProcessorFactory for FeatureLodFilterFactory {
     }
 
     fn description(&self) -> &str {
-        "Filter Geometry by lod"
+        "Filters features by Level of Detail (LOD), routing them to appropriate output ports"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -89,10 +89,13 @@ impl ProcessorFactory for FeatureLodFilterFactory {
     }
 }
 
+/// # FeatureLodFilter Parameters
+/// 
+/// Configuration for filtering features based on Level of Detail (LOD).
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct FeatureLodFilterParam {
-    /// # Attributes to filter by
+    /// Attribute used to group features for LOD filtering
     filter_key: Attribute,
 }
 

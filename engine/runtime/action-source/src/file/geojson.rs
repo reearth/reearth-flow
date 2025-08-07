@@ -24,7 +24,7 @@ impl SourceFactory for GeoJsonReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads features from a geojson file"
+        "Reads geographic features from GeoJSON files, supporting both single features and feature collections"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -72,6 +72,9 @@ pub(super) struct GeoJsonReader {
     pub(super) params: GeoJsonReaderParam,
 }
 
+/// # GeoJsonReader Parameters
+/// 
+/// Configuration for reading GeoJSON files as geographic features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct GeoJsonReaderParam {

@@ -32,7 +32,7 @@ impl SinkFactory for FileWriterSinkFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to a file"
+        "Write Features to Files in Various Formats"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -106,9 +106,13 @@ pub struct FileWriter {
     pub(super) buffer: HashMap<Uri, Vec<Feature>>,
 }
 
+/// # File Writer Common Parameters
+/// Common parameters shared across all file format types
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FileWriterCommonParam {
+    /// # Output Path
+    /// Expression for the output file path where features will be written
     pub(super) output: Expr,
 }
 
@@ -117,6 +121,8 @@ pub struct FileWriterCommonCompiledParam {
     pub(super) output: AST,
 }
 
+/// # File Writer Parameters
+/// Configure the output file format and destination for writing features
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase", tag = "format")]
 pub enum FileWriterParam {

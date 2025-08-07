@@ -23,7 +23,7 @@ impl ProcessorFactory for DirectoryDecompressorFactory {
     }
 
     fn description(&self) -> &str {
-        "Decompresses a directory"
+        "Extracts and decompresses archive files from specified attributes"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -75,10 +75,13 @@ impl ProcessorFactory for DirectoryDecompressorFactory {
     }
 }
 
+/// # DirectoryDecompressor Parameters
+/// 
+/// Configures the extraction and decompression of archive files.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct DirectoryDecompressorParam {
-    /// # Attribute to extract file path from
+    /// Attributes containing archive file paths to be extracted and decompressed
     archive_attributes: Vec<Attribute>,
 }
 

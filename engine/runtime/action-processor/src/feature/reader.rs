@@ -28,7 +28,7 @@ impl ProcessorFactory for FeatureReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads features from various formats"
+        "Reads features from various file formats (CSV, TSV, JSON) with configurable parsing options"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -137,10 +137,13 @@ struct FeatureReader {
     params: CompiledFeatureReaderParam,
 }
 
+/// # Common Reader Parameters
+/// 
+/// Shared configuration for all feature reader formats.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct CommonReaderParam {
-    /// # Dataset
+    /// Path or expression to the dataset file to be read
     dataset: Expr,
 }
 

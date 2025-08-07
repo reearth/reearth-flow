@@ -24,7 +24,7 @@ impl ProcessorFactory for FeatureSorterFactory {
     }
 
     fn description(&self) -> &str {
-        "Sorts features by attributes"
+        "Sorts features based on specified attributes in ascending or descending order"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -82,12 +82,15 @@ struct FeatureSorter {
     buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
+/// # FeatureSorter Parameters
+/// 
+/// Configuration for sorting features based on attribute values.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct FeatureSorterParam {
-    /// # Attributes to sort by
+    /// Attributes to use for sorting features (sort order based on attribute order)
     attributes: Vec<Attribute>,
-    /// # Order to sort by
+    /// Sorting order (ascending or descending)
     order: Order,
 }
 

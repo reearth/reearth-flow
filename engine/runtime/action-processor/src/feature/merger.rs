@@ -32,7 +32,7 @@ impl ProcessorFactory for FeatureMergerFactory {
     }
 
     fn description(&self) -> &str {
-        "Merges features by attributes"
+        "Merges requestor and supplier features based on matching attribute values"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -134,13 +134,21 @@ impl ProcessorFactory for FeatureMergerFactory {
     }
 }
 
+/// # FeatureMerger Parameters
+/// 
+/// Configuration for merging requestor and supplier features based on matching attributes or expressions.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureMergerParam {
+    /// Attributes from requestor features to use for matching (alternative to requestor_attribute_value)
     requestor_attribute: Option<Vec<Attribute>>,
+    /// Attributes from supplier features to use for matching (alternative to supplier_attribute_value)
     supplier_attribute: Option<Vec<Attribute>>,
+    /// Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)
     requestor_attribute_value: Option<Expr>,
+    /// Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)
     supplier_attribute_value: Option<Expr>,
+    /// Whether to complete grouped features before processing the next group
     complete_grouped: Option<bool>,
 }
 

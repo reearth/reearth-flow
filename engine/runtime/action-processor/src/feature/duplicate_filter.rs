@@ -19,7 +19,7 @@ impl ProcessorFactory for FeatureDuplicateFilterFactory {
     }
 
     fn description(&self) -> &str {
-        "Filters features by duplicate feature"
+        "Filter Out Duplicate Features"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

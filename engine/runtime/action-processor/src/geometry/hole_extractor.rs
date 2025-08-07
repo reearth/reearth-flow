@@ -27,7 +27,7 @@ impl ProcessorFactory for HoleExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Extracts holes in a geometry and adds it as an attribute."
+        "Extract Polygon Holes as Separate Features"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

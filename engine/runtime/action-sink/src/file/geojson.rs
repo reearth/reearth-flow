@@ -26,7 +26,7 @@ impl SinkFactory for GeoJsonWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to a geojson file"
+        "Writes geographic features to GeoJSON files with optional grouping"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -84,10 +84,15 @@ pub(super) struct GeoJsonWriter {
     pub(super) buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
+/// # GeoJsonWriter Parameters
+/// 
+/// Configuration for writing features to GeoJSON files.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct GeoJsonWriterParam {
+    /// Output path or expression for the GeoJSON file to create
     pub(super) output: Expr,
+    /// Optional attributes to group features by, creating separate files for each group
     pub(super) group_by: Option<Vec<Attribute>>,
 }
 

@@ -24,7 +24,7 @@ impl ProcessorFactory for GeometryExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Extracts geometry from a feature and adds it as an attribute."
+        "Extract Geometry Data to Attribute"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -71,9 +71,13 @@ impl ProcessorFactory for GeometryExtractorFactory {
     }
 }
 
+/// # Geometry Extractor Parameters
+/// Configure where to store the extracted geometry data as a compressed attribute
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GeometryExtractor {
+    /// # Output Attribute
+    /// Name of the attribute where the extracted geometry data will be stored as compressed JSON
     output_attribute: Attribute,
 }
 

@@ -48,7 +48,7 @@ impl ProcessorFactory for XmlValidatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Validates XML content"
+        "Validates XML documents against XSD schemas with success/failure routing"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
