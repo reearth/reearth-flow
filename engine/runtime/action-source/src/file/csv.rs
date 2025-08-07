@@ -25,7 +25,7 @@ impl SourceFactory for CsvReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads features from a csv/tsv file"
+        "Read Features from CSV or TSV File"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -73,6 +73,8 @@ pub(super) struct CsvReader {
     params: CsvReaderParam,
 }
 
+/// # CsvReader Parameters
+/// Configure how CSV and TSV files are processed and read
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct CsvReaderParam {
@@ -80,13 +82,19 @@ pub(super) struct CsvReaderParam {
     pub(super) common_property: FileReaderCommonParam,
     #[serde(flatten)]
     property: csv::CsvReaderParam,
+    /// # File Format
+    /// Choose the delimiter format for the input file
     format: CsvFormat,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "lowercase")]
 enum CsvFormat {
+    /// # CSV (Comma-Separated Values)
+    /// File with comma-separated values
     Csv,
+    /// # TSV (Tab-Separated Values)
+    /// File with tab-separated values
     Tsv,
 }
 

@@ -687,12 +687,13 @@ Bounds Extractor
 ### Type
 * processor
 ### Description
-Buffers a geometry
+Create Buffer Around Features
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Bufferer",
+  "title": "Bufferer Parameters",
+  "description": "Configure how to create buffers around input geometries",
   "type": "object",
   "required": [
     "bufferType",
@@ -701,7 +702,8 @@ Buffers a geometry
   ],
   "properties": {
     "bufferType": {
-      "title": "Buffer type",
+      "title": "Buffer Type",
+      "description": "The type of buffer to create around the input geometry",
       "allOf": [
         {
           "$ref": "#/definitions/BufferType"
@@ -709,21 +711,29 @@ Buffers a geometry
       ]
     },
     "distance": {
-      "title": "Buffer distance",
+      "title": "Distance",
+      "description": "The distance to extend the buffer from the original geometry (in coordinate units)",
       "type": "number",
       "format": "double"
     },
     "interpolationAngle": {
-      "title": "Buffer interpolation angle",
+      "title": "Interpolation Angle",
+      "description": "The angle in degrees used for curve interpolation when creating rounded corners",
       "type": "number",
       "format": "double"
     }
   },
   "definitions": {
     "BufferType": {
-      "type": "string",
-      "enum": [
-        "area2d"
+      "oneOf": [
+        {
+          "title": "2D Area Buffer",
+          "description": "Creates a 2D polygon buffer around the input geometry",
+          "type": "string",
+          "enum": [
+            "area2d"
+          ]
+        }
       ]
     }
   }
@@ -741,12 +751,13 @@ Buffers a geometry
 ### Type
 * processor
 ### Description
-Renames attributes by adding/removing prefixes or suffixes, or replacing text
+Rename Feature Attributes in Bulk
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "BulkAttributeRenamerParam",
+  "title": "BulkAttributeRenamer Parameters",
+  "description": "Configure how to rename feature attributes in bulk operations",
   "type": "object",
   "required": [
     "renameAction",
@@ -755,7 +766,8 @@ Renames attributes by adding/removing prefixes or suffixes, or replacing text
   ],
   "properties": {
     "renameAction": {
-      "title": "Action to perform on the attribute",
+      "title": "Rename Operation",
+      "description": "The type of renaming operation to perform on the attribute names",
       "allOf": [
         {
           "$ref": "#/definitions/RenameAction"
@@ -763,7 +775,8 @@ Renames attributes by adding/removing prefixes or suffixes, or replacing text
       ]
     },
     "renameType": {
-      "title": "Type of attributes to rename",
+      "title": "Which Attributes to Rename",
+      "description": "Choose whether to rename all attributes or only selected ones",
       "allOf": [
         {
           "$ref": "#/definitions/RenameType"
@@ -771,11 +784,13 @@ Renames attributes by adding/removing prefixes or suffixes, or replacing text
       ]
     },
     "renameValue": {
-      "title": "Value to add or remove",
+      "title": "Text Value",
+      "description": "The text to add as prefix/suffix, remove, or use as replacement",
       "type": "string"
     },
     "selectedAttributes": {
-      "title": "Attributes to rename",
+      "title": "Selected Attribute Names",
+      "description": "List of specific attribute names to rename (required when \"Selected Attributes\" is chosen)",
       "type": [
         "array",
         "null"
@@ -785,7 +800,8 @@ Renames attributes by adding/removing prefixes or suffixes, or replacing text
       }
     },
     "textToFind": {
-      "title": "Regular expression pattern to match",
+      "title": "Text Pattern to Find",
+      "description": "Regular expression pattern to match when using \"Replace Text\" operation",
       "type": [
         "string",
         "null"
@@ -794,20 +810,67 @@ Renames attributes by adding/removing prefixes or suffixes, or replacing text
   },
   "definitions": {
     "RenameAction": {
-      "type": "string",
-      "enum": [
-        "AddPrefix",
-        "AddSuffix",
-        "RemovePrefix",
-        "RemoveSuffix",
-        "StringReplace"
+      "oneOf": [
+        {
+          "title": "Add Prefix",
+          "description": "Add text to the beginning of attribute names",
+          "type": "string",
+          "enum": [
+            "AddPrefix"
+          ]
+        },
+        {
+          "title": "Add Suffix",
+          "description": "Add text to the end of attribute names",
+          "type": "string",
+          "enum": [
+            "AddSuffix"
+          ]
+        },
+        {
+          "title": "Remove Prefix",
+          "description": "Remove text from the beginning of attribute names",
+          "type": "string",
+          "enum": [
+            "RemovePrefix"
+          ]
+        },
+        {
+          "title": "Remove Suffix",
+          "description": "Remove text from the end of attribute names",
+          "type": "string",
+          "enum": [
+            "RemoveSuffix"
+          ]
+        },
+        {
+          "title": "Replace Text",
+          "description": "Find and replace text using regular expressions",
+          "type": "string",
+          "enum": [
+            "StringReplace"
+          ]
+        }
       ]
     },
     "RenameType": {
-      "type": "string",
-      "enum": [
-        "All",
-        "Selected"
+      "oneOf": [
+        {
+          "title": "All Attributes",
+          "description": "Rename all attributes in the feature",
+          "type": "string",
+          "enum": [
+            "All"
+          ]
+        },
+        {
+          "title": "Selected Attributes",
+          "description": "Rename only specific attributes listed below",
+          "type": "string",
+          "enum": [
+            "Selected"
+          ]
+        }
       ]
     }
   }
@@ -900,7 +963,7 @@ Writes features to a file
 ### Type
 * processor
 ### Description
-Divides Candidate features using Clipper features, so that Candidates and parts of Candidates that are inside or outside of the Clipper features are output separately
+Clip Features Using Boundary Shapes
 ### Parameters
 * No parameters
 ### Input Ports
@@ -970,18 +1033,21 @@ Creates a convex hull based on a group of input features.
 ### Type
 * source
 ### Description
-Reads features from a csv/tsv file
+Read Features from CSV or TSV File
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CsvReaderParam",
+  "title": "CsvReader Parameters",
+  "description": "Configure how CSV and TSV files are processed and read",
   "type": "object",
   "required": [
     "format"
   ],
   "properties": {
     "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
       "anyOf": [
         {
           "$ref": "#/definitions/Expr"
@@ -992,9 +1058,17 @@ Reads features from a csv/tsv file
       ]
     },
     "format": {
-      "$ref": "#/definitions/CsvFormat"
+      "title": "File Format",
+      "description": "Choose the delimiter format for the input file",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CsvFormat"
+        }
+      ]
     },
     "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
       "anyOf": [
         {
           "$ref": "#/definitions/Expr"
@@ -1005,6 +1079,8 @@ Reads features from a csv/tsv file
       ]
     },
     "offset": {
+      "title": "Header Row Offset",
+      "description": "Skip this many rows from the beginning to find the header row (0 = first row is header)",
       "type": [
         "integer",
         "null"
@@ -1015,10 +1091,23 @@ Reads features from a csv/tsv file
   },
   "definitions": {
     "CsvFormat": {
-      "type": "string",
-      "enum": [
-        "csv",
-        "tsv"
+      "oneOf": [
+        {
+          "title": "CSV (Comma-Separated Values)",
+          "description": "File with comma-separated values",
+          "type": "string",
+          "enum": [
+            "csv"
+          ]
+        },
+        {
+          "title": "TSV (Tab-Separated Values)",
+          "description": "File with tab-separated values",
+          "type": "string",
+          "enum": [
+            "tsv"
+          ]
+        }
       ]
     },
     "Expr": {
@@ -1360,19 +1449,26 @@ Counts features
 ### Type
 * source
 ### Description
-Creates features from expressions
+Generate Custom Features Using Scripts
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureCreator",
+  "title": "FeatureCreator Parameters",
+  "description": "Configure how to generate custom features using script expressions",
   "type": "object",
   "required": [
     "creator"
   ],
   "properties": {
     "creator": {
-      "$ref": "#/definitions/Expr"
+      "title": "Script Expression",
+      "description": "Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
     }
   },
   "definitions": {
@@ -2078,6 +2174,8 @@ Reads features from a file
       ],
       "properties": {
         "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
           "anyOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -2094,6 +2192,8 @@ Reads features from a file
           ]
         },
         "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path",
           "anyOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -2104,6 +2204,8 @@ Reads features from a file
           ]
         },
         "offset": {
+          "title": "Header Row Offset",
+          "description": "Skip this many rows from the beginning to find the header row (0 = first row is header)",
           "type": [
             "integer",
             "null"
@@ -2121,6 +2223,8 @@ Reads features from a file
       ],
       "properties": {
         "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
           "anyOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -2137,6 +2241,8 @@ Reads features from a file
           ]
         },
         "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path",
           "anyOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -2147,6 +2253,8 @@ Reads features from a file
           ]
         },
         "offset": {
+          "title": "Header Row Offset",
+          "description": "Skip this many rows from the beginning to find the header row (0 = first row is header)",
           "type": [
             "integer",
             "null"
@@ -2164,6 +2272,8 @@ Reads features from a file
       ],
       "properties": {
         "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
           "anyOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -2180,6 +2290,8 @@ Reads features from a file
           ]
         },
         "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path",
           "anyOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -2199,6 +2311,8 @@ Reads features from a file
       ],
       "properties": {
         "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
           "anyOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -2221,6 +2335,8 @@ Reads features from a file
           ]
         },
         "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path",
           "anyOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -2240,6 +2356,8 @@ Reads features from a file
       ],
       "properties": {
         "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
           "anyOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -2256,6 +2374,8 @@ Reads features from a file
           ]
         },
         "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path",
           "anyOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -2425,6 +2545,8 @@ Reads features from a geojson file
   "type": "object",
   "properties": {
     "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
       "anyOf": [
         {
           "$ref": "#/definitions/Expr"
@@ -2435,6 +2557,8 @@ Reads features from a geojson file
       ]
     },
     "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
       "anyOf": [
         {
           "$ref": "#/definitions/Expr"

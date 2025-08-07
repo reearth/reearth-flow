@@ -20,7 +20,11 @@ use super::{citygml, csv, geojson, json};
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FileReaderCommonParam {
+    /// # File Path
+    /// Expression that returns the path to the input file (e.g., "data.csv" or variable reference)
     pub(crate) dataset: Option<Expr>,
+    /// # Inline Content
+    /// Expression that returns the file content as text instead of reading from a file path
     pub(crate) inline: Option<Expr>,
 }
 
