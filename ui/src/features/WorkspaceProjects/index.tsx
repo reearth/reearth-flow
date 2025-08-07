@@ -149,7 +149,12 @@ const ProjectsManager: React.FC = () => {
         {isFetching || isProjectImporting || isDuplicating ? (
           <div className="grid min-w-0 grid-cols-1 gap-2 overflow-scroll sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {Array.from({ length: PROJECT_FETCH_AMOUNT }).map((_) => (
-              <Skeleton className="h-[170px]" />
+              <div className="flex h-[170px] items-end rounded-lg bg-secondary">
+                <div className="flex h-[50px] w-[200px] flex-col justify-center gap-1 px-2">
+                  <Skeleton className=" h-[20px] w-[200px] " />
+                  <Skeleton className="h-[16px] w-[165px]" />
+                </div>
+              </div>
             ))}
           </div>
         ) : projects && projects.length > 0 ? (
