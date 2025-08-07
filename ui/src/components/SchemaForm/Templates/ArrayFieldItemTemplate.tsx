@@ -33,10 +33,10 @@ const ArrayFieldItemTemplate = <
     registry.templates.ButtonTemplates;
 
   return (
-    <div className="relative my-4 mr-2 ml-4 flex gap-1 rounded border px-2 py-1">
+    <div className="relative mt-4 ml-4 flex flex-col items-center gap-2 rounded-md py-1">
       <div className="w-full">{children}</div>
       {hasToolbar && (
-        <div className="absolute top-1.5 right-1.5 flex flex-row gap-1">
+        <div className="absolute top-0 right-0 flex flex-row gap-1">
           {(hasMoveUp || hasMoveDown) && (
             <MoveUpButton
               disabled={readonly || disabled || !hasMoveUp}
@@ -71,6 +71,7 @@ const ArrayFieldItemTemplate = <
           )}
         </div>
       )}
+      <div className="w-full border-b border-primary" />
     </div>
   );
 };

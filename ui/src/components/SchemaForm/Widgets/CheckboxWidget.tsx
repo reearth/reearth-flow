@@ -1,7 +1,5 @@
 import {
   ariaDescribedByIds,
-  descriptionId,
-  getTemplate,
   schemaRequiresTrueValue,
   FormContextType,
   RJSFSchema,
@@ -36,16 +34,8 @@ const CheckboxWidget = <
     onChange,
     onBlur,
     onFocus,
-    registry,
-    options,
-    uiSchema,
   } = props;
-  const DescriptionFieldTemplate = getTemplate<
-    "DescriptionFieldTemplate",
-    T,
-    S,
-    F
-  >("DescriptionFieldTemplate", registry, options);
+
   // Because an unchecked checkbox will cause html5 validation to fail, only add
   // the "required" attribute if the field value must be "true", due to the
   // "const" or "enum" keywords
@@ -57,36 +47,24 @@ const CheckboxWidget = <
     onBlur(id, target?.value);
   const _onFocus = ({ target }: FocusEvent<HTMLButtonElement>) =>
     onFocus(id, target?.value);
-  const description = options.description ?? schema.description;
 
   return (
-    <>
-      {!hideLabel && !!description && (
-        <DescriptionFieldTemplate
-          id={descriptionId<T>(id)}
-          description={description}
-          schema={schema}
-          uiSchema={uiSchema}
-          registry={registry}
-        />
-      )}
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id={id}
-          name={id}
-          checked={typeof value === "undefined" ? false : Boolean(value)}
-          required={required}
-          disabled={readonly || disabled}
-          autoFocus={autofocus}
-          onChange={_onChange}
-          onBlur={_onBlur}
-          onFocus={_onFocus}
-          onClick={() => onChange(!value)}
-          aria-describedby={ariaDescribedByIds<T>(id)}
-        />
-        {!hideLabel && <p>{label}</p>}
-      </div>
-    </>
+    <div className="flex items-center gap-2 py-2">
+      <Checkbox
+        id={id}
+        name={id}
+        checked={typeof value === "undefined" ? false : Boolean(value)}
+        required={required}
+        disabled={readonly || disabled}
+        autoFocus={autofocus}
+        onChange={_onChange}
+        onBlur={_onBlur}
+        onFocus={_onFocus}
+        onClick={() => onChange(!value)}
+        aria-describedby={ariaDescribedByIds<T>(id)}
+      />
+      {!hideLabel && <p className="text-xs">{label}</p>}
+    </div>
   );
 };
 
