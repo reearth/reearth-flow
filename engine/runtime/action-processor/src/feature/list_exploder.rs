@@ -71,7 +71,7 @@ impl ProcessorFactory for ListExploderFactory {
 }
 
 /// # ListExploder Parameters
-/// 
+///
 /// Configuration for exploding array attributes into individual features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

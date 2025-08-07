@@ -85,7 +85,7 @@ pub(crate) struct ShapefileWriter {
 }
 
 /// # ShapefileWriter Parameters
-/// 
+///
 /// Configuration for writing features to ESRI Shapefile format.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

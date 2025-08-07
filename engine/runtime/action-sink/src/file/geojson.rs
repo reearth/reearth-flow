@@ -85,7 +85,7 @@ pub(super) struct GeoJsonWriter {
 }
 
 /// # GeoJsonWriter Parameters
-/// 
+///
 /// Configuration for writing features to GeoJSON files.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

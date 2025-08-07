@@ -109,7 +109,7 @@ struct CompiledCalculation {
 }
 
 /// # StatisticsCalculator Parameters
-/// 
+///
 /// Configuration for calculating statistical aggregations on feature attributes.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

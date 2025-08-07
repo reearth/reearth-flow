@@ -83,7 +83,7 @@ struct FeatureSorter {
 }
 
 /// # FeatureSorter Parameters
-/// 
+///
 /// Configuration for sorting features based on attribute values.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

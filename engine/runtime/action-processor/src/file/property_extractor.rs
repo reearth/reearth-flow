@@ -132,7 +132,7 @@ impl From<FileProperty> for HashMap<Attribute, AttributeValue> {
 }
 
 /// # FilePropertyExtractor Parameters
-/// 
+///
 /// Configuration for extracting file system properties from files.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

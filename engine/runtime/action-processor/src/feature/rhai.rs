@@ -92,7 +92,7 @@ struct RhaiCaller {
 }
 
 /// # RhaiCaller Parameters
-/// 
+///
 /// Configuration for executing Rhai scripts on features with conditional processing.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

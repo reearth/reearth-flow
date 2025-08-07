@@ -73,7 +73,7 @@ pub(super) struct GeoJsonReader {
 }
 
 /// # GeoJsonReader Parameters
-/// 
+///
 /// Configuration for reading GeoJSON files as geographic features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

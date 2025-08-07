@@ -90,7 +90,7 @@ impl ProcessorFactory for FeatureLodFilterFactory {
 }
 
 /// # FeatureLodFilter Parameters
-/// 
+///
 /// Configuration for filtering features based on Level of Detail (LOD).
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

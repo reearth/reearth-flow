@@ -120,7 +120,7 @@ pub struct MVTWriter {
 }
 
 /// # MVTWriter Parameters
-/// 
+///
 /// Configuration for writing features to Mapbox Vector Tiles (MVT) format.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

@@ -79,7 +79,7 @@ enum CoercerType {
 }
 
 /// # GeometryCoercer Parameters
-/// 
+///
 /// Configuration for coercing geometries to specific target types.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

@@ -76,7 +76,7 @@ impl ProcessorFactory for CityCodeExtractorFactory {
 }
 
 /// # CityCodeExtractor Parameters
-/// 
+///
 /// Configuration for extracting PLATEAU4 city code information from codelists.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

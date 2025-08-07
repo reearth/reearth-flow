@@ -207,7 +207,7 @@ pub async fn extract(
 }
 
 /// # FilePathExtractor Parameters
-/// 
+///
 /// Configuration for extracting file paths from directories or archives.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

@@ -76,7 +76,7 @@ impl ProcessorFactory for DirectoryDecompressorFactory {
 }
 
 /// # DirectoryDecompressor Parameters
-/// 
+///
 /// Configures the extraction and decompression of archive files.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

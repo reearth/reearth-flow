@@ -113,7 +113,7 @@ pub struct PropertySchema {
 }
 
 /// # XMLFragmenter Parameters
-/// 
+///
 /// Configuration for fragmenting XML documents into smaller pieces.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(tag = "source", rename_all = "camelCase")]

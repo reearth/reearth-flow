@@ -168,7 +168,7 @@ pub struct GltfWriter {
 }
 
 /// # GltfWriter Parameters
-/// 
+///
 /// Configuration for writing features to GLTF 3D format.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

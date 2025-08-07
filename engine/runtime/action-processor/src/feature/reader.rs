@@ -138,7 +138,7 @@ struct FeatureReader {
 }
 
 /// # Common Reader Parameters
-/// 
+///
 /// Shared configuration for all feature reader formats.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

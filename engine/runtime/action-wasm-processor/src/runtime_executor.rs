@@ -199,7 +199,7 @@ pub(crate) struct WasmRuntimeExecutor {
 }
 
 /// # WasmRuntimeExecutor Parameters
-/// 
+///
 /// Configuration for compiling and executing scripts in WebAssembly runtime.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

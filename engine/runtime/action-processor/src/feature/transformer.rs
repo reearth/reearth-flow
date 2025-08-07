@@ -93,7 +93,7 @@ struct FeatureTransformer {
 }
 
 /// # FeatureTransformer Parameters
-/// 
+///
 /// Configuration for applying transformation expressions to features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

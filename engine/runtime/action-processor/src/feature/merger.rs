@@ -135,7 +135,7 @@ impl ProcessorFactory for FeatureMergerFactory {
 }
 
 /// # FeatureMerger Parameters
-/// 
+///
 /// Configuration for merging requestor and supplier features based on matching attributes or expressions.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
