@@ -93,7 +93,7 @@ struct BulkAttributeRenamer {
     regex: Option<Regex>,
 }
 
-/// # BulkAttributeRenamer Parameters  
+/// # BulkAttributeRenamer Parameters
 /// Configure how to rename feature attributes in bulk operations
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
