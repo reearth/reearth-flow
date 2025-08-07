@@ -36,6 +36,8 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     undefined,
   );
 
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
   const [layoutView, setLayoutView] = useState<"list" | "grid">("list");
 
   const { page, refetch, isFetching } = useGetAssets(workspaceId, searchTerm, {
@@ -119,8 +121,15 @@ export default ({ workspaceId }: { workspaceId: string }) => {
   );
 
   const handleAssetDelete = async (id: string) => {
-    setAssetToBeDeleted(undefined);
-    await deleteAsset({ assetId: id });
+    try {
+      setIsDeleting(true);
+      setAssetToBeDeleted(undefined);
+      await deleteAsset({ assetId: id });
+    } catch (error) {
+      console.error("Failed to delete asset:", error);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleSortChange = useCallback((newSortValue: string) => {
@@ -182,6 +191,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
   return {
     assets,
     isFetching,
+    isDeleting,
     fileInputRef,
     assetToBeDeleted,
     assetToBeEdited,

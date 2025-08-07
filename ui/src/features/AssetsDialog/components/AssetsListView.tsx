@@ -15,6 +15,7 @@ import type { Asset } from "@flow/types";
 type Props = {
   assets?: Asset[];
   isFetching: boolean;
+  isDeleting: boolean;
   currentPage: number;
   totalPages: number;
   setCurrentPage?: (page: number) => void;
@@ -30,6 +31,7 @@ type Props = {
 };
 const AssetsListView: React.FC<Props> = ({
   assets,
+  isDeleting,
   currentPage,
   totalPages,
   setCurrentPage,
@@ -78,6 +80,7 @@ const AssetsListView: React.FC<Props> = ({
           </a>
 
           <IconButton
+            disabled={isDeleting}
             icon={<TrashIcon />}
             onClick={() => setAssetToBeDeleted(row.row.original.id)}
           />

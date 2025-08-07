@@ -49,6 +49,7 @@ const AssetsDialog: React.FC<Props> = ({
   const {
     assets,
     isFetching,
+    isDeleting,
     fileInputRef,
     assetToBeDeleted,
     assetToBeEdited,
@@ -140,6 +141,7 @@ const AssetsDialog: React.FC<Props> = ({
               <AssetsListView
                 assets={assets}
                 isFetching={isFetching}
+                isDeleting={isDeleting}
                 currentPage={currentPage}
                 totalPages={totalPages}
                 setAssetToBeDeleted={setAssetToBeDeleted}
@@ -154,6 +156,7 @@ const AssetsDialog: React.FC<Props> = ({
               <AssetsGridView
                 assets={assets}
                 isFetching={isFetching}
+                isDeleting={isDeleting}
                 setAssetToBeDeleted={setAssetToBeDeleted}
                 setAssetToBeEdited={setAssetToBeEdited}
                 onCopyUrlToClipBoard={handleCopyUrlToClipBoard}

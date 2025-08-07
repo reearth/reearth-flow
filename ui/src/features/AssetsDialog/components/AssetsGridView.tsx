@@ -8,6 +8,7 @@ import { AssetCard } from "./AssetCard";
 type Props = {
   assets?: Asset[];
   isFetching: boolean;
+  isDeleting: boolean;
   setAssetToBeDeleted: (asset: string | undefined) => void;
   setAssetToBeEdited: (asset: Asset | undefined) => void;
   onCopyUrlToClipBoard: (url: string) => void;
@@ -20,6 +21,7 @@ type Props = {
 const AssetsGridView: React.FC<Props> = ({
   assets,
   isFetching,
+  isDeleting,
   setAssetToBeDeleted,
   setAssetToBeEdited,
   onCopyUrlToClipBoard,
@@ -39,10 +41,11 @@ const AssetsGridView: React.FC<Props> = ({
               <AssetCard
                 key={a.id}
                 asset={a}
-                onCopyUrlToClipBoard={onCopyUrlToClipBoard}
-                onAssetDownload={onAssetDownload}
+                isDeleting={isDeleting}
                 setAssetToBeDeleted={setAssetToBeDeleted}
                 setAssetToBeEdited={setAssetToBeEdited}
+                onCopyUrlToClipBoard={onCopyUrlToClipBoard}
+                onAssetDownload={onAssetDownload}
                 onDoubleClick={onAssetDoubleClick}
               />
             ))}
