@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use super::FeatureProcessorError;
 
 /// # JsonWriter Parameters
-/// 
+///
 /// Configuration for writing features in JSON format with optional custom conversion.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
