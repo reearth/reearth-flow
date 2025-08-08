@@ -398,7 +398,7 @@ impl ProcessorFactory for AttributeFlattenerFactory {
     }
 
     fn description(&self) -> &str {
-        "Flatten attributes for building feature"
+        "Flattens hierarchical PLATEAU3 building attributes into flat structure for analysis"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

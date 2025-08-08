@@ -34,7 +34,7 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
     }
 
     fn description(&self) -> &str {
-        "Overlays an area on another area"
+        "Perform Area Overlay Analysis"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -90,10 +90,13 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
     }
 }
 
+/// # AreaOnAreaOverlayer Parameters
+/// Configure how area overlay analysis is performed
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AreaOnAreaOverlayerParam {
-    /// # Group by
+    /// # Group By Attributes
+    /// Optional attributes to group features by during overlay analysis
     group_by: Option<Vec<Attribute>>,
 }
 

@@ -24,7 +24,7 @@ impl ProcessorFactory for DimensionFilterFactory {
     }
 
     fn description(&self) -> &str {
-        "Filters the dimension of features"
+        "Filter Features by Geometry Dimension"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

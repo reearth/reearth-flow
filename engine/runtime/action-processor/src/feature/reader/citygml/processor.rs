@@ -27,7 +27,7 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads features from citygml file"
+        "Reads and processes features from CityGML files with optional flattening"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -110,12 +110,15 @@ pub struct FeatureCityGmlReader {
     thread_pool: Arc<parking_lot::Mutex<rayon::ThreadPool>>,
 }
 
+/// # FeatureCityGmlReader Parameters
+///
+/// Configuration for reading and processing CityGML files as features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureCityGmlReaderParam {
-    /// # Dataset to read
+    /// Path or expression to the CityGML dataset file to be read
     dataset: Expr,
-    /// # Flatten the dataset
+    /// Whether to flatten the hierarchical structure of the CityGML data
     flatten: Option<bool>,
 }
 

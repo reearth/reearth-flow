@@ -113,6 +113,24 @@ func CMSSchemaFieldTypeFrom(t cms.SchemaFieldType) CMSSchemaFieldType {
 	}
 }
 
+func CMSAssetFrom(a *cms.Asset) *CMSAsset {
+	if a == nil {
+		return nil
+	}
+	return &CMSAsset{
+		ID:                      ID(a.ID),
+		UUID:                    a.UUID,
+		ProjectID:               ID(a.ProjectID),
+		Filename:                a.Filename,
+		Size:                    int(a.Size),
+		PreviewType:             a.PreviewType,
+		URL:                     a.URL,
+		ArchiveExtractionStatus: a.ArchiveExtractionStatus,
+		Public:                  a.Public,
+		CreatedAt:               a.CreatedAt,
+	}
+}
+
 func CMSItemFrom(i *cms.Item) *CMSItem {
 	if i == nil {
 		return nil

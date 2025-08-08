@@ -27,7 +27,7 @@ impl ProcessorFactory for ClosedCurveFilterFactory {
     }
 
     fn description(&self) -> &str {
-        "Checks if curves form closed loops"
+        "Filter LineString Features by Closed/Open Status"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
