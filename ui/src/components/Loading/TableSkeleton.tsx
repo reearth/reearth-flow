@@ -16,6 +16,7 @@ const LoadingTableSkeleton: React.FC<{
   className?: string;
   condensed?: boolean;
   hasFilter?: boolean;
+  hasQuickActions?: boolean;
   hasOrdering?: boolean;
   hasColumns?: boolean;
   hasPagination?: boolean;
@@ -23,6 +24,7 @@ const LoadingTableSkeleton: React.FC<{
   columns,
   rows,
   condensed,
+  hasQuickActions,
   hasFilter,
   hasOrdering,
   hasColumns,
@@ -61,7 +63,7 @@ const LoadingTableSkeleton: React.FC<{
                 <TableRow key={i}>
                   {[...Array(columns)].map((_) => (
                     <TableCell
-                      className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>
+                      className={`${condensed ? "px-2 py-[2px]" : "p-2"} ${hasQuickActions ? "h-13" : ""}`}>
                       <Skeleton className="h-5 w-[175px]" />
                     </TableCell>
                   ))}

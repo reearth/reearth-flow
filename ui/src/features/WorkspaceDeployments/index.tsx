@@ -10,7 +10,7 @@ import {
   Button,
   ButtonWithTooltip,
   FlowLogo,
-  LoadingSkeleton,
+  LoadingTableSkeleton,
   DataTable as Table,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
@@ -121,7 +121,13 @@ const DeploymentManager: React.FC = () => {
               </Button>
             </div>
             {isFetching ? (
-              <LoadingSkeleton />
+              <LoadingTableSkeleton
+                columns={columns.length}
+                rows={DEPLOYMENT_FETCH_RATE}
+                hasQuickActions
+                hasColumns
+                hasOrdering
+              />
             ) : deployments && deployments.length > 0 ? (
               <div className="h-full flex-1 overflow-hidden">
                 <Table

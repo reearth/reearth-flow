@@ -5,7 +5,7 @@ import {
   Button,
   ButtonWithTooltip,
   FlowLogo,
-  LoadingSkeleton,
+  LoadingTableSkeleton,
   DataTable as Table,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
@@ -107,7 +107,13 @@ const TriggerManager: React.FC = () => {
             </div>
 
             {isFetching ? (
-              <LoadingSkeleton />
+              <LoadingTableSkeleton
+                columns={columns.length}
+                rows={10}
+                hasQuickActions
+                hasColumns
+                hasOrdering
+              />
             ) : triggers && triggers.length > 0 ? (
               <Table
                 columns={columns}
