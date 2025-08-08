@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CmsItem, CmsModel, CmsProject } from "@flow/types/cmsIntegration";
 import { isDefined } from "@flow/utils";
 
-import { toCmsItem, toCmsModel, toCmsProject } from "../convert";
+import { toCmsAsset, toCmsItem, toCmsModel, toCmsProject } from "../convert";
 import { useGraphQLContext } from "../provider";
 
 export enum CmsQueryKeys {
@@ -11,19 +11,29 @@ export enum CmsQueryKeys {
   GetCmsProject = "getCmsProject",
   GetCmsModels = "getCmsModels",
   GetCmsItems = "getCmsItems",
+  GetCmsAsset = "getCmsAsset",
   GetCmsModelExportUrl = "getCmsModelExportUrl",
 }
 
+export const CMS_ITEMS_FETCH_RATE = 30;
+export const CMS_MODELS_FETCH_RATE = 15;
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
 
-  const useGetCmsProjectsQuery = (workspaceId: string, publicOnly?: boolean) =>
+  const useGetCmsProjectsQuery = (
+    workspaceIds: [string],
+    publicOnly?: boolean,
+    page?: number,
+    pageSize?: number,
+  ) =>
     useQuery({
-      queryKey: [CmsQueryKeys.GetCmsProjects, workspaceId],
+      queryKey: [CmsQueryKeys.GetCmsProjects, workspaceIds],
       queryFn: async () => {
         const data = await graphQLContext?.GetCmsProjects({
-          workspaceId,
+          workspaceIds,
           publicOnly: publicOnly ?? false,
+          page,
+          pageSize,
         });
         if (!data) return;
 
@@ -32,7 +42,7 @@ export const useQueries = () => {
           .map((cmsProject) => toCmsProject(cmsProject));
         return { cmsProjects };
       },
-      enabled: !!workspaceId,
+      enabled: !!workspaceIds,
     });
 
   const useGetCmsProjectByIdOrAliasQuery = (projectIdOrAlias: string) =>
@@ -49,19 +59,29 @@ export const useQueries = () => {
           : undefined,
     });
 
-  const useGetCmsModelsQuery = (projectId: string) =>
+  const useGetCmsModelsQuery = (
+    projectId: string,
+    page?: number,
+    pageSize?: number,
+  ) =>
     useQuery({
-      queryKey: [CmsQueryKeys.GetCmsModels, projectId],
+      queryKey: [CmsQueryKeys.GetCmsModels, projectId, page, pageSize],
+
       queryFn: async () => {
         const data = await graphQLContext?.GetCmsModels({
           projectId,
+          page,
+          pageSize,
         });
         if (!data) return;
 
-        const cmsModels: CmsModel[] = data.cmsModels
+        const {
+          cmsModels: { models, totalCount },
+        } = data;
+        const cmsModels: CmsModel[] = models
           .filter(isDefined)
           .map((cmsModel) => toCmsModel(cmsModel));
-        return { cmsModels };
+        return { cmsModels, totalCount };
       },
       enabled: !!projectId,
     });
@@ -69,6 +89,7 @@ export const useQueries = () => {
   const useGetCmsItemsQuery = (
     projectId: string,
     modelId: string,
+    keyword?: string,
     page?: number,
     pageSize?: number,
   ) =>
@@ -78,15 +99,18 @@ export const useQueries = () => {
         const data = await graphQLContext?.GetCmsItems({
           projectId,
           modelId,
+          keyword,
           page: page,
           pageSize: pageSize,
         });
         if (!data) return;
-
-        const cmsItems: CmsItem[] = data.cmsItems.items
+        const {
+          cmsItems: { items, totalCount },
+        } = data;
+        const cmsItems: CmsItem[] = items
           .filter(isDefined)
-          .map((cmsItem: any) => toCmsItem(cmsItem));
-        return { cmsItems };
+          .map((cmsItem: CmsItem) => toCmsItem(cmsItem));
+        return { cmsItems, totalCount };
       },
       enabled: !!modelId,
     });
@@ -108,11 +132,28 @@ export const useQueries = () => {
       enabled: !!modelId,
     });
 
+  const useGetCmsAssetQuery = (assetId: string) =>
+    useQuery({
+      queryKey: [CmsQueryKeys.GetCmsAsset, assetId],
+      queryFn: () =>
+        graphQLContext?.GetCmsAsset({
+          assetId,
+        }),
+      enabled: !!assetId,
+      select: (data) => {
+        if (!data?.cmsAsset) {
+          return undefined;
+        }
+
+        return toCmsAsset(data.cmsAsset);
+      },
+    });
   return {
     useGetCmsProjectsQuery,
     useGetCmsProjectByIdOrAliasQuery,
     useGetCmsModelsQuery,
     useGetCmsItemsQuery,
+    useGetCmsAssetQuery,
     useGetCmsModelExportUrlQuery,
   };
 };

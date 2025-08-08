@@ -404,6 +404,11 @@ export const typeDefs = `
     totalCount: Int!
   }
 
+  type CMSModelsConnection {
+    models: [CMSModel!]!
+    totalCount: Int!
+  }
+
   type CMSItemsConnection {
     items: [CMSItem!]!
     totalCount: Int!
@@ -704,9 +709,9 @@ export const typeDefs = `
 
     # CMS queries
     cmsProject(projectIdOrAlias: ID!): CMSProject
-    cmsProjects(workspaceId: ID!, publicOnly: Boolean): [CMSProject!]!
-    cmsModels(projectId: ID!): [CMSModel!]!
-    cmsItems(projectId: ID!, modelId: ID!, page: Int, pageSize: Int): CMSItemsConnection!
+    cmsProjects(workspaceIds: [ID!]!, publicOnly: Boolean, page: Int, pageSize: Int): [CMSProject!]!
+    cmsModels(projectId: ID!, page: Int, pageSize: Int): [CMSModelsConnection!]!
+    cmsItems(projectId: ID!, modelId: ID!, keyword: String, page: Int, pageSize: Int): CMSItemsConnection!
     cmsModelExportUrl(projectId: ID!, modelId: ID!): String!
   }
 

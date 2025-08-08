@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from "@flow/components";
 import AssetsDialog from "@flow/features/AssetsDialog";
+import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
 import { useProjectVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
@@ -28,6 +29,8 @@ type Props = {
   onValueSubmit?: (value: any) => void;
 };
 
+export type DialogOptions = "assets" | "cms" | undefined;
+
 const ValueEditorDialog: React.FC<Props> = ({
   open,
   fieldContext,
@@ -35,8 +38,9 @@ const ValueEditorDialog: React.FC<Props> = ({
   onValueSubmit,
 }) => {
   const t = useT();
-  const [showAssets, setShowAssets] = useState(false);
-
+  const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
+  const handleDialogOpen = (dialog: DialogOptions) => setShowDialog(dialog);
+  const handleDialogClose = () => setShowDialog(undefined);
   const [value, setValue] = useState(fieldContext.value);
 
   const [currentProject] = useCurrentProject();
@@ -95,6 +99,11 @@ const ValueEditorDialog: React.FC<Props> = ({
     setValue?.(v);
   };
 
+  const handleCmsItemValue = (cmsItemAssetUrl: string) => {
+    setValue?.(cmsItemAssetUrl);
+    handleDialogClose();
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>
@@ -118,12 +127,14 @@ const ValueEditorDialog: React.FC<Props> = ({
                   {t("Assets")}
                 </p>
                 <div className="flex justify-center gap-2">
-                  <Button variant="outline" onClick={() => setShowAssets(true)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleDialogOpen("assets")}>
                     {t("Asset")}
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => alert(t("Not implemented yet"))}>
+                    onClick={() => handleDialogOpen("cms")}>
                     {t("CMS")}
                   </Button>
                 </div>
@@ -193,12 +204,16 @@ const ValueEditorDialog: React.FC<Props> = ({
           </div>
         </DialogContent>
       </Dialog>
-      {showAssets && fieldContext && (
+      {showDialog === "assets" && fieldContext && (
         <AssetsDialog
-          onDialogClose={() => {
-            setShowAssets(false);
-          }}
+          onDialogClose={handleDialogClose}
           onAssetDoubleClick={handleAssetDoubleClick}
+        />
+      )}
+      {showDialog === "cms" && fieldContext && (
+        <CmsIntegrationDialog
+          onDialogClose={handleDialogClose}
+          onCmsItemValue={handleCmsItemValue}
         />
       )}
     </>
