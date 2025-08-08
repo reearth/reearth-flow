@@ -5,10 +5,14 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
+	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
 	"github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/appx"
 	"golang.org/x/text/language"
 )
+
+type flowUserKey struct{}
+type jwtTokenKey struct{}
 
 type ContextKey string
 
@@ -34,6 +38,12 @@ func AttachUser(ctx context.Context, u *user.User) context.Context {
 	return context.WithValue(ctx, contextUser, u)
 }
 
+// TODO: Keep using AttachUser during the migration period.
+// After migration, unify it so that AttachUser returns a FlowUser (from flow/pkg).
+func AttachFlowUser(ctx context.Context, u *pkguser.User) context.Context {
+	return context.WithValue(ctx, flowUserKey{}, u)
+}
+
 func AttachOperator(ctx context.Context, o *usecase.Operator) context.Context {
 	return context.WithValue(ctx, contextOperator, o)
 }
@@ -47,6 +57,10 @@ func AttachUsecases(ctx context.Context, u *interfaces.Container) context.Contex
 	return ctx
 }
 
+func AttachJWT(ctx context.Context, token string) context.Context {
+	return context.WithValue(ctx, jwtTokenKey{}, token)
+}
+
 func User(ctx context.Context) *user.User {
 	if v := ctx.Value(contextUser); v != nil {
 		if u, ok := v.(*user.User); ok {
@@ -54,6 +68,13 @@ func User(ctx context.Context) *user.User {
 		}
 	}
 	return nil
+}
+
+// TODO: Keep using User during the migration period.
+// After migration, unify it so that User returns a FlowUser (from flow/pkg).
+func FlowUser(ctx context.Context) *pkguser.User {
+	u, _ := ctx.Value(flowUserKey{}).(*pkguser.User)
+	return u
 }
 
 func Lang(ctx context.Context, lang *language.Tag) string {
@@ -95,4 +116,17 @@ func GetAuthInfo(ctx context.Context) *appx.AuthInfo {
 
 func Usecases(ctx context.Context) *interfaces.Container {
 	return ctx.Value(contextUsecases).(*interfaces.Container)
+}
+
+func JWT(ctx context.Context) string {
+	t, _ := ctx.Value(jwtTokenKey{}).(string)
+	return t
+}
+
+// TODO: Remove this function once the migration to accounts server is complete.
+func TempAuthInfo(ctx context.Context) *appx.AuthInfo {
+	if authInfo, ok := ctx.Value("authinfo").(appx.AuthInfo); ok {
+		return &authInfo
+	}
+	return nil
 }
