@@ -11,6 +11,7 @@ export enum CmsQueryKeys {
   GetCmsProject = "getCmsProject",
   GetCmsModels = "getCmsModels",
   GetCmsItems = "getCmsItems",
+  GetCmsAsset = "getCmsAsset",
   GetCmsModelExportUrl = "getCmsModelExportUrl",
 }
 
@@ -133,16 +134,19 @@ export const useQueries = () => {
 
   const useGetCmsAssetQuery = (assetId: string) =>
     useQuery({
-      queryKey: [CmsQueryKeys.GetCmsProject, assetId],
+      queryKey: [CmsQueryKeys.GetCmsAsset, assetId],
       queryFn: () =>
         graphQLContext?.GetCmsAsset({
           assetId,
         }),
       enabled: !!assetId,
-      select: (data) =>
-        data?.cmsAsset?.__typename === "CMSAsset"
-          ? toCmsAsset(data.cmsAsset)
-          : undefined,
+      select: (data) => {
+        if (!data?.cmsAsset) {
+          return undefined;
+        }
+
+        return toCmsAsset(data.cmsAsset);
+      },
     });
   return {
     useGetCmsProjectsQuery,

@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 
 import { Button, ScrollArea } from "@flow/components";
+import { useCms } from "@flow/lib/gql/cms";
 import { useT } from "@flow/lib/i18n";
 import type { CmsItem, CmsModel } from "@flow/types/cmsIntegration";
 
@@ -83,14 +84,16 @@ const CmsItemDetails: React.FC<Props> = ({
                       )}
                       <div>{renderFieldValue(value)}</div>
                     </div>
-                    {(field.type === "asset" || field.type === "url") &&
-                      value && (
-                        <Button
-                          className="self-center"
-                          onClick={() => onCmsItemValue?.(value)}>
-                          {t("Select Asset")}
-                        </Button>
-                      )}
+                    {field.type === "url" && value && (
+                      <Button
+                        className="self-center"
+                        onClick={() => onCmsItemValue?.(value)}>
+                        {t("Select")}
+                      </Button>
+                    )}
+                    {field.type === "asset" && value && (
+                      <AssetButton assetId={value} onSelect={onCmsItemValue} />
+                    )}
                   </div>
                 );
               })}
@@ -99,6 +102,30 @@ const CmsItemDetails: React.FC<Props> = ({
         </div>
       </ScrollArea>
     </div>
+  );
+};
+
+const AssetButton: React.FC<{
+  assetId: string;
+  onSelect?: (url: string) => void;
+}> = ({ assetId, onSelect }) => {
+  const t = useT();
+  const { useGetCmsAsset } = useCms();
+  const { cmsAsset, isLoading } = useGetCmsAsset(assetId);
+
+  const handleClick = () => {
+    if (cmsAsset?.url) {
+      onSelect?.(cmsAsset.url);
+    }
+  };
+
+  return (
+    <Button
+      className="self-center"
+      onClick={handleClick}
+      disabled={isLoading || !cmsAsset?.url}>
+      {t("Select")}
+    </Button>
   );
 };
 
