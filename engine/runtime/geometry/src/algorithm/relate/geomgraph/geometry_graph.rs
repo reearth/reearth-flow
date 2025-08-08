@@ -81,7 +81,7 @@ where
         graph
     }
 
-    pub fn geometry(&self) -> &GeometryCow<T, Z> {
+    pub fn geometry(&self) -> &GeometryCow<'_, T, Z> {
         self.parent_geometry
     }
 

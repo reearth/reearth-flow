@@ -24,6 +24,7 @@ pub trait SchemaCache: Send + Sync {
 }
 
 /// No-op implementation when cache is not available
+#[allow(dead_code)]
 pub struct NoOpSchemaCache;
 
 impl SchemaCache for NoOpSchemaCache {

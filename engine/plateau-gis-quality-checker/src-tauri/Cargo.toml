@@ -11,7 +11,7 @@ repository.workspace = true
 rust-version.workspace = true
 
 [build-dependencies]
-tauri-build = { version = "1.5.4", features = [] }
+tauri-build = { version = "1.5.6", features = [] }
 
 [dependencies]
 reearth-flow-action-log.workspace = true
@@ -28,12 +28,12 @@ reearth-flow-telemetry.workspace = true
 reearth-flow-types.workspace = true
 
 directories.workspace = true
-log = "0.4.25"
+log = "0.4.27"
 once_cell.workspace = true
-rust-embed = "8.6.0"
+rust-embed = "8.7.2"
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-tauri = { version = "1.6.8", features = [
+tauri = { version = "1.8.3", features = [
   "dialog-all",
   "fs-read-dir",
   "shell-open",

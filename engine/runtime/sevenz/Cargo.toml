@@ -13,12 +13,12 @@ version.workspace = true
 [dependencies]
 bit-set = "0.8.0"
 byteorder = "1.5.0"
-crc = "3.2.1"
+crc = "3.3.0"
 filetime_creation = "0.2.0"
 lzma-rust = "0.1.7"
-nt-time = "0.10.4"
+nt-time = "0.10.6"
 rand.workspace = true
 regex.workspace = true
-ring = "0.17.8"
+ring = "0.17.14"
 tempfile.workspace = true
 thiserror.workspace = true

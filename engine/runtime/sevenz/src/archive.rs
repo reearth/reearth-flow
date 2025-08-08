@@ -157,6 +157,7 @@ impl SevenZArchiveEntry {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Default)]
 pub struct SevenZMethodConfiguration {
     pub method: SevenZMethod,

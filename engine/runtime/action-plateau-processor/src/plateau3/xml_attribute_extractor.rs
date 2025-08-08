@@ -72,7 +72,7 @@ impl Attributes {
         }
     }
 
-    fn iter(&self) -> std::collections::hash_map::Iter<String, serde_json::Value> {
+    fn iter(&self) -> std::collections::hash_map::Iter<'_, String, serde_json::Value> {
         self.0.iter()
     }
 }
