@@ -25,7 +25,7 @@ impl ProcessorFactory for AttributeConversionTableFactory {
     }
 
     fn description(&self) -> &str {
-        "Converts attributes from conversion table"
+        "Transform Feature Attributes Using Lookup Tables"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -147,16 +147,21 @@ struct AttributeConversionTable {
     conversion_table_indexes: HashMap<String, HashMap<AttributeValue, uuid::Uuid>>,
 }
 
+/// # AttributeConversionTable Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeConversionTableParam {
-    /// # Rules to convert attributes
+    /// # Conversion Rules
+    /// List of rules defining how to map attributes using the conversion table
     rules: Vec<AttributeConversionTableRule>,
     /// # Dataset URI
+    /// Path or URI to external conversion table file
     dataset: Option<Expr>,
-    /// # Inline conversion table
+    /// # Inline Table Data
+    /// Conversion table data provided directly as string content
     inline: Option<String>,
-    /// # Format of conversion table
+    /// # Table Format
+    /// Format of the conversion table (CSV, TSV, or JSON)
     format: ConversionTableFormat,
 }
 

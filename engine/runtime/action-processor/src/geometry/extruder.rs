@@ -24,7 +24,7 @@ impl ProcessorFactory for ExtruderFactory {
     }
 
     fn description(&self) -> &str {
-        "Extrudes a polygon by a distance"
+        "Extrude 2D Polygons into 3D Solids"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -87,9 +87,13 @@ pub struct Extruder {
     distance: rhai::AST,
 }
 
+/// # Extruder Parameters
+/// Configure how to extrude 2D polygons into 3D solid geometries
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ExtruderParam {
+    /// # Distance
+    /// The vertical distance (height) to extrude the polygon. Can be a constant value or an expression
     distance: Expr,
 }
 

@@ -35,7 +35,7 @@ impl SinkFactory for CzmlWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to a Czml file"
+        "Export Features as CZML for Cesium Visualization"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -89,10 +89,15 @@ pub(crate) struct CzmlWriter {
     pub(super) buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
+/// # CzmlWriter Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CzmlWriterParam {
+    /// # Output File Path
+    /// Path where the CZML file will be written
     pub(super) output: Expr,
+    /// # Group By Attributes
+    /// Attributes used to group features into separate CZML files
     pub(super) group_by: Option<Vec<Attribute>>,
 }
 

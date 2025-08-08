@@ -33,7 +33,7 @@ impl ProcessorFactory for OrientationExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Extracts the orientation of a geometry from a feature and adds it as an attribute."
+        "Extract Polygon Orientation to Attribute"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -81,9 +81,13 @@ impl ProcessorFactory for OrientationExtractorFactory {
     }
 }
 
+/// # Orientation Extractor Parameters
+/// Configure where to store the extracted polygon orientation information
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct OrientationExtractorParam {
+    /// # Output Attribute
+    /// Name of the attribute where the orientation (clockwise/counter_clockwise) will be stored
     output_attribute: Attribute,
 }
 

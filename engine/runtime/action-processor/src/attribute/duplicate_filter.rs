@@ -23,7 +23,7 @@ impl ProcessorFactory for AttributeDuplicateFilterFactory {
     }
 
     fn description(&self) -> &str {
-        "Filters features by duplicate attributes"
+        "Remove Duplicate Features Based on Attribute Values"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -81,10 +81,12 @@ struct AttributeDuplicateFilter {
     buffer: HashMap<String, Feature>,
 }
 
+/// # AttributeDuplicateFilter Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeDuplicateFilterParam {
-    /// # Attributes to filter by
+    /// # Filter Attributes
+    /// Attributes used to identify duplicate features - features with identical values for these attributes will be deduplicated
     filter_by: Vec<Attribute>,
 }
 

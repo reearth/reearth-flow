@@ -24,7 +24,7 @@ impl SourceFactory for SqlReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads features from SQL"
+        "Read Features from SQL Database"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -66,11 +66,16 @@ impl SourceFactory for SqlReaderFactory {
     }
 }
 
+/// # SQL Reader Parameters
+/// Configure the SQL query and database connection for reading features from a database
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SqlReaderParam {
+    /// # SQL Query
+    /// SQL query expression to execute for retrieving data
     pub(super) sql: Expr,
-    /// Database URL (e.g. `sqlite:///tests/sqlite/sqlite.db`, `mysql://user:password@localhost:3306/db`, `postgresql://user:password@localhost:5432/db`)
+    /// # Database URL
+    /// Database connection URL (e.g. `sqlite:///tests/sqlite/sqlite.db`, `mysql://user:password@localhost:3306/db`, `postgresql://user:password@localhost:5432/db`)
     pub(super) database_url: Expr,
 }
 

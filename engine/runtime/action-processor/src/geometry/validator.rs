@@ -34,7 +34,7 @@ impl ProcessorFactory for GeometryValidatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Validates the geometry of a feature"
+        "Validate Feature Geometry Quality"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -143,9 +143,13 @@ impl From<ValidationProblemReport> for ValidationResult {
     }
 }
 
+/// # Geometry Validator Parameters
+/// Configure which validation checks to perform on feature geometries
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GeometryValidator {
+    /// # Validation Types
+    /// List of validation checks to perform on the geometry (duplicate points, corrupt geometry, self-intersection)
     validation_types: Vec<ValidationType>,
 }
 
