@@ -8,12 +8,7 @@ import {
 } from "@flow/lib/gql/cms/useQueries";
 import { CmsItem, CmsModel, CmsProject } from "@flow/types";
 
-export type ViewMode =
-  | "projects"
-  | "models"
-  | "items"
-  | "itemDetails"
-  | "itemAssets";
+export type ViewMode = "projects" | "models" | "items" | "itemDetails";
 
 export default ({ workspaceId }: { workspaceId: string }) => {
   const { useGetCmsProjects, useGetCmsModels, useGetCmsItems } = useCms();
@@ -113,7 +108,6 @@ export default ({ workspaceId }: { workspaceId: string }) => {
         setSelectedItem(null);
         break;
       case "itemDetails":
-      case "itemAssets":
         setSelectedProject(project || selectedProject);
         setSelectedModel(model || selectedModel);
         setSelectedItem(item || null);
@@ -136,10 +130,6 @@ export default ({ workspaceId }: { workspaceId: string }) => {
 
   const handleItemView = (item: CmsItem) => {
     navigateTo("itemDetails", { item });
-  };
-
-  const handleAssetView = (item: CmsItem) => {
-    navigateTo("itemAssets", { item });
   };
 
   const handleBackToProjects = () => navigateTo("projects");
@@ -174,7 +164,6 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     handleBackToProjects,
     handleBackToModels,
     handleItemView,
-    handleAssetView,
     handleItemDetailClose,
     handleBackToItems,
   };

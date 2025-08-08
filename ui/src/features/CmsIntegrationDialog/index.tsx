@@ -1,6 +1,5 @@
-import { CaretLeftIcon, EyeIcon, StackIcon } from "@phosphor-icons/react";
+import { CaretLeftIcon, EyeIcon } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
-import { useCallback } from "react";
 
 import {
   Dialog,
@@ -22,7 +21,6 @@ import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import type { CmsItem } from "@flow/types/cmsIntegration";
 
-import CmsAssetSelector from "./CmsAssetSelector";
 import CmsBreadcrumb from "./CmsBreadcrumb";
 import CmsItemDetails from "./CmsItemDetails";
 import CmsModelCard from "./CmsModelCard";
@@ -63,29 +61,10 @@ const CmsIntegrationDialog: React.FC<Props> = ({
     handleBackToProjects,
     handleBackToModels,
     handleItemView,
-    handleAssetView,
     handleBackToItems,
   } = useHooks({
     workspaceId: currentWorkspace?.id ?? "",
   });
-
-  const getItemAssets = useCallback(
-    (item: CmsItem) => {
-      if (!selectedModel) return [];
-
-      const assets: { key: string; value: string; field: any }[] = [];
-      Object.entries(item.fields).forEach(([key, value]) => {
-        const fieldSchema = selectedModel.schema.fields.find(
-          (f) => f.key === key,
-        );
-        if (fieldSchema?.type === "asset" && value) {
-          assets.push({ key, value, field: fieldSchema });
-        }
-      });
-      return assets;
-    },
-    [selectedModel],
-  );
 
   const columns: ColumnDef<CmsItem>[] = selectedModel
     ? [
@@ -121,8 +100,6 @@ const CmsIntegrationDialog: React.FC<Props> = ({
           accessorKey: "quickActions",
           header: t("Quick Actions"),
           cell: ({ row }) => {
-            const assets = getItemAssets(row.original);
-
             return (
               <div className="flex gap-1">
                 <IconButton
@@ -130,13 +107,6 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                   onClick={() => handleItemView(row.original)}
                   title={t("View Details")}
                 />
-                {assets.length > 0 && (
-                  <IconButton
-                    icon={<StackIcon />}
-                    onClick={() => handleAssetView(row.original)}
-                    title={`${t("Quick Select Assets")} (${assets.length})`}
-                  />
-                )}
               </div>
             );
           },
@@ -175,7 +145,6 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                 </Button>
               )}
               {viewMode !== "itemDetails" &&
-                viewMode !== "itemAssets" &&
                 viewMode !== "models" &&
                 viewMode !== "projects" && (
                   <Input
@@ -271,37 +240,26 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                 )}
               </div>
             )}
-            {viewMode !== "projects" &&
-              viewMode !== "itemAssets" &&
-              viewMode !== "itemDetails" && (
-                <div className="mb-3">
-                  <Pagination
-                    currentPage={
-                      viewMode === "models"
-                        ? modelsCurrentPage
-                        : itemsCurrentPage
-                    }
-                    setCurrentPage={
-                      viewMode === "models"
-                        ? setModelsCurrentPage
-                        : setItemsCurrentPage
-                    }
-                    totalPages={cmsModelsTotalPages}
-                  />
-                </div>
-              )}
+            {viewMode !== "projects" && viewMode !== "itemDetails" && (
+              <div className="mb-3">
+                <Pagination
+                  currentPage={
+                    viewMode === "models" ? modelsCurrentPage : itemsCurrentPage
+                  }
+                  setCurrentPage={
+                    viewMode === "models"
+                      ? setModelsCurrentPage
+                      : setItemsCurrentPage
+                  }
+                  totalPages={cmsModelsTotalPages}
+                />
+              </div>
+            )}
             {viewMode === "itemDetails" && selectedItem && selectedModel && (
               <CmsItemDetails
                 cmsItem={selectedItem}
                 cmsModel={selectedModel}
                 onCmsItemValue={onCmsItemValue}
-              />
-            )}
-            {viewMode === "itemAssets" && selectedItem && selectedModel && (
-              <CmsAssetSelector
-                cmsItem={selectedItem}
-                cmsModel={selectedModel}
-                onAssetSelect={onCmsItemValue || (() => {})}
               />
             )}
           </DialogContentSection>
