@@ -6,7 +6,7 @@ import {
 } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 
-import { IconButton } from "@flow/components";
+import { IconButton, LoadingTableSkeleton } from "@flow/components";
 import { DataTable as Table } from "@flow/components/DataTable";
 import { ASSET_FETCH_RATE } from "@flow/lib/gql/assets/useQueries";
 import { useT } from "@flow/lib/i18n";
@@ -15,6 +15,8 @@ import type { Asset } from "@flow/types";
 type Props = {
   assets?: Asset[];
   isFetching: boolean;
+  isDebouncing?: boolean;
+  isDeleting: boolean;
   currentPage: number;
   totalPages: number;
   setCurrentPage?: (page: number) => void;
@@ -30,6 +32,9 @@ type Props = {
 };
 const AssetsListView: React.FC<Props> = ({
   assets,
+  isDebouncing,
+  isDeleting,
+  isFetching,
   currentPage,
   totalPages,
   setCurrentPage,
@@ -78,6 +83,7 @@ const AssetsListView: React.FC<Props> = ({
           </a>
 
           <IconButton
+            disabled={isDeleting}
             icon={<TrashIcon />}
             onClick={() => setAssetToBeDeleted(row.row.original.id)}
           />
@@ -88,16 +94,20 @@ const AssetsListView: React.FC<Props> = ({
 
   return (
     <div className="h-full flex-1 overflow-hidden">
-      <Table
-        columns={columns}
-        data={assets}
-        showOrdering={false}
-        currentPage={currentPage}
-        setCurrentPage={setCurrentPage}
-        totalPages={totalPages}
-        resultsPerPage={resultsPerPage}
-        onRowDoubleClick={onAssetDoubleClick}
-      />
+      {isDebouncing || isFetching ? (
+        <LoadingTableSkeleton columns={4} rows={ASSET_FETCH_RATE} />
+      ) : (
+        <Table
+          columns={columns}
+          data={assets}
+          showOrdering={false}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          totalPages={totalPages}
+          resultsPerPage={resultsPerPage}
+          onRowDoubleClick={onAssetDoubleClick}
+        />
+      )}
     </div>
   );
 };
