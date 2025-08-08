@@ -150,7 +150,6 @@ const CmsIntegrationDialog: React.FC<Props> = ({
             selectedProject={selectedProject}
             selectedModel={selectedModel}
             selectedItem={selectedItem}
-            onBackToProjects={handleBackToProjects}
             onBackToModels={handleBackToModels}
             onBackToItems={handleBackToItems}
           />

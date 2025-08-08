@@ -62,7 +62,10 @@ const CmsAssetSelector: React.FC<Props> = ({
     const assets: { key: string; value: string; field: any }[] = [];
     Object.entries(cmsItem.fields).forEach(([key, value]) => {
       const fieldSchema = cmsModel.schema.fields.find((f) => f.key === key);
-      if (fieldSchema?.type === "asset" && value) {
+      if (
+        (fieldSchema?.type === "asset" || fieldSchema?.type === "url") &&
+        value
+      ) {
         assets.push({ key, value, field: fieldSchema });
       }
     });

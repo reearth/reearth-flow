@@ -11,7 +11,6 @@ type Props = {
   selectedProject?: CmsProject | null;
   selectedModel?: CmsModel | null;
   selectedItem?: CmsItem | null;
-  onBackToProjects: () => void;
   onBackToModels: () => void;
   onBackToItems: () => void;
 };
@@ -21,7 +20,6 @@ const CmsBreadcrumb: React.FC<Props> = ({
   selectedProject,
   selectedModel,
   selectedItem,
-  onBackToProjects,
   onBackToModels,
   onBackToItems,
 }) => {
@@ -37,7 +35,7 @@ const CmsBreadcrumb: React.FC<Props> = ({
           <span className="mx-2 text-muted-foreground">/</span>
           <Button
             variant="ghost"
-            onClick={onBackToProjects}
+            onClick={onBackToModels}
             className="text-md pr-1 pl-1 font-normal dark:font-thin">
             {selectedProject.name}
           </Button>
@@ -49,7 +47,7 @@ const CmsBreadcrumb: React.FC<Props> = ({
           <span className="mx-2 text-muted-foreground">/</span>
           <Button
             variant="ghost"
-            onClick={onBackToModels}
+            onClick={onBackToItems}
             className="text-md pr-1 pl-1 font-normal dark:font-thin">
             {selectedModel.name}
           </Button>
@@ -60,12 +58,9 @@ const CmsBreadcrumb: React.FC<Props> = ({
         <div>
           <span className="mx-2 text-muted-foreground">/</span>
           <span className="px-4 py-2 pr-1 pl-1">
-            <Button
-              variant="ghost"
-              onClick={onBackToItems}
-              className="text-md pr-1 pl-1 font-normal dark:font-thin">
+            <span className="text-md pr-1 pl-1 font-normal dark:font-thin">
               {selectedItem.id}
-            </Button>
+            </span>
             <span className="mx-2 text-muted-foreground">/</span>
             {viewMode === "itemAssets" && (
               <span className="dark:font-thin">{t("Assets")}</span>

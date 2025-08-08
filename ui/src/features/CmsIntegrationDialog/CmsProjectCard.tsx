@@ -22,7 +22,7 @@ const CmsProjectCard: React.FC<Props> = ({ project, onProjectSelect }) => {
 
   return (
     <Card
-      className="cursor-pointer transition-shadow hover:shadow-md"
+      className="flex cursor-pointer flex-col justify-between transition-shadow hover:shadow-md"
       onDoubleClick={() => onProjectSelect(project)}>
       <CardHeader className="p-2">
         <div className="flex items-start justify-between">

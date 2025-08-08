@@ -100,8 +100,7 @@ const ValueEditorDialog: React.FC<Props> = ({
   };
 
   const handleCmsItemValue = (cmsItemAssetUrl: string) => {
-    const v = cmsItemAssetUrl;
-    setValue?.(v);
+    setValue?.(cmsItemAssetUrl);
     handleDialogClose();
   };
 

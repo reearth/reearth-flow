@@ -2,11 +2,7 @@ import { useCallback } from "react";
 
 import { Button, ScrollArea } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import type {
-  CmsItem,
-  CmsModel,
-  CmsSchemaFieldType,
-} from "@flow/types/cmsIntegration";
+import type { CmsItem, CmsModel } from "@flow/types/cmsIntegration";
 
 type Props = {
   cmsItem: CmsItem;
@@ -21,39 +17,21 @@ const CmsItemDetails: React.FC<Props> = ({
 }) => {
   const t = useT();
 
-  const renderFieldValue = useCallback(
-    (value: any, fieldType: CmsSchemaFieldType) => {
-      if (value === null || value === undefined) {
-        return <span className="text-muted-foreground">-</span>;
-      }
+  const renderFieldValue = useCallback((value: any) => {
+    if (value === null || value === undefined) {
+      return <span className="text-muted-foreground">-</span>;
+    }
 
-      if (typeof value === "object") {
-        return (
-          <pre className="max-h-40 overflow-auto rounded border bg-muted p-2 text-sm">
-            {JSON.stringify(value, null, 2)}
-          </pre>
-        );
-      }
+    if (typeof value === "object") {
+      return (
+        <pre className="max-h-40 overflow-auto rounded border bg-muted p-2 text-sm">
+          {JSON.stringify(value, null, 2)}
+        </pre>
+      );
+    }
 
-      if (
-        fieldType === "url" ||
-        (fieldType === "asset" && typeof value === "string")
-      ) {
-        return (
-          <a
-            href={value}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 underline hover:text-blue-800">
-            {value}
-          </a>
-        );
-      }
-
-      return <span className="break-words">{String(value)}</span>;
-    },
-    [],
-  );
+    return <span className="break-words">{String(value)}</span>;
+  }, []);
 
   return (
     <div className="flex h-[600px] flex-col gap-4 overflow-hidden">
@@ -104,15 +82,16 @@ const CmsItemDetails: React.FC<Props> = ({
                           {field.description}
                         </div>
                       )}
-                      <div>{renderFieldValue(value, field.type)}</div>
+                      <div>{renderFieldValue(value)}</div>
                     </div>
-                    {field.type === "asset" && value && (
-                      <Button
-                        className="self-center"
-                        onClick={() => onCmsItemValue?.(value)}>
-                        {t("Select Asset")}
-                      </Button>
-                    )}
+                    {(field.type === "asset" || field.type === "url") &&
+                      value && (
+                        <Button
+                          className="self-center"
+                          onClick={() => onCmsItemValue?.(value)}>
+                          {t("Select Asset")}
+                        </Button>
+                      )}
                   </div>
                 );
               })}

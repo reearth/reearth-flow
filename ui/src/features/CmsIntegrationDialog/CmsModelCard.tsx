@@ -22,7 +22,7 @@ const CmsModelCard: React.FC<Props> = ({ model, onModelSelect }) => {
   return (
     <Card
       key={model.id}
-      className="cursor-pointer transition-shadow hover:shadow-md"
+      className="flex cursor-pointer flex-col justify-between transition-shadow hover:shadow-md"
       onDoubleClick={() => onModelSelect(model)}>
       <CardHeader className="p-2">
         <div className="flex items-start justify-between">
