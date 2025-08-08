@@ -74,7 +74,7 @@ impl ProcessorFactory for ObjectListExtractorFactory {
 }
 
 /// # ObjectListExtractor Parameters
-/// 
+///
 /// Configuration for extracting object lists from PLATEAU4 data.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

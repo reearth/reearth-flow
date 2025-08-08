@@ -74,7 +74,7 @@ impl ProcessorFactory for MaxLodExtractorFactory {
 }
 
 /// # MaxLodExtractor Parameters
-/// 
+///
 /// Configuration for extracting maximum LOD (Level of Detail) information from PLATEAU4 CityGML files.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

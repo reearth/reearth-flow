@@ -73,7 +73,7 @@ impl ProcessorFactory for FeatureTypeFilterFactory {
 }
 
 /// # FeatureTypeFilter Parameters
-/// 
+///
 /// Configuration for filtering features based on their feature type.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

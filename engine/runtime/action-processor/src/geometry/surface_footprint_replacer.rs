@@ -156,7 +156,7 @@ impl ProcessorFactory for SurfaceFootprintReplacerFactory {
 }
 
 /// # SurfaceFootprintReplacer Parameters
-/// 
+///
 /// Configuration for replacing geometry with its footprint projection.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]

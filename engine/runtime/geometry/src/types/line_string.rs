@@ -156,7 +156,7 @@ impl<T: CoordNum, Z: CoordNum> LineString<T, Z> {
         Self(value)
     }
 
-    pub fn points(&self) -> PointsIter<T, Z> {
+    pub fn points(&self) -> PointsIter<'_, T, Z> {
         PointsIter(self.0.iter())
     }
 

@@ -157,6 +157,7 @@ impl SevenZArchiveEntry {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Default)]
 pub struct SevenZMethodConfiguration {
     pub method: SevenZMethod,
@@ -177,6 +178,7 @@ impl Clone for SevenZMethodConfiguration {
 }
 
 impl SevenZMethodConfiguration {
+    #[allow(dead_code)]
     pub fn new(method: SevenZMethod) -> Self {
         Self { method }
     }

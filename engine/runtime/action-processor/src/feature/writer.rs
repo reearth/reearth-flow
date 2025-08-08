@@ -151,7 +151,7 @@ struct CommonWriterParam {
 }
 
 /// # FeatureWriter Parameters
-/// 
+///
 /// Configuration for writing features to different file formats.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(tag = "format")]
