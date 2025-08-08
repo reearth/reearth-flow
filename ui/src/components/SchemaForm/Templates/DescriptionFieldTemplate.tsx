@@ -19,7 +19,7 @@ const DescriptionFieldTemplate = <
   const { id, description } = props;
   if (description) {
     return (
-      <div id={id} className="mt-1 text-xs">
+      <div id={id} className="mt-1 text-xs text-muted-foreground">
         {description}
       </div>
     );
