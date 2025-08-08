@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CmsItem, CmsModel, CmsProject } from "@flow/types/cmsIntegration";
 import { isDefined } from "@flow/utils";
 
-import { toCmsItem, toCmsModel, toCmsProject } from "../convert";
+import { toCmsAsset, toCmsItem, toCmsModel, toCmsProject } from "../convert";
 import { useGraphQLContext } from "../provider";
 
 export enum CmsQueryKeys {
@@ -131,11 +131,25 @@ export const useQueries = () => {
       enabled: !!modelId,
     });
 
+  const useGetCmsAssetQuery = (assetId: string) =>
+    useQuery({
+      queryKey: [CmsQueryKeys.GetCmsProject, assetId],
+      queryFn: () =>
+        graphQLContext?.GetCmsAsset({
+          assetId,
+        }),
+      enabled: !!assetId,
+      select: (data) =>
+        data?.cmsAsset?.__typename === "CMSAsset"
+          ? toCmsAsset(data.cmsAsset)
+          : undefined,
+    });
   return {
     useGetCmsProjectsQuery,
     useGetCmsProjectByIdOrAliasQuery,
     useGetCmsModelsQuery,
     useGetCmsItemsQuery,
+    useGetCmsAssetQuery,
     useGetCmsModelExportUrlQuery,
   };
 };

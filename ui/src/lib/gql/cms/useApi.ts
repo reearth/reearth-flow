@@ -6,6 +6,7 @@ export const useCms = () => {
     useGetCmsProjectByIdOrAliasQuery,
     useGetCmsModelsQuery,
     useGetCmsItemsQuery,
+    useGetCmsAssetQuery,
     useGetCmsModelExportUrlQuery,
   } = useQueries();
 
@@ -76,11 +77,20 @@ export const useCms = () => {
     };
   };
 
+  const useGetCmsAsset = (assetId: string) => {
+    const { data, ...rest } = useGetCmsAssetQuery(assetId);
+    return {
+      cmsAsset: data,
+      ...rest,
+    };
+  };
+
   return {
     useGetCmsProjects,
     useGetCmsProject,
     useGetCmsModels,
     useGetCmsItems,
+    useGetCmsAsset,
     useGetCmsModelExportUrl,
   };
 };

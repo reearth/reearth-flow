@@ -50,6 +50,12 @@ query GetCmsItems(
   }
 }
 
+query GetCmsAsset($assetId: ID!) {
+  cmsAsset(assetId: $assetId) {
+    ...CmsAsset
+  }
+}
+
 query GetCmsModelExportUrl($projectId: ID!, $modelId: ID!) {
   cmsModelExportUrl(projectId: $projectId, modelId: $modelId)
 }

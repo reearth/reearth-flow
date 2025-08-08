@@ -69,7 +69,7 @@ export type CmsAsset = {
   id: string;
   uuid: string;
   projectId: string;
-  fileName: string;
+  filename: string;
   size: number;
   previewType?: string;
   url: string;

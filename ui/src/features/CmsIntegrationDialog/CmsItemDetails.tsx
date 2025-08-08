@@ -16,7 +16,6 @@ const CmsItemDetails: React.FC<Props> = ({
   onCmsItemValue,
 }) => {
   const t = useT();
-
   const renderFieldValue = useCallback((value: any) => {
     if (value === null || value === undefined) {
       return <span className="text-muted-foreground">-</span>;

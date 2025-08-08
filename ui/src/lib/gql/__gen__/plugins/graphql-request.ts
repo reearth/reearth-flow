@@ -1322,6 +1322,13 @@ export type GetCmsItemsQueryVariables = Exact<{
 
 export type GetCmsItemsQuery = { __typename?: 'Query', cmsItems: { __typename?: 'CMSItemsConnection', totalCount: number, items: Array<{ __typename?: 'CMSItem', id: string, fields: any, createdAt: any, updatedAt: any }> } };
 
+export type GetCmsAssetQueryVariables = Exact<{
+  assetId: Scalars['ID']['input'];
+}>;
+
+
+export type GetCmsAssetQuery = { __typename?: 'Query', cmsAsset?: { __typename?: 'CMSAsset', id: string, uuid: string, projectId: string, filename: string, size: number, previewType?: string | null, url: string, archiveExtractionStatus?: string | null, public: boolean, createdAt: any } | null };
+
 export type GetCmsModelExportUrlQueryVariables = Exact<{
   projectId: Scalars['ID']['input'];
   modelId: Scalars['ID']['input'];
@@ -1447,6 +1454,8 @@ export type CmsProjectFragment = { __typename?: 'CMSProject', id: string, name: 
 export type CmsModelFragment = { __typename?: 'CMSModel', id: string, projectId: string, name: string, description: string, editorUrl: string, key: string, publicApiEp: string, createdAt: any, updatedAt: any, schema: { __typename?: 'CMSSchema', schemaId: string, fields: Array<{ __typename?: 'CMSSchemaField', fieldId: string, key: string, type: CmsSchemaFieldType, name: string, description?: string | null }> } };
 
 export type CmsItemFragment = { __typename?: 'CMSItem', id: string, fields: any, createdAt: any, updatedAt: any };
+
+export type CmsAssetFragment = { __typename?: 'CMSAsset', id: string, uuid: string, projectId: string, filename: string, size: number, previewType?: string | null, url: string, archiveExtractionStatus?: string | null, public: boolean, createdAt: any };
 
 export type GetJobsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
@@ -1917,6 +1926,20 @@ export const CmsItemFragmentDoc = gql`
   updatedAt
 }
     `;
+export const CmsAssetFragmentDoc = gql`
+    fragment CmsAsset on CMSAsset {
+  id
+  uuid
+  projectId
+  filename
+  size
+  previewType
+  url
+  archiveExtractionStatus
+  public
+  createdAt
+}
+    `;
 export const GetAssetsDocument = gql`
     query GetAssets($workspaceId: ID!, $keyword: String, $pagination: PageBasedPagination!) {
   assets(workspaceId: $workspaceId, keyword: $keyword, pagination: $pagination) {
@@ -2002,6 +2025,13 @@ export const GetCmsItemsDocument = gql`
   }
 }
     ${CmsItemFragmentDoc}`;
+export const GetCmsAssetDocument = gql`
+    query GetCmsAsset($assetId: ID!) {
+  cmsAsset(assetId: $assetId) {
+    ...CmsAsset
+  }
+}
+    ${CmsAssetFragmentDoc}`;
 export const GetCmsModelExportUrlDocument = gql`
     query GetCmsModelExportUrl($projectId: ID!, $modelId: ID!) {
   cmsModelExportUrl(projectId: $projectId, modelId: $modelId)
@@ -2482,6 +2512,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     GetCmsItems(variables: GetCmsItemsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetCmsItemsQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetCmsItemsQuery>({ document: GetCmsItemsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetCmsItems', 'query', variables);
+    },
+    GetCmsAsset(variables: GetCmsAssetQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetCmsAssetQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetCmsAssetQuery>({ document: GetCmsAssetDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetCmsAsset', 'query', variables);
     },
     GetCmsModelExportUrl(variables: GetCmsModelExportUrlQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetCmsModelExportUrlQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetCmsModelExportUrlQuery>({ document: GetCmsModelExportUrlDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetCmsModelExportUrl', 'query', variables);

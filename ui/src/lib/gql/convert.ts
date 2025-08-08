@@ -16,6 +16,7 @@ import {
   type CmsProjectFragment,
   type CmsModelFragment,
   type CmsItemFragment,
+  type CmsAssetFragment,
   type CmsVisibility as GraphqlCmsVisibility,
   type CmsSchemaFieldType as GraphQlCmsSchemaFieldType,
   ParameterType,
@@ -45,6 +46,7 @@ import type {
   CmsItem,
   CmsSchemaField,
   CmsSchemaFieldType,
+  CmsAsset,
 } from "@flow/types";
 import { formatDate, formatFileSize } from "@flow/utils";
 
@@ -219,6 +221,19 @@ export const toCmsItem = (cmsItem: CmsItemFragment): CmsItem => ({
   fields: cmsItem.fields,
   createdAt: formatDate(cmsItem.createdAt),
   updatedAt: formatDate(cmsItem.updatedAt),
+});
+
+export const toCmsAsset = (cmsAsset: CmsAssetFragment): CmsAsset => ({
+  id: cmsAsset.id,
+  uuid: cmsAsset.uuid,
+  projectId: cmsAsset.projectId,
+  filename: cmsAsset.filename,
+  size: cmsAsset.size,
+  previewType: cmsAsset.previewType ?? undefined,
+  url: cmsAsset.url,
+  archiveExtractionStatus: cmsAsset.archiveExtractionStatus ?? undefined,
+  public: cmsAsset.public,
+  createdAt: formatDate(cmsAsset.createdAt),
 });
 
 export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {

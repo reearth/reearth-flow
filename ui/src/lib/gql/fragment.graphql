@@ -190,15 +190,15 @@ fragment CmsItem on CMSItem {
   updatedAt
 }
 
-# fragment CmsAsset on CMSAsset {
-#   id
-#   uuid
-#   projectId
-#   fileName
-#   size
-#   previewType
-#   url
-#   archiveExtractionStatus
-#   public
-#   createdAt
-# }
+fragment CmsAsset on CMSAsset {
+  id
+  uuid
+  projectId
+  filename
+  size
+  previewType
+  url
+  archiveExtractionStatus
+  public
+  createdAt
+}
