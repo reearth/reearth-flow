@@ -30,7 +30,7 @@ impl ProcessorFactory for RefinerFactory {
     }
 
     fn description(&self) -> &str {
-        "Geometry Refiner"
+        "Refine Complex Geometries into Simple Geometries"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

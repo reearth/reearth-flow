@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from "@flow/components";
 import AssetsDialog from "@flow/features/AssetsDialog";
+import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
 import { useProjectVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
@@ -28,6 +29,8 @@ type Props = {
   onValueSubmit?: (value: any) => void;
 };
 
+export type DialogOptions = "assets" | "cms" | undefined;
+
 const ValueEditorDialog: React.FC<Props> = ({
   open,
   fieldContext,
@@ -35,8 +38,9 @@ const ValueEditorDialog: React.FC<Props> = ({
   onValueSubmit,
 }) => {
   const t = useT();
-  const [showAssets, setShowAssets] = useState(false);
-
+  const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
+  const handleDialogOpen = (dialog: DialogOptions) => setShowDialog(dialog);
+  const handleDialogClose = () => setShowDialog(undefined);
   const [value, setValue] = useState(fieldContext.value);
 
   const [currentProject] = useCurrentProject();
@@ -95,6 +99,11 @@ const ValueEditorDialog: React.FC<Props> = ({
     setValue?.(v);
   };
 
+  const handleCmsItemValue = (cmsItemAssetUrl: string) => {
+    setValue?.(cmsItemAssetUrl);
+    handleDialogClose();
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>
@@ -112,18 +121,20 @@ const ValueEditorDialog: React.FC<Props> = ({
             </DialogTitle>
           </DialogHeader>
           <div className="flex h-[400px]">
-            <div className="flex flex-col gap-6 border-r p-4">
+            <div className="flex max-w-[200px] flex-col gap-6 border-r p-4">
               <div className="flex flex-col gap-1">
                 <p className="mb-2 text-sm text-muted-foreground">
                   {t("Assets")}
                 </p>
-                <div className="flex justify-center gap-2">
-                  <Button variant="outline" onClick={() => setShowAssets(true)}>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleDialogOpen("assets")}>
                     {t("Asset")}
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => alert(t("Not implemented yet"))}>
+                    onClick={() => handleDialogOpen("cms")}>
                     {t("CMS")}
                   </Button>
                 </div>
@@ -134,25 +145,41 @@ const ValueEditorDialog: React.FC<Props> = ({
                   {t("Project Variables")}
                 </p>
                 {projectVariables?.map((variable) => (
-                  <Button
+                  <div
                     key={variable.id}
-                    variant="ghost"
-                    className="w-full justify-start text-left"
+                    className="cursor-pointer rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
                     // disabled={variable.type !== fieldType}
                     onClick={() => handleProjectVariableSet(variable)}>
-                    {variable.name} ({variable.type})
-                  </Button>
+                    <div className="break-words">
+                      {variable.name} ({variable.type})
+                    </div>
+                  </div>
                 ))}
               </div>
-              <div>
+            </div>
+            <div className="flex flex-1 flex-col">
+              <div className="relative h-full flex-1">
+                <TextArea
+                  className="h-full max-h-full resize-none rounded-none border-x-transparent bg-card/20 backdrop-blur-sm focus-visible:ring-0"
+                  autoFocus
+                  placeholder={t("Enter value...")}
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  spellCheck={false}
+                  data-testid="value-editor-textarea"
+                  aria-label={t("Value Editor Text Area")}
+                  data-placeholder={t("Enter value...")}
+                />
                 <Tooltip>
-                  <TooltipTrigger>
-                    <QuestionIcon />
+                  <TooltipTrigger
+                    className="absolute right-0 bottom-0 m-2 size-5"
+                    asChild>
+                    <QuestionIcon weight="thin" />
                   </TooltipTrigger>
                   <TooltipContent
                     className="flex flex-col gap-2"
-                    side="top"
-                    align="start">
+                    side="left"
+                    align="end">
                     <p>{t("For Advanced Users")}</p>
                     <p className="max-w-[200px] text-xs text-muted-foreground">
                       {t(
@@ -173,19 +200,6 @@ const ValueEditorDialog: React.FC<Props> = ({
                   </TooltipContent>
                 </Tooltip>
               </div>
-            </div>
-            <div className="flex flex-1 flex-col">
-              <TextArea
-                className="max-h-full flex-1 resize-none rounded-none bg-card focus-visible:ring-0"
-                autoFocus
-                placeholder={t("Enter value...")}
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                spellCheck={false}
-                data-testid="value-editor-textarea"
-                aria-label={t("Value Editor Text Area")}
-                data-placeholder={t("Enter value...")}
-              />
               <div className="flex justify-end gap-2 p-2">
                 <Button onClick={handleSubmit}>{t("Submit")}</Button>
               </div>
@@ -193,12 +207,16 @@ const ValueEditorDialog: React.FC<Props> = ({
           </div>
         </DialogContent>
       </Dialog>
-      {showAssets && fieldContext && (
+      {showDialog === "assets" && fieldContext && (
         <AssetsDialog
-          onDialogClose={() => {
-            setShowAssets(false);
-          }}
+          onDialogClose={handleDialogClose}
           onAssetDoubleClick={handleAssetDoubleClick}
+        />
+      )}
+      {showDialog === "cms" && fieldContext && (
+        <CmsIntegrationDialog
+          onDialogClose={handleDialogClose}
+          onCmsItemValue={handleCmsItemValue}
         />
       )}
     </>

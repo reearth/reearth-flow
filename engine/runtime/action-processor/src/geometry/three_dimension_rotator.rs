@@ -27,7 +27,7 @@ impl ProcessorFactory for ThreeDimensionRotatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Replaces a three Dimension box with a polygon."
+        "Rotate 3D Geometry Around Arbitrary Axis"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -105,15 +105,31 @@ impl ProcessorFactory for ThreeDimensionRotatorFactory {
     }
 }
 
+/// # 3D Rotator Parameters
+/// Configure the 3D rotation parameters including axis, origin point, and angle
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ThreeDimensionRotatorParam {
+    /// # Angle in Degrees
+    /// Rotation angle in degrees around the specified axis
     angle_degree: Expr,
+    /// # Origin X
+    /// X coordinate of the rotation origin point
     origin_x: Expr,
+    /// # Origin Y
+    /// Y coordinate of the rotation origin point
     origin_y: Expr,
+    /// # Origin Z
+    /// Z coordinate of the rotation origin point
     origin_z: Expr,
+    /// # Direction X
+    /// X component of the rotation axis direction vector
     direction_x: Expr,
+    /// # Direction Y
+    /// Y component of the rotation axis direction vector
     direction_y: Expr,
+    /// # Direction Z
+    /// Z component of the rotation axis direction vector
     direction_z: Expr,
 }
 

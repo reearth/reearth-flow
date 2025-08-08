@@ -23,24 +23,126 @@ func (r *queryResolver) CmsProject(ctx context.Context, projectIDOrAlias gqlmode
 	return gqlmodel.CMSProjectFrom(project), nil
 }
 
-func (r *queryResolver) CmsProjects(ctx context.Context, workspaceID gqlmodel.ID, publicOnly *bool) ([]*gqlmodel.CMSProject, error) {
-	projects, _, err := usecases(ctx).CMS.ListCMSProjects(ctx, string(workspaceID), lo.FromPtr(publicOnly))
+func (r *queryResolver) CmsProjects(ctx context.Context, workspaceIDs []gqlmodel.ID, publicOnly *bool, page, pageSize *int) ([]*gqlmodel.CMSProject, error) {
+	var pageInt32 *int32
+	var pageSizeInt32 *int32
+
+	if page != nil {
+		v := int32(*page)
+		pageInt32 = &v
+	}
+	if pageSize != nil {
+		v := int32(*pageSize)
+		pageSizeInt32 = &v
+	}
+
+	workspaceIDStrings := util.Map(workspaceIDs, func(id gqlmodel.ID) string { return string(id) })
+
+	output, err := usecases(ctx).CMS.ListCMSProjects(ctx, workspaceIDStrings, lo.FromPtr(publicOnly), pageInt32, pageSizeInt32)
 	if err != nil {
 		log.Errorfc(ctx, "failed to list CMS projects: %v", err)
 		return nil, err
 	}
 
-	return util.Map(projects, gqlmodel.CMSProjectFrom), nil
+	return util.Map(output.Projects, gqlmodel.CMSProjectFrom), nil
 }
 
-func (r *queryResolver) CmsModels(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.CMSModel, error) {
-	models, _, err := usecases(ctx).CMS.ListCMSModels(ctx, string(projectID))
+func (r *queryResolver) CmsAsset(ctx context.Context, assetID gqlmodel.ID) (*gqlmodel.CMSAsset, error) {
+	asset, err := usecases(ctx).CMS.GetCMSAsset(ctx, string(assetID))
+	if err != nil {
+		log.Errorfc(ctx, "failed to get CMS asset: %v", err)
+		return nil, err
+	}
+	if asset == nil {
+		return nil, nil
+	}
+
+	return gqlmodel.CMSAssetFrom(asset), nil
+}
+
+func (r *queryResolver) CmsAssets(ctx context.Context, projectID gqlmodel.ID, page, pageSize *int) (*gqlmodel.CMSAssetsConnection, error) {
+	var pageInt32 *int32
+	var pageSizeInt32 *int32
+
+	if page != nil {
+		v := int32(*page)
+		pageInt32 = &v
+	}
+	if pageSize != nil {
+		v := int32(*pageSize)
+		pageSizeInt32 = &v
+	}
+
+	output, err := usecases(ctx).CMS.ListCMSAssets(ctx, string(projectID), pageInt32, pageSizeInt32)
+	if err != nil {
+		log.Errorfc(ctx, "failed to list CMS assets: %v", err)
+		return nil, err
+	}
+
+	assets := util.Map(output.Assets, func(asset *cms.Asset) *gqlmodel.CMSAsset {
+		return gqlmodel.CMSAssetFrom(asset)
+	})
+
+	pageInfo := &gqlmodel.CMSPageInfo{}
+	if output.PageInfo != nil {
+		pageInfo.Page = int(output.PageInfo.Page)
+		pageInfo.PageSize = int(output.PageInfo.PageSize)
+	}
+
+	return &gqlmodel.CMSAssetsConnection{
+		Assets:     assets,
+		TotalCount: int(output.TotalCount),
+		PageInfo:   pageInfo,
+	}, nil
+}
+
+func (r *queryResolver) CmsModel(ctx context.Context, projectIDOrAlias gqlmodel.ID, modelIDOrAlias gqlmodel.ID) (*gqlmodel.CMSModel, error) {
+	model, err := usecases(ctx).CMS.GetCMSModel(ctx, string(projectIDOrAlias), string(modelIDOrAlias))
+	if err != nil {
+		log.Errorfc(ctx, "failed to get CMS model: %v", err)
+		return nil, err
+	}
+	if model == nil {
+		return nil, nil
+	}
+
+	return gqlmodel.CMSModelFrom(model), nil
+}
+
+func (r *queryResolver) CmsModels(ctx context.Context, projectID gqlmodel.ID, page, pageSize *int) (*gqlmodel.CMSModelsConnection, error) {
+	var pageInt32 *int32
+	var pageSizeInt32 *int32
+
+	if page != nil {
+		v := int32(*page)
+		pageInt32 = &v
+	}
+	if pageSize != nil {
+		v := int32(*pageSize)
+		pageSizeInt32 = &v
+	}
+
+	output, err := usecases(ctx).CMS.ListCMSModels(ctx, string(projectID), pageInt32, pageSizeInt32)
 	if err != nil {
 		log.Errorfc(ctx, "failed to list CMS models: %v", err)
 		return nil, err
 	}
 
-	return util.Map(models, gqlmodel.CMSModelFrom), nil
+	models := util.Map(output.Models, func(model *cms.Model) *gqlmodel.CMSModel {
+		return gqlmodel.CMSModelFrom(model)
+	})
+
+	pageInfo := &gqlmodel.CMSPageInfo{}
+	if output.PageInfo != nil {
+		pageInfo.Page = int(output.PageInfo.Page)
+		pageInfo.PageSize = int(output.PageInfo.PageSize)
+	}
+
+	return &gqlmodel.CMSModelsConnection{
+		Models:     models,
+		TotalCount: int(output.TotalCount),
+		PageInfo:   pageInfo,
+	}, nil
 }
 
 func (r *queryResolver) CmsItems(ctx context.Context, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) (*gqlmodel.CMSItemsConnection, error) {

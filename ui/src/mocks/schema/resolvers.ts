@@ -64,12 +64,14 @@ const paginateResults = <T>(
   if (keyword && keyword.trim() !== "") {
     filteredItems = filteredItems.filter((item) => {
       // Search through all string properties of the item
-      return Object.entries(item as any).some(([_, value]) => {
-        if (typeof value === "string") {
-          return value.toLowerCase().includes(keyword.toLowerCase());
-        }
-        return false;
-      });
+      return Object.entries(item as Record<string, unknown>).some(
+        ([_, value]) => {
+          if (typeof value === "string") {
+            return value.toLowerCase().includes(keyword.toLowerCase());
+          }
+          return false;
+        },
+      );
     });
   }
 
@@ -555,20 +557,17 @@ export const resolvers = {
 
     cmsProjects: (
       _: any,
-      args: { workspaceId: string; publicOnly?: boolean },
+      args: { workspaceId?: string[]; publicOnly?: boolean } = {},
     ) => {
       return cmsProjects.filter((p) => {
-        if (p.workspaceId !== args.workspaceId) return false;
+        if (args.workspaceId && !args.workspaceId.includes(p.workspaceId))
+          return false;
         if (args.publicOnly && p.visibility !== "PUBLIC") return false;
         return true;
       });
     },
 
-    cmsModels: (_: any, args: { projectId: string }) => {
-      return cmsModels.filter((m) => m.projectId === args.projectId);
-    },
-
-    cmsItems: (
+    cmsModels: (
       _: any,
       args: {
         projectId: string;
@@ -577,15 +576,60 @@ export const resolvers = {
         pageSize?: number;
       },
     ) => {
-      // For simplicity, return all mock items regardless of projectId/modelId
+      // Filter items by projectId and modelId
+
+      const filteredModels = cmsModels.filter(
+        (m) => m.projectId === args.projectId,
+      );
+
       const page = args.page || 1;
       const pageSize = args.pageSize || 10;
       const startIndex = (page - 1) * pageSize;
       const endIndex = startIndex + pageSize;
 
       return {
-        items: cmsItems.slice(startIndex, endIndex),
-        totalCount: cmsItems.length,
+        items: filteredModels.slice(startIndex, endIndex),
+        totalCount: filteredModels.length,
+      };
+    },
+
+    cmsItems: (
+      _: any,
+      args: {
+        projectId: string;
+        modelId: string;
+        keyword?: string;
+        page?: number;
+        pageSize?: number;
+      },
+    ) => {
+      // Filter items by projectId and modelId
+
+      let filteredItems = cmsItems.filter(
+        (item) =>
+          item.projectId === args.projectId && item.modelId === args.modelId,
+      );
+
+      if (args.keyword && args.keyword.trim() !== "") {
+        filteredItems = filteredItems.filter((item) => {
+          // Search through all string properties of the item
+          return Object.entries(item as any).some(([_, value]) => {
+            if (typeof value === "string" && args.keyword) {
+              return value.toLowerCase().includes(args.keyword.toLowerCase());
+            }
+            return false;
+          });
+        });
+      }
+
+      const page = args.page || 1;
+      const pageSize = args.pageSize || 10;
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+
+      return {
+        items: filteredItems.slice(startIndex, endIndex),
+        totalCount: filteredItems.length,
       };
     },
 

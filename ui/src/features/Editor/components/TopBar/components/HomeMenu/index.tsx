@@ -139,6 +139,7 @@ const HomeMenu: React.FC<Props> = ({
             <UserIcon weight="light" />
             <p>{t("Account Settings")}</p>
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem
             className="gap-3"
             onClick={() => setOpenShortcutDialog(true)}>

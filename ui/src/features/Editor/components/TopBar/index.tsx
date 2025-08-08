@@ -1,4 +1,4 @@
-import { ChalkboardTeacherIcon, HardDriveIcon } from "@phosphor-icons/react";
+import { ChalkboardTeacherIcon } from "@phosphor-icons/react";
 import { memo } from "react";
 import { Doc } from "yjs";
 
@@ -83,17 +83,18 @@ const TopBar: React.FC<Props> = ({
         </div>
         <div className="flex items-center gap-2 rounded-md">
           <IconButton
+            className="h-8"
             variant="outline"
             tooltipText={t("Project Variables")}
             icon={<ChalkboardTeacherIcon weight="thin" size={18} />}
             onClick={() => handleDialogOpen("projectVariables")}
           />
-          <IconButton
+          {/* <IconButton
             variant="outline"
             tooltipText={t("Assets")}
             icon={<HardDriveIcon weight="thin" size={18} />}
             onClick={() => handleDialogOpen("assets")}
-          />
+          /> */}
         </div>
       </div>
       <div className="flex h-full flex-1 gap-2 overflow-hidden">

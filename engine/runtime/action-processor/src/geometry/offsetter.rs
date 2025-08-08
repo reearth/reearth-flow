@@ -23,7 +23,7 @@ impl ProcessorFactory for OffsetterFactory {
     }
 
     fn description(&self) -> &str {
-        "Adds offsets to the feature's coordinates."
+        "Apply Coordinate Offsets to Geometry"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -69,11 +69,19 @@ impl ProcessorFactory for OffsetterFactory {
     }
 }
 
+/// # Offsetter Parameters
+/// Configure the X, Y, and Z coordinate offsets to apply to all geometry coordinates
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct OffsetterParam {
+    /// # X Offset
+    /// Offset to add to all X coordinates (longitude)
     offset_x: Option<f64>,
+    /// # Y Offset
+    /// Offset to add to all Y coordinates (latitude)
     offset_y: Option<f64>,
+    /// # Z Offset
+    /// Offset to add to all Z coordinates (elevation)
     offset_z: Option<f64>,
 }
 

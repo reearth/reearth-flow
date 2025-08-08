@@ -19,11 +19,16 @@ const TitleFieldTemplate = <
   id,
   title,
   required,
+  schema,
 }: TitleFieldProps<T, S, F>) => {
+  const isRootTitle = schema.title === title; // Might be better way since this also includes titles in more complex schemas
   return (
-    <Label id={id} className="my-1 first-letter:uppercase">
-      <div className="mb-1">
-        {title} {required && <span className="text-destructive"> * </span>}
+    <Label id={id}>
+      <div className="my-4 mb-1 flex flex-row items-center gap-1">
+        <p className={`${isRootTitle ? "font-bold" : "font-normal"}`}>
+          {title}
+        </p>
+        {required && <p className="font-thin text-destructive">*</p>}
       </div>
       <div className="border-b" />
     </Label>

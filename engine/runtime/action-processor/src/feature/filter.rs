@@ -26,7 +26,7 @@ impl ProcessorFactory for FeatureFilterFactory {
     }
 
     fn description(&self) -> &str {
-        "Filters features based on conditions"
+        "Filter Features Based on Custom Conditions"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -96,10 +96,13 @@ struct FeatureFilter {
     conditions: Vec<CompiledCondition>,
 }
 
+/// # Feature Filter Parameters
+/// Configure the conditions and output ports for filtering features based on expressions
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct FeatureFilterParam {
-    /// # Conditions to filter by
+    /// # Filter Conditions
+    /// List of conditions and their corresponding output ports for routing filtered features
     conditions: Vec<Condition>,
 }
 
