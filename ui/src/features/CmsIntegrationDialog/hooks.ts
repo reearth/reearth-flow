@@ -2,7 +2,10 @@ import { useState } from "react";
 
 import { useDebouncedSearch } from "@flow/hooks";
 import { useCms } from "@flow/lib/gql/cms";
-import { CMS_ITEMS_FETCH_RATE } from "@flow/lib/gql/cms/useQueries";
+import {
+  CMS_ITEMS_FETCH_RATE,
+  CMS_MODELS_FETCH_RATE,
+} from "@flow/lib/gql/cms/useQueries";
 import { CmsItem, CmsModel, CmsProject } from "@flow/types";
 
 export type ViewMode =
@@ -20,14 +23,20 @@ export default ({ workspaceId }: { workspaceId: string }) => {
   const [selectedModel, setSelectedModel] = useState<CmsModel | null>(null);
   const [selectedItem, setSelectedItem] = useState<CmsItem | null>(null);
 
-  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsCurrentPage, setItemsCurrentPage] = useState(1);
+  const [modelsCurrentPage, setModelsCurrentPage] = useState(1);
+
   const [viewMode, setViewMode] = useState<ViewMode>("projects");
   const [isItemDetailOpen, setIsItemDetailOpen] = useState(false);
 
-  const projectsQuery = useGetCmsProjects(workspaceId, true);
+  const projectsQuery = useGetCmsProjects([workspaceId], true);
   const cmsProjects = projectsQuery.page?.cmsProjects || [];
 
-  const modelsQuery = useGetCmsModels(selectedProject?.id || "");
+  const modelsQuery = useGetCmsModels(
+    selectedProject?.id || "",
+    modelsCurrentPage,
+    CMS_MODELS_FETCH_RATE,
+  );
   const cmsModels = selectedProject?.id
     ? modelsQuery.page?.cmsModels || []
     : [];
@@ -44,7 +53,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     selectedProject?.id || "",
     selectedModel?.id || "",
     searchTerm,
-    currentPage,
+    itemsCurrentPage,
     CMS_ITEMS_FETCH_RATE,
   );
 
@@ -52,10 +61,16 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     selectedProject?.id && selectedModel?.id
       ? itemsQuery.page?.cmsItems || []
       : [];
+
   const cmsItemsTotalCount = itemsQuery.page?.totalCount || 0;
+  const cmsModelsTotalCount = modelsQuery.page?.totalCount || 0;
 
   const cmsItemsTotalPages = Math.ceil(
     cmsItemsTotalCount / CMS_ITEMS_FETCH_RATE,
+  );
+
+  const cmsModelsTotalPages = Math.ceil(
+    cmsModelsTotalCount / CMS_MODELS_FETCH_RATE,
   );
 
   const filteredProjects = cmsProjects?.filter(
@@ -65,12 +80,6 @@ export default ({ workspaceId }: { workspaceId: string }) => {
           p.alias.toLowerCase().includes(searchTerm.toLowerCase()))) ||
       p.id.toLowerCase().includes(searchTerm.toLowerCase()),
   ) as CmsProject[];
-
-  const filteredModels = cmsModels?.filter(
-    (m) =>
-      ("id" in m && m.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      m.id.toLowerCase().includes(searchTerm.toLowerCase()),
-  ) as CmsModel[];
 
   const isLoading =
     projectsQuery.isFetching ||
@@ -147,16 +156,19 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     selectedModel,
     selectedItem,
     filteredProjects,
-    filteredModels,
+    cmsModels,
+    cmsModelsTotalPages,
     cmsItems,
     cmsItemsTotalPages,
-    currentPage,
+    itemsCurrentPage,
+    modelsCurrentPage,
     searchTerm,
     isLoading,
     viewMode,
     isItemDetailOpen,
     setSearchTerm,
-    setCurrentPage,
+    setModelsCurrentPage,
+    setItemsCurrentPage,
     handleProjectSelect,
     handleModelSelect,
     handleBackToProjects,

@@ -64,3 +64,16 @@ export type CmsItem = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type CmsAsset = {
+  id: string;
+  uuid: string;
+  projectId: string;
+  fileName: string;
+  size: number;
+  previewType?: string;
+  url: string;
+  archiveExtractionStatus?: string;
+  public: boolean;
+  createdAt: string;
+};

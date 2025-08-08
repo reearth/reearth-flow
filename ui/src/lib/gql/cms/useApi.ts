@@ -9,8 +9,18 @@ export const useCms = () => {
     useGetCmsModelExportUrlQuery,
   } = useQueries();
 
-  const useGetCmsProjects = (workspaceId: string, publicOnly?: boolean) => {
-    const { data, ...rest } = useGetCmsProjectsQuery(workspaceId, publicOnly);
+  const useGetCmsProjects = (
+    workspaceId: [string],
+    publicOnly?: boolean,
+    page?: number,
+    pageSize?: number,
+  ) => {
+    const { data, ...rest } = useGetCmsProjectsQuery(
+      workspaceId,
+      publicOnly,
+      page,
+      pageSize,
+    );
     return {
       page: data,
       ...rest,
@@ -26,8 +36,12 @@ export const useCms = () => {
     };
   };
 
-  const useGetCmsModels = (projectId: string) => {
-    const { data, ...rest } = useGetCmsModelsQuery(projectId);
+  const useGetCmsModels = (
+    projectId: string,
+    page?: number,
+    pageSize?: number,
+  ) => {
+    const { data, ...rest } = useGetCmsModelsQuery(projectId, page, pageSize);
     return {
       page: data,
       ...rest,

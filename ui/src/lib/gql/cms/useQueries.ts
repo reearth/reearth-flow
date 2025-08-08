@@ -15,17 +15,24 @@ export enum CmsQueryKeys {
 }
 
 export const CMS_ITEMS_FETCH_RATE = 30;
-
+export const CMS_MODELS_FETCH_RATE = 15;
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
 
-  const useGetCmsProjectsQuery = (workspaceId: string, publicOnly?: boolean) =>
+  const useGetCmsProjectsQuery = (
+    workspaceIds: [string],
+    publicOnly?: boolean,
+    page?: number,
+    pageSize?: number,
+  ) =>
     useQuery({
-      queryKey: [CmsQueryKeys.GetCmsProjects, workspaceId],
+      queryKey: [CmsQueryKeys.GetCmsProjects, workspaceIds],
       queryFn: async () => {
         const data = await graphQLContext?.GetCmsProjects({
-          workspaceId,
+          workspaceIds,
           publicOnly: publicOnly ?? false,
+          page,
+          pageSize,
         });
         if (!data) return;
 
@@ -34,7 +41,7 @@ export const useQueries = () => {
           .map((cmsProject) => toCmsProject(cmsProject));
         return { cmsProjects };
       },
-      enabled: !!workspaceId,
+      enabled: !!workspaceIds,
     });
 
   const useGetCmsProjectByIdOrAliasQuery = (projectIdOrAlias: string) =>
@@ -51,19 +58,29 @@ export const useQueries = () => {
           : undefined,
     });
 
-  const useGetCmsModelsQuery = (projectId: string) =>
+  const useGetCmsModelsQuery = (
+    projectId: string,
+    page?: number,
+    pageSize?: number,
+  ) =>
     useQuery({
-      queryKey: [CmsQueryKeys.GetCmsModels, projectId],
+      queryKey: [CmsQueryKeys.GetCmsModels, projectId, page, pageSize],
+
       queryFn: async () => {
         const data = await graphQLContext?.GetCmsModels({
           projectId,
+          page,
+          pageSize,
         });
         if (!data) return;
 
-        const cmsModels: CmsModel[] = data.cmsModels
+        const {
+          cmsModels: { models, totalCount },
+        } = data;
+        const cmsModels: CmsModel[] = models
           .filter(isDefined)
           .map((cmsModel) => toCmsModel(cmsModel));
-        return { cmsModels };
+        return { cmsModels, totalCount };
       },
       enabled: !!projectId,
     });

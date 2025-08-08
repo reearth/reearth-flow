@@ -46,15 +46,18 @@ const CmsIntegrationDialog: React.FC<Props> = ({
     selectedModel,
     selectedItem,
     filteredProjects,
-    filteredModels,
+    cmsModels,
+    cmsModelsTotalPages,
     cmsItems,
     cmsItemsTotalPages,
-    currentPage,
+    itemsCurrentPage,
+    modelsCurrentPage,
     searchTerm,
     isLoading,
     viewMode,
     setSearchTerm,
-    setCurrentPage,
+    setModelsCurrentPage,
+    setItemsCurrentPage,
     handleProjectSelect,
     handleModelSelect,
     handleBackToProjects,
@@ -171,14 +174,17 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                   <CaretLeftIcon />
                 </Button>
               )}
-              {viewMode !== "itemDetails" && viewMode !== "itemAssets" && (
-                <Input
-                  placeholder={t("Search") + "..."}
-                  value={searchTerm ?? ""}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-[36px] max-w-sm"
-                />
-              )}
+              {viewMode !== "itemDetails" &&
+                viewMode !== "itemAssets" &&
+                viewMode !== "models" &&
+                viewMode !== "projects" && (
+                  <Input
+                    placeholder={t("Search") + "..."}
+                    value={searchTerm ?? ""}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="h-[36px] max-w-sm"
+                  />
+                )}
             </div>
             <ScrollArea
               className={`${viewMode === "items" ? "hidden" : "flex-1"}`}>
@@ -216,7 +222,7 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                       <div className="col-span-full py-8 pt-50 text-center text-muted-foreground">
                         <LoadingSkeleton />
                       </div>
-                    ) : filteredModels.length === 0 ? (
+                    ) : cmsModels.length === 0 ? (
                       <div className="col-span-full py-8 text-center text-muted-foreground">
                         <BasicBoiler
                           text={t("No Models Found")}
@@ -225,7 +231,7 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                         />
                       </div>
                     ) : (
-                      filteredModels.map((model) => {
+                      cmsModels.map((model) => {
                         return (
                           <CmsModelCard
                             key={model.id}
@@ -240,40 +246,50 @@ const CmsIntegrationDialog: React.FC<Props> = ({
               </div>
             </ScrollArea>
             {viewMode === "items" && selectedModel && (
-              <>
-                <div className="h-full flex-1 overflow-hidden">
-                  {isLoading ? (
-                    <LoadingSkeleton />
-                  ) : cmsItems.length === 0 ? (
-                    <div className="col-span-full py-8 text-center text-muted-foreground">
-                      <BasicBoiler
-                        text={t("No Items Found")}
-                        className="[&>div>p]:text-md size-4 pt-60"
-                        icon={<FlowLogo className="size-14 text-accent" />}
-                      />
-                    </div>
-                  ) : (
-                    <Table
-                      columns={columns}
-                      data={cmsItems || []}
-                      totalPages={cmsItemsTotalPages}
-                      resultsPerPage={10}
-                      onRowDoubleClick={handleItemView}
-                      showOrdering={false}
-                      searchTerm={searchTerm}
-                      setSearchTerm={setSearchTerm}
+              <div className="h-full flex-1 overflow-hidden">
+                {isLoading ? (
+                  <LoadingSkeleton />
+                ) : cmsItems.length === 0 ? (
+                  <div className="col-span-full py-8 text-center text-muted-foreground">
+                    <BasicBoiler
+                      text={t("No Items Found")}
+                      className="[&>div>p]:text-md size-4 pt-60"
+                      icon={<FlowLogo className="size-14 text-accent" />}
                     />
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <Table
+                    columns={columns}
+                    data={cmsItems || []}
+                    totalPages={cmsItemsTotalPages}
+                    resultsPerPage={10}
+                    onRowDoubleClick={handleItemView}
+                    showOrdering={false}
+                    searchTerm={searchTerm}
+                    setSearchTerm={setSearchTerm}
+                  />
+                )}
+              </div>
+            )}
+            {viewMode !== "projects" &&
+              viewMode !== "itemAssets" &&
+              viewMode !== "itemDetails" && (
                 <div className="mb-3">
                   <Pagination
-                    currentPage={currentPage}
-                    setCurrentPage={setCurrentPage}
-                    totalPages={cmsItemsTotalPages}
+                    currentPage={
+                      viewMode === "models"
+                        ? modelsCurrentPage
+                        : itemsCurrentPage
+                    }
+                    setCurrentPage={
+                      viewMode === "models"
+                        ? setModelsCurrentPage
+                        : setItemsCurrentPage
+                    }
+                    totalPages={cmsModelsTotalPages}
                   />
                 </div>
-              </>
-            )}
+              )}
             {viewMode === "itemDetails" && selectedItem && selectedModel && (
               <CmsItemDetails
                 cmsItem={selectedItem}

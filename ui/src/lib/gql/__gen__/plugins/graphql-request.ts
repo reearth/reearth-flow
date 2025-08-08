@@ -77,6 +77,27 @@ export enum AssetSortType {
   Size = 'SIZE'
 }
 
+export type CmsAsset = {
+  __typename?: 'CMSAsset';
+  archiveExtractionStatus?: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  filename: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  previewType?: Maybe<Scalars['String']['output']>;
+  projectId: Scalars['ID']['output'];
+  public: Scalars['Boolean']['output'];
+  size: Scalars['Int']['output'];
+  url: Scalars['String']['output'];
+  uuid: Scalars['String']['output'];
+};
+
+export type CmsAssetsConnection = {
+  __typename?: 'CMSAssetsConnection';
+  assets: Array<CmsAsset>;
+  pageInfo: CmsPageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
 export type CmsItem = {
   __typename?: 'CMSItem';
   createdAt: Scalars['DateTime']['output'];
@@ -103,6 +124,19 @@ export type CmsModel = {
   publicApiEp: Scalars['String']['output'];
   schema: CmsSchema;
   updatedAt: Scalars['DateTime']['output'];
+};
+
+export type CmsModelsConnection = {
+  __typename?: 'CMSModelsConnection';
+  models: Array<CmsModel>;
+  pageInfo: CmsPageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type CmsPageInfo = {
+  __typename?: 'CMSPageInfo';
+  page: Scalars['Int']['output'];
+  pageSize: Scalars['Int']['output'];
 };
 
 export type CmsProject = {
@@ -779,9 +813,12 @@ export type ProjectSnapshotMetadata = {
 export type Query = {
   __typename?: 'Query';
   assets: AssetConnection;
+  cmsAsset?: Maybe<CmsAsset>;
+  cmsAssets: CmsAssetsConnection;
   cmsItems: CmsItemsConnection;
+  cmsModel?: Maybe<CmsModel>;
   cmsModelExportUrl: Scalars['String']['output'];
-  cmsModels: Array<CmsModel>;
+  cmsModels: CmsModelsConnection;
   cmsProject?: Maybe<CmsProject>;
   cmsProjects: Array<CmsProject>;
   deploymentByVersion?: Maybe<Deployment>;
@@ -814,12 +851,30 @@ export type QueryAssetsArgs = {
 };
 
 
+export type QueryCmsAssetArgs = {
+  assetId: Scalars['ID']['input'];
+};
+
+
+export type QueryCmsAssetsArgs = {
+  page?: InputMaybe<Scalars['Int']['input']>;
+  pageSize?: InputMaybe<Scalars['Int']['input']>;
+  projectId: Scalars['ID']['input'];
+};
+
+
 export type QueryCmsItemsArgs = {
   keyword?: InputMaybe<Scalars['String']['input']>;
   modelId: Scalars['ID']['input'];
   page?: InputMaybe<Scalars['Int']['input']>;
   pageSize?: InputMaybe<Scalars['Int']['input']>;
   projectId: Scalars['ID']['input'];
+};
+
+
+export type QueryCmsModelArgs = {
+  modelIdOrAlias: Scalars['ID']['input'];
+  projectIdOrAlias: Scalars['ID']['input'];
 };
 
 
@@ -830,6 +885,8 @@ export type QueryCmsModelExportUrlArgs = {
 
 
 export type QueryCmsModelsArgs = {
+  page?: InputMaybe<Scalars['Int']['input']>;
+  pageSize?: InputMaybe<Scalars['Int']['input']>;
   projectId: Scalars['ID']['input'];
 };
 
@@ -840,8 +897,10 @@ export type QueryCmsProjectArgs = {
 
 
 export type QueryCmsProjectsArgs = {
+  page?: InputMaybe<Scalars['Int']['input']>;
+  pageSize?: InputMaybe<Scalars['Int']['input']>;
   publicOnly?: InputMaybe<Scalars['Boolean']['input']>;
-  workspaceId: Scalars['ID']['input'];
+  workspaceIds: Array<Scalars['ID']['input']>;
 };
 
 
@@ -1234,8 +1293,10 @@ export type GetCmsProjectByIdOrAliasQueryVariables = Exact<{
 export type GetCmsProjectByIdOrAliasQuery = { __typename?: 'Query', cmsProject?: { __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, createdAt: any, updatedAt: any } | null };
 
 export type GetCmsProjectsQueryVariables = Exact<{
-  workspaceId: Scalars['ID']['input'];
+  workspaceIds: Array<Scalars['ID']['input']> | Scalars['ID']['input'];
   publicOnly?: InputMaybe<Scalars['Boolean']['input']>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+  pageSize?: InputMaybe<Scalars['Int']['input']>;
 }>;
 
 
@@ -1243,10 +1304,12 @@ export type GetCmsProjectsQuery = { __typename?: 'Query', cmsProjects: Array<{ _
 
 export type GetCmsModelsQueryVariables = Exact<{
   projectId: Scalars['ID']['input'];
+  page?: InputMaybe<Scalars['Int']['input']>;
+  pageSize?: InputMaybe<Scalars['Int']['input']>;
 }>;
 
 
-export type GetCmsModelsQuery = { __typename?: 'Query', cmsModels: Array<{ __typename?: 'CMSModel', id: string, projectId: string, name: string, description: string, editorUrl: string, key: string, publicApiEp: string, createdAt: any, updatedAt: any, schema: { __typename?: 'CMSSchema', schemaId: string, fields: Array<{ __typename?: 'CMSSchemaField', fieldId: string, key: string, type: CmsSchemaFieldType, name: string, description?: string | null }> } }> };
+export type GetCmsModelsQuery = { __typename?: 'Query', cmsModels: { __typename?: 'CMSModelsConnection', totalCount: number, models: Array<{ __typename?: 'CMSModel', id: string, projectId: string, name: string, description: string, editorUrl: string, key: string, publicApiEp: string, createdAt: any, updatedAt: any, schema: { __typename?: 'CMSSchema', schemaId: string, fields: Array<{ __typename?: 'CMSSchemaField', fieldId: string, key: string, type: CmsSchemaFieldType, name: string, description?: string | null }> } }> } };
 
 export type GetCmsItemsQueryVariables = Exact<{
   projectId: Scalars['ID']['input'];
@@ -1902,16 +1965,24 @@ export const GetCmsProjectByIdOrAliasDocument = gql`
 }
     ${CmsProjectFragmentDoc}`;
 export const GetCmsProjectsDocument = gql`
-    query GetCmsProjects($workspaceId: ID!, $publicOnly: Boolean) {
-  cmsProjects(workspaceId: $workspaceId, publicOnly: $publicOnly) {
+    query GetCmsProjects($workspaceIds: [ID!]!, $publicOnly: Boolean, $page: Int, $pageSize: Int) {
+  cmsProjects(
+    workspaceIds: $workspaceIds
+    publicOnly: $publicOnly
+    page: $page
+    pageSize: $pageSize
+  ) {
     ...CmsProject
   }
 }
     ${CmsProjectFragmentDoc}`;
 export const GetCmsModelsDocument = gql`
-    query GetCmsModels($projectId: ID!) {
-  cmsModels(projectId: $projectId) {
-    ...CmsModel
+    query GetCmsModels($projectId: ID!, $page: Int, $pageSize: Int) {
+  cmsModels(projectId: $projectId, page: $page, pageSize: $pageSize) {
+    models {
+      ...CmsModel
+    }
+    totalCount
   }
 }
     ${CmsModelFragmentDoc}`;

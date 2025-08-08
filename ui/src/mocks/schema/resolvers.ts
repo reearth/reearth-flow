@@ -557,17 +557,40 @@ export const resolvers = {
 
     cmsProjects: (
       _: any,
-      args: { workspaceId: string; publicOnly?: boolean },
+      args: { workspaceId?: string[]; publicOnly?: boolean } = {},
     ) => {
       return cmsProjects.filter((p) => {
-        if (p.workspaceId !== args.workspaceId) return false;
+        if (args.workspaceId && !args.workspaceId.includes(p.workspaceId))
+          return false;
         if (args.publicOnly && p.visibility !== "PUBLIC") return false;
         return true;
       });
     },
 
-    cmsModels: (_: any, args: { projectId: string }) => {
-      return cmsModels.filter((m) => m.projectId === args.projectId);
+    cmsModels: (
+      _: any,
+      args: {
+        projectId: string;
+        modelId: string;
+        page?: number;
+        pageSize?: number;
+      },
+    ) => {
+      // Filter items by projectId and modelId
+
+      const filteredModels = cmsModels.filter(
+        (m) => m.projectId === args.projectId,
+      );
+
+      const page = args.page || 1;
+      const pageSize = args.pageSize || 10;
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+
+      return {
+        items: filteredModels.slice(startIndex, endIndex),
+        totalCount: filteredModels.length,
+      };
     },
 
     cmsItems: (
