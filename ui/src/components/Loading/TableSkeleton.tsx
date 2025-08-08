@@ -11,8 +11,8 @@ import {
 import PaginationSkeleton from "./PaginationSkeleton";
 
 const LoadingTableSkeleton: React.FC<{
-  amountOfColumns: number;
-  fetchRate: number;
+  columns: number;
+  rows: number;
   className?: string;
   condensed?: boolean;
   hasFilter?: boolean;
@@ -20,8 +20,8 @@ const LoadingTableSkeleton: React.FC<{
   hasColumns?: boolean;
   hasPagination?: boolean;
 }> = ({
-  fetchRate,
-  amountOfColumns,
+  columns,
+  rows,
   condensed,
   hasFilter,
   hasOrdering,
@@ -30,14 +30,17 @@ const LoadingTableSkeleton: React.FC<{
 }) => {
   return (
     <div className="flex h-full flex-col justify-between">
-      <div
-        className={`flex items-center justify-between gap-4 ${condensed ? "py-1" : "py-3"}`}>
-        <div className="flex items-center gap-2">
-          {hasFilter && <Skeleton className="h-8 w-[300px]" />}
-          {hasOrdering && <Skeleton className="h-8 w-[100px]" />}
+      {(hasFilter || hasOrdering || hasColumns) && (
+        <div
+          className={`flex items-center justify-between gap-4 ${condensed ? "py-1" : "py-3"}`}>
+          <div className="flex items-center gap-2">
+            {hasFilter && <Skeleton className="h-8 w-[300px]" />}
+            {hasOrdering && <Skeleton className="h-8 w-[100px]" />}
+          </div>
+          {hasColumns && <Skeleton className="h-8 w-[76px]" />}
         </div>
-        {hasColumns && <Skeleton className="h-8 w-[76px]" />}
-      </div>
+      )}
+
       <div className="flex-1 overflow-auto">
         <div className="overflow-auto rounded-md border">
           <Table className="mx-auto">
@@ -46,7 +49,7 @@ const LoadingTableSkeleton: React.FC<{
                 <TableHead className={`${condensed ? "h-8" : "h-10"}`}>
                   <Skeleton className="h-7 w-[30px]" />
                 </TableHead>
-                {[...Array(amountOfColumns - 1)].map((_) => (
+                {[...Array(columns - 1)].map((_) => (
                   <TableHead className={`${condensed ? "h-8" : "h-10"}`}>
                     <Skeleton className="h-7 w-[100px]" />
                   </TableHead>
@@ -54,12 +57,12 @@ const LoadingTableSkeleton: React.FC<{
               </TableRow>
             </TableHeader>
             <TableBody>
-              {[...Array(fetchRate)].map((_, i) => (
+              {[...Array(rows)].map((_, i) => (
                 <TableRow key={i}>
-                  {[...Array(amountOfColumns)].map((_) => (
+                  {[...Array(columns)].map((_) => (
                     <TableCell
                       className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>
-                      <Skeleton className="h-5 w-[75px]" />
+                      <Skeleton className="h-5 w-[175px]" />
                     </TableCell>
                   ))}
                 </TableRow>

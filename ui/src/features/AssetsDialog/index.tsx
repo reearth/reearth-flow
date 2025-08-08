@@ -49,6 +49,7 @@ const AssetsDialog: React.FC<Props> = ({
   const {
     assets,
     isFetching,
+    isDebouncing,
     isDeleting,
     fileInputRef,
     assetToBeDeleted,
@@ -140,6 +141,7 @@ const AssetsDialog: React.FC<Props> = ({
             {layoutView === "list" ? (
               <AssetsListView
                 assets={assets}
+                isDebouncing={isDebouncing}
                 isFetching={isFetching}
                 isDeleting={isDeleting}
                 currentPage={currentPage}
@@ -155,6 +157,7 @@ const AssetsDialog: React.FC<Props> = ({
             ) : (
               <AssetsGridView
                 assets={assets}
+                isDebouncing={isDebouncing}
                 isFetching={isFetching}
                 isDeleting={isDeleting}
                 setAssetToBeDeleted={setAssetToBeDeleted}

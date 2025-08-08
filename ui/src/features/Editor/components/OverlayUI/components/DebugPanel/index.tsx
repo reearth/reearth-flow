@@ -206,8 +206,8 @@ const DebugPanel: React.FC = () => {
                 <div className="min-h-0 flex-1">
                   {isLoadingData ? (
                     <LoadingTableSkeleton
-                      fetchRate={30}
-                      amountOfColumns={10}
+                      columns={10}
+                      rows={30}
                       condensed
                       hasColumns
                       hasFilter

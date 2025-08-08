@@ -64,8 +64,8 @@ const JobsManager: React.FC = () => {
         </div>
         {isFetching ? (
           <LoadingTableSkeleton
-            fetchRate={JOBS_FETCH_RATE}
-            amountOfColumns={columns.length}
+            columns={columns.length}
+            rows={JOBS_FETCH_RATE}
             hasColumns
             hasOrdering
           />
