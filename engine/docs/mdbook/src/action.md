@@ -513,7 +513,8 @@ Create, Convert, Rename, and Remove Feature Attributes
           ]
         },
         "value": {
-          "title": "Value to use for the operation",
+          "title": "Value",
+          "description": "Value to use for the operation",
           "anyOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -2073,7 +2074,8 @@ Filters features by feature type
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureTypeFilter",
+  "title": "FeatureTypeFilter Parameters",
+  "description": "Configuration for filtering features based on their feature type.",
   "type": "object",
   "required": [
     "targetTypes"
@@ -2106,7 +2108,8 @@ Writes features from various formats
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureWriterParam",
+  "title": "FeatureWriter Parameters",
+  "description": "Configuration for writing features to different file formats.",
   "oneOf": [
     {
       "type": "object",
@@ -2155,6 +2158,8 @@ Writes features from various formats
       }
     },
     {
+      "title": "JsonWriter Parameters",
+      "description": "Configuration for writing features in JSON format with optional custom conversion.",
       "type": "object",
       "required": [
         "format",
@@ -2426,6 +2431,7 @@ Reads features from a file
     },
     {
       "title": "CityGML",
+      "description": "Configuration for reading CityGML files as a data source.",
       "type": "object",
       "required": [
         "format"
@@ -3267,7 +3273,8 @@ Intersection points are turned into point features that can contain the merged l
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "LineOnLineOverlayerParam",
+  "title": "LineOnLineOverlayer Parameters",
+  "description": "Configuration for finding intersection points between line features.",
   "type": "object",
   "required": [
     "tolerance"
@@ -3859,7 +3866,8 @@ Extracts maxLod
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "MaxLodExtractorParam",
+  "title": "MaxLodExtractor Parameters",
+  "description": "Configuration for extracting maximum LOD (Level of Detail) information from PLATEAU4 CityGML files.",
   "type": "object",
   "required": [
     "cityGmlPathAttribute",
@@ -3896,7 +3904,8 @@ Detect missing attributes
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "MissingAttributeDetectorParam",
+  "title": "MissingAttributeDetector Parameters",
+  "description": "Configuration for detecting missing attributes in PLATEAU4 features.",
   "type": "object",
   "required": [
     "packageAttribute"
@@ -3933,7 +3942,8 @@ Extract object list
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ObjectListExtractorParam",
+  "title": "ObjectListExtractor Parameters",
+  "description": "Configuration for extracting object lists from PLATEAU4 data.",
   "type": "object",
   "required": [
     "objectListPathAttribute"
@@ -3966,7 +3976,8 @@ Extracts UDX folders from cityGML path
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "UDXFolderExtractorParam",
+  "title": "UDXFolderExtractor Parameters",
+  "description": "Configuration for extracting UDX folder structure information from PLATEAU4 CityGML paths.",
   "type": "object",
   "required": [
     "cityGmlPath"
@@ -4290,7 +4301,8 @@ Replace the geometry with its footprint
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "SurfaceFootprintReplacerParam",
+  "title": "SurfaceFootprintReplacer Parameters",
+  "description": "Configuration for replacing geometry with its footprint projection.",
   "type": "object",
   "properties": {
     "elevation": {
@@ -4625,6 +4637,7 @@ Compiles scripts (Python) into WebAssembly and executes them in a WASM runtime
   ],
   "properties": {
     "processorType": {
+      "title": "Processor Type",
       "description": "Type of processor to create (Source, Processor, or Sink)",
       "allOf": [
         {
@@ -4633,6 +4646,7 @@ Compiles scripts (Python) into WebAssembly and executes them in a WASM runtime
       ]
     },
     "programmingLanguage": {
+      "title": "Programming Language",
       "description": "Programming language of the source script (currently supports Python)",
       "allOf": [
         {
@@ -4641,6 +4655,7 @@ Compiles scripts (Python) into WebAssembly and executes them in a WASM runtime
       ]
     },
     "source": {
+      "title": "Source Code",
       "description": "Script source code or path to compile to WebAssembly",
       "allOf": [
         {
@@ -4798,7 +4813,8 @@ Writes features to a zip file
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ZipFileWriterParam",
+  "title": "ZipFileWriter Parameters",
+  "description": "Configuration for creating ZIP archive files from features.",
   "type": "object",
   "required": [
     "output"
