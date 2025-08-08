@@ -36,8 +36,6 @@ const FieldTemplate = <
     required,
     errors,
     help,
-    description,
-    rawDescription,
     schema,
     uiSchema,
     registry,
@@ -79,11 +77,6 @@ const FieldTemplate = <
           </div>
         ) : (
           children
-        )}
-        {rawDescription && (
-          <div id={id} className="mt-1 text-xs text-muted-foreground">
-            {description}
-          </div>
         )}
         {errors && (
           <div className="mt-1 text-xs text-destructive" role="alert">
