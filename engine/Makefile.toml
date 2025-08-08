@@ -26,7 +26,7 @@ cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-qual
 [tasks.clippy-fix]
 script = ['''
 #!/usr/bin/env bash -eux
-cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --fix ${@-}
+cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --fix "$@"
 ''']
 
 [tasks.test]
