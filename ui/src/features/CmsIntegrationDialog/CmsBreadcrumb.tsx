@@ -63,9 +63,6 @@ const CmsBreadcrumb: React.FC<Props> = ({
               {selectedItem.id}
             </span>
             <span className="mx-2 text-muted-foreground">/</span>
-            {viewMode === "itemAssets" && (
-              <span className="dark:font-thin">{t("Assets")}</span>
-            )}
             {viewMode === "itemDetails" && (
               <span className="dark:font-thin">{t("Details")}</span>
             )}
