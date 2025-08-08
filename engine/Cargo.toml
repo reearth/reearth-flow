@@ -186,7 +186,7 @@ rmp-serde = "1.3.0"
 robust = "1.2.0"
 rstar = "0.12.2"
 rstest = "0.25.0"
-rust_xlsxwriter = "0.84.2"
+rust_xlsxwriter = "0.84.0"
 schemars = { version = "0.8.22", features = ["chrono", "uuid1"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_derive = "1.0.219"
@@ -240,7 +240,7 @@ uuid = { version = "1.17.0", features = [
   "v4",
 ] }
 walkdir = "2.5.0"
-wasmer = "5.0.6"
+wasmer = "5.0.3"
 wasmer-wasix = "0.33.0"
 zip = "2.4.2"
 zstd = "0.13.3"
