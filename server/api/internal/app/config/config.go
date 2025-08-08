@@ -97,7 +97,7 @@ type (
 		// cms
 		CMS_Endpoint string `envconfig:"REEARTH_FLOW_GRPC_ENDPOINT_CMS" pp:",omitempty"`
 		CMS_Token    string `envconfig:"REEARTH_FLOW_GRPC_TOKEN_CMS" pp:",omitempty"`
-		CMS_UseTLS   bool   `envconfig:"REEARTH_FLOW_GRPC_USETLS" default:"false" pp:",omitempty"`
+		CMS_UseTLS   bool   `envconfig:"REEARTH_FLOW_GRPC_USETLS" default:"true" pp:",omitempty"`
 	}
 )
 
