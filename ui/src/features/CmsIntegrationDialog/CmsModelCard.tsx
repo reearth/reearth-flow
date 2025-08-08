@@ -26,13 +26,12 @@ const CmsModelCard: React.FC<Props> = ({ model, onModelSelect }) => {
       onDoubleClick={() => onModelSelect(model)}>
       <CardHeader className="p-2">
         <div className="flex items-start justify-between">
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <CardTitle className="flex items-center gap-2 text-base">
-              <DatabaseIcon size={16} />
-              {model.name}
+              <DatabaseIcon size={16} className="h-4 w-4 shrink-0" />{" "}
+              <span className="min-w-0 truncate">{model.name}</span>
             </CardTitle>
-
-            <CardDescription className="text-sm text-muted-foreground">
+            <CardDescription className="truncate text-sm text-muted-foreground">
               {model.description}
             </CardDescription>
           </div>

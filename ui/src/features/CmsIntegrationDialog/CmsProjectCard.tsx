@@ -26,9 +26,9 @@ const CmsProjectCard: React.FC<Props> = ({ project, onProjectSelect }) => {
       onDoubleClick={() => onProjectSelect(project)}>
       <CardHeader className="p-2">
         <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="flex items-center gap-2 text-base">
-              {project.name}
+          <div className="min-w-0 flex-1 ">
+            <CardTitle className="flex items-center gap-2 truncate text-base">
+              <span className="truncate">{project.name}</span>
               {project.visibility === "public" ? (
                 <span className="flex items-center gap-1 rounded-full bg-logo/20 px-2 py-0.5 text-xs text-green-500">
                   <GlobeIcon size={14} />
@@ -49,7 +49,7 @@ const CmsProjectCard: React.FC<Props> = ({ project, onProjectSelect }) => {
       </CardHeader>
       <CardContent className="p-2">
         {project.description && (
-          <p className="mb-3 line-clamp-2 text-sm text-muted-foreground">
+          <p className="mb-3 line-clamp-2 truncate text-sm text-muted-foreground">
             {project.description}
           </p>
         )}

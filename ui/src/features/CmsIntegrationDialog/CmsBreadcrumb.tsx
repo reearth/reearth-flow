@@ -26,34 +26,35 @@ const CmsBreadcrumb: React.FC<Props> = ({
   const t = useT();
 
   return (
-    <div className="flex items-center font-normal">
-      <LayoutIcon size={24} className="mr-2 inline-block" />
-      <span className="px-4 py-2 pr-1 pl-1">{t("CMS Integration")}</span>
+    <div className="flex min-w-0 items-center font-normal">
+      <LayoutIcon size={24} className="mr-2 shrink-0" />
+      <span className="shrink-0 px-4 py-2 pr-1 pl-1">
+        {t("CMS Integration")}
+      </span>
 
       {selectedProject && (
-        <div>
-          <span className="mx-2 text-muted-foreground">/</span>
+        <div className="flex min-w-0 items-center">
+          <span className="mx-2 shrink-0 text-muted-foreground">/</span>
           <Button
             variant="ghost"
             onClick={onBackToModels}
-            className="text-md pr-1 pl-1 font-normal dark:font-thin">
-            {selectedProject.name}
+            className="text-md max-w-full min-w-0 truncate overflow-hidden pr-1 pl-1 font-normal dark:font-thin">
+            <span className="truncate">{selectedProject.name}</span>
           </Button>
         </div>
       )}
 
       {selectedProject && selectedModel && (
-        <div>
-          <span className="mx-2 text-muted-foreground">/</span>
+        <div className="flex min-w-0 items-center">
+          <span className="mx-2 shrink-0 text-muted-foreground">/</span>
           <Button
             variant="ghost"
             onClick={onBackToItems}
-            className="text-md pr-1 pl-1 font-normal dark:font-thin">
-            {selectedModel.name}
+            className="text-md max-w-full min-w-0 truncate overflow-hidden pr-1 pl-1 font-normal dark:font-thin">
+            <span className="truncate">{selectedModel.name}</span>
           </Button>
         </div>
       )}
-
       {selectedItem && (
         <div>
           <span className="mx-2 text-muted-foreground">/</span>
