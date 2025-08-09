@@ -68,6 +68,7 @@ func main() {
 	// Initialize storage components
 	redisStorage := flow_redis.NewRedisStorage(redisClient)
 	logStorage := infrastructure.NewLogStorageImpl(redisStorage)
+	userFacingLogStorage := infrastructure.NewUserFacingLogStorageImpl(redisStorage)
 
 	// Initialize MongoDB client and node storage if needed
 	var mongoClient *mongo.Client
@@ -141,6 +142,27 @@ func main() {
 		log.Println("Node storage not properly initialized, node subscriber will not be started")
 	} else {
 		log.Println("Node subscription ID not provided, node subscriber will not be started")
+	}
+
+	// Set up user-facing log subscriber if configured
+	if conf.UserFacingLogSubscriptionID != "" {
+		userFacingLogSub := pubsubClient.Subscription(conf.UserFacingLogSubscriptionID)
+		userFacingLogSubAdapter := flow_pubsub.NewRealSubscription(userFacingLogSub)
+		userFacingLogSubscriberUC := interactor.NewUserFacingLogSubscriberUseCase(userFacingLogStorage)
+		userFacingLogSubscriber := flow_pubsub.NewUserFacingLogSubscriber(userFacingLogSubAdapter, userFacingLogSubscriberUC)
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			log.Println("[subscriber] Starting user facing log subscriber...")
+			if err := userFacingLogSubscriber.StartListening(ctx); err != nil {
+				log.Printf("[subscriber] User facing log subscriber error: %v", err)
+				cancel()
+			}
+			log.Println("[subscriber] User facing log subscriber stopped")
+		}()
+	} else {
+		log.Println("User facing log subscription ID not provided, user facing log subscriber will not be started")
 	}
 
 	// Set up HTTP server
