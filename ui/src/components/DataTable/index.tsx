@@ -11,8 +11,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import {
   DropdownMenu,
@@ -56,8 +55,6 @@ type DataTableProps<TData, TValue> = {
   sortOptions?: { value: string; label: string }[];
   currentSortValue?: string;
   searchTerm?: string;
-  selectedRow?: any;
-  useStrictSelectedRow?: boolean;
   onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
   setCurrentPage?: (page: number) => void;
@@ -81,8 +78,6 @@ function DataTable<TData, TValue>({
   sortOptions,
   currentSortValue,
   searchTerm,
-  selectedRow,
-  useStrictSelectedRow,
   onRowClick,
   onRowDoubleClick,
   setCurrentPage,
@@ -153,18 +148,6 @@ function DataTable<TData, TValue>({
     );
   };
 
-  const orderDirections: Record<OrderDirection, string> = {
-    DESC: t("Newest"),
-    ASC: t("Oldest"),
-  };
-  const parentRef = useRef<HTMLDivElement>(null);
-  const { rows } = table.getRowModel();
-  const virtualizer = useVirtualizer({
-    count: rows.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 24,
-  });
-
   const handleRowDoubleClick = (row: Row<TData>) => {
     onRowDoubleClick?.(row.original);
   };
@@ -189,6 +172,13 @@ function DataTable<TData, TValue>({
         }
       : undefined,
   );
+
+  const orderDirections: Record<OrderDirection, string> = {
+    DESC: t("Newest"),
+    ASC: t("Oldest"),
+  };
+
+  const { rows } = table.getRowModel();
 
   return (
     <div className="flex h-full flex-col justify-between">
@@ -267,7 +257,6 @@ function DataTable<TData, TValue>({
       )}
       <div className="flex-1 overflow-auto">
         <div
-          ref={parentRef}
           className="overflow-auto rounded-md border"
           style={{ contain: "paint", willChange: "transform" }}>
           <Table>
@@ -295,38 +284,12 @@ function DataTable<TData, TValue>({
             </TableHeader>
             <TableBody>
               {rows.length ? (
-                virtualizer.getVirtualItems().map((virtualRow, idx) => {
-                  const row = rows[virtualRow.index] as any;
-                  let isSelected = false;
-                  if (selectedRow) {
-                    isSelected =
-                      String(selectedRow?.id || "").replace(
-                        /[^a-zA-Z0-9]/g,
-                        "",
-                      ) ===
-                      String(row.original?.id || "").replace(
-                        /[^a-zA-Z0-9]/g,
-                        "",
-                      );
-                  }
+                rows.map((row) => {
                   return (
                     <TableRow
                       key={row.id}
                       // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
-                      className="after:border-line-200 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b relative cursor-pointer border-0"
-                      style={{
-                        height: `${virtualRow.size}px`,
-                        transform: `translateY(${virtualRow.start - idx * virtualRow.size}px)`,
-                      }}
-                      data-state={
-                        useStrictSelectedRow
-                          ? selectedRow && isSelected
-                            ? "selected"
-                            : undefined
-                          : row.getIsSelected()
-                            ? "selected"
-                            : undefined
-                      }
+                      data-state={row.getIsSelected() ? "selected" : undefined}
                       onClick={
                         handleSingleClick
                           ? () => handleSingleClick(row)
