@@ -1,7 +1,3 @@
-//! yrs-kvstore is a generic library that allows to quickly implement
-//! [Yrs](https://docs.rs/yrs/latest/yrs/index.html) specific document operations over any kind
-//! of persistent key-value store i.e. LMDB or RocksDB.
-//!
 //! In order to do so, persistent unit of transaction should define set of basic operations via
 //! [KVStore] trait implementation. Once this is done it can implement [DocOps]. Latter offers a
 //! set of useful operations like document metadata management options, document and update merging
@@ -35,89 +31,33 @@
 //! 01{oid:4}3{name:M}0  - document meta key pattern
 //! ```
 
-pub mod error;
-pub mod keys;
+use crate::domain::value_objects::keys::{key_update_end, Error};
 
-use crate::storage::redis::RedisStore;
-use crate::tools::{compress_brotli, decompress_brotli};
-use anyhow;
-use async_trait::async_trait;
-use error::Error;
-use hex;
-use keys::{
+use crate::domain::entity::redis::RedisStore;
+use crate::domain::repository::kv::KVEntry;
+use crate::domain::repository::kv::KVStore;
+use crate::domain::value_objects::keys::{
     doc_oid_name, key_doc, key_doc_end, key_doc_start, key_meta, key_meta_end, key_meta_start,
     key_oid, key_state_vector, key_update, Key, KEYSPACE_DOC, KEYSPACE_OID, OID, V1,
 };
+use crate::tools::{compress_brotli, decompress_brotli};
+use anyhow;
+use anyhow::Result;
+use async_trait::async_trait;
+use hex;
 use std::convert::TryInto;
+use time::OffsetDateTime;
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, Transaction, TransactionMut, Update};
 
 use super::first_zero_bit;
-/// A trait to be implemented by the specific key-value store transaction equivalent in order to
-/// auto-implement features provided by [DocOps] trait.
-
-#[async_trait]
-pub trait KVStore: Send + Sync {
-    /// Error type returned from the implementation.
-    type Error: std::error::Error + Send + Sync + 'static;
-    /// Cursor type used to iterate over the ordered range of key-value entries.
-    type Cursor: Iterator<Item = Self::Entry> + Send;
-    /// Entry type returned by cursor.
-    type Entry: KVEntry + Send;
-    /// Type returned from the implementation.
-    type Return: AsRef<[u8]> + Send;
-
-    /// Return a value stored under given `key` or `None` if key was not found.
-    async fn get(&self, key: &[u8]) -> Result<Option<Self::Return>, Self::Error>;
-
-    /// Insert a new `value` under given `key` or replace an existing value with new one if
-    /// entry with that `key` already existed.
-    async fn upsert(&self, key: &[u8], value: &[u8]) -> Result<(), Self::Error>;
-
-    /// Batch insert or update multiple key-value pairs.
-    async fn batch_upsert(&self, entries: &[(&[u8], &[u8])]) -> Result<(), Self::Error> {
-        // Default implementation processes entries one by one
-        for (key, value) in entries {
-            self.upsert(key, value).await?;
-        }
-        Ok(())
-    }
-
-    /// Return a value stored under the given `key` if it exists.
-    async fn remove(&self, key: &[u8]) -> Result<(), Self::Error>;
-
-    /// Remove all keys between `from`..=`to` range of keys.
-    async fn remove_range(&self, from: &[u8], to: &[u8]) -> Result<(), Self::Error>;
-
-    /// Return an iterator over all entries between `from`..=`to` range of keys.
-    async fn iter_range(&self, from: &[u8], to: &[u8]) -> Result<Self::Cursor, Self::Error>;
-
-    /// Looks into the last entry value prior to a given key. The provided key parameter may not
-    /// exist and it's used only to establish cursor position in ordered key collection.
-    ///
-    /// In example: in a key collection of `{1,2,5,7}`, this method with the key parameter of `4`
-    /// should return value of `2`.
-    async fn peek_back(&self, key: &[u8]) -> Result<Option<Self::Entry>, Self::Error>;
-}
-
-/// Trait used by [KVStore] to define key-value entry tuples returned by cursor iterators.
-pub trait KVEntry {
-    /// Returns a key of current entry.
-    fn key(&self) -> &[u8];
-    /// Returns a value of current entry.
-    fn value(&self) -> &[u8];
-}
-
-/// Trait used to automatically implement core operations over the Yrs document.
 
 #[async_trait]
 pub trait DocOps<'a>: KVStore + Sized
 where
     Error: From<<Self as KVStore>::Error>,
 {
-    /// Inserts or updates a document given it's read transaction and name. lib0 v1 encoding is
-    /// used for storing the document.
     async fn insert_doc<K: AsRef<[u8]> + ?Sized + Sync, T: ReadTxn + Sync>(
         &self,
         name: &K,
@@ -130,35 +70,23 @@ where
             .await
     }
 
-    /// Inserts or updates a document given it's binary update and state vector. lib0 v1 encoding is
-    /// assumed as a format for storing the document.
-    ///
-    /// This is useful when you i.e. want to pre-serialize big document prior to acquiring
-    /// a database transaction.
-    ///
-    /// This feature requires a write capabilities from the database transaction.
     async fn insert_doc_raw_v1(
         &self,
         name: &[u8],
         doc_state_v1: &[u8],
         doc_sv_v1: &[u8],
         redis: &RedisStore,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let oid = get_or_create_oid(self, name, redis).await?;
         insert_inner_v1(self, oid, doc_state_v1, doc_sv_v1).await?;
         Ok(())
     }
 
-    /// Loads the document state stored in current database under given document `name` into
-    /// in-memory Yrs document using provided [TransactionMut]. This includes potential update
-    /// entries that may not have been merged with the main document state yet.
-    ///
-    /// This feature requires only a read capabilities from the database transaction.
     async fn load_doc<'doc, K: AsRef<[u8]> + ?Sized + Sync>(
         &self,
         name: &K,
         txn: &mut TransactionMut<'doc>,
-    ) -> Result<bool, Error> {
+    ) -> Result<bool> {
         if let Some(oid) = get_oid(self, name.as_ref()).await? {
             let loaded = load_doc(self, oid, txn).await?;
             Ok(loaded != 0)
@@ -167,15 +95,7 @@ where
         }
     }
 
-    /// Merges all updates stored via [Self::push_update] that were detached from the main document
-    /// state, updates the document and its state vector and finally prunes the updates that have
-    /// been integrated this way. Returns the [Doc] with the most recent state produced this way.
-    ///
-    /// This feature requires a write capabilities from the database transaction.
-    async fn flush_doc<K: AsRef<[u8]> + ?Sized + Sync>(
-        &self,
-        name: &K,
-    ) -> Result<Option<Doc>, Error> {
+    async fn flush_doc<K: AsRef<[u8]> + ?Sized + Sync>(&self, name: &K) -> Result<Option<Doc>> {
         self.flush_doc_with(name, yrs::Options::default()).await
     }
 
@@ -183,7 +103,7 @@ where
         &self,
         name: &K,
         density_shift: u32,
-    ) -> Result<Option<Doc>, Error> {
+    ) -> Result<Option<Doc>> {
         if let Some(oid) = get_oid(self, name.as_ref()).await? {
             let update_range_start = key_update(oid, 0)?;
             let update_range_end = key_update(oid, u32::MAX)?;
@@ -254,18 +174,11 @@ where
         }
     }
 
-    /// Merges all updates stored via [Self::push_update] that were detached from the main document
-    /// state, updates the document and its state vector and finally prunes the updates that have
-    /// been integrated this way. `options` are used to drive the details of integration process.
-    /// Returns the [Doc] with the most recent state produced this way, initialized using
-    /// `options` parameter.
-    ///
-    /// This feature requires a write capabilities from the database transaction.
     async fn flush_doc_with<K: AsRef<[u8]> + ?Sized + Sync>(
         &self,
         name: &K,
         options: yrs::Options,
-    ) -> Result<Option<Doc>, Error> {
+    ) -> Result<Option<Doc>> {
         if let Some(oid) = get_oid(self, name.as_ref()).await? {
             let doc = flush_doc(self, oid, options).await?;
             Ok(doc)
@@ -274,19 +187,10 @@ where
         }
     }
 
-    /// Returns the [StateVector] stored directly for the document with a given `name`.
-    /// Returns `None` if the state vector was not stored.
-    ///
-    /// Keep in mind that this method only returns a state vector that's stored directly. A second
-    /// tuple parameter boolean informs if returned value is up to date. If that's not the case, it
-    /// means that state vector exists but must be recalculated from the collection of persisted
-    /// updates using either [Self::load_doc] (read-only) or [Self::flush_doc] (read-write).
-    ///
-    /// This feature requires only the read capabilities from the database transaction.
     async fn get_state_vector<K: AsRef<[u8]> + ?Sized + Sync>(
         &self,
         name: &K,
-    ) -> Result<(Option<StateVector>, bool), Error> {
+    ) -> Result<(Option<StateVector>, bool)> {
         if let Some(oid) = get_oid(self, name.as_ref()).await? {
             let key = key_state_vector(oid)?;
             let data = self.get(&key).await?;
@@ -308,20 +212,12 @@ where
         }
     }
 
-    /// Appends new update without integrating it directly into document store (which is faster
-    /// than persisting full document state on every update). Updates are assumed to be serialized
-    /// using lib0 v1 encoding.
-    ///
-    /// Returns a sequence number of a stored update. Once updates are integrated into document and
-    /// pruned (using [Self::flush_doc] method), sequence number is reset.
-    ///
-    /// This feature requires a write capabilities from the database transaction.
     async fn push_update<K: AsRef<[u8]> + ?Sized + Sync>(
         &self,
         name: &K,
         update: &[u8],
         redis: &RedisStore,
-    ) -> Result<u32, Error> {
+    ) -> Result<u32> {
         let oid = get_or_create_oid(self, name.as_ref(), redis).await?;
         let last_clock = {
             let end = key_update(oid, u32::MAX)?;
@@ -340,15 +236,11 @@ where
         Ok(clock)
     }
 
-    /// Returns an update (encoded using lib0 v1 encoding) which contains all new changes that
-    /// happened since provided state vector for a given document.
-    ///
-    /// This feature requires only the read capabilities from the database transaction.
     async fn get_diff<K: AsRef<[u8]> + ?Sized + Sync>(
         &self,
         name: &K,
         sv: &StateVector,
-    ) -> Result<Option<Vec<u8>>, Error> {
+    ) -> Result<Option<Vec<u8>>> {
         let doc = Doc::new();
         let found = {
             let mut txn = doc.transact_mut();
@@ -361,10 +253,7 @@ where
         }
     }
 
-    /// Removes all data associated with the current document (including its updates and metadata).
-    ///
-    /// This feature requires a write capabilities from the database transaction.
-    async fn clear_doc<K: AsRef<[u8]> + ?Sized + Sync>(&self, name: &K) -> Result<(), Error> {
+    async fn clear_doc<K: AsRef<[u8]> + ?Sized + Sync>(&self, name: &K) -> Result<()> {
         let oid_key = key_oid(name.as_ref())?;
         if let Some(oid) = self.get(&oid_key).await? {
             // all document related elements are stored within bounds [0,1,..oid,0]..[0,1,..oid,255]
@@ -384,14 +273,11 @@ where
         Ok(())
     }
 
-    /// Returns a metadata value stored under its metadata `key` for a document with given `name`.
-    ///
-    /// This feature requires only the read capabilities from the database transaction.
     async fn get_meta<K1: AsRef<[u8]> + ?Sized + Sync, K2: AsRef<[u8]> + ?Sized + Sync>(
         &self,
         name: &K1,
         meta_key: &K2,
-    ) -> Result<Option<Self::Return>, Error> {
+    ) -> Result<Option<Self::Return>> {
         if let Some(oid) = get_oid(self, name.as_ref()).await? {
             let key = key_meta(oid, meta_key.as_ref())?;
             Ok(self.get(&key).await?)
@@ -400,31 +286,24 @@ where
         }
     }
 
-    /// Inserts or updates new `meta` value stored under its metadata `key` for a document with
-    /// given `name`.
-    ///
-    /// This feature requires write capabilities from the database transaction.
     async fn insert_meta<K1: AsRef<[u8]> + ?Sized + Sync, K2: AsRef<[u8]> + ?Sized + Sync>(
         &self,
         name: &K1,
         meta_key: &K2,
         meta: &[u8],
         redis: &RedisStore,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let oid = get_or_create_oid(self, name.as_ref(), redis).await?;
         let key = key_meta(oid, meta_key.as_ref())?;
         self.upsert(&key, meta).await?;
         Ok(())
     }
 
-    /// Removes an metadata entry stored under given metadata `key` for a document with provided `name`.
-    ///
-    /// This feature requires write capabilities from the database transaction.
     async fn remove_meta<K1: AsRef<[u8]> + ?Sized + Sync, K2: AsRef<[u8]> + ?Sized + Sync>(
         &self,
         name: &K1,
         meta_key: &K2,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         if let Some(oid) = get_oid(self, name.as_ref()).await? {
             let key = key_meta(oid, meta_key.as_ref())?;
             self.remove(&key).await?;
@@ -432,19 +311,17 @@ where
         Ok(())
     }
 
-    /// Returns an iterator over all document names stored in current database.
-    async fn iter_docs(&self) -> Result<DocsNameIter<Self::Cursor, Self::Entry>, Error> {
+    async fn iter_docs(&self) -> Result<DocsNameIter<Self::Cursor, Self::Entry>> {
         let start = Key::from_const([V1, KEYSPACE_OID]);
         let end = Key::from_const([V1, KEYSPACE_DOC]);
         let cursor = self.iter_range(&start, &end).await?;
         Ok(DocsNameIter { cursor })
     }
 
-    /// Returns an iterator over all metadata entries stored for a given document.
     async fn iter_meta<K: AsRef<[u8]> + ?Sized + Sync>(
         &self,
         doc_name: &K,
-    ) -> Result<MetadataIter<Self::Cursor, Self::Entry>, Error> {
+    ) -> Result<MetadataIter<Self::Cursor, Self::Entry>> {
         if let Some(oid) = get_oid(self, doc_name.as_ref()).await? {
             let start = key_meta_start(oid)?.to_vec();
             let end = key_meta_end(oid)?.to_vec();
@@ -455,7 +332,7 @@ where
         }
     }
 
-    async fn load_doc_v2<K: AsRef<[u8]> + ?Sized + Sync>(&self, name: &K) -> Result<Doc, Error> {
+    async fn load_doc_v2<K: AsRef<[u8]> + ?Sized + Sync>(&self, name: &K) -> Result<Doc> {
         let doc_key = format!("doc_v2:{}", hex::encode(name.as_ref()));
         let doc_key_bytes = doc_key.as_bytes();
 
@@ -483,7 +360,7 @@ where
         &self,
         name: &K,
         txn: &Transaction,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         let doc_key = format!("doc_v2:{}", hex::encode(name.as_ref()));
         let doc_key_bytes = doc_key.as_bytes();
 
@@ -493,6 +370,61 @@ where
 
         self.upsert(doc_key_bytes, &compressed_data).await?;
         Ok(())
+    }
+
+    async fn create_snapshot_from_version<K: AsRef<[u8]> + ?Sized + Sync>(
+        &self,
+        doc_id: &K,
+        txn: &mut TransactionMut<'_>,
+        version: u32,
+    ) -> Result<()> {
+        let oid = match get_oid(self, doc_id.as_ref()).await? {
+            Some(oid) => oid,
+            None => return Ok(()),
+        };
+
+        let start = key_doc_start(oid)?;
+        let end = key_update_end(oid, version)?;
+
+        let filtered_objects = self.iter_range(&start, &end).await?;
+
+        for obj in filtered_objects {
+            let update = Update::decode_v1(obj.value())?;
+            let _ = txn.apply_update(update);
+        }
+
+        Ok(())
+    }
+
+    async fn get_last_checkpoint(&self, doc_id: &str) -> Result<Option<u32>, Error> {
+        let checkpoint_key = format!("checkpoint:{}", hex::encode(doc_id.as_bytes()));
+        if let Some(data) = self.get(checkpoint_key.as_bytes()).await? {
+            let data_ref: &[u8] = data.as_ref();
+            if data_ref.len() >= 4 {
+                let clock_bytes: [u8; 4] = data_ref[..4].try_into().unwrap();
+                Ok(Some(u32::from_be_bytes(clock_bytes)))
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn get_updates_metadata(&self, doc_id: &str) -> Result<Vec<(u32, OffsetDateTime)>> {
+        let oid = match get_oid(self, doc_id.as_bytes()).await? {
+            Some(oid) => oid,
+            None => return Ok(Vec::new()),
+        };
+
+        let start = key_doc_start(oid)?;
+        let end = key_doc_end(oid)?;
+        let metadata = self.get_metadata(&start, &end).await?;
+        if let Some(metadata) = metadata {
+            Ok(metadata)
+        } else {
+            Ok(Vec::new())
+        }
     }
 }
 
@@ -674,7 +606,7 @@ async fn insert_inner_v1<'a, DB: DocOps<'a>>(
     doc_sv_v1: &[u8],
 ) -> Result<(), Error>
 where
-    error::Error: From<<DB as KVStore>::Error>,
+    Error: From<<DB as KVStore>::Error>,
 {
     let key_doc = key_doc(oid)?;
     let key_sv = key_state_vector(oid)?;

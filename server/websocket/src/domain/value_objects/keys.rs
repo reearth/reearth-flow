@@ -80,6 +80,24 @@ pub fn key_update(oid: OID, clock: u32) -> Result<Key<12>, std::io::Error> {
     Ok(Key(v))
 }
 
+/// Creates the starting key for querying only updates (excludes document state and state vector)
+pub fn key_update_start(oid: OID) -> Result<Key<8>, std::io::Error> {
+    let mut v: SmallVec<[u8; 8]> = smallvec![V1, KEYSPACE_DOC];
+    v.write_all(&oid.to_be_bytes())?;
+    v.push(SUB_UPDATE);
+    Ok(Key(v))
+}
+
+/// Creates the ending key for querying updates up to a specific clock version (inclusive)
+pub fn key_update_end(oid: OID, clock: u32) -> Result<Key<12>, std::io::Error> {
+    let mut v: SmallVec<[u8; 12]> = smallvec![V1, KEYSPACE_DOC];
+    v.write_all(&oid.to_be_bytes())?;
+    v.push(SUB_UPDATE);
+    v.write_all(&clock.to_be_bytes())?;
+    v.push(TERMINATOR_HI_WATERMARK);
+    Ok(Key(v))
+}
+
 pub fn doc_meta_name(key: &[u8]) -> &[u8] {
     if key.len() < 7 {
         return &[];
@@ -162,3 +180,5 @@ impl<const N: usize> From<Key<N>> for Vec<u8> {
 //        unsafe { MdbValue::new(bytes, self.0.len()) }
 //    }
 //}
+
+pub type Error = anyhow::Error;
