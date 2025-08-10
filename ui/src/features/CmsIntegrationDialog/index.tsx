@@ -8,15 +8,17 @@ import {
   DialogContentWrapper,
   DialogTitle,
   ScrollArea,
-  LoadingSkeleton,
   DataTable as Table,
   FlowLogo,
   IconButton,
   Pagination,
   Input,
   Button,
+  Skeleton,
+  LoadingTableSkeleton,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
+import { CMS_ITEMS_FETCH_RATE } from "@flow/lib/gql/cms/useQueries";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import type { CmsItem } from "@flow/types/cmsIntegration";
@@ -52,6 +54,7 @@ const CmsIntegrationDialog: React.FC<Props> = ({
     modelsCurrentPage,
     searchTerm,
     isLoading,
+    isDebouncing,
     viewMode,
     setSearchTerm,
     setModelsCurrentPage,
@@ -161,9 +164,23 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                 {viewMode === "projects" && (
                   <>
                     {isLoading ? (
-                      <div className="col-span-full py-8 pt-50 text-muted-foreground">
-                        <LoadingSkeleton />
-                      </div>
+                      Array.from({ length: 12 }).map((_, index) => (
+                        <div
+                          key={index}
+                          className="flex h-[140px] flex-col justify-between rounded-lg bg-secondary">
+                          <div className="flex h-[50px] w-[200px] flex-col justify-center gap-1 px-2">
+                            <div className="flex items-center gap-2 truncate text-base">
+                              <Skeleton className=" h-[20px] w-[150px]" />
+                              <Skeleton className=" h-[20px] w-[66px] rounded-full" />
+                            </div>
+                            <Skeleton className="h-[16px] w-[165px]" />
+                          </div>
+                          <div className="flex justify-between px-2 pb-2">
+                            <Skeleton className="mb-2 h-[16px] w-[120px]" />
+                            <Skeleton className="mb-2 h-[16px] w-[100px]" />
+                          </div>
+                        </div>
+                      ))
                     ) : filteredProjects.length === 0 ? (
                       <div className="col-span-full py-8 text-center text-muted-foreground">
                         <BasicBoiler
@@ -188,9 +205,20 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                 {viewMode === "models" && selectedProject && (
                   <>
                     {isLoading ? (
-                      <div className="col-span-full py-8 pt-50 text-center text-muted-foreground">
-                        <LoadingSkeleton />
-                      </div>
+                      Array.from({ length: 12 }).map((_, index) => (
+                        <div
+                          key={index}
+                          className="flex h-[108px] flex-col justify-between rounded-lg bg-secondary">
+                          <div className="flex h-[44px] w-[200px] flex-col justify-center gap-1 px-2">
+                            <Skeleton className=" h-[20px] w-[150px]" />
+                          </div>
+                          <div className="flex justify-between px-2 pb-2">
+                            <Skeleton className="mb-2 h-[16px] w-[66px]" />
+                            <Skeleton className="mb-2 h-[16px] w-[100px]" />
+                            <Skeleton className="mb-2 h-[16px] w-[100px]" />
+                          </div>
+                        </div>
+                      ))
                     ) : cmsModels.length === 0 ? (
                       <div className="col-span-full py-8 text-center text-muted-foreground">
                         <BasicBoiler
@@ -216,8 +244,12 @@ const CmsIntegrationDialog: React.FC<Props> = ({
             </ScrollArea>
             {viewMode === "items" && selectedModel && (
               <div className="h-full flex-1 overflow-hidden">
-                {isLoading ? (
-                  <LoadingSkeleton />
+                {isDebouncing || isLoading ? (
+                  <LoadingTableSkeleton
+                    columns={columns.length}
+                    rows={CMS_ITEMS_FETCH_RATE}
+                    hasQuickActions
+                  />
                 ) : cmsItems.length === 0 ? (
                   <div className="col-span-full py-8 text-center text-muted-foreground">
                     <BasicBoiler

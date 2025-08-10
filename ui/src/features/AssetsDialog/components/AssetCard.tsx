@@ -25,18 +25,20 @@ import { Asset } from "@flow/types";
 
 type Props = {
   asset: Asset;
+  isDeleting: boolean;
+  setAssetToBeDeleted: (asset: string | undefined) => void;
+  setAssetToBeEdited: (asset: Asset | undefined) => void;
+  onDoubleClick?: (asset: Asset) => void;
   onCopyUrlToClipBoard: (url: string) => void;
   onAssetDownload: (
     e: React.MouseEvent<HTMLAnchorElement>,
     asset: Asset,
   ) => void;
-  setAssetToBeDeleted: (asset: string | undefined) => void;
-  setAssetToBeEdited: (asset: Asset | undefined) => void;
-  onDoubleClick?: (asset: Asset) => void;
 };
 
 const AssetCard: React.FC<Props> = ({
   asset,
+  isDeleting,
   onCopyUrlToClipBoard,
   onAssetDownload,
   setAssetToBeDeleted,
@@ -116,6 +118,7 @@ const AssetCard: React.FC<Props> = ({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="justify-between gap-4 text-destructive"
+                disabled={isDeleting}
                 onClick={(e) => {
                   e.stopPropagation();
                   setAssetToBeDeleted(id);

@@ -7,3 +7,6 @@ export const useCurrentProject = () => useAtom(currentProject);
 
 const currentWorkspace = atom<Workspace | undefined>(undefined);
 export const useCurrentWorkspace = () => useAtom(currentWorkspace);
+
+const isSaving = atom<boolean>(false);
+export const useIsSaving = () => useAtom(isSaving);

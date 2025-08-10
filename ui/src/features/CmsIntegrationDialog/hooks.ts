@@ -36,7 +36,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     ? modelsQuery.page?.cmsModels || []
     : [];
 
-  const { searchTerm, setSearchTerm } = useDebouncedSearch({
+  const { searchTerm, isDebouncing, setSearchTerm } = useDebouncedSearch({
     initialSearchTerm: "",
     delay: 500,
     onDebounced: () => {
@@ -154,6 +154,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     modelsCurrentPage,
     searchTerm,
     isLoading,
+    isDebouncing,
     viewMode,
     isItemDetailOpen,
     setSearchTerm,
