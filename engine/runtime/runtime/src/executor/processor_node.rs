@@ -71,6 +71,7 @@ pub struct ProcessorNode<F> {
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
     event_hub: EventHub,
+    node_cache: Option<Arc<reearth_flow_state::State>>,
 }
 
 impl<F: Future + Unpin + Debug> ProcessorNode<F> {
@@ -133,6 +134,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             storage_resolver,
             kv_store,
             event_hub: dag.event_hub().clone(),
+            node_cache: ctx.node_cache.clone(),
         }
     }
 
@@ -166,14 +168,17 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             feature_id: None,
         });
 
+        let init_ctx = NodeContext::new(
+            self.expr_engine.clone(),
+            self.storage_resolver.clone(),
+            self.kv_store.clone(),
+            self.event_hub.clone(),
+            self.node_cache.clone(),
+        );
+        
         processor
             .write()
-            .initialize(NodeContext::new(
-                self.expr_engine.clone(),
-                self.storage_resolver.clone(),
-                self.kv_store.clone(),
-                self.event_hub.clone(),
-            ))
+            .initialize(init_ctx)
             .map_err(ExecutionError::Processor)?;
 
         self.event_hub.send(Event::NodeStatusChanged {
@@ -225,12 +230,15 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                     );
                     std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
 
-                    let terminate_result = self.on_terminate(NodeContext::new(
+                    let terminate_ctx = NodeContext::new(
                         self.expr_engine.clone(),
                         self.storage_resolver.clone(),
                         self.kv_store.clone(),
                         self.event_hub.clone(),
-                    ));
+                        self.node_cache.clone(),
+                    );
+                    
+                    let terminate_result = self.on_terminate(terminate_ctx);
 
                     if terminate_result.is_err()
                         && !has_failed.load(std::sync::atomic::Ordering::SeqCst)
