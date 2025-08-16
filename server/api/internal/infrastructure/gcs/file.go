@@ -289,6 +289,32 @@ func (f *fileRepo) CheckJobWorkerLogExists(ctx context.Context, jobID string) (b
 	return true, nil
 }
 
+func (f *fileRepo) GetJobUserFacingLogURL(jobID string) string {
+	logPath := path.Join(gcsArtifactBasePath, jobID, "user-facing-log/user-facing.log")
+	url := getGCSObjectURL(f.base, logPath)
+	if url == nil {
+		return ""
+	}
+	return url.String()
+}
+
+func (f *fileRepo) CheckJobUserFacingLogExists(ctx context.Context, jobID string) (bool, error) {
+	bucket, err := f.bucket(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	logPath := path.Join(gcsArtifactBasePath, jobID, "user-facing-log/user-facing.log")
+	_, err = bucket.Object(logPath).Attrs(ctx)
+	if err == storage.ErrObjectNotExist {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (f *fileRepo) GetIntermediateDataURL(ctx context.Context, edgeID, jobID string) string {
 	intermediateDataPath := path.Join(gcsArtifactBasePath, jobID, "feature-store", edgeID+".jsonl")
 	url := getGCSObjectURL(f.base, intermediateDataPath)

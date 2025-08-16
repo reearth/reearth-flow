@@ -209,6 +209,19 @@ func (f *fileRepo) CheckJobWorkerLogExists(ctx context.Context, jobID string) (b
 	return exists, nil
 }
 
+func (f *fileRepo) GetJobUserFacingLogURL(jobID string) string {
+	return fmt.Sprintf("file://%s/job-%s-user-facing.log", metadataDir, jobID)
+}
+
+func (f *fileRepo) CheckJobUserFacingLogExists(ctx context.Context, jobID string) (bool, error) {
+	logPath := filepath.Join(metadataDir, fmt.Sprintf("job-%s-user-facing.log", jobID))
+	exists, err := afero.Exists(f.fs, logPath)
+	if err != nil {
+		return false, rerror.ErrInternalByWithContext(ctx, err)
+	}
+	return exists, nil
+}
+
 // helpers
 
 func (f *fileRepo) read(ctx context.Context, filename string) (io.ReadCloser, error) {
