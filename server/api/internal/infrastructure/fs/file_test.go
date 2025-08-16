@@ -263,6 +263,31 @@ func TestFile_CheckJobWorkerLogExists(t *testing.T) {
 	assert.False(t, exists)
 }
 
+func TestFile_GetJobUserFacingLogURL(t *testing.T) {
+	f, _ := NewFile(mockFs(), "", "")
+
+	url := f.GetJobUserFacingLogURL("job123")
+	assert.Equal(t, "file://metadata/job-job123-user-facing.log", url)
+}
+
+func TestFile_CheckJobUserFacingLogExists(t *testing.T) {
+	fs := mockFs()
+	f, _ := NewFile(fs, "", "")
+
+	_ = fs.MkdirAll("metadata", 0755)
+	flog, _ := fs.Create(filepath.Join("metadata", "job-exists-user-facing.log"))
+	_, _ = flog.WriteString("user-facing log content")
+	_ = flog.Close()
+
+	exists, err := f.CheckJobUserFacingLogExists(context.Background(), "exists")
+	assert.NoError(t, err)
+	assert.True(t, exists)
+
+	exists, err = f.CheckJobUserFacingLogExists(context.Background(), "notexists")
+	assert.NoError(t, err)
+	assert.False(t, exists)
+}
+
 func mockFs() afero.Fs {
 	files := map[string]string{
 		filepath.Join("assets", "xxx.txt"):    "hello",
