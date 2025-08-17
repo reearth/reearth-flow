@@ -11,6 +11,7 @@ use super::{
     missing_attribute_detector::MissingAttributeDetectorFactory,
     object_list_extractor::ObjectListExtractorFactory,
     udx_folder_extractor::UDXFolderExtractorFactory,
+    unmatched_xlink_detector::UnmatchedXlinkDetectorFactory,
 };
 
 pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -22,6 +23,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<ObjectListExtractorFactory>::default(),
         Box::<MissingAttributeDetectorFactory>::default(),
         Box::<DomainOfDefinitionValidatorFactory>::default(),
+        Box::<UnmatchedXlinkDetectorFactory>::default(),
     ];
     factories
         .into_iter()
