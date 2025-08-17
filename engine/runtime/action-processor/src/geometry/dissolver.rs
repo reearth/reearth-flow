@@ -30,7 +30,7 @@ impl ProcessorFactory for DissolverFactory {
     }
 
     fn description(&self) -> &str {
-        "Dissolves features grouped by specified attributes"
+        "Dissolve Features by Grouping Attributes"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -82,9 +82,15 @@ impl ProcessorFactory for DissolverFactory {
     }
 }
 
+/// # Dissolver Parameters
+/// Configure how to dissolve features by grouping them based on shared attributes
+/// # Dissolver Parameters
+/// Configure how to dissolve features by grouping them based on shared attributes
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DissolverParam {
+    /// # Group By Attributes
+    /// List of attribute names to group features by before dissolving. Features with the same values for these attributes will be dissolved together
     group_by: Option<Vec<Attribute>>,
 }
 

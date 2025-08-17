@@ -29,7 +29,7 @@ impl ProcessorFactory for FeatureFilePathExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Extracts features by file path"
+        "Extract File Paths from Dataset to Features"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -92,14 +92,19 @@ impl ProcessorFactory for FeatureFilePathExtractorFactory {
     }
 }
 
+/// # Feature File Path Extractor Parameters
+/// Configure how to extract file paths from datasets and optionally extract archives
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct FeatureFilePathExtractorParam {
-    /// # Source dataset
+    /// # Source Dataset
+    /// Expression to get the source dataset path or URL
     source_dataset: Expr,
-    /// # Extract archive
+    /// # Extract Archive
+    /// Whether to extract archive files found in the dataset
     extract_archive: bool,
-    /// # Destination prefix
+    /// # Destination Prefix
+    /// Optional prefix to add to extracted file paths
     dest_prefix: Option<String>,
 }
 

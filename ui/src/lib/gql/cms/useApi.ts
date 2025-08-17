@@ -6,11 +6,22 @@ export const useCms = () => {
     useGetCmsProjectByIdOrAliasQuery,
     useGetCmsModelsQuery,
     useGetCmsItemsQuery,
+    useGetCmsAssetQuery,
     useGetCmsModelExportUrlQuery,
   } = useQueries();
 
-  const useGetCmsProjects = (workspaceId: string, publicOnly?: boolean) => {
-    const { data, ...rest } = useGetCmsProjectsQuery(workspaceId, publicOnly);
+  const useGetCmsProjects = (
+    workspaceId: [string],
+    publicOnly?: boolean,
+    page?: number,
+    pageSize?: number,
+  ) => {
+    const { data, ...rest } = useGetCmsProjectsQuery(
+      workspaceId,
+      publicOnly,
+      page,
+      pageSize,
+    );
     return {
       page: data,
       ...rest,
@@ -26,8 +37,12 @@ export const useCms = () => {
     };
   };
 
-  const useGetCmsModels = (projectId: string) => {
-    const { data, ...rest } = useGetCmsModelsQuery(projectId);
+  const useGetCmsModels = (
+    projectId: string,
+    page?: number,
+    pageSize?: number,
+  ) => {
+    const { data, ...rest } = useGetCmsModelsQuery(projectId, page, pageSize);
     return {
       page: data,
       ...rest,
@@ -37,12 +52,14 @@ export const useCms = () => {
   const useGetCmsItems = (
     projectId: string,
     modelId: string,
+    keyword?: string,
     page?: number,
     pageSize?: number,
   ) => {
     const { data, ...rest } = useGetCmsItemsQuery(
       projectId,
       modelId,
+      keyword,
       page,
       pageSize,
     );
@@ -60,11 +77,20 @@ export const useCms = () => {
     };
   };
 
+  const useGetCmsAsset = (assetId: string) => {
+    const { data, ...rest } = useGetCmsAssetQuery(assetId);
+    return {
+      cmsAsset: data,
+      ...rest,
+    };
+  };
+
   return {
     useGetCmsProjects,
     useGetCmsProject,
     useGetCmsModels,
     useGetCmsItems,
+    useGetCmsAsset,
     useGetCmsModelExportUrl,
   };
 };

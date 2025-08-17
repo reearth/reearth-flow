@@ -26,7 +26,7 @@ impl ProcessorFactory for ThreeDimensionBoxReplacerFactory {
     }
 
     fn description(&self) -> &str {
-        "Replaces a three Dimension box with a polygon."
+        "Replace Geometry with 3D Box from Attributes"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -73,14 +73,28 @@ impl ProcessorFactory for ThreeDimensionBoxReplacerFactory {
     }
 }
 
+/// # 3D Box Replacer Parameters
+/// Configure which attributes contain the minimum and maximum coordinates for creating a 3D box
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ThreeDimensionBoxReplacer {
+    /// # Minimum X Attribute
+    /// Name of attribute containing the minimum X coordinate
     min_x: Attribute,
+    /// # Minimum Y Attribute
+    /// Name of attribute containing the minimum Y coordinate
     min_y: Attribute,
+    /// # Minimum Z Attribute
+    /// Name of attribute containing the minimum Z coordinate
     min_z: Attribute,
+    /// # Maximum X Attribute
+    /// Name of attribute containing the maximum X coordinate
     max_x: Attribute,
+    /// # Maximum Y Attribute
+    /// Name of attribute containing the maximum Y coordinate
     max_y: Attribute,
+    /// # Maximum Z Attribute
+    /// Name of attribute containing the maximum Z coordinate
     max_z: Attribute,
 }
 

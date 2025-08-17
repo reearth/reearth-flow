@@ -102,6 +102,9 @@ impl ProcessorFactory for MissingAttributeDetectorFactory {
     }
 }
 
+/// # MissingAttributeDetector Parameters
+/// 
+/// Configuration for detecting missing attributes in PLATEAU4 features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct MissingAttributeDetectorParam {

@@ -19,7 +19,7 @@ impl ProcessorFactory for GeometrySplitterFactory {
     }
 
     fn description(&self) -> &str {
-        "Split geometry by type"
+        "Split Multi-Geometries into Individual Features"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

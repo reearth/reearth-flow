@@ -10,7 +10,7 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/cms"
-	"github.com/reearth/reearth-flow/api/pkg/cms/proto"
+	proto "github.com/reearth/reearth-flow/api/pkg/cms/proto"
 	"github.com/reearth/reearthx/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -219,13 +219,29 @@ func (c *grpcClient) GetProject(ctx context.Context, projectIDOrAlias string) (*
 	return convertProtoToProject(resp.Project), nil
 }
 
-func (c *grpcClient) ListProjects(ctx context.Context, input cms.ListProjectsInput) ([]*cms.Project, int32, error) {
-	resp, err := c.client.ListProjects(ctx, &proto.ListProjectsRequest{
-		WorkspaceId: input.WorkspaceID,
-		PublicOnly:  input.PublicOnly,
-	})
+func (c *grpcClient) ListProjects(ctx context.Context, input cms.ListProjectsInput) (*cms.ListProjectsOutput, error) {
+	req := &proto.ListProjectsRequest{
+		WorkspaceIds: input.WorkspaceIDs,
+		PublicOnly:   input.PublicOnly,
+	}
+
+	if input.PageInfo != nil {
+		req.PageInfo = &proto.PageInfo{
+			Page:     input.PageInfo.Page,
+			PageSize: input.PageInfo.PageSize,
+		}
+	}
+
+	if input.SortInfo != nil {
+		req.SortInfo = &proto.SortInfo{
+			Key:      input.SortInfo.Key,
+			Reverted: input.SortInfo.Reverted,
+		}
+	}
+
+	resp, err := c.client.ListProjects(ctx, req)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to list projects: %w", err)
+		return nil, fmt.Errorf("failed to list projects: %w", err)
 	}
 
 	projects := make([]*cms.Project, len(resp.Projects))
@@ -233,15 +249,110 @@ func (c *grpcClient) ListProjects(ctx context.Context, input cms.ListProjectsInp
 		projects[i] = convertProtoToProject(p)
 	}
 
-	return projects, resp.TotalCount, nil
+	output := &cms.ListProjectsOutput{
+		Projects:   projects,
+		TotalCount: resp.TotalCount,
+	}
+
+	if resp.PageInfo != nil {
+		output.PageInfo = &cms.PageInfo{
+			Page:     resp.PageInfo.Page,
+			PageSize: resp.PageInfo.PageSize,
+		}
+	}
+
+	return output, nil
 }
 
-func (c *grpcClient) ListModels(ctx context.Context, input cms.ListModelsInput) ([]*cms.Model, int32, error) {
-	resp, err := c.client.ListModels(ctx, &proto.ListModelsRequest{
-		ProjectId: input.ProjectID,
+func (c *grpcClient) GetAsset(ctx context.Context, input cms.GetAssetInput) (*cms.Asset, error) {
+	resp, err := c.client.GetAsset(ctx, &proto.AssetRequest{
+		AssetId: input.AssetID,
 	})
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to list models: %w", err)
+		return nil, fmt.Errorf("failed to get asset: %w", err)
+	}
+
+	return convertProtoToAsset(resp.Asset), nil
+}
+
+func (c *grpcClient) ListAssets(ctx context.Context, input cms.ListAssetsInput) (*cms.ListAssetsOutput, error) {
+	req := &proto.ListAssetsRequest{
+		ProjectId: input.ProjectID,
+	}
+
+	if input.PageInfo != nil {
+		req.PageInfo = &proto.PageInfo{
+			Page:     input.PageInfo.Page,
+			PageSize: input.PageInfo.PageSize,
+		}
+	}
+
+	if input.SortInfo != nil {
+		req.SortInfo = &proto.SortInfo{
+			Key:      input.SortInfo.Key,
+			Reverted: input.SortInfo.Reverted,
+		}
+	}
+
+	resp, err := c.client.ListAssets(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list assets: %w", err)
+	}
+
+	assets := make([]*cms.Asset, len(resp.Assets))
+	for i, a := range resp.Assets {
+		assets[i] = convertProtoToAsset(a)
+	}
+
+	output := &cms.ListAssetsOutput{
+		Assets:     assets,
+		TotalCount: resp.TotalCount,
+	}
+
+	if resp.PageInfo != nil {
+		output.PageInfo = &cms.PageInfo{
+			Page:     resp.PageInfo.Page,
+			PageSize: resp.PageInfo.PageSize,
+		}
+	}
+
+	return output, nil
+}
+
+func (c *grpcClient) GetModel(ctx context.Context, input cms.GetModelInput) (*cms.Model, error) {
+	resp, err := c.client.GetModel(ctx, &proto.ModelRequest{
+		ProjectIdOrAlias: input.ProjectIDOrAlias,
+		ModelIdOrAlias:   input.ModelIDOrAlias,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get model: %w", err)
+	}
+
+	return convertProtoToModel(resp.Model), nil
+}
+
+func (c *grpcClient) ListModels(ctx context.Context, input cms.ListModelsInput) (*cms.ListModelsOutput, error) {
+	req := &proto.ListModelsRequest{
+		ProjectId: input.ProjectID,
+	}
+
+	if input.PageInfo != nil {
+		req.PageInfo = &proto.PageInfo{
+			Page:     input.PageInfo.Page,
+			PageSize: input.PageInfo.PageSize,
+		}
+	}
+
+	if input.SortInfo != nil {
+		req.SortInfo = &proto.SortInfo{
+			Key:      input.SortInfo.Key,
+			Reverted: input.SortInfo.Reverted,
+		}
+	}
+
+	resp, err := c.client.ListModels(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list models: %w", err)
 	}
 
 	models := make([]*cms.Model, len(resp.Models))
@@ -249,16 +360,43 @@ func (c *grpcClient) ListModels(ctx context.Context, input cms.ListModelsInput) 
 		models[i] = convertProtoToModel(m)
 	}
 
-	return models, resp.TotalCount, nil
+	output := &cms.ListModelsOutput{
+		Models:     models,
+		TotalCount: resp.TotalCount,
+	}
+
+	if resp.PageInfo != nil {
+		output.PageInfo = &cms.PageInfo{
+			Page:     resp.PageInfo.Page,
+			PageSize: resp.PageInfo.PageSize,
+		}
+	}
+
+	return output, nil
 }
 
 func (c *grpcClient) ListItems(ctx context.Context, input cms.ListItemsInput) (*cms.ListItemsOutput, error) {
-	resp, err := c.client.ListItems(ctx, &proto.ListItemsRequest{
+	req := &proto.ListItemsRequest{
 		ModelId:   input.ModelID,
 		ProjectId: input.ProjectID,
-		Page:      input.Page,
-		PageSize:  input.PageSize,
-	})
+		Keyword:   input.Keyword,
+	}
+
+	if input.PageInfo != nil {
+		req.PageInfo = &proto.PageInfo{
+			Page:     input.PageInfo.Page,
+			PageSize: input.PageInfo.PageSize,
+		}
+	}
+
+	if input.SortInfo != nil {
+		req.SortInfo = &proto.SortInfo{
+			Key:      input.SortInfo.Key,
+			Reverted: input.SortInfo.Reverted,
+		}
+	}
+
+	resp, err := c.client.ListItems(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list items: %w", err)
 	}
@@ -268,10 +406,19 @@ func (c *grpcClient) ListItems(ctx context.Context, input cms.ListItemsInput) (*
 		items[i] = *convertProtoToItem(item)
 	}
 
-	return &cms.ListItemsOutput{
+	output := &cms.ListItemsOutput{
 		Items:      items,
 		TotalCount: resp.TotalCount,
-	}, nil
+	}
+
+	if resp.PageInfo != nil {
+		output.PageInfo = &cms.PageInfo{
+			Page:     resp.PageInfo.Page,
+			PageSize: resp.PageInfo.PageSize,
+		}
+	}
+
+	return output, nil
 }
 
 func (c *grpcClient) GetModelGeoJSONExportURL(ctx context.Context, input cms.ExportInput) (*cms.ExportOutput, error) {
@@ -314,6 +461,24 @@ func convertProtoToVisibility(v proto.Visibility) cms.Visibility {
 		return cms.VisibilityPrivate
 	default:
 		return cms.VisibilityPrivate
+	}
+}
+
+func convertProtoToAsset(a *proto.Asset) *cms.Asset {
+	if a == nil {
+		return nil
+	}
+	return &cms.Asset{
+		ID:                      a.Id,
+		UUID:                    a.Uuid,
+		ProjectID:               a.ProjectId,
+		Filename:                a.Filename,
+		Size:                    a.Size,
+		PreviewType:             a.PreviewType,
+		URL:                     a.Url,
+		ArchiveExtractionStatus: a.ArchiveExtractionStatus,
+		Public:                  a.Public,
+		CreatedAt:               a.CreatedAt.AsTime(),
 	}
 }
 
@@ -362,7 +527,7 @@ func convertProtoToSchemaField(f *proto.SchemaField) cms.SchemaField {
 	}
 }
 
-func convertProtoToSchemaFieldType(t proto.SchemaFieldType) cms.SchemaFieldType {
+func convertProtoToSchemaFieldType(t proto.SchemaField_Type) cms.SchemaFieldType {
 	return cms.SchemaFieldType(t)
 }
 

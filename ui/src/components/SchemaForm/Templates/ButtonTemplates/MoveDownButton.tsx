@@ -16,7 +16,7 @@ const MoveDownButton = <
   props: IconButtonProps<T, S, F>,
 ) => {
   return (
-    <Button size="icon" {...props} aria-label="Move item down">
+    <Button className="h-6" size="icon" {...props} aria-label="Move item down">
       <ArrowDownIcon />
     </Button>
   );

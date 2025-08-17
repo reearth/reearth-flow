@@ -84,6 +84,25 @@ type ComplexityRoot struct {
 		TotalCount func(childComplexity int) int
 	}
 
+	CMSAsset struct {
+		ArchiveExtractionStatus func(childComplexity int) int
+		CreatedAt               func(childComplexity int) int
+		Filename                func(childComplexity int) int
+		ID                      func(childComplexity int) int
+		PreviewType             func(childComplexity int) int
+		ProjectID               func(childComplexity int) int
+		Public                  func(childComplexity int) int
+		Size                    func(childComplexity int) int
+		URL                     func(childComplexity int) int
+		UUID                    func(childComplexity int) int
+	}
+
+	CMSAssetsConnection struct {
+		Assets     func(childComplexity int) int
+		PageInfo   func(childComplexity int) int
+		TotalCount func(childComplexity int) int
+	}
+
 	CMSItem struct {
 		CreatedAt func(childComplexity int) int
 		Fields    func(childComplexity int) int
@@ -107,6 +126,17 @@ type ComplexityRoot struct {
 		PublicAPIEp func(childComplexity int) int
 		Schema      func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
+	}
+
+	CMSModelsConnection struct {
+		Models     func(childComplexity int) int
+		PageInfo   func(childComplexity int) int
+		TotalCount func(childComplexity int) int
+	}
+
+	CMSPageInfo struct {
+		Page     func(childComplexity int) int
+		PageSize func(childComplexity int) int
 	}
 
 	CMSProject struct {
@@ -367,11 +397,14 @@ type ComplexityRoot struct {
 
 	Query struct {
 		Assets                func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) int
+		CmsAsset              func(childComplexity int, assetID gqlmodel.ID) int
+		CmsAssets             func(childComplexity int, projectID gqlmodel.ID, page *int, pageSize *int) int
 		CmsItems              func(childComplexity int, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) int
+		CmsModel              func(childComplexity int, projectIDOrAlias gqlmodel.ID, modelIDOrAlias gqlmodel.ID) int
 		CmsModelExportURL     func(childComplexity int, projectID gqlmodel.ID, modelID gqlmodel.ID) int
-		CmsModels             func(childComplexity int, projectID gqlmodel.ID) int
+		CmsModels             func(childComplexity int, projectID gqlmodel.ID, page *int, pageSize *int) int
 		CmsProject            func(childComplexity int, projectIDOrAlias gqlmodel.ID) int
-		CmsProjects           func(childComplexity int, workspaceID gqlmodel.ID, publicOnly *bool) int
+		CmsProjects           func(childComplexity int, workspaceIds []gqlmodel.ID, publicOnly *bool, page *int, pageSize *int) int
 		DeploymentByVersion   func(childComplexity int, input gqlmodel.GetByVersionInput) int
 		DeploymentHead        func(childComplexity int, input gqlmodel.GetHeadInput) int
 		DeploymentVersions    func(childComplexity int, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) int
@@ -555,8 +588,11 @@ type QueryResolver interface {
 	Nodes(ctx context.Context, id []gqlmodel.ID, typeArg gqlmodel.NodeType) ([]gqlmodel.Node, error)
 	Assets(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) (*gqlmodel.AssetConnection, error)
 	CmsProject(ctx context.Context, projectIDOrAlias gqlmodel.ID) (*gqlmodel.CMSProject, error)
-	CmsProjects(ctx context.Context, workspaceID gqlmodel.ID, publicOnly *bool) ([]*gqlmodel.CMSProject, error)
-	CmsModels(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.CMSModel, error)
+	CmsProjects(ctx context.Context, workspaceIds []gqlmodel.ID, publicOnly *bool, page *int, pageSize *int) ([]*gqlmodel.CMSProject, error)
+	CmsAsset(ctx context.Context, assetID gqlmodel.ID) (*gqlmodel.CMSAsset, error)
+	CmsAssets(ctx context.Context, projectID gqlmodel.ID, page *int, pageSize *int) (*gqlmodel.CMSAssetsConnection, error)
+	CmsModel(ctx context.Context, projectIDOrAlias gqlmodel.ID, modelIDOrAlias gqlmodel.ID) (*gqlmodel.CMSModel, error)
+	CmsModels(ctx context.Context, projectID gqlmodel.ID, page *int, pageSize *int) (*gqlmodel.CMSModelsConnection, error)
 	CmsItems(ctx context.Context, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) (*gqlmodel.CMSItemsConnection, error)
 	CmsModelExportURL(ctx context.Context, projectID gqlmodel.ID, modelID gqlmodel.ID) (string, error)
 	Deployments(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error)
@@ -733,6 +769,97 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AssetConnection.TotalCount(childComplexity), true
 
+	case "CMSAsset.archiveExtractionStatus":
+		if e.complexity.CMSAsset.ArchiveExtractionStatus == nil {
+			break
+		}
+
+		return e.complexity.CMSAsset.ArchiveExtractionStatus(childComplexity), true
+
+	case "CMSAsset.createdAt":
+		if e.complexity.CMSAsset.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.CMSAsset.CreatedAt(childComplexity), true
+
+	case "CMSAsset.filename":
+		if e.complexity.CMSAsset.Filename == nil {
+			break
+		}
+
+		return e.complexity.CMSAsset.Filename(childComplexity), true
+
+	case "CMSAsset.id":
+		if e.complexity.CMSAsset.ID == nil {
+			break
+		}
+
+		return e.complexity.CMSAsset.ID(childComplexity), true
+
+	case "CMSAsset.previewType":
+		if e.complexity.CMSAsset.PreviewType == nil {
+			break
+		}
+
+		return e.complexity.CMSAsset.PreviewType(childComplexity), true
+
+	case "CMSAsset.projectId":
+		if e.complexity.CMSAsset.ProjectID == nil {
+			break
+		}
+
+		return e.complexity.CMSAsset.ProjectID(childComplexity), true
+
+	case "CMSAsset.public":
+		if e.complexity.CMSAsset.Public == nil {
+			break
+		}
+
+		return e.complexity.CMSAsset.Public(childComplexity), true
+
+	case "CMSAsset.size":
+		if e.complexity.CMSAsset.Size == nil {
+			break
+		}
+
+		return e.complexity.CMSAsset.Size(childComplexity), true
+
+	case "CMSAsset.url":
+		if e.complexity.CMSAsset.URL == nil {
+			break
+		}
+
+		return e.complexity.CMSAsset.URL(childComplexity), true
+
+	case "CMSAsset.uuid":
+		if e.complexity.CMSAsset.UUID == nil {
+			break
+		}
+
+		return e.complexity.CMSAsset.UUID(childComplexity), true
+
+	case "CMSAssetsConnection.assets":
+		if e.complexity.CMSAssetsConnection.Assets == nil {
+			break
+		}
+
+		return e.complexity.CMSAssetsConnection.Assets(childComplexity), true
+
+	case "CMSAssetsConnection.pageInfo":
+		if e.complexity.CMSAssetsConnection.PageInfo == nil {
+			break
+		}
+
+		return e.complexity.CMSAssetsConnection.PageInfo(childComplexity), true
+
+	case "CMSAssetsConnection.totalCount":
+		if e.complexity.CMSAssetsConnection.TotalCount == nil {
+			break
+		}
+
+		return e.complexity.CMSAssetsConnection.TotalCount(childComplexity), true
+
 	case "CMSItem.createdAt":
 		if e.complexity.CMSItem.CreatedAt == nil {
 			break
@@ -844,6 +971,41 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.CMSModel.UpdatedAt(childComplexity), true
+
+	case "CMSModelsConnection.models":
+		if e.complexity.CMSModelsConnection.Models == nil {
+			break
+		}
+
+		return e.complexity.CMSModelsConnection.Models(childComplexity), true
+
+	case "CMSModelsConnection.pageInfo":
+		if e.complexity.CMSModelsConnection.PageInfo == nil {
+			break
+		}
+
+		return e.complexity.CMSModelsConnection.PageInfo(childComplexity), true
+
+	case "CMSModelsConnection.totalCount":
+		if e.complexity.CMSModelsConnection.TotalCount == nil {
+			break
+		}
+
+		return e.complexity.CMSModelsConnection.TotalCount(childComplexity), true
+
+	case "CMSPageInfo.page":
+		if e.complexity.CMSPageInfo.Page == nil {
+			break
+		}
+
+		return e.complexity.CMSPageInfo.Page(childComplexity), true
+
+	case "CMSPageInfo.pageSize":
+		if e.complexity.CMSPageInfo.PageSize == nil {
+			break
+		}
+
+		return e.complexity.CMSPageInfo.PageSize(childComplexity), true
 
 	case "CMSProject.alias":
 		if e.complexity.CMSProject.Alias == nil {
@@ -2183,6 +2345,30 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.Assets(childComplexity, args["workspaceId"].(gqlmodel.ID), args["keyword"].(*string), args["sort"].(*gqlmodel.AssetSortType), args["pagination"].(gqlmodel.PageBasedPagination)), true
 
+	case "Query.cmsAsset":
+		if e.complexity.Query.CmsAsset == nil {
+			break
+		}
+
+		args, err := ec.field_Query_cmsAsset_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CmsAsset(childComplexity, args["assetId"].(gqlmodel.ID)), true
+
+	case "Query.cmsAssets":
+		if e.complexity.Query.CmsAssets == nil {
+			break
+		}
+
+		args, err := ec.field_Query_cmsAssets_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CmsAssets(childComplexity, args["projectId"].(gqlmodel.ID), args["page"].(*int), args["pageSize"].(*int)), true
+
 	case "Query.cmsItems":
 		if e.complexity.Query.CmsItems == nil {
 			break
@@ -2194,6 +2380,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.CmsItems(childComplexity, args["projectId"].(gqlmodel.ID), args["modelId"].(gqlmodel.ID), args["keyword"].(*string), args["page"].(*int), args["pageSize"].(*int)), true
+
+	case "Query.cmsModel":
+		if e.complexity.Query.CmsModel == nil {
+			break
+		}
+
+		args, err := ec.field_Query_cmsModel_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CmsModel(childComplexity, args["projectIdOrAlias"].(gqlmodel.ID), args["modelIdOrAlias"].(gqlmodel.ID)), true
 
 	case "Query.cmsModelExportUrl":
 		if e.complexity.Query.CmsModelExportURL == nil {
@@ -2217,7 +2415,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.CmsModels(childComplexity, args["projectId"].(gqlmodel.ID)), true
+		return e.complexity.Query.CmsModels(childComplexity, args["projectId"].(gqlmodel.ID), args["page"].(*int), args["pageSize"].(*int)), true
 
 	case "Query.cmsProject":
 		if e.complexity.Query.CmsProject == nil {
@@ -2241,7 +2439,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.CmsProjects(childComplexity, args["workspaceId"].(gqlmodel.ID), args["publicOnly"].(*bool)), true
+		return e.complexity.Query.CmsProjects(childComplexity, args["workspaceIds"].([]gqlmodel.ID), args["publicOnly"].(*bool), args["page"].(*int), args["pageSize"].(*int)), true
 
 	case "Query.deploymentByVersion":
 		if e.complexity.Query.DeploymentByVersion == nil {
@@ -3125,6 +3323,36 @@ enum CMSVisibility {
   PRIVATE
 }
 
+type CMSAsset {
+  id: ID!
+  uuid: String!
+  projectId: ID!
+  filename: String!
+  size: Int!
+  previewType: String
+  url: String!
+  archiveExtractionStatus: String
+  public: Boolean!
+  createdAt: DateTime!
+}
+
+type CMSAssetsConnection {
+  assets: [CMSAsset!]!
+  totalCount: Int!
+  pageInfo: CMSPageInfo!
+}
+
+type CMSPageInfo {
+  page: Int!
+  pageSize: Int!
+}
+
+type CMSModelsConnection {
+  models: [CMSModel!]!
+  totalCount: Int!
+  pageInfo: CMSPageInfo!
+}
+
 type CMSModel {
   id: ID!
   projectId: ID!
@@ -3189,11 +3417,20 @@ extend type Query {
   # Get a CMS project by ID or alias
   cmsProject(projectIdOrAlias: ID!): CMSProject
   
-  # List CMS projects for a workspace
-  cmsProjects(workspaceId: ID!, publicOnly: Boolean): [CMSProject!]!
+  # List CMS projects for multiple workspaces
+  cmsProjects(workspaceIds: [ID!]!, publicOnly: Boolean, page: Int, pageSize: Int): [CMSProject!]!
+  
+  # Get a CMS asset by ID
+  cmsAsset(assetId: ID!): CMSAsset
+  
+  # List CMS assets for a project
+  cmsAssets(projectId: ID!, page: Int, pageSize: Int): CMSAssetsConnection!
+  
+  # Get a CMS model by project and model ID/alias
+  cmsModel(projectIdOrAlias: ID!, modelIdOrAlias: ID!): CMSModel
   
   # List CMS models for a project
-  cmsModels(projectId: ID!): [CMSModel!]!
+  cmsModels(projectId: ID!, page: Int, pageSize: Int): CMSModelsConnection!
   
   # List CMS items for a model
   cmsItems(projectId: ID!, modelId: ID!, keyword: String, page: Int, pageSize: Int): CMSItemsConnection!
@@ -5223,6 +5460,108 @@ func (ec *executionContext) field_Query_assets_argsPagination(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Query_cmsAsset_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_cmsAsset_argsAssetID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["assetId"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_cmsAsset_argsAssetID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (gqlmodel.ID, error) {
+	if _, ok := rawArgs["assetId"]; !ok {
+		var zeroVal gqlmodel.ID
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("assetId"))
+	if tmp, ok := rawArgs["assetId"]; ok {
+		return ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+	}
+
+	var zeroVal gqlmodel.ID
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_cmsAssets_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_cmsAssets_argsProjectID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["projectId"] = arg0
+	arg1, err := ec.field_Query_cmsAssets_argsPage(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["page"] = arg1
+	arg2, err := ec.field_Query_cmsAssets_argsPageSize(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["pageSize"] = arg2
+	return args, nil
+}
+func (ec *executionContext) field_Query_cmsAssets_argsProjectID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (gqlmodel.ID, error) {
+	if _, ok := rawArgs["projectId"]; !ok {
+		var zeroVal gqlmodel.ID
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+	if tmp, ok := rawArgs["projectId"]; ok {
+		return ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+	}
+
+	var zeroVal gqlmodel.ID
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_cmsAssets_argsPage(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["page"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
+	if tmp, ok := rawArgs["page"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_cmsAssets_argsPageSize(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["pageSize"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("pageSize"))
+	if tmp, ok := rawArgs["pageSize"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Query_cmsItems_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -5394,6 +5733,57 @@ func (ec *executionContext) field_Query_cmsModelExportUrl_argsModelID(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Query_cmsModel_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_cmsModel_argsProjectIDOrAlias(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["projectIdOrAlias"] = arg0
+	arg1, err := ec.field_Query_cmsModel_argsModelIDOrAlias(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["modelIdOrAlias"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Query_cmsModel_argsProjectIDOrAlias(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (gqlmodel.ID, error) {
+	if _, ok := rawArgs["projectIdOrAlias"]; !ok {
+		var zeroVal gqlmodel.ID
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("projectIdOrAlias"))
+	if tmp, ok := rawArgs["projectIdOrAlias"]; ok {
+		return ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+	}
+
+	var zeroVal gqlmodel.ID
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_cmsModel_argsModelIDOrAlias(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (gqlmodel.ID, error) {
+	if _, ok := rawArgs["modelIdOrAlias"]; !ok {
+		var zeroVal gqlmodel.ID
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("modelIdOrAlias"))
+	if tmp, ok := rawArgs["modelIdOrAlias"]; ok {
+		return ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+	}
+
+	var zeroVal gqlmodel.ID
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Query_cmsModels_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -5402,6 +5792,16 @@ func (ec *executionContext) field_Query_cmsModels_args(ctx context.Context, rawA
 		return nil, err
 	}
 	args["projectId"] = arg0
+	arg1, err := ec.field_Query_cmsModels_argsPage(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["page"] = arg1
+	arg2, err := ec.field_Query_cmsModels_argsPageSize(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["pageSize"] = arg2
 	return args, nil
 }
 func (ec *executionContext) field_Query_cmsModels_argsProjectID(
@@ -5419,6 +5819,42 @@ func (ec *executionContext) field_Query_cmsModels_argsProjectID(
 	}
 
 	var zeroVal gqlmodel.ID
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_cmsModels_argsPage(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["page"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
+	if tmp, ok := rawArgs["page"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_cmsModels_argsPageSize(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["pageSize"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("pageSize"))
+	if tmp, ok := rawArgs["pageSize"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
 	return zeroVal, nil
 }
 
@@ -5453,33 +5889,43 @@ func (ec *executionContext) field_Query_cmsProject_argsProjectIDOrAlias(
 func (ec *executionContext) field_Query_cmsProjects_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := ec.field_Query_cmsProjects_argsWorkspaceID(ctx, rawArgs)
+	arg0, err := ec.field_Query_cmsProjects_argsWorkspaceIds(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
-	args["workspaceId"] = arg0
+	args["workspaceIds"] = arg0
 	arg1, err := ec.field_Query_cmsProjects_argsPublicOnly(ctx, rawArgs)
 	if err != nil {
 		return nil, err
 	}
 	args["publicOnly"] = arg1
+	arg2, err := ec.field_Query_cmsProjects_argsPage(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["page"] = arg2
+	arg3, err := ec.field_Query_cmsProjects_argsPageSize(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["pageSize"] = arg3
 	return args, nil
 }
-func (ec *executionContext) field_Query_cmsProjects_argsWorkspaceID(
+func (ec *executionContext) field_Query_cmsProjects_argsWorkspaceIds(
 	ctx context.Context,
 	rawArgs map[string]any,
-) (gqlmodel.ID, error) {
-	if _, ok := rawArgs["workspaceId"]; !ok {
-		var zeroVal gqlmodel.ID
+) ([]gqlmodel.ID, error) {
+	if _, ok := rawArgs["workspaceIds"]; !ok {
+		var zeroVal []gqlmodel.ID
 		return zeroVal, nil
 	}
 
-	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceId"))
-	if tmp, ok := rawArgs["workspaceId"]; ok {
-		return ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceIds"))
+	if tmp, ok := rawArgs["workspaceIds"]; ok {
+		return ec.unmarshalNID2ᚕgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIDᚄ(ctx, tmp)
 	}
 
-	var zeroVal gqlmodel.ID
+	var zeroVal []gqlmodel.ID
 	return zeroVal, nil
 }
 
@@ -5498,6 +5944,42 @@ func (ec *executionContext) field_Query_cmsProjects_argsPublicOnly(
 	}
 
 	var zeroVal *bool
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_cmsProjects_argsPage(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["page"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
+	if tmp, ok := rawArgs["page"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_cmsProjects_argsPageSize(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (*int, error) {
+	if _, ok := rawArgs["pageSize"]; !ok {
+		var zeroVal *int
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("pageSize"))
+	if tmp, ok := rawArgs["pageSize"]; ok {
+		return ec.unmarshalOInt2ᚖint(ctx, tmp)
+	}
+
+	var zeroVal *int
 	return zeroVal, nil
 }
 
@@ -7347,6 +7829,600 @@ func (ec *executionContext) fieldContext_AssetConnection_totalCount(_ context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _CMSAsset_id(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSAsset) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CMSAsset_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.ID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CMSAsset_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSAsset",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSAsset_uuid(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSAsset) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CMSAsset_uuid(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UUID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CMSAsset_uuid(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSAsset",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSAsset_projectId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSAsset) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CMSAsset_projectId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ProjectID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.ID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CMSAsset_projectId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSAsset",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSAsset_filename(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSAsset) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CMSAsset_filename(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Filename, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CMSAsset_filename(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSAsset",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSAsset_size(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSAsset) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CMSAsset_size(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Size, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CMSAsset_size(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSAsset",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSAsset_previewType(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSAsset) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CMSAsset_previewType(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PreviewType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CMSAsset_previewType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSAsset",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSAsset_url(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSAsset) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CMSAsset_url(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.URL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CMSAsset_url(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSAsset",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSAsset_archiveExtractionStatus(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSAsset) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CMSAsset_archiveExtractionStatus(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ArchiveExtractionStatus, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CMSAsset_archiveExtractionStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSAsset",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSAsset_public(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSAsset) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CMSAsset_public(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Public, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CMSAsset_public(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSAsset",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSAsset_createdAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSAsset) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CMSAsset_createdAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CreatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNDateTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CMSAsset_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSAsset",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSAssetsConnection_assets(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSAssetsConnection) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CMSAssetsConnection_assets(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Assets, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*gqlmodel.CMSAsset)
+	fc.Result = res
+	return ec.marshalNCMSAsset2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSAssetᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CMSAssetsConnection_assets(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSAssetsConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CMSAsset_id(ctx, field)
+			case "uuid":
+				return ec.fieldContext_CMSAsset_uuid(ctx, field)
+			case "projectId":
+				return ec.fieldContext_CMSAsset_projectId(ctx, field)
+			case "filename":
+				return ec.fieldContext_CMSAsset_filename(ctx, field)
+			case "size":
+				return ec.fieldContext_CMSAsset_size(ctx, field)
+			case "previewType":
+				return ec.fieldContext_CMSAsset_previewType(ctx, field)
+			case "url":
+				return ec.fieldContext_CMSAsset_url(ctx, field)
+			case "archiveExtractionStatus":
+				return ec.fieldContext_CMSAsset_archiveExtractionStatus(ctx, field)
+			case "public":
+				return ec.fieldContext_CMSAsset_public(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_CMSAsset_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CMSAsset", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSAssetsConnection_totalCount(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSAssetsConnection) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CMSAssetsConnection_totalCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CMSAssetsConnection_totalCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSAssetsConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSAssetsConnection_pageInfo(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSAssetsConnection) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CMSAssetsConnection_pageInfo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PageInfo, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.CMSPageInfo)
+	fc.Result = res
+	return ec.marshalNCMSPageInfo2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSPageInfo(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CMSAssetsConnection_pageInfo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSAssetsConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "page":
+				return ec.fieldContext_CMSPageInfo_page(ctx, field)
+			case "pageSize":
+				return ec.fieldContext_CMSPageInfo_pageSize(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CMSPageInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _CMSItem_id(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSItem) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CMSItem_id(ctx, field)
 	if err != nil {
@@ -8062,6 +9138,254 @@ func (ec *executionContext) fieldContext_CMSModel_updatedAt(_ context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSModelsConnection_models(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSModelsConnection) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CMSModelsConnection_models(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Models, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*gqlmodel.CMSModel)
+	fc.Result = res
+	return ec.marshalNCMSModel2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSModelᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CMSModelsConnection_models(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSModelsConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CMSModel_id(ctx, field)
+			case "projectId":
+				return ec.fieldContext_CMSModel_projectId(ctx, field)
+			case "name":
+				return ec.fieldContext_CMSModel_name(ctx, field)
+			case "description":
+				return ec.fieldContext_CMSModel_description(ctx, field)
+			case "key":
+				return ec.fieldContext_CMSModel_key(ctx, field)
+			case "schema":
+				return ec.fieldContext_CMSModel_schema(ctx, field)
+			case "publicApiEp":
+				return ec.fieldContext_CMSModel_publicApiEp(ctx, field)
+			case "editorUrl":
+				return ec.fieldContext_CMSModel_editorUrl(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_CMSModel_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_CMSModel_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CMSModel", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSModelsConnection_totalCount(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSModelsConnection) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CMSModelsConnection_totalCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CMSModelsConnection_totalCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSModelsConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSModelsConnection_pageInfo(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSModelsConnection) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CMSModelsConnection_pageInfo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PageInfo, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.CMSPageInfo)
+	fc.Result = res
+	return ec.marshalNCMSPageInfo2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSPageInfo(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CMSModelsConnection_pageInfo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSModelsConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "page":
+				return ec.fieldContext_CMSPageInfo_page(ctx, field)
+			case "pageSize":
+				return ec.fieldContext_CMSPageInfo_pageSize(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CMSPageInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSPageInfo_page(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSPageInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CMSPageInfo_page(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Page, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CMSPageInfo_page(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSPageInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSPageInfo_pageSize(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSPageInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CMSPageInfo_pageSize(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PageSize, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CMSPageInfo_pageSize(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSPageInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -16477,7 +17801,7 @@ func (ec *executionContext) _Query_cmsProjects(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().CmsProjects(rctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["publicOnly"].(*bool))
+		return ec.resolvers.Query().CmsProjects(rctx, fc.Args["workspaceIds"].([]gqlmodel.ID), fc.Args["publicOnly"].(*bool), fc.Args["page"].(*int), fc.Args["pageSize"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -16540,8 +17864,8 @@ func (ec *executionContext) fieldContext_Query_cmsProjects(ctx context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_cmsModels(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_cmsModels(ctx, field)
+func (ec *executionContext) _Query_cmsAsset(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_cmsAsset(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -16554,7 +17878,81 @@ func (ec *executionContext) _Query_cmsModels(ctx context.Context, field graphql.
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().CmsModels(rctx, fc.Args["projectId"].(gqlmodel.ID))
+		return ec.resolvers.Query().CmsAsset(rctx, fc.Args["assetId"].(gqlmodel.ID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.CMSAsset)
+	fc.Result = res
+	return ec.marshalOCMSAsset2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSAsset(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_cmsAsset(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CMSAsset_id(ctx, field)
+			case "uuid":
+				return ec.fieldContext_CMSAsset_uuid(ctx, field)
+			case "projectId":
+				return ec.fieldContext_CMSAsset_projectId(ctx, field)
+			case "filename":
+				return ec.fieldContext_CMSAsset_filename(ctx, field)
+			case "size":
+				return ec.fieldContext_CMSAsset_size(ctx, field)
+			case "previewType":
+				return ec.fieldContext_CMSAsset_previewType(ctx, field)
+			case "url":
+				return ec.fieldContext_CMSAsset_url(ctx, field)
+			case "archiveExtractionStatus":
+				return ec.fieldContext_CMSAsset_archiveExtractionStatus(ctx, field)
+			case "public":
+				return ec.fieldContext_CMSAsset_public(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_CMSAsset_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CMSAsset", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_cmsAsset_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_cmsAssets(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_cmsAssets(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().CmsAssets(rctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["page"].(*int), fc.Args["pageSize"].(*int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -16566,12 +17964,72 @@ func (ec *executionContext) _Query_cmsModels(ctx context.Context, field graphql.
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*gqlmodel.CMSModel)
+	res := resTmp.(*gqlmodel.CMSAssetsConnection)
 	fc.Result = res
-	return ec.marshalNCMSModel2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSModelᚄ(ctx, field.Selections, res)
+	return ec.marshalNCMSAssetsConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSAssetsConnection(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_cmsModels(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_cmsAssets(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "assets":
+				return ec.fieldContext_CMSAssetsConnection_assets(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_CMSAssetsConnection_totalCount(ctx, field)
+			case "pageInfo":
+				return ec.fieldContext_CMSAssetsConnection_pageInfo(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CMSAssetsConnection", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_cmsAssets_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_cmsModel(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_cmsModel(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().CmsModel(rctx, fc.Args["projectIdOrAlias"].(gqlmodel.ID), fc.Args["modelIdOrAlias"].(gqlmodel.ID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.CMSModel)
+	fc.Result = res
+	return ec.marshalOCMSModel2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSModel(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_cmsModel(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -16601,6 +18059,69 @@ func (ec *executionContext) fieldContext_Query_cmsModels(ctx context.Context, fi
 				return ec.fieldContext_CMSModel_updatedAt(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CMSModel", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_cmsModel_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_cmsModels(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_cmsModels(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().CmsModels(rctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["page"].(*int), fc.Args["pageSize"].(*int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.CMSModelsConnection)
+	fc.Result = res
+	return ec.marshalNCMSModelsConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSModelsConnection(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_cmsModels(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "models":
+				return ec.fieldContext_CMSModelsConnection_models(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_CMSModelsConnection_totalCount(ctx, field)
+			case "pageInfo":
+				return ec.fieldContext_CMSModelsConnection_pageInfo(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CMSModelsConnection", field.Name)
 		},
 	}
 	defer func() {
@@ -24029,6 +25550,133 @@ func (ec *executionContext) _AssetConnection(ctx context.Context, sel ast.Select
 	return out
 }
 
+var cMSAssetImplementors = []string{"CMSAsset"}
+
+func (ec *executionContext) _CMSAsset(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.CMSAsset) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, cMSAssetImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CMSAsset")
+		case "id":
+			out.Values[i] = ec._CMSAsset_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "uuid":
+			out.Values[i] = ec._CMSAsset_uuid(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "projectId":
+			out.Values[i] = ec._CMSAsset_projectId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "filename":
+			out.Values[i] = ec._CMSAsset_filename(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "size":
+			out.Values[i] = ec._CMSAsset_size(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "previewType":
+			out.Values[i] = ec._CMSAsset_previewType(ctx, field, obj)
+		case "url":
+			out.Values[i] = ec._CMSAsset_url(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "archiveExtractionStatus":
+			out.Values[i] = ec._CMSAsset_archiveExtractionStatus(ctx, field, obj)
+		case "public":
+			out.Values[i] = ec._CMSAsset_public(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._CMSAsset_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var cMSAssetsConnectionImplementors = []string{"CMSAssetsConnection"}
+
+func (ec *executionContext) _CMSAssetsConnection(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.CMSAssetsConnection) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, cMSAssetsConnectionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CMSAssetsConnection")
+		case "assets":
+			out.Values[i] = ec._CMSAssetsConnection_assets(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalCount":
+			out.Values[i] = ec._CMSAssetsConnection_totalCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pageInfo":
+			out.Values[i] = ec._CMSAssetsConnection_pageInfo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var cMSItemImplementors = []string{"CMSItem"}
 
 func (ec *executionContext) _CMSItem(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.CMSItem) graphql.Marshaler {
@@ -24185,6 +25833,99 @@ func (ec *executionContext) _CMSModel(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "updatedAt":
 			out.Values[i] = ec._CMSModel_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var cMSModelsConnectionImplementors = []string{"CMSModelsConnection"}
+
+func (ec *executionContext) _CMSModelsConnection(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.CMSModelsConnection) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, cMSModelsConnectionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CMSModelsConnection")
+		case "models":
+			out.Values[i] = ec._CMSModelsConnection_models(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalCount":
+			out.Values[i] = ec._CMSModelsConnection_totalCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pageInfo":
+			out.Values[i] = ec._CMSModelsConnection_pageInfo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var cMSPageInfoImplementors = []string{"CMSPageInfo"}
+
+func (ec *executionContext) _CMSPageInfo(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.CMSPageInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, cMSPageInfoImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CMSPageInfo")
+		case "page":
+			out.Values[i] = ec._CMSPageInfo_page(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pageSize":
+			out.Values[i] = ec._CMSPageInfo_pageSize(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -26459,6 +28200,66 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "cmsAsset":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_cmsAsset(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "cmsAssets":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_cmsAssets(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "cmsModel":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_cmsModel(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "cmsModels":
 			field := field
 
@@ -28220,6 +30021,74 @@ func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.Se
 	return res
 }
 
+func (ec *executionContext) marshalNCMSAsset2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSAssetᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.CMSAsset) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNCMSAsset2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSAsset(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNCMSAsset2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSAsset(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.CMSAsset) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CMSAsset(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNCMSAssetsConnection2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSAssetsConnection(ctx context.Context, sel ast.SelectionSet, v gqlmodel.CMSAssetsConnection) graphql.Marshaler {
+	return ec._CMSAssetsConnection(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNCMSAssetsConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSAssetsConnection(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.CMSAssetsConnection) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CMSAssetsConnection(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNCMSItem2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSItemᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.CMSItem) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -28340,6 +30209,30 @@ func (ec *executionContext) marshalNCMSModel2ᚖgithubᚗcomᚋreearthᚋreearth
 		return graphql.Null
 	}
 	return ec._CMSModel(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNCMSModelsConnection2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSModelsConnection(ctx context.Context, sel ast.SelectionSet, v gqlmodel.CMSModelsConnection) graphql.Marshaler {
+	return ec._CMSModelsConnection(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNCMSModelsConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSModelsConnection(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.CMSModelsConnection) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CMSModelsConnection(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNCMSPageInfo2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSPageInfo(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.CMSPageInfo) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CMSPageInfo(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNCMSProject2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSProjectᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.CMSProject) graphql.Marshaler {
@@ -29967,6 +31860,20 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	_ = ctx
 	res := graphql.MarshalBoolean(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOCMSAsset2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSAsset(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.CMSAsset) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._CMSAsset(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOCMSModel2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSModel(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.CMSModel) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._CMSModel(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOCMSProject2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSProject(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.CMSProject) graphql.Marshaler {

@@ -24,7 +24,7 @@ impl ProcessorFactory for CityCodeExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Extracts Codelist"
+        "Extracts city code information from PLATEAU4 codelists for local public authorities"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -75,10 +75,15 @@ impl ProcessorFactory for CityCodeExtractorFactory {
     }
 }
 
+/// # CityCodeExtractor Parameters
+///
+/// Configuration for extracting PLATEAU4 city code information from codelists.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CityCodeExtractorParam {
+    /// Attribute containing the city code to look up in codelists
     city_code_attribute: Attribute,
+    /// Attribute containing the path to the PLATEAU codelists directory
     codelists_path_attribute: Attribute,
 }
 

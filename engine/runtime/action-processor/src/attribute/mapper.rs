@@ -25,7 +25,7 @@ impl ProcessorFactory for AttributeMapperFactory {
     }
 
     fn description(&self) -> &str {
-        "Maps attributes"
+        "Transform Feature Attributes Using Expressions and Mappings"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -107,10 +107,12 @@ impl ProcessorFactory for AttributeMapperFactory {
     }
 }
 
+/// # AttributeMapper Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeMapperParam {
-    /// # Mappers
+    /// # Attribute Mappers
+    /// List of mapping rules to transform attributes using expressions or value copying
     mappers: Vec<Mapper>,
 }
 

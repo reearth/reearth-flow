@@ -23,7 +23,7 @@ impl ProcessorFactory for AttributeBulkArrayJoinerFactory {
     }
 
     fn description(&self) -> &str {
-        "Flattens features by attributes"
+        "Join Array Attributes Into Single Values"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -79,10 +79,13 @@ struct AttributeBulkArrayJoiner {
     ignore_attributes: Vec<Attribute>,
 }
 
+/// # AttributeBulkArrayJoiner Parameters
+/// Configure which array attributes to join into single values
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeBulkArrayJoinerParam {
-    /// # Attributes to ignore
+    /// # Attributes to Ignore
+    /// List of attribute names to skip during array joining process
     ignore_attributes: Option<Vec<Attribute>>,
 }
 

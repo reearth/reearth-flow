@@ -33,7 +33,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to a file"
+        "Export Features as Cesium 3D Tiles for Web Visualization"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -117,13 +117,24 @@ pub struct Cesium3DTilesWriter {
     pub(super) params: Cesium3DTilesWriterCompiledParam,
 }
 
+/// # Cesium3DTilesWriter Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Cesium3DTilesWriterParam {
+    /// # Output Path
+    /// Directory path where the 3D tiles will be written
     pub(super) output: Expr,
+    /// # Minimum Zoom Level
+    /// Minimum zoom level for tile generation (0-24)
     pub(super) min_zoom: u8,
+    /// # Maximum Zoom Level
+    /// Maximum zoom level for tile generation (0-24)
     pub(super) max_zoom: u8,
+    /// # Attach Textures
+    /// Whether to include texture information in the generated tiles
     pub(super) attach_texture: Option<bool>,
+    /// # Compressed Output Path
+    /// Optional path for compressed archive output
     pub(super) compress_output: Option<Expr>,
 }
 

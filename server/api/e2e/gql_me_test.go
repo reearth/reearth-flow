@@ -5,27 +5,49 @@ import (
 	"testing"
 
 	"github.com/reearth/reearth-flow/api/internal/app/config"
+	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
+	"github.com/reearth/reearth-flow/api/pkg/user"
+	usermockrepo "github.com/reearth/reearth-flow/api/pkg/user/mockrepo"
+	"go.uber.org/mock/gomock"
 )
 
 func TestMe(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	workspace := factory.NewWorkspace()
+	testUserSubject := "auth0|test-user"
+	userEntity := factory.NewUser(func(b *user.Builder) {
+		b.MyWorkspaceID(workspace.ID())
+		b.Auths([]string{testUserSubject})
+	})
+
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo.EXPECT().
+		FindMe(gomock.Any()).Return(userEntity, nil)
+
+	mock := &TestMocks{
+		UserRepo: mockUserRepo,
+	}
+
 	e := StartServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
+		AccountsApiHost: "http://localhost:8080",
 	},
-		true, baseSeeder, true)
+		true, baseSeeder, true, mock)
 
 	requestBody := GraphQLRequest{
 		OperationName: "GetMe",
-		Query:         "query GetMe { \n me { \n id \n name \n email\n } \n}",
+		Query:         "query GetMe { \n me { \n id \n name \n email \n lang \n myWorkspaceId \n } \n}",
 		Variables:     map[string]any{},
 	}
 
 	e.POST("/api/graphql").
 		WithHeader("Origin", "https://example.com").
-		// WithHeader("authorization", "Bearer test").
-		WithHeader("X-Reearth-Debug-User", uID.String()).
+		WithHeader("authorization", "Bearer test").
 		WithHeader("Content-Type", "application/json").
 		WithJSON(requestBody).
 		Expect().
@@ -34,7 +56,9 @@ func TestMe(t *testing.T) {
 		Object().
 		Value("data").Object().
 		Value("me").Object().
-		HasValue("email", uEmail).
-		HasValue("id", uID.String()).
-		HasValue("name", uName)
+		HasValue("id", userEntity.ID()).
+		HasValue("email", userEntity.Email()).
+		HasValue("name", userEntity.Name()).
+		HasValue("lang", userEntity.Metadata().Lang()).
+		HasValue("myWorkspaceId", workspace.ID())
 }

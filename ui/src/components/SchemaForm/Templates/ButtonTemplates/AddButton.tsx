@@ -22,7 +22,7 @@ const AddButton = <
     <Button
       {...props}
       size="icon"
-      className={cn("ml-1", props.className)}
+      className={cn("ml-1 h-6", props.className)}
       aria-label="Add item">
       <PlusIcon />
     </Button>
