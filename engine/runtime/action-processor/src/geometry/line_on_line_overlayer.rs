@@ -88,6 +88,9 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
     }
 }
 
+/// # LineOnLineOverlayer Parameters
+/// 
+/// Configuration for finding intersection points between line features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct LineOnLineOverlayerParam {

@@ -204,10 +204,13 @@ pub(crate) struct WasmRuntimeExecutor {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct WasmRuntimeExecutorParam {
+    /// # Source Code
     /// Script source code or path to compile to WebAssembly
     source: Expr,
+    /// # Processor Type
     /// Type of processor to create (Source, Processor, or Sink)
     processor_type: ProcessorType,
+    /// # Programming Language
     /// Programming language of the source script (currently supports Python)
     programming_language: ProgrammingLanguage,
 }

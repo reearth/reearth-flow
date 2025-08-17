@@ -103,7 +103,8 @@ struct Operation {
     attribute: String,
     /// # Operation to perform
     method: Method,
-    /// # Value to use for the operation
+    /// # Value
+    /// Value to use for the operation
     value: Option<Expr>,
 }
 
