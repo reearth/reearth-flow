@@ -38,8 +38,10 @@ const AssetsGridView: React.FC<Props> = ({
       <div className="flex-1 overflow-y-auto">
         {isDebouncing || isFetching ? (
           <div className="grid min-w-0 grid-cols-5 gap-2 p-2">
-            {Array.from({ length: ASSET_FETCH_RATE }).map((_) => (
-              <div className="flex h-[142px] items-end rounded-lg bg-secondary">
+            {Array.from({ length: ASSET_FETCH_RATE }).map((_, index) => (
+              <div
+                key={index}
+                className="flex h-[142px] items-end rounded-lg bg-secondary">
                 <div className="mb-1 flex h-[50px] w-[200px] flex-col justify-center gap-1 px-2">
                   <Skeleton className=" h-[20px] w-[120px] " />
                   <Skeleton className="h-[16px] w-[85px]" />

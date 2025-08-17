@@ -61,8 +61,9 @@ const LoadingTableSkeleton: React.FC<{
             <TableBody>
               {[...Array(rows)].map((_, i) => (
                 <TableRow key={i}>
-                  {[...Array(columns)].map((_) => (
+                  {[...Array(columns)].map((_, j) => (
                     <TableCell
+                      key={`${i}-${j}`}
                       className={`${condensed ? "px-2 py-[2px]" : "p-2"} ${hasQuickActions ? "h-13" : ""}`}>
                       <Skeleton className="h-5 w-[175px]" />
                     </TableCell>
