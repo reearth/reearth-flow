@@ -51,8 +51,10 @@ const LoadingTableSkeleton: React.FC<{
                 <TableHead className={`${condensed ? "h-8" : "h-10"}`}>
                   <Skeleton className="h-7 w-[30px]" />
                 </TableHead>
-                {[...Array(columns - 1)].map((_) => (
-                  <TableHead className={`${condensed ? "h-8" : "h-10"}`}>
+                {[...Array(columns - 1)].map((_, i) => (
+                  <TableHead
+                    key={i}
+                    className={`${condensed ? "h-8" : "h-10"}`}>
                     <Skeleton className="h-7 w-[100px]" />
                   </TableHead>
                 ))}
