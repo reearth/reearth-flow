@@ -68,6 +68,7 @@ const AssetsListView: React.FC<Props> = ({
           <IconButton
             icon={<PencilIcon />}
             onClick={() => setAssetToBeEdited(row.row.original)}
+            disabled={isDeleting}
           />
           <IconButton
             icon={<CopyIcon />}
@@ -75,11 +76,12 @@ const AssetsListView: React.FC<Props> = ({
               e.stopPropagation();
               onCopyUrlToClipBoard(row.row.original.url);
             }}
+            disabled={isDeleting}
           />
           <a
             href={row.row.original.url}
             onClick={(e) => onAssetDownload(e, row.row.original)}>
-            <IconButton icon={<DownloadIcon />} />
+            <IconButton disabled={isDeleting} icon={<DownloadIcon />} />
           </a>
           <IconButton
             icon={<TrashIcon />}
