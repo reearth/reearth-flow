@@ -620,14 +620,6 @@ func (i *Job) startMonitoringIfNeeded(jobID id.JobID) {
 	status := j.Status()
 	if status == job.StatusCompleted || status == job.StatusFailed ||
 		status == job.StatusCancelled {
-		log.Debugfc(context.Background(), "job: %s already in terminal state %s, ensuring completion handling", jobID, status)
-
-		if j.LogsURL() == "" && len(j.OutputURLs()) == 0 {
-			log.Infof("job: %s missing artifacts, running completion handling", jobID)
-			if err := i.handleJobCompletion(context.Background(), j); err != nil {
-				log.Errorfc(context.Background(), "job: completion handling failed for %s: %v", jobID, err)
-			}
-		}
 		return
 	}
 
