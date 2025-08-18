@@ -333,13 +333,7 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 			newStatus,
 		)
 
-		completionJob, err := i.jobRepo.FindByID(ctx, j.ID())
-		if err != nil {
-			log.Errorfc(ctx, "failed to refresh job state for completion: %v", err)
-			return nil
-		}
-
-		if err := i.handleJobCompletion(ctx, completionJob); err != nil {
+		if err := i.handleJobCompletion(ctx, currentJob); err != nil {
 			log.Errorfc(ctx, "job: completion handling failed: %v", err)
 		}
 	}
