@@ -80,20 +80,23 @@ func (m *MongoStorage) SaveNodeExecutionToMongo(ctx context.Context, jobID strin
 		log.Printf("DEBUG: Node execution record already exists, updating instead of creating duplicate")
 
 		filter := bson.M{
+			"id":     nodeExec.ID,
 			"jobId":  jobID,
 			"nodeId": nodeExec.NodeID,
 		}
 
 		update := bson.M{
-			"status": string(nodeExec.Status),
+			"$set": bson.M{
+				"status": string(nodeExec.Status),
+			},
 		}
 
 		if nodeExec.StartedAt != nil {
-			update["startedAt"] = nodeExec.StartedAt
+			update["$set"].(bson.M)["startedAt"] = nodeExec.StartedAt
 		}
 
 		if nodeExec.CompletedAt != nil {
-			update["completedAt"] = nodeExec.CompletedAt
+			update["$set"].(bson.M)["completedAt"] = nodeExec.CompletedAt
 		}
 
 		if err := m.client.UpdateMany(ctx, filter, update); err != nil {
