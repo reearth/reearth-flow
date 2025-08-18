@@ -19,7 +19,7 @@ export default ({ projectId }: { projectId?: string }) => {
       console.error("Error saving project snapshot:", error);
       setIsSaving(false);
     }
-  }, [projectId, useSaveSnapshot, setIsSaving]);
+  }, [projectId, useSaveSnapshot]);
 
   return {
     handleProjectSnapshotSave,
