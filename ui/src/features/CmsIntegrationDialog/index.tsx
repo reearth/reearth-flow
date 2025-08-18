@@ -234,7 +234,6 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                     resultsPerPage={10}
                     onRowDoubleClick={handleItemView}
                     showOrdering={false}
-                    searchTerm={searchTerm}
                     setSearchTerm={setSearchTerm}
                   />
                 )}
