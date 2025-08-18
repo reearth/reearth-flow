@@ -124,89 +124,163 @@ fn read_shapefile_from_zip(
     Ok(shapes_and_records)
 }
 
+fn create_point_geometry(coord: Coordinate3D<f64>) -> GeometryValue {
+    let line_string = LineString3D::from(vec![coord]);
+    let entry = GmlGeometry {
+        ty: GeometryType::Point,
+        polygons: vec![],
+        line_strings: vec![line_string],
+        id: None,
+        lod: None,
+        pos: 0,
+        len: 0,
+        feature_id: None,
+        feature_type: None,
+        composite_surfaces: vec![],
+    };
+    GeometryValue::CityGmlGeometry(CityGmlGeometry {
+        gml_geometries: vec![entry],
+        ..Default::default()
+    })
+}
+
 fn convert_shape_to_geometry(
     shape: shapefile::Shape,
 ) -> Result<Geometry, crate::errors::SourceError> {
     let geometry_value = match shape {
         shapefile::Shape::NullShape => GeometryValue::None,
-        shapefile::Shape::Point(point) => {
-            let coord = Coordinate3D {
-                x: point.x,
-                y: point.y,
-                z: 0.0,
-            };
-            let line_string = LineString3D::from(vec![coord]);
-            let entry = GmlGeometry {
-                ty: GeometryType::Point,
-                polygons: vec![],
-                line_strings: vec![line_string],
-                id: None,
-                lod: None,
-                pos: 0,
-                len: 0,
-                feature_id: None,
-                feature_type: None,
-                composite_surfaces: vec![],
-            };
-            GeometryValue::CityGmlGeometry(CityGmlGeometry {
-                gml_geometries: vec![entry],
-                ..Default::default()
-            })
+        shapefile::Shape::Point(point) => create_point_geometry(Coordinate3D {
+            x: point.x,
+            y: point.y,
+            z: 0.0,
+        }),
+        shapefile::Shape::PointM(point) => create_point_geometry(Coordinate3D {
+            x: point.x,
+            y: point.y,
+            z: 0.0,
+        }),
+        shapefile::Shape::PointZ(point) => create_point_geometry(Coordinate3D {
+            x: point.x,
+            y: point.y,
+            z: point.z,
+        }),
+        shapefile::Shape::Polyline(polyline) => {
+            create_polyline_geometry(polyline.parts().iter().map(|part| {
+                part.iter()
+                    .map(|p| Coordinate3D {
+                        x: p.x,
+                        y: p.y,
+                        z: 0.0,
+                    })
+                    .collect()
+            }))
         }
-        shapefile::Shape::PointM(point) => {
-            let coord = Coordinate3D {
-                x: point.x,
-                y: point.y,
-                z: 0.0,
-            };
-            let line_string = LineString3D::from(vec![coord]);
-            let entry = GmlGeometry {
-                ty: GeometryType::Point,
-                polygons: vec![],
-                line_strings: vec![line_string],
-                id: None,
-                lod: None,
-                pos: 0,
-                len: 0,
-                feature_id: None,
-                feature_type: None,
-                composite_surfaces: vec![],
-            };
-            GeometryValue::CityGmlGeometry(CityGmlGeometry {
-                gml_geometries: vec![entry],
-                ..Default::default()
-            })
+        shapefile::Shape::PolylineM(polyline) => {
+            create_polyline_geometry(polyline.parts().iter().map(|part| {
+                part.iter()
+                    .map(|p| Coordinate3D {
+                        x: p.x,
+                        y: p.y,
+                        z: 0.0,
+                    })
+                    .collect()
+            }))
         }
-        shapefile::Shape::PointZ(point) => {
-            let coord = Coordinate3D {
-                x: point.x,
-                y: point.y,
-                z: point.z,
-            };
-            let line_string = LineString3D::from(vec![coord]);
-            let entry = GmlGeometry {
-                ty: GeometryType::Point,
-                polygons: vec![],
-                line_strings: vec![line_string],
-                id: None,
-                lod: None,
-                pos: 0,
-                len: 0,
-                feature_id: None,
-                feature_type: None,
-                composite_surfaces: vec![],
-            };
-            GeometryValue::CityGmlGeometry(CityGmlGeometry {
-                gml_geometries: vec![entry],
-                ..Default::default()
-            })
+        shapefile::Shape::PolylineZ(polyline) => {
+            create_polyline_geometry(polyline.parts().iter().map(|part| {
+                part.iter()
+                    .map(|p| Coordinate3D {
+                        x: p.x,
+                        y: p.y,
+                        z: p.z,
+                    })
+                    .collect()
+            }))
         }
-        shapefile::Shape::Polyline(polyline) => convert_polyline_to_geometry(&polyline),
-        shapefile::Shape::PolylineM(polyline) => convert_polylinem_to_geometry(&polyline),
-        shapefile::Shape::PolylineZ(polyline) => convert_polylinez_to_geometry(&polyline),
-        shapefile::Shape::Polygon(polygon) => convert_polygon_to_geometry(&polygon)?,
-        shapefile::Shape::PolygonM(polygon) => convert_polygonm_to_geometry(&polygon)?,
-        shapefile::Shape::PolygonZ(polygon) => convert_polygonz_to_geometry(&polygon)?,
+        shapefile::Shape::Polygon(polygon) => {
+            create_polygon_geometry(polygon.rings().iter().map(|ring| {
+                match ring {
+                    shapefile::PolygonRing::Outer(points) => (
+                        true,
+                        points
+                            .iter()
+                            .map(|p| Coordinate3D {
+                                x: p.x,
+                                y: p.y,
+                                z: 0.0,
+                            })
+                            .collect(),
+                    ),
+                    shapefile::PolygonRing::Inner(points) => (
+                        false,
+                        points
+                            .iter()
+                            .map(|p| Coordinate3D {
+                                x: p.x,
+                                y: p.y,
+                                z: 0.0,
+                            })
+                            .collect(),
+                    ),
+                }
+            }))?
+        }
+        shapefile::Shape::PolygonM(polygon) => {
+            create_polygon_geometry(polygon.rings().iter().map(|ring| {
+                match ring {
+                    shapefile::PolygonRing::Outer(points) => (
+                        true,
+                        points
+                            .iter()
+                            .map(|p| Coordinate3D {
+                                x: p.x,
+                                y: p.y,
+                                z: 0.0,
+                            })
+                            .collect(),
+                    ),
+                    shapefile::PolygonRing::Inner(points) => (
+                        false,
+                        points
+                            .iter()
+                            .map(|p| Coordinate3D {
+                                x: p.x,
+                                y: p.y,
+                                z: 0.0,
+                            })
+                            .collect(),
+                    ),
+                }
+            }))?
+        }
+        shapefile::Shape::PolygonZ(polygon) => {
+            create_polygon_geometry(polygon.rings().iter().map(|ring| {
+                match ring {
+                    shapefile::PolygonRing::Outer(points) => (
+                        true,
+                        points
+                            .iter()
+                            .map(|p| Coordinate3D {
+                                x: p.x,
+                                y: p.y,
+                                z: p.z,
+                            })
+                            .collect(),
+                    ),
+                    shapefile::PolygonRing::Inner(points) => (
+                        false,
+                        points
+                            .iter()
+                            .map(|p| Coordinate3D {
+                                x: p.x,
+                                y: p.y,
+                                z: p.z,
+                            })
+                            .collect(),
+                    ),
+                }
+            }))?
+        }
         shapefile::Shape::Multipoint(_)
         | shapefile::Shape::MultipointM(_)
         | shapefile::Shape::MultipointZ(_) => {
@@ -227,19 +301,8 @@ fn convert_shape_to_geometry(
     })
 }
 
-fn convert_polyline_to_geometry(polyline: &shapefile::Polyline) -> GeometryValue {
-    let mut line_strings = Vec::new();
-    for part in polyline.parts() {
-        let coordinates: Vec<Coordinate3D<f64>> = part
-            .iter()
-            .map(|p| Coordinate3D {
-                x: p.x,
-                y: p.y,
-                z: 0.0,
-            })
-            .collect();
-        line_strings.push(LineString3D::from(coordinates));
-    }
+fn create_polyline_geometry(parts: impl Iterator<Item = Vec<Coordinate3D<f64>>>) -> GeometryValue {
+    let line_strings: Vec<_> = parts.map(LineString3D::from).collect();
     let entry = GmlGeometry {
         ty: GeometryType::Curve,
         polygons: vec![],
@@ -258,208 +321,22 @@ fn convert_polyline_to_geometry(polyline: &shapefile::Polyline) -> GeometryValue
     })
 }
 
-fn convert_polylinem_to_geometry(polyline: &shapefile::PolylineM) -> GeometryValue {
-    let mut line_strings = Vec::new();
-    for part in polyline.parts() {
-        let coordinates: Vec<Coordinate3D<f64>> = part
-            .iter()
-            .map(|p| Coordinate3D {
-                x: p.x,
-                y: p.y,
-                z: 0.0,
-            })
-            .collect();
-        line_strings.push(LineString3D::from(coordinates));
-    }
-    let entry = GmlGeometry {
-        ty: GeometryType::Curve,
-        polygons: vec![],
-        line_strings,
-        id: None,
-        lod: None,
-        pos: 0,
-        len: 0,
-        feature_id: None,
-        feature_type: None,
-        composite_surfaces: vec![],
-    };
-    GeometryValue::CityGmlGeometry(CityGmlGeometry {
-        gml_geometries: vec![entry],
-        ..Default::default()
-    })
-}
-
-fn convert_polylinez_to_geometry(polyline: &shapefile::PolylineZ) -> GeometryValue {
-    let mut line_strings = Vec::new();
-    for part in polyline.parts() {
-        let coordinates: Vec<Coordinate3D<f64>> = part
-            .iter()
-            .map(|p| Coordinate3D {
-                x: p.x,
-                y: p.y,
-                z: p.z,
-            })
-            .collect();
-        line_strings.push(LineString3D::from(coordinates));
-    }
-    let entry = GmlGeometry {
-        ty: GeometryType::Curve,
-        polygons: vec![],
-        line_strings,
-        id: None,
-        lod: None,
-        pos: 0,
-        len: 0,
-        feature_id: None,
-        feature_type: None,
-        composite_surfaces: vec![],
-    };
-    GeometryValue::CityGmlGeometry(CityGmlGeometry {
-        gml_geometries: vec![entry],
-        ..Default::default()
-    })
-}
-
-fn convert_polygon_to_geometry(
-    polygon: &shapefile::Polygon,
+fn create_polygon_geometry(
+    rings: impl Iterator<Item = (bool, Vec<Coordinate3D<f64>>)>,
 ) -> Result<GeometryValue, crate::errors::SourceError> {
     let mut polygons = Vec::new();
 
-    for ring in polygon.rings() {
-        match ring {
-            shapefile::PolygonRing::Outer(points) => {
-                let exterior: Vec<Coordinate3D<f64>> = points
-                    .iter()
-                    .map(|p| Coordinate3D {
-                        x: p.x,
-                        y: p.y,
-                        z: 0.0,
-                    })
-                    .collect();
-                let poly = Polygon3D::new(LineString3D::from(exterior), vec![]);
-                polygons.push(poly);
+    for (is_outer, coords) in rings {
+        if is_outer {
+            let poly = Polygon3D::new(LineString3D::from(coords), vec![]);
+            polygons.push(poly);
+        } else {
+            // Note: The shapefile spec guarantees that inner rings follow their outer ring
+            // If no outer ring exists, we skip the inner ring with a warning
+            if let Some(last_poly) = polygons.last_mut() {
+                last_poly.interiors_push(LineString3D::from(coords));
             }
-            shapefile::PolygonRing::Inner(points) => {
-                if let Some(last_poly) = polygons.last_mut() {
-                    let interior: Vec<Coordinate3D<f64>> = points
-                        .iter()
-                        .map(|p| Coordinate3D {
-                            x: p.x,
-                            y: p.y,
-                            z: 0.0,
-                        })
-                        .collect();
-                    last_poly.interiors_push(LineString3D::from(interior));
-                }
-            }
-        }
-    }
-
-    let entry = GmlGeometry {
-        ty: GeometryType::Surface,
-        polygons,
-        line_strings: vec![],
-        id: None,
-        lod: None,
-        pos: 0,
-        len: 0,
-        feature_id: None,
-        feature_type: None,
-        composite_surfaces: vec![],
-    };
-
-    Ok(GeometryValue::CityGmlGeometry(CityGmlGeometry {
-        gml_geometries: vec![entry],
-        ..Default::default()
-    }))
-}
-
-fn convert_polygonm_to_geometry(
-    polygon: &shapefile::PolygonM,
-) -> Result<GeometryValue, crate::errors::SourceError> {
-    let mut polygons = Vec::new();
-
-    for ring in polygon.rings() {
-        match ring {
-            shapefile::PolygonRing::Outer(points) => {
-                let exterior: Vec<Coordinate3D<f64>> = points
-                    .iter()
-                    .map(|p| Coordinate3D {
-                        x: p.x,
-                        y: p.y,
-                        z: 0.0,
-                    })
-                    .collect();
-                let poly = Polygon3D::new(LineString3D::from(exterior), vec![]);
-                polygons.push(poly);
-            }
-            shapefile::PolygonRing::Inner(points) => {
-                if let Some(last_poly) = polygons.last_mut() {
-                    let interior: Vec<Coordinate3D<f64>> = points
-                        .iter()
-                        .map(|p| Coordinate3D {
-                            x: p.x,
-                            y: p.y,
-                            z: 0.0,
-                        })
-                        .collect();
-                    last_poly.interiors_push(LineString3D::from(interior));
-                }
-            }
-        }
-    }
-
-    let entry = GmlGeometry {
-        ty: GeometryType::Surface,
-        polygons,
-        line_strings: vec![],
-        id: None,
-        lod: None,
-        pos: 0,
-        len: 0,
-        feature_id: None,
-        feature_type: None,
-        composite_surfaces: vec![],
-    };
-
-    Ok(GeometryValue::CityGmlGeometry(CityGmlGeometry {
-        gml_geometries: vec![entry],
-        ..Default::default()
-    }))
-}
-
-fn convert_polygonz_to_geometry(
-    polygon: &shapefile::PolygonZ,
-) -> Result<GeometryValue, crate::errors::SourceError> {
-    let mut polygons = Vec::new();
-
-    for ring in polygon.rings() {
-        match ring {
-            shapefile::PolygonRing::Outer(points) => {
-                let exterior: Vec<Coordinate3D<f64>> = points
-                    .iter()
-                    .map(|p| Coordinate3D {
-                        x: p.x,
-                        y: p.y,
-                        z: p.z,
-                    })
-                    .collect();
-                let poly = Polygon3D::new(LineString3D::from(exterior), vec![]);
-                polygons.push(poly);
-            }
-            shapefile::PolygonRing::Inner(points) => {
-                if let Some(last_poly) = polygons.last_mut() {
-                    let interior: Vec<Coordinate3D<f64>> = points
-                        .iter()
-                        .map(|p| Coordinate3D {
-                            x: p.x,
-                            y: p.y,
-                            z: p.z,
-                        })
-                        .collect();
-                    last_poly.interiors_push(LineString3D::from(interior));
-                }
-            }
+            // If there's no polygon to attach to, the shapefile may be malformed
         }
     }
 
@@ -491,17 +368,31 @@ fn convert_record_to_attributes(
         let attr_name = Attribute::new(name);
         let attr_value = match value {
             shapefile::dbase::FieldValue::Character(Some(s)) => AttributeValue::String(s),
-            shapefile::dbase::FieldValue::Numeric(Some(n)) => AttributeValue::Number(
-                serde_json::Number::from_f64(n).unwrap_or_else(|| serde_json::Number::from(0)),
-            ),
+            shapefile::dbase::FieldValue::Numeric(Some(n)) => {
+                // Handle NaN, Infinity, and other invalid JSON numbers
+                if n.is_finite() {
+                    serde_json::Number::from_f64(n)
+                        .map(AttributeValue::Number)
+                        .unwrap_or(AttributeValue::Null)
+                } else {
+                    AttributeValue::Null
+                }
+            }
             shapefile::dbase::FieldValue::Logical(Some(b)) => AttributeValue::Bool(b),
             shapefile::dbase::FieldValue::Date(Some(d)) => {
                 AttributeValue::String(format!("{:04}-{:02}-{:02}", d.year(), d.month(), d.day()))
             }
-            shapefile::dbase::FieldValue::Float(Some(f)) => AttributeValue::Number(
-                serde_json::Number::from_f64(f64::from(f))
-                    .unwrap_or_else(|| serde_json::Number::from(0)),
-            ),
+            shapefile::dbase::FieldValue::Float(Some(f)) => {
+                let f64_val = f64::from(f);
+                // Handle NaN, Infinity, and other invalid JSON numbers
+                if f64_val.is_finite() {
+                    serde_json::Number::from_f64(f64_val)
+                        .map(AttributeValue::Number)
+                        .unwrap_or(AttributeValue::Null)
+                } else {
+                    AttributeValue::Null
+                }
+            }
             shapefile::dbase::FieldValue::Integer(i) => {
                 AttributeValue::Number(serde_json::Number::from(i))
             }
