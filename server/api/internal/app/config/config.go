@@ -79,8 +79,10 @@ type (
 		Worker_BinaryPath                      string   `envconfig:"WORKER_BINARY_PATH" default:"reearth-flow-worker" pp:",omitempty"`
 		Worker_BootDiskSizeGB                  string   `envconfig:"WORKER_BOOT_DISK_SIZE_GB" default:"50" pp:",omitempty"`
 		Worker_BootDiskType                    string   `envconfig:"WORKER_BOOT_DISK_TYPE" default:"pd-balanced" pp:",omitempty"`
+		Worker_ChannelBufferSize               string   `envconfig:"WORKER_CHANNEL_BUFFER_SIZE" default:"256" pp:",omitempty"`
 		Worker_ComputeCpuMilli                 string   `envconfig:"WORKER_COMPUTE_CPU_MILLI" default:"2000" pp:",omitempty"`
 		Worker_ComputeMemoryMib                string   `envconfig:"WORKER_COMPUTE_MEMORY_MIB" default:"2000" pp:",omitempty"`
+		Worker_FeatureFlushThreshold           string   `envconfig:"WORKER_FEATURE_FLUSH_THRESHOLD" default:"512" pp:",omitempty"`
 		Worker_ImageURL                        string   `envconfig:"WORKER_IMAGE_URL" pp:",omitempty"`
 		Worker_MachineType                     string   `envconfig:"WORKER_MACHINE_TYPE" default:"e2-standard-4" pp:",omitempty"`
 		Worker_MaxConcurrency                  string   `envconfig:"WORKER_MAX_CONCURRENCY" default:"4" pp:",omitempty"`
@@ -90,6 +92,7 @@ type (
 		Worker_PubSubLogStreamTopic            string   `envconfig:"WORKER_PUBSUB_LOG_STREAM_TOPIC" default:"flow-log-stream" pp:",omitempty"`
 		Worker_PubSubNodeStatusTopic           string   `envconfig:"WORKER_PUBSUB_NODE_STATUS_TOPIC" default:"flow-node-status" pp:",omitempty"`
 		Worker_TaskCount                       string   `envconfig:"WORKER_TASK_COUNT" default:"1" pp:",omitempty"`
+		Worker_ThreadPoolSize                  string   `envconfig:"WORKER_THREAD_POOL_SIZE" default:"30" pp:",omitempty"`
 
 		// websocket
 		WebsocketThriftServerURL string `envconfig:"REEARTH_FLOW_WEBSOCKET_THRIFT_SERVER_URL" default:"http://localhost:8000" pp:",omitempty"`

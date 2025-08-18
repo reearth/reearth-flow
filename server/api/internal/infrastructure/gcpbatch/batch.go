@@ -23,8 +23,10 @@ type BatchConfig struct {
 	BinaryPath                      string
 	BootDiskSizeGB                  int
 	BootDiskType                    string
+	ChannelBufferSize               string
 	ComputeCpuMilli                 int
 	ComputeMemoryMib                int
+	FeatureFlushThreshold           string
 	ImageURI                        string
 	MachineType                     string
 	NodeStatusPropagationDelayMS    string
@@ -36,6 +38,7 @@ type BatchConfig struct {
 	Region                          string
 	SAEmail                         string
 	TaskCount                       int
+	ThreadPoolSize                  string
 }
 
 type BatchClient interface {
@@ -153,13 +156,16 @@ func (b *BatchRepo) SubmitJob(
 		Environment: &batchpb.Environment{
 			Variables: map[string]string{
 				"FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS": b.config.NodeStatusPropagationDelayMS,
+				"FLOW_RUNTIME_CHANNEL_BUFFER_SIZE":              b.config.ChannelBufferSize,
+				"FLOW_RUNTIME_THREAD_POOL_SIZE":                 b.config.ThreadPoolSize,
+				"FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD":          b.config.FeatureFlushThreshold,
 				"FLOW_WORKER_ENABLE_JSON_LOG":                   "true",
 				"FLOW_WORKER_EDGE_PASS_THROUGH_EVENT_TOPIC":     b.config.PubSubEdgePassThroughEventTopic,
 				"FLOW_WORKER_LOG_STREAM_TOPIC":                  b.config.PubSubLogStreamTopic,
 				"FLOW_WORKER_JOB_COMPLETE_TOPIC":                b.config.PubSubJobCompleteTopic,
 				"FLOW_WORKER_NODE_STATUS_TOPIC":                 b.config.PubSubNodeStatusTopic,
-				"RUST_LOG":                                      "debug",
-				"RUST_BACKTRACE":                                "full",
+				"RUST_LOG":                                      "info",
+				"RUST_BACKTRACE":                                "1",
 			},
 		},
 	}
