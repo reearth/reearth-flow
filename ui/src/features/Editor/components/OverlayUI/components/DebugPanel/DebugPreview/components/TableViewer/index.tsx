@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo } from "react";
 
 import { RenderFallback } from "@flow/components";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
@@ -26,7 +26,6 @@ const TableViewer: React.FC<Props> = ({
     type: fileType,
   });
   const t = useT();
-  const [searchTerm, setSearchTerm] = useState<string>("");
   return (
     <RenderFallback
       message={t(
@@ -41,8 +40,6 @@ const TableViewer: React.FC<Props> = ({
             condensed
             selectColumns
             showFiltering
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
             selectedRow={selectedFeature}
             onRowClick={onSingleClick}
             onRowDoubleClick={onDoubleClick}

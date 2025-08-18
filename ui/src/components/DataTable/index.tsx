@@ -89,30 +89,32 @@ function DataTable<TData, TValue>({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
-  const [globalFilter, setGlobalFilter] = useState<string>("");
+  const [internalGlobalFilter, setInternalGlobalFilter] = useState<string>("");
+
+  const globalFilter =
+    searchTerm !== undefined ? searchTerm : internalGlobalFilter;
+  const setGlobalFilter = useMemo(
+    () =>
+      searchTerm !== undefined
+        ? (value: string) => setSearchTerm?.(value)
+        : setInternalGlobalFilter,
+    [searchTerm, setSearchTerm],
+  );
+
+  const handleSearch = useCallback(
+    (value: string) => {
+      setGlobalFilter(value);
+    },
+    [setGlobalFilter],
+  );
+
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: resultsPerPage ?? 10,
   });
 
-  useMemo(() => {
-    if (searchTerm !== undefined) {
-      setGlobalFilter(searchTerm);
-    }
-  }, [searchTerm, setGlobalFilter]);
-
-  const handleSearch = useCallback(
-    (value: string) => {
-      if (setSearchTerm) {
-        setSearchTerm(value);
-      }
-    },
-    [setSearchTerm],
-  );
-
-  const defaultData = useMemo(() => [], []);
   const table = useReactTable({
-    data: data ? data : defaultData,
+    data: data ? data : [],
     columns,
     getCoreRowModel: getCoreRowModel(),
     // Sorting

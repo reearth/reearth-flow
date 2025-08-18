@@ -59,26 +59,27 @@ function VirtualizedTable<TData, TValue>({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
-  const [globalFilter, setGlobalFilter] = useState<string>("");
+  const [internalGlobalFilter, setInternalGlobalFilter] = useState<string>("");
 
-  useMemo(() => {
-    if (searchTerm !== undefined) {
-      setGlobalFilter(searchTerm);
-    }
-  }, [searchTerm, setGlobalFilter]);
+  const globalFilter =
+    searchTerm !== undefined ? searchTerm : internalGlobalFilter;
+  const setGlobalFilter = useMemo(
+    () =>
+      searchTerm !== undefined
+        ? (value: string) => setSearchTerm?.(value)
+        : setInternalGlobalFilter,
+    [searchTerm, setSearchTerm],
+  );
 
   const handleSearch = useCallback(
     (value: string) => {
-      if (setSearchTerm) {
-        setSearchTerm(value);
-      }
+      setGlobalFilter(value);
     },
-    [setSearchTerm],
+    [setGlobalFilter],
   );
 
-  const defaultData = useMemo(() => [], []);
   const table = useReactTable({
-    data: data ? data : defaultData,
+    data: data ? data : [],
     columns,
     getCoreRowModel: getCoreRowModel(),
     // Sorting
@@ -136,7 +137,6 @@ function VirtualizedTable<TData, TValue>({
 
   const selectedRowIndex = useMemo(() => {
     if (!selectedRow?.properties?._originalId || !data) return -1;
-    console.log("selectedRow", selectedRow);
     return data.findIndex(
       (row: any) =>
         row.id?.replace(/[^a-zA-Z0-9]/g, "") ===
@@ -145,11 +145,7 @@ function VirtualizedTable<TData, TValue>({
   }, [selectedRow, data]);
 
   useEffect(() => {
-    if (selectedRowIndex === -1) {
-      return;
-    }
-
-    if (selectedRow.properties?._originalId) {
+    if (selectedRowIndex !== -1 && selectedRow.properties?._originalId) {
       virtualizer.scrollToIndex(selectedRowIndex, {
         align: "start",
         behavior: "auto",
