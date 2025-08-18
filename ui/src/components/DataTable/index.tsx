@@ -10,7 +10,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import {
   DropdownMenu,
@@ -75,7 +75,6 @@ function DataTable<TData, TValue>({
   currentOrder = OrderDirection.Desc,
   sortOptions,
   currentSortValue,
-  searchTerm,
   onRowClick,
   onRowDoubleClick,
   setCurrentPage,
@@ -88,12 +87,6 @@ function DataTable<TData, TValue>({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState<string>("");
-
-  useEffect(() => {
-    if (searchTerm !== undefined) {
-      setGlobalFilter(searchTerm);
-    }
-  }, [searchTerm]);
 
   const handleSearch = useCallback(
     (value: string) => {

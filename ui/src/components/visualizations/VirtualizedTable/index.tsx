@@ -46,7 +46,6 @@ function VirtualizedTable<TData, TValue>({
   selectColumns = false,
   showFiltering = false,
   condensed,
-  searchTerm,
   selectedRow,
   useStrictSelectedRow,
   onRowClick,
@@ -58,12 +57,6 @@ function VirtualizedTable<TData, TValue>({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState<string>("");
-
-  useEffect(() => {
-    if (searchTerm !== undefined) {
-      setGlobalFilter(searchTerm);
-    }
-  }, [searchTerm]);
 
   const handleSearch = useCallback(
     (value: string) => {
