@@ -6,7 +6,7 @@ import {
 } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 
-import { IconButton } from "@flow/components";
+import { IconButton, LoadingSkeleton } from "@flow/components";
 import { DataTable as Table } from "@flow/components/DataTable";
 import { ASSET_FETCH_RATE } from "@flow/lib/gql/assets/useQueries";
 import { useT } from "@flow/lib/i18n";
@@ -15,6 +15,8 @@ import type { Asset } from "@flow/types";
 type Props = {
   assets?: Asset[];
   isFetching: boolean;
+  isDebouncing?: boolean;
+  isDeleting: boolean;
   currentPage: number;
   totalPages: number;
   setCurrentPage?: (page: number) => void;
@@ -31,6 +33,9 @@ type Props = {
 const AssetsListView: React.FC<Props> = ({
   assets,
   currentPage,
+  isFetching,
+  isDebouncing,
+  isDeleting,
   totalPages,
   setCurrentPage,
   setAssetToBeDeleted,
@@ -76,9 +81,9 @@ const AssetsListView: React.FC<Props> = ({
             onClick={(e) => onAssetDownload(e, row.row.original)}>
             <IconButton icon={<DownloadIcon />} />
           </a>
-
           <IconButton
             icon={<TrashIcon />}
+            disabled={isDeleting}
             onClick={() => setAssetToBeDeleted(row.row.original.id)}
           />
         </div>
@@ -88,16 +93,20 @@ const AssetsListView: React.FC<Props> = ({
 
   return (
     <div className="h-full flex-1 overflow-hidden">
-      <Table
-        columns={columns}
-        data={assets}
-        showOrdering={false}
-        currentPage={currentPage}
-        setCurrentPage={setCurrentPage}
-        totalPages={totalPages}
-        resultsPerPage={resultsPerPage}
-        onRowDoubleClick={onAssetDoubleClick}
-      />
+      {isDebouncing || isFetching ? (
+        <LoadingSkeleton />
+      ) : (
+        <Table
+          columns={columns}
+          data={assets}
+          showOrdering={false}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          totalPages={totalPages}
+          resultsPerPage={resultsPerPage}
+          onRowDoubleClick={onAssetDoubleClick}
+        />
+      )}
     </div>
   );
 };
