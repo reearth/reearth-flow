@@ -1,11 +1,10 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 import { useDocument } from "@flow/lib/gql/document";
-import { useIsSaving } from "@flow/stores";
 
 export default ({ projectId }: { projectId?: string }) => {
   const { useSaveSnapshot } = useDocument();
-  const [isSaving, setIsSaving] = useIsSaving();
+  const [isSaving, setIsSaving] = useState<boolean>(false);
   const handleProjectSnapshotSave = useCallback(async () => {
     try {
       setIsSaving(true);

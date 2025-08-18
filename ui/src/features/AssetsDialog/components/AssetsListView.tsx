@@ -15,8 +15,6 @@ import type { Asset } from "@flow/types";
 type Props = {
   assets?: Asset[];
   isFetching: boolean;
-  isDebouncing?: boolean;
-  isDeleting: boolean;
   currentPage: number;
   totalPages: number;
   setCurrentPage?: (page: number) => void;
@@ -32,8 +30,6 @@ type Props = {
 };
 const AssetsListView: React.FC<Props> = ({
   assets,
-  isDebouncing,
-  isDeleting,
   isFetching,
   currentPage,
   totalPages,
@@ -81,9 +77,7 @@ const AssetsListView: React.FC<Props> = ({
             onClick={(e) => onAssetDownload(e, row.row.original)}>
             <IconButton icon={<DownloadIcon />} />
           </a>
-
           <IconButton
-            disabled={isDeleting}
             icon={<TrashIcon />}
             onClick={() => setAssetToBeDeleted(row.row.original.id)}
           />
@@ -94,7 +88,7 @@ const AssetsListView: React.FC<Props> = ({
 
   return (
     <div className="h-full flex-1 overflow-hidden">
-      {isDebouncing || isFetching ? (
+      {isFetching ? (
         <LoadingTableSkeleton columns={4} rows={ASSET_FETCH_RATE} />
       ) : (
         <Table

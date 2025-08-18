@@ -29,7 +29,7 @@ export default ({
     OrderDirection.Desc,
   );
 
-  const { searchTerm, isDebouncing, setSearchTerm } = useDebouncedSearch({
+  const { searchTerm, setSearchTerm } = useDebouncedSearch({
     initialSearchTerm: "",
     delay: 300,
     onDebounced: () => {
@@ -43,8 +43,6 @@ export default ({
   const [assetToBeDeleted, setAssetToBeDeleted] = useState<string | undefined>(
     undefined,
   );
-
-  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   const [layoutView, setLayoutView] = useState<"list" | "grid">("list");
 
@@ -130,15 +128,8 @@ export default ({
   );
 
   const handleAssetDelete = async (id: string) => {
-    try {
-      setIsDeleting(true);
-      setAssetToBeDeleted(undefined);
-      await deleteAsset({ assetId: id });
-    } catch (error) {
-      console.error("Failed to delete asset:", error);
-    } finally {
-      setIsDeleting(false);
-    }
+    setAssetToBeDeleted(undefined);
+    await deleteAsset({ assetId: id });
   };
 
   const handleSortChange = useCallback((newSortValue: string) => {
@@ -206,8 +197,6 @@ export default ({
   return {
     assets,
     isFetching,
-    isDebouncing,
-    isDeleting,
     fileInputRef,
     assetToBeDeleted,
     assetToBeEdited,

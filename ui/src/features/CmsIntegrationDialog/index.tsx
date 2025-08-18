@@ -54,7 +54,6 @@ const CmsIntegrationDialog: React.FC<Props> = ({
     modelsCurrentPage,
     searchTerm,
     isLoading,
-    isDebouncing,
     viewMode,
     setSearchTerm,
     setModelsCurrentPage,
@@ -244,7 +243,7 @@ const CmsIntegrationDialog: React.FC<Props> = ({
             </ScrollArea>
             {viewMode === "items" && selectedModel && (
               <div className="h-full flex-1 overflow-hidden">
-                {isDebouncing || isLoading ? (
+                {isLoading ? (
                   <LoadingTableSkeleton
                     columns={columns.length}
                     rows={CMS_ITEMS_FETCH_RATE}

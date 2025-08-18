@@ -8,9 +8,7 @@ import { AssetCard } from "./AssetCard";
 
 type Props = {
   assets?: Asset[];
-  isDebouncing?: boolean;
   isFetching: boolean;
-  isDeleting: boolean;
   setAssetToBeDeleted: (asset: string | undefined) => void;
   setAssetToBeEdited: (asset: Asset | undefined) => void;
   onCopyUrlToClipBoard: (url: string) => void;
@@ -22,9 +20,7 @@ type Props = {
 };
 const AssetsGridView: React.FC<Props> = ({
   assets,
-  isDebouncing,
   isFetching,
-  isDeleting,
   setAssetToBeDeleted,
   setAssetToBeEdited,
   onCopyUrlToClipBoard,
@@ -36,7 +32,7 @@ const AssetsGridView: React.FC<Props> = ({
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex-1 overflow-y-auto">
-        {isDebouncing || isFetching ? (
+        {isFetching ? (
           <div className="grid min-w-0 grid-cols-5 gap-2 p-2">
             {Array.from({ length: ASSET_FETCH_RATE }).map((_, index) => (
               <div
@@ -56,7 +52,6 @@ const AssetsGridView: React.FC<Props> = ({
               <AssetCard
                 key={a.id}
                 asset={a}
-                isDeleting={isDeleting}
                 setAssetToBeDeleted={setAssetToBeDeleted}
                 setAssetToBeEdited={setAssetToBeEdited}
                 onCopyUrlToClipBoard={onCopyUrlToClipBoard}

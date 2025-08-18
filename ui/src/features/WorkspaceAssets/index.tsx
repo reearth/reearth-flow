@@ -33,9 +33,7 @@ const AssetsManager: React.FC = () => {
   const [currentWorkspace] = useCurrentWorkspace();
   const {
     assets,
-    isDebouncing,
     isFetching,
-    isDeleting,
     fileInputRef,
     assetToBeDeleted,
     assetToBeEdited,
@@ -120,9 +118,7 @@ const AssetsManager: React.FC = () => {
           {layoutView === "list" ? (
             <AssetsListView
               assets={assets}
-              isDebouncing={isDebouncing}
               isFetching={isFetching}
-              isDeleting={isDeleting}
               currentPage={currentPage}
               totalPages={totalPages}
               setAssetToBeDeleted={setAssetToBeDeleted}
@@ -136,9 +132,7 @@ const AssetsManager: React.FC = () => {
           ) : (
             <AssetsGridView
               assets={assets}
-              isDebouncing={isDebouncing}
               isFetching={isFetching}
-              isDeleting={isDeleting}
               setAssetToBeDeleted={setAssetToBeDeleted}
               setAssetToBeEdited={setAssetToBeEdited}
               onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
