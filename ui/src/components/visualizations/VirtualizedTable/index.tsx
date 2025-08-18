@@ -1,6 +1,5 @@
 import {
   ColumnDef,
-  Row,
   SortingState,
   VisibilityState,
   flexRender,
@@ -25,7 +24,6 @@ import {
   TableHead,
   TableHeader,
 } from "@flow/components";
-import { useDoubleClick } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 
 type DataTableProps<TData, TValue> = {
@@ -59,27 +57,24 @@ function VirtualizedTable<TData, TValue>({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
-  const [internalGlobalFilter, setInternalGlobalFilter] = useState<string>("");
+  const [globalFilter, setGlobalFilter] = useState<string>("");
 
-  const globalFilter =
-    searchTerm !== undefined ? searchTerm : internalGlobalFilter;
-  const setGlobalFilter = useMemo(
-    () =>
-      searchTerm !== undefined
-        ? (value: string) => setSearchTerm?.(value)
-        : setInternalGlobalFilter,
-    [searchTerm, setSearchTerm],
-  );
+  useEffect(() => {
+    if (searchTerm !== undefined) {
+      setGlobalFilter(searchTerm);
+    }
+  }, [searchTerm]);
 
   const handleSearch = useCallback(
     (value: string) => {
       setGlobalFilter(value);
+      setSearchTerm?.(value);
     },
-    [setGlobalFilter],
+    [setSearchTerm],
   );
 
   const table = useReactTable({
-    data: data ? data : [],
+    data: data ?? [],
     columns,
     getCoreRowModel: getCoreRowModel(),
     // Sorting
@@ -101,31 +96,6 @@ function VirtualizedTable<TData, TValue>({
     },
     manualPagination: true,
   });
-
-  const handleRowDoubleClick = (row: Row<TData>) => {
-    onRowDoubleClick?.(row.original);
-  };
-
-  const [handleSingleClick, handleDoubleClick] = useDoubleClick<
-    Row<TData>,
-    Row<TData>
-  >(
-    onRowClick
-      ? (row?: Row<TData>) => {
-          if (row) {
-            row.toggleSelected();
-            onRowClick(row.original);
-          }
-        }
-      : undefined,
-    onRowDoubleClick
-      ? (row?: Row<TData>) => {
-          if (row) {
-            handleRowDoubleClick(row);
-          }
-        }
-      : undefined,
-  );
 
   const parentRef = useRef<HTMLDivElement>(null);
   const { rows } = table.getRowModel();
@@ -208,8 +178,6 @@ function VirtualizedTable<TData, TValue>({
           className="w-full caption-bottom overflow-auto text-xs"
           style={{
             height: `${virtualizer.getTotalSize()}px`,
-            width: "100%",
-            position: "relative",
           }}>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -254,16 +222,13 @@ function VirtualizedTable<TData, TValue>({
                           ? "selected"
                           : undefined
                     }
-                    onClick={
-                      handleSingleClick
-                        ? () => handleSingleClick(row)
-                        : undefined
-                    }
-                    onDoubleClick={
-                      handleDoubleClick
-                        ? () => handleDoubleClick(row)
-                        : undefined
-                    }>
+                    onClick={() => {
+                      row.toggleSelected();
+                      onRowClick?.(row.original);
+                    }}
+                    onDoubleClick={() => {
+                      onRowDoubleClick?.(row.original);
+                    }}>
                     {row.getVisibleCells().map((cell: any) => {
                       return (
                         <TableCell

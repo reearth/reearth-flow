@@ -1,7 +1,6 @@
 import {
   ColumnDef,
   PaginationState,
-  Row,
   SortingState,
   VisibilityState,
   flexRender,
@@ -11,7 +10,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   DropdownMenu,
@@ -27,7 +26,6 @@ import {
   SelectContent,
   SelectItem,
 } from "@flow/components";
-import { useDoubleClick } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { OrderDirection } from "@flow/types/paginationOptions";
 
@@ -89,23 +87,20 @@ function DataTable<TData, TValue>({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
-  const [internalGlobalFilter, setInternalGlobalFilter] = useState<string>("");
+  const [globalFilter, setGlobalFilter] = useState<string>("");
 
-  const globalFilter =
-    searchTerm !== undefined ? searchTerm : internalGlobalFilter;
-  const setGlobalFilter = useMemo(
-    () =>
-      searchTerm !== undefined
-        ? (value: string) => setSearchTerm?.(value)
-        : setInternalGlobalFilter,
-    [searchTerm, setSearchTerm],
-  );
+  useEffect(() => {
+    if (searchTerm !== undefined) {
+      setGlobalFilter(searchTerm);
+    }
+  }, [searchTerm]);
 
   const handleSearch = useCallback(
     (value: string) => {
       setGlobalFilter(value);
+      setSearchTerm?.(value);
     },
-    [setGlobalFilter],
+    [setSearchTerm],
   );
 
   const [pagination, setPagination] = useState<PaginationState>({
@@ -114,7 +109,7 @@ function DataTable<TData, TValue>({
   });
 
   const table = useReactTable({
-    data: data ? data : [],
+    data: data ?? [],
     columns,
     getCoreRowModel: getCoreRowModel(),
     // Sorting
@@ -149,31 +144,6 @@ function DataTable<TData, TValue>({
         : OrderDirection.Asc,
     );
   };
-
-  const handleRowDoubleClick = (row: Row<TData>) => {
-    onRowDoubleClick?.(row.original);
-  };
-
-  const [handleSingleClick, handleDoubleClick] = useDoubleClick<
-    Row<TData>,
-    Row<TData>
-  >(
-    onRowClick
-      ? (row?: Row<TData>) => {
-          if (row) {
-            row.toggleSelected();
-            onRowClick(row.original);
-          }
-        }
-      : undefined,
-    onRowDoubleClick
-      ? (row?: Row<TData>) => {
-          if (row) {
-            handleRowDoubleClick(row);
-          }
-        }
-      : undefined,
-  );
 
   const orderDirections: Record<OrderDirection, string> = {
     DESC: t("Newest"),
@@ -292,16 +262,13 @@ function DataTable<TData, TValue>({
                       key={row.id}
                       // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
                       data-state={row.getIsSelected() ? "selected" : undefined}
-                      onClick={
-                        handleSingleClick
-                          ? () => handleSingleClick(row)
-                          : undefined
-                      }
-                      onDoubleClick={
-                        handleDoubleClick
-                          ? () => handleDoubleClick(row)
-                          : undefined
-                      }>
+                      onClick={() => {
+                        row.toggleSelected();
+                        onRowClick?.(row.original);
+                      }}
+                      onDoubleClick={() => {
+                        onRowDoubleClick?.(row.original);
+                      }}>
                       {row.getVisibleCells().map((cell: any) => (
                         <TableCell
                           key={cell.id}
