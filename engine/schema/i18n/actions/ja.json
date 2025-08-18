@@ -2,10 +2,7 @@
   "actions": [
     {
       "name": "AreaOnAreaOverlayer",
-      "description": "あるエリアの上に別のエリアを重ね合わせる",
-      "parameter": {
-        "title": "AreaOnAreaOverlayer"
-      }
+      "description": "あるエリアの上に別のエリアを重ね合わせる"
     },
     {
       "name": "AttributeAggregator",

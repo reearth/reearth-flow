@@ -1454,6 +1454,7 @@ Reads and processes features from CityGML files with optional flattening
   ],
   "properties": {
     "dataset": {
+      "title": "Dataset",
       "description": "Path or expression to the CityGML dataset file to be read",
       "allOf": [
         {
@@ -1462,6 +1463,7 @@ Reads and processes features from CityGML files with optional flattening
       ]
     },
     "flatten": {
+      "title": "Flatten",
       "description": "Whether to flatten the hierarchical structure of the CityGML data",
       "type": [
         "boolean",
@@ -1859,6 +1861,7 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
       ],
       "properties": {
         "dataset": {
+          "title": "Dataset",
           "description": "Path or expression to the dataset file to be read",
           "allOf": [
             {
@@ -1893,6 +1896,7 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
       ],
       "properties": {
         "dataset": {
+          "title": "Dataset",
           "description": "Path or expression to the dataset file to be read",
           "allOf": [
             {
@@ -1927,6 +1931,7 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
       ],
       "properties": {
         "dataset": {
+          "title": "Dataset",
           "description": "Path or expression to the dataset file to be read",
           "allOf": [
             {
@@ -2225,10 +2230,12 @@ Extracts file paths from directories or archives, creating features for each dis
   ],
   "properties": {
     "extractArchive": {
+      "title": "Extract Archive",
       "description": "Whether to extract files from archives (zip files, etc.) or just list them",
       "type": "boolean"
     },
     "sourceDataset": {
+      "title": "Source Dataset",
       "description": "Path or expression pointing to the source directory or archive file",
       "allOf": [
         {
@@ -3369,6 +3376,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping
   ],
   "properties": {
     "compressOutput": {
+      "title": "Compress Output",
       "description": "Optional expression to determine whether to compress the output tiles",
       "anyOf": [
         {
@@ -3380,6 +3388,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping
       ]
     },
     "layerName": {
+      "title": "Layer Name",
       "description": "Name of the layer within the MVT tiles",
       "allOf": [
         {
@@ -3388,18 +3397,21 @@ Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping
       ]
     },
     "maxZoom": {
+      "title": "Maximum Zoom",
       "description": "Maximum zoom level to generate tiles for",
       "type": "integer",
       "format": "uint8",
       "minimum": 0.0
     },
     "minZoom": {
+      "title": "Minimum Zoom",
       "description": "Minimum zoom level to generate tiles for",
       "type": "integer",
       "format": "uint8",
       "minimum": 0.0
     },
     "output": {
+      "title": "Output",
       "description": "Output directory path or expression for the generated MVT tiles",
       "allOf": [
         {

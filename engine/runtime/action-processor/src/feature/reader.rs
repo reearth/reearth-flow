@@ -143,6 +143,7 @@ struct FeatureReader {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct CommonReaderParam {
+    /// # Dataset
     /// Path or expression to the dataset file to be read
     dataset: Expr,
 }

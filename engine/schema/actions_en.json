@@ -1459,6 +1459,7 @@
         ],
         "properties": {
           "dataset": {
+            "title": "Dataset",
             "description": "Path or expression to the CityGML dataset file to be read",
             "allOf": [
               {
@@ -1467,6 +1468,7 @@
             ]
           },
           "flatten": {
+            "title": "Flatten",
             "description": "Whether to flatten the hierarchical structure of the CityGML data",
             "type": [
               "boolean",
@@ -1865,6 +1867,7 @@
             ],
             "properties": {
               "dataset": {
+                "title": "Dataset",
                 "description": "Path or expression to the dataset file to be read",
                 "allOf": [
                   {
@@ -1899,6 +1902,7 @@
             ],
             "properties": {
               "dataset": {
+                "title": "Dataset",
                 "description": "Path or expression to the dataset file to be read",
                 "allOf": [
                   {
@@ -1933,6 +1937,7 @@
             ],
             "properties": {
               "dataset": {
+                "title": "Dataset",
                 "description": "Path or expression to the dataset file to be read",
                 "allOf": [
                   {
@@ -2231,10 +2236,12 @@
         ],
         "properties": {
           "extractArchive": {
+            "title": "Extract Archive",
             "description": "Whether to extract files from archives (zip files, etc.) or just list them",
             "type": "boolean"
           },
           "sourceDataset": {
+            "title": "Source Dataset",
             "description": "Path or expression pointing to the source directory or archive file",
             "allOf": [
               {
@@ -3376,6 +3383,7 @@
         ],
         "properties": {
           "compressOutput": {
+            "title": "Compress Output",
             "description": "Optional expression to determine whether to compress the output tiles",
             "anyOf": [
               {
@@ -3387,6 +3395,7 @@
             ]
           },
           "layerName": {
+            "title": "Layer Name",
             "description": "Name of the layer within the MVT tiles",
             "allOf": [
               {
@@ -3395,18 +3404,21 @@
             ]
           },
           "maxZoom": {
+            "title": "Maximum Zoom",
             "description": "Maximum zoom level to generate tiles for",
             "type": "integer",
             "format": "uint8",
             "minimum": 0.0
           },
           "minZoom": {
+            "title": "Minimum Zoom",
             "description": "Minimum zoom level to generate tiles for",
             "type": "integer",
             "format": "uint8",
             "minimum": 0.0
           },
           "output": {
+            "title": "Output",
             "description": "Output directory path or expression for the generated MVT tiles",
             "allOf": [
               {
