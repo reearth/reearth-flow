@@ -15,7 +15,7 @@ use tokio::sync::mpsc::Sender;
 
 use crate::errors::SourceError;
 
-use super::{citygml, csv, geojson, json};
+use super::{citygml, csv, geojson, json, shapefile};
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -62,6 +62,13 @@ pub enum FileReader {
     GeoJson {
         #[serde(flatten)]
         common_property: FileReaderCommonParam,
+    },
+    /// # Shapefile
+    Shapefile {
+        #[serde(flatten)]
+        common_property: FileReaderCommonParam,
+        #[serde(flatten)]
+        property: shapefile::ShapefileReaderParam,
     },
 }
 
@@ -121,6 +128,15 @@ impl Source for FileReader {
                 let input_path = get_input_path(&ctx, common_property)?;
                 let content = get_content(&ctx, common_property, storage_resolver).await?;
                 citygml::read_citygml(&content, input_path, property, sender)
+                    .await
+                    .map_err(Into::<BoxedError>::into)
+            }
+            Self::Shapefile {
+                common_property,
+                property,
+            } => {
+                let content = get_content(&ctx, common_property, storage_resolver).await?;
+                shapefile::read_shapefile(&content, property, sender)
                     .await
                     .map_err(Into::<BoxedError>::into)
             }

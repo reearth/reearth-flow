@@ -6057,6 +6057,7 @@ dependencies = [
  "reearth-flow-action-log",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
+ "reearth-flow-geometry",
  "reearth-flow-runtime",
  "reearth-flow-sql",
  "reearth-flow-state",
@@ -6067,11 +6068,13 @@ dependencies = [
  "schemars 0.8.22",
  "serde",
  "serde_json",
+ "shapefile",
  "thiserror 2.0.12",
  "tokio",
  "tracing",
  "url",
  "uuid",
+ "zip",
 ]
 
 [[package]]
