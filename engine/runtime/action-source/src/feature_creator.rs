@@ -25,7 +25,7 @@ impl SourceFactory for FeatureCreatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Creates features from expressions"
+        "Generate Custom Features Using Scripts"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -68,9 +68,13 @@ impl SourceFactory for FeatureCreatorFactory {
     }
 }
 
+/// # FeatureCreator Parameters
+/// Configure how to generate custom features using script expressions
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureCreator {
+    /// # Script Expression
+    /// Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs.
     creator: Expr,
 }
 

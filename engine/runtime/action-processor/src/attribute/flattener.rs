@@ -23,7 +23,7 @@ impl ProcessorFactory for AttributeFlattenerFactory {
     }
 
     fn description(&self) -> &str {
-        "Flattens features by attributes"
+        "Flatten Nested Object Attributes into Top-Level Attributes"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -77,10 +77,12 @@ struct AttributeFlattener {
     params: AttributeFlattenerParam,
 }
 
+/// # AttributeFlattener Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeFlattenerParam {
-    /// # Attributes to flatten
+    /// # Attributes to Flatten
+    /// Map/object attributes that should be flattened - their nested properties will become top-level attributes
     attributes: Vec<Attribute>,
 }
 

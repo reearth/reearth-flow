@@ -65,7 +65,7 @@ impl ProcessorFactory for FeatureCounterFactory {
     }
 
     fn description(&self) -> &str {
-        "Counts features"
+        "Count Features and Add Counter to Attribute"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -123,14 +123,19 @@ struct FeatureCounter {
     params: FeatureCounterParam,
 }
 
+/// # Feature Counter Parameters
+/// Configure how features are counted and grouped, and where to store the count
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct FeatureCounterParam {
-    /// # Start count
+    /// # Start Count
+    /// Starting value for the counter
     count_start: i64,
-    /// # Attributes to group by
+    /// # Group By Attributes
+    /// List of attribute names to group features by before counting
     group_by: Option<Vec<Attribute>>,
-    /// # Attribute to output the count
+    /// # Output Attribute
+    /// Name of the attribute where the count will be stored
     output_attribute: String,
 }
 

@@ -26,7 +26,7 @@ impl ProcessorFactory for AttributeManagerFactory {
     }
 
     fn description(&self) -> &str {
-        "Manages attributes"
+        "Create, Convert, Rename, and Remove Feature Attributes"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -87,10 +87,12 @@ struct AttributeManager {
     operations: Vec<Operate>,
 }
 
+/// # AttributeManager Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeManagerParam {
-    /// # Operations to perform
+    /// # Attribute Operations
+    /// List of operations to perform on feature attributes (create, convert, rename, remove)
     operations: Vec<Operation>,
 }
 
@@ -101,7 +103,8 @@ struct Operation {
     attribute: String,
     /// # Operation to perform
     method: Method,
-    /// # Value to use for the operation
+    /// # Value
+    /// Value to use for the operation
     value: Option<Expr>,
 }
 

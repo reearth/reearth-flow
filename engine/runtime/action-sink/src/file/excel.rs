@@ -13,6 +13,9 @@ use reearth_flow_types::{AttributeValue, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+/// # ExcelWriter Parameters
+///
+/// Configuration for writing features to Microsoft Excel format.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ExcelWriterParam {

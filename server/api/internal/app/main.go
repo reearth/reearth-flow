@@ -13,6 +13,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	authserver "github.com/reearth/reearth-flow/api/internal/infrastructure/auth"
+	"github.com/reearth/reearth-flow/api/internal/infrastructure/gql"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -63,6 +64,9 @@ func Start(debug bool, version string) {
 		return
 	}
 
+	// AccountGQLClient
+	accountGQLClient := gql.NewClient(conf.AccountsApiHost, authserver.DynamicAuthTransport{})
+
 	serverCfg := &ServerConfig{
 		Config:            conf,
 		Debug:             debug,
@@ -71,6 +75,7 @@ func Start(debug bool, version string) {
 		Gateways:          gateways,
 		AccountGateways:   acGateways,
 		PermissionChecker: permissionChecker,
+		AccountGQLClient:  accountGQLClient,
 	}
 
 	httpServer := NewServer(ctx, serverCfg)
@@ -123,6 +128,7 @@ type ServerConfig struct {
 	Gateways          *gateway.Container
 	AccountGateways   *accountgateway.Container
 	PermissionChecker gateway.PermissionChecker
+	AccountGQLClient  *gql.Client
 }
 
 func NewServer(ctx context.Context, cfg *ServerConfig) *WebServer {

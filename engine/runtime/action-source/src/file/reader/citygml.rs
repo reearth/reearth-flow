@@ -20,6 +20,9 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::Sender;
 use url::Url;
 
+/// # CityGmlReader Parameters
+///
+/// Configuration for reading CityGML files as a data source.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CityGmlReaderParam {

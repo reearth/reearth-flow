@@ -32,7 +32,7 @@ jobs:
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: 1.88
           override: true
 
       - name: Build Websocket

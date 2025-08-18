@@ -44,7 +44,7 @@ impl SinkFactory for GltfWriterSinkFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to a Gltf"
+        "Writes 3D features to GLTF format with optional texture attachment"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -167,10 +167,15 @@ pub struct GltfWriter {
     attach_texture: bool,
 }
 
+/// # GltfWriter Parameters
+///
+/// Configuration for writing features to GLTF 3D format.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GltfWriterParam {
+    /// Output path or expression for the GLTF file to create
     output: Expr,
+    /// Whether to attach texture information to the GLTF model
     attach_texture: Option<bool>,
 }
 

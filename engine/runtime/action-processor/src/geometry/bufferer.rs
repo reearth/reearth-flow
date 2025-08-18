@@ -29,7 +29,7 @@ impl ProcessorFactory for BuffererFactory {
     }
 
     fn description(&self) -> &str {
-        "Buffers a geometry"
+        "Create Buffer Around Features"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -77,18 +77,25 @@ impl ProcessorFactory for BuffererFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 enum BufferType {
+    /// # 2D Area Buffer
+    /// Creates a 2D polygon buffer around the input geometry
     #[serde(rename = "area2d")]
     Area2D,
 }
 
+/// # Bufferer Parameters
+/// Configure how to create buffers around input geometries
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct Bufferer {
-    /// # Buffer type
+    /// # Buffer Type
+    /// The type of buffer to create around the input geometry
     buffer_type: BufferType,
-    /// # Buffer distance
+    /// # Distance
+    /// The distance to extend the buffer from the original geometry (in coordinate units)
     distance: f64,
-    /// # Buffer interpolation angle
+    /// # Interpolation Angle
+    /// The angle in degrees used for curve interpolation when creating rounded corners
     interpolation_angle: f64,
 }
 

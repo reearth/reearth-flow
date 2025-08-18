@@ -28,7 +28,7 @@ impl ProcessorFactory for GeometryFilterFactory {
     }
 
     fn description(&self) -> &str {
-        "Filter geometry by type"
+        "Filter Features by Geometry Type"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -84,6 +84,8 @@ pub struct GeometryFilter {
     params: GeometryFilterParam,
 }
 
+/// # Geometry Filter Parameters
+/// Configure how to filter features based on their geometry type
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(tag = "filterType", rename_all = "camelCase")]
 pub enum GeometryFilterParam {

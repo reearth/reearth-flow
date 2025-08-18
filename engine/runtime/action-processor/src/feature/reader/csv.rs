@@ -10,6 +10,9 @@ use serde::{Deserialize, Serialize};
 
 use super::CompiledCommonReaderParam;
 
+/// # CsvReader Parameters
+///
+/// Configuration for reading CSV data within feature processing workflows.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CsvReaderParam {
