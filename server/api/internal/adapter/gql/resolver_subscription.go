@@ -2,9 +2,11 @@ package gql
 
 import (
 	"context"
+	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/job"
 )
 
 type subscriptionResolver struct{ *Resolver }
@@ -26,6 +28,27 @@ func (r *subscriptionResolver) JobStatus(ctx context.Context, jobID gqlmodel.ID)
 		defer close(resultCh)
 		defer usecases(ctx).Job.Unsubscribe(jID, statusCh)
 
+		if jobEntity, err := usecases(ctx).Job.FindByID(ctx, jID); err == nil {
+			currentStatus := jobEntity.Status()
+
+			select {
+			case resultCh <- gqlmodel.JobStatus(currentStatus):
+			case <-ctx.Done():
+				return
+			}
+
+			if currentStatus == job.StatusCompleted ||
+				currentStatus == job.StatusFailed ||
+				currentStatus == job.StatusCancelled {
+
+				select {
+				case <-time.After(100 * time.Millisecond):
+				case <-ctx.Done():
+				}
+				return
+			}
+		}
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -36,6 +59,12 @@ func (r *subscriptionResolver) JobStatus(ctx context.Context, jobID gqlmodel.ID)
 				}
 				res := gqlmodel.JobStatus(status)
 				resultCh <- res
+
+				if status == job.StatusCompleted ||
+					status == job.StatusFailed ||
+					status == job.StatusCancelled {
+					return
+				}
 			}
 		}
 	}()
