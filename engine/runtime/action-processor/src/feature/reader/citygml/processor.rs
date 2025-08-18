@@ -116,8 +116,10 @@ pub struct FeatureCityGmlReader {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureCityGmlReaderParam {
+    /// # Dataset
     /// Path or expression to the CityGML dataset file to be read
     dataset: Expr,
+    /// # Flatten
     /// Whether to flatten the hierarchical structure of the CityGML data
     flatten: Option<bool>,
 }

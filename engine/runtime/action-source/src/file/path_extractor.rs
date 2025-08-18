@@ -212,8 +212,10 @@ pub async fn extract(
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FilePathExtractor {
+    /// # Source Dataset
     /// Path or expression pointing to the source directory or archive file
     source_dataset: Expr,
+    /// # Extract Archive
     /// Whether to extract files from archives (zip files, etc.) or just list them
     extract_archive: bool,
 }
