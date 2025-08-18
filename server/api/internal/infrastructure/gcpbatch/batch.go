@@ -164,7 +164,7 @@ func (b *BatchRepo) SubmitJob(
 					"RUST_LOG":                                  "info",
 					"RUST_BACKTRACE":                            "1",
 				}
-				
+
 				// Only set runtime config if values are provided
 				if b.config.NodeStatusPropagationDelayMS != "" {
 					vars["FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS"] = b.config.NodeStatusPropagationDelayMS
@@ -178,7 +178,7 @@ func (b *BatchRepo) SubmitJob(
 				if b.config.FeatureFlushThreshold != "" {
 					vars["FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD"] = b.config.FeatureFlushThreshold
 				}
-				
+
 				return vars
 			}(),
 		},
