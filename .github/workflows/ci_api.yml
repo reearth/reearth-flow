@@ -2,7 +2,7 @@ name: ci-api
 on:
   workflow_call:
 env:
-  RUST_VERSION: "1.85"
+  RUST_VERSION: "1.88"
   GO_VERSION: "1.24"
 
 jobs:
