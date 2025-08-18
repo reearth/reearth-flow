@@ -257,14 +257,15 @@ func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
 				return
 			}
 
-			currentJob, err := i.jobRepo.FindByID(ctx, j.ID())
+			currentJob, err := i.jobRepo.FindByID(context.Background(), j.ID())
 			if err != nil {
 				log.Errorf("Failed to fetch current job state for job ID %s: %v", jobID, err)
 				continue
 			}
 
 			status := currentJob.Status()
-			if i.isTerminalState(status) {
+			if status == job.StatusCompleted || status == job.StatusFailed ||
+				status == job.StatusCancelled {
 				log.Infof(
 					"Job ID %s already in terminal state %s, stopping monitoring",
 					jobID,
@@ -273,17 +274,9 @@ func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
 				return
 			}
 
-			checkCtx, checkCancel := context.WithTimeout(ctx, 10*time.Second)
-			if err := i.performConsistencyCheck(checkCtx, currentJob); err != nil {
-				log.Warnfc(ctx, "job: consistency check failed for %s: %v", jobID, err)
-			}
-			checkCancel()
-
-			statusCtx, statusCancel := context.WithTimeout(ctx, 15*time.Second)
-			if err := i.checkJobStatus(statusCtx, currentJob); err != nil {
+			if err := i.checkJobStatus(ctx, currentJob); err != nil {
 				log.Errorfc(ctx, "job: status check failed: %v", err)
 			}
-			statusCancel()
 		}
 	}
 }
@@ -305,27 +298,17 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 		return fmt.Errorf("failed to fetch current job state: %w", err)
 	}
 
-	currentStatus := currentJob.Status()
-	if i.isTerminalState(currentStatus) {
-		log.Debugf("Job %s already in terminal state %s, skipping status update", currentJob.ID(), currentStatus)
-		return nil
-	}
-
-	if !i.isValidStatusTransition(currentStatus, newStatus) {
-		log.Warnf("Invalid status transition for job %s: %s -> %s", currentJob.ID(), currentStatus, newStatus)
-		return nil
-	}
-
-	statusChanged := currentStatus != newStatus
+	statusChanged := currentJob.Status() != newStatus
 	if !statusChanged {
 		return nil
 	}
 
 	if err := i.updateJobStatus(ctx, currentJob, newStatus); err != nil {
-		return fmt.Errorf("failed to update job status: %w", err)
+		return err
 	}
 
-	isTerminalState := i.isTerminalState(newStatus)
+	isTerminalState := newStatus == job.StatusCompleted || newStatus == job.StatusFailed ||
+		newStatus == job.StatusCancelled
 	if isTerminalState {
 		log.Infof(
 			"Job %s transitioning to terminal state %s, handling completion",
@@ -333,109 +316,11 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 			newStatus,
 		)
 
-		completionJob, err := i.jobRepo.FindByID(ctx, j.ID())
-		if err != nil {
-			log.Errorfc(ctx, "failed to refresh job state for completion: %v", err)
-			return nil
-		}
+		currentJob.SetStatus(newStatus)
 
-		if err := i.handleJobCompletion(ctx, completionJob); err != nil {
+		if err := i.handleJobCompletion(ctx, currentJob); err != nil {
 			log.Errorfc(ctx, "job: completion handling failed: %v", err)
 		}
-	}
-
-	return nil
-}
-
-func (i *Job) isTerminalState(status job.Status) bool {
-	return status == job.StatusCompleted || status == job.StatusFailed || status == job.StatusCancelled
-}
-
-func (i *Job) isValidStatusTransition(from, to job.Status) bool {
-	validTransitions := map[job.Status][]job.Status{
-		job.StatusPending:   {job.StatusRunning, job.StatusFailed, job.StatusCancelled},
-		job.StatusRunning:   {job.StatusCompleted, job.StatusFailed, job.StatusCancelled},
-		job.StatusCompleted: {},
-		job.StatusFailed:    {},
-		job.StatusCancelled: {},
-	}
-
-	allowed, exists := validTransitions[from]
-	if !exists {
-		return false
-	}
-
-	for _, allowedStatus := range allowed {
-		if allowedStatus == to {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (i *Job) performConsistencyCheck(ctx context.Context, j *job.Job) error {
-	jobID := j.ID().String()
-
-	externalStatus, err := i.batch.GetJobStatus(ctx, j.GCPJobID())
-	if err != nil {
-		return fmt.Errorf("failed to fetch external job status: %w", err)
-	}
-
-	currentJob, err := i.jobRepo.FindByID(ctx, j.ID())
-	if err != nil {
-		return fmt.Errorf("failed to fetch current job from database: %w", err)
-	}
-
-	internalStatus := currentJob.Status()
-	externalJobStatus := job.Status(externalStatus)
-
-	if internalStatus != externalJobStatus {
-		log.Warnf("Status inconsistency detected for job %s: internal=%s, external=%s",
-			jobID, internalStatus, externalJobStatus)
-
-		if i.isTerminalState(externalJobStatus) && !i.isTerminalState(internalStatus) {
-			log.Infof("Reconciling job %s status: %s -> %s (external terminal state takes priority)",
-				jobID, internalStatus, externalJobStatus)
-
-			if err := i.updateJobStatus(ctx, currentJob, externalJobStatus); err != nil {
-				return fmt.Errorf("failed to reconcile job status: %w", err)
-			}
-		}
-	}
-
-	if err := i.validateJobTimestamps(ctx, currentJob); err != nil {
-		log.Warnfc(ctx, "job timestamp validation failed for %s: %v", jobID, err)
-	}
-
-	return nil
-}
-
-func (i *Job) validateJobTimestamps(ctx context.Context, j *job.Job) error {
-	now := time.Now()
-
-	if j.Status() == job.StatusRunning {
-		timeSinceStart := now.Sub(j.StartedAt())
-		maxRuntime := 1 * time.Hour
-
-		if timeSinceStart > maxRuntime {
-			log.Warnf("Job %s has been running for %v, which exceeds maximum runtime of %v",
-				j.ID(), timeSinceStart, maxRuntime)
-
-			externalStatus, err := i.batch.GetJobStatus(ctx, j.GCPJobID())
-			if err != nil {
-				return fmt.Errorf("failed to verify external job status: %w", err)
-			}
-
-			if job.Status(externalStatus) != job.StatusRunning {
-				log.Infof("Long-running job %s detected as not running externally, updating status", j.ID())
-				return i.updateJobStatus(ctx, j, job.Status(externalStatus))
-			}
-		}
-	}
-
-	if i.isTerminalState(j.Status()) && j.CompletedAt() == nil {
-		log.Warnf("Terminal job %s missing completion timestamp", j.ID())
 	}
 
 	return nil
@@ -448,33 +333,23 @@ func (i *Job) updateJobStatus(ctx context.Context, j *job.Job, status job.Status
 
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
+		return err
 	}
 
-	var committed bool
+	var txErr error
 	defer func() {
-		if !committed {
-			if rollbackErr := tx.End(ctx); rollbackErr != nil {
-				log.Errorfc(ctx, "transaction rollback failed: %v", rollbackErr)
-			}
-		} else {
-			if endErr := tx.End(ctx); endErr != nil {
-				log.Errorfc(ctx, "transaction end failed: %v", endErr)
-			}
+		if err2 := tx.End(ctx); err2 != nil && txErr == nil {
+			log.Errorfc(ctx, "transaction end failed: %v", err2)
 		}
 	}()
 
-	originalStatus := j.Status()
-
 	j.SetStatus(status)
 	if err := i.jobRepo.Save(ctx, j); err != nil {
-		j.SetStatus(originalStatus)
-		return fmt.Errorf("failed to save job: %w", err)
+		txErr = err
+		return err
 	}
 
 	tx.Commit()
-	committed = true
-
 	i.subscriptions.Notify(j.ID().String(), j.Status())
 	return nil
 }
