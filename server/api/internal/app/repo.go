@@ -159,8 +159,10 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		BinaryPath:                      conf.Worker_BinaryPath,
 		BootDiskSizeGB:                  bootDiskSize,
 		BootDiskType:                    conf.Worker_BootDiskType,
+		ChannelBufferSize:               conf.Worker_ChannelBufferSize,
 		ComputeCpuMilli:                 computeCpuMilli,
 		ComputeMemoryMib:                computeMemoryMib,
+		FeatureFlushThreshold:           conf.Worker_FeatureFlushThreshold,
 		ImageURI:                        conf.Worker_ImageURL,
 		MachineType:                     conf.Worker_MachineType,
 		NodeStatusPropagationDelayMS:    conf.Worker_NodeStatusPropagationDelayMS,
@@ -172,6 +174,7 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		Region:                          conf.GCPRegion,
 		SAEmail:                         conf.Worker_BatchSAEmail,
 		TaskCount:                       taskCount,
+		ThreadPoolSize:                  conf.Worker_ThreadPoolSize,
 	}
 
 	batchRepo, err = gcpbatch.NewBatch(ctx, config)

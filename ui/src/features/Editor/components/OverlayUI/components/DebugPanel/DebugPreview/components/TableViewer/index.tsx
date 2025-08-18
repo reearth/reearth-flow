@@ -1,6 +1,7 @@
 import { memo } from "react";
 
-import { RenderFallback, DataTable as Table } from "@flow/components";
+import { RenderFallback } from "@flow/components";
+import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useT } from "@flow/lib/i18n";
 import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
@@ -13,7 +14,7 @@ type Props = {
   onDoubleClick?: (value: any) => void;
 };
 
-const DataTable: React.FC<Props> = ({
+const TableViewer: React.FC<Props> = ({
   fileContent,
   fileType,
   selectedFeature,
@@ -33,13 +34,12 @@ const DataTable: React.FC<Props> = ({
       textSize="sm">
       <div className="flex h-full flex-1">
         <div className="overflow-scroll">
-          <Table
+          <VirtualizedTable
             columns={tableColumns}
             data={tableData}
             condensed
             selectColumns
             showFiltering
-            showOrdering={false}
             selectedRow={selectedFeature}
             onRowClick={onSingleClick}
             onRowDoubleClick={onDoubleClick}
@@ -51,4 +51,4 @@ const DataTable: React.FC<Props> = ({
   );
 };
 
-export default memo(DataTable);
+export default memo(TableViewer);

@@ -1,7 +1,6 @@
 import {
   ColumnDef,
   PaginationState,
-  Row,
   SortingState,
   VisibilityState,
   flexRender,
@@ -11,8 +10,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 
 import {
   DropdownMenu,
@@ -28,7 +26,6 @@ import {
   SelectContent,
   SelectItem,
 } from "@flow/components";
-import { useDoubleClick } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { OrderDirection } from "@flow/types/paginationOptions";
 
@@ -55,9 +52,6 @@ type DataTableProps<TData, TValue> = {
   currentOrder?: OrderDirection;
   sortOptions?: { value: string; label: string }[];
   currentSortValue?: string;
-  searchTerm?: string;
-  selectedRow?: any;
-  useStrictSelectedRow?: boolean;
   onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
   setCurrentPage?: (page: number) => void;
@@ -80,9 +74,6 @@ function DataTable<TData, TValue>({
   currentOrder = OrderDirection.Desc,
   sortOptions,
   currentSortValue,
-  searchTerm,
-  selectedRow,
-  useStrictSelectedRow,
   onRowClick,
   onRowDoubleClick,
   setCurrentPage,
@@ -95,29 +86,22 @@ function DataTable<TData, TValue>({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState<string>("");
+
+  const handleSearch = useCallback(
+    (value: string) => {
+      setGlobalFilter(value);
+      setSearchTerm?.(value);
+    },
+    [setSearchTerm],
+  );
+
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: resultsPerPage ?? 10,
   });
 
-  useMemo(() => {
-    if (searchTerm !== undefined) {
-      setGlobalFilter(searchTerm);
-    }
-  }, [searchTerm, setGlobalFilter]);
-
-  const handleSearch = useCallback(
-    (value: string) => {
-      if (setSearchTerm) {
-        setSearchTerm(value);
-      }
-    },
-    [setSearchTerm],
-  );
-
-  const defaultData = useMemo(() => [], []);
   const table = useReactTable({
-    data: data ? data : defaultData,
+    data: data ?? [],
     columns,
     getCoreRowModel: getCoreRowModel(),
     // Sorting
@@ -157,38 +141,8 @@ function DataTable<TData, TValue>({
     DESC: t("Newest"),
     ASC: t("Oldest"),
   };
-  const parentRef = useRef<HTMLDivElement>(null);
+
   const { rows } = table.getRowModel();
-  const virtualizer = useVirtualizer({
-    count: rows.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 24,
-  });
-
-  const handleRowDoubleClick = (row: Row<TData>) => {
-    onRowDoubleClick?.(row.original);
-  };
-
-  const [handleSingleClick, handleDoubleClick] = useDoubleClick<
-    Row<TData>,
-    Row<TData>
-  >(
-    onRowClick
-      ? (row?: Row<TData>) => {
-          if (row) {
-            row.toggleSelected();
-            onRowClick(row.original);
-          }
-        }
-      : undefined,
-    onRowDoubleClick
-      ? (row?: Row<TData>) => {
-          if (row) {
-            handleRowDoubleClick(row);
-          }
-        }
-      : undefined,
-  );
 
   return (
     <div className="flex h-full flex-col justify-between">
@@ -267,7 +221,6 @@ function DataTable<TData, TValue>({
       )}
       <div className="flex-1 overflow-auto">
         <div
-          ref={parentRef}
           className="overflow-auto rounded-md border"
           style={{ contain: "paint", willChange: "transform" }}>
           <Table>
@@ -295,48 +248,19 @@ function DataTable<TData, TValue>({
             </TableHeader>
             <TableBody>
               {rows.length ? (
-                virtualizer.getVirtualItems().map((virtualRow, idx) => {
-                  const row = rows[virtualRow.index] as any;
-                  let isSelected = false;
-                  if (selectedRow) {
-                    isSelected =
-                      String(selectedRow?.id || "").replace(
-                        /[^a-zA-Z0-9]/g,
-                        "",
-                      ) ===
-                      String(row.original?.id || "").replace(
-                        /[^a-zA-Z0-9]/g,
-                        "",
-                      );
-                  }
+                rows.map((row) => {
                   return (
                     <TableRow
                       key={row.id}
                       // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
-                      className="after:border-line-200 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b relative cursor-pointer border-0"
-                      style={{
-                        height: `${virtualRow.size}px`,
-                        transform: `translateY(${virtualRow.start - idx * virtualRow.size}px)`,
+                      data-state={row.getIsSelected() ? "selected" : undefined}
+                      onClick={() => {
+                        row.toggleSelected();
+                        onRowClick?.(row.original);
                       }}
-                      data-state={
-                        useStrictSelectedRow
-                          ? selectedRow && isSelected
-                            ? "selected"
-                            : undefined
-                          : row.getIsSelected()
-                            ? "selected"
-                            : undefined
-                      }
-                      onClick={
-                        handleSingleClick
-                          ? () => handleSingleClick(row)
-                          : undefined
-                      }
-                      onDoubleClick={
-                        handleDoubleClick
-                          ? () => handleDoubleClick(row)
-                          : undefined
-                      }>
+                      onDoubleClick={() => {
+                        onRowDoubleClick?.(row.original);
+                      }}>
                       {row.getVisibleCells().map((cell: any) => (
                         <TableCell
                           key={cell.id}
