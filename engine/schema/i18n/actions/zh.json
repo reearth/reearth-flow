@@ -9,12 +9,24 @@
       "description": "根据属性对实体进行分组"
     },
     {
+      "name": "AttributeBulkArrayJoiner",
+      "description": "将数组属性连接为单个值"
+    },
+    {
+      "name": "AttributeConversionTable",
+      "description": "使用查找表转换要素属性"
+    },
+    {
       "name": "AttributeDuplicateFilter",
       "description": "筛选具有重复属性的实体"
     },
     {
       "name": "AttributeFilePathInfoExtractor",
       "description": "从属性中提取文件路径信息"
+    },
+    {
+      "name": "AttributeFlattener",
+      "description": "嵌套属性的展平器"
     },
     {
       "name": "AttributeManager",
@@ -53,12 +65,32 @@
       "description": "检查曲线是否形成闭合回路"
     },
     {
+      "name": "ConvexHullAccumulator",
+      "description": "创建凸包"
+    },
+    {
       "name": "CoordinateSystemSetter",
       "description": "设置实体的坐标系"
     },
     {
+      "name": "CsvReader",
+      "description": "从CSV文件读取要素"
+    },
+    {
+      "name": "CzmlWriter",
+      "description": "将要素写入CZML文件"
+    },
+    {
       "name": "DimensionFilter",
       "description": "根据实体的维度进行筛选"
+    },
+    {
+      "name": "DirectoryDecompressor",
+      "description": "从存档中解压目录"
+    },
+    {
+      "name": "Dissolver",
+      "description": "溶解具有共同属性的相邻多边形"
     },
     {
       "name": "EchoProcessor",
@@ -77,6 +109,10 @@
       "description": "沿一定距离拉伸多边形"
     },
     {
+      "name": "FeatureCityGmlReader",
+      "description": "从CityGML文件读取要素"
+    },
+    {
       "name": "FeatureCounter",
       "description": "统计实体数量"
     },
@@ -85,8 +121,20 @@
       "description": "根据表达式创建实体"
     },
     {
+      "name": "FeatureDuplicateFilter",
+      "description": "移除重复要素"
+    },
+    {
+      "name": "FeatureFilePathExtractor",
+      "description": "从要素中提取文件路径"
+    },
+    {
       "name": "FeatureFilter",
       "description": "根据条件筛选实体"
+    },
+    {
+      "name": "FeatureLodFilter",
+      "description": "基于详细级别进行过滤"
     },
     {
       "name": "FeatureMerger",
@@ -109,6 +157,10 @@
       "description": "根据类型筛选实体"
     },
     {
+      "name": "FeatureWriter",
+      "description": "将要素写入文件"
+    },
+    {
       "name": "FilePathExtractor",
       "description": "从目录或归档文件中提取文件"
     },
@@ -123,6 +175,10 @@
     {
       "name": "FileWriter",
       "description": "将实体写入文件"
+    },
+    {
+      "name": "GeoJsonReader",
+      "description": "从GeoJSON文件读取要素"
     },
     {
       "name": "GeoJsonWriter",
@@ -181,6 +237,14 @@
       "description": "将实体的几何重投影到指定坐标系"
     },
     {
+      "name": "InputRouter",
+      "description": "用于子工作流中最初一个端口转发的操作"
+    },
+    {
+      "name": "JPStandardGridAccumulator",
+      "description": "在日本标准网格上积累要素"
+    },
+    {
       "name": "LineOnLineOverlayer",
       "description": "交点转换为点实体，并可包含原始相交线段组合的属性列表"
     },
@@ -207,6 +271,10 @@
     {
       "name": "OrientationExtractor",
       "description": "提取实体几何的方向并作为属性添加"
+    },
+    {
+      "name": "OutputRouter",
+      "description": "用于子工作流中最后一个端口转发的操作"
     },
     {
       "name": "PLATEAU3.AttributeFlattener",
@@ -249,6 +317,34 @@
       "description": "根据模式定义从XML片段中提取属性"
     },
     {
+      "name": "PLATEAU4.AttributeFlattener",
+      "description": "PLATEAU4属性展平器"
+    },
+    {
+      "name": "PLATEAU4.CityCodeExtractor",
+      "description": "从PLATEAU4数据中提取城市代码"
+    },
+    {
+      "name": "PLATEAU4.DomainOfDefinitionValidator",
+      "description": "验证PLATEAU4的定义域"
+    },
+    {
+      "name": "PLATEAU4.MaxLodExtractor",
+      "description": "提取PLATEAU4的最大详细级别"
+    },
+    {
+      "name": "PLATEAU4.MissingAttributeDetector",
+      "description": "检测PLATEAU4数据中缺失的属性"
+    },
+    {
+      "name": "PLATEAU4.ObjectListExtractor",
+      "description": "从PLATEAU4数据中提取对象列表"
+    },
+    {
+      "name": "PLATEAU4.UDXFolderExtractor",
+      "description": "从PLATEAU4数据中提取UDX文件夹"
+    },
+    {
       "name": "PlanarityFilter",
       "description": "根据类型筛选几何"
     },
@@ -261,20 +357,28 @@
       "description": "调用Rhai脚本"
     },
     {
-      "name": "InputRouter",
-      "description": "用于子工作流中最初一个端口转发的操作"
+      "name": "ShapefileWriter",
+      "description": "将要素写入Shapefile"
     },
     {
-      "name": "OutputRouter",
-      "description": "用于子工作流中最后一个端口转发的操作"
+      "name": "SqlReader",
+      "description": "从SQL数据库读取要素"
     },
     {
       "name": "StatisticsCalculator",
       "description": "计算实体的统计信息"
     },
     {
+      "name": "SurfaceFootprintReplacer",
+      "description": "用足迹替换表面几何"
+    },
+    {
       "name": "ThreeDimensionBoxReplacer",
       "description": "用多边形替换三维盒子"
+    },
+    {
+      "name": "ThreeDimensionPlanarityRotator",
+      "description": "在3D中旋转平面"
     },
     {
       "name": "ThreeDimensionRotator",
@@ -303,6 +407,10 @@
     {
       "name": "XMLValidator",
       "description": "验证XML内容"
+    },
+    {
+      "name": "ZipFileWriter",
+      "description": "将要素写入zip文件"
     }
   ]
 }
