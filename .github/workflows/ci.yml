@@ -36,6 +36,8 @@ jobs:
             engine/**
             .github/workflows/ci.yml
             .github/workflows/ci_engine.yml
+            .github/workflows/ci_engine_optimized.yml
+            .github/workflows/ci_engine_ultra.yml
             .github/workflows/build_docker_push_worker.yml
             CHANGELOG.md
       - name: changed files for policies
