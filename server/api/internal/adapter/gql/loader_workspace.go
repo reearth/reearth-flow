@@ -2,6 +2,7 @@ package gql
 
 import (
 	"context"
+	"log"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqldataloader"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
@@ -25,20 +26,58 @@ func NewWorkspaceLoader(usecase accountinterfaces.Workspace, tempNewUsecase inte
 	}
 }
 
+// TODO: After migration, remove this logic and use the new usecase directly.
 func (c *WorkspaceLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmodel.Workspace, []error) {
+	if c.tempNewUsecase != nil {
+		workspaces := c.fetchWithTempNewUsecase(ctx, ids)
+		if len(workspaces) > 0 {
+			log.Printf("DEBUG:[WorkspaceLoader.Fetch] Fetched %d workspaces with tempNewUsecase", len(workspaces))
+			return workspaces, nil
+		}
+	}
+	log.Printf("DEBUG:[WorkspaceLoader.Fetch] Fallback to traditional usecase for %d IDs", len(ids))
+	return c.fetchWithTraditionalUsecase(ctx, ids)
+}
+
+func (c *WorkspaceLoader) fetchWithTempNewUsecase(ctx context.Context, ids []gqlmodel.ID) []*gqlmodel.Workspace {
 	uids, err := util.TryMap(ids, gqlmodel.ToID[id.Workspace])
+	if err != nil {
+		log.Printf("WARNING:[WorkspaceLoader.fetchWithTempNewUsecase] Failed to convert IDs: %v", err)
+		return nil
+	}
+
+	res, err := c.tempNewUsecase.FindByIDs(ctx, uids)
+	if err != nil {
+		log.Printf("WARNING:[WorkspaceLoader.fetchWithTempNewUsecase] Failed to find workspaces: %v", err)
+		return nil
+	}
+
+	if len(res) == 0 {
+		log.Printf("DEBUG:[WorkspaceLoader.fetchWithTempNewUsecase] No workspaces found for IDs: %v", ids)
+		return nil
+	}
+
+	workspaces := make([]*gqlmodel.Workspace, 0, len(res))
+	for _, t := range res {
+		workspaces = append(workspaces, gqlmodel.ToWorkspaceFromFlow(t))
+	}
+	return workspaces
+}
+
+func (c *WorkspaceLoader) fetchWithTraditionalUsecase(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmodel.Workspace, []error) {
+	uids, err := util.TryMap(ids, gqlmodel.ToID[accountdomain.Workspace])
 	if err != nil {
 		return nil, []error{err}
 	}
 
-	res, err := c.tempNewUsecase.FindByIDs(ctx, uids)
+	res, err := c.usecase.Fetch(ctx, uids, getAcOperator(ctx))
 	if err != nil {
 		return nil, []error{err}
 	}
 
 	workspaces := make([]*gqlmodel.Workspace, 0, len(res))
 	for _, t := range res {
-		workspaces = append(workspaces, gqlmodel.ToWorkspaceFromFlow(t))
+		workspaces = append(workspaces, gqlmodel.ToWorkspace(t))
 	}
 	return workspaces, nil
 }
