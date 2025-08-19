@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter"
+	"github.com/reearth/reearth-flow/api/internal/infrastructure/gql"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -30,6 +31,7 @@ type ContainerConfig struct {
 func NewContainer(r *repo.Container, g *gateway.Container,
 	ar *accountrepo.Container, ag *accountgateway.Container,
 	permissionChecker gateway.PermissionChecker,
+	GQLClient *gql.Client,
 	config ContainerConfig,
 ) interfaces.Container {
 	setSkipPermissionCheck(config.SkipPermissionCheck)
@@ -37,19 +39,20 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 	job := NewJob(r, g, permissionChecker)
 
 	return interfaces.Container{
-		Asset:         NewAsset(r, g, permissionChecker),
-		CMS:           NewCMS(r, g, permissionChecker),
-		Job:           job,
-		Deployment:    NewDeployment(r, g, job, permissionChecker),
-		EdgeExecution: NewEdgeExecution(r, g, permissionChecker),
-		Log:           NewLogInteractor(g.Redis, r.Job, permissionChecker),
-		NodeExecution: NewNodeExecution(r.NodeExecution, g.Redis, permissionChecker),
-		Parameter:     NewParameter(r, permissionChecker),
-		Project:       NewProject(r, g, job, permissionChecker),
-		ProjectAccess: NewProjectAccess(r, g, config, permissionChecker),
-		Workspace:     accountinteractor.NewWorkspace(ar, workspaceMemberCountEnforcer(r)),
-		Trigger:       NewTrigger(r, g, job, permissionChecker),
-		User:          accountinteractor.NewMultiUser(ar, ag, config.SignupSecret, config.AuthSrvUIDomain, ar.Users),
+		Asset:            NewAsset(r, g, permissionChecker),
+		CMS:              NewCMS(r, g, permissionChecker),
+		Job:              job,
+		Deployment:       NewDeployment(r, g, job, permissionChecker),
+		EdgeExecution:    NewEdgeExecution(r, g, permissionChecker),
+		Log:              NewLogInteractor(g.Redis, r.Job, permissionChecker),
+		NodeExecution:    NewNodeExecution(r.NodeExecution, g.Redis, permissionChecker),
+		Parameter:        NewParameter(r, permissionChecker),
+		Project:          NewProject(r, g, job, permissionChecker),
+		ProjectAccess:    NewProjectAccess(r, g, config, permissionChecker),
+		Workspace:        accountinteractor.NewWorkspace(ar, workspaceMemberCountEnforcer(r)),
+		TempNewWorkspace: NewWorkspace(GQLClient.WorkspaceRepo), // TODO: After migration, remove Workspace and rename TempNewWorkspace to Workspace.
+		Trigger:          NewTrigger(r, g, job, permissionChecker),
+		User:             accountinteractor.NewMultiUser(ar, ag, config.SignupSecret, config.AuthSrvUIDomain, ar.Users),
 	}
 }
 

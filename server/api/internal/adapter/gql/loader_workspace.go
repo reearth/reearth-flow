@@ -5,33 +5,40 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqldataloader"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountusecase/accountinterfaces"
 	"github.com/reearth/reearthx/util"
 )
 
+// TODO: After migration, remove accountinterfaces.Workspace and rename tempNewUsecase to usecase.
 type WorkspaceLoader struct {
-	usecase accountinterfaces.Workspace
+	usecase        accountinterfaces.Workspace
+	tempNewUsecase interfaces.Workspace
 }
 
-func NewWorkspaceLoader(usecase accountinterfaces.Workspace) *WorkspaceLoader {
-	return &WorkspaceLoader{usecase: usecase}
+func NewWorkspaceLoader(usecase accountinterfaces.Workspace, tempNewUsecase interfaces.Workspace) *WorkspaceLoader {
+	return &WorkspaceLoader{
+		usecase:        usecase,
+		tempNewUsecase: tempNewUsecase,
+	}
 }
 
 func (c *WorkspaceLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmodel.Workspace, []error) {
-	uids, err := util.TryMap(ids, gqlmodel.ToID[accountdomain.Workspace])
+	uids, err := util.TryMap(ids, gqlmodel.ToID[id.Workspace])
 	if err != nil {
 		return nil, []error{err}
 	}
 
-	res, err := c.usecase.Fetch(ctx, uids, getAcOperator(ctx))
+	res, err := c.tempNewUsecase.FindByIDs(ctx, uids)
 	if err != nil {
 		return nil, []error{err}
 	}
 
 	workspaces := make([]*gqlmodel.Workspace, 0, len(res))
 	for _, t := range res {
-		workspaces = append(workspaces, gqlmodel.ToWorkspace(t))
+		workspaces = append(workspaces, gqlmodel.ToWorkspaceFromFlow(t))
 	}
 	return workspaces, nil
 }

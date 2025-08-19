@@ -52,7 +52,7 @@ func NewLoaders(usecases *interfaces.Container) *Loaders {
 		Project:    NewProjectLoader(usecases.Project),
 		Trigger:    NewTriggerLoader(usecases.Trigger),
 		User:       NewUserLoader(usecases.User),
-		Workspace:  NewWorkspaceLoader(usecases.Workspace),
+		Workspace:  NewWorkspaceLoader(usecases.Workspace, usecases.TempNewWorkspace), // TODO: After migration, remove accountinterfaces.Workspace and rename tempNewUsecase to usecase.
 	}
 }
 

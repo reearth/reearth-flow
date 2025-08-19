@@ -22,17 +22,18 @@ var (
 )
 
 type Container struct {
-	Asset         Asset
-	CMS           CMS
-	Deployment    Deployment
-	EdgeExecution EdgeExecution
-	Job           Job
-	Log           Log
-	NodeExecution NodeExecution
-	Parameter     Parameter
-	Project       Project
-	ProjectAccess ProjectAccess
-	Trigger       Trigger
-	User          accountinterfaces.User
-	Workspace     accountinterfaces.Workspace
+	Asset            Asset
+	CMS              CMS
+	Deployment       Deployment
+	EdgeExecution    EdgeExecution
+	Job              Job
+	Log              Log
+	NodeExecution    NodeExecution
+	Parameter        Parameter
+	Project          Project
+	ProjectAccess    ProjectAccess
+	Trigger          Trigger
+	User             accountinterfaces.User
+	Workspace        accountinterfaces.Workspace
+	TempNewWorkspace Workspace // TODO: After migration, remove Workspace and rename TempNewWorkspace to Workspace.
 }

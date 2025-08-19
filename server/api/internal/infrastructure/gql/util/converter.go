@@ -14,6 +14,8 @@ func ToWorkspace(w gqlmodel.Workspace) *workspace.Workspace {
 		Name(string(w.Name)).
 		Alias(string(w.Alias)).
 		Metadata(ToWorkspaceMetadata(w.Metadata)).
+		Personal(w.Personal).
+		Members(ToWorkspaceMembers(w.Members)).
 		MustBuild()
 }
 
@@ -45,6 +47,54 @@ func ToWorkspaceMetadata(m gqlmodel.WorkspaceMetadata) workspace.Metadata {
 		BillingEmail(string(m.BillingEmail)).
 		PhotoURL(string(m.PhotoURL)).
 		MustBuild()
+}
+
+func ToWorkspaceMembers(gqlMembers []gqlmodel.WorkspaceMember) []workspace.Member {
+	var members []workspace.Member
+
+	for _, gqlMember := range gqlMembers {
+		switch gqlMember.Typename {
+		case "WorkspaceUserMember":
+			if gqlMember.UserMemberData.UserID != "" {
+				userMember := workspace.UserMember{
+					UserID: workspace.UserID(gqlMember.UserMemberData.UserID),
+					Role:   workspace.Role(gqlMember.UserMemberData.Role),
+				}
+				if gqlMember.UserMemberData.Host != "" {
+					hostStr := string(gqlMember.UserMemberData.Host)
+					userMember.Host = &hostStr
+				}
+				if gqlMember.UserMemberData.User != nil {
+					userMember.User = &workspace.User{
+						ID:    workspace.UserID(gqlMember.UserMemberData.User.ID),
+						Name:  string(gqlMember.UserMemberData.User.Name),
+						Email: string(gqlMember.UserMemberData.User.Email),
+					}
+				}
+				members = append(members, userMember)
+			}
+
+		case "WorkspaceIntegrationMember":
+			if gqlMember.IntegrationMemberData.IntegrationID != "" {
+				integrationMember := workspace.IntegrationMember{
+					IntegrationID: workspace.IntegrationID(gqlMember.IntegrationMemberData.IntegrationID),
+					Role:          workspace.Role(gqlMember.IntegrationMemberData.Role),
+					Active:        gqlMember.IntegrationMemberData.Active,
+					InvitedByID:   workspace.UserID(gqlMember.IntegrationMemberData.InvitedByID),
+				}
+				if gqlMember.IntegrationMemberData.InvitedBy != nil {
+					integrationMember.InvitedBy = &workspace.User{
+						ID:    workspace.UserID(gqlMember.IntegrationMemberData.InvitedBy.ID),
+						Name:  string(gqlMember.IntegrationMemberData.InvitedBy.Name),
+						Email: string(gqlMember.IntegrationMemberData.InvitedBy.Email),
+					}
+				}
+				members = append(members, integrationMember)
+			}
+		}
+	}
+
+	return members
 }
 
 func FromPtrToPtr(s *graphql.String) *string {
