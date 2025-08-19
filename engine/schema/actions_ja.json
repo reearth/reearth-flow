@@ -44,7 +44,7 @@
     {
       "name": "AttributeAggregator",
       "type": "processor",
-      "description": "属性に基づいてフィーチャをグルーピングする",
+      "description": "属性に基づいて地物をグルーピングする",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AttributeAggregator Parameters",
@@ -188,7 +188,7 @@
     {
       "name": "AttributeBulkArrayJoiner",
       "type": "processor",
-      "description": "Join Array Attributes Into Single Values",
+      "description": "配列属性を単一の値に結合する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AttributeBulkArrayJoiner Parameters",
@@ -227,7 +227,7 @@
     {
       "name": "AttributeConversionTable",
       "type": "processor",
-      "description": "Transform Feature Attributes Using Lookup Tables",
+      "description": "ルックアップテーブルを使用して地物属性を変換する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AttributeConversionTable Parameters",
@@ -343,7 +343,7 @@
     {
       "name": "AttributeDuplicateFilter",
       "type": "processor",
-      "description": "重複した属性を持つフィーチャをフィルタリングする",
+      "description": "重複した属性を持つ地物をフィルタリングする",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AttributeDuplicateFilter Parameters",
@@ -421,7 +421,7 @@
     {
       "name": "AttributeFlattener",
       "type": "processor",
-      "description": "Flatten Nested Object Attributes into Top-Level Attributes",
+      "description": "ネストされた属性のフラット化",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AttributeFlattener Parameters",
@@ -932,7 +932,7 @@
     {
       "name": "CenterPointReplacer",
       "type": "processor",
-      "description": "フィーチャのジオメトリを、フィーチャのバウンディングボックス中央や質量中心、またはフィーチャ領域内に確実に収まる点で置き換える",
+      "description": "地物のジオメトリを、地物のバウンディングボックス中央や質量中心、または地物領域内に確実に収まる点で置き換える",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -949,7 +949,7 @@
     {
       "name": "Cesium3DTilesWriter",
       "type": "sink",
-      "description": "フィーチャをファイルに書き出す",
+      "description": "地物をファイルに書き出す",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Cesium3DTilesWriter Parameters",
@@ -1023,7 +1023,7 @@
     {
       "name": "Clipper",
       "type": "processor",
-      "description": "クリッパーフィーチャを用いて候補フィーチャを分割し、内部または外部の部分を別々に出力する",
+      "description": "クリッパー地物を用いて候補地物を分割し、内部または外部の部分を別々に出力する",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -1060,7 +1060,7 @@
     {
       "name": "ConvexHullAccumulator",
       "type": "processor",
-      "description": "Generate Convex Hull Polygons from Grouped Features",
+      "description": "凸包を作成する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ConvexHullAccumulator Parameters",
@@ -1099,7 +1099,7 @@
     {
       "name": "CsvReader",
       "type": "source",
-      "description": "Read Features from CSV or TSV File",
+      "description": "CSVファイルから地物を読み取る",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CsvReader Parameters",
@@ -1191,7 +1191,7 @@
     {
       "name": "CzmlWriter",
       "type": "sink",
-      "description": "Export Features as CZML for Cesium Visualization",
+      "description": "CZMLファイルに地物を書き込む",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CzmlWriter Parameters",
@@ -1242,7 +1242,7 @@
     {
       "name": "DimensionFilter",
       "type": "processor",
-      "description": "フィーチャを次元に基づいてフィルタリングする",
+      "description": "地物を次元に基づいてフィルタリングする",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -1260,7 +1260,7 @@
     {
       "name": "DirectoryDecompressor",
       "type": "processor",
-      "description": "Extracts and decompresses archive files from specified attributes",
+      "description": "アーカイブからディレクトリを展開する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "DirectoryDecompressor Parameters",
@@ -1298,7 +1298,7 @@
     {
       "name": "Dissolver",
       "type": "processor",
-      "description": "Dissolve Features by Grouping Attributes",
+      "description": "共通属性を持つ隣接ポリゴンを融合する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Dissolver Parameters",
@@ -1338,7 +1338,7 @@
     {
       "name": "EchoProcessor",
       "type": "processor",
-      "description": "フィーチャをエコー出力する",
+      "description": "地物をエコー出力する",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -1354,7 +1354,7 @@
     {
       "name": "EchoSink",
       "type": "sink",
-      "description": "フィーチャをエコー出力する",
+      "description": "地物をエコー出力する",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -1368,7 +1368,7 @@
     {
       "name": "ElevationExtractor",
       "type": "processor",
-      "description": "フィーチャの最初のZ座標値を抽出し、属性として格納する",
+      "description": "地物の最初のZ座標値を抽出し、属性として格納する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Elevation Extractor Parameters",
@@ -1448,7 +1448,7 @@
     {
       "name": "FeatureCityGmlReader",
       "type": "processor",
-      "description": "Reads and processes features from CityGML files with optional flattening",
+      "description": "CityGMLファイルから地物を読み取る",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureCityGmlReader Parameters",
@@ -1496,7 +1496,7 @@
     {
       "name": "FeatureCounter",
       "type": "processor",
-      "description": "フィーチャ数をカウントする",
+      "description": "地物数をカウントする",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature Counter Parameters",
@@ -1551,7 +1551,7 @@
     {
       "name": "FeatureCreator",
       "type": "source",
-      "description": "式に基づいてフィーチャを作成する",
+      "description": "式に基づいて地物を作成する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureCreator Parameters",
@@ -1589,7 +1589,7 @@
     {
       "name": "FeatureDuplicateFilter",
       "type": "processor",
-      "description": "Filter Out Duplicate Features",
+      "description": "重複した地物を削除する",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -1605,7 +1605,7 @@
     {
       "name": "FeatureFilePathExtractor",
       "type": "processor",
-      "description": "Extract File Paths from Dataset to Features",
+      "description": "地物からファイルパスを抽出する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature File Path Extractor Parameters",
@@ -1660,7 +1660,7 @@
     {
       "name": "FeatureFilter",
       "type": "processor",
-      "description": "条件に基づいてフィーチャをフィルタリングする",
+      "description": "条件に基づいて地物をフィルタリングする",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature Filter Parameters",
@@ -1727,7 +1727,7 @@
     {
       "name": "FeatureLodFilter",
       "type": "processor",
-      "description": "Filters features by Level of Detail (LOD), routing them to appropriate output ports",
+      "description": "詳細レベルに基づいてフィルタリングする",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureLodFilter Parameters",
@@ -1770,7 +1770,7 @@
     {
       "name": "FeatureMerger",
       "type": "processor",
-      "description": "属性に基づいてフィーチャをマージする",
+      "description": "属性に基づいて地物をマージする",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureMerger Parameters",
@@ -1852,7 +1852,7 @@
     {
       "name": "FeatureReader",
       "type": "processor",
-      "description": "条件に基づいてフィーチャをフィルタリングする",
+      "description": "条件に基づいて地物をフィルタリングする",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureReaderParam",
@@ -1974,7 +1974,7 @@
     {
       "name": "FeatureSorter",
       "type": "processor",
-      "description": "フィーチャを属性でソートする",
+      "description": "地物を属性でソートする",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureSorter Parameters",
@@ -2028,7 +2028,7 @@
     {
       "name": "FeatureTransformer",
       "type": "processor",
-      "description": "式を用いてフィーチャを変換する",
+      "description": "式を用いて地物を変換する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureTransformer Parameters",
@@ -2082,7 +2082,7 @@
     {
       "name": "FeatureTypeFilter",
       "type": "processor",
-      "description": "フィーチャタイプに基づいてフィーチャをフィルタリングする",
+      "description": "地物タイプに基づいて地物をフィルタリングする",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureTypeFilter Parameters",
@@ -2116,7 +2116,7 @@
     {
       "name": "FeatureWriter",
       "type": "processor",
-      "description": "Writes features from various formats",
+      "description": "地物をファイルに書き込む",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureWriter Parameters",
@@ -2299,7 +2299,7 @@
     {
       "name": "FileReader",
       "type": "source",
-      "description": "ファイルからフィーチャを読み込む",
+      "description": "ファイルから地物を読み込む",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FileReader",
@@ -2590,7 +2590,7 @@
     {
       "name": "FileWriter",
       "type": "sink",
-      "description": "フィーチャをファイルに書き出す",
+      "description": "地物をファイルに書き出す",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "File Writer Parameters",
@@ -2761,7 +2761,7 @@
     {
       "name": "GeoJsonReader",
       "type": "source",
-      "description": "Reads geographic features from GeoJSON files, supporting both single features and feature collections",
+      "description": "GeoJSONファイルから地物を読み取る",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GeoJsonReader Parameters",
@@ -2811,7 +2811,7 @@
     {
       "name": "GeoJsonWriter",
       "type": "sink",
-      "description": "フィーチャをGeoJSONファイルに書き出す",
+      "description": "地物をGeoJSONファイルに書き出す",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GeoJsonWriter Parameters",
@@ -2861,7 +2861,7 @@
     {
       "name": "GeometryCoercer",
       "type": "processor",
-      "description": "フィーチャのジオメトリを特定のジオメトリタイプに強制変換する",
+      "description": "地物のジオメトリを特定のジオメトリタイプに強制変換する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GeometryCoercer Parameters",
@@ -2903,7 +2903,7 @@
     {
       "name": "GeometryExtractor",
       "type": "processor",
-      "description": "フィーチャからジオメトリを抽出し、属性として追加する",
+      "description": "地物からジオメトリを抽出し、属性として追加する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Geometry Extractor Parameters",
@@ -3030,7 +3030,7 @@
     {
       "name": "GeometryReplacer",
       "type": "processor",
-      "description": "フィーチャのジオメトリを新しいジオメトリで置き換える",
+      "description": "地物のジオメトリを新しいジオメトリで置き換える",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Geometry Replacer Parameters",
@@ -3086,7 +3086,7 @@
     {
       "name": "GeometryValidator",
       "type": "processor",
-      "description": "フィーチャのジオメトリを検証する",
+      "description": "地物のジオメトリを検証する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Geometry Validator Parameters",
@@ -3151,7 +3151,7 @@
     {
       "name": "GltfWriter",
       "type": "sink",
-      "description": "フィーチャをGltfファイルに書き出す",
+      "description": "地物をGltfファイルに書き出す",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GltfWriter Parameters",
@@ -3253,7 +3253,7 @@
     {
       "name": "HorizontalReprojector",
       "type": "processor",
-      "description": "フィーチャのジオメトリを指定された座標系に水平再投影する",
+      "description": "地物のジオメトリを指定された座標系に水平再投影する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Horizontal Reprojector Parameters",
@@ -3312,7 +3312,7 @@
     {
       "name": "JPStandardGridAccumulator",
       "type": "processor",
-      "description": "Divides geometries into Japanese standard mesh grid (1km) and adds mesh codes to features",
+      "description": "日本標準グリッドで地物を蓄積する",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -3329,7 +3329,7 @@
     {
       "name": "LineOnLineOverlayer",
       "type": "processor",
-      "description": "交点を点フィーチャに変換し、元の交差したラインの属性リストを結合して含めることができる",
+      "description": "交点を点地物に変換し、元の交差したラインの属性リストを結合して含めることができる",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "LineOnLineOverlayer Parameters",
@@ -3414,7 +3414,7 @@
     {
       "name": "MVTWriter",
       "type": "sink",
-      "description": "フィーチャをファイルに書き出す",
+      "description": "地物をファイルに書き出す",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "MVTWriter Parameters",
@@ -3490,7 +3490,7 @@
     {
       "name": "NoopProcessor",
       "type": "processor",
-      "description": "フィーチャに対して何も処理しない",
+      "description": "地物に対して何も処理しない",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -3520,7 +3520,7 @@
     {
       "name": "Offsetter",
       "type": "processor",
-      "description": "フィーチャの座標にオフセットを加える",
+      "description": "地物の座標にオフセットを加える",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Offsetter Parameters",
@@ -3570,7 +3570,7 @@
     {
       "name": "OrientationExtractor",
       "type": "processor",
-      "description": "フィーチャのジオメトリの方向を抽出し、属性として追加する",
+      "description": "地物のジオメトリの方向を抽出し、属性として追加する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Orientation Extractor Parameters",
@@ -3636,7 +3636,7 @@
     {
       "name": "PLATEAU3.AttributeFlattener",
       "type": "processor",
-      "description": "建物フィーチャを作成するために属性をフラット化する",
+      "description": "建物地物を作成するために属性をフラット化する",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -3715,7 +3715,7 @@
     {
       "name": "PLATEAU3.DomainOfDefinitionValidator",
       "type": "processor",
-      "description": "CityGMLフィーチャの定義域を検証する",
+      "description": "CityGML地物の定義域を検証する",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -3865,7 +3865,7 @@
     {
       "name": "PLATEAU4.AttributeFlattener",
       "type": "processor",
-      "description": "Flatten attributes for building feature",
+      "description": "PLATEAU4属性フラット化",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -3882,7 +3882,7 @@
     {
       "name": "PLATEAU4.CityCodeExtractor",
       "type": "processor",
-      "description": "Extracts city code information from PLATEAU4 codelists for local public authorities",
+      "description": "PLATEAU4データから都市コードを抽出する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityCodeExtractor Parameters",
@@ -3930,7 +3930,7 @@
     {
       "name": "PLATEAU4.DomainOfDefinitionValidator",
       "type": "processor",
-      "description": "Validates domain of definition of CityGML features",
+      "description": "PLATEAU4の定義領域を検証する",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -3948,7 +3948,7 @@
     {
       "name": "PLATEAU4.MaxLodExtractor",
       "type": "processor",
-      "description": "Extracts maxLod",
+      "description": "PLATEAU4の最大詳細レベルを抽出する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "MaxLodExtractor Parameters",
@@ -3986,7 +3986,7 @@
     {
       "name": "PLATEAU4.MissingAttributeDetector",
       "type": "processor",
-      "description": "Detect missing attributes",
+      "description": "PLATEAU4データの欠落属性を検出する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "MissingAttributeDetector Parameters",
@@ -4024,7 +4024,7 @@
     {
       "name": "PLATEAU4.ObjectListExtractor",
       "type": "processor",
-      "description": "Extract object list",
+      "description": "PLATEAU4データからオブジェクトリストを抽出する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ObjectListExtractor Parameters",
@@ -4058,7 +4058,7 @@
     {
       "name": "PLATEAU4.UDXFolderExtractor",
       "type": "processor",
-      "description": "Extracts UDX folders from cityGML path",
+      "description": "PLATEAU4データからUDXフォルダを抽出する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "UDXFolderExtractor Parameters",
@@ -4198,7 +4198,7 @@
     {
       "name": "ShapefileWriter",
       "type": "sink",
-      "description": "Writes geographic features to ESRI Shapefile format with optional grouping",
+      "description": "シェープファイルに地物を書き込む",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ShapefileWriter Parameters",
@@ -4248,7 +4248,7 @@
     {
       "name": "SqlReader",
       "type": "source",
-      "description": "Read Features from SQL Database",
+      "description": "SQLデータベースから地物を読み取る",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "SQL Reader Parameters",
@@ -4296,7 +4296,7 @@
     {
       "name": "StatisticsCalculator",
       "type": "processor",
-      "description": "フィーチャの統計情報を計算する",
+      "description": "地物の統計情報を計算する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "StatisticsCalculator Parameters",
@@ -4385,7 +4385,7 @@
     {
       "name": "SurfaceFootprintReplacer",
       "type": "processor",
-      "description": "Replace the geometry with its footprint",
+      "description": "サーフェスジオメトリをフットプリントで置き換える",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "SurfaceFootprintReplacer Parameters",
@@ -4524,7 +4524,7 @@
     {
       "name": "ThreeDimensionPlanarityRotator",
       "type": "processor",
-      "description": "Rotates a single or a set of 2D geometries in 3D space to align them horizontally.",
+      "description": "3Dで平面を回転させる",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -4657,7 +4657,7 @@
     {
       "name": "VertexRemover",
       "type": "processor",
-      "description": "フィーチャのジオメトリから特定の頂点を削除する",
+      "description": "地物のジオメトリから特定の頂点を削除する",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -4674,7 +4674,7 @@
     {
       "name": "VerticalReprojector",
       "type": "processor",
-      "description": "フィーチャのジオメトリを指定された座標系に垂直再投影する",
+      "description": "地物のジオメトリを指定された座標系に垂直再投影する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Vertical Reprojector Parameters",
@@ -4903,7 +4903,7 @@
     {
       "name": "ZipFileWriter",
       "type": "sink",
-      "description": "Writes features to a zip file",
+      "description": "zipファイルに地物を書き込む",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ZipFileWriter Parameters",

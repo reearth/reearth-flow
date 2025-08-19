@@ -9,12 +9,24 @@
       "description": "Agrupa las entidades según sus atributos"
     },
     {
+      "name": "AttributeBulkArrayJoiner",
+      "description": "Une atributos de matriz en valores únicos"
+    },
+    {
+      "name": "AttributeConversionTable",
+      "description": "Transforma atributos de características usando tablas de búsqueda"
+    },
+    {
       "name": "AttributeDuplicateFilter",
       "description": "Filtra las entidades con atributos duplicados"
     },
     {
       "name": "AttributeFilePathInfoExtractor",
       "description": "Extrae información de rutas de archivo a partir de atributos"
+    },
+    {
+      "name": "AttributeFlattener",
+      "description": "Aplanador para atributos anidados"
     },
     {
       "name": "AttributeManager",
@@ -53,12 +65,32 @@
       "description": "Comprueba si las curvas forman bucles cerrados"
     },
     {
+      "name": "ConvexHullAccumulator",
+      "description": "Crear envolventes convexas"
+    },
+    {
       "name": "CoordinateSystemSetter",
       "description": "Establece el sistema de coordenadas de una entidad"
     },
     {
+      "name": "CsvReader",
+      "description": "Lee características de un archivo CSV"
+    },
+    {
+      "name": "CzmlWriter",
+      "description": "Escribe características a un archivo CZML"
+    },
+    {
       "name": "DimensionFilter",
       "description": "Filtra las entidades según su dimensión"
+    },
+    {
+      "name": "DirectoryDecompressor",
+      "description": "Descomprime directorios de archivos"
+    },
+    {
+      "name": "Dissolver",
+      "description": "Disuelve polígonos adyacentes con atributos comunes"
     },
     {
       "name": "EchoProcessor",
@@ -77,6 +109,10 @@
       "description": "Extruye un polígono a una cierta distancia"
     },
     {
+      "name": "FeatureCityGmlReader",
+      "description": "Lee características de archivos CityGML"
+    },
+    {
       "name": "FeatureCounter",
       "description": "Cuenta entidades"
     },
@@ -85,8 +121,20 @@
       "description": "Crea entidades a partir de expresiones"
     },
     {
+      "name": "FeatureDuplicateFilter",
+      "description": "Elimina características duplicadas"
+    },
+    {
+      "name": "FeatureFilePathExtractor",
+      "description": "Extrae rutas de archivo de características"
+    },
+    {
       "name": "FeatureFilter",
       "description": "Filtra entidades según condiciones"
+    },
+    {
+      "name": "FeatureLodFilter",
+      "description": "Filtra basado en Nivel de Detalle"
     },
     {
       "name": "FeatureMerger",
@@ -109,6 +157,10 @@
       "description": "Filtra entidades por tipo de entidad"
     },
     {
+      "name": "FeatureWriter",
+      "description": "Escribe características a un archivo"
+    },
+    {
       "name": "FilePathExtractor",
       "description": "Extrae archivos de un directorio o de un archivo comprimido"
     },
@@ -123,6 +175,10 @@
     {
       "name": "FileWriter",
       "description": "Escribe entidades en un archivo"
+    },
+    {
+      "name": "GeoJsonReader",
+      "description": "Lee características de un archivo GeoJSON"
     },
     {
       "name": "GeoJsonWriter",
@@ -181,6 +237,14 @@
       "description": "Reproyecta la geometría de una entidad a un sistema de coordenadas especificado"
     },
     {
+      "name": "InputRouter",
+      "description": "Acción para el reenvío del primer puerto en sub-flujos de trabajo."
+    },
+    {
+      "name": "JPStandardGridAccumulator",
+      "description": "Acumula características en la cuadrícula estándar japonesa"
+    },
+    {
       "name": "LineOnLineOverlayer",
       "description": "Los puntos de intersección se convierten en entidades de puntos que pueden contener la lista combinada de atributos de las líneas originales intersectadas."
     },
@@ -207,6 +271,10 @@
     {
       "name": "OrientationExtractor",
       "description": "Extrae la orientación de una geometría de una entidad y la agrega como un atributo."
+    },
+    {
+      "name": "OutputRouter",
+      "description": "Acción para el reenvío del último puerto en sub-flujos de trabajo."
     },
     {
       "name": "PLATEAU3.AttributeFlattener",
@@ -249,6 +317,34 @@
       "description": "Extrae atributos de fragmentos XML basándose en una definición de esquema"
     },
     {
+      "name": "PLATEAU4.AttributeFlattener",
+      "description": "Aplanador de atributos PLATEAU4"
+    },
+    {
+      "name": "PLATEAU4.CityCodeExtractor",
+      "description": "Extrae código de ciudad de datos PLATEAU4"
+    },
+    {
+      "name": "PLATEAU4.DomainOfDefinitionValidator",
+      "description": "Valida dominio de definición para PLATEAU4"
+    },
+    {
+      "name": "PLATEAU4.MaxLodExtractor",
+      "description": "Extrae Nivel de Detalle máximo para PLATEAU4"
+    },
+    {
+      "name": "PLATEAU4.MissingAttributeDetector",
+      "description": "Detecta atributos faltantes en datos PLATEAU4"
+    },
+    {
+      "name": "PLATEAU4.ObjectListExtractor",
+      "description": "Extrae listas de objetos de datos PLATEAU4"
+    },
+    {
+      "name": "PLATEAU4.UDXFolderExtractor",
+      "description": "Extrae carpetas UDX de datos PLATEAU4"
+    },
+    {
       "name": "PlanarityFilter",
       "description": "Filtra la geometría por tipo"
     },
@@ -261,20 +357,28 @@
       "description": "Llama a un script Rhai"
     },
     {
-      "name": "InputRouter",
-      "description": "Acción para el reenvío del primer puerto en sub-flujos de trabajo."
+      "name": "ShapefileWriter",
+      "description": "Escribe características a un Shapefile"
     },
     {
-      "name": "OutputRouter",
-      "description": "Acción para el reenvío del último puerto en sub-flujos de trabajo."
+      "name": "SqlReader",
+      "description": "Lee características de base de datos SQL"
     },
     {
       "name": "StatisticsCalculator",
       "description": "Calcula estadísticas de las entidades"
     },
     {
+      "name": "SurfaceFootprintReplacer",
+      "description": "Reemplaza geometría de superficie con huella"
+    },
+    {
       "name": "ThreeDimensionBoxReplacer",
       "description": "Reemplaza una caja tridimensional con un polígono."
+    },
+    {
+      "name": "ThreeDimensionPlanarityRotator",
+      "description": "Rota superficies planares en 3D"
     },
     {
       "name": "ThreeDimensionRotator",
@@ -303,6 +407,10 @@
     {
       "name": "XMLValidator",
       "description": "Valida contenido XML"
+    },
+    {
+      "name": "ZipFileWriter",
+      "description": "Escribe características a un archivo zip"
     }
   ]
 }
