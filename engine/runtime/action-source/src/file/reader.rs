@@ -17,7 +17,6 @@ pub(crate) mod csv;
 pub(crate) mod geojson;
 pub(crate) mod json;
 pub(crate) mod runner;
-pub(crate) mod shapefile;
 
 #[derive(Debug, Clone, Default)]
 pub struct FileReaderFactory;
