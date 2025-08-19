@@ -1,4 +1,4 @@
-import { TrashIcon } from "@radix-ui/react-icons";
+import { TrashIcon } from "@phosphor-icons/react";
 import {
   FormContextType,
   IconButtonProps,
@@ -16,8 +16,8 @@ const RemoveButton = <
   props: IconButtonProps<T, S, F>,
 ) => {
   return (
-    <Button size="icon" {...props}>
-      <TrashIcon />
+    <Button className="h-6" size="icon" {...props} aria-label="Remove item">
+      <TrashIcon className="fill-red-400" />
     </Button>
   );
 };

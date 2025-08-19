@@ -36,8 +36,6 @@ const FieldTemplate = <
     required,
     errors,
     help,
-    description,
-    rawDescription,
     schema,
     uiSchema,
     registry,
@@ -66,24 +64,28 @@ const FieldTemplate = <
       schema={schema}
       uiSchema={uiSchema}
       registry={registry}>
-      {/* TODO: handle errors and required param  */}
-      <div className="my-4 w-full">
-        {displayLabel && (
-          <Label htmlFor={id}>
-            <div className="my-1">
-              {label}{" "}
-              {required && <span className="text-destructive"> * </span>}
-            </div>
-          </Label>
+      <div className="my-1.5">
+        {displayLabel ? (
+          <div className="flex flex-1 items-center gap-2">
+            <Label htmlFor={id}>
+              <div className="flex flex-row items-center gap-1">
+                <p>{label}</p>
+                {required && <p className="font-thin text-destructive">*</p>}
+              </div>
+            </Label>
+            {children}
+          </div>
+        ) : (
+          children
         )}
-        {children}
-        {rawDescription && (
-          <div id={id} className="mt-1 text-xs">
-            {description}
+        {errors && (
+          <div className="mt-1 text-xs text-destructive" role="alert">
+            {errors}
           </div>
         )}
-        {errors}
-        {help}
+        {help && (
+          <div className="mt-1 text-xs text-muted-foreground">{help}</div>
+        )}
       </div>
     </WrapIfAdditionalTemplate>
   );

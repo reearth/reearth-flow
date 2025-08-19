@@ -1,5 +1,6 @@
+import { GearFineIcon } from "@phosphor-icons/react";
 import { useReactFlow } from "@xyflow/react";
-import { memo, useCallback, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 import {
   Dialog,
@@ -8,9 +9,10 @@ import {
   DialogTitle,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { Node } from "@flow/types";
+import type { Node } from "@flow/types";
 
-import { ParamEditor } from "./components";
+import { ParamEditor, ValueEditorDialog } from "./components";
+import { FieldContext, setValueAtPath } from "./utils/fieldUtils";
 
 type Props = {
   readonly?: boolean;
@@ -32,6 +34,11 @@ const ParamsDialog: React.FC<Props> = ({
   onWorkflowRename,
 }) => {
   const t = useT();
+
+  const [openValueEditor, setOpenValueEditor] = useState(false);
+  const [currentFieldContext, setCurrentFieldContext] = useState<
+    FieldContext | undefined
+  >(undefined);
 
   const handleUpdate = useCallback(
     async (nodeId: string, data: any, type: "params" | "customizations") => {
@@ -63,24 +70,74 @@ const ParamsDialog: React.FC<Props> = ({
     }
   }, [setViewport, getViewport, openNode]);
 
+  const [updatedParams, setUpdatedParams] = useState(openNode?.data.params);
+
+  useEffect(() => {
+    if (openNode && !updatedParams) {
+      setUpdatedParams(openNode.data.params);
+    }
+  }, [openNode, updatedParams]);
+
+  const handleParamChange = (data: any) => {
+    setUpdatedParams(data);
+  };
+
+  const handleValueChange = (value: any) => {
+    if (currentFieldContext && openNode) {
+      // Update the node's params with the new value
+      const currentParams = openNode.data.params || {};
+      const updatedParams = setValueAtPath(
+        currentParams,
+        currentFieldContext.path,
+        value,
+      );
+      // Update the local state with the new params
+      handleParamChange?.(updatedParams);
+    }
+  };
+
   return (
-    <Dialog open={!!openNode} onOpenChange={() => onOpenNode()}>
-      <DialogContent size="2xl">
-        <DialogHeader>
-          <DialogTitle>{t("Parameter Editor")}</DialogTitle>
-        </DialogHeader>
-        {openNode && (
-          <ParamEditor
-            readonly={readonly}
-            nodeId={openNode.id}
-            nodeMeta={openNode.data}
-            nodeType={openNode.type}
-            onUpdate={handleUpdate}
-            onWorkflowRename={onWorkflowRename}
-          />
-        )}
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={!!openNode} onOpenChange={() => onOpenNode()}>
+        <DialogContent size="2xl">
+          <DialogHeader>
+            <DialogTitle>
+              <div className="flex items-center gap-2">
+                <GearFineIcon weight="thin" />
+                {t("Node Editor")}
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          {openNode && (
+            <ParamEditor
+              readonly={readonly}
+              nodeId={openNode.id}
+              nodeMeta={openNode.data}
+              nodeType={openNode.type}
+              nodeParams={updatedParams}
+              onParamsUpdate={handleParamChange}
+              onUpdate={handleUpdate}
+              onWorkflowRename={onWorkflowRename}
+              onValueEditorOpen={(fieldContext) => {
+                setCurrentFieldContext(fieldContext);
+                setOpenValueEditor(true);
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+      {currentFieldContext && (
+        <ValueEditorDialog
+          open={openValueEditor}
+          fieldContext={currentFieldContext}
+          onClose={() => {
+            setOpenValueEditor(false);
+            setCurrentFieldContext(undefined);
+          }}
+          onValueSubmit={handleValueChange}
+        />
+      )}
+    </>
   );
 };
 

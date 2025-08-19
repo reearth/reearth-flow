@@ -13,11 +13,18 @@ func (r *queryResolver) Assets(ctx context.Context, workspaceID gqlmodel.ID, key
 }
 
 func (r *queryResolver) Me(ctx context.Context) (*gqlmodel.Me, error) {
-	u := getUser(ctx)
-	if u == nil {
+	// TODO: During migration, fallback to legacy getUser if FlowUser is unavailable.
+	// Eventually, getUser will be unified to return FlowUser from flow package.
+	u := getFlowUser(ctx)
+	if u != nil {
+		return gqlmodel.ToMeFromFlow(u), nil
+	}
+
+	u2 := getUser(ctx)
+	if u2 == nil {
 		return nil, nil
 	}
-	return gqlmodel.ToMe(u), nil
+	return gqlmodel.ToMe(u2), nil
 }
 
 func (r *queryResolver) Deployments(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error) {

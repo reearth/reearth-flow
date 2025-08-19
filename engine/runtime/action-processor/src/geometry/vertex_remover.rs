@@ -27,7 +27,7 @@ impl ProcessorFactory for VertexRemoverFactory {
     }
 
     fn description(&self) -> &str {
-        "Removes specific vertices from a feature’s geometry"
+        "Remove Redundant Vertices from Geometry"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

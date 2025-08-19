@@ -31,20 +31,17 @@ export default function Editor({
 }: Props) {
   const {
     currentWorkflowId,
-    isSubworkflow,
     openWorkflows,
     currentProject,
     nodes,
     edges,
     selectedEdgeIds,
     openNode,
-    hoveredDetails,
     nodePickerOpen,
     canUndo,
     canRedo,
     allowedToDeploy,
     isMainWorkflow,
-    hasReader,
     deferredDeleteRef,
     showBeforeDeleteDialog,
     handleWorkflowAdd,
@@ -59,14 +56,12 @@ export default function Editor({
     handleBeforeDeleteNodes,
     handleDeleteDialogClose,
     handleNodeDataUpdate,
-    handleNodeHover,
     handleNodeSettings,
     handleOpenNode,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleEdgesAdd,
     handleEdgesChange,
-    handleEdgeHover,
     handleWorkflowRedo,
     handleWorkflowUndo,
     handleWorkflowRename,
@@ -106,19 +101,16 @@ export default function Editor({
         <div className="relative flex flex-1">
           <div className="flex flex-1 flex-col">
             <OverlayUI
-              hoveredDetails={hoveredDetails}
               nodePickerOpen={nodePickerOpen}
               canUndo={canUndo}
               canRedo={canRedo}
               isMainWorkflow={isMainWorkflow}
-              hasReader={hasReader}
               onNodesAdd={handleNodesAdd}
               onNodePickerClose={handleNodePickerClose}
               onWorkflowUndo={handleWorkflowUndo}
               onWorkflowRedo={handleWorkflowRedo}
               onLayoutChange={handleLayoutChange}>
               <Canvas
-                isSubworkflow={isSubworkflow}
                 nodes={nodes}
                 edges={edges}
                 selectedEdgeIds={selectedEdgeIds}
@@ -127,24 +119,24 @@ export default function Editor({
                 onNodesAdd={handleNodesAdd}
                 onBeforeDelete={handleBeforeDeleteNodes}
                 onNodesChange={handleNodesChange}
-                onNodeHover={handleNodeHover}
                 onNodeSettings={handleNodeSettings}
                 onNodePickerOpen={handleNodePickerOpen}
                 onEdgesAdd={handleEdgesAdd}
                 onEdgesChange={handleEdgesChange}
-                onEdgeHover={handleEdgeHover}
                 onCopy={handleCopy}
                 onCut={handleCut}
                 onPaste={handlePaste}
               />
             </OverlayUI>
           </div>
-          <ParamsDialog
-            openNode={openNode}
-            onOpenNode={handleOpenNode}
-            onDataSubmit={handleNodeDataUpdate}
-            onWorkflowRename={handleWorkflowRename}
-          />
+          {openNode && (
+            <ParamsDialog
+              openNode={openNode}
+              onOpenNode={handleOpenNode}
+              onDataSubmit={handleNodeDataUpdate}
+              onWorkflowRename={handleWorkflowRename}
+            />
+          )}
           {showBeforeDeleteDialog && (
             <NodeDeletionDialog
               showBeforeDeleteDialog={showBeforeDeleteDialog}

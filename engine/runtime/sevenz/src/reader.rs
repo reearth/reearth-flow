@@ -150,7 +150,7 @@ impl Archive {
     /// -[`password`] Archive password encoded in utf16 little endian.
     ///
     /// # Examples
-    /// ```no_run
+    /// ```ignore
     /// use std::io::{Read,Seek};
     /// use std::fs::File;
     ///

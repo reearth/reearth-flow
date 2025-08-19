@@ -136,6 +136,9 @@ pub struct UDXFolderExtractor {
     schemas_path: Option<Attribute>,
 }
 
+/// # UDXFolderExtractor Parameters
+///
+/// Configuration for extracting UDX folder structure information from PLATEAU4 CityGML paths.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UDXFolderExtractorParam {

@@ -10,8 +10,6 @@ import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import useYNode from "@flow/lib/yjs/useYNode";
 import type { Edge, Node } from "@flow/types";
 
-import useUIState from "../Editor/useUIState";
-
 export default ({
   yWorkflows,
   undoTrackerActionWrapper,
@@ -36,12 +34,6 @@ export default ({
   );
 
   const currentYWorkflow = yWorkflows.get(currentWorkflowId);
-
-  const isSubworkflow = useMemo(() => {
-    if (!currentYWorkflow) return false;
-    const workflowId = currentYWorkflow.get("id")?.toJSON();
-    return workflowId !== DEFAULT_ENTRY_GRAPH_ID;
-  }, [currentYWorkflow]);
 
   const rawNodes = useY(currentYWorkflow?.get("nodes") ?? new YMap()) as Record<
     string,
@@ -88,8 +80,6 @@ export default ({
     setCurrentWorkflowId,
   });
 
-  const { hoveredDetails, handleNodeHover, handleEdgeHover } = useUIState({});
-
   useEffect(() => {
     fitView({ padding: 0.5 });
   }, [fitView]);
@@ -116,18 +106,14 @@ export default ({
 
   return {
     currentWorkflowId,
-    isSubworkflow,
     nodes,
     edges,
     openWorkflows,
     isMainWorkflow,
-    hoveredDetails,
     openNode,
-    handleNodeHover,
     handleNodesChange: handleYNodesChange,
     handleOpenNode,
     handleNodeSettings,
-    handleEdgeHover,
     handleWorkflowOpen,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,

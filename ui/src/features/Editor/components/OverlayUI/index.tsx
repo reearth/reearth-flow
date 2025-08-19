@@ -1,18 +1,11 @@
 import { type XYPosition } from "@xyflow/react";
 import { memo, useCallback, useState } from "react";
 
-import type {
-  ActionNodeType,
-  Algorithm,
-  Direction,
-  Edge,
-  Node,
-} from "@flow/types";
+import type { ActionNodeType, Algorithm, Direction, Node } from "@flow/types";
 
 import {
   CanvasActionBar,
   Toolbox,
-  Infobar,
   NodePickerDialog,
   LayoutOptionsDialog,
   JobStatus,
@@ -20,7 +13,6 @@ import {
 } from "./components";
 
 type OverlayUIProps = {
-  hoveredDetails: Node | Edge | undefined;
   nodePickerOpen?: {
     position: XYPosition;
     nodeType: ActionNodeType;
@@ -28,7 +20,6 @@ type OverlayUIProps = {
   canUndo: boolean;
   canRedo: boolean;
   isMainWorkflow: boolean;
-  hasReader?: boolean;
   onNodesAdd: (nodes: Node[]) => void;
   onNodePickerClose: () => void;
   onWorkflowUndo: () => void;
@@ -42,12 +33,10 @@ type OverlayUIProps = {
 };
 
 const OverlayUI: React.FC<OverlayUIProps> = ({
-  hoveredDetails,
   nodePickerOpen,
   canUndo,
   canRedo,
   isMainWorkflow,
-  hasReader,
   onNodesAdd,
   onNodePickerClose,
   onWorkflowUndo,
@@ -68,7 +57,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         {canvas}
         <div
           id="top-middle"
-          className="pointer-events-none absolute inset-x-0 top-2 flex shrink-0 justify-center *:pointer-events-auto">
+          className="pointer-events-none absolute inset-x-0 top-4 flex shrink-0 justify-center *:pointer-events-auto">
           <JobStatus />
         </div>
         <div
@@ -79,7 +68,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
               canUndo={canUndo}
               canRedo={canRedo}
               isMainWorkflow={isMainWorkflow}
-              hasReader={hasReader}
               onLayoutChange={handleLayoutOptionsToggle}
               onRedo={onWorkflowRedo}
               onUndo={onWorkflowUndo}
@@ -87,11 +75,14 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           </div>
         </div>
         <div id="right-top" className="absolute top-4 right-4" />
-        <DebugPanel />
-        <div className="pointer-events-none absolute right-4 bottom-4 flex flex-row-reverse items-end gap-4">
+        <div id="left-bottom" className="absolute bottom-4 left-4">
+          <DebugPanel />
+        </div>
+        <div
+          id="right-bottom"
+          className="pointer-events-none absolute right-4 bottom-4 flex flex-row-reverse items-end gap-4">
           <CanvasActionBar />
         </div>
-        {hoveredDetails && <Infobar hoveredDetails={hoveredDetails} />}
       </div>
       <LayoutOptionsDialog
         isOpen={showLayoutOptions}

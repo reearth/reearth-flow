@@ -2,9 +2,9 @@ import {
   CornersInIcon,
   CornersOutIcon,
   FrameCornersIcon,
-  MagnifyingGlassMinusIcon,
-  MagnifyingGlassPlusIcon,
+  MinusIcon,
 } from "@phosphor-icons/react";
+import { PlusIcon } from "@phosphor-icons/react/dist/ssr";
 import { useReactFlow } from "@xyflow/react";
 import { memo } from "react";
 
@@ -20,7 +20,7 @@ const CanvasActionBar = () => {
   const { isFullscreen, handleFullscreenToggle } = useFullscreen();
 
   return (
-    <div className="pointer-events-auto rounded-md bg-secondary/80 p-1 shadow-md backdrop-blur-xs">
+    <div className="pointer-events-auto rounded-md p-1">
       <div className="flex rounded-md">
         <div className="flex flex-1 flex-col justify-end gap-1 align-middle">
           <IconButton
@@ -28,7 +28,7 @@ const CanvasActionBar = () => {
             tooltipText={t("Zoom in")}
             tooltipPosition="left"
             tooltipOffset={tooltipOffset}
-            icon={<MagnifyingGlassPlusIcon weight="thin" size={16} />}
+            icon={<PlusIcon size={18} weight="light" />}
             onClick={() => zoomIn({ duration: 400 })}
           />
           <IconButton
@@ -36,7 +36,7 @@ const CanvasActionBar = () => {
             tooltipText={t("Zoom out")}
             tooltipOffset={tooltipOffset}
             tooltipPosition="left"
-            icon={<MagnifyingGlassMinusIcon weight="thin" size={16} />}
+            icon={<MinusIcon size={18} weight="light" />}
             onClick={() => zoomOut({ duration: 400 })}
           />
           <IconButton
@@ -44,7 +44,7 @@ const CanvasActionBar = () => {
             tooltipText={t("All nodes in viewport")}
             tooltipOffset={tooltipOffset}
             tooltipPosition="left"
-            icon={<FrameCornersIcon weight="thin" size={16} />}
+            icon={<FrameCornersIcon weight="thin" size={18} />}
             onClick={() => fitView({ duration: 400, padding: 0.5 })}
           />
           <IconButton
@@ -56,9 +56,9 @@ const CanvasActionBar = () => {
             tooltipPosition="left"
             icon={
               isFullscreen ? (
-                <CornersInIcon weight="thin" size={16} />
+                <CornersInIcon weight="thin" size={18} />
               ) : (
-                <CornersOutIcon weight="thin" size={16} />
+                <CornersOutIcon weight="thin" size={18} />
               )
             }
             onClick={handleFullscreenToggle}

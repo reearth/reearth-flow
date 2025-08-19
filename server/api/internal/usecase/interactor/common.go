@@ -38,10 +38,11 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 
 	return interfaces.Container{
 		Asset:         NewAsset(r, g, permissionChecker),
+		CMS:           NewCMS(r, g, permissionChecker),
 		Job:           job,
 		Deployment:    NewDeployment(r, g, job, permissionChecker),
 		EdgeExecution: NewEdgeExecution(r, g, permissionChecker),
-		Log:           NewLogInteractor(g.Redis, permissionChecker),
+		Log:           NewLogInteractor(g.Redis, r.Job, permissionChecker),
 		NodeExecution: NewNodeExecution(r.NodeExecution, g.Redis, permissionChecker),
 		Parameter:     NewParameter(r, permissionChecker),
 		Project:       NewProject(r, g, job, permissionChecker),

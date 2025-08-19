@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Source, Marker, Layer, LayerProps } from "react-map-gl/maplibre";
+import { Source, Layer, LayerProps } from "react-map-gl/maplibre";
 
 type Props = {
   fileType: "geojson";
@@ -7,24 +7,36 @@ type Props = {
     GeoJSON.Geometry,
     GeoJSON.GeoJsonProperties
   >;
-  onSelectedFeature: (value: any) => void;
+  enableClustering?: boolean;
+  selectedFeatureId?: string;
 };
 
 const GeoJsonDataSource: React.FC<Props> = ({
   fileType,
   fileContent,
-  onSelectedFeature,
+  enableClustering,
+  selectedFeatureId,
 }) => {
-  const polygonLayer: LayerProps = useMemo(
+  const pointLayer: LayerProps = useMemo(
     () => ({
-      id: "polygon-layer",
-      type: "fill",
+      id: "point-layer",
+      type: "circle",
       paint: {
-        "fill-color": "#3f3f45",
-        "fill-opacity": 0.8,
+        "circle-radius": 5,
+        "circle-color": selectedFeatureId
+          ? [
+              "case",
+              ["==", ["get", "_originalId"], selectedFeatureId],
+              "#00a340",
+              "#3f3f45",
+            ]
+          : "#3f3f45",
+        "circle-stroke-color": "#fff",
+        "circle-stroke-width": 1,
       },
+      filter: ["==", ["geometry-type"], "Point"],
     }),
-    [],
+    [selectedFeatureId],
   );
 
   const lineStringLayer: LayerProps = useMemo(
@@ -32,62 +44,104 @@ const GeoJsonDataSource: React.FC<Props> = ({
       id: "line-layer",
       type: "line",
       paint: {
-        "line-color": "#3f3f45",
-        "line-width": 2,
+        "line-color": selectedFeatureId
+          ? [
+              "case",
+              ["==", ["get", "_originalId"], selectedFeatureId],
+              "#00a340",
+              "#3f3f45",
+            ]
+          : "#3f3f45",
+        "line-width": selectedFeatureId
+          ? ["case", ["==", ["get", "_originalId"], selectedFeatureId], 4, 2]
+          : 2,
+      },
+      filter: ["==", ["geometry-type"], "LineString"],
+    }),
+    [selectedFeatureId],
+  );
+
+  const polygonLayer: LayerProps = useMemo(
+    () => ({
+      id: "polygon-layer",
+      type: "fill",
+      paint: {
+        "fill-color": selectedFeatureId
+          ? [
+              "case",
+              ["==", ["get", "_originalId"], selectedFeatureId],
+              "#00a340",
+              "#3f3f45",
+            ]
+          : "#3f3f45",
+        "fill-opacity": selectedFeatureId
+          ? [
+              "case",
+              ["==", ["get", "_originalId"], selectedFeatureId],
+              0.9,
+              0.8,
+            ]
+          : 0.8,
+      },
+      filter: ["==", ["geometry-type"], "Polygon"],
+    }),
+    [selectedFeatureId],
+  );
+
+  const clusterLayer: LayerProps = useMemo(
+    () => ({
+      id: "clusters",
+      type: "circle",
+      filter: ["has", "point_count"],
+
+      paint: {
+        "circle-color": [
+          "step",
+          ["get", "point_count"],
+          "#51bbd6",
+          100,
+          "#f1f075",
+          750,
+          "#f28cb1",
+        ],
+        "circle-radius": ["step", ["get", "point_count"], 20, 100, 30, 750, 40],
       },
     }),
     [],
   );
+
+  const clusterCountLayer: LayerProps = useMemo(
+    () => ({
+      id: "cluster-count",
+      type: "symbol",
+      filter: ["has", "point_count"],
+      layout: {
+        "text-field": "{point_count_abbreviated}",
+        "text-size": 12,
+      },
+    }),
+    [],
+  );
+
   return (
-    <Source type={fileType} data={fileContent}>
+    <Source
+      type={fileType}
+      data={fileContent}
+      cluster={enableClustering}
+      promoteId="_originalId">
+      {fileContent?.features?.some(
+        (feature: GeoJSON.Feature) => feature.geometry.type === "Point",
+      ) && <Layer {...pointLayer} />}
+
       {fileContent?.features?.some(
         (feature: GeoJSON.Feature) => feature.geometry.type === "LineString",
-      ) && (
-        <Layer
-          {...lineStringLayer}
-          filter={["==", ["geometry-type"], "LineString"]}
-        />
-      )}
+      ) && <Layer {...lineStringLayer} />}
 
       {fileContent?.features?.some(
         (feature: GeoJSON.Feature) => feature.geometry.type === "Polygon",
-      ) && (
-        <Layer
-          {...polygonLayer}
-          filter={["==", ["geometry-type"], "Polygon"]}
-        />
-      )}
-
-      {fileContent?.features?.map((feature: any, i: number) => {
-        if (feature.geometry?.type === "MultiPoint") {
-          return feature.geometry.coordinates.map((coords: any, j: number) => (
-            <Marker
-              key={`${i}-${j}`}
-              color="#3f3f45"
-              longitude={coords[0]}
-              latitude={coords[1]}
-              onClick={(e) => {
-                e.originalEvent.stopPropagation();
-                onSelectedFeature(feature);
-              }}
-            />
-          ));
-        } else if (feature.geometry?.type === "Point") {
-          const coords = feature.geometry.coordinates;
-          return (
-            <Marker
-              key={i}
-              color="#3f3f45"
-              longitude={coords[0]}
-              latitude={coords[1]}
-              onClick={(e) => {
-                e.originalEvent.stopPropagation();
-                onSelectedFeature(feature);
-              }}
-            />
-          );
-        } else return null;
-      })}
+      ) && <Layer {...polygonLayer} />}
+      <Layer {...clusterLayer} />
+      <Layer {...clusterCountLayer} />
     </Source>
   );
 };

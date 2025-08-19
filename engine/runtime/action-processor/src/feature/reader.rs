@@ -28,7 +28,7 @@ impl ProcessorFactory for FeatureReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads features from various formats"
+        "Reads features from various file formats (CSV, TSV, JSON) with configurable parsing options"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -78,15 +78,16 @@ impl ProcessorFactory for FeatureReaderFactory {
                 common_param,
                 param,
             } => {
-                let common_param = CompiledCommonReaderParam {
+                let compiled_common_param = CompiledCommonReaderParam {
                     expr: expr_engine
                         .compile(common_param.dataset.as_ref())
                         .map_err(|e| FeatureProcessorError::FileReaderFactory(format!("{e:?}")))?,
+                    original_expr: common_param.dataset.clone(),
                 };
                 let process = FeatureReader {
                     global_params: with,
                     params: CompiledFeatureReaderParam::Csv {
-                        common_param,
+                        common_param: compiled_common_param,
                         param,
                     },
                 };
@@ -96,29 +97,33 @@ impl ProcessorFactory for FeatureReaderFactory {
                 common_param,
                 param,
             } => {
-                let common_param = CompiledCommonReaderParam {
+                let compiled_common_param = CompiledCommonReaderParam {
                     expr: expr_engine
                         .compile(common_param.dataset.as_ref())
                         .map_err(|e| FeatureProcessorError::FileReaderFactory(format!("{e:?}")))?,
+                    original_expr: common_param.dataset.clone(),
                 };
                 let process = FeatureReader {
                     global_params: with,
                     params: CompiledFeatureReaderParam::Tsv {
-                        common_param,
+                        common_param: compiled_common_param,
                         param,
                     },
                 };
                 Ok(Box::new(process))
             }
             FeatureReaderParam::Json { common_param } => {
-                let common_param = CompiledCommonReaderParam {
+                let compiled_common_param = CompiledCommonReaderParam {
                     expr: expr_engine
                         .compile(common_param.dataset.as_ref())
                         .map_err(|e| FeatureProcessorError::FileReaderFactory(format!("{e:?}")))?,
+                    original_expr: common_param.dataset.clone(),
                 };
                 let process = FeatureReader {
                     global_params: with,
-                    params: CompiledFeatureReaderParam::Json { common_param },
+                    params: CompiledFeatureReaderParam::Json {
+                        common_param: compiled_common_param,
+                    },
                 };
                 Ok(Box::new(process))
             }
@@ -132,10 +137,14 @@ struct FeatureReader {
     params: CompiledFeatureReaderParam,
 }
 
+/// # Common Reader Parameters
+///
+/// Shared configuration for all feature reader formats.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct CommonReaderParam {
     /// # Dataset
+    /// Path or expression to the dataset file to be read
     dataset: Expr,
 }
 
@@ -181,6 +190,7 @@ enum CompiledFeatureReaderParam {
 #[derive(Debug, Clone)]
 struct CompiledCommonReaderParam {
     expr: rhai::AST,
+    original_expr: reearth_flow_types::Expr,
 }
 
 impl Processor for FeatureReader {

@@ -30,7 +30,6 @@ const snapGrid: SnapGrid = [gridSize, gridSize];
 
 type Props = {
   readonly?: boolean;
-  isSubworkflow: boolean;
   nodes: Node[];
   edges: Edge[];
   selectedEdgeIds?: string[];
@@ -40,11 +39,9 @@ type Props = {
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onBeforeDelete?: (args: { nodes: Node[] }) => Promise<boolean>;
   onNodeSettings?: (e: MouseEvent | undefined, nodeId: string) => void;
-  onNodeHover?: (e: MouseEvent, node?: Node) => void;
   onNodePickerOpen?: (position: XYPosition, nodeType?: ActionNodeType) => void;
   onEdgesAdd?: (newEdges: Edge[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
-  onEdgeHover?: (e: MouseEvent, edge?: Edge) => void;
   onCopy?: (node?: Node) => void;
   onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: () => void;
@@ -52,7 +49,6 @@ type Props = {
 
 const Canvas: React.FC<Props> = ({
   readonly,
-  isSubworkflow,
   nodes,
   edges,
   selectedEdgeIds,
@@ -62,8 +58,6 @@ const Canvas: React.FC<Props> = ({
   onNodesChange,
   onBeforeDelete,
   onNodeSettings,
-  onNodeHover,
-  onEdgeHover,
   onEdgesAdd,
   onEdgesChange,
   onNodePickerOpen,
@@ -99,7 +93,6 @@ const Canvas: React.FC<Props> = ({
 
   return (
     <ReactFlow
-      className={`${isSubworkflow ? "border-t-2 border-node-subworkflow" : ""}`}
       ref={paneRef}
       // Readonly props START
       nodesConnectable={!readonly}
@@ -107,6 +100,7 @@ const Canvas: React.FC<Props> = ({
       elementsSelectable={!readonly}
       reconnectRadius={!readonly ? 10 : 0}
       // Readonly props END
+      attributionPosition="bottom-left"
       nodeDragThreshold={2}
       snapToGrid
       snapGrid={snapGrid}
@@ -125,24 +119,20 @@ const Canvas: React.FC<Props> = ({
       onNodeDragStart={handleCloseContextmenu}
       onNodeDragStop={handleNodeDragStop}
       onNodesDelete={handleNodesDelete}
-      onNodeMouseEnter={onNodeHover}
-      onNodeMouseLeave={onNodeHover}
       onNodeContextMenu={handleNodeContextMenu}
       onSelectionContextMenu={handleSelectionContextMenu}
       onPaneContextMenu={handlePaneContextMenu}
       onMoveStart={handleCloseContextmenu}
       onDrop={handleNodeDrop}
       onDragOver={handleNodeDragOver}
-      onEdgeMouseEnter={onEdgeHover}
-      onEdgeMouseLeave={onEdgeHover}
       onConnect={handleConnect}
       onReconnect={handleReconnect}
       onBeforeDelete={onBeforeDelete}>
       <Background
         className="bg-background"
-        variant={BackgroundVariant["Lines"]}
+        variant={BackgroundVariant["Dots"]}
         gap={gridSize}
-        color="rgba(63, 63, 70, 0.4)"
+        color="rgba(63, 63, 70, 1)"
       />
       {contextMenu && (
         <CanvasContextMenu

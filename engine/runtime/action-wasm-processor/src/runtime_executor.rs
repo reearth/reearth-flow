@@ -9,9 +9,11 @@ use reearth_flow_runtime::{
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::io::Read;
+use std::io::{Read, Write};
+use std::str::FromStr;
 use std::{collections::HashMap, sync::Arc};
 
+use reearth_flow_common::uri::Uri;
 use reearth_flow_types::{Attribute, AttributeValue, Expr};
 use tempfile::NamedTempFile;
 use wasmer::{Module, Store};
@@ -26,7 +28,7 @@ impl ProcessorFactory for WasmRuntimeExecutorFactory {
     }
 
     fn description(&self) -> &str {
-        "Compiles scripts into .wasm and runs at the wasm runtime"
+        "Compiles scripts (Python) into WebAssembly and executes them in a WASM runtime"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -70,7 +72,9 @@ impl ProcessorFactory for WasmRuntimeExecutorFactory {
             .into());
         };
 
-        let wasm_binary = self.compile_to_wasm(&ctx, &params)?;
+        let wasm_binary = tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(self.compile_to_wasm(&ctx, &params))
+        })?;
         let process = WasmRuntimeExecutor {
             processor_type: params.processor_type,
             wasm_binary,
@@ -80,7 +84,7 @@ impl ProcessorFactory for WasmRuntimeExecutorFactory {
 }
 
 impl WasmRuntimeExecutorFactory {
-    fn compile_to_wasm(
+    async fn compile_to_wasm(
         &self,
         ctx: &NodeContext,
         params: &WasmRuntimeExecutorParam,
@@ -98,18 +102,70 @@ impl WasmRuntimeExecutorFactory {
         })?;
 
         let expr_engine = Arc::clone(&ctx.expr_engine);
-        let source_code_file_path = expr_engine
-            .eval::<String>(params.source_code_file_path.clone().into_inner().as_str())
-            .map_err(|e| WasmProcessorError::RuntimeExecutorFactory(format!("{e:?}")))?;
+        let scope = expr_engine.new_scope();
+        let source = expr_engine
+            .eval_scope::<String>(params.source.as_ref(), &scope)
+            .unwrap_or_else(|_| params.source.to_string());
+
+        let (local_source_path, _temp_py_file_holder) = if source.starts_with("http://")
+            || source.starts_with("https://")
+        {
+            let source_uri = Uri::from_str(&source).map_err(|e| {
+                WasmProcessorError::RuntimeExecutorFactory(format!("Invalid URL: {e}"))
+            })?;
+
+            let storage = ctx.storage_resolver.resolve(&source_uri).map_err(|e| {
+                WasmProcessorError::RuntimeExecutorFactory(format!("Failed to resolve URL: {e}"))
+            })?;
+
+            let content = storage
+                .get(source_uri.path().as_path())
+                .await
+                .map_err(|e| {
+                    WasmProcessorError::RuntimeExecutorFactory(format!(
+                        "Failed to download from URL: {e}"
+                    ))
+                })?
+                .bytes()
+                .await
+                .map_err(|e| {
+                    WasmProcessorError::RuntimeExecutorFactory(format!(
+                        "Failed to read content: {e}"
+                    ))
+                })?;
+
+            let mut temp_py_file = NamedTempFile::new().map_err(|e| {
+                WasmProcessorError::RuntimeExecutorFactory(format!(
+                    "Failed to create temporary Python file: {e}"
+                ))
+            })?;
+
+            temp_py_file.write_all(&content).map_err(|e| {
+                WasmProcessorError::RuntimeExecutorFactory(format!(
+                    "Failed to write Python file: {e}"
+                ))
+            })?;
+
+            temp_py_file.flush().map_err(|e| {
+                WasmProcessorError::RuntimeExecutorFactory(format!(
+                    "Failed to flush Python file: {e}"
+                ))
+            })?;
+
+            let temp_path = temp_py_file.path().to_string_lossy().to_string();
+            (temp_path, Some(temp_py_file))
+        } else {
+            (source, None)
+        };
 
         let wasm_binary = match params.programming_language {
             ProgrammingLanguage::Python => {
                 let py2wasm_output = std::process::Command::new("py2wasm")
-                    .args([&source_code_file_path, "-o", temp_wasm_path_str])
+                    .args([&local_source_path, "-o", temp_wasm_path_str])
                     .output()
                     .map_err(|e| {
                         WasmProcessorError::RuntimeExecutorFactory(format!(
-                            "Failed to run py2wasm: {e}. Command: py2wasm {source_code_file_path} -o {temp_wasm_path_str}"
+                            "Failed to run py2wasm: {e}. Command: py2wasm {local_source_path} -o {temp_wasm_path_str}"
                         ))
                     })?;
 
@@ -142,11 +198,20 @@ pub(crate) struct WasmRuntimeExecutor {
     wasm_binary: Vec<u8>,
 }
 
+/// # WasmRuntimeExecutor Parameters
+///
+/// Configuration for compiling and executing scripts in WebAssembly runtime.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct WasmRuntimeExecutorParam {
-    source_code_file_path: Expr,
+    /// # Source Code
+    /// Script source code or path to compile to WebAssembly
+    source: Expr,
+    /// # Processor Type
+    /// Type of processor to create (Source, Processor, or Sink)
     processor_type: ProcessorType,
+    /// # Programming Language
+    /// Programming language of the source script (currently supports Python)
     programming_language: ProgrammingLanguage,
 }
 

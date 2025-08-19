@@ -21,7 +21,7 @@ impl ProcessorFactory for BulkAttributeRenamerFactory {
     }
 
     fn description(&self) -> &str {
-        "Renames attributes by adding/removing prefixes or suffixes, or replacing text"
+        "Rename Feature Attributes in Bulk"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -93,33 +93,54 @@ struct BulkAttributeRenamer {
     regex: Option<Regex>,
 }
 
+/// # BulkAttributeRenamer Parameters
+/// Configure how to rename feature attributes in bulk operations
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct BulkAttributeRenamerParam {
-    /// # Type of attributes to rename
+    /// # Which Attributes to Rename
+    /// Choose whether to rename all attributes or only selected ones
     rename_type: RenameType,
-    /// # Action to perform on the attribute
+    /// # Rename Operation
+    /// The type of renaming operation to perform on the attribute names
     rename_action: RenameAction,
-    /// # Regular expression pattern to match
+    /// # Text Pattern to Find
+    /// Regular expression pattern to match when using "Replace Text" operation
     text_to_find: Option<String>,
-    /// # Value to add or remove
+    /// # Text Value
+    /// The text to add as prefix/suffix, remove, or use as replacement
     rename_value: String,
-    /// # Attributes to rename
+    /// # Selected Attribute Names
+    /// List of specific attribute names to rename (required when "Selected Attributes" is chosen)
     selected_attributes: Option<Vec<String>>,
 }
 
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema)]
 enum RenameType {
+    /// # All Attributes
+    /// Rename all attributes in the feature
     All,
+    /// # Selected Attributes
+    /// Rename only specific attributes listed below
     Selected,
 }
 
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema)]
 enum RenameAction {
+    /// # Add Prefix
+    /// Add text to the beginning of attribute names
     AddPrefix,
+    /// # Add Suffix
+    /// Add text to the end of attribute names
     AddSuffix,
+    /// # Remove Prefix
+    /// Remove text from the beginning of attribute names
     RemovePrefix,
+    /// # Remove Suffix
+    /// Remove text from the end of attribute names
     RemoveSuffix,
+    /// # Replace Text
+    /// Find and replace text using regular expressions
     StringReplace,
 }
 

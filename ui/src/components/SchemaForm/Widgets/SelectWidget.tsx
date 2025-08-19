@@ -5,7 +5,7 @@ import {
   StrictRJSFSchema,
   WidgetProps,
 } from "@rjsf/utils";
-import { useState } from "react";
+import { useCallback } from "react";
 
 import {
   DropdownMenu,
@@ -23,6 +23,7 @@ const SelectWidget = <
   options,
   disabled,
   readonly,
+  required,
   value,
   onChange,
   onBlur,
@@ -31,32 +32,43 @@ const SelectWidget = <
   rawErrors = [],
 }: WidgetProps<T, S, F>) => {
   const { enumOptions, enumDisabled } = options;
-  const [selectedLabel, setSelectedLabel] = useState(placeholder);
 
-  const getCurrentLabel = () => {
+  const getCurrentLabel = useCallback(() => {
     const option = enumOptions?.find((opt: any) => opt.value === value);
     return option ? option.label : placeholder;
-  };
+  }, [enumOptions, value, placeholder]);
 
-  const handleSelect = (value: any, label: string) => {
-    setSelectedLabel(label);
-    onChange(value);
-  };
+  const handleSelect = useCallback(
+    (selectedValue: any) => {
+      onChange(selectedValue);
+    },
+    [onChange],
+  );
 
-  const handleBlur = () => onBlur?.(id, value);
-  const handleFocus = () => onFocus?.(id, value);
+  const handleBlur = useCallback(
+    () => onBlur?.(id, value),
+    [onBlur, id, value],
+  );
+  const handleFocus = useCallback(
+    () => onFocus?.(id, value),
+    [onFocus, id, value],
+  );
 
   return (
     <DropdownMenu modal={true}>
       <DropdownMenuTrigger
-        className={`flex h-8 w-full items-center justify-between rounded border bg-background px-3 hover:bg-accent ${
+        className={`flex h-8 max-w-[564px] items-center justify-between gap-2 rounded border bg-background px-3 hover:bg-accent ${
           rawErrors.length > 0 ? "border-destructive" : ""
         }`}
         disabled={readonly || disabled}
         onBlur={handleBlur}
-        onFocus={handleFocus}>
+        onFocus={handleFocus}
+        aria-label={placeholder || "Select an option"}
+        aria-required={required}
+        aria-invalid={rawErrors.length > 0}
+        aria-describedby={rawErrors.length > 0 ? `${id}-error` : undefined}>
         <span className={`${value ? "" : "text-muted-foreground"}`}>
-          {selectedLabel || getCurrentLabel()}
+          {getCurrentLabel() || placeholder}
         </span>
         <ChevronDownIcon className="size-4" />
       </DropdownMenuTrigger>
@@ -67,7 +79,7 @@ const SelectWidget = <
             <DropdownMenuItem
               key={i}
               disabled={isDisabled}
-              onSelect={() => handleSelect(optionValue, label)}
+              onSelect={() => handleSelect(optionValue)}
               className={`${value === optionValue ? "bg-accent" : ""}`}>
               {label}
             </DropdownMenuItem>

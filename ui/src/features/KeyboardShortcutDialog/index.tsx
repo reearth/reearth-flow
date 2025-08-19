@@ -1,4 +1,4 @@
-import { XIcon } from "@phosphor-icons/react";
+import { KeyboardIcon, XIcon } from "@phosphor-icons/react";
 import { ReactNode, useCallback, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 
@@ -35,7 +35,7 @@ const KeyboardShortcutDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
   return (
     <Portal isVisible={isOpen} onClose={handlePortalClose}>
       <div
-        className="h-[400px] w-full rounded-t-md bg-secondary transition-all"
+        className="h-[400px] w-full rounded-t-2xl border-t bg-secondary p-4 transition-all"
         style={{
           transform: `translateY(${isReady ? "8px" : "100%"})`,
           transitionDuration: "300ms",
@@ -43,14 +43,15 @@ const KeyboardShortcutDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
           transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
         }}
         onClick={(e) => e.stopPropagation()}>
-        <div className="relative flex h-[40px] items-center justify-center rounded-t-lg border-y border-b-primary">
+        <div className="relative flex items-center gap-2 pb-4">
+          <KeyboardIcon />
           <p>{title}</p>
           <XIcon
-            className="absolute right-3 cursor-pointer"
+            className="absolute top-0 right-0 cursor-pointer"
             onClick={handlePortalClose}
           />
         </div>
-        <div className="flex h-[352px] flex-wrap gap-4 p-4">
+        <div className="flex h-[352px] flex-wrap gap-4 px-2">
           <div className="flex h-[320px] flex-1 flex-col gap-1">
             <p className="font-light">{generalShortcuts.title}</p>
             <div className="overflow-auto">

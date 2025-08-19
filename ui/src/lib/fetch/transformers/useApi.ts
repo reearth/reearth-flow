@@ -163,7 +163,3 @@ const filterBySearchTerm = (action: Action, searchTerm?: string) => {
     return strValue.toLowerCase().includes(searchTerm?.toLowerCase() ?? "");
   });
 };
-
-export const hasReader = (nodes: Node[] | undefined) => {
-  return nodes?.some((node) => node.type === "reader");
-};

@@ -106,7 +106,7 @@ impl ProcessorFactory for HorizontalReprojectorFactory {
     }
 
     fn description(&self) -> &str {
-        "Reprojects the geometry of a feature to a specified coordinate system"
+        "Reproject Geometry to Different Coordinate System"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -170,9 +170,13 @@ impl ProcessorFactory for HorizontalReprojectorFactory {
     }
 }
 
+/// # Horizontal Reprojector Parameters
+/// Configure the target coordinate system for geometry reprojection
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct HorizontalReprojectorParam {
+    /// # EPSG Code
+    /// Target coordinate system EPSG code for the reprojection
     epsg_code: EpsgCode,
 }
 

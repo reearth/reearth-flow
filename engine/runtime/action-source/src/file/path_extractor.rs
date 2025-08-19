@@ -33,7 +33,7 @@ impl SourceFactory for FilePathExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Extracts files from a directory or an archive"
+        "Extracts file paths from directories or archives, creating features for each discovered file"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -206,10 +206,17 @@ pub async fn extract(
     Ok(())
 }
 
+/// # FilePathExtractor Parameters
+///
+/// Configuration for extracting file paths from directories or archives.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FilePathExtractor {
+    /// # Source Dataset
+    /// Path or expression pointing to the source directory or archive file
     source_dataset: Expr,
+    /// # Extract Archive
+    /// Whether to extract files from archives (zip files, etc.) or just list them
     extract_archive: bool,
 }
 

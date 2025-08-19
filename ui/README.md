@@ -6,13 +6,18 @@ Frontend to build and setup workflows to calculate and convert various types of 
 
 ### Main libraries & services
 
-- React 18
+- React 19
 - TypeScript 5
-- Vite 5
-- Storybook 8
+- Vite 7
+- Storybook 9
 - Yarn 4
+- Yjs
+- Tanstack Query/Router/Table/Virtual
+- Tailwind CSS
 
 ### Install prerequisites
+
+Make sure that appropriate environment variables are set, and then run:
 
 ```console
 yarn

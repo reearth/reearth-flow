@@ -9,12 +9,24 @@
       "description": "Aggregates features by attributes"
     },
     {
+      "name": "AttributeBulkArrayJoiner",
+      "description": "Join Array Attributes Into Single Values"
+    },
+    {
+      "name": "AttributeConversionTable",
+      "description": "Transform Feature Attributes Using Lookup Tables"
+    },
+    {
       "name": "AttributeDuplicateFilter",
       "description": "Filters features by duplicate attributes"
     },
     {
       "name": "AttributeFilePathInfoExtractor",
       "description": "Extracts file path information from attributes"
+    },
+    {
+      "name": "AttributeFlattener",
+      "description": "Flattener for nested attributes"
     },
     {
       "name": "AttributeManager",
@@ -53,12 +65,32 @@
       "description": "Checks if curves form closed loops"
     },
     {
+      "name": "ConvexHullAccumulator",
+      "description": "Create convex hulls"
+    },
+    {
       "name": "CoordinateSystemSetter",
       "description": "Sets the coordinate system of a feature"
     },
     {
+      "name": "CsvReader",
+      "description": "Reads features from a CSV file"
+    },
+    {
+      "name": "CzmlWriter",
+      "description": "Writes features to a CZML file"
+    },
+    {
       "name": "DimensionFilter",
       "description": "Filters the dimension of features"
+    },
+    {
+      "name": "DirectoryDecompressor",
+      "description": "Decompresses directories from archives"
+    },
+    {
+      "name": "Dissolver",
+      "description": "Dissolve adjacent polygons with common attributes"
     },
     {
       "name": "EchoProcessor",
@@ -77,6 +109,10 @@
       "description": "Extrudes a polygon by a distance"
     },
     {
+      "name": "FeatureCityGmlReader",
+      "description": "Reads features from CityGML files"
+    },
+    {
       "name": "FeatureCounter",
       "description": "Counts features"
     },
@@ -85,8 +121,20 @@
       "description": "Creates features from expressions"
     },
     {
+      "name": "FeatureDuplicateFilter",
+      "description": "Removes duplicate features"
+    },
+    {
+      "name": "FeatureFilePathExtractor",
+      "description": "Extracts file paths from features"
+    },
+    {
       "name": "FeatureFilter",
       "description": "Filters features based on conditions"
+    },
+    {
+      "name": "FeatureLodFilter",
+      "description": "Filter based on Level of Detail"
     },
     {
       "name": "FeatureMerger",
@@ -109,6 +157,10 @@
       "description": "Filters features by feature type"
     },
     {
+      "name": "FeatureWriter",
+      "description": "Writes features to a file"
+    },
+    {
       "name": "FilePathExtractor",
       "description": "Extracts files from a directory or an archive"
     },
@@ -123,6 +175,10 @@
     {
       "name": "FileWriter",
       "description": "Writes features to a file"
+    },
+    {
+      "name": "GeoJsonReader",
+      "description": "Reads features from a GeoJSON file"
     },
     {
       "name": "GeoJsonWriter",
@@ -181,6 +237,14 @@
       "description": "Reprojects the geometry of a feature to a specified coordinate system"
     },
     {
+      "name": "InputRouter",
+      "description": "Action for first port forwarding for sub-workflows."
+    },
+    {
+      "name": "JPStandardGridAccumulator",
+      "description": "Accumulates features on Japanese standard grid"
+    },
+    {
       "name": "LineOnLineOverlayer",
       "description": "Intersection points are turned into point features that can contain the merged list of attributes of the original intersected lines."
     },
@@ -207,6 +271,10 @@
     {
       "name": "OrientationExtractor",
       "description": "Extracts the orientation of a geometry from a feature and adds it as an attribute."
+    },
+    {
+      "name": "OutputRouter",
+      "description": "Action for last port forwarding for sub-workflows."
     },
     {
       "name": "PLATEAU3.AttributeFlattener",
@@ -249,6 +317,34 @@
       "description": "Extracts attributes from XML fragments based on a schema definition"
     },
     {
+      "name": "PLATEAU4.AttributeFlattener",
+      "description": "PLATEAU4 attribute flattener"
+    },
+    {
+      "name": "PLATEAU4.CityCodeExtractor",
+      "description": "Extracts city code from PLATEAU4 data"
+    },
+    {
+      "name": "PLATEAU4.DomainOfDefinitionValidator",
+      "description": "Validates domain of definition for PLATEAU4"
+    },
+    {
+      "name": "PLATEAU4.MaxLodExtractor",
+      "description": "Extracts maximum Level of Detail for PLATEAU4"
+    },
+    {
+      "name": "PLATEAU4.MissingAttributeDetector",
+      "description": "Detects missing attributes in PLATEAU4 data"
+    },
+    {
+      "name": "PLATEAU4.ObjectListExtractor",
+      "description": "Extracts object lists from PLATEAU4 data"
+    },
+    {
+      "name": "PLATEAU4.UDXFolderExtractor",
+      "description": "Extracts UDX folders from PLATEAU4 data"
+    },
+    {
       "name": "PlanarityFilter",
       "description": "Filter geometry by type"
     },
@@ -261,20 +357,28 @@
       "description": "Calls Rhai script"
     },
     {
-      "name": "InputRouter",
-      "description": "Action for first port forwarding for sub-workflows."
+      "name": "ShapefileWriter",
+      "description": "Writes features to a Shapefile"
     },
     {
-      "name": "OutputRouter",
-      "description": "Action for last port forwarding for sub-workflows."
+      "name": "SqlReader",
+      "description": "Reads features from SQL database"
     },
     {
       "name": "StatisticsCalculator",
       "description": "Calculates statistics of features"
     },
     {
+      "name": "SurfaceFootprintReplacer",
+      "description": "Replace surface geometry with footprint"
+    },
+    {
       "name": "ThreeDimensionBoxReplacer",
       "description": "Replaces a three Dimension box with a polygon."
+    },
+    {
+      "name": "ThreeDimensionPlanarityRotator",
+      "description": "Rotates planar surfaces in 3D"
     },
     {
       "name": "ThreeDimensionRotator",
@@ -303,6 +407,10 @@
     {
       "name": "XMLValidator",
       "description": "Validates XML content"
+    },
+    {
+      "name": "ZipFileWriter",
+      "description": "Writes features to a zip file"
     }
   ]
 }

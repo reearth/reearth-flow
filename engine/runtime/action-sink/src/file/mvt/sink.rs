@@ -34,7 +34,7 @@ impl SinkFactory for MVTSinkFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to a file"
+        "Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -119,13 +119,26 @@ pub struct MVTWriter {
     pub(super) join_handles: Vec<JoinHandle>,
 }
 
+/// # MVTWriter Parameters
+///
+/// Configuration for writing features to Mapbox Vector Tiles (MVT) format.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct MVTWriterParam {
+    /// # Output
+    /// Output directory path or expression for the generated MVT tiles
     pub(super) output: Expr,
+    /// # Layer Name
+    /// Name of the layer within the MVT tiles
     pub(super) layer_name: Expr,
+    /// # Minimum Zoom
+    /// Minimum zoom level to generate tiles for
     pub(super) min_zoom: u8,
+    /// # Maximum Zoom
+    /// Maximum zoom level to generate tiles for
     pub(super) max_zoom: u8,
+    /// # Compress Output
+    /// Optional expression to determine whether to compress the output tiles
     pub(super) compress_output: Option<Expr>,
 }
 

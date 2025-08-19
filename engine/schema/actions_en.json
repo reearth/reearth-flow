@@ -6,11 +6,13 @@
       "description": "Overlays an area on another area",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AreaOnAreaOverlayerParam",
+        "title": "AreaOnAreaOverlayer Parameters",
+        "description": "Configure how area overlay analysis is performed",
         "type": "object",
         "properties": {
           "groupBy": {
-            "title": "Group by",
+            "title": "Group By Attributes",
+            "description": "Optional attributes to group features by during overlay analysis",
             "type": [
               "array",
               "null"
@@ -45,7 +47,8 @@
       "description": "Aggregates features by attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeAggregatorParam",
+        "title": "AttributeAggregator Parameters",
+        "description": "Configure how features are grouped and aggregated based on attribute values",
         "type": "object",
         "required": [
           "aggregateAttributes",
@@ -142,12 +145,31 @@
             "type": "string"
           },
           "Method": {
-            "title": "Method to use for aggregation",
-            "type": "string",
-            "enum": [
-              "max",
-              "min",
-              "count"
+            "oneOf": [
+              {
+                "title": "Maximum Value",
+                "description": "Find the maximum value in the group",
+                "type": "string",
+                "enum": [
+                  "max"
+                ]
+              },
+              {
+                "title": "Minimum Value",
+                "description": "Find the minimum value in the group",
+                "type": "string",
+                "enum": [
+                  "min"
+                ]
+              },
+              {
+                "title": "Count Items",
+                "description": "Count the number of features in the group",
+                "type": "string",
+                "enum": [
+                  "count"
+                ]
+              }
             ]
           }
         }
@@ -166,14 +188,16 @@
     {
       "name": "AttributeBulkArrayJoiner",
       "type": "processor",
-      "description": "Flattens features by attributes",
+      "description": "Join Array Attributes Into Single Values",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeBulkArrayJoinerParam",
+        "title": "AttributeBulkArrayJoiner Parameters",
+        "description": "Configure which array attributes to join into single values",
         "type": "object",
         "properties": {
           "ignoreAttributes": {
-            "title": "Attributes to ignore",
+            "title": "Attributes to Ignore",
+            "description": "List of attribute names to skip during array joining process",
             "type": [
               "array",
               "null"
@@ -203,10 +227,10 @@
     {
       "name": "AttributeConversionTable",
       "type": "processor",
-      "description": "Converts attributes from conversion table",
+      "description": "Transform Feature Attributes Using Lookup Tables",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeConversionTableParam",
+        "title": "AttributeConversionTable Parameters",
         "type": "object",
         "required": [
           "format",
@@ -215,6 +239,7 @@
         "properties": {
           "dataset": {
             "title": "Dataset URI",
+            "description": "Path or URI to external conversion table file",
             "anyOf": [
               {
                 "$ref": "#/definitions/Expr"
@@ -225,7 +250,8 @@
             ]
           },
           "format": {
-            "title": "Format of conversion table",
+            "title": "Table Format",
+            "description": "Format of the conversion table (CSV, TSV, or JSON)",
             "allOf": [
               {
                 "$ref": "#/definitions/ConversionTableFormat"
@@ -233,14 +259,16 @@
             ]
           },
           "inline": {
-            "title": "Inline conversion table",
+            "title": "Inline Table Data",
+            "description": "Conversion table data provided directly as string content",
             "type": [
               "string",
               "null"
             ]
           },
           "rules": {
-            "title": "Rules to convert attributes",
+            "title": "Conversion Rules",
+            "description": "List of rules defining how to map attributes using the conversion table",
             "type": "array",
             "items": {
               "$ref": "#/definitions/AttributeConversionTableRule"
@@ -318,14 +346,15 @@
       "description": "Filters features by duplicate attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeDuplicateFilterParam",
+        "title": "AttributeDuplicateFilter Parameters",
         "type": "object",
         "required": [
           "filterBy"
         ],
         "properties": {
           "filterBy": {
-            "title": "Attributes to filter by",
+            "title": "Filter Attributes",
+            "description": "Attributes used to identify duplicate features - features with identical values for these attributes will be deduplicated",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Attribute"
@@ -355,14 +384,15 @@
       "description": "Extracts file path information from attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeFilePathInfoExtractor",
+        "title": "AttributeFilePathInfoExtractor Parameters",
         "type": "object",
         "required": [
           "attribute"
         ],
         "properties": {
           "attribute": {
-            "title": "Attribute to extract file path from",
+            "title": "Source Path Attribute",
+            "description": "Attribute containing the file path to analyze for extracting file system information",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -391,17 +421,18 @@
     {
       "name": "AttributeFlattener",
       "type": "processor",
-      "description": "Flattens features by attributes",
+      "description": "Flattener for nested attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeFlattenerParam",
+        "title": "AttributeFlattener Parameters",
         "type": "object",
         "required": [
           "attributes"
         ],
         "properties": {
           "attributes": {
-            "title": "Attributes to flatten",
+            "title": "Attributes to Flatten",
+            "description": "Map/object attributes that should be flattened - their nested properties will become top-level attributes",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Attribute"
@@ -431,14 +462,15 @@
       "description": "Manages attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeManagerParam",
+        "title": "AttributeManager Parameters",
         "type": "object",
         "required": [
           "operations"
         ],
         "properties": {
           "operations": {
-            "title": "Operations to perform",
+            "title": "Attribute Operations",
+            "description": "List of operations to perform on feature attributes (create, convert, rename, remove)",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Operation"
@@ -478,7 +510,8 @@
                 ]
               },
               "value": {
-                "title": "Value to use for the operation",
+                "title": "Value",
+                "description": "Value to use for the operation",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Expr"
@@ -509,14 +542,15 @@
       "description": "Maps attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeMapperParam",
+        "title": "AttributeMapper Parameters",
         "type": "object",
         "required": [
           "mappers"
         ],
         "properties": {
           "mappers": {
-            "title": "Mappers",
+            "title": "Attribute Mappers",
+            "description": "List of mapping rules to transform attributes using expressions or value copying",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Mapper"
@@ -601,10 +635,12 @@
       "description": "Bounds Extractor",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "BoundsExtractorParam",
+        "title": "BoundsExtractor Parameters",
         "type": "object",
         "properties": {
           "xmax": {
+            "title": "Maximum X Attribute",
+            "description": "Attribute name for storing the maximum X coordinate (defaults to \"xmax\")",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -615,6 +651,8 @@
             ]
           },
           "xmin": {
+            "title": "Minimum X Attribute",
+            "description": "Attribute name for storing the minimum X coordinate (defaults to \"xmin\")",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -625,6 +663,8 @@
             ]
           },
           "ymax": {
+            "title": "Maximum Y Attribute",
+            "description": "Attribute name for storing the maximum Y coordinate (defaults to \"ymax\")",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -635,6 +675,8 @@
             ]
           },
           "ymin": {
+            "title": "Minimum Y Attribute",
+            "description": "Attribute name for storing the minimum Y coordinate (defaults to \"ymin\")",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -645,6 +687,8 @@
             ]
           },
           "zmax": {
+            "title": "Maximum Z Attribute",
+            "description": "Attribute name for storing the maximum Z coordinate (defaults to \"zmax\")",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -655,6 +699,8 @@
             ]
           },
           "zmin": {
+            "title": "Minimum Z Attribute",
+            "description": "Attribute name for storing the minimum Z coordinate (defaults to \"zmin\")",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -689,7 +735,8 @@
       "description": "Buffers a geometry",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Bufferer",
+        "title": "Bufferer Parameters",
+        "description": "Configure how to create buffers around input geometries",
         "type": "object",
         "required": [
           "bufferType",
@@ -698,7 +745,8 @@
         ],
         "properties": {
           "bufferType": {
-            "title": "Buffer type",
+            "title": "Buffer Type",
+            "description": "The type of buffer to create around the input geometry",
             "allOf": [
               {
                 "$ref": "#/definitions/BufferType"
@@ -706,21 +754,29 @@
             ]
           },
           "distance": {
-            "title": "Buffer distance",
+            "title": "Distance",
+            "description": "The distance to extend the buffer from the original geometry (in coordinate units)",
             "type": "number",
             "format": "double"
           },
           "interpolationAngle": {
-            "title": "Buffer interpolation angle",
+            "title": "Interpolation Angle",
+            "description": "The angle in degrees used for curve interpolation when creating rounded corners",
             "type": "number",
             "format": "double"
           }
         },
         "definitions": {
           "BufferType": {
-            "type": "string",
-            "enum": [
-              "area2d"
+            "oneOf": [
+              {
+                "title": "2D Area Buffer",
+                "description": "Creates a 2D polygon buffer around the input geometry",
+                "type": "string",
+                "enum": [
+                  "area2d"
+                ]
+              }
             ]
           }
         }
@@ -743,7 +799,8 @@
       "description": "Renames attributes by adding/removing prefixes or suffixes, or replacing text",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "BulkAttributeRenamerParam",
+        "title": "BulkAttributeRenamer Parameters",
+        "description": "Configure how to rename feature attributes in bulk operations",
         "type": "object",
         "required": [
           "renameAction",
@@ -752,7 +809,8 @@
         ],
         "properties": {
           "renameAction": {
-            "title": "Action to perform on the attribute",
+            "title": "Rename Operation",
+            "description": "The type of renaming operation to perform on the attribute names",
             "allOf": [
               {
                 "$ref": "#/definitions/RenameAction"
@@ -760,7 +818,8 @@
             ]
           },
           "renameType": {
-            "title": "Type of attributes to rename",
+            "title": "Which Attributes to Rename",
+            "description": "Choose whether to rename all attributes or only selected ones",
             "allOf": [
               {
                 "$ref": "#/definitions/RenameType"
@@ -768,11 +827,13 @@
             ]
           },
           "renameValue": {
-            "title": "Value to add or remove",
+            "title": "Text Value",
+            "description": "The text to add as prefix/suffix, remove, or use as replacement",
             "type": "string"
           },
           "selectedAttributes": {
-            "title": "Attributes to rename",
+            "title": "Selected Attribute Names",
+            "description": "List of specific attribute names to rename (required when \"Selected Attributes\" is chosen)",
             "type": [
               "array",
               "null"
@@ -782,7 +843,8 @@
             }
           },
           "textToFind": {
-            "title": "Regular expression pattern to match",
+            "title": "Text Pattern to Find",
+            "description": "Regular expression pattern to match when using \"Replace Text\" operation",
             "type": [
               "string",
               "null"
@@ -791,20 +853,67 @@
         },
         "definitions": {
           "RenameAction": {
-            "type": "string",
-            "enum": [
-              "AddPrefix",
-              "AddSuffix",
-              "RemovePrefix",
-              "RemoveSuffix",
-              "StringReplace"
+            "oneOf": [
+              {
+                "title": "Add Prefix",
+                "description": "Add text to the beginning of attribute names",
+                "type": "string",
+                "enum": [
+                  "AddPrefix"
+                ]
+              },
+              {
+                "title": "Add Suffix",
+                "description": "Add text to the end of attribute names",
+                "type": "string",
+                "enum": [
+                  "AddSuffix"
+                ]
+              },
+              {
+                "title": "Remove Prefix",
+                "description": "Remove text from the beginning of attribute names",
+                "type": "string",
+                "enum": [
+                  "RemovePrefix"
+                ]
+              },
+              {
+                "title": "Remove Suffix",
+                "description": "Remove text from the end of attribute names",
+                "type": "string",
+                "enum": [
+                  "RemoveSuffix"
+                ]
+              },
+              {
+                "title": "Replace Text",
+                "description": "Find and replace text using regular expressions",
+                "type": "string",
+                "enum": [
+                  "StringReplace"
+                ]
+              }
             ]
           },
           "RenameType": {
-            "type": "string",
-            "enum": [
-              "All",
-              "Selected"
+            "oneOf": [
+              {
+                "title": "All Attributes",
+                "description": "Rename all attributes in the feature",
+                "type": "string",
+                "enum": [
+                  "All"
+                ]
+              },
+              {
+                "title": "Selected Attributes",
+                "description": "Rename only specific attributes listed below",
+                "type": "string",
+                "enum": [
+                  "Selected"
+                ]
+              }
             ]
           }
         }
@@ -843,7 +952,7 @@
       "description": "Writes features to a file",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Cesium3DTilesWriterParam",
+        "title": "Cesium3DTilesWriter Parameters",
         "type": "object",
         "required": [
           "maxZoom",
@@ -852,12 +961,16 @@
         ],
         "properties": {
           "attachTexture": {
+            "title": "Attach Textures",
+            "description": "Whether to include texture information in the generated tiles",
             "type": [
               "boolean",
               "null"
             ]
           },
           "compressOutput": {
+            "title": "Compressed Output Path",
+            "description": "Optional path for compressed archive output",
             "anyOf": [
               {
                 "$ref": "#/definitions/Expr"
@@ -868,17 +981,27 @@
             ]
           },
           "maxZoom": {
+            "title": "Maximum Zoom Level",
+            "description": "Maximum zoom level for tile generation (0-24)",
             "type": "integer",
             "format": "uint8",
             "minimum": 0.0
           },
           "minZoom": {
+            "title": "Minimum Zoom Level",
+            "description": "Minimum zoom level for tile generation (0-24)",
             "type": "integer",
             "format": "uint8",
             "minimum": 0.0
           },
           "output": {
-            "$ref": "#/definitions/Expr"
+            "title": "Output Path",
+            "description": "Directory path where the 3D tiles will be written",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           }
         },
         "definitions": {
@@ -937,13 +1060,15 @@
     {
       "name": "ConvexHullAccumulator",
       "type": "processor",
-      "description": "Creates a convex hull based on a group of input features.",
+      "description": "Create convex hulls",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ConvexHullAccumulatorParam",
+        "title": "ConvexHullAccumulator Parameters",
         "type": "object",
         "properties": {
           "groupBy": {
+            "title": "Group By Attributes",
+            "description": "Attributes used to group features before creating convex hulls - each group gets its own hull",
             "type": [
               "array",
               "null"
@@ -974,16 +1099,19 @@
     {
       "name": "CsvReader",
       "type": "source",
-      "description": "Reads features from a csv/tsv file",
+      "description": "Reads features from a CSV file",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "CsvReaderParam",
+        "title": "CsvReader Parameters",
+        "description": "Configure how CSV and TSV files are processed and read",
         "type": "object",
         "required": [
           "format"
         ],
         "properties": {
           "dataset": {
+            "title": "File Path",
+            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
             "anyOf": [
               {
                 "$ref": "#/definitions/Expr"
@@ -994,9 +1122,17 @@
             ]
           },
           "format": {
-            "$ref": "#/definitions/CsvFormat"
+            "title": "File Format",
+            "description": "Choose the delimiter format for the input file",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CsvFormat"
+              }
+            ]
           },
           "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
             "anyOf": [
               {
                 "$ref": "#/definitions/Expr"
@@ -1007,6 +1143,8 @@
             ]
           },
           "offset": {
+            "title": "Header Row Offset",
+            "description": "Skip this many rows from the beginning to find the header row (0 = first row is header)",
             "type": [
               "integer",
               "null"
@@ -1017,10 +1155,23 @@
         },
         "definitions": {
           "CsvFormat": {
-            "type": "string",
-            "enum": [
-              "csv",
-              "tsv"
+            "oneOf": [
+              {
+                "title": "CSV (Comma-Separated Values)",
+                "description": "File with comma-separated values",
+                "type": "string",
+                "enum": [
+                  "csv"
+                ]
+              },
+              {
+                "title": "TSV (Tab-Separated Values)",
+                "description": "File with tab-separated values",
+                "type": "string",
+                "enum": [
+                  "tsv"
+                ]
+              }
             ]
           },
           "Expr": {
@@ -1040,16 +1191,18 @@
     {
       "name": "CzmlWriter",
       "type": "sink",
-      "description": "Writes features to a Czml file",
+      "description": "Writes features to a CZML file",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "CzmlWriterParam",
+        "title": "CzmlWriter Parameters",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "groupBy": {
+            "title": "Group By Attributes",
+            "description": "Attributes used to group features into separate CZML files",
             "type": [
               "array",
               "null"
@@ -1059,7 +1212,13 @@
             }
           },
           "output": {
-            "$ref": "#/definitions/Expr"
+            "title": "Output File Path",
+            "description": "Path where the CZML file will be written",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           }
         },
         "definitions": {
@@ -1101,17 +1260,18 @@
     {
       "name": "DirectoryDecompressor",
       "type": "processor",
-      "description": "Decompresses a directory",
+      "description": "Decompresses directories from archives",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "DirectoryDecompressorParam",
+        "title": "DirectoryDecompressor Parameters",
+        "description": "Configures the extraction and decompression of archive files.",
         "type": "object",
         "required": [
           "archiveAttributes"
         ],
         "properties": {
           "archiveAttributes": {
-            "title": "Attribute to extract file path from",
+            "description": "Attributes containing archive file paths to be extracted and decompressed",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Attribute"
@@ -1138,13 +1298,16 @@
     {
       "name": "Dissolver",
       "type": "processor",
-      "description": "Dissolves features grouped by specified attributes",
+      "description": "Dissolve adjacent polygons with common attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "DissolverParam",
+        "title": "Dissolver Parameters",
+        "description": "Configure how to dissolve features by grouping them based on shared attributes # Dissolver Parameters Configure how to dissolve features by grouping them based on shared attributes",
         "type": "object",
         "properties": {
           "groupBy": {
+            "title": "Group By Attributes",
+            "description": "List of attribute names to group features by before dissolving. Features with the same values for these attributes will be dissolved together",
             "type": [
               "array",
               "null"
@@ -1208,14 +1371,21 @@
       "description": "Extracts a feature’s first z coordinate value, storing it in an attribute.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ElevationExtractorParam",
+        "title": "Elevation Extractor Parameters",
+        "description": "Configure where to store the extracted elevation value from geometry coordinates",
         "type": "object",
         "required": [
           "outputAttribute"
         ],
         "properties": {
           "outputAttribute": {
-            "$ref": "#/definitions/Attribute"
+            "title": "Output Attribute",
+            "description": "Name of the attribute where the extracted elevation value will be stored",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
           }
         },
         "definitions": {
@@ -1241,14 +1411,21 @@
       "description": "Extrudes a polygon by a distance",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ExtruderParam",
+        "title": "Extruder Parameters",
+        "description": "Configure how to extrude 2D polygons into 3D solid geometries",
         "type": "object",
         "required": [
           "distance"
         ],
         "properties": {
           "distance": {
-            "$ref": "#/definitions/Expr"
+            "title": "Distance",
+            "description": "The vertical distance (height) to extrude the polygon. Can be a constant value or an expression",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           }
         },
         "definitions": {
@@ -1271,17 +1448,19 @@
     {
       "name": "FeatureCityGmlReader",
       "type": "processor",
-      "description": "Reads features from citygml file",
+      "description": "Reads features from CityGML files",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureCityGmlReaderParam",
+        "title": "FeatureCityGmlReader Parameters",
+        "description": "Configuration for reading and processing CityGML files as features.",
         "type": "object",
         "required": [
           "dataset"
         ],
         "properties": {
           "dataset": {
-            "title": "Dataset to read",
+            "title": "Dataset",
+            "description": "Path or expression to the CityGML dataset file to be read",
             "allOf": [
               {
                 "$ref": "#/definitions/Expr"
@@ -1289,7 +1468,8 @@
             ]
           },
           "flatten": {
-            "title": "Flatten the dataset",
+            "title": "Flatten",
+            "description": "Whether to flatten the hierarchical structure of the CityGML data",
             "type": [
               "boolean",
               "null"
@@ -1319,7 +1499,8 @@
       "description": "Counts features",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureCounterParam",
+        "title": "Feature Counter Parameters",
+        "description": "Configure how features are counted and grouped, and where to store the count",
         "type": "object",
         "required": [
           "countStart",
@@ -1327,12 +1508,14 @@
         ],
         "properties": {
           "countStart": {
-            "title": "Start count",
+            "title": "Start Count",
+            "description": "Starting value for the counter",
             "type": "integer",
             "format": "int64"
           },
           "groupBy": {
-            "title": "Attributes to group by",
+            "title": "Group By Attributes",
+            "description": "List of attribute names to group features by before counting",
             "type": [
               "array",
               "null"
@@ -1342,7 +1525,8 @@
             }
           },
           "outputAttribute": {
-            "title": "Attribute to output the count",
+            "title": "Output Attribute",
+            "description": "Name of the attribute where the count will be stored",
             "type": "string"
           }
         },
@@ -1370,14 +1554,21 @@
       "description": "Creates features from expressions",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureCreator",
+        "title": "FeatureCreator Parameters",
+        "description": "Configure how to generate custom features using script expressions",
         "type": "object",
         "required": [
           "creator"
         ],
         "properties": {
           "creator": {
-            "$ref": "#/definitions/Expr"
+            "title": "Script Expression",
+            "description": "Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           }
         },
         "definitions": {
@@ -1398,7 +1589,7 @@
     {
       "name": "FeatureDuplicateFilter",
       "type": "processor",
-      "description": "Filters features by duplicate feature",
+      "description": "Removes duplicate features",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -1414,10 +1605,11 @@
     {
       "name": "FeatureFilePathExtractor",
       "type": "processor",
-      "description": "Extracts features by file path",
+      "description": "Extracts file paths from features",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureFilePathExtractorParam",
+        "title": "Feature File Path Extractor Parameters",
+        "description": "Configure how to extract file paths from datasets and optionally extract archives",
         "type": "object",
         "required": [
           "extractArchive",
@@ -1425,18 +1617,21 @@
         ],
         "properties": {
           "destPrefix": {
-            "title": "Destination prefix",
+            "title": "Destination Prefix",
+            "description": "Optional prefix to add to extracted file paths",
             "type": [
               "string",
               "null"
             ]
           },
           "extractArchive": {
-            "title": "Extract archive",
+            "title": "Extract Archive",
+            "description": "Whether to extract archive files found in the dataset",
             "type": "boolean"
           },
           "sourceDataset": {
-            "title": "Source dataset",
+            "title": "Source Dataset",
+            "description": "Expression to get the source dataset path or URL",
             "allOf": [
               {
                 "$ref": "#/definitions/Expr"
@@ -1468,14 +1663,16 @@
       "description": "Filters features based on conditions",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureFilterParam",
+        "title": "Feature Filter Parameters",
+        "description": "Configure the conditions and output ports for filtering features based on expressions",
         "type": "object",
         "required": [
           "conditions"
         ],
         "properties": {
           "conditions": {
-            "title": "Conditions to filter by",
+            "title": "Filter Conditions",
+            "description": "List of conditions and their corresponding output ports for routing filtered features",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Condition"
@@ -1530,17 +1727,18 @@
     {
       "name": "FeatureLodFilter",
       "type": "processor",
-      "description": "Filter Geometry by lod",
+      "description": "Filter based on Level of Detail",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureLodFilterParam",
+        "title": "FeatureLodFilter Parameters",
+        "description": "Configuration for filtering features based on Level of Detail (LOD).",
         "type": "object",
         "required": [
           "filterKey"
         ],
         "properties": {
           "filterKey": {
-            "title": "Attributes to filter by",
+            "description": "Attribute used to group features for LOD filtering",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -1575,16 +1773,19 @@
       "description": "Merges features by attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureMergerParam",
+        "title": "FeatureMerger Parameters",
+        "description": "Configuration for merging requestor and supplier features based on matching attributes or expressions.",
         "type": "object",
         "properties": {
           "completeGrouped": {
+            "description": "Whether to complete grouped features before processing the next group",
             "type": [
               "boolean",
               "null"
             ]
           },
           "requestorAttribute": {
+            "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)",
             "type": [
               "array",
               "null"
@@ -1594,6 +1795,7 @@
             }
           },
           "requestorAttributeValue": {
+            "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)",
             "anyOf": [
               {
                 "$ref": "#/definitions/Expr"
@@ -1604,6 +1806,7 @@
             ]
           },
           "supplierAttribute": {
+            "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)",
             "type": [
               "array",
               "null"
@@ -1613,6 +1816,7 @@
             }
           },
           "supplierAttributeValue": {
+            "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)",
             "anyOf": [
               {
                 "$ref": "#/definitions/Expr"
@@ -1654,6 +1858,8 @@
         "title": "FeatureReaderParam",
         "oneOf": [
           {
+            "title": "Common Reader Parameters",
+            "description": "Shared configuration for all feature reader formats.",
             "type": "object",
             "required": [
               "dataset",
@@ -1662,6 +1868,7 @@
             "properties": {
               "dataset": {
                 "title": "Dataset",
+                "description": "Path or expression to the dataset file to be read",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Expr"
@@ -1686,6 +1893,8 @@
             }
           },
           {
+            "title": "Common Reader Parameters",
+            "description": "Shared configuration for all feature reader formats.",
             "type": "object",
             "required": [
               "dataset",
@@ -1694,6 +1903,7 @@
             "properties": {
               "dataset": {
                 "title": "Dataset",
+                "description": "Path or expression to the dataset file to be read",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Expr"
@@ -1718,6 +1928,8 @@
             }
           },
           {
+            "title": "Common Reader Parameters",
+            "description": "Shared configuration for all feature reader formats.",
             "type": "object",
             "required": [
               "dataset",
@@ -1726,6 +1938,7 @@
             "properties": {
               "dataset": {
                 "title": "Dataset",
+                "description": "Path or expression to the dataset file to be read",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Expr"
@@ -1764,7 +1977,8 @@
       "description": "Sorts features by attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureSorterParam",
+        "title": "FeatureSorter Parameters",
+        "description": "Configuration for sorting features based on attribute values.",
         "type": "object",
         "required": [
           "attributes",
@@ -1772,14 +1986,14 @@
         ],
         "properties": {
           "attributes": {
-            "title": "Attributes to sort by",
+            "description": "Attributes to use for sorting features (sort order based on attribute order)",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Attribute"
             }
           },
           "order": {
-            "title": "Order to sort by",
+            "description": "Sorting order (ascending or descending)",
             "allOf": [
               {
                 "$ref": "#/definitions/Order"
@@ -1817,14 +2031,15 @@
       "description": "Transforms features by expressions",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureTransformerParam",
+        "title": "FeatureTransformer Parameters",
+        "description": "Configuration for applying transformation expressions to features.",
         "type": "object",
         "required": [
           "transformers"
         ],
         "properties": {
           "transformers": {
-            "title": "Transformers to apply",
+            "description": "List of transformation expressions to apply to each feature",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Transform"
@@ -1842,7 +2057,7 @@
             ],
             "properties": {
               "expr": {
-                "title": "Expression to transform the feature",
+                "description": "Expression that modifies the feature (can access and modify attributes, geometry, etc.)",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Expr"
@@ -1870,7 +2085,8 @@
       "description": "Filters features by feature type",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureTypeFilter",
+        "title": "FeatureTypeFilter Parameters",
+        "description": "Configuration for filtering features based on their feature type.",
         "type": "object",
         "required": [
           "targetTypes"
@@ -1900,10 +2116,11 @@
     {
       "name": "FeatureWriter",
       "type": "processor",
-      "description": "Writes features from various formats",
+      "description": "Writes features to a file",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureWriterParam",
+        "title": "FeatureWriter Parameters",
+        "description": "Configuration for writing features to different file formats.",
         "oneOf": [
           {
             "type": "object",
@@ -1952,6 +2169,8 @@
             }
           },
           {
+            "title": "JsonWriter Parameters",
+            "description": "Configuration for writing features in JSON format with optional custom conversion.",
             "type": "object",
             "required": [
               "format",
@@ -2008,7 +2227,8 @@
       "description": "Extracts files from a directory or an archive",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FilePathExtractor",
+        "title": "FilePathExtractor Parameters",
+        "description": "Configuration for extracting file paths from directories or archives.",
         "type": "object",
         "required": [
           "extractArchive",
@@ -2016,10 +2236,18 @@
         ],
         "properties": {
           "extractArchive": {
+            "title": "Extract Archive",
+            "description": "Whether to extract files from archives (zip files, etc.) or just list them",
             "type": "boolean"
           },
           "sourceDataset": {
-            "$ref": "#/definitions/Expr"
+            "title": "Source Dataset",
+            "description": "Path or expression pointing to the source directory or archive file",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           }
         },
         "definitions": {
@@ -2043,14 +2271,15 @@
       "description": "Extracts properties from a file",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FilePropertyExtractor",
+        "title": "FilePropertyExtractor Parameters",
+        "description": "Configuration for extracting file system properties from files.",
         "type": "object",
         "required": [
           "filePathAttribute"
         ],
         "properties": {
           "filePathAttribute": {
-            "title": "Attribute to extract file path from",
+            "description": "Attribute name containing the file path to analyze for properties",
             "type": "string"
           }
         }
@@ -2083,6 +2312,8 @@
             ],
             "properties": {
               "dataset": {
+                "title": "File Path",
+                "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Expr"
@@ -2099,6 +2330,8 @@
                 ]
               },
               "inline": {
+                "title": "Inline Content",
+                "description": "Expression that returns the file content as text instead of reading from a file path",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Expr"
@@ -2109,6 +2342,8 @@
                 ]
               },
               "offset": {
+                "title": "Header Row Offset",
+                "description": "Skip this many rows from the beginning to find the header row (0 = first row is header)",
                 "type": [
                   "integer",
                   "null"
@@ -2126,6 +2361,8 @@
             ],
             "properties": {
               "dataset": {
+                "title": "File Path",
+                "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Expr"
@@ -2142,6 +2379,8 @@
                 ]
               },
               "inline": {
+                "title": "Inline Content",
+                "description": "Expression that returns the file content as text instead of reading from a file path",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Expr"
@@ -2152,6 +2391,8 @@
                 ]
               },
               "offset": {
+                "title": "Header Row Offset",
+                "description": "Skip this many rows from the beginning to find the header row (0 = first row is header)",
                 "type": [
                   "integer",
                   "null"
@@ -2169,6 +2410,8 @@
             ],
             "properties": {
               "dataset": {
+                "title": "File Path",
+                "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Expr"
@@ -2185,6 +2428,8 @@
                 ]
               },
               "inline": {
+                "title": "Inline Content",
+                "description": "Expression that returns the file content as text instead of reading from a file path",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Expr"
@@ -2198,12 +2443,15 @@
           },
           {
             "title": "CityGML",
+            "description": "Configuration for reading CityGML files as a data source.",
             "type": "object",
             "required": [
               "format"
             ],
             "properties": {
               "dataset": {
+                "title": "File Path",
+                "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Expr"
@@ -2226,6 +2474,8 @@
                 ]
               },
               "inline": {
+                "title": "Inline Content",
+                "description": "Expression that returns the file content as text instead of reading from a file path",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Expr"
@@ -2245,6 +2495,8 @@
             ],
             "properties": {
               "dataset": {
+                "title": "File Path",
+                "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Expr"
@@ -2261,6 +2513,8 @@
                 ]
               },
               "inline": {
+                "title": "Inline Content",
+                "description": "Expression that returns the file content as text instead of reading from a file path",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Expr"
@@ -2294,9 +2548,12 @@
       "description": "Writes features to a file",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FileWriterParam",
+        "title": "File Writer Parameters",
+        "description": "Configure the output file format and destination for writing features",
         "oneOf": [
           {
+            "title": "File Writer Common Parameters",
+            "description": "Common parameters shared across all file format types",
             "type": "object",
             "required": [
               "format",
@@ -2310,11 +2567,19 @@
                 ]
               },
               "output": {
-                "$ref": "#/definitions/Expr"
+                "title": "Output Path",
+                "description": "Expression for the output file path where features will be written",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
               }
             }
           },
           {
+            "title": "File Writer Common Parameters",
+            "description": "Common parameters shared across all file format types",
             "type": "object",
             "required": [
               "format",
@@ -2328,11 +2593,19 @@
                 ]
               },
               "output": {
-                "$ref": "#/definitions/Expr"
+                "title": "Output Path",
+                "description": "Expression for the output file path where features will be written",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
               }
             }
           },
           {
+            "title": "File Writer Common Parameters",
+            "description": "Common parameters shared across all file format types",
             "type": "object",
             "required": [
               "format",
@@ -2346,11 +2619,19 @@
                 ]
               },
               "output": {
-                "$ref": "#/definitions/Expr"
+                "title": "Output Path",
+                "description": "Expression for the output file path where features will be written",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
               }
             }
           },
           {
+            "title": "File Writer Common Parameters",
+            "description": "Common parameters shared across all file format types",
             "type": "object",
             "required": [
               "format",
@@ -2374,11 +2655,19 @@
                 ]
               },
               "output": {
-                "$ref": "#/definitions/Expr"
+                "title": "Output Path",
+                "description": "Expression for the output file path where features will be written",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
               }
             }
           },
           {
+            "title": "File Writer Common Parameters",
+            "description": "Common parameters shared across all file format types",
             "type": "object",
             "required": [
               "format",
@@ -2392,7 +2681,13 @@
                 ]
               },
               "output": {
-                "$ref": "#/definitions/Expr"
+                "title": "Output Path",
+                "description": "Expression for the output file path where features will be written",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
               },
               "sheetName": {
                 "type": [
@@ -2421,13 +2716,16 @@
     {
       "name": "GeoJsonReader",
       "type": "source",
-      "description": "Reads features from a geojson file",
+      "description": "Reads features from a GeoJSON file",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeoJsonReaderParam",
+        "title": "GeoJsonReader Parameters",
+        "description": "Configuration for reading GeoJSON files as geographic features.",
         "type": "object",
         "properties": {
           "dataset": {
+            "title": "File Path",
+            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
             "anyOf": [
               {
                 "$ref": "#/definitions/Expr"
@@ -2438,6 +2736,8 @@
             ]
           },
           "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
             "anyOf": [
               {
                 "$ref": "#/definitions/Expr"
@@ -2469,13 +2769,15 @@
       "description": "Writes features to a geojson file",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeoJsonWriterParam",
+        "title": "GeoJsonWriter Parameters",
+        "description": "Configuration for writing features to GeoJSON files.",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "groupBy": {
+            "description": "Optional attributes to group features by, creating separate files for each group",
             "type": [
               "array",
               "null"
@@ -2485,7 +2787,12 @@
             }
           },
           "output": {
-            "$ref": "#/definitions/Expr"
+            "description": "Output path or expression for the GeoJSON file to create",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           }
         },
         "definitions": {
@@ -2512,14 +2819,15 @@
       "description": "Coerces the geometry of a feature to a specific geometry",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeometryCoercer",
+        "title": "GeometryCoercer Parameters",
+        "description": "Configuration for coercing geometries to specific target types.",
         "type": "object",
         "required": [
           "coercerType"
         ],
         "properties": {
           "coercerType": {
-            "description": "The type of geometry to coerce to",
+            "description": "Target geometry type to coerce features to (e.g., LineString)",
             "allOf": [
               {
                 "$ref": "#/definitions/CoercerType"
@@ -2553,14 +2861,21 @@
       "description": "Extracts geometry from a feature and adds it as an attribute.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeometryExtractor",
+        "title": "Geometry Extractor Parameters",
+        "description": "Configure where to store the extracted geometry data as a compressed attribute",
         "type": "object",
         "required": [
           "outputAttribute"
         ],
         "properties": {
           "outputAttribute": {
-            "$ref": "#/definitions/Attribute"
+            "title": "Output Attribute",
+            "description": "Name of the attribute where the extracted geometry data will be stored as compressed JSON",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
           }
         },
         "definitions": {
@@ -2586,7 +2901,8 @@
       "description": "Filter geometry by type",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeometryFilterParam",
+        "title": "Geometry Filter Parameters",
+        "description": "Configure how to filter features based on their geometry type",
         "oneOf": [
           {
             "type": "object",
@@ -2672,14 +2988,21 @@
       "description": "Replaces the geometry of a feature with a new geometry.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeometryReplacer",
+        "title": "Geometry Replacer Parameters",
+        "description": "Configure which attribute contains the geometry data to replace the feature's current geometry",
         "type": "object",
         "required": [
           "sourceAttribute"
         ],
         "properties": {
           "sourceAttribute": {
-            "$ref": "#/definitions/Attribute"
+            "title": "Source Attribute",
+            "description": "Name of the attribute containing the compressed geometry data to use as the new geometry",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
           }
         },
         "definitions": {
@@ -2721,13 +3044,16 @@
       "description": "Validates the geometry of a feature",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeometryValidator",
+        "title": "Geometry Validator Parameters",
+        "description": "Configure which validation checks to perform on feature geometries",
         "type": "object",
         "required": [
           "validationTypes"
         ],
         "properties": {
           "validationTypes": {
+            "title": "Validation Types",
+            "description": "List of validation checks to perform on the geometry (duplicate points, corrupt geometry, self-intersection)",
             "type": "array",
             "items": {
               "$ref": "#/definitions/ValidationType"
@@ -2783,20 +3109,27 @@
       "description": "Writes features to a Gltf",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GltfWriterParam",
+        "title": "GltfWriter Parameters",
+        "description": "Configuration for writing features to GLTF 3D format.",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "attachTexture": {
+            "description": "Whether to attach texture information to the GLTF model",
             "type": [
               "boolean",
               "null"
             ]
           },
           "output": {
-            "$ref": "#/definitions/Expr"
+            "description": "Output path or expression for the GLTF file to create",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           }
         },
         "definitions": {
@@ -2820,14 +3153,21 @@
       "description": "Counts the number of holes in a geometry and adds it as an attribute.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "HoleCounterParam",
+        "title": "Hole Counter Parameters",
+        "description": "Configure where to store the count of holes found in polygon geometries",
         "type": "object",
         "required": [
           "outputAttribute"
         ],
         "properties": {
           "outputAttribute": {
-            "$ref": "#/definitions/Attribute"
+            "title": "Output Attribute",
+            "description": "Name of the attribute where the hole count will be stored as a number",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
           }
         },
         "definitions": {
@@ -2871,13 +3211,16 @@
       "description": "Reprojects the geometry of a feature to a specified coordinate system",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "HorizontalReprojectorParam",
+        "title": "Horizontal Reprojector Parameters",
+        "description": "Configure the target coordinate system for geometry reprojection",
         "type": "object",
         "required": [
           "epsgCode"
         ],
         "properties": {
           "epsgCode": {
+            "title": "EPSG Code",
+            "description": "Target coordinate system EPSG code for the reprojection",
             "type": "integer",
             "format": "uint16",
             "minimum": 0.0
@@ -2924,7 +3267,7 @@
     {
       "name": "JPStandardGridAccumulator",
       "type": "processor",
-      "description": "Divides the input geometry into Japanese standard (1km) mesh grid.",
+      "description": "Accumulates features on Japanese standard grid",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -2944,7 +3287,8 @@
       "description": "Intersection points are turned into point features that can contain the merged list of attributes of the original intersected lines.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "LineOnLineOverlayerParam",
+        "title": "LineOnLineOverlayer Parameters",
+        "description": "Configuration for finding intersection points between line features.",
         "type": "object",
         "required": [
           "tolerance"
@@ -2989,14 +3333,15 @@
       "description": "Explodes list attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ListExploder",
+        "title": "ListExploder Parameters",
+        "description": "Configuration for exploding array attributes into individual features.",
         "type": "object",
         "required": [
           "sourceAttribute"
         ],
         "properties": {
           "sourceAttribute": {
-            "description": "The attribute to explode",
+            "description": "Attribute containing the array to explode (each element becomes a separate feature)",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -3027,7 +3372,8 @@
       "description": "Writes features to a file",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "MVTWriterParam",
+        "title": "MVTWriter Parameters",
+        "description": "Configuration for writing features to Mapbox Vector Tiles (MVT) format.",
         "type": "object",
         "required": [
           "layerName",
@@ -3037,6 +3383,8 @@
         ],
         "properties": {
           "compressOutput": {
+            "title": "Compress Output",
+            "description": "Optional expression to determine whether to compress the output tiles",
             "anyOf": [
               {
                 "$ref": "#/definitions/Expr"
@@ -3047,20 +3395,36 @@
             ]
           },
           "layerName": {
-            "$ref": "#/definitions/Expr"
+            "title": "Layer Name",
+            "description": "Name of the layer within the MVT tiles",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           },
           "maxZoom": {
+            "title": "Maximum Zoom",
+            "description": "Maximum zoom level to generate tiles for",
             "type": "integer",
             "format": "uint8",
             "minimum": 0.0
           },
           "minZoom": {
+            "title": "Minimum Zoom",
+            "description": "Minimum zoom level to generate tiles for",
             "type": "integer",
             "format": "uint8",
             "minimum": 0.0
           },
           "output": {
-            "$ref": "#/definitions/Expr"
+            "title": "Output",
+            "description": "Output directory path or expression for the generated MVT tiles",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           }
         },
         "definitions": {
@@ -3114,10 +3478,13 @@
       "description": "Adds offsets to the feature's coordinates.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "OffsetterParam",
+        "title": "Offsetter Parameters",
+        "description": "Configure the X, Y, and Z coordinate offsets to apply to all geometry coordinates",
         "type": "object",
         "properties": {
           "offsetX": {
+            "title": "X Offset",
+            "description": "Offset to add to all X coordinates (longitude)",
             "type": [
               "number",
               "null"
@@ -3125,6 +3492,8 @@
             "format": "double"
           },
           "offsetY": {
+            "title": "Y Offset",
+            "description": "Offset to add to all Y coordinates (latitude)",
             "type": [
               "number",
               "null"
@@ -3132,6 +3501,8 @@
             "format": "double"
           },
           "offsetZ": {
+            "title": "Z Offset",
+            "description": "Offset to add to all Z coordinates (elevation)",
             "type": [
               "number",
               "null"
@@ -3157,14 +3528,21 @@
       "description": "Extracts the orientation of a geometry from a feature and adds it as an attribute.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "OrientationExtractorParam",
+        "title": "Orientation Extractor Parameters",
+        "description": "Configure where to store the extracted polygon orientation information",
         "type": "object",
         "required": [
           "outputAttribute"
         ],
         "properties": {
           "outputAttribute": {
-            "$ref": "#/definitions/Attribute"
+            "title": "Output Attribute",
+            "description": "Name of the attribute where the orientation (clockwise/counter_clockwise) will be stored",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
           }
         },
         "definitions": {
@@ -3442,7 +3820,7 @@
     {
       "name": "PLATEAU4.AttributeFlattener",
       "type": "processor",
-      "description": "Flatten attributes for building feature",
+      "description": "PLATEAU4 attribute flattener",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -3459,10 +3837,11 @@
     {
       "name": "PLATEAU4.CityCodeExtractor",
       "type": "processor",
-      "description": "Extracts Codelist",
+      "description": "Extracts city code from PLATEAU4 data",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "CityCodeExtractorParam",
+        "title": "CityCodeExtractor Parameters",
+        "description": "Configuration for extracting PLATEAU4 city code information from codelists.",
         "type": "object",
         "required": [
           "cityCodeAttribute",
@@ -3470,10 +3849,20 @@
         ],
         "properties": {
           "cityCodeAttribute": {
-            "$ref": "#/definitions/Attribute"
+            "description": "Attribute containing the city code to look up in codelists",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
           },
           "codelistsPathAttribute": {
-            "$ref": "#/definitions/Attribute"
+            "description": "Attribute containing the path to the PLATEAU codelists directory",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
           }
         },
         "definitions": {
@@ -3496,7 +3885,7 @@
     {
       "name": "PLATEAU4.DomainOfDefinitionValidator",
       "type": "processor",
-      "description": "Validates domain of definition of CityGML features",
+      "description": "Validates domain of definition for PLATEAU4",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -3504,7 +3893,8 @@
       ],
       "outputPorts": [
         "default",
-        "rejected"
+        "rejected",
+        "duplicateGmlIdStats"
       ],
       "categories": [
         "PLATEAU"
@@ -3513,10 +3903,11 @@
     {
       "name": "PLATEAU4.MaxLodExtractor",
       "type": "processor",
-      "description": "Extracts maxLod",
+      "description": "Extracts maximum Level of Detail for PLATEAU4",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "MaxLodExtractorParam",
+        "title": "MaxLodExtractor Parameters",
+        "description": "Configuration for extracting maximum LOD (Level of Detail) information from PLATEAU4 CityGML files.",
         "type": "object",
         "required": [
           "cityGmlPathAttribute",
@@ -3550,10 +3941,11 @@
     {
       "name": "PLATEAU4.MissingAttributeDetector",
       "type": "processor",
-      "description": "Detect missing attributes",
+      "description": "Detects missing attributes in PLATEAU4 data",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "MissingAttributeDetectorParam",
+        "title": "MissingAttributeDetector Parameters",
+        "description": "Configuration for detecting missing attributes in PLATEAU4 features.",
         "type": "object",
         "required": [
           "packageAttribute"
@@ -3576,7 +3968,9 @@
       "outputPorts": [
         "summary",
         "required",
-        "target"
+        "target",
+        "dataQualityC07",
+        "dataQualityC08"
       ],
       "categories": [
         "PLATEAU"
@@ -3585,10 +3979,11 @@
     {
       "name": "PLATEAU4.ObjectListExtractor",
       "type": "processor",
-      "description": "Extract object list",
+      "description": "Extracts object lists from PLATEAU4 data",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ObjectListExtractorParam",
+        "title": "ObjectListExtractor Parameters",
+        "description": "Configuration for extracting object lists from PLATEAU4 data.",
         "type": "object",
         "required": [
           "objectListPathAttribute"
@@ -3618,10 +4013,11 @@
     {
       "name": "PLATEAU4.UDXFolderExtractor",
       "type": "processor",
-      "description": "Extracts UDX folders from cityGML path",
+      "description": "Extracts UDX folders from PLATEAU4 data",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "UDXFolderExtractorParam",
+        "title": "UDXFolderExtractor Parameters",
+        "description": "Configuration for extracting UDX folder structure information from PLATEAU4 CityGML paths.",
         "type": "object",
         "required": [
           "cityGmlPath"
@@ -3712,7 +4108,8 @@
       "description": "Calls Rhai script",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "RhaiCallerParam",
+        "title": "RhaiCaller Parameters",
+        "description": "Configuration for executing Rhai scripts on features with conditional processing.",
         "type": "object",
         "required": [
           "isTarget",
@@ -3720,7 +4117,7 @@
         ],
         "properties": {
           "isTarget": {
-            "title": "Rhai script to determine if the feature is the target",
+            "description": "Rhai script expression to determine if the feature should be processed (returns boolean)",
             "allOf": [
               {
                 "$ref": "#/definitions/Expr"
@@ -3728,7 +4125,7 @@
             ]
           },
           "process": {
-            "title": "Rhai script to process the feature",
+            "description": "Rhai script expression to process and transform the feature when target condition is met",
             "allOf": [
               {
                 "$ref": "#/definitions/Expr"
@@ -3759,13 +4156,15 @@
       "description": "Writes features to a Shapefile",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ShapefileWriterParam",
+        "title": "ShapefileWriter Parameters",
+        "description": "Configuration for writing features to ESRI Shapefile format.",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "groupBy": {
+            "description": "Optional attributes to group features by, creating separate files for each group",
             "type": [
               "array",
               "null"
@@ -3775,7 +4174,12 @@
             }
           },
           "output": {
-            "$ref": "#/definitions/Expr"
+            "description": "Output path or expression for the Shapefile to create",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           }
         },
         "definitions": {
@@ -3799,10 +4203,11 @@
     {
       "name": "SqlReader",
       "type": "source",
-      "description": "Reads features from SQL",
+      "description": "Reads features from SQL database",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "SqlReaderParam",
+        "title": "SQL Reader Parameters",
+        "description": "Configure the SQL query and database connection for reading features from a database",
         "type": "object",
         "required": [
           "databaseUrl",
@@ -3810,7 +4215,8 @@
         ],
         "properties": {
           "databaseUrl": {
-            "description": "Database URL (e.g. `sqlite:///tests/sqlite/sqlite.db`, `mysql://user:password@localhost:3306/db`, `postgresql://user:password@localhost:5432/db`)",
+            "title": "Database URL",
+            "description": "Database connection URL (e.g. `sqlite:///tests/sqlite/sqlite.db`, `mysql://user:password@localhost:3306/db`, `postgresql://user:password@localhost:5432/db`)",
             "allOf": [
               {
                 "$ref": "#/definitions/Expr"
@@ -3818,7 +4224,13 @@
             ]
           },
           "sql": {
-            "$ref": "#/definitions/Expr"
+            "title": "SQL Query",
+            "description": "SQL query expression to execute for retrieving data",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           }
         },
         "definitions": {
@@ -3842,14 +4254,15 @@
       "description": "Calculates statistics of features",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "StatisticsCalculatorParam",
+        "title": "StatisticsCalculator Parameters",
+        "description": "Configuration for calculating statistical aggregations on feature attributes.",
         "type": "object",
         "required": [
           "calculations"
         ],
         "properties": {
           "aggregateAttribute": {
-            "title": "Attribute to aggregate by",
+            "description": "Attribute to group features by for aggregation",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -3860,7 +4273,7 @@
             ]
           },
           "aggregateName": {
-            "title": "Name of the attribute to aggregate by",
+            "description": "Name of the attribute containing the aggregate group name",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -3871,7 +4284,7 @@
             ]
           },
           "calculations": {
-            "title": "Calculations to perform",
+            "description": "List of statistical calculations to perform on grouped features",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Calculation"
@@ -3927,10 +4340,11 @@
     {
       "name": "SurfaceFootprintReplacer",
       "type": "processor",
-      "description": "Replace the geometry with its footprint",
+      "description": "Replace surface geometry with footprint",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "SurfaceFootprintReplacerParam",
+        "title": "SurfaceFootprintReplacer Parameters",
+        "description": "Configuration for replacing geometry with its footprint projection.",
         "type": "object",
         "properties": {
           "elevation": {
@@ -3978,7 +4392,8 @@
       "description": "Replaces a three Dimension box with a polygon.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ThreeDimensionBoxReplacer",
+        "title": "3D Box Replacer Parameters",
+        "description": "Configure which attributes contain the minimum and maximum coordinates for creating a 3D box",
         "type": "object",
         "required": [
           "maxX",
@@ -3990,22 +4405,58 @@
         ],
         "properties": {
           "maxX": {
-            "$ref": "#/definitions/Attribute"
+            "title": "Maximum X Attribute",
+            "description": "Name of attribute containing the maximum X coordinate",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
           },
           "maxY": {
-            "$ref": "#/definitions/Attribute"
+            "title": "Maximum Y Attribute",
+            "description": "Name of attribute containing the maximum Y coordinate",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
           },
           "maxZ": {
-            "$ref": "#/definitions/Attribute"
+            "title": "Maximum Z Attribute",
+            "description": "Name of attribute containing the maximum Z coordinate",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
           },
           "minX": {
-            "$ref": "#/definitions/Attribute"
+            "title": "Minimum X Attribute",
+            "description": "Name of attribute containing the minimum X coordinate",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
           },
           "minY": {
-            "$ref": "#/definitions/Attribute"
+            "title": "Minimum Y Attribute",
+            "description": "Name of attribute containing the minimum Y coordinate",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
           },
           "minZ": {
-            "$ref": "#/definitions/Attribute"
+            "title": "Minimum Z Attribute",
+            "description": "Name of attribute containing the minimum Z coordinate",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
           }
         },
         "definitions": {
@@ -4028,7 +4479,7 @@
     {
       "name": "ThreeDimensionPlanarityRotator",
       "type": "processor",
-      "description": "Rotates a single or a set of 2D geometries in 3D space to align them horizontally.",
+      "description": "Rotates planar surfaces in 3D",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -4048,7 +4499,8 @@
       "description": "Replaces a three Dimension box with a polygon.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ThreeDimensionRotatorParam",
+        "title": "3D Rotator Parameters",
+        "description": "Configure the 3D rotation parameters including axis, origin point, and angle",
         "type": "object",
         "required": [
           "angleDegree",
@@ -4061,25 +4513,67 @@
         ],
         "properties": {
           "angleDegree": {
-            "$ref": "#/definitions/Expr"
+            "title": "Angle in Degrees",
+            "description": "Rotation angle in degrees around the specified axis",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           },
           "directionX": {
-            "$ref": "#/definitions/Expr"
+            "title": "Direction X",
+            "description": "X component of the rotation axis direction vector",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           },
           "directionY": {
-            "$ref": "#/definitions/Expr"
+            "title": "Direction Y",
+            "description": "Y component of the rotation axis direction vector",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           },
           "directionZ": {
-            "$ref": "#/definitions/Expr"
+            "title": "Direction Z",
+            "description": "Z component of the rotation axis direction vector",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           },
           "originX": {
-            "$ref": "#/definitions/Expr"
+            "title": "Origin X",
+            "description": "X coordinate of the rotation origin point",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           },
           "originY": {
-            "$ref": "#/definitions/Expr"
+            "title": "Origin Y",
+            "description": "Y coordinate of the rotation origin point",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           },
           "originZ": {
-            "$ref": "#/definitions/Expr"
+            "title": "Origin Z",
+            "description": "Z coordinate of the rotation origin point",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           }
         },
         "definitions": {
@@ -4138,14 +4632,21 @@
       "description": "Reprojects the geometry of a feature to a specified coordinate system",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "VerticalReprojectorParam",
+        "title": "Vertical Reprojector Parameters",
+        "description": "Configure the type of vertical datum conversion to apply",
         "type": "object",
         "required": [
           "reprojectorType"
         ],
         "properties": {
           "reprojectorType": {
-            "$ref": "#/definitions/VerticalReprojectorType"
+            "title": "Reprojector Type",
+            "description": "The type of vertical coordinate transformation to apply",
+            "allOf": [
+              {
+                "$ref": "#/definitions/VerticalReprojectorType"
+              }
+            ]
           }
         },
         "definitions": {
@@ -4174,22 +4675,41 @@
       "description": "Compiles scripts into .wasm and runs at the wasm runtime",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "WasmRuntimeExecutorParam",
+        "title": "WasmRuntimeExecutor Parameters",
+        "description": "Configuration for compiling and executing scripts in WebAssembly runtime.",
         "type": "object",
         "required": [
           "processorType",
           "programmingLanguage",
-          "sourceCodeFilePath"
+          "source"
         ],
         "properties": {
           "processorType": {
-            "$ref": "#/definitions/ProcessorType"
+            "title": "Processor Type",
+            "description": "Type of processor to create (Source, Processor, or Sink)",
+            "allOf": [
+              {
+                "$ref": "#/definitions/ProcessorType"
+              }
+            ]
           },
           "programmingLanguage": {
-            "$ref": "#/definitions/ProgrammingLanguage"
+            "title": "Programming Language",
+            "description": "Programming language of the source script (currently supports Python)",
+            "allOf": [
+              {
+                "$ref": "#/definitions/ProgrammingLanguage"
+              }
+            ]
           },
-          "sourceCodeFilePath": {
-            "$ref": "#/definitions/Expr"
+          "source": {
+            "title": "Source Code",
+            "description": "Script source code or path to compile to WebAssembly",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           }
         },
         "definitions": {
@@ -4227,9 +4747,11 @@
       "description": "Fragment XML",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "XmlFragmenterParam",
+        "title": "XMLFragmenter Parameters",
+        "description": "Configuration for fragmenting XML documents into smaller pieces.",
         "oneOf": [
           {
+            "description": "URL-based source configuration for XML fragmenting",
             "type": "object",
             "required": [
               "attribute",
@@ -4339,7 +4861,8 @@
       "description": "Writes features to a zip file",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ZipFileWriterParam",
+        "title": "ZipFileWriter Parameters",
+        "description": "Configuration for creating ZIP archive files from features.",
         "type": "object",
         "required": [
           "output"

@@ -58,6 +58,11 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 
 	log.Infof("auth: config: %#v", authConfig)
 	authMiddleware := echo.WrapMiddleware(lo.Must(appx.AuthMiddleware(authConfig, adapter.ContextAuthInfo, true)))
+	// TODO: During migration, continue using this temporary middleware for selected GraphQL operations.
+	// After migration, this will become the standard authMiddleware and the function will be renamed accordingly.
+	tempNewAuthMiddlewares := newTempNewAuthMiddlewares(&tempNewAuthMiddlewaresParam{
+		GQLClient: cfg.AccountGQLClient,
+	})
 
 	// enable pprof
 	if e.Debug {
@@ -95,7 +100,12 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 
 	// authenticated routes
 	apiPrivate := api.Group("", privateCache)
-	apiPrivate.Use(authMiddleware, attachOpMiddleware(cfg))
+	apiPrivate.Use(
+		conditionalGraphQLAuthMiddleware(
+			[]echo.MiddlewareFunc{authMiddleware, attachOpMiddleware(cfg)},
+			tempNewAuthMiddlewares,
+		),
+	)
 	apiPrivate.POST("/signup", Signup())
 	apiPrivate.Any("/graphql", GraphqlAPI(cfg.Config.GraphQL, gqldev, origins))
 

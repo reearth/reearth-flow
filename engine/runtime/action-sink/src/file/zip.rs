@@ -84,6 +84,9 @@ struct ZipFileWriter {
     buffer: Vec<Uri>,
 }
 
+/// # ZipFileWriter Parameters
+///
+/// Configuration for creating ZIP archive files from features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct ZipFileWriterParam {

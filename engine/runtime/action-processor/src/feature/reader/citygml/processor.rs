@@ -27,7 +27,7 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads features from citygml file"
+        "Reads and processes features from CityGML files with optional flattening"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -71,10 +71,11 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
             .into());
         };
         let expr_engine = Arc::clone(&ctx.expr_engine);
-        let params = CompiledFeatureCityGmlReaderParam {
+        let compiled_params = CompiledFeatureCityGmlReaderParam {
             dataset: expr_engine
                 .compile(params.dataset.as_ref())
                 .map_err(|e| FeatureProcessorError::FileCityGmlReaderFactory(format!("{e:?}")))?,
+            original_dataset: params.dataset.clone(),
             flatten: params.flatten,
         };
         let threads_num = {
@@ -91,7 +92,7 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
             .unwrap();
         let process = FeatureCityGmlReader {
             global_params: with,
-            params,
+            params: compiled_params,
             join_handles: Vec::new(),
             thread_pool: Arc::new(parking_lot::Mutex::new(pool)),
         };
@@ -109,18 +110,24 @@ pub struct FeatureCityGmlReader {
     thread_pool: Arc<parking_lot::Mutex<rayon::ThreadPool>>,
 }
 
+/// # FeatureCityGmlReader Parameters
+///
+/// Configuration for reading and processing CityGML files as features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureCityGmlReaderParam {
-    /// # Dataset to read
+    /// # Dataset
+    /// Path or expression to the CityGML dataset file to be read
     dataset: Expr,
-    /// # Flatten the dataset
+    /// # Flatten
+    /// Whether to flatten the hierarchical structure of the CityGML data
     flatten: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
 struct CompiledFeatureCityGmlReaderParam {
     dataset: rhai::AST,
+    original_dataset: Expr,
     flatten: Option<bool>,
 }
 
@@ -139,6 +146,7 @@ impl Processor for FeatureCityGmlReader {
         let ctx = ctx.as_context();
         let global_params = self.global_params.clone();
         let dataset = self.params.dataset.clone();
+        let original_dataset = self.params.original_dataset.clone();
         let flatten = self.params.flatten;
         let pool = self.thread_pool.lock();
         let (tx, rx) = std::sync::mpsc::channel();
@@ -150,6 +158,7 @@ impl Processor for FeatureCityGmlReader {
                 fw,
                 feature,
                 dataset,
+                original_dataset,
                 flatten,
                 global_params.clone(),
             );

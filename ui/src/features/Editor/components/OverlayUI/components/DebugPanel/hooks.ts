@@ -1,3 +1,4 @@
+import bbox from "@turf/bbox";
 import {
   MouseEvent,
   useCallback,
@@ -20,6 +21,11 @@ export default () => {
   const [fullscreenDebug, setFullscreenDebug] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [minimized, setMinimized] = useState(false);
+  const [enableClustering, setEnableClustering] = useState<boolean>(true);
+  const [selectedFeature, setSelectedFeature] = useState<any>(null);
+  const [convertedSelectedFeature, setConvertedSelectedFeature] =
+    useState(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
 
   const [currentProject] = useCurrentProject();
 
@@ -195,10 +201,54 @@ export default () => {
   const handleFullscreenExpand = () => {
     setFullscreenDebug((prev) => !prev);
   };
+
+  const handleFlyToSelectedFeature = useCallback(
+    (selectedFeature: any) => {
+      if (mapRef.current && selectedFeature) {
+        try {
+          const [minLng, minLat, maxLng, maxLat] = bbox(selectedFeature);
+          mapRef.current.fitBounds(
+            [
+              [minLng, minLat],
+              [maxLng, maxLat],
+            ],
+            { padding: 0, duration: 500, maxZoom: 15 },
+          );
+        } catch (err) {
+          console.error("Error computing bbox for selectedFeature:", err);
+        }
+      }
+    },
+    [mapRef],
+  );
+
+  const handleRowSingleClick = useCallback(
+    (value: any) => {
+      setEnableClustering(false);
+      setSelectedFeature(value);
+    },
+    [setSelectedFeature, setEnableClustering],
+  );
+
+  const handleRowDoubleClick = useCallback(
+    (value: any) => {
+      setEnableClustering(false);
+      setSelectedFeature(value);
+      handleFlyToSelectedFeature(convertedSelectedFeature);
+    },
+    [
+      convertedSelectedFeature,
+      handleFlyToSelectedFeature,
+      setSelectedFeature,
+      setEnableClustering,
+    ],
+  );
+
   return {
     debugJobId,
     debugJobState,
     fileType,
+    mapRef,
     fullscreenDebug,
     expanded,
     minimized,
@@ -207,11 +257,19 @@ export default () => {
     dataURLs,
     selectedOutputData,
     isLoadingData,
+    enableClustering,
+    selectedFeature,
+    setSelectedFeature,
+    setConvertedSelectedFeature,
+    setEnableClustering,
     handleFullscreenExpand,
     handleExpand,
     handleMinimize,
     handleTabChange,
     handleShowTempPossibleIssuesDialogClose,
     handleSelectedDataChange,
+    handleRowSingleClick,
+    handleRowDoubleClick,
+    handleFlyToSelectedFeature,
   };
 };

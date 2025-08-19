@@ -9,6 +9,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/asyncq"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/auth0"
+	"github.com/reearth/reearth-flow/api/internal/infrastructure/cms"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/fs"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcpbatch"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcpscheduler"
@@ -92,6 +93,9 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 	auth0 := auth0.New(conf.Auth0.Domain, conf.Auth0.ClientID, conf.Auth0.ClientSecret)
 	gateways.Authenticator = auth0
 	acGateways.Authenticator = auth0
+
+	// CMS
+	gateways.CMS = initCMS(ctx, conf)
 
 	return repos, gateways, accountRepos, acGateways
 }
@@ -183,8 +187,10 @@ func initGCPBatch(ctx context.Context, conf *config.Config) (gateway.Batch, erro
 		BinaryPath:                      conf.Worker_BinaryPath,
 		BootDiskSizeGB:                  bootDiskSize,
 		BootDiskType:                    conf.Worker_BootDiskType,
+		ChannelBufferSize:               conf.Worker_ChannelBufferSize,
 		ComputeCpuMilli:                 computeCpuMilli,
 		ComputeMemoryMib:                computeMemoryMib,
+		FeatureFlushThreshold:           conf.Worker_FeatureFlushThreshold,
 		ImageURI:                        conf.Worker_ImageURL,
 		MachineType:                     conf.Worker_MachineType,
 		NodeStatusPropagationDelayMS:    conf.Worker_NodeStatusPropagationDelayMS,
@@ -196,6 +202,7 @@ func initGCPBatch(ctx context.Context, conf *config.Config) (gateway.Batch, erro
 		Region:                          conf.GCPRegion,
 		SAEmail:                         conf.Worker_BatchSAEmail,
 		TaskCount:                       taskCount,
+		ThreadPoolSize:                  conf.Worker_ThreadPoolSize,
 	}
 
 	return gcpbatch.NewBatch(ctx, batchConfig)
@@ -239,4 +246,24 @@ func initScheduler(ctx context.Context, conf *config.Config) gateway.Scheduler {
 
 	log.Infofc(ctx, "Scheduler enabled for project %s in region %s targeting %s", conf.GCPProject, conf.GCPRegion, conf.Host)
 	return scheduler
+}
+
+func initCMS(ctx context.Context, conf *config.Config) gateway.CMS {
+	if conf.CMS_Endpoint == "" {
+		log.Info("CMS disabled: endpoint not configured")
+		return nil
+	}
+
+	if conf.CMS_Token == "" {
+		log.Warn("CMS: no authentication token provided")
+	}
+
+	cmsClient, err := cms.NewGRPCClient(conf.CMS_Endpoint, conf.CMS_Token, conf.CMS_UseTLS)
+	if err != nil {
+		log.Errorf("failed to create CMS client: %v", err)
+		return nil
+	}
+
+	log.Infofc(ctx, "CMS enabled: endpoint=%s", conf.CMS_Endpoint)
+	return cmsClient
 }

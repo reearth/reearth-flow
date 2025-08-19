@@ -11,7 +11,6 @@ import { ArrayFieldItemTemplate } from "./ArrayFieldItemTemplate";
 import { ArrayFieldTemplate } from "./ArrayFieldTemplate";
 import { BaseInputTemplate } from "./BaseInputTemplate";
 import {
-  // SubmitButton,
   AddButton,
   CopyButton,
   MoveDownButton,
@@ -26,27 +25,24 @@ import { FieldTemplate } from "./FieldTemplate";
 import { ObjectFieldTemplate } from "./ObjectFieldTemplate";
 import { TitleFieldTemplate } from "./TitleFieldTemplate";
 
-type ModifiedButtonTemplates<
-  T,
-  S extends StrictRJSFSchema,
-  F extends FormContextType,
-> = Omit<TemplatesType<T, S, F>["ButtonTemplates"], "SubmitButton"> & {
-  SubmitButton?: ComponentType<SubmitButtonProps<T, S, F>>;
-};
-
-type ModifiedTemplatesType<
+type SchemaFormTemplates<
   T,
   S extends StrictRJSFSchema,
   F extends FormContextType,
 > = Omit<TemplatesType<T, S, F>, "ButtonTemplates"> & {
-  ButtonTemplates: ModifiedButtonTemplates<T, S, F>;
+  ButtonTemplates: Omit<
+    TemplatesType<T, S, F>["ButtonTemplates"],
+    "SubmitButton"
+  > & {
+    SubmitButton?: ComponentType<SubmitButtonProps<T, S, F>>;
+  };
 };
 
 export function generateTemplates<
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
   F extends FormContextType = FormContextType,
->(): Partial<ModifiedTemplatesType<T, S, F>> {
+>(): Partial<SchemaFormTemplates<T, S, F>> {
   return {
     TitleFieldTemplate,
     DescriptionFieldTemplate,
@@ -59,7 +55,7 @@ export function generateTemplates<
     FieldHelpTemplate,
     ObjectFieldTemplate,
     ButtonTemplates: {
-      // SubmitButton,
+      // SubmitButton intentionally omitted - handled outside SchemaForm
       AddButton,
       CopyButton,
       MoveDownButton,

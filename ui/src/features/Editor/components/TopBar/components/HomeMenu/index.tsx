@@ -1,7 +1,11 @@
 import {
   ArrowSquareOutIcon,
+  BookIcon,
   BroadcastIcon,
   CaretDownIcon,
+  GavelIcon,
+  HardDriveIcon,
+  InfoIcon,
   KeyboardIcon,
   RocketIcon,
   SignOutIcon,
@@ -52,9 +56,10 @@ const HomeMenu: React.FC<Props> = ({
   const { logout: handleLogout } = useAuth();
 
   const handleNavigationToDashboard = useCallback(
-    (page: "projects" | "deployments" | "triggers" | "jobs") => () => {
-      navigate({ to: `/workspaces/${workspaceId}/${page}` });
-    },
+    (page: "projects" | "deployments" | "triggers" | "jobs" | "assets") =>
+      () => {
+        navigate({ to: `/workspaces/${workspaceId}/${page}` });
+      },
     [workspaceId, navigate],
   );
 
@@ -65,6 +70,10 @@ const HomeMenu: React.FC<Props> = ({
 
   const handleTosPageOpen = openLinkInNewTab(tosUrl ?? "");
   const handleDocumentationPageOpen = openLinkInNewTab(documentationUrl ?? "");
+
+  const handleAboutDialogOpen = useCallback(() => {
+    alert(t("About dialog is not implemented yet."));
+  }, [t]);
 
   useShortcuts([
     {
@@ -77,16 +86,16 @@ const HomeMenu: React.FC<Props> = ({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <div className="group flex h-full cursor-pointer items-center gap-2 self-start pr-2 pl-4 hover:bg-primary">
-            <FlowLogo className="size-6 transition-all group-hover:text-[#46ce7c]" />
-            <CaretDownIcon weight="thin" />
+          <div className="group flex cursor-pointer items-center gap-2 self-center rounded-md p-2 hover:bg-primary">
+            <FlowLogo className="size-7 transition-all group-hover:text-[#46ce7c]" />
+            <CaretDownIcon />
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="min-w-[175px]"
+          className="min-w-[175px] bg-primary/50 backdrop-blur"
           side={dropdownPosition}
           align={dropdownAlign}
-          sideOffset={dropdownPositionOffset ?? 4}
+          sideOffset={dropdownPositionOffset ?? 5}
           alignOffset={dropdownAlignOffset ?? 0}>
           <DropdownMenuLabel>{t("Dashboard")}</DropdownMenuLabel>
           {/* <DropdownMenuSeparator /> */}
@@ -119,10 +128,18 @@ const HomeMenu: React.FC<Props> = ({
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="gap-3"
+            onClick={handleNavigationToDashboard("assets")}>
+            <HardDriveIcon weight="light" />
+            <p>{t("Assets")}</p>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="gap-3"
             onClick={() => setOpenAccountUpdateDialog(true)}>
             <UserIcon weight="light" />
             <p>{t("Account Settings")}</p>
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem
             className="gap-3"
             onClick={() => setOpenShortcutDialog(true)}>
@@ -132,19 +149,31 @@ const HomeMenu: React.FC<Props> = ({
           <DropdownMenuSeparator />
           {tosUrl && (
             <DropdownMenuItem className="gap-3" onClick={handleTosPageOpen}>
-              <ArrowSquareOutIcon weight="light" />
-              <p>{t("Terms of Service")}</p>
+              <GavelIcon weight="light" />
+              <div className="flex items-center gap-1">
+                <p>{t("Terms of Service")}</p>
+                <ArrowSquareOutIcon className="size-4" />
+              </div>
             </DropdownMenuItem>
           )}
           {documentationUrl && (
             <DropdownMenuItem
               className="gap-3"
               onClick={handleDocumentationPageOpen}>
-              <ArrowSquareOutIcon weight="light" />
-              <p>{t("Documentation")}</p>
+              <BookIcon weight="light" />
+              <div className="flex items-center gap-1">
+                <p>{t("Documentation")}</p>
+                <ArrowSquareOutIcon weight="light" />
+              </div>
             </DropdownMenuItem>
           )}
-          {/* <UserMenu className="w-full" /> */}
+          <DropdownMenuItem
+            className="gap-3"
+            onClick={handleAboutDialogOpen}
+            disabled>
+            <InfoIcon weight="light" />
+            <p>{t("About")}</p>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="gap-3 text-warning"

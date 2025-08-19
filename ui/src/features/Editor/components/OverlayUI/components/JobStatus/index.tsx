@@ -6,7 +6,7 @@ const JobStatus: React.FC = () => {
   const t = useT();
   const { jobStatus } = useHooks();
   return jobStatus ? (
-    <div className="flex items-center gap-2 rounded-md bg-secondary p-4">
+    <div className="flex items-center gap-2 rounded-md border border-primary bg-secondary/70 p-4 shadow-md shadow-secondary backdrop-blur-xs">
       <p className="text-xs font-light">{t("Debug Status: ")}</p>
       <p className="text-xs font-thin">{jobStatus ?? t("idle")}</p>
       <div

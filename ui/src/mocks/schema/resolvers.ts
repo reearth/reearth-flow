@@ -1,19 +1,35 @@
-import { MockAsset, mockAssets } from "../data/asset";
-import { mockDeployments, type MockDeployment } from "../data/deployments";
-import { mockJobs, mockLogs, type MockJob, type MockLog } from "../data/jobs";
 import {
-  mockProjects,
-  type MockProject,
-  type MockParameter,
-} from "../data/projects";
+  AssetFragment,
+  CmsItemFragment,
+  CmsModelFragment,
+  CmsProjectFragment,
+  DeploymentFragment,
+  JobFragment,
+  JobStatus as GraphqlJobStatus,
+  LogFragment,
+  LogLevel as GraphqlLogLevel,
+  ProjectFragment,
+  WorkspaceFragment,
+  Role as GraphqlRole,
+  User as GraphqlUser,
+} from "@flow/lib/gql/__gen__/graphql";
+
+import { mockAssets } from "../data/asset";
+import {
+  mockCmsProjects,
+  mockCmsModels,
+  mockCmsItems,
+} from "../data/cmsIntegration";
+import { mockDeployments } from "../data/deployments";
+import { mockJobs, mockLogs } from "../data/jobs";
+import { mockProjects } from "../data/projects";
 import {
   mockUsers,
   getCurrentUser,
   getCurrentMe,
-  type MockUser,
   type MockMe,
 } from "../data/users";
-import { mockWorkspaces, type MockWorkspace } from "../data/workspaces";
+import { mockWorkspaces } from "../data/workspaces";
 
 // In-memory storage for mutations
 let users = [...mockUsers];
@@ -23,6 +39,9 @@ let projects = [...mockProjects];
 const jobs = [...mockJobs];
 let deployments = [...mockDeployments];
 const logs = [...mockLogs];
+const cmsProjects = [...mockCmsProjects];
+const cmsModels = [...mockCmsModels];
+const cmsItems = [...mockCmsItems];
 
 // Helper functions
 const generateId = (prefix: string) =>
@@ -45,12 +64,14 @@ const paginateResults = <T>(
   if (keyword && keyword.trim() !== "") {
     filteredItems = filteredItems.filter((item) => {
       // Search through all string properties of the item
-      return Object.entries(item as any).some(([_, value]) => {
-        if (typeof value === "string") {
-          return value.toLowerCase().includes(keyword.toLowerCase());
-        }
-        return false;
-      });
+      return Object.entries(item as Record<string, unknown>).some(
+        ([_, value]) => {
+          if (typeof value === "string") {
+            return value.toLowerCase().includes(keyword.toLowerCase());
+          }
+          return false;
+        },
+      );
     });
   }
 
@@ -123,7 +144,8 @@ export const resolvers = {
       if (obj.email && obj.auths) return "Me";
       if (obj.email) return "User";
       if (obj.personal !== undefined) return "Workspace";
-      if (obj.workspaceId && obj.parameters) return "Project";
+      if (obj.workspaceId && obj.name && obj.description !== undefined)
+        return "Project";
       if (
         obj.status &&
         ["PENDING", "RUNNING", "COMPLETED", "FAILED", "CANCELLED"].includes(
@@ -140,10 +162,10 @@ export const resolvers = {
 
   // Type resolvers
   User: {
-    id: (user: MockUser) => user.id,
-    name: (user: MockUser) => user.name,
-    email: (user: MockUser) => user.email,
-    host: (user: MockUser) => user.host,
+    id: (user: GraphqlUser) => user.id,
+    name: (user: GraphqlUser) => user.name,
+    email: (user: GraphqlUser) => user.email,
+    host: (user: GraphqlUser) => user.host,
   },
 
   Me: {
@@ -159,19 +181,17 @@ export const resolvers = {
   },
 
   Workspace: {
-    id: (workspace: MockWorkspace) => workspace.id,
-    name: (workspace: MockWorkspace) => workspace.name,
-    personal: (workspace: MockWorkspace) => workspace.personal,
-    members: (workspace: MockWorkspace) =>
+    id: (workspace: WorkspaceFragment) => workspace.id,
+    name: (workspace: WorkspaceFragment) => workspace.name,
+    personal: (workspace: WorkspaceFragment) => workspace.personal,
+    members: (workspace: WorkspaceFragment) =>
       workspace.members.map((member) => ({
         ...member,
         user: users.find((u) => u.id === member.userId),
       })),
-    projects: (workspace: MockWorkspace, args: any) => {
+    projects: (workspace: WorkspaceFragment, args: any) => {
       const workspaceProjects = projects.filter(
-        (p) =>
-          p.workspaceId === workspace.id &&
-          (args.includeArchived || !p.isArchived),
+        (p) => p.workspaceId === workspace.id,
       );
 
       if (args.pagination) {
@@ -188,7 +208,7 @@ export const resolvers = {
         totalCount: workspaceProjects.length,
       };
     },
-    assets: (workspace: MockWorkspace, args: any) => {
+    assets: (workspace: WorkspaceFragment, args: any) => {
       const workspaceAssets = assets.filter(
         (asset) => asset.workspaceId === workspace.id,
       );
@@ -210,53 +230,45 @@ export const resolvers = {
   },
 
   Project: {
-    id: (project: MockProject) => project.id,
-    name: (project: MockProject) => project.name,
-    description: (project: MockProject) => project.description,
-    workspaceId: (project: MockProject) => project.workspaceId,
-    isArchived: (project: MockProject) => project.isArchived,
-    isBasicAuthActive: (project: MockProject) => project.isBasicAuthActive,
-    basicAuthUsername: (project: MockProject) => project.basicAuthUsername,
-    basicAuthPassword: (project: MockProject) => project.basicAuthPassword,
-    sharedToken: (project: MockProject) => project.sharedToken,
-    version: (project: MockProject) => project.version,
-    parameters: (project: MockProject) => project.parameters,
-    createdAt: (project: MockProject) => project.createdAt,
-    updatedAt: (project: MockProject) => project.updatedAt,
-    workspace: (project: MockProject) =>
+    id: (project: ProjectFragment) => project.id,
+    name: (project: ProjectFragment) => project.name,
+    description: (project: ProjectFragment) => project.description,
+    workspaceId: (project: ProjectFragment) => project.workspaceId,
+    sharedToken: (project: ProjectFragment) => project.sharedToken,
+    createdAt: (project: ProjectFragment) => project.createdAt,
+    updatedAt: (project: ProjectFragment) => project.updatedAt,
+    workspace: (project: ProjectFragment) =>
       workspaces.find((w) => w.id === project.workspaceId),
-    deployment: (project: MockProject) =>
-      deployments.find((d) => d.projectId === project.id && d.isHead),
+    deployment: (project: ProjectFragment) =>
+      deployments.find((d) => d.projectId === project.id),
   },
 
-  Parameter: {
-    id: (param: MockParameter) => param.id,
-    name: (param: MockParameter) => param.name,
-    type: (param: MockParameter) => param.type,
-    value: (param: MockParameter) => param.value,
-    required: (param: MockParameter) => param.required,
-    index: (param: MockParameter) => param.index,
-    projectId: (param: MockParameter) => param.projectId,
-    createdAt: (param: MockParameter) => param.createdAt,
-    updatedAt: (param: MockParameter) => param.updatedAt,
-  },
+  // Parameter: {
+  //   id: (param: MockParameter) => param.id,
+  //   name: (param: MockParameter) => param.name,
+  //   type: (param: MockParameter) => param.type,
+  //   value: (param: MockParameter) => param.value,
+  //   required: (param: MockParameter) => param.required,
+  //   index: (param: MockParameter) => param.index,
+  //   projectId: (param: MockParameter) => param.projectId,
+  //   createdAt: (param: MockParameter) => param.createdAt,
+  //   updatedAt: (param: MockParameter) => param.updatedAt,
+  // },
 
   Job: {
-    id: (job: MockJob) => job.id,
-    deploymentId: (job: MockJob) => job.deploymentId,
-    workspaceId: (job: MockJob) => job.workspaceId,
-    status: (job: MockJob) => job.status,
-    debug: (job: MockJob) => job.debug,
-    startedAt: (job: MockJob) => job.startedAt,
-    completedAt: (job: MockJob) => job.completedAt,
-    logsURL: (job: MockJob) => job.logsURL,
-    workerLogsURL: (job: MockJob) => job.workerLogsURL,
-    outputURLs: (job: MockJob) => job.outputURLs,
-    deployment: (job: MockJob) =>
-      deployments.find((d) => d.id === job.deploymentId),
-    workspace: (job: MockJob) =>
+    id: (job: JobFragment) => job.id,
+    workspaceId: (job: JobFragment) => job.workspaceId,
+    status: (job: JobFragment) => job.status,
+    debug: (job: JobFragment) => job.debug,
+    startedAt: (job: JobFragment) => job.startedAt,
+    completedAt: (job: JobFragment) => job.completedAt,
+    logsURL: (job: JobFragment) => job.logsURL,
+    outputURLs: (job: JobFragment) => job.outputURLs,
+    deployment: (job: JobFragment) =>
+      deployments.find((d) => d.id === job.deployment?.id),
+    workspace: (job: JobFragment) =>
       workspaces.find((w) => w.id === job.workspaceId),
-    logs: (job: MockJob, args: { since: string }) => {
+    logs: (job: JobFragment, args: { since: string }) => {
       return logs.filter(
         (log) => log.jobId === job.id && log.timestamp >= args.since,
       );
@@ -264,40 +276,85 @@ export const resolvers = {
   },
 
   Log: {
-    jobId: (log: MockLog) => log.jobId,
-    nodeId: (log: MockLog) => log.nodeId,
-    timestamp: (log: MockLog) => log.timestamp,
-    logLevel: (log: MockLog) => log.logLevel,
-    message: (log: MockLog) => log.message,
+    jobId: (log: LogFragment) => log.jobId,
+    nodeId: (log: LogFragment) => log.nodeId,
+    timestamp: (log: LogFragment) => log.timestamp,
+    logLevel: (log: LogFragment) => log.logLevel,
+    message: (log: LogFragment) => log.message,
   },
 
   Deployment: {
-    id: (deployment: MockDeployment) => deployment.id,
-    projectId: (deployment: MockDeployment) => deployment.projectId,
-    workspaceId: (deployment: MockDeployment) => deployment.workspaceId,
-    version: (deployment: MockDeployment) => deployment.version,
-    description: (deployment: MockDeployment) => deployment.description,
-    isHead: (deployment: MockDeployment) => deployment.isHead,
-    headId: (deployment: MockDeployment) => deployment.headId,
-    workflowUrl: (deployment: MockDeployment) => deployment.workflowUrl,
-    createdAt: (deployment: MockDeployment) => deployment.createdAt,
-    updatedAt: (deployment: MockDeployment) => deployment.updatedAt,
-    project: (deployment: MockDeployment) =>
+    id: (deployment: DeploymentFragment) => deployment.id,
+    projectId: (deployment: DeploymentFragment) => deployment.projectId,
+    workspaceId: (deployment: DeploymentFragment) => deployment.workspaceId,
+    version: (deployment: DeploymentFragment) => deployment.version,
+    description: (deployment: DeploymentFragment) => deployment.description,
+    workflowUrl: (deployment: DeploymentFragment) => deployment.workflowUrl,
+    createdAt: (deployment: DeploymentFragment) => deployment.createdAt,
+    updatedAt: (deployment: DeploymentFragment) => deployment.updatedAt,
+    project: (deployment: DeploymentFragment) =>
       projects.find((p) => p.id === deployment.projectId),
-    workspace: (deployment: MockDeployment) =>
+    workspace: (deployment: DeploymentFragment) =>
       workspaces.find((w) => w.id === deployment.workspaceId),
   },
 
   Asset: {
-    id: (asset: MockAsset) => asset.id,
-    name: (asset: MockAsset) => asset.name,
-    workspaceId: (asset: MockAsset) => asset.workspaceId,
-    createdAt: (asset: MockAsset) => asset.createdAt,
-    contentType: (asset: MockAsset) => asset.contentType,
-    size: (asset: MockAsset) => asset.size,
-    url: (asset: MockAsset) => asset.url,
+    id: (asset: AssetFragment) => asset.id,
+    name: (asset: AssetFragment) => asset.name,
+    workspaceId: (asset: AssetFragment) => asset.workspaceId,
+    createdAt: (asset: AssetFragment) => asset.createdAt,
+    contentType: (asset: AssetFragment) => asset.contentType,
+    size: (asset: AssetFragment) => asset.size,
+    url: (asset: AssetFragment) => asset.url,
     // workspace: (asset: MockAsset) =>
     //   workspaces.find((w) => w.id === asset.workspaceId),
+  },
+
+  // CMS Type resolvers
+  CMSProject: {
+    id: (cmsProject: CmsProjectFragment) => cmsProject.id,
+    name: (cmsProject: CmsProjectFragment) => cmsProject.name,
+    alias: (cmsProject: CmsProjectFragment) => cmsProject.alias,
+    description: (cmsProject: CmsProjectFragment) => cmsProject.description,
+    license: (cmsProject: CmsProjectFragment) => cmsProject.license,
+    readme: (cmsProject: CmsProjectFragment) => cmsProject.readme,
+    workspaceId: (cmsProject: CmsProjectFragment) => cmsProject.workspaceId,
+    visibility: (cmsProject: CmsProjectFragment) => cmsProject.visibility,
+    createdAt: (cmsProject: CmsProjectFragment) => cmsProject.createdAt,
+    updatedAt: (cmsProject: CmsProjectFragment) => cmsProject.updatedAt,
+  },
+
+  CMSModel: {
+    id: (cmsModel: CmsModelFragment) => cmsModel.id,
+    projectId: (cmsModel: CmsModelFragment) => cmsModel.projectId,
+    name: (cmsModel: CmsModelFragment) => cmsModel.name,
+    description: (cmsModel: CmsModelFragment) => cmsModel.description,
+    key: (cmsModel: CmsModelFragment) => cmsModel.key,
+    schema: (cmsModel: CmsModelFragment) => cmsModel.schema,
+    publicApiEp: (cmsModel: CmsModelFragment) => cmsModel.publicApiEp,
+    editorUrl: (cmsModel: CmsModelFragment) => cmsModel.editorUrl,
+    createdAt: (cmsModel: CmsModelFragment) => cmsModel.createdAt,
+    updatedAt: (cmsModel: CmsModelFragment) => cmsModel.updatedAt,
+  },
+
+  CMSSchema: {
+    schemaId: (schema: any) => schema.schemaId,
+    fields: (schema: any) => schema.fields,
+  },
+
+  CMSSchemaField: {
+    fieldId: (field: any) => field.fieldId,
+    name: (field: any) => field.name,
+    type: (field: any) => field.type,
+    key: (field: any) => field.key,
+    description: (field: any) => field.description,
+  },
+
+  CMSItem: {
+    id: (cmsItem: CmsItemFragment) => cmsItem.id,
+    fields: (cmsItem: CmsItemFragment) => cmsItem.fields,
+    createdAt: (cmsItem: CmsItemFragment) => cmsItem.createdAt,
+    updatedAt: (cmsItem: CmsItemFragment) => cmsItem.updatedAt,
   },
 
   // Query resolvers
@@ -348,9 +405,7 @@ export const resolvers = {
       args: { workspaceId: string; includeArchived?: boolean; pagination: any },
     ) => {
       const workspaceProjects = projects.filter(
-        (p) =>
-          p.workspaceId === args.workspaceId &&
-          (args.includeArchived || !p.isArchived),
+        (p) => p.workspaceId === args.workspaceId,
       );
       return paginateResults(workspaceProjects, args.pagination);
     },
@@ -408,10 +463,7 @@ export const resolvers = {
     deploymentHead: (_: any, args: { input: any }) => {
       const { workspaceId, projectId } = args.input;
       return deployments.find(
-        (d) =>
-          d.workspaceId === workspaceId &&
-          d.projectId === projectId &&
-          d.isHead,
+        (d) => d.workspaceId === workspaceId && d.projectId === projectId,
       );
     },
 
@@ -441,7 +493,7 @@ export const resolvers = {
         id: `exec-${args.jobId}-${args.nodeId}`,
         nodeId: args.nodeId,
         jobId: args.jobId,
-        status: "COMPLETED",
+        status: GraphqlJobStatus.Completed,
         startedAt: "2024-01-28T10:00:00Z",
         completedAt: "2024-01-28T10:05:00Z",
         logs: logs.filter(
@@ -494,13 +546,106 @@ export const resolvers = {
       // No triggers in mock data yet
       return paginateResults([], args.pagination);
     },
+
+    // CMS queries
+    cmsProject: (_: any, args: { projectIdOrAlias: string }) => {
+      return cmsProjects.find(
+        (p) =>
+          p.id === args.projectIdOrAlias || p.alias === args.projectIdOrAlias,
+      );
+    },
+
+    cmsProjects: (
+      _: any,
+      args: { workspaceId?: string[]; publicOnly?: boolean } = {},
+    ) => {
+      return cmsProjects.filter((p) => {
+        if (args.workspaceId && !args.workspaceId.includes(p.workspaceId))
+          return false;
+        if (args.publicOnly && p.visibility !== "PUBLIC") return false;
+        return true;
+      });
+    },
+
+    cmsModels: (
+      _: any,
+      args: {
+        projectId: string;
+        modelId: string;
+        page?: number;
+        pageSize?: number;
+      },
+    ) => {
+      // Filter items by projectId and modelId
+
+      const filteredModels = cmsModels.filter(
+        (m) => m.projectId === args.projectId,
+      );
+
+      const page = args.page || 1;
+      const pageSize = args.pageSize || 10;
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+
+      return {
+        items: filteredModels.slice(startIndex, endIndex),
+        totalCount: filteredModels.length,
+      };
+    },
+
+    cmsItems: (
+      _: any,
+      args: {
+        projectId: string;
+        modelId: string;
+        keyword?: string;
+        page?: number;
+        pageSize?: number;
+      },
+    ) => {
+      // Filter items by projectId and modelId
+
+      let filteredItems = cmsItems.filter(
+        (item) =>
+          item.projectId === args.projectId && item.modelId === args.modelId,
+      );
+
+      if (args.keyword && args.keyword.trim() !== "") {
+        filteredItems = filteredItems.filter((item) => {
+          // Search through all string properties of the item
+          return Object.entries(item as any).some(([_, value]) => {
+            if (typeof value === "string" && args.keyword) {
+              return value.toLowerCase().includes(args.keyword.toLowerCase());
+            }
+            return false;
+          });
+        });
+      }
+
+      const page = args.page || 1;
+      const pageSize = args.pageSize || 10;
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+
+      return {
+        items: filteredItems.slice(startIndex, endIndex),
+        totalCount: filteredItems.length,
+      };
+    },
+
+    cmsModelExportUrl: (
+      _: any,
+      args: { projectId: string; modelId: string },
+    ) => {
+      return `https://cms.reearth-flow.com/api/export/${args.projectId}/${args.modelId}`;
+    },
   },
 
   // Mutation resolvers
   Mutation: {
     // User mutations
     signup: () => {
-      const newUser: MockUser = {
+      const newUser: GraphqlUser = {
         id: generateId("user"),
         name: "New User",
         email: "newuser@reearth.io",
@@ -511,7 +656,7 @@ export const resolvers = {
         id: generateId("workspace"),
         name: "Personal Workspace",
         personal: true,
-        members: [{ userId: newUser.id, role: "OWNER" as const }],
+        members: [{ userId: newUser.id, role: GraphqlRole.Owner }],
         createdAt: new Date().toISOString(),
       };
 
@@ -550,7 +695,7 @@ export const resolvers = {
         members: [
           {
             userId: currentUser.id,
-            role: "OWNER" as const,
+            role: GraphqlRole.Owner,
           },
         ],
         createdAt: new Date().toISOString(),
@@ -645,17 +790,11 @@ export const resolvers = {
     // Project mutations
     createProject: (_: any, args: { input: any }) => {
       const { input } = args;
-      const newProject: MockProject = {
+      const newProject: ProjectFragment = {
         id: generateId("project"),
         name: input.name || "New Project",
         description: input.description || "",
         workspaceId: input.workspaceId,
-        isArchived: input.archived || false,
-        isBasicAuthActive: false,
-        basicAuthUsername: "",
-        basicAuthPassword: "",
-        version: 1,
-        parameters: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -708,30 +847,28 @@ export const resolvers = {
       }
 
       // Create a deployment if it doesn't exist
-      let deployment = deployments.find(
-        (d) => d.projectId === input.projectId && d.isHead,
-      );
+      let deployment = deployments.find((d) => d.projectId === input.projectId);
       if (!deployment) {
         deployment = {
           id: generateId("deployment"),
           projectId: input.projectId,
           workspaceId: input.workspaceId,
-          version: `${project.version}.0.0`,
           description: "Auto-generated deployment",
-          isHead: true,
           workflowUrl: `https://workflow-${project.id}.reearth-flow.com`,
+          version: "1.0.0",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
-        deployments.push(deployment);
+        if (deployment) {
+          deployments.push(deployment);
+        }
       }
 
       // Create a new job
-      const newJob: MockJob = {
+      const newJob: JobFragment = {
         id: generateId("job"),
-        deploymentId: deployment.id,
         workspaceId: input.workspaceId,
-        status: "PENDING",
+        status: GraphqlJobStatus.Pending,
         debug: false,
         startedAt: new Date().toISOString(),
         outputURLs: [],
@@ -743,7 +880,7 @@ export const resolvers = {
       logs.push({
         jobId: newJob.id,
         timestamp: new Date().toISOString(),
-        logLevel: "INFO",
+        logLevel: GraphqlLogLevel.Info,
         message: "Job queued for execution",
       });
 
@@ -751,11 +888,11 @@ export const resolvers = {
       setTimeout(() => {
         const jobIndex = jobs.findIndex((j) => j.id === newJob.id);
         if (jobIndex !== -1) {
-          jobs[jobIndex].status = "RUNNING";
+          jobs[jobIndex].status = GraphqlJobStatus.Running;
           logs.push({
             jobId: newJob.id,
             timestamp: new Date().toISOString(),
-            logLevel: "INFO",
+            logLevel: GraphqlLogLevel.Info,
             message: "Job started",
           });
         }
@@ -765,85 +902,85 @@ export const resolvers = {
     },
 
     // Parameter mutations
-    declareParameter: (_: any, args: { projectId: string; input: any }) => {
-      const { projectId, input } = args;
-      const project = projects.find((p) => p.id === projectId);
+    // declareParameter: (_: any, args: { projectId: string; input: any }) => {
+    //   const { projectId, input } = args;
+    //   const project = projects.find((p) => p.id === projectId);
 
-      if (!project) {
-        throw new Error("Project not found");
-      }
+    //   if (!project) {
+    //     throw new Error("Project not found");
+    //   }
 
-      const newParameter: MockParameter = {
-        id: generateId("param"),
-        name: input.name,
-        type: input.type,
-        value: input.value,
-        required: input.required,
-        index: input.index || project.parameters.length,
-        projectId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+    //   const newParameter: {MockParameter} = {
+    //     id: generateId("param"),
+    //     name: input.name,
+    //     type: input.type,
+    //     value: input.value,
+    //     required: input.required,
+    //     index: input.index || project.parameters.length,
+    //     projectId,
+    //     createdAt: new Date().toISOString(),
+    //     updatedAt: new Date().toISOString(),
+    //   };
 
-      project.parameters.push(newParameter);
-      return newParameter;
-    },
+    //   project.parameters.push(newParameter);
+    //   return newParameter;
+    // },
 
-    updateParameterValue: (_: any, args: { paramId: string; input: any }) => {
-      const { paramId, input } = args;
+    // updateParameterValue: (_: any, args: { paramId: string; input: any }) => {
+    //   const { paramId, input } = args;
 
-      for (const project of projects) {
-        const paramIndex = project.parameters.findIndex(
-          (p) => p.id === paramId,
-        );
-        if (paramIndex !== -1) {
-          project.parameters[paramIndex].value = input.value;
-          project.parameters[paramIndex].updatedAt = new Date().toISOString();
-          return project.parameters[paramIndex];
-        }
-      }
+    //   for (const project of projects) {
+    //     const paramIndex = project.parameters.findIndex(
+    //       (p) => p.id === paramId,
+    //     );
+    //     if (paramIndex !== -1) {
+    //       project.parameters[paramIndex].value = input.value;
+    //       project.parameters[paramIndex].updatedAt = new Date().toISOString();
+    //       return project.parameters[paramIndex];
+    //     }
+    //   }
 
-      throw new Error("Parameter not found");
-    },
+    //   throw new Error("Parameter not found");
+    // },
 
-    updateParameterOrder: (_: any, args: { projectId: string; input: any }) => {
-      const { projectId, input } = args;
-      const project = projects.find((p) => p.id === projectId);
+    // updateParameterOrder: (_: any, args: { projectId: string; input: any }) => {
+    //   const { projectId, input } = args;
+    //   const project = projects.find((p) => p.id === projectId);
 
-      if (!project) {
-        throw new Error("Project not found");
-      }
+    //   if (!project) {
+    //     throw new Error("Project not found");
+    //   }
 
-      const paramIndex = project.parameters.findIndex(
-        (p) => p.id === input.paramId,
-      );
-      if (paramIndex !== -1) {
-        project.parameters[paramIndex].index = input.newIndex;
-      }
+    //   const paramIndex = project.parameters.findIndex(
+    //     (p) => p.id === input.paramId,
+    //   );
+    //   if (paramIndex !== -1) {
+    //     project.parameters[paramIndex].index = input.newIndex;
+    //   }
 
-      return project.parameters;
-    },
+    //   return project.parameters;
+    // },
 
-    removeParameter: (_: any, args: { input: { paramId: string } }) => {
-      const { input } = args;
+    // removeParameter: (_: any, args: { input: { paramId: string } }) => {
+    //   const { input } = args;
 
-      for (const project of projects) {
-        const paramIndex = project.parameters.findIndex(
-          (p) => p.id === input.paramId,
-        );
-        if (paramIndex !== -1) {
-          project.parameters.splice(paramIndex, 1);
-          return true;
-        }
-      }
+    //   for (const project of projects) {
+    //     const paramIndex = project.parameters.findIndex(
+    //       (p) => p.id === input.paramId,
+    //     );
+    //     if (paramIndex !== -1) {
+    //       project.parameters.splice(paramIndex, 1);
+    //       return true;
+    //     }
+    //   }
 
-      return false;
-    },
+    //   return false;
+    // },
 
     // Asset mutations
     createAsset: (_: any, args: { input: any }) => {
       // Mock asset creation
-      const newAsset: MockAsset = {
+      const newAsset: AssetFragment = {
         id: generateId("asset"),
         name: "New Asset",
         contentType: "image/png",
@@ -892,13 +1029,12 @@ export const resolvers = {
     // Deployment mutations
     createDeployment: (_: any, args: { input: any }) => {
       const { input } = args;
-      const newDeployment: MockDeployment = {
+      const newDeployment: DeploymentFragment = {
         id: generateId("deployment"),
         projectId: input.projectId,
         workspaceId: input.workspaceId,
         version: "1.0.0",
         description: input.description,
-        isHead: true,
         workflowUrl: `https://workflow-${generateId("flow")}.reearth-flow.com`,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -940,11 +1076,10 @@ export const resolvers = {
         throw new Error("Deployment not found");
       }
 
-      const newJob: MockJob = {
+      const newJob: JobFragment = {
         id: generateId("job"),
-        deploymentId: input.deploymentId,
         workspaceId: deployment.workspaceId,
-        status: "PENDING",
+        status: GraphqlJobStatus.Pending,
         debug: false,
         startedAt: new Date().toISOString(),
         outputURLs: [],
@@ -964,16 +1099,16 @@ export const resolvers = {
       }
 
       if (
-        jobs[jobIndex].status === "PENDING" ||
-        jobs[jobIndex].status === "RUNNING"
+        jobs[jobIndex].status === GraphqlJobStatus.Pending ||
+        jobs[jobIndex].status === GraphqlJobStatus.Running
       ) {
-        jobs[jobIndex].status = "CANCELLED";
+        jobs[jobIndex].status = GraphqlJobStatus.Cancelled;
         jobs[jobIndex].completedAt = new Date().toISOString();
 
         logs.push({
           jobId: input.jobId,
           timestamp: new Date().toISOString(),
-          logLevel: "WARN",
+          logLevel: GraphqlLogLevel.Warn,
           message: "Job cancelled by user request",
         });
       }
@@ -995,11 +1130,11 @@ export const resolvers = {
               // Simulate status changes
               if (job.status === "PENDING") {
                 await new Promise((resolve) => setTimeout(resolve, 2000));
-                job.status = "RUNNING";
+                job.status = GraphqlJobStatus.Running;
                 yield { jobStatus: job.status };
 
                 await new Promise((resolve) => setTimeout(resolve, 5000));
-                job.status = "COMPLETED";
+                job.status = GraphqlJobStatus.Completed;
                 job.completedAt = new Date().toISOString();
                 yield { jobStatus: job.status };
               }

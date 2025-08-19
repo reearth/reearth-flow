@@ -35,7 +35,6 @@ type Props = {
   canUndo: boolean;
   canRedo: boolean;
   isMainWorkflow: boolean;
-  hasReader?: boolean;
   onRedo: () => void;
   onUndo: () => void;
   onLayoutChange: () => void;
@@ -45,7 +44,6 @@ const Toolbox: React.FC<Props> = ({
   canUndo,
   canRedo,
   isMainWorkflow,
-  hasReader,
   onRedo,
   onUndo,
   onLayoutChange,
@@ -56,7 +54,6 @@ const Toolbox: React.FC<Props> = ({
       id: "reader" as const,
       name: t("Reader Node"),
       icon: <DatabaseIcon weight="thin" size={16} />,
-      disabled: !isMainWorkflow || hasReader,
     },
     {
       id: "transformer" as const,
@@ -171,24 +168,24 @@ const Toolbox: React.FC<Props> = ({
   };
 
   return (
-    <div className="self-start rounded-md bg-secondary/80 p-1 shadow-md backdrop-blur-xs">
-      <div className="flex flex-col flex-wrap gap-1 rounded-md transition-all">
+    <div className="self-start rounded-md border border-primary bg-secondary/70 p-2 shadow-md shadow-secondary backdrop-blur-xs">
+      <div className="flex flex-col flex-wrap gap-2 rounded-md transition-all">
         {availableTools.map((tool, idx) =>
           tool.id === "break" ? (
             <div key={tool.id + idx} className="mx-1 box-border border-t" />
           ) : (
             <div key={tool.id} className="rounded-md bg-secondary">
               <IconButton
-                className={`dndnode-${tool.id} cursor-grab  ${
+                className={`dndnode-${tool.id} cursor-grab backdrop-blur-xs  ${
                   tool.id === "reader"
-                    ? "bg-node-reader/50 hover:bg-node-reader/80"
+                    ? "bg-node-reader/40 hover:bg-node-reader/80"
                     : tool.id === "writer"
-                      ? "bg-node-writer/50 hover:bg-node-writer/80"
+                      ? "bg-node-writer/40 hover:bg-node-writer/80"
                       : tool.id === "subworkflow"
-                        ? "bg-node-subworkflow/50 hover:bg-node-subworkflow/80"
+                        ? "bg-node-subworkflow/40 hover:bg-node-subworkflow/80"
                         : tool.id === "batch" || tool.id === "note"
-                          ? "bg-primary/50 hover:bg-primary/80"
-                          : "bg-node-transformer/50 hover:bg-node-transformer/80"
+                          ? "bg-primary/40 hover:bg-primary/80"
+                          : "bg-node-transformer/40 hover:bg-node-transformer/80"
                 }`}
                 tooltipPosition="right"
                 tooltipOffset={4}

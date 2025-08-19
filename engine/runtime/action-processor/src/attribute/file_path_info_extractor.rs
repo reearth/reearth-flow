@@ -24,7 +24,7 @@ impl ProcessorFactory for AttributeFilePathInfoExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Extracts file path information from attributes"
+        "Extract File System Information from Path Attributes"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -71,10 +71,12 @@ impl ProcessorFactory for AttributeFilePathInfoExtractorFactory {
     }
 }
 
+/// # AttributeFilePathInfoExtractor Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeFilePathInfoExtractor {
-    /// # Attribute to extract file path from
+    /// # Source Path Attribute
+    /// Attribute containing the file path to analyze for extracting file system information
     attribute: Attribute,
 }
 

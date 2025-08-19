@@ -23,8 +23,10 @@ type BatchConfig struct {
 	BinaryPath                      string
 	BootDiskSizeGB                  int
 	BootDiskType                    string
+	ChannelBufferSize               string
 	ComputeCpuMilli                 int
 	ComputeMemoryMib                int
+	FeatureFlushThreshold           string
 	ImageURI                        string
 	MachineType                     string
 	NodeStatusPropagationDelayMS    string
@@ -36,6 +38,7 @@ type BatchConfig struct {
 	Region                          string
 	SAEmail                         string
 	TaskCount                       int
+	ThreadPoolSize                  string
 }
 
 type BatchClient interface {
@@ -152,14 +155,33 @@ func (b *BatchRepo) SubmitJob(
 			runnable,
 		},
 		Environment: &batchpb.Environment{
-			Variables: map[string]string{
-				"FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS": b.config.NodeStatusPropagationDelayMS,
-				"FLOW_WORKER_ENABLE_JSON_LOG":                   "true",
-				"FLOW_WORKER_EDGE_PASS_THROUGH_EVENT_TOPIC":     b.config.PubSubEdgePassThroughEventTopic,
-				"FLOW_WORKER_LOG_STREAM_TOPIC":                  b.config.PubSubLogStreamTopic,
-				"FLOW_WORKER_JOB_COMPLETE_TOPIC":                b.config.PubSubJobCompleteTopic,
-				"FLOW_WORKER_NODE_STATUS_TOPIC":                 b.config.PubSubNodeStatusTopic,
-			},
+			Variables: func() map[string]string {
+				vars := map[string]string{
+					"FLOW_WORKER_ENABLE_JSON_LOG":               "true",
+					"FLOW_WORKER_EDGE_PASS_THROUGH_EVENT_TOPIC": b.config.PubSubEdgePassThroughEventTopic,
+					"FLOW_WORKER_LOG_STREAM_TOPIC":              b.config.PubSubLogStreamTopic,
+					"FLOW_WORKER_JOB_COMPLETE_TOPIC":            b.config.PubSubJobCompleteTopic,
+					"FLOW_WORKER_NODE_STATUS_TOPIC":             b.config.PubSubNodeStatusTopic,
+					"RUST_LOG":                                  "info",
+					"RUST_BACKTRACE":                            "1",
+				}
+
+				// Only set runtime config if values are provided
+				if b.config.NodeStatusPropagationDelayMS != "" {
+					vars["FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS"] = b.config.NodeStatusPropagationDelayMS
+				}
+				if b.config.ChannelBufferSize != "" {
+					vars["FLOW_RUNTIME_CHANNEL_BUFFER_SIZE"] = b.config.ChannelBufferSize
+				}
+				if b.config.ThreadPoolSize != "" {
+					vars["FLOW_RUNTIME_THREAD_POOL_SIZE"] = b.config.ThreadPoolSize
+				}
+				if b.config.FeatureFlushThreshold != "" {
+					vars["FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD"] = b.config.FeatureFlushThreshold
+				}
+
+				return vars
+			}(),
 		},
 	}
 
