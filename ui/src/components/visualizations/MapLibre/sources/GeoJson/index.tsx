@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { Source, Layer, LayerProps } from "react-map-gl/maplibre";
 
 type Props = {
@@ -17,6 +17,73 @@ const GeoJsonDataSource: React.FC<Props> = ({
   enableClustering,
   selectedFeatureId,
 }) => {
+  const processOverlappingPoints = useCallback(
+    (
+      featureCollection: GeoJSON.FeatureCollection,
+    ): GeoJSON.FeatureCollection => {
+      const pointFeatures = featureCollection.features.filter(
+        (feature) => feature.geometry.type === "Point",
+      );
+
+      const coordinateGroups = new Map<string, GeoJSON.Feature[]>();
+
+      pointFeatures.forEach((feature) => {
+        if (feature.geometry.type === "Point") {
+          const [lng, lat] = feature.geometry.coordinates;
+          const key = `${lng.toFixed(8)},${lat.toFixed(8)}`;
+
+          if (!coordinateGroups.has(key)) {
+            coordinateGroups.set(key, []);
+          }
+          const group = coordinateGroups.get(key);
+          if (group) {
+            group.push(feature);
+          }
+        }
+      });
+
+      const processedFeatures = featureCollection.features.map((feature) => {
+        if (feature.geometry.type !== "Point") return feature;
+
+        const [lng, lat] = feature.geometry.coordinates;
+        const key = `${lng.toFixed(8)},${lat.toFixed(8)}`;
+        const group = coordinateGroups.get(key);
+
+        if (!group || group.length === 1) return feature;
+
+        const index = group.findIndex((f) => f === feature);
+        const offset = 0.0001;
+        const angle = (2 * Math.PI * index) / group.length;
+        const offsetLng = lng + offset * Math.cos(angle);
+        const offsetLat = lat + offset * Math.sin(angle);
+
+        return {
+          ...feature,
+          geometry: {
+            ...feature.geometry,
+            coordinates: [offsetLng, offsetLat],
+          },
+          properties: {
+            ...feature.properties,
+            _originalCoordinates: [lng, lat],
+            _overlappingCount: group.length,
+            _isOffset: group.length > 1,
+          },
+        };
+      });
+
+      return {
+        ...featureCollection,
+        features: processedFeatures,
+      };
+    },
+    [],
+  );
+
+  const processedFileContent = useMemo(() => {
+    return processOverlappingPoints(fileContent);
+  }, [processOverlappingPoints, fileContent]);
+
   const pointLayer: LayerProps = useMemo(
     () => ({
       id: "point-layer",
@@ -126,18 +193,18 @@ const GeoJsonDataSource: React.FC<Props> = ({
   return (
     <Source
       type={fileType}
-      data={fileContent}
+      data={processedFileContent}
       cluster={enableClustering}
       promoteId="_originalId">
-      {fileContent?.features?.some(
+      {processedFileContent?.features?.some(
         (feature: GeoJSON.Feature) => feature.geometry.type === "Point",
       ) && <Layer {...pointLayer} />}
 
-      {fileContent?.features?.some(
+      {processedFileContent?.features?.some(
         (feature: GeoJSON.Feature) => feature.geometry.type === "LineString",
       ) && <Layer {...lineStringLayer} />}
 
-      {fileContent?.features?.some(
+      {processedFileContent?.features?.some(
         (feature: GeoJSON.Feature) => feature.geometry.type === "Polygon",
       ) && <Layer {...polygonLayer} />}
       <Layer {...clusterLayer} />
