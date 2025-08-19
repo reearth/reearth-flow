@@ -6,7 +6,7 @@
     },
     {
       "name": "AttributeAggregator",
-      "description": "属性に基づいてフィーチャをグルーピングする"
+      "description": "属性に基づいて地物をグルーピングする"
     },
     {
       "name": "AttributeBulkArrayJoiner",
@@ -14,11 +14,11 @@
     },
     {
       "name": "AttributeConversionTable",
-      "description": "ルックアップテーブルを使用してフィーチャ属性を変換する"
+      "description": "ルックアップテーブルを使用して地物属性を変換する"
     },
     {
       "name": "AttributeDuplicateFilter",
-      "description": "重複した属性を持つフィーチャをフィルタリングする"
+      "description": "重複した属性を持つ地物をフィルタリングする"
     },
     {
       "name": "AttributeFilePathInfoExtractor",
@@ -50,15 +50,15 @@
     },
     {
       "name": "CenterPointReplacer",
-      "description": "フィーチャのジオメトリを、フィーチャのバウンディングボックス中央や質量中心、またはフィーチャ領域内に確実に収まる点で置き換える"
+      "description": "地物のジオメトリを、地物のバウンディングボックス中央や質量中心、または地物領域内に確実に収まる点で置き換える"
     },
     {
       "name": "Cesium3DTilesWriter",
-      "description": "フィーチャをファイルに書き出す"
+      "description": "地物をファイルに書き出す"
     },
     {
       "name": "Clipper",
-      "description": "クリッパーフィーチャを用いて候補フィーチャを分割し、内部または外部の部分を別々に出力する"
+      "description": "クリッパー地物を用いて候補地物を分割し、内部または外部の部分を別々に出力する"
     },
     {
       "name": "ClosedCurveFilter",
@@ -70,19 +70,19 @@
     },
     {
       "name": "CoordinateSystemSetter",
-      "description": "フィーチャの座標系を設定する"
+      "description": "地物の座標系を設定する"
     },
     {
       "name": "CsvReader",
-      "description": "CSVファイルからフィーチャを読み取る"
+      "description": "CSVファイルから地物を読み取る"
     },
     {
       "name": "CzmlWriter",
-      "description": "CZMLファイルにフィーチャを書き込む"
+      "description": "CZMLファイルに地物を書き込む"
     },
     {
       "name": "DimensionFilter",
-      "description": "フィーチャを次元に基づいてフィルタリングする"
+      "description": "地物を次元に基づいてフィルタリングする"
     },
     {
       "name": "DirectoryDecompressor",
@@ -94,15 +94,15 @@
     },
     {
       "name": "EchoProcessor",
-      "description": "フィーチャをエコー出力する"
+      "description": "地物をエコー出力する"
     },
     {
       "name": "EchoSink",
-      "description": "フィーチャをエコー出力する"
+      "description": "地物をエコー出力する"
     },
     {
       "name": "ElevationExtractor",
-      "description": "フィーチャの最初のZ座標値を抽出し、属性として格納する"
+      "description": "地物の最初のZ座標値を抽出し、属性として格納する"
     },
     {
       "name": "Extruder",
@@ -110,27 +110,27 @@
     },
     {
       "name": "FeatureCityGmlReader",
-      "description": "CityGMLファイルからフィーチャを読み取る"
+      "description": "CityGMLファイルから地物を読み取る"
     },
     {
       "name": "FeatureCounter",
-      "description": "フィーチャ数をカウントする"
+      "description": "地物数をカウントする"
     },
     {
       "name": "FeatureCreator",
-      "description": "式に基づいてフィーチャを作成する"
+      "description": "式に基づいて地物を作成する"
     },
     {
       "name": "FeatureDuplicateFilter",
-      "description": "重複したフィーチャを削除する"
+      "description": "重複した地物を削除する"
     },
     {
       "name": "FeatureFilePathExtractor",
-      "description": "フィーチャからファイルパスを抽出する"
+      "description": "地物からファイルパスを抽出する"
     },
     {
       "name": "FeatureFilter",
-      "description": "条件に基づいてフィーチャをフィルタリングする"
+      "description": "条件に基づいて地物をフィルタリングする"
     },
     {
       "name": "FeatureLodFilter",
@@ -138,27 +138,27 @@
     },
     {
       "name": "FeatureMerger",
-      "description": "属性に基づいてフィーチャをマージする"
+      "description": "属性に基づいて地物をマージする"
     },
     {
       "name": "FeatureReader",
-      "description": "条件に基づいてフィーチャをフィルタリングする"
+      "description": "条件に基づいて地物をフィルタリングする"
     },
     {
       "name": "FeatureSorter",
-      "description": "フィーチャを属性でソートする"
+      "description": "地物を属性でソートする"
     },
     {
       "name": "FeatureTransformer",
-      "description": "式を用いてフィーチャを変換する"
+      "description": "式を用いて地物を変換する"
     },
     {
       "name": "FeatureTypeFilter",
-      "description": "フィーチャタイプに基づいてフィーチャをフィルタリングする"
+      "description": "地物タイプに基づいて地物をフィルタリングする"
     },
     {
       "name": "FeatureWriter",
-      "description": "フィーチャをファイルに書き込む"
+      "description": "地物をファイルに書き込む"
     },
     {
       "name": "FilePathExtractor",
@@ -170,23 +170,23 @@
     },
     {
       "name": "FileReader",
-      "description": "ファイルからフィーチャを読み込む"
+      "description": "ファイルから地物を読み込む"
     },
     {
       "name": "FileWriter",
-      "description": "フィーチャをファイルに書き出す"
+      "description": "地物をファイルに書き出す"
     },
     {
       "name": "GeoJsonReader",
-      "description": "GeoJSONファイルからフィーチャを読み取る"
+      "description": "GeoJSONファイルから地物を読み取る"
     },
     {
       "name": "GeoJsonWriter",
-      "description": "フィーチャをGeoJSONファイルに書き出す"
+      "description": "地物をGeoJSONファイルに書き出す"
     },
     {
       "name": "GeometryCoercer",
-      "description": "フィーチャのジオメトリを特定のジオメトリタイプに強制変換する"
+      "description": "地物のジオメトリを特定のジオメトリタイプに強制変換する"
     },
     {
       "name": "GeometryDissolver",
@@ -194,7 +194,7 @@
     },
     {
       "name": "GeometryExtractor",
-      "description": "フィーチャからジオメトリを抽出し、属性として追加する"
+      "description": "地物からジオメトリを抽出し、属性として追加する"
     },
     {
       "name": "GeometryFilter",
@@ -206,7 +206,7 @@
     },
     {
       "name": "GeometryReplacer",
-      "description": "フィーチャのジオメトリを新しいジオメトリで置き換える"
+      "description": "地物のジオメトリを新しいジオメトリで置き換える"
     },
     {
       "name": "GeometrySplitter",
@@ -214,7 +214,7 @@
     },
     {
       "name": "GeometryValidator",
-      "description": "フィーチャのジオメトリを検証する"
+      "description": "地物のジオメトリを検証する"
     },
     {
       "name": "GeometryValueFilter",
@@ -222,7 +222,7 @@
     },
     {
       "name": "GltfWriter",
-      "description": "フィーチャをGltfファイルに書き出す"
+      "description": "地物をGltfファイルに書き出す"
     },
     {
       "name": "HoleCounter",
@@ -234,7 +234,7 @@
     },
     {
       "name": "HorizontalReprojector",
-      "description": "フィーチャのジオメトリを指定された座標系に水平再投影する"
+      "description": "地物のジオメトリを指定された座標系に水平再投影する"
     },
     {
       "name": "InputRouter",
@@ -242,11 +242,11 @@
     },
     {
       "name": "JPStandardGridAccumulator",
-      "description": "日本標準グリッドでフィーチャを蓄積する"
+      "description": "日本標準グリッドで地物を蓄積する"
     },
     {
       "name": "LineOnLineOverlayer",
-      "description": "交点を点フィーチャに変換し、元の交差したラインの属性リストを結合して含めることができる"
+      "description": "交点を点地物に変換し、元の交差したラインの属性リストを結合して含めることができる"
     },
     {
       "name": "ListExploder",
@@ -254,11 +254,11 @@
     },
     {
       "name": "MVTWriter",
-      "description": "フィーチャをファイルに書き出す"
+      "description": "地物をファイルに書き出す"
     },
     {
       "name": "NoopProcessor",
-      "description": "フィーチャに対して何も処理しない"
+      "description": "地物に対して何も処理しない"
     },
     {
       "name": "NoopSink",
@@ -266,11 +266,11 @@
     },
     {
       "name": "Offsetter",
-      "description": "フィーチャの座標にオフセットを加える"
+      "description": "地物の座標にオフセットを加える"
     },
     {
       "name": "OrientationExtractor",
-      "description": "フィーチャのジオメトリの方向を抽出し、属性として追加する"
+      "description": "地物のジオメトリの方向を抽出し、属性として追加する"
     },
     {
       "name": "OutputRouter",
@@ -278,7 +278,7 @@
     },
     {
       "name": "PLATEAU3.AttributeFlattener",
-      "description": "建物フィーチャを作成するために属性をフラット化する"
+      "description": "建物地物を作成するために属性をフラット化する"
     },
     {
       "name": "PLATEAU3.BuildingInstallationGeometryTypeExtractor",
@@ -294,7 +294,7 @@
     },
     {
       "name": "PLATEAU3.DomainOfDefinitionValidator",
-      "description": "CityGMLフィーチャの定義域を検証する"
+      "description": "CityGML地物の定義域を検証する"
     },
     {
       "name": "PLATEAU3.MaxLodExtractor",
@@ -358,15 +358,15 @@
     },
     {
       "name": "ShapefileWriter",
-      "description": "シェープファイルにフィーチャを書き込む"
+      "description": "シェープファイルに地物を書き込む"
     },
     {
       "name": "SqlReader",
-      "description": "SQLデータベースからフィーチャを読み取る"
+      "description": "SQLデータベースから地物を読み取る"
     },
     {
       "name": "StatisticsCalculator",
-      "description": "フィーチャの統計情報を計算する"
+      "description": "地物の統計情報を計算する"
     },
     {
       "name": "SurfaceFootprintReplacer",
@@ -390,11 +390,11 @@
     },
     {
       "name": "VertexRemover",
-      "description": "フィーチャのジオメトリから特定の頂点を削除する"
+      "description": "地物のジオメトリから特定の頂点を削除する"
     },
     {
       "name": "VerticalReprojector",
-      "description": "フィーチャのジオメトリを指定された座標系に垂直再投影する"
+      "description": "地物のジオメトリを指定された座標系に垂直再投影する"
     },
     {
       "name": "WasmRuntimeExecutor",
@@ -410,7 +410,7 @@
     },
     {
       "name": "ZipFileWriter",
-      "description": "zipファイルにフィーチャを書き込む"
+      "description": "zipファイルに地物を書き込む"
     }
   ]
 }
