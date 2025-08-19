@@ -526,7 +526,8 @@ impl BroadcastGroup {
                 if let Some(main) = map_json_value["main"].as_object() {
                     if let Some(nodes) = main["nodes"].as_object() {
                         if nodes.is_empty() {
-                            return true;
+                            debug!("No nodes found");
+                            return false;
                         }
 
                         for (_, node) in nodes {
