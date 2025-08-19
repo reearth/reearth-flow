@@ -38,6 +38,11 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 
 	job := NewJob(r, g, permissionChecker)
 
+	var tempNewWorkspace interfaces.Workspace
+	if GQLClient != nil && GQLClient.WorkspaceRepo != nil {
+		tempNewWorkspace = NewWorkspace(GQLClient.WorkspaceRepo)
+	}
+
 	return interfaces.Container{
 		Asset:            NewAsset(r, g, permissionChecker),
 		CMS:              NewCMS(r, g, permissionChecker),
@@ -50,7 +55,7 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		Project:          NewProject(r, g, job, permissionChecker),
 		ProjectAccess:    NewProjectAccess(r, g, config, permissionChecker),
 		Workspace:        accountinteractor.NewWorkspace(ar, workspaceMemberCountEnforcer(r)),
-		TempNewWorkspace: NewWorkspace(GQLClient.WorkspaceRepo), // TODO: After migration, remove Workspace and rename TempNewWorkspace to Workspace.
+		TempNewWorkspace: tempNewWorkspace, // TODO: After migration, remove Workspace and rename TempNewWorkspace to Workspace.
 		Trigger:          NewTrigger(r, g, job, permissionChecker),
 		User:             accountinteractor.NewMultiUser(ar, ag, config.SignupSecret, config.AuthSrvUIDomain, ar.Users),
 	}

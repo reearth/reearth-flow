@@ -16,6 +16,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/user"
+	"github.com/reearth/reearth-flow/api/pkg/workspace"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmongo"
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
@@ -28,7 +29,8 @@ import (
 type Seeder func(ctx context.Context, r *repo.Container) error
 
 type TestMocks struct {
-	UserRepo user.Repo
+	UserRepo      user.Repo
+	WorkspaceRepo workspace.Repo
 }
 
 func init() {
@@ -94,7 +96,8 @@ func StartServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Containe
 	var accountGQLClient *gql.Client
 	if mock != nil {
 		accountGQLClient = gql.NewMockClient(&gql.MockClientParam{
-			UserRepo: mock.UserRepo,
+			UserRepo:      mock.UserRepo,
+			WorkspaceRepo: mock.WorkspaceRepo,
 		})
 	}
 
