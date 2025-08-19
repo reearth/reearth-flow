@@ -2520,51 +2520,6 @@ Reads features from a file
           ]
         }
       }
-    },
-    {
-      "title": "Shapefile",
-      "type": "object",
-      "required": [
-        "format"
-      ],
-      "properties": {
-        "dataset": {
-          "title": "File Path",
-          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "encoding": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "format": {
-          "type": "string",
-          "enum": [
-            "shapefile"
-          ]
-        },
-        "inline": {
-          "title": "Inline Content",
-          "description": "Expression that returns the file content as text instead of reading from a file path",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      }
     }
   ],
   "definitions": {
@@ -4159,6 +4114,71 @@ Executes Rhai script expressions to conditionally process and transform features
 * default
 ### Category
 * Feature
+
+## ShapefileReader
+### Type
+* source
+### Description
+Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .shx files)
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ShapefileReader Parameters",
+  "description": "Configuration for reading Shapefile archives as geographic features. Expects a ZIP archive containing the required Shapefile components (.shp, .dbf, .shx).",
+  "type": "object",
+  "properties": {
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "encoding": {
+      "title": "Character Encoding",
+      "description": "Character encoding for attribute data in the DBF file (e.g., \"UTF-8\", \"Shift_JIS\")",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "force2d": {
+      "title": "Force 2D",
+      "description": "If true, forces all geometries to be 2D (ignoring Z values)",
+      "default": false,
+      "type": "boolean"
+    },
+    "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+### Output Ports
+* default
+### Category
+* File
 
 ## ShapefileWriter
 ### Type
