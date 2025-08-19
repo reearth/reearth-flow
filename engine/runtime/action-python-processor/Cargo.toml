@@ -1,0 +1,27 @@
+[package]
+description = "Re:Earth Flow Action Python Processor"
+name = "reearth-flow-action-python-processor"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+reearth-flow-common.workspace = true
+reearth-flow-eval-expr.workspace = true
+reearth-flow-runtime.workspace = true
+reearth-flow-types.workspace = true
+
+indexmap.workspace = true
+once_cell.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tempfile.workspace = true

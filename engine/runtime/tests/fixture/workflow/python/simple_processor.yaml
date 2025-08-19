@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 00caad2a-9f7d-4189-b479-153fa9ea36dd
+name: "PythonScriptProcessorExample"
+entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33b
+with:
+  outputFilePath:
+graphs:
+  - id: 3e3450c8-2344-4728-afa9-5fdb81eec33b
+    name: entry_point
+    nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1af
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                name: "test_feature",
+                value: 42,
+                description: "Original description"
+              }
+            ]
+
+      - id: F3F168F4-1D7B-41E5-B6A2-0FCA96ED10D7
+        name: PythonScriptProcessor
+        type: action
+        action: PythonScriptProcessor
+        with:
+          script: |
+            # Simple Python script that modifies attributes
+            # The 'attributes' variable contains the input data
+            
+            # Double the value
+            if 'value' in attributes:
+                attributes['value'] = attributes['value'] * 2
+            
+            # Add a new field
+            attributes['processed'] = True
+            
+            # Modify description
+            if 'description' in attributes:
+                attributes['description'] = attributes['description'] + " - Processed by Python"
+            
+            # Add a computed field
+            attributes['computed_sum'] = sum([v for v in attributes.values() if isinstance(v, (int, float))])
+
+      - id: 756F498A-7A5C-4579-AB1C-FCBBA8121870
+        name: FileWriter
+        type: action
+        action: FileWriter
+        with:
+          format: json
+          output: |
+            env.get("outputFilePath")
+
+    edges:
+      - id: c064cf52-705f-443a-b2de-6795266c540e
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1af
+        to: F3F168F4-1D7B-41E5-B6A2-0FCA96ED10D7
+        fromPort: default
+        toPort: default
+
+      - id: 7A963683-4E97-4B75-9BDC-BE6B3953003C
+        from: F3F168F4-1D7B-41E5-B6A2-0FCA96ED10D7
+        to: 756F498A-7A5C-4579-AB1C-FCBBA8121870
+        fromPort: default
+        toPort: default
