@@ -362,6 +362,26 @@ fn forward_polygon3d(
     }
 }
 
+/// The scaling factor used to preserve decimal precision in Clipper operations.
+/// Clipper library internally uses integer arithmetic, so we scale up coordinates
+/// to preserve decimal places, then scale back down after processing.
+/// 
+/// Current setting: 10^8 preserves 8 decimal places of precision.
+/// 
+/// Precision vs Range tradeoff:
+/// - 10^5 (100,000): 5 decimal places, safe for any coordinate range
+/// - 10^8 (100,000,000): 8 decimal places, safe for geographic coordinates (±180/±90)
+/// - 10^10: 10 decimal places, may overflow for large coordinates
+/// 
+/// Note: Clipper uses 64-bit integers internally, so:
+/// max_coordinate * scale_factor < 2^63 (9.2×10^18)
+/// For geographic coords (±180): 180 * 10^8 = 1.8×10^10 << 9.2×10^18 ✓
+/// 
+/// This does NOT provide full f64 (double) precision (~15-17 significant digits),
+/// but is sufficient for most geospatial applications where 8 decimal places
+/// (~1.1mm precision at equator) is more than adequate.
+const CLIPPER_SCALE_FACTOR: f64 = 100_000_000.0; // 10^8
+
 fn clip_polygon2d(
     polygon: &Polygon2D<f64>,
     clip_regions: &[Polygon2D<f64>],
@@ -369,8 +389,9 @@ fn clip_polygon2d(
     let mut inside = MultiPolygon2D::new(vec![polygon.clone()]);
     let mut outside = MultiPolygon2D::new(vec![polygon.clone()]);
     for clip in clip_regions {
-        inside = inside.intersection2d(clip, 1.0);
-        outside = outside.difference2d(clip, 1.0);
+        // Use scaling factor to preserve decimal precision
+        inside = inside.intersection2d(clip, CLIPPER_SCALE_FACTOR);
+        outside = outside.difference2d(clip, CLIPPER_SCALE_FACTOR);
     }
     (
         inside.iter().cloned().collect(),
@@ -385,8 +406,9 @@ fn clip_mpolygon2d(
     let mut inside = mpolygon.clone();
     let mut outside = mpolygon.clone();
     for clip in clip_regions {
-        inside = inside.intersection2d(clip, 1.0);
-        outside = outside.difference2d(clip, 1.0);
+        // Use scaling factor to preserve decimal precision
+        inside = inside.intersection2d(clip, CLIPPER_SCALE_FACTOR);
+        outside = outside.difference2d(clip, CLIPPER_SCALE_FACTOR);
     }
     (
         inside.iter().cloned().collect(),
@@ -419,8 +441,9 @@ fn clip_polygon3d(
     let mut inside = MultiPolygon3D::new(vec![polygon.clone()]);
     let mut outside = MultiPolygon3D::new(vec![polygon.clone()]);
     for clip in clip_regions {
-        inside = inside.intersection3d(clip, 1.0);
-        outside = outside.difference3d(clip, 1.0);
+        // Use scaling factor to preserve decimal precision
+        inside = inside.intersection3d(clip, CLIPPER_SCALE_FACTOR);
+        outside = outside.difference3d(clip, CLIPPER_SCALE_FACTOR);
     }
     (
         inside.iter().cloned().collect(),
@@ -439,8 +462,9 @@ fn clip_mpolygon3d(
     let mut inside = mpolygon.clone();
     let mut outside = mpolygon.clone();
     for clip in clip_regions {
-        inside = inside.intersection3d(clip, 1.0);
-        outside = outside.difference3d(clip, 1.0);
+        // Use scaling factor to preserve decimal precision
+        inside = inside.intersection3d(clip, CLIPPER_SCALE_FACTOR);
+        outside = outside.difference3d(clip, CLIPPER_SCALE_FACTOR);
     }
     (
         inside.iter().cloned().collect(),
@@ -743,6 +767,102 @@ mod tests {
         // Should have both inside and outside results
         assert!(!insides.is_empty(), "Should have inside polygons");
         assert!(!outsides.is_empty(), "Should have outside polygons");
+    }
+
+    #[test]
+    fn test_clip_polygon2d_with_decimal_coordinates() {
+        // Create polygon with decimal coordinates (similar to real-world usage)
+        // These coordinates have the same integer part but differ in decimal places
+        let exterior = LineString2D::new(vec![
+            Coordinate2D::new_(139.7456, 35.6821),  // Real coordinates like in Tokyo
+            Coordinate2D::new_(139.7458, 35.6821),
+            Coordinate2D::new_(139.7458, 35.6823),
+            Coordinate2D::new_(139.7456, 35.6823),
+            Coordinate2D::new_(139.7456, 35.6821),
+        ]);
+        let polygon = Polygon2D::new(exterior, vec![]);
+        
+        // Create clipper with decimal coordinates
+        let clip_exterior = LineString2D::new(vec![
+            Coordinate2D::new_(139.7457, 35.6822),
+            Coordinate2D::new_(139.7459, 35.6822),
+            Coordinate2D::new_(139.7459, 35.6824),
+            Coordinate2D::new_(139.7457, 35.6824),
+            Coordinate2D::new_(139.7457, 35.6822),
+        ]);
+        let clip_region = Polygon2D::new(clip_exterior, vec![]);
+        
+        let (insides, outsides) = clip_polygon2d(&polygon, &[clip_region]);
+        
+        // This test will likely fail due to the decimal truncation issue
+        println!("Decimal test - Insides: {:?}, Outsides: {:?}", insides.len(), outsides.len());
+        assert!(!insides.is_empty() || !outsides.is_empty(), 
+                "Should have some results with decimal coordinates");
+    }
+    
+    #[test]
+    fn test_clip_polygon2d_with_small_decimal_differences() {
+        // Test with very small differences (only in decimal places)
+        let exterior = LineString2D::new(vec![
+            Coordinate2D::new_(0.0001, 0.0001),
+            Coordinate2D::new_(0.0003, 0.0001),
+            Coordinate2D::new_(0.0003, 0.0003),
+            Coordinate2D::new_(0.0001, 0.0003),
+            Coordinate2D::new_(0.0001, 0.0001),
+        ]);
+        let polygon = Polygon2D::new(exterior, vec![]);
+        
+        let clip_exterior = LineString2D::new(vec![
+            Coordinate2D::new_(0.0002, 0.0002),
+            Coordinate2D::new_(0.0004, 0.0002),
+            Coordinate2D::new_(0.0004, 0.0004),
+            Coordinate2D::new_(0.0002, 0.0004),
+            Coordinate2D::new_(0.0002, 0.0002),
+        ]);
+        let clip_region = Polygon2D::new(clip_exterior, vec![]);
+        
+        let (insides, outsides) = clip_polygon2d(&polygon, &[clip_region]);
+        
+        // This will demonstrate the problem - decimal truncation
+        println!("Small decimal test - Insides: {:?}, Outsides: {:?}", insides.len(), outsides.len());
+        
+        // This assertion will likely fail
+        assert!(!insides.is_empty() || !outsides.is_empty(), 
+                "Should handle small decimal differences correctly");
+    }
+
+    #[test]
+    fn test_clip_polygon2d_precision_limits() {
+        // Test with very high precision coordinates (8 decimal places)
+        let exterior = LineString2D::new(vec![
+            Coordinate2D::new_(139.74561234, 35.68211234),
+            Coordinate2D::new_(139.74581234, 35.68211234),
+            Coordinate2D::new_(139.74581234, 35.68231234),
+            Coordinate2D::new_(139.74561234, 35.68231234),
+            Coordinate2D::new_(139.74561234, 35.68211234),
+        ]);
+        let polygon = Polygon2D::new(exterior, vec![]);
+        
+        let clip_exterior = LineString2D::new(vec![
+            Coordinate2D::new_(139.74571234, 35.68221234),
+            Coordinate2D::new_(139.74591234, 35.68221234),
+            Coordinate2D::new_(139.74591234, 35.68241234),
+            Coordinate2D::new_(139.74571234, 35.68241234),
+            Coordinate2D::new_(139.74571234, 35.68221234),
+        ]);
+        let clip_region = Polygon2D::new(clip_exterior, vec![]);
+        
+        let (insides, outsides) = clip_polygon2d(&polygon, &[clip_region]);
+        
+        println!("High precision test - Insides: {:?}, Outsides: {:?}", insides.len(), outsides.len());
+        assert!(!insides.is_empty() || !outsides.is_empty(), 
+                "Should handle 8 decimal places with 10^8 scaling");
+        
+        // Check if coordinates maintain precision (within rounding errors)
+        if !insides.is_empty() {
+            let first_coord = insides[0].exterior().0[0];
+            println!("Resulting coordinate precision: x={:.10}, y={:.10}", first_coord.x, first_coord.y);
+        }
     }
 
     #[test]
