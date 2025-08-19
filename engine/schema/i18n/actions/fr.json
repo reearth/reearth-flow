@@ -69,6 +69,10 @@
       "description": "Generate Convex Hull Polygons from Grouped Features"
     },
     {
+      "name": "CoordinateSystemSetter",
+      "description": "Définit le système de coordonnées d'une entité"
+    },
+    {
       "name": "CsvReader",
       "description": "Read Features from CSV or TSV File"
     },
@@ -185,12 +189,20 @@
       "description": "Coerces and converts feature geometries to specified target geometry types"
     },
     {
+      "name": "GeometryDissolver",
+      "description": "Dissout les géométries"
+    },
+    {
       "name": "GeometryExtractor",
       "description": "Extract Geometry Data to Attribute"
     },
     {
       "name": "GeometryFilter",
       "description": "Filter Features by Geometry Type"
+    },
+    {
+      "name": "GeometryLodFilter",
+      "description": "Filtre la géométrie par niveau de détail (lod)"
     },
     {
       "name": "GeometryReplacer",
