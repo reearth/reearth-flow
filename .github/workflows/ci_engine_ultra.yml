@@ -1,0 +1,219 @@
+name: ci-engine-ultra
+
+on:
+  workflow_call:
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  RUSTUP_MAX_RETRIES: 10
+  RUST_BACKTRACE: short
+  FLOW_RUNTIME_ACTION_LOG_DISABLE: true
+  CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
+  # Faster linking
+  RUSTFLAGS: "-C link-arg=-fuse-ld=lld"
+
+defaults:
+  run:
+    working-directory: engine
+
+jobs:
+  quick-checks:
+    name: Format & Version Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Only need current + previous for version check
+      
+      - uses: dtolnay/rust-toolchain@1.88
+        with:
+          components: rustfmt
+      
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: taplo-cli,cargo-edit
+      
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      
+      - name: Check TOML formatting
+        run: taplo fmt --check
+      
+      - name: Version check
+        if: ${{ !(github.ref == 'refs/heads/main') }}
+        run: |
+          PREV_VERSION=$(git show "HEAD~1:engine/Cargo.toml" 2>/dev/null | grep '^version' | cut -d '"' -f2) || PREV_VERSION=""
+          if [ -z "$PREV_VERSION" ]; then
+            echo "No previous version found - skipping version check"
+            exit 0
+          fi
+          CURR_VERSION=$(grep '^version' Cargo.toml | cut -d '"' -f2)
+          if [ "$PREV_VERSION" = "$CURR_VERSION" ]; then
+            echo "Error: Version unchanged. Run 'cargo set-version --bump patch'"
+            exit 1
+          fi
+
+  build-and-clippy:
+    name: Build & Clippy
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Maximize build space
+        uses: AdityaGarg8/remove-unwanted-software@v4.1
+        with:
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+      
+      - uses: dtolnay/rust-toolchain@1.88
+        with:
+          components: clippy
+      
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+      
+      - name: Cache cargo registry
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+          shared-key: "engine-build-${{ hashFiles('engine/Cargo.lock') }}"
+          cache-on-failure: true
+      
+      - name: Install Python deps
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+      
+      - name: Install py2wasm
+        run: pip install py2wasm
+      
+      - name: Build check
+        run: cargo check --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
+      
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --no-deps -- -D warnings
+      
+      - name: Show sccache stats
+        if: always()
+        run: sccache --show-stats
+
+  test-matrix:
+    name: Tests (Shard ${{ matrix.shard }})
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Maximize build space
+        uses: AdityaGarg8/remove-unwanted-software@v4.1
+        with:
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+      
+      - uses: dtolnay/rust-toolchain@1.88
+      
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+      
+      - name: Cache cargo registry
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+          shared-key: "engine-test-${{ hashFiles('engine/Cargo.lock') }}"
+          cache-on-failure: true
+      
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+      
+      - name: Install Python deps
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+      
+      - name: Install py2wasm
+        run: pip install py2wasm
+      
+      - name: Run tests (shard ${{ matrix.shard }}/3)
+        run: |
+          cargo nextest run \
+            --workspace \
+            --exclude plateau-gis-quality-checker \
+            --partition hash:${{ matrix.shard }}/3 \
+            --no-fail-fast
+
+  schema-generation:
+    name: Schema Generation
+    runs-on: ubuntu-latest
+    if: |
+      contains(github.event.head_commit.message, '[schema]') ||
+      github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - uses: dtolnay/rust-toolchain@1.88
+      
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+      
+      - name: Cache schemas
+        id: cache-schemas
+        uses: actions/cache@v3
+        with:
+          path: |
+            engine/schema/actions*.json
+            engine/docs/mdbook/src/action.md
+          key: schema-${{ hashFiles('engine/runtime/action-*/**/*.rs') }}
+      
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-make
+      
+      - name: Install Python deps
+        if: steps.cache-schemas.outputs.cache-hit != 'true'
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+      
+      - name: Install py2wasm
+        if: steps.cache-schemas.outputs.cache-hit != 'true'
+        run: pip install py2wasm
+      
+      - name: Generate schemas
+        if: steps.cache-schemas.outputs.cache-hit != 'true'
+        run: cargo make doc-action
+      
+      - name: Check schema changes
+        run: |
+          git add -N .
+          if [ "$(git diff | wc -l)" -gt 0 ]; then
+            echo "Schema changes detected - please commit"
+            git diff
+            exit 1
+          fi
+
+  ci-status:
+    name: CI Status
+    runs-on: ubuntu-latest
+    needs: [quick-checks, build-and-clippy, test-matrix]
+    if: always()
+    steps:
+      - name: Check all jobs
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "One or more jobs failed"
+            exit 1
+          fi
+          echo "All CI checks passed!"
