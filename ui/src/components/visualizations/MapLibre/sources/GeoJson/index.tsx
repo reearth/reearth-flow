@@ -10,7 +10,7 @@ type Props = {
   enableClustering?: boolean;
   selectedFeatureId?: string;
 };
-
+const OVERLAP_OFFSET_DISTANCE = 0.0001;
 const GeoJsonDataSource: React.FC<Props> = ({
   fileType,
   fileContent,
@@ -21,13 +21,8 @@ const GeoJsonDataSource: React.FC<Props> = ({
     (
       featureCollection: GeoJSON.FeatureCollection,
     ): GeoJSON.FeatureCollection => {
-      const pointFeatures = featureCollection.features.filter(
-        (feature) => feature.geometry.type === "Point",
-      );
-
       const coordinateGroups = new Map<string, GeoJSON.Feature[]>();
-
-      pointFeatures.forEach((feature) => {
+      featureCollection.features.forEach((feature) => {
         if (feature.geometry.type === "Point") {
           const [lng, lat] = feature.geometry.coordinates;
           const key = `${lng.toFixed(8)},${lat.toFixed(8)}`;
@@ -43,8 +38,9 @@ const GeoJsonDataSource: React.FC<Props> = ({
       });
 
       const processedFeatures = featureCollection.features.map((feature) => {
-        if (feature.geometry.type !== "Point") return feature;
-
+        if (feature.geometry.type !== "Point") {
+          return feature;
+        }
         const [lng, lat] = feature.geometry.coordinates;
         const key = `${lng.toFixed(8)},${lat.toFixed(8)}`;
         const group = coordinateGroups.get(key);
@@ -52,7 +48,7 @@ const GeoJsonDataSource: React.FC<Props> = ({
         if (!group || group.length === 1) return feature;
 
         const index = group.findIndex((f) => f === feature);
-        const offset = 0.0001;
+        const offset = OVERLAP_OFFSET_DISTANCE;
         const angle = (2 * Math.PI * index) / group.length;
         const offsetLng = lng + offset * Math.cos(angle);
         const offsetLat = lat + offset * Math.sin(angle);
