@@ -88,7 +88,10 @@ jobs:
   ci-engine:
     needs: prepare
     if: needs.prepare.outputs.engine == 'true'
-    uses: ./.github/workflows/ci_engine.yml
+    uses: |
+      ./.github/workflows/ci_engine_optimized.yml
+      ./.github/workflows/ci_engine_ultra.yml
+      ./.github/workflows/ci_engine.yml
   ci-policies:
     needs: prepare
     if: needs.prepare.outputs.policies == 'true'
