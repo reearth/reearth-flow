@@ -81,7 +81,7 @@ jobs:
       - name: Install required tools
         uses: taiki-e/install-action@v2
         with:
-          tool: taplo-cli,cargo-make,cargo-edit,nextest
+          tool: taplo-cli,cargo-make,cargo-edit
       
       - name: Compare version with previous commit
         if: ${{ !(github.ref == 'refs/heads/main') }}
@@ -152,9 +152,9 @@ jobs:
             exit 1
           fi
       
-      # Use nextest for 2-3x faster test execution
+      # Run tests
       - name: run tests
-        run: cargo nextest run --workspace --exclude plateau-gis-quality-checker --no-fail-fast
+        run: cargo make test
       
       # Optional: Show sccache stats for debugging
       - name: Show sccache stats
