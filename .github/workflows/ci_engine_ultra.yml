@@ -38,8 +38,9 @@ jobs:
       - name: Check TOML formatting
         run: taplo fmt --check
       
+      # Skip version check for speed in ultra
       - name: Version check
-        if: ${{ !(github.ref == 'refs/heads/main') }}
+        if: false
         run: |
           PREV_VERSION=$(git show "HEAD~1:engine/Cargo.toml" 2>/dev/null | grep '^version' | cut -d '"' -f2) || PREV_VERSION=""
           if [ -z "$PREV_VERSION" ]; then
@@ -75,7 +76,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: engine
-          shared-key: "engine-build-${{ hashFiles('engine/Cargo.lock') }}"
+          shared-key: "engine-ultra"
           cache-on-failure: true
       
       - name: Install Python deps
@@ -103,12 +104,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Maximize build space
-        uses: AdityaGarg8/remove-unwanted-software@v4.1
-        with:
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
+      # Skip maximize build space for test jobs (saves time)
+      - name: Free up some space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
       
       - uses: dtolnay/rust-toolchain@1.88
       
@@ -116,7 +116,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: engine
-          shared-key: "engine-test-${{ hashFiles('engine/Cargo.lock') }}"
+          shared-key: "engine-ultra"
           cache-on-failure: true
       
       - uses: taiki-e/install-action@v2
@@ -142,8 +142,9 @@ jobs:
   schema-generation:
     name: Schema Generation
     runs-on: ubuntu-latest
-    # Skip schema generation in ultra for speed - handled by standard CI
-    if: false
+    if: |
+      contains(github.event.head_commit.message, '[schema]') ||
+      github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
         with:

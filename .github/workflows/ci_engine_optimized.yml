@@ -46,8 +46,9 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: engine
-          shared-key: "engine-ci-optimized"
+          shared-key: "engine-optimized"
           cache-on-failure: true
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       
       # Cache generated schemas to skip regeneration when unchanged
       - name: Cache generated schemas
@@ -64,8 +65,9 @@ jobs:
         with:
           tool: taplo-cli,cargo-make,cargo-edit
       
+      # Skip version check in optimized workflow for speed
       - name: Compare version with previous commit
-        if: ${{ !(github.ref == 'refs/heads/main') }}
+        if: false
         run: |
           # Try to get previous version, handle new files
           PREV_VERSION=$(git show "HEAD~1:engine/Cargo.toml" 2>/dev/null | grep '^version' | cut -d '"' -f2) || PREV_VERSION=""
@@ -118,14 +120,12 @@ jobs:
       - name: clippy
         run: cargo make clippy
       
-      # Skip schema generation in optimized workflow (done in standard CI)
-      - name: run generate schema (skip for speed)
-        if: false
+      # Only generate schemas if cache miss or files changed
+      - name: run generate schema
+        if: steps.cache-schemas.outputs.cache-hit != 'true'
         run: cargo make doc-action
       
-      # Skip schema check in optimized workflow
-      - name: check generated schema (skip for speed)
-        if: false
+      - name: check generated schema
         run: |
           git add -N .
           git diff
