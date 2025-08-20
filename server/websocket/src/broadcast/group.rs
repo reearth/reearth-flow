@@ -525,11 +525,6 @@ impl BroadcastGroup {
             Ok(map_json_value) => {
                 if let Some(main) = map_json_value["main"].as_object() {
                     if let Some(nodes) = main["nodes"].as_object() {
-                        if nodes.is_empty() {
-                            debug!("No nodes found");
-                            return false;
-                        }
-
                         for (_, node) in nodes {
                             if let Some(position) = node["position"].as_object() {
                                 if let (Some(x), Some(y)) = (position.get("x"), position.get("y")) {
@@ -543,7 +538,7 @@ impl BroadcastGroup {
                         return true;
                     }
                 }
-                false
+                true
             }
             Err(e) => {
                 tracing::error!("Error parsing map_json: {:?}", e);
