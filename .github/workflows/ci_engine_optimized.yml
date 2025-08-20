@@ -12,9 +12,8 @@ env:
   FLOW_RUNTIME_ACTION_LOG_DISABLE: true
   # Add sparse protocol for faster registry access
   CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-  # Enable sccache
+  # sccache is optional - will fallback if unavailable
   SCCACHE_GHA_ENABLED: "true"
-  RUSTC_WRAPPER: "sccache"
 
 defaults:
   run:
@@ -44,9 +43,21 @@ jobs:
         with:
           components: clippy, rustfmt
       
-      # Setup sccache for faster compilation
+      # Setup sccache for faster compilation (optional)
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.3
+        continue-on-error: true
+        id: sccache
+      
+      # Set RUSTC_WRAPPER only if sccache setup succeeded
+      - name: Configure Rust wrapper
+        run: |
+          if [ "${{ steps.sccache.outcome }}" = "success" ]; then
+            echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+            echo "Using sccache for compilation"
+          else
+            echo "Sccache setup failed, using direct rustc"
+          fi
       
       # Improved cargo caching
       - name: Cache cargo registry
@@ -147,5 +158,5 @@ jobs:
       
       # Optional: Show sccache stats for debugging
       - name: Show sccache stats
-        if: always()
+        if: always() && steps.sccache.outcome == 'success'
         run: sccache --show-stats
