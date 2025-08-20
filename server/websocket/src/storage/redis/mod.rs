@@ -231,7 +231,7 @@ impl RedisStore {
         instance_id: &str,
         last_read_id: &Arc<Mutex<String>>,
     ) -> Result<Vec<Bytes>> {
-        let block_ms = 1000;
+        let block_ms = 1600;
 
         let read_id = {
             let last_id = last_read_id.lock().await;
