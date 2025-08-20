@@ -18,7 +18,7 @@ services:
     restart: always
     environment:
       - PROJECT_ID=local-project
-      - TOPIC_IDS=flow-edge-pass-through-topic,flow-log-stream-topic,flow-job-complete-topic,flow-node-status-topic # Corresponding pull-type subscriptions({TOPIC}-sub) will be created automatically
+      - TOPIC_IDS=flow-edge-pass-through-topic,flow-log-stream-topic,flow-job-complete-topic,flow-node-status-topic,flow-job-status-topic # Corresponding pull-type subscriptions({TOPIC}-sub) will be created automatically
     ports:
       - 8085:8085
     networks:

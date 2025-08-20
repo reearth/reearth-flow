@@ -31,9 +31,11 @@ type mockMessage struct {
 func (m *mockMessage) Data() []byte {
 	return m.data
 }
+
 func (m *mockMessage) Ack() {
 	m.Called()
 }
+
 func (m *mockMessage) Nack() {
 	m.Called()
 }

@@ -16,15 +16,17 @@ func init() {
 }
 
 type Config struct {
-	AssetBaseURL       string `envconfig:"ASSET_BASE_URL" default:"http://localhost:8080/assets"`
-	DB                 string `default:"mongodb://localhost"`
-	Dev                bool   `pp:",omitempty"`
-	GCPProject         string `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
-	GCSBucket          string `envconfig:"GCS_BUCKET" pp:",omitempty"`
-	LogSubscriptionID  string `envconfig:"LOG_SUBSCRIPTION_ID" default:"flow-log-stream-main"`
-	NodeSubscriptionID string `envconfig:"NODE_STATUS_SUBSCRIPTION_ID" default:"flow-node-status-main"`
-	Port               string `envconfig:"PORT" default:"8080"`
-	RedisURL           string `envconfig:"REDIS_URL" default:"redis://localhost:6379"`
+	AssetBaseURL            string `envconfig:"ASSET_BASE_URL" default:"http://localhost:8080/assets"`
+	DB                      string `default:"mongodb://localhost"`
+	Dev                     bool   `pp:",omitempty"`
+	GCPProject              string `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
+	GCSBucket               string `envconfig:"GCS_BUCKET" pp:",omitempty"`
+	LogSubscriptionID       string `envconfig:"LOG_SUBSCRIPTION_ID" default:"flow-log-stream-main"`
+	NodeSubscriptionID      string `envconfig:"NODE_STATUS_SUBSCRIPTION_ID" default:"flow-node-status-main"`
+	JobStatusSubscriptionID string `envconfig:"JOB_STATUS_SUBSCRIPTION_ID" default:"flow-job-status-topic-sub"`
+	Port                    string `envconfig:"PORT" default:"8080"`
+	RedisURL                string `envconfig:"REDIS_URL" default:"redis://localhost:6379"`
+	APIServerURL            string `envconfig:"API_SERVER_URL" default:"http://localhost:8080"`
 }
 
 func ReadConfig(debug bool) (*Config, error) {

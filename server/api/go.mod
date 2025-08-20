@@ -14,6 +14,7 @@ require (
 	github.com/gavv/httpexpect/v2 v2.16.0
 	github.com/go-redis/redismock/v9 v9.2.0
 	github.com/google/uuid v1.6.0
+	github.com/hibiken/asynq v0.25.0
 	github.com/jarcoal/httpmock v1.4.0
 	github.com/joho/godotenv v1.5.1
 	github.com/k0kubun/pp/v3 v3.2.0
@@ -21,7 +22,7 @@ require (
 	github.com/kennygrant/sanitize v1.2.4
 	github.com/labstack/echo/v4 v4.13.3
 	github.com/ravilushqa/otelgqlgen v0.17.0
-	github.com/redis/go-redis/v9 v9.2.0
+	github.com/redis/go-redis/v9 v9.7.0
 	github.com/reearth/reearthx v0.0.0-20250711044138-418475ad1421
 	github.com/samber/lo v1.50.0
 	github.com/spf13/afero v1.14.0
@@ -65,6 +66,8 @@ require (
 	github.com/hasura/go-graphql-client v0.14.4 // indirect
 	github.com/oklog/ulid/v2 v2.1.1 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
+	github.com/robfig/cron/v3 v3.0.1 // indirect
+	github.com/spf13/cast v1.7.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/detectors/gcp v1.34.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.60.0 // indirect

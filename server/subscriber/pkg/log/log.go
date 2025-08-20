@@ -7,9 +7,7 @@ import (
 
 type LogLevel string
 
-var (
-	ErrInvalidLogEvent = errors.New("invalid log event data")
-)
+var ErrInvalidLogEvent = errors.New("invalid log event data")
 
 const (
 	LogLevelError LogLevel = "ERROR"
@@ -36,7 +34,6 @@ func NewLogEvent(
 	message string,
 	nodeID *string,
 ) (*LogEvent, error) {
-
 	if workflowID == "" || jobID == "" {
 		return nil, ErrInvalidLogEvent
 	}
