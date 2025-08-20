@@ -46,8 +46,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: engine
-          # Use Cargo.lock hash for better cache hits
-          shared-key: "engine-ci-${{ hashFiles('engine/Cargo.lock') }}"
+          shared-key: "engine-ci-optimized"
           cache-on-failure: true
       
       # Cache generated schemas to skip regeneration when unchanged
@@ -104,26 +103,29 @@ jobs:
           python -m pip install --upgrade pip
           pip install py2wasm
       
-      # Build once, use cache for other commands
-      - name: check
-        run: cargo make check
-      
+      # Run format checks first (fast)
       - name: rustfmt
         run: cargo fmt --all -- --check
+      
+      - name: taplo
+        run: taplo fmt --check
+      
+      # Build and check in one step
+      - name: check
+        run: cargo make check
       
       # Clippy with cached build artifacts
       - name: clippy
         run: cargo make clippy
       
-      - name: taplo
-        run: taplo fmt --check
-      
-      # Only generate schemas if cache miss or files changed
-      - name: run generate schema
-        if: steps.cache-schemas.outputs.cache-hit != 'true'
+      # Skip schema generation in optimized workflow (done in standard CI)
+      - name: run generate schema (skip for speed)
+        if: false
         run: cargo make doc-action
       
-      - name: check generated schema
+      # Skip schema check in optimized workflow
+      - name: check generated schema (skip for speed)
+        if: false
         run: |
           git add -N .
           git diff

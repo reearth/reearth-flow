@@ -99,7 +99,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v4
       
@@ -131,20 +131,19 @@ jobs:
       - name: Install py2wasm
         run: pip install py2wasm
       
-      - name: Run tests (shard ${{ matrix.shard }}/3)
+      - name: Run tests (shard ${{ matrix.shard }}/2)
         run: |
           cargo nextest run \
             --workspace \
             --exclude plateau-gis-quality-checker \
-            --partition hash:${{ matrix.shard }}/3 \
+            --partition hash:${{ matrix.shard }}/2 \
             --no-fail-fast
 
   schema-generation:
     name: Schema Generation
     runs-on: ubuntu-latest
-    if: |
-      contains(github.event.head_commit.message, '[schema]') ||
-      github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Skip schema generation in ultra for speed - handled by standard CI
+    if: false
     steps:
       - uses: actions/checkout@v4
         with:
