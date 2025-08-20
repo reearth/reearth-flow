@@ -10,10 +10,6 @@ env:
   RUST_BACKTRACE: short
   FLOW_RUNTIME_ACTION_LOG_DISABLE: true
   CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
-  # sccache is optional - will fallback if unavailable
-  SCCACHE_GHA_ENABLED: "true"
-  # Faster linking
-  RUSTFLAGS: "-C link-arg=-fuse-ld=lld"
 
 defaults:
   run:
@@ -75,20 +71,6 @@ jobs:
         with:
           components: clippy
       
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.3
-        continue-on-error: true
-        id: sccache
-      
-      - name: Configure Rust wrapper
-        run: |
-          if [ "${{ steps.sccache.outcome }}" = "success" ]; then
-            echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
-            echo "Using sccache for compilation"
-          else
-            echo "Sccache setup failed, using direct rustc"
-          fi
-      
       - name: Cache cargo registry
         uses: Swatinem/rust-cache@v2
         with:
@@ -110,9 +92,6 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --no-deps -- -D warnings
       
-      - name: Show sccache stats
-        if: always() && steps.sccache.outcome == 'success'
-        run: sccache --show-stats
 
   test-matrix:
     name: Tests (Shard ${{ matrix.shard }})
@@ -133,20 +112,6 @@ jobs:
       
       - uses: dtolnay/rust-toolchain@1.88
       
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.3
-        continue-on-error: true
-        id: sccache-test
-      
-      - name: Configure Rust wrapper
-        run: |
-          if [ "${{ steps.sccache-test.outcome }}" = "success" ]; then
-            echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
-            echo "Using sccache for compilation"
-          else
-            echo "Sccache setup failed, using direct rustc"
-          fi
-      
       - name: Cache cargo registry
         uses: Swatinem/rust-cache@v2
         with:
@@ -156,7 +121,7 @@ jobs:
       
       - uses: taiki-e/install-action@v2
         with:
-          tool: nextest
+          tool: cargo-nextest
       
       - name: Install Python deps
         uses: actions/setup-python@v4
@@ -186,20 +151,6 @@ jobs:
           fetch-depth: 0
       
       - uses: dtolnay/rust-toolchain@1.88
-      
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.3
-        continue-on-error: true
-        id: sccache-schema
-      
-      - name: Configure Rust wrapper
-        run: |
-          if [ "${{ steps.sccache-schema.outcome }}" = "success" ]; then
-            echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
-            echo "Using sccache for compilation"
-          else
-            echo "Sccache setup failed, using direct rustc"
-          fi
       
       - name: Cache schemas
         id: cache-schemas
