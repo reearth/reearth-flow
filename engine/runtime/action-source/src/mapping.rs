@@ -8,6 +8,7 @@ use crate::{
     file::{
         csv::CsvReaderFactory, geojson::GeoJsonReaderFactory,
         path_extractor::FilePathExtractorFactory, reader::FileReaderFactory,
+        shapefile::ShapefileReaderFactory,
     },
     sql::SqlReaderFactory,
 };
@@ -20,6 +21,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<SqlReaderFactory>::default(),
         Box::<CsvReaderFactory>::default(),
         Box::<GeoJsonReaderFactory>::default(),
+        Box::<ShapefileReaderFactory>::default(),
     ];
     factories
         .into_iter()
