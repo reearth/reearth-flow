@@ -599,9 +599,7 @@ impl BroadcastGroup {
                     let awareness_doc = awareness.doc();
 
                     // Check if all nodes have position data before saving to GCS
-                    if !self.all_nodes_have_position(awareness_doc) {
-                        debug!("Skipping GCS save: not all nodes have position data");
-                    } else {
+                    if self.all_nodes_have_position(awareness_doc) {
                         let gcs_doc = Doc::new();
                         let mut gcs_txn = gcs_doc.transact_mut();
 
