@@ -76,7 +76,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: engine
-          shared-key: "engine-ultra"
+          shared-key: "engine-ci"
           cache-on-failure: true
       
       - name: Install Python deps
@@ -116,7 +116,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: engine
-          shared-key: "engine-ultra"
+          shared-key: "engine-ci"
           cache-on-failure: true
       
       - uses: taiki-e/install-action@v2
@@ -198,6 +198,10 @@ jobs:
         run: |
           if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
             echo "One or more jobs failed"
+            exit 1
+          fi
+          if [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "One or more jobs were cancelled"
             exit 1
           fi
           echo "All CI checks passed!"

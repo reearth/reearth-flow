@@ -46,9 +46,8 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: engine
-          shared-key: "engine-optimized"
+          shared-key: "engine-ci"
           cache-on-failure: true
-          save-if: ${{ github.ref == 'refs/heads/main' }}
       
       # Cache generated schemas to skip regeneration when unchanged
       - name: Cache generated schemas
