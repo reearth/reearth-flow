@@ -617,44 +617,36 @@ impl BroadcastGroup {
                         let gcs_state = gcs_txn.state_vector();
 
                         let awareness_txn = awareness_doc.transact();
-                        let awareness_state = awareness_txn.state_vector();
 
                         let update = awareness_txn.encode_diff_v1(&gcs_state);
                         let update_bytes = Bytes::from(update);
 
-                        if !(update_bytes.is_empty()
-                            || (update_bytes.len() == 2
-                                && update_bytes[0] == 0
-                                && update_bytes[1] == 0)
-                            || awareness_state == gcs_state)
-                        {
-                            let update_future = self.storage.push_update(
-                                &self.doc_name,
-                                &update_bytes,
-                                &self.redis_store,
-                            );
-                            let flush_future =
-                                self.storage.flush_doc_v2(&self.doc_name, &awareness_txn);
+                        let update_future = self.storage.push_update(
+                            &self.doc_name,
+                            &update_bytes,
+                            &self.redis_store,
+                        );
+                        let flush_future =
+                            self.storage.flush_doc_v2(&self.doc_name, &awareness_txn);
 
-                            let (update_result, flush_result) =
-                                tokio::join!(update_future, flush_future);
+                        let (update_result, flush_result) =
+                            tokio::join!(update_future, flush_future);
 
-                            if let Err(e) = flush_result {
-                                warn!("Failed to flush document directly to storage: {}", e);
-                            }
-
-                            if let Err(e) = update_result {
-                                warn!("Failed to update document in storage: {}", e);
-                            }
-
-                            // if let Err(e) = self
-                            //     .storage
-                            //     .trim_updates_logarithmic(&self.doc_name, 1)
-                            //     .await
-                            // {
-                            //     warn!("Failed to trim updates: {}", e);
-                            // }
+                        if let Err(e) = flush_result {
+                            warn!("Failed to flush document directly to storage: {}", e);
                         }
+
+                        if let Err(e) = update_result {
+                            warn!("Failed to update document in storage: {}", e);
+                        }
+
+                        // if let Err(e) = self
+                        //     .storage
+                        //     .trim_updates_logarithmic(&self.doc_name, 1)
+                        //     .await
+                        // {
+                        //     warn!("Failed to trim updates: {}", e);
+                        // }
                     } // Close the else block for position check
                 }
 
