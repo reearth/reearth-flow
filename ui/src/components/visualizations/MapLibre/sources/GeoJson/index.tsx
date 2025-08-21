@@ -25,6 +25,7 @@ const GeoJsonDataSource: React.FC<Props> = ({
   const requestAnimationFrameRef = useRef<number | null>(null);
   const endTimeoutRef = useRef<number | null>(null);
   const prevSelectedRef = useRef<string | undefined>(undefined);
+  const animTokenRef = useRef<number>(0);
 
   const clearTimers = useCallback(() => {
     if (requestAnimationFrameRef.current)
@@ -36,13 +37,33 @@ const GeoJsonDataSource: React.FC<Props> = ({
 
   const runSelectAnimation = useCallback(
     (map: Map) => {
+      clearTimers();
+      if (
+        prevSelectedRef.current &&
+        prevSelectedRef.current !== selectedFeatureId
+      ) {
+        map.removeFeatureState({
+          source: SOURCE_ID,
+          id: prevSelectedRef.current,
+        });
+      }
+
+      if (!selectedFeatureId) return;
+
+      prevSelectedRef.current = selectedFeatureId;
+
       const key = { source: SOURCE_ID, id: selectedFeatureId };
       const start = performance.now();
-      const flashDuration = 1500;
+      const flashDuration = 300;
       const cycleMs = 150;
+
+      const animationRunId = ++animTokenRef.current;
+
       map.setFeatureState(key, { pulse: 1 });
 
       const tick = (t: number) => {
+        if (animTokenRef.current !== animationRunId) return;
+
         const elapsed = t - start;
         if (elapsed < flashDuration) {
           const phase = ((t - start) / cycleMs) % 2;
@@ -52,7 +73,6 @@ const GeoJsonDataSource: React.FC<Props> = ({
           requestAnimationFrameRef.current = requestAnimationFrame(tick);
         } else {
           map.setFeatureState(key, { pulse: 1 });
-          clearTimers();
         }
       };
 
@@ -74,7 +94,7 @@ const GeoJsonDataSource: React.FC<Props> = ({
         "circle-radius": 4,
         "circle-color": "#3f3f45",
         "circle-stroke-width": 5,
-        "circle-stroke-color": "rgba(0, 163, 64, 0.85)",
+        "circle-stroke-color": "rgba(0, 163, 64, 0.6)",
         "circle-stroke-opacity": [
           "case",
           ["==", ["get", "_originalId"], selectedFeatureId ?? ""],
@@ -182,15 +202,20 @@ const GeoJsonDataSource: React.FC<Props> = ({
     if (!map) return;
     if (!selectedFeatureId) {
       clearTimers();
+      if (prevSelectedRef.current) {
+        map.removeFeatureState({
+          source: SOURCE_ID,
+          id: prevSelectedRef.current,
+        });
+      }
       prevSelectedRef.current = undefined;
       return;
     }
-    prevSelectedRef.current = selectedFeatureId;
 
     if (!map.isStyleLoaded()) {
       const onStyle = () => {
-        runSelectAnimation(map);
         map.off("styledata", onStyle);
+        runSelectAnimation(map);
       };
       map.on("styledata", onStyle);
       return () => map.off("styledata", onStyle);
