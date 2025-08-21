@@ -9,7 +9,7 @@ use bytes::Bytes;
 use futures_util::{SinkExt, StreamExt};
 use rand;
 use tokio::task::JoinHandle;
-use tracing::{debug, error, warn};
+use tracing::{debug, error, info, warn};
 use yrs::types::ToJson;
 
 use super::Publish;
@@ -554,6 +554,7 @@ impl BroadcastGroup {
     }
 
     pub async fn shutdown(&self) -> Result<()> {
+        info!("Shutdown called for document: {}", self.doc_name);
         if self.connection_count() == 0 {
             if let Err(e) = self
                 .redis_store
@@ -572,15 +573,15 @@ impl BroadcastGroup {
             {
                 Ok(connections) => {
                     if connections <= 0 {
-                        debug!(
+                        info!(
                             "All instances disconnected from '{}', proceeding with GCS save",
                             self.doc_name
                         );
                         true
                     } else {
-                        debug!(
-                            "Other instances still connected to '{}', skipping GCS save",
-                            self.doc_name
+                        info!(
+                            "Other instances still connected to '{}' (count: {}), skipping GCS save",
+                            self.doc_name, connections
                         );
                         false
                     }
@@ -604,10 +605,11 @@ impl BroadcastGroup {
                     let awareness = self.awareness_ref.write().await;
                     let awareness_doc = awareness.doc();
 
-                    // Check if all nodes have position data before saving to GCS
-                    if !self.all_nodes_have_position(awareness_doc) {
-                        debug!("Skipping GCS save: not all nodes have position data");
-                    } else {
+                    // Always save to GCS to ensure proper synchronization
+                    // Previously we skipped saves when nodes lacked positions, but this caused
+                    // deleted nodes to reappear after reload because the Redis stream wasn't trimmed
+                    info!("Proceeding with GCS save for document {}", self.doc_name);
+                    {
                         // Get the last stream ID before saving
                         let last_stream_id = self
                             .redis_store
@@ -615,6 +617,12 @@ impl BroadcastGroup {
                             .await
                             .ok()
                             .flatten();
+
+                        if let Some(ref id) = last_stream_id {
+                            info!("Got last stream ID before GCS save: {}", id);
+                        } else {
+                            info!("No stream ID found before GCS save");
+                        }
 
                         let gcs_doc = Doc::new();
                         let mut gcs_txn = gcs_doc.transact_mut();
@@ -651,12 +659,13 @@ impl BroadcastGroup {
                             if let Err(e) = flush_result {
                                 warn!("Failed to flush document directly to storage: {}", e);
                             } else {
+                                info!("Successfully saved document {} to GCS", self.doc_name);
                                 // Successfully saved to GCS, trim the Redis stream
                                 // Remove all entries up to the last one we incorporated
                                 if let Some(last_id) = last_stream_id {
-                                    tracing::info!(
-                                        "Document saved to GCS, trimming Redis stream up to ID: {}",
-                                        last_id
+                                    info!(
+                                        "Document {} saved to GCS, trimming Redis stream up to ID: {}",
+                                        self.doc_name, last_id
                                     );
                                     if let Err(e) = self
                                         .redis_store
@@ -664,7 +673,14 @@ impl BroadcastGroup {
                                         .await
                                     {
                                         warn!("Failed to trim Redis stream after GCS save: {}", e);
+                                    } else {
+                                        info!("Successfully trimmed Redis stream for document {} up to ID: {}", self.doc_name, last_id);
                                     }
+                                } else {
+                                    info!(
+                                        "No Redis stream ID to trim for document {}",
+                                        self.doc_name
+                                    );
                                 }
                             }
 
@@ -672,7 +688,7 @@ impl BroadcastGroup {
                                 warn!("Failed to update document in storage: {}", e);
                             }
                         }
-                    } // Close the else block for position check
+                    } // Close the block for GCS save
                 }
 
                 if let Err(e) = self

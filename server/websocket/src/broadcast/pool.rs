@@ -9,7 +9,7 @@ use dashmap::DashMap;
 use rand;
 use scopeguard;
 use std::sync::Arc;
-use tracing::{error, warn};
+use tracing::{error, info, warn};
 use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
@@ -284,6 +284,11 @@ impl BroadcastPool {
         let gcs_doc = self.manager.store.load_doc_v2(doc_id).await?;
         let mut gcs_txn = gcs_doc.transact_mut();
 
+        info!(
+            "Loaded document {} from GCS, now applying Redis stream updates",
+            doc_id
+        );
+
         let mut start_id = "0".to_string();
         let batch_size = 2048;
 
@@ -381,10 +386,16 @@ impl BroadcastPool {
     }
 
     pub async fn cleanup_empty_group(&self, doc_id: &str) -> Result<()> {
+        info!("cleanup_empty_group called for document: {}", doc_id);
         if let Some(group) = self.manager.doc_to_id_map.get(doc_id) {
-            if group.connection_count() > 0 {
+            let conn_count = group.connection_count();
+            info!("Document {} has {} connections", doc_id, conn_count);
+            if conn_count > 0 {
+                info!("Skipping cleanup for {} - still has connections", doc_id);
                 return Ok(());
             }
+        } else {
+            info!("Document {} not found in map", doc_id);
         }
         match self.cleanup_locks.entry(doc_id.to_string()) {
             dashmap::mapref::entry::Entry::Occupied(_) => {
