@@ -244,4 +244,4 @@ wasmer = "5.0.3"
 wasmer-wasix = "0.33.0"
 zip = "2.2.3"
 zstd = "0.13.3"
-draco-oxide = { git = "https://github.com/reearth/draco-oxide", tag = "v0.1.0-alpha.1" }
+draco-oxide = "v0.1.0-alpha.2"
