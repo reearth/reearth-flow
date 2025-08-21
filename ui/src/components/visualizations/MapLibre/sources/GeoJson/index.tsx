@@ -69,7 +69,6 @@ const GeoJsonDataSource: React.FC<Props> = ({
           const phase = ((t - start) / cycleMs) % 2;
           const pulse = phase < 1 ? phase : 2 - phase;
           map.setFeatureState(key, { pulse });
-          map.triggerRepaint?.();
           requestAnimationFrameRef.current = requestAnimationFrame(tick);
         } else {
           map.setFeatureState(key, { pulse: 1 });
