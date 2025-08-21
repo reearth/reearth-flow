@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import type { Map } from "maplibre-gl";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Source, Layer, LayerProps } from "react-map-gl/maplibre";
 
 type Props = {
@@ -7,45 +8,90 @@ type Props = {
     GeoJSON.Geometry,
     GeoJSON.GeoJsonProperties
   >;
+  mapRef: React.RefObject<maplibregl.Map | null>;
   enableClustering?: boolean;
   selectedFeatureId?: string;
 };
 
+const SOURCE_ID = "geojson-data-source";
+
 const GeoJsonDataSource: React.FC<Props> = ({
   fileType,
   fileContent,
+  mapRef,
   enableClustering,
   selectedFeatureId,
 }) => {
-  const pointSelectionHaloLayer: LayerProps = useMemo(
-    () => ({
-      id: "point-selection-halo-layer",
-      type: "circle",
-      paint: {
-        "circle-radius": 12,
-        "circle-color": "rgba(0, 163, 64, 0.5)",
-        "circle-opacity": selectedFeatureId
-          ? ["case", ["==", ["get", "_originalId"], selectedFeatureId], 1, 0]
-          : 0,
-      },
-      filter: ["==", ["geometry-type"], "Point"],
-    }),
-    [selectedFeatureId],
+  const requestAnimationFrameRef = useRef<number | null>(null);
+  const endTimeoutRef = useRef<number | null>(null);
+  const prevSelectedRef = useRef<string | undefined>(undefined);
+
+  const clearTimers = useCallback(() => {
+    if (requestAnimationFrameRef.current)
+      cancelAnimationFrame(requestAnimationFrameRef.current);
+    if (endTimeoutRef.current) clearTimeout(endTimeoutRef.current);
+    requestAnimationFrameRef.current = null;
+    endTimeoutRef.current = null;
+  }, []);
+
+  const runSelectAnimation = useCallback(
+    (map: Map) => {
+      const key = { source: SOURCE_ID, id: selectedFeatureId };
+      const start = performance.now();
+      const flashDuration = 1500;
+      const cycleMs = 150;
+      map.setFeatureState(key, { pulse: 1 });
+
+      const tick = (t: number) => {
+        const elapsed = t - start;
+        if (elapsed < flashDuration) {
+          const phase = ((t - start) / cycleMs) % 2;
+          const pulse = phase < 1 ? phase : 2 - phase;
+          map.setFeatureState(key, { pulse });
+          map.triggerRepaint?.();
+          requestAnimationFrameRef.current = requestAnimationFrame(tick);
+        } else {
+          map.setFeatureState(key, { pulse: 1 });
+          clearTimers();
+        }
+      };
+
+      requestAnimationFrameRef.current = requestAnimationFrame(tick);
+    },
+    [clearTimers, selectedFeatureId],
   );
 
   const pointLayer: LayerProps = useMemo(
     () => ({
       id: "point-layer",
       type: "circle",
+      filter: [
+        "all",
+        ["==", ["geometry-type"], "Point"],
+        ["!", ["has", "point_count"]],
+      ],
       paint: {
-        "circle-radius": 5,
+        "circle-radius": 4,
         "circle-color": "#3f3f45",
-        "circle-stroke-color": "#fff",
-        "circle-stroke-width": 1,
+        "circle-stroke-width": 5,
+        "circle-stroke-color": "rgba(0, 163, 64, 0.85)",
+        "circle-stroke-opacity": [
+          "case",
+          ["==", ["get", "_originalId"], selectedFeatureId ?? ""],
+          [
+            "interpolate",
+            ["linear"],
+            ["coalesce", ["feature-state", "pulse"], 0],
+            0,
+            0.0,
+            1,
+            1.0,
+          ],
+          0.0,
+        ],
       },
-      filter: ["==", ["geometry-type"], "Point"],
     }),
-    [],
+    [selectedFeatureId],
   );
 
   const lineStringLayer: LayerProps = useMemo(
@@ -102,7 +148,6 @@ const GeoJsonDataSource: React.FC<Props> = ({
       id: "clusters",
       type: "circle",
       filter: ["has", "point_count"],
-
       paint: {
         "circle-color": [
           "step",
@@ -132,29 +177,49 @@ const GeoJsonDataSource: React.FC<Props> = ({
     [],
   );
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!selectedFeatureId) {
+      clearTimers();
+      prevSelectedRef.current = undefined;
+      return;
+    }
+    prevSelectedRef.current = selectedFeatureId;
+
+    if (!map.isStyleLoaded()) {
+      const onStyle = () => {
+        runSelectAnimation(map);
+        map.off("styledata", onStyle);
+      };
+      map.on("styledata", onStyle);
+      return () => map.off("styledata", onStyle);
+    }
+    runSelectAnimation(map);
+
+    return () => {
+      clearTimers();
+    };
+  }, [mapRef, selectedFeatureId, clearTimers, runSelectAnimation]);
+
   return (
     <Source
+      id={SOURCE_ID}
       type={fileType}
       data={fileContent}
       cluster={enableClustering}
       promoteId="_originalId">
       {fileContent?.features?.some(
         (feature: GeoJSON.Feature) => feature.geometry.type === "Point",
-      ) && <Layer {...pointSelectionHaloLayer} />}
-
-      {fileContent?.features?.some(
-        (feature: GeoJSON.Feature) => feature.geometry.type === "Point",
       ) && <Layer {...pointLayer} />}
-
       {fileContent?.features?.some(
         (feature: GeoJSON.Feature) => feature.geometry.type === "LineString",
       ) && <Layer {...lineStringLayer} />}
-
       {fileContent?.features?.some(
         (feature: GeoJSON.Feature) => feature.geometry.type === "Polygon",
       ) && <Layer {...polygonLayer} />}
-      <Layer {...clusterLayer} />
-      <Layer {...clusterCountLayer} />
+      {enableClustering && <Layer {...clusterLayer} />}
+      {enableClustering && <Layer {...clusterCountLayer} />}
     </Source>
   );
 };
