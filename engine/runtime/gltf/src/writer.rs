@@ -290,7 +290,7 @@ pub fn write_gltf_glb<W: Write>(
         let indirect_writer = IndirectWriter {
             buffer: &mut tmp_buffer,
         };
-        
+
         nusamai_gltf::glb::Glb {
             json: serde_json::to_vec(&gltf).unwrap().into(),
             bin: Some(bin_content.into()),
@@ -300,7 +300,8 @@ pub fn write_gltf_glb<W: Write>(
         tmp_buffer.flush()?;
 
         // Now the glb data is in `tmp_buffer`. We compress it.
-        let mut transcoder = draco_oxide::io::gltf::transcoder::DracoTranscoder::create(None).unwrap();
+        let mut transcoder =
+            draco_oxide::io::gltf::transcoder::DracoTranscoder::create(None).unwrap();
         transcoder.transcode_buffer(&tmp_buffer, &mut writer)?;
         writer.flush()?;
     } else {
@@ -315,7 +316,7 @@ pub fn write_gltf_glb<W: Write>(
     Ok(())
 }
 
-// A struct that writes data to the buffer. The buffer, which is of type `Vec<u8>`, does not die even if 
+// A struct that writes data to the buffer. The buffer, which is of type `Vec<u8>`, does not die even if
 // A struct that writes data to a buffer. The buffer persists even when the writer is dropped.
 struct IndirectWriter<'a> {
     buffer: &'a mut Vec<u8>,

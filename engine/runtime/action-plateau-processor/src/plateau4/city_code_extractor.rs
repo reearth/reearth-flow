@@ -103,9 +103,10 @@ impl Processor for CityCodeExtractor {
         let AttributeValue::String(city_code) = feature
             .attributes
             .get(&self.city_code_attribute)
-            .ok_or(PlateauProcessorError::CityCodeExtractor(
-                format!("cityCode attribute empty: {}", self.city_code_attribute),
-            ))
+            .ok_or(PlateauProcessorError::CityCodeExtractor(format!(
+                "cityCode attribute empty: {}",
+                self.city_code_attribute
+            )))
             .cloned()?
         else {
             return Err(PlateauProcessorError::CityCodeExtractor(

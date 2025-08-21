@@ -622,7 +622,7 @@ impl Sink for GltfWriter {
                     primitives,
                     features.len(),
                     metadata_encoder,
-                    self.draco_compression
+                    self.draco_compression,
                 )
                 .map_err(|e| {
                     crate::errors::SinkError::GltfWriter(format!(
