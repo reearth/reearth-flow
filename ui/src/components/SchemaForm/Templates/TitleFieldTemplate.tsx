@@ -28,7 +28,7 @@ const TitleFieldTemplate = <
         <p className={`${isRootTitle ? "font-bold" : "font-normal"}`}>
           {title}
         </p>
-        {required && <p className="font-thin text-destructive">*</p>}
+        {required && <p className="h-2 font-thin text-destructive">*</p>}
       </div>
       <div className="border-b" />
     </Label>
