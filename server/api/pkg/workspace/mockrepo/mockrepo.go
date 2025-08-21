@@ -43,10 +43,10 @@ func (m *MockWorkspaceRepo) EXPECT() *MockWorkspaceRepoMockRecorder {
 }
 
 // FindByIDs mocks base method.
-func (m *MockWorkspaceRepo) FindByIDs(ctx context.Context, ids id.WorkspaceIDList) (workspace.WorkspaceList, error) {
+func (m *MockWorkspaceRepo) FindByIDs(ctx context.Context, ids id.WorkspaceIDList) (workspace.List, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FindByIDs", ctx, ids)
-	ret0, _ := ret[0].(workspace.WorkspaceList)
+	ret0, _ := ret[0].(workspace.List)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -55,4 +55,19 @@ func (m *MockWorkspaceRepo) FindByIDs(ctx context.Context, ids id.WorkspaceIDLis
 func (mr *MockWorkspaceRepoMockRecorder) FindByIDs(ctx, ids any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByIDs", reflect.TypeOf((*MockWorkspaceRepo)(nil).FindByIDs), ctx, ids)
+}
+
+// FindByUser mocks base method.
+func (m *MockWorkspaceRepo) FindByUser(ctx context.Context, uid id.UserID) (workspace.List, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByUser", ctx, uid)
+	ret0, _ := ret[0].(workspace.List)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByUser indicates an expected call of FindByUser.
+func (mr *MockWorkspaceRepoMockRecorder) FindByUser(ctx, uid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUser", reflect.TypeOf((*MockWorkspaceRepo)(nil).FindByUser), ctx, uid)
 }

@@ -18,6 +18,10 @@ func NewWorkspace(workspaceRepo workspace.Repo) interfaces.Workspace {
 	}
 }
 
-func (i *Workspace) FindByIDs(ctx context.Context, ids id.WorkspaceIDList) (workspace.WorkspaceList, error) {
+func (i *Workspace) FindByIDs(ctx context.Context, ids id.WorkspaceIDList) (workspace.List, error) {
 	return i.workspaceRepo.FindByIDs(ctx, ids)
+}
+
+func (i *Workspace) FindByUser(ctx context.Context, uid id.UserID) (workspace.List, error) {
+	return i.workspaceRepo.FindByUser(ctx, uid)
 }

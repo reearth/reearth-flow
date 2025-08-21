@@ -35,12 +35,12 @@ func ToWorkspaceFromFlow(t pkgworkspace.Workspace) *Workspace {
 		switch m := member.(type) {
 		case pkgworkspace.UserMember:
 			workspaceMember := &WorkspaceMember{
-				UserID: ID(m.UserID),
+				UserID: IDFrom(m.UserID),
 				Role:   Role(m.Role),
 			}
 			if m.User != nil {
 				workspaceMember.User = &User{
-					ID:    ID(m.User.ID),
+					ID:    IDFrom(m.User.ID),
 					Name:  m.User.Name,
 					Email: m.User.Email,
 					Host:  m.Host,
@@ -54,7 +54,7 @@ func ToWorkspaceFromFlow(t pkgworkspace.Workspace) *Workspace {
 	}
 
 	return &Workspace{
-		ID:       ID(t.ID()),
+		ID:       IDFrom(t.ID()),
 		Name:     t.Name(),
 		Personal: t.Personal(),
 		Members:  members,

@@ -5,8 +5,8 @@ import (
 
 	"github.com/hasura/go-graphql-client"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gql/util"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/user"
-	"github.com/samber/lo"
 )
 
 type userRepo struct {
@@ -23,15 +23,26 @@ func (r *userRepo) FindMe(ctx context.Context) (*user.User, error) {
 		return nil, err
 	}
 
-	return user.New().
-		ID(string(q.Me.ID)).
-		Name(string(q.Me.Name)).
-		Alias(string(q.Me.Alias)).
-		Email(string(q.Me.Email)).
-		Metadata(util.ToUserMetadata(q.Me.Metadata)).
-		Host(lo.ToPtr(string(q.Me.Host))).
-		MyWorkspaceID(string(q.Me.MyWorkspaceID)).
-		Auths(util.ToStringSlice(q.Me.Auths)).
-		Workspaces(util.ToWorkspaces(q.Me.Workspaces)).
-		Build()
+	return util.ToMe(q.Me)
+}
+
+func (r *userRepo) FindByIDs(ctx context.Context, ids id.UserIDList) (user.List, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	graphqlIDs := make([]graphql.ID, 0, len(ids))
+	for _, id := range ids {
+		graphqlIDs = append(graphqlIDs, graphql.ID(id.String()))
+	}
+
+	var q findUsersByIDsQuery
+	vars := map[string]interface{}{
+		"ids": graphqlIDs,
+	}
+	if err := r.client.Query(ctx, &q, vars); err != nil {
+		return nil, err
+	}
+
+	return util.ToUsers(q.Users)
 }

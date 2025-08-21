@@ -5,9 +5,6 @@ type Member interface {
 	GetMemberType() string
 }
 
-type UserID = string
-type IntegrationID = string
-
 type User struct {
 	ID    UserID
 	Name  string

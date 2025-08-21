@@ -2,23 +2,70 @@ package gql
 
 import (
 	"context"
+	"log"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqldataloader"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountusecase/accountinterfaces"
 	"github.com/reearth/reearthx/util"
 )
 
+// TODO: After migration, remove accountinterfaces.User and rename tempNewUsecase to usecase.
 type UserLoader struct {
-	usecase accountinterfaces.User
+	usecase        accountinterfaces.User
+	tempNewUsecase interfaces.User
 }
 
-func NewUserLoader(usecase accountinterfaces.User) *UserLoader {
-	return &UserLoader{usecase: usecase}
+func NewUserLoader(usecase accountinterfaces.User, tempNewUsecase interfaces.User) *UserLoader {
+	return &UserLoader{
+		usecase:        usecase,
+		tempNewUsecase: tempNewUsecase,
+	}
 }
 
+// TODO: After migration, remove this logic and use the new usecase directly.
 func (c *UserLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmodel.User, []error) {
+	if c.tempNewUsecase != nil {
+		users := c.fetchWithTempNewUsecase(ctx, ids)
+		if len(users) > 0 {
+			log.Printf("DEBUG:[UserLoader.Fetch] Fetched %d users with tempNewUsecase", len(users))
+			return users, nil
+		}
+	}
+	log.Printf("WARNING:[UserLoader.Fetch] Fallback to traditional usecase for %d IDs", len(ids))
+	return c.fetchWithTraditionalUsecase(ctx, ids)
+}
+
+func (c *UserLoader) fetchWithTempNewUsecase(ctx context.Context, ids []gqlmodel.ID) []*gqlmodel.User {
+	uids, err := util.TryMap(ids, gqlmodel.ToID[id.User])
+	if err != nil {
+		log.Printf("WARNING:[UserLoader.fetchWithTempNewUsecase] Failed to convert IDs: %v", err)
+		return nil
+	}
+
+	res, err := c.tempNewUsecase.FindByIDs(ctx, uids)
+	if err != nil {
+		log.Printf("WARNING:[UserLoader.fetchWithTempNewUsecase] Failed to find users: %v", err)
+		return nil
+	}
+
+	if len(res) == 0 {
+		log.Printf("DEBUG:[UserLoader.fetchWithTempNewUsecase] No users found for IDs: %v", ids)
+		return nil
+	}
+
+	users := make([]*gqlmodel.User, 0, len(res))
+	for _, u := range res {
+		users = append(users, gqlmodel.ToUserFromFlow(u))
+	}
+
+	return users
+}
+
+func (c *UserLoader) fetchWithTraditionalUsecase(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmodel.User, []error) {
 	uids, err := util.TryMap(ids, gqlmodel.ToID[accountdomain.User])
 	if err != nil {
 		return nil, []error{err}

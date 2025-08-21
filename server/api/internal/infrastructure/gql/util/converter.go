@@ -1,35 +1,115 @@
 package util
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/hasura/go-graphql-client"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gql/gqlmodel"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/user"
 	"github.com/reearth/reearth-flow/api/pkg/workspace"
+	"github.com/samber/lo"
 	"golang.org/x/text/language"
 )
 
-func ToWorkspace(w gqlmodel.Workspace) *workspace.Workspace {
+func ToMe(m gqlmodel.Me) (*user.User, error) {
+	uid, err := user.IDFrom(string(m.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	wid, err := user.WorkspaceIDFrom(string(m.MyWorkspaceID))
+	if err != nil {
+		return nil, err
+	}
+
+	workspaces, err := ToWorkspaces(m.Workspaces)
+	if err != nil {
+		return nil, err
+	}
+
+	return user.New().
+		ID(uid).
+		Name(string(m.Name)).
+		Alias(string(m.Alias)).
+		Email(string(m.Email)).
+		Metadata(toUserMetadata(m.Metadata)).
+		Host(lo.ToPtr(string(m.Host))).
+		MyWorkspaceID(wid).
+		Auths(toStringSlice(m.Auths)).
+		Workspaces(workspaces).
+		Build()
+}
+
+func toUser(u gqlmodel.User) (*user.User, error) {
+	uid, err := user.IDFrom(string(u.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	wid, err := user.WorkspaceIDFrom(string(u.Workspace))
+	if err != nil {
+		return nil, err
+	}
+
+	return user.New().
+		ID(uid).
+		Name(string(u.Name)).
+		Email(string(u.Email)).
+		Host(lo.ToPtr(string(u.Host))).
+		MyWorkspaceID(wid).
+		Auths(toStringSlice(u.Auths)).
+		Metadata(toUserMetadata(u.Metadata)).
+		Build()
+}
+
+func ToUsers(gqlUsers []gqlmodel.User) (user.List, error) {
+	users := make(user.List, 0, len(gqlUsers))
+	for _, gu := range gqlUsers {
+		u, err := toUser(gu)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, *u)
+	}
+	return users, nil
+}
+
+func toWorkspace(w gqlmodel.Workspace) (*workspace.Workspace, error) {
+	wid, err := workspace.IDFrom(string(w.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	members, err := toWorkspaceMembers(w.Members)
+	if err != nil {
+		return nil, err
+	}
+
 	return workspace.New().
-		ID(string(w.ID)).
+		ID(wid).
 		Name(string(w.Name)).
 		Alias(string(w.Alias)).
-		Metadata(ToWorkspaceMetadata(w.Metadata)).
+		Metadata(toWorkspaceMetadata(w.Metadata)).
 		Personal(w.Personal).
-		Members(ToWorkspaceMembers(w.Members)).
-		MustBuild()
+		Members(members).
+		Build()
 }
 
-func ToWorkspaces(gqlWorkspaces []gqlmodel.Workspace) workspace.WorkspaceList {
-	workspaces := make(workspace.WorkspaceList, 0, len(gqlWorkspaces))
+func ToWorkspaces(gqlWorkspaces []gqlmodel.Workspace) (workspace.List, error) {
+	workspaces := make(workspace.List, 0, len(gqlWorkspaces))
 	for _, w := range gqlWorkspaces {
-		if ws := ToWorkspace(w); ws != nil {
-			workspaces = append(workspaces, *ws)
+		ws, err := toWorkspace(w)
+		if err != nil {
+			return nil, err
 		}
+		workspaces = append(workspaces, *ws)
 	}
-	return workspaces
+	return workspaces, nil
 }
 
-func ToUserMetadata(m gqlmodel.UserMetadata) user.Metadata {
+func toUserMetadata(m gqlmodel.UserMetadata) user.Metadata {
 	return user.NewMetadata().
 		Description(string(m.Description)).
 		Lang(language.Make(string(m.Lang))).
@@ -39,7 +119,7 @@ func ToUserMetadata(m gqlmodel.UserMetadata) user.Metadata {
 		MustBuild()
 }
 
-func ToWorkspaceMetadata(m gqlmodel.WorkspaceMetadata) workspace.Metadata {
+func toWorkspaceMetadata(m gqlmodel.WorkspaceMetadata) workspace.Metadata {
 	return workspace.NewMetadata().
 		Description(string(m.Description)).
 		Website(string(m.Website)).
@@ -49,52 +129,98 @@ func ToWorkspaceMetadata(m gqlmodel.WorkspaceMetadata) workspace.Metadata {
 		MustBuild()
 }
 
-func ToWorkspaceMembers(gqlMembers []gqlmodel.WorkspaceMember) []workspace.Member {
+func toWorkspaceMembers(gqlMembers []gqlmodel.WorkspaceMember) ([]workspace.Member, error) {
 	var members []workspace.Member
 
 	for _, gqlMember := range gqlMembers {
 		switch gqlMember.Typename {
 		case "WorkspaceUserMember":
-			if gqlMember.UserMemberData.UserID != "" {
-				userMember := workspace.UserMember{
-					UserID: workspace.UserID(gqlMember.UserMemberData.UserID),
-					Role:   workspace.Role(gqlMember.UserMemberData.Role),
-				}
-				if gqlMember.UserMemberData.Host != "" {
-					hostStr := string(gqlMember.UserMemberData.Host)
-					userMember.Host = &hostStr
-				}
-				if gqlMember.UserMemberData.User != nil {
-					userMember.User = &workspace.User{
-						ID:    workspace.UserID(gqlMember.UserMemberData.User.ID),
-						Name:  string(gqlMember.UserMemberData.User.Name),
-						Email: string(gqlMember.UserMemberData.User.Email),
-					}
-				}
-				members = append(members, userMember)
+			member, err := toUserMember(gqlMember)
+			if err != nil {
+				return nil, err
 			}
+			members = append(members, member)
 
 		case "WorkspaceIntegrationMember":
-			if gqlMember.IntegrationMemberData.IntegrationID != "" {
-				integrationMember := workspace.IntegrationMember{
-					IntegrationID: workspace.IntegrationID(gqlMember.IntegrationMemberData.IntegrationID),
-					Role:          workspace.Role(gqlMember.IntegrationMemberData.Role),
-					Active:        gqlMember.IntegrationMemberData.Active,
-					InvitedByID:   workspace.UserID(gqlMember.IntegrationMemberData.InvitedByID),
-				}
-				if gqlMember.IntegrationMemberData.InvitedBy != nil {
-					integrationMember.InvitedBy = &workspace.User{
-						ID:    workspace.UserID(gqlMember.IntegrationMemberData.InvitedBy.ID),
-						Name:  string(gqlMember.IntegrationMemberData.InvitedBy.Name),
-						Email: string(gqlMember.IntegrationMemberData.InvitedBy.Email),
-					}
-				}
-				members = append(members, integrationMember)
+			member, err := toIntegrationMember(gqlMember)
+			if err != nil {
+				return nil, err
 			}
+			members = append(members, member)
+
+		default:
+			return nil, fmt.Errorf("unknown workspace member type: %s", gqlMember.Typename)
 		}
 	}
 
-	return members
+	return members, nil
+}
+
+func toUserMember(gql gqlmodel.WorkspaceMember) (workspace.UserMember, error) {
+	if gql.UserMemberData.UserID == "" {
+		return workspace.UserMember{}, errors.New("missing user ID")
+	}
+	uid, err := workspace.UserIDFrom(string(gql.UserMemberData.UserID))
+	if err != nil {
+		return workspace.UserMember{}, err
+	}
+
+	member := workspace.UserMember{
+		UserID: uid,
+		Role:   workspace.Role(gql.UserMemberData.Role),
+	}
+	if gql.UserMemberData.Host != "" {
+		hostStr := string(gql.UserMemberData.Host)
+		member.Host = &hostStr
+	}
+	if gql.UserMemberData.User != nil {
+		id, err := workspace.UserIDFrom(string(gql.UserMemberData.User.ID))
+		if err != nil {
+			return workspace.UserMember{}, err
+		}
+		member.User = &workspace.User{
+			ID:    id,
+			Name:  string(gql.UserMemberData.User.Name),
+			Email: string(gql.UserMemberData.User.Email),
+		}
+	}
+	return member, nil
+}
+
+func toIntegrationMember(gql gqlmodel.WorkspaceMember) (workspace.IntegrationMember, error) {
+	if gql.IntegrationMemberData.IntegrationID == "" {
+		return workspace.IntegrationMember{}, errors.New("missing integration ID")
+	}
+
+	itid, err := id.IntegrationIDFrom(string(gql.IntegrationMemberData.IntegrationID))
+	if err != nil {
+		return workspace.IntegrationMember{}, err
+	}
+
+	ivid, err := workspace.UserIDFrom(string(gql.IntegrationMemberData.InvitedByID))
+	if err != nil {
+		return workspace.IntegrationMember{}, err
+	}
+
+	member := workspace.IntegrationMember{
+		IntegrationID: itid,
+		Role:          workspace.Role(gql.IntegrationMemberData.Role),
+		Active:        gql.IntegrationMemberData.Active,
+		InvitedByID:   ivid,
+	}
+
+	if gql.IntegrationMemberData.InvitedBy != nil {
+		id, err := workspace.UserIDFrom(string(gql.IntegrationMemberData.InvitedBy.ID))
+		if err != nil {
+			return workspace.IntegrationMember{}, err
+		}
+		member.InvitedBy = &workspace.User{
+			ID:    id,
+			Name:  string(gql.IntegrationMemberData.InvitedBy.Name),
+			Email: string(gql.IntegrationMemberData.InvitedBy.Email),
+		}
+	}
+	return member, nil
 }
 
 func FromPtrToPtr(s *graphql.String) *string {
@@ -105,7 +231,7 @@ func FromPtrToPtr(s *graphql.String) *string {
 	return &str
 }
 
-func ToStringSlice(gqlSlice []graphql.String) []string {
+func toStringSlice(gqlSlice []graphql.String) []string {
 	res := make([]string, len(gqlSlice))
 	for i, v := range gqlSlice {
 		res[i] = string(v)
