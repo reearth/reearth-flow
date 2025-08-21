@@ -603,6 +603,10 @@ impl BroadcastGroup {
 
                     if self.all_nodes_have_position(awareness_doc) {
                         tracing::info!("All nodes have position data");
+                        
+                        // Get the last stream ID before saving
+                        let last_stream_id = self.redis_store.get_stream_last_id(&self.doc_name).await.ok().flatten();
+                        
                         let gcs_doc = Doc::new();
                         let mut gcs_txn = gcs_doc.transact_mut();
 
@@ -613,7 +617,6 @@ impl BroadcastGroup {
                         let gcs_state = gcs_txn.state_vector();
 
                         let awareness_txn = awareness_doc.transact();
-                        // let awareness_state = awareness_txn.state_vector();
 
                         let update = awareness_txn.encode_diff_v1(&gcs_state);
                         let update_bytes = Bytes::from(update);
@@ -632,6 +635,15 @@ impl BroadcastGroup {
 
                         if let Err(e) = flush_result {
                             warn!("Failed to flush document directly to storage: {}", e);
+                        } else if flush_result.is_ok() {
+                            // Successfully saved to GCS, trim the Redis stream
+                            // Remove all entries up to the last one we incorporated
+                            if let Some(last_id) = last_stream_id {
+                                tracing::info!("Document saved to GCS, trimming Redis stream up to ID: {}", last_id);
+                                if let Err(e) = self.redis_store.trim_stream_before(&self.doc_name, &last_id).await {
+                                    warn!("Failed to trim Redis stream after GCS save: {}", e);
+                                }
+                            }
                         }
 
                         if let Err(e) = update_result {
