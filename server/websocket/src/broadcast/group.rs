@@ -526,6 +526,11 @@ impl BroadcastGroup {
             Ok(map_json_value) => {
                 if let Some(main) = map_json_value["main"].as_object() {
                     if let Some(nodes) = main["nodes"].as_object() {
+                        if nodes.is_empty() {
+                            debug!("No nodes found");
+                            return false;
+                        }
+
                         for (_, node) in nodes {
                             if let Some(position) = node["position"].as_object() {
                                 if let (Some(x), Some(y)) = (position.get("x"), position.get("y")) {
@@ -539,7 +544,7 @@ impl BroadcastGroup {
                         return true;
                     }
                 }
-                true
+                false
             }
             Err(e) => {
                 tracing::error!("Error parsing map_json: {:?}", e);
@@ -599,10 +604,18 @@ impl BroadcastGroup {
                     let awareness = self.awareness_ref.write().await;
                     let awareness_doc = awareness.doc();
 
-                    tracing::info!("Saving document to GCS");
+                    // Check if all nodes have position data before saving to GCS
+                    if !self.all_nodes_have_position(awareness_doc) {
+                        debug!("Skipping GCS save: not all nodes have position data");
+                    } else {
+                        // Get the last stream ID before saving
+                        let last_stream_id = self
+                            .redis_store
+                            .get_stream_last_id(&self.doc_name)
+                            .await
+                            .ok()
+                            .flatten();
 
-                    if self.all_nodes_have_position(awareness_doc) {
-                        tracing::info!("All nodes have position data");
                         let gcs_doc = Doc::new();
                         let mut gcs_txn = gcs_doc.transact_mut();
 
@@ -613,31 +626,53 @@ impl BroadcastGroup {
                         let gcs_state = gcs_txn.state_vector();
 
                         let awareness_txn = awareness_doc.transact();
-                        // let awareness_state = awareness_txn.state_vector();
+                        let awareness_state = awareness_txn.state_vector();
 
                         let update = awareness_txn.encode_diff_v1(&gcs_state);
                         let update_bytes = Bytes::from(update);
 
-                        tracing::info!("Updating document in storage");
-                        let update_future = self.storage.push_update(
-                            &self.doc_name,
-                            &update_bytes,
-                            &self.redis_store,
-                        );
-                        let flush_future =
-                            self.storage.flush_doc_v2(&self.doc_name, &awareness_txn);
+                        if !(update_bytes.is_empty()
+                            || (update_bytes.len() == 2
+                                && update_bytes[0] == 0
+                                && update_bytes[1] == 0)
+                            || awareness_state == gcs_state)
+                        {
+                            let update_future = self.storage.push_update(
+                                &self.doc_name,
+                                &update_bytes,
+                                &self.redis_store,
+                            );
+                            let flush_future =
+                                self.storage.flush_doc_v2(&self.doc_name, &awareness_txn);
 
-                        let (update_result, flush_result) =
-                            tokio::join!(update_future, flush_future);
+                            let (update_result, flush_result) =
+                                tokio::join!(update_future, flush_future);
 
-                        if let Err(e) = flush_result {
-                            warn!("Failed to flush document directly to storage: {}", e);
+                            if let Err(e) = flush_result {
+                                warn!("Failed to flush document directly to storage: {}", e);
+                            } else {
+                                // Successfully saved to GCS, trim the Redis stream
+                                // Remove all entries up to the last one we incorporated
+                                if let Some(last_id) = last_stream_id {
+                                    tracing::info!(
+                                        "Document saved to GCS, trimming Redis stream up to ID: {}",
+                                        last_id
+                                    );
+                                    if let Err(e) = self
+                                        .redis_store
+                                        .trim_stream_before(&self.doc_name, &last_id)
+                                        .await
+                                    {
+                                        warn!("Failed to trim Redis stream after GCS save: {}", e);
+                                    }
+                                }
+                            }
+
+                            if let Err(e) = update_result {
+                                warn!("Failed to update document in storage: {}", e);
+                            }
                         }
-
-                        if let Err(e) = update_result {
-                            warn!("Failed to update document in storage: {}", e);
-                        }
-                    }
+                    } // Close the else block for position check
                 }
 
                 if let Err(e) = self
