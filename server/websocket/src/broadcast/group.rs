@@ -526,6 +526,8 @@ impl BroadcastGroup {
             Ok(map_json_value) => {
                 if let Some(main) = map_json_value["main"].as_object() {
                     if let Some(nodes) = main["nodes"].as_object() {
+                        // Always save the document state, regardless of whether nodes exist or not
+                        // This ensures that node deletions are properly persisted
                         for (_, node) in nodes {
                             if let Some(position) = node["position"].as_object() {
                                 if let (Some(x), Some(y)) = (position.get("x"), position.get("y")) {
@@ -539,6 +541,7 @@ impl BroadcastGroup {
                         return true;
                     }
                 }
+                // Return true even for empty documents to ensure deletions are saved
                 true
             }
             Err(e) => {
@@ -632,6 +635,13 @@ impl BroadcastGroup {
 
                         if let Err(e) = flush_result {
                             warn!("Failed to flush document directly to storage: {}", e);
+                        } else {
+                            // Successfully saved to GCS, clear the Redis stream
+                            // since GCS now has the authoritative state
+                            tracing::info!("Document saved to GCS, clearing Redis stream");
+                            if let Err(e) = self.redis_store.delete_stream(&self.doc_name).await {
+                                warn!("Failed to clear Redis stream after GCS save: {}", e);
+                            }
                         }
 
                         if let Err(e) = update_result {
@@ -652,11 +662,8 @@ impl BroadcastGroup {
 
         tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
-        if self.connection_count() == 0 {
-            self.redis_store
-                .safe_delete_stream(&self.doc_name, &self.instance_id)
-                .await?;
-        }
+        // Stream deletion is now handled after successful GCS save
+        // No need to delete it here as it might remove updates that haven't been saved yet
 
         Ok(())
     }

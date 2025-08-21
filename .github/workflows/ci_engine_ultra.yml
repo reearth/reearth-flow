@@ -1,5 +1,12 @@
 name: ci-engine-ultra
 
+# Ultra workflow runs all standard CI checks in parallel for maximum speed:
+# - Format checks (rustfmt, taplo) - 30s
+# - Build & Clippy - 7m
+# - Tests (2 parallel shards) - 10m
+# - Schema generation - 5m
+# All jobs run in parallel, total time is the slowest job (~10m)
+
 on:
   workflow_call:
 
@@ -16,6 +23,7 @@ defaults:
     working-directory: engine
 
 jobs:
+  # Quick formatting and validation checks (fast, no compilation needed)
   quick-checks:
     name: Format & Version Check
     runs-on: ubuntu-latest
@@ -53,6 +61,7 @@ jobs:
             exit 1
           fi
 
+  # Build and run clippy for code quality
   build-and-clippy:
     name: Build & Clippy
     runs-on: ubuntu-22.04
@@ -87,13 +96,15 @@ jobs:
       - name: Install py2wasm
         run: pip install py2wasm
       
+      # Use cargo make for consistency with standard CI
       - name: Build check
-        run: cargo check --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
+        run: cargo make check
       
       - name: Clippy
-        run: cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --no-deps -- -D warnings
+        run: cargo make clippy
       
 
+  # Run tests in parallel shards for speed
   test-matrix:
     name: Tests (Shard ${{ matrix.shard }})
     runs-on: ubuntu-22.04
@@ -139,12 +150,15 @@ jobs:
             --partition hash:${{ matrix.shard }}/2 \
             --no-fail-fast
 
+  # Generate and validate action schemas
   schema-generation:
     name: Schema Generation
     runs-on: ubuntu-latest
-    if: |
-      contains(github.event.head_commit.message, '[schema]') ||
-      github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Always run schema generation to ensure consistency
+    if: true
+    defaults:
+      run:
+        working-directory: engine
     steps:
       - uses: actions/checkout@v4
         with:
@@ -191,8 +205,11 @@ jobs:
   ci-status:
     name: CI Status
     runs-on: ubuntu-latest
-    needs: [quick-checks, build-and-clippy, test-matrix]
+    needs: [quick-checks, build-and-clippy, test-matrix, schema-generation]
     if: always()
+    defaults:
+      run:
+        working-directory: .
     steps:
       - name: Check all jobs
         run: |
