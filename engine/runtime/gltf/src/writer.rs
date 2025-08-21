@@ -316,7 +316,7 @@ pub fn write_gltf_glb<W: Write>(
 }
 
 // A struct that writes data to the buffer. The buffer, which is of type `Vec<u8>`, does not die even if 
-// the writer is dropped. 
+// A struct that writes data to a buffer. The buffer persists even when the writer is dropped.
 struct IndirectWriter<'a> {
     buffer: &'a mut Vec<u8>,
 }
