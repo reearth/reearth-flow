@@ -24,7 +24,7 @@ nusamai-gltf.workspace = true
 ahash.workspace = true
 byteorder.workspace = true
 chrono.workspace = true
-draco-oxide = { path = "../../../../../draco-related/draco-oxide/draco-oxide" }
+draco-oxide = "0.1.0-alpha.2"
 indexmap.workspace = true
 itertools.workspace = true
 once_cell.workspace = true

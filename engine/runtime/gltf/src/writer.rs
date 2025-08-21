@@ -2,12 +2,11 @@ use std::io::Write;
 
 use ahash::{HashMap, HashSet};
 use byteorder::{ByteOrder, LittleEndian};
-use draco_oxide::io::gltf::transcoder::FileOptions;
 use indexmap::IndexSet;
 use nusamai_gltf::nusamai_gltf_json::extensions::mesh::ext_mesh_features;
-use reearth_flow_types::{file, material};
+use reearth_flow_types::material;
 
-use crate::{metadata::MetadataEncoder, writer};
+use crate::metadata::MetadataEncoder;
 
 #[derive(Default)]
 pub struct PrimitiveInfo {
@@ -24,7 +23,7 @@ pub fn write_gltf_glb<W: Write>(
     primitives: Primitives,
     num_features: usize,
     metadata_encoder: MetadataEncoder,
-    compression_options: Option<bool>,
+    draco_compression_enabled: bool,
 ) -> crate::errors::Result<()> {
     use nusamai_gltf::nusamai_gltf_json::*;
 
@@ -285,7 +284,7 @@ pub fn write_gltf_glb<W: Write>(
     };
 
     // Write glb to the writer
-    let compression_options = compression_options.unwrap_or(false);
+    let compression_options = draco_compression_enabled;
     if compression_options {
         let mut tmp_buffer = Vec::new();
         let indirect_writer = IndirectWriter {

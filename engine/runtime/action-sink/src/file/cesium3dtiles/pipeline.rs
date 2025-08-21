@@ -152,6 +152,7 @@ pub(super) fn tile_writing_stage(
     tile_id_conv: TileIdMethod,
     schema: &Schema,
     limit_texture_resolution: Option<bool>,
+    draco_compression_enabled: bool,
 ) -> crate::errors::Result<()> {
     let ellipsoid = nusamai_projection::ellipsoid::wgs84();
     let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
@@ -536,8 +537,7 @@ pub(super) fn tile_writing_stage(
                 primitives,
                 features.len(),
                 metadata_encoder,
-                // Some(true),
-                None
+                draco_compression_enabled,
             )
             .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
 
