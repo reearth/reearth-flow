@@ -96,12 +96,11 @@ jobs:
       - name: Install py2wasm
         run: pip install py2wasm
       
-      # Use cargo make for consistency with standard CI
       - name: Build check
-        run: cargo make check
+        run: cargo check --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
       
       - name: Clippy
-        run: cargo make clippy
+        run: cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --no-deps -- -D warnings
       
 
   # Run tests in parallel shards for speed
