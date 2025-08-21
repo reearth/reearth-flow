@@ -609,8 +609,13 @@ impl BroadcastGroup {
                         debug!("Skipping GCS save: not all nodes have position data");
                     } else {
                         // Get the last stream ID before saving
-                        let last_stream_id = self.redis_store.get_stream_last_id(&self.doc_name).await.ok().flatten();
-                        
+                        let last_stream_id = self
+                            .redis_store
+                            .get_stream_last_id(&self.doc_name)
+                            .await
+                            .ok()
+                            .flatten();
+
                         let gcs_doc = Doc::new();
                         let mut gcs_txn = gcs_doc.transact_mut();
 
@@ -649,8 +654,15 @@ impl BroadcastGroup {
                                 // Successfully saved to GCS, trim the Redis stream
                                 // Remove all entries up to the last one we incorporated
                                 if let Some(last_id) = last_stream_id {
-                                    tracing::info!("Document saved to GCS, trimming Redis stream up to ID: {}", last_id);
-                                    if let Err(e) = self.redis_store.trim_stream_before(&self.doc_name, &last_id).await {
+                                    tracing::info!(
+                                        "Document saved to GCS, trimming Redis stream up to ID: {}",
+                                        last_id
+                                    );
+                                    if let Err(e) = self
+                                        .redis_store
+                                        .trim_stream_before(&self.doc_name, &last_id)
+                                        .await
+                                    {
                                         warn!("Failed to trim Redis stream after GCS save: {}", e);
                                     }
                                 }

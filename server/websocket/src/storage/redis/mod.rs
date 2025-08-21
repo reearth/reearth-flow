@@ -285,9 +285,10 @@ impl RedisStore {
     pub async fn get_stream_last_id(&self, doc_id: &str) -> Result<Option<String>> {
         let stream_key = format!("yjs:stream:{doc_id}");
         let mut conn = self.pool.get().await?;
-        
+
         // Get the last entry ID from the stream
-        let result: Option<Vec<(String, Vec<(String, Vec<u8>)>)>> = redis::cmd("XREVRANGE")
+        type StreamEntry = (String, Vec<(String, Vec<u8>)>);
+        let result: Option<Vec<StreamEntry>> = redis::cmd("XREVRANGE")
             .arg(&stream_key)
             .arg("+")
             .arg("-")
@@ -295,20 +296,20 @@ impl RedisStore {
             .arg(1)
             .query_async(&mut *conn)
             .await?;
-            
+
         if let Some(entries) = result {
             if !entries.is_empty() {
                 return Ok(Some(entries[0].0.clone()));
             }
         }
-        
+
         Ok(None)
     }
 
     pub async fn trim_stream_before(&self, doc_id: &str, last_id: &str) -> Result<()> {
         let stream_key = format!("yjs:stream:{doc_id}");
         let mut conn = self.pool.get().await?;
-        
+
         // Delete all entries before and including the specified ID
         // This keeps only entries after the last saved state
         let script = redis::Script::new(
@@ -327,14 +328,17 @@ impl RedisStore {
             return #entries
             "#,
         );
-        
+
         let deleted_count: i32 = script
             .key(&stream_key)
             .arg(last_id)
             .invoke_async(&mut *conn)
             .await?;
-            
-        debug!("Trimmed {} entries from stream '{}' after GCS save", deleted_count, stream_key);
+
+        debug!(
+            "Trimmed {} entries from stream '{}' after GCS save",
+            deleted_count, stream_key
+        );
         Ok(())
     }
 
