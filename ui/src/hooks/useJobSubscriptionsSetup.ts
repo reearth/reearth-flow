@@ -6,6 +6,7 @@ import {
   RealTimeLogsSubscription,
 } from "@flow/lib/gql/__gen__/graphql";
 import { toJobStatus, toLog } from "@flow/lib/gql/convert";
+import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useSubscriptionSetup } from "@flow/lib/gql/subscriptions/useSubscriptionSetup";
 import { useIndexedDB } from "@flow/lib/indexedDB";
@@ -20,6 +21,9 @@ export default (accessToken?: string, jobId?: string, projectId?: string) => {
     () => debugRunState?.jobs?.find((job) => job.projectId === projectId),
     [debugRunState, projectId],
   );
+
+  const { useGetJob } = useJob();
+  const { job: currentJob } = useGetJob(jobId);
 
   useEffect(() => {
     if (!jobId && processedLogIds.current.size > 0) {
@@ -70,13 +74,17 @@ export default (accessToken?: string, jobId?: string, projectId?: string) => {
     [],
   );
 
+  const isJobCompleted = currentJob?.status === "completed" || 
+                         currentJob?.status === "failed" ||
+                         currentJob?.status === "cancelled";
+  
   useSubscriptionSetup<OnJobStatusChangeSubscription>(
     "GetSubscribedJobStatus",
     accessToken,
     variables,
     jobId,
     jobStatusDataFormatter,
-    !jobId || debugRun?.status === "completed" || debugRun?.status === "failed",
+    !jobId || isJobCompleted,
   );
   useSubscriptionSetup<RealTimeLogsSubscription, Log[]>(
     "GetSubscribedLogs",
@@ -90,7 +98,7 @@ export default (accessToken?: string, jobId?: string, projectId?: string) => {
   const { data: realTimeJobStatus } = useSubscription(
     "GetSubscribedJobStatus",
     jobId,
-    !jobId || debugRun?.status === "completed" || debugRun?.status === "failed",
+    !jobId || isJobCompleted,
   );
 
   useEffect(() => {
