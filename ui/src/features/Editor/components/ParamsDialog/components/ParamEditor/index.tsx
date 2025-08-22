@@ -91,9 +91,12 @@ const ParamEditor: React.FC<Props> = ({
     createdAction && !createdAction.parameter ? "customizations" : "params",
   );
 
+  const isCurrentTabValid =
+    activeTab === "params" ? isParamsValid : isCustomizationsValid;
+
   const handleUpdate = () => {
+    if (!isCurrentTabValid) return;
     if (nodeType === "subworkflow" && nodeMeta.subworkflowId) {
-      onUpdate(nodeId, nodeParams, updatedCustomization);
       onWorkflowRename?.(
         nodeMeta?.subworkflowId,
         updatedCustomization?.customName || nodeMeta?.officialName,
@@ -101,9 +104,6 @@ const ParamEditor: React.FC<Props> = ({
     }
     onUpdate(nodeId, nodeParams, updatedCustomization);
   };
-
-  const isCurrentTabValid =
-    activeTab === "params" ? isParamsValid : isCustomizationsValid;
 
   return (
     <div className="flex h-[60vh] flex-col gap-4">
