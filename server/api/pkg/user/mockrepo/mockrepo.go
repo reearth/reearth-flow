@@ -13,6 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	id "github.com/reearth/reearth-flow/api/pkg/id"
 	user "github.com/reearth/reearth-flow/api/pkg/user"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -39,6 +40,21 @@ func NewMockUserRepo(ctrl *gomock.Controller) *MockUserRepo {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockUserRepo) EXPECT() *MockUserRepoMockRecorder {
 	return m.recorder
+}
+
+// FindByIDs mocks base method.
+func (m *MockUserRepo) FindByIDs(ctx context.Context, ids id.UserIDList) (user.List, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByIDs", ctx, ids)
+	ret0, _ := ret[0].(user.List)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByIDs indicates an expected call of FindByIDs.
+func (mr *MockUserRepoMockRecorder) FindByIDs(ctx, ids any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByIDs", reflect.TypeOf((*MockUserRepo)(nil).FindByIDs), ctx, ids)
 }
 
 // FindMe mocks base method.

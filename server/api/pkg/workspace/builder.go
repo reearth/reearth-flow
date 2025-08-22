@@ -49,3 +49,8 @@ func (b *Builder) Personal(personal bool) *Builder {
 	b.a.personal = personal
 	return b
 }
+
+func (b *Builder) Members(members []Member) *Builder {
+	b.a.members = members
+	return b
+}

@@ -21,6 +21,16 @@ func ToUser(u *user.User) *User {
 	}
 }
 
+// TODO: After migration, delete ToUser and rename ToUserFromFlow to ToUser.
+func ToUserFromFlow(u pkguser.User) *User {
+	return &User{
+		ID:    IDFrom(u.ID()),
+		Name:  u.Name(),
+		Email: u.Email(),
+		Host:  u.Host(),
+	}
+}
+
 func ToUsersFromSimple(users user.SimpleList) []*User {
 	return util.Map(users, ToUserFromSimple)
 }
@@ -67,11 +77,11 @@ func ToMeFromFlow(u *pkguser.User) *Me {
 	}
 
 	return &Me{
-		ID:            ID(u.ID()),
+		ID:            IDFrom(u.ID()),
 		Name:          u.Name(),
 		Email:         u.Email(),
 		Lang:          u.Metadata().Lang(),
-		MyWorkspaceID: ID(u.MyWorkspaceID()),
+		MyWorkspaceID: IDFrom(u.MyWorkspaceID()),
 		Auths:         u.Auths(),
 	}
 }

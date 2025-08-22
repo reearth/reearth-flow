@@ -231,7 +231,7 @@ impl RedisStore {
         instance_id: &str,
         last_read_id: &Arc<Mutex<String>>,
     ) -> Result<Vec<Bytes>> {
-        let block_ms = 1600;
+        let block_ms = 1000;
 
         let read_id = {
             let last_id = last_read_id.lock().await;
@@ -279,6 +279,66 @@ impl RedisStore {
             .query_async(&mut *conn)
             .await?;
 
+        Ok(())
+    }
+
+    pub async fn get_stream_last_id(&self, doc_id: &str) -> Result<Option<String>> {
+        let stream_key = format!("yjs:stream:{doc_id}");
+        let mut conn = self.pool.get().await?;
+
+        // Get the last entry ID from the stream
+        type StreamEntry = (String, Vec<(String, Vec<u8>)>);
+        let result: Option<Vec<StreamEntry>> = redis::cmd("XREVRANGE")
+            .arg(&stream_key)
+            .arg("+")
+            .arg("-")
+            .arg("COUNT")
+            .arg(1)
+            .query_async(&mut *conn)
+            .await?;
+
+        if let Some(entries) = result {
+            if !entries.is_empty() {
+                return Ok(Some(entries[0].0.clone()));
+            }
+        }
+
+        Ok(None)
+    }
+
+    pub async fn trim_stream_before(&self, doc_id: &str, last_id: &str) -> Result<()> {
+        let stream_key = format!("yjs:stream:{doc_id}");
+        let mut conn = self.pool.get().await?;
+
+        // Delete all entries before and including the specified ID
+        // This keeps only entries after the last saved state
+        let script = redis::Script::new(
+            r#"
+            local stream_key = KEYS[1]
+            local last_id = ARGV[1]
+            
+            -- Get all entries up to and including last_id
+            local entries = redis.call('XRANGE', stream_key, '-', last_id)
+            
+            -- Delete each entry
+            for i, entry in ipairs(entries) do
+                redis.call('XDEL', stream_key, entry[1])
+            end
+            
+            return #entries
+            "#,
+        );
+
+        let deleted_count: i32 = script
+            .key(&stream_key)
+            .arg(last_id)
+            .invoke_async(&mut *conn)
+            .await?;
+
+        debug!(
+            "Trimmed {} entries from stream '{}' after GCS save",
+            deleted_count, stream_key
+        );
         Ok(())
     }
 
