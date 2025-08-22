@@ -31,8 +31,8 @@ type Props = {
   onParamsUpdate: (data: any) => void;
   onUpdate: (
     nodeId: string,
-    data: any,
-    type: "params" | "customizations",
+    updatedParams: any,
+    updatedCustomizations: any,
   ) => Promise<void>;
   onWorkflowRename?: (id: string, name: string) => void;
   onValueEditorOpen: (fieldContext: FieldContext) => void;
@@ -92,19 +92,14 @@ const ParamEditor: React.FC<Props> = ({
   );
 
   const handleUpdate = () => {
-    if (activeTab === "params" && isParamsValid) {
-      onUpdate(nodeId, nodeParams, "params");
-    } else if (activeTab === "customizations" && isCustomizationsValid) {
-      if (nodeType === "subworkflow" && nodeMeta.subworkflowId) {
-        onUpdate(nodeId, updatedCustomization, "customizations");
-        onWorkflowRename?.(
-          nodeMeta?.subworkflowId,
-          updatedCustomization?.customName || nodeMeta?.officialName,
-        );
-      } else {
-        onUpdate(nodeId, updatedCustomization, "customizations");
-      }
+    if (nodeType === "subworkflow" && nodeMeta.subworkflowId) {
+      onUpdate(nodeId, nodeParams, updatedCustomization);
+      onWorkflowRename?.(
+        nodeMeta?.subworkflowId,
+        updatedCustomization?.customName || nodeMeta?.officialName,
+      );
     }
+    onUpdate(nodeId, nodeParams, updatedCustomization);
   };
 
   const isCurrentTabValid =
