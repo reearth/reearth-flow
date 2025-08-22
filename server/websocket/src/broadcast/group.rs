@@ -9,7 +9,7 @@ use bytes::Bytes;
 use futures_util::{SinkExt, StreamExt};
 use rand;
 use tokio::task::JoinHandle;
-use tracing::{debug, error, warn};
+use tracing::{debug, error, info, warn};
 use yrs::types::ToJson;
 
 use super::Publish;
@@ -526,8 +526,11 @@ impl BroadcastGroup {
             Ok(map_json_value) => {
                 if let Some(main) = map_json_value["main"].as_object() {
                     if let Some(nodes) = main["nodes"].as_object() {
-                        // Always save the document state, regardless of whether nodes exist or not
-                        // This ensures that node deletions are properly persisted
+                        if nodes.is_empty() {
+                            debug!("No nodes found");
+                            return false;
+                        }
+
                         for (_, node) in nodes {
                             if let Some(position) = node["position"].as_object() {
                                 if let (Some(x), Some(y)) = (position.get("x"), position.get("y")) {
@@ -541,8 +544,7 @@ impl BroadcastGroup {
                         return true;
                     }
                 }
-                // Return true even for empty documents to ensure deletions are saved
-                true
+                false
             }
             Err(e) => {
                 tracing::error!("Error parsing map_json: {:?}", e);
@@ -552,6 +554,7 @@ impl BroadcastGroup {
     }
 
     pub async fn shutdown(&self) -> Result<()> {
+        info!("Shutdown called for document: {}", self.doc_name);
         if self.connection_count() == 0 {
             if let Err(e) = self
                 .redis_store
@@ -570,15 +573,15 @@ impl BroadcastGroup {
             {
                 Ok(connections) => {
                     if connections <= 0 {
-                        debug!(
+                        info!(
                             "All instances disconnected from '{}', proceeding with GCS save",
                             self.doc_name
                         );
                         true
                     } else {
-                        debug!(
-                            "Other instances still connected to '{}', skipping GCS save",
-                            self.doc_name
+                        info!(
+                            "Other instances still connected to '{}' (count: {}), skipping GCS save",
+                            self.doc_name, connections
                         );
                         false
                     }
@@ -602,10 +605,25 @@ impl BroadcastGroup {
                     let awareness = self.awareness_ref.write().await;
                     let awareness_doc = awareness.doc();
 
-                    tracing::info!("Saving document to GCS");
+                    // Always save to GCS to ensure proper synchronization
+                    // Previously we skipped saves when nodes lacked positions, but this caused
+                    // deleted nodes to reappear after reload because the Redis stream wasn't trimmed
+                    info!("Proceeding with GCS save for document {}", self.doc_name);
+                    {
+                        // Get the last stream ID before saving
+                        let last_stream_id = self
+                            .redis_store
+                            .get_stream_last_id(&self.doc_name)
+                            .await
+                            .ok()
+                            .flatten();
 
-                    if self.all_nodes_have_position(awareness_doc) {
-                        tracing::info!("All nodes have position data");
+                        if let Some(ref id) = last_stream_id {
+                            info!("Got last stream ID before GCS save: {}", id);
+                        } else {
+                            info!("No stream ID found before GCS save");
+                        }
+
                         let gcs_doc = Doc::new();
                         let mut gcs_txn = gcs_doc.transact_mut();
 
@@ -616,38 +634,61 @@ impl BroadcastGroup {
                         let gcs_state = gcs_txn.state_vector();
 
                         let awareness_txn = awareness_doc.transact();
-                        // let awareness_state = awareness_txn.state_vector();
+                        let awareness_state = awareness_txn.state_vector();
 
                         let update = awareness_txn.encode_diff_v1(&gcs_state);
                         let update_bytes = Bytes::from(update);
 
-                        tracing::info!("Updating document in storage");
-                        let update_future = self.storage.push_update(
-                            &self.doc_name,
-                            &update_bytes,
-                            &self.redis_store,
-                        );
-                        let flush_future =
-                            self.storage.flush_doc_v2(&self.doc_name, &awareness_txn);
+                        if !(update_bytes.is_empty()
+                            || (update_bytes.len() == 2
+                                && update_bytes[0] == 0
+                                && update_bytes[1] == 0)
+                            || awareness_state == gcs_state)
+                        {
+                            let update_future = self.storage.push_update(
+                                &self.doc_name,
+                                &update_bytes,
+                                &self.redis_store,
+                            );
+                            let flush_future =
+                                self.storage.flush_doc_v2(&self.doc_name, &awareness_txn);
 
-                        let (update_result, flush_result) =
-                            tokio::join!(update_future, flush_future);
+                            let (update_result, flush_result) =
+                                tokio::join!(update_future, flush_future);
 
-                        if let Err(e) = flush_result {
-                            warn!("Failed to flush document directly to storage: {}", e);
-                        } else {
-                            // Successfully saved to GCS, clear the Redis stream
-                            // since GCS now has the authoritative state
-                            tracing::info!("Document saved to GCS, clearing Redis stream");
-                            if let Err(e) = self.redis_store.delete_stream(&self.doc_name).await {
-                                warn!("Failed to clear Redis stream after GCS save: {}", e);
+                            if let Err(e) = flush_result {
+                                warn!("Failed to flush document directly to storage: {}", e);
+                            } else {
+                                info!("Successfully saved document {} to GCS", self.doc_name);
+                                // Successfully saved to GCS, trim the Redis stream
+                                // Remove all entries up to the last one we incorporated
+                                if let Some(last_id) = last_stream_id {
+                                    info!(
+                                        "Document {} saved to GCS, trimming Redis stream up to ID: {}",
+                                        self.doc_name, last_id
+                                    );
+                                    if let Err(e) = self
+                                        .redis_store
+                                        .trim_stream_before(&self.doc_name, &last_id)
+                                        .await
+                                    {
+                                        warn!("Failed to trim Redis stream after GCS save: {}", e);
+                                    } else {
+                                        info!("Successfully trimmed Redis stream for document {} up to ID: {}", self.doc_name, last_id);
+                                    }
+                                } else {
+                                    info!(
+                                        "No Redis stream ID to trim for document {}",
+                                        self.doc_name
+                                    );
+                                }
+                            }
+
+                            if let Err(e) = update_result {
+                                warn!("Failed to update document in storage: {}", e);
                             }
                         }
-
-                        if let Err(e) = update_result {
-                            warn!("Failed to update document in storage: {}", e);
-                        }
-                    }
+                    } // Close the block for GCS save
                 }
 
                 if let Err(e) = self
@@ -662,8 +703,11 @@ impl BroadcastGroup {
 
         tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
-        // Stream deletion is now handled after successful GCS save
-        // No need to delete it here as it might remove updates that haven't been saved yet
+        if self.connection_count() == 0 {
+            self.redis_store
+                .safe_delete_stream(&self.doc_name, &self.instance_id)
+                .await?;
+        }
 
         Ok(())
     }

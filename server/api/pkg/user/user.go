@@ -9,11 +9,13 @@ type User struct {
 	email         string
 	metadata      Metadata
 	host          *string
-	myWorkspaceID string
+	myWorkspaceID WorkspaceID
 	auths         []string
-	workspaces    workspace.WorkspaceList
+	workspaces    workspace.List
 	myWorkspace   workspace.Workspace
 }
+
+type List []User
 
 func (u *User) ID() ID {
 	return u.id
@@ -41,7 +43,8 @@ func (u *User) Host() *string {
 	}
 	return u.host
 }
-func (u *User) MyWorkspaceID() string {
+
+func (u *User) MyWorkspaceID() WorkspaceID {
 	return u.myWorkspaceID
 }
 
@@ -49,7 +52,7 @@ func (u *User) Auths() []string {
 	return u.auths
 }
 
-func (u *User) Workspaces() workspace.WorkspaceList {
+func (u *User) Workspaces() workspace.List {
 	return u.workspaces
 }
 

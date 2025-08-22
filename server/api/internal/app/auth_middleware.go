@@ -87,8 +87,11 @@ func conditionalGraphQLAuthMiddleware(
 					c.Request().Body = io.NopCloser(bytes.NewBuffer(data))
 				}
 
-				if body.OperationName == "GetMe" {
+				switch body.OperationName {
+				case "GetMe":
 					middlewares = tempNewAuthMWs
+				case "GetWorkspaceById", "GetWorkspaces":
+					middlewares = append(defaultMWs, tempNewAuthMWs...)
 				}
 			}
 
