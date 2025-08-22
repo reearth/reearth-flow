@@ -44,6 +44,7 @@ export default function Editor({
     isMainWorkflow,
     deferredDeleteRef,
     showBeforeDeleteDialog,
+    isSaving,
     handleWorkflowAdd,
     handleWorkflowDeployment,
     handleProjectShare,
@@ -71,6 +72,7 @@ export default function Editor({
     handleCopy,
     handleCut,
     handlePaste,
+    handleProjectSnapshotSave,
   } = useHooks({ yDoc, yWorkflows, undoManager, undoTrackerActionWrapper });
 
   const editorContext = useMemo(
@@ -90,6 +92,7 @@ export default function Editor({
           yDoc={yDoc}
           openWorkflows={openWorkflows}
           allowedToDeploy={allowedToDeploy}
+          isSaving={isSaving}
           onProjectShare={handleProjectShare}
           onProjectExport={handleCurrentProjectExport}
           onWorkflowDeployment={handleWorkflowDeployment}
@@ -97,6 +100,7 @@ export default function Editor({
           onWorkflowChange={handleWorkflowChange}
           onDebugRunStart={handleDebugRunStart}
           onDebugRunStop={handleDebugRunStop}
+          onProjectSnapshotSave={handleProjectSnapshotSave}
         />
         <div className="relative flex flex-1">
           <div className="flex flex-1 flex-col">

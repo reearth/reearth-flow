@@ -28,6 +28,7 @@ type Props = {
   project?: Project;
   yDoc: Doc | null;
   allowedToDeploy: boolean;
+  isSaving: boolean;
   onWorkflowDeployment: (
     description: string,
     deploymentId?: string,
@@ -38,6 +39,7 @@ type Props = {
   onDebugRunStop: () => Promise<void>;
   onWorkflowClose: (workflowId: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
+  onProjectSnapshotSave: () => Promise<void>;
 };
 
 const TopBar: React.FC<Props> = ({
@@ -46,6 +48,7 @@ const TopBar: React.FC<Props> = ({
   project,
   yDoc,
   allowedToDeploy,
+  isSaving,
   onWorkflowDeployment,
   onProjectExport,
   onProjectShare,
@@ -53,6 +56,7 @@ const TopBar: React.FC<Props> = ({
   onDebugRunStop,
   onWorkflowClose,
   onWorkflowChange,
+  onProjectSnapshotSave,
 }) => {
   const t = useT();
   const {
@@ -118,11 +122,13 @@ const TopBar: React.FC<Props> = ({
           yDoc={yDoc}
           allowedToDeploy={allowedToDeploy}
           showDialog={showDialog}
+          isSaving={isSaving}
           onProjectShare={onProjectShare}
           onProjectExport={onProjectExport}
           onWorkflowDeployment={onWorkflowDeployment}
           onDialogOpen={handleDialogOpen}
           onDialogClose={handleDialogClose}
+          onProjectSnapshotSave={onProjectSnapshotSave}
         />
       </div>
       {showDialog === "assets" && (

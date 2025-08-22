@@ -20,7 +20,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@flow/components";
-import { useProjectSave } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { Project } from "@flow/types";
 
@@ -36,6 +35,7 @@ type Props = {
   yDoc: Doc | null;
   allowedToDeploy: boolean;
   showDialog: DialogOptions;
+  isSaving: boolean;
   onWorkflowDeployment: (
     description: string,
     deploymentId?: string,
@@ -44,6 +44,7 @@ type Props = {
   onProjectExport: () => void;
   onDialogOpen: (dialog: DialogOptions) => void;
   onDialogClose: () => void;
+  onProjectSnapshotSave: () => Promise<void>;
 };
 
 const ActionBar: React.FC<Props> = ({
@@ -51,16 +52,15 @@ const ActionBar: React.FC<Props> = ({
   yDoc,
   allowedToDeploy,
   showDialog,
+  isSaving,
   onWorkflowDeployment,
   onProjectShare,
   onProjectExport,
   onDialogOpen,
   onDialogClose,
+  onProjectSnapshotSave,
 }) => {
   const t = useT();
-  const { handleProjectSnapshotSave, isSaving } = useProjectSave({
-    projectId: project?.id ?? "",
-  });
 
   return (
     <>
@@ -113,7 +113,7 @@ const ActionBar: React.FC<Props> = ({
                   e.preventDefault();
                 }}
                 disabled={isSaving}
-                onClick={handleProjectSnapshotSave}>
+                onClick={onProjectSnapshotSave}>
                 <div className="flex items-center gap-1">
                   <FloppyDiskIcon weight="light" />
                   <p>{t("Manual Save")}</p>

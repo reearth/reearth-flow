@@ -360,6 +360,7 @@ export default ({
     canRedo,
     isMainWorkflow,
     deferredDeleteRef,
+    isSaving,
     showBeforeDeleteDialog,
     handleRightPanelOpen,
     handleWorkflowAdd: handleYWorkflowAdd,
@@ -389,5 +390,6 @@ export default ({
     handleCopy,
     handleCut,
     handlePaste,
+    handleProjectSnapshotSave,
   };
 };
