@@ -1,11 +1,17 @@
 package user
 
-import "github.com/oklog/ulid/v2"
+import (
+	"github.com/reearth/reearth-flow/api/pkg/id"
+)
 
-type ID = string
+type (
+	ID          = id.UserID
+	WorkspaceID = id.WorkspaceID
+)
 
-func NewID() string {
-	return ulid.Make().String()
-}
+var NewID = id.NewUserID
 
-type IDList []ID
+var (
+	IDFrom          = id.UserIDFrom
+	WorkspaceIDFrom = id.WorkspaceIDFrom
+)
