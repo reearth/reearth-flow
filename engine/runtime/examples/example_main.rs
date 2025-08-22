@@ -133,7 +133,8 @@ pub fn create_workflow(workflow: &str) -> Workflow {
     let current_dir = env::current_dir().unwrap().to_str().unwrap().to_string();
     let current_dir = Path::new(&current_dir);
     let absolute_path = fs::canonicalize(current_dir.join("runtime/examples").join(workflow));
-    let path = absolute_path.unwrap_or_else(|_| panic!("Failed to get absolute path for {workflow}"));
+    let path =
+        absolute_path.unwrap_or_else(|_| panic!("Failed to get absolute path for {workflow}"));
     tracing::info!("workflow_path: {:?}", path);
     let yaml = Transformer::new(path, false).unwrap();
     let yaml = yaml.to_string();
