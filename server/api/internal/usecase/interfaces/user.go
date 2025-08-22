@@ -9,4 +9,5 @@ import (
 
 type User interface {
 	FindByIDs(context.Context, id.UserIDList) (user.List, error)
+	UserByNameOrEmail(context.Context, string) (*user.User, error)
 }

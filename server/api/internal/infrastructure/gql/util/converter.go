@@ -64,6 +64,20 @@ func toUser(u gqlmodel.User) (*user.User, error) {
 		Build()
 }
 
+func ToUserFromSimple(u gqlmodel.UserSimple) (*user.User, error) {
+	uid, err := user.IDFrom(string(u.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	return user.New().
+		ID(uid).
+		Name(string(u.Name)).
+		Email(string(u.Email)).
+		Host(lo.ToPtr(string(u.Host))).
+		Build()
+}
+
 func ToUsers(gqlUsers []gqlmodel.User) (user.List, error) {
 	users := make(user.List, 0, len(gqlUsers))
 	for _, gu := range gqlUsers {
