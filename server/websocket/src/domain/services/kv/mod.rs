@@ -213,11 +213,11 @@ where
         }
     }
 
-    async fn push_update<K: AsRef<[u8]> + ?Sized + Sync>(
+    async fn push_update<K: AsRef<[u8]> + ?Sized + Sync, T: RedisRepository>(
         &self,
         name: &K,
         update: &[u8],
-        redis: &RedisStore,
+        redis: &T,
     ) -> Result<u32> {
         let oid = get_or_create_oid(self, name.as_ref(), redis).await?;
         let last_clock = {
@@ -466,15 +466,13 @@ where
                 lock_value = Some(value);
                 break;
             }
-            Err(e) => {
+            Err(_) => {
                 if attempt < max_retries - 1 {
                     tokio::time::sleep(std::time::Duration::from_millis(retry_delay_ms)).await;
 
                     if let Some(oid) = get_oid(db, name).await? {
                         return Ok(oid);
                     }
-                } else {
-                    return Err(anyhow::anyhow!("Failed to acquire OID lock: {}", e));
                 }
             }
         }

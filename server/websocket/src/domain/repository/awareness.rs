@@ -1,3 +1,4 @@
+use crate::domain::repository::RedisRepository;
 use crate::domain::value_objects::document_name::DocumentName;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -10,11 +11,11 @@ pub trait AwarenessRepository: Send + Sync {
     async fn load_awareness(&self, document_name: &DocumentName, doc: &Doc) -> Result<()>;
 
     /// Save awareness state
-    async fn save_awareness_state<D>(
+    async fn save_awareness_state<R: RedisRepository>(
         &self,
         document_name: &DocumentName,
         awareness: &Awareness,
-        redis: &D,
+        redis: &R,
     ) -> Result<()>;
 
     /// Get awareness update for broadcasting

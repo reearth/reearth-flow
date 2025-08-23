@@ -1,6 +1,6 @@
 use crate::domain::entity::awareness::AwarenessServer as aw;
-use crate::domain::entity::redis::RedisStore;
-use crate::domain::repository::AwarenessRepository;
+
+use crate::domain::repository::{AwarenessRepository, RedisRepository};
 use crate::domain::services::kv::DocOps;
 use crate::domain::value_objects::document_name::DocumentName;
 use anyhow::Result;
@@ -17,7 +17,7 @@ impl<D: for<'a> DocOps<'a>> AwarenessRepository for aw<D> {
         Ok(())
     }
 
-    async fn save_awareness_state<R>(
+    async fn save_awareness_state<R: RedisRepository>(
         &self,
         document_name: &DocumentName,
         awareness: &Awareness,
@@ -31,7 +31,7 @@ impl<D: for<'a> DocOps<'a>> AwarenessRepository for aw<D> {
 
         let storage: &Arc<D> = self.storage();
         storage
-            .push_update(document_name.as_str(), &state, &redis)
+            .push_update(document_name.as_str(), &state, redis)
             .await?;
         Ok(())
     }
