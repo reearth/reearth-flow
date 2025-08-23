@@ -43,9 +43,11 @@ pub trait RedisRepository: Send + Sync {
         ttl_seconds: u64,
     ) -> Result<bool, Self::Error>;
 
-    /// Release a distributed lock.
-    /// Only releases if the lock value matches the provided value.
+    async fn acquire_oid_lock(&self, ttl_seconds: u64) -> Result<bool, Self::Error>;
+
     async fn release_lock(&self, lock_key: &str, lock_value: &str) -> Result<(), Self::Error>;
+
+    async fn release_oid_lock(&self, lock_value: &str) -> Result<(), Self::Error>;
 
     // Document-specific operations
 

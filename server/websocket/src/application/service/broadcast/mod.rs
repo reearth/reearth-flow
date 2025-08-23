@@ -112,7 +112,6 @@ where
             self.broadcast_repo
                 .remove_group(&group.document_name())
                 .await?;
-            tracing::debug!("Group {} has no more connections", group.document_name());
         }
 
         Ok(count)
@@ -207,7 +206,7 @@ where
         awareness: &Awareness,
     ) -> Result<()> {
         self.awareness_repo
-            .save_awareness_state(document_name, awareness)
+            .save_awareness_state(document_name, awareness, &self.redis_repo)
             .await
     }
 

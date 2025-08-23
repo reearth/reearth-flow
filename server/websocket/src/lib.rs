@@ -1,9 +1,6 @@
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-#[cfg(feature = "auth")]
-pub mod auth;
-
 mod broadcast;
 pub mod conf;
 pub mod conn;
@@ -36,7 +33,6 @@ pub struct RollbackQuery {
 #[derive(Clone, Debug)]
 pub struct AppState {
     pub pool: Arc<BroadcastPool>,
-    pub auth: Arc<AuthService>,
     pub instance_id: String,
 }
 
@@ -46,9 +42,6 @@ pub struct AppState {
     pub pool: Arc<BroadcastPool>,
     pub instance_id: String,
 }
-
-#[cfg(feature = "auth")]
-pub use auth::AuthService;
 
 pub use broadcast::sub::Subscription;
 pub use conf::Config;

@@ -36,6 +36,7 @@ use crate::domain::value_objects::keys::{key_update_end, Error};
 use crate::domain::entity::redis::RedisStore;
 use crate::domain::repository::kv::KVEntry;
 use crate::domain::repository::kv::KVStore;
+use crate::domain::repository::redis::RedisRepository;
 use crate::domain::value_objects::keys::{
     doc_oid_name, key_doc, key_doc_end, key_doc_start, key_meta, key_meta_end, key_meta_start,
     key_oid, key_state_vector, key_update, Key, KEYSPACE_DOC, KEYSPACE_OID, OID, V1,
@@ -58,11 +59,11 @@ pub trait DocOps<'a>: KVStore + Sized
 where
     Error: From<<Self as KVStore>::Error>,
 {
-    async fn insert_doc<K: AsRef<[u8]> + ?Sized + Sync, T: ReadTxn + Sync>(
+    async fn insert_doc<K: AsRef<[u8]> + ?Sized + Sync, T: ReadTxn + Sync, R: RedisRepository>(
         &self,
         name: &K,
         txn: &T,
-        redis: &RedisStore,
+        redis: &R,
     ) -> Result<(), Error> {
         let doc_state = txn.encode_diff_v1(&StateVector::default());
         let state_vector = txn.state_vector().encode_v1();
@@ -70,12 +71,12 @@ where
             .await
     }
 
-    async fn insert_doc_raw_v1(
+    async fn insert_doc_raw_v1<R: RedisRepository>(
         &self,
         name: &[u8],
         doc_state_v1: &[u8],
         doc_sv_v1: &[u8],
-        redis: &RedisStore,
+        redis: &R,
     ) -> Result<()> {
         let oid = get_or_create_oid(self, name, redis).await?;
         insert_inner_v1(self, oid, doc_state_v1, doc_sv_v1).await?;
@@ -443,10 +444,10 @@ where
     }
 }
 
-pub async fn get_or_create_oid<'a, DB: DocOps<'a>>(
+pub async fn get_or_create_oid<'a, DB: DocOps<'a>, R: RedisRepository>(
     db: &DB,
     name: &[u8],
-    redis: &RedisStore,
+    redis: &R,
 ) -> Result<OID, Error>
 where
     Error: From<<DB as KVStore>::Error>,

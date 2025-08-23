@@ -604,57 +604,6 @@ impl RedisStore {
 
         Ok((updates, last_id))
     }
-
-    pub async fn acquire_oid_lock(&self, ttl_seconds: u64) -> Result<String> {
-        let lock_value = uuid::Uuid::new_v4().to_string();
-        let mut conn = self.get_pool().get().await?;
-
-        let script = redis::Script::new(
-            r#"
-            local result = redis.call('SET', KEYS[1], ARGV[1], 'NX', 'EX', ARGV[2])
-            if result then
-                return ARGV[1]
-            else
-                return false
-            end
-            "#,
-        );
-
-        let result: Option<String> = script
-            .key(OID_LOCK_KEY)
-            .arg(&lock_value)
-            .arg(ttl_seconds)
-            .invoke_async(&mut *conn)
-            .await?;
-
-        if let Some(val) = result {
-            Ok(val)
-        } else {
-            Err(anyhow::anyhow!("Failed to acquire OID generation lock"))
-        }
-    }
-
-    pub async fn release_oid_lock(&self, lock_value: &str) -> Result<bool> {
-        let mut conn = self.get_pool().get().await?;
-
-        let script = redis::Script::new(
-            r#"
-            if redis.call('get', KEYS[1]) == ARGV[1] then
-                return redis.call('del', KEYS[1])
-            else
-                return 0
-            end
-            "#,
-        );
-
-        let result: i32 = script
-            .key(OID_LOCK_KEY)
-            .arg(lock_value)
-            .invoke_async(&mut *conn)
-            .await?;
-
-        Ok(result == 1)
-    }
 }
 
 // Wrapper for Redis multiplexed connection to implement RedisConnection trait
@@ -843,5 +792,56 @@ impl RedisRepository for RedisStore {
             conn,
             store: self.clone(),
         }))
+    }
+
+    async fn acquire_oid_lock(&self, ttl_seconds: u64) -> Result<String> {
+        let lock_value = uuid::Uuid::new_v4().to_string();
+        let mut conn = self.get_pool().get().await?;
+
+        let script = redis::Script::new(
+            r#"
+            local result = redis.call('SET', KEYS[1], ARGV[1], 'NX', 'EX', ARGV[2])
+            if result then
+                return ARGV[1]
+            else
+                return false
+            end
+            "#,
+        );
+
+        let result: Option<String> = script
+            .key(OID_LOCK_KEY)
+            .arg(&lock_value)
+            .arg(ttl_seconds)
+            .invoke_async(&mut *conn)
+            .await?;
+
+        if let Some(val) = result {
+            Ok(val)
+        } else {
+            Err(anyhow::anyhow!("Failed to acquire OID generation lock"))
+        }
+    }
+
+    async fn release_oid_lock(&self, lock_value: &str) -> Result<bool> {
+        let mut conn = self.get_pool().get().await?;
+
+        let script = redis::Script::new(
+            r#"
+            if redis.call('get', KEYS[1]) == ARGV[1] then
+                return redis.call('del', KEYS[1])
+            else
+                return 0
+            end
+            "#,
+        );
+
+        let result: i32 = script
+            .key(OID_LOCK_KEY)
+            .arg(lock_value)
+            .invoke_async(&mut *conn)
+            .await?;
+
+        Ok(result == 1)
     }
 }

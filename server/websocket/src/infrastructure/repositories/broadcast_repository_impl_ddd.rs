@@ -1,15 +1,18 @@
-use crate::domain::repository::broadcast::WebSocketRepository;
-use crate::domain::repository::BroadcastRepository;
+use crate::domain::entity::gcs::GcsStore;
+use crate::domain::entity::BroadcastGroup;
+use crate::domain::repository::awareness::AwarenessRepository;
+use crate::domain::repository::broadcast::BroadcastRepository;
+use crate::domain::repository::websocket::WebSocketRepository;
+use crate::domain::services::kv::DocOps;
 use crate::domain::value_objects::document_name::DocumentName;
 use crate::domain::value_objects::instance_id::InstanceId;
-use crate::domain::{entity::BroadcastGroup, repository::AwarenessRepository};
-use crate::Subscription;
 use anyhow::Result;
 use async_trait::async_trait;
 use bytes::Bytes;
 use dashmap::DashMap;
 use std::sync::Arc;
-use tokio::sync::{broadcast, Mutex, RwLock};
+use tokio::sync::broadcast;
+use tokio::sync::RwLock;
 use yrs::sync::Awareness;
 
 /// In-memory implementation of BroadcastRepository using broadcast channels
@@ -71,7 +74,6 @@ impl BroadcastRepository for BroadcastRepositoryImpl {
     async fn broadcast_message(&self, document_name: &DocumentName, message: Bytes) -> Result<()> {
         let doc_name_str = document_name.as_str();
         if let Some(sender) = self.channels.get(doc_name_str) {
-            // Ignore send errors (no active receivers is OK)
             let _ = sender.send(message);
         }
         Ok(())
@@ -97,12 +99,12 @@ impl BroadcastRepository for BroadcastRepositoryImpl {
 
 /// Implementation of AwarenessRepository using GCS storage
 pub struct AwarenessRepositoryImpl {
-    gcs_store: Arc<crate::storage::gcs::GcsStore>,
+    storage: Arc<GcsStore>,
 }
 
 impl AwarenessRepositoryImpl {
-    pub fn new(gcs_store: Arc<crate::storage::gcs::GcsStore>) -> Self {
-        Self { gcs_store }
+    pub fn new(storage: Arc<GcsStore>) -> Self {
+        Self { storage }
     }
 }
 
@@ -110,7 +112,7 @@ impl AwarenessRepositoryImpl {
 impl AwarenessRepository for AwarenessRepositoryImpl {
     async fn load_awareness(&self, document_name: &DocumentName) -> Result<Arc<RwLock<Awareness>>> {
         // Load document from GCS
-        let doc = match self.gcs_store.load_doc_v2(document_name.as_str()).await {
+        let doc = match self.storage.load_doc(document_name.as_str()).await {
             Ok(doc) => doc,
             Err(_) => {
                 // Create new document if it doesn't exist

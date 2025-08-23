@@ -1,11 +1,12 @@
 use crate::domain::entity::awareness::AwarenessServer as aw;
+use crate::domain::entity::redis::RedisStore;
 use crate::domain::repository::AwarenessRepository;
 use crate::domain::services::kv::DocOps;
 use crate::domain::value_objects::document_name::DocumentName;
 use anyhow::Result;
 use std::sync::Arc;
 use yrs::sync::Awareness;
-use yrs::{Doc, ReadTxn, Transact};
+use yrs::{Doc, ReadTxn, StateVector, Transact};
 
 #[async_trait::async_trait]
 impl<D: for<'a> DocOps<'a>> AwarenessRepository for aw<D> {
@@ -16,10 +17,11 @@ impl<D: for<'a> DocOps<'a>> AwarenessRepository for aw<D> {
         Ok(())
     }
 
-    async fn save_awareness_state(
+    async fn save_awareness_state<R>(
         &self,
         document_name: &DocumentName,
         awareness: &Awareness,
+        redis: &R,
     ) -> Result<()> {
         let doc = awareness.doc();
         let state = {
@@ -29,14 +31,16 @@ impl<D: for<'a> DocOps<'a>> AwarenessRepository for aw<D> {
 
         let storage: &Arc<D> = self.storage();
         storage
-            .save_awareness_state(document_name.as_str(), &state)
+            .push_update(document_name.as_str(), &state, &redis)
             .await?;
         Ok(())
     }
 
-    async fn get_awareness_update(&self, document_name: &DocumentName) -> Result<Option<Bytes>> {
-        // This would typically get the latest awareness changes
-        // For now, return None as this requires more complex awareness state tracking
-        Ok(None)
+    async fn get_awareness_update(&self, document_name: &DocumentName) -> Result<Option<Vec<u8>>> {
+        let storage: &Arc<D> = self.storage();
+        let update = storage
+            .get_diff(document_name.as_str(), &StateVector::default())
+            .await?;
+        Ok(update)
     }
 }
