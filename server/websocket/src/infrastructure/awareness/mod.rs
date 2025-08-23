@@ -17,11 +17,11 @@ impl<D: for<'a> DocOps<'a>> AwarenessRepository for aw<D> {
         Ok(())
     }
 
-    async fn save_awareness_state<R: RedisRepository>(
+    async fn save_awareness_state(
         &self,
         document_name: &DocumentName,
         awareness: &Awareness,
-        redis: &R,
+        redis: &dyn RedisRepository<Error = anyhow::Error>,
     ) -> Result<()> {
         let doc = awareness.doc();
         let state = {

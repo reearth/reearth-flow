@@ -206,7 +206,7 @@ where
         awareness: &Awareness,
     ) -> Result<()> {
         self.awareness_repo
-            .save_awareness_state(document_name, awareness, &self.redis_repo)
+            .save_awareness_state(document_name, awareness, self.redis_repo.as_ref())
             .await
     }
 

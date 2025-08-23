@@ -111,12 +111,24 @@ impl AwarenessRepositoryImpl {
 #[async_trait]
 impl AwarenessRepository for AwarenessRepositoryImpl {
     async fn load_awareness(&self, document_name: &DocumentName) -> Result<Arc<RwLock<Awareness>>> {
-        // Load document from GCS
-        let doc = match self.storage.load_doc(document_name.as_str()).await {
-            Ok(doc) => doc,
+        // Create a new Y.js document
+        let doc = yrs::Doc::new();
+        
+        // Load document from GCS storage
+        let doc_data = match self.storage.load_doc(document_name.as_str()).await {
+            Ok(data) => data,
             Err(_) => {
-                // Create new document if it doesn't exist
-                yrs::Doc::new()
+                // If document doesn't exist, create a new one
+                Vec::new()
+            }
+        };
+
+        // Apply updates to the document if any exist
+        if !doc_data.is_empty() {
+            use yrs::Transact;
+            let mut txn = doc.transact_mut();
+            if let Err(e) = txn.apply_update(yrs::Update::decode_v1(&doc_data)?) {
+                warn!("Failed to apply document update: {}", e);
             }
         };
 
@@ -129,6 +141,7 @@ impl AwarenessRepository for AwarenessRepositoryImpl {
         &self,
         document_name: &DocumentName,
         awareness: &Awareness,
+        redis: &dyn RedisRepository<Error = anyhow::Error>,
     ) -> Result<()> {
         // Save the document state to GCS
         let doc = awareness.doc();
