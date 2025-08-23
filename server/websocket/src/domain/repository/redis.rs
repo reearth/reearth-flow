@@ -47,7 +47,7 @@ pub trait RedisRepository: Send + Sync {
 
     async fn release_lock(&self, lock_key: &str, lock_value: &str) -> Result<(), Self::Error>;
 
-    async fn release_oid_lock(&self, lock_value: &str) -> Result<(), Self::Error>;
+    async fn release_oid_lock(&self, lock_value: &str) -> Result<bool, Self::Error>;
 
     // Document-specific operations
 

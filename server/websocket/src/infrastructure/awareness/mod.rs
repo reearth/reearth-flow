@@ -5,16 +5,18 @@ use crate::domain::services::kv::DocOps;
 use crate::domain::value_objects::document_name::DocumentName;
 use anyhow::Result;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 use yrs::sync::Awareness;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
 #[async_trait::async_trait]
 impl<D: for<'a> DocOps<'a>> AwarenessRepository for aw<D> {
-    async fn load_awareness(&self, document_name: &DocumentName, doc: &Doc) -> Result<()> {
+    async fn load_awareness(&self, document_name: &DocumentName) -> Result<Arc<RwLock<Awareness>>> {
+        let doc = Doc::new();
         let storage: &Arc<D> = self.storage();
         let mut txn = doc.transact_mut();
         storage.load_doc(document_name.as_str(), &mut txn).await?;
-        Ok(())
+        Ok(Arc::new(RwLock::new(Awareness::new(doc))))
     }
 
     async fn save_awareness_state(
