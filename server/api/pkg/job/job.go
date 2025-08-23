@@ -15,18 +15,19 @@ const (
 )
 
 type Job struct {
-	completedAt   *time.Time
-	debug         *bool
-	deployment    DeploymentID
-	gcpJobID      string
-	id            ID
-	logsURL       string
-	workerLogsURL string
-	metadataURL   string
-	outputURLs    []string
-	startedAt     time.Time
-	status        Status
-	workspace     WorkspaceID
+	completedAt       *time.Time
+	debug             *bool
+	deployment        DeploymentID
+	gcpJobID          string
+	id                ID
+	logsURL           string
+	workerLogsURL     string
+	userFacingLogsURL string
+	metadataURL       string
+	outputURLs        []string
+	startedAt         time.Time
+	status            Status
+	workspace         WorkspaceID
 }
 
 func NewJob(id ID, deployment DeploymentID, workspace WorkspaceID, gcpJobID string) *Job {
@@ -81,6 +82,10 @@ func (j *Job) WorkerLogsURL() string {
 	return j.workerLogsURL
 }
 
+func (j *Job) UserFacingLogsURL() string {
+	return j.userFacingLogsURL
+}
+
 func (j *Job) MetadataURL() string {
 	return j.metadataURL
 }
@@ -131,6 +136,10 @@ func (j *Job) SetLogsURL(logsURL string) {
 
 func (j *Job) SetWorkerLogsURL(workerLogsURL string) {
 	j.workerLogsURL = workerLogsURL
+}
+
+func (j *Job) SetUserFacingLogsURL(userFacingLogsURL string) {
+	j.userFacingLogsURL = userFacingLogsURL
 }
 
 func (j *Job) SetMetadataURL(metadataURL string) {

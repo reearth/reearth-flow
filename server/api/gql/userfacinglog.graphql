@@ -1,0 +1,10 @@
+type UserFacingLog {
+  jobId: ID!
+  timestamp: DateTime!
+  message: String!
+  metadata: JSON
+}
+
+extend type Subscription {
+  userFacingLogs(jobId: ID!): UserFacingLog
+}

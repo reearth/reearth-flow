@@ -34,6 +34,7 @@ type Container struct {
 	ProjectAccess    ProjectAccess
 	Trigger          Trigger
 	User             accountinterfaces.User
+	UserFacingLog    UserFacingLog
 	TempNewUser      User // TODO: After migration, remove User and rename TempNewUser to User.
 	Workspace        accountinterfaces.Workspace
 	TempNewWorkspace Workspace // TODO: After migration, remove Workspace and rename TempNewWorkspace to Workspace.

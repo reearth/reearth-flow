@@ -6,6 +6,7 @@ type Job implements Node {
   id: ID!
   logsURL: String
   workerLogsURL: String
+  userFacingLogsURL: String
   outputURLs: [String!]
   startedAt: DateTime!
   status: JobStatus!
