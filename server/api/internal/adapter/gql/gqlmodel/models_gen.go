@@ -647,6 +647,13 @@ type User struct {
 func (User) IsNode()        {}
 func (this User) GetID() ID { return this.ID }
 
+type UserFacingLog struct {
+	JobID     ID        `json:"jobId"`
+	Timestamp time.Time `json:"timestamp"`
+	Message   string    `json:"message"`
+	Metadata  JSON      `json:"metadata,omitempty"`
+}
+
 type Workspace struct {
 	Assets   *AssetConnection   `json:"assets"`
 	ID       ID                 `json:"id"`
