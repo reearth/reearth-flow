@@ -21,3 +21,7 @@ func NewUser(userRepo user.Repo) interfaces.User {
 func (i *User) FindByIDs(ctx context.Context, ids id.UserIDList) (user.List, error) {
 	return i.userRepo.FindByIDs(ctx, ids)
 }
+
+func (i *User) UserByNameOrEmail(ctx context.Context, nameOrEmail string) (*user.User, error) {
+	return i.userRepo.UserByNameOrEmail(ctx, nameOrEmail)
+}

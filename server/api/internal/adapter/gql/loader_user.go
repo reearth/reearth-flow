@@ -84,7 +84,17 @@ func (c *UserLoader) fetchWithTraditionalUsecase(ctx context.Context, ids []gqlm
 	return users, nil
 }
 
+// TODO: After migration, remove this logic and use the new usecase directly.
 func (c *UserLoader) SearchUser(ctx context.Context, nameOrEmail string) (*gqlmodel.User, error) {
+	if c.tempNewUsecase != nil {
+		u := c.searchUserWithTempNewUsecase(ctx, nameOrEmail)
+		if u != nil {
+			log.Printf("DEBUG:[UserLoader.SearchUser] Fetched user with tempNewUsecase id: %s", u.ID)
+			return u, nil
+		}
+	}
+	log.Printf("WARNING:[UserLoader.SearchUser] Fallback to traditional usecase for search")
+
 	res, err := c.usecase.SearchUser(ctx, nameOrEmail)
 	if err != nil {
 		return nil, err
@@ -95,6 +105,20 @@ func (c *UserLoader) SearchUser(ctx context.Context, nameOrEmail string) (*gqlmo
 		return nil, nil
 	}
 	return users[0], nil
+}
+
+func (c *UserLoader) searchUserWithTempNewUsecase(ctx context.Context, nameOrEmail string) *gqlmodel.User {
+	res, err := c.tempNewUsecase.UserByNameOrEmail(ctx, nameOrEmail)
+	if err != nil {
+		log.Printf("WARNING:[UserLoader.SearchUser] Failed to search users: %v", err)
+		return nil
+	}
+	if res == nil {
+		log.Printf("DEBUG:[UserLoader.SearchUser] No user found for nameOrEmail: %s", nameOrEmail)
+		return nil
+	}
+
+	return gqlmodel.ToUserFromFlow(*res)
 }
 
 // data loader
