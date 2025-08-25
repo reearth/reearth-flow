@@ -634,7 +634,6 @@ impl BroadcastGroup {
                         let gcs_state = gcs_txn.state_vector();
 
                         let awareness_txn = awareness_doc.transact();
-                        let awareness_state = awareness_txn.state_vector();
 
                         let update = awareness_txn.encode_diff_v1(&gcs_state);
                         let update_bytes = Bytes::from(update);
@@ -642,8 +641,7 @@ impl BroadcastGroup {
                         if !(update_bytes.is_empty()
                             || (update_bytes.len() == 2
                                 && update_bytes[0] == 0
-                                && update_bytes[1] == 0)
-                            || awareness_state == gcs_state)
+                                && update_bytes[1] == 0))
                         {
                             let update_future = self.storage.push_update(
                                 &self.doc_name,
@@ -658,37 +656,22 @@ impl BroadcastGroup {
 
                             if let Err(e) = flush_result {
                                 warn!("Failed to flush document directly to storage: {}", e);
-                            } else {
-                                info!("Successfully saved document {} to GCS", self.doc_name);
-                                // Successfully saved to GCS, trim the Redis stream
-                                // Remove all entries up to the last one we incorporated
-                                if let Some(last_id) = last_stream_id {
-                                    info!(
-                                        "Document {} saved to GCS, trimming Redis stream up to ID: {}",
-                                        self.doc_name, last_id
-                                    );
-                                    if let Err(e) = self
-                                        .redis_store
-                                        .trim_stream_before(&self.doc_name, &last_id)
-                                        .await
-                                    {
-                                        warn!("Failed to trim Redis stream after GCS save: {}", e);
-                                    } else {
-                                        info!("Successfully trimmed Redis stream for document {} up to ID: {}", self.doc_name, last_id);
-                                    }
-                                } else {
-                                    info!(
-                                        "No Redis stream ID to trim for document {}",
-                                        self.doc_name
-                                    );
-                                }
                             }
-
                             if let Err(e) = update_result {
                                 warn!("Failed to update document in storage: {}", e);
                             }
+
+                            if let Some(last_id) = last_stream_id {
+                                if let Err(e) = self
+                                    .redis_store
+                                    .trim_stream_before(&self.doc_name, &last_id)
+                                    .await
+                                {
+                                    warn!("Failed to trim Redis stream after GCS save: {}", e);
+                                }
+                            }
                         }
-                    } // Close the block for GCS save
+                    }
                 }
 
                 if let Err(e) = self
