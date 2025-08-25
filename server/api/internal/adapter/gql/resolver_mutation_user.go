@@ -2,6 +2,7 @@ package gql
 
 import (
 	"context"
+	"log"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
@@ -36,7 +37,25 @@ func (r *mutationResolver) Signup(ctx context.Context, input gqlmodel.SignupInpu
 	return &gqlmodel.SignupPayload{User: gqlmodel.ToUser(u)}, nil
 }
 
+// TODO: After migration, remove this logic and use the new usecase directly.
 func (r *mutationResolver) UpdateMe(ctx context.Context, input gqlmodel.UpdateMeInput) (*gqlmodel.UpdateMePayload, error) {
+	if usecases(ctx).TempNewUser != nil {
+		tempRes, err := usecases(ctx).TempNewUser.UpdateMe(ctx, interfaces.UpdateMeParam{
+			Name:                 input.Name,
+			Email:                input.Email,
+			Lang:                 input.Lang,
+			Password:             input.Password,
+			PasswordConfirmation: input.PasswordConfirmation,
+		})
+		if err != nil {
+			log.Printf("WARNING:[mutationResolver.updateMeWithTempNewUsecase] Failed to update user: %v", err)
+		} else {
+			log.Printf("DEBUG:[mutationResolver.updateMeWithTempNewUsecase] Updated user with tempNewUsecase")
+			return &gqlmodel.UpdateMePayload{Me: gqlmodel.ToMeFromFlow(tempRes)}, nil
+		}
+	}
+	log.Printf("WARNING:[mutationResolver.UpdateMe] Fallback to traditional usecase")
+
 	res, err := usecases(ctx).User.UpdateMe(ctx, accountinterfaces.UpdateMeParam{
 		Name:                 input.Name,
 		Email:                input.Email,

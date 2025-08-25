@@ -4,91 +4,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/hasura/go-graphql-client"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/user"
 	"github.com/reearth/reearth-flow/api/pkg/workspace"
-	"github.com/samber/lo"
 	"golang.org/x/text/language"
 )
-
-func ToMe(m gqlmodel.Me) (*user.User, error) {
-	uid, err := user.IDFrom(string(m.ID))
-	if err != nil {
-		return nil, err
-	}
-
-	wid, err := user.WorkspaceIDFrom(string(m.MyWorkspaceID))
-	if err != nil {
-		return nil, err
-	}
-
-	workspaces, err := ToWorkspaces(m.Workspaces)
-	if err != nil {
-		return nil, err
-	}
-
-	return user.New().
-		ID(uid).
-		Name(string(m.Name)).
-		Alias(string(m.Alias)).
-		Email(string(m.Email)).
-		Metadata(toUserMetadata(m.Metadata)).
-		Host(lo.ToPtr(string(m.Host))).
-		MyWorkspaceID(wid).
-		Auths(toStringSlice(m.Auths)).
-		Workspaces(workspaces).
-		Build()
-}
-
-func toUser(u gqlmodel.User) (*user.User, error) {
-	uid, err := user.IDFrom(string(u.ID))
-	if err != nil {
-		return nil, err
-	}
-
-	wid, err := user.WorkspaceIDFrom(string(u.Workspace))
-	if err != nil {
-		return nil, err
-	}
-
-	return user.New().
-		ID(uid).
-		Name(string(u.Name)).
-		Email(string(u.Email)).
-		Host(lo.ToPtr(string(u.Host))).
-		MyWorkspaceID(wid).
-		Auths(toStringSlice(u.Auths)).
-		Metadata(toUserMetadata(u.Metadata)).
-		Build()
-}
-
-func ToUserFromSimple(u gqlmodel.UserSimple) (*user.User, error) {
-	uid, err := user.IDFrom(string(u.ID))
-	if err != nil {
-		return nil, err
-	}
-
-	return user.New().
-		ID(uid).
-		Name(string(u.Name)).
-		Email(string(u.Email)).
-		Host(lo.ToPtr(string(u.Host))).
-		Build()
-}
-
-func ToUsers(gqlUsers []gqlmodel.User) (user.List, error) {
-	users := make(user.List, 0, len(gqlUsers))
-	for _, gu := range gqlUsers {
-		u, err := toUser(gu)
-		if err != nil {
-			return nil, err
-		}
-		users = append(users, *u)
-	}
-	return users, nil
-}
 
 func toWorkspace(w gqlmodel.Workspace) (*workspace.Workspace, error) {
 	wid, err := workspace.IDFrom(string(w.ID))
@@ -235,20 +156,4 @@ func toIntegrationMember(gql gqlmodel.WorkspaceMember) (workspace.IntegrationMem
 		}
 	}
 	return member, nil
-}
-
-func FromPtrToPtr(s *graphql.String) *string {
-	if s == nil {
-		return nil
-	}
-	str := string(*s)
-	return &str
-}
-
-func toStringSlice(gqlSlice []graphql.String) []string {
-	res := make([]string, len(gqlSlice))
-	for i, v := range gqlSlice {
-		res[i] = string(v)
-	}
-	return res
 }

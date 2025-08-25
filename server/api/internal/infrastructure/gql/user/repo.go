@@ -62,3 +62,35 @@ func (r *userRepo) UserByNameOrEmail(ctx context.Context, nameOrEmail string) (*
 
 	return util.ToUserFromSimple(q.User)
 }
+
+func (r *userRepo) UpdateMe(ctx context.Context, a user.UpdateAttrs) (*user.User, error) {
+	in := UpdateMeInput{}
+	if a.Name != nil {
+		s := graphql.String(*a.Name)
+		in.Name = &s
+	}
+	if a.Email != nil {
+		s := graphql.String(*a.Email)
+		in.Email = &s
+	}
+	if a.Lang != nil {
+		langCode := graphql.String(a.Lang.String())
+		in.Lang = &langCode
+	}
+	if a.Password != nil && a.PasswordConfirmation != nil {
+		p := graphql.String(*a.Password)
+		pc := graphql.String(*a.PasswordConfirmation)
+		in.Password = &p
+		in.PasswordConfirmation = &pc
+	}
+
+	var m updateMeMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return nil, err
+	}
+
+	return util.ToMe(m.UpdateMe.Me)
+}
