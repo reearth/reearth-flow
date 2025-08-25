@@ -145,14 +145,13 @@ impl BroadcastGroup {
                                             return;
                                         }
 
-                                        // Store awareness update in Redis for multi-instance sync
                                         let update_bytes = update.encode_v1();
                                         if let Err(e) = redis_store_for_awareness
                                             .set_awareness(
                                                 &doc_name_for_awareness,
-                                                0, // Use 0 as a special marker for broadcast updates
+                                                0,
                                                 &update_bytes,
-                                                300, // 5 minutes TTL
+                                                300,
                                             )
                                             .await
                                         {
@@ -248,7 +247,6 @@ impl BroadcastGroup {
                     _ = &mut redis_subscriber_shutdown_rx => {
                         break;
                     },
-                    // Handle Y.js document updates
                     _ = async {
                         let result = redis_store_for_sub_clone
                             .read_and_filter(
@@ -305,25 +303,17 @@ impl BroadcastGroup {
                                 if !awareness_updates.is_empty() {
                                     let awareness = awareness_clone.write().await;
 
-                                    for (client_id, data, update_type) in awareness_updates {
-                                        match update_type.as_str() {
-                                            "update" => {
-                                                if let Some(data) = data {
-                                                    if let Ok(awareness_update) = yrs::sync::awareness::AwarenessUpdate::decode_v1(&data) {
-                                                        if let Err(e) = awareness.apply_update(awareness_update) {
-                                                            warn!("Failed to apply awareness update from Redis: {}", e);
-                                                        } else {
-                                                            debug!("Applied awareness update from Redis for client {}", client_id);
-                                                        }
-                                                    } else {
-                                                        warn!("Failed to decode awareness update from Redis");
+                                    for (_client_id, data, update_type) in awareness_updates {
+                                        if update_type.as_str() == "update" {
+                                            if let Some(data) = data {
+                                                if let Ok(awareness_update) = yrs::sync::awareness::AwarenessUpdate::decode_v1(&data) {
+                                                    if let Err(e) = awareness.apply_update(awareness_update) {
+                                                        warn!("Failed to apply awareness update from Redis: {}", e);
                                                     }
+                                                } else {
+                                                    warn!("Failed to decode awareness update from Redis");
                                                 }
-                                            },
-                                            "remove" => {
-                                                debug!("Received awareness removal from Redis for client {}", client_id);
-                                            },
-                                            _ => {}
+                                            }
                                         }
                                     }
                                     drop(awareness);

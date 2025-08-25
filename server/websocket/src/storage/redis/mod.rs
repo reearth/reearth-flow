@@ -745,9 +745,6 @@ impl RedisStore {
         Ok(result == 1)
     }
 
-    // ===== Awareness Support =====
-
-    /// Set awareness data for a client in a document
     pub async fn set_awareness(
         &self,
         doc_id: &str,
@@ -757,9 +754,9 @@ impl RedisStore {
     ) -> Result<()> {
         let awareness_key = format!("awareness:{doc_id}");
         let stream_key = format!("awareness:stream:{doc_id}");
-        
+
         let mut conn = self.pool.get().await?;
-        
+
         let script = redis::Script::new(
             r#"
             local awareness_key = KEYS[1]
@@ -792,63 +789,6 @@ impl RedisStore {
         Ok(())
     }
 
-    /// Remove awareness data for a client
-    pub async fn remove_awareness(&self, doc_id: &str, client_id: u64) -> Result<()> {
-        let awareness_key = format!("awareness:{doc_id}");
-        let stream_key = format!("awareness:stream:{doc_id}");
-        
-        let mut conn = self.pool.get().await?;
-        
-        let script = redis::Script::new(
-            r#"
-            local awareness_key = KEYS[1]
-            local stream_key = KEYS[2]
-            local client_id = ARGV[1]
-            
-            -- Remove awareness data
-            local removed = redis.call('HDEL', awareness_key, client_id)
-            
-            if removed > 0 then
-                -- Broadcast removal to stream
-                redis.call('XADD', stream_key, '*', 'client_id', client_id, 'type', 'remove')
-                redis.call('EXPIRE', stream_key, 300)
-            end
-            
-            return removed
-            "#,
-        );
-
-        let _: () = script
-            .key(&awareness_key)
-            .key(&stream_key)
-            .arg(client_id)
-            .invoke_async(&mut *conn)
-            .await?;
-
-        Ok(())
-    }
-
-    /// Get all awareness data for a document
-    pub async fn get_all_awareness(&self, doc_id: &str) -> Result<Vec<(u64, Bytes)>> {
-        let awareness_key = format!("awareness:{doc_id}");
-        let mut conn = self.pool.get().await?;
-        
-        let result: Vec<(String, Bytes)> = redis::cmd("HGETALL")
-            .arg(&awareness_key)
-            .query_async(&mut *conn)
-            .await?;
-        
-        let mut awareness_data = Vec::new();
-        for (client_id_str, data) in result {
-            if let Ok(client_id) = client_id_str.parse::<u64>() {
-                awareness_data.push((client_id, data));
-            }
-        }
-        
-        Ok(awareness_data)
-    }
-
-    /// Subscribe to awareness updates for a document
     pub async fn read_awareness_updates(
         &self,
         conn: &mut redis::aio::MultiplexedConnection,
@@ -887,7 +827,6 @@ impl RedisStore {
             let mut data: Option<Bytes> = None;
             let mut update_type = String::new();
 
-            // Parse fields
             for (field_name, field_value) in fields.iter() {
                 match field_name.as_str() {
                     "client_id" => {
@@ -907,11 +846,6 @@ impl RedisStore {
                 }
             }
 
-            // For remove operations, data is None
-            if update_type == "remove" {
-                data = None;
-            }
-
             updates.push((client_id, data, update_type));
             last_msg_id = msg_id.clone();
         }
@@ -922,84 +856,5 @@ impl RedisStore {
         }
 
         Ok(updates)
-    }
-
-    /// Clean up expired awareness data
-    pub async fn cleanup_expired_awareness(&self, doc_id: &str, max_age_seconds: u64) -> Result<u64> {
-        let awareness_key = format!("awareness:{doc_id}");
-        let stream_key = format!("awareness:stream:{doc_id}");
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-
-        let mut conn = self.pool.get().await?;
-        
-        let script = redis::Script::new(
-            r#"
-            local awareness_key = KEYS[1]
-            local stream_key = KEYS[2]
-            local now = tonumber(ARGV[1])
-            local max_age = tonumber(ARGV[2])
-            
-            local cleaned = 0
-            
-            -- Check if awareness hash exists
-            if redis.call('EXISTS', awareness_key) == 1 then
-                local ttl = redis.call('TTL', awareness_key)
-                if ttl == -1 or (ttl > 0 and ttl < max_age) then
-                    -- Hash exists but TTL indicates it's stale
-                    local clients = redis.call('HKEYS', awareness_key)
-                    for i, client_id in ipairs(clients) do
-                        redis.call('XADD', stream_key, '*', 'client_id', client_id, 'type', 'remove')
-                        cleaned = cleaned + 1
-                    end
-                    redis.call('DEL', awareness_key)
-                end
-            end
-            
-            -- Clean old stream entries (keep last 100 entries)
-            redis.call('XTRIM', stream_key, 'MAXLEN', '~', '100')
-            
-            return cleaned
-            "#,
-        );
-
-        let cleaned: u64 = script
-            .key(&awareness_key)
-            .key(&stream_key)
-            .arg(now)
-            .arg(max_age_seconds)
-            .invoke_async(&mut *conn)
-            .await?;
-
-        Ok(cleaned)
-    }
-
-    /// Get awareness data for a specific client
-    pub async fn get_client_awareness(&self, doc_id: &str, client_id: u64) -> Result<Option<Bytes>> {
-        let awareness_key = format!("awareness:{doc_id}");
-        let mut conn = self.pool.get().await?;
-        
-        let result: Option<Bytes> = redis::cmd("HGET")
-            .arg(&awareness_key)
-            .arg(client_id.to_string())
-            .query_async(&mut *conn)
-            .await?;
-        
-        Ok(result)
-    }
-
-    /// Check if awareness stream exists for a document
-    pub async fn check_awareness_stream_exists(&self, doc_id: &str) -> Result<bool> {
-        let stream_key = format!("awareness:stream:{doc_id}");
-        let mut conn = self.pool.get().await?;
-        
-        let exists: bool = redis::cmd("EXISTS")
-            .arg(&stream_key)
-            .query_async(&mut *conn)
-            .await?;
-        
-        Ok(exists)
     }
 }
