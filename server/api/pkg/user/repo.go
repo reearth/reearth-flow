@@ -10,4 +10,5 @@ import (
 type Repo interface {
 	FindMe(ctx context.Context) (*User, error)
 	FindByIDs(ctx context.Context, ids id.UserIDList) (List, error)
+	UserByNameOrEmail(ctx context.Context, nameOrEmail string) (*User, error)
 }
