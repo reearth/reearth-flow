@@ -9,3 +9,7 @@ type findMeQuery struct {
 type findUsersByIDsQuery struct {
 	Users []gqlmodel.User `graphql:"findUsersByIDs(ids: $ids)"`
 }
+
+type userByNameOrEmailQuery struct {
+	User gqlmodel.UserSimple `graphql:"userByNameOrEmail(nameOrEmail: $nameOrEmail)"`
+}

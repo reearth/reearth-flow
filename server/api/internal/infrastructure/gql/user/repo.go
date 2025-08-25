@@ -46,3 +46,19 @@ func (r *userRepo) FindByIDs(ctx context.Context, ids id.UserIDList) (user.List,
 
 	return util.ToUsers(q.Users)
 }
+
+func (r *userRepo) UserByNameOrEmail(ctx context.Context, nameOrEmail string) (*user.User, error) {
+	if nameOrEmail == "" {
+		return nil, nil
+	}
+
+	var q userByNameOrEmailQuery
+	vars := map[string]interface{}{
+		"nameOrEmail": graphql.String(nameOrEmail),
+	}
+	if err := r.client.Query(ctx, &q, vars); err != nil {
+		return nil, err
+	}
+
+	return util.ToUserFromSimple(q.User)
+}

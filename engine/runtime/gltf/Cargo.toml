@@ -24,6 +24,7 @@ nusamai-gltf.workspace = true
 ahash.workspace = true
 byteorder.workspace = true
 chrono.workspace = true
+draco-oxide.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
 once_cell.workspace = true
