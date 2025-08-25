@@ -1,40 +1,16 @@
-import { useEffect, useRef, useState } from "react";
-
-import {
-  fetchAndReadData,
-  SupportedDataTypes,
-} from "@flow/utils/fetchAndReadGeoData";
+import { useDebugRunUrlQuery } from "./useDebugRunUrlQuery";
 
 type Props = {
   dataUrl?: string;
 };
 
 export default ({ dataUrl = "" }: Props) => {
-  const prevDataUrl = useRef<string | null>(null);
-  const [fileContent, setFileContent] = useState<any | null>(null);
-  const [fileType, setFileType] = useState<SupportedDataTypes | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!fileContent || dataUrl !== prevDataUrl.current) {
-      setIsLoading(true);
-      setError(null);
-      (async () => {
-        const { fileContent, type, error } = await fetchAndReadData(dataUrl);
-        setFileContent(fileContent);
-        setFileType(type);
-        setError(error);
-        setIsLoading(false);
-      })();
-      prevDataUrl.current = dataUrl;
-    }
-  }, [dataUrl, fileContent]);
+  const { data, isLoading } = useDebugRunUrlQuery(dataUrl);
 
   return {
-    fileContent,
-    fileType,
+    fileContent: data?.fileContent,
+    fileType: data?.type,
     isLoading,
-    error,
+    error: data?.error,
   };
 };
