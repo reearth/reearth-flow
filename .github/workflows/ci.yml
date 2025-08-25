@@ -36,8 +36,6 @@ jobs:
             engine/**
             .github/workflows/ci.yml
             .github/workflows/ci_engine.yml
-            .github/workflows/ci_engine_optimized.yml
-            .github/workflows/ci_engine_ultra.yml
             .github/workflows/build_docker_push_worker.yml
             CHANGELOG.md
       - name: changed files for policies
@@ -89,14 +87,6 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.engine == 'true'
     uses: ./.github/workflows/ci_engine.yml
-  ci-engine-optimized:
-    needs: prepare
-    if: needs.prepare.outputs.engine == 'true'
-    uses: ./.github/workflows/ci_engine_optimized.yml
-  ci-engine-ultra:
-    needs: prepare
-    if: needs.prepare.outputs.engine == 'true'
-    uses: ./.github/workflows/ci_engine_ultra.yml
   ci-policies:
     needs: prepare
     if: needs.prepare.outputs.policies == 'true'
@@ -119,8 +109,6 @@ jobs:
     needs:
       - ci-api
       - ci-engine
-      - ci-engine-optimized
-      - ci-engine-ultra
       - ci-policies
       - ci-subscriber
       - ci-ui
@@ -230,11 +218,9 @@ jobs:
     needs:
       - ci
       - ci-engine
-      - ci-engine-optimized
-      - ci-engine-ultra
       - ci-collect-info
     uses: ./.github/workflows/build_docker_push_worker.yml
-    if: ${{ !failure() && needs.ci-engine.result == 'success' && needs.ci-engine-optimized.result == 'success' && needs.ci-engine-ultra.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
+    if: ${{ !failure() && needs.ci-engine.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
     with:
       name: ${{ needs.ci-collect-info.outputs.name }}
       new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}

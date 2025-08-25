@@ -4,51 +4,41 @@ on:
   workflow_call:
 
 env:
-  # Disable incremental compilation.
   CARGO_INCREMENTAL: 0
-  # Allow more retries for network requests in cargo (downloading crates) and
-  # rustup (installing toolchains). This should help to reduce flaky CI failures
-  # from transient network timeouts or other issues.
   CARGO_NET_RETRY: 10
   RUSTUP_MAX_RETRIES: 10
-  # Don't emit giant backtraces in the CI logs.
   RUST_BACKTRACE: short
   FLOW_RUNTIME_ACTION_LOG_DISABLE: true
+  CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
 
 defaults:
   run:
     working-directory: engine
 
 jobs:
-  ci:
-    runs-on: ubuntu-22.04
+  # Quick formatting and validation checks (fast, no compilation needed)
+  engine-quick-checks:
+    name: engine / format & version
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-      - name: Maximize build space
-        uses: AdityaGarg8/remove-unwanted-software@v4.1
-        with:
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
-          remove-codeql: 'true'
-          remove-docker-images: 'true'
-          remove-swapfile: 'true'
-          remove-cached-tools: 'true'
+          fetch-depth: 3
       - uses: dtolnay/rust-toolchain@1.88
         with:
-          components: clippy, rustfmt
-      - name: Cache cargo registry
-        uses: Swatinem/rust-cache@v2
+          components: rustfmt
+      
+      - uses: taiki-e/install-action@v2
         with:
-          workspaces: engine
-          shared-key: "engine-ci"
-      - name: install required tools
-        uses: taiki-e/install-action@v2
-        with:
-          tool: taplo-cli,cargo-make,cargo-edit
-      - name: Compare version with previous commit
+          tool: taplo-cli,cargo-edit
+      
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      
+      - name: Check TOML formatting
+        run: taplo fmt --check
+      
+      - name: Version check
         if: ${{ !(github.ref == 'refs/heads/main') }}
         run: |
           # Try to get previous version, handle new files
@@ -64,46 +54,173 @@ jobs:
             exit 1
           fi
 
-           echo "Previous version: $PREV_VERSION"
-           echo "Current version:  $CURR_VERSION"
+          echo "Previous version: $PREV_VERSION"
+          echo "Current version:  $CURR_VERSION"
 
-           if [ "$PREV_VERSION" = "$CURR_VERSION" ]; then
-             echo "Error: The version of Cargo.toml has not been changed."
-             echo "       To increase the patch version, run 'cargo set-version --bump patch'."
-             echo "       To bump the version, run one of:"
-             echo "       - 'cargo set-version --bump major'  # For breaking changes"
-             echo "       - 'cargo set-version --bump minor'  # For new features"
-             echo "       - 'cargo set-version --bump patch'  # For bug fixes"
-             exit 1
-           fi
+          if [ "$PREV_VERSION" = "$CURR_VERSION" ]; then
+            echo "Error: The version of Cargo.toml has not been changed."
+            echo "       To increase the patch version, run 'cargo set-version --bump patch'."
+            echo "       To bump the version, run one of:"
+            echo "       - 'cargo set-version --bump major'  # For breaking changes"
+            echo "       - 'cargo set-version --bump minor'  # For new features"
+            echo "       - 'cargo set-version --bump patch'  # For bug fixes"
+            exit 1
+          fi
 
-      - name: Install Python 3.11
+  engine-build-and-clippy:
+    name: engine / build & clippy
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Maximize build space
+        uses: AdityaGarg8/remove-unwanted-software@v4.1
+        with:
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+      
+      - uses: dtolnay/rust-toolchain@1.88
+        with:
+          components: clippy
+      
+      - name: Cache cargo registry
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+          shared-key: "engine-ci"
+          cache-on-failure: true
+      
+      - name: Install Python deps
         uses: actions/setup-python@v4
         with:
           python-version: 3.11
+      
       - name: Install py2wasm
+        run: pip install py2wasm
+      
+      - name: Build check
+        run: cargo check --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
+      
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --no-deps -- -D warnings
+
+  engine-tests:
+    name: engine / tests
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Maximize build space
+        uses: AdityaGarg8/remove-unwanted-software@v4.1
+        with:
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+      
+      - uses: dtolnay/rust-toolchain@1.88
+      
+      - name: Cache cargo registry
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+          shared-key: "engine-ci"
+          cache-on-failure: true
+      
+      - name: Install Python deps
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+      
+      - name: Install py2wasm
+        run: pip install py2wasm
+      
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - name: Run tests (shard ${{ matrix.shard }}/2)
         run: |
-          python -m pip install --upgrade pip
-          pip install py2wasm
-      - name: check
-        run: cargo make check
-      - name: rustfmt
-        run: cargo fmt --all -- --check
-      - name: clippy
-        run: cargo make clippy
-      - name: taplo
-        run: taplo fmt --check
-      - name: run generate schema
+          cargo nextest run \
+            --workspace \
+            --exclude plateau-gis-quality-checker \
+            --partition hash:${{ matrix.shard }}/2 \
+            --no-fail-fast
+
+  engine-schema-generation:
+    name: engine / schema generation
+    runs-on: ubuntu-latest
+    if: true
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - uses: dtolnay/rust-toolchain@1.88
+      
+      - name: Cache schemas
+        id: cache-schemas
+        uses: actions/cache@v3
+        with:
+          path: |
+            engine/schema/actions*.json
+            engine/docs/mdbook/src/action.md
+          key: schema-${{ hashFiles('engine/runtime/action-*/**/*.rs') }}
+      
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-make
+      
+      - name: Install Python deps
+        if: steps.cache-schemas.outputs.cache-hit != 'true'
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+      
+      - name: Install py2wasm
+        if: steps.cache-schemas.outputs.cache-hit != 'true'
+        run: pip install py2wasm
+      
+      - name: Generate schemas
+        if: steps.cache-schemas.outputs.cache-hit != 'true'
         run: cargo make doc-action
-      - name: check generated schema
+      
+      - name: Check schema changes
         run: |
           git add -N .
-          git diff
-          line=$(git diff | wc -l)
-          if [ "$line" -gt 0 ]; then
-            echo "Please run 'cargo make doc-action' and commit the changes."
+          if [ "$(git diff | wc -l)" -gt 0 ]; then
+            echo "Schema changes detected - please commit"
             git diff
             exit 1
           fi
-      - name: run tests
-        run: cargo make test
+
+  ci-status:
+    name: engine / status
+    runs-on: ubuntu-latest
+    needs: [engine-quick-checks, engine-build-and-clippy, engine-tests, engine-schema-generation]
+    if: always()
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - name: Check all jobs
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "One or more jobs failed"
+            exit 1
+          fi
+          if [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "One or more jobs were cancelled"
+            exit 1
+          fi
+          echo "All CI checks passed!"
