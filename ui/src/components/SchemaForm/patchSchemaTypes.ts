@@ -62,6 +62,46 @@ const simplifyAnyOf = (
   return newSchema;
 };
 
+const consolidateOneOfToEnum = (
+  schema: JSONSchema7Definition,
+): JSONSchema7Definition => {
+  if (!isJSONSchema(schema)) return schema;
+  const newSchema: JSONSchema7 = { ...schema };
+
+  const extractOneOfValues = (
+    arr: JSONSchema7[],
+  ): { values: any[]; titles: (string | undefined)[] } | null => {
+    const values: any[] = [];
+    const titles: (string | undefined)[] = [];
+    for (const sub of arr) {
+      let v: any | undefined;
+      if (typeof (sub as any).const !== "undefined") v = (sub as any).const;
+      else if (Array.isArray(sub.enum) && sub.enum.length === 1)
+        v = sub.enum[0];
+      else return null;
+      values.push(v);
+      titles.push(sub.title);
+    }
+    return { values, titles };
+  };
+
+  if (newSchema.oneOf && newSchema.oneOf.every(isJSONSchema)) {
+    const oneOfValues = extractOneOfValues(newSchema.oneOf as JSONSchema7[]);
+    if (oneOfValues) {
+      // Ensure the parent looks like a string/number/etc. based on first value
+      if (typeof oneOfValues.values[0] === "string") {
+        newSchema.type = "string";
+      } else if (typeof oneOfValues.values[0] === "number") {
+        newSchema.type = "number";
+      }
+      // Force enum to ensure RJSF uses a select dropdown
+      (newSchema as any).enum = oneOfValues.values;
+    }
+  }
+
+  return newSchema;
+};
+
 // Nested `anyOf` inside `oneOf` needs to be simplified as `oneOf` will override `anyOf`
 const simplifyAnyOfInsideOneOf = (
   schema: JSONSchema7Definition,
@@ -88,7 +128,9 @@ const simplifyAnyOfInsideOneOf = (
   return newSchema;
 };
 
-export const patchAnyOfType = (schema: JSONSchema7Definition): RJSFSchema => {
+export const patchAnyOfAndOneOfType = (
+  schema: JSONSchema7Definition,
+): RJSFSchema => {
   if (!isJSONSchema(schema)) {
     return { type: "boolean", default: schema };
   }
@@ -99,6 +141,15 @@ export const patchAnyOfType = (schema: JSONSchema7Definition): RJSFSchema => {
   newSchema = simplifyAnyOf(newSchema) as JSONSchema7;
   // Ensure `oneOf` does not interfere with `anyOf` simplification
   newSchema = simplifyAnyOfInsideOneOf(newSchema) as JSONSchema7;
+
+  if (newSchema.definitions) {
+    newSchema.definitions = Object.fromEntries(
+      Object.entries(newSchema.definitions).map(([k, v]) => [
+        k,
+        consolidateOneOfToEnum(v),
+      ]),
+    );
+  }
 
   return newSchema;
 };

@@ -13,7 +13,7 @@ import {
   FlowLogo,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
-import { patchAnyOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
+import { patchAnyOfAndOneOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
 import { useNodeSchemaGenerate } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
@@ -64,7 +64,9 @@ const ParamEditor: React.FC<Props> = ({
   const patchedSchemaParams = useMemo<RJSFSchema | undefined>(
     () =>
       createdAction?.parameter
-        ? patchAnyOfType(createdAction.parameter as JSONSchema7Definition)
+        ? patchAnyOfAndOneOfType(
+            createdAction.parameter as JSONSchema7Definition,
+          )
         : undefined,
     [createdAction?.parameter],
   );
