@@ -5,12 +5,12 @@ type Props = {
 };
 
 export default ({ dataUrl = "" }: Props) => {
-  const { data, isLoading } = useDebugRunUrlQuery(dataUrl);
+  const { data, isLoading, error } = useDebugRunUrlQuery(dataUrl);
 
   return {
-    fileContent: data?.fileContent,
-    fileType: data?.type,
+    fileContent: data?.fileContent ?? null,
+    fileType: data?.type ?? null,
     isLoading,
-    error: data?.error,
+    error: data?.error || (error?.message ?? null),
   };
 };
