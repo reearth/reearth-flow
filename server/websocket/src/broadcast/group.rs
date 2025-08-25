@@ -126,6 +126,9 @@ impl BroadcastGroup {
 
         let redis_store_for_awareness = redis_store.clone();
         let doc_name_for_awareness = config.doc_name.clone().unwrap_or_default();
+        let mut conn = redis_store_for_awareness
+            .create_dedicated_connection()
+            .await?;
 
         let awareness_updater = tokio::task::spawn(async move {
             loop {
@@ -150,6 +153,7 @@ impl BroadcastGroup {
                                             .set_awareness(
                                                 &doc_name_for_awareness,
                                                 0,
+                                                &mut conn,
                                                 &update_bytes,
                                                 300,
                                             )

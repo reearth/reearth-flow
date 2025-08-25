@@ -749,13 +749,12 @@ impl RedisStore {
         &self,
         doc_id: &str,
         client_id: u64,
+        conn: &mut redis::aio::MultiplexedConnection,
         awareness_data: &[u8],
         ttl_seconds: u64,
     ) -> Result<()> {
         let awareness_key = format!("awareness:{doc_id}");
         let stream_key = format!("awareness:stream:{doc_id}");
-
-        let mut conn = self.pool.get().await?;
 
         let script = redis::Script::new(
             r#"
