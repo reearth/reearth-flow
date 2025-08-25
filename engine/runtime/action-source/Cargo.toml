@@ -22,6 +22,7 @@ reearth-flow-storage.workspace = true
 reearth-flow-types.workspace = true
 
 nusamai-citygml.workspace = true
+nusamai-czml.workspace = true
 nusamai-plateau.workspace = true
 nusamai-projection.workspace = true
 

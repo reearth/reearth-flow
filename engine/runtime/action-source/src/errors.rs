@@ -16,6 +16,8 @@ pub enum SourceError {
     GeoJsonFileReader(String),
     #[error("ShapefileReader error: {0}")]
     ShapefileReader(String),
+    #[error("CzmlReader error: {0}")]
+    CzmlReader(String),
     #[error("File Path Extractor Factory error: {0}")]
     FilePathExtractorFactory(String),
     #[error("File Path Extractor error: {0}")]
