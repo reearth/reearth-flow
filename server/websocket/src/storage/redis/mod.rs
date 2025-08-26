@@ -748,7 +748,7 @@ impl RedisStore {
     pub async fn set_awareness(
         &self,
         doc_id: &str,
-        client_id: u64,
+        instance_id: &str,
         conn: &mut redis::aio::MultiplexedConnection,
         awareness_data: &[u8],
         ttl_seconds: u64,
@@ -760,16 +760,16 @@ impl RedisStore {
             r#"
             local awareness_key = KEYS[1]
             local stream_key = KEYS[2]
-            local client_id = ARGV[1]
-            local awareness_data = ARGV[2]
-            local ttl = tonumber(ARGV[3])
+            local awareness_data = ARGV[1]
+            local ttl = tonumber(ARGV[2])
+            local instance_id = ARGV[3]
             
-            -- Store awareness data with TTL
-            redis.call('HSET', awareness_key, client_id, awareness_data)
+            -- Store awareness data with TTL (use instance_id as key)
+            redis.call('HSET', awareness_key, instance_id, awareness_data)
             redis.call('EXPIRE', awareness_key, ttl)
             
             -- Broadcast awareness update to stream
-            redis.call('XADD', stream_key, '*', 'client_id', client_id, 'data', awareness_data, 'type', 'update')
+            redis.call('XADD', stream_key, '*', 'data', awareness_data, 'instance_id', instance_id)
             redis.call('EXPIRE', stream_key, ttl)
             
             return 1
@@ -779,9 +779,9 @@ impl RedisStore {
         let _: () = script
             .key(&awareness_key)
             .key(&stream_key)
-            .arg(client_id)
             .arg(awareness_data)
             .arg(ttl_seconds)
+            .arg(instance_id)
             .invoke_async(&mut *conn)
             .await?;
 
@@ -794,7 +794,8 @@ impl RedisStore {
         doc_id: &str,
         last_read_id: &Arc<Mutex<String>>,
         count: usize,
-    ) -> Result<Vec<(u64, Option<Bytes>, String)>> {
+        instance_id_filter: Option<&str>,
+    ) -> Result<Vec<(String, Option<Bytes>)>> {
         let stream_key = format!("awareness:stream:{doc_id}");
         let block_ms = 1000;
 
@@ -822,30 +823,31 @@ impl RedisStore {
         let mut last_msg_id = String::new();
 
         for (msg_id, fields) in result[0].1.iter() {
-            let mut client_id = 0u64;
             let mut data: Option<Bytes> = None;
-            let mut update_type = String::new();
+            let mut message_instance_id = String::new();
 
             for (field_name, field_value) in fields.iter() {
                 match field_name.as_str() {
-                    "client_id" => {
-                        if let Ok(id_str) = std::str::from_utf8(field_value) {
-                            client_id = id_str.parse().unwrap_or(0);
-                        }
-                    }
                     "data" => {
                         data = Some(field_value.clone());
                     }
-                    "type" => {
-                        if let Ok(type_str) = std::str::from_utf8(field_value) {
-                            update_type = type_str.to_string();
+                    "instance_id" => {
+                        if let Ok(instance_str) = std::str::from_utf8(field_value) {
+                            message_instance_id = instance_str.to_string();
                         }
                     }
                     _ => {}
                 }
             }
 
-            updates.push((client_id, data, update_type));
+            if let Some(filter_instance_id) = instance_id_filter {
+                if message_instance_id == filter_instance_id {
+                    last_msg_id = msg_id.clone();
+                    continue;
+                }
+            }
+
+            updates.push((message_instance_id, data));
             last_msg_id = msg_id.clone();
         }
 

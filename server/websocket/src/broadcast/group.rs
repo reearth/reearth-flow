@@ -124,6 +124,8 @@ impl BroadcastGroup {
         });
         drop(lock);
 
+        let instance_id = format!("instance-{}", rand::random::<u64>());
+        let instance_id_for_awareness = instance_id.clone();
         let redis_store_for_awareness = redis_store.clone();
         let doc_name_for_awareness = config.doc_name.clone().unwrap_or_default();
         let mut conn = redis_store_for_awareness
@@ -152,7 +154,7 @@ impl BroadcastGroup {
                                         if let Err(e) = redis_store_for_awareness
                                             .set_awareness(
                                                 &doc_name_for_awareness,
-                                                0,
+                                                &instance_id_for_awareness,
                                                 &mut conn,
                                                 &update_bytes,
                                                 300,
@@ -176,12 +178,11 @@ impl BroadcastGroup {
             }
         });
 
-        let instance_id = format!("instance-{}", rand::random::<u64>());
-        let instance_id_clone = instance_id.clone();
         let doc_name = config.doc_name.unwrap_or_default();
 
         let doc_name_for_sub = doc_name.clone();
         let redis_store_for_sub = redis_store.clone();
+        let instance_id_clone = instance_id.clone();
         let (heartbeat_shutdown_tx, mut heartbeat_shutdown_rx) = tokio::sync::oneshot::channel();
 
         let heartbeat_task = tokio::spawn(async move {
@@ -299,6 +300,7 @@ impl BroadcastGroup {
                                 &doc_name_for_sub_clone,
                                 &awareness_last_read_id,
                                 10,
+                                Some(instance_id_clone.as_str()),
                             )
                             .await;
 
@@ -307,16 +309,14 @@ impl BroadcastGroup {
                                 if !awareness_updates.is_empty() {
                                     let awareness = awareness_clone.write().await;
 
-                                    for (_client_id, data, update_type) in awareness_updates {
-                                        if update_type.as_str() == "update" {
-                                            if let Some(data) = data {
-                                                if let Ok(awareness_update) = yrs::sync::awareness::AwarenessUpdate::decode_v1(&data) {
-                                                    if let Err(e) = awareness.apply_update(awareness_update) {
-                                                        warn!("Failed to apply awareness update from Redis: {}", e);
-                                                    }
-                                                } else {
-                                                    warn!("Failed to decode awareness update from Redis");
+                                    for (_instance_id, data) in awareness_updates {
+                                        if let Some(data) = data {
+                                            if let Ok(awareness_update) = yrs::sync::awareness::AwarenessUpdate::decode_v1(&data) {
+                                                if let Err(e) = awareness.apply_update(awareness_update) {
+                                                    warn!("Failed to apply awareness update from Redis: {}", e);
                                                 }
+                                            } else {
+                                                warn!("Failed to decode awareness update from Redis");
                                             }
                                         }
                                     }
