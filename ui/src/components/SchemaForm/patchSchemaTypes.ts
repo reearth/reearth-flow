@@ -75,7 +75,7 @@ const consolidateOneOfToEnum = (
     const titles: (string | undefined)[] = [];
     for (const sub of arr) {
       let v: any | undefined;
-      if (typeof (sub as any).const !== "undefined") v = (sub as any).const;
+      if ("const" in sub && typeof sub.const !== "undefined") v = sub.const;
       else if (Array.isArray(sub.enum) && sub.enum.length === 1)
         v = sub.enum[0];
       else return null;
@@ -95,7 +95,7 @@ const consolidateOneOfToEnum = (
         newSchema.type = "number";
       }
       // Force enum to ensure RJSF uses a select dropdown
-      (newSchema as any).enum = oneOfValues.values;
+      (newSchema as JSONSchema7 & { enum: any[] }).enum = oneOfValues.values;
     }
   }
 
