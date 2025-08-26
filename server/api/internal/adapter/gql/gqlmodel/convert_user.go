@@ -22,7 +22,11 @@ func ToUser(u *user.User) *User {
 }
 
 // TODO: After migration, delete ToUser and rename ToUserFromFlow to ToUser.
-func ToUserFromFlow(u pkguser.User) *User {
+func ToUserFromFlow(u *pkguser.User) *User {
+	if u == nil {
+		return nil
+	}
+
 	return &User{
 		ID:    IDFrom(u.ID()),
 		Name:  u.Name(),
