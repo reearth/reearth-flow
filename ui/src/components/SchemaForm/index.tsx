@@ -56,7 +56,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
     }
 
     onChange(data.formData);
-};
+  };
 
   // Validate initial data on mount
   useEffect(() => {
