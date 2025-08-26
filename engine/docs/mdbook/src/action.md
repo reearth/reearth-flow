@@ -981,6 +981,12 @@ Export Features as Cesium 3D Tiles for Web Visualization
         }
       ]
     },
+    "dracoCompressionEnabled": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "maxZoom": {
       "title": "Maximum Zoom Level",
       "description": "Maximum zoom level for tile generation (0-24)",
@@ -3113,6 +3119,12 @@ Writes 3D features to GLTF format with optional texture attachment
   "properties": {
     "attachTexture": {
       "description": "Whether to attach texture information to the GLTF model",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "dracoCompression": {
       "type": [
         "boolean",
         "null"
