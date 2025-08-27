@@ -186,8 +186,8 @@ impl DagExecutorJoinHandle {
                         "Workflow complete, waiting for final events to be published..."
                     );
 
-                    // Simple delay approach - block for 500ms to let events publish
-                    handle.block_on(self.event_hub.simple_flush(500));
+                    // Enhanced delay approach - use improved flush with dynamic waiting
+                    handle.block_on(self.event_hub.enhanced_flush(5000));
 
                     tracing::info!("Proceeding with workflow termination");
                 }

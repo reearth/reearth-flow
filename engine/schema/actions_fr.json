@@ -3,7 +3,7 @@
     {
       "name": "AreaOnAreaOverlayer",
       "type": "processor",
-      "description": "Superpose une zone sur une autre zone",
+      "description": "Perform Area Overlay Analysis",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AreaOnAreaOverlayer Parameters",
@@ -44,7 +44,7 @@
     {
       "name": "AttributeAggregator",
       "type": "processor",
-      "description": "Regroupe les entités selon leurs attributs",
+      "description": "Group and Aggregate Features by Attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AttributeAggregator Parameters",
@@ -343,7 +343,7 @@
     {
       "name": "AttributeDuplicateFilter",
       "type": "processor",
-      "description": "Filtre les entités possédant des attributs dupliqués",
+      "description": "Remove Duplicate Features Based on Attribute Values",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AttributeDuplicateFilter Parameters",
@@ -381,7 +381,7 @@
     {
       "name": "AttributeFilePathInfoExtractor",
       "type": "processor",
-      "description": "Extrait des informations de chemins de fichier à partir des attributs",
+      "description": "Extract File System Information from Path Attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AttributeFilePathInfoExtractor Parameters",
@@ -459,7 +459,7 @@
     {
       "name": "AttributeManager",
       "type": "processor",
-      "description": "Gère les attributs",
+      "description": "Create, Convert, Rename, and Remove Feature Attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AttributeManager Parameters",
@@ -539,7 +539,7 @@
     {
       "name": "AttributeMapper",
       "type": "processor",
-      "description": "Assigne des attributs",
+      "description": "Transform Feature Attributes Using Expressions and Mappings",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AttributeMapper Parameters",
@@ -632,7 +632,7 @@
     {
       "name": "BoundsExtractor",
       "type": "processor",
-      "description": "Extrait les limites",
+      "description": "Extract Bounding Box Coordinates from Feature Geometry",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "BoundsExtractor Parameters",
@@ -732,7 +732,7 @@
     {
       "name": "Bufferer",
       "type": "processor",
-      "description": "Crée un tampon autour d'une géométrie",
+      "description": "Create Buffer Around Features",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Bufferer Parameters",
@@ -796,7 +796,7 @@
     {
       "name": "BulkAttributeRenamer",
       "type": "processor",
-      "description": "Renomme des attributs en ajoutant/supprimant des préfixes ou suffixes, ou en remplaçant du texte",
+      "description": "Rename Feature Attributes in Bulk",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "BulkAttributeRenamer Parameters",
@@ -932,7 +932,7 @@
     {
       "name": "CenterPointReplacer",
       "type": "processor",
-      "description": "Remplace la géométrie de l'entité par un point situé au centre de sa boîte englobante, à son centre de masse, ou à l'intérieur de son aire.",
+      "description": "Replace Feature Geometry with Center Point",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -949,7 +949,7 @@
     {
       "name": "Cesium3DTilesWriter",
       "type": "sink",
-      "description": "Écrit les entités dans un fichier",
+      "description": "Export Features as Cesium 3D Tiles for Web Visualization",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Cesium3DTilesWriter Parameters",
@@ -978,6 +978,12 @@
               {
                 "type": "null"
               }
+            ]
+          },
+          "dracoCompressionEnabled": {
+            "type": [
+              "boolean",
+              "null"
             ]
           },
           "maxZoom": {
@@ -1023,7 +1029,7 @@
     {
       "name": "Clipper",
       "type": "processor",
-      "description": "Divise les entités candidates à l'aide d'entités de découpage, de sorte que les parties intérieures ou extérieures soient produites séparément",
+      "description": "Clip Features Using Boundary Shapes",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -1042,7 +1048,7 @@
     {
       "name": "ClosedCurveFilter",
       "type": "processor",
-      "description": "Vérifie si les courbes forment des boucles fermées",
+      "description": "Filter LineString Features by Closed/Open Status",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -1242,7 +1248,7 @@
     {
       "name": "DimensionFilter",
       "type": "processor",
-      "description": "Filtre les entités en fonction de leur dimension",
+      "description": "Filter Features by Geometry Dimension",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -1338,7 +1344,7 @@
     {
       "name": "EchoProcessor",
       "type": "processor",
-      "description": "Répète les entités",
+      "description": "Debug Echo Features to Logs",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -1354,7 +1360,7 @@
     {
       "name": "EchoSink",
       "type": "sink",
-      "description": "Répète les entités",
+      "description": "Debug Echo Features to Logs",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -1368,7 +1374,7 @@
     {
       "name": "ElevationExtractor",
       "type": "processor",
-      "description": "Extrait la première valeur de la coordonnée z d'une entité et la stocke dans un attribut.",
+      "description": "Extract Z-Coordinate Elevation to Attribute",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Elevation Extractor Parameters",
@@ -1408,7 +1414,7 @@
     {
       "name": "Extruder",
       "type": "processor",
-      "description": "Extrue un polygone sur une certaine distance",
+      "description": "Extrude 2D Polygons into 3D Solids",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Extruder Parameters",
@@ -1459,6 +1465,7 @@
         ],
         "properties": {
           "dataset": {
+            "title": "Dataset",
             "description": "Path or expression to the CityGML dataset file to be read",
             "allOf": [
               {
@@ -1467,6 +1474,7 @@
             ]
           },
           "flatten": {
+            "title": "Flatten",
             "description": "Whether to flatten the hierarchical structure of the CityGML data",
             "type": [
               "boolean",
@@ -1494,7 +1502,7 @@
     {
       "name": "FeatureCounter",
       "type": "processor",
-      "description": "Compte les entités",
+      "description": "Count Features and Add Counter to Attribute",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature Counter Parameters",
@@ -1549,7 +1557,7 @@
     {
       "name": "FeatureCreator",
       "type": "source",
-      "description": "Crée des entités à partir d'expressions",
+      "description": "Generate Custom Features Using Scripts",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureCreator Parameters",
@@ -1658,7 +1666,7 @@
     {
       "name": "FeatureFilter",
       "type": "processor",
-      "description": "Filtre les entités selon des conditions",
+      "description": "Filter Features Based on Custom Conditions",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature Filter Parameters",
@@ -1768,7 +1776,7 @@
     {
       "name": "FeatureMerger",
       "type": "processor",
-      "description": "Fusionne des entités selon leurs attributs",
+      "description": "Merges requestor and supplier features based on matching attribute values",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureMerger Parameters",
@@ -1850,7 +1858,7 @@
     {
       "name": "FeatureReader",
       "type": "processor",
-      "description": "Filtre les entités selon des conditions",
+      "description": "Reads features from various file formats (CSV, TSV, JSON) with configurable parsing options",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureReaderParam",
@@ -1865,6 +1873,7 @@
             ],
             "properties": {
               "dataset": {
+                "title": "Dataset",
                 "description": "Path or expression to the dataset file to be read",
                 "allOf": [
                   {
@@ -1899,6 +1908,7 @@
             ],
             "properties": {
               "dataset": {
+                "title": "Dataset",
                 "description": "Path or expression to the dataset file to be read",
                 "allOf": [
                   {
@@ -1933,6 +1943,7 @@
             ],
             "properties": {
               "dataset": {
+                "title": "Dataset",
                 "description": "Path or expression to the dataset file to be read",
                 "allOf": [
                   {
@@ -1969,7 +1980,7 @@
     {
       "name": "FeatureSorter",
       "type": "processor",
-      "description": "Trie les entités par attributs",
+      "description": "Sorts features based on specified attributes in ascending or descending order",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureSorter Parameters",
@@ -2023,7 +2034,7 @@
     {
       "name": "FeatureTransformer",
       "type": "processor",
-      "description": "Transforme les entités à l'aide d'expressions",
+      "description": "Applies transformation expressions to modify feature attributes and properties",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureTransformer Parameters",
@@ -2077,7 +2088,7 @@
     {
       "name": "FeatureTypeFilter",
       "type": "processor",
-      "description": "Filtre les entités par type",
+      "description": "Filters features by feature type",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureTypeFilter Parameters",
@@ -2219,7 +2230,7 @@
     {
       "name": "FilePathExtractor",
       "type": "source",
-      "description": "Extrait des fichiers d'un répertoire ou d'une archive",
+      "description": "Extracts file paths from directories or archives, creating features for each discovered file",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FilePathExtractor Parameters",
@@ -2231,10 +2242,12 @@
         ],
         "properties": {
           "extractArchive": {
+            "title": "Extract Archive",
             "description": "Whether to extract files from archives (zip files, etc.) or just list them",
             "type": "boolean"
           },
           "sourceDataset": {
+            "title": "Source Dataset",
             "description": "Path or expression pointing to the source directory or archive file",
             "allOf": [
               {
@@ -2261,7 +2274,7 @@
     {
       "name": "FilePropertyExtractor",
       "type": "processor",
-      "description": "Extrait les propriétés d'un fichier",
+      "description": "Extracts file system properties (type, size, timestamps) from files",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FilePropertyExtractor Parameters",
@@ -2292,7 +2305,7 @@
     {
       "name": "FileReader",
       "type": "source",
-      "description": "Lit des entités depuis un fichier",
+      "description": "Reads features from a file",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FileReader",
@@ -2538,7 +2551,7 @@
     {
       "name": "FileWriter",
       "type": "sink",
-      "description": "Écrit des entités dans un fichier",
+      "description": "Write Features to Files in Various Formats",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "File Writer Parameters",
@@ -2759,7 +2772,7 @@
     {
       "name": "GeoJsonWriter",
       "type": "sink",
-      "description": "Écrit des entités dans un fichier GeoJSON",
+      "description": "Writes geographic features to GeoJSON files with optional grouping",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GeoJsonWriter Parameters",
@@ -2809,7 +2822,7 @@
     {
       "name": "GeometryCoercer",
       "type": "processor",
-      "description": "Force la géométrie d'une entité à une géométrie spécifique",
+      "description": "Coerces and converts feature geometries to specified target geometry types",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GeometryCoercer Parameters",
@@ -2851,7 +2864,7 @@
     {
       "name": "GeometryExtractor",
       "type": "processor",
-      "description": "Extrait la géométrie d'une entité et l'ajoute comme attribut.",
+      "description": "Extract Geometry Data to Attribute",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Geometry Extractor Parameters",
@@ -2891,7 +2904,7 @@
     {
       "name": "GeometryFilter",
       "type": "processor",
-      "description": "Filtre la géométrie par type",
+      "description": "Filter Features by Geometry Type",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Geometry Filter Parameters",
@@ -2978,7 +2991,7 @@
     {
       "name": "GeometryReplacer",
       "type": "processor",
-      "description": "Remplace la géométrie d'une entité par une nouvelle géométrie.",
+      "description": "Replace Feature Geometry from Attribute",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Geometry Replacer Parameters",
@@ -3018,7 +3031,7 @@
     {
       "name": "GeometrySplitter",
       "type": "processor",
-      "description": "Divise la géométrie par type",
+      "description": "Split Multi-Geometries into Individual Features",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -3034,7 +3047,7 @@
     {
       "name": "GeometryValidator",
       "type": "processor",
-      "description": "Valide la géométrie d'une entité",
+      "description": "Validate Feature Geometry Quality",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Geometry Validator Parameters",
@@ -3080,7 +3093,7 @@
     {
       "name": "GeometryValueFilter",
       "type": "processor",
-      "description": "Filtre la géométrie par valeur",
+      "description": "Filter Features by Geometry Value Type",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -3099,7 +3112,7 @@
     {
       "name": "GltfWriter",
       "type": "sink",
-      "description": "Écrit des entités dans un fichier Gltf",
+      "description": "Writes 3D features to GLTF format with optional texture attachment",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GltfWriter Parameters",
@@ -3111,6 +3124,12 @@
         "properties": {
           "attachTexture": {
             "description": "Whether to attach texture information to the GLTF model",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "dracoCompression": {
             "type": [
               "boolean",
               "null"
@@ -3143,7 +3162,7 @@
     {
       "name": "HoleCounter",
       "type": "processor",
-      "description": "Compte le nombre de trous dans une géométrie et l'ajoute comme attribut.",
+      "description": "Count Polygon Holes to Attribute",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Hole Counter Parameters",
@@ -3183,7 +3202,7 @@
     {
       "name": "HoleExtractor",
       "type": "processor",
-      "description": "Extrait les trous dans une géométrie et les ajoute comme attribut.",
+      "description": "Extract Polygon Holes as Separate Features",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -3201,7 +3220,7 @@
     {
       "name": "HorizontalReprojector",
       "type": "processor",
-      "description": "Reprojette la géométrie d'une entité dans un système de coordonnées spécifié",
+      "description": "Reproject Geometry to Different Coordinate System",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Horizontal Reprojector Parameters",
@@ -3234,7 +3253,7 @@
     {
       "name": "InputRouter",
       "type": "processor",
-      "description": "Action pour le renvoi du premier port dans les sous-flux de travail.",
+      "description": "Action for first port forwarding for sub-workflows.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "InputRouter",
@@ -3277,7 +3296,7 @@
     {
       "name": "LineOnLineOverlayer",
       "type": "processor",
-      "description": "Les points d'intersection deviennent des entités ponctuelles pouvant contenir la liste combinée des attributs des lignes d'origine intersectées.",
+      "description": "Intersection points are turned into point features that can contain the merged list of attributes of the original intersected lines.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "LineOnLineOverlayer Parameters",
@@ -3323,7 +3342,7 @@
     {
       "name": "ListExploder",
       "type": "processor",
-      "description": "Explose les attributs de type liste en plusieurs éléments",
+      "description": "Explodes array attributes into separate features, creating one feature per array element",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ListExploder Parameters",
@@ -3362,7 +3381,7 @@
     {
       "name": "MVTWriter",
       "type": "sink",
-      "description": "Écrit des entités dans un fichier",
+      "description": "Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "MVTWriter Parameters",
@@ -3376,6 +3395,7 @@
         ],
         "properties": {
           "compressOutput": {
+            "title": "Compress Output",
             "description": "Optional expression to determine whether to compress the output tiles",
             "anyOf": [
               {
@@ -3387,6 +3407,7 @@
             ]
           },
           "layerName": {
+            "title": "Layer Name",
             "description": "Name of the layer within the MVT tiles",
             "allOf": [
               {
@@ -3395,18 +3416,21 @@
             ]
           },
           "maxZoom": {
+            "title": "Maximum Zoom",
             "description": "Maximum zoom level to generate tiles for",
             "type": "integer",
             "format": "uint8",
             "minimum": 0.0
           },
           "minZoom": {
+            "title": "Minimum Zoom",
             "description": "Minimum zoom level to generate tiles for",
             "type": "integer",
             "format": "uint8",
             "minimum": 0.0
           },
           "output": {
+            "title": "Output",
             "description": "Output directory path or expression for the generated MVT tiles",
             "allOf": [
               {
@@ -3433,7 +3457,7 @@
     {
       "name": "NoopProcessor",
       "type": "processor",
-      "description": "N'effectue aucune opération sur les entités",
+      "description": "No-Operation Pass-Through Processor",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -3449,7 +3473,7 @@
     {
       "name": "NoopSink",
       "type": "sink",
-      "description": "N'effectue aucune opération finale",
+      "description": "No-Operation Sink (Discard Features)",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -3463,7 +3487,7 @@
     {
       "name": "Offsetter",
       "type": "processor",
-      "description": "Ajoute des décalages aux coordonnées de l'entité.",
+      "description": "Apply Coordinate Offsets to Geometry",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Offsetter Parameters",
@@ -3513,7 +3537,7 @@
     {
       "name": "OrientationExtractor",
       "type": "processor",
-      "description": "Extrait l'orientation de la géométrie d'une entité et l'ajoute comme attribut.",
+      "description": "Extract Polygon Orientation to Attribute",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Orientation Extractor Parameters",
@@ -3553,7 +3577,7 @@
     {
       "name": "OutputRouter",
       "type": "processor",
-      "description": "Action pour le renvoi du dernier port dans les sous-flux de travail.",
+      "description": "Action for last port forwarding for sub-workflows.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "OutputRouter",
@@ -3579,7 +3603,7 @@
     {
       "name": "PLATEAU3.AttributeFlattener",
       "type": "processor",
-      "description": "Aplati les attributs pour créer une entité de bâtiment",
+      "description": "Flattens hierarchical PLATEAU3 building attributes into flat structure for analysis",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -3595,7 +3619,7 @@
     {
       "name": "PLATEAU3.BuildingInstallationGeometryTypeExtractor",
       "type": "processor",
-      "description": "Extrait le type de géométrie de l'installation d'un bâtiment (BuildingInstallationGeometryType)",
+      "description": "Extracts BuildingInstallationGeometryType",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -3611,7 +3635,7 @@
     {
       "name": "PLATEAU3.BuildingUsageAttributeValidator",
       "type": "processor",
-      "description": "Ce processeur valide les attributs d'usage des bâtiments en vérifiant la présence d'attributs requis et la justesse des codes de ville. En cas de problème, il génère des erreurs via les ports lBldgError et codeError.",
+      "description": "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "BuildingUsageAttributeValidatorParam",
@@ -3641,7 +3665,7 @@
     {
       "name": "PLATEAU3.DictionariesInitiator",
       "type": "processor",
-      "description": "Initialise des dictionnaires pour PLATEAU",
+      "description": "Initializes dictionaries for PLATEAU",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -3658,7 +3682,7 @@
     {
       "name": "PLATEAU3.DomainOfDefinitionValidator",
       "type": "processor",
-      "description": "Valide le domaine de définition des entités CityGML",
+      "description": "Validates domain of definition of CityGML features",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -3675,7 +3699,7 @@
     {
       "name": "PLATEAU3.MaxLodExtractor",
       "type": "processor",
-      "description": "Extrait maxLod",
+      "description": "Extracts maxLod",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -3691,7 +3715,7 @@
     {
       "name": "PLATEAU3.TranXLinkChecker",
       "type": "processor",
-      "description": "Vérifie Xlink pour Tran",
+      "description": "Check Xlink for Tran",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -3707,7 +3731,7 @@
     {
       "name": "PLATEAU3.UDXFolderExtractor",
       "type": "processor",
-      "description": "Extrait les dossiers UDX du chemin cityGML",
+      "description": "Extracts UDX folders from cityGML path",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -3724,7 +3748,7 @@
     {
       "name": "PLATEAU3.UnmatchedXlinkDetector",
       "type": "processor",
-      "description": "Détecte les xlinks non correspondants pour PLATEAU",
+      "description": "Detect unmatched xlink for PLATEAU",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -3742,7 +3766,7 @@
     {
       "name": "PLATEAU3.XMLAttributeExtractor",
       "type": "processor",
-      "description": "Extrait les attributs de fragments XML en fonction d'une définition de schéma",
+      "description": "Extracts attributes from XML fragments based on a schema definition",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "XmlAttributeExtractorParam",
@@ -4059,7 +4083,7 @@
     {
       "name": "PlanarityFilter",
       "type": "processor",
-      "description": "Filtre la géométrie par type",
+      "description": "Filter Features by Geometry Planarity",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -4076,7 +4100,7 @@
     {
       "name": "Refiner",
       "type": "processor",
-      "description": "Affine la géométrie",
+      "description": "Refine Complex Geometries into Simple Geometries",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -4093,7 +4117,7 @@
     {
       "name": "RhaiCaller",
       "type": "processor",
-      "description": "Appelle un script Rhai",
+      "description": "Executes Rhai script expressions to conditionally process and transform features",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "RhaiCaller Parameters",
@@ -4136,6 +4160,70 @@
       ],
       "categories": [
         "Feature"
+      ]
+    },
+    {
+      "name": "ShapefileReader",
+      "type": "source",
+      "description": "Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .shx files)",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ShapefileReader Parameters",
+        "description": "Configuration for reading Shapefile archives as geographic features. Expects a ZIP archive containing the required Shapefile components (.shp, .dbf, .shx).",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "File Path",
+            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "encoding": {
+            "title": "Character Encoding",
+            "description": "Character encoding for attribute data in the DBF file (e.g., \"UTF-8\", \"Shift_JIS\")",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "force2d": {
+            "title": "Force 2D",
+            "description": "If true, forces all geometries to be 2D (ignoring Z values)",
+            "default": false,
+            "type": "boolean"
+          },
+          "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "File"
       ]
     },
     {
@@ -4239,7 +4327,7 @@
     {
       "name": "StatisticsCalculator",
       "type": "processor",
-      "description": "Calcule des statistiques sur les entités",
+      "description": "Calculates statistical aggregations on feature attributes with customizable expressions",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "StatisticsCalculator Parameters",
@@ -4377,7 +4465,7 @@
     {
       "name": "ThreeDimensionBoxReplacer",
       "type": "processor",
-      "description": "Remplace un boîtier tridimensionnel par un polygone.",
+      "description": "Replace Geometry with 3D Box from Attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "3D Box Replacer Parameters",
@@ -4484,7 +4572,7 @@
     {
       "name": "ThreeDimensionRotator",
       "type": "processor",
-      "description": "Remplace un boîtier tridimensionnel par un polygone.",
+      "description": "Rotate 3D Geometry Around Arbitrary Axis",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "3D Rotator Parameters",
@@ -4584,7 +4672,7 @@
     {
       "name": "TwoDimensionForcer",
       "type": "processor",
-      "description": "Force une géométrie à être bidimensionnelle.",
+      "description": "Force 3D Geometry to 2D by Removing Z-Coordinates",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -4600,7 +4688,7 @@
     {
       "name": "VertexRemover",
       "type": "processor",
-      "description": "Supprime des sommets spécifiques de la géométrie d'une entité",
+      "description": "Remove Redundant Vertices from Geometry",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -4617,7 +4705,7 @@
     {
       "name": "VerticalReprojector",
       "type": "processor",
-      "description": "Reprojette la géométrie d'une entité dans un système de coordonnées spécifié",
+      "description": "Reproject Vertical Coordinates Between Datums",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Vertical Reprojector Parameters",
@@ -4660,7 +4748,7 @@
     {
       "name": "WasmRuntimeExecutor",
       "type": "processor",
-      "description": "Compile des scripts en .wasm et les exécute dans un environnement d'exécution wasm",
+      "description": "Compiles scripts (Python) into WebAssembly and executes them in a WASM runtime",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "WasmRuntimeExecutor Parameters",
@@ -4732,7 +4820,7 @@
     {
       "name": "XMLFragmenter",
       "type": "processor",
-      "description": "Fragmente du XML",
+      "description": "Fragments large XML documents into smaller pieces based on specified element patterns",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "XMLFragmenter Parameters",
@@ -4789,7 +4877,7 @@
     {
       "name": "XMLValidator",
       "type": "processor",
-      "description": "Valide le contenu XML",
+      "description": "Validates XML documents against XSD schemas with success/failure routing",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "XmlValidatorParam",

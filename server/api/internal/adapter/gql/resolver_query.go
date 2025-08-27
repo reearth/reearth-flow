@@ -2,6 +2,7 @@ package gql
 
 import (
 	"context"
+	"log"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 )
@@ -17,8 +18,10 @@ func (r *queryResolver) Me(ctx context.Context) (*gqlmodel.Me, error) {
 	// Eventually, getUser will be unified to return FlowUser from flow package.
 	u := getFlowUser(ctx)
 	if u != nil {
+		log.Printf("DEBUG:[queryResolver.Me] Uses FlowUser %s", u.ID())
 		return gqlmodel.ToMeFromFlow(u), nil
 	}
+	log.Printf("WARNING:[queryResolver.Me] Fallback to legacy getUser")
 
 	u2 := getUser(ctx)
 	if u2 == nil {

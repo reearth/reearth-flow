@@ -2,13 +2,28 @@ package gql
 
 import (
 	"context"
+	"log"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountdomain/workspace"
 )
 
+// TODO: After migration, remove this logic and use the new usecase directly.
 func (r *mutationResolver) CreateWorkspace(ctx context.Context, input gqlmodel.CreateWorkspaceInput) (*gqlmodel.CreateWorkspacePayload, error) {
+	if usecases(ctx).TempNewWorkspace != nil {
+		tempRes, err := usecases(ctx).TempNewWorkspace.Create(ctx, input.Name)
+		if err != nil {
+			log.Printf("WARNING:[mutationResolver.CreateWorkspaceWithTempNewUsecase] Failed to create workspace: %v", err)
+		} else if tempRes == nil {
+			log.Printf("DWARNINGEBUG:[mutationResolver.CreateWorkspaceWithTempNewUsecase] Created workspace is nil")
+		} else {
+			log.Printf("DEBUG:[mutationResolver.CreateWorkspaceWithTempNewUsecase] Created workspace with tempNewUsecase")
+			return &gqlmodel.CreateWorkspacePayload{Workspace: gqlmodel.ToWorkspaceFromFlow(tempRes)}, nil
+		}
+	}
+	log.Printf("WARNING:[mutationResolver.CreateWorkspace] Fallback to traditional usecase")
+
 	res, err := usecases(ctx).Workspace.Create(ctx, input.Name, getUser(ctx).ID(), getAcOperator(ctx))
 	if err != nil {
 		return nil, err

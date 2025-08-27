@@ -981,6 +981,12 @@ Export Features as Cesium 3D Tiles for Web Visualization
         }
       ]
     },
+    "dracoCompressionEnabled": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "maxZoom": {
       "title": "Maximum Zoom Level",
       "description": "Maximum zoom level for tile generation (0-24)",
@@ -1454,6 +1460,7 @@ Reads and processes features from CityGML files with optional flattening
   ],
   "properties": {
     "dataset": {
+      "title": "Dataset",
       "description": "Path or expression to the CityGML dataset file to be read",
       "allOf": [
         {
@@ -1462,6 +1469,7 @@ Reads and processes features from CityGML files with optional flattening
       ]
     },
     "flatten": {
+      "title": "Flatten",
       "description": "Whether to flatten the hierarchical structure of the CityGML data",
       "type": [
         "boolean",
@@ -1859,6 +1867,7 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
       ],
       "properties": {
         "dataset": {
+          "title": "Dataset",
           "description": "Path or expression to the dataset file to be read",
           "allOf": [
             {
@@ -1893,6 +1902,7 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
       ],
       "properties": {
         "dataset": {
+          "title": "Dataset",
           "description": "Path or expression to the dataset file to be read",
           "allOf": [
             {
@@ -1927,6 +1937,7 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
       ],
       "properties": {
         "dataset": {
+          "title": "Dataset",
           "description": "Path or expression to the dataset file to be read",
           "allOf": [
             {
@@ -2225,10 +2236,12 @@ Extracts file paths from directories or archives, creating features for each dis
   ],
   "properties": {
     "extractArchive": {
+      "title": "Extract Archive",
       "description": "Whether to extract files from archives (zip files, etc.) or just list them",
       "type": "boolean"
     },
     "sourceDataset": {
+      "title": "Source Dataset",
       "description": "Path or expression pointing to the source directory or archive file",
       "allOf": [
         {
@@ -3111,6 +3124,12 @@ Writes 3D features to GLTF format with optional texture attachment
         "null"
       ]
     },
+    "dracoCompression": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "output": {
       "description": "Output path or expression for the GLTF file to create",
       "allOf": [
@@ -3369,6 +3388,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping
   ],
   "properties": {
     "compressOutput": {
+      "title": "Compress Output",
       "description": "Optional expression to determine whether to compress the output tiles",
       "anyOf": [
         {
@@ -3380,6 +3400,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping
       ]
     },
     "layerName": {
+      "title": "Layer Name",
       "description": "Name of the layer within the MVT tiles",
       "allOf": [
         {
@@ -3388,18 +3409,21 @@ Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping
       ]
     },
     "maxZoom": {
+      "title": "Maximum Zoom",
       "description": "Maximum zoom level to generate tiles for",
       "type": "integer",
       "format": "uint8",
       "minimum": 0.0
     },
     "minZoom": {
+      "title": "Minimum Zoom",
       "description": "Minimum zoom level to generate tiles for",
       "type": "integer",
       "format": "uint8",
       "minimum": 0.0
     },
     "output": {
+      "title": "Output",
       "description": "Output directory path or expression for the generated MVT tiles",
       "allOf": [
         {
@@ -4102,6 +4126,71 @@ Executes Rhai script expressions to conditionally process and transform features
 * default
 ### Category
 * Feature
+
+## ShapefileReader
+### Type
+* source
+### Description
+Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .shx files)
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ShapefileReader Parameters",
+  "description": "Configuration for reading Shapefile archives as geographic features. Expects a ZIP archive containing the required Shapefile components (.shp, .dbf, .shx).",
+  "type": "object",
+  "properties": {
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "encoding": {
+      "title": "Character Encoding",
+      "description": "Character encoding for attribute data in the DBF file (e.g., \"UTF-8\", \"Shift_JIS\")",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "force2d": {
+      "title": "Force 2D",
+      "description": "If true, forces all geometries to be 2D (ignoring Z values)",
+      "default": false,
+      "type": "boolean"
+    },
+    "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+### Output Ports
+* default
+### Category
+* File
 
 ## ShapefileWriter
 ### Type

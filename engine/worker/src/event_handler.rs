@@ -86,6 +86,7 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
                 level,
                 span: _,
                 node_handle,
+                node_name: _,
                 message,
             } => {
                 let log_stream_event = LogStreamEvent::new(

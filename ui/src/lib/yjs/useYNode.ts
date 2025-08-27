@@ -153,11 +153,7 @@ export default ({
   );
 
   const handleYNodeDataUpdate = useCallback(
-    (
-      nodeId: string,
-      dataField: "params" | "customizations",
-      updatedValue: any,
-    ) =>
+    (nodeId: string, updatedParams: any, updatedCustomizations: any) =>
       undoTrackerActionWrapper(() => {
         const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
         if (!yNodes) return;
@@ -169,7 +165,7 @@ export default ({
         if (!prevNode) return;
         // if params.routingPort exists, it's parent is a subworkflow and
         // we need to update pseudoInputs and pseudoOutputs on the parent node.
-        if (dataField === "params" && updatedValue.routingPort) {
+        if (updatedParams?.routingPort) {
           const currentWorkflowId = currentYWorkflow
             ?.get("id")
             ?.toJSON() as string;
@@ -188,12 +184,13 @@ export default ({
             currentWorkflowId,
             parentYWorkflow,
             prevNode,
-            updatedValue,
+            updatedParams,
           );
         }
 
         const yData = yNodes.get(nodeId)?.get("data") as Y.Map<YNodeValue>;
-        yData?.set(dataField, updatedValue);
+        yData?.set("params", updatedParams);
+        yData?.set("customizations", updatedCustomizations);
       }),
     [currentYWorkflow, rawWorkflows, yWorkflows, undoTrackerActionWrapper],
   );

@@ -421,7 +421,7 @@
     {
       "name": "AttributeFlattener",
       "type": "processor",
-      "description": "Flatten Nested Object Attributes into Top-Level Attributes",
+      "description": "Flattener for nested attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AttributeFlattener Parameters",
@@ -980,6 +980,12 @@
               }
             ]
           },
+          "dracoCompressionEnabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "maxZoom": {
             "title": "Maximum Zoom Level",
             "description": "Maximum zoom level for tile generation (0-24)",
@@ -1060,7 +1066,7 @@
     {
       "name": "ConvexHullAccumulator",
       "type": "processor",
-      "description": "Generate Convex Hull Polygons from Grouped Features",
+      "description": "Create convex hulls",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ConvexHullAccumulator Parameters",
@@ -1099,7 +1105,7 @@
     {
       "name": "CsvReader",
       "type": "source",
-      "description": "Read Features from CSV or TSV File",
+      "description": "Reads features from a CSV file",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CsvReader Parameters",
@@ -1191,7 +1197,7 @@
     {
       "name": "CzmlWriter",
       "type": "sink",
-      "description": "Export Features as CZML for Cesium Visualization",
+      "description": "Writes features to a CZML file",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CzmlWriter Parameters",
@@ -1260,7 +1266,7 @@
     {
       "name": "DirectoryDecompressor",
       "type": "processor",
-      "description": "Extracts and decompresses archive files from specified attributes",
+      "description": "Decompresses directories from archives",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "DirectoryDecompressor Parameters",
@@ -1298,7 +1304,7 @@
     {
       "name": "Dissolver",
       "type": "processor",
-      "description": "Dissolve Features by Grouping Attributes",
+      "description": "Dissolve adjacent polygons with common attributes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Dissolver Parameters",
@@ -1448,7 +1454,7 @@
     {
       "name": "FeatureCityGmlReader",
       "type": "processor",
-      "description": "Reads and processes features from CityGML files with optional flattening",
+      "description": "Reads features from CityGML files",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureCityGmlReader Parameters",
@@ -1459,6 +1465,7 @@
         ],
         "properties": {
           "dataset": {
+            "title": "Dataset",
             "description": "Path or expression to the CityGML dataset file to be read",
             "allOf": [
               {
@@ -1467,6 +1474,7 @@
             ]
           },
           "flatten": {
+            "title": "Flatten",
             "description": "Whether to flatten the hierarchical structure of the CityGML data",
             "type": [
               "boolean",
@@ -1587,7 +1595,7 @@
     {
       "name": "FeatureDuplicateFilter",
       "type": "processor",
-      "description": "Filter Out Duplicate Features",
+      "description": "Removes duplicate features",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -1603,7 +1611,7 @@
     {
       "name": "FeatureFilePathExtractor",
       "type": "processor",
-      "description": "Extract File Paths from Dataset to Features",
+      "description": "Extracts file paths from features",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature File Path Extractor Parameters",
@@ -1725,7 +1733,7 @@
     {
       "name": "FeatureLodFilter",
       "type": "processor",
-      "description": "Filters features by Level of Detail (LOD), routing them to appropriate output ports",
+      "description": "Filter based on Level of Detail",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureLodFilter Parameters",
@@ -1865,6 +1873,7 @@
             ],
             "properties": {
               "dataset": {
+                "title": "Dataset",
                 "description": "Path or expression to the dataset file to be read",
                 "allOf": [
                   {
@@ -1899,6 +1908,7 @@
             ],
             "properties": {
               "dataset": {
+                "title": "Dataset",
                 "description": "Path or expression to the dataset file to be read",
                 "allOf": [
                   {
@@ -1933,6 +1943,7 @@
             ],
             "properties": {
               "dataset": {
+                "title": "Dataset",
                 "description": "Path or expression to the dataset file to be read",
                 "allOf": [
                   {
@@ -2111,7 +2122,7 @@
     {
       "name": "FeatureWriter",
       "type": "processor",
-      "description": "Writes features from various formats",
+      "description": "Writes features to a file",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureWriter Parameters",
@@ -2231,10 +2242,12 @@
         ],
         "properties": {
           "extractArchive": {
+            "title": "Extract Archive",
             "description": "Whether to extract files from archives (zip files, etc.) or just list them",
             "type": "boolean"
           },
           "sourceDataset": {
+            "title": "Source Dataset",
             "description": "Path or expression pointing to the source directory or archive file",
             "allOf": [
               {
@@ -2709,7 +2722,7 @@
     {
       "name": "GeoJsonReader",
       "type": "source",
-      "description": "Reads geographic features from GeoJSON files, supporting both single features and feature collections",
+      "description": "Reads features from a GeoJSON file",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GeoJsonReader Parameters",
@@ -3116,6 +3129,12 @@
               "null"
             ]
           },
+          "dracoCompression": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "output": {
             "description": "Output path or expression for the GLTF file to create",
             "allOf": [
@@ -3260,7 +3279,7 @@
     {
       "name": "JPStandardGridAccumulator",
       "type": "processor",
-      "description": "Divides geometries into Japanese standard mesh grid (1km) and adds mesh codes to features",
+      "description": "Accumulates features on Japanese standard grid",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -3376,6 +3395,7 @@
         ],
         "properties": {
           "compressOutput": {
+            "title": "Compress Output",
             "description": "Optional expression to determine whether to compress the output tiles",
             "anyOf": [
               {
@@ -3387,6 +3407,7 @@
             ]
           },
           "layerName": {
+            "title": "Layer Name",
             "description": "Name of the layer within the MVT tiles",
             "allOf": [
               {
@@ -3395,18 +3416,21 @@
             ]
           },
           "maxZoom": {
+            "title": "Maximum Zoom",
             "description": "Maximum zoom level to generate tiles for",
             "type": "integer",
             "format": "uint8",
             "minimum": 0.0
           },
           "minZoom": {
+            "title": "Minimum Zoom",
             "description": "Minimum zoom level to generate tiles for",
             "type": "integer",
             "format": "uint8",
             "minimum": 0.0
           },
           "output": {
+            "title": "Output",
             "description": "Output directory path or expression for the generated MVT tiles",
             "allOf": [
               {
@@ -3808,7 +3832,7 @@
     {
       "name": "PLATEAU4.AttributeFlattener",
       "type": "processor",
-      "description": "Flatten attributes for building feature",
+      "description": "PLATEAU4 attribute flattener",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -3825,7 +3849,7 @@
     {
       "name": "PLATEAU4.CityCodeExtractor",
       "type": "processor",
-      "description": "Extracts city code information from PLATEAU4 codelists for local public authorities",
+      "description": "Extracts city code from PLATEAU4 data",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityCodeExtractor Parameters",
@@ -3873,7 +3897,7 @@
     {
       "name": "PLATEAU4.DomainOfDefinitionValidator",
       "type": "processor",
-      "description": "Validates domain of definition of CityGML features",
+      "description": "Validates domain of definition for PLATEAU4",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -3891,7 +3915,7 @@
     {
       "name": "PLATEAU4.MaxLodExtractor",
       "type": "processor",
-      "description": "Extracts maxLod",
+      "description": "Extracts maximum Level of Detail for PLATEAU4",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "MaxLodExtractor Parameters",
@@ -3929,7 +3953,7 @@
     {
       "name": "PLATEAU4.MissingAttributeDetector",
       "type": "processor",
-      "description": "Detect missing attributes",
+      "description": "Detects missing attributes in PLATEAU4 data",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "MissingAttributeDetector Parameters",
@@ -3967,7 +3991,7 @@
     {
       "name": "PLATEAU4.ObjectListExtractor",
       "type": "processor",
-      "description": "Extract object list",
+      "description": "Extracts object lists from PLATEAU4 data",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ObjectListExtractor Parameters",
@@ -4001,7 +4025,7 @@
     {
       "name": "PLATEAU4.UDXFolderExtractor",
       "type": "processor",
-      "description": "Extracts UDX folders from cityGML path",
+      "description": "Extracts UDX folders from PLATEAU4 data",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "UDXFolderExtractor Parameters",
@@ -4139,9 +4163,73 @@
       ]
     },
     {
+      "name": "ShapefileReader",
+      "type": "source",
+      "description": "Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .shx files)",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ShapefileReader Parameters",
+        "description": "Configuration for reading Shapefile archives as geographic features. Expects a ZIP archive containing the required Shapefile components (.shp, .dbf, .shx).",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "File Path",
+            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "encoding": {
+            "title": "Character Encoding",
+            "description": "Character encoding for attribute data in the DBF file (e.g., \"UTF-8\", \"Shift_JIS\")",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "force2d": {
+            "title": "Force 2D",
+            "description": "If true, forces all geometries to be 2D (ignoring Z values)",
+            "default": false,
+            "type": "boolean"
+          },
+          "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "File"
+      ]
+    },
+    {
       "name": "ShapefileWriter",
       "type": "sink",
-      "description": "Writes geographic features to ESRI Shapefile format with optional grouping",
+      "description": "Writes features to a Shapefile",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ShapefileWriter Parameters",
@@ -4191,7 +4279,7 @@
     {
       "name": "SqlReader",
       "type": "source",
-      "description": "Read Features from SQL Database",
+      "description": "Reads features from SQL database",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "SQL Reader Parameters",
@@ -4328,7 +4416,7 @@
     {
       "name": "SurfaceFootprintReplacer",
       "type": "processor",
-      "description": "Replace the geometry with its footprint",
+      "description": "Replace surface geometry with footprint",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "SurfaceFootprintReplacer Parameters",
@@ -4467,7 +4555,7 @@
     {
       "name": "ThreeDimensionPlanarityRotator",
       "type": "processor",
-      "description": "Rotates a single or a set of 2D geometries in 3D space to align them horizontally.",
+      "description": "Rotates planar surfaces in 3D",
       "parameter": null,
       "builtin": true,
       "inputPorts": [

@@ -101,6 +101,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 max_zoom: params.max_zoom,
                 attach_texture: params.attach_texture,
                 compress_output,
+                draco_compression_enabled: params.draco_compression_enabled,
             },
         };
         Ok(Box::new(sink))
@@ -136,6 +137,7 @@ pub struct Cesium3DTilesWriterParam {
     /// # Compressed Output Path
     /// Optional path for compressed archive output
     pub(super) compress_output: Option<Expr>,
+    pub(super) draco_compression_enabled: Option<bool>, // Draco compression. Defaults to true.
 }
 
 #[derive(Debug, Clone)]
@@ -145,6 +147,7 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) max_zoom: u8,
     pub(super) attach_texture: Option<bool>,
     pub(super) compress_output: Option<rhai::AST>,
+    pub(super) draco_compression_enabled: Option<bool>, // Draco compression. Defaults to true.
 }
 
 impl Sink for Cesium3DTilesWriter {
@@ -348,6 +351,7 @@ impl Cesium3DTilesWriter {
                             tile_id_conv,
                             &schema,
                             None,
+                            self.params.draco_compression_enabled.unwrap_or(true), // On by default
                         );
                         if let Err(e) = &result {
                             let ctx = ctx.clone();

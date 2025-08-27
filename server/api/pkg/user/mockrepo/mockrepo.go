@@ -13,6 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	id "github.com/reearth/reearth-flow/api/pkg/id"
 	user "github.com/reearth/reearth-flow/api/pkg/user"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -41,6 +42,21 @@ func (m *MockUserRepo) EXPECT() *MockUserRepoMockRecorder {
 	return m.recorder
 }
 
+// FindByIDs mocks base method.
+func (m *MockUserRepo) FindByIDs(ctx context.Context, ids id.UserIDList) (user.List, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByIDs", ctx, ids)
+	ret0, _ := ret[0].(user.List)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByIDs indicates an expected call of FindByIDs.
+func (mr *MockUserRepoMockRecorder) FindByIDs(ctx, ids any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByIDs", reflect.TypeOf((*MockUserRepo)(nil).FindByIDs), ctx, ids)
+}
+
 // FindMe mocks base method.
 func (m *MockUserRepo) FindMe(ctx context.Context) (*user.User, error) {
 	m.ctrl.T.Helper()
@@ -54,4 +70,34 @@ func (m *MockUserRepo) FindMe(ctx context.Context) (*user.User, error) {
 func (mr *MockUserRepoMockRecorder) FindMe(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindMe", reflect.TypeOf((*MockUserRepo)(nil).FindMe), ctx)
+}
+
+// UpdateMe mocks base method.
+func (m *MockUserRepo) UpdateMe(ctx context.Context, attrs user.UpdateAttrs) (*user.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateMe", ctx, attrs)
+	ret0, _ := ret[0].(*user.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateMe indicates an expected call of UpdateMe.
+func (mr *MockUserRepoMockRecorder) UpdateMe(ctx, attrs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMe", reflect.TypeOf((*MockUserRepo)(nil).UpdateMe), ctx, attrs)
+}
+
+// UserByNameOrEmail mocks base method.
+func (m *MockUserRepo) UserByNameOrEmail(ctx context.Context, nameOrEmail string) (*user.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UserByNameOrEmail", ctx, nameOrEmail)
+	ret0, _ := ret[0].(*user.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UserByNameOrEmail indicates an expected call of UserByNameOrEmail.
+func (mr *MockUserRepoMockRecorder) UserByNameOrEmail(ctx, nameOrEmail any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UserByNameOrEmail", reflect.TypeOf((*MockUserRepo)(nil).UserByNameOrEmail), ctx, nameOrEmail)
 }

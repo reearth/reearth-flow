@@ -5,8 +5,8 @@ import (
 
 	"github.com/hasura/go-graphql-client"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gql/util"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/user"
-	"github.com/samber/lo"
 )
 
 type userRepo struct {
@@ -23,15 +23,74 @@ func (r *userRepo) FindMe(ctx context.Context) (*user.User, error) {
 		return nil, err
 	}
 
-	return user.New().
-		ID(string(q.Me.ID)).
-		Name(string(q.Me.Name)).
-		Alias(string(q.Me.Alias)).
-		Email(string(q.Me.Email)).
-		Metadata(util.ToUserMetadata(q.Me.Metadata)).
-		Host(lo.ToPtr(string(q.Me.Host))).
-		MyWorkspaceID(string(q.Me.MyWorkspaceID)).
-		Auths(util.ToStringSlice(q.Me.Auths)).
-		Workspaces(util.ToWorkspaces(q.Me.Workspaces)).
-		Build()
+	return util.ToMe(q.Me)
+}
+
+func (r *userRepo) FindByIDs(ctx context.Context, ids id.UserIDList) (user.List, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	graphqlIDs := make([]graphql.ID, 0, len(ids))
+	for _, id := range ids {
+		graphqlIDs = append(graphqlIDs, graphql.ID(id.String()))
+	}
+
+	var q findUsersByIDsQuery
+	vars := map[string]interface{}{
+		"ids": graphqlIDs,
+	}
+	if err := r.client.Query(ctx, &q, vars); err != nil {
+		return nil, err
+	}
+
+	return util.ToUsers(q.Users)
+}
+
+func (r *userRepo) UserByNameOrEmail(ctx context.Context, nameOrEmail string) (*user.User, error) {
+	if nameOrEmail == "" {
+		return nil, nil
+	}
+
+	var q userByNameOrEmailQuery
+	vars := map[string]interface{}{
+		"nameOrEmail": graphql.String(nameOrEmail),
+	}
+	if err := r.client.Query(ctx, &q, vars); err != nil {
+		return nil, err
+	}
+
+	return util.ToUserFromSimple(q.User)
+}
+
+func (r *userRepo) UpdateMe(ctx context.Context, a user.UpdateAttrs) (*user.User, error) {
+	in := UpdateMeInput{}
+	if a.Name != nil {
+		s := graphql.String(*a.Name)
+		in.Name = &s
+	}
+	if a.Email != nil {
+		s := graphql.String(*a.Email)
+		in.Email = &s
+	}
+	if a.Lang != nil {
+		langCode := graphql.String(a.Lang.String())
+		in.Lang = &langCode
+	}
+	if a.Password != nil && a.PasswordConfirmation != nil {
+		p := graphql.String(*a.Password)
+		pc := graphql.String(*a.PasswordConfirmation)
+		in.Password = &p
+		in.PasswordConfirmation = &pc
+	}
+
+	var m updateMeMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return nil, err
+	}
+
+	return util.ToMe(m.UpdateMe.Me)
 }
