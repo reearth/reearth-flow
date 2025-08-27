@@ -215,14 +215,7 @@ $ cargo run --package reearth-flow-cli -- run --workflow ${workflow_path}
 
 ### Run example
 
-#### Run attribute_reader example
-
-```console
-$ FLOW_VAR_cityGmlPath="${target_citygml_path}"
-$ FLOW_VAR_codelistsPath="${codelists_path}"
-$ FLOW_VAR_schemasPath="${schemas_path}"
-$ cargo run --package reearth-flow-examples --example attribute_reader
-```
+See <runtime/examples/README.md>.
 
 ### Run generate graphviz
 
