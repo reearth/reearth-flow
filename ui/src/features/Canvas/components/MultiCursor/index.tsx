@@ -197,63 +197,62 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
     }
   }, [onCursorUpdate, updateCursorPosition]);
 
-  // Use multiple event types to capture mouse position during all interactions
+  // Efficient mouse tracking that pauses during drag operations
   useEffect(() => {
     if (!yDoc || !awareness) return;
 
-    let lastMouseX = 0;
-    let lastMouseY = 0;
-    let animationFrameId: number;
-    let isMouseOver = false;
+    let isDragging = false;
+    let dragTimeout: NodeJS.Timeout;
 
-    const updateLastPosition = (event: MouseEvent | PointerEvent) => {
-      lastMouseX = event.clientX;
-      lastMouseY = event.clientY;
-      isMouseOver = true;
+    const handleMouseMove = (event: MouseEvent | PointerEvent) => {
+      // Skip cursor updates during active dragging to restore original performance
+      if (isDragging) return;
+
+      updateCursorPosition(event.clientX, event.clientY);
+    };
+
+    const handleMouseDown = () => {
+      // Pause cursor updates when dragging starts
+      isDragging = true;
+
+      // Clear any existing timeout
+      if (dragTimeout) clearTimeout(dragTimeout);
+
+      // Resume cursor updates after delay if no actual drag occurred
+      dragTimeout = setTimeout(() => {
+        isDragging = false;
+      }, 200); // 200ms delay to detect real drags
+    };
+
+    const handleMouseUp = () => {
+      // Resume cursor tracking immediately after mouse up
+      if (dragTimeout) clearTimeout(dragTimeout);
+      isDragging = false;
     };
 
     const handleMouseLeave = () => {
-      isMouseOver = false;
       // Clear cursor when mouse leaves entirely
       const currentState = awareness.getLocalState();
       awareness.setLocalState({
         ...currentState,
         cursor: null,
       });
+      isDragging = false;
+      if (dragTimeout) clearTimeout(dragTimeout);
     };
 
-    const pollMousePosition = () => {
-      if (isMouseOver) {
-        updateCursorPosition(lastMouseX, lastMouseY);
-      }
-      animationFrameId = requestAnimationFrame(pollMousePosition);
-    };
-
-    // Start polling
-    animationFrameId = requestAnimationFrame(pollMousePosition);
-
-    // Listen for multiple event types to catch all mouse movements
-    document.addEventListener("mousemove", updateLastPosition, true);
-    document.addEventListener("mousedown", updateLastPosition, true);
-    document.addEventListener("mouseup", updateLastPosition, true);
-
-    // Pointer events can sometimes capture what mouse events miss
-    document.addEventListener("pointermove", updateLastPosition, true);
-    document.addEventListener("pointerdown", updateLastPosition, true);
-    document.addEventListener("pointerup", updateLastPosition, true);
-
-    // Listen for mouseleave to clear cursor
+    // Only listen to essential events - no constant polling!
+    document.addEventListener("mousemove", handleMouseMove, true);
+    document.addEventListener("mousedown", handleMouseDown, true);
+    document.addEventListener("mouseup", handleMouseUp, true);
     document.addEventListener("mouseleave", handleMouseLeave);
 
     return () => {
-      cancelAnimationFrame(animationFrameId);
-      document.removeEventListener("mousemove", updateLastPosition, true);
-      document.removeEventListener("mousedown", updateLastPosition, true);
-      document.removeEventListener("mouseup", updateLastPosition, true);
-      document.removeEventListener("pointermove", updateLastPosition, true);
-      document.removeEventListener("pointerdown", updateLastPosition, true);
-      document.removeEventListener("pointerup", updateLastPosition, true);
+      document.removeEventListener("mousemove", handleMouseMove, true);
+      document.removeEventListener("mousedown", handleMouseDown, true);
+      document.removeEventListener("mouseup", handleMouseUp, true);
       document.removeEventListener("mouseleave", handleMouseLeave);
+      if (dragTimeout) clearTimeout(dragTimeout);
     };
   }, [updateCursorPosition, awareness, yDoc]);
 
