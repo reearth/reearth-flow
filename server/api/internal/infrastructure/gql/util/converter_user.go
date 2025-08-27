@@ -78,7 +78,7 @@ func ToUsers(gqlUsers []gqlmodel.User) (user.List, error) {
 		if err != nil {
 			return nil, err
 		}
-		users = append(users, *u)
+		users = append(users, u)
 	}
 	return users, nil
 }

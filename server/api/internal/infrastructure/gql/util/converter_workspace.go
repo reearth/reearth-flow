@@ -11,7 +11,7 @@ import (
 	"golang.org/x/text/language"
 )
 
-func toWorkspace(w gqlmodel.Workspace) (*workspace.Workspace, error) {
+func ToWorkspace(w gqlmodel.Workspace) (*workspace.Workspace, error) {
 	wid, err := workspace.IDFrom(string(w.ID))
 	if err != nil {
 		return nil, err
@@ -35,11 +35,11 @@ func toWorkspace(w gqlmodel.Workspace) (*workspace.Workspace, error) {
 func ToWorkspaces(gqlWorkspaces []gqlmodel.Workspace) (workspace.List, error) {
 	workspaces := make(workspace.List, 0, len(gqlWorkspaces))
 	for _, w := range gqlWorkspaces {
-		ws, err := toWorkspace(w)
+		ws, err := ToWorkspace(w)
 		if err != nil {
 			return nil, err
 		}
-		workspaces = append(workspaces, *ws)
+		workspaces = append(workspaces, ws)
 	}
 	return workspaces, nil
 }
