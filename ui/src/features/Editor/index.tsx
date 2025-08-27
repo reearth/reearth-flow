@@ -94,6 +94,8 @@ export default function Editor({
           currentWorkflowId={currentWorkflowId}
           project={currentProject}
           yDoc={yDoc}
+          self={me}
+          awareness={awareness}
           openWorkflows={openWorkflows}
           allowedToDeploy={allowedToDeploy}
           onProjectShare={handleProjectShare}

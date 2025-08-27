@@ -1,4 +1,5 @@
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
+import * as Y from "yjs";
 
 import {
   ButtonWithTooltip,
@@ -15,79 +16,65 @@ import { CollaborationPopover } from "./components";
 
 const tooltipOffset = 6;
 
+type User = {
+  userId: string;
+  userName: string;
+  displayPictureUrl?: string;
+  lastActive?: string;
+};
+
 type Props = {
   project?: Project;
+  yDoc: Y.Doc | null;
+  self?: any;
+  awareness?: any;
   showDialog: DialogOptions;
   onDialogOpen: (dialog: DialogOptions) => void;
   onDialogClose: () => void;
 };
 
 const CollaborationActionBar: React.FC<Props> = ({
+  yDoc,
+  awareness,
+  self,
   showDialog,
   onDialogOpen,
   onDialogClose,
 }) => {
   const t = useT();
-  const mockUsers = [
-    {
-      userId: "1",
-      userName: "Max Rebo",
-      displayPictureUrl:
-        "https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=800&auto=format&fit=crop",
-    },
-    {
-      userId: "2",
-      userName: "Sy Snootles",
-      displayPictureUrl:
-        "https://images.unsplash.com/photo-1517423440428-a5a00ad493e8?w=800&auto=format&fit=crop",
-    },
-    {
-      userId: "3",
-      userName: "Droopy McCool",
-    },
-    {
-      userId: "4",
-      userName: "Rystáll Sant",
-      displayPictureUrl:
-        "https://images.unsplash.com/photo-1508672019048-805c876b67e2?w=800&auto=format&fit=crop",
-      lastActive: "Active 8 hours ago",
-    },
-    {
-      userId: "5",
-      userName: "Greeata Jendowanian",
-      displayPictureUrl:
-        "https://images.unsplash.com/photo-1543852786-1cf6624b9987?w=800&auto=format&fit=crop",
-      lastActive: "Active 4 days ago",
-    },
-    {
-      userId: "6",
-      userName: "Lyn Me",
-      displayPictureUrl:
-        "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=800&auto=format&fit=crop",
-      lastActive: "Active 12 days ago",
-    },
-    {
-      userId: "7",
-      userName: "Ak-rev",
-      displayPictureUrl:
-        "https://images.unsplash.com/photo-1558788353-f76d92427f16?w=800&auto=format&fit=crop",
-      lastActive: "Active 20 days ago",
-    },
-    {
-      userId: "8",
-      userName: "Umpass-stay",
-      displayPictureUrl:
-        "https://images.unsplash.com/photo-1560807707-8cc77767d783?w=800&auto=format&fit=crop",
-      lastActive: "Active 21 days ago",
-    },
-    {
-      userId: "9",
-      userName: "Doda Bodonawieedo",
-      displayPictureUrl:
-        "https://images.unsplash.com/photo-1504208434309-cb69f4fe52b0?w=800&auto=format&fit=crop",
-      lastActive: "Active 30 days ago",
-    },
-  ];
+  const [users, setUsers] = useState<User[]>([]);
+
+  // Extract users from awareness
+  useEffect(() => {
+    if (!yDoc || !awareness) return;
+
+    const handleAwarenessUpdate = () => {
+      const states = awareness.getStates();
+      const onlineUsers: User[] = [];
+
+      states.forEach((state: any, clientId: number) => {
+        if (clientId === yDoc.clientID) return;
+
+        if (state.user) {
+          onlineUsers.push({
+            userId: clientId.toString(),
+            userName: state.user.name || `User ${clientId}`,
+          });
+        }
+      });
+
+      setUsers(onlineUsers);
+    };
+
+    awareness.on("update", handleAwarenessUpdate);
+    handleAwarenessUpdate();
+
+    return () => {
+      awareness.off("update", handleAwarenessUpdate);
+    };
+  }, [yDoc, awareness]);
+
+  const displayUsers = users.length > 0 ? users : [];
 
   return (
     <Popover
@@ -102,25 +89,31 @@ const CollaborationActionBar: React.FC<Props> = ({
           tooltipText={t("Collaboration")}
           tooltipOffset={tooltipOffset}
           onClick={() => onDialogOpen("multiuser")}>
-          <div className="flex -space-x-3">
-            {mockUsers.slice(0, 3).map((user) => {
+          <div className="flex items-center -space-x-3">
+            {displayUsers.slice(0, 3).map((user) => {
               return user.displayPictureUrl ? (
-                <img
-                  key={user.userId}
-                  className="h-6 w-6 rounded-full ring-background"
-                  src={user.displayPictureUrl}
-                  alt="User Avatar"
-                />
+                <div key={user.userId} className="relative">
+                  <img
+                    className="h-6 w-6 rounded-full ring-2 ring-background"
+                    src={user.displayPictureUrl}
+                    alt="User Avatar"
+                  />
+                </div>
               ) : (
-                <div
-                  key={user.userId}
-                  className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary ring-background">
-                  <span className="text-xs font-medium">
-                    {user.userName.charAt(0).toUpperCase()}
-                  </span>
+                <div key={user.userId} className="relative">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary ring-2 ring-background">
+                    <span className="text-xs font-medium">
+                      {user.userName.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
                 </div>
               );
             })}
+            {users.length > 3 && (
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted ring-2 ring-background">
+                <span className="text-xs font-medium">+{users.length - 3}</span>
+              </div>
+            )}
           </div>
         </ButtonWithTooltip>
       </PopoverTrigger>
@@ -128,7 +121,7 @@ const CollaborationActionBar: React.FC<Props> = ({
         sideOffset={16}
         className="w-60 bg-primary/50 backdrop-blur">
         {showDialog === "multiuser" && (
-          <CollaborationPopover users={mockUsers} />
+          <CollaborationPopover self={self} users={displayUsers} />
         )}
       </PopoverContent>
     </Popover>

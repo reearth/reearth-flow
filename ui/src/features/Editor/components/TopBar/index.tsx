@@ -28,6 +28,8 @@ type Props = {
   }[];
   project?: Project;
   yDoc: Doc | null;
+  awareness?: any;
+  self?: any;
   allowedToDeploy: boolean;
   onWorkflowDeployment: (
     description: string,
@@ -46,6 +48,8 @@ const TopBar: React.FC<Props> = ({
   openWorkflows,
   project,
   yDoc,
+  awareness,
+  self,
   allowedToDeploy,
   onWorkflowDeployment,
   onProjectExport,
@@ -111,6 +115,9 @@ const TopBar: React.FC<Props> = ({
         <div className="h-4/5 border-r" />
         <CollaborationActionBar
           project={currentProject}
+          yDoc={yDoc}
+          awareness={awareness}
+          self={self}
           showDialog={showDialog}
           onDialogOpen={handleDialogOpen}
           onDialogClose={handleDialogClose}
