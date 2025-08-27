@@ -12,6 +12,7 @@ import { WorkflowTabs } from "..";
 
 import {
   ActionBar,
+  CollaborationActionBar,
   Breadcrumb,
   DebugActionBar,
   HomeMenu,
@@ -107,6 +108,13 @@ const TopBar: React.FC<Props> = ({
       </div>
       <div
         className={`flex h-full items-center justify-center gap-2 self-center border-b px-1 select-none ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
+        <div className="h-4/5 border-r" />
+        <CollaborationActionBar
+          project={currentProject}
+          showDialog={showDialog}
+          onDialogOpen={handleDialogOpen}
+          onDialogClose={handleDialogClose}
+        />
         <div className="h-4/5 border-r" />
         <DebugActionBar
           onDebugRunStart={onDebugRunStart}

@@ -14,6 +14,7 @@ export type DialogOptions =
   | "assets"
   | "debugStop"
   | "projectVariables"
+  | "multiuser"
   | undefined;
 
 export default ({

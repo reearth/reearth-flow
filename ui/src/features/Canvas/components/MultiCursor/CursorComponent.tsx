@@ -5,7 +5,7 @@ type CursorProps = {
   y: number;
   color: string;
   name: string;
-}
+};
 
 const CursorComponent: React.FC<CursorProps> = ({ x, y, color, name }) => {
   return (
