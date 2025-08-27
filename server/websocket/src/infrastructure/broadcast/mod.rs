@@ -37,6 +37,7 @@ impl BroadcastRepository for BroadcastRepositoryImpl {
 
         // Create the domain entity
         let group = Arc::new(BroadcastGroup::new(document_name, instance_id));
+        group.increment_connections();
 
         // Create broadcast channel for this group
         let (sender, _) = broadcast::channel(self.buffer_capacity);
@@ -64,6 +65,9 @@ impl BroadcastRepository for BroadcastRepositoryImpl {
 
         let mut groups = self.groups.write().await;
         let mut channels = self.channels.write().await;
+
+        let group = groups.get(key).unwrap(); // TODO: handle error
+        group.decrement_connections();
 
         groups.remove(key);
         channels.remove(key);
