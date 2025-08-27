@@ -16,6 +16,7 @@ type MultiCursorProps = {
   yDoc: Y.Doc | null;
   awareness: any;
   currentUserName?: string;
+  onCursorUpdate?: (updateFn: (clientX: number, clientY: number) => void) => void;
 };
 
 // Function to generate consistent color from user ID
@@ -37,6 +38,7 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
   yDoc,
   awareness,
   currentUserName,
+  onCursorUpdate,
 }) => {
   const [cursors, setCursors] = useState<Map<number, Cursor>>(new Map());
   const { screenToFlowPosition, flowToScreenPosition } = useReactFlow();
@@ -95,49 +97,121 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
     };
   }, [yDoc, awareness, flowToScreenPosition]);
 
-  // Broadcast own cursor position
-  const handleMouseMove = useCallback(
-    (event: React.MouseEvent) => {
+  // Shared function to update cursor position
+  const updateCursorPosition = useCallback(
+    (clientX: number, clientY: number) => {
       if (!yDoc || !awareness) return;
 
-      const rect = event.currentTarget.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
+      // Find the ReactFlow element
+      const reactFlowElement = document.querySelector(".react-flow");
+      if (!reactFlowElement) return;
 
-      // Convert screen coordinates to flow coordinates
-      const flowPos = screenToFlowPosition({ x, y });
+      const rect = reactFlowElement.getBoundingClientRect();
 
-      console.log("Sending cursor position:", flowPos);
-      console.log("User name:", currentUserName || `User ${yDoc.clientID}`);
+      // Check if mouse is within ReactFlow bounds
+      if (
+        clientX >= rect.left &&
+        clientX <= rect.right &&
+        clientY >= rect.top &&
+        clientY <= rect.bottom
+      ) {
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
 
-      // Set local state with both cursor and user info
-      awareness.setLocalState({
-        cursor: flowPos,
-        user: {
-          name: currentUserName || `User ${yDoc.clientID}`,
-        },
-      });
+        // Convert screen coordinates to flow coordinates
+        const flowPos = screenToFlowPosition({ x, y });
+
+        console.log("Sending cursor position:", flowPos);
+        console.log("User name:", currentUserName || `User ${yDoc.clientID}`);
+
+        // Set local state with both cursor and user info
+        awareness.setLocalState({
+          cursor: flowPos,
+          user: {
+            name: currentUserName || `User ${yDoc.clientID}`,
+          },
+        });
+      }
     },
     [yDoc, awareness, currentUserName, screenToFlowPosition],
   );
 
-  // Clear cursor when mouse leaves
-  const handleMouseLeave = useCallback(() => {
+  // Expose cursor update function to parent component
+  useEffect(() => {
+    if (onCursorUpdate) {
+      const cursorUpdateFn = (clientX: number, clientY: number) => {
+        updateCursorPosition(clientX, clientY);
+      };
+      onCursorUpdate(cursorUpdateFn);
+    }
+  }, [onCursorUpdate, updateCursorPosition]);
+
+  // Use multiple event types to capture mouse position during all interactions
+  useEffect(() => {
     if (!yDoc || !awareness) return;
 
-    // Clear cursor but keep user info
-    const currentState = awareness.getLocalState();
-    awareness.setLocalState({
-      ...currentState,
-      cursor: null,
-    });
-  }, [awareness, yDoc]);
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+    let animationFrameId: number;
+    let isMouseOver = false;
+
+    const updateLastPosition = (event: MouseEvent | PointerEvent) => {
+      lastMouseX = event.clientX;
+      lastMouseY = event.clientY;
+      isMouseOver = true;
+    };
+
+    const handleMouseLeave = () => {
+      isMouseOver = false;
+      // Clear cursor when mouse leaves entirely
+      const currentState = awareness.getLocalState();
+      awareness.setLocalState({
+        ...currentState,
+        cursor: null,
+      });
+    };
+
+    const pollMousePosition = () => {
+      if (isMouseOver) {
+        updateCursorPosition(lastMouseX, lastMouseY);
+      }
+      animationFrameId = requestAnimationFrame(pollMousePosition);
+    };
+
+    // Start polling
+    animationFrameId = requestAnimationFrame(pollMousePosition);
+
+    // Listen for multiple event types to catch all mouse movements
+    document.addEventListener('mousemove', updateLastPosition, true);
+    document.addEventListener('mousedown', updateLastPosition, true);
+    document.addEventListener('mouseup', updateLastPosition, true);
+    
+    // Pointer events can sometimes capture what mouse events miss
+    document.addEventListener('pointermove', updateLastPosition, true);
+    document.addEventListener('pointerdown', updateLastPosition, true);
+    document.addEventListener('pointerup', updateLastPosition, true);
+    
+    // Listen for mouseleave to clear cursor
+    document.addEventListener('mouseleave', handleMouseLeave);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      document.removeEventListener('mousemove', updateLastPosition, true);
+      document.removeEventListener('mousedown', updateLastPosition, true);
+      document.removeEventListener('mouseup', updateLastPosition, true);
+      document.removeEventListener('pointermove', updateLastPosition, true);
+      document.removeEventListener('pointerdown', updateLastPosition, true);
+      document.removeEventListener('pointerup', updateLastPosition, true);
+      document.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [updateCursorPosition, awareness, yDoc]);
 
   return (
     <div
-      className="absolute inset-0"
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}>
+      className="pointer-events-none absolute inset-0"
+      style={{
+        zIndex: 1000,
+      }}>
       {Array.from(cursors.values()).map((cursor) => (
         <CursorComponent
           key={cursor.id}
