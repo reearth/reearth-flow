@@ -47,7 +47,7 @@ func ToUserFromSimple(u *user.Simple) *User {
 		Name:  u.Name,
 		Email: u.Email,
 		Metadata: &UserMetadata{
-			Lang: language.English, 
+			Lang: language.English,
 		},
 	}
 }
