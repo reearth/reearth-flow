@@ -98,15 +98,18 @@ export default ({
         };
 
         // Add event listeners for cleanup
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        document.addEventListener('visibilitychange', handleVisibilityChange);  
-        window.addEventListener('pagehide', handlePageHide);
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        window.addEventListener("pagehide", handlePageHide);
 
         // Store cleanup function to remove listeners later
         const cleanupListeners = () => {
-          window.removeEventListener('beforeunload', handleBeforeUnload);
-          document.removeEventListener('visibilitychange', handleVisibilityChange);
-          window.removeEventListener('pagehide', handlePageHide);
+          window.removeEventListener("beforeunload", handleBeforeUnload);
+          document.removeEventListener(
+            "visibilitychange",
+            handleVisibilityChange,
+          );
+          window.removeEventListener("pagehide", handlePageHide);
         };
 
         // Store cleanup function on the provider
@@ -119,7 +122,10 @@ export default ({
     return () => {
       setIsSynced(false);
       // Clean up event listeners if they exist
-      if (yWebSocketProviderRef.current && (yWebSocketProviderRef.current as any).cleanupListeners) {
+      if (
+        yWebSocketProviderRef.current &&
+        (yWebSocketProviderRef.current as any).cleanupListeners
+      ) {
         (yWebSocketProviderRef.current as any).cleanupListeners();
       }
       // Clear awareness state before destroying
