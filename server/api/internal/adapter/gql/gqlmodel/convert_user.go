@@ -95,6 +95,7 @@ func ToUserMetadata(m pkguser.Metadata) *UserMetadata {
 	return &UserMetadata{
 		Description: lo.EmptyableToPtr(m.Description()),
 		Website:     lo.EmptyableToPtr(m.Website()),
+		Theme:       Theme(m.Theme()),
 		PhotoURL:    lo.EmptyableToPtr(m.PhotoURL()),
 		Lang:        m.Lang(),
 	}
@@ -110,6 +111,7 @@ func ToUserMetadataFromAccount(m *user.Metadata) *UserMetadata {
 		Description: lo.EmptyableToPtr(m.Description()),
 		Website:     lo.EmptyableToPtr(m.Website()),
 		PhotoURL:    lo.EmptyableToPtr(m.PhotoURL()),
+		Theme:       Theme(m.Theme()),
 		Lang:        m.Lang(),
 	}
 }

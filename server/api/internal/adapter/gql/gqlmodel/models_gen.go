@@ -651,6 +651,7 @@ type UserMetadata struct {
 	Description *string      `json:"description,omitempty"`
 	Website     *string      `json:"website,omitempty"`
 	PhotoURL    *string      `json:"photoURL,omitempty"`
+	Theme       Theme        `json:"theme"`
 	Lang        language.Tag `json:"lang"`
 }
 
@@ -1401,6 +1402,63 @@ func (e *Role) UnmarshalJSON(b []byte) error {
 }
 
 func (e Role) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type Theme string
+
+const (
+	ThemeDefault Theme = "DEFAULT"
+	ThemeLight   Theme = "LIGHT"
+	ThemeDark    Theme = "DARK"
+)
+
+var AllTheme = []Theme{
+	ThemeDefault,
+	ThemeLight,
+	ThemeDark,
+}
+
+func (e Theme) IsValid() bool {
+	switch e {
+	case ThemeDefault, ThemeLight, ThemeDark:
+		return true
+	}
+	return false
+}
+
+func (e Theme) String() string {
+	return string(e)
+}
+
+func (e *Theme) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = Theme(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid Theme", str)
+	}
+	return nil
+}
+
+func (e Theme) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *Theme) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e Theme) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

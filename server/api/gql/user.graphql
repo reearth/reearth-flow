@@ -17,10 +17,17 @@ type Me {
   workspaces: [Workspace!]!
 }
 
+enum Theme {
+  DEFAULT
+  LIGHT
+  DARK
+}
+
 type UserMetadata {
   description: String
   website: String
   photoURL: String
+  theme: Theme!
   lang: Lang!
 }
 

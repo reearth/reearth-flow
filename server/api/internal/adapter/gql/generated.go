@@ -507,6 +507,7 @@ type ComplexityRoot struct {
 		Description func(childComplexity int) int
 		Lang        func(childComplexity int) int
 		PhotoURL    func(childComplexity int) int
+		Theme       func(childComplexity int) int
 		Website     func(childComplexity int) int
 	}
 
@@ -2953,6 +2954,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UserMetadata.PhotoURL(childComplexity), true
 
+	case "UserMetadata.theme":
+		if e.complexity.UserMetadata.Theme == nil {
+			break
+		}
+
+		return e.complexity.UserMetadata.Theme(childComplexity), true
+
 	case "UserMetadata.website":
 		if e.complexity.UserMetadata.Website == nil {
 			break
@@ -4046,10 +4054,17 @@ type Me {
   workspaces: [Workspace!]!
 }
 
+enum Theme {
+  DEFAULT
+  LIGHT
+  DARK
+}
+
 type UserMetadata {
   description: String
   website: String
   photoURL: String
+  theme: Theme!
   lang: Lang!
 }
 
@@ -21439,6 +21454,8 @@ func (ec *executionContext) fieldContext_User_metadata(_ context.Context, field 
 				return ec.fieldContext_UserMetadata_website(ctx, field)
 			case "photoURL":
 				return ec.fieldContext_UserMetadata_photoURL(ctx, field)
+			case "theme":
+				return ec.fieldContext_UserMetadata_theme(ctx, field)
 			case "lang":
 				return ec.fieldContext_UserMetadata_lang(ctx, field)
 			}
@@ -21566,6 +21583,50 @@ func (ec *executionContext) fieldContext_UserMetadata_photoURL(_ context.Context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserMetadata_theme(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.UserMetadata) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UserMetadata_theme(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Theme, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.Theme)
+	fc.Result = res
+	return ec.marshalNTheme2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTheme(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UserMetadata_theme(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserMetadata",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Theme does not have child fields")
 		},
 	}
 	return fc, nil
@@ -29678,6 +29739,11 @@ func (ec *executionContext) _UserMetadata(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._UserMetadata_website(ctx, field, obj)
 		case "photoURL":
 			out.Values[i] = ec._UserMetadata_photoURL(ctx, field, obj)
+		case "theme":
+			out.Values[i] = ec._UserMetadata_theme(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "lang":
 			out.Values[i] = ec._UserMetadata_lang(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -31568,6 +31634,16 @@ func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel
 	}
 
 	return ret
+}
+
+func (ec *executionContext) unmarshalNTheme2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTheme(ctx context.Context, v any) (gqlmodel.Theme, error) {
+	var res gqlmodel.Theme
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNTheme2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTheme(ctx context.Context, sel ast.SelectionSet, v gqlmodel.Theme) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) unmarshalNTimeInterval2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTimeInterval(ctx context.Context, v any) (gqlmodel.TimeInterval, error) {
