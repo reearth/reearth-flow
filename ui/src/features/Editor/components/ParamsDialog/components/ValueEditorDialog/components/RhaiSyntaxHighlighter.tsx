@@ -189,17 +189,17 @@ const RhaiSyntaxHighlighter: React.FC<Props> = ({ code, className = "" }) => {
   const getTokenClassName = (type: TokenType): string => {
     switch (type) {
       case "keyword":
-        return "text-purple-600 dark:text-purple-400 font-medium";
+        return "text-purple-600 dark:text-purple-400";
       case "function":
-        return "text-blue-600 dark:text-blue-400 font-medium";
+        return "text-blue-600 dark:text-blue-400";
       case "namespace":
-        return "text-teal-600 dark:text-teal-400 font-medium";
+        return "text-teal-600 dark:text-teal-400";
       case "string":
         return "text-green-600 dark:text-green-400";
       case "number":
         return "text-orange-600 dark:text-orange-400";
       case "operator":
-        return "text-red-600 dark:text-red-400 font-medium";
+        return "text-red-600 dark:text-red-400";
       case "comment":
         return "text-gray-500 dark:text-gray-400 italic";
       case "punctuation":
@@ -214,7 +214,16 @@ const RhaiSyntaxHighlighter: React.FC<Props> = ({ code, className = "" }) => {
   return (
     <div className={className}>
       {tokens.map((token, index) => (
-        <span key={index} className={getTokenClassName(token.type)}>
+        <span 
+          key={index} 
+          className={getTokenClassName(token.type)}
+          style={{ 
+            fontFamily: 'inherit',
+            fontSize: 'inherit', 
+            fontWeight: token.type === 'keyword' || token.type === 'function' || token.type === 'namespace' || token.type === 'operator' ? 'inherit' : 'inherit',
+            letterSpacing: 'inherit'
+          }}
+        >
           {token.content}
         </span>
       ))}

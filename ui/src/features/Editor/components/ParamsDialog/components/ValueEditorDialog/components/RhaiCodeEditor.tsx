@@ -43,12 +43,15 @@ const RhaiCodeEditor: React.FC<Props> = ({
         // Copy ALL relevant styles to ensure perfect alignment
         const stylesToCopy = [
           'fontSize', 'fontFamily', 'fontWeight', 'lineHeight', 'letterSpacing',
-          'wordSpacing', 'tabSize', 'textIndent', 'textTransform',
+          'wordSpacing', 'tabSize', 'textIndent', 'textTransform', 'textAlign',
           'padding', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
           'border', 'borderWidth', 'borderStyle', 'borderColor',
           'borderTop', 'borderRight', 'borderBottom', 'borderLeft',
           'margin', 'marginTop', 'marginRight', 'marginBottom', 'marginLeft',
-          'boxSizing', 'width', 'height'
+          'boxSizing', 'width',
+          // Additional text layout properties that might affect character positioning
+          'fontStretch', 'fontSizeAdjust', 'fontVariant', 'fontKerning',
+          'textRendering', 'textDecorationSkipInk'
         ];
         
         // Sync highlight overlay
@@ -102,7 +105,7 @@ const RhaiCodeEditor: React.FC<Props> = ({
       {/* Invisible textarea for input */}
       <TextArea
         ref={textareaRef}
-        className="relative flex-1 resize-none border-transparent text-transparent caret-gray-900 selection:bg-blue-200 focus-visible:ring-0 dark:caret-gray-100 dark:selection:bg-blue-800"
+        className="relative max-h-full flex-1 resize-none rounded-none border-transparent text-transparent caret-gray-900 selection:bg-blue-200 focus-visible:ring-0 dark:caret-gray-100 dark:selection:bg-blue-800"
         style={{ zIndex: 2 }}
         placeholder="" // Remove duplicate placeholder
         value={value}
@@ -115,7 +118,7 @@ const RhaiCodeEditor: React.FC<Props> = ({
       {/* Syntax highlighted background - positioned exactly over textarea */}
       <div
         ref={highlightRef}
-        className="pointer-events-none absolute bg-transparent"
+        className="pointer-events-none absolute h-full bg-transparent"
         style={{
           zIndex: 1,
         }}>
