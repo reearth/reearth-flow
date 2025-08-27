@@ -31,6 +31,13 @@ use crate::{
     file::reader::runner::{get_content, FileReaderCommonParam},
 };
 
+#[derive(Default)]
+struct ShapefileComponents {
+    shp: Option<Vec<u8>>,
+    dbf: Option<Vec<u8>>,
+    shx: Option<Vec<u8>>,
+}
+
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ShapefileReaderFactory;
 
@@ -181,37 +188,75 @@ fn read_shapefile_from_zip(
         crate::errors::SourceError::ShapefileReader(format!("Failed to read ZIP archive: {e}"))
     })?;
 
-    let mut shp_data: Option<Vec<u8>> = None;
-    let mut dbf_data: Option<Vec<u8>> = None;
-    let mut _shx_data: Option<Vec<u8>> = None;
+    let mut shapefile_groups: HashMap<String, ShapefileComponents> = HashMap::new();
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).map_err(|e| {
             crate::errors::SourceError::ShapefileReader(format!("Failed to read ZIP entry: {e}"))
         })?;
 
-        let file_name = file.name().to_lowercase();
+        let file_name = file.name().to_string();
+
+        // Skip macOS metadata files and hidden files
+        if file_name.contains("__MACOSX")
+            || file_name.contains(".DS_Store")
+            || file_name.split('/').next_back().unwrap_or("").starts_with('.')
+            || file.is_dir()
+        {
+            continue;
+        }
+
+        let filename = file_name.split('/').next_back().unwrap_or(&file_name);
+        let filename_lower = filename.to_lowercase();
+
+        if !filename_lower.ends_with(".shp")
+            && !filename_lower.ends_with(".dbf")
+            && !filename_lower.ends_with(".shx")
+            && !filename_lower.ends_with(".prj")
+            && !filename_lower.ends_with(".cpg")
+        {
+            continue;
+        }
+
+        let base_name = if let Some(dot_pos) = filename.rfind('.') {
+            filename[..dot_pos].to_string()
+        } else {
+            continue;
+        };
 
         let mut buffer = Vec::new();
         file.read_to_end(&mut buffer).map_err(|e| {
             crate::errors::SourceError::ShapefileReader(format!("Failed to read ZIP entry: {e}"))
         })?;
 
-        if file_name.ends_with(".shp") {
-            shp_data = Some(buffer);
-        } else if file_name.ends_with(".dbf") {
-            dbf_data = Some(buffer);
-        } else if file_name.ends_with(".shx") {
-            _shx_data = Some(buffer);
+        let components = shapefile_groups
+            .entry(base_name)
+            .or_default();
+
+        if filename_lower.ends_with(".shp") {
+            components.shp = Some(buffer);
+        } else if filename_lower.ends_with(".dbf") {
+            components.dbf = Some(buffer);
+        } else if filename_lower.ends_with(".shx") {
+            components.shx = Some(buffer);
         }
     }
 
-    let shp_data = shp_data.ok_or_else(|| {
-        crate::errors::SourceError::ShapefileReader("No .shp file found in ZIP archive".to_string())
-    })?;
-    let dbf_data = dbf_data.ok_or_else(|| {
-        crate::errors::SourceError::ShapefileReader("No .dbf file found in ZIP archive".to_string())
-    })?;
+    // Find the first complete shapefile set (has both .shp and .dbf)
+    let (base_name, components) = shapefile_groups
+        .into_iter()
+        .find(|(_, comp)| comp.shp.is_some() && comp.dbf.is_some())
+        .ok_or_else(|| {
+            crate::errors::SourceError::ShapefileReader(
+                "No complete shapefile found in ZIP archive (needs both .shp and .dbf files)"
+                    .to_string(),
+            )
+        })?;
+
+    tracing::info!("Processing shapefile: {}", base_name);
+
+    let shp_data = components.shp.unwrap();
+    let dbf_data = components.dbf.unwrap();
 
     let shp_cursor = Cursor::new(shp_data);
     let dbf_cursor = Cursor::new(dbf_data);
