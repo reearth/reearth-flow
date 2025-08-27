@@ -637,14 +637,22 @@ type UpdateWorkspacePayload struct {
 }
 
 type User struct {
-	Email string  `json:"email"`
-	Host  *string `json:"host,omitempty"`
-	ID    ID      `json:"id"`
-	Name  string  `json:"name"`
+	Email    string        `json:"email"`
+	Host     *string       `json:"host,omitempty"`
+	ID       ID            `json:"id"`
+	Name     string        `json:"name"`
+	Metadata *UserMetadata `json:"metadata"`
 }
 
 func (User) IsNode()        {}
 func (this User) GetID() ID { return this.ID }
+
+type UserMetadata struct {
+	Description *string      `json:"description,omitempty"`
+	Website     *string      `json:"website,omitempty"`
+	PhotoURL    *string      `json:"photoURL,omitempty"`
+	Lang        language.Tag `json:"lang"`
+}
 
 type Workspace struct {
 	Assets   *AssetConnection   `json:"assets"`

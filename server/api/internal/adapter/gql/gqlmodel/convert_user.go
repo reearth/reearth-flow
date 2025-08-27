@@ -85,3 +85,12 @@ func ToMeFromFlow(u *pkguser.User) *Me {
 		Auths:         u.Auths(),
 	}
 }
+
+func ToUserMetadata(m pkguser.Metadata) *UserMetadata {
+	return &UserMetadata{
+		Description: lo.EmptyableToPtr(m.Description()),
+		Website:     lo.EmptyableToPtr(m.Website()),
+		PhotoURL:    lo.EmptyableToPtr(m.PhotoURL()),
+		Lang:        m.Lang(),
+	}
+}
