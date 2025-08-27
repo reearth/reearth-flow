@@ -744,4 +744,118 @@ impl RedisStore {
 
         Ok(result == 1)
     }
+
+    pub async fn set_awareness(
+        &self,
+        doc_id: &str,
+        instance_id: &str,
+        conn: &mut redis::aio::MultiplexedConnection,
+        awareness_data: &[u8],
+        ttl_seconds: u64,
+    ) -> Result<()> {
+        let awareness_key = format!("awareness:{doc_id}");
+        let stream_key = format!("awareness:stream:{doc_id}");
+
+        let script = redis::Script::new(
+            r#"
+            local awareness_key = KEYS[1]
+            local stream_key = KEYS[2]
+            local awareness_data = ARGV[1]
+            local ttl = tonumber(ARGV[2])
+            local instance_id = ARGV[3]
+            
+            -- Store awareness data with TTL (use instance_id as key)
+            redis.call('HSET', awareness_key, instance_id, awareness_data)
+            redis.call('EXPIRE', awareness_key, ttl)
+            
+            -- Broadcast awareness update to stream
+            redis.call('XADD', stream_key, '*', 'data', awareness_data, 'instance_id', instance_id)
+            redis.call('EXPIRE', stream_key, ttl)
+            
+            return 1
+            "#,
+        );
+
+        let _: () = script
+            .key(&awareness_key)
+            .key(&stream_key)
+            .arg(awareness_data)
+            .arg(ttl_seconds)
+            .arg(instance_id)
+            .invoke_async(&mut *conn)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn read_awareness_updates(
+        &self,
+        conn: &mut redis::aio::MultiplexedConnection,
+        doc_id: &str,
+        last_read_id: &Arc<Mutex<String>>,
+        count: usize,
+        instance_id_filter: Option<&str>,
+    ) -> Result<Vec<(String, Option<Bytes>)>> {
+        let stream_key = format!("awareness:stream:{doc_id}");
+        let block_ms = 1000;
+
+        let read_id = {
+            let last_id = last_read_id.lock().await;
+            last_id.clone()
+        };
+
+        let result: RedisStreamResults = redis::cmd("XREAD")
+            .arg("COUNT")
+            .arg(count)
+            .arg("BLOCK")
+            .arg(block_ms)
+            .arg("STREAMS")
+            .arg(&stream_key)
+            .arg(read_id)
+            .query_async(conn)
+            .await?;
+
+        if result.is_empty() || result[0].1.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let mut updates = Vec::new();
+        let mut last_msg_id = String::new();
+
+        for (msg_id, fields) in result[0].1.iter() {
+            let mut data: Option<Bytes> = None;
+            let mut message_instance_id = String::new();
+
+            for (field_name, field_value) in fields.iter() {
+                match field_name.as_str() {
+                    "data" => {
+                        data = Some(field_value.clone());
+                    }
+                    "instance_id" => {
+                        if let Ok(instance_str) = std::str::from_utf8(field_value) {
+                            message_instance_id = instance_str.to_string();
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            if let Some(filter_instance_id) = instance_id_filter {
+                if message_instance_id == filter_instance_id {
+                    last_msg_id = msg_id.clone();
+                    continue;
+                }
+            }
+
+            updates.push((message_instance_id, data));
+            last_msg_id = msg_id.clone();
+        }
+
+        if !last_msg_id.is_empty() {
+            let mut last_id = last_read_id.lock().await;
+            *last_id = last_msg_id;
+        }
+
+        Ok(updates)
+    }
 }
