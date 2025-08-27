@@ -215,7 +215,7 @@ $ cargo run --package reearth-flow-cli -- run --workflow ${workflow_path}
 
 ### Run example
 
-See example [README](runtime/examples/README.md).
+See examples [README](runtime/examples/README.md).
 
 ### Run generate graphviz
 
