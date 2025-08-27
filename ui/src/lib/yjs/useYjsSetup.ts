@@ -74,6 +74,43 @@ export default ({
           }
           setIsSynced(true); // Mark as synced
         });
+
+        // Add cleanup handlers for various exit scenarios
+        const clearAwarenessState = () => {
+          if (yWebSocketProvider?.awareness) {
+            yWebSocketProvider.awareness.setLocalState(null);
+          }
+        };
+
+        const handleBeforeUnload = () => {
+          clearAwarenessState();
+        };
+
+        const handleVisibilityChange = () => {
+          if (document.hidden) {
+            // Page became hidden - clear awareness state after a short delay
+            setTimeout(clearAwarenessState, 1000);
+          }
+        };
+
+        const handlePageHide = () => {
+          clearAwarenessState();
+        };
+
+        // Add event listeners for cleanup
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        document.addEventListener('visibilitychange', handleVisibilityChange);  
+        window.addEventListener('pagehide', handlePageHide);
+
+        // Store cleanup function to remove listeners later
+        const cleanupListeners = () => {
+          window.removeEventListener('beforeunload', handleBeforeUnload);
+          document.removeEventListener('visibilitychange', handleVisibilityChange);
+          window.removeEventListener('pagehide', handlePageHide);
+        };
+
+        // Store cleanup function on the provider
+        (yWebSocketProvider as any).cleanupListeners = cleanupListeners;
       })();
     }
 
@@ -81,6 +118,14 @@ export default ({
 
     return () => {
       setIsSynced(false);
+      // Clean up event listeners if they exist
+      if (yWebSocketProviderRef.current && (yWebSocketProviderRef.current as any).cleanupListeners) {
+        (yWebSocketProviderRef.current as any).cleanupListeners();
+      }
+      // Clear awareness state before destroying
+      if (yWebSocketProviderRef.current?.awareness) {
+        yWebSocketProviderRef.current.awareness.setLocalState(null);
+      }
       yWebSocketProvider?.destroy();
       yWebSocketProviderRef.current = null;
       setAwareness(null);

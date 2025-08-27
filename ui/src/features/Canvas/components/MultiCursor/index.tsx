@@ -45,7 +45,7 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
   const [cursors, setCursors] = useState<Map<number, Cursor>>(new Map());
   const { screenToFlowPosition, flowToScreenPosition } = useReactFlow();
 
-  // Handle awareness updates
+  // Handle awareness updates with heartbeat and ghost cleanup
   useEffect(() => {
     if (!yDoc || !awareness) return;
 
@@ -55,9 +55,14 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
       (window as any).yDoc = yDoc;
     }
 
+    // Track client activity timestamps
+    const clientActivityMap = new Map<number, number>();
+    const STALE_THRESHOLD = 1000; // 30 seconds
+
     const handleAwarenessUpdate = () => {
       const states = awareness.getStates();
       const newCursors = new Map<number, Cursor>();
+      const now = Date.now();
 
       console.log("Awareness update - Total clients:", states.size);
       console.log("My client ID:", yDoc.clientID);
@@ -68,7 +73,17 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
         // Skip self
         if (clientId === yDoc.clientID) return;
 
-        if (state.cursor) {
+        // Check if this client has a lastActive timestamp
+        const lastActive = state.lastActive || now;
+        const isStale = now - lastActive > STALE_THRESHOLD;
+
+        // Update activity tracking
+        if (!isStale) {
+          clientActivityMap.set(clientId, lastActive);
+        }
+
+        // Only show cursors for non-stale clients that have cursor data
+        if (state.cursor && !isStale) {
           // Convert flow coordinates to screen coordinates
           const screenPos = flowToScreenPosition({
             x: state.cursor.x,
@@ -81,10 +96,22 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
             name: state.user?.name || `User ${clientId}`,
             color: getUserColor(clientId),
           });
+        } else if (isStale) {
+          console.log(
+            `Filtering out stale client ${clientId} (inactive for ${now - lastActive}ms)`,
+          );
         }
       });
-      console.log("Rendering cursors:", newCursors);
 
+      // Clean up our tracking for clients that are no longer in awareness
+      const activeClientIds = new Set(states.keys());
+      for (const [clientId] of clientActivityMap) {
+        if (!activeClientIds.has(clientId)) {
+          clientActivityMap.delete(clientId);
+        }
+      }
+
+      console.log("Rendering cursors:", newCursors);
       console.log("Active cursors:", newCursors.size);
       setCursors(newCursors);
     };
@@ -94,8 +121,29 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
     // Initial update
     handleAwarenessUpdate();
 
+    // Periodic heartbeat to keep our own presence alive
+    const heartbeatInterval = setInterval(() => {
+      if (awareness) {
+        const currentState = awareness.getLocalState();
+        if (currentState && (currentState.user || currentState.cursor)) {
+          // Update timestamp to indicate we're still active
+          awareness.setLocalState({
+            ...currentState,
+            lastActive: Date.now(),
+          });
+        }
+      }
+    }, 10000); // Every 10 seconds
+
+    // Periodic cleanup of stale awareness states
+    const cleanupInterval = setInterval(() => {
+      handleAwarenessUpdate(); // Force re-evaluation of stale clients
+    }, 15000); // Every 15 seconds
+
     return () => {
       awareness.off("update", handleAwarenessUpdate);
+      clearInterval(heartbeatInterval);
+      clearInterval(cleanupInterval);
     };
   }, [yDoc, awareness, flowToScreenPosition]);
 
@@ -126,12 +174,13 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
         console.log("Sending cursor position:", flowPos);
         console.log("User name:", currentUserName || `User ${yDoc.clientID}`);
 
-        // Set local state with both cursor and user info
+        // Set local state with both cursor and user info, plus timestamp
         awareness.setLocalState({
           cursor: flowPos,
           user: {
             name: currentUserName || `User ${yDoc.clientID}`,
           },
+          lastActive: Date.now(),
         });
       }
     },
