@@ -72,6 +72,21 @@ func (mr *MockUserRepoMockRecorder) FindMe(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindMe", reflect.TypeOf((*MockUserRepo)(nil).FindMe), ctx)
 }
 
+// UpdateMe mocks base method.
+func (m *MockUserRepo) UpdateMe(ctx context.Context, attrs user.UpdateAttrs) (*user.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateMe", ctx, attrs)
+	ret0, _ := ret[0].(*user.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateMe indicates an expected call of UpdateMe.
+func (mr *MockUserRepoMockRecorder) UpdateMe(ctx, attrs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMe", reflect.TypeOf((*MockUserRepo)(nil).UpdateMe), ctx, attrs)
+}
+
 // UserByNameOrEmail mocks base method.
 func (m *MockUserRepo) UserByNameOrEmail(ctx context.Context, nameOrEmail string) (*user.User, error) {
 	m.ctrl.T.Helper()
