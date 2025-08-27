@@ -4,7 +4,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use yrs::{sync::Awareness, Doc};
+use yrs::sync::Awareness;
 
 /// Repository interface for Y.js awareness operations
 #[async_trait]
@@ -13,11 +13,11 @@ pub trait AwarenessRepository: Send + Sync {
     async fn load_awareness(&self, document_name: &DocumentName) -> Result<Arc<RwLock<Awareness>>>;
 
     /// Save awareness state
-    async fn save_awareness_state(
+    async fn save_awareness_state<T: RedisRepository>(
         &self,
         document_name: &DocumentName,
         awareness: &Awareness,
-        redis: &dyn RedisRepository<Error = anyhow::Error>,
+        redis: &T,
     ) -> Result<()>;
 
     /// Get awareness update for broadcasting

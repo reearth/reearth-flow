@@ -76,7 +76,6 @@ impl BroadcastRepository for BroadcastRepositoryImpl {
         let channels = self.channels.read().await;
 
         if let Some(sender) = channels.get(key) {
-            // Ignore error if no receivers (channel is empty)
             let _ = sender.send(message);
         }
 

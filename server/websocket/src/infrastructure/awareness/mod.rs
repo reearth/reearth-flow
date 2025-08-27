@@ -16,14 +16,14 @@ impl<D: for<'a> DocOps<'a>> AwarenessRepository for aw<D> {
         let storage: &Arc<D> = self.storage();
         let mut txn = doc.transact_mut();
         storage.load_doc(document_name.as_str(), &mut txn).await?;
-        Ok(Arc::new(RwLock::new(Awareness::new(doc))))
+        Ok(Arc::new(RwLock::new(Awareness::new(doc.clone()))))
     }
 
-    async fn save_awareness_state(
+    async fn save_awareness_state<T: RedisRepository>(
         &self,
         document_name: &DocumentName,
         awareness: &Awareness,
-        redis: &dyn RedisRepository<Error = anyhow::Error>,
+        redis: &T,
     ) -> Result<()> {
         let doc = awareness.doc();
         let state = {
