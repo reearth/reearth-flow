@@ -25,3 +25,7 @@ func (i *Workspace) FindByIDs(ctx context.Context, ids id.WorkspaceIDList) (work
 func (i *Workspace) FindByUser(ctx context.Context, uid id.UserID) (workspace.List, error) {
 	return i.workspaceRepo.FindByUser(ctx, uid)
 }
+
+func (i *Workspace) Create(ctx context.Context, name string) (*workspace.Workspace, error) {
+	return i.workspaceRepo.Create(ctx, name)
+}

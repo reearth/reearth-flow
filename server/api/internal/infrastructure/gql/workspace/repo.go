@@ -49,3 +49,17 @@ func (r *workspaceRepo) FindByUser(ctx context.Context, uid id.UserID) (workspac
 
 	return util.ToWorkspaces(q.Workspaces)
 }
+
+func (r *workspaceRepo) Create(ctx context.Context, name string) (*workspace.Workspace, error) {
+	in := CreateWorkspaceInput{Name: graphql.String(name)}
+
+	var m createWorkspaceMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return nil, err
+	}
+
+	return util.ToWorkspace(m.CreateWorkspace.Workspace)
+}

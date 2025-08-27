@@ -118,7 +118,7 @@ func (c *UserLoader) searchUserWithTempNewUsecase(ctx context.Context, nameOrEma
 		return nil
 	}
 
-	return gqlmodel.ToUserFromFlow(*res)
+	return gqlmodel.ToUserFromFlow(res)
 }
 
 // data loader

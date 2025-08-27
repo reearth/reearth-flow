@@ -42,6 +42,21 @@ func (m *MockWorkspaceRepo) EXPECT() *MockWorkspaceRepoMockRecorder {
 	return m.recorder
 }
 
+// Create mocks base method.
+func (m *MockWorkspaceRepo) Create(ctx context.Context, name string) (*workspace.Workspace, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", ctx, name)
+	ret0, _ := ret[0].(*workspace.Workspace)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockWorkspaceRepoMockRecorder) Create(ctx, name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockWorkspaceRepo)(nil).Create), ctx, name)
+}
+
 // FindByIDs mocks base method.
 func (m *MockWorkspaceRepo) FindByIDs(ctx context.Context, ids id.WorkspaceIDList) (workspace.List, error) {
 	m.ctrl.T.Helper()
