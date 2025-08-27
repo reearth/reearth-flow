@@ -16,7 +16,8 @@ export type ExpressionType =
   | "feature-attribute"
   | "conditional"
   | "math"
-  | "environment-variable";
+  | "environment-variable"
+  | "json-query";
 
 type ExpressionTypeOption = {
   type: ExpressionType;
@@ -98,6 +99,17 @@ const ExpressionTypePicker: React.FC<Props> = ({
         'env.get("outputPath")',
         'env.get("cityGmlPath")',
         'env.get("targetPackages")',
+      ],
+    },
+    {
+      type: "json-query",
+      title: t("JSON Data Query"),
+      description: t("Query and extract data from JSON using JSONPath"),
+      icon: <DatabaseIcon weight="thin" className="h-6 w-6" />,
+      examples: [
+        'json::find_value_by_json_path(data, "$.items[0].name")',
+        'json::exists_value_by_json_path(data, "$.user")',
+        'json::find_value_by_json_path(env.get("__value"), "$.attributes")',
       ],
     },
   ];

@@ -18,7 +18,6 @@ import {
   DialogHeader,
   DialogTitle,
   ScrollArea,
-  TextArea,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -46,7 +45,9 @@ import ExpressionTypePicker, {
 } from "./components/ExpressionTypePicker";
 import FeatureAttributeBuilder from "./components/FeatureAttributeBuilder";
 import FilePathBuilder from "./components/FilePathBuilder";
+import JsonQueryBuilder from "./components/JsonQueryBuilder";
 import MathBuilder from "./components/MathBuilder";
+import RhaiCodeEditor from "./components/RhaiCodeEditor";
 
 type Props = {
   open: boolean;
@@ -233,12 +234,11 @@ const ValueEditorDialog: React.FC<Props> = ({
 
             {/* Raw Rhai Editor - Always Visible */}
             <div className="flex-1 border-b">
-              <TextArea
-                className="h-full max-h-full resize-none rounded-none border-transparent bg-card/20 backdrop-blur-sm focus-visible:ring-0"
+              <RhaiCodeEditor
+                className="h-full rounded-none bg-card/20 backdrop-blur-sm"
                 placeholder={t("Enter expression...")}
                 value={value}
-                onChange={(e) => setValue(e.target.value)}
-                spellCheck={false}
+                onChange={setValue}
                 data-testid="value-editor-textarea"
                 aria-label={t("Raw Expression Editor")}
                 data-placeholder={t("Enter expression...")}
@@ -251,7 +251,7 @@ const ValueEditorDialog: React.FC<Props> = ({
                 <CollapsibleTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="flex h-12 w-full items-center justify-between px-4 hover:bg-accent/50">
+                    className="flex h-12 w-full items-center justify-between rounded-none px-4 hover:bg-accent/50">
                     <div className="flex items-center gap-2">
                       <WrenchIcon className="h-4 w-4" />
                       <span className="text-sm font-medium">
@@ -274,21 +274,20 @@ const ValueEditorDialog: React.FC<Props> = ({
                 <div className="flex h-[350px] flex-col">
                   {/* Simple Builder Navigation */}
                   {selectedExpressionType && (
-                    <div className="border-b p-3">
+                    <div className="px-2 pt-2">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setSelectedExpressionType(null)}
                         className="h-8 gap-1 px-2">
                         <CaretLeftIcon className="h-4 w-4" />
-                        {t("Back to Types")}
                       </Button>
                     </div>
                   )}
 
                   {/* Simple Builder Content */}
                   <ScrollArea className="flex-1">
-                    <div className="p-4">
+                    <div className="px-4 pt-4">
                       {!selectedExpressionType ? (
                         <ExpressionTypePicker
                           onTypeSelect={handleExpressionTypeSelect}
@@ -320,12 +319,18 @@ const ValueEditorDialog: React.FC<Props> = ({
                               onExpressionChange={handleExpressionBuilderChange}
                             />
                           )}
+                          {selectedExpressionType === "json-query" && (
+                            <JsonQueryBuilder
+                              onExpressionChange={handleExpressionBuilderChange}
+                            />
+                          )}
                           {![
                             "file-path",
                             "feature-attribute",
                             "conditional",
                             "math",
                             "environment-variable",
+                            "json-query",
                           ].includes(selectedExpressionType) && (
                             <div className="flex flex-1 flex-col items-center justify-center p-8 text-center text-muted-foreground">
                               <p className="mb-4">

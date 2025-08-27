@@ -16,9 +16,7 @@ import ExpressionInput from "./ExpressionInput";
 type FilePathOperation =
   | "join_path"
   | "extract_filename"
-  | "extract_filename_without_ext"
-  | "extract_directory"
-  | "replace_extension";
+  | "extract_filename_without_ext";
 
 type Props = {
   onExpressionChange: (expression: string) => void;
@@ -30,7 +28,6 @@ const FilePathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
   const [operation, setOperation] = useState<FilePathOperation>("join_path");
   const [path1, setPath1] = useState("");
   const [path2, setPath2] = useState("");
-  const [extension, setExtension] = useState("");
 
   const operations = [
     {
@@ -54,20 +51,6 @@ const FilePathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
       icon: <FileIcon weight="thin" className="h-4 w-4" />,
       example: "file::extract_filename_without_ext(path)",
     },
-    {
-      value: "extract_directory" as const,
-      label: t("Extract Directory"),
-      description: t("Get directory path from full path"),
-      icon: <FolderIcon weight="thin" className="h-4 w-4" />,
-      example: "file::extract_directory(path)",
-    },
-    {
-      value: "replace_extension" as const,
-      label: t("Replace Extension"),
-      description: t("Change file extension"),
-      icon: <FileIcon weight="thin" className="h-4 w-4" />,
-      example: 'file::replace_extension(path, "txt")',
-    },
   ];
 
   const generateExpression = useCallback(() => {
@@ -89,20 +72,10 @@ const FilePathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
           expr = `file::extract_filename_without_ext(${path1})`;
         }
         break;
-      case "extract_directory":
-        if (path1) {
-          expr = `file::extract_directory(${path1})`;
-        }
-        break;
-      case "replace_extension":
-        if (path1 && extension) {
-          expr = `file::replace_extension(${path1}, ${extension})`;
-        }
-        break;
     }
 
     onExpressionChange(expr);
-  }, [operation, path1, path2, extension, onExpressionChange]);
+  }, [operation, path1, path2, onExpressionChange]);
 
   // Generate expression whenever inputs change
   useEffect(() => {
@@ -198,8 +171,7 @@ const FilePathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
           )}
 
           {(operation === "extract_filename" ||
-            operation === "extract_filename_without_ext" ||
-            operation === "extract_directory") && (
+            operation === "extract_filename_without_ext") && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <div className="space-y-2">
                 <Label className="text-xs">{t("File Path")}</Label>
@@ -220,38 +192,6 @@ const FilePathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
             </div>
           )}
 
-          {operation === "replace_extension" && (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <div className="space-y-2">
-                <Label className="text-xs">{t("File Path")}</Label>
-                <ExpressionInput
-                  placeholder='"/path/to/file.csv"'
-                  value={path1}
-                  onChange={setPath1}
-                  className="text-sm"
-                  label={t("File Path")}
-                  allowedExpressionTypes={[
-                    "environment-variable",
-                    "feature-attribute",
-                  ]}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs">{t("New Extension")}</Label>
-                <ExpressionInput
-                  placeholder='"txt"'
-                  value={extension}
-                  onChange={setExtension}
-                  className="text-sm"
-                  label={t("New Extension")}
-                  allowedExpressionTypes={[
-                    "environment-variable",
-                    "feature-attribute",
-                  ]}
-                />
-              </div>
-            </div>
-          )}
         </div>
 
       </div>

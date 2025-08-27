@@ -15,7 +15,10 @@ import ExpressionInput from "./ExpressionInput";
 
 type AttributeAccess =
   | "env_value_direct"
-  | "env_value_indexed"
+  | "env_value_indexed" 
+  | "env_feature_type"
+  | "env_feature_id"
+  | "env_lod"
   | "feature_attributes"
   | "custom_path";
 
@@ -47,6 +50,27 @@ const FeatureAttributeBuilder: React.FC<Props> = ({ onExpressionChange }) => {
       example: 'env.get("__value")["path"]',
     },
     {
+      value: "env_feature_type" as const,
+      label: t("Feature Type"),
+      description: t("Get the current feature type"),
+      icon: <DatabaseIcon weight="thin" className="h-4 w-4" />,
+      example: 'env.get("__feature_type")',
+    },
+    {
+      value: "env_feature_id" as const,
+      label: t("Feature ID"),
+      description: t("Get the current feature identifier"),
+      icon: <DatabaseIcon weight="thin" className="h-4 w-4" />,
+      example: 'env.get("__feature_id")',
+    },
+    {
+      value: "env_lod" as const,
+      label: t("Level of Detail"),
+      description: t("Get the current level of detail value"),
+      icon: <DatabaseIcon weight="thin" className="h-4 w-4" />,
+      example: 'env.get("__lod")',
+    },
+    {
       value: "feature_attributes" as const,
       label: t("Feature Attributes"),
       description: t("Access feature attributes directly"),
@@ -75,6 +99,15 @@ const FeatureAttributeBuilder: React.FC<Props> = ({ onExpressionChange }) => {
         if (indexKey) {
           expr = `env.get("__value")["${indexKey}"]`;
         }
+        break;
+      case "env_feature_type":
+        expr = 'env.get("__feature_type")';
+        break;
+      case "env_feature_id":
+        expr = 'env.get("__feature_id")';
+        break;
+      case "env_lod":
+        expr = 'env.get("__lod")';
         break;
       case "feature_attributes":
         if (attributeName) {
