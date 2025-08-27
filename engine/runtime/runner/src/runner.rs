@@ -101,8 +101,10 @@ impl Runner {
 
         if let Err(e) = &result {
             error!(parent: &span, "Failed to workflow: {:?}", e);
+            info!(parent: &span, "Finish workflow = {:?} (failed), duration = {:?}", workflow_name.as_str(), start.elapsed());
+        } else {
+            info!(parent: &span, "Finish workflow = {:?} (success), duration = {:?}", workflow_name.as_str(), start.elapsed());
         }
-        info!(parent: &span, "Finish workflow = {:?}, duration = {:?}", workflow_name.as_str(), start.elapsed());
         result
     }
 }
@@ -173,8 +175,10 @@ impl AsyncRunner {
             .await;
         if let Err(e) = &result {
             error!("Failed to workflow: {:?}", e);
+            info!(parent: &span, "Finish workflow = {:?} (failed), duration = {:?}", workflow_name.as_str(), start.elapsed());
+        } else {
+            info!(parent: &span, "Finish workflow = {:?} (success), duration = {:?}", workflow_name.as_str(), start.elapsed());
         }
-        info!(parent: &span, "Finish workflow = {:?}, duration = {:?}", workflow_name.as_str(), start.elapsed());
         result
     }
 }

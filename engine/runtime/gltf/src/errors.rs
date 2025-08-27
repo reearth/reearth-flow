@@ -6,6 +6,10 @@ pub enum Error {
     Metadata(String),
     #[error("Gltf writer error: {0}")]
     Writer(String),
+    #[error("Gltf compression error: {0}")]
+    Compression(#[from] draco_oxide::io::gltf::transcoder::Err),
+    #[error("std io error: {0}")]
+    StdIo(#[from] std::io::Error),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
