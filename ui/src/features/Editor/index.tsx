@@ -34,7 +34,7 @@ export default function Editor({
 }: Props) {
   const { useGetMe } = useUser();
   const { me } = useGetMe();
-  
+
   const {
     currentWorkflowId,
     openWorkflows,

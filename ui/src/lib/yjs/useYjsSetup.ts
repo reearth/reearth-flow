@@ -26,7 +26,7 @@ export default ({
   const [yDocState, setYDocState] = useState<Y.Doc | null>(null);
   const [isSynced, setIsSynced] = useState(false);
   const [awareness, setAwareness] = useState<any>(null);
-  
+
   const yWebSocketProviderRef = useRef<WebsocketProvider | null>(null);
 
   useEffect(() => {
@@ -43,18 +43,13 @@ export default ({
         }
 
         const roomName = `${projectId}:${workflowId}`;
-        console.log('Connecting to WebSocket room:', roomName);
-        console.log('WebSocket URL:', websocket);
-        
-        yWebSocketProvider = new WebsocketProvider(
-          websocket,
-          roomName,
-          yDoc,
-          {
-            params,
-          },
-        );
-        
+        console.log("Connecting to WebSocket room:", roomName);
+        console.log("WebSocket URL:", websocket);
+
+        yWebSocketProvider = new WebsocketProvider(websocket, roomName, yDoc, {
+          params,
+        });
+
         yWebSocketProviderRef.current = yWebSocketProvider;
         setAwareness(yWebSocketProvider.awareness);
 

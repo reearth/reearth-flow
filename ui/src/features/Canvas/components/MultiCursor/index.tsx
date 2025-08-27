@@ -16,7 +16,9 @@ type MultiCursorProps = {
   yDoc: Y.Doc | null;
   awareness: any;
   currentUserName?: string;
-  onCursorUpdate?: (updateFn: (clientX: number, clientY: number) => void) => void;
+  onCursorUpdate?: (
+    updateFn: (clientX: number, clientY: number) => void,
+  ) => void;
 };
 
 // Function to generate consistent color from user ID
@@ -182,27 +184,27 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
     animationFrameId = requestAnimationFrame(pollMousePosition);
 
     // Listen for multiple event types to catch all mouse movements
-    document.addEventListener('mousemove', updateLastPosition, true);
-    document.addEventListener('mousedown', updateLastPosition, true);
-    document.addEventListener('mouseup', updateLastPosition, true);
-    
+    document.addEventListener("mousemove", updateLastPosition, true);
+    document.addEventListener("mousedown", updateLastPosition, true);
+    document.addEventListener("mouseup", updateLastPosition, true);
+
     // Pointer events can sometimes capture what mouse events miss
-    document.addEventListener('pointermove', updateLastPosition, true);
-    document.addEventListener('pointerdown', updateLastPosition, true);
-    document.addEventListener('pointerup', updateLastPosition, true);
-    
+    document.addEventListener("pointermove", updateLastPosition, true);
+    document.addEventListener("pointerdown", updateLastPosition, true);
+    document.addEventListener("pointerup", updateLastPosition, true);
+
     // Listen for mouseleave to clear cursor
-    document.addEventListener('mouseleave', handleMouseLeave);
+    document.addEventListener("mouseleave", handleMouseLeave);
 
     return () => {
       cancelAnimationFrame(animationFrameId);
-      document.removeEventListener('mousemove', updateLastPosition, true);
-      document.removeEventListener('mousedown', updateLastPosition, true);
-      document.removeEventListener('mouseup', updateLastPosition, true);
-      document.removeEventListener('pointermove', updateLastPosition, true);
-      document.removeEventListener('pointerdown', updateLastPosition, true);
-      document.removeEventListener('pointerup', updateLastPosition, true);
-      document.removeEventListener('mouseleave', handleMouseLeave);
+      document.removeEventListener("mousemove", updateLastPosition, true);
+      document.removeEventListener("mousedown", updateLastPosition, true);
+      document.removeEventListener("mouseup", updateLastPosition, true);
+      document.removeEventListener("pointermove", updateLastPosition, true);
+      document.removeEventListener("pointerdown", updateLastPosition, true);
+      document.removeEventListener("pointerup", updateLastPosition, true);
+      document.removeEventListener("mouseleave", handleMouseLeave);
     };
   }, [updateCursorPosition, awareness, yDoc]);
 
