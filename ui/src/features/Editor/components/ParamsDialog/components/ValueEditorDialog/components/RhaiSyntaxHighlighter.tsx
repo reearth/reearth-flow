@@ -1,5 +1,12 @@
 import { useMemo } from "react";
 
+import {
+  RHAI_FUNCTIONS,
+  RHAI_KEYWORDS,
+  RHAI_NAMESPACES,
+  RHAI_OPERATORS,
+} from "./constants";
+
 type TokenType =
   | "keyword"
   | "function"
@@ -17,38 +24,6 @@ type Token = {
   content: string;
 };
 
-const RHAI_KEYWORDS = [
-  "if", "else", "while", "for", "loop", "break", "continue", "return",
-  "let", "const", "fn", "private", "import", "export", "as", "true", "false", "null"
-];
-
-const RHAI_FUNCTIONS = [
-  // Global environment functions (custom Re:Earth Flow functions)
-  "env", "get",
-  // File namespace functions - essential for path manipulation
-  "extract_filename", "extract_filename_without_ext", "join_path",
-  // String namespace functions - useful for regex operations
-  "extract_single_by_regex",
-  // JSON namespace functions - valuable for data processing
-  "find_value_by_json_path", "exists_value_by_json_path",
-  // Key DateTime namespace functions - common date operations
-  "extract_year", "extract_month", "extract_day", 
-  "add_year", "add_month", "add_day",
-  // Standard Rhai math functions
-  "round", "floor", "ceil", "abs", "sqrt", "min", "max", "pow", "sin", "cos", "tan",
-  // Standard Rhai string functions
-  "len", "is_empty", "contains", "starts_with", "ends_with", "to_string", "to_upper", "to_lower",
-  // Standard Rhai array functions
-  "push", "pop", "shift", "unshift", "insert", "remove"
-];
-
-const RHAI_OPERATORS = [
-  "==", "!=", "<=", ">=", "<", ">", "&&", "||", "!", "+", "-", "*", "/", "%", "**", 
-  "=", "+=", "-=", "*=", "/=", "%=", "**=", "?", ":"
-];
-
-const RHAI_NAMESPACES = ["file", "str", "json", "datetime"];
-
 type Props = {
   code: string;
   className?: string;
@@ -57,13 +32,13 @@ type Props = {
 const RhaiSyntaxHighlighter: React.FC<Props> = ({ code, className = "" }) => {
   const tokens = useMemo(() => {
     if (!code) return [];
-    
+
     const result: Token[] = [];
     let i = 0;
-    
+
     while (i < code.length) {
       const char = code[i];
-      
+
       // Skip whitespace but preserve it
       if (/\s/.test(char)) {
         let whitespace = "";
@@ -74,7 +49,7 @@ const RhaiSyntaxHighlighter: React.FC<Props> = ({ code, className = "" }) => {
         result.push({ type: "default", content: whitespace });
         continue;
       }
-      
+
       // Single line comments
       if (char === "/" && code[i + 1] === "/") {
         let comment = "";
@@ -85,7 +60,7 @@ const RhaiSyntaxHighlighter: React.FC<Props> = ({ code, className = "" }) => {
         result.push({ type: "comment", content: comment });
         continue;
       }
-      
+
       // String literals (double quotes)
       if (char === '"') {
         let string = '"';
@@ -102,8 +77,8 @@ const RhaiSyntaxHighlighter: React.FC<Props> = ({ code, className = "" }) => {
         result.push({ type: "string", content: string });
         continue;
       }
-      
-      // String literals (single quotes)  
+
+      // String literals (single quotes)
       if (char === "'") {
         let string = "'";
         i++;
@@ -119,18 +94,18 @@ const RhaiSyntaxHighlighter: React.FC<Props> = ({ code, className = "" }) => {
         result.push({ type: "string", content: string });
         continue;
       }
-      
+
       // Numbers
       if (/\d/.test(char) || (char === "." && /\d/.test(code[i + 1]))) {
         let number = "";
-        while (i < code.length && (/[\d.]/.test(code[i]))) {
+        while (i < code.length && /[\d.]/.test(code[i])) {
           number += code[i];
           i++;
         }
         result.push({ type: "number", content: number });
         continue;
       }
-      
+
       // Multi-character operators
       let foundOperator = false;
       for (const op of RHAI_OPERATORS.sort((a, b) => b.length - a.length)) {
@@ -142,14 +117,14 @@ const RhaiSyntaxHighlighter: React.FC<Props> = ({ code, className = "" }) => {
         }
       }
       if (foundOperator) continue;
-      
+
       // Punctuation
       if (/[(){}[\];,.]/.test(char)) {
         result.push({ type: "punctuation", content: char });
         i++;
         continue;
       }
-      
+
       // Identifiers, keywords, functions
       if (/[a-zA-Z_]/.test(char)) {
         let identifier = "";
@@ -157,15 +132,18 @@ const RhaiSyntaxHighlighter: React.FC<Props> = ({ code, className = "" }) => {
           identifier += code[i];
           i++;
         }
-        
+
         // Check if it's followed by :: (namespace)
-        if (code.substring(i, i + 2) === "::" && RHAI_NAMESPACES.includes(identifier)) {
+        if (
+          code.substring(i, i + 2) === "::" &&
+          RHAI_NAMESPACES.includes(identifier)
+        ) {
           result.push({ type: "namespace", content: identifier });
           result.push({ type: "operator", content: "::" });
           i += 2;
           continue;
         }
-        
+
         // Determine token type
         let tokenType: TokenType = "identifier";
         if (RHAI_KEYWORDS.includes(identifier)) {
@@ -173,19 +151,19 @@ const RhaiSyntaxHighlighter: React.FC<Props> = ({ code, className = "" }) => {
         } else if (RHAI_FUNCTIONS.includes(identifier)) {
           tokenType = "function";
         }
-        
+
         result.push({ type: tokenType, content: identifier });
         continue;
       }
-      
+
       // Default - any other character
       result.push({ type: "default", content: char });
       i++;
     }
-    
+
     return result;
   }, [code]);
-  
+
   const getTokenClassName = (type: TokenType): string => {
     switch (type) {
       case "keyword":
@@ -210,20 +188,25 @@ const RhaiSyntaxHighlighter: React.FC<Props> = ({ code, className = "" }) => {
         return "text-gray-900 dark:text-gray-100";
     }
   };
-  
+
   return (
     <div className={className}>
       {tokens.map((token, index) => (
-        <span 
-          key={index} 
+        <span
+          key={index}
           className={getTokenClassName(token.type)}
-          style={{ 
-            fontFamily: 'inherit',
-            fontSize: 'inherit', 
-            fontWeight: token.type === 'keyword' || token.type === 'function' || token.type === 'namespace' || token.type === 'operator' ? 'inherit' : 'inherit',
-            letterSpacing: 'inherit'
-          }}
-        >
+          style={{
+            fontFamily: "inherit",
+            fontSize: "inherit",
+            fontWeight:
+              token.type === "keyword" ||
+              token.type === "function" ||
+              token.type === "namespace" ||
+              token.type === "operator"
+                ? "inherit"
+                : "inherit",
+            letterSpacing: "inherit",
+          }}>
           {token.content}
         </span>
       ))}

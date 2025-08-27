@@ -22,7 +22,9 @@ type Props = {
 const JsonQueryBuilder: React.FC<Props> = ({ onExpressionChange }) => {
   const t = useT();
 
-  const [operation, setOperation] = useState<JsonOperation>("find_value_by_json_path");
+  const [operation, setOperation] = useState<JsonOperation>(
+    "find_value_by_json_path",
+  );
   const [jsonContent, setJsonContent] = useState("");
   const [jsonPath, setJsonPath] = useState("");
 
@@ -113,7 +115,9 @@ const JsonQueryBuilder: React.FC<Props> = ({ onExpressionChange }) => {
                 {selectedOperation.icon}
                 <span>{t("Example:")}</span>
               </div>
-              <code className="text-xs break-all">{selectedOperation.example}</code>
+              <code className="text-xs break-all">
+                {selectedOperation.example}
+              </code>
             </div>
           )}
         </div>
@@ -143,7 +147,7 @@ const JsonQueryBuilder: React.FC<Props> = ({ onExpressionChange }) => {
               className="text-sm"
               label={t("JSONPath Query")}
               allowedExpressionTypes={[
-                "environment-variable", 
+                "environment-variable",
                 "feature-attribute",
               ]}
             />
@@ -156,10 +160,18 @@ const JsonQueryBuilder: React.FC<Props> = ({ onExpressionChange }) => {
             {t("JSONPath Examples:")}
           </h5>
           <ul className="space-y-1 text-xs text-blue-800 dark:text-blue-300">
-            <li><code>"$.data"</code> - Root data object</li>
-            <li><code>"$.items[0]"</code> - First item in items array</li>
-            <li><code>"$.user.name"</code> - Nested property access</li>
-            <li><code>"$..name"</code> - All name properties recursively</li>
+            <li>
+              <code>"$.data"</code> - Root data object
+            </li>
+            <li>
+              <code>"$.items[0]"</code> - First item in items array
+            </li>
+            <li>
+              <code>"$.user.name"</code> - Nested property access
+            </li>
+            <li>
+              <code>"$..name"</code> - All name properties recursively
+            </li>
           </ul>
         </div>
       </div>

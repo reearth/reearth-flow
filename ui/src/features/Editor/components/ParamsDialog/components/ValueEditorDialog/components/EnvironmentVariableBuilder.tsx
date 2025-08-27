@@ -156,7 +156,9 @@ const EnvironmentVariableBuilder: React.FC<Props> = ({
                 {selectedAccessType.icon}
                 <span>{t("Example:")} </span>
               </div>
-              <code className="text-xs break-all">{selectedAccessType.example}</code>
+              <code className="text-xs break-all">
+                {selectedAccessType.example}
+              </code>
             </div>
           )}
         </div>
@@ -219,10 +221,14 @@ const EnvironmentVariableBuilder: React.FC<Props> = ({
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">{t("Usage Notes")}</Label>
+                <Label className="text-xs text-muted-foreground">
+                  {t("Usage Notes")}
+                </Label>
                 <div className="rounded border bg-muted/30 p-3 text-xs text-muted-foreground">
                   <div className="space-y-1">
-                    <div>• {t("Enter the exact name of the environment variable")}</div>
+                    <div>
+                      • {t("Enter the exact name of the environment variable")}
+                    </div>
                     <div>• {t("Variable names are case-sensitive")}</div>
                     <div>• {t("Examples: API_KEY, DB_HOST, VERSION")}</div>
                   </div>
@@ -259,7 +265,6 @@ const EnvironmentVariableBuilder: React.FC<Props> = ({
             </div>
           )}
         </div>
-
       </div>
     </div>
   );

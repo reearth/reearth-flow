@@ -8,7 +8,12 @@ import {
 } from "@phosphor-icons/react";
 import { useCallback } from "react";
 
-import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@flow/components";
+import {
+  Button,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 
 export type ExpressionType =
@@ -153,9 +158,13 @@ const ExpressionTypePicker: React.FC<Props> = ({
                           <QuestionIcon className="h-4 w-4 text-muted-foreground hover:text-foreground" />
                         </div>
                       </TooltipTrigger>
-                      <TooltipContent side="bottom" className="max-w-xs bg-secondary">
+                      <TooltipContent
+                        side="bottom"
+                        className="max-w-xs bg-secondary">
                         <div className="space-y-2">
-                          <p className="text-xs font-medium">{t("Examples:")}</p>
+                          <p className="text-xs font-medium">
+                            {t("Examples:")}
+                          </p>
                           <div className="space-1 flex flex-col">
                             {option.examples.map((example, index) => (
                               <code

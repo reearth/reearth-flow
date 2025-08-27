@@ -164,7 +164,7 @@ const ValueEditorDialog: React.FC<Props> = ({
               </div>
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="flex h-[600px] flex-col">
             {/* Action Bar */}
             <div className="flex items-center justify-between border-b p-3">
@@ -246,7 +246,9 @@ const ValueEditorDialog: React.FC<Props> = ({
             </div>
 
             {/* Collapsible Simple Builder Panel */}
-            <Collapsible open={simpleBuilderOpen} onOpenChange={setSimpleBuilderOpen}>
+            <Collapsible
+              open={simpleBuilderOpen}
+              onOpenChange={setSimpleBuilderOpen}>
               <div className="border-b">
                 <CollapsibleTrigger asChild>
                   <Button
@@ -314,7 +316,8 @@ const ValueEditorDialog: React.FC<Props> = ({
                               onExpressionChange={handleExpressionBuilderChange}
                             />
                           )}
-                          {selectedExpressionType === "environment-variable" && (
+                          {selectedExpressionType ===
+                            "environment-variable" && (
                             <EnvironmentVariableBuilder
                               onExpressionChange={handleExpressionBuilderChange}
                             />

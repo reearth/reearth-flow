@@ -231,13 +231,17 @@ const MathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
             <div className="grid grid-cols-1 gap-1 md:grid-cols-2 lg:grid-cols-1">
               <code className="block text-xs">(xmin + xmax) / 2.0</code>
               <code className="block text-xs">round(area * 0.0001, 2)</code>
-              <code className="block text-xs">sqrt(width ^ 2 + height ^ 2)</code>
+              <code className="block text-xs">
+                sqrt(width ^ 2 + height ^ 2)
+              </code>
             </div>
           </div>
-          
+
           {/* Quick add buttons */}
           <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">{t("Quick Add")}</Label>
+            <Label className="text-xs text-muted-foreground">
+              {t("Quick Add")}
+            </Label>
             <div className="flex flex-col gap-2">
               <Button
                 variant="outline"
@@ -410,7 +414,9 @@ const MathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground">{t("Common Values")}</Label>
+                    <Label className="text-xs text-muted-foreground">
+                      {t("Common Values")}
+                    </Label>
                     <div className="flex flex-wrap gap-1 pt-2">
                       {commonValues.slice(0, 8).map((val) => (
                         <button
@@ -427,7 +433,6 @@ const MathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
             </div>
           ))}
         </div>
-
       </div>
     </div>
   );

@@ -15,7 +15,7 @@ import ExpressionInput from "./ExpressionInput";
 
 type AttributeAccess =
   | "env_value_direct"
-  | "env_value_indexed" 
+  | "env_value_indexed"
   | "env_feature_type"
   | "env_feature_id"
   | "env_lod"
@@ -167,7 +167,9 @@ const FeatureAttributeBuilder: React.FC<Props> = ({ onExpressionChange }) => {
             </Label>
             <Select
               value={accessType}
-              onValueChange={(value) => setAccessType(value as AttributeAccess)}>
+              onValueChange={(value) =>
+                setAccessType(value as AttributeAccess)
+              }>
               <SelectTrigger id="access-method-select">
                 <SelectValue />
               </SelectTrigger>
@@ -195,7 +197,9 @@ const FeatureAttributeBuilder: React.FC<Props> = ({ onExpressionChange }) => {
                 {selectedMethod.icon}
                 <span>{t("Example:")} </span>
               </div>
-              <code className="text-xs break-all">{selectedMethod.example}</code>
+              <code className="text-xs break-all">
+                {selectedMethod.example}
+              </code>
             </div>
           )}
         </div>
@@ -256,14 +260,16 @@ const FeatureAttributeBuilder: React.FC<Props> = ({ onExpressionChange }) => {
                   {t("Common Keys")}
                 </Label>
                 <div className="flex flex-wrap gap-1 pt-2">
-                  {["path", "id", "name", "type", "code", "status"].map((key) => (
-                    <button
-                      key={key}
-                      onClick={() => setIndexKey(key)}
-                      className="rounded bg-muted px-2 py-1 text-xs hover:bg-accent transition-colors">
-                      {key}
-                    </button>
-                  ))}
+                  {["path", "id", "name", "type", "code", "status"].map(
+                    (key) => (
+                      <button
+                        key={key}
+                        onClick={() => setIndexKey(key)}
+                        className="rounded bg-muted px-2 py-1 text-xs hover:bg-accent transition-colors">
+                        {key}
+                      </button>
+                    ),
+                  )}
                 </div>
               </div>
             </div>
@@ -293,15 +299,20 @@ const FeatureAttributeBuilder: React.FC<Props> = ({ onExpressionChange }) => {
                   {t("Path Examples")}
                 </Label>
                 <div className="space-y-1 pt-2 text-xs text-muted-foreground">
-                  <div><code>data.properties.name</code></div>
-                  <div><code>geometry.coordinates[0]</code></div>
-                  <div><code>feature.metadata.timestamp</code></div>
+                  <div>
+                    <code>data.properties.name</code>
+                  </div>
+                  <div>
+                    <code>geometry.coordinates[0]</code>
+                  </div>
+                  <div>
+                    <code>feature.metadata.timestamp</code>
+                  </div>
                 </div>
               </div>
             </div>
           )}
         </div>
-
       </div>
     </div>
   );

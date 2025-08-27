@@ -102,7 +102,9 @@ const FilePathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
             </Label>
             <Select
               value={operation}
-              onValueChange={(value) => setOperation(value as FilePathOperation)}>
+              onValueChange={(value) =>
+                setOperation(value as FilePathOperation)
+              }>
               <SelectTrigger id="operation-select">
                 <SelectValue />
               </SelectTrigger>
@@ -130,7 +132,9 @@ const FilePathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
                 {selectedOperation.icon}
                 <span>{t("Example:")} </span>
               </div>
-              <code className="text-xs break-all">{selectedOperation.example}</code>
+              <code className="text-xs break-all">
+                {selectedOperation.example}
+              </code>
             </div>
           )}
         </div>
@@ -191,9 +195,7 @@ const FilePathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
               <div />
             </div>
           )}
-
         </div>
-
       </div>
     </div>
   );

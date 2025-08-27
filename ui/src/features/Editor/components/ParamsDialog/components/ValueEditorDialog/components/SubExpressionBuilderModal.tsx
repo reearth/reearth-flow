@@ -43,17 +43,9 @@ const SubExpressionBuilderModal: React.FC<Props> = ({
     initialValue || "",
   );
 
-  const handleExpressionTypeSelect = useCallback(
-    (type: ExpressionType) => {
-      setSelectedExpressionType(type);
-
-      // For now, if user selects "custom", just close and let them use raw mode
-      if (type === "custom") {
-        onClose();
-      }
-    },
-    [onClose],
-  );
+  const handleExpressionTypeSelect = useCallback((type: ExpressionType) => {
+    setSelectedExpressionType(type);
+  }, []);
 
   const handleExpressionBuilderChange = useCallback((expression: string) => {
     setCurrentExpression(expression);

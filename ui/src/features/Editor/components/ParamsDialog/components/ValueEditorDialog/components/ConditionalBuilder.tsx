@@ -371,7 +371,6 @@ const ConditionalBuilder: React.FC<Props> = ({ onExpressionChange }) => {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );
