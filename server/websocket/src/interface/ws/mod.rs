@@ -6,9 +6,6 @@ use axum::{
 };
 use bytes::Bytes;
 
-#[cfg(feature = "auth")]
-use axum::extract::Query;
-
 use crate::AppState;
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{Stream, StreamExt};
@@ -18,9 +15,6 @@ use std::task::{Context, Poll};
 use tokio::sync::mpsc;
 use tracing::{debug, error, warn};
 use yrs::sync::Error;
-
-#[cfg(feature = "auth")]
-use crate::AuthQuery;
 
 #[repr(transparent)]
 pub struct WarpConn(Connection<WarpSink, WarpStream>);
@@ -133,16 +127,9 @@ impl Stream for WarpStream {
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
     Path(doc_id): Path<String>,
-    #[cfg(feature = "auth")] Query(query): Query<AuthQuery>,
     State(state): State<Arc<AppState>>,
 ) -> Response {
     let doc_id = normalize_doc_id(&doc_id);
-
-    #[cfg(feature = "auth")]
-    let user_token = Some(query.token.clone());
-
-    #[cfg(not(feature = "auth"))]
-    let user_token: Option<String> = None;
 
     let bcast = match state.pool.get_group(&doc_id).await {
         Ok(group) => group,
@@ -155,16 +142,13 @@ pub async fn ws_handler(
         }
     };
 
-    ws.on_upgrade(move |socket| {
-        handle_socket(socket, bcast, doc_id, user_token, Arc::clone(&state.pool))
-    })
+    ws.on_upgrade(move |socket| handle_socket(socket, bcast, doc_id, Arc::clone(&state.pool)))
 }
 
 async fn handle_socket(
     socket: axum::extract::ws::WebSocket,
     bcast: Arc<super::BroadcastGroup>,
     doc_id: String,
-    user_token: Option<String>,
     pool: Arc<super::BroadcastPool>,
 ) {
     let (sender, receiver) = socket.split();
