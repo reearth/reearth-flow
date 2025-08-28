@@ -1,19 +1,10 @@
-import { useReactFlow } from "@xyflow/react";
-import { useCallback, useEffect, useState } from "react";
-import * as Y from "yjs";
+import { useCallback, useEffect, useRef } from "react";
+import { useUsers } from "y-presence";
 
-import CursorComponent from "./CursorComponent";
-
-type Cursor = {
-  id: number;
-  x: number;
-  y: number;
-  name: string;
-  color: string;
-};
+import { Cursor } from "./PerfectCursor";
 
 type MultiCursorProps = {
-  yDoc: Y.Doc | null;
+  yDoc?: any;
   awareness: any;
   currentUserName?: string;
   onCursorUpdate?: (
@@ -21,256 +12,64 @@ type MultiCursorProps = {
   ) => void;
 };
 
-// Function to generate consistent color from user ID
-const getUserColor = (userId: number): string => {
-  const colors = [
-    "#ef4444", // red
-    "#f59e0b", // amber
-    "#10b981", // emerald
-    "#3b82f6", // blue
-    "#8b5cf6", // violet
-    "#ec4899", // pink
-    "#06b6d4", // cyan
-    "#84cc16", // lime
-  ];
-  return colors[userId % colors.length];
-};
-
 const MultiCursor: React.FC<MultiCursorProps> = ({
-  yDoc,
   awareness,
-  currentUserName,
   onCursorUpdate,
 }) => {
-  const [cursors, setCursors] = useState<Map<number, Cursor>>(new Map());
-  const { screenToFlowPosition, flowToScreenPosition } = useReactFlow();
-
-  // Handle awareness updates with heartbeat and ghost cleanup
+  const users = useUsers(awareness, (state) => state);
   useEffect(() => {
-    if (!yDoc || !awareness) return;
-
-    // Expose awareness to window for debugging
-    if (typeof window !== "undefined") {
-      (window as any).awareness = awareness;
-      (window as any).yDoc = yDoc;
+    if (awareness && !awareness.getLocalState()?.color) {
+      const colors = [
+        "#ef4444",
+        "#f59e0b",
+        "#10b981",
+        "#3b82f6",
+        "#8b5cf6",
+        "#ec4899",
+        "#06b6d4",
+        "#84cc16",
+      ];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      awareness.setLocalStateField("color", color);
     }
+  }, [awareness]);
 
-    // Track client activity timestamps
-    const clientActivityMap = new Map<number, number>();
-    const STALE_THRESHOLD = 1000; // 30 seconds
-
-    const handleAwarenessUpdate = () => {
-      const states = awareness.getStates();
-      const newCursors = new Map<number, Cursor>();
-      const now = Date.now();
-
-      console.log("Awareness update - Total clients:", states.size);
-      console.log("My client ID:", yDoc.clientID);
-
-      states.forEach((state: any, clientId: number) => {
-        console.log(`Client ${clientId} state:`, state);
-
-        // Skip self
-        if (clientId === yDoc.clientID) return;
-
-        // Check if this client has a lastActive timestamp
-        const lastActive = state.lastActive || now;
-        const isStale = now - lastActive > STALE_THRESHOLD;
-
-        // Update activity tracking
-        if (!isStale) {
-          clientActivityMap.set(clientId, lastActive);
-        }
-
-        // Only show cursors for non-stale clients that have cursor data
-        if (state.cursor && !isStale) {
-          // Convert flow coordinates to screen coordinates
-          const screenPos = flowToScreenPosition({
-            x: state.cursor.x,
-            y: state.cursor.y,
-          });
-          newCursors.set(clientId, {
-            id: clientId,
-            x: screenPos.x,
-            y: screenPos.y,
-            name: state.user?.name || `User ${clientId}`,
-            color: getUserColor(clientId),
-          });
-        } else if (isStale) {
-          console.log(
-            `Filtering out stale client ${clientId} (inactive for ${now - lastActive}ms)`,
-          );
-        }
-      });
-
-      // Clean up our tracking for clients that are no longer in awareness
-      const activeClientIds = new Set(states.keys());
-      for (const [clientId] of clientActivityMap) {
-        if (!activeClientIds.has(clientId)) {
-          clientActivityMap.delete(clientId);
-        }
-      }
-
-      console.log("Rendering cursors:", newCursors);
-      console.log("Active cursors:", newCursors.size);
-      setCursors(newCursors);
-    };
-
-    awareness.on("update", handleAwarenessUpdate);
-
-    // Initial update
-    handleAwarenessUpdate();
-
-    // Periodic heartbeat to keep our own presence alive
-    const heartbeatInterval = setInterval(() => {
-      if (awareness) {
-        const currentState = awareness.getLocalState();
-        if (currentState && (currentState.user || currentState.cursor)) {
-          // Update timestamp to indicate we're still active
-          awareness.setLocalState({
-            ...currentState,
-            lastActive: Date.now(),
-          });
-        }
-      }
-    }, 10000); // Every 10 seconds
-
-    // Periodic cleanup of stale awareness states
-    const cleanupInterval = setInterval(() => {
-      handleAwarenessUpdate(); // Force re-evaluation of stale clients
-    }, 15000); // Every 15 seconds
-
-    return () => {
-      awareness.off("update", handleAwarenessUpdate);
-      clearInterval(heartbeatInterval);
-      clearInterval(cleanupInterval);
-    };
-  }, [yDoc, awareness, flowToScreenPosition]);
-
-  // Shared function to update cursor position
-  const updateCursorPosition = useCallback(
+  const lastUpdateRef = useRef(0);
+  const updateCursor = useCallback(
     (clientX: number, clientY: number) => {
-      if (!yDoc || !awareness) return;
-
-      // Find the ReactFlow element
-      const reactFlowElement = document.querySelector(".react-flow");
-      if (!reactFlowElement) return;
-
-      const rect = reactFlowElement.getBoundingClientRect();
-
-      // Check if mouse is within ReactFlow bounds
-      if (
-        clientX >= rect.left &&
-        clientX <= rect.right &&
-        clientY >= rect.top &&
-        clientY <= rect.bottom
-      ) {
-        const x = clientX - rect.left;
-        const y = clientY - rect.top;
-
-        // Convert screen coordinates to flow coordinates
-        const flowPos = screenToFlowPosition({ x, y });
-
-        console.log("Sending cursor position:", flowPos);
-        console.log("User name:", currentUserName || `User ${yDoc.clientID}`);
-
-        // Set local state with both cursor and user info, plus timestamp
-        awareness.setLocalState({
-          cursor: flowPos,
-          user: {
-            name: currentUserName || `User ${yDoc.clientID}`,
-          },
-          lastActive: Date.now(),
-        });
+      const now = Date.now();
+      if (now - lastUpdateRef.current > 66) {
+        console.log("Setting point:", [clientX, clientY]);
+        awareness.setLocalStateField("point", [clientX, clientY]);
+        lastUpdateRef.current = now;
       }
     },
-    [yDoc, awareness, currentUserName, screenToFlowPosition],
+    [awareness],
   );
 
-  // Expose cursor update function to parent component
   useEffect(() => {
     if (onCursorUpdate) {
-      const cursorUpdateFn = (clientX: number, clientY: number) => {
-        updateCursorPosition(clientX, clientY);
-      };
-      onCursorUpdate(cursorUpdateFn);
+      onCursorUpdate(updateCursor);
     }
-  }, [onCursorUpdate, updateCursorPosition]);
+  }, [onCursorUpdate, updateCursor]);
 
-  // Efficient mouse tracking that pauses during drag operations
-  useEffect(() => {
-    if (!yDoc || !awareness) return;
-
-    let isDragging = false;
-    let dragTimeout: NodeJS.Timeout;
-
-    const handleMouseMove = (event: MouseEvent | PointerEvent) => {
-      // Skip cursor updates during active dragging to restore original performance
-      if (isDragging) return;
-
-      updateCursorPosition(event.clientX, event.clientY);
-    };
-
-    const handleMouseDown = () => {
-      // Pause cursor updates when dragging starts
-      isDragging = true;
-
-      // Clear any existing timeout
-      if (dragTimeout) clearTimeout(dragTimeout);
-
-      // Resume cursor updates after delay if no actual drag occurred
-      dragTimeout = setTimeout(() => {
-        isDragging = false;
-      }, 200); // 200ms delay to detect real drags
-    };
-
-    const handleMouseUp = () => {
-      // Resume cursor tracking immediately after mouse up
-      if (dragTimeout) clearTimeout(dragTimeout);
-      isDragging = false;
-    };
-
-    const handleMouseLeave = () => {
-      // Clear cursor when mouse leaves entirely
-      const currentState = awareness.getLocalState();
-      awareness.setLocalState({
-        ...currentState,
-        cursor: null,
-      });
-      isDragging = false;
-      if (dragTimeout) clearTimeout(dragTimeout);
-    };
-
-    // Only listen to essential events - no constant polling!
-    document.addEventListener("mousemove", handleMouseMove, true);
-    document.addEventListener("mousedown", handleMouseDown, true);
-    document.addEventListener("mouseup", handleMouseUp, true);
-    document.addEventListener("mouseleave", handleMouseLeave);
-
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove, true);
-      document.removeEventListener("mousedown", handleMouseDown, true);
-      document.removeEventListener("mouseup", handleMouseUp, true);
-      document.removeEventListener("mouseleave", handleMouseLeave);
-      if (dragTimeout) clearTimeout(dragTimeout);
-    };
-  }, [updateCursorPosition, awareness, yDoc]);
-
+  console.log("users", users);
+  console.log("awareness", awareness);
+  console.log(
+    "user states:",
+    Array.from(users.entries()).map(([clientId, user]) => ({ clientId, user })),
+  );
+  console.log("awareness states:", awareness.states);
   return (
     <div
       className="pointer-events-none absolute inset-0"
       style={{
         zIndex: 1000,
       }}>
-      {Array.from(cursors.values()).map((cursor) => (
-        <CursorComponent
-          key={cursor.id}
-          x={cursor.x}
-          y={cursor.y}
-          color={cursor.color}
-          name={cursor.name}
-        />
-      ))}
+      {Array.from(users.entries()).map(([key, value]) => {
+        if (key === awareness.clientID) return null;
+        return <Cursor key={key} color={value.color} point={value.point} />;
+      })}
     </div>
   );
 };
