@@ -48,22 +48,25 @@ export default ({
           },
         );
 
-        // const awareness = yWebSocketProvider.awareness;
+        const awareness = yWebSocketProvider.awareness;
 
-        // // You can observe when a user updates their awareness information
-        // awareness.on("change", () => {
-        //   // Whenever somebody updates their awareness information,
-        //   // we log all awareness information from all users.
-        //   console.log(Array.from(awareness.getStates().values()));
-        // });
-        // awareness.setLocalStateField("user", {
-        //   // Define a print name that should be displayed
-        //   name: "Emmanuelle Charpentier",
-        //   // Define a color that should be associated to the user:
-        //   color: "#ffb61e", // should be a hex color
-        // });
+        // You can observe when a user updates their awareness information
+        awareness.on("change", () => {
+          // Whenever somebody updates their awareness information,
+          // we log all awareness information from all users.
+          console.log(Array.from(awareness.getStates().values()));
+        });
+        awareness.setLocalStateField("user", {
+          // Define a print name that should be displayed
+          name: "Emmanuelle Charpentier",
+          // Define a color that should be associated to the user:
+          color: "#ffb61e", // should be a hex color
+        });
 
-        // console.log("test", Array.from(awareness.getStates().values()));
+        console.log(
+          "Local State Field Is now changed",
+          Array.from(awareness.getStates().values()),
+        );
 
         yWebSocketProvider.once("sync", () => {
           const metadata = yDoc.getMap("metadata");
