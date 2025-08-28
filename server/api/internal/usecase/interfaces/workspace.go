@@ -12,4 +12,5 @@ type Workspace interface {
 	FindByUser(context.Context, id.UserID) (workspace.List, error)
 	Create(context.Context, string) (*workspace.Workspace, error)
 	Update(context.Context, id.WorkspaceID, string) (*workspace.Workspace, error)
+	Delete(context.Context, id.WorkspaceID) error
 }
