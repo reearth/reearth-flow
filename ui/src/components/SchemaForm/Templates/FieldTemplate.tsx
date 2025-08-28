@@ -69,8 +69,10 @@ const FieldTemplate = <
           <div className="flex flex-1 items-center gap-2">
             <Label htmlFor={id}>
               <div className="flex flex-row items-center gap-1">
-                <p>{label}</p>
-                {required && <p className="font-thin text-destructive">*</p>}
+                <p className="font-light">{label}</p>
+                {required && (
+                  <p className="h-2 font-thin text-destructive">*</p>
+                )}
               </div>
             </Label>
             {children}
