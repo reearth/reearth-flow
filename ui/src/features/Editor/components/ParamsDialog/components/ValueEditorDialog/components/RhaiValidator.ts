@@ -234,7 +234,7 @@ export class RhaiValidator {
     const declaredVariables = new Set<string>();
 
     // First pass: collect variable declarations
-    for  (const line of lines) {
+    for (const line of lines) {
       const letMatch = line.match(/\blet\s+([a-zA-Z_][a-zA-Z0-9_]*)/g);
       const constMatch = line.match(/\bconst\s+([a-zA-Z_][a-zA-Z0-9_]*)/g);
 
