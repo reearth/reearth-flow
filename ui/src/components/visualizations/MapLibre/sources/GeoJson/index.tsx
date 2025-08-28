@@ -55,7 +55,7 @@ const GeoJsonDataSource: React.FC<Props> = ({
       const key = { source: SOURCE_ID, id: selectedFeatureId };
       const start = performance.now();
       const flashDuration = 300;
-      const cycleMs = 150;
+      const cycleMs = 175;
 
       const animationRunId = ++animTokenRef.current;
 
@@ -66,8 +66,9 @@ const GeoJsonDataSource: React.FC<Props> = ({
 
         const elapsed = t - start;
         if (elapsed < flashDuration) {
-          const phase = ((t - start) / cycleMs) % 2;
-          const pulse = phase < 1 ? phase : 2 - phase;
+          const phase = (elapsed % cycleMs) / cycleMs;
+          const pulse = 0.3 + 0.7 * (Math.sin(phase * Math.PI * 2) * 0.5 + 0.5);
+
           map.setFeatureState(key, { pulse });
           requestAnimationFrameRef.current = requestAnimationFrame(tick);
         } else {
