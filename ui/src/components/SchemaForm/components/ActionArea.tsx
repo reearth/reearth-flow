@@ -28,7 +28,7 @@ const ActionArea: React.FC<Props> = ({
   );
 
   return (
-    <div className="flex w-[85px] items-center">
+    <div className="flex items-center justify-end">
       {onEditorOpen && (
         <IconButton
           icon={<PencilLineIcon />}
