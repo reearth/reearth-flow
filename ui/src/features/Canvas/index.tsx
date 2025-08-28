@@ -19,6 +19,8 @@ import {
 } from "@flow/lib/reactFlow";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
+import MultiCursor from "../Editor/components/Canvas/components/MultiCursor";
+
 import { CanvasContextMenu } from "./components";
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
@@ -55,9 +57,9 @@ const Canvas: React.FC<Props> = ({
   nodes,
   edges,
   selectedEdgeIds,
-  // yDoc,
-  // awareness,
-  // currentUserName,
+  yDoc,
+  awareness,
+  currentUserName,
   onWorkflowAdd,
   onWorkflowOpen,
   onNodesAdd,
@@ -75,12 +77,12 @@ const Canvas: React.FC<Props> = ({
     ((clientX: number, clientY: number) => void) | null
   >(null);
 
-  // const handleCursorUpdate = useCallback(
-  //   (updateFn: (clientX: number, clientY: number) => void) => {
-  //     cursorUpdateRef.current = updateFn;
-  //   },
-  //   [],
-  // );
+  const handleCursorUpdate = useCallback(
+    (updateFn: (clientX: number, clientY: number) => void) => {
+      cursorUpdateRef.current = updateFn;
+    },
+    [],
+  );
 
   const {
     handleNodesDelete,
@@ -126,14 +128,14 @@ const Canvas: React.FC<Props> = ({
 
   return (
     <div className="relative h-full w-full">
-      {/* {!readonly && yDoc && awareness && (
+      {!readonly && yDoc && awareness && (
         <MultiCursor
           yDoc={yDoc}
           awareness={awareness}
           currentUserName={currentUserName}
           onCursorUpdate={handleCursorUpdate}
         />
-      )} */}
+      )}
       <ReactFlow
         ref={paneRef}
         // Readonly props START
