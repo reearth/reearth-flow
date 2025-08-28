@@ -162,7 +162,7 @@ func (b *BatchRepo) SubmitJob(
 					"FLOW_WORKER_LOG_STREAM_TOPIC":              b.config.PubSubLogStreamTopic,
 					"FLOW_WORKER_JOB_COMPLETE_TOPIC":            b.config.PubSubJobCompleteTopic,
 					"FLOW_WORKER_NODE_STATUS_TOPIC":             b.config.PubSubNodeStatusTopic,
-					"FLOW_WORKER_USER_FACING_LOG_TOPIC":             b.config.PubSubUserFacingLogTopic,
+					"FLOW_WORKER_USER_FACING_LOG_TOPIC":         b.config.PubSubUserFacingLogTopic,
 					"RUST_LOG":                                  "info",
 					"RUST_BACKTRACE":                            "1",
 				}
