@@ -63,3 +63,20 @@ func (r *workspaceRepo) Create(ctx context.Context, name string) (*workspace.Wor
 
 	return util.ToWorkspace(m.CreateWorkspace.Workspace)
 }
+
+func (r *workspaceRepo) Update(ctx context.Context, wid id.WorkspaceID, name string) (*workspace.Workspace, error) {
+	in := UpdateWorkspaceInput{
+		WorkspaceID: graphql.ID(wid.String()),
+		Name:        graphql.String(name),
+	}
+
+	var m updateWorkspaceMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return nil, err
+	}
+
+	return util.ToWorkspace(m.UpdateWorkspace.Workspace)
+}
