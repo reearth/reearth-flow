@@ -77,6 +77,10 @@
       "description": "Read Features from CSV or TSV File"
     },
     {
+      "name": "CzmlReader",
+      "description": "Reads geographic features from CZML (Cesium Language) files for 3D visualization"
+    },
+    {
       "name": "CzmlWriter",
       "description": "Export Features as CZML for Cesium Visualization"
     },

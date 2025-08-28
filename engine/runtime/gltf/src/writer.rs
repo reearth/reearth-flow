@@ -17,12 +17,13 @@ pub struct PrimitiveInfo {
 pub type Primitives = HashMap<material::Material, PrimitiveInfo>;
 
 pub fn write_gltf_glb<W: Write>(
-    writer: W,
+    mut writer: W,
     translation: Option<[f64; 3]>,
     vertices: impl IntoIterator<Item = [u32; 9]>,
     primitives: Primitives,
     num_features: usize,
     metadata_encoder: MetadataEncoder,
+    draco_compression_enabled: bool,
 ) -> crate::errors::Result<()> {
     use nusamai_gltf::nusamai_gltf_json::*;
 
@@ -283,12 +284,50 @@ pub fn write_gltf_glb<W: Write>(
     };
 
     // Write glb to the writer
-    nusamai_gltf::glb::Glb {
-        json: serde_json::to_vec(&gltf).unwrap().into(),
-        bin: Some(bin_content.into()),
+    let compression_options = draco_compression_enabled;
+    if compression_options {
+        let mut tmp_buffer = Vec::new();
+        let indirect_writer = IndirectWriter {
+            buffer: &mut tmp_buffer,
+        };
+
+        nusamai_gltf::glb::Glb {
+            json: serde_json::to_vec(&gltf).unwrap().into(),
+            bin: Some(bin_content.into()),
+        }
+        .to_writer_with_alignment(indirect_writer, 8)
+        .map_err(crate::errors::Error::writer)?;
+        tmp_buffer.flush()?;
+
+        // Now the glb data is in `tmp_buffer`. We compress it.
+        let mut transcoder =
+            draco_oxide::io::gltf::transcoder::DracoTranscoder::create(None).unwrap();
+        transcoder.transcode_buffer(&tmp_buffer, &mut writer)?;
+        writer.flush()?;
+    } else {
+        nusamai_gltf::glb::Glb {
+            json: serde_json::to_vec(&gltf).unwrap().into(),
+            bin: Some(bin_content.into()),
+        }
+        .to_writer_with_alignment(writer, 8)
+        .map_err(crate::errors::Error::writer)?;
     }
-    .to_writer_with_alignment(writer, 8)
-    .map_err(crate::errors::Error::writer)?;
 
     Ok(())
+}
+
+// A struct that writes data to the buffer. The buffer, which is of type `Vec<u8>`, does not die even if
+// A struct that writes data to a buffer. The buffer persists even when the writer is dropped.
+struct IndirectWriter<'a> {
+    buffer: &'a mut Vec<u8>,
+}
+
+impl<'a> std::io::Write for IndirectWriter<'a> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.buffer.write(buf)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.buffer.flush()
+    }
 }

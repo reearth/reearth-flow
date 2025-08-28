@@ -77,6 +77,10 @@
       "description": "Lee características de un archivo CSV"
     },
     {
+      "name": "CzmlReader",
+      "description": "Lee características geográficas de archivos CZML (Lenguaje Cesium) para visualización 3D"
+    },
+    {
       "name": "CzmlWriter",
       "description": "Escribe características a un archivo CZML"
     },

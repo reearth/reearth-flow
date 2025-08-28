@@ -9,7 +9,7 @@ type Workspace struct {
 	members  []Member
 }
 
-type List []Workspace
+type List []*Workspace
 
 func (w *Workspace) ID() ID {
 	return w.id

@@ -80,7 +80,7 @@ impl Publish {
                     }
                     _ = sleep(Duration::from_millis(10)) => {
                         if let Some(last_time) = last_data_time {
-                            if last_time.elapsed() >= Duration::from_millis(50) {
+                            if last_time.elapsed() >= Duration::from_millis(20) {
                                 let mut doc_lock = doc_clone.lock().await;
                                 let count_value = *count_clone.lock().await;
                                 if count_value > 0 {
