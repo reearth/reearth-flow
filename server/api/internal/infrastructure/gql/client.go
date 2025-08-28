@@ -6,11 +6,14 @@ import (
 
 	"github.com/hasura/go-graphql-client"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gql/user"
+	"github.com/reearth/reearth-flow/api/internal/infrastructure/gql/workspace"
 	userpkg "github.com/reearth/reearth-flow/api/pkg/user"
+	workspacepkg "github.com/reearth/reearth-flow/api/pkg/workspace"
 )
 
 type Client struct {
-	UserRepo userpkg.Repo
+	UserRepo      userpkg.Repo
+	WorkspaceRepo workspacepkg.Repo
 }
 
 func NewClient(host string, transport http.RoundTripper) *Client {
@@ -23,6 +26,7 @@ func NewClient(host string, transport http.RoundTripper) *Client {
 	gqlClient := graphql.NewClient(fullEndpoint, httpClient)
 
 	return &Client{
-		UserRepo: user.NewRepo(gqlClient),
+		UserRepo:      user.NewRepo(gqlClient),
+		WorkspaceRepo: workspace.NewRepo(gqlClient),
 	}
 }

@@ -97,6 +97,7 @@ impl SinkFactory for GltfWriterSinkFactory {
             output,
             attach_texture: params.attach_texture.unwrap_or(true),
             classified_features: Default::default(),
+            draco_compression: params.draco_compression.unwrap_or(false),
         };
         Ok(Box::new(sink))
     }
@@ -165,6 +166,7 @@ pub struct GltfWriter {
     output: Uri,
     classified_features: ClassifiedFeatures,
     attach_texture: bool,
+    draco_compression: bool,
 }
 
 /// # GltfWriter Parameters
@@ -177,6 +179,7 @@ pub struct GltfWriterParam {
     output: Expr,
     /// Whether to attach texture information to the GLTF model
     attach_texture: Option<bool>,
+    draco_compression: Option<bool>,
 }
 
 impl Sink for GltfWriter {
@@ -619,6 +622,7 @@ impl Sink for GltfWriter {
                     primitives,
                     features.len(),
                     metadata_encoder,
+                    self.draco_compression,
                 )
                 .map_err(|e| {
                     crate::errors::SinkError::GltfWriter(format!(

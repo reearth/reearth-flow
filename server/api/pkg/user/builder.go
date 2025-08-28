@@ -56,7 +56,7 @@ func (b *Builder) Host(host *string) *Builder {
 	return b
 }
 
-func (b *Builder) MyWorkspaceID(myWorkspaceID string) *Builder {
+func (b *Builder) MyWorkspaceID(myWorkspaceID WorkspaceID) *Builder {
 	b.a.myWorkspaceID = myWorkspaceID
 	return b
 }
@@ -66,7 +66,7 @@ func (b *Builder) Auths(auths []string) *Builder {
 	return b
 }
 
-func (b *Builder) Workspaces(workspaces workspace.WorkspaceList) *Builder {
+func (b *Builder) Workspaces(workspaces workspace.List) *Builder {
 	b.a.workspaces = workspaces
 	return b
 }

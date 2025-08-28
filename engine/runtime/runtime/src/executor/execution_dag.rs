@@ -24,6 +24,7 @@ use petgraph::{visit::EdgeRef, Direction};
 #[derive(Debug)]
 pub struct NodeType {
     pub handle: NodeHandle,
+    pub name: String,
     pub kind: Option<NodeKind>,
 }
 
@@ -129,6 +130,7 @@ impl ExecutionDag {
         let graph = graph.map(
             |_, node| NodeType {
                 handle: node.handle.clone(),
+                name: node.name.clone(),
                 kind: {
                     match &node.kind {
                         NodeKind::Source(source) => Some(NodeKind::Source(source.clone())),

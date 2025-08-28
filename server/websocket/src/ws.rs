@@ -16,7 +16,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::sync::mpsc;
-use tracing::{debug, error, warn};
+use tracing::{debug, error, info, warn};
 use yrs::sync::Error;
 
 #[cfg(feature = "auth")]
@@ -222,10 +222,20 @@ async fn handle_socket(
     let _ = bcast.decrement_connections().await;
 
     let count = bcast.connection_count();
+    info!(
+        "Connection closed for document {}. Remaining connections: {}",
+        doc_id, count
+    );
 
     if count == 0 {
+        info!(
+            "No more connections for document {}. Triggering cleanup...",
+            doc_id
+        );
         if let Err(e) = pool.cleanup_empty_group(&doc_id).await {
             error!("Failed to cleanup empty group for {}: {}", doc_id, e);
+        } else {
+            info!("Successfully triggered cleanup for document {}", doc_id);
         }
     }
 }
