@@ -15,7 +15,7 @@ import type { Asset } from "@flow/types";
 type Props = {
   assets?: Asset[];
   isFetching: boolean;
-  isDebouncing?: boolean;
+  isDebouncingSearch?: boolean;
   isDeleting: boolean;
   currentPage: number;
   totalPages: number;
@@ -34,7 +34,7 @@ const AssetsListView: React.FC<Props> = ({
   assets,
   currentPage,
   isFetching,
-  isDebouncing,
+  isDebouncingSearch,
   isDeleting,
   totalPages,
   setCurrentPage,
@@ -95,7 +95,7 @@ const AssetsListView: React.FC<Props> = ({
 
   return (
     <div className="h-full flex-1 overflow-hidden">
-      {isDebouncing || isFetching ? (
+      {isDebouncingSearch || isFetching ? (
         <LoadingSkeleton />
       ) : (
         <Table

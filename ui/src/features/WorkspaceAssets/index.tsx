@@ -34,7 +34,7 @@ const AssetsManager: React.FC = () => {
   const {
     assets,
     isFetching,
-    isDebouncing,
+    isDebouncingSearch,
     isDeleting,
     fileInputRef,
     assetToBeDeleted,
@@ -121,7 +121,7 @@ const AssetsManager: React.FC = () => {
             <AssetsListView
               assets={assets}
               isFetching={isFetching}
-              isDebouncing={isDebouncing}
+              isDebouncingSearch={isDebouncingSearch}
               isDeleting={isDeleting}
               currentPage={currentPage}
               totalPages={totalPages}
@@ -137,7 +137,7 @@ const AssetsManager: React.FC = () => {
             <AssetsGridView
               assets={assets}
               isFetching={isFetching}
-              isDebouncing={isDebouncing}
+              isDebouncingSearch={isDebouncingSearch}
               isDeleting={isDeleting}
               setAssetToBeDeleted={setAssetToBeDeleted}
               setAssetToBeEdited={setAssetToBeEdited}

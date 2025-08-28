@@ -29,7 +29,7 @@ export default ({
     OrderDirection.Desc,
   );
 
-  const { searchTerm, isDebouncing, setSearchTerm } = useDebouncedSearch({
+  const { searchTerm, isDebouncingSearch, setSearchTerm } = useDebouncedSearch({
     initialSearchTerm: "",
     delay: 300,
     onDebounced: () => {
@@ -206,7 +206,7 @@ export default ({
   return {
     assets,
     isFetching,
-    isDebouncing,
+    isDebouncingSearch,
     isDeleting,
     fileInputRef,
     assetToBeDeleted,

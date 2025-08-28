@@ -8,7 +8,7 @@ import { AssetCard } from "./AssetCard";
 type Props = {
   assets?: Asset[];
   isFetching: boolean;
-  isDebouncing?: boolean;
+  isDebouncingSearch?: boolean;
   isDeleting: boolean;
   setAssetToBeDeleted: (asset: string | undefined) => void;
   setAssetToBeEdited: (asset: Asset | undefined) => void;
@@ -22,7 +22,7 @@ type Props = {
 const AssetsGridView: React.FC<Props> = ({
   assets,
   isFetching,
-  isDebouncing,
+  isDebouncingSearch,
   isDeleting,
   setAssetToBeDeleted,
   setAssetToBeEdited,
@@ -35,7 +35,7 @@ const AssetsGridView: React.FC<Props> = ({
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex-1 overflow-y-auto">
-        {isDebouncing || isFetching ? (
+        {isDebouncingSearch || isFetching ? (
           <LoadingSkeleton className="flex h-full justify-center" />
         ) : assets && assets.length > 0 ? (
           <div className="grid min-w-0 grid-cols-5 gap-2 p-2">

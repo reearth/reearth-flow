@@ -21,7 +21,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     OrderDirection.Desc,
   );
 
-  const { searchTerm, isDebouncing, setSearchTerm } = useDebouncedSearch({
+  const { searchTerm, isDebouncingSearch, setSearchTerm } = useDebouncedSearch({
     initialSearchTerm: "",
     delay: 300,
     onDebounced: () => {
@@ -191,7 +191,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
   return {
     assets,
     isFetching,
-    isDebouncing,
+    isDebouncingSearch,
     isDeleting,
     fileInputRef,
     assetToBeDeleted,

@@ -14,7 +14,7 @@ export default ({
 }: Props) => {
   const lastSearchTerm = useRef(initialSearchTerm);
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
-  const [isDebouncing, setIsDebouncing] = useState<boolean>(false);
+  const [isDebouncingSearch, setIsDebouncingSearch] = useState<boolean>(false);
 
   const onDebouncedRef = useRef(onDebounced);
   useEffect(() => {
@@ -24,20 +24,20 @@ export default ({
   const debounced = useRef(
     debounce((term: string) => {
       onDebouncedRef.current(term);
-      setIsDebouncing(false);
+      setIsDebouncingSearch(false);
     }, delay),
   );
 
   useEffect(() => {
     if (searchTerm === lastSearchTerm.current) return;
     lastSearchTerm.current = searchTerm;
-    setIsDebouncing(true);
+    setIsDebouncingSearch(true);
     debounced.current(searchTerm);
   }, [searchTerm, initialSearchTerm]);
 
   return {
     searchTerm,
-    isDebouncing,
+    isDebouncingSearch,
     setSearchTerm,
   };
 };
