@@ -9,6 +9,7 @@ use dashmap::DashMap;
 use rand;
 use scopeguard;
 use std::sync::Arc;
+use tokio::time::{sleep, Duration};
 use tracing::{error, info, warn};
 use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
@@ -386,6 +387,7 @@ impl BroadcastPool {
     }
 
     pub async fn cleanup_empty_group(&self, doc_id: &str) -> Result<()> {
+        sleep(Duration::from_secs(2)).await;
         info!("cleanup_empty_group called for document: {}", doc_id);
         if let Some(group) = self.manager.doc_to_id_map.get(doc_id) {
             let conn_count = group.connection_count();
