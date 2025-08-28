@@ -200,7 +200,10 @@ fn read_shapefile_from_zip(
         // Skip macOS metadata files and hidden files
         if file_name.contains("__MACOSX")
             || file_name.contains(".DS_Store")
-            || file_name.split('/').next_back().unwrap_or("").starts_with('.')
+            || file_name
+                .split('/')
+                .next_back()
+                .is_some_and(|name| name.starts_with('.'))
             || file.is_dir()
         {
             continue;
@@ -229,9 +232,7 @@ fn read_shapefile_from_zip(
             crate::errors::SourceError::ShapefileReader(format!("Failed to read ZIP entry: {e}"))
         })?;
 
-        let components = shapefile_groups
-            .entry(base_name)
-            .or_default();
+        let components = shapefile_groups.entry(base_name).or_default();
 
         if filename_lower.ends_with(".shp") {
             components.shp = Some(buffer);
