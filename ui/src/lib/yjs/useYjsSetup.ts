@@ -25,6 +25,9 @@ export default ({
 
   const [yDocState, setYDocState] = useState<Y.Doc | null>(null);
   const [isSynced, setIsSynced] = useState(false);
+  const [awareness, setAwareness] = useState<any>(null);
+
+  const yWebSocketProviderRef = useRef<WebsocketProvider | null>(null);
 
   useEffect(() => {
     const yDoc = new Y.Doc();
@@ -39,34 +42,16 @@ export default ({
           params.token = token;
         }
 
-        yWebSocketProvider = new WebsocketProvider(
-          websocket,
-          `${projectId}:${workflowId}`,
-          yDoc,
-          {
-            params,
-          },
-        );
+        const roomName = `${projectId}:${workflowId}`;
+        console.log("Connecting to WebSocket room:", roomName);
+        console.log("WebSocket URL:", websocket);
 
-        const awareness = yWebSocketProvider.awareness;
-
-        // You can observe when a user updates their awareness information
-        awareness.on("change", () => {
-          // Whenever somebody updates their awareness information,
-          // we log all awareness information from all users.
-          console.log(Array.from(awareness.getStates().values()));
-        });
-        awareness.setLocalStateField("user", {
-          // Define a print name that should be displayed
-          name: "Emmanuelle Charpentier",
-          // Define a color that should be associated to the user:
-          color: "#ffb61e", // should be a hex color
+        yWebSocketProvider = new WebsocketProvider(websocket, roomName, yDoc, {
+          params,
         });
 
-        console.log(
-          "Local State Field Is now changed",
-          Array.from(awareness.getStates().values()),
-        );
+        yWebSocketProviderRef.current = yWebSocketProvider;
+        setAwareness(yWebSocketProvider.awareness);
 
         yWebSocketProvider.once("sync", () => {
           const metadata = yDoc.getMap("metadata");
@@ -89,6 +74,46 @@ export default ({
           }
           setIsSynced(true); // Mark as synced
         });
+
+        // Add cleanup handlers for various exit scenarios
+        const clearAwarenessState = () => {
+          if (yWebSocketProvider?.awareness) {
+            yWebSocketProvider.awareness.setLocalState(null);
+          }
+        };
+
+        const handleBeforeUnload = () => {
+          clearAwarenessState();
+        };
+
+        const handleVisibilityChange = () => {
+          if (document.hidden) {
+            // Page became hidden - clear awareness state after a short delay
+            setTimeout(clearAwarenessState, 1000);
+          }
+        };
+
+        const handlePageHide = () => {
+          clearAwarenessState();
+        };
+
+        // Add event listeners for cleanup
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        window.addEventListener("pagehide", handlePageHide);
+
+        // Store cleanup function to remove listeners later
+        const cleanupListeners = () => {
+          window.removeEventListener("beforeunload", handleBeforeUnload);
+          document.removeEventListener(
+            "visibilitychange",
+            handleVisibilityChange,
+          );
+          window.removeEventListener("pagehide", handlePageHide);
+        };
+
+        // Store cleanup function on the provider
+        (yWebSocketProvider as any).cleanupListeners = cleanupListeners;
       })();
     }
 
@@ -96,7 +121,20 @@ export default ({
 
     return () => {
       setIsSynced(false);
+      // Clean up event listeners if they exist
+      if (
+        yWebSocketProviderRef.current &&
+        (yWebSocketProviderRef.current as any).cleanupListeners
+      ) {
+        (yWebSocketProviderRef.current as any).cleanupListeners();
+      }
+      // Clear awareness state before destroying
+      if (yWebSocketProviderRef.current?.awareness) {
+        yWebSocketProviderRef.current.awareness.setLocalState(null);
+      }
       yWebSocketProvider?.destroy();
+      yWebSocketProviderRef.current = null;
+      setAwareness(null);
     };
   }, [projectId, workflowId, isProtected, getAccessToken]);
 
@@ -167,5 +205,6 @@ export default ({
     undoManager,
     undoTrackerActionWrapper,
     yDocState,
+    awareness,
   };
 };

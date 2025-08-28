@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 
 import Canvas from "@flow/features/Canvas";
+import { useUser } from "@flow/lib/gql/user/useApi";
 import { YWorkflow } from "@flow/lib/yjs/types";
 
 import {
@@ -21,6 +22,7 @@ type Props = {
     originPrepend?: string,
   ) => void;
   yDoc: Doc | null;
+  awareness?: any;
 };
 
 export default function Editor({
@@ -28,7 +30,11 @@ export default function Editor({
   undoManager,
   undoTrackerActionWrapper,
   yDoc,
+  awareness,
 }: Props) {
+  const { useGetMe } = useUser();
+  const { me } = useGetMe();
+
   const {
     currentWorkflowId,
     openWorkflows,
@@ -114,6 +120,9 @@ export default function Editor({
                 nodes={nodes}
                 edges={edges}
                 selectedEdgeIds={selectedEdgeIds}
+                yDoc={yDoc}
+                awareness={awareness}
+                currentUserName={me?.name}
                 onWorkflowAdd={handleWorkflowAdd}
                 onWorkflowOpen={handleWorkflowOpen}
                 onNodesAdd={handleNodesAdd}

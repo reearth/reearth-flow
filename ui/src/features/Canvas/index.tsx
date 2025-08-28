@@ -8,7 +8,7 @@ import {
   NodeChange,
   EdgeChange,
 } from "@xyflow/react";
-import { MouseEvent, memo } from "react";
+import { MouseEvent, memo, useCallback, useRef } from "react";
 
 import {
   isValidConnection,
@@ -33,6 +33,9 @@ type Props = {
   nodes: Node[];
   edges: Edge[];
   selectedEdgeIds?: string[];
+  yDoc?: any;
+  awareness?: any;
+  currentUserName?: string;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onWorkflowOpen?: (workflowId: string) => void;
   onNodesAdd?: (newNode: Node[]) => void;
@@ -52,6 +55,9 @@ const Canvas: React.FC<Props> = ({
   nodes,
   edges,
   selectedEdgeIds,
+  // yDoc,
+  // awareness,
+  // currentUserName,
   onWorkflowAdd,
   onWorkflowOpen,
   onNodesAdd,
@@ -65,6 +71,17 @@ const Canvas: React.FC<Props> = ({
   onCut,
   onPaste,
 }) => {
+  const cursorUpdateRef = useRef<
+    ((clientX: number, clientY: number) => void) | null
+  >(null);
+
+  // const handleCursorUpdate = useCallback(
+  //   (updateFn: (clientX: number, clientY: number) => void) => {
+  //     cursorUpdateRef.current = updateFn;
+  //   },
+  //   [],
+  // );
+
   const {
     handleNodesDelete,
     handleNodeDragStop,
@@ -91,66 +108,93 @@ const Canvas: React.FC<Props> = ({
     onNodePickerOpen,
   });
 
+  const handleNodeDragStopWithCursor = useCallback(
+    (event: MouseEvent, node: Node, selectedNodes: Node[]) => {
+      if (cursorUpdateRef.current) {
+        cursorUpdateRef.current(event.clientX, event.clientY);
+      }
+      handleNodeDragStop(event, node, selectedNodes);
+    },
+    [handleNodeDragStop],
+  );
+
+  const handlePaneMouseMove = useCallback((event: MouseEvent) => {
+    if (cursorUpdateRef.current) {
+      cursorUpdateRef.current(event.clientX, event.clientY);
+    }
+  }, []);
+
   return (
-    <ReactFlow
-      ref={paneRef}
-      // Readonly props START
-      nodesConnectable={!readonly}
-      nodesFocusable={!readonly}
-      elementsSelectable={!readonly}
-      reconnectRadius={!readonly ? 10 : 0}
-      // Readonly props END
-      attributionPosition="bottom-left"
-      nodeDragThreshold={2}
-      snapToGrid
-      snapGrid={snapGrid}
-      selectionMode={SelectionMode["Partial"]}
-      nodes={nodes}
-      nodeTypes={nodeTypes}
-      edges={edges}
-      edgeTypes={edgeTypes}
-      defaultEdgeOptions={defaultEdgeOptions}
-      connectionLineComponent={CustomConnectionLine}
-      connectionLineStyle={connectionLineStyle}
-      isValidConnection={isValidConnection}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      onNodeDoubleClick={handleNodeSettings}
-      onNodeDragStart={handleCloseContextmenu}
-      onNodeDragStop={handleNodeDragStop}
-      onNodesDelete={handleNodesDelete}
-      onNodeContextMenu={handleNodeContextMenu}
-      onSelectionContextMenu={handleSelectionContextMenu}
-      onPaneContextMenu={handlePaneContextMenu}
-      onMoveStart={handleCloseContextmenu}
-      onDrop={handleNodeDrop}
-      onDragOver={handleNodeDragOver}
-      onConnect={handleConnect}
-      onReconnect={handleReconnect}
-      onBeforeDelete={onBeforeDelete}>
-      <Background
-        className="bg-background"
-        variant={BackgroundVariant["Dots"]}
-        gap={gridSize}
-        color="rgba(63, 63, 70, 1)"
-      />
-      {contextMenu && (
-        <CanvasContextMenu
-          data={contextMenu.data}
-          selectedEdgeIds={selectedEdgeIds}
-          contextMenu={contextMenu}
-          onBeforeDelete={onBeforeDelete}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onWorkflowOpen={onWorkflowOpen}
-          onNodeSettings={onNodeSettings}
-          onCopy={onCopy}
-          onCut={onCut}
-          onPaste={onPaste}
-          onClose={handleCloseContextmenu}
+    <div className="relative h-full w-full">
+      {/* {!readonly && yDoc && awareness && (
+        <MultiCursor
+          yDoc={yDoc}
+          awareness={awareness}
+          currentUserName={currentUserName}
+          onCursorUpdate={handleCursorUpdate}
         />
-      )}
-    </ReactFlow>
+      )} */}
+      <ReactFlow
+        ref={paneRef}
+        // Readonly props START
+        nodesConnectable={!readonly}
+        nodesFocusable={!readonly}
+        elementsSelectable={!readonly}
+        reconnectRadius={!readonly ? 10 : 0}
+        // Readonly props END
+        attributionPosition="bottom-left"
+        nodeDragThreshold={2}
+        snapToGrid
+        snapGrid={snapGrid}
+        selectionMode={SelectionMode["Partial"]}
+        nodes={nodes}
+        nodeTypes={nodeTypes}
+        edges={edges}
+        edgeTypes={edgeTypes}
+        defaultEdgeOptions={defaultEdgeOptions}
+        connectionLineComponent={CustomConnectionLine}
+        connectionLineStyle={connectionLineStyle}
+        isValidConnection={isValidConnection}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onNodeDoubleClick={handleNodeSettings}
+        onNodeDragStart={handleCloseContextmenu}
+        onNodeDragStop={handleNodeDragStopWithCursor}
+        onNodesDelete={handleNodesDelete}
+        onNodeContextMenu={handleNodeContextMenu}
+        onSelectionContextMenu={handleSelectionContextMenu}
+        onPaneContextMenu={handlePaneContextMenu}
+        onMoveStart={handleCloseContextmenu}
+        onDrop={handleNodeDrop}
+        onDragOver={handleNodeDragOver}
+        onConnect={handleConnect}
+        onReconnect={handleReconnect}
+        onBeforeDelete={onBeforeDelete}
+        onPaneMouseMove={handlePaneMouseMove}>
+        <Background
+          className="bg-background"
+          variant={BackgroundVariant["Dots"]}
+          gap={gridSize}
+          color="rgba(63, 63, 70, 1)"
+        />
+        {contextMenu && (
+          <CanvasContextMenu
+            data={contextMenu.data}
+            selectedEdgeIds={selectedEdgeIds}
+            contextMenu={contextMenu}
+            onBeforeDelete={onBeforeDelete}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onWorkflowOpen={onWorkflowOpen}
+            onNodeSettings={onNodeSettings}
+            onCopy={onCopy}
+            onCut={onCut}
+            onPaste={onPaste}
+            onClose={handleCloseContextmenu}
+          />
+        )}
+      </ReactFlow>
+    </div>
   );
 };
 
