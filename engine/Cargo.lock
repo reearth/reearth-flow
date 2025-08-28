@@ -6675,6 +6675,7 @@ dependencies = [
  "geojson",
  "indexmap 2.10.0",
  "nusamai-citygml",
+ "nusamai-czml",
  "nusamai-plateau",
  "nusamai-projection",
  "once_cell",

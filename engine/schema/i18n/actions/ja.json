@@ -77,6 +77,10 @@
       "description": "CSVファイルから地物を読み取る"
     },
     {
+      "name": "CzmlReader",
+      "description": "CZML（Cesium言語）ファイルから3D視覚化用の地理的特徴を読み取る"
+    },
+    {
       "name": "CzmlWriter",
       "description": "CZMLファイルに地物を書き込む"
     },
