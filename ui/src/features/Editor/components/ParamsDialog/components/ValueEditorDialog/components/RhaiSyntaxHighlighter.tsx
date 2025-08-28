@@ -198,13 +198,7 @@ const RhaiSyntaxHighlighter: React.FC<Props> = ({ code, className = "" }) => {
           style={{
             fontFamily: "inherit",
             fontSize: "inherit",
-            fontWeight:
-              token.type === "keyword" ||
-              token.type === "function" ||
-              token.type === "namespace" ||
-              token.type === "operator"
-                ? "inherit"
-                : "inherit",
+            fontWeight: "inherit",
             letterSpacing: "inherit",
           }}>
           {token.content}
