@@ -22,8 +22,8 @@ import {
 import { useT } from "@flow/lib/i18n";
 
 import {
-  EXPRESSION_TEMPLATES,
-  TEMPLATE_CATEGORIES,
+  getExpressionTemplates,
+  getTemplateCategories,
   getTemplatesByCategory,
   searchTemplates,
   type ExpressionTemplate,
@@ -48,20 +48,20 @@ const TemplateLibraryDialog: React.FC<Props> = ({
 
   // Filter templates based on search and category
   const filteredTemplates = useMemo(() => {
-    let templates = EXPRESSION_TEMPLATES;
+    let templates = getExpressionTemplates(t);
 
     // Apply search filter
     if (searchQuery.trim()) {
-      templates = searchTemplates(searchQuery);
+      templates = searchTemplates(searchQuery, t);
     }
 
     // Apply category filter
     if (selectedCategory !== "all") {
-      templates = templates.filter(t => t.category === selectedCategory);
+      templates = templates.filter(tmpl => tmpl.category === selectedCategory);
     }
 
     return templates;
-  }, [searchQuery, selectedCategory]);
+  }, [searchQuery, selectedCategory, t]);
 
   const handleTemplateSelect = useCallback((template: ExpressionTemplate) => {
     onTemplateSelect(template);
@@ -72,7 +72,7 @@ const TemplateLibraryDialog: React.FC<Props> = ({
     setPreviewTemplate(prev => prev?.id === template.id ? null : template);
   }, []);
 
-  const categories = Object.entries(TEMPLATE_CATEGORIES);
+  const categories = Object.entries(getTemplateCategories(t));
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -105,13 +105,13 @@ const TemplateLibraryDialog: React.FC<Props> = ({
               <TabsList className="grid w-full grid-cols-1">
                 <TabsTrigger value="all" className="justify-start">
                   <span className="mr-2">📚</span>
-                  {t("All Templates")} ({EXPRESSION_TEMPLATES.length})
+                  {t("All Templates")} ({getExpressionTemplates(t).length})
                 </TabsTrigger>
               </TabsList>
               
               <div className="mt-4 space-y-2">
                 {categories.map(([key, category]) => {
-                  const count = getTemplatesByCategory(key as keyof typeof TEMPLATE_CATEGORIES).length;
+                  const count = getTemplatesByCategory(key as keyof ReturnType<typeof getTemplateCategories>, t).length;
                   return (
                     <button
                       key={key}
@@ -122,7 +122,7 @@ const TemplateLibraryDialog: React.FC<Props> = ({
                     >
                       <div className="flex items-center gap-2">
                         <span>{category.icon}</span>
-                        <span className="font-medium">{t(category.name)}</span>
+                        <span className="font-medium">{category.name}</span>
                       </div>
                       <Badge variant="secondary" className="text-xs">
                         {count}
@@ -159,9 +159,9 @@ const TemplateLibraryDialog: React.FC<Props> = ({
                       {/* Template Header */}
                       <div className="mb-2 flex items-start justify-between">
                         <div className="flex-1">
-                          <h3 className="mb-1 text-sm font-medium">{t(template.name)}</h3>
+                          <h3 className="mb-1 text-sm font-medium">{template.name}</h3>
                           <p className="mb-2 text-xs text-muted-foreground">
-                            {t(template.description)}
+                            {template.description}
                           </p>
                           <div className="mb-3 flex items-center gap-1">
                             {template.tags.slice(0, 3).map((tag) => (
