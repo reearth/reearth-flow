@@ -23,6 +23,7 @@ export const RHAI_FUNCTIONS = [
   // Global environment functions (custom Re:Earth Flow functions)
   "env",
   "get",
+  "set",
   // File namespace functions - essential for path manipulation
   "extract_filename",
   "extract_filename_without_ext",
@@ -110,9 +111,9 @@ export const RHAI_AUTOCOMPLETE_SUGGESTIONS: AutocompleteSuggestion[] = [
   // Rhai Keywords
   {
     label: "if",
-    insertText: "if ",
+    insertText: "if {{cursor}} {\n  // true branch\n} else {\n  // false branch\n}",
     type: "keyword",
-    description: "Conditional statement",
+    description: "Complete if-else statement",
   },
   {
     label: "else",
@@ -122,21 +123,15 @@ export const RHAI_AUTOCOMPLETE_SUGGESTIONS: AutocompleteSuggestion[] = [
   },
   {
     label: "while",
-    insertText: "while ",
+    insertText: "while condition {\n  // loop body\n}",
     type: "keyword",
-    description: "While loop",
+    description: "While loop (consider using 'for' instead)",
   },
   {
     label: "for",
     insertText: "for ",
     type: "keyword",
     description: "For loop",
-  },
-  {
-    label: "loop",
-    insertText: "loop ",
-    type: "keyword",
-    description: "Infinite loop",
   },
   {
     label: "break",
@@ -152,27 +147,21 @@ export const RHAI_AUTOCOMPLETE_SUGGESTIONS: AutocompleteSuggestion[] = [
   },
   {
     label: "return",
-    insertText: "return ",
+    insertText: "return value;",
     type: "keyword",
     description: "Return value",
   },
   {
     label: "let",
-    insertText: "let ",
+    insertText: "let variable_name = value;",
     type: "keyword",
     description: "Variable declaration",
   },
   {
     label: "const",
-    insertText: "const ",
+    insertText: "const CONSTANT_NAME = value;",
     type: "keyword",
     description: "Constant declaration",
-  },
-  {
-    label: "fn",
-    insertText: "fn ",
-    type: "keyword",
-    description: "Function definition",
   },
   {
     label: "true",
@@ -196,14 +185,14 @@ export const RHAI_AUTOCOMPLETE_SUGGESTIONS: AutocompleteSuggestion[] = [
   // Re:Earth Flow Environment Functions
   {
     label: "env.get",
-    insertText: 'env.get("")',
+    insertText: 'env.get("{{cursor}}")',
     type: "function",
     description: "Get environment variable or context",
     detail: "env.get(name: string)",
   },
   {
     label: "env.set",
-    insertText: 'env.set("", )',
+    insertText: 'env.set("{{cursor}}", )',
     type: "function",
     description: "Set environment variable",
     detail: "env.set(name: string, value: any)",
@@ -244,14 +233,14 @@ export const RHAI_AUTOCOMPLETE_SUGGESTIONS: AutocompleteSuggestion[] = [
   },
   {
     label: "file::join_path",
-    insertText: "file::join_path(, )",
+    insertText: "file::join_path({{cursor}}, )",
     type: "function",
     description: "Join two path segments",
     detail: "file::join_path(path1: string, path2: string)",
   },
   {
     label: "file::extract_filename",
-    insertText: "file::extract_filename()",
+    insertText: "file::extract_filename({{cursor}})",
     type: "function",
     description: "Extract filename from path",
     detail: "file::extract_filename(path: string)",
@@ -273,7 +262,7 @@ export const RHAI_AUTOCOMPLETE_SUGGESTIONS: AutocompleteSuggestion[] = [
   },
   {
     label: "json::find_value_by_json_path",
-    insertText: 'json::find_value_by_json_path(, "")',
+    insertText: 'json::find_value_by_json_path({{cursor}}, "")',
     type: "function",
     description: "Find value using JSONPath",
     detail: "json::find_value_by_json_path(content: any, jsonPath: string)",

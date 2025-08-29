@@ -372,6 +372,23 @@ export class RhaiValidator {
         }
       }
 
+      // Check for env.set() calls
+      const envSetMatches = line.matchAll(/env\.set\s*\(\s*([^,)]+)(?:,\s*([^)]*))?\)/g);
+      for (const match of envSetMatches) {
+        const nameArg = match[1].trim();
+        if (!nameArg.startsWith('"') && !nameArg.startsWith("'")) {
+          const matchIndex = match.index ?? 0;
+          this.addError({
+            line: lineIndex,
+            column: matchIndex + match[0].indexOf("(") + 1,
+            length: nameArg.length,
+            message: "env.set() first argument (name) must be a string",
+            severity: "error",
+            type: "semantic",
+          });
+        }
+      }
+
       // Check for JSON path functions
       const jsonPathMatches = line.matchAll(
         /(json::(?:find_value_by_json_path|exists_value_by_json_path))\s*\(\s*([^,)]+)(?:,\s*([^)]+))?\)/g,

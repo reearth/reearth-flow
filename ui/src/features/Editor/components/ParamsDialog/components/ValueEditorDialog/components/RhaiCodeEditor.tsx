@@ -140,17 +140,33 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(({
         start--;
       }
 
+      // Handle cursor positioning placeholder
+      const insertText = suggestion.insertText;
+      const cursorPlaceholder = "{{cursor}}";
+      const hasCursorPlaceholder = insertText.includes(cursorPlaceholder);
+      
+      const finalText = hasCursorPlaceholder 
+        ? insertText.replace(cursorPlaceholder, "")
+        : insertText;
+
       // Replace current word with suggestion
       const newText =
         text.substring(0, start) +
-        suggestion.insertText +
+        finalText +
         text.substring(cursorPos);
       onChange(newText);
 
-      // Set cursor position after the inserted text
+      // Set cursor position
       setTimeout(() => {
-        const newCursorPos = start + suggestion.insertText.length;
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
+        if (hasCursorPlaceholder) {
+          // Position cursor where the placeholder was
+          const placeholderPos = start + insertText.indexOf(cursorPlaceholder);
+          textarea.setSelectionRange(placeholderPos, placeholderPos);
+        } else {
+          // Position cursor after the inserted text
+          const newCursorPos = start + finalText.length;
+          textarea.setSelectionRange(newCursorPos, newCursorPos);
+        }
         textarea.focus();
       }, 10);
 

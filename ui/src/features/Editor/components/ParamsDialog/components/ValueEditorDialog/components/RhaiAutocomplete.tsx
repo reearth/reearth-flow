@@ -35,7 +35,10 @@ const RhaiAutocomplete: React.FC<Props> = ({
       if (!index.has(firstChar)) {
         index.set(firstChar, []);
       }
-      index.get(firstChar)!.push(suggestion);
+      const suggestions = index.get(firstChar);
+      if (suggestions) {
+        suggestions.push(suggestion);
+      }
     });
     
     return index;
@@ -104,38 +107,45 @@ const RhaiAutocomplete: React.FC<Props> = ({
     [indexedSuggestions],
   );
 
-  // Calculate autocomplete dropdown position
+  // Calculate autocomplete dropdown position relative to textarea
   const calculatePosition = useCallback(() => {
     if (!textareaRef.current) return;
 
     const textarea = textareaRef.current;
     const { start } = getCurrentWordAndPosition();
+    const computedStyle = window.getComputedStyle(textarea);
+    
+    // Get textarea padding and scroll
+    const paddingLeft = parseInt(computedStyle.paddingLeft) || 0;
+    const paddingTop = parseInt(computedStyle.paddingTop) || 0;
+    const scrollTop = textarea.scrollTop;
+    const scrollLeft = textarea.scrollLeft;
 
-    // Create a temporary element to measure text width
-    const temp = document.createElement("div");
-    temp.style.position = "absolute";
-    temp.style.visibility = "hidden";
-    temp.style.whiteSpace = "pre-wrap";
-    temp.style.font = window.getComputedStyle(textarea).font;
-    temp.textContent = textarea.value.substring(0, start);
-
-    document.body.appendChild(temp);
-    const textWidth = temp.offsetWidth;
-    document.body.removeChild(temp);
-
-    const textareaRect = textarea.getBoundingClientRect();
-    const lines = textarea.value.substring(0, start).split("\n");
+    // Split text into lines up to cursor position
+    const textBeforeCursor = textarea.value.substring(0, start);
+    const lines = textBeforeCursor.split("\n");
     const currentLineText = lines[lines.length - 1];
+    const lineNumber = lines.length - 1;
 
-    // Approximate character width
-    const charWidth = textWidth / (currentLineText.length || 1);
-    const lineHeight =
-      parseInt(window.getComputedStyle(textarea).lineHeight) || 20;
+    // Calculate line height
+    const lineHeight = parseInt(computedStyle.lineHeight);
+    const actualLineHeight = isNaN(lineHeight) ? parseInt(computedStyle.fontSize) * 1.2 : lineHeight;
 
-    setPosition({
-      top: textareaRect.top + (lines.length - 1) * lineHeight + lineHeight,
-      left: textareaRect.left + currentLineText.length * charWidth,
-    });
+    // Create canvas to measure text width more accurately
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.font = `${computedStyle.fontSize} ${computedStyle.fontFamily}`;
+      
+      // Measure the width of text up to cursor on current line
+      const textWidth = ctx.measureText(currentLineText).width;
+      
+      // Position relative to textarea (since we're using absolute positioning)
+      setPosition({
+        top: paddingTop + (lineNumber * actualLineHeight) - scrollTop + actualLineHeight,
+        left: paddingLeft + textWidth - scrollLeft,
+      });
+    }
   }, [textareaRef, getCurrentWordAndPosition]);
 
   // Update suggestions when text changes
@@ -242,7 +252,7 @@ const RhaiAutocomplete: React.FC<Props> = ({
   return (
     <div
       ref={containerRef}
-      className="z-50 mt-2 mr-2 max-h-64 w-90 overflow-auto rounded-lg border bg-popover/70 shadow-lg"
+      className="absolute z-50 max-h-64 w-90 overflow-auto rounded-lg border bg-popover/70 shadow-lg"
       style={{ top: position.top, left: position.left }}>
       {suggestions.map((suggestion, index) => (
         <div
