@@ -76,7 +76,7 @@ export default ({
           });
         },
         "position-update",
-        50,
+        100,
       );
     }
 
