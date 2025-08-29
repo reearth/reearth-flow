@@ -33,3 +33,7 @@ func (i *Workspace) Create(ctx context.Context, name string) (*workspace.Workspa
 func (i *Workspace) Update(ctx context.Context, wid id.WorkspaceID, name string) (*workspace.Workspace, error) {
 	return i.workspaceRepo.Update(ctx, wid, name)
 }
+
+func (i *Workspace) Delete(ctx context.Context, wid id.WorkspaceID) error {
+	return i.workspaceRepo.Delete(ctx, wid)
+}
