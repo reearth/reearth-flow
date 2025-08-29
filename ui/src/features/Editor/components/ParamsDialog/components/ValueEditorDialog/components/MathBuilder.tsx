@@ -428,7 +428,7 @@ const MathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
                         <button
                           key={val}
                           onClick={() => updatePart(index, { value: val })}
-                          className="rounded bg-muted px-2 py-1 text-xs hover:bg-accent transition-colors">
+                          className="rounded bg-muted px-2 py-1 text-xs transition-colors hover:bg-accent">
                           {val}
                         </button>
                       ))}
