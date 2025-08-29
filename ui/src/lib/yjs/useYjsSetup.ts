@@ -1,16 +1,15 @@
-import {useCallback, useEffect, useRef, useState} from "react";
-import {WebsocketProvider} from "y-websocket";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
-import {config} from "@flow/config";
-import {DEFAULT_ENTRY_GRAPH_ID} from "@flow/global-constants";
+import { config } from "@flow/config";
+import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 
-import {useAuth} from "../auth";
+import { useAuth } from "../auth";
 
-import {yWorkflowConstructor} from "./conversions";
-import type {YWorkflow} from "./types";
-import {throttle} from "./utils/throttle";
-
+import { yWorkflowConstructor } from "./conversions";
+import type { YWorkflow } from "./types";
+import { throttle } from "./utils/throttle";
 
 export default ({
   workflowId,
@@ -86,36 +85,34 @@ export default ({
 
   const yWorkflows = yDocState?.getMap<YWorkflow>("workflows");
 
-  const throttledTransactionRef = useRef<Map<string, ReturnType<typeof throttle>>>(new Map());
-  
-  const undoTrackerActionWrapper = useCallback((
-    callback: () => void,
-    originPrepend?: string,
-    throttleMs?: number,
-  ) => {
-    const origin = originPrepend
-      ? `${originPrepend}-${yDocState?.clientID}`
-      : yDocState?.clientID;
-    
-    if (throttleMs && throttleMs > 0) {
-      const key = `${origin}-${throttleMs}`;
-      
-      if (!throttledTransactionRef.current.has(key)) {
-        const throttledTransaction = throttle(
-          (cb: () => void, orig: any) => {
+  const throttledTransactionRef = useRef<
+    Map<string, ReturnType<typeof throttle>>
+  >(new Map());
+
+  const undoTrackerActionWrapper = useCallback(
+    (callback: () => void, originPrepend?: string, throttleMs?: number) => {
+      const origin = originPrepend
+        ? `${originPrepend}-${yDocState?.clientID}`
+        : yDocState?.clientID;
+
+      if (throttleMs && throttleMs > 0) {
+        const key = `${origin}-${throttleMs}`;
+
+        if (!throttledTransactionRef.current.has(key)) {
+          const throttledTransaction = throttle((cb: () => void, orig: any) => {
             yDocState?.transact(cb, orig);
-          },
-          throttleMs
-        );
-        throttledTransactionRef.current.set(key, throttledTransaction);
+          }, throttleMs);
+          throttledTransactionRef.current.set(key, throttledTransaction);
+        }
+
+        const throttledFn = throttledTransactionRef.current.get(key);
+        throttledFn?.(callback, origin);
+      } else {
+        yDocState?.transact(callback, origin);
       }
-      
-      const throttledFn = throttledTransactionRef.current.get(key);
-      throttledFn?.(callback, origin);
-    } else {
-      yDocState?.transact(callback, origin);
-    }
-  }, [yDocState]);
+    },
+    [yDocState],
+  );
 
   useEffect(() => {
     if (yWorkflows) {
@@ -146,7 +143,7 @@ export default ({
         recursivelyTrackSharedType(value);
       }
     });
-    
+
     sharedType.observe((event: Y.YMapEvent<any>) => {
       event.changes.keys.forEach((change: any, key: string) => {
         if (change.action === "add" || change.action === "update") {

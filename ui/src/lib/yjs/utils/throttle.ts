@@ -1,6 +1,6 @@
 export function throttle<T extends (...args: any[]) => any>(
   func: T,
-  limit: number
+  limit: number,
 ): T {
   let inThrottle: boolean;
   let lastResult: ReturnType<T>;
