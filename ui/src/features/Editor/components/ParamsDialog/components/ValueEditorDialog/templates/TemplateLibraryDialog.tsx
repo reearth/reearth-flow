@@ -92,7 +92,7 @@ const TemplateLibraryDialog: React.FC<Props> = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex h-[70vh] gap-4">
+        <div className="flex h-[70vh] gap-4 p-2">
           {/* Left Panel - Categories and Search */}
           <div className="w-80 border-r pr-4">
             {/* Search */}

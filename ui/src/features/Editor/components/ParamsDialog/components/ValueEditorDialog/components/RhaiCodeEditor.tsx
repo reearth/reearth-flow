@@ -226,7 +226,11 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
             if (charErrors.length > 0) {
               const error = charErrors[0]; // Use first error if multiple
               const severity = error.severity === "error" ? "error" : "warning";
-              processedLine += `<span class="validation-${severity}" data-error="${encodeURIComponent(error.message)}" title="${encodeURIComponent(error.message)}">${escapedChar}</span>`;
+              const escapedMessage = error.message
+                .replace(/&/g, "&amp;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+              processedLine += `<span class="validation-${severity}" data-error="${escapedMessage}" title="${escapedMessage}">${escapedChar}</span>`;
             } else {
               processedLine += `<span class="transparent-char">${escapedChar}</span>`;
             }
@@ -416,8 +420,12 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
           background-color: rgba(69, 26, 3, 0.8) !important;
           border-bottom: 2px solid #d97706 !important;
         }
+        .validation-error, .validation-warning {
+          transition: background-color 0.1s ease;
+          pointer-events: auto;
+        }
         .validation-error:hover, .validation-warning:hover {
-          cursor: help;
+          cursor: default;
         }
       `}</style>
 
@@ -438,8 +446,8 @@ const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(
         {/* Error highlighting overlay - positioned exactly over textarea */}
         <div
           ref={errorOverlayRef}
-          className="pointer-events-auto absolute h-full bg-transparent"
-          style={{ zIndex: 2 }}
+          className="pointer-events-none absolute h-full bg-transparent"
+          style={{ zIndex: 4 }}
           dangerouslySetInnerHTML={{ __html: createErrorOverlay() }}
         />
 
