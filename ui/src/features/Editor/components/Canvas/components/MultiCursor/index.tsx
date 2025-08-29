@@ -1,3 +1,4 @@
+import { useReactFlow } from "@xyflow/react";
 import { useCallback, useEffect, useRef } from "react";
 import { useUsers } from "y-presence";
 
@@ -17,6 +18,7 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
   onCursorUpdate,
 }) => {
   const users = useUsers(awareness, (state) => state);
+  const { screenToFlowPosition, flowToScreenPosition } = useReactFlow();
   useEffect(() => {
     if (awareness && !awareness.getLocalState()?.color) {
       const colors = [
@@ -39,12 +41,24 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
     (clientX: number, clientY: number) => {
       const now = Date.now();
       if (now - lastUpdateRef.current > 66) {
-        console.log("Setting point:", [clientX, clientY]);
-        awareness.setLocalStateField("point", [clientX, clientY]);
+        const reactFlowElement = document.querySelector(".react-flow");
+        if (!reactFlowElement) return;
+
+        const rect = reactFlowElement.getBoundingClientRect();
+        const relativeX = clientX - rect.left;
+        const relativeY = clientY - rect.top;
+
+        const flowPosition = screenToFlowPosition({
+          x: relativeX,
+          y: relativeY,
+        });
+
+        console.log("Setting flow position:", flowPosition);
+        awareness.setLocalStateField("flowPosition", flowPosition);
         lastUpdateRef.current = now;
       }
     },
-    [awareness],
+    [awareness, screenToFlowPosition],
   );
 
   useEffect(() => {
@@ -68,7 +82,21 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
       }}>
       {Array.from(users.entries()).map(([key, value]) => {
         if (key === awareness.clientID) return null;
-        return <Cursor key={key} color={value.color} point={value.point} />;
+
+        if (!value.flowPosition) return null;
+
+        const screenPosition = flowToScreenPosition({
+          x: value.flowPosition.x,
+          y: value.flowPosition.y,
+        });
+
+        return (
+          <Cursor
+            key={key}
+            color={value.color}
+            point={[screenPosition.x, screenPosition.y]}
+          />
+        );
       })}
     </div>
   );

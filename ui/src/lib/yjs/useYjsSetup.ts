@@ -75,45 +75,41 @@ export default ({
           setIsSynced(true); // Mark as synced
         });
 
-        // // Add cleanup handlers for various exit scenarios
-        // const clearAwarenessState = () => {
-        //   if (yWebSocketProvider?.awareness) {
-        //     yWebSocketProvider.awareness.setLocalState(null);
-        //   }
-        // };
+        // Add cleanup handlers for various exit scenarios e.g. tab close, navigation, hard refresh
+        const clearAwarenessState = () => {
+          if (yWebSocketProvider?.awareness) {
+            yWebSocketProvider.awareness.setLocalState(null);
+          }
+        };
 
-        // const handleBeforeUnload = () => {
-        //   clearAwarenessState();
-        // };
+        const handleBeforeUnload = () => {
+          clearAwarenessState();
+        };
 
-        // const handleVisibilityChange = () => {
-        //   if (document.hidden) {
-        //     // Page became hidden - clear awareness state after a short delay
-        //     setTimeout(clearAwarenessState, 1000);
-        //   }
-        // };
+        const handleVisibilityChange = () => {
+          if (document.hidden) {
+            setTimeout(clearAwarenessState, 1000);
+          }
+        };
 
-        // const handlePageHide = () => {
-        //   clearAwarenessState();
-        // };
+        const handlePageHide = () => {
+          clearAwarenessState();
+        };
 
-        // // Add event listeners for cleanup
-        // window.addEventListener("beforeunload", handleBeforeUnload);
-        // document.addEventListener("visibilitychange", handleVisibilityChange);
-        // window.addEventListener("pagehide", handlePageHide);
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        window.addEventListener("pagehide", handlePageHide);
 
-        // // Store cleanup function to remove listeners later
-        // const cleanupListeners = () => {
-        //   window.removeEventListener("beforeunload", handleBeforeUnload);
-        //   document.removeEventListener(
-        //     "visibilitychange",
-        //     handleVisibilityChange,
-        //   );
-        //   window.removeEventListener("pagehide", handlePageHide);
-        // };
+        const cleanupListeners = () => {
+          window.removeEventListener("beforeunload", handleBeforeUnload);
+          document.removeEventListener(
+            "visibilitychange",
+            handleVisibilityChange,
+          );
+          window.removeEventListener("pagehide", handlePageHide);
+        };
 
-        // // Store cleanup function on the provider
-        // (yWebSocketProvider as any).cleanupListeners = cleanupListeners;
+        (yWebSocketProvider as any).cleanupListeners = cleanupListeners;
       })();
     }
 
