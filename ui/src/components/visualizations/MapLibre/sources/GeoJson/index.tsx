@@ -127,7 +127,10 @@ const GeoJsonDataSource: React.FC<Props> = ({
     <Source
       type={fileType}
       data={fileContent}
-      cluster={enableClustering}
+      cluster={
+        enableClustering &&
+        fileContent?.features?.some((f) => f.geometry.type === "Point")
+      }
       promoteId="_originalId">
       {fileContent?.features?.some(
         (feature: GeoJSON.Feature) => feature.geometry.type === "Point",
