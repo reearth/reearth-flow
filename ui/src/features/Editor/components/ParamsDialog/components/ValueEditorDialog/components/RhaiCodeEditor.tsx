@@ -23,7 +23,7 @@ type Props = {
 };
 
 const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(({
-  value,
+  value = "",
   onChange,
   placeholder,
   className = "",
