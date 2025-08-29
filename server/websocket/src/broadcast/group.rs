@@ -12,6 +12,7 @@ use tokio::task::JoinHandle;
 use tracing::{debug, error, info, warn};
 use yrs::types::ToJson;
 
+use super::Publish;
 use serde_json;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -489,6 +490,7 @@ impl BroadcastGroup {
                     };
                 }
             };
+            let mut publish = Publish::new(redis_store, stream_key, instance_id, &mut conn);
             tokio::spawn(async move {
                 while let Some(res) = stream.next().await {
                     let data = match res.map_err(anyhow::Error::from) {
@@ -507,17 +509,7 @@ impl BroadcastGroup {
                         }
                     };
 
-                    match Self::handle_msg(
-                        &protocol,
-                        &awareness,
-                        msg,
-                        &redis_store,
-                        &mut conn,
-                        &stream_key,
-                        &instance_id,
-                    )
-                    .await
-                    {
+                    match Self::handle_msg(&protocol, &awareness, msg, &mut publish).await {
                         Ok(Some(reply)) => {
                             let mut sink_lock = sink.lock().await;
                             if let Err(e) = sink_lock.send(Bytes::from(reply.encode_v1())).await {
@@ -542,10 +534,7 @@ impl BroadcastGroup {
         protocol: &P,
         awareness: &AwarenessRef,
         msg: Message,
-        redis_store: &RedisStore,
-        conn: &mut redis::aio::MultiplexedConnection,
-        stream_key: &str,
-        instance_id: &str,
+        publish: &mut Publish,
     ) -> Result<Option<Message>, Error> {
         match msg {
             Message::Sync(msg) => {
@@ -556,18 +545,10 @@ impl BroadcastGroup {
                 };
 
                 if !update_bytes.is_empty() {
-                    if let Err(e) = redis_store
-                        .publish_update_with_ttl(
-                            conn,
-                            stream_key,
-                            &update_bytes,
-                            instance_id,
-                            43200,
-                        )
+                    publish
+                        .insert(Bytes::from(update_bytes))
                         .await
-                    {
-                        warn!("Failed to publish update to Redis: {}", e);
-                    }
+                        .map_err(|e| Error::Other(e.into()))?;
                 }
 
                 match msg {
