@@ -94,3 +94,27 @@ func (r *workspaceRepo) Delete(ctx context.Context, wid id.WorkspaceID) error {
 
 	return nil
 }
+
+func (r *workspaceRepo) AddUserMember(ctx context.Context, wid id.WorkspaceID, users map[id.UserID]workspace.Role) (*workspace.Workspace, error) {
+	in := AddUsersToWorkspaceInput{
+		WorkspaceID: graphql.ID(wid.String()),
+		Users:       make([]MemberInput, 0, len(users)),
+	}
+
+	for uid, role := range users {
+		in.Users = append(in.Users, MemberInput{
+			UserID: graphql.ID(uid.String()),
+			Role:   graphql.String(role),
+		})
+	}
+
+	var m addUsersToWorkspaceMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return nil, err
+	}
+
+	return util.ToWorkspace(m.AddUsersToWorkspace.Workspace)
+}

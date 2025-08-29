@@ -42,6 +42,21 @@ func (m *MockWorkspaceRepo) EXPECT() *MockWorkspaceRepoMockRecorder {
 	return m.recorder
 }
 
+// AddUserMember mocks base method.
+func (m *MockWorkspaceRepo) AddUserMember(ctx context.Context, wid id.WorkspaceID, users map[id.UserID]workspace.Role) (*workspace.Workspace, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddUserMember", ctx, wid, users)
+	ret0, _ := ret[0].(*workspace.Workspace)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AddUserMember indicates an expected call of AddUserMember.
+func (mr *MockWorkspaceRepoMockRecorder) AddUserMember(ctx, wid, users any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddUserMember", reflect.TypeOf((*MockWorkspaceRepo)(nil).AddUserMember), ctx, wid, users)
+}
+
 // Create mocks base method.
 func (m *MockWorkspaceRepo) Create(ctx context.Context, name string) (*workspace.Workspace, error) {
 	m.ctrl.T.Helper()
