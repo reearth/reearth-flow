@@ -92,3 +92,18 @@ func FromRole(r Role) workspace.Role {
 	}
 	return workspace.Role("")
 }
+
+// TODO: After migration, delete FromRole and rename FromRoleToFlow to FromRole.
+func FromRoleToFlow(r Role) pkgworkspace.Role {
+	switch r {
+	case RoleReader:
+		return pkgworkspace.RoleReader
+	case RoleWriter:
+		return pkgworkspace.RoleWriter
+	case RoleMaintainer:
+		return pkgworkspace.RoleMaintainer
+	case RoleOwner:
+		return pkgworkspace.RoleOwner
+	}
+	return pkgworkspace.Role("")
+}
