@@ -107,11 +107,14 @@ export type AutocompleteSuggestion = {
   detail?: string;
 };
 
-export const getRhaiAutocompleteSuggestions = (t: (key: string) => string): AutocompleteSuggestion[] => [
+export const getRhaiAutocompleteSuggestions = (
+  t: (key: string) => string,
+): AutocompleteSuggestion[] => [
   // Rhai Keywords
   {
     label: "if",
-    insertText: "if {{cursor}} {\n  // true branch\n} else {\n  // false branch\n}",
+    insertText:
+      "if {{cursor}} {\n  // true branch\n} else {\n  // false branch\n}",
     type: "keyword",
     description: t("Complete if-else statement"),
   },
@@ -420,7 +423,12 @@ export const getRhaiAutocompleteSuggestions = (t: (key: string) => string): Auto
   },
 
   // Operators
-  { label: "==", insertText: "== ", type: "operator", description: t("Equal to") },
+  {
+    label: "==",
+    insertText: "== ",
+    type: "operator",
+    description: t("Equal to"),
+  },
   {
     label: "!=",
     insertText: "!= ",

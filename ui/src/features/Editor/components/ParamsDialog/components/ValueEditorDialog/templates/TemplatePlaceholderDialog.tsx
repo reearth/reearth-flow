@@ -45,38 +45,43 @@ const TemplatePlaceholderDialog: React.FC<Props> = ({
   onInsert,
 }) => {
   const t = useT();
-  const [placeholderValues, setPlaceholderValues] = useState<PlaceholderValue[]>([]);
+  const [placeholderValues, setPlaceholderValues] = useState<
+    PlaceholderValue[]
+  >([]);
   const [showPreview, setShowPreview] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
 
   // Initialize placeholder values when template changes
   useEffect(() => {
     if (template) {
-      const initialValues = template.placeholders.map(placeholder => ({
+      const initialValues = template.placeholders.map((placeholder) => ({
         key: placeholder.key,
-        value: placeholder.defaultValue || ''
+        value: placeholder.defaultValue || "",
       }));
       setPlaceholderValues(initialValues);
       setValidationErrors({});
     }
   }, [template]);
 
-  const updatePlaceholderValue = useCallback((key: string, value: string) => {
-    setPlaceholderValues(prev => 
-      prev.map(item => 
-        item.key === key ? { ...item, value } : item
-      )
-    );
+  const updatePlaceholderValue = useCallback(
+    (key: string, value: string) => {
+      setPlaceholderValues((prev) =>
+        prev.map((item) => (item.key === key ? { ...item, value } : item)),
+      );
 
-    // Validate the updated value
-    if (template) {
-      const validation = validatePlaceholderValue(key, value, template);
-      setValidationErrors(prev => ({
-        ...prev,
-        [key]: validation.isValid ? '' : (validation.error || 'Invalid value')
-      }));
-    }
-  }, [template]);
+      // Validate the updated value
+      if (template) {
+        const validation = validatePlaceholderValue(key, value, template);
+        setValidationErrors((prev) => ({
+          ...prev,
+          [key]: validation.isValid ? "" : validation.error || "Invalid value",
+        }));
+      }
+    },
+    [template],
+  );
 
   const handleInsert = useCallback(() => {
     if (!template) return;
@@ -86,8 +91,12 @@ const TemplatePlaceholderDialog: React.FC<Props> = ({
     onClose();
   }, [template, placeholderValues, onInsert, onClose]);
 
-  const canInsert = template ? isTemplateReady(template, placeholderValues) : false;
-  const hasValidationErrors = Object.values(validationErrors).some(error => error !== '');
+  const canInsert = template
+    ? isTemplateReady(template, placeholderValues)
+    : false;
+  const hasValidationErrors = Object.values(validationErrors).some(
+    (error) => error !== "",
+  );
 
   if (!template) return null;
 
@@ -114,7 +123,8 @@ const TemplatePlaceholderDialog: React.FC<Props> = ({
             </p>
             {template.usageExample && (
               <p className="text-xs text-muted-foreground">
-                <strong>{t("Example use case")}:</strong> {template.usageExample}
+                <strong>{t("Example use case")}:</strong>{" "}
+                {template.usageExample}
               </p>
             )}
           </div>
@@ -127,19 +137,24 @@ const TemplatePlaceholderDialog: React.FC<Props> = ({
                   {t("Template Parameters")} ({template.placeholders.length})
                 </h3>
                 <Badge variant="outline" className="text-xs">
-                  {placeholderValues.filter(p => p.value.trim()).length} / {template.placeholders.length} filled
+                  {placeholderValues.filter((p) => p.value.trim()).length} /{" "}
+                  {template.placeholders.length} filled
                 </Badge>
               </div>
 
               <ScrollArea className="max-h-64 pr-2">
                 <div className="space-y-4">
                   {template.placeholders.map((placeholder) => {
-                    const currentValue = placeholderValues.find(v => v.key === placeholder.key)?.value || '';
+                    const currentValue =
+                      placeholderValues.find((v) => v.key === placeholder.key)
+                        ?.value || "";
                     const hasError = validationErrors[placeholder.key];
-                    
+
                     return (
                       <div key={placeholder.key} className="space-y-2">
-                        <Label htmlFor={`placeholder-${placeholder.key}`} className="text-sm">
+                        <Label
+                          htmlFor={`placeholder-${placeholder.key}`}
+                          className="text-sm">
                           <code className="bg-muted/50 px-1.5 py-0.5 rounded text-xs font-mono mr-2">
                             {placeholder.key}
                           </code>
@@ -148,21 +163,32 @@ const TemplatePlaceholderDialog: React.FC<Props> = ({
                             <span className="text-red-500 ml-1">*</span>
                           )}
                         </Label>
-                        
+
                         <Input
                           id={`placeholder-${placeholder.key}`}
                           value={currentValue}
-                          onChange={(e) => updatePlaceholderValue(placeholder.key, e.target.value)}
-                          placeholder={placeholder.defaultValue || `Enter ${placeholder.key}...`}
-                          className={hasError ? 'border-red-500' : ''}
+                          onChange={(e) =>
+                            updatePlaceholderValue(
+                              placeholder.key,
+                              e.target.value,
+                            )
+                          }
+                          placeholder={
+                            placeholder.defaultValue ||
+                            `Enter ${placeholder.key}...`
+                          }
+                          className={hasError ? "border-red-500" : ""}
                         />
-                        
+
                         {placeholder.defaultValue && (
                           <p className="text-xs text-muted-foreground">
-                            {t("Default")}: <code className="bg-muted/50 px-1 rounded">{placeholder.defaultValue}</code>
+                            {t("Default")}:{" "}
+                            <code className="bg-muted/50 px-1 rounded">
+                              {placeholder.defaultValue}
+                            </code>
                           </p>
                         )}
-                        
+
                         {hasError && (
                           <p className="text-xs text-red-600 flex items-center gap-1">
                             <WarningCircleIcon className="h-3 w-3" />
@@ -185,8 +211,7 @@ const TemplatePlaceholderDialog: React.FC<Props> = ({
                 variant="outline"
                 size="sm"
                 onClick={() => setShowPreview(!showPreview)}
-                className="h-8"
-              >
+                className="h-8">
                 <EyeIcon className="h-4 w-4 mr-1" />
                 {showPreview ? t("Hide") : t("Show")} {t("Full Code")}
               </Button>
@@ -195,10 +220,10 @@ const TemplatePlaceholderDialog: React.FC<Props> = ({
             <div className="bg-muted/30 rounded-lg p-4">
               <pre className="text-xs font-mono overflow-x-auto">
                 <code>
-                  {showPreview 
+                  {showPreview
                     ? processedTemplate.populatedCode
-                    : preview.split('\n').slice(0, 3).join('\n') + (preview.split('\n').length > 3 ? '\n...' : '')
-                  }
+                    : preview.split("\n").slice(0, 3).join("\n") +
+                      (preview.split("\n").length > 3 ? "\n..." : "")}
                 </code>
               </pre>
             </div>
@@ -207,7 +232,9 @@ const TemplatePlaceholderDialog: React.FC<Props> = ({
               <Alert>
                 <CheckCircleIcon className="h-4 w-4" />
                 <AlertDescription className="text-xs">
-                  {t("Fill in all required parameters to preview the complete expression.")}
+                  {t(
+                    "Fill in all required parameters to preview the complete expression.",
+                  )}
                 </AlertDescription>
               </Alert>
             )}
@@ -216,7 +243,9 @@ const TemplatePlaceholderDialog: React.FC<Props> = ({
               <Alert variant="destructive">
                 <WarningCircleIcon className="h-4 w-4" />
                 <AlertDescription className="text-xs">
-                  {t("Please fix validation errors before inserting the template.")}
+                  {t(
+                    "Please fix validation errors before inserting the template.",
+                  )}
                 </AlertDescription>
               </Alert>
             )}
@@ -227,11 +256,10 @@ const TemplatePlaceholderDialog: React.FC<Props> = ({
           <Button variant="outline" onClick={onClose}>
             {t("Cancel")}
           </Button>
-          <Button 
+          <Button
             onClick={handleInsert}
             disabled={!canInsert || hasValidationErrors}
-            className="min-w-[100px]"
-          >
+            className="min-w-[100px]">
             <MagicWandIcon className="h-4 w-4 mr-2" />
             {t("Insert Template")}
           </Button>

@@ -48,8 +48,14 @@ import FeatureAttributeBuilder from "./components/FeatureAttributeBuilder";
 import FilePathBuilder from "./components/FilePathBuilder";
 import JsonQueryBuilder from "./components/JsonQueryBuilder";
 import MathBuilder from "./components/MathBuilder";
-import RhaiCodeEditor, { type RhaiCodeEditorRef } from "./components/RhaiCodeEditor";
-import { TemplateLibraryDialog, TemplatePlaceholderDialog, type ExpressionTemplate } from "./templates";
+import RhaiCodeEditor, {
+  type RhaiCodeEditorRef,
+} from "./components/RhaiCodeEditor";
+import {
+  TemplateLibraryDialog,
+  TemplatePlaceholderDialog,
+  type ExpressionTemplate,
+} from "./templates";
 
 type Props = {
   open: boolean;
@@ -82,9 +88,9 @@ const ValueEditorDialog: React.FC<Props> = ({
   );
 
   // Template-related state
-  const [selectedTemplate, setSelectedTemplate] = useState<ExpressionTemplate | null>(null);
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<ExpressionTemplate | null>(null);
   const [showPlaceholderDialog, setShowPlaceholderDialog] = useState(false);
-
 
   // Ref for RhaiCodeEditor to enable cursor insertion
   const rhaiEditorRef = useRef<RhaiCodeEditorRef>(null);
@@ -168,7 +174,7 @@ const ValueEditorDialog: React.FC<Props> = ({
   const handleTemplateSelect = useCallback((template: ExpressionTemplate) => {
     setSelectedTemplate(template);
     handleDialogClose();
-    
+
     // If template has placeholders, show placeholder dialog, otherwise replace directly
     if (template.placeholders.length > 0) {
       setShowPlaceholderDialog(true);

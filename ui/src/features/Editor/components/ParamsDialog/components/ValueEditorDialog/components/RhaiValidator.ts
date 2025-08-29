@@ -61,7 +61,7 @@ export class RhaiValidator {
         continue;
       }
 
-      // Parentheses and square brackets only (curly braces handled by multi-line validator)  
+      // Parentheses and square brackets only (curly braces handled by multi-line validator)
       if (char === "(" || char === "[") {
         this.validateSingleLineBracketMatching(line, i, lineIndex, char);
       }
@@ -194,7 +194,6 @@ export class RhaiValidator {
     const brackets = { "(": ")", "[": "]", "{": "}" };
     const stack: { bracket: string; line: number; column: number }[] = [];
     const lines = this.code.split("\n");
-    
 
     for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
       const line = lines[lineIndex];
@@ -244,8 +243,9 @@ export class RhaiValidator {
                 type: "syntax",
               });
             } else {
-              const expectedClosing = brackets[last.bracket as keyof typeof brackets];
-              
+              const expectedClosing =
+                brackets[last.bracket as keyof typeof brackets];
+
               if (char !== expectedClosing) {
                 this.addError({
                   line: lineIndex,
@@ -266,7 +266,8 @@ export class RhaiValidator {
 
     // Check for unclosed brackets
     for (const unclosed of stack) {
-      const expectedClosing = brackets[unclosed.bracket as keyof typeof brackets];
+      const expectedClosing =
+        brackets[unclosed.bracket as keyof typeof brackets];
       this.addError({
         line: unclosed.line,
         column: unclosed.column,
@@ -288,7 +289,7 @@ export class RhaiValidator {
     // Curly braces are handled by validateMultiLineBracketMatching
     const closeBracket = { "(": ")", "[": "]" }[openBracket];
     if (!closeBracket) return;
-    
+
     let depth = 1;
     let i = startIndex + 1;
 
@@ -373,7 +374,9 @@ export class RhaiValidator {
       }
 
       // Check for env.set() calls
-      const envSetMatches = line.matchAll(/env\.set\s*\(\s*([^,)]+)(?:,\s*([^)]*))?\)/g);
+      const envSetMatches = line.matchAll(
+        /env\.set\s*\(\s*([^,)]+)(?:,\s*([^)]*))?\)/g,
+      );
       for (const match of envSetMatches) {
         const nameArg = match[1].trim();
         if (!nameArg.startsWith('"') && !nameArg.startsWith("'")) {

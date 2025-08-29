@@ -32,9 +32,9 @@ const RhaiAutocomplete: React.FC<Props> = ({
   const indexedSuggestions = useMemo(() => {
     const index = new Map<string, AutocompleteSuggestion[]>();
     const suggestions = getRhaiAutocompleteSuggestions(t);
-    
+
     // Group suggestions by first character for faster lookup
-    suggestions.forEach(suggestion => {
+    suggestions.forEach((suggestion) => {
       const firstChar = suggestion.label.charAt(0).toLowerCase();
       if (!index.has(firstChar)) {
         index.set(firstChar, []);
@@ -44,7 +44,7 @@ const RhaiAutocomplete: React.FC<Props> = ({
         suggestions.push(suggestion);
       }
     });
-    
+
     return index;
   }, [t]);
 
@@ -81,10 +81,10 @@ const RhaiAutocomplete: React.FC<Props> = ({
 
       const lowerWord = word.toLowerCase();
       const firstChar = lowerWord.charAt(0);
-      
+
       // Use indexed lookup for better performance with large suggestion sets
       const candidateSuggestions = indexedSuggestions.get(firstChar) || [];
-      
+
       const filtered = candidateSuggestions.filter((suggestion) =>
         suggestion.label.toLowerCase().startsWith(lowerWord),
       );
@@ -118,7 +118,7 @@ const RhaiAutocomplete: React.FC<Props> = ({
     const textarea = textareaRef.current;
     const { start } = getCurrentWordAndPosition();
     const computedStyle = window.getComputedStyle(textarea);
-    
+
     // Get textarea padding and scroll
     const paddingLeft = parseInt(computedStyle.paddingLeft) || 0;
     const paddingTop = parseInt(computedStyle.paddingTop) || 0;
@@ -133,20 +133,26 @@ const RhaiAutocomplete: React.FC<Props> = ({
 
     // Calculate line height
     const lineHeight = parseInt(computedStyle.lineHeight);
-    const actualLineHeight = isNaN(lineHeight) ? parseInt(computedStyle.fontSize) * 1.2 : lineHeight;
+    const actualLineHeight = isNaN(lineHeight)
+      ? parseInt(computedStyle.fontSize) * 1.2
+      : lineHeight;
 
     // Create canvas to measure text width more accurately
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
     if (ctx) {
       ctx.font = `${computedStyle.fontSize} ${computedStyle.fontFamily}`;
-      
+
       // Measure the width of text up to cursor on current line
       const textWidth = ctx.measureText(currentLineText).width;
-      
+
       // Position relative to textarea (since we're using absolute positioning)
       setPosition({
-        top: paddingTop + (lineNumber * actualLineHeight) - scrollTop + actualLineHeight,
+        top:
+          paddingTop +
+          lineNumber * actualLineHeight -
+          scrollTop +
+          actualLineHeight,
         left: paddingLeft + textWidth - scrollLeft,
       });
     }

@@ -48,7 +48,7 @@ const JsonQueryBuilder: React.FC<Props> = ({ onExpressionChange }) => {
 
   // Generate expression for preview only - don't auto-insert
   const [currentExpression, setCurrentExpression] = useState("");
-  
+
   useEffect(() => {
     let expr = "";
 
@@ -179,12 +179,14 @@ const JsonQueryBuilder: React.FC<Props> = ({ onExpressionChange }) => {
             </li>
           </ul>
         </div>
-        
+
         {/* Preview and Insert Section */}
         {currentExpression && (
           <div className="mt-6 border-t pt-4">
             <div className="mb-3">
-              <Label className="text-xs text-muted-foreground">{t("Preview")}</Label>
+              <Label className="text-xs text-muted-foreground">
+                {t("Preview")}
+              </Label>
               <div className="mt-1 rounded border bg-muted/30 p-2 font-mono text-sm">
                 {currentExpression}
               </div>

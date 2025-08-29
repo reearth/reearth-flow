@@ -44,7 +44,8 @@ const TemplateLibraryDialog: React.FC<Props> = ({
   const t = useT();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [previewTemplate, setPreviewTemplate] = useState<ExpressionTemplate | null>(null);
+  const [previewTemplate, setPreviewTemplate] =
+    useState<ExpressionTemplate | null>(null);
 
   // Filter templates based on search and category
   const filteredTemplates = useMemo(() => {
@@ -57,19 +58,24 @@ const TemplateLibraryDialog: React.FC<Props> = ({
 
     // Apply category filter
     if (selectedCategory !== "all") {
-      templates = templates.filter(tmpl => tmpl.category === selectedCategory);
+      templates = templates.filter(
+        (tmpl) => tmpl.category === selectedCategory,
+      );
     }
 
     return templates;
   }, [searchQuery, selectedCategory, t]);
 
-  const handleTemplateSelect = useCallback((template: ExpressionTemplate) => {
-    onTemplateSelect(template);
-    onClose();
-  }, [onTemplateSelect, onClose]);
+  const handleTemplateSelect = useCallback(
+    (template: ExpressionTemplate) => {
+      onTemplateSelect(template);
+      onClose();
+    },
+    [onTemplateSelect, onClose],
+  );
 
   const handlePreviewToggle = useCallback((template: ExpressionTemplate) => {
-    setPreviewTemplate(prev => prev?.id === template.id ? null : template);
+    setPreviewTemplate((prev) => (prev?.id === template.id ? null : template));
   }, []);
 
   const categories = Object.entries(getTemplateCategories(t));
@@ -108,18 +114,20 @@ const TemplateLibraryDialog: React.FC<Props> = ({
                   {t("All Templates")} ({getExpressionTemplates(t).length})
                 </TabsTrigger>
               </TabsList>
-              
+
               <div className="mt-4 space-y-2">
                 {categories.map(([key, category]) => {
-                  const count = getTemplatesByCategory(key as keyof ReturnType<typeof getTemplateCategories>, t).length;
+                  const count = getTemplatesByCategory(
+                    key as keyof ReturnType<typeof getTemplateCategories>,
+                    t,
+                  ).length;
                   return (
                     <button
                       key={key}
                       onClick={() => setSelectedCategory(key)}
                       className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${
-                        selectedCategory === key ? 'bg-accent' : ''
-                      }`}
-                    >
+                        selectedCategory === key ? "bg-accent" : ""
+                      }`}>
                       <div className="flex items-center gap-2">
                         <span>{category.icon}</span>
                         <span className="font-medium">{category.name}</span>
@@ -146,7 +154,9 @@ const TemplateLibraryDialog: React.FC<Props> = ({
                     </h3>
                     <p className="max-w-md text-sm text-muted-foreground">
                       {searchQuery
-                        ? t("Try adjusting your search terms or browse a different category.")
+                        ? t(
+                            "Try adjusting your search terms or browse a different category.",
+                          )
                         : t("No templates available in this category.")}
                     </p>
                   </div>
@@ -154,18 +164,22 @@ const TemplateLibraryDialog: React.FC<Props> = ({
                   filteredTemplates.map((template) => (
                     <div
                       key={template.id}
-                      className="rounded-lg border p-4 transition-colors hover:bg-accent/50"
-                    >
+                      className="rounded-lg border p-4 transition-colors hover:bg-accent/50">
                       {/* Template Header */}
                       <div className="mb-2 flex items-start justify-between">
                         <div className="flex-1">
-                          <h3 className="mb-1 text-sm font-medium">{template.name}</h3>
+                          <h3 className="mb-1 text-sm font-medium">
+                            {template.name}
+                          </h3>
                           <p className="mb-2 text-xs text-muted-foreground">
                             {template.description}
                           </p>
                           <div className="mb-3 flex items-center gap-1">
                             {template.tags.slice(0, 3).map((tag) => (
-                              <Badge key={tag} variant="outline" className="text-xs">
+                              <Badge
+                                key={tag}
+                                variant="outline"
+                                className="text-xs">
                                 <TagIcon className="mr-1 h-3 w-3" />
                                 {tag}
                               </Badge>
@@ -182,14 +196,12 @@ const TemplateLibraryDialog: React.FC<Props> = ({
                             variant="outline"
                             size="sm"
                             onClick={() => handlePreviewToggle(template)}
-                            className="px-2"
-                          >
+                            className="px-2">
                             <EyeIcon className="h-4 w-4" />
                           </Button>
                           <Button
                             size="sm"
-                            onClick={() => handleTemplateSelect(template)}
-                          >
+                            onClick={() => handleTemplateSelect(template)}>
                             {t("Use Template")}
                           </Button>
                         </div>
@@ -198,44 +210,53 @@ const TemplateLibraryDialog: React.FC<Props> = ({
                       {/* Code Preview */}
                       <div className="mb-3 rounded border bg-muted/30 p-3">
                         <code className="font-mono text-xs text-muted-foreground">
-                          {template.preview || template.rhaiCode.split('\n')[0] + '...'}
+                          {template.preview ||
+                            template.rhaiCode.split("\n")[0] + "..."}
                         </code>
                       </div>
 
                       {/* Expandable Details */}
                       {previewTemplate?.id === template.id && (
                         <div>
-                            <div className="mt-3 border-t pt-3">
-                              <div className="space-y-3">
-                                {template.usageExample && (
-                                  <div>
-                                    <h4 className="mb-1 text-xs font-medium text-muted-foreground">
-                                      {t("Usage Example")}
-                                    </h4>
-                                    <p className="text-xs text-muted-foreground">
-                                      {template.usageExample}
-                                    </p>
-                                  </div>
-                                )}
-                                
+                          <div className="mt-3 border-t pt-3">
+                            <div className="space-y-3">
+                              {template.usageExample && (
+                                <div>
+                                  <h4 className="mb-1 text-xs font-medium text-muted-foreground">
+                                    {t("Usage Example")}
+                                  </h4>
+                                  <p className="text-xs text-muted-foreground">
+                                    {template.usageExample}
+                                  </p>
+                                </div>
+                              )}
+
+                              <div>
+                                <h4 className="mb-2 text-xs font-medium text-muted-foreground">
+                                  {t("Full Code")}
+                                </h4>
+                                <pre className="overflow-x-auto rounded bg-muted/50 p-3 font-mono text-xs">
+                                  <code>
+                                    {formatTemplateCode(template.rhaiCode)}
+                                  </code>
+                                </pre>
+                              </div>
+
+                              {template.placeholders.length > 0 && (
                                 <div>
                                   <h4 className="mb-2 text-xs font-medium text-muted-foreground">
-                                    {t("Full Code")}
+                                    {t("Placeholders")} (
+                                    {template.placeholders.length})
                                   </h4>
-                                  <pre className="overflow-x-auto rounded bg-muted/50 p-3 font-mono text-xs">
-                                    <code>{formatTemplateCode(template.rhaiCode)}</code>
-                                  </pre>
-                                </div>
-                                
-                                {template.placeholders.length > 0 && (
-                                  <div>
-                                    <h4 className="mb-2 text-xs font-medium text-muted-foreground">
-                                      {t("Placeholders")} ({template.placeholders.length})
-                                    </h4>
-                                    <div className="space-y-2">
-                                      {template.placeholders.map((placeholder) => (
-                                        <div key={placeholder.key} className="flex gap-2 text-xs">
-                                          <Badge variant="secondary" className="font-mono text-xs">
+                                  <div className="space-y-2">
+                                    {template.placeholders.map(
+                                      (placeholder) => (
+                                        <div
+                                          key={placeholder.key}
+                                          className="flex gap-2 text-xs">
+                                          <Badge
+                                            variant="secondary"
+                                            className="font-mono text-xs">
                                             {placeholder.key}
                                           </Badge>
                                           <span className="text-muted-foreground">
@@ -247,12 +268,13 @@ const TemplateLibraryDialog: React.FC<Props> = ({
                                             )}
                                           </span>
                                         </div>
-                                      ))}
-                                    </div>
+                                      ),
+                                    )}
                                   </div>
-                                )}
-                              </div>
+                                </div>
+                              )}
                             </div>
+                          </div>
                         </div>
                       )}
                     </div>
