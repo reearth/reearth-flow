@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountdomain/workspace"
 )
@@ -46,6 +47,15 @@ func (r *mutationResolver) DeleteWorkspace(ctx context.Context, input gqlmodel.D
 }
 
 func (r *mutationResolver) UpdateWorkspace(ctx context.Context, input gqlmodel.UpdateWorkspaceInput) (*gqlmodel.UpdateWorkspacePayload, error) {
+	if usecases(ctx).TempNewWorkspace != nil {
+		tempNewWorkspace := r.updateWorkspaceWithTempNewUsecase(ctx, input)
+		if tempNewWorkspace != nil {
+			log.Printf("DEBUG:[mutationResolver.updateWorkspaceWithTempNewUsecase] Updated workspace with tempNewUsecase")
+			return tempNewWorkspace, nil
+		}
+	}
+	log.Printf("WARNING:[mutationResolver.UpdateWorkspace] Fallback to traditional usecase")
+
 	tid, err := gqlmodel.ToID[accountdomain.Workspace](input.WorkspaceID)
 	if err != nil {
 		return nil, err
@@ -57,6 +67,22 @@ func (r *mutationResolver) UpdateWorkspace(ctx context.Context, input gqlmodel.U
 	}
 
 	return &gqlmodel.UpdateWorkspacePayload{Workspace: gqlmodel.ToWorkspace(res)}, nil
+}
+
+func (r *mutationResolver) updateWorkspaceWithTempNewUsecase(ctx context.Context, input gqlmodel.UpdateWorkspaceInput) *gqlmodel.UpdateWorkspacePayload {
+	tid, err := gqlmodel.ToID[id.Workspace](input.WorkspaceID)
+	if err != nil {
+		log.Printf("WARNING:[mutationResolver.updateWorkspaceWithTempNewUsecase] Failed to convert ID: %v", err)
+		return nil
+	}
+
+	res, err := usecases(ctx).TempNewWorkspace.Update(ctx, tid, input.Name)
+	if err != nil {
+		log.Printf("WARNING:[mutationResolver.updateWorkspaceWithTempNewUsecase] Failed to update workspace: %v", err)
+		return nil
+	}
+
+	return &gqlmodel.UpdateWorkspacePayload{Workspace: gqlmodel.ToWorkspaceFromFlow(res)}
 }
 
 func (r *mutationResolver) AddMemberToWorkspace(ctx context.Context, input gqlmodel.AddMemberToWorkspaceInput) (*gqlmodel.AddMemberToWorkspacePayload, error) {
