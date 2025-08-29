@@ -180,7 +180,7 @@ export default () => {
     fileType,
     isLoading: isLoadingData,
   } = useFetchAndReadData({
-    dataUrl: selectedDataURL ?? "",
+    dataUrl: selectedDataURL ?? (dataURLs?.length ? dataURLs[0].key : ""),
   });
 
   const handleExpand = () => {
