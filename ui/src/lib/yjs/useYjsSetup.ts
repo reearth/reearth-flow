@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState } from "react";
-import { WebsocketProvider } from "y-websocket";
+import {useCallback, useEffect, useRef, useState} from "react";
+import {WebsocketProvider} from "y-websocket";
 import * as Y from "yjs";
 
-import { config } from "@flow/config";
-import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
+import {config} from "@flow/config";
+import {DEFAULT_ENTRY_GRAPH_ID} from "@flow/global-constants";
 
-import { useAuth } from "../auth";
+import {useAuth} from "../auth";
 
-import { yWorkflowConstructor } from "./conversions";
-import type { YWorkflow } from "./types";
+import {yWorkflowConstructor} from "./conversions";
+import type {YWorkflow} from "./types";
+import {throttle} from "./utils/throttle";
+
 
 export default ({
   workflowId,
@@ -84,21 +86,42 @@ export default ({
 
   const yWorkflows = yDocState?.getMap<YWorkflow>("workflows");
 
-  const undoTrackerActionWrapper = (
+  const throttledTransactionRef = useRef<Map<string, ReturnType<typeof throttle>>>(new Map());
+  
+  const undoTrackerActionWrapper = useCallback((
     callback: () => void,
     originPrepend?: string,
+    throttleMs?: number,
   ) => {
     const origin = originPrepend
       ? `${originPrepend}-${yDocState?.clientID}`
       : yDocState?.clientID;
-    yDocState?.transact(callback, origin);
-  };
+    
+    if (throttleMs && throttleMs > 0) {
+      const key = `${origin}-${throttleMs}`;
+      
+      if (!throttledTransactionRef.current.has(key)) {
+        const throttledTransaction = throttle(
+          (cb: () => void, orig: any) => {
+            yDocState?.transact(cb, orig);
+          },
+          throttleMs
+        );
+        throttledTransactionRef.current.set(key, throttledTransaction);
+      }
+      
+      const throttledFn = throttledTransactionRef.current.get(key);
+      throttledFn?.(callback, origin);
+    } else {
+      yDocState?.transact(callback, origin);
+    }
+  }, [yDocState]);
 
   useEffect(() => {
     if (yWorkflows) {
       const manager = new Y.UndoManager(yWorkflows, {
         trackedOrigins: new Set([currentUserClientId]), // Only track local changes
-        captureTimeout: 200, // default is 500. 200ms is a good balance between performance and user experience
+        captureTimeout: 200,
       });
       setUndoManager(manager);
 
@@ -118,24 +141,22 @@ export default ({
 
     undoManager?.addToScope([sharedType]);
 
-    if (sharedType instanceof Y.Map) {
-      sharedType.forEach((value: any) => {
-        if (value instanceof Y.Map) {
-          recursivelyTrackSharedType(value);
+    sharedType.forEach((value: any) => {
+      if (value instanceof Y.Map) {
+        recursivelyTrackSharedType(value);
+      }
+    });
+    
+    sharedType.observe((event: Y.YMapEvent<any>) => {
+      event.changes.keys.forEach((change: any, key: string) => {
+        if (change.action === "add" || change.action === "update") {
+          const newValue: any = sharedType.get(key);
+          if (newValue instanceof Y.Map) {
+            recursivelyTrackSharedType(newValue);
+          }
         }
       });
-
-      sharedType.observe((event: Y.YMapEvent<any>) => {
-        event.changes.keys.forEach((change: any, key: string) => {
-          if (change.action === "add" || change.action === "update") {
-            const newValue: any = sharedType.get(key);
-            if (newValue instanceof Y.Map) {
-              recursivelyTrackSharedType(newValue);
-            }
-          }
-        });
-      });
-    }
+    });
   }
 
   // Start the recursive tracking

@@ -23,6 +23,7 @@ export default ({
   undoTrackerActionWrapper: (
     callback: () => void,
     originPrepend?: string,
+    throttleMs?: number,
   ) => void;
   handleYWorkflowRemove?: (workflowId: string) => void;
 }) => {
@@ -54,20 +55,29 @@ export default ({
     const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
     if (!yNodes) return;
 
-    undoTrackerActionWrapper(() => {
-      changes.forEach((change) => {
-        switch (change.type) {
-          case "position": {
-            const existingYNode = yNodes.get(change.id);
+    const positionChanges = changes.filter(change => change.type === "position");
+    const otherChanges = changes.filter(change => change.type !== "position");
 
+    if (positionChanges.length > 0) {
+      undoTrackerActionWrapper(() => {
+        positionChanges.forEach((change) => {
+          if (change.type === "position") {
+            const existingYNode = yNodes.get(change.id);
             if (existingYNode && change.position) {
               const newPosition = new Y.Map<unknown>();
               newPosition.set("x", change.position.x);
               newPosition.set("y", change.position.y);
               existingYNode.set("position", newPosition);
             }
-            break;
           }
+        });
+      }, "position-update", 50);
+    }
+
+    if (otherChanges.length > 0) {
+      undoTrackerActionWrapper(() => {
+        otherChanges.forEach((change) => {
+          switch (change.type) {
           case "replace": {
             const existingYNode = yNodes.get(change.id);
 
@@ -143,9 +153,10 @@ export default ({
             });
             break;
           }
-        }
+          }
+        });
       });
-    });
+    }
   };
   const handleYNodesChange = useCallback(
     (changes: NodeChange[]) => handleYNodesChangeRef.current?.(changes),

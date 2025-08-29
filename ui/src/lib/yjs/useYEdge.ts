@@ -16,6 +16,7 @@ export default ({
   undoTrackerActionWrapper: (
     callback: () => void,
     originPrepend?: string,
+    throttleMs?: number,
   ) => void;
 }) => {
   const handleYEdgesAdd = useCallback(
