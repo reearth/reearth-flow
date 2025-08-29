@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 
+import { useT } from "@flow/lib/i18n";
+
 import {
-  RHAI_AUTOCOMPLETE_SUGGESTIONS,
+  getRhaiAutocompleteSuggestions,
   type AutocompleteSuggestion,
 } from "./constants";
 
@@ -20,6 +22,7 @@ const RhaiAutocomplete: React.FC<Props> = ({
   visible,
   onVisibilityChange,
 }) => {
+  const t = useT();
   const [suggestions, setSuggestions] = useState<AutocompleteSuggestion[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [position, setPosition] = useState({ top: 0, left: 0 });
@@ -28,9 +31,10 @@ const RhaiAutocomplete: React.FC<Props> = ({
   // Create indexed suggestions for faster searching
   const indexedSuggestions = useMemo(() => {
     const index = new Map<string, AutocompleteSuggestion[]>();
+    const suggestions = getRhaiAutocompleteSuggestions(t);
     
     // Group suggestions by first character for faster lookup
-    RHAI_AUTOCOMPLETE_SUGGESTIONS.forEach(suggestion => {
+    suggestions.forEach(suggestion => {
       const firstChar = suggestion.label.charAt(0).toLowerCase();
       if (!index.has(firstChar)) {
         index.set(firstChar, []);
@@ -42,7 +46,7 @@ const RhaiAutocomplete: React.FC<Props> = ({
     });
     
     return index;
-  }, []);
+  }, [t]);
 
   // Get current word being typed and cursor position
   const getCurrentWordAndPosition = useCallback(() => {
