@@ -25,6 +25,9 @@ export default ({
 
   const [yDocState, setYDocState] = useState<Y.Doc | null>(null);
   const [isSynced, setIsSynced] = useState(false);
+  const [awareness, setAwareness] = useState<any>(null);
+
+  const yWebSocketProviderRef = useRef<WebsocketProvider | null>(null);
 
   useEffect(() => {
     const yDoc = new Y.Doc();
@@ -39,14 +42,16 @@ export default ({
           params.token = token;
         }
 
-        yWebSocketProvider = new WebsocketProvider(
-          websocket,
-          `${projectId}:${workflowId}`,
-          yDoc,
-          {
-            params,
-          },
-        );
+        const roomName = `${projectId}:${workflowId}`;
+        console.log("Connecting to WebSocket room:", roomName);
+        console.log("WebSocket URL:", websocket);
+
+        yWebSocketProvider = new WebsocketProvider(websocket, roomName, yDoc, {
+          params,
+        });
+
+        yWebSocketProviderRef.current = yWebSocketProvider;
+        setAwareness(yWebSocketProvider.awareness);
 
         yWebSocketProvider.once("sync", () => {
           const metadata = yDoc.getMap("metadata");
@@ -69,6 +74,42 @@ export default ({
           }
           setIsSynced(true); // Mark as synced
         });
+
+        // Add cleanup handlers for various exit scenarios e.g. tab close, navigation, hard refresh
+        const clearAwarenessState = () => {
+          if (yWebSocketProvider?.awareness) {
+            yWebSocketProvider.awareness.setLocalState(null);
+          }
+        };
+
+        const handleBeforeUnload = () => {
+          clearAwarenessState();
+        };
+
+        const handleVisibilityChange = () => {
+          if (document.hidden) {
+            setTimeout(clearAwarenessState, 1000);
+          }
+        };
+
+        const handlePageHide = () => {
+          clearAwarenessState();
+        };
+
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        window.addEventListener("pagehide", handlePageHide);
+
+        const cleanupListeners = () => {
+          window.removeEventListener("beforeunload", handleBeforeUnload);
+          document.removeEventListener(
+            "visibilitychange",
+            handleVisibilityChange,
+          );
+          window.removeEventListener("pagehide", handlePageHide);
+        };
+
+        (yWebSocketProvider as any).cleanupListeners = cleanupListeners;
       })();
     }
 
@@ -76,7 +117,20 @@ export default ({
 
     return () => {
       setIsSynced(false);
+      // Clean up event listeners if they exist
+      if (
+        yWebSocketProviderRef.current &&
+        (yWebSocketProviderRef.current as any).cleanupListeners
+      ) {
+        (yWebSocketProviderRef.current as any).cleanupListeners();
+      }
+      // Clear awareness state before destroying
+      if (yWebSocketProviderRef.current?.awareness) {
+        yWebSocketProviderRef.current.awareness.setLocalState(null);
+      }
       yWebSocketProvider?.destroy();
+      yWebSocketProviderRef.current = null;
+      setAwareness(null);
     };
   }, [projectId, workflowId, isProtected, getAccessToken]);
 
@@ -147,5 +201,6 @@ export default ({
     undoManager,
     undoTrackerActionWrapper,
     yDocState,
+    awareness,
   };
 };
