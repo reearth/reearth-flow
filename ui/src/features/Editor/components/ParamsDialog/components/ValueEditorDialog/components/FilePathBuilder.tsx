@@ -2,6 +2,7 @@ import { FolderIcon, FileIcon } from "@phosphor-icons/react";
 import { useCallback, useState, useEffect } from "react";
 
 import {
+  Button,
   Label,
   Select,
   SelectContent,
@@ -53,13 +54,19 @@ const FilePathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
     },
   ];
 
-  const generateExpression = useCallback(() => {
+  // Generate expression for preview only - don't auto-insert
+  const [currentExpression, setCurrentExpression] = useState("");
+
+  useEffect(() => {
     let expr = "";
 
     switch (operation) {
       case "join_path":
         if (path1 && path2) {
           expr = `file::join_path(${path1}, ${path2})`;
+        } else if (path1) {
+          // Show partial preview
+          expr = `file::join_path(${path1}, "filename")`;
         }
         break;
       case "extract_filename":
@@ -74,13 +81,14 @@ const FilePathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
         break;
     }
 
-    onExpressionChange(expr);
-  }, [operation, path1, path2, onExpressionChange]);
+    setCurrentExpression(expr);
+  }, [operation, path1, path2]);
 
-  // Generate expression whenever inputs change
-  useEffect(() => {
-    generateExpression();
-  }, [generateExpression]);
+  const handleInsertExpression = useCallback(() => {
+    if (currentExpression.trim()) {
+      onExpressionChange(currentExpression);
+    }
+  }, [currentExpression, onExpressionChange]);
 
   const selectedOperation = operations.find((op) => op.value === operation);
 
@@ -196,6 +204,23 @@ const FilePathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
             </div>
           )}
         </div>
+
+        {/* Preview and Insert Section */}
+        {currentExpression && (
+          <div className="mt-6 border-t pt-4">
+            <div className="mb-3">
+              <Label className="text-xs text-muted-foreground">
+                {t("Preview")}
+              </Label>
+              <div className="mt-1 rounded border bg-muted/30 p-2 font-mono text-sm">
+                {currentExpression}
+              </div>
+            </div>
+            <Button onClick={handleInsertExpression} className="w-full">
+              {t("Insert Expression")}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

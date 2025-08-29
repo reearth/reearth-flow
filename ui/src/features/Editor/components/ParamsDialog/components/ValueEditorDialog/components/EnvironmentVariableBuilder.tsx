@@ -1,7 +1,8 @@
-import { CircleIcon, CheckIcon } from "@phosphor-icons/react";
+import { CircleIcon } from "@phosphor-icons/react";
 import { useCallback, useState, useEffect } from "react";
 
 import {
+  Button,
   Label,
   Select,
   SelectContent,
@@ -73,7 +74,10 @@ const EnvironmentVariableBuilder: React.FC<Props> = ({
     "__execution_id",
   ];
 
-  const generateExpression = useCallback(() => {
+  // Generate expression for preview only - don't auto-insert
+  const [currentExpression, setCurrentExpression] = useState("");
+
+  useEffect(() => {
     let expr = "";
 
     switch (accessType) {
@@ -94,13 +98,14 @@ const EnvironmentVariableBuilder: React.FC<Props> = ({
         break;
     }
 
-    onExpressionChange(expr);
-  }, [accessType, selectedVariable, customVariableName, onExpressionChange]);
+    setCurrentExpression(expr);
+  }, [accessType, selectedVariable, customVariableName]);
 
-  // Generate expression whenever inputs change
-  useEffect(() => {
-    generateExpression();
-  }, [generateExpression]);
+  const handleInsertExpression = useCallback(() => {
+    if (currentExpression.trim()) {
+      onExpressionChange(currentExpression);
+    }
+  }, [currentExpression, onExpressionChange]);
 
   const selectedAccessType = accessTypes.find(
     (type) => type.value === accessType,
@@ -170,31 +175,24 @@ const EnvironmentVariableBuilder: React.FC<Props> = ({
               {projectVariables && projectVariables.length > 0 ? (
                 <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 xl:grid-cols-3">
                   {projectVariables.map((variable) => (
-                    <div
+                    <button
                       key={variable.id}
-                      className={`flex cursor-pointer flex-col rounded border p-3 transition-colors ${
-                        selectedVariable === variable.name
-                          ? "border-accent-foreground/20 bg-accent"
-                          : "hover:bg-accent/50"
-                      }`}
+                      className="flex flex-col rounded border p-3 text-left transition-colors hover:bg-accent/50 focus:bg-accent focus:ring-2 focus:ring-ring focus:outline-none"
                       onClick={() => setSelectedVariable(variable.name)}>
                       <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate">
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium">
                             {variable.name}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {variable.type}
                           </div>
                         </div>
-                        {selectedVariable === variable.name && (
-                          <CheckIcon className="h-4 w-4 text-accent-foreground flex-shrink-0" />
-                        )}
                       </div>
-                      <div className="mt-1 text-xs text-muted-foreground truncate">
+                      <div className="mt-1 truncate text-xs text-muted-foreground">
                         {variable.defaultValue || t("No value set")}
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               ) : (
@@ -242,19 +240,12 @@ const EnvironmentVariableBuilder: React.FC<Props> = ({
               <Label className="text-xs">{t("Workflow Parameters")}</Label>
               <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {workflowParameters.map((param) => (
-                  <div
+                  <button
                     key={param}
-                    className={`flex cursor-pointer items-center justify-between rounded border p-2 transition-colors ${
-                      selectedVariable === param
-                        ? "border-accent-foreground/20 bg-accent"
-                        : "hover:bg-accent/50"
-                    }`}
+                    className="flex items-center rounded border p-2 text-left transition-colors hover:bg-accent/50 focus:bg-accent focus:ring-2 focus:ring-ring focus:outline-none"
                     onClick={() => setSelectedVariable(param)}>
-                    <code className="text-sm flex-1 truncate">{param}</code>
-                    {selectedVariable === param && (
-                      <CheckIcon className="h-4 w-4 text-accent-foreground flex-shrink-0 ml-2" />
-                    )}
-                  </div>
+                    <code className="flex-1 truncate text-sm">{param}</code>
+                  </button>
                 ))}
               </div>
               <div className="text-xs text-muted-foreground">
@@ -265,6 +256,23 @@ const EnvironmentVariableBuilder: React.FC<Props> = ({
             </div>
           )}
         </div>
+
+        {/* Preview and Insert Section */}
+        {currentExpression && (
+          <div className="mt-6 border-t pt-4">
+            <div className="mb-3">
+              <Label className="text-xs text-muted-foreground">
+                {t("Preview")}
+              </Label>
+              <div className="mt-1 rounded border bg-muted/30 p-2 font-mono text-sm">
+                {currentExpression}
+              </div>
+            </div>
+            <Button onClick={handleInsertExpression} className="w-full">
+              {t("Insert Expression")}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
