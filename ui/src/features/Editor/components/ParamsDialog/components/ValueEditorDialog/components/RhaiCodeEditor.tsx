@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect, useState } from "react";
+import { useCallback, useRef, useEffect, useState, useImperativeHandle, forwardRef } from "react";
 
 import { TextArea } from "@flow/components";
 
@@ -6,6 +6,11 @@ import { type AutocompleteSuggestion } from "./constants";
 import RhaiAutocomplete from "./RhaiAutocomplete";
 import RhaiSyntaxHighlighter from "./RhaiSyntaxHighlighter";
 import { validateRhaiCode, type ValidationError } from "./RhaiValidator";
+
+export type RhaiCodeEditorRef = {
+  insertAtCursor: (text: string) => void;
+  focus: () => void;
+};
 
 type Props = {
   value: string;
@@ -17,13 +22,13 @@ type Props = {
   "data-placeholder"?: string;
 };
 
-const RhaiCodeEditor: React.FC<Props> = ({
+const RhaiCodeEditor = forwardRef<RhaiCodeEditorRef, Props>(({
   value,
   onChange,
   placeholder,
   className = "",
   ...props
-}) => {
+}, ref) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
   const placeholderRef = useRef<HTMLDivElement>(null);
@@ -32,10 +37,37 @@ const RhaiCodeEditor: React.FC<Props> = ({
   // Autocomplete state
   const [autocompleteVisible, setAutocompleteVisible] = useState(false);
 
-  // Validation state
+  // Validation state with debounced validation
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>(
     [],
   );
+  const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Expose methods via ref
+  useImperativeHandle(ref, () => ({
+    insertAtCursor: (text: string) => {
+      if (!textareaRef.current) return;
+      
+      const textarea = textareaRef.current;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const currentValue = value;
+      
+      // Insert text at cursor position
+      const newValue = currentValue.substring(0, start) + text + currentValue.substring(end);
+      onChange(newValue);
+      
+      // Set cursor position after inserted text
+      setTimeout(() => {
+        const newCursorPos = start + text.length;
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+        textarea.focus();
+      }, 10);
+    },
+    focus: () => {
+      textareaRef.current?.focus();
+    }
+  }), [value, onChange]);
 
   // Sync scroll position between textarea and highlight overlay
   const handleScroll = useCallback(() => {
@@ -127,12 +159,16 @@ const RhaiCodeEditor: React.FC<Props> = ({
     [onChange],
   );
 
-  // Create error overlay content
+  // Create error overlay content with optimized string building
   const createErrorOverlay = useCallback(() => {
     if (!value) return "";
+    if (validationErrors.length === 0) {
+      // If no errors, return transparent content efficiently
+      return value.replace(/./g, '<span class="transparent-char">$&</span>');
+    }
 
     const lines = value.split("\n");
-    let overlayContent = "";
+    const overlayParts: string[] = [];
 
     for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
       const line = lines[lineIndex];
@@ -140,47 +176,70 @@ const RhaiCodeEditor: React.FC<Props> = ({
         (err) => err.line === lineIndex,
       );
 
-      // Process line character by character, preserving exact whitespace and characters
-      let processedLine = "";
-      for (let charIndex = 0; charIndex < line.length; charIndex++) {
-        const char = line[charIndex];
-        const charErrors = lineErrors.filter(
-          (err) =>
-            charIndex >= err.column && charIndex < err.column + err.length,
-        );
+      if (lineErrors.length === 0) {
+        // No errors in this line - process efficiently
+        overlayParts.push(line.replace(/./g, '<span class="transparent-char">$&</span>'));
+      } else {
+        // Process line character by character only when there are errors
+        let processedLine = "";
+        for (let charIndex = 0; charIndex < line.length; charIndex++) {
+          const char = line[charIndex];
+          const charErrors = lineErrors.filter(
+            (err) =>
+              charIndex >= err.column && charIndex < err.column + err.length,
+          );
 
-        // Escape HTML characters
-        const escapedChar = char
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#39;");
+          // Escape HTML characters
+          const escapedChar = char
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
 
-        if (charErrors.length > 0) {
-          const error = charErrors[0]; // Use first error if multiple
-          const severity = error.severity === "error" ? "error" : "warning";
-          // Use actual character content to maintain proper spacing
-          processedLine += `<span class="validation-${severity}" data-error="${encodeURIComponent(error.message)}" title="${encodeURIComponent(error.message)}">${escapedChar}</span>`;
-        } else {
-          // Use actual character but make it transparent - this preserves whitespace and layout
-          processedLine += `<span class="transparent-char">${escapedChar}</span>`;
+          if (charErrors.length > 0) {
+            const error = charErrors[0]; // Use first error if multiple
+            const severity = error.severity === "error" ? "error" : "warning";
+            processedLine += `<span class="validation-${severity}" data-error="${encodeURIComponent(error.message)}" title="${encodeURIComponent(error.message)}">${escapedChar}</span>`;
+          } else {
+            processedLine += `<span class="transparent-char">${escapedChar}</span>`;
+          }
         }
+        overlayParts.push(processedLine);
       }
-      overlayContent += processedLine + "\n";
     }
 
-    return overlayContent;
+    return overlayParts.join("\n");
   }, [value, validationErrors]);
 
-  // Validate code on change
+  // Debounced validation to improve performance
   useEffect(() => {
-    if (value.trim()) {
+    // Clear existing timeout
+    if (validationTimeoutRef.current) {
+      clearTimeout(validationTimeoutRef.current);
+    }
+
+    if (!value.trim()) {
+      setValidationErrors([]);
+      validationTimeoutRef.current = null;
+      return;
+    }
+
+    // Set new timeout for validation
+    const timeoutId = setTimeout(() => {
       const errors = validateRhaiCode(value);
       setValidationErrors(errors);
-    } else {
-      setValidationErrors([]);
-    }
+      validationTimeoutRef.current = null;
+    }, 300); // 300ms debounce
+
+    validationTimeoutRef.current = timeoutId;
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [value]);
 
   // Sync positioning and styles exactly
@@ -383,7 +442,7 @@ const RhaiCodeEditor: React.FC<Props> = ({
 
       {/* Validation error summary */}
       {validationErrors.length > 0 && (
-        <div className="absolute -bottom-8 left-0 flex items-center gap-2 text-xs">
+        <div className="absolute bottom-2 left-2 flex items-center gap-2 text-xs">
           {validationErrors.filter((err) => err.severity === "error").length >
             0 && (
             <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
@@ -419,6 +478,8 @@ const RhaiCodeEditor: React.FC<Props> = ({
       />
     </div>
   );
-};
+});
+
+RhaiCodeEditor.displayName = "RhaiCodeEditor";
 
 export default RhaiCodeEditor;

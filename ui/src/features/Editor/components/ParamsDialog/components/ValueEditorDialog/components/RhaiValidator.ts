@@ -27,6 +27,10 @@ export class RhaiValidator {
   private validateSyntax(): void {
     const lines = this.code.split("\n");
 
+    // First, validate multi-line bracket matching across the entire code
+    this.validateMultiLineBracketMatching();
+
+    // Then validate each line individually (excluding single-line bracket matching)
     for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
       const line = lines[lineIndex];
       this.validateLine(line, lineIndex);
@@ -57,9 +61,9 @@ export class RhaiValidator {
         continue;
       }
 
-      // Parentheses and bracket matching
-      if (char === "(" || char === "[" || char === "{") {
-        this.validateBracketMatching(line, i, lineIndex, char);
+      // Parentheses and square brackets only (curly braces handled by multi-line validator)  
+      if (char === "(" || char === "[") {
+        this.validateSingleLineBracketMatching(line, i, lineIndex, char);
       }
 
       // Identifier validation (keywords, functions, variables)
@@ -186,13 +190,105 @@ export class RhaiValidator {
     return { nextIndex: i };
   }
 
-  private validateBracketMatching(
+  private validateMultiLineBracketMatching(): void {
+    const brackets = { "(": ")", "[": "]", "{": "}" };
+    const stack: { bracket: string; line: number; column: number }[] = [];
+    const lines = this.code.split("\n");
+    
+
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      const line = lines[lineIndex];
+      let i = 0;
+
+      while (i < line.length) {
+        const char = line[i];
+
+        // Skip strings
+        if (char === '"' || char === "'") {
+          const stringResult = this.skipString(line, i, char);
+          i = stringResult.nextIndex;
+          continue;
+        }
+
+        // Skip comments
+        if (char === "/" && line[i + 1] === "/") {
+          break;
+        }
+
+        // Handle opening brackets
+        if (char === "(" || char === "[" || char === "{") {
+          stack.push({ bracket: char, line: lineIndex, column: i });
+        }
+
+        // Handle closing brackets
+        if (char === ")" || char === "]" || char === "}") {
+          if (stack.length === 0) {
+            this.addError({
+              line: lineIndex,
+              column: i,
+              length: 1,
+              message: `Unmatched '${char}'`,
+              severity: "error",
+              type: "syntax",
+            });
+          } else {
+            const last = stack.pop();
+            if (!last) {
+              // This shouldn't happen, but handle gracefully
+              this.addError({
+                line: lineIndex,
+                column: i,
+                length: 1,
+                message: `Unmatched '${char}'`,
+                severity: "error",
+                type: "syntax",
+              });
+            } else {
+              const expectedClosing = brackets[last.bracket as keyof typeof brackets];
+              
+              if (char !== expectedClosing) {
+                this.addError({
+                  line: lineIndex,
+                  column: i,
+                  length: 1,
+                  message: `Expected '${expectedClosing}' to match '${last.bracket}' at line ${last.line + 1}`,
+                  severity: "error",
+                  type: "syntax",
+                });
+              }
+            }
+          }
+        }
+
+        i++;
+      }
+    }
+
+    // Check for unclosed brackets
+    for (const unclosed of stack) {
+      const expectedClosing = brackets[unclosed.bracket as keyof typeof brackets];
+      this.addError({
+        line: unclosed.line,
+        column: unclosed.column,
+        length: 1,
+        message: `Unmatched '${unclosed.bracket}', expected '${expectedClosing}'`,
+        severity: "error",
+        type: "syntax",
+      });
+    }
+  }
+
+  private validateSingleLineBracketMatching(
     line: string,
     startIndex: number,
     lineIndex: number,
     openBracket: string,
   ): void {
-    const closeBracket = { "(": ")", "[": "]", "{": "}" }[openBracket];
+    // Only handle parentheses and square brackets on single lines
+    // Curly braces are handled by validateMultiLineBracketMatching
+    const closeBracket = { "(": ")", "[": "]" }[openBracket];
+    if (!closeBracket) return;
+    
     let depth = 1;
     let i = startIndex + 1;
 

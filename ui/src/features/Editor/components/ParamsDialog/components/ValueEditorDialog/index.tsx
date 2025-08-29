@@ -7,9 +7,10 @@ import {
   CaretDownIcon,
   CaretUpIcon,
   WrenchIcon,
+  CodeIcon,
 } from "@phosphor-icons/react";
 import { QuestionIcon } from "@phosphor-icons/react/dist/ssr";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef } from "react";
 
 import {
   Button,
@@ -47,7 +48,8 @@ import FeatureAttributeBuilder from "./components/FeatureAttributeBuilder";
 import FilePathBuilder from "./components/FilePathBuilder";
 import JsonQueryBuilder from "./components/JsonQueryBuilder";
 import MathBuilder from "./components/MathBuilder";
-import RhaiCodeEditor from "./components/RhaiCodeEditor";
+import RhaiCodeEditor, { type RhaiCodeEditorRef } from "./components/RhaiCodeEditor";
+import { TemplateLibraryDialog, TemplatePlaceholderDialog, type ExpressionTemplate } from "./templates";
 
 type Props = {
   open: boolean;
@@ -56,7 +58,7 @@ type Props = {
   onValueSubmit?: (value: any) => void;
 };
 
-export type DialogOptions = "assets" | "cms" | undefined;
+export type DialogOptions = "assets" | "cms" | "templates" | undefined;
 
 const ValueEditorDialog: React.FC<Props> = ({
   open,
@@ -76,8 +78,16 @@ const ValueEditorDialog: React.FC<Props> = ({
 
   // Track Simple Builder panel visibility
   const [simpleBuilderOpen, setSimpleBuilderOpen] = useState(
-    !fieldContext.value || fieldContext.value.trim() === "",
+    !value || value.trim() === "",
   );
+
+  // Template-related state
+  const [selectedTemplate, setSelectedTemplate] = useState<ExpressionTemplate | null>(null);
+  const [showPlaceholderDialog, setShowPlaceholderDialog] = useState(false);
+
+
+  // Ref for RhaiCodeEditor to enable cursor insertion
+  const rhaiEditorRef = useRef<RhaiCodeEditorRef>(null);
 
   const [currentProject] = useCurrentProject();
 
@@ -145,7 +155,37 @@ const ValueEditorDialog: React.FC<Props> = ({
   }, []);
 
   const handleExpressionBuilderChange = useCallback((expression: string) => {
-    setValue(expression);
+    // Insert at cursor position instead of replacing entire content
+    if (rhaiEditorRef.current) {
+      rhaiEditorRef.current.insertAtCursor(expression);
+    } else {
+      // Fallback to setValue if ref is not available
+      setValue(expression);
+    }
+  }, []);
+
+  // Template handlers
+  const handleTemplateSelect = useCallback((template: ExpressionTemplate) => {
+    setSelectedTemplate(template);
+    handleDialogClose();
+    
+    // If template has placeholders, show placeholder dialog, otherwise replace directly
+    if (template.placeholders.length > 0) {
+      setShowPlaceholderDialog(true);
+    } else {
+      setValue(template.rhaiCode); // Templates replace entire content
+    }
+  }, []);
+
+  const handleTemplateInsert = useCallback((populatedCode: string) => {
+    setValue(populatedCode);
+    setShowPlaceholderDialog(false);
+    setSelectedTemplate(null);
+  }, []);
+
+  const handlePlaceholderDialogClose = useCallback(() => {
+    setShowPlaceholderDialog(false);
+    setSelectedTemplate(null);
   }, []);
 
   return (
@@ -174,6 +214,13 @@ const ValueEditorDialog: React.FC<Props> = ({
                 </span>
               </div>
               <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDialogOpen("templates")}>
+                  <CodeIcon className="mr-2 h-4 w-4" />
+                  {t("Templates")}
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -235,6 +282,7 @@ const ValueEditorDialog: React.FC<Props> = ({
             {/* Raw Rhai Editor - Always Visible */}
             <div className="flex-1 border-b">
               <RhaiCodeEditor
+                ref={rhaiEditorRef}
                 className="h-full rounded-none bg-card/20 backdrop-blur-sm"
                 placeholder={t("Enter expression...")}
                 value={value}
@@ -364,6 +412,13 @@ const ValueEditorDialog: React.FC<Props> = ({
           </div>
         </DialogContent>
       </Dialog>
+      {showDialog === "templates" && (
+        <TemplateLibraryDialog
+          open={showDialog === "templates"}
+          onClose={handleDialogClose}
+          onTemplateSelect={handleTemplateSelect}
+        />
+      )}
       {showDialog === "assets" && fieldContext && (
         <AssetsDialog
           onDialogClose={handleDialogClose}
@@ -376,6 +431,12 @@ const ValueEditorDialog: React.FC<Props> = ({
           onCmsItemValue={handleCmsItemValue}
         />
       )}
+      <TemplatePlaceholderDialog
+        open={showPlaceholderDialog}
+        template={selectedTemplate}
+        onClose={handlePlaceholderDialogClose}
+        onInsert={handleTemplateInsert}
+      />
     </>
   );
 };

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 
 import {
   RHAI_AUTOCOMPLETE_SUGGESTIONS,
@@ -24,6 +24,22 @@ const RhaiAutocomplete: React.FC<Props> = ({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Create indexed suggestions for faster searching
+  const indexedSuggestions = useMemo(() => {
+    const index = new Map<string, AutocompleteSuggestion[]>();
+    
+    // Group suggestions by first character for faster lookup
+    RHAI_AUTOCOMPLETE_SUGGESTIONS.forEach(suggestion => {
+      const firstChar = suggestion.label.charAt(0).toLowerCase();
+      if (!index.has(firstChar)) {
+        index.set(firstChar, []);
+      }
+      index.get(firstChar)!.push(suggestion);
+    });
+    
+    return index;
+  }, []);
 
   // Get current word being typed and cursor position
   const getCurrentWordAndPosition = useCallback(() => {
@@ -51,19 +67,25 @@ const RhaiAutocomplete: React.FC<Props> = ({
     return { word, start, end };
   }, [textareaRef]);
 
-  // Filter suggestions based on current input
+  // Filter suggestions based on current input with indexed lookup for performance
   const getFilteredSuggestions = useCallback(
     (word: string): AutocompleteSuggestion[] => {
       if (word.length < 1) return [];
 
-      const filtered = RHAI_AUTOCOMPLETE_SUGGESTIONS.filter((suggestion) =>
-        suggestion.label.toLowerCase().startsWith(word.toLowerCase()),
+      const lowerWord = word.toLowerCase();
+      const firstChar = lowerWord.charAt(0);
+      
+      // Use indexed lookup for better performance with large suggestion sets
+      const candidateSuggestions = indexedSuggestions.get(firstChar) || [];
+      
+      const filtered = candidateSuggestions.filter((suggestion) =>
+        suggestion.label.toLowerCase().startsWith(lowerWord),
       );
 
       // Sort by relevance: exact matches first, then by type priority
       return filtered.sort((a, b) => {
-        const aExact = a.label.toLowerCase() === word.toLowerCase() ? 0 : 1;
-        const bExact = b.label.toLowerCase() === word.toLowerCase() ? 0 : 1;
+        const aExact = a.label.toLowerCase() === lowerWord ? 0 : 1;
+        const bExact = b.label.toLowerCase() === lowerWord ? 0 : 1;
 
         if (aExact !== bExact) return aExact - bExact;
 
@@ -79,7 +101,7 @@ const RhaiAutocomplete: React.FC<Props> = ({
         return (typePriority[a.type] || 5) - (typePriority[b.type] || 5);
       });
     },
-    [],
+    [indexedSuggestions],
   );
 
   // Calculate autocomplete dropdown position

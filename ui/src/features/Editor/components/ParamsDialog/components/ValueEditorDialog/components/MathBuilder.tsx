@@ -114,9 +114,14 @@ const MathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
     [],
   );
 
-  const generateExpression = useCallback(() => {
+
+  // Generate expression for preview only - don't auto-insert
+  const [currentExpression, setCurrentExpression] = useState("");
+  
+  useEffect(() => {
+    // Generate expression for internal preview using original logic
     if (!parts.length || !parts[0].value) {
-      onExpressionChange("");
+      setCurrentExpression("");
       return;
     }
 
@@ -124,7 +129,7 @@ const MathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
     const validParts = parts.filter((part) => part.value.trim() !== "");
 
     if (validParts.length === 0) {
-      onExpressionChange("");
+      setCurrentExpression("");
       return;
     }
 
@@ -162,12 +167,14 @@ const MathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
       }
     }
 
-    onExpressionChange(expr);
-  }, [parts, onExpressionChange, functions]);
+    setCurrentExpression(expr);
+  }, [parts, functions]);
 
-  useEffect(() => {
-    generateExpression();
-  }, [generateExpression]);
+  const handleInsertExpression = useCallback(() => {
+    if (currentExpression.trim()) {
+      onExpressionChange(currentExpression);
+    }
+  }, [currentExpression, onExpressionChange]);
 
   const addOperation = useCallback(() => {
     setParts([...parts, { type: "operation", value: "", operation: "+" }]);
@@ -433,6 +440,21 @@ const MathBuilder: React.FC<Props> = ({ onExpressionChange }) => {
             </div>
           ))}
         </div>
+        
+        {/* Preview and Insert Section */}
+        {currentExpression && (
+          <div className="mt-6 border-t pt-4">
+            <div className="mb-3">
+              <Label className="text-xs text-muted-foreground">{t("Preview")}</Label>
+              <div className="mt-1 rounded border bg-muted/30 p-2 font-mono text-sm">
+                {currentExpression}
+              </div>
+            </div>
+            <Button onClick={handleInsertExpression} className="w-full">
+              {t("Insert Expression")}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

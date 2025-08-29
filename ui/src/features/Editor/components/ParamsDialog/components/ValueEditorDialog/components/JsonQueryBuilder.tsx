@@ -2,6 +2,7 @@ import { DatabaseIcon, CheckIcon } from "@phosphor-icons/react";
 import { useCallback, useState, useEffect } from "react";
 
 import {
+  Button,
   Label,
   Select,
   SelectContent,
@@ -45,7 +46,10 @@ const JsonQueryBuilder: React.FC<Props> = ({ onExpressionChange }) => {
     },
   ];
 
-  const generateExpression = useCallback(() => {
+  // Generate expression for preview only - don't auto-insert
+  const [currentExpression, setCurrentExpression] = useState("");
+  
+  useEffect(() => {
     let expr = "";
 
     if (jsonContent && jsonPath) {
@@ -59,13 +63,14 @@ const JsonQueryBuilder: React.FC<Props> = ({ onExpressionChange }) => {
       }
     }
 
-    onExpressionChange(expr);
-  }, [operation, jsonContent, jsonPath, onExpressionChange]);
+    setCurrentExpression(expr);
+  }, [operation, jsonContent, jsonPath]);
 
-  // Generate expression whenever inputs change
-  useEffect(() => {
-    generateExpression();
-  }, [generateExpression]);
+  const handleInsertExpression = useCallback(() => {
+    if (currentExpression.trim()) {
+      onExpressionChange(currentExpression);
+    }
+  }, [currentExpression, onExpressionChange]);
 
   const selectedOperation = operations.find((op) => op.value === operation);
 
@@ -174,6 +179,21 @@ const JsonQueryBuilder: React.FC<Props> = ({ onExpressionChange }) => {
             </li>
           </ul>
         </div>
+        
+        {/* Preview and Insert Section */}
+        {currentExpression && (
+          <div className="mt-6 border-t pt-4">
+            <div className="mb-3">
+              <Label className="text-xs text-muted-foreground">{t("Preview")}</Label>
+              <div className="mt-1 rounded border bg-muted/30 p-2 font-mono text-sm">
+                {currentExpression}
+              </div>
+            </div>
+            <Button onClick={handleInsertExpression} className="w-full">
+              {t("Insert Expression")}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
