@@ -123,26 +123,30 @@ const GeoJsonDataSource: React.FC<Props> = ({
     [],
   );
 
+  const hasPointFeatures = useMemo(
+    () => fileContent?.features?.some((f) => f.geometry.type === "Point"),
+    [fileContent?.features],
+  );
+
+  const hasLineStringFeatures = useMemo(
+    () => fileContent?.features?.some((f) => f.geometry.type === "LineString"),
+    [fileContent?.features],
+  );
+
+  const hasPolygonFeatures = useMemo(
+    () => fileContent?.features?.some((f) => f.geometry.type === "Polygon"),
+    [fileContent?.features],
+  );
+
   return (
     <Source
       type={fileType}
       data={fileContent}
-      cluster={
-        enableClustering &&
-        fileContent?.features?.some((f) => f.geometry.type === "Point")
-      }
+      cluster={enableClustering && hasPointFeatures}
       promoteId="_originalId">
-      {fileContent?.features?.some(
-        (feature: GeoJSON.Feature) => feature.geometry.type === "Point",
-      ) && <Layer {...pointLayer} />}
-
-      {fileContent?.features?.some(
-        (feature: GeoJSON.Feature) => feature.geometry.type === "LineString",
-      ) && <Layer {...lineStringLayer} />}
-
-      {fileContent?.features?.some(
-        (feature: GeoJSON.Feature) => feature.geometry.type === "Polygon",
-      ) && <Layer {...polygonLayer} />}
+      {hasPointFeatures && <Layer {...pointLayer} />}
+      {hasLineStringFeatures && <Layer {...lineStringLayer} />}
+      {hasPolygonFeatures && <Layer {...polygonLayer} />}
       <Layer {...clusterLayer} />
       <Layer {...clusterCountLayer} />
     </Source>
