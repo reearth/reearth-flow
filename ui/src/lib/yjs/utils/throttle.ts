@@ -5,7 +5,7 @@ export function throttle<T extends (...args: any[]) => any>(
   let inThrottle: boolean;
   let lastResult: ReturnType<T>;
 
-  return ((...args: Parameters<T>) => {
+  return ((...args: any[]) => {
     if (!inThrottle) {
       lastResult = func(...args);
       inThrottle = true;
