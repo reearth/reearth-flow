@@ -214,7 +214,7 @@
   "Not equal to": "等しくない",
   "Less than or equal": "以下",
   "Greater than or equal": "以上",
-  "Logical AND": "論理和（AND）",
+  "Logical AND": "論理積（AND）",
   "Logical OR": "論理和（OR）",
   "Project Variables": "プロジェクト変数",
   "Access variables defined in the project": "プロジェクトで定義された変数にアクセス",
