@@ -1,5 +1,7 @@
 export * from "./ActionItem";
+export * from "./Alert";
 export * from "./Avatar";
+export * from "./Badge";
 export * from "./buttons";
 export * from "./Card";
 export * from "./Carousel";
