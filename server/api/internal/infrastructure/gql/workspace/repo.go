@@ -118,3 +118,21 @@ func (r *workspaceRepo) AddUserMember(ctx context.Context, wid id.WorkspaceID, u
 
 	return util.ToWorkspace(m.AddUsersToWorkspace.Workspace)
 }
+
+func (r *workspaceRepo) UpdateUserMember(ctx context.Context, wid id.WorkspaceID, uid id.UserID, role workspace.Role) (*workspace.Workspace, error) {
+	in := UpdateUserOfWorkspaceInput{
+		WorkspaceID: graphql.ID(wid.String()),
+		UserID:      graphql.ID(uid.String()),
+		Role:        graphql.String(role),
+	}
+
+	var m updateUserOfWorkspaceMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return nil, err
+	}
+
+	return util.ToWorkspace(m.UpdateUserOfWorkspace.Workspace)
+}

@@ -130,3 +130,18 @@ func (mr *MockWorkspaceRepoMockRecorder) Update(ctx, wid, name any) *gomock.Call
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockWorkspaceRepo)(nil).Update), ctx, wid, name)
 }
+
+// UpdateUserMember mocks base method.
+func (m *MockWorkspaceRepo) UpdateUserMember(ctx context.Context, wid id.WorkspaceID, uid id.UserID, role workspace.Role) (*workspace.Workspace, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateUserMember", ctx, wid, uid, role)
+	ret0, _ := ret[0].(*workspace.Workspace)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateUserMember indicates an expected call of UpdateUserMember.
+func (mr *MockWorkspaceRepoMockRecorder) UpdateUserMember(ctx, wid, uid, role any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserMember", reflect.TypeOf((*MockWorkspaceRepo)(nil).UpdateUserMember), ctx, wid, uid, role)
+}
