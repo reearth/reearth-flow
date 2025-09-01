@@ -41,3 +41,7 @@ func (i *Workspace) Delete(ctx context.Context, wid id.WorkspaceID) error {
 func (i *Workspace) AddUserMember(ctx context.Context, wid id.WorkspaceID, users map[id.UserID]workspace.Role) (*workspace.Workspace, error) {
 	return i.workspaceRepo.AddUserMember(ctx, wid, users)
 }
+
+func (i *Workspace) UpdateUserMember(ctx context.Context, wid id.WorkspaceID, uid id.UserID, role workspace.Role) (*workspace.Workspace, error) {
+	return i.workspaceRepo.UpdateUserMember(ctx, wid, uid, role)
+}
