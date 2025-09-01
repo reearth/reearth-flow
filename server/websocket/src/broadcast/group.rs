@@ -298,16 +298,18 @@ impl BroadcastGroup {
                                 &mut awareness_conn,
                                 &doc_name_for_sub_clone,
                                 &awareness_last_read_id,
-                                10,
+                                500,
                                 Some(instance_id_clone.as_str()),
                             )
                             .await;
 
                         match result {
                             Ok(awareness_updates) => {
-                                if !awareness_updates.is_empty() {
+                                let update_count = awareness_updates.len();
+                                let sleep_duration = sleep_for_update_count(update_count);
+                                tokio::time::sleep(sleep_duration).await;
+                                if update_count > 0 {
                                     let awareness = awareness_clone.write().await;
-
                                     for (_instance_id, data) in awareness_updates {
                                         if let Some(data) = data {
                                             if let Ok(awareness_update) = yrs::sync::awareness::AwarenessUpdate::decode_v1(&data) {
@@ -819,5 +821,22 @@ impl Drop for BroadcastGroup {
                 }
             }
         }
+    }
+}
+
+fn sleep_for_update_count(update_count: usize) -> tokio::time::Duration {
+    match update_count {
+        0 => tokio::time::Duration::from_millis(500),
+        1 => tokio::time::Duration::from_millis(200),
+        2 => tokio::time::Duration::from_millis(150),
+        3 => tokio::time::Duration::from_millis(95),
+        4 => tokio::time::Duration::from_millis(90),
+        5 => tokio::time::Duration::from_millis(85),
+        6 => tokio::time::Duration::from_millis(80),
+        7 => tokio::time::Duration::from_millis(75),
+        8 => tokio::time::Duration::from_millis(70),
+        9 => tokio::time::Duration::from_millis(65),
+        10 => tokio::time::Duration::from_millis(60),
+        _ => tokio::time::Duration::from_millis(1),
     }
 }
