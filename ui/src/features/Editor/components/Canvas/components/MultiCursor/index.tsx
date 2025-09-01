@@ -1,5 +1,5 @@
 import { useReactFlow, ViewportPortal } from "@xyflow/react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect } from "react";
 import { useUsers } from "y-presence";
 
 import { Cursor } from "./PerfectCursor";
@@ -36,11 +36,8 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
     }
   }, [awareness]);
 
-  const lastUpdateRef = useRef(0);
   const updateCursor = useCallback(
     (clientX: number, clientY: number) => {
-      const now = Date.now();
-
       const flowPosition = screenToFlowPosition(
         {
           x: clientX,
@@ -48,10 +45,7 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
         },
         { snapToGrid: false },
       );
-
-      console.log("Setting flow position:", flowPosition);
       awareness.setLocalStateField("flowPosition", flowPosition);
-      lastUpdateRef.current = now;
     },
     [awareness, screenToFlowPosition],
   );
@@ -62,15 +56,6 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
     }
   }, [onCursorUpdate, updateCursor]);
 
-  console.log("users", users);
-  console.log("awareness", awareness);
-  console.log(
-    "user states:",
-    Array.from(users.entries() as IterableIterator<[string, any]>).map(
-      ([clientId, user]) => ({ clientId, user }),
-    ),
-  );
-  console.log("awareness states:", awareness.states);
   return (
     <ViewportPortal>
       {Array.from(users.entries() as IterableIterator<[string, any]>).map(

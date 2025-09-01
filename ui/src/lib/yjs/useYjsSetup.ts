@@ -27,8 +27,6 @@ export default ({
   const [isSynced, setIsSynced] = useState(false);
   const [awareness, setAwareness] = useState<any>(null);
 
-  const yWebSocketProviderRef = useRef<WebsocketProvider | null>(null);
-
   useEffect(() => {
     const yDoc = new Y.Doc();
     const { websocket } = config();
@@ -43,14 +41,11 @@ export default ({
         }
 
         const roomName = `${projectId}:${workflowId}`;
-        console.log("Connecting to WebSocket room:", roomName);
-        console.log("WebSocket URL:", websocket);
 
         yWebSocketProvider = new WebsocketProvider(websocket, roomName, yDoc, {
           params,
         });
 
-        yWebSocketProviderRef.current = yWebSocketProvider;
         setAwareness(yWebSocketProvider.awareness);
 
         yWebSocketProvider.once("sync", () => {
@@ -118,18 +113,14 @@ export default ({
     return () => {
       setIsSynced(false);
       // Clean up event listeners if they exist
-      if (
-        yWebSocketProviderRef.current &&
-        (yWebSocketProviderRef.current as any).cleanupListeners
-      ) {
-        (yWebSocketProviderRef.current as any).cleanupListeners();
+      if (yWebSocketProvider && (yWebSocketProvider as any).cleanupListeners) {
+        (yWebSocketProvider as any).cleanupListeners();
       }
       // Clear awareness state before destroying
-      if (yWebSocketProviderRef.current?.awareness) {
-        yWebSocketProviderRef.current.awareness.setLocalState(null);
+      if (yWebSocketProvider?.awareness) {
+        yWebSocketProvider?.awareness.setLocalState(null);
       }
       yWebSocketProvider?.destroy();
-      yWebSocketProviderRef.current = null;
       setAwareness(null);
     };
   }, [projectId, workflowId, isProtected, getAccessToken]);

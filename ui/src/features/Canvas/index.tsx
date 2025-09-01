@@ -86,7 +86,6 @@ const Canvas: React.FC<Props> = ({
 
   const {
     handleNodesDelete,
-    handleNodeDragStop,
     handleNodeDragOver,
     handleNodeDrop,
     handleNodeSettings,
@@ -109,16 +108,6 @@ const Canvas: React.FC<Props> = ({
     onEdgesChange,
     onNodePickerOpen,
   });
-
-  const handleNodeDragStopWithCursor = useCallback(
-    (event: MouseEvent, node: Node, selectedNodes: Node[]) => {
-      if (cursorUpdateRef.current) {
-        cursorUpdateRef.current(event.clientX, event.clientY);
-      }
-      handleNodeDragStop(event, node, selectedNodes);
-    },
-    [handleNodeDragStop],
-  );
 
   const handlePaneMouseMove = useCallback((event: MouseEvent) => {
     if (cursorUpdateRef.current) {
@@ -161,7 +150,6 @@ const Canvas: React.FC<Props> = ({
         onEdgesChange={onEdgesChange}
         onNodeDoubleClick={handleNodeSettings}
         onNodeDragStart={handleCloseContextmenu}
-        onNodeDragStop={handleNodeDragStopWithCursor}
         onNodesDelete={handleNodesDelete}
         onNodeContextMenu={handleNodeContextMenu}
         onSelectionContextMenu={handleSelectionContextMenu}
