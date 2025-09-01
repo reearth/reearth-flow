@@ -1,7 +1,7 @@
 [package]
 description = "Re:Earth Flow GIS Quality Checker"
 name = "plateau-gis-quality-checker"
-version = "0.0.93"
+version = "0.0.94"
 
 authors.workspace = true
 edition.workspace = true

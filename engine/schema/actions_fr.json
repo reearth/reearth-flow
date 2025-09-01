@@ -3909,6 +3909,22 @@
       ]
     },
     {
+      "name": "PLATEAU4.BuildingInstallationGeometryTypeChecker",
+      "type": "processor",
+      "description": "Checks BuildingInstallation's geometry type",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
       "name": "PLATEAU4.CityCodeExtractor",
       "type": "processor",
       "description": "Extracts city code information from PLATEAU4 codelists for local public authorities",
@@ -4137,6 +4153,24 @@
       "outputPorts": [
         "default",
         "rejected"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU4.UnmatchedXlinkDetector",
+      "type": "processor",
+      "description": "Detect unmatched Xlinks for PLATEAU",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "summary",
+        "unMatchedXlinkFrom",
+        "unMatchedXlinkTo"
       ],
       "categories": [
         "PLATEAU"

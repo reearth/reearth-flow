@@ -22,7 +22,7 @@ nodes:
     with:
       conditions:
         - expr: |
-            env.get("exceptSplit")
+            env.get("exceptSplit") ?? false
           outputPort: exceptSplit
 
   - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
