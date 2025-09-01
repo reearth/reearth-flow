@@ -5,7 +5,6 @@ import { useUsers } from "y-presence";
 import { Cursor } from "./PerfectCursor";
 
 type MultiCursorProps = {
-  yDoc?: any;
   awareness: any;
   currentUserName?: string;
   onCursorUpdate?: (

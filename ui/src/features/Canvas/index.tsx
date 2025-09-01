@@ -119,7 +119,6 @@ const Canvas: React.FC<Props> = ({
     <div className="relative h-full w-full">
       {!readonly && yDoc && awareness && (
         <MultiCursor
-          yDoc={yDoc}
           awareness={awareness}
           currentUserName={currentUserName}
           onCursorUpdate={handleCursorUpdate}
