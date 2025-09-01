@@ -136,3 +136,20 @@ func (r *workspaceRepo) UpdateUserMember(ctx context.Context, wid id.WorkspaceID
 
 	return util.ToWorkspace(m.UpdateUserOfWorkspace.Workspace)
 }
+
+func (r *workspaceRepo) RemoveUserMember(ctx context.Context, wid id.WorkspaceID, uid id.UserID) (*workspace.Workspace, error) {
+	in := RemoveUserFromWorkspaceInput{
+		WorkspaceID: graphql.ID(wid.String()),
+		UserID:      graphql.ID(uid.String()),
+	}
+
+	var m removeUserFromWorkspaceMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return nil, err
+	}
+
+	return util.ToWorkspace(m.RemoveUserFromWorkspace.Workspace)
+}
