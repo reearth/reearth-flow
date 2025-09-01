@@ -6528,6 +6528,7 @@ dependencies = [
  "nusamai-plateau",
  "nusamai-projection",
  "nutype",
+ "object_store",
  "once_cell",
  "parking_lot",
  "petgraph 0.6.5",

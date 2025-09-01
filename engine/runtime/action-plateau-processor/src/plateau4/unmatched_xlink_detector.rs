@@ -51,11 +51,11 @@ impl From<Summary> for HashMap<Attribute, AttributeValue> {
 #[serde(rename_all = "camelCase")]
 struct Response {
     gml_id: String,
-    unmatched_xlink_from_ids: Vec<String>,
-    unmatched_xlink_from_tags: Vec<String>,
+    unmatched_xlink_from_id: Vec<String>,
+    unmatched_xlink_from_tag: Vec<String>,
     unmatched_xlink_from_count: u32,
-    unmatched_xlink_to_ids: Vec<String>,
-    unmatched_xlink_to_tags: Vec<String>,
+    unmatched_xlink_to_id: Vec<String>,
+    unmatched_xlink_to_tag: Vec<String>,
     unmatched_xlink_to_count: u32,
 }
 
@@ -81,20 +81,34 @@ impl From<XlinkGmlElement> for Response {
         let ti: Vec<String> = ti.cloned().collect();
         Response {
             gml_id: value.gml_id,
-            unmatched_xlink_from_ids: fi.clone(),
-            unmatched_xlink_from_tags: fi
+            unmatched_xlink_from_id: fi.clone(),
+            unmatched_xlink_from_tag: fi
                 .iter()
                 .map(|id| value.from.get(id).unwrap().clone())
                 .collect(),
             unmatched_xlink_from_count: fi.len() as u32,
-            unmatched_xlink_to_ids: ti.clone(),
-            unmatched_xlink_to_tags: ti
+            unmatched_xlink_to_id: ti.clone(),
+            unmatched_xlink_to_tag: ti
                 .iter()
                 .map(|id| value.to.get(id).unwrap().clone())
                 .collect(),
             unmatched_xlink_to_count: ti.len() as u32,
         }
     }
+}
+
+#[derive(thiserror::Error, Debug)]
+enum Error {
+    #[error("reearth flow common error: {0}")]
+    InvalidUri(#[from] reearth_flow_common::Error),
+    #[error("Unmatched Xlink Detector Error: {0}")]
+    UnmatchedXlinkDetectorError(String),
+    #[error("Failed to convert bytes to string")]
+    FromUtf8Error(#[from] std::string::FromUtf8Error),
+    #[error("Storage Error: {0}")]
+    StorageError(#[from] reearth_flow_storage::Error),
+    #[error("Object Store Error: {0}")]
+    ObjectStoreError(#[from] object_store::Error),
 }
 
 #[derive(Debug, Default, Clone)]
@@ -113,7 +127,7 @@ impl ProcessorFactory for UnmatchedXlinkDetectorFactory {
     }
 
     fn description(&self) -> &str {
-        "Detect unmatched xlink for PLATEAU"
+        "Detect unmatched Xlinks for PLATEAU"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -182,57 +196,46 @@ impl Processor for UnmatchedXlinkDetector {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        self.process_impl(ctx, fw).map_err(Into::into)
+    }
+
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+        Ok(())
+    }
+
+    fn name(&self) -> &str {
+        "UnmatchedXlinkDetector"
+    }
+}
+
+impl UnmatchedXlinkDetector {
+    fn process_impl(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), Error> {
         let feature = &ctx.feature;
         let uri = feature.attributes.get(&self.params.attribute).ok_or(
-            PlateauProcessorError::UnmatchedXlinkDetector("Required Uri".to_string()),
+            Error::UnmatchedXlinkDetectorError("Required URI".to_string()),
         )?;
         let uri = match uri {
-            AttributeValue::String(s) => Uri::from_str(s).map_err(|_| {
-                PlateauProcessorError::UnmatchedXlinkDetector("Invalid URI".to_string())
-            })?,
+            AttributeValue::String(s) => Uri::from_str(s)?,
             _ => {
-                return Err(PlateauProcessorError::UnmatchedXlinkDetector(
+                return Err(Error::UnmatchedXlinkDetectorError(
                     "Invalid Attribute".to_string(),
-                )
-                .into())
+                ))
             }
         };
         let storage = ctx
             .storage_resolver
-            .resolve(&uri)
-            .map_err(|e| PlateauProcessorError::UnmatchedXlinkDetector(format!("{e:?}")))?;
+            .resolve(&uri)?;
         let content = storage
-            .get_sync(uri.path().as_path())
-            .map_err(|e| PlateauProcessorError::UnmatchedXlinkDetector(format!("{e:?}")))?;
-        let xml_content = String::from_utf8(content.to_vec()).map_err(|_| {
-            PlateauProcessorError::UnmatchedXlinkDetector("Invalid UTF-8".to_string())
-        })?;
-        let Ok(document) = xml::parse(xml_content) else {
-            return Err(PlateauProcessorError::UnmatchedXlinkDetector(
-                "Failed to parse XML".to_string(),
-            )
-            .into());
-        };
-        let xml_ctx = xml::create_context(&document).map_err(|e| {
-            PlateauProcessorError::UnmatchedXlinkDetector(format!(
-                "Failed to create xml context: {e}"
-            ))
-        })?;
-        let root_node = match xml::get_root_readonly_node(&document) {
-            Ok(node) => node,
-            Err(e) => {
-                return Err(PlateauProcessorError::UnmatchedXlinkDetector(format!(
-                    "Failed to get root node: {e}"
-                ))
-                .into());
-            }
-        };
-        let nodes = xml::find_readonly_nodes_by_xpath(&xml_ctx, "//bldg:Building[bldg:lod2Solid or bldg:lod3Solid or bldg:lod4Solid or bldg:lod4MultiSurface] | //bldg:BuildingPart[bldg:lod2Solid or bldg:lod3Solid or bldg:lod4Solid or bldg:lod4MultiSurface] | //bldg:Room[bldg:lod2Solid or bldg:lod3Solid or bldg:lod4Solid or bldg:lod4MultiSurface]" , &root_node)
-        .map_err(|e| {
-            PlateauProcessorError::UnmatchedXlinkDetector(format!(
-                "Failed to find_readonly_nodes_in_elements with {e}"
-            ))
-        })?;
+            .get_sync(uri.path().as_path())?;
+        let xml_content = String::from_utf8(content.to_vec())?;
+        let document = xml::parse(xml_content)?;
+        let xml_ctx = xml::create_context(&document)?;
+        let root_node = xml::get_root_readonly_node(&document)?;
+        let nodes = xml::find_readonly_nodes_by_xpath(&xml_ctx, "//bldg:Building[bldg:lod2Solid or bldg:lod3Solid or bldg:lod4Solid or bldg:lod4MultiSurface] | //bldg:BuildingPart[bldg:lod2Solid or bldg:lod3Solid or bldg:lod4Solid or bldg:lod4MultiSurface] | //bldg:Room[bldg:lod2Solid or bldg:lod3Solid or bldg:lod4Solid or bldg:lod4MultiSurface]" , &root_node)?;
         let mut summary = Summary::default();
         for node in nodes {
             let xlink_gml_element = extract_xlink_gml_element(&xml_ctx, &node)?;
@@ -265,42 +268,26 @@ impl Processor for UnmatchedXlinkDetector {
         fw.send(ctx.new_with_feature_and_port(feature.clone(), SUMMARY_PORT.clone()));
         Ok(())
     }
-
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
-        Ok(())
-    }
-
-    fn name(&self) -> &str {
-        "UnmatchedXlinkDetector"
-    }
 }
 
 fn extract_xlink_gml_element(
     xml_ctx: &XmlContext,
     node: &XmlRoNode,
-) -> Result<Option<XlinkGmlElement>> {
+) -> Result<Option<XlinkGmlElement>, Error> {
     let gml_id = node
         .get_attribute_ns(
             "id",
-            String::from_utf8(GML31_NS.into_inner().to_vec())
-                .map_err(|e| PlateauProcessorError::UnmatchedXlinkDetector(format!("{e:?}")))?
+            String::from_utf8(GML31_NS.into_inner().to_vec())?
                 .as_str(),
-        )
-        .ok_or(PlateauProcessorError::UnmatchedXlinkDetector(
-            "Failed to get gml id".to_string(),
-        ))?;
+        ).ok_or(Error::UnmatchedXlinkDetectorError("Failed to get gml id".to_string()))?;
     let mut xlink_from = HashMap::<String, String>::new();
     let mut xlink_to = HashMap::<String, String>::new();
     for tag in ["lod2Solid", "lod3Solid", "lod4Solid", "lod4MultiSurface"] {
         let elements = xml::find_readonly_nodes_by_xpath(
             xml_ctx,
-            format!("bldg:{tag}//gml:surfaceMember[@xlink:href] | bldg:{tag}//gml:baseSurface[@xlink:href]").as_str() ,
+            format!("bldg:{tag}//gml:surfaceMember[@xlink:href] | bldg:{tag}//gml:baseSurface[@xlink:href]").as_str(),
             node,
-        ).map_err(|e| {
-            PlateauProcessorError::UnmatchedXlinkDetector(format!(
-                "Failed to find_readonly_nodes_in_elements with {e}"
-            ))
-        })?;
+        )?;
         let from = elements
             .iter()
             .flat_map(|element| {
@@ -311,16 +298,11 @@ fn extract_xlink_gml_element(
         xlink_from.extend(from);
     }
     let elements =
-        xml::find_readonly_nodes_by_xpath(xml_ctx, "bldg:boundedBy/*//gml:Polygon[@gml:id]", node)
-            .map_err(|e| {
-                PlateauProcessorError::UnmatchedXlinkDetector(format!(
-                    "Failed to find_readonly_nodes_in_elements with {e}"
-                ))
-            })?;
+        xml::find_readonly_nodes_by_xpath(xml_ctx, "bldg:boundedBy/*//gml:Polygon[@gml:id]", node)?;
     for element in &elements {
         let gml_id = element
             .get_attribute_ns("id", "http://www.opengis.net/gml")
-            .ok_or(PlateauProcessorError::UnmatchedXlinkDetector(
+            .ok_or(Error::UnmatchedXlinkDetectorError(
                 "Failed to get gml id".to_string(),
             ))?;
 

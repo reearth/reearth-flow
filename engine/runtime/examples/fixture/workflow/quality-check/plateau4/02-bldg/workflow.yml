@@ -10,7 +10,7 @@ with:
   outputPath:
 graphs:
   - !include ../../../../graphs/lod_splitter_with_dm.yml
-  - !include ref_checks.yml
+  - !include ref_and_type_checks.yml
   - id: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
     name: entry_point
     nodes:
@@ -79,7 +79,7 @@ graphs:
           schemasPath: "schemas"
 
       - id: 7a561c34-2e94-4883-91e4-4026b09c2f8a
-        name: ReferenceChecker
+        name: ReferenceAndTypeChecker
         type: subGraph
         subGraphId: 34e55bec-9185-4a66-9c41-3dbddc1e64fa
 

@@ -1,4 +1,5 @@
 pub(crate) mod attribute_flattener;
+pub(crate) mod building_installation_geometry_type_checker;
 pub(crate) mod city_code_extractor;
 pub(crate) mod domain_of_definition_validator;
 pub(crate) mod errors;

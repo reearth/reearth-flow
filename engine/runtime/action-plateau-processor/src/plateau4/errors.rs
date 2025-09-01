@@ -31,6 +31,8 @@ pub(super) enum PlateauProcessorError {
     UnmatchedXlinkDetectorFactory(String),
     #[error("Unmatched Xlink Detector error: {0}")]
     UnmatchedXlinkDetector(String),
+    #[error("BuildingInstallationGeometryTypeChecker error: {0}")]
+    BuildingInstallationGeometryTypeChecker(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;

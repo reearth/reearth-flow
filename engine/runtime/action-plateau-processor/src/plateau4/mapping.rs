@@ -5,6 +5,7 @@ use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::{
     attribute_flattener::processor::AttributeFlattenerFactory,
+    building_installation_geometry_type_checker::BuildingInstallationGeometryTypeCheckerFactory,
     city_code_extractor::CityCodeExtractorFactory,
     domain_of_definition_validator::DomainOfDefinitionValidatorFactory,
     max_lod_extractor::MaxLodExtractorFactory,
@@ -19,6 +20,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<UDXFolderExtractorFactory>::default(),
         Box::<MaxLodExtractorFactory>::default(),
         Box::<AttributeFlattenerFactory>::default(),
+        Box::<BuildingInstallationGeometryTypeCheckerFactory>::default(),
         Box::<CityCodeExtractorFactory>::default(),
         Box::<ObjectListExtractorFactory>::default(),
         Box::<MissingAttributeDetectorFactory>::default(),
