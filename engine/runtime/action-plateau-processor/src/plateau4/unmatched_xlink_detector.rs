@@ -102,13 +102,13 @@ enum Error {
     #[error("reearth flow common error: {0}")]
     InvalidUri(#[from] reearth_flow_common::Error),
     #[error("Unmatched Xlink Detector Error: {0}")]
-    UnmatchedXlinkDetectorError(String),
+    UnmatchedXlinkDetector(String),
     #[error("Failed to convert bytes to string")]
-    FromUtf8Error(#[from] std::string::FromUtf8Error),
+    FromUtf8(#[from] std::string::FromUtf8Error),
     #[error("Storage Error: {0}")]
-    StorageError(#[from] reearth_flow_storage::Error),
+    Storage(#[from] reearth_flow_storage::Error),
     #[error("Object Store Error: {0}")]
-    ObjectStoreError(#[from] object_store::Error),
+    ObjectStore(#[from] object_store::Error),
 }
 
 #[derive(Debug, Default, Clone)]
@@ -215,22 +215,20 @@ impl UnmatchedXlinkDetector {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), Error> {
         let feature = &ctx.feature;
-        let uri = feature.attributes.get(&self.params.attribute).ok_or(
-            Error::UnmatchedXlinkDetectorError("Required URI".to_string()),
-        )?;
+        let uri = feature
+            .attributes
+            .get(&self.params.attribute)
+            .ok_or(Error::UnmatchedXlinkDetector("Required URI".to_string()))?;
         let uri = match uri {
             AttributeValue::String(s) => Uri::from_str(s)?,
             _ => {
-                return Err(Error::UnmatchedXlinkDetectorError(
+                return Err(Error::UnmatchedXlinkDetector(
                     "Invalid Attribute".to_string(),
                 ))
             }
         };
-        let storage = ctx
-            .storage_resolver
-            .resolve(&uri)?;
-        let content = storage
-            .get_sync(uri.path().as_path())?;
+        let storage = ctx.storage_resolver.resolve(&uri)?;
+        let content = storage.get_sync(uri.path().as_path())?;
         let xml_content = String::from_utf8(content.to_vec())?;
         let document = xml::parse(xml_content)?;
         let xml_ctx = xml::create_context(&document)?;
@@ -277,9 +275,11 @@ fn extract_xlink_gml_element(
     let gml_id = node
         .get_attribute_ns(
             "id",
-            String::from_utf8(GML31_NS.into_inner().to_vec())?
-                .as_str(),
-        ).ok_or(Error::UnmatchedXlinkDetectorError("Failed to get gml id".to_string()))?;
+            String::from_utf8(GML31_NS.into_inner().to_vec())?.as_str(),
+        )
+        .ok_or(Error::UnmatchedXlinkDetector(
+            "Failed to get gml id".to_string(),
+        ))?;
     let mut xlink_from = HashMap::<String, String>::new();
     let mut xlink_to = HashMap::<String, String>::new();
     for tag in ["lod2Solid", "lod3Solid", "lod4Solid", "lod4MultiSurface"] {
@@ -302,7 +302,7 @@ fn extract_xlink_gml_element(
     for element in &elements {
         let gml_id = element
             .get_attribute_ns("id", "http://www.opengis.net/gml")
-            .ok_or(Error::UnmatchedXlinkDetectorError(
+            .ok_or(Error::UnmatchedXlinkDetector(
                 "Failed to get gml id".to_string(),
             ))?;
 

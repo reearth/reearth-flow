@@ -29,7 +29,7 @@ enum Error {
     #[error("failed to parse UTF-8: {0}")]
     Utf8Parse(#[from] std::string::FromUtf8Error),
     #[error("storage error: {0}")]
-    StorageError(#[from] reearth_flow_storage::Error),
+    Storage(#[from] reearth_flow_storage::Error),
 }
 
 impl From<Error> for PlateauProcessorError {
@@ -113,12 +113,15 @@ impl BuildingInstallationGeometryTypeChecker {
             .ok_or(Error::MissingCityGmlPath)?;
         let path_uri = Uri::from_str(city_gml_path.to_string().as_str())?;
         let storage = ctx.storage_resolver.resolve(&path_uri)?;
-        let xml_content = storage.get_sync(path_uri.path().as_path()).map_err(|e| Error::FileRead(format!("{e:?}")))?;
+        let xml_content = storage
+            .get_sync(path_uri.path().as_path())
+            .map_err(|e| Error::FileRead(format!("{e:?}")))?;
         let xml_content = String::from_utf8(xml_content.to_vec())?;
         let document = xml::parse(xml_content.as_str())?;
         let root_node = xml::get_root_readonly_node(&document)?;
         let xml_ctx = xml::create_context(&document)?;
-        let buildings = xml::find_readonly_nodes_by_xpath(&xml_ctx, "*//bldg:Building", &root_node)?;
+        let buildings =
+            xml::find_readonly_nodes_by_xpath(&xml_ctx, "*//bldg:Building", &root_node)?;
         for building in &buildings {
             let building_installations = xml::find_readonly_nodes_by_xpath(
                 &xml_ctx,
