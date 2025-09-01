@@ -231,9 +231,7 @@ impl UnmatchedXlinkDetector {
         let content = storage.get_sync(uri.path().as_path())?;
         let xml_content = String::from_utf8(content.to_vec())?;
         let document = xml::parse(xml_content)?;
-        let xml_ctx = xml::create_context(&document)?;
-        let root_node = xml::get_root_readonly_node(&document)?;
-        let nodes = xml::find_readonly_nodes_by_xpath(&xml_ctx, "//bldg:Building[bldg:lod2Solid or bldg:lod3Solid or bldg:lod4Solid or bldg:lod4MultiSurface] | //bldg:BuildingPart[bldg:lod2Solid or bldg:lod3Solid or bldg:lod4Solid or bldg:lod4MultiSurface] | //bldg:Room[bldg:lod2Solid or bldg:lod3Solid or bldg:lod4Solid or bldg:lod4MultiSurface]" , &root_node)?;
+        let nodes = xml::find_readonly_nodes_by_xpath(&xml_ctx, BUILDING_XPATH_QUERY, &root_node)?;
         let mut summary = Summary::default();
         for node in nodes {
             let xlink_gml_element = extract_xlink_gml_element(&xml_ctx, &node)?;
