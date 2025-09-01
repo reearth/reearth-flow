@@ -299,7 +299,10 @@ fn extract_xlink_gml_element(
         xml::find_readonly_nodes_by_xpath(xml_ctx, "bldg:boundedBy/*//gml:Polygon[@gml:id]", node)?;
     for element in &elements {
         let gml_id = element
-            .get_attribute_ns("id", "http://www.opengis.net/gml")
+            .get_attribute_ns(
+                "id",
+                String::from_utf8(GML31_NS.into_inner().to_vec())?.as_str(),
+            )
             .ok_or(Error::UnmatchedXlinkDetector(
                 "Failed to get gml id".to_string(),
             ))?;
