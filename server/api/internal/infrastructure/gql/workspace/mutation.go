@@ -34,3 +34,9 @@ type updateUserOfWorkspaceMutation struct {
 		Workspace gqlmodel.Workspace `graphql:"workspace"`
 	} `graphql:"updateUserOfWorkspace(input: $input)"`
 }
+
+type removeUserFromWorkspaceMutation struct {
+	RemoveUserFromWorkspace struct {
+		Workspace gqlmodel.Workspace `graphql:"workspace"`
+	} `graphql:"removeUserFromWorkspace(input: $input)"`
+}

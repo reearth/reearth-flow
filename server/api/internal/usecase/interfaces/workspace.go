@@ -15,4 +15,5 @@ type Workspace interface {
 	Delete(context.Context, id.WorkspaceID) error
 	AddUserMember(context.Context, id.WorkspaceID, map[id.UserID]workspace.Role) (*workspace.Workspace, error)
 	UpdateUserMember(context.Context, id.WorkspaceID, id.UserID, workspace.Role) (*workspace.Workspace, error)
+	RemoveUserMember(context.Context, id.WorkspaceID, id.UserID) (*workspace.Workspace, error)
 }
