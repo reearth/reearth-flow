@@ -1,5 +1,5 @@
 import { createLazyFileRoute, useParams } from "@tanstack/react-router";
-import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
+import { ReactFlowProvider } from "@xyflow/react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button, FlowLogo, LoadingSplashscreen } from "@flow/components";
@@ -13,7 +13,7 @@ import {
   WorkspaceIdWrapper,
 } from "@flow/features/PageWrapper";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { useJobSubscriptionsSetup, useFullscreen } from "@flow/hooks";
+import { useJobSubscriptionsSetup } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
