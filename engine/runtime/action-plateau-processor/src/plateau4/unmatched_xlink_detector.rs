@@ -289,7 +289,7 @@ fn extract_xlink_gml_element(
         let from = elements
             .iter()
             .flat_map(|element| {
-                let xlink = element.get_attribute_ns("href", "http://www.w3.org/1999/xlink")?;
+                let xlink = element.get_attribute_ns("href", XLINK_NS)?;
                 Some((xlink.replace("#", ""), tag.to_string()))
             })
             .collect::<HashMap<String, String>>();
