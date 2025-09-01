@@ -54,7 +54,7 @@ const EditorComponent = () => {
       })();
     }
   }, [accessToken, getAccessToken]);
-
+  // Keyboard shortcuts are currently disabled whilst we refine them
   // useShortcuts([
   //   {
   //     keyBinding: { key: "+", commandKey: false },

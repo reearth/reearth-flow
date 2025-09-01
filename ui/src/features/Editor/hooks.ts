@@ -281,7 +281,7 @@ export default ({
   );
 
   const handleDeleteDialogClose = () => setShowBeforeDeleteDialog(false);
-
+  // Keyboard shortcuts are currently disabled whilst we refine them
   // useShortcuts([
   //   {
   //     keyBinding: { key: "r", commandKey: false },

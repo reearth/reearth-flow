@@ -73,7 +73,7 @@ const HomeMenu: React.FC<Props> = ({
   const handleAboutDialogOpen = useCallback(() => {
     alert(t("About dialog is not implemented yet."));
   }, [t]);
-
+  // Keyboard shortcuts are currently disabled whilst we refine them
   // useShortcuts([
   //   {
   //     keyBinding: { key: "/", commandKey: true },

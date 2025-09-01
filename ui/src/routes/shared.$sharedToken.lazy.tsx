@@ -71,6 +71,7 @@ const SharedRoute = () => {
 
 const EditorComponent = ({ accessToken }: { accessToken?: string }) => {
   const t = useT();
+  // Keyboard shortcuts are currently disabled whilst we refine them
   // const { zoomIn, zoomOut, fitView } = useReactFlow();
   // const { handleFullscreenToggle } = useFullscreen();
   // useShortcuts([
