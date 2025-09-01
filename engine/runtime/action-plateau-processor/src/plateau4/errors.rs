@@ -27,6 +27,12 @@ pub(super) enum PlateauProcessorError {
     MissingAttributeDetector(String),
     #[error("DomainOfDefinitionValidator error: {0}")]
     DomainOfDefinitionValidator(String),
+    #[error("Unmatched Xlink Detector Factory error: {0}")]
+    UnmatchedXlinkDetectorFactory(String),
+    #[error("Unmatched Xlink Detector error: {0}")]
+    UnmatchedXlinkDetector(String),
+    #[error("BuildingInstallationGeometryTypeChecker error: {0}")]
+    BuildingInstallationGeometryTypeChecker(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;
