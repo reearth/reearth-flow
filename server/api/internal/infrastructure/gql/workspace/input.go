@@ -28,6 +28,11 @@ type UpdateUserOfWorkspaceInput struct {
 	Role        graphql.String `json:"role"`
 }
 
+type RemoveUserFromWorkspaceInput struct {
+	WorkspaceID graphql.ID `json:"workspaceId"`
+	UserID      graphql.ID `json:"userId"`
+}
+
 type MemberInput struct {
 	UserID graphql.ID     `json:"userId"`
 	Role   graphql.String `json:"role"`
