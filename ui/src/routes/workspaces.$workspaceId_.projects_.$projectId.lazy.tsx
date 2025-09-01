@@ -13,11 +13,7 @@ import {
   WorkspaceIdWrapper,
 } from "@flow/features/PageWrapper";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import {
-  useJobSubscriptionsSetup,
-  useFullscreen,
-  useShortcuts,
-} from "@flow/hooks";
+import { useJobSubscriptionsSetup, useFullscreen } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
@@ -43,8 +39,8 @@ export const Route = createLazyFileRoute(
 });
 
 const EditorComponent = () => {
-  const { zoomIn, zoomOut, fitView } = useReactFlow();
-  const { handleFullscreenToggle } = useFullscreen();
+  // const { zoomIn, zoomOut, fitView } = useReactFlow();
+  // const { handleFullscreenToggle } = useFullscreen();
 
   const [accessToken, setAccessToken] = useState<string | undefined>(undefined);
 
@@ -59,24 +55,24 @@ const EditorComponent = () => {
     }
   }, [accessToken, getAccessToken]);
 
-  useShortcuts([
-    {
-      keyBinding: { key: "+", commandKey: false },
-      callback: zoomIn,
-    },
-    {
-      keyBinding: { key: "-", commandKey: false },
-      callback: zoomOut,
-    },
-    {
-      keyBinding: { key: "0", commandKey: true },
-      callback: fitView,
-    },
-    {
-      keyBinding: { key: "f", commandKey: true },
-      callback: handleFullscreenToggle,
-    },
-  ]);
+  // useShortcuts([
+  //   {
+  //     keyBinding: { key: "+", commandKey: false },
+  //     callback: zoomIn,
+  //   },
+  //   {
+  //     keyBinding: { key: "-", commandKey: false },
+  //     callback: zoomOut,
+  //   },
+  //   {
+  //     keyBinding: { key: "0", commandKey: true },
+  //     callback: fitView,
+  //   },
+  //   {
+  //     keyBinding: { key: "f", commandKey: true },
+  //     callback: handleFullscreenToggle,
+  //   },
+  // ]);
 
   const { projectId }: { projectId: string } = useParams({
     strict: false,
