@@ -29,3 +29,7 @@ func (i *Workspace) FindByUser(ctx context.Context, uid id.UserID) (workspace.Li
 func (i *Workspace) Create(ctx context.Context, name string) (*workspace.Workspace, error) {
 	return i.workspaceRepo.Create(ctx, name)
 }
+
+func (i *Workspace) Update(ctx context.Context, wid id.WorkspaceID, name string) (*workspace.Workspace, error) {
+	return i.workspaceRepo.Update(ctx, wid, name)
+}

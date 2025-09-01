@@ -2,6 +2,7 @@ import { DatabaseIcon, DotIcon } from "@phosphor-icons/react";
 import { useCallback, useState, useEffect } from "react";
 
 import {
+  Button,
   Label,
   Select,
   SelectContent,
@@ -86,7 +87,10 @@ const FeatureAttributeBuilder: React.FC<Props> = ({ onExpressionChange }) => {
     },
   ];
 
-  const generateExpression = useCallback(() => {
+  // Generate expression for preview only - don't auto-insert
+  const [currentExpression, setCurrentExpression] = useState("");
+
+  useEffect(() => {
     let expr = "";
 
     switch (accessType) {
@@ -121,13 +125,14 @@ const FeatureAttributeBuilder: React.FC<Props> = ({ onExpressionChange }) => {
         break;
     }
 
-    onExpressionChange(expr);
-  }, [accessType, attributeName, indexKey, onExpressionChange]);
+    setCurrentExpression(expr);
+  }, [accessType, attributeName, indexKey]);
 
-  // Generate expression whenever inputs change
-  useEffect(() => {
-    generateExpression();
-  }, [generateExpression]);
+  const handleInsertExpression = useCallback(() => {
+    if (currentExpression.trim()) {
+      onExpressionChange(currentExpression);
+    }
+  }, [currentExpression, onExpressionChange]);
 
   const selectedMethod = accessMethods.find(
     (method) => method.value === accessType,
@@ -231,7 +236,7 @@ const FeatureAttributeBuilder: React.FC<Props> = ({ onExpressionChange }) => {
                     <button
                       key={attr}
                       onClick={() => setAttributeName(attr)}
-                      className="rounded bg-muted px-2 py-1 text-xs hover:bg-accent transition-colors">
+                      className="rounded bg-muted px-2 py-1 text-xs transition-colors hover:bg-accent">
                       {attr}
                     </button>
                   ))}
@@ -265,7 +270,7 @@ const FeatureAttributeBuilder: React.FC<Props> = ({ onExpressionChange }) => {
                       <button
                         key={key}
                         onClick={() => setIndexKey(key)}
-                        className="rounded bg-muted px-2 py-1 text-xs hover:bg-accent transition-colors">
+                        className="rounded bg-muted px-2 py-1 text-xs transition-colors hover:bg-accent">
                         {key}
                       </button>
                     ),
@@ -313,6 +318,23 @@ const FeatureAttributeBuilder: React.FC<Props> = ({ onExpressionChange }) => {
             </div>
           )}
         </div>
+
+        {/* Preview and Insert Section */}
+        {currentExpression && (
+          <div className="mt-6 border-t pt-4">
+            <div className="mb-3">
+              <Label className="text-xs text-muted-foreground">
+                {t("Preview")}
+              </Label>
+              <div className="mt-1 rounded border bg-muted/30 p-2 font-mono text-sm">
+                {currentExpression}
+              </div>
+            </div>
+            <Button onClick={handleInsertExpression} className="w-full">
+              {t("Insert Expression")}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

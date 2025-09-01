@@ -25,6 +25,7 @@ import { Asset } from "@flow/types";
 
 type Props = {
   asset: Asset;
+  isDeleting?: boolean;
   onCopyUrlToClipBoard: (url: string) => void;
   onAssetDownload: (
     e: React.MouseEvent<HTMLAnchorElement>,
@@ -37,6 +38,7 @@ type Props = {
 
 const AssetCard: React.FC<Props> = ({
   asset,
+  isDeleting,
   onCopyUrlToClipBoard,
   onAssetDownload,
   setAssetToBeDeleted,
@@ -92,7 +94,7 @@ const AssetCard: React.FC<Props> = ({
               onClick={(e) => e.stopPropagation()}>
               <DropdownMenuItem
                 className="justify-between gap-2 text-warning"
-                disabled={!url}
+                disabled={isDeleting || !url}
                 onClick={() => setAssetToBeEdited(asset)}>
                 {t("Edit Asset")}
                 <PencilIcon weight="light" />
@@ -100,7 +102,7 @@ const AssetCard: React.FC<Props> = ({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="justify-between gap-2"
-                disabled={!url}
+                disabled={isDeleting || !url}
                 onClick={() => onCopyUrlToClipBoard(url)}>
                 {t("Copy Asset URL")}
                 <ClipboardTextIcon weight="light" />
@@ -108,7 +110,7 @@ const AssetCard: React.FC<Props> = ({
               <a href={url} onClick={(e) => onAssetDownload(e, asset)}>
                 <DropdownMenuItem
                   className="justify-between gap-2"
-                  disabled={!url}>
+                  disabled={isDeleting || !url}>
                   {t("Download Asset")}
                   <DownloadIcon weight="light" />
                 </DropdownMenuItem>
@@ -116,6 +118,7 @@ const AssetCard: React.FC<Props> = ({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="justify-between gap-4 text-destructive"
+                disabled={isDeleting}
                 onClick={(e) => {
                   e.stopPropagation();
                   setAssetToBeDeleted(id);
