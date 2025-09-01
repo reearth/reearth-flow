@@ -1,21 +1,22 @@
 use std::fmt;
+use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DocumentName(String);
 
 impl DocumentName {
-    pub fn new(name: String) -> Result<Self, &'static str> {
+    pub fn new(name: String) -> Result<Self, DocumentNameError> {
         if name.is_empty() {
-            return Err("Document name cannot be empty");
+            return Err(DocumentNameError::Empty);
         }
         if name.len() > 255 {
-            return Err("Document name cannot exceed 255 characters");
+            return Err(DocumentNameError::TooLong);
         }
         if !name
             .chars()
             .all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.')
         {
-            return Err("Document name can only contain alphanumeric characters, hyphens, underscores, and dots");
+            return Err(DocumentNameError::InvalidCharacters);
         }
         Ok(Self(name))
     }
@@ -36,7 +37,7 @@ impl fmt::Display for DocumentName {
 }
 
 impl TryFrom<String> for DocumentName {
-    type Error = &'static str;
+    type Error = DocumentNameError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         Self::new(value)
@@ -44,9 +45,21 @@ impl TryFrom<String> for DocumentName {
 }
 
 impl TryFrom<&str> for DocumentName {
-    type Error = &'static str;
+    type Error = DocumentNameError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         Self::new(value.to_string())
     }
+}
+
+#[derive(Debug, Error)]
+pub enum DocumentNameError {
+    #[error("Document name cannot be empty")]
+    Empty,
+    #[error("Document name cannot exceed 255 characters")]
+    TooLong,
+    #[error(
+        "Document name can only contain alphanumeric characters, hyphens, underscores, and dots"
+    )]
+    InvalidCharacters,
 }

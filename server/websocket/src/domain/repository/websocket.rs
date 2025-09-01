@@ -1,3 +1,4 @@
+use crate::domain::entity::Subscription;
 use crate::domain::value_objects::document_name::DocumentName;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -19,7 +20,7 @@ pub trait WebSocketRepository: Send + Sync {
         sink: Arc<tokio::sync::Mutex<Self::Sink>>,
         stream: Self::Stream,
         user_token: Option<String>,
-    ) -> Result<crate::Subscription>;
+    ) -> Result<Subscription>;
 
     /// Handle Y.js protocol message
     async fn handle_protocol_message(

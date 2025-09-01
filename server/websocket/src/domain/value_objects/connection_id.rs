@@ -1,4 +1,5 @@
 use std::fmt;
+use thiserror::Error;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -9,9 +10,9 @@ impl ConnectionId {
         Self(Uuid::new_v4().to_string())
     }
 
-    pub fn from_string(id: String) -> Result<Self, &'static str> {
+    pub fn from_string(id: String) -> Result<Self, ConnectionIdError> {
         if id.is_empty() {
-            return Err("Connection ID cannot be empty");
+            return Err(ConnectionIdError::Empty);
         }
         Ok(Self(id))
     }
@@ -31,4 +32,10 @@ impl Default for ConnectionId {
     fn default() -> Self {
         Self::new()
     }
+}
+
+#[derive(Debug, Error)]
+pub enum ConnectionIdError {
+    #[error("Connection ID cannot be empty")]
+    Empty,
 }

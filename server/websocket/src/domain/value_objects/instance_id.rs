@@ -1,4 +1,5 @@
 use std::fmt;
+use thiserror::Error;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -9,9 +10,9 @@ impl InstanceId {
         Self(Uuid::new_v4().to_string())
     }
 
-    pub fn from_string(id: String) -> Result<Self, &'static str> {
+    pub fn from_string(id: String) -> Result<Self, InstanceIdError> {
         if id.is_empty() {
-            return Err("Instance ID cannot be empty");
+            return Err(InstanceIdError::Empty);
         }
         Ok(Self(id))
     }
@@ -31,4 +32,10 @@ impl Default for InstanceId {
     fn default() -> Self {
         Self::new()
     }
+}
+
+#[derive(Debug, Error)]
+pub enum InstanceIdError {
+    #[error("Instance ID cannot be empty")]
+    Empty,
 }
