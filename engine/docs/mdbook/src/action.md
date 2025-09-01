@@ -3880,6 +3880,20 @@ Flatten attributes for building feature
 ### Category
 * PLATEAU
 
+## PLATEAU4.BuildingInstallationGeometryTypeChecker
+### Type
+* processor
+### Description
+Checks BuildingInstallation's geometry type
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* PLATEAU
+
 ## PLATEAU4.CityCodeExtractor
 ### Type
 * processor
@@ -4109,6 +4123,22 @@ Extracts UDX folders from cityGML path
 ### Output Ports
 * default
 * rejected
+### Category
+* PLATEAU
+
+## PLATEAU4.UnmatchedXlinkDetector
+### Type
+* processor
+### Description
+Detect unmatched Xlinks for PLATEAU
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* summary
+* unMatchedXlinkFrom
+* unMatchedXlinkTo
 ### Category
 * PLATEAU
 

@@ -10,6 +10,7 @@ with:
   outputPath:
 graphs:
   - !include ../../../../graphs/lod_splitter_with_dm.yml
+  - !include ref_and_type_checks.yml
   - id: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
     name: entry_point
     nodes:
@@ -76,6 +77,11 @@ graphs:
             env.get("__value")["path"]
           codelistsPath: "codelists"
           schemasPath: "schemas"
+
+      - id: 7a561c34-2e94-4883-91e4-4026b09c2f8a
+        name: ReferenceAndTypeChecker
+        type: subGraph
+        subGraphId: 34e55bec-9185-4a66-9c41-3dbddc1e64fa
 
       - id: 3f7b2a9d-1c8e-4a6f-b5d3-9e2c7a4f8b1d
         name: FeatureCityGmlReader
@@ -246,4 +252,10 @@ graphs:
         from: 2b8c4e7a-9f1d-4a3b-c6e8-5d2a7b9c1e4f
         to: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f
         fromPort: buildingPart
+        toPort: default
+
+      - id: 050b179b-e063-4541-b08f-31ea54ceec0f
+        from: 7e833060-f8c4-458b-a8cc-8c817527f25b
+        to: 7a561c34-2e94-4883-91e4-4026b09c2f8a
+        fromPort: default
         toPort: default
