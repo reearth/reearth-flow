@@ -231,7 +231,9 @@ impl UnmatchedXlinkDetector {
         let content = storage.get_sync(uri.path().as_path())?;
         let xml_content = String::from_utf8(content.to_vec())?;
         let document = xml::parse(xml_content)?;
-        let nodes = xml::find_readonly_nodes_by_xpath(&xml_ctx, BUILDING_XPATH_QUERY, &root_node)?;
+        let xml_ctx = xml::create_context(&document)?;
+        let root_node = xml::get_root_readonly_node(&document)?;
+        let nodes = xml::find_readonly_nodes_by_xpath(&xml_ctx, "//bldg:Building[bldg:lod2Solid or bldg:lod3Solid or bldg:lod4Solid or bldg:lod4MultiSurface] | //bldg:BuildingPart[bldg:lod2Solid or bldg:lod3Solid or bldg:lod4Solid or bldg:lod4MultiSurface] | //bldg:Room[bldg:lod2Solid or bldg:lod3Solid or bldg:lod4Solid or bldg:lod4MultiSurface]" , &root_node)?;
         let mut summary = Summary::default();
         for node in nodes {
             let xlink_gml_element = extract_xlink_gml_element(&xml_ctx, &node)?;
@@ -289,7 +291,7 @@ fn extract_xlink_gml_element(
         let from = elements
             .iter()
             .flat_map(|element| {
-                let xlink = element.get_attribute_ns("href", XLINK_NS)?;
+                let xlink = element.get_attribute_ns("href", "http://www.w3.org/1999/xlink")?;
                 Some((xlink.replace("#", ""), tag.to_string()))
             })
             .collect::<HashMap<String, String>>();
@@ -299,10 +301,7 @@ fn extract_xlink_gml_element(
         xml::find_readonly_nodes_by_xpath(xml_ctx, "bldg:boundedBy/*//gml:Polygon[@gml:id]", node)?;
     for element in &elements {
         let gml_id = element
-            .get_attribute_ns(
-                "id",
-                String::from_utf8(GML31_NS.into_inner().to_vec())?.as_str(),
-            )
+            .get_attribute_ns("id", "http://www.opengis.net/gml")
             .ok_or(Error::UnmatchedXlinkDetector(
                 "Failed to get gml id".to_string(),
             ))?;
