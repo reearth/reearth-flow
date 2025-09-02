@@ -109,9 +109,7 @@ const ProjectsManager: React.FC = () => {
                       <span className="font-thin">(flow.zip)</span>
                     </p>
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={handleWorkflowImportClick}
-                    disabled>
+                  <DropdownMenuItem onClick={handleWorkflowImportClick}>
                     <p className="text-sm">
                       {t("Workflow ")}
                       <span className="font-thin">(yaml or json)</span>

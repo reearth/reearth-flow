@@ -1,3 +1,4 @@
+import yaml from "js-yaml";
 import { ChangeEvent, useCallback, useRef, useState } from "react";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
@@ -52,16 +53,22 @@ export default () => {
         const results = e2.target?.result;
 
         if (results && typeof results === "string") {
+          let resultsObject;
           if (
-            (fileExtension === "json" &&
-              validateWorkflowJson(results).isValid) ||
-            (fileExtension === "yaml" && validateWorkflowYaml(results).isValid)
+            fileExtension === "json" &&
+            validateWorkflowJson(results).isValid
           ) {
             setInvalidFile(false);
+            resultsObject = JSON.parse(results);
+          } else if (
+            (fileExtension === "yaml" || fileExtension === "yml") &&
+            validateWorkflowYaml(results).isValid
+          ) {
+            setInvalidFile(false);
+            resultsObject = yaml.load(results);
           } else {
             setInvalidFile(true);
           }
-          const resultsObject = JSON.parse(results as string);
 
           if (currentWorkspace && isEngineWorkflow(resultsObject)) {
             const canvasReadyWorkflows = await deconstructedEngineWorkflow({
