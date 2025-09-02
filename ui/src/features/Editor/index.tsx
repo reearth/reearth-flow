@@ -3,7 +3,6 @@ import type { Awareness } from "y-protocols/awareness";
 import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 
 import Canvas from "@flow/features/Canvas";
-import { useUser } from "@flow/lib/gql/user/useApi";
 import { YWorkflow } from "@flow/lib/yjs/types";
 
 import {
@@ -33,13 +32,11 @@ export default function Editor({
   yDoc,
   awareness,
 }: Props) {
-  const { useGetMe } = useUser();
-  const { me } = useGetMe();
-
   const {
     currentWorkflowId,
     openWorkflows,
     currentProject,
+    me,
     nodes,
     edges,
     selectedEdgeIds,

@@ -12,7 +12,7 @@ import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useProjectExport, useProjectSave } from "@flow/hooks";
-import { useSharedProject } from "@flow/lib/gql";
+import { useSharedProject, useUser } from "@flow/lib/gql";
 import { useYjsStore } from "@flow/lib/yjs";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
@@ -46,7 +46,8 @@ export default ({
 
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
-
+  const { useGetMe } = useUser();
+  const { me } = useGetMe();
   const [openNode, setOpenNode] = useState<Node | undefined>(undefined);
 
   // TODO: If we split canvas more, or use refs, etc, this will become unnecessary @KaWaite
@@ -349,6 +350,7 @@ export default ({
     currentWorkflowId,
     openWorkflows,
     currentProject,
+    me,
     nodes,
     edges,
     selectedEdgeIds,
