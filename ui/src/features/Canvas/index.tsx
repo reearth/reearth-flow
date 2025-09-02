@@ -19,9 +19,7 @@ import {
 } from "@flow/lib/reactFlow";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
-import MultiCursor from "../Editor/components/Canvas/components/MultiCursor";
-
-import { CanvasContextMenu } from "./components";
+import { CanvasContextMenu, MultiCursor } from "./components";
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
