@@ -117,13 +117,6 @@ const Canvas: React.FC<Props> = ({
 
   return (
     <div className="relative h-full w-full">
-      {!readonly && yDoc && awareness && (
-        <MultiCursor
-          awareness={awareness}
-          currentUserName={currentUserName}
-          onCursorUpdate={handleCursorUpdate}
-        />
-      )}
       <ReactFlow
         ref={paneRef}
         // Readonly props START
@@ -166,6 +159,13 @@ const Canvas: React.FC<Props> = ({
           gap={gridSize}
           color="rgba(63, 63, 70, 1)"
         />
+        {!readonly && yDoc && awareness && (
+          <MultiCursor
+            awareness={awareness}
+            currentUserName={currentUserName}
+            onCursorUpdate={handleCursorUpdate}
+          />
+        )}
         {contextMenu && (
           <CanvasContextMenu
             data={contextMenu.data}
