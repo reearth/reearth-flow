@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { Awareness } from "y-protocols/awareness";
 import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 
 import Canvas from "@flow/features/Canvas";
@@ -22,7 +23,7 @@ type Props = {
     originPrepend?: string,
   ) => void;
   yDoc: Doc | null;
-  awareness?: any;
+  awareness?: Awareness;
 };
 
 export default function Editor({

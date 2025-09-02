@@ -2,15 +2,21 @@ import { useReactFlow, ViewportPortal } from "@xyflow/react";
 import { throttle } from "lodash-es";
 import { useCallback, useEffect, useMemo } from "react";
 import { useUsers } from "y-presence";
+import type { Awareness } from "y-protocols/awareness";
 
 import { Cursor } from "./PerfectCursor";
 
 type MultiCursorProps = {
-  awareness: any;
+  awareness: Awareness;
   currentUserName?: string;
   onCursorUpdate?: (
     updateFn: (clientX: number, clientY: number) => void,
   ) => void;
+};
+
+type UserData = {
+  color?: string;
+  cursor?: { x: number; y: number };
 };
 
 const MultiCursor: React.FC<MultiCursorProps> = ({
@@ -60,10 +66,10 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
     onCursorUpdate(throttledUpdateCursor);
     return () => throttledUpdateCursor.cancel();
   }, [onCursorUpdate, throttledUpdateCursor]);
-
+  console.log("awareness", awareness.clientID);
   return (
     <ViewportPortal>
-      {Array.from(users.entries() as IterableIterator<[string, any]>).map(
+      {Array.from(users.entries() as IterableIterator<[number, UserData]>).map(
         ([key, value]) => {
           if (key === awareness.clientID) return null;
           if (!value.cursor) return null;

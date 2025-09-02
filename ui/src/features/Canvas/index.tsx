@@ -9,6 +9,8 @@ import {
   EdgeChange,
 } from "@xyflow/react";
 import { MouseEvent, memo, useCallback, useRef } from "react";
+import type { Awareness } from "y-protocols/awareness";
+import type { Doc } from "yjs";
 
 import {
   isValidConnection,
@@ -33,8 +35,8 @@ type Props = {
   nodes: Node[];
   edges: Edge[];
   selectedEdgeIds?: string[];
-  yDoc?: any;
-  awareness?: any;
+  yDoc: Doc | null;
+  awareness?: Awareness;
   currentUserName?: string;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onWorkflowOpen?: (workflowId: string) => void;
