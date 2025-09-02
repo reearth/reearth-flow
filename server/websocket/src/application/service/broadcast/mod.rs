@@ -10,6 +10,7 @@ use crate::domain::value_objects::instance_id::InstanceId;
 use anyhow::Result;
 use bytes::Bytes;
 use std::sync::Arc;
+use tokio::sync::oneshot;
 use tokio::sync::{Mutex, RwLock};
 use yrs::sync::Awareness;
 
@@ -269,17 +270,16 @@ where
         let config = group.config().clone();
 
         // Start awareness updater task
-        let (awareness_shutdown_tx, awareness_shutdown_rx) = tokio::sync::oneshot::channel();
-        let awareness_task = self.spawn_awareness_updater(
+        let (_, awareness_shutdown_rx) = oneshot::channel();
+        let _ = self.spawn_awareness_updater(
             document_name.clone(),
-            awareness.clone(),
             config.awareness_update_interval_ms,
             awareness_shutdown_rx,
         );
 
         // Start Redis subscriber task
-        let (redis_shutdown_tx, redis_shutdown_rx) = tokio::sync::oneshot::channel();
-        let redis_task = self.spawn_redis_subscriber(
+        let (_, redis_shutdown_rx) = oneshot::channel();
+        let _ = self.spawn_redis_subscriber(
             document_name.clone(),
             instance_id.clone(),
             group.last_read_id().clone(),
@@ -287,16 +287,16 @@ where
         );
 
         // Start heartbeat task
-        let (heartbeat_shutdown_tx, heartbeat_shutdown_rx) = tokio::sync::oneshot::channel();
-        let heartbeat_task = self.spawn_heartbeat_task(
+        let (_, heartbeat_shutdown_rx) = oneshot::channel();
+        let _ = self.spawn_heartbeat_task(
             document_name.clone(),
             config.heartbeat_interval_ms,
             heartbeat_shutdown_rx,
         );
 
         // Start sync task
-        let (sync_shutdown_tx, sync_shutdown_rx) = tokio::sync::oneshot::channel();
-        let sync_task = self.spawn_sync_task(
+        let (_, sync_shutdown_rx) = oneshot::channel();
+        let _ = self.spawn_sync_task(
             document_name,
             awareness,
             config.sync_interval_ms,
@@ -310,13 +310,19 @@ where
         Ok(())
     }
 
+    async fn stop_background_tasks(&self, group: Arc<BroadcastGroup>) -> Result<()> {
+        if let Ok(mut group) = Arc::try_unwrap(group) {
+            group.shutdown().await?;
+        }
+        Ok(())
+    }
+
     /// Spawn awareness updater background task
     fn spawn_awareness_updater(
         &self,
         document_name: DocumentName,
-        awareness: Arc<RwLock<Awareness>>,
         interval_ms: u64,
-        mut shutdown_rx: tokio::sync::oneshot::Receiver<()>,
+        mut shutdown_rx: oneshot::Receiver<()>,
     ) -> tokio::task::JoinHandle<()> {
         let awareness_repo = self.awareness_repo.clone();
         let broadcast_repo = self.broadcast_repo.clone();

@@ -4,6 +4,7 @@ use crate::domain::value_objects::instance_id::InstanceId;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use tokio::sync::oneshot;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
@@ -41,10 +42,10 @@ pub struct BroadcastGroup {
     heartbeat_task: Option<JoinHandle<()>>,
     sync_task: Option<JoinHandle<()>>,
     // Shutdown channels
-    awareness_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
-    redis_subscriber_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
-    heartbeat_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
-    sync_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
+    awareness_shutdown_tx: Option<oneshot::Sender<()>>,
+    redis_subscriber_shutdown_tx: Option<oneshot::Sender<()>>,
+    heartbeat_shutdown_tx: Option<oneshot::Sender<()>>,
+    sync_shutdown_tx: Option<oneshot::Sender<()>>,
     // Last read ID for Redis stream
     last_read_id: Arc<Mutex<String>>,
 }
