@@ -1,0 +1,136 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 00caad2a-9f7d-4189-b479-153fa9ea36ee
+name: "PythonGeospatialProcessorExample"
+entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33c
+with:
+  outputFilePath:
+graphs:
+  - id: 3e3450c8-2344-4728-afa9-5fdb81eec33c
+    name: entry_point
+    nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1af
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                name: "point_feature",
+                location: "Tokyo",
+                value: 100,
+                geometry: #{
+                  type: "Point",
+                  coordinates: [139.6917, 35.6895]  // Tokyo coordinates
+                }
+              },
+              #{
+                name: "polygon_feature", 
+                location: "Shibuya",
+                area: 15.11,
+                geometry: #{
+                  type: "Polygon",
+                  coordinates: [[
+                    [139.695, 35.658],
+                    [139.702, 35.658], 
+                    [139.702, 35.665],
+                    [139.695, 35.665],
+                    [139.695, 35.658]
+                  ]]
+                }
+              }
+            ]
+
+      - id: F3F168F4-1D7B-41E5-B6A2-0FCA96ED10D7
+        name: PythonGeospatialProcessor
+        type: action
+        action: PythonScriptProcessor
+        with:
+          script: |
+            import math
+            
+            # Geospatial processing example
+            geom_type = get_geometry_type(geometry)
+            
+            if geom_type == "Point":
+                coords = get_coordinates(geometry)
+                if coords and len(coords) >= 2:
+                    x, y = coords[0], coords[1]
+                    
+                    # Calculate distance from Tokyo center
+                    tokyo_center = [139.6917, 35.6895]
+                    dx = x - tokyo_center[0]
+                    dy = y - tokyo_center[1]
+                    distance_deg = math.sqrt(dx*dx + dy*dy)
+                    
+                    # Convert to approximate meters (rough calculation)
+                    distance_m = distance_deg * 111000  # degrees to meters
+                    
+                    properties['distance_from_tokyo'] = round(distance_m, 2)
+                    properties['coordinates'] = f"{x}, {y}"
+                    
+                    # Create a buffer around the point
+                    buffer_size = 0.01  # degrees
+                    buffer_polygon = create_polygon([[
+                        [x - buffer_size, y - buffer_size],
+                        [x + buffer_size, y - buffer_size], 
+                        [x + buffer_size, y + buffer_size],
+                        [x - buffer_size, y + buffer_size],
+                        [x - buffer_size, y - buffer_size]
+                    ]])
+                    
+                    # Replace point with buffer polygon
+                    geometry = buffer_polygon
+                    properties['transformed'] = "point_to_buffer"
+                    
+            elif geom_type == "Polygon":
+                coords = get_coordinates(geometry)
+                if coords and len(coords) > 0:
+                    exterior = coords[0]
+                    
+                    # Calculate polygon centroid
+                    sum_x = sum(point[0] for point in exterior[:-1])
+                    sum_y = sum(point[1] for point in exterior[:-1]) 
+                    count = len(exterior) - 1
+                    centroid_x = sum_x / count
+                    centroid_y = sum_y / count
+                    
+                    # Calculate approximate area using shoelace formula
+                    area = 0
+                    for i in range(len(exterior) - 1):
+                        area += exterior[i][0] * exterior[i+1][1]
+                        area -= exterior[i+1][0] * exterior[i][1]
+                    area = abs(area) / 2
+                    
+                    properties['centroid'] = f"{centroid_x}, {centroid_y}"
+                    properties['calculated_area'] = round(area, 6)
+                    
+                    # Replace polygon with its centroid point
+                    geometry = create_point(centroid_x, centroid_y)
+                    properties['transformed'] = "polygon_to_centroid"
+            
+            # Add processing metadata
+            properties['processed_by'] = 'PythonGeospatialProcessor'
+            properties['original_geometry_type'] = geom_type
+
+      - id: 756F498A-7A5C-4579-AB1C-FCBBA8121870
+        name: FileWriter
+        type: action
+        action: FileWriter
+        with:
+          format: json
+          output: |
+            env.get("outputFilePath")
+
+    edges:
+      - id: c064cf52-705f-443a-b2de-6795266c540e
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1af
+        to: F3F168F4-1D7B-41E5-B6A2-0FCA96ED10D7
+        fromPort: default
+        toPort: default
+
+      - id: 7A963683-4E97-4B75-9BDC-BE6B3953003C
+        from: F3F168F4-1D7B-41E5-B6A2-0FCA96ED10D7
+        to: 756F498A-7A5C-4579-AB1C-FCBBA8121870
+        fromPort: default
+        toPort: default
