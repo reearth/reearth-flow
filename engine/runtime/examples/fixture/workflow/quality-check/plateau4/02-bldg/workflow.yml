@@ -140,11 +140,9 @@ graphs:
               outputPort: buildingPart
 
       - id: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b
-        name: Dummy2
-        type: action
-        action: AttributeManager
-        with:
-          operations: []
+        name: FormatChecker
+        type: subGraph
+        subGraphId: 36d6a846-80a8-48e9-9c34-d7c0b8af2d6d
 
       - id: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
         name: SurfaceValidation01
