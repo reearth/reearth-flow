@@ -1,5 +1,6 @@
 import { useReactFlow, ViewportPortal } from "@xyflow/react";
-import { useCallback, useEffect } from "react";
+import { throttle } from "lodash-es";
+import { useCallback, useEffect, useMemo } from "react";
 import { useUsers } from "y-presence";
 
 import { Cursor } from "./PerfectCursor";
@@ -16,7 +17,7 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
   awareness,
   onCursorUpdate,
 }) => {
-  const users = useUsers(awareness, (state: any) => state);
+  const users = useUsers(awareness);
   const { screenToFlowPosition } = useReactFlow();
   useEffect(() => {
     if (awareness && !awareness.getLocalState()?.color) {
@@ -32,6 +33,7 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
       ];
       const color = colors[Math.floor(Math.random() * colors.length)];
       awareness.setLocalStateField("color", color);
+      awareness.setLocalStateField("clientId", awareness.clientID);
     }
   }, [awareness]);
 
@@ -44,31 +46,35 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
         },
         { snapToGrid: false },
       );
-      awareness.setLocalStateField("flowPosition", flowPosition);
+      awareness.setLocalStateField("cursor", flowPosition);
     },
     [awareness, screenToFlowPosition],
   );
+  const throttledUpdateCursor = useMemo(
+    () => throttle(updateCursor, 16, { leading: true, trailing: true }),
+    [updateCursor],
+  );
 
   useEffect(() => {
-    if (onCursorUpdate) {
-      onCursorUpdate(updateCursor);
-    }
-  }, [onCursorUpdate, updateCursor]);
+    if (!onCursorUpdate) return;
+    onCursorUpdate(throttledUpdateCursor);
+    return () => throttledUpdateCursor.cancel();
+  }, [onCursorUpdate, throttledUpdateCursor]);
 
   return (
     <ViewportPortal>
       {Array.from(users.entries() as IterableIterator<[string, any]>).map(
         ([key, value]) => {
           if (key === awareness.clientID) return null;
-          if (!value.flowPosition) return null;
+          if (!value.cursor) return null;
 
           return (
             <div
               key={key}
               style={{
                 position: "absolute",
-                left: value.flowPosition.x,
-                top: value.flowPosition.y,
+                left: value.cursor.x,
+                top: value.cursor.y,
                 pointerEvents: "none",
                 zIndex: 1000,
               }}>

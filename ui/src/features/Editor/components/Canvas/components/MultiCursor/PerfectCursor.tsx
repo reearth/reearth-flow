@@ -36,6 +36,8 @@ export const Cursor = React.memo(
         style={{
           pointerEvents: "none",
           position: "absolute",
+          top: "-15px",
+          left: "-15px",
         }}>
         <g fill="rgba(0,0,0,.2)" transform="translate(1,1)">
           <path d="m12 24.4219v-16.015l11.591 11.619h-6.781l-.411.124z" />
