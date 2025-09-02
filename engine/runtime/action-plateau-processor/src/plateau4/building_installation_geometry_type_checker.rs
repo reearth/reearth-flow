@@ -109,7 +109,7 @@ impl BuildingInstallationGeometryTypeChecker {
 
         let city_gml_path = feature
             .attributes
-            .get(&Attribute::new("cityGmlPath"))
+            .get(&Attribute::new("gmlPath"))
             .ok_or(Error::MissingCityGmlPath)?;
         let path_uri = Uri::from_str(city_gml_path.to_string().as_str())?;
         let storage = ctx.storage_resolver.resolve(&path_uri)?;
