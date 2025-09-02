@@ -7,6 +7,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gql/util"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/user"
+	"github.com/reearth/reearth-flow/api/pkg/workspace"
 )
 
 type userRepo struct {
@@ -95,7 +96,7 @@ func (r *userRepo) UpdateMe(ctx context.Context, a user.UpdateAttrs) (*user.User
 	return util.ToMe(m.UpdateMe.Me)
 }
 
-func (r *userRepo) SignupOIDC(ctx context.Context, a user.SignupOIDCAttrs) (*user.User, error) {
+func (r *userRepo) SignupOIDC(ctx context.Context, a user.SignupOIDCAttrs) (*user.User, *workspace.Workspace, error) {
 	in := SignupOIDCInput{}
 	if a.UserID != nil {
 		s := graphql.ID(a.UserID.String())
@@ -119,8 +120,17 @@ func (r *userRepo) SignupOIDC(ctx context.Context, a user.SignupOIDCAttrs) (*use
 		"input": in,
 	}
 	if err := r.client.Mutate(ctx, &m, vars); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return util.ToUser(m.SignupOIDC.User)
+	user, err := util.ToUser(m.SignupOIDC.User)
+	if err != nil {
+		return nil, nil, err
+	}
+	workspace, err := util.ToWorkspace(m.SignupOIDC.Workspace)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return user, workspace, nil
 }

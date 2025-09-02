@@ -5,6 +5,7 @@ import (
 
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/user"
+	"github.com/reearth/reearth-flow/api/pkg/workspace"
 	"golang.org/x/text/language"
 )
 
@@ -27,5 +28,5 @@ type User interface {
 	FindByIDs(context.Context, id.UserIDList) (user.List, error)
 	UserByNameOrEmail(context.Context, string) (*user.User, error)
 	UpdateMe(context.Context, UpdateMeParam) (*user.User, error)
-	SignupOIDC(context.Context, SignupOIDCParam) (*user.User, error)
+	SignupOIDC(context.Context, SignupOIDCParam) (*user.User, *workspace.Workspace, error)
 }
