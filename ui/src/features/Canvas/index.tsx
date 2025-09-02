@@ -35,8 +35,8 @@ type Props = {
   nodes: Node[];
   edges: Edge[];
   selectedEdgeIds?: string[];
-  yDoc: Doc | null;
-  awareness?: Awareness;
+  yDoc?: Doc | null;
+  awareness?: Awareness | null;
   currentUserName?: string;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onWorkflowOpen?: (workflowId: string) => void;

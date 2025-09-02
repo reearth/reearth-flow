@@ -23,7 +23,7 @@ type Props = {
     originPrepend?: string,
   ) => void;
   yDoc: Doc | null;
-  awareness?: Awareness;
+  awareness?: Awareness | null;
 };
 
 export default function Editor({
