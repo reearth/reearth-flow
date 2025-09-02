@@ -8,8 +8,8 @@ export const useDebugRunUrlQuery = (dataUrl: string) => {
     queryFn: () => {
       return fetchAndReadData(dataUrl);
     },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
+    staleTime: Infinity,
+    gcTime: Infinity,
     retry: 2,
     refetchOnWindowFocus: false,
   });
