@@ -6,11 +6,12 @@ import * as Y from "yjs";
 import { config } from "@flow/config";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useAuth } from "@flow/lib/auth";
-import { useProject } from "@flow/lib/gql";
+import { useProject, useProjectVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { yWorkflowConstructor } from "@flow/lib/yjs/conversions";
 import { YWorkflow } from "@flow/lib/yjs/types";
 import { useCurrentWorkspace } from "@flow/stores";
+import type { AnyProjectVariable } from "@flow/types";
 import {
   validateWorkflowJson,
   validateWorkflowYaml,
@@ -18,6 +19,7 @@ import {
 import {
   deconstructedEngineWorkflow,
   isEngineWorkflow,
+  type WorkflowVariable,
 } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
 
 export default () => {
@@ -37,6 +39,109 @@ export default () => {
   }, []);
 
   const { createProject } = useProject();
+  const { updateMultipleProjectVariables } = useProjectVariables();
+
+  // State for variable mapping dialog
+  const [showVariableMapping, setShowVariableMapping] = useState<boolean>(false);
+  const [pendingWorkflowData, setPendingWorkflowData] = useState<{
+    variables: WorkflowVariable[];
+    workflowName: string;
+    canvasReadyWorkflows: any;
+    resultsObject: any;
+  } | null>(null);
+
+  const executeWorkflowImport = useCallback(
+    async (
+      canvasReadyWorkflows: any,
+      resultsObject: any,
+      projectVariables?: Omit<AnyProjectVariable, "id" | "createdAt" | "updatedAt" | "projectId">[]
+    ) => {
+      if (!currentWorkspace) return;
+
+      const { project } = await createProject({
+        workspaceId: currentWorkspace.id,
+        name: resultsObject.name + t(" (import)"),
+        description: resultsObject.description,
+      });
+
+      if (!project) return console.error("Failed to create project");
+
+      // Create project variables if provided
+      if (projectVariables && projectVariables.length > 0) {
+        await updateMultipleProjectVariables({
+          projectId: project.id,
+          creates: projectVariables.map((pv, index) => ({
+            name: pv.name,
+            defaultValue: pv.defaultValue,
+            type: pv.type,
+            required: pv.required,
+            publicValue: pv.public,
+            index,
+            config: pv.config,
+          })),
+        });
+      }
+
+      const yDoc = new Y.Doc();
+      const { websocket } = config();
+      
+      if (websocket && project) {
+        const token = await getAccessToken();
+        const yWebSocketProvider = new WebsocketProvider(
+          websocket,
+          `${project.id}:${DEFAULT_ENTRY_GRAPH_ID}`,
+          yDoc,
+          { params: { token } },
+        );
+
+        await new Promise<void>((resolve) => {
+          yWebSocketProvider.once("sync", () => {
+            const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
+            canvasReadyWorkflows.workflows.forEach((w: any) => {
+              const yWorkflow = yWorkflowConstructor(
+                w.id,
+                w.name ?? "undefined",
+                w.nodes,
+                w.edges,
+              );
+              yWorkflows.set(w.id, yWorkflow);
+            });
+
+            setIsWorkflowImporting(false);
+            resolve();
+          });
+        });
+        yWebSocketProvider.destroy();
+      }
+    },
+    [currentWorkspace, createProject, updateMultipleProjectVariables, getAccessToken, t]
+  );
+
+  const handleVariableMappingConfirm = useCallback(
+    async (projectVariables: Omit<AnyProjectVariable, "id" | "createdAt" | "updatedAt" | "projectId">[]) => {
+      if (pendingWorkflowData) {
+        await executeWorkflowImport(
+          pendingWorkflowData.canvasReadyWorkflows,
+          pendingWorkflowData.resultsObject,
+          projectVariables
+        );
+        setPendingWorkflowData(null);
+        setShowVariableMapping(false);
+      }
+    },
+    [pendingWorkflowData, executeWorkflowImport]
+  );
+
+  const handleVariableMappingCancel = useCallback(() => {
+    setShowVariableMapping(false);
+    setIsWorkflowImporting(false);
+    setPendingWorkflowData(null);
+    // Reset file input so same file can be imported again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
+
 
   const handleWorkflowFileUpload = useCallback(
     async (e: ChangeEvent<HTMLInputElement>) => {
@@ -77,45 +182,19 @@ export default () => {
             if (!canvasReadyWorkflows)
               return console.error("Failed to convert workflows");
 
-            const { project } = await createProject({
-              workspaceId: currentWorkspace.id,
-              name: resultsObject.name + t("(import)"),
-              description: resultsObject.description,
-            });
-
-            if (!project) return console.error("Failed to create project");
-
-            const yDoc = new Y.Doc();
-
-            const { websocket } = config();
-            if (websocket && project) {
-              const token = await getAccessToken();
-
-              const yWebSocketProvider = new WebsocketProvider(
-                websocket,
-                `${project.id}:${DEFAULT_ENTRY_GRAPH_ID}`,
-                yDoc,
-                { params: { token } },
-              );
-
-              await new Promise<void>((resolve) => {
-                yWebSocketProvider.once("sync", () => {
-                  const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
-                  canvasReadyWorkflows.workflows.forEach((w) => {
-                    const yWorkflow = yWorkflowConstructor(
-                      w.id,
-                      w.name ?? "undefined",
-                      w.nodes,
-                      w.edges,
-                    );
-                    yWorkflows.set(w.id, yWorkflow);
-                  });
-
-                  setIsWorkflowImporting(false);
-                  resolve();
-                });
+            // Check if workflow has variables that need mapping
+            if (canvasReadyWorkflows.variables && canvasReadyWorkflows.variables.length > 0) {
+              // Show variable mapping dialog
+              setPendingWorkflowData({
+                variables: canvasReadyWorkflows.variables,
+                workflowName: resultsObject.name,
+                canvasReadyWorkflows,
+                resultsObject,
               });
-              yWebSocketProvider.destroy();
+              setShowVariableMapping(true);
+            } else {
+              // No variables to map, proceed directly with import
+              await executeWorkflowImport(canvasReadyWorkflows, resultsObject);
             }
           }
         }
@@ -127,7 +206,7 @@ export default () => {
 
       reader.readAsText(file);
     },
-    [currentWorkspace, t, createProject, getAccessToken],
+    [currentWorkspace, executeWorkflowImport],
   );
 
   return {
@@ -137,5 +216,10 @@ export default () => {
     setIsWorkflowImporting,
     handleWorkflowImportClick,
     handleWorkflowFileUpload,
+    // Variable mapping dialog state and handlers
+    showVariableMapping,
+    pendingWorkflowData,
+    handleVariableMappingConfirm,
+    handleVariableMappingCancel,
   };
 };

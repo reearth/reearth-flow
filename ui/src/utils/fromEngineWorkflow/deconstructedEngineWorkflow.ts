@@ -6,13 +6,18 @@ type Meta = {
   name: string;
 };
 
+export type WorkflowVariable = {
+  name: string;
+  value: any;
+};
+
 export const deconstructedEngineWorkflow = async ({
   engineWorkflow,
   layoutType,
 }: {
   engineWorkflow?: EngineReadyWorkflow;
   layoutType?: Algorithm;
-}): Promise<{ meta: Meta; workflows: Workflow[] } | undefined> => {
+}): Promise<{ meta: Meta; workflows: Workflow[]; variables?: WorkflowVariable[] } | undefined> => {
   if (!engineWorkflow) return;
   const meta = { name: engineWorkflow.name };
 
@@ -23,9 +28,18 @@ export const deconstructedEngineWorkflow = async ({
 
   if (!canvasReadyWorkflows) return;
 
+  // Extract workflow variables from the 'with' field
+  const variables: WorkflowVariable[] = engineWorkflow.with 
+    ? Object.entries(engineWorkflow.with).map(([name, value]) => ({
+        name,
+        value,
+      }))
+    : [];
+
   return {
     meta,
     workflows: canvasReadyWorkflows,
+    variables: variables.length > 0 ? variables : undefined,
   };
 };
 
