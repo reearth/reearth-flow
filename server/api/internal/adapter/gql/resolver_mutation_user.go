@@ -15,7 +15,7 @@ import (
 func (r *mutationResolver) Signup(ctx context.Context, input gqlmodel.SignupInput) (*gqlmodel.SignupPayload, error) {
 	// TODO: After migration, remove this logic and use the new usecase directly.
 	if usecases(ctx).TempNewUser != nil {
-		flowUser, err := usecases(ctx).TempNewUser.SignupOIDC(ctx, interfaces.SignupOIDCParam{
+		flowUser, flowWorkspace, err := usecases(ctx).TempNewUser.SignupOIDC(ctx, interfaces.SignupOIDCParam{
 			UserID:      gqlmodel.ToIDRef[id.User](input.UserID),
 			Lang:        input.Lang,
 			WorkspaceID: gqlmodel.ToIDRef[id.Workspace](input.WorkspaceID),
@@ -25,7 +25,10 @@ func (r *mutationResolver) Signup(ctx context.Context, input gqlmodel.SignupInpu
 			log.Printf("WARNING:[mutationResolver.signupWithTempNewUsecase] Failed to sign up user: %v", err)
 		} else {
 			log.Printf("DEBUG:[mutationResolver.signupWithTempNewUsecase] Signed up user with tempNewUsecase")
-			return &gqlmodel.SignupPayload{User: gqlmodel.ToUserFromFlow(flowUser)}, nil
+			return &gqlmodel.SignupPayload{
+				User:      gqlmodel.ToUserFromFlow(flowUser),
+				Workspace: gqlmodel.ToWorkspaceFromFlow(flowWorkspace),
+			}, nil
 		}
 	}
 	log.Printf("WARNING:[mutationResolver.Signup] Fallback to traditional usecase")

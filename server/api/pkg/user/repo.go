@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/workspace"
 )
 
 type Repo interface {
@@ -12,5 +13,5 @@ type Repo interface {
 	FindByIDs(ctx context.Context, ids id.UserIDList) (List, error)
 	UserByNameOrEmail(ctx context.Context, nameOrEmail string) (*User, error)
 	UpdateMe(ctx context.Context, attrs UpdateAttrs) (*User, error)
-	SignupOIDC(ctx context.Context, attrs SignupOIDCAttrs) (*User, error)
+	SignupOIDC(ctx context.Context, attrs SignupOIDCAttrs) (*User, *workspace.Workspace, error)
 }
