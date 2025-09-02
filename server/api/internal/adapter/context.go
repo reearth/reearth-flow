@@ -128,11 +128,6 @@ func JWT(ctx context.Context) string {
 	return t
 }
 
-func OperationName(ctx context.Context) string {
-	t, _ := ctx.Value(jwtTokenKey{}).(string)
-	return t
-}
-
 func GQLOperationName(ctx context.Context) string {
 	t, _ := ctx.Value(gqlOperationNameKey{}).(string)
 	return t
