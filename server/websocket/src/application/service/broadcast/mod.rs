@@ -12,7 +12,10 @@ use bytes::Bytes;
 use std::sync::Arc;
 use tokio::sync::oneshot;
 use tokio::sync::{Mutex, RwLock};
-use yrs::sync::Awareness;
+use tracing::warn;
+use yrs::sync::{Awareness, Message, SyncMessage};
+use yrs::updates::encoder::Encode;
+use yrs::{ReadTxn, Transact};
 
 /// Application service for managing broadcast groups with Y.js support
 pub struct BroadcastGroupService<S, R, B, A, W>
@@ -420,24 +423,29 @@ where
         interval_ms: u64,
         mut shutdown_rx: tokio::sync::oneshot::Receiver<()>,
     ) -> tokio::task::JoinHandle<()> {
-        let storage_repo = self.storage_repo.clone();
-
+        let broadcast_repo = self.broadcast_repo.clone();
         tokio::spawn(async move {
             let mut interval =
                 tokio::time::interval(tokio::time::Duration::from_millis(interval_ms));
 
             loop {
                 tokio::select! {
-                    _ = interval.tick() => {
-                        // Perform periodic sync operations
-                        // This could include saving snapshots, cleaning up old data, etc.
-                        let awareness_guard = awareness.read().await;
-                        let doc = awareness_guard.doc();
-                        // Save document state periodically
-                        // Implementation depends on your storage requirements
-                    }
                     _ = &mut shutdown_rx => {
                         break;
+                    },
+                    _ = interval.tick() => {
+                        let awareness = awareness.read().await;
+                        let txn = awareness.doc().transact();
+                        let state_vector = txn.state_vector();
+
+                        let sync_msg = Message::Sync(SyncMessage::SyncStep1(state_vector));
+                        let encoded_msg = sync_msg.encode_v1();
+
+                        let msg = Bytes::from(encoded_msg);
+                        if let Err(e) = broadcast_repo.broadcast_message(&document_name, msg).await {
+                            warn!("Failed to send periodic sync message: {}", e);
+                            break;
+                        }
                     }
                 }
             }
