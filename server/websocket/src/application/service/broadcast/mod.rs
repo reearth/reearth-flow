@@ -1,4 +1,5 @@
 use crate::domain::entity::broadcast::{BroadcastConfig, BroadcastGroup};
+use crate::domain::entity::sub::Subscription;
 use crate::domain::repository::kv;
 use crate::domain::repository::redis;
 use crate::domain::repository::AwarenessRepository;
@@ -6,7 +7,6 @@ use crate::domain::repository::BroadcastRepository;
 use crate::domain::repository::WebSocketRepository;
 use crate::domain::value_objects::document_name::DocumentName;
 use crate::domain::value_objects::instance_id::InstanceId;
-use crate::Subscription;
 use anyhow::Result;
 use bytes::Bytes;
 use std::sync::Arc;

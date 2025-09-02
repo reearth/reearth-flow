@@ -4,6 +4,7 @@ use crate::domain::repository::{AwarenessRepository, RedisRepository};
 use crate::domain::services::kv::DocOps;
 use crate::domain::value_objects::document_name::DocumentName;
 use anyhow::Result;
+use bytes::Bytes;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use yrs::sync::Awareness;
@@ -38,11 +39,11 @@ impl<D: for<'a> DocOps<'a>> AwarenessRepository for aw<D> {
         Ok(())
     }
 
-    async fn get_awareness_update(&self, document_name: &DocumentName) -> Result<Option<Vec<u8>>> {
+    async fn get_awareness_update(&self, document_name: &DocumentName) -> Result<Option<Bytes>> {
         let storage: &Arc<D> = self.storage();
         let update = storage
             .get_diff(document_name.as_str(), &StateVector::default())
             .await?;
-        Ok(update)
+        Ok(update.map(Bytes::from))
     }
 }

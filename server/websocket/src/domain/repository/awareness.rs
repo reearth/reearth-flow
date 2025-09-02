@@ -2,6 +2,7 @@ use crate::domain::repository::RedisRepository;
 use crate::domain::value_objects::document_name::DocumentName;
 use anyhow::Result;
 use async_trait::async_trait;
+use bytes::Bytes;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use yrs::sync::Awareness;
@@ -21,5 +22,5 @@ pub trait AwarenessRepository: Send + Sync {
     ) -> Result<()>;
 
     /// Get awareness update for broadcasting
-    async fn get_awareness_update(&self, document_name: &DocumentName) -> Result<Option<Vec<u8>>>;
+    async fn get_awareness_update(&self, document_name: &DocumentName) -> Result<Option<Bytes>>;
 }
