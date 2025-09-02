@@ -77,6 +77,10 @@
       "description": "从CSV文件读取要素"
     },
     {
+      "name": "CzmlReader",
+      "description": "从CZML（Cesium语言）文件读取用于3D可视化的地理要素"
+    },
+    {
       "name": "CzmlWriter",
       "description": "将要素写入CZML文件"
     },

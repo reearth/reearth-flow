@@ -1,22 +1,25 @@
 import { ApiResponse } from "./api";
 
-export type VarType =
-  | "attribute_name"
-  | "choice"
-  | "color"
-  | "coordinate_system"
-  | "database_connection"
-  | "datetime"
-  | "file_folder"
-  | "geometry"
-  | "message"
-  | "number"
-  | "password"
-  | "reprojection_file"
-  | "text"
-  | "web_connection"
-  | "yes_no"
-  | "unsupported";
+export const VARIABLE_TYPE_OPTIONS = [
+  "text",
+  "number",
+  "yes_no",
+  "choice",
+  "file_folder",
+  "password",
+  "datetime",
+  "color",
+  "coordinate_system",
+  "database_connection",
+  "web_connection",
+  "geometry",
+  "attribute_name",
+  "message",
+  "reprojection_file",
+  "unsupported",
+] as const;
+
+export type VarType = (typeof VARIABLE_TYPE_OPTIONS)[number];
 
 // Type-specific configuration interfaces
 export type ChoiceConfig = {

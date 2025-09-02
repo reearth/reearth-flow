@@ -17,7 +17,6 @@ import {
 } from "@flow/components";
 import { config } from "@flow/config";
 import KeyboardShortcutDialog from "@flow/features/KeyboardShortcutDialog";
-import { useShortcuts } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { useUser } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
@@ -50,13 +49,13 @@ const UserMenu: React.FC<Props> = ({
 
   const handleTosPageOpen = openLinkInNewTab(tosUrl ?? "");
   const handleDocumentationPageOpen = openLinkInNewTab(documentationUrl ?? "");
-
-  useShortcuts([
-    {
-      keyBinding: { key: "/", commandKey: true },
-      callback: () => setOpenShortcutDialog((o) => !o),
-    },
-  ]);
+  // Keyboard shortcuts are currently disabled whilst we refine them
+  // useShortcuts([
+  //   {
+  //     keyBinding: { key: "/", commandKey: true },
+  //     callback: () => setOpenShortcutDialog((o) => !o),
+  //   },
+  // ]);
 
   return (
     <>
