@@ -12,8 +12,8 @@ nodes:
     name: UnmatchedXlinkDetector
     type: action
     action: PLATEAU4.UnmatchedXlinkDetector
-    with: 
-      attribute: cityGmlPath
+    with:
+      attribute: gmlPath
 
   - id: 691a328a-f39b-403e-b62f-7525771b6f14
     name: L-bldg-Summary
@@ -24,7 +24,7 @@ nodes:
     name: AttributeManagerFrom
     type: action
     action: AttributeManager
-    with: 
+    with:
       operations:
         - attribute: Attribute
           method: create
@@ -199,7 +199,7 @@ edges:
     to: adba8857-9de2-43bd-8cde-b83bc08a58f6
     fromPort: default
     toPort: default
-  
+
   - id: 50c97ada-42ba-494e-a844-d3256f998a60
     from: ab309f69-4758-491b-831c-75ea5c0f05fe
     to: 1c480edd-fa61-4b43-b851-8cfc560f5859
