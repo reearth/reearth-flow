@@ -66,7 +66,7 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
     onCursorUpdate(throttledUpdateCursor);
     return () => throttledUpdateCursor.cancel();
   }, [onCursorUpdate, throttledUpdateCursor]);
-  console.log("awareness", awareness.clientID);
+
   return (
     <ViewportPortal>
       {Array.from(users.entries() as IterableIterator<[number, UserData]>).map(
