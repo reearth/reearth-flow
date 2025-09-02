@@ -57,6 +57,20 @@ func (mr *MockWorkspaceRepoMockRecorder) Create(ctx, name any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockWorkspaceRepo)(nil).Create), ctx, name)
 }
 
+// Delete mocks base method.
+func (m *MockWorkspaceRepo) Delete(ctx context.Context, wid id.WorkspaceID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, wid)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockWorkspaceRepoMockRecorder) Delete(ctx, wid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockWorkspaceRepo)(nil).Delete), ctx, wid)
+}
+
 // FindByIDs mocks base method.
 func (m *MockWorkspaceRepo) FindByIDs(ctx context.Context, ids id.WorkspaceIDList) (workspace.List, error) {
 	m.ctrl.T.Helper()
