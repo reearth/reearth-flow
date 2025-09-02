@@ -47,14 +47,17 @@ export default () => {
   );
 
   const userFacingName = useMemo(() => {
-    return VARIABLE_TYPE_OPTIONS.reduce((acc, type) => {
-      acc[type] = getUserFacingName(type);
-      return acc;
-    }, {} as Record<VarType, string>);
+    return VARIABLE_TYPE_OPTIONS.reduce(
+      (acc, type) => {
+        acc[type] = getUserFacingName(type);
+        return acc;
+      },
+      {} as Record<VarType, string>,
+    );
   }, [getUserFacingName]);
 
   return {
     getUserFacingName,
     userFacingName,
-  }
-}
+  };
+};

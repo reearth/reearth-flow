@@ -16,12 +16,10 @@ export const VARIABLE_TYPE_OPTIONS = [
   "attribute_name",
   "message",
   "reprojection_file",
-  "unsupported"
- ] as const;
+  "unsupported",
+] as const;
 
-export type VarType = typeof VARIABLE_TYPE_OPTIONS[number];
-
-
+export type VarType = (typeof VARIABLE_TYPE_OPTIONS)[number];
 
 // Type-specific configuration interfaces
 export type ChoiceConfig = {

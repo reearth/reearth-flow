@@ -1,4 +1,10 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@flow/components";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@flow/components";
 import { useProjectVars } from "@flow/hooks";
 import { VarType } from "@flow/types";
 
@@ -13,7 +19,7 @@ export default function VariableTypeSelector({
   onValueChange,
   disabled = false,
 }: VariableTypeSelectorProps) {
-const {userFacingName} = useProjectVars();
+  const { userFacingName } = useProjectVars();
   return (
     <Select value={value} onValueChange={onValueChange} disabled={disabled}>
       <SelectTrigger className="w-full">
@@ -23,8 +29,7 @@ const {userFacingName} = useProjectVars();
         {Object.keys(userFacingName).map((key) => (
           <SelectItem key={key} value={key}>
             <div className="flex flex-col">
-              <span className="font-medium">{userFacingName[key as keyof typeof userFacingName]}</span>
-              <span className="text-xs text-muted-foreground">{userFacingName[key as keyof typeof userFacingName]}</span>
+              <span>{userFacingName[key as keyof typeof userFacingName]}</span>
             </div>
           </SelectItem>
         ))}

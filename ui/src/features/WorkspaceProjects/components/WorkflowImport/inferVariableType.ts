@@ -5,13 +5,20 @@ export function inferProjectVariableType(value: any, name: string): VarType {
 
   // Handle null values by inferring from name patterns
   if (value === null || value === undefined) {
-    if (normalizedName.includes("path") || normalizedName.includes("file") || normalizedName.includes("folder")) {
+    if (
+      normalizedName.includes("path") ||
+      normalizedName.includes("file") ||
+      normalizedName.includes("folder")
+    ) {
       return "file_folder";
     }
     if (normalizedName.includes("output") || normalizedName.includes("dir")) {
       return "file_folder";
     }
-    if (normalizedName.includes("password") || normalizedName.includes("secret")) {
+    if (
+      normalizedName.includes("password") ||
+      normalizedName.includes("secret")
+    ) {
       return "password";
     }
     if (normalizedName.includes("date") || normalizedName.includes("time")) {
@@ -20,7 +27,11 @@ export function inferProjectVariableType(value: any, name: string): VarType {
     if (normalizedName.includes("color")) {
       return "color";
     }
-    if (normalizedName.includes("connection") || normalizedName.includes("url") || normalizedName.includes("endpoint")) {
+    if (
+      normalizedName.includes("connection") ||
+      normalizedName.includes("url") ||
+      normalizedName.includes("endpoint")
+    ) {
       return "web_connection";
     }
     // Default fallback for null values
@@ -43,19 +54,33 @@ export function inferProjectVariableType(value: any, name: string): VarType {
 
   if (typeof value === "string") {
     // String pattern matching
-    if (normalizedName.includes("path") || normalizedName.includes("file") || normalizedName.includes("folder")) {
+    if (
+      normalizedName.includes("path") ||
+      normalizedName.includes("file") ||
+      normalizedName.includes("folder")
+    ) {
       return "file_folder";
     }
-    if (normalizedName.includes("password") || normalizedName.includes("secret")) {
+    if (
+      normalizedName.includes("password") ||
+      normalizedName.includes("secret")
+    ) {
       return "password";
     }
-    if (normalizedName.includes("color") && (value.startsWith("#") || value.startsWith("rgb"))) {
+    if (
+      normalizedName.includes("color") &&
+      (value.startsWith("#") || value.startsWith("rgb"))
+    ) {
       return "color";
     }
     if (normalizedName.includes("date") || normalizedName.includes("time")) {
       return "datetime";
     }
-    if (normalizedName.includes("connection") || value.startsWith("http") || value.startsWith("ws")) {
+    if (
+      normalizedName.includes("connection") ||
+      value.startsWith("http") ||
+      value.startsWith("ws")
+    ) {
       return "web_connection";
     }
   }
