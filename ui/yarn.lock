@@ -4799,7 +4799,7 @@ __metadata:
     lodash-es: "npm:4.17.21"
     maplibre-gl: "npm:5.6.1"
     msw: "npm:2.10.4"
-    perfect-cursors: "npm:^1.0.5"
+    perfect-cursors: "npm:1.0.5"
     prettier: "npm:3.6.2"
     react: "npm:19.1.1"
     react-datepicker: "npm:8.4.0"
@@ -4822,7 +4822,7 @@ __metadata:
     vite: "npm:7.0.6"
     vite-plugin-cesium: "npm:1.2.23"
     vitest: "npm:3.2.4"
-    y-presence: "npm:^0.2.3"
+    y-presence: "npm:0.2.3"
     y-websocket: "npm:3.0.0"
     yjs: "npm:13.6.27"
   languageName: unknown
@@ -12995,7 +12995,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"perfect-cursors@npm:^1.0.5":
+"perfect-cursors@npm:1.0.5":
   version: 1.0.5
   resolution: "perfect-cursors@npm:1.0.5"
   dependencies:
@@ -16375,7 +16375,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"y-presence@npm:^0.2.3":
+"y-presence@npm:0.2.3":
   version: 0.2.3
   resolution: "y-presence@npm:0.2.3"
   dependencies:
