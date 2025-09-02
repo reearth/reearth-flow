@@ -90,7 +90,7 @@ graphs:
         with:
           format: citygml
           dataset: |
-            env.get("__value")["path"]
+            env.get("__value")["gmlPath"]
 
       - id: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
         name: AttributeManager
@@ -105,41 +105,8 @@ graphs:
             - attribute: name
               method: rename
               value: gmlFilename
-
-            # for debug
-            - attribute: __cityGmlAttrs
-              method: convert
-              value: |
-                env.get("__value").cityGmlAttributes
-
             # remove
             - attribute: cityGmlPath
-              method: remove
-            - attribute: root
-              method: remove
-            - attribute: package
-              method: remove
-            - attribute: admin
-              method: remove
-            - attribute: area
-              method: remove
-            - attribute: udxDirs
-              method: remove
-            - attribute: dirRoot
-              method: remove
-            - attribute: dirSchemas
-              method: remove
-            - attribute: extension
-              method: remove
-            - attribute: codelists
-              method: remove
-            - attribute: objectListPath
-              method: remove
-            - attribute: baseCityCode
-              method: remove
-            - attribute: cityCode
-              method: remove
-            - attribute: schemas
               method: remove
 
       - id: a8a7e7f8-8d73-4078-9cff-4476924f2ad7
@@ -215,16 +182,16 @@ graphs:
         toPort: default
       - id: 4b7e2a9c-5f1d-4a8e-f2c6-7b4a1e8d5c9f
         from: 7e833060-f8c4-458b-a8cc-8c817527f25b
-        to: 3f7b2a9d-1c8e-4a6f-b5d3-9e2c7a4f8b1d
-        fromPort: default
-        toPort: default
-      - id: 3c8f1a5e-6b2d-4e9c-a7f4-1b8e5d2c9a6f
-        from: 3f7b2a9d-1c8e-4a6f-b5d3-9e2c7a4f8b1d
         to: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
         fromPort: default
         toPort: default
-      - id: 7f34f420-3b27-44a8-b83f-0ef80a86045e
+      - id: 3c8f1a5e-6b2d-4e9c-a7f4-1b8e5d2c9a6f
         from: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
+        to: 3f7b2a9d-1c8e-4a6f-b5d3-9e2c7a4f8b1d
+        fromPort: default
+        toPort: default
+      - id: 7f34f420-3b27-44a8-b83f-0ef80a86045e
+        from: 3f7b2a9d-1c8e-4a6f-b5d3-9e2c7a4f8b1d
         to: a8a7e7f8-8d73-4078-9cff-4476924f2ad7
         fromPort: default
         toPort: default
@@ -255,7 +222,7 @@ graphs:
         toPort: default
 
       - id: 050b179b-e063-4541-b08f-31ea54ceec0f
-        from: 7e833060-f8c4-458b-a8cc-8c817527f25b
+        from: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
         to: 7a561c34-2e94-4883-91e4-4026b09c2f8a
         fromPort: default
         toPort: default

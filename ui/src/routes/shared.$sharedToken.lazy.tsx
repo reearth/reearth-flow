@@ -1,5 +1,5 @@
 import { createLazyFileRoute, useParams } from "@tanstack/react-router";
-import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
+import { ReactFlowProvider } from "@xyflow/react";
 import { useEffect, useState } from "react";
 
 import {
@@ -14,7 +14,6 @@ import AuthenticationWrapper from "@flow/features/AuthenticationWrapper";
 import NotFound from "@flow/features/NotFound";
 import SharedCanvas from "@flow/features/SharedCanvas";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { useFullscreen, useShortcuts } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { GraphQLProvider, useSharedProject } from "@flow/lib/gql";
 import { I18nProvider, useT } from "@flow/lib/i18n";
@@ -72,26 +71,27 @@ const SharedRoute = () => {
 
 const EditorComponent = ({ accessToken }: { accessToken?: string }) => {
   const t = useT();
-  const { zoomIn, zoomOut, fitView } = useReactFlow();
-  const { handleFullscreenToggle } = useFullscreen();
-  useShortcuts([
-    {
-      keyBinding: { key: "+", commandKey: false },
-      callback: zoomIn,
-    },
-    {
-      keyBinding: { key: "-", commandKey: false },
-      callback: zoomOut,
-    },
-    {
-      keyBinding: { key: "0", commandKey: true },
-      callback: fitView,
-    },
-    {
-      keyBinding: { key: "f", commandKey: true },
-      callback: handleFullscreenToggle,
-    },
-  ]);
+  // Keyboard shortcuts are currently disabled whilst we refine them
+  // const { zoomIn, zoomOut, fitView } = useReactFlow();
+  // const { handleFullscreenToggle } = useFullscreen();
+  // useShortcuts([
+  //   {
+  //     keyBinding: { key: "+", commandKey: false },
+  //     callback: zoomIn,
+  //   },
+  //   {
+  //     keyBinding: { key: "-", commandKey: false },
+  //     callback: zoomOut,
+  //   },
+  //   {
+  //     keyBinding: { key: "0", commandKey: true },
+  //     callback: fitView,
+  //   },
+  //   {
+  //     keyBinding: { key: "f", commandKey: true },
+  //     callback: handleFullscreenToggle,
+  //   },
+  // ]);
 
   const { useGetSharedProject } = useSharedProject();
 

@@ -29,7 +29,6 @@ import {
 import { config } from "@flow/config";
 import { AccountUpdateDialog } from "@flow/features/common/UserMenu/AccountUpdateDialog";
 import KeyboardShortcutDialog from "@flow/features/KeyboardShortcutDialog";
-import { useShortcuts } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { useT } from "@flow/lib/i18n";
 import { openLinkInNewTab } from "@flow/utils";
@@ -74,13 +73,13 @@ const HomeMenu: React.FC<Props> = ({
   const handleAboutDialogOpen = useCallback(() => {
     alert(t("About dialog is not implemented yet."));
   }, [t]);
-
-  useShortcuts([
-    {
-      keyBinding: { key: "/", commandKey: true },
-      callback: () => setOpenShortcutDialog((o) => !o),
-    },
-  ]);
+  // Keyboard shortcuts are currently disabled whilst we refine them
+  // useShortcuts([
+  //   {
+  //     keyBinding: { key: "/", commandKey: true },
+  //     callback: () => setOpenShortcutDialog((o) => !o),
+  //   },
+  // ]);
 
   return (
     <>
