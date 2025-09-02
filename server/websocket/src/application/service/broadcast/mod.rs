@@ -359,10 +359,10 @@ where
                 tokio::select! {
                     _ = interval.tick() => {
                         // Read updates from Redis stream and broadcast them
-                        if let Ok(updates) = redis_repo.read_updates_from_stream(
-                            &document_name,
-                            &instance_id,
-                            10,
+                        if let Ok(updates) = redis_repo.read_and_filter(
+                            document_name.as_str(),
+                            100,
+                            instance_id.as_str(),
                             &last_read_id,
                         ).await {
                             for update in updates {
@@ -425,11 +425,10 @@ where
                     _ = interval.tick() => {
                         // Perform periodic sync operations
                         // This could include saving snapshots, cleaning up old data, etc.
-                        if let Ok(awareness_guard) = awareness.read().await {
-                            let doc = awareness_guard.doc();
-                            // Save document state periodically
-                            // Implementation depends on your storage requirements
-                        }
+                        let awareness_guard = awareness.read().await;
+                        let doc = awareness_guard.doc();
+                        // Save document state periodically
+                        // Implementation depends on your storage requirements
                     }
                     _ = &mut shutdown_rx => {
                         break;
