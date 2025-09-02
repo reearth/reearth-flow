@@ -72,6 +72,21 @@ func (mr *MockUserRepoMockRecorder) FindMe(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindMe", reflect.TypeOf((*MockUserRepo)(nil).FindMe), ctx)
 }
 
+// SignupOIDC mocks base method.
+func (m *MockUserRepo) SignupOIDC(ctx context.Context, attrs user.SignupOIDCAttrs) (*user.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SignupOIDC", ctx, attrs)
+	ret0, _ := ret[0].(*user.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SignupOIDC indicates an expected call of SignupOIDC.
+func (mr *MockUserRepoMockRecorder) SignupOIDC(ctx, attrs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SignupOIDC", reflect.TypeOf((*MockUserRepo)(nil).SignupOIDC), ctx, attrs)
+}
+
 // UpdateMe mocks base method.
 func (m *MockUserRepo) UpdateMe(ctx context.Context, attrs user.UpdateAttrs) (*user.User, error) {
 	m.ctrl.T.Helper()

@@ -67,6 +67,12 @@ func tempNewAuthMiddleware(gqlClient *gql.Client) echo.MiddlewareFunc {
 	}
 }
 
+func jwtOnlyMiddlewares() []echo.MiddlewareFunc {
+	return []echo.MiddlewareFunc{
+		jwtContextMiddleware(),
+	}
+}
+
 // TODO: This function is in the process of migrating the task "Replace user management in API with reearth accounts".
 // Once completed, only `tempNewAuthMWs` will be used, making this function unnecessary.
 func conditionalGraphQLAuthMiddleware(
@@ -90,6 +96,8 @@ func conditionalGraphQLAuthMiddleware(
 				switch body.OperationName {
 				case "GetMe":
 					middlewares = tempNewAuthMWs
+				case "Signup":
+					middlewares = append(defaultMWs, jwtOnlyMiddlewares()...)
 				case "GetWorkspaceById", "GetWorkspaces", "SearchUser", "UpdateMe", "CreateWorkspace", "UpdateWorkspace", "DeleteWorkspace", "AddMemberToWorkspace", "UpdateMemberOfWorkspace", "RemoveMemberFromWorkspace":
 					middlewares = append(defaultMWs, tempNewAuthMWs...)
 				}

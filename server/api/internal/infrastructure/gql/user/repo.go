@@ -94,3 +94,33 @@ func (r *userRepo) UpdateMe(ctx context.Context, a user.UpdateAttrs) (*user.User
 
 	return util.ToMe(m.UpdateMe.Me)
 }
+
+func (r *userRepo) SignupOIDC(ctx context.Context, a user.SignupOIDCAttrs) (*user.User, error) {
+	in := SignupOIDCInput{}
+	if a.UserID != nil {
+		s := graphql.ID(a.UserID.String())
+		in.ID = &s
+	}
+	if a.Lang != nil {
+		langCode := graphql.String(a.Lang.String())
+		in.Lang = &langCode
+	}
+	if a.WorkspaceID != nil {
+		s := graphql.ID(a.WorkspaceID.String())
+		in.WorkspaceID = &s
+	}
+	if a.Secret != nil {
+		s := graphql.String(*a.Secret)
+		in.Secret = &s
+	}
+
+	var m signupOIDCMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return nil, err
+	}
+
+	return util.ToUser(m.SignupOIDC.User)
+}

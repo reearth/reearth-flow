@@ -12,4 +12,5 @@ type Repo interface {
 	FindByIDs(ctx context.Context, ids id.UserIDList) (List, error)
 	UserByNameOrEmail(ctx context.Context, nameOrEmail string) (*User, error)
 	UpdateMe(ctx context.Context, attrs UpdateAttrs) (*User, error)
+	SignupOIDC(ctx context.Context, attrs SignupOIDCAttrs) (*User, error)
 }
