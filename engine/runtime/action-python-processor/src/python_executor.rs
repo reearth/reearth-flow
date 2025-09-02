@@ -545,7 +545,7 @@ mod tests {
 
     #[test]
     fn test_factory_build_success() {
-        let factory = PythonScriptProcessorFactory::default();
+        let factory = PythonScriptProcessorFactory;
         let ctx = create_test_context();
 
         let mut with = HashMap::new();
@@ -568,7 +568,7 @@ mod tests {
 
     #[test]
     fn test_factory_build_missing_params() {
-        let factory = PythonScriptProcessorFactory::default();
+        let factory = PythonScriptProcessorFactory;
         let ctx = create_test_context();
 
         let result = factory.build(ctx, EventHub::new(10), "test_action".to_string(), None);
@@ -679,7 +679,7 @@ mod tests {
 
     #[test]
     fn test_processor_factory_metadata() {
-        let factory = PythonScriptProcessorFactory::default();
+        let factory = PythonScriptProcessorFactory;
 
         assert_eq!(factory.name(), "PythonScriptProcessor");
         assert_eq!(
