@@ -20,7 +20,6 @@ import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import useYjsSetup from "@flow/lib/yjs/useYjsSetup";
 import { useCurrentProject } from "@flow/stores";
-// import { useShortcut } from "@flow/hooks/useShortcut";
 
 export const Route = createLazyFileRoute(
   "/workspaces/$workspaceId_/projects_/$projectId",

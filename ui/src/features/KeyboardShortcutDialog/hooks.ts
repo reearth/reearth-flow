@@ -51,14 +51,14 @@ export default () => {
       //   keyBinding: EditorKeyBindings["groupToSubWorkFlow"],
       //   description: t("Create new subworkflow from selected nodes"),
       // },
-      {
-        keyBinding: EditorKeyBindings["leftPanelCanvasNavigator"],
-        description: t("Toggle the Canvas Navigator Panel"),
-      },
-      {
-        keyBinding: EditorKeyBindings["leftPanelActionsList"],
-        description: t("Toggle the Actions List Panel"),
-      },
+      // {
+      //   keyBinding: EditorKeyBindings["leftPanelCanvasNavigator"],
+      //   description: t("Toggle the Canvas Navigator Panel"),
+      // },
+      // {
+      //   keyBinding: EditorKeyBindings["leftPanelActionsList"],
+      //   description: t("Toggle the Actions List Panel"),
+      // },
       // {
       //   keyBinding: EditorKeyBindings["leftPanelResources"],
       //   description: t("Toggle the resources panel"),

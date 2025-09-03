@@ -15,6 +15,7 @@ import {
 } from "@phosphor-icons/react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 
 import {
   DropdownMenu,
@@ -73,13 +74,8 @@ const HomeMenu: React.FC<Props> = ({
   const handleAboutDialogOpen = useCallback(() => {
     alert(t("About dialog is not implemented yet."));
   }, [t]);
-  // Keyboard shortcuts are currently disabled whilst we refine them
-  // useShortcuts([
-  //   {
-  //     keyBinding: { key: "/", commandKey: true },
-  //     callback: () => setOpenShortcutDialog((o) => !o),
-  //   },
-  // ]);
+
+  useHotkeys(["ctrl+slash", "meta+slash"], () => setOpenShortcutDialog(true));
 
   return (
     <>

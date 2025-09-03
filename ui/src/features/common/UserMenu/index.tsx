@@ -5,6 +5,7 @@ import {
   UserIcon,
 } from "@phosphor-icons/react";
 import { useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 
 import {
   Avatar,
@@ -49,14 +50,7 @@ const UserMenu: React.FC<Props> = ({
 
   const handleTosPageOpen = openLinkInNewTab(tosUrl ?? "");
   const handleDocumentationPageOpen = openLinkInNewTab(documentationUrl ?? "");
-  // Keyboard shortcuts are currently disabled whilst we refine them
-  // useShortcuts([
-  //   {
-  //     keyBinding: { key: "/", commandKey: true },
-  //     callback: () => setOpenShortcutDialog((o) => !o),
-  //   },
-  // ]);
-
+  useHotkeys(["ctrl+slash", "meta+slash"], () => setOpenShortcutDialog(true));
   return (
     <>
       <DropdownMenu>
