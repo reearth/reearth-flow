@@ -4,6 +4,7 @@ import {
   MapPinAreaIcon,
   TargetIcon,
   WarningIcon,
+  DownloadIcon,
 } from "@phosphor-icons/react";
 import { memo, useCallback, useMemo, useState } from "react";
 
@@ -51,6 +52,17 @@ type Props = {
   onSelectedFeature: (value: any) => void;
   onEnableClusteringChange: (value: boolean) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
+  
+  // Streaming props
+  isStreaming?: boolean;
+  streamingProgress?: {
+    bytesProcessed: number;
+    featuresProcessed: number;
+    estimatedTotal?: number;
+    percentage?: number;
+  };
+  loadMore?: () => void;
+  detectedGeometryType?: string;
 };
 const DebugPreview: React.FC<Props> = ({
   fileType,
@@ -67,6 +79,12 @@ const DebugPreview: React.FC<Props> = ({
   onSelectedFeature,
   onEnableClusteringChange,
   onFlyToSelectedFeature,
+  
+  // Streaming props
+  isStreaming,
+  streamingProgress,
+  loadMore,
+  detectedGeometryType,
 }) => {
   const t = useT();
   const [tabValue, setTabValue] = useState<string>("2d-viewer");
@@ -161,6 +179,27 @@ const DebugPreview: React.FC<Props> = ({
               <p className="text-sm font-thin select-none">{t("3D Viewer")}</p>
             </TabsTrigger>
           </div>
+          
+          {/* Streaming Progress Indicator */}
+          {isStreaming && (
+            <div className="flex items-center gap-2 text-xs">
+              <div className="flex items-center gap-1 text-blue-600">
+                <div className="h-2 w-2 rounded-full bg-blue-600 animate-pulse"></div>
+                <span className="font-medium">STREAMING</span>
+              </div>
+              {streamingProgress && (
+                <span className="text-muted-foreground">
+                  {t("Features")}: {streamingProgress.featuresProcessed.toLocaleString()}
+                  {streamingProgress.percentage && ` (${Math.round(streamingProgress.percentage)}%)`}
+                </span>
+              )}
+              {detectedGeometryType && (
+                <span className="rounded bg-muted px-2 py-1 text-xs">
+                  {detectedGeometryType}
+                </span>
+              )}
+            </div>
+          )}
           {tabValue === "2d-viewer" && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -183,6 +222,12 @@ const DebugPreview: React.FC<Props> = ({
                   <TargetIcon />
                   {t("Center Data")}
                 </DropdownMenuItem>
+                {isStreaming && loadMore && (
+                  <DropdownMenuItem onClick={loadMore}>
+                    <DownloadIcon />
+                    {t("Load More Data")}
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
