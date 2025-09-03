@@ -47,22 +47,6 @@ export default () => {
         keyBinding: EditorKeyBindings["writerDialog"],
         description: t("Open the Writer Dialog"),
       },
-      // {
-      //   keyBinding: EditorKeyBindings["groupToSubWorkFlow"],
-      //   description: t("Create new subworkflow from selected nodes"),
-      // },
-      {
-        keyBinding: EditorKeyBindings["leftPanelCanvasNavigator"],
-        description: t("Toggle the Canvas Navigator Panel"),
-      },
-      {
-        keyBinding: EditorKeyBindings["leftPanelActionsList"],
-        description: t("Toggle the Actions List Panel"),
-      },
-      // {
-      //   keyBinding: EditorKeyBindings["leftPanelResources"],
-      //   description: t("Toggle the resources panel"),
-      // },
     ],
   };
 
