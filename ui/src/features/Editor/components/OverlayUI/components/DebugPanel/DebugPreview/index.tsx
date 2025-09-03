@@ -184,7 +184,7 @@ const DebugPreview: React.FC<Props> = ({
           {isStreaming && (
             <div className="flex items-center gap-2 text-xs">
               <div className="flex items-center gap-1 text-blue-600">
-                <div className="h-2 w-2 rounded-full bg-blue-600 animate-pulse"></div>
+                <div className="h-2 w-2 animate-pulse rounded-full bg-blue-600" />
                 <span className="font-medium">STREAMING</span>
               </div>
               {streamingProgress && (

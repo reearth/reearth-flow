@@ -4,6 +4,20 @@ import { useCallback, useEffect, useState } from "react";
 import { Polygon, PolygonCoordinateRing } from "@flow/types/gisTypes/geoJSON";
 import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 
+// Helper function to format cell values with truncation
+function formatCellValue(value: any, maxLength = 100): string {
+  if (value == null) return '';
+  
+  const formatted = JSON.stringify(value);
+  
+  // Truncate long content with ellipsis
+  if (formatted.length > maxLength) {
+    return formatted.substring(0, maxLength - 3) + '...';
+  }
+  
+  return formatted;
+}
+
 export default ({
   parsedData,
   type,
@@ -76,19 +90,19 @@ export default ({
               ) {
                 return [
                   `geometry${geometry}`,
-                  JSON.stringify(feature.geometry?.[geometry] || null),
+                  formatCellValue(feature.geometry?.[geometry] || null),
                 ];
               }
               return [
                 `geometry${geometry}`,
-                JSON.stringify(feature.geometry?.[geometry] || null),
+                formatCellValue(feature.geometry?.[geometry] || null),
               ];
             }),
           ),
           ...Object.fromEntries(
             Array.from(allProps).map((prop) => [
               `properties${prop}`,
-              JSON.stringify(feature.properties?.[prop] || null),
+              formatCellValue(feature.properties?.[prop] || null),
             ]),
           ),
         }));

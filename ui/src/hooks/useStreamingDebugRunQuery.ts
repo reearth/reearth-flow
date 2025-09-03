@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 import { streamJsonl } from "@flow/utils/streaming";
 import type { StreamingState, StreamingProgress } from "@flow/utils/streaming";
 
@@ -52,7 +53,12 @@ function analyzeDataType(features: any[]): GeometryType {
 export const useStreamingDebugRunQuery = (
   dataUrl: string,
   options: UseStreamingDebugRunQueryOptions = {}
-) => {
+): {
+  fileContent: any;
+  fileType: SupportedDataTypes;
+  isLoading: boolean;
+  [key: string]: any;
+} => {
   const {
     enabled = true,
     batchSize = 1000,
@@ -259,7 +265,7 @@ export const useStreamingDebugRunQuery = (
     
     // Compatibility with existing useFetchAndReadData interface
     fileContent: streamingState.data,
-    fileType: detectedFileType || "jsonl",
+    fileType: "geojson", // All streaming data normalized to geojson format
     isLoading: streamingState.isStreaming || metadataQuery.isLoading,
     
     // Additional query states

@@ -1,8 +1,6 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
 
-import { Polygon, PolygonCoordinateRing } from "@flow/types/gisTypes/geoJSON";
-
 type GeometryType = 'FlowGeometry2D' | 'FlowGeometry3D' | 'CityGmlGeometry' | 'Unknown' | null;
 
 type StreamingTableData = {
@@ -225,6 +223,7 @@ export const useStreamingDataColumnizer = (
   };
 };
 
+
 // Helper function to get nested property values
 function getNestedValue(obj: any, path: string): any {
   const parts = path.split('.');
@@ -239,26 +238,35 @@ function getNestedValue(obj: any, path: string): any {
 }
 
 // Helper function to format cell values for display
-function formatCellValue(value: any): string {
+function formatCellValue(value: any, maxLength = 100): string {
   if (value == null) return '';
+  
+  let formatted: string;
   
   // Handle coordinate arrays specially
   if (Array.isArray(value)) {
     // For GeoJSON coordinates, show simplified version
     if (value.length > 0 && Array.isArray(value[0])) {
       if (value.length <= 4) {
-        return JSON.stringify(value);
+        formatted = JSON.stringify(value);
+      } else {
+        // Simplify long coordinate arrays
+        formatted = JSON.stringify([value[0], '...', value[value.length - 1]]);
       }
-      // Simplify long coordinate arrays
-      return JSON.stringify([value[0], '...', value[value.length - 1]]);
+    } else {
+      formatted = JSON.stringify(value);
     }
-    return JSON.stringify(value);
+  } else if (typeof value === 'object') {
+    formatted = JSON.stringify(value);
+  } else {
+    formatted = String(value);
   }
   
-  if (typeof value === 'object') {
-    return JSON.stringify(value);
+  // Truncate long content with ellipsis
+  if (formatted.length > maxLength) {
+    return formatted.substring(0, maxLength - 3) + '...';
   }
   
-  return String(value);
+  return formatted;
 }
 

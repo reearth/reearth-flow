@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 import { RenderFallback, Button } from "@flow/components";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
@@ -6,6 +6,8 @@ import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useStreamingDataColumnizer } from "@flow/hooks/useStreamingDataColumnizer";
 import { useT } from "@flow/lib/i18n";
 import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
+
+import FeatureDetailsDialog from "./FeatureDetailsDialog";
 
 type Props = {
   fileContent: any | null;
@@ -55,6 +57,10 @@ const TableViewer: React.FC<Props> = ({
   // Add new data to streaming columnizer when fileContent changes
   const prevFileContentLength = useRef(0);
   
+  // Feature details dialog state
+  const [selectedFeatureDetails, setSelectedFeatureDetails] = useState<any | null>(null);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  
   useEffect(() => {
     if (isStreaming && fileContent && Array.isArray(fileContent)) {
       // Only process if the array has actually grown
@@ -68,6 +74,17 @@ const TableViewer: React.FC<Props> = ({
       prevFileContentLength.current = 0;
     }
   }, [fileContent, isStreaming, streamingColumnizer]);
+  
+  // Handle feature details dialog
+  const handleShowDetails = useCallback((feature: any) => {
+    setSelectedFeatureDetails(feature);
+    setShowDetailsDialog(true);
+  }, []);
+  
+  const handleRowDoubleClick = useCallback((feature: any) => {
+    handleShowDetails(feature);
+    onDoubleClick?.(feature);
+  }, [handleShowDetails, onDoubleClick]);
   
   // Choose which columnizer to use
   const tableData = isStreaming ? streamingColumnizer.tableData : traditionalColumnizer.tableData;
@@ -116,11 +133,18 @@ const TableViewer: React.FC<Props> = ({
             showFiltering
             selectedRow={selectedFeature}
             onRowClick={onSingleClick}
-            onRowDoubleClick={onDoubleClick}
+            onRowDoubleClick={handleRowDoubleClick}
             useStrictSelectedRow
           />
         </div>
       </div>
+      
+      {/* Feature Details Dialog */}
+      <FeatureDetailsDialog
+        feature={selectedFeatureDetails}
+        open={showDetailsDialog}
+        onOpenChange={setShowDetailsDialog}
+      />
     </RenderFallback>
   );
 };
