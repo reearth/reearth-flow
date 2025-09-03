@@ -1,6 +1,7 @@
 import { createLazyFileRoute, useParams } from "@tanstack/react-router";
-import { ReactFlowProvider } from "@xyflow/react";
+import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { useEffect, useMemo, useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 
 import { Button, FlowLogo, LoadingSplashscreen } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
@@ -13,7 +14,7 @@ import {
   WorkspaceIdWrapper,
 } from "@flow/features/PageWrapper";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { useJobSubscriptionsSetup } from "@flow/hooks";
+import { useFullscreen, useJobSubscriptionsSetup } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
@@ -39,8 +40,8 @@ export const Route = createLazyFileRoute(
 });
 
 const EditorComponent = () => {
-  // const { zoomIn, zoomOut, fitView } = useReactFlow();
-  // const { handleFullscreenToggle } = useFullscreen();
+  const { zoomIn, zoomOut, fitView } = useReactFlow();
+  const { handleFullscreenToggle } = useFullscreen();
 
   const [accessToken, setAccessToken] = useState<string | undefined>(undefined);
 
@@ -54,25 +55,36 @@ const EditorComponent = () => {
       })();
     }
   }, [accessToken, getAccessToken]);
-  // Keyboard shortcuts are currently disabled whilst we refine them
-  // useShortcuts([
-  //   {
-  //     keyBinding: { key: "+", commandKey: false },
-  //     callback: zoomIn,
-  //   },
-  //   {
-  //     keyBinding: { key: "-", commandKey: false },
-  //     callback: zoomOut,
-  //   },
-  //   {
-  //     keyBinding: { key: "0", commandKey: true },
-  //     callback: fitView,
-  //   },
-  //   {
-  //     keyBinding: { key: "f", commandKey: true },
-  //     callback: handleFullscreenToggle,
-  //   },
-  // ]);
+
+  const globalHotKeys = [
+    "equal",
+    "minus",
+    "meta+0",
+    "ctrl+0",
+    "meta+f",
+    "ctrl+f",
+  ];
+
+  useHotkeys(
+    globalHotKeys,
+    (_, handler) => {
+      switch (handler.keys?.join("")) {
+        case "equal":
+          zoomIn();
+          break;
+        case "minus":
+          zoomOut();
+          break;
+        case "0":
+          fitView();
+          break;
+        case "f":
+          handleFullscreenToggle();
+          break;
+      }
+    },
+    { preventDefault: true },
+  );
 
   const { projectId }: { projectId: string } = useParams({
     strict: false,

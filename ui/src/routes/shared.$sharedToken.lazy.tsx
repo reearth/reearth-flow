@@ -1,6 +1,7 @@
 import { createLazyFileRoute, useParams } from "@tanstack/react-router";
-import { ReactFlowProvider } from "@xyflow/react";
+import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { useEffect, useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 
 import {
   FlowLogo,
@@ -14,6 +15,7 @@ import AuthenticationWrapper from "@flow/features/AuthenticationWrapper";
 import NotFound from "@flow/features/NotFound";
 import SharedCanvas from "@flow/features/SharedCanvas";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
+import { useFullscreen } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { GraphQLProvider, useSharedProject } from "@flow/lib/gql";
 import { I18nProvider, useT } from "@flow/lib/i18n";
@@ -71,27 +73,31 @@ const SharedRoute = () => {
 
 const EditorComponent = ({ accessToken }: { accessToken?: string }) => {
   const t = useT();
-  // Keyboard shortcuts are currently disabled whilst we refine them
-  // const { zoomIn, zoomOut, fitView } = useReactFlow();
-  // const { handleFullscreenToggle } = useFullscreen();
-  // useShortcuts([
-  //   {
-  //     keyBinding: { key: "+", commandKey: false },
-  //     callback: zoomIn,
-  //   },
-  //   {
-  //     keyBinding: { key: "-", commandKey: false },
-  //     callback: zoomOut,
-  //   },
-  //   {
-  //     keyBinding: { key: "0", commandKey: true },
-  //     callback: fitView,
-  //   },
-  //   {
-  //     keyBinding: { key: "f", commandKey: true },
-  //     callback: handleFullscreenToggle,
-  //   },
-  // ]);
+  const { zoomIn, zoomOut, fitView } = useReactFlow();
+  const { handleFullscreenToggle } = useFullscreen();
+
+  const globalHotKeys = ["+", "-", "meta+0", "ctrl+0", "f", "meta+f", "ctrl+f"];
+
+  useHotkeys(
+    globalHotKeys,
+    (_, handler) => {
+      switch (handler.keys?.join("")) {
+        case "+":
+          zoomIn();
+          break;
+        case "-":
+          zoomOut();
+          break;
+        case "0":
+          fitView();
+          break;
+        case "f":
+          handleFullscreenToggle();
+          break;
+      }
+    },
+    { preventDefault: true },
+  );
 
   const { useGetSharedProject } = useSharedProject();
 
