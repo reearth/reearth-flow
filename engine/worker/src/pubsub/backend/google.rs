@@ -23,6 +23,7 @@ impl CloudPubSubError {
     }
 }
 
+#[derive(Clone)]
 pub struct CloudPubSub {
     pub(crate) client: Client,
     pub(crate) publishers: Arc<parking_lot::RwLock<HashMap<Topic, Arc<Publisher>>>>,

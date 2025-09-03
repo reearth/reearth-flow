@@ -35,7 +35,7 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 const DialogContent = forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
-    size?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
+    size?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl";
     position?: "center" | "off-center" | "top";
     overlayBgClass?: string;
     hideCloseButton?: boolean;
@@ -60,7 +60,7 @@ const DialogContent = forwardRef<
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
-          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-xl translate-x-[-50%] gap-4 border border-primary bg-card/50 shadow-lg backdrop-blur duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:rounded-lg",
+          "fixed top-[50%] left-[50%] z-50 w-full max-w-xl translate-x-[-50%] gap-4 border border-primary bg-card/50 shadow-lg backdrop-blur duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:rounded-lg",
           size === "xs"
             ? "max-w-[300px]"
             : size === "sm"
@@ -73,7 +73,9 @@ const DialogContent = forwardRef<
                     ? "max-w-[700px]"
                     : size === "2xl"
                       ? "max-w-[900px]"
-                      : undefined,
+                      : size === "3xl"
+                        ? "max-w-[1000px]"
+                        : undefined,
           position === "top"
             ? "top-[15%]"
             : position === "off-center"
@@ -154,7 +156,7 @@ const DialogDescription = forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm", className)}
+    className={cn("px-4 text-sm", className)}
     {...props}
   />
 ));

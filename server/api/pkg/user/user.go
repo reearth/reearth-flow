@@ -15,7 +15,7 @@ type User struct {
 	myWorkspace   workspace.Workspace
 }
 
-type List []User
+type List []*User
 
 func (u *User) ID() ID {
 	return u.id

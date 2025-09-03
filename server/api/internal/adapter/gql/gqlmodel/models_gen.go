@@ -638,20 +638,30 @@ type UpdateWorkspacePayload struct {
 }
 
 type User struct {
-	Email string  `json:"email"`
-	Host  *string `json:"host,omitempty"`
-	ID    ID      `json:"id"`
-	Name  string  `json:"name"`
+	Email    string        `json:"email"`
+	Host     *string       `json:"host,omitempty"`
+	ID       ID            `json:"id"`
+	Name     string        `json:"name"`
+	Metadata *UserMetadata `json:"metadata"`
 }
 
 func (User) IsNode()        {}
 func (this User) GetID() ID { return this.ID }
 
+<<<<<<< HEAD
 type UserFacingLog struct {
 	JobID     ID        `json:"jobId"`
 	Timestamp time.Time `json:"timestamp"`
 	Message   string    `json:"message"`
 	Metadata  JSON      `json:"metadata,omitempty"`
+=======
+type UserMetadata struct {
+	Description *string      `json:"description,omitempty"`
+	Website     *string      `json:"website,omitempty"`
+	PhotoURL    *string      `json:"photoURL,omitempty"`
+	Theme       Theme        `json:"theme"`
+	Lang        language.Tag `json:"lang"`
+>>>>>>> origin/main
 }
 
 type Workspace struct {
@@ -1401,6 +1411,63 @@ func (e *Role) UnmarshalJSON(b []byte) error {
 }
 
 func (e Role) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type Theme string
+
+const (
+	ThemeDefault Theme = "DEFAULT"
+	ThemeLight   Theme = "LIGHT"
+	ThemeDark    Theme = "DARK"
+)
+
+var AllTheme = []Theme{
+	ThemeDefault,
+	ThemeLight,
+	ThemeDark,
+}
+
+func (e Theme) IsValid() bool {
+	switch e {
+	case ThemeDefault, ThemeLight, ThemeDark:
+		return true
+	}
+	return false
+}
+
+func (e Theme) String() string {
+	return string(e)
+}
+
+func (e *Theme) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = Theme(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid Theme", str)
+	}
+	return nil
+}
+
+func (e Theme) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *Theme) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e Theme) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

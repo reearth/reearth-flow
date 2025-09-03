@@ -28,7 +28,11 @@ func ToWorkspace(t *workspace.Workspace) *Workspace {
 }
 
 // TODO: After migration, delete ToWorkspace and rename ToWorkspaceFromFlow to ToWorkspace.
-func ToWorkspaceFromFlow(t pkgworkspace.Workspace) *Workspace {
+func ToWorkspaceFromFlow(t *pkgworkspace.Workspace) *Workspace {
+	if t == nil {
+		return nil
+	}
+
 	members := make([]*WorkspaceMember, 0, len(t.Members()))
 
 	for _, member := range t.Members() {

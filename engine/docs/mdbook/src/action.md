@@ -1190,6 +1190,69 @@ Read Features from CSV or TSV File
 ### Category
 * File
 
+## CzmlReader
+### Type
+* source
+### Description
+Reads geographic features from CZML (Cesium Language) files for 3D visualization
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CzmlReader Parameters",
+  "description": "Configuration for reading CZML files as geographic features.",
+  "type": "object",
+  "properties": {
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "force2d": {
+      "title": "Force 2D",
+      "description": "If true, forces all geometries to be 2D (ignoring Z values)",
+      "default": false,
+      "type": "boolean"
+    },
+    "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "skipDocumentPacket": {
+      "title": "Skip Document Packet",
+      "description": "If true, skips the document packet (first packet with version/clock info)",
+      "default": true,
+      "type": "boolean"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+### Output Ports
+* default
+### Category
+* File
+
 ## CzmlWriter
 ### Type
 * sink
@@ -3817,6 +3880,20 @@ Flatten attributes for building feature
 ### Category
 * PLATEAU
 
+## PLATEAU4.BuildingInstallationGeometryTypeChecker
+### Type
+* processor
+### Description
+Checks BuildingInstallation's geometry type
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* PLATEAU
+
 ## PLATEAU4.CityCodeExtractor
 ### Type
 * processor
@@ -4046,6 +4123,22 @@ Extracts UDX folders from cityGML path
 ### Output Ports
 * default
 * rejected
+### Category
+* PLATEAU
+
+## PLATEAU4.UnmatchedXlinkDetector
+### Type
+* processor
+### Description
+Detect unmatched Xlinks for PLATEAU
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* summary
+* unMatchedXlinkFrom
+* unMatchedXlinkTo
 ### Category
 * PLATEAU
 
