@@ -18,6 +18,7 @@ import {
 } from "@flow/components";
 import { config } from "@flow/config";
 import KeyboardShortcutDialog from "@flow/features/KeyboardShortcutDialog";
+import { GENERAL_HOT_KEYS } from "@flow/global-constants";
 import { useAuth } from "@flow/lib/auth";
 import { useUser } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
@@ -50,7 +51,7 @@ const UserMenu: React.FC<Props> = ({
 
   const handleTosPageOpen = openLinkInNewTab(tosUrl ?? "");
   const handleDocumentationPageOpen = openLinkInNewTab(documentationUrl ?? "");
-  useHotkeys(["ctrl+slash", "meta+slash"], () => setOpenShortcutDialog(true));
+  useHotkeys(GENERAL_HOT_KEYS, () => setOpenShortcutDialog(true));
   return (
     <>
       <DropdownMenu>

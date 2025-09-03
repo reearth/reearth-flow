@@ -11,7 +11,10 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { useY } from "react-yjs";
 import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 
-import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
+import {
+  DEFAULT_ENTRY_GRAPH_ID,
+  EDITOR_HOT_KEYS,
+} from "@flow/global-constants";
 import { useProjectExport, useProjectSave } from "@flow/hooks";
 import { useSharedProject } from "@flow/lib/gql";
 import { useYjsStore } from "@flow/lib/yjs";
@@ -283,30 +286,23 @@ export default ({
 
   const handleDeleteDialogClose = () => setShowBeforeDeleteDialog(false);
 
-  const editorHotkeys = [
-    "meta+z",
-    "ctrl+z",
-    "shift+meta+z",
-    "shift+ctrl+z",
-    "meta+s",
-    "ctrl+s",
-  ];
-
   useHotkeys(
-    editorHotkeys,
-    (_, handler) => {
-      const key = handler.keys?.join("+");
-      if (key?.includes("z") && !key?.includes("shift")) {
-        handleYWorkflowUndo();
-      } else if (key?.includes("z") && key?.includes("shift")) {
-        handleYWorkflowRedo();
-      } else if (key?.includes("s")) {
-        handleProjectSnapshotSave();
+    EDITOR_HOT_KEYS,
+    (event, handler) => {
+      const hasModifier = event.metaKey || event.ctrlKey;
+      const hasShift = event.shiftKey;
+
+      switch (handler.keys?.join("")) {
+        case "s":
+          if (hasModifier && !isSaving) handleProjectSnapshotSave?.();
+          break;
+        case "z":
+          if (hasModifier && hasShift) handleYWorkflowRedo?.();
+          if (hasModifier && !hasShift) handleYWorkflowUndo?.();
+          break;
       }
     },
-    {
-      preventDefault: true,
-    },
+    { preventDefault: true },
   );
 
   const handleWorkflowRename = useCallback(

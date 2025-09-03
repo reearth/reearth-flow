@@ -14,7 +14,10 @@ import { ProjectCorruptionError } from "@flow/errors";
 import AuthenticationWrapper from "@flow/features/AuthenticationWrapper";
 import NotFound from "@flow/features/NotFound";
 import SharedCanvas from "@flow/features/SharedCanvas";
-import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
+import {
+  DEFAULT_ENTRY_GRAPH_ID,
+  GLOBAL_HOT_KEYS,
+} from "@flow/global-constants";
 import { useFullscreen } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { GraphQLProvider, useSharedProject } from "@flow/lib/gql";
@@ -76,23 +79,23 @@ const EditorComponent = ({ accessToken }: { accessToken?: string }) => {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const { handleFullscreenToggle } = useFullscreen();
 
-  const globalHotKeys = ["+", "-", "meta+0", "ctrl+0", "f", "meta+f", "ctrl+f"];
-
   useHotkeys(
-    globalHotKeys,
-    (_, handler) => {
+    GLOBAL_HOT_KEYS,
+    (event, handler) => {
+      const hasModifier = event.metaKey || event.ctrlKey;
+
       switch (handler.keys?.join("")) {
-        case "+":
+        case "equal":
           zoomIn();
           break;
-        case "-":
+        case "minus":
           zoomOut();
           break;
         case "0":
           fitView();
           break;
         case "f":
-          handleFullscreenToggle();
+          if (hasModifier) handleFullscreenToggle();
           break;
       }
     },

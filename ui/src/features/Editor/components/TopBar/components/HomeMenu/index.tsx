@@ -30,6 +30,7 @@ import {
 import { config } from "@flow/config";
 import { AccountUpdateDialog } from "@flow/features/common/UserMenu/AccountUpdateDialog";
 import KeyboardShortcutDialog from "@flow/features/KeyboardShortcutDialog";
+import { GENERAL_HOT_KEYS } from "@flow/global-constants";
 import { useAuth } from "@flow/lib/auth";
 import { useT } from "@flow/lib/i18n";
 import { openLinkInNewTab } from "@flow/utils";
@@ -75,7 +76,7 @@ const HomeMenu: React.FC<Props> = ({
     alert(t("About dialog is not implemented yet."));
   }, [t]);
 
-  useHotkeys(["ctrl+slash", "meta+slash"], () => setOpenShortcutDialog(true));
+  useHotkeys(GENERAL_HOT_KEYS, () => setOpenShortcutDialog(true));
 
   return (
     <>

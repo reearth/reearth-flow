@@ -13,7 +13,10 @@ import {
   ProjectIdWrapper,
   WorkspaceIdWrapper,
 } from "@flow/features/PageWrapper";
-import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
+import {
+  DEFAULT_ENTRY_GRAPH_ID,
+  GLOBAL_HOT_KEYS,
+} from "@flow/global-constants";
 import { useFullscreen, useJobSubscriptionsSetup } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { useT } from "@flow/lib/i18n";
@@ -55,18 +58,11 @@ const EditorComponent = () => {
     }
   }, [accessToken, getAccessToken]);
 
-  const globalHotKeys = [
-    "equal",
-    "minus",
-    "meta+0",
-    "ctrl+0",
-    "meta+f",
-    "ctrl+f",
-  ];
-
   useHotkeys(
-    globalHotKeys,
-    (_, handler) => {
+    GLOBAL_HOT_KEYS,
+    (event, handler) => {
+      const hasModifier = event.metaKey || event.ctrlKey;
+
       switch (handler.keys?.join("")) {
         case "equal":
           zoomIn();
@@ -78,7 +74,7 @@ const EditorComponent = () => {
           fitView();
           break;
         case "f":
-          handleFullscreenToggle();
+          if (hasModifier) handleFullscreenToggle();
           break;
       }
     },

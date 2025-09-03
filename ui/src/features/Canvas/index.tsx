@@ -9,7 +9,6 @@ import {
   EdgeChange,
 } from "@xyflow/react";
 import { MouseEvent, memo } from "react";
-import { useHotkeys } from "react-hotkeys-hook";
 
 import {
   isValidConnection,
@@ -94,45 +93,9 @@ const Canvas: React.FC<Props> = ({
     onEdgesAdd,
     onEdgesChange,
     onNodePickerOpen,
-  });
-
-  const canvasHotkeys = [
-    "r",
-    "t",
-    "w",
-    "meta+c",
-    "ctrl+c",
-    "meta+x",
-    "ctrl+x",
-    "meta+v",
-    "ctrl+v",
-    "shift+meta+z",
-    "shift+ctrl+z",
-    "meta+z",
-    "ctrl+z",
-  ];
-
-  useHotkeys(canvasHotkeys, (_, handler) => {
-    switch (handler.keys?.join("")) {
-      case "r":
-        onNodePickerOpen?.({ x: 0, y: 0 }, "reader", true);
-        break;
-      case "t":
-        onNodePickerOpen?.({ x: 0, y: 0 }, "transformer");
-        break;
-      case "w":
-        onNodePickerOpen?.({ x: 0, y: 0 }, "writer", true);
-        break;
-      case "c":
-        onCopy?.();
-        break;
-      case "x":
-        onCut?.();
-        break;
-      case "v":
-        onPaste?.();
-        break;
-    }
+    onCopy,
+    onCut,
+    onPaste,
   });
 
   return (
