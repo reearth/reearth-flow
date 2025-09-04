@@ -36,7 +36,6 @@ const TableViewer: React.FC<Props> = memo(
   }) => {
     const t = useT();
 
-    console.log("Filecnte", fileContent);
     // Use traditional columnizer for all data (streaming is now pre-transformed)
     const columnizer = useDataColumnizer({
       parsedData: fileContent,

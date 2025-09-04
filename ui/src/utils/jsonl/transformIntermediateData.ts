@@ -1,5 +1,4 @@
 export function intermediateDataTransform(parsedData: any) {
-  console.log("parsedData", parsedData);
   if (parsedData.geometry) {
     const is2D = "flowGeometry2D" in parsedData.geometry.value;
     const is3D = "flowGeometry3D" in parsedData.geometry.value;
@@ -153,15 +152,16 @@ function handle2DGeometry(geometry: any) {
 }
 
 function handleCityGmlGeometry(geometry: any) {
-  return {
+  const result: any = {
     type: "CityGmlGeometry",
-    gml_geometries: geometry.gml_geometries || [],
-    materials: geometry.materials || [],
-    textures: geometry.textures || [],
-    polygon_materials: geometry.polygon_materials || [],
-    polygon_textures: geometry.polygon_textures || [],
-    polygon_uvs: geometry.polygon_uvs,
   };
+
+  // Dynamically add only properties that exist in the data
+  Object.keys(geometry).forEach((key) => {
+    result[key] = geometry[key];
+  });
+
+  return result;
 }
 
 function handle3DGeometry(geometry: any) {
