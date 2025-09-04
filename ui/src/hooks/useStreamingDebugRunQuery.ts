@@ -2,6 +2,7 @@ import { useQuery, useQueryClient, QueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
+import { intermediateDataTransform } from "@flow/utils/jsonl/transformIntermediateData";
 import { streamJsonl } from "@flow/utils/streaming";
 import type { StreamingState, StreamingProgress } from "@flow/utils/streaming";
 
@@ -228,7 +229,17 @@ export const useStreamingDebugRunQuery = (
 
           if (currentDataLength < displayLimit) {
             const remainingToDisplay = displayLimit - currentDataLength;
-            newDataToAdd = result.data.slice(0, remainingToDisplay);
+            const rawDataToAdd = result.data.slice(0, remainingToDisplay);
+            
+            // Apply intermediateDataTransform to match non-streaming behavior
+            newDataToAdd = rawDataToAdd.map(feature => {
+              try {
+                return intermediateDataTransform(feature);
+              } catch (error) {
+                console.warn("Failed to transform streaming feature:", error, feature);
+                return feature; // Return raw feature as fallback
+              }
+            });
           }
 
           const newState = {
@@ -436,6 +447,12 @@ export const useStreamingDebugRunQuery = (
     gcTime: 2 * 60 * 60 * 1000, // 2 hours
   });
 
+  // Memoize fileContent to prevent infinite re-renders
+  const fileContent = useMemo(() => ({
+    type: "FeatureCollection" as const,
+    features: streamingState.data,
+  }), [streamingState.data]);
+
   return {
     // Streaming-specific data
     ...streamingState,
@@ -446,7 +463,7 @@ export const useStreamingDebugRunQuery = (
     detectedGeometryType: detectedFileType,
 
     // Compatibility with existing useFetchAndReadData interface
-    fileContent: streamingState.data,
+    fileContent,
     fileType: "geojson", // All streaming data normalized to geojson format
     isLoading: streamingState.isStreaming || metadataQuery.isLoading,
 

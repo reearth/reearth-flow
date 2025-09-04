@@ -1,6 +1,8 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
 
+import { Polygon, PolygonCoordinateRing } from "@flow/types/gisTypes/geoJSON";
+
 type StreamingTableData = {
   rows: any[];
   columns: ColumnDef<any>[];
@@ -37,34 +39,11 @@ export const useStreamingDataColumnizer = (
         // Add standard columns
         newColumns.add("id");
 
-        // Handle different geometry types
+        // Extract geometry columns (simplified to match useDataColumnizer approach)
         if (feature.geometry) {
-          // For Flow geometries, extract properties based on type
-          if (feature.geometry.value) {
-            const geometryValue = feature.geometry.value;
-
-            if (geometryValue.FlowGeometry2D || geometryValue.flowGeometry2D) {
-              newColumns.add("geometry.type");
-              newColumns.add("geometry.coordinates");
-              newColumns.add("geometry.epsg");
-            } else if (
-              geometryValue.FlowGeometry3D ||
-              geometryValue.flowGeometry3D
-            ) {
-              newColumns.add("geometry.type");
-              newColumns.add("geometry.coordinates");
-              newColumns.add("geometry.epsg");
-            } else if (geometryValue.CityGmlGeometry) {
-              newColumns.add("geometry.gml_geometries");
-              newColumns.add("geometry.materials");
-              newColumns.add("geometry.textures");
-            }
-          } else {
-            // Standard GeoJSON geometry
-            Object.keys(feature.geometry).forEach((key) => {
-              newColumns.add(`geometry.${key}`);
-            });
-          }
+          Object.keys(feature.geometry).forEach((key) => {
+            newColumns.add(`geometry.${key}`);
+          });
         }
 
         // Add attribute columns
@@ -89,9 +68,26 @@ export const useStreamingDataColumnizer = (
 
   const createTableColumns = useCallback(
     (columnNames: Set<string>): ColumnDef<any>[] => {
-      return Array.from(columnNames)
-        .sort()
-        .map((columnName) => {
+      // Custom sorting to match useDataColumnizer ordering:
+      // 1. id first
+      // 2. geometry.* columns
+      // 3. properties.* / attributes.* columns
+      const sortedColumns = Array.from(columnNames).sort((a, b) => {
+        // id always comes first
+        if (a === "id") return -1;
+        if (b === "id") return 1;
+
+        // geometry columns come before properties/attributes
+        const aIsGeometry = a.startsWith("geometry.");
+        const bIsGeometry = b.startsWith("geometry.");
+        if (aIsGeometry && !bIsGeometry) return -1;
+        if (!aIsGeometry && bIsGeometry) return 1;
+
+        // Within same category, sort alphabetically
+        return a.localeCompare(b);
+      });
+
+      return sortedColumns.map((columnName) => {
           // Convert column name to match traditional columnizer format (remove all dots)
           const accessorKey = columnName.replace(/\./g, "");
           return {
@@ -119,8 +115,21 @@ export const useStreamingDataColumnizer = (
           // Convert column name to match traditional columnizer format (remove all dots)
           const key = columnName.replace(/\./g, "");
           const value = getNestedValue(feature, columnName);
-          // Store both formatted (for display) and original (for copying) values
-          row[key] = formatCellValue(value);
+          
+          // Special handling for coordinates to match useDataColumnizer behavior
+          let processedValue: any;
+          if (columnName === "geometry.coordinates" && feature.geometry) {
+            if (feature.geometry.type === "Polygon") {
+              processedValue = simplifyPolygonCoordinates(feature.geometry);
+            } else {
+              processedValue = value;
+            }
+          } else {
+            processedValue = value;
+          }
+          
+          // Store raw values - formatting happens in cell renderer
+          row[key] = processedValue;
           row[`${key}_original`] = value; // Store original value for copying
         });
 
@@ -226,26 +235,8 @@ function formatCellValue(
 ): string {
   if (value == null) return "";
 
-  let formatted: string;
-
-  // Handle coordinate arrays specially
-  if (Array.isArray(value)) {
-    // For GeoJSON coordinates, show simplified version
-    if (value.length > 0 && Array.isArray(value[0])) {
-      if (value.length <= 4) {
-        formatted = JSON.stringify(value);
-      } else {
-        // Simplify long coordinate arrays
-        formatted = JSON.stringify([value[0], "...", value[value.length - 1]]);
-      }
-    } else {
-      formatted = JSON.stringify(value);
-    }
-  } else if (typeof value === "object") {
-    formatted = JSON.stringify(value);
-  } else {
-    formatted = String(value);
-  }
+  // Match useDataColumnizer exactly - always use JSON.stringify
+  const formatted = JSON.stringify(value);
 
   // Truncate long content with ellipsis
   if (formatted.length > maxLength) {
@@ -253,4 +244,59 @@ function formatCellValue(
   }
 
   return formatted;
+}
+
+// simplifyPolygonCoordinates: Simplify GeoJSON Polygon coordinates for display. Output looks like this:
+// [
+//   [
+//     [
+//       [100, 0],
+//       "...",
+//       [100, 0]
+//     ],
+//     [
+//       [100, 0],
+//       "...",
+//       [100, 0]
+//     ]
+//   ],
+//   "...",
+//   [
+//     [
+//       [100, 0],
+//       "...",
+//       [100, 0]
+//     ],
+//     [
+//       [100, 0],
+//       "...",
+//       [100, 0]
+//     ]
+//   ]
+// ]
+function simplifyPolygonCoordinates(polygon: Polygon) {
+  if (
+    !polygon ||
+    polygon.type !== "Polygon" ||
+    !Array.isArray(polygon.coordinates)
+  ) {
+    throw new Error("Invalid GeoJSON Polygon");
+  }
+
+  const rings = polygon.coordinates;
+  if (rings.length <= 4) {
+    return rings.map((ring) => simplifyRing(ring));
+  }
+
+  const firstTwo = rings.slice(0, 2).map((ring) => simplifyRing(ring));
+  const lastTwo = rings.slice(-2).map((ring) => simplifyRing(ring));
+
+  return [...firstTwo, "...", ...lastTwo];
+}
+
+function simplifyRing(ring: PolygonCoordinateRing) {
+  if (ring.length <= 4) {
+    return ring; // Keep as is if 4 or fewer points
+  }
+  return JSON.stringify([ring[0], "...", ring[ring.length - 1]]);
 }

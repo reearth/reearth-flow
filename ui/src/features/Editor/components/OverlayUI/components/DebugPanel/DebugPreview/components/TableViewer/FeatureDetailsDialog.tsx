@@ -96,8 +96,7 @@ const FeatureDetailsDialog: React.FC<Props> = ({
   if (!feature) return null;
 
   const entries = Object.entries(feature)
-    .filter(([key]) => !key.endsWith("_original")) // Hide original values from display
-    .sort(([a], [b]) => a.localeCompare(b));
+    .filter(([key]) => !key.endsWith("_original")); // Hide original values from display;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -1,9 +1,8 @@
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useState } from "react";
 
-import { RenderFallback } from "@flow/components";
+import BasicBoiler from "@flow/components/BasicBoiler";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
-import { useStreamingDataColumnizer } from "@flow/hooks/useStreamingDataColumnizer";
 import { useT } from "@flow/lib/i18n";
 import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 
@@ -13,16 +12,16 @@ type Props = {
   fileContent: any | null;
   fileType: SupportedDataTypes | null;
   selectedFeature: any;
-  onSingleClick: (value: any) => void;
-  onDoubleClick?: (value: any) => void;
+  onSingleClick?: (feature: any) => void;
+  onDoubleClick?: (feature: any) => void;
 
   // Streaming props
-  isStreaming?: boolean;
-  detectedGeometryType?: string;
-  totalFeatures?: number;
+  isStreaming: boolean;
+  detectedGeometryType: string | null;
+  totalFeatures: number;
 };
 
-const TableViewer: React.FC<Props> = ({
+const TableViewer: React.FC<Props> = memo(({
   fileContent,
   fileType,
   selectedFeature,
@@ -36,64 +35,18 @@ const TableViewer: React.FC<Props> = ({
 }) => {
   const t = useT();
 
-  // Use streaming columnizer for streaming data, traditional for small files
-  const streamingColumnizer = useStreamingDataColumnizer({
-    maxRows: 50000,
-    autoExpandColumns: true,
-  });
-
-  const traditionalColumnizer = useDataColumnizer({
+  console.log("Filecnte",fileContent)
+  // Use traditional columnizer for all data (streaming is now pre-transformed)
+  const columnizer = useDataColumnizer({
     parsedData: fileContent,
     type: fileType,
   });
-
-  // Add new data to streaming columnizer when fileContent changes
-  const prevFileContentLength = useRef(0);
-  const prevFileContentRef = useRef<any[]>([]);
 
   // Feature details dialog state
   const [selectedFeatureDetails, setSelectedFeatureDetails] = useState<
     any | null
   >(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-
-  useEffect(() => {
-    if (fileContent && Array.isArray(fileContent) && fileContent.length > 0) {
-      // Check if this is a new file by comparing actual data content, not just length
-      const isNewFile =
-        prevFileContentLength.current === 0 ||
-        prevFileContentLength.current > fileContent.length ||
-        (fileContent.length > 0 &&
-          prevFileContentRef.current.length > 0 &&
-          JSON.stringify(fileContent[0]) !==
-            JSON.stringify(prevFileContentRef.current[0]));
-
-      if (isNewFile) {
-        // Reset columnizer for new file (both streaming and cached data)
-        streamingColumnizer.reset();
-        streamingColumnizer.addBatch(fileContent);
-        prevFileContentLength.current = fileContent.length;
-        prevFileContentRef.current = fileContent;
-      } else if (
-        isStreaming &&
-        fileContent.length > prevFileContentLength.current
-      ) {
-        // Incremental update for same file during streaming
-        const newFeatures = fileContent.slice(prevFileContentLength.current);
-        streamingColumnizer.addBatch(newFeatures);
-        prevFileContentLength.current = fileContent.length;
-        prevFileContentRef.current = fileContent;
-      }
-    } else if (
-      (!fileContent || fileContent.length === 0) &&
-      prevFileContentLength.current > 0
-    ) {
-      // File was cleared or switched to empty - reset
-      streamingColumnizer.reset();
-      prevFileContentLength.current = 0;
-      prevFileContentRef.current = [];
-    }
-  }, [fileContent, isStreaming, streamingColumnizer]);
 
   // Handle feature details dialog
   const handleShowDetails = useCallback((feature: any) => {
@@ -109,70 +62,74 @@ const TableViewer: React.FC<Props> = ({
     [handleShowDetails, onDoubleClick],
   );
 
-  // Choose which columnizer to use
-  const tableData = isStreaming
-    ? streamingColumnizer.tableData
-    : traditionalColumnizer.tableData;
-  const tableColumns = isStreaming
-    ? streamingColumnizer.tableColumns
-    : traditionalColumnizer.tableColumns;
+  // Loading state
+  if (isStreaming && (!fileContent || !columnizer.tableData)) {
+    return (
+      <BasicBoiler
+        text={t("Loading streaming data...")}
+        className="h-full"
+      />
+    );
+  }
+
+  // No data state
+  if (!columnizer.tableData || columnizer.tableData.length === 0) {
+    return (
+      <BasicBoiler
+        text={t("No data to display in table format")}
+        className="h-full"
+      />
+    );
+  }
 
   return (
-    <RenderFallback
-      message={t(
-        "Table Viewer Could Not Be Loaded. Check if the data is valid.",
-      )}
-      textSize="sm">
+    <div className="flex h-full flex-col">
       <div className="flex h-full flex-1 flex-col">
         {/* Table */}
         <div className="flex-1 overflow-hidden">
           <VirtualizedTable
-            columns={tableColumns}
-            data={tableData}
-            condensed
-            selectColumns
-            showFiltering
+            columns={columnizer.tableColumns}
+            data={columnizer.tableData}
+            selectColumns={true}
+            showFiltering={true}
+            condensed={true}
             selectedRow={selectedFeature}
+            useStrictSelectedRow={true}
             onRowClick={onSingleClick}
             onRowDoubleClick={handleRowDoubleClick}
-            useStrictSelectedRow
           />
         </div>
-        {/* Streaming Status Header */}
-        {isStreaming && (
-          <div className="mt-1 flex items-center justify-between rounded-md bg-muted/50 px-3 py-1 text-xs text-muted-foreground">
-            <div className="flex items-center gap-4">
-              <span>
-                {t("Rows")}: {(tableData || []).length.toLocaleString()}
-                {isStreaming &&
-                  totalFeatures !== undefined &&
-                  ` / ${totalFeatures.toLocaleString()} ${t("total")}`}
+        
+        {/* Status Display */}
+        <div className="mt-1 flex items-center justify-between rounded-md bg-muted/50 px-3 py-1 text-xs text-muted-foreground">
+          <div className="flex items-center gap-4">
+            <span>
+              {t("Rows")}: {(columnizer.tableData || []).length.toLocaleString()}
+              {totalFeatures !== undefined && totalFeatures > 0 && 
+                ` / ${totalFeatures.toLocaleString()} ${t("total")}`}
+            </span>
+            {detectedGeometryType && (
+              <span className="rounded bg-muted px-2 text-xs">
+                {detectedGeometryType}
               </span>
-              {detectedGeometryType && (
-                <span className="rounded bg-muted px-2 text-xs">
-                  {detectedGeometryType}
-                </span>
-              )}
-              <span>
-                {t("Columns")}: {(tableColumns || []).length}
-                {isStreaming &&
-                  streamingColumnizer.knownColumnCount >
-                    (tableColumns || []).length &&
-                  ` (+${streamingColumnizer.knownColumnCount - (tableColumns || []).length} ${t("discovered")})`}
-              </span>
-            </div>
+            )}
+            <span>
+              {t("Columns")}: {(columnizer.tableColumns || []).length}
+            </span>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Feature Details Dialog */}
+      {/* Feature details dialog */}
       <FeatureDetailsDialog
         feature={selectedFeatureDetails}
         open={showDetailsDialog}
         onOpenChange={setShowDetailsDialog}
       />
-    </RenderFallback>
+    </div>
   );
-};
+});
 
-export default memo(TableViewer);
+TableViewer.displayName = "TableViewer";
+
+export default TableViewer;
