@@ -835,3 +835,44 @@ impl<
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{coordinate::Coordinate, line_string::LineString};
+
+    #[test]
+    fn test_consecutive_points_within_threshold() {
+        // Test data with consecutive points 0.9cm apart
+        let line_string = LineString(vec![
+            Coordinate::new_(0.0, 0.0),
+            Coordinate::new_(0.000000081, 0.0),
+            Coordinate::new_(1.0, 0.0),
+        ]);
+
+        let report = line_string
+            .validate(ValidationType::DuplicateConsecutivePoints)
+            .expect("Expected validation error but got None");
+
+        assert_eq!(report.error_count(), 1);
+        assert_eq!(
+            report.reports()[0].0,
+            ValidationProblem::DuplicateConsecutiveCoords
+        );
+    }
+
+    #[test]
+    fn test_consecutive_points_outside_threshold() {
+        // Test data with consecutive points 2cm apart
+        let line_string = LineString(vec![
+            Coordinate::new_(0.0, 0.0),
+            Coordinate::new_(0.00000018, 0.0),
+            Coordinate::new_(1.0, 0.0),
+        ]);
+
+        assert_eq!(
+            line_string.validate(ValidationType::DuplicateConsecutivePoints),
+            None
+        );
+    }
+}
