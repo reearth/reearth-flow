@@ -74,13 +74,13 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
           </div>
         )}
       </div>
-      <CollapsibleContent className="justfiy-between flex gap-2">
+      <CollapsibleContent className="flex justify-between gap-2">
         {nodeType !== "reader" && inputs && (
           <div className="inset-x-0 mx-auto min-w-0 flex-1">
             {inputs.slice(5).map((input, index) => (
               <div
                 key={input + index}
-                className="relative flex items-center border-b py-0.5 last-of-type:border-none">
+                className="relative flex items-center border-b py-0.5 first-of-type:border-t last-of-type:border-none">
                 <CustomHandle
                   type="target"
                   className={`left-1 w-[8px] rounded-none transition-colors ${index === (!outputs && inputs && inputs.length - 1) ? "rounded-bl-sm" : undefined}`}
@@ -105,7 +105,7 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
             {outputs.slice(5).map((output, index) => (
               <div
                 key={output + index}
-                className="relative flex items-center justify-end border-b py-0.5 last-of-type:border-none">
+                className="relative flex items-center justify-end  border-b py-0.5 first-of-type:border-t last-of-type:border-none">
                 <CustomHandle
                   type="source"
                   className="right-1 z-10 w-[8px] rounded-none transition-colors"
@@ -123,7 +123,7 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
           </div>
         )}
       </CollapsibleContent>
-      {outputs && outputs?.length >= 6 && (
+      {((inputs && inputs.length >= 5) || (outputs && outputs.length >= 5)) && (
         <CollapsibleTrigger asChild className="justify-center self-center">
           <IconButton
             className="h-6 w-6"
