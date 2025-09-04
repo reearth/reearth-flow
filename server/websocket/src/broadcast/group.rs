@@ -306,8 +306,6 @@ impl BroadcastGroup {
                         match result {
                             Ok(awareness_updates) => {
                                 let update_count = awareness_updates.len();
-                                let sleep_duration = sleep_for_update_count(update_count);
-                                tokio::time::sleep(sleep_duration).await;
                                 if update_count > 0 {
                                     let awareness = awareness_clone.write().await;
                                     for (_instance_id, data) in awareness_updates {
@@ -316,8 +314,6 @@ impl BroadcastGroup {
                                                 if let Err(e) = awareness.apply_update(awareness_update) {
                                                     warn!("Failed to apply awareness update from Redis: {}", e);
                                                 }
-                                            } else {
-                                                warn!("Failed to decode awareness update from Redis");
                                             }
                                         }
                                     }
@@ -821,22 +817,5 @@ impl Drop for BroadcastGroup {
                 }
             }
         }
-    }
-}
-
-fn sleep_for_update_count(update_count: usize) -> tokio::time::Duration {
-    match update_count {
-        0 => tokio::time::Duration::from_millis(500),
-        1 => tokio::time::Duration::from_millis(200),
-        2 => tokio::time::Duration::from_millis(150),
-        3 => tokio::time::Duration::from_millis(95),
-        4 => tokio::time::Duration::from_millis(90),
-        5 => tokio::time::Duration::from_millis(85),
-        6 => tokio::time::Duration::from_millis(80),
-        7 => tokio::time::Duration::from_millis(75),
-        8 => tokio::time::Duration::from_millis(70),
-        9 => tokio::time::Duration::from_millis(65),
-        10 => tokio::time::Duration::from_millis(60),
-        _ => tokio::time::Duration::from_millis(1),
     }
 }
