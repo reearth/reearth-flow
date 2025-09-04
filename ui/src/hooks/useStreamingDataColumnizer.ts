@@ -85,8 +85,8 @@ export const useStreamingDataColumnizer = (
     return Array.from(columnNames)
       .sort()
       .map((columnName) => {
-        // Convert column name to match traditional columnizer format
-        const accessorKey = columnName.replace('.', '');
+        // Convert column name to match traditional columnizer format (remove all dots)
+        const accessorKey = columnName.replace(/\./g, '');
         return {
           accessorKey,
           header: columnName,
@@ -106,8 +106,8 @@ export const useStreamingDataColumnizer = (
       const row: any = {};
       
       columns.forEach((columnName) => {
-        // Convert column name to match traditional columnizer format (remove dots)
-        const key = columnName.replace('.', '');
+        // Convert column name to match traditional columnizer format (remove all dots)
+        const key = columnName.replace(/\./g, '');
         const value = getNestedValue(feature, columnName);
         // Store both formatted (for display) and original (for copying) values
         row[key] = formatCellValue(value);

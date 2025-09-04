@@ -273,12 +273,6 @@ export const useStreamingDebugRunQuery = (
     }
   }, [dataUrl, batchSize, chunkSize, displayLimit, onProgress, onError, queryClient, queryKey, streamingState.isStreaming, detectedFileType]);
 
-  const stopStreaming = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-  }, []);
-
   const resetStreaming = useCallback(() => {
     // Stop any ongoing streaming
     if (abortControllerRef.current) {
@@ -397,7 +391,6 @@ export const useStreamingDebugRunQuery = (
   return {
     // Streaming-specific data
     ...streamingState,
-    stopStreaming,
     resetStreaming,
     
     // Metadata
