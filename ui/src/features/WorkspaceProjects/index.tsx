@@ -33,6 +33,7 @@ import {
   ProjectCard,
   ProjectDeletionDialog,
   ProjectEditDialog,
+  WorkflowImportVariablesMappingDialog,
 } from "./components";
 import { ProjectDuplicateDialog } from "./components/ProjectDuplicateDialog";
 import useHooks from "./hooks";
@@ -83,6 +84,10 @@ const ProjectsManager: React.FC = () => {
     // setIsWorkflowImporting,
     handleWorkflowImportClick,
     handleWorkflowFileUpload,
+    showVariableMapping,
+    pendingWorkflowData,
+    handleVariableMappingConfirm,
+    handleVariableMappingCancel,
   } = useWorkflowImport();
 
   return (
@@ -109,9 +114,7 @@ const ProjectsManager: React.FC = () => {
                       <span className="font-thin">(flow.zip)</span>
                     </p>
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={handleWorkflowImportClick}
-                    disabled>
+                  <DropdownMenuItem onClick={handleWorkflowImportClick}>
                     <p className="text-sm">
                       {t("Workflow ")}
                       <span className="font-thin">(yaml or json)</span>
@@ -216,6 +219,16 @@ const ProjectsManager: React.FC = () => {
         setProjectToBeDeleted={setProjectToBeDeleted}
         onDeleteProject={handleDeleteProject}
       />
+      {pendingWorkflowData && (
+        <WorkflowImportVariablesMappingDialog
+          isOpen={showVariableMapping}
+          onOpenChange={(open) => !open && handleVariableMappingCancel()}
+          variables={pendingWorkflowData.variables}
+          workflowName={pendingWorkflowData.workflowName}
+          onConfirm={handleVariableMappingConfirm}
+          onCancel={handleVariableMappingCancel}
+        />
+      )}
     </div>
   );
 };

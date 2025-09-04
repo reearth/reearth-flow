@@ -12,7 +12,6 @@ use tokio::task::JoinHandle;
 use tracing::{debug, error, info, warn};
 use yrs::types::ToJson;
 
-use super::Publish;
 use serde_json;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -299,16 +298,18 @@ impl BroadcastGroup {
                                 &mut awareness_conn,
                                 &doc_name_for_sub_clone,
                                 &awareness_last_read_id,
-                                10,
+                                500,
                                 Some(instance_id_clone.as_str()),
                             )
                             .await;
 
                         match result {
                             Ok(awareness_updates) => {
-                                if !awareness_updates.is_empty() {
+                                let update_count = awareness_updates.len();
+                                let sleep_duration = sleep_for_update_count(update_count);
+                                tokio::time::sleep(sleep_duration).await;
+                                if update_count > 0 {
                                     let awareness = awareness_clone.write().await;
-
                                     for (_instance_id, data) in awareness_updates {
                                         if let Some(data) = data {
                                             if let Ok(awareness_update) = yrs::sync::awareness::AwarenessUpdate::decode_v1(&data) {
@@ -490,7 +491,6 @@ impl BroadcastGroup {
                     };
                 }
             };
-            let mut publish = Publish::new(redis_store, stream_key, instance_id, &mut conn);
             tokio::spawn(async move {
                 while let Some(res) = stream.next().await {
                     let data = match res.map_err(anyhow::Error::from) {
@@ -509,7 +509,17 @@ impl BroadcastGroup {
                         }
                     };
 
-                    match Self::handle_msg(&protocol, &awareness, msg, &mut publish).await {
+                    match Self::handle_msg(
+                        &protocol,
+                        &awareness,
+                        msg,
+                        &redis_store,
+                        &mut conn,
+                        &stream_key,
+                        &instance_id,
+                    )
+                    .await
+                    {
                         Ok(Some(reply)) => {
                             let mut sink_lock = sink.lock().await;
                             if let Err(e) = sink_lock.send(Bytes::from(reply.encode_v1())).await {
@@ -534,7 +544,10 @@ impl BroadcastGroup {
         protocol: &P,
         awareness: &AwarenessRef,
         msg: Message,
-        publish: &mut Publish,
+        redis_store: &RedisStore,
+        conn: &mut redis::aio::MultiplexedConnection,
+        stream_key: &str,
+        instance_id: &str,
     ) -> Result<Option<Message>, Error> {
         match msg {
             Message::Sync(msg) => {
@@ -545,10 +558,18 @@ impl BroadcastGroup {
                 };
 
                 if !update_bytes.is_empty() {
-                    publish
-                        .insert(Bytes::from(update_bytes))
+                    if let Err(e) = redis_store
+                        .publish_update_with_ttl(
+                            conn,
+                            stream_key,
+                            &update_bytes,
+                            instance_id,
+                            43200,
+                        )
                         .await
-                        .map_err(|e| Error::Other(e.into()))?;
+                    {
+                        warn!("Failed to publish update to Redis: {}", e);
+                    }
                 }
 
                 match msg {
@@ -800,5 +821,22 @@ impl Drop for BroadcastGroup {
                 }
             }
         }
+    }
+}
+
+fn sleep_for_update_count(update_count: usize) -> tokio::time::Duration {
+    match update_count {
+        0 => tokio::time::Duration::from_millis(500),
+        1 => tokio::time::Duration::from_millis(200),
+        2 => tokio::time::Duration::from_millis(150),
+        3 => tokio::time::Duration::from_millis(95),
+        4 => tokio::time::Duration::from_millis(90),
+        5 => tokio::time::Duration::from_millis(85),
+        6 => tokio::time::Duration::from_millis(80),
+        7 => tokio::time::Duration::from_millis(75),
+        8 => tokio::time::Duration::from_millis(70),
+        9 => tokio::time::Duration::from_millis(65),
+        10 => tokio::time::Duration::from_millis(60),
+        _ => tokio::time::Duration::from_millis(1),
     }
 }

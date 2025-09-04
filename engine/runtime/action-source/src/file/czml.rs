@@ -241,32 +241,16 @@ fn extract_geometry(
     packet: &Value,
     force_2d: bool,
 ) -> Result<Option<Geometry>, crate::errors::SourceError> {
-    // Try to extract point from position
-    if let Some(position) = packet.get("position") {
-        if let Some(coords) = extract_cartographic_degrees(position) {
-            if coords.len() >= 3 {
-                let point = if force_2d {
-                    GeometryValue::FlowGeometry2D(Geometry2D::Point(Point2D::from([
-                        coords[0], coords[1],
-                    ])))
-                } else {
-                    GeometryValue::FlowGeometry3D(Geometry3D::Point(Point3D::from([
-                        coords[0], coords[1], coords[2],
-                    ])))
-                };
-                return Ok(Some(Geometry {
-                    epsg: Some(4326), // CZML uses WGS84
-                    value: point,
-                }));
-            }
-        }
-    }
-
-    // Try to extract polygon
     if let Some(polygon) = packet.get("polygon") {
         if let Some(positions) = polygon.get("positions") {
             if let Some(coords) = extract_cartographic_degrees(positions) {
-                let geometry = convert_polygon_coords(&coords, force_2d)?;
+                let holes = if let Some(holes_value) = polygon.get("holes") {
+                    extract_polygon_holes(holes_value)
+                } else {
+                    vec![]
+                };
+
+                let geometry = convert_polygon_coords(&coords, holes, force_2d)?;
                 return Ok(Some(Geometry {
                     epsg: Some(4326),
                     value: geometry,
@@ -275,7 +259,6 @@ fn extract_geometry(
         }
     }
 
-    // Try to extract polyline
     if let Some(polyline) = packet.get("polyline") {
         if let Some(positions) = polyline.get("positions") {
             if let Some(coords) = extract_cartographic_degrees(positions) {
@@ -284,6 +267,100 @@ fn extract_geometry(
                     epsg: Some(4326),
                     value: geometry,
                 }));
+            }
+        }
+    }
+
+    if let Some(rectangle) = packet.get("rectangle") {
+        if let Some(coordinates) = rectangle.get("coordinates") {
+            if let Some(wsen) = extract_rectangle_bounds(coordinates) {
+                let geometry = convert_rectangle_to_polygon(wsen, force_2d)?;
+                return Ok(Some(Geometry {
+                    epsg: Some(4326),
+                    value: geometry,
+                }));
+            }
+        }
+    }
+
+    if let Some(corridor) = packet.get("corridor") {
+        if let Some(positions) = corridor.get("positions") {
+            if let Some(coords) = extract_cartographic_degrees(positions) {
+                let geometry = convert_line_coords(&coords, force_2d)?;
+                return Ok(Some(Geometry {
+                    epsg: Some(4326),
+                    value: geometry,
+                }));
+            }
+        }
+    }
+
+    if let Some(ellipse) = packet.get("ellipse") {
+        if let Some(position) = packet.get("position") {
+            if let Some(center_coords) = extract_cartographic_degrees(position) {
+                if center_coords.len() >= 2 {
+                    let semi_major = ellipse
+                        .get("semiMajorAxis")
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(100.0);
+                    let semi_minor = ellipse
+                        .get("semiMinorAxis")
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(100.0);
+                    let geometry = create_ellipse_polygon(
+                        center_coords[0],
+                        center_coords[1],
+                        center_coords.get(2).copied().unwrap_or(0.0),
+                        semi_major,
+                        semi_minor,
+                        force_2d,
+                    )?;
+                    return Ok(Some(Geometry {
+                        epsg: Some(4326),
+                        value: geometry,
+                    }));
+                }
+            }
+        }
+    }
+
+    if let Some(wall) = packet.get("wall") {
+        if let Some(positions) = wall.get("positions") {
+            if let Some(coords) = extract_cartographic_degrees(positions) {
+                let geometry = convert_line_coords(&coords, force_2d)?;
+                return Ok(Some(Geometry {
+                    epsg: Some(4326),
+                    value: geometry,
+                }));
+            }
+        }
+    }
+
+    if let Some(position) = packet.get("position") {
+        let has_other_geom = packet.get("polygon").is_some()
+            || packet.get("polyline").is_some()
+            || packet.get("rectangle").is_some()
+            || packet.get("corridor").is_some()
+            || packet.get("ellipse").is_some()
+            || packet.get("wall").is_some();
+
+        if !has_other_geom {
+            if let Some(coords) = extract_cartographic_degrees(position) {
+                if coords.len() >= 3 {
+                    let point = if force_2d {
+                        GeometryValue::FlowGeometry2D(Geometry2D::Point(Point2D::from([
+                            coords[0], coords[1],
+                        ])))
+                    } else {
+                        GeometryValue::FlowGeometry3D(Geometry3D::Point(Point3D::from([
+                            coords[0], coords[1], coords[2],
+                        ])))
+                    };
+                    return Ok(Some(Geometry {
+                        epsg: Some(4326), // CZML uses WGS84
+                        value: point,
+                    }));
+                }
             }
         }
     }
@@ -333,8 +410,32 @@ fn extract_cartographic_degrees(value: &Value) -> Option<Vec<f64>> {
     None
 }
 
+fn extract_polygon_holes(value: &Value) -> Vec<Vec<f64>> {
+    let mut holes = Vec::new();
+
+    // Check if it's an object with cartographicDegrees
+    if let Some(obj) = value.as_object() {
+        if let Some(deg) = obj.get("cartographicDegrees") {
+            if let Some(arr) = deg.as_array() {
+                for hole_value in arr {
+                    if let Some(hole_coords) = hole_value.as_array() {
+                        let coords: Option<Vec<f64>> =
+                            hole_coords.iter().map(|v| v.as_f64()).collect();
+                        if let Some(coords) = coords {
+                            holes.push(coords);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    holes
+}
+
 fn convert_polygon_coords(
     coords: &[f64],
+    holes: Vec<Vec<f64>>,
     force_2d: bool,
 ) -> Result<GeometryValue, crate::errors::SourceError> {
     if coords.len() < 9 {
@@ -350,8 +451,24 @@ fn convert_polygon_coords(
             .map(|chunk| Point2D::from([chunk[0], chunk[1]]).0)
             .collect();
         let exterior = LineString2D::new(points);
+
+        let interior_rings: Vec<LineString2D<f64>> = holes
+            .into_iter()
+            .filter_map(|hole_coords| {
+                if hole_coords.len() >= 9 {
+                    let hole_points: Vec<_> = hole_coords
+                        .chunks_exact(3)
+                        .map(|chunk| Point2D::from([chunk[0], chunk[1]]).0)
+                        .collect();
+                    Some(LineString2D::new(hole_points))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
         Ok(GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
-            Polygon2D::new(exterior, vec![]),
+            Polygon2D::new(exterior, interior_rings),
         )))
     } else {
         let points: Vec<_> = coords
@@ -359,8 +476,24 @@ fn convert_polygon_coords(
             .map(|chunk| Point3D::from([chunk[0], chunk[1], chunk[2]]).0)
             .collect();
         let exterior = LineString3D::new(points);
+
+        let interior_rings: Vec<LineString3D<f64>> = holes
+            .into_iter()
+            .filter_map(|hole_coords| {
+                if hole_coords.len() >= 9 {
+                    let hole_points: Vec<_> = hole_coords
+                        .chunks_exact(3)
+                        .map(|chunk| Point3D::from([chunk[0], chunk[1], chunk[2]]).0)
+                        .collect();
+                    Some(LineString3D::new(hole_points))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
         Ok(GeometryValue::FlowGeometry3D(Geometry3D::Polygon(
-            Polygon3D::new(exterior, vec![]),
+            Polygon3D::new(exterior, interior_rings),
         )))
     }
 }
@@ -391,6 +524,122 @@ fn convert_line_coords(
             .collect();
         Ok(GeometryValue::FlowGeometry3D(Geometry3D::LineString(
             LineString3D::new(points),
+        )))
+    }
+}
+
+fn extract_rectangle_bounds(value: &Value) -> Option<Vec<f64>> {
+    // Handle wsenDegrees format [west, south, east, north]
+    if let Some(obj) = value.as_object() {
+        if let Some(wsen) = obj.get("wsenDegrees") {
+            if let Some(arr) = wsen.as_array() {
+                if arr.len() >= 4 {
+                    let bounds: Option<Vec<f64>> = arr.iter().map(|v| v.as_f64()).collect();
+                    return bounds;
+                }
+            }
+        }
+        // Handle wsenRadians and convert to degrees
+        if let Some(wsen) = obj.get("wsenRadians") {
+            if let Some(arr) = wsen.as_array() {
+                if arr.len() >= 4 {
+                    let bounds: Option<Vec<f64>> = arr
+                        .iter()
+                        .map(|v| v.as_f64().map(|val| val.to_degrees()))
+                        .collect();
+                    return bounds;
+                }
+            }
+        }
+    }
+    None
+}
+
+fn convert_rectangle_to_polygon(
+    wsen: Vec<f64>,
+    force_2d: bool,
+) -> Result<GeometryValue, crate::errors::SourceError> {
+    if wsen.len() < 4 {
+        return Err(crate::errors::SourceError::CzmlReader(
+            "Rectangle must have west, south, east, north bounds".to_string(),
+        ));
+    }
+
+    let west = wsen[0];
+    let south = wsen[1];
+    let east = wsen[2];
+    let north = wsen[3];
+    let height = wsen.get(4).copied().unwrap_or(0.0);
+
+    if force_2d {
+        let points = vec![
+            Point2D::from([west, south]).0,
+            Point2D::from([east, south]).0,
+            Point2D::from([east, north]).0,
+            Point2D::from([west, north]).0,
+            Point2D::from([west, south]).0, // Close the polygon
+        ];
+        let exterior = LineString2D::new(points);
+        Ok(GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
+            Polygon2D::new(exterior, vec![]),
+        )))
+    } else {
+        let points = vec![
+            Point3D::from([west, south, height]).0,
+            Point3D::from([east, south, height]).0,
+            Point3D::from([east, north, height]).0,
+            Point3D::from([west, north, height]).0,
+            Point3D::from([west, south, height]).0, // Close the polygon
+        ];
+        let exterior = LineString3D::new(points);
+        Ok(GeometryValue::FlowGeometry3D(Geometry3D::Polygon(
+            Polygon3D::new(exterior, vec![]),
+        )))
+    }
+}
+
+fn create_ellipse_polygon(
+    center_lon: f64,
+    center_lat: f64,
+    height: f64,
+    semi_major_meters: f64,
+    semi_minor_meters: f64,
+    force_2d: bool,
+) -> Result<GeometryValue, crate::errors::SourceError> {
+    // Approximate ellipse with polygon (32 points for smooth curve)
+    const NUM_POINTS: usize = 32;
+
+    // Very rough approximation: 1 degree ≈ 111,000 meters at equator
+    // This should use proper geodesic calculations for accuracy
+    let meters_per_degree_lon = 111_000.0 * (center_lat.to_radians().cos());
+    let meters_per_degree_lat = 111_000.0;
+
+    let semi_major_deg = semi_major_meters / meters_per_degree_lon;
+    let semi_minor_deg = semi_minor_meters / meters_per_degree_lat;
+
+    if force_2d {
+        let mut points = Vec::with_capacity(NUM_POINTS + 1);
+        for i in 0..=NUM_POINTS {
+            let angle = (i as f64 * 2.0 * std::f64::consts::PI) / NUM_POINTS as f64;
+            let x = center_lon + semi_major_deg * angle.cos();
+            let y = center_lat + semi_minor_deg * angle.sin();
+            points.push(Point2D::from([x, y]).0);
+        }
+        let exterior = LineString2D::new(points);
+        Ok(GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
+            Polygon2D::new(exterior, vec![]),
+        )))
+    } else {
+        let mut points = Vec::with_capacity(NUM_POINTS + 1);
+        for i in 0..=NUM_POINTS {
+            let angle = (i as f64 * 2.0 * std::f64::consts::PI) / NUM_POINTS as f64;
+            let x = center_lon + semi_major_deg * angle.cos();
+            let y = center_lat + semi_minor_deg * angle.sin();
+            points.push(Point3D::from([x, y, height]).0);
+        }
+        let exterior = LineString3D::new(points);
+        Ok(GeometryValue::FlowGeometry3D(Geometry3D::Polygon(
+            Polygon3D::new(exterior, vec![]),
         )))
     }
 }
