@@ -180,7 +180,13 @@ function VirtualizedTable<TData, TValue>({
                     <TableHead
                       key={header.id}
                       className={`${condensed ? "h-8" : "h-10"}`}
-                      style={{ width: header.getSize() }}>
+                      style={{ 
+                        width: Math.min(
+                          header.getSize(), 
+                          header.column.columnDef.maxSize || 400
+                        ),
+                        maxWidth: header.column.columnDef.maxSize || 400
+                      }}>
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -228,7 +234,13 @@ function VirtualizedTable<TData, TValue>({
                         <TableCell
                           key={cell.id}
                           className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}
-                          style={{ width: cell.column.getSize() }}>
+                          style={{ 
+                            width: Math.min(
+                              cell.column.getSize(), 
+                              cell.column.columnDef.maxSize || 400
+                            ),
+                            maxWidth: cell.column.columnDef.maxSize || 400
+                          }}>
                           {flexRender(
                             cell.column.columnDef.cell,
                             cell.getContext(),
