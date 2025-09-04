@@ -113,6 +113,7 @@ nodes:
     action: GeometryValidator
     with:
       validationTypes:
+        - duplicateConsecutivePoints
         - selfIntersection
 
   ## Ring not closed

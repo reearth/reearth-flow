@@ -3,6 +3,7 @@ use num_traits::FromPrimitive;
 
 use crate::{
     algorithm::{
+        geo_distance_converter::coordinate_diff_to_meter,
         intersects::Intersects,
         kernels::{Orientation, RobustKernel},
         remove_repeated_points::RemoveRepeatedPoints,
@@ -363,4 +364,31 @@ fn is_colinear<Z: CoordFloat>(
     let area =
         ((p1.x * (p2.y - p3.y)) + (p2.x * (p3.y - p1.y)) + (p3.x * (p1.y - p2.y))).abs() / 2.0;
     area < tolerance
+}
+
+/// Calculate 3D distance between two coordinates using geo-distance conversion
+pub fn calculate_geo_distance_3d<T: CoordFloat, Z: CoordFloat>(
+    p1: &Coordinate<T, Z>,
+    p2: &Coordinate<T, Z>,
+) -> f64 {
+    let lng1 = p1.x.to_f64().unwrap_or(0.0);
+    let lat1 = p1.y.to_f64().unwrap_or(0.0);
+    let lng2 = p2.x.to_f64().unwrap_or(0.0);
+    let lat2 = p2.y.to_f64().unwrap_or(0.0);
+
+    let dlng = lng2 - lng1;
+    let dlat = lat2 - lat1;
+    let mid_lat = (lat1 + lat2) / 2.0;
+
+    // Convert coordinate differences to meters
+    let (dx_meters, dy_meters) = coordinate_diff_to_meter(dlng, dlat, mid_lat);
+
+    // Handle Z coordinate (already in meters)
+    let dz_meters = if let (Some(z1), Some(z2)) = (p1.z.to_f64(), p2.z.to_f64()) {
+        z2 - z1
+    } else {
+        0.0
+    };
+
+    (dx_meters * dx_meters + dy_meters * dy_meters + dz_meters * dz_meters).sqrt()
 }

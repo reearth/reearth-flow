@@ -69,6 +69,8 @@ pub enum ValidationProblem {
     TooFewPoints,
     /// Identical coords
     IdenticalCoords,
+    /// Duplicate consecutive coordinates within distance threshold
+    DuplicateConsecutiveCoords,
     /// Collinear coords
     CollinearCoords,
     /// A ring has a self-intersection
@@ -235,6 +237,9 @@ impl Display for ValidationProblemReport {
                     ValidationProblem::IdenticalCoords => {
                         str_buffer.push("Identical coords".to_string())
                     }
+                    ValidationProblem::DuplicateConsecutiveCoords => str_buffer.push(
+                        "Duplicate consecutive coordinates within distance threshold".to_string(),
+                    ),
                     ValidationProblem::CollinearCoords => {
                         str_buffer.push("Collinear coords".to_string())
                     }
@@ -270,6 +275,7 @@ impl Display for ValidationProblemReport {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValidationType {
     DuplicatePoints,
+    DuplicateConsecutivePoints,
     CorruptGeometry,
     SelfIntersection,
 }
@@ -405,6 +411,21 @@ impl<
             }
         }
         match valid_type {
+            ValidationType::DuplicateConsecutivePoints => {
+                const DISTANCE_THRESHOLD: f64 = 0.01; // 0.01m threshold
+
+                for i in 0..self.0.len().saturating_sub(1) {
+                    let p1 = &self.0[i];
+                    let p2 = &self.0[i + 1];
+                    let distance = crate::utils::calculate_geo_distance_3d(p1, p2);
+                    if distance <= DISTANCE_THRESHOLD {
+                        reason.push(ValidationProblemAtPosition(
+                            ValidationProblem::DuplicateConsecutiveCoords,
+                            ValidationProblemPosition::LineString(CoordinatePosition(i as isize)),
+                        ));
+                    }
+                }
+            }
             ValidationType::DuplicatePoints => {
                 let mut seen = ApproxHashSet::<Coordinate<T, Z>>::new();
                 for (idx, pt) in self.0.iter().enumerate() {
@@ -451,6 +472,26 @@ impl<
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         let mut reason = Vec::new();
         match valid_type {
+            ValidationType::DuplicateConsecutivePoints => {
+                for (line_idx, line_string) in self.0.iter().enumerate() {
+                    if let Some(result) = line_string.validate(valid_type.clone()) {
+                        for problem in result.0.iter() {
+                            let coord_pos = match &problem.1 {
+                                ValidationProblemPosition::LineString(pos) => pos.clone(),
+                                _ => CoordinatePosition(-1),
+                            };
+
+                            reason.push(ValidationProblemAtPosition(
+                                problem.0.clone(),
+                                ValidationProblemPosition::MultiLineString(
+                                    GeometryPosition(line_idx as isize),
+                                    coord_pos,
+                                ),
+                            ));
+                        }
+                    }
+                }
+            }
             ValidationType::DuplicatePoints | ValidationType::CorruptGeometry => {
                 for line_string in &self.0 {
                     if let Some(result) = line_string.validate(valid_type.clone()) {
@@ -484,6 +525,45 @@ impl<
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         let mut reason = Vec::new();
         match valid_type {
+            ValidationType::DuplicateConsecutivePoints => {
+                const DISTANCE_THRESHOLD: f64 = 0.01; // 0.01m threshold
+
+                // Check exterior ring
+                let coords: Vec<Coordinate<T, Z>> = self.exterior().coords().cloned().collect();
+                for i in 0..coords.len().saturating_sub(1) {
+                    let p1 = &coords[i];
+                    let p2 = &coords[i + 1];
+                    let distance = crate::utils::calculate_geo_distance_3d(p1, p2);
+                    if distance <= DISTANCE_THRESHOLD {
+                        reason.push(ValidationProblemAtPosition(
+                            ValidationProblem::DuplicateConsecutiveCoords,
+                            ValidationProblemPosition::Polygon(
+                                RingRole::Exterior,
+                                CoordinatePosition(i as isize),
+                            ),
+                        ));
+                    }
+                }
+
+                // Check interior rings
+                for (j, interior) in self.interiors().iter().enumerate() {
+                    let coords: Vec<Coordinate<T, Z>> = interior.coords().cloned().collect();
+                    for i in 0..coords.len().saturating_sub(1) {
+                        let p1 = &coords[i];
+                        let p2 = &coords[i + 1];
+                        let distance = crate::utils::calculate_geo_distance_3d(p1, p2);
+                        if distance <= DISTANCE_THRESHOLD {
+                            reason.push(ValidationProblemAtPosition(
+                                ValidationProblem::DuplicateConsecutiveCoords,
+                                ValidationProblemPosition::Polygon(
+                                    RingRole::Interior(j as isize),
+                                    CoordinatePosition(i as isize),
+                                ),
+                            ));
+                        }
+                    }
+                }
+            }
             ValidationType::DuplicatePoints => {
                 let mut seen = ApproxHashSet::<Coordinate<T, Z>>::new();
                 let coords: Vec<Coordinate<T, Z>> = self.exterior().coords().cloned().collect();
