@@ -1,4 +1,4 @@
-import { intermediateDataTransform } from './transformIntermediateData';
+import { intermediateDataTransform } from "./transformIntermediateData";
 
 export type BatchTransformOptions = {
   /** Maximum features to process per batch */
@@ -9,39 +9,35 @@ export type BatchTransformOptions = {
   maxFeatures?: number;
   /** Callback for progress updates */
   onProgress?: (processed: number, total: number) => void;
-}
+};
 
 export type BatchTransformResult = {
   transformedFeatures: any[];
   totalProcessed: number;
   sampledCount: number;
   hasMoreData: boolean;
-}
+};
 
 /**
  * Transform a batch of intermediate data features for streaming processing
  */
 export function transformBatch(
   features: any[],
-  options: BatchTransformOptions = {}
+  options: BatchTransformOptions = {},
 ): BatchTransformResult {
-  const {
-    samplingRatio = 1.0,
-    maxFeatures,
-    onProgress,
-  } = options;
+  const { samplingRatio = 1.0, maxFeatures, onProgress } = options;
 
   const transformedFeatures: any[] = [];
   let sampledCount = 0;
-  
+
   for (let i = 0; i < features.length; i++) {
     const feature = features[i];
-    
+
     // Apply sampling if specified
     if (samplingRatio < 1.0 && Math.random() > samplingRatio) {
       continue;
     }
-    
+
     // Check max features limit
     if (maxFeatures && transformedFeatures.length >= maxFeatures) {
       return {
@@ -51,19 +47,19 @@ export function transformBatch(
         hasMoreData: true,
       };
     }
-    
+
     // Transform the feature
     try {
       const transformed = intermediateDataTransform(feature);
       transformedFeatures.push(transformed);
       sampledCount++;
     } catch (error) {
-      console.warn('Failed to transform feature:', error, feature);
+      console.warn("Failed to transform feature:", error, feature);
       // Include raw feature as fallback
       transformedFeatures.push(feature);
       sampledCount++;
     }
-    
+
     // Progress callback
     if (onProgress && i % 100 === 0) {
       onProgress(i + 1, features.length);
@@ -102,7 +98,10 @@ export class StreamingDataTransformer {
     const result = transformBatch(features, {
       ...this.options,
       onProgress: (processed, total) => {
-        this.options.onProgress?.(this.totalProcessed + processed, this.totalProcessed + total);
+        this.options.onProgress?.(
+          this.totalProcessed + processed,
+          this.totalProcessed + total,
+        );
       },
     });
 
@@ -149,12 +148,12 @@ export function analyzeBatchGeometry(features: any[]) {
 
   for (const feature of features) {
     const geometryValue = feature?.geometry?.value;
-    
+
     if (!geometryValue) {
       stats.Unknown++;
       continue;
     }
-    
+
     if (geometryValue.FlowGeometry2D || geometryValue.flowGeometry2D) {
       stats.FlowGeometry2D++;
     } else if (geometryValue.FlowGeometry3D || geometryValue.flowGeometry3D) {
@@ -172,14 +171,21 @@ export function analyzeBatchGeometry(features: any[]) {
 /**
  * Get the predominant geometry type from batch statistics
  */
-export function getPredominantGeometryType(stats: ReturnType<typeof analyzeBatchGeometry>) {
+export function getPredominantGeometryType(
+  stats: ReturnType<typeof analyzeBatchGeometry>,
+) {
   const { FlowGeometry2D, FlowGeometry3D, CityGmlGeometry, Unknown } = stats;
-  
-  const max = Math.max(FlowGeometry2D, FlowGeometry3D, CityGmlGeometry, Unknown);
-  
+
+  const max = Math.max(
+    FlowGeometry2D,
+    FlowGeometry3D,
+    CityGmlGeometry,
+    Unknown,
+  );
+
   if (max === 0) return null;
-  if (max === FlowGeometry2D) return 'FlowGeometry2D';
-  if (max === FlowGeometry3D) return 'FlowGeometry3D';
-  if (max === CityGmlGeometry) return 'CityGmlGeometry';
-  return 'Unknown';
+  if (max === FlowGeometry2D) return "FlowGeometry2D";
+  if (max === FlowGeometry3D) return "FlowGeometry3D";
+  if (max === CityGmlGeometry) return "CityGmlGeometry";
+  return "Unknown";
 }

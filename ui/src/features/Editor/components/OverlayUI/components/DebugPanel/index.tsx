@@ -213,7 +213,6 @@ const DebugPanel: React.FC = () => {
                     selectedFeature={selectedFeature}
                     onSingleClick={handleRowSingleClick}
                     onDoubleClick={handleRowDoubleClick}
-                    
                     // Streaming props
                     isStreaming={isStreaming}
                     detectedGeometryType={detectedGeometryType || undefined}

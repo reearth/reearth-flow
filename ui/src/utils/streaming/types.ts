@@ -3,7 +3,7 @@ export type StreamingProgress = {
   featuresProcessed: number;
   estimatedTotal?: number;
   percentage?: number;
-}
+};
 
 export type StreamingState<T> = {
   data: T[];
@@ -12,7 +12,7 @@ export type StreamingState<T> = {
   progress: StreamingProgress;
   error: Error | null;
   hasMore: boolean;
-}
+};
 
 export type StreamingOptions = {
   batchSize?: number; // Features per batch (default: 1000)
@@ -22,11 +22,11 @@ export type StreamingOptions = {
   onError?: (error: Error) => void;
   onComplete?: () => void;
   signal?: AbortSignal;
-}
+};
 
 export type JsonlStreamResult<T> = {
   data: T[];
   progress: StreamingProgress;
   isComplete: boolean;
   hasMore: boolean;
-}
+};

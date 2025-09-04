@@ -5,7 +5,12 @@ import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 import { streamJsonl } from "@flow/utils/streaming";
 import type { StreamingState, StreamingProgress } from "@flow/utils/streaming";
 
-type GeometryType = 'FlowGeometry2D' | 'FlowGeometry3D' | 'CityGmlGeometry' | 'Unknown' | null;
+type GeometryType =
+  | "FlowGeometry2D"
+  | "FlowGeometry3D"
+  | "CityGmlGeometry"
+  | "Unknown"
+  | null;
 
 type UseStreamingDebugRunQueryOptions = {
   enabled?: boolean;
@@ -18,50 +23,55 @@ type UseStreamingDebugRunQueryOptions = {
 
 function detectGeometryType(feature: any): GeometryType {
   const geometryValue = feature?.geometry?.value;
-  
+
   if (!geometryValue) return null;
 
   // Check for FlowGeometry2D (both casing variations)
-  if (geometryValue.FlowGeometry2D || geometryValue.flowGeometry2D) return 'FlowGeometry2D';
-  
+  if (geometryValue.FlowGeometry2D || geometryValue.flowGeometry2D)
+    return "FlowGeometry2D";
+
   // Check for FlowGeometry3D (both casing variations)
-  if (geometryValue.FlowGeometry3D || geometryValue.flowGeometry3D) return 'FlowGeometry3D';
-  
+  if (geometryValue.FlowGeometry3D || geometryValue.flowGeometry3D)
+    return "FlowGeometry3D";
+
   // Check for CityGmlGeometry (multiple casing variations)
-  if (geometryValue.CityGmlGeometry || geometryValue.cityGmlGeometry) return 'CityGmlGeometry';
-  
-  
-  return 'Unknown';
+  if (geometryValue.CityGmlGeometry || geometryValue.cityGmlGeometry)
+    return "CityGmlGeometry";
+
+  return "Unknown";
 }
 
 function analyzeDataType(features: any[]): GeometryType {
   if (features.length === 0) return null;
-  
+
   // Check first few features to determine predominant type
   const sampleSize = Math.min(10, features.length);
   const typeCounts: Record<string, number> = {};
-  
+
   for (let i = 0; i < sampleSize; i++) {
     const type = detectGeometryType(features[i]);
-    if (type && type !== 'Unknown') {
+    if (type && type !== "Unknown") {
       typeCounts[type] = (typeCounts[type] || 0) + 1;
     }
   }
-  
+
   // Return most common type, or null if no geometry types found
   const entries = Object.entries(typeCounts);
   if (entries.length === 0) return null;
-  
-  const predominantType = entries.reduce((a, b) => 
-    typeCounts[a[0]] > typeCounts[b[0]] ? a : b
+
+  const predominantType = entries.reduce((a, b) =>
+    typeCounts[a[0]] > typeCounts[b[0]] ? a : b,
   )[0] as GeometryType;
-  
+
   // If we have mixed types or mostly unknown, return null instead of confusing info
-  const totalGeometryFeatures = Object.values(typeCounts).reduce((sum, count) => sum + count, 0);
+  const totalGeometryFeatures = Object.values(typeCounts).reduce(
+    (sum, count) => sum + count,
+    0,
+  );
   if (totalGeometryFeatures < sampleSize / 2) {
     return null; // Less than half have recognizable geometry
   }
-  
+
   return predominantType;
 }
 
@@ -69,26 +79,33 @@ function analyzeDataType(features: any[]): GeometryType {
 function manageCacheSize(queryClient: QueryClient) {
   const MAX_CACHED_FILES = 8; // Limit to 8 cached files max
   const cache = queryClient.getQueryCache();
-  
+
   // Get all streaming queries (exclude metadata queries)
-  const streamingQueries = cache.getAll().filter((query: any) => 
-    query.queryKey[0] === "streamingDataUrl" && !query.queryKey.includes("metadata")
-  );
-  
+  const streamingQueries = cache
+    .getAll()
+    .filter(
+      (query: any) =>
+        query.queryKey[0] === "streamingDataUrl" &&
+        !query.queryKey.includes("metadata"),
+    );
+
   if (streamingQueries.length > MAX_CACHED_FILES) {
     // Sort by cache time (oldest first)
     const sortedQueries = streamingQueries
       .map((query: any) => ({
         query,
-        cachedAt: query.state.data?.cachedAt || 0
+        cachedAt: query.state.data?.cachedAt || 0,
       }))
       .sort((a, b) => a.cachedAt - b.cachedAt);
-    
+
     // Remove oldest cached files beyond the limit
-    const queriesToRemove = sortedQueries.slice(0, streamingQueries.length - MAX_CACHED_FILES);
-    
+    const queriesToRemove = sortedQueries.slice(
+      0,
+      streamingQueries.length - MAX_CACHED_FILES,
+    );
+
     queriesToRemove.forEach(({ query }) => {
-      console.log('Removing old streaming cache for:', query.queryKey[1]);
+      console.log("Removing old streaming cache for:", query.queryKey[1]);
       queryClient.removeQueries({ queryKey: query.queryKey });
     });
   }
@@ -96,7 +113,7 @@ function manageCacheSize(queryClient: QueryClient) {
 
 export const useStreamingDebugRunQuery = (
   dataUrl: string,
-  options: UseStreamingDebugRunQueryOptions = {}
+  options: UseStreamingDebugRunQueryOptions = {},
 ): {
   fileContent: any;
   fileType: SupportedDataTypes;
@@ -116,10 +133,12 @@ export const useStreamingDebugRunQuery = (
   const queryKey = useMemo(() => ["streamingDataUrl", dataUrl], [dataUrl]);
   const abortControllerRef = useRef<AbortController>(null);
   const [detectedFileType, setDetectedFileType] = useState<GeometryType>(null);
-  
-  const [streamingState, setStreamingState] = useState<StreamingState<any> & {
-    totalFeatures: number;
-  }>({
+
+  const [streamingState, setStreamingState] = useState<
+    StreamingState<any> & {
+      totalFeatures: number;
+    }
+  >({
     data: [],
     isStreaming: false,
     isComplete: false,
@@ -137,13 +156,13 @@ export const useStreamingDebugRunQuery = (
     queryKey: [...queryKey, "metadata"],
     queryFn: async () => {
       if (!dataUrl) return null;
-      
+
       // Just fetch headers to check content length and type
       const response = await fetch(dataUrl, { method: "HEAD" });
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      
+
       return {
         contentLength: response.headers.get("content-length"),
         contentType: response.headers.get("content-type"),
@@ -160,7 +179,7 @@ export const useStreamingDebugRunQuery = (
     // Create new abort controller
     abortControllerRef.current = new AbortController();
 
-    setStreamingState(prev => ({
+    setStreamingState((prev) => ({
       ...prev,
       isStreaming: true,
       error: null,
@@ -172,7 +191,7 @@ export const useStreamingDebugRunQuery = (
         chunkSize,
         signal: abortControllerRef.current.signal,
         onProgress: (progress) => {
-          setStreamingState(prev => ({
+          setStreamingState((prev) => ({
             ...prev,
             progress,
             totalFeatures: progress.featuresProcessed,
@@ -180,7 +199,7 @@ export const useStreamingDebugRunQuery = (
           onProgress?.(progress);
         },
         onError: (error) => {
-          setStreamingState(prev => ({
+          setStreamingState((prev) => ({
             ...prev,
             error,
             isStreaming: false,
@@ -201,12 +220,12 @@ export const useStreamingDebugRunQuery = (
         }
 
         // Update state with current progress and total count
-        setStreamingState(prev => {
+        setStreamingState((prev) => {
           const currentDataLength = prev.data.length;
-          
+
           // Only add data to display if we haven't reached our display limit
           let newDataToAdd: any[] = [];
-          
+
           if (currentDataLength < displayLimit) {
             const remainingToDisplay = displayLimit - currentDataLength;
             newDataToAdd = result.data.slice(0, remainingToDisplay);
@@ -214,7 +233,10 @@ export const useStreamingDebugRunQuery = (
 
           const newState = {
             ...prev,
-            data: newDataToAdd.length > 0 ? [...prev.data, ...newDataToAdd] : prev.data,
+            data:
+              newDataToAdd.length > 0
+                ? [...prev.data, ...newDataToAdd]
+                : prev.data,
             progress: result.progress,
             totalFeatures: currentTotal,
             isComplete: result.isComplete,
@@ -230,12 +252,13 @@ export const useStreamingDebugRunQuery = (
               isComplete: result.isComplete,
               hasMore: result.hasMore,
               fileContent: newState.data,
-              type: detectedFileType || analyzeDataType(newState.data) || "jsonl",
+              type:
+                detectedFileType || analyzeDataType(newState.data) || "jsonl",
               totalFeatures: currentTotal,
               detectedGeometryType: detectedFileType,
               cachedAt: Date.now(),
             });
-            
+
             // Smart cache invalidation - limit total cached files
             manageCacheSize(queryClient);
           }
@@ -246,16 +269,15 @@ export const useStreamingDebugRunQuery = (
         // If we've hit our display limit, we continue streaming but only for counting
         // (no need to break - let it count the full file for totalFeatures)
 
-        // If streaming is complete, break the loop  
+        // If streaming is complete, break the loop
         if (result.isComplete) {
           break;
         }
       }
-
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
+      if (error instanceof Error && error.name === "AbortError") {
         // Stream was aborted (likely due to URL change), clear any partial data
-        setStreamingState(prev => ({
+        setStreamingState((prev) => ({
           ...prev,
           isStreaming: false,
           // Keep existing data if we were just switching files
@@ -263,7 +285,7 @@ export const useStreamingDebugRunQuery = (
         // Don't cache partial streaming results when aborted
       } else {
         const err = error as Error;
-        setStreamingState(prev => ({
+        setStreamingState((prev) => ({
           ...prev,
           error: err,
           isStreaming: false,
@@ -271,7 +293,18 @@ export const useStreamingDebugRunQuery = (
         onError?.(err);
       }
     }
-  }, [dataUrl, batchSize, chunkSize, displayLimit, onProgress, onError, queryClient, queryKey, streamingState.isStreaming, detectedFileType]);
+  }, [
+    dataUrl,
+    batchSize,
+    chunkSize,
+    displayLimit,
+    onProgress,
+    onError,
+    queryClient,
+    queryKey,
+    streamingState.isStreaming,
+    detectedFileType,
+  ]);
 
   const resetStreaming = useCallback(() => {
     // Stop any ongoing streaming
@@ -279,7 +312,7 @@ export const useStreamingDebugRunQuery = (
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-    
+
     setStreamingState({
       data: [],
       isStreaming: false,
@@ -298,7 +331,12 @@ export const useStreamingDebugRunQuery = (
 
   // Auto-start streaming when enabled and URL changes (but not if we have cached data)
   useEffect(() => {
-    if (enabled && dataUrl && !streamingState.isStreaming && streamingState.data.length === 0) {
+    if (
+      enabled &&
+      dataUrl &&
+      !streamingState.isStreaming &&
+      streamingState.data.length === 0
+    ) {
       // Check if we have cached data before starting streaming
       const cachedData = queryClient.getQueryData(queryKey);
       if (!cachedData || !(cachedData as any).isComplete) {
@@ -306,11 +344,19 @@ export const useStreamingDebugRunQuery = (
         const timeoutId = setTimeout(() => {
           startStreaming();
         }, 100);
-        
+
         return () => clearTimeout(timeoutId);
       }
     }
-  }, [enabled, dataUrl, startStreaming, streamingState.isStreaming, streamingState.data.length, queryClient, queryKey]);
+  }, [
+    enabled,
+    dataUrl,
+    startStreaming,
+    streamingState.isStreaming,
+    streamingState.data.length,
+    queryClient,
+    queryKey,
+  ]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -321,7 +367,7 @@ export const useStreamingDebugRunQuery = (
     };
   }, []);
 
-  // Reset state and check for cached data when URL changes  
+  // Reset state and check for cached data when URL changes
   useEffect(() => {
     // First, stop any ongoing streaming when URL changes
     if (abortControllerRef.current) {
@@ -343,14 +389,15 @@ export const useStreamingDebugRunQuery = (
         hasMore: false,
         totalFeatures: 0,
       };
-      
+
       // Reset detected file type
       setDetectedFileType(null);
-      
+
       // Check for cached data and override default state if available
       const cachedData = queryClient.getQueryData(queryKey);
       if (cachedData && (cachedData as any).isComplete) {
-        const cacheDataArray = (cachedData as any).fileContent || (cachedData as any).data || [];
+        const cacheDataArray =
+          (cachedData as any).fileContent || (cachedData as any).data || [];
         // Initialize state from cached data
         setStreamingState({
           data: cacheDataArray,
@@ -362,9 +409,10 @@ export const useStreamingDebugRunQuery = (
           },
           error: null,
           hasMore: false,
-          totalFeatures: (cachedData as any).totalFeatures || cacheDataArray.length,
+          totalFeatures:
+            (cachedData as any).totalFeatures || cacheDataArray.length,
         });
-        
+
         // Also set detected file type from cache
         if ((cachedData as any).detectedGeometryType) {
           setDetectedFileType((cachedData as any).detectedGeometryType);
@@ -392,19 +440,19 @@ export const useStreamingDebugRunQuery = (
     // Streaming-specific data
     ...streamingState,
     resetStreaming,
-    
+
     // Metadata
     metadata: metadataQuery.data,
     detectedGeometryType: detectedFileType,
-    
+
     // Compatibility with existing useFetchAndReadData interface
     fileContent: streamingState.data,
     fileType: "geojson", // All streaming data normalized to geojson format
     isLoading: streamingState.isStreaming || metadataQuery.isLoading,
-    
+
     // Additional query states
     isFetching: streamingState.isStreaming,
-    
+
     // React Query compatibility
     data: cachedQuery.data,
     isError: !!streamingState.error || metadataQuery.isError,

@@ -1,8 +1,12 @@
-import type { StreamingOptions, StreamingProgress, JsonlStreamResult } from './types';
+import type {
+  StreamingOptions,
+  StreamingProgress,
+  JsonlStreamResult,
+} from "./types";
 
 export class JsonlStreamer<T = any> {
-  private decoder = new TextDecoder('utf-8', { fatal: false });
-  private buffer = '';
+  private decoder = new TextDecoder("utf-8", { fatal: false });
+  private buffer = "";
   private bytesProcessed = 0;
   private featuresProcessed = 0;
   private estimatedTotal?: number;
@@ -13,7 +17,7 @@ export class JsonlStreamer<T = any> {
       batchSize = 1000,
       chunkSize = 64 * 1024, // 64KB
     } = options;
-    
+
     this.options = {
       ...options,
       batchSize,
@@ -21,13 +25,17 @@ export class JsonlStreamer<T = any> {
     };
   }
 
-  async *streamFromResponse(response: Response): AsyncGenerator<JsonlStreamResult<T>, void, unknown> {
+  async *streamFromResponse(
+    response: Response,
+  ): AsyncGenerator<JsonlStreamResult<T>, void, unknown> {
     if (!response.body) {
-      throw new Error('Response body is null');
+      throw new Error("Response body is null");
     }
 
-    const contentLength = response.headers.get('content-length');
-    this.estimatedTotal = contentLength ? parseInt(contentLength, 10) : undefined;
+    const contentLength = response.headers.get("content-length");
+    this.estimatedTotal = contentLength
+      ? parseInt(contentLength, 10)
+      : undefined;
 
     const reader = response.body.getReader();
     let batch: T[] = [];
@@ -36,7 +44,7 @@ export class JsonlStreamer<T = any> {
       while (true) {
         // Check for abort signal
         if (this.options.signal?.aborted) {
-          throw new DOMException('Stream aborted', 'AbortError');
+          throw new DOMException("Stream aborted", "AbortError");
         }
 
         const { done, value } = await reader.read();
@@ -47,7 +55,7 @@ export class JsonlStreamer<T = any> {
             const remainingFeatures = this.processBuffer();
             batch.push(...remainingFeatures);
           }
-          
+
           // Yield final batch if it has data
           if (batch.length > 0) {
             const progress = this.getProgress();
@@ -76,10 +84,10 @@ export class JsonlStreamer<T = any> {
         // Emit batch when it reaches the desired size
         if (batch.length >= (this.options.batchSize || 1000)) {
           const progress = this.getProgress();
-          
+
           // Notify progress callback
           this.options.onProgress?.(progress);
-          
+
           yield {
             data: [...batch],
             progress,
@@ -89,7 +97,7 @@ export class JsonlStreamer<T = any> {
 
           // Notify batch callback
           this.options.onBatch?.(batch);
-          
+
           // Clear batch for next iteration
           batch = [];
         }
@@ -106,7 +114,7 @@ export class JsonlStreamer<T = any> {
       if (batch.length > 0) {
         const progress = this.getProgress();
         this.options.onProgress?.(progress);
-        
+
         yield {
           data: [...batch],
           progress,
@@ -129,15 +137,15 @@ export class JsonlStreamer<T = any> {
 
   private processBuffer(): T[] {
     const features: T[] = [];
-    
+
     // Split by newlines but handle different line ending types
     const lines = this.buffer.split(/\r?\n/);
-    
+
     // Keep the last line in buffer (might be incomplete)
     // Only keep it if it doesn't end with a newline
-    const lastLine = lines.pop() || '';
+    const lastLine = lines.pop() || "";
     this.buffer = lastLine;
-    
+
     // Process complete lines
     for (const line of lines) {
       const trimmed = line.trim();
@@ -147,16 +155,19 @@ export class JsonlStreamer<T = any> {
           features.push(parsed);
         } catch (_error) {
           // Continue processing other lines rather than failing completely
-          console.warn('Failed to parse JSONL line:', trimmed.substring(0, 50) + '...');
+          console.warn(
+            "Failed to parse JSONL line:",
+            trimmed.substring(0, 50) + "...",
+          );
         }
       }
     }
-    
+
     return features;
   }
 
   private getProgress(): StreamingProgress {
-    const percentage = this.estimatedTotal 
+    const percentage = this.estimatedTotal
       ? Math.min((this.bytesProcessed / this.estimatedTotal) * 100, 100)
       : undefined;
 
@@ -176,13 +187,13 @@ export class JsonlStreamer<T = any> {
 // Convenience function for simple streaming
 export async function streamJsonl<T = any>(
   url: string,
-  options: StreamingOptions = {}
+  options: StreamingOptions = {},
 ): Promise<AsyncGenerator<JsonlStreamResult<T>, void, unknown>> {
   const controller = new AbortController();
   const signal = options.signal || controller.signal;
 
   const response = await fetch(url, { signal });
-  
+
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
   }

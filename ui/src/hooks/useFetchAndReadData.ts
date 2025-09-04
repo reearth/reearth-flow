@@ -6,7 +6,9 @@ type Props = {
   dataUrl?: string;
 };
 
-export default ({ dataUrl = "" }: Props): {
+export default ({
+  dataUrl = "",
+}: Props): {
   fileContent: any | null;
   fileType: SupportedDataTypes | null;
   isLoading: boolean;

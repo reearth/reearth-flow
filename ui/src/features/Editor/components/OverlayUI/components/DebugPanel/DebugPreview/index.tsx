@@ -51,7 +51,6 @@ type Props = {
   onSelectedFeature: (value: any) => void;
   onEnableClusteringChange: (value: boolean) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
-  
 };
 const DebugPreview: React.FC<Props> = ({
   fileType,

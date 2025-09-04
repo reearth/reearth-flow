@@ -119,12 +119,13 @@ When using the TodoWrite tool to track progress:
 
 **NEVER mark a todo item as completed without explicit developer confirmation.** Always:
 
-1. **Complete the implementation** 
+1. **Complete the implementation**
 2. **Ask the developer to test** the specific functionality
 3. **Wait for confirmation** that it works as expected
 4. **Only then mark the todo as completed**
 
 Example flow:
+
 ```
 ✅ Good: "I've implemented the streaming fix. Can you test file switching to confirm it works before I mark this todo complete?"
 ❌ Bad: Immediately marking todo complete after implementation without testing confirmation
@@ -140,6 +141,7 @@ When completing very complex tasks (multi-file implementations, new architectura
 2. **"Would you like me to create documentation for this feature?"** - Offer to generate dev docs
 
 If the developer agrees, create developer documentation that includes:
+
 - **Architecture overview** and data flow
 - **Key implementation details** and configuration
 - **Performance considerations** and limitations
