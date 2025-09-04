@@ -13,7 +13,7 @@ import {
   FlowLogo,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
-import { patchAnyOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
+import { patchAnyOfAndOneOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
 import { useNodeSchemaGenerate } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
@@ -31,8 +31,8 @@ type Props = {
   onParamsUpdate: (data: any) => void;
   onUpdate: (
     nodeId: string,
-    data: any,
-    type: "params" | "customizations",
+    updatedParams: any,
+    updatedCustomizations: any,
   ) => Promise<void>;
   onWorkflowRename?: (id: string, name: string) => void;
   onValueEditorOpen: (fieldContext: FieldContext) => void;
@@ -64,7 +64,9 @@ const ParamEditor: React.FC<Props> = ({
   const patchedSchemaParams = useMemo<RJSFSchema | undefined>(
     () =>
       createdAction?.parameter
-        ? patchAnyOfType(createdAction.parameter as JSONSchema7Definition)
+        ? patchAnyOfAndOneOfType(
+            createdAction.parameter as JSONSchema7Definition,
+          )
         : undefined,
     [createdAction?.parameter],
   );
@@ -91,24 +93,19 @@ const ParamEditor: React.FC<Props> = ({
     createdAction && !createdAction.parameter ? "customizations" : "params",
   );
 
-  const handleUpdate = () => {
-    if (activeTab === "params" && isParamsValid) {
-      onUpdate(nodeId, nodeParams, "params");
-    } else if (activeTab === "customizations" && isCustomizationsValid) {
-      if (nodeType === "subworkflow" && nodeMeta.subworkflowId) {
-        onUpdate(nodeId, updatedCustomization, "customizations");
-        onWorkflowRename?.(
-          nodeMeta?.subworkflowId,
-          updatedCustomization?.customName || nodeMeta?.officialName,
-        );
-      } else {
-        onUpdate(nodeId, updatedCustomization, "customizations");
-      }
-    }
-  };
-
   const isCurrentTabValid =
     activeTab === "params" ? isParamsValid : isCustomizationsValid;
+
+  const handleUpdate = () => {
+    if (!isCurrentTabValid) return;
+    if (nodeType === "subworkflow" && nodeMeta.subworkflowId) {
+      onWorkflowRename?.(
+        nodeMeta?.subworkflowId,
+        updatedCustomization?.customName || nodeMeta?.officialName,
+      );
+    }
+    onUpdate(nodeId, nodeParams, updatedCustomization);
+  };
 
   return (
     <div className="flex h-[60vh] flex-col gap-4">

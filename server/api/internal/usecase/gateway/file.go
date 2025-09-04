@@ -35,6 +35,8 @@ type File interface {
 	CheckJobLogExists(context.Context, string) (bool, error)
 	GetJobWorkerLogURL(string) string
 	CheckJobWorkerLogExists(context.Context, string) (bool, error)
+	GetJobUserFacingLogURL(string) string
+	CheckJobUserFacingLogExists(context.Context, string) (bool, error)
 	GetIntermediateDataURL(context.Context, string, string) string
 	CheckIntermediateDataExists(context.Context, string, string) (bool, error)
 }

@@ -6,9 +6,10 @@ type Workspace struct {
 	alias    string
 	metadata Metadata
 	personal bool
+	members  []Member
 }
 
-type WorkspaceList []Workspace
+type List []*Workspace
 
 func (w *Workspace) ID() ID {
 	return w.id
@@ -28,4 +29,8 @@ func (w *Workspace) Metadata() Metadata {
 
 func (w *Workspace) Personal() bool {
 	return w.personal
+}
+
+func (w *Workspace) Members() []Member {
+	return w.members
 }

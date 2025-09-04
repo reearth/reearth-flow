@@ -21,13 +21,15 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     OrderDirection.Desc,
   );
 
-  const { searchTerm, setSearchTerm } = useDebouncedSearch({
+  const { searchTerm, isDebouncingSearch, setSearchTerm } = useDebouncedSearch({
     initialSearchTerm: "",
     delay: 300,
     onDebounced: () => {
       refetch();
     },
   });
+
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   const [assetToBeEdited, setAssetToBeEdited] = useState<Asset | undefined>(
     undefined,
@@ -119,8 +121,15 @@ export default ({ workspaceId }: { workspaceId: string }) => {
   );
 
   const handleAssetDelete = async (id: string) => {
-    setAssetToBeDeleted(undefined);
-    await deleteAsset({ assetId: id });
+    try {
+      setIsDeleting(true);
+      setAssetToBeDeleted(undefined);
+      await deleteAsset({ assetId: id });
+    } catch (error) {
+      console.error("Failed to delete asset:", error);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleSortChange = useCallback((newSortValue: string) => {
@@ -182,6 +191,8 @@ export default ({ workspaceId }: { workspaceId: string }) => {
   return {
     assets,
     isFetching,
+    isDebouncingSearch,
+    isDeleting,
     fileInputRef,
     assetToBeDeleted,
     assetToBeEdited,

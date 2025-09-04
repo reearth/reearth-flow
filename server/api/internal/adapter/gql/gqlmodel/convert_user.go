@@ -14,10 +14,26 @@ func ToUser(u *user.User) *User {
 	}
 
 	return &User{
-		ID:    IDFrom(u.ID()),
-		Name:  u.Name(),
-		Email: u.Email(),
-		Host:  lo.EmptyableToPtr(u.Host()),
+		ID:       IDFrom(u.ID()),
+		Name:     u.Name(),
+		Email:    u.Email(),
+		Host:     lo.EmptyableToPtr(u.Host()),
+		Metadata: ToUserMetadataFromAccount(u.Metadata()),
+	}
+}
+
+// TODO: After migration, delete ToUser and rename ToUserFromFlow to ToUser.
+func ToUserFromFlow(u *pkguser.User) *User {
+	if u == nil {
+		return nil
+	}
+
+	return &User{
+		ID:       IDFrom(u.ID()),
+		Name:     u.Name(),
+		Email:    u.Email(),
+		Host:     u.Host(),
+		Metadata: ToUserMetadata(u.Metadata()),
 	}
 }
 
@@ -34,6 +50,9 @@ func ToUserFromSimple(u *user.Simple) *User {
 		ID:    IDFrom(u.ID),
 		Name:  u.Name,
 		Email: u.Email,
+		Metadata: &UserMetadata{
+			Lang: language.English,
+		},
 	}
 }
 
@@ -67,11 +86,36 @@ func ToMeFromFlow(u *pkguser.User) *Me {
 	}
 
 	return &Me{
-		ID:            ID(u.ID()),
+		ID:            IDFrom(u.ID()),
 		Name:          u.Name(),
 		Email:         u.Email(),
 		Lang:          u.Metadata().Lang(),
-		MyWorkspaceID: ID(u.MyWorkspaceID()),
+		MyWorkspaceID: IDFrom(u.MyWorkspaceID()),
 		Auths:         u.Auths(),
+	}
+}
+
+func ToUserMetadata(m pkguser.Metadata) *UserMetadata {
+	return &UserMetadata{
+		Description: lo.EmptyableToPtr(m.Description()),
+		Website:     lo.EmptyableToPtr(m.Website()),
+		Theme:       Theme(m.Theme()),
+		PhotoURL:    lo.EmptyableToPtr(m.PhotoURL()),
+		Lang:        m.Lang(),
+	}
+}
+
+func ToUserMetadataFromAccount(m *user.Metadata) *UserMetadata {
+	if m == nil {
+		return &UserMetadata{
+			Lang: language.English,
+		}
+	}
+	return &UserMetadata{
+		Description: lo.EmptyableToPtr(m.Description()),
+		Website:     lo.EmptyableToPtr(m.Website()),
+		PhotoURL:    lo.EmptyableToPtr(m.PhotoURL()),
+		Theme:       Theme(m.Theme()),
+		Lang:        m.Lang(),
 	}
 }

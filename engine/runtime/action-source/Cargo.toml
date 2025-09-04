@@ -14,6 +14,7 @@ version.workspace = true
 reearth-flow-action-log.workspace = true
 reearth-flow-common.workspace = true
 reearth-flow-eval-expr.workspace = true
+reearth-flow-geometry.workspace = true
 reearth-flow-runtime.workspace = true
 reearth-flow-sql.workspace = true
 reearth-flow-state.workspace = true
@@ -21,6 +22,7 @@ reearth-flow-storage.workspace = true
 reearth-flow-types.workspace = true
 
 nusamai-citygml.workspace = true
+nusamai-czml.workspace = true
 nusamai-plateau.workspace = true
 nusamai-projection.workspace = true
 
@@ -39,11 +41,13 @@ rhai.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+shapefile.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 url.workspace = true
 uuid.workspace = true
+zip.workspace = true
 
 [dev-dependencies]
 bytes.workspace = true

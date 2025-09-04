@@ -2,147 +2,207 @@
   "actions": [
     {
       "name": "AreaOnAreaOverlayer",
-      "description": "Superpose une zone sur une autre zone"
+      "description": "Perform Area Overlay Analysis"
     },
     {
       "name": "AttributeAggregator",
-      "description": "Regroupe les entités selon leurs attributs"
+      "description": "Group and Aggregate Features by Attributes"
+    },
+    {
+      "name": "AttributeBulkArrayJoiner",
+      "description": "Join Array Attributes Into Single Values"
+    },
+    {
+      "name": "AttributeConversionTable",
+      "description": "Transform Feature Attributes Using Lookup Tables"
     },
     {
       "name": "AttributeDuplicateFilter",
-      "description": "Filtre les entités possédant des attributs dupliqués"
+      "description": "Remove Duplicate Features Based on Attribute Values"
     },
     {
       "name": "AttributeFilePathInfoExtractor",
-      "description": "Extrait des informations de chemins de fichier à partir des attributs"
+      "description": "Extract File System Information from Path Attributes"
+    },
+    {
+      "name": "AttributeFlattener",
+      "description": "Flatten Nested Object Attributes into Top-Level Attributes"
     },
     {
       "name": "AttributeManager",
-      "description": "Gère les attributs"
+      "description": "Create, Convert, Rename, and Remove Feature Attributes"
     },
     {
       "name": "AttributeMapper",
-      "description": "Assigne des attributs"
+      "description": "Transform Feature Attributes Using Expressions and Mappings"
     },
     {
       "name": "BoundsExtractor",
-      "description": "Extracteur de limites"
+      "description": "Extract Bounding Box Coordinates from Feature Geometry"
     },
     {
       "name": "Bufferer",
-      "description": "Crée un tampon autour d'une géométrie"
+      "description": "Create Buffer Around Features"
     },
     {
       "name": "BulkAttributeRenamer",
-      "description": "Renomme des attributs en ajoutant/supprimant des préfixes ou suffixes, ou en remplaçant du texte"
+      "description": "Rename Feature Attributes in Bulk"
     },
     {
       "name": "CenterPointReplacer",
-      "description": "Remplace la géométrie de l'entité par un point situé au centre de sa boîte englobante, à son centre de masse, ou à l'intérieur de son aire."
+      "description": "Replace Feature Geometry with Center Point"
     },
     {
       "name": "Cesium3DTilesWriter",
-      "description": "Écrit les entités dans un fichier"
+      "description": "Export Features as Cesium 3D Tiles for Web Visualization"
     },
     {
       "name": "Clipper",
-      "description": "Divise les entités candidates à l'aide d'entités de découpage, de sorte que les parties intérieures ou extérieures soient produites séparément"
+      "description": "Clip Features Using Boundary Shapes"
     },
     {
       "name": "ClosedCurveFilter",
-      "description": "Vérifie si les courbes forment des boucles fermées"
+      "description": "Filter LineString Features by Closed/Open Status"
+    },
+    {
+      "name": "ConvexHullAccumulator",
+      "description": "Generate Convex Hull Polygons from Grouped Features"
     },
     {
       "name": "CoordinateSystemSetter",
       "description": "Définit le système de coordonnées d'une entité"
     },
     {
+      "name": "CsvReader",
+      "description": "Read Features from CSV or TSV File"
+    },
+    {
+      "name": "CzmlReader",
+      "description": "Reads geographic features from CZML (Cesium Language) files for 3D visualization"
+    },
+    {
+      "name": "CzmlWriter",
+      "description": "Export Features as CZML for Cesium Visualization"
+    },
+    {
       "name": "DimensionFilter",
-      "description": "Filtre les entités en fonction de leur dimension"
+      "description": "Filter Features by Geometry Dimension"
+    },
+    {
+      "name": "DirectoryDecompressor",
+      "description": "Extracts and decompresses archive files from specified attributes"
+    },
+    {
+      "name": "Dissolver",
+      "description": "Dissolve Features by Grouping Attributes"
     },
     {
       "name": "EchoProcessor",
-      "description": "Répète les entités"
+      "description": "Debug Echo Features to Logs"
     },
     {
       "name": "EchoSink",
-      "description": "Répète les entités"
+      "description": "Debug Echo Features to Logs"
     },
     {
       "name": "ElevationExtractor",
-      "description": "Extrait la première valeur de la coordonnée z d'une entité et la stocke dans un attribut."
+      "description": "Extract Z-Coordinate Elevation to Attribute"
     },
     {
       "name": "Extruder",
-      "description": "Extrue un polygone sur une certaine distance"
+      "description": "Extrude 2D Polygons into 3D Solids"
+    },
+    {
+      "name": "FeatureCityGmlReader",
+      "description": "Reads and processes features from CityGML files with optional flattening"
     },
     {
       "name": "FeatureCounter",
-      "description": "Compte les entités"
+      "description": "Count Features and Add Counter to Attribute"
     },
     {
       "name": "FeatureCreator",
-      "description": "Crée des entités à partir d'expressions"
+      "description": "Generate Custom Features Using Scripts"
+    },
+    {
+      "name": "FeatureDuplicateFilter",
+      "description": "Filter Out Duplicate Features"
+    },
+    {
+      "name": "FeatureFilePathExtractor",
+      "description": "Extract File Paths from Dataset to Features"
     },
     {
       "name": "FeatureFilter",
-      "description": "Filtre les entités selon des conditions"
+      "description": "Filter Features Based on Custom Conditions"
+    },
+    {
+      "name": "FeatureLodFilter",
+      "description": "Filters features by Level of Detail (LOD), routing them to appropriate output ports"
     },
     {
       "name": "FeatureMerger",
-      "description": "Fusionne des entités selon leurs attributs"
+      "description": "Merges requestor and supplier features based on matching attribute values"
     },
     {
       "name": "FeatureReader",
-      "description": "Filtre les entités selon des conditions"
+      "description": "Reads features from various file formats (CSV, TSV, JSON) with configurable parsing options"
     },
     {
       "name": "FeatureSorter",
-      "description": "Trie les entités par attributs"
+      "description": "Sorts features based on specified attributes in ascending or descending order"
     },
     {
       "name": "FeatureTransformer",
-      "description": "Transforme les entités à l'aide d'expressions"
+      "description": "Applies transformation expressions to modify feature attributes and properties"
     },
     {
       "name": "FeatureTypeFilter",
-      "description": "Filtre les entités par type"
+      "description": "Filters features by feature type"
+    },
+    {
+      "name": "FeatureWriter",
+      "description": "Writes features from various formats"
     },
     {
       "name": "FilePathExtractor",
-      "description": "Extrait des fichiers d'un répertoire ou d'une archive"
+      "description": "Extracts file paths from directories or archives, creating features for each discovered file"
     },
     {
       "name": "FilePropertyExtractor",
-      "description": "Extrait les propriétés d'un fichier"
+      "description": "Extracts file system properties (type, size, timestamps) from files"
     },
     {
       "name": "FileReader",
-      "description": "Lit des entités depuis un fichier"
+      "description": "Reads features from a file"
     },
     {
       "name": "FileWriter",
-      "description": "Écrit des entités dans un fichier"
+      "description": "Write Features to Files in Various Formats"
+    },
+    {
+      "name": "GeoJsonReader",
+      "description": "Reads geographic features from GeoJSON files, supporting both single features and feature collections"
     },
     {
       "name": "GeoJsonWriter",
-      "description": "Écrit des entités dans un fichier GeoJSON"
+      "description": "Writes geographic features to GeoJSON files with optional grouping"
     },
     {
       "name": "GeometryCoercer",
-      "description": "Force la géométrie d'une entité à une géométrie spécifique"
+      "description": "Coerces and converts feature geometries to specified target geometry types"
     },
     {
       "name": "GeometryDissolver",
-      "description": "Dissout des géométries"
+      "description": "Dissout les géométries"
     },
     {
       "name": "GeometryExtractor",
-      "description": "Extrait la géométrie d'une entité et l'ajoute comme attribut."
+      "description": "Extract Geometry Data to Attribute"
     },
     {
       "name": "GeometryFilter",
-      "description": "Filtre la géométrie par type"
+      "description": "Filter Features by Geometry Type"
     },
     {
       "name": "GeometryLodFilter",
@@ -150,159 +210,211 @@
     },
     {
       "name": "GeometryReplacer",
-      "description": "Remplace la géométrie d'une entité par une nouvelle géométrie."
+      "description": "Replace Feature Geometry from Attribute"
     },
     {
       "name": "GeometrySplitter",
-      "description": "Divise la géométrie par type"
+      "description": "Split Multi-Geometries into Individual Features"
     },
     {
       "name": "GeometryValidator",
-      "description": "Valide la géométrie d'une entité"
+      "description": "Validate Feature Geometry Quality"
     },
     {
       "name": "GeometryValueFilter",
-      "description": "Filtre la géométrie par valeur"
+      "description": "Filter Features by Geometry Value Type"
     },
     {
       "name": "GltfWriter",
-      "description": "Écrit des entités dans un fichier Gltf"
+      "description": "Writes 3D features to GLTF format with optional texture attachment"
     },
     {
       "name": "HoleCounter",
-      "description": "Compte le nombre de trous dans une géométrie et l'ajoute comme attribut."
+      "description": "Count Polygon Holes to Attribute"
     },
     {
       "name": "HoleExtractor",
-      "description": "Extrait les trous dans une géométrie et les ajoute comme attribut."
+      "description": "Extract Polygon Holes as Separate Features"
     },
     {
       "name": "HorizontalReprojector",
-      "description": "Reprojette la géométrie d'une entité dans un système de coordonnées spécifié"
-    },
-    {
-      "name": "LineOnLineOverlayer",
-      "description": "Les points d'intersection deviennent des entités ponctuelles pouvant contenir la liste combinée des attributs des lignes d'origine intersectées."
-    },
-    {
-      "name": "ListExploder",
-      "description": "Explose les attributs de type liste en plusieurs éléments"
-    },
-    {
-      "name": "MVTWriter",
-      "description": "Écrit des entités dans un fichier"
-    },
-    {
-      "name": "NoopProcessor",
-      "description": "N'effectue aucune opération sur les entités"
-    },
-    {
-      "name": "NoopSink",
-      "description": "N'effectue aucune opération finale"
-    },
-    {
-      "name": "Offsetter",
-      "description": "Ajoute des décalages aux coordonnées de l'entité."
-    },
-    {
-      "name": "OrientationExtractor",
-      "description": "Extrait l'orientation de la géométrie d'une entité et l'ajoute comme attribut."
-    },
-    {
-      "name": "PLATEAU3.AttributeFlattener",
-      "description": "Aplati les attributs pour créer une entité de bâtiment"
-    },
-    {
-      "name": "PLATEAU3.BuildingInstallationGeometryTypeExtractor",
-      "description": "Extrait le type de géométrie de l'installation d'un bâtiment (BuildingInstallationGeometryType)"
-    },
-    {
-      "name": "PLATEAU3.BuildingUsageAttributeValidator",
-      "description": "Ce processeur valide les attributs d'usage des bâtiments en vérifiant la présence d'attributs requis et la justesse des codes de ville. En cas de problème, il génère des erreurs via les ports lBldgError et codeError."
-    },
-    {
-      "name": "PLATEAU3.DictionariesInitiator",
-      "description": "Initialise des dictionnaires pour PLATEAU"
-    },
-    {
-      "name": "PLATEAU3.DomainOfDefinitionValidator",
-      "description": "Valide le domaine de définition des entités CityGML"
-    },
-    {
-      "name": "PLATEAU3.MaxLodExtractor",
-      "description": "Extrait maxLod"
-    },
-    {
-      "name": "PLATEAU3.TranXLinkChecker",
-      "description": "Vérifie Xlink pour Tran"
-    },
-    {
-      "name": "PLATEAU3.UDXFolderExtractor",
-      "description": "Extrait les dossiers UDX du chemin cityGML"
-    },
-    {
-      "name": "PLATEAU3.UnmatchedXlinkDetector",
-      "description": "Détecte les xlinks non correspondants pour PLATEAU"
-    },
-    {
-      "name": "PLATEAU3.XMLAttributeExtractor",
-      "description": "Extrait les attributs de fragments XML en fonction d'une définition de schéma"
-    },
-    {
-      "name": "PlanarityFilter",
-      "description": "Filtre la géométrie par type"
-    },
-    {
-      "name": "Refiner",
-      "description": "Affine la géométrie"
-    },
-    {
-      "name": "RhaiCaller",
-      "description": "Appelle un script Rhai"
+      "description": "Reproject Geometry to Different Coordinate System"
     },
     {
       "name": "InputRouter",
-      "description": "Action pour le renvoi du premier port dans les sous-flux de travail."
+      "description": "Action for first port forwarding for sub-workflows."
+    },
+    {
+      "name": "JPStandardGridAccumulator",
+      "description": "Divides geometries into Japanese standard mesh grid (1km) and adds mesh codes to features"
+    },
+    {
+      "name": "LineOnLineOverlayer",
+      "description": "Intersection points are turned into point features that can contain the merged list of attributes of the original intersected lines."
+    },
+    {
+      "name": "ListExploder",
+      "description": "Explodes array attributes into separate features, creating one feature per array element"
+    },
+    {
+      "name": "MVTWriter",
+      "description": "Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping"
+    },
+    {
+      "name": "NoopProcessor",
+      "description": "No-Operation Pass-Through Processor"
+    },
+    {
+      "name": "NoopSink",
+      "description": "No-Operation Sink (Discard Features)"
+    },
+    {
+      "name": "Offsetter",
+      "description": "Apply Coordinate Offsets to Geometry"
+    },
+    {
+      "name": "OrientationExtractor",
+      "description": "Extract Polygon Orientation to Attribute"
     },
     {
       "name": "OutputRouter",
-      "description": "Action pour le renvoi du dernier port dans les sous-flux de travail."
+      "description": "Action for last port forwarding for sub-workflows."
+    },
+    {
+      "name": "PLATEAU3.AttributeFlattener",
+      "description": "Flattens hierarchical PLATEAU3 building attributes into flat structure for analysis"
+    },
+    {
+      "name": "PLATEAU3.BuildingInstallationGeometryTypeExtractor",
+      "description": "Extracts BuildingInstallationGeometryType"
+    },
+    {
+      "name": "PLATEAU3.BuildingUsageAttributeValidator",
+      "description": "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found."
+    },
+    {
+      "name": "PLATEAU3.DictionariesInitiator",
+      "description": "Initializes dictionaries for PLATEAU"
+    },
+    {
+      "name": "PLATEAU3.DomainOfDefinitionValidator",
+      "description": "Validates domain of definition of CityGML features"
+    },
+    {
+      "name": "PLATEAU3.MaxLodExtractor",
+      "description": "Extracts maxLod"
+    },
+    {
+      "name": "PLATEAU3.TranXLinkChecker",
+      "description": "Check Xlink for Tran"
+    },
+    {
+      "name": "PLATEAU3.UDXFolderExtractor",
+      "description": "Extracts UDX folders from cityGML path"
+    },
+    {
+      "name": "PLATEAU3.UnmatchedXlinkDetector",
+      "description": "Detect unmatched xlink for PLATEAU"
+    },
+    {
+      "name": "PLATEAU3.XMLAttributeExtractor",
+      "description": "Extracts attributes from XML fragments based on a schema definition"
+    },
+    {
+      "name": "PLATEAU4.AttributeFlattener",
+      "description": "Flatten attributes for building feature"
+    },
+    {
+      "name": "PLATEAU4.CityCodeExtractor",
+      "description": "Extracts city code information from PLATEAU4 codelists for local public authorities"
+    },
+    {
+      "name": "PLATEAU4.DomainOfDefinitionValidator",
+      "description": "Validates domain of definition of CityGML features"
+    },
+    {
+      "name": "PLATEAU4.MaxLodExtractor",
+      "description": "Extracts maxLod"
+    },
+    {
+      "name": "PLATEAU4.MissingAttributeDetector",
+      "description": "Detect missing attributes"
+    },
+    {
+      "name": "PLATEAU4.ObjectListExtractor",
+      "description": "Extract object list"
+    },
+    {
+      "name": "PLATEAU4.UDXFolderExtractor",
+      "description": "Extracts UDX folders from cityGML path"
+    },
+    {
+      "name": "PlanarityFilter",
+      "description": "Filter Features by Geometry Planarity"
+    },
+    {
+      "name": "Refiner",
+      "description": "Refine Complex Geometries into Simple Geometries"
+    },
+    {
+      "name": "RhaiCaller",
+      "description": "Executes Rhai script expressions to conditionally process and transform features"
+    },
+    {
+      "name": "ShapefileWriter",
+      "description": "Writes geographic features to ESRI Shapefile format with optional grouping"
+    },
+    {
+      "name": "SqlReader",
+      "description": "Read Features from SQL Database"
     },
     {
       "name": "StatisticsCalculator",
-      "description": "Calcule des statistiques sur les entités"
+      "description": "Calculates statistical aggregations on feature attributes with customizable expressions"
+    },
+    {
+      "name": "SurfaceFootprintReplacer",
+      "description": "Replace the geometry with its footprint"
     },
     {
       "name": "ThreeDimensionBoxReplacer",
-      "description": "Remplace un boîtier tridimensionnel par un polygone."
+      "description": "Replace Geometry with 3D Box from Attributes"
+    },
+    {
+      "name": "ThreeDimensionPlanarityRotator",
+      "description": "Rotates a single or a set of 2D geometries in 3D space to align them horizontally."
     },
     {
       "name": "ThreeDimensionRotator",
-      "description": "Remplace un boîtier tridimensionnel par un polygone."
+      "description": "Rotate 3D Geometry Around Arbitrary Axis"
     },
     {
       "name": "TwoDimensionForcer",
-      "description": "Force une géométrie à être bidimensionnelle."
+      "description": "Force 3D Geometry to 2D by Removing Z-Coordinates"
     },
     {
       "name": "VertexRemover",
-      "description": "Supprime des sommets spécifiques de la géométrie d'une entité"
+      "description": "Remove Redundant Vertices from Geometry"
     },
     {
       "name": "VerticalReprojector",
-      "description": "Reprojette la géométrie d'une entité dans un système de coordonnées spécifié"
+      "description": "Reproject Vertical Coordinates Between Datums"
     },
     {
       "name": "WasmRuntimeExecutor",
-      "description": "Compile des scripts en .wasm et les exécute dans un environnement d'exécution wasm"
+      "description": "Compiles scripts (Python) into WebAssembly and executes them in a WASM runtime"
     },
     {
       "name": "XMLFragmenter",
-      "description": "Fragmente du XML"
+      "description": "Fragments large XML documents into smaller pieces based on specified element patterns"
     },
     {
       "name": "XMLValidator",
-      "description": "Valide le contenu XML"
+      "description": "Validates XML documents against XSD schemas with success/failure routing"
+    },
+    {
+      "name": "ZipFileWriter",
+      "description": "Writes features to a zip file"
     }
   ]
 }

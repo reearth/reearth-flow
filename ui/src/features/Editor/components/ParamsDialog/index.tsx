@@ -20,8 +20,8 @@ type Props = {
   onOpenNode: (nodeId?: string) => void;
   onDataSubmit?: (
     nodeId: string,
-    dataField: "params" | "customizations",
-    updatedValue: any,
+    updatedParams: any,
+    updatedCustomizations: any,
   ) => void;
   onWorkflowRename?: (id: string, name: string) => void;
 };
@@ -41,12 +41,10 @@ const ParamsDialog: React.FC<Props> = ({
   >(undefined);
 
   const handleUpdate = useCallback(
-    async (nodeId: string, data: any, type: "params" | "customizations") => {
-      if (type === "params") {
-        await Promise.resolve(onDataSubmit?.(nodeId, "params", data));
-      } else if (type === "customizations") {
-        await Promise.resolve(onDataSubmit?.(nodeId, "customizations", data));
-      }
+    async (nodeId: string, updatedParams: any, updatedCustomizations: any) => {
+      await Promise.resolve(
+        onDataSubmit?.(nodeId, updatedParams, updatedCustomizations),
+      );
       onOpenNode();
     },
     [onDataSubmit, onOpenNode],

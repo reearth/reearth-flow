@@ -1,6 +1,16 @@
-import { PencilLineIcon } from "@phosphor-icons/react";
+import {
+  PencilLineIcon,
+  CaretLeftIcon,
+  CircleIcon,
+  ArchiveIcon,
+  DatabaseIcon,
+  CaretDownIcon,
+  CaretUpIcon,
+  WrenchIcon,
+  CodeIcon,
+} from "@phosphor-icons/react";
 import { QuestionIcon } from "@phosphor-icons/react/dist/ssr";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef } from "react";
 
 import {
   Button,
@@ -8,10 +18,17 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  TextArea,
+  ScrollArea,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
 } from "@flow/components";
 import AssetsDialog from "@flow/features/AssetsDialog";
 import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
@@ -22,6 +39,24 @@ import { Asset } from "@flow/types";
 
 import { FieldContext } from "../../utils/fieldUtils";
 
+import ConditionalBuilder from "./components/ConditionalBuilder";
+import EnvironmentVariableBuilder from "./components/EnvironmentVariableBuilder";
+import ExpressionTypePicker, {
+  type ExpressionType,
+} from "./components/ExpressionTypePicker";
+import FeatureAttributeBuilder from "./components/FeatureAttributeBuilder";
+import FilePathBuilder from "./components/FilePathBuilder";
+import JsonQueryBuilder from "./components/JsonQueryBuilder";
+import MathBuilder from "./components/MathBuilder";
+import RhaiCodeEditor, {
+  type RhaiCodeEditorRef,
+} from "./components/RhaiCodeEditor";
+import {
+  TemplateLibraryDialog,
+  TemplatePlaceholderDialog,
+  type ExpressionTemplate,
+} from "./templates";
+
 type Props = {
   open: boolean;
   fieldContext: FieldContext;
@@ -29,7 +64,7 @@ type Props = {
   onValueSubmit?: (value: any) => void;
 };
 
-export type DialogOptions = "assets" | "cms" | undefined;
+export type DialogOptions = "assets" | "cms" | "templates" | undefined;
 
 const ValueEditorDialog: React.FC<Props> = ({
   open,
@@ -42,6 +77,23 @@ const ValueEditorDialog: React.FC<Props> = ({
   const handleDialogOpen = (dialog: DialogOptions) => setShowDialog(dialog);
   const handleDialogClose = () => setShowDialog(undefined);
   const [value, setValue] = useState(fieldContext.value);
+
+  // Track selected expression type for Simple Builder
+  const [selectedExpressionType, setSelectedExpressionType] =
+    useState<ExpressionType | null>(null);
+
+  // Track Simple Builder panel visibility
+  const [simpleBuilderOpen, setSimpleBuilderOpen] = useState(
+    !value || value.trim() === "",
+  );
+
+  // Template-related state
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<ExpressionTemplate | null>(null);
+  const [showPlaceholderDialog, setShowPlaceholderDialog] = useState(false);
+
+  // Ref for RhaiCodeEditor to enable cursor insertion
+  const rhaiEditorRef = useRef<RhaiCodeEditorRef>(null);
 
   const [currentProject] = useCurrentProject();
 
@@ -104,10 +156,48 @@ const ValueEditorDialog: React.FC<Props> = ({
     handleDialogClose();
   };
 
+  const handleExpressionTypeSelect = useCallback((type: ExpressionType) => {
+    setSelectedExpressionType(type);
+  }, []);
+
+  const handleExpressionBuilderChange = useCallback((expression: string) => {
+    // Insert at cursor position instead of replacing entire content
+    if (rhaiEditorRef.current) {
+      rhaiEditorRef.current.insertAtCursor(expression);
+    } else {
+      // Fallback to setValue if ref is not available
+      setValue(expression);
+    }
+  }, []);
+
+  // Template handlers
+  const handleTemplateSelect = useCallback((template: ExpressionTemplate) => {
+    setSelectedTemplate(template);
+    handleDialogClose();
+
+    // If template has placeholders, show placeholder dialog, otherwise replace directly
+    if (template.placeholders.length > 0) {
+      setShowPlaceholderDialog(true);
+    } else {
+      setValue(template.rhaiCode); // Templates replace entire content
+    }
+  }, []);
+
+  const handleTemplateInsert = useCallback((populatedCode: string) => {
+    setValue(populatedCode);
+    setShowPlaceholderDialog(false);
+    setSelectedTemplate(null);
+  }, []);
+
+  const handlePlaceholderDialogClose = useCallback(() => {
+    setShowPlaceholderDialog(false);
+    setSelectedTemplate(null);
+  }, []);
+
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent size="xl">
+        <DialogContent size="3xl">
           <DialogHeader>
             <DialogTitle>
               <div className="flex items-center gap-2">
@@ -120,93 +210,221 @@ const ValueEditorDialog: React.FC<Props> = ({
               </div>
             </DialogTitle>
           </DialogHeader>
-          <div className="flex h-[400px]">
-            <div className="flex max-w-[200px] flex-col gap-6 border-r p-4">
-              <div className="flex flex-col gap-1">
-                <p className="mb-2 text-sm text-muted-foreground">
-                  {t("Assets")}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => handleDialogOpen("assets")}>
-                    {t("Asset")}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleDialogOpen("cms")}>
-                    {t("CMS")}
-                  </Button>
-                </div>
+
+          <div className="flex h-[600px] flex-col">
+            {/* Action Bar */}
+            <div className="flex items-center justify-between border-b p-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground">
+                  {t("Expression Editor")}
+                </span>
               </div>
-              <div className="flex flex-1 flex-col">
-                {/* Rhai script stuff here */}
-                <p className="mb-2 text-sm text-muted-foreground">
-                  {t("Project Variables")}
-                </p>
-                {projectVariables?.map((variable) => (
-                  <div
-                    key={variable.id}
-                    className="cursor-pointer rounded-md px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                    // disabled={variable.type !== fieldType}
-                    onClick={() => handleProjectVariableSet(variable)}>
-                    <div className="break-words">
-                      {variable.name} ({variable.type})
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-1 flex-col">
-              <div className="relative h-full flex-1">
-                <TextArea
-                  className="h-full max-h-full resize-none rounded-none border-x-transparent bg-card/20 backdrop-blur-sm focus-visible:ring-0"
-                  autoFocus
-                  placeholder={t("Enter value...")}
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  spellCheck={false}
-                  data-testid="value-editor-textarea"
-                  aria-label={t("Value Editor Text Area")}
-                  data-placeholder={t("Enter value...")}
-                />
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDialogOpen("templates")}>
+                  <CodeIcon className="mr-2 h-4 w-4" />
+                  {t("Templates")}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDialogOpen("assets")}>
+                  <ArchiveIcon className="mr-2 h-4 w-4" />
+                  {t("Asset")}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDialogOpen("cms")}>
+                  <DatabaseIcon className="mr-2 h-4 w-4" />
+                  {t("CMS")}
+                </Button>
+                {projectVariables && projectVariables.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <CircleIcon className="mr-2 h-4 w-4" />
+                        {t("Variables")}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-64">
+                      {projectVariables.map((variable) => (
+                        <DropdownMenuItem
+                          key={variable.id}
+                          onClick={() => handleProjectVariableSet(variable)}
+                          className="flex flex-col items-start">
+                          <div className="font-mono text-sm">
+                            {variable.name}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {variable.type} •{" "}
+                            {variable.defaultValue || t("No value set")}
+                          </div>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
                 <Tooltip>
-                  <TooltipTrigger
-                    className="absolute right-0 bottom-0 m-2 size-5"
-                    asChild>
-                    <QuestionIcon weight="thin" />
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="sm" className="px-2">
+                      <QuestionIcon className="h-4 w-4" />
+                    </Button>
                   </TooltipTrigger>
-                  <TooltipContent
-                    className="flex flex-col gap-2"
-                    side="left"
-                    align="end">
-                    <p>{t("For Advanced Users")}</p>
-                    <p className="max-w-[200px] text-xs text-muted-foreground">
+                  <TooltipContent side="bottom">
+                    <p className="text-sm">{t("Expression Editor Help")}</p>
+                    <p className="mt-1 max-w-[200px] text-xs text-muted-foreground">
                       {t(
-                        "For people familiar with Rhai, you can write Rhai directly here.",
-                      )}
-                    </p>
-                    <p className="max-w-[200px] text-xs text-muted-foreground">
-                      {t(
-                        "Furthermore, you can use custom functions to access project variables, such as ",
-                      )}{" "}
-                      <code>env.get('variable_name')</code>.
-                    </p>
-                    <p className="max-w-[200px] text-xs text-muted-foreground">
-                      {t(
-                        "For more information, please refer to the documentation.",
+                        "Write Rhai expressions directly or use the visual builder below for assistance.",
                       )}
                     </p>
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <div className="flex justify-end gap-2 p-2">
-                <Button onClick={handleSubmit}>{t("Submit")}</Button>
+            </div>
+
+            {/* Raw Rhai Editor - Always Visible */}
+            <div className="flex-1 border-b">
+              <RhaiCodeEditor
+                ref={rhaiEditorRef}
+                className="h-full rounded-none bg-card/20 backdrop-blur-sm"
+                placeholder={t("Enter expression...")}
+                value={value}
+                onChange={setValue}
+                data-testid="value-editor-textarea"
+                aria-label={t("Raw Expression Editor")}
+                data-placeholder={t("Enter expression...")}
+              />
+            </div>
+
+            {/* Collapsible Simple Builder Panel */}
+            <Collapsible
+              open={simpleBuilderOpen}
+              onOpenChange={setSimpleBuilderOpen}>
+              <div className="border-b">
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="flex h-12 w-full items-center justify-between rounded-none px-4 hover:bg-accent/50">
+                    <div className="flex items-center gap-2">
+                      <WrenchIcon className="h-4 w-4" />
+                      <span className="text-sm font-medium">
+                        {t("Simple Builder")}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {t("Visual expression builder")}
+                      </span>
+                    </div>
+                    {simpleBuilderOpen ? (
+                      <CaretUpIcon className="h-4 w-4" />
+                    ) : (
+                      <CaretDownIcon className="h-4 w-4" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
               </div>
+
+              <CollapsibleContent className="border-b">
+                <div className="flex h-[350px] flex-col">
+                  {/* Simple Builder Navigation */}
+                  {selectedExpressionType && (
+                    <div className="px-2 pt-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedExpressionType(null)}
+                        className="h-8 gap-1 px-2">
+                        <CaretLeftIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Simple Builder Content */}
+                  <ScrollArea className="flex-1">
+                    <div className="px-4 pt-4">
+                      {!selectedExpressionType ? (
+                        <ExpressionTypePicker
+                          onTypeSelect={handleExpressionTypeSelect}
+                        />
+                      ) : (
+                        <div className="min-h-0">
+                          {selectedExpressionType === "file-path" && (
+                            <FilePathBuilder
+                              onExpressionChange={handleExpressionBuilderChange}
+                            />
+                          )}
+                          {selectedExpressionType === "feature-attribute" && (
+                            <FeatureAttributeBuilder
+                              onExpressionChange={handleExpressionBuilderChange}
+                            />
+                          )}
+                          {selectedExpressionType === "conditional" && (
+                            <ConditionalBuilder
+                              onExpressionChange={handleExpressionBuilderChange}
+                            />
+                          )}
+                          {selectedExpressionType === "math" && (
+                            <MathBuilder
+                              onExpressionChange={handleExpressionBuilderChange}
+                            />
+                          )}
+                          {selectedExpressionType ===
+                            "environment-variable" && (
+                            <EnvironmentVariableBuilder
+                              onExpressionChange={handleExpressionBuilderChange}
+                            />
+                          )}
+                          {selectedExpressionType === "json-query" && (
+                            <JsonQueryBuilder
+                              onExpressionChange={handleExpressionBuilderChange}
+                            />
+                          )}
+                          {![
+                            "file-path",
+                            "feature-attribute",
+                            "conditional",
+                            "math",
+                            "environment-variable",
+                            "json-query",
+                          ].includes(selectedExpressionType) && (
+                            <div className="flex flex-1 flex-col items-center justify-center p-8 text-center text-muted-foreground">
+                              <p className="mb-4">
+                                {t("Selected:")} {selectedExpressionType}
+                              </p>
+                              <div className="text-sm">
+                                {t(
+                                  "Expression builder for {{type}} will go here",
+                                  {
+                                    type: selectedExpressionType,
+                                  },
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
+            {/* Submit Button */}
+            <div className="flex justify-end gap-2 p-3">
+              <Button onClick={handleSubmit}>{t("Submit")}</Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+      {showDialog === "templates" && (
+        <TemplateLibraryDialog
+          open={showDialog === "templates"}
+          onClose={handleDialogClose}
+          onTemplateSelect={handleTemplateSelect}
+        />
+      )}
       {showDialog === "assets" && fieldContext && (
         <AssetsDialog
           onDialogClose={handleDialogClose}
@@ -219,6 +437,12 @@ const ValueEditorDialog: React.FC<Props> = ({
           onCmsItemValue={handleCmsItemValue}
         />
       )}
+      <TemplatePlaceholderDialog
+        open={showPlaceholderDialog}
+        template={selectedTemplate}
+        onClose={handlePlaceholderDialogClose}
+        onInsert={handleTemplateInsert}
+      />
     </>
   );
 };

@@ -981,6 +981,12 @@ Export Features as Cesium 3D Tiles for Web Visualization
         }
       ]
     },
+    "dracoCompressionEnabled": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "maxZoom": {
       "title": "Maximum Zoom Level",
       "description": "Maximum zoom level for tile generation (0-24)",
@@ -1172,6 +1178,69 @@ Read Features from CSV or TSV File
         }
       ]
     },
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+### Output Ports
+* default
+### Category
+* File
+
+## CzmlReader
+### Type
+* source
+### Description
+Reads geographic features from CZML (Cesium Language) files for 3D visualization
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CzmlReader Parameters",
+  "description": "Configuration for reading CZML files as geographic features.",
+  "type": "object",
+  "properties": {
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "force2d": {
+      "title": "Force 2D",
+      "description": "If true, forces all geometries to be 2D (ignoring Z values)",
+      "default": false,
+      "type": "boolean"
+    },
+    "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "skipDocumentPacket": {
+      "title": "Skip Document Packet",
+      "description": "If true, skips the document packet (first packet with version/clock info)",
+      "default": true,
+      "type": "boolean"
+    }
+  },
+  "definitions": {
     "Expr": {
       "type": "string"
     }
@@ -3118,6 +3187,12 @@ Writes 3D features to GLTF format with optional texture attachment
         "null"
       ]
     },
+    "dracoCompression": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "output": {
       "description": "Output path or expression for the GLTF file to create",
       "allOf": [
@@ -3805,6 +3880,20 @@ Flatten attributes for building feature
 ### Category
 * PLATEAU
 
+## PLATEAU4.BuildingInstallationGeometryTypeChecker
+### Type
+* processor
+### Description
+Checks BuildingInstallation's geometry type
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* PLATEAU
+
 ## PLATEAU4.CityCodeExtractor
 ### Type
 * processor
@@ -4037,6 +4126,22 @@ Extracts UDX folders from cityGML path
 ### Category
 * PLATEAU
 
+## PLATEAU4.UnmatchedXlinkDetector
+### Type
+* processor
+### Description
+Detect unmatched Xlinks for PLATEAU
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* summary
+* unMatchedXlinkFrom
+* unMatchedXlinkTo
+### Category
+* PLATEAU
+
 ## PlanarityFilter
 ### Type
 * processor
@@ -4114,6 +4219,71 @@ Executes Rhai script expressions to conditionally process and transform features
 * default
 ### Category
 * Feature
+
+## ShapefileReader
+### Type
+* source
+### Description
+Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .shx files)
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ShapefileReader Parameters",
+  "description": "Configuration for reading Shapefile archives as geographic features. Expects a ZIP archive containing the required Shapefile components (.shp, .dbf, .shx).",
+  "type": "object",
+  "properties": {
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "encoding": {
+      "title": "Character Encoding",
+      "description": "Character encoding for attribute data in the DBF file (e.g., \"UTF-8\", \"Shift_JIS\")",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "force2d": {
+      "title": "Force 2D",
+      "description": "If true, forces all geometries to be 2D (ignoring Z values)",
+      "default": false,
+      "type": "boolean"
+    },
+    "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+### Output Ports
+* default
+### Category
+* File
 
 ## ShapefileWriter
 ### Type

@@ -7,11 +7,15 @@ import {
   useRef,
   useState,
 } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 import { useY } from "react-yjs";
 import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 
-import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { useProjectExport, useProjectSave, useShortcuts } from "@flow/hooks";
+import {
+  DEFAULT_ENTRY_GRAPH_ID,
+  EDITOR_HOT_KEYS,
+} from "@flow/global-constants";
+import { useProjectExport, useProjectSave } from "@flow/hooks";
 import { useSharedProject } from "@flow/lib/gql";
 import { useYjsStore } from "@flow/lib/yjs";
 import type { YWorkflow } from "@flow/lib/yjs/types";
@@ -282,52 +286,24 @@ export default ({
 
   const handleDeleteDialogClose = () => setShowBeforeDeleteDialog(false);
 
-  useShortcuts([
-    {
-      keyBinding: { key: "r", commandKey: false },
-      callback: () =>
-        handleNodePickerOpen({ x: 0, y: 0 }, "reader", isMainWorkflow),
+  useHotkeys(
+    EDITOR_HOT_KEYS,
+    (event, handler) => {
+      const hasModifier = event.metaKey || event.ctrlKey;
+      const hasShift = event.shiftKey;
+
+      switch (handler.keys?.join("")) {
+        case "s":
+          if (hasModifier && !isSaving) handleProjectSnapshotSave?.();
+          break;
+        case "z":
+          if (hasModifier && hasShift) handleYWorkflowRedo?.();
+          if (hasModifier && !hasShift) handleYWorkflowUndo?.();
+          break;
+      }
     },
-    {
-      keyBinding: { key: "t", commandKey: false },
-      callback: () => handleNodePickerOpen({ x: 0, y: 0 }, "transformer"),
-    },
-    {
-      keyBinding: { key: "w", commandKey: false },
-      callback: () =>
-        handleNodePickerOpen({ x: 0, y: 0 }, "writer", isMainWorkflow),
-    },
-    {
-      keyBinding: { key: "c", commandKey: true },
-      callback: handleCopy,
-    },
-    {
-      keyBinding: { key: "x", commandKey: true },
-      callback: () => {
-        handleCut(true);
-      },
-    },
-    {
-      keyBinding: { key: "v", commandKey: true },
-      callback: handlePaste,
-    },
-    {
-      keyBinding: { key: "z", commandKey: true, shiftKey: true },
-      callback: handleYWorkflowRedo,
-    },
-    {
-      keyBinding: { key: "z", commandKey: true },
-      callback: handleYWorkflowUndo,
-    },
-    {
-      keyBinding: { key: "s", commandKey: true },
-      callback: isSaving ? () => undefined : handleProjectSnapshotSave,
-    },
-    // {
-    //   keyBinding: { key: "s", commandKey: false },
-    //   callback: () => handleYWorkflowAddFromSelection(nodes, edges),
-    // },
-  ]);
+    { preventDefault: true },
+  );
 
   const handleWorkflowRename = useCallback(
     (id: string, newName: string) => {
@@ -360,6 +336,7 @@ export default ({
     canRedo,
     isMainWorkflow,
     deferredDeleteRef,
+    isSaving,
     showBeforeDeleteDialog,
     handleRightPanelOpen,
     handleWorkflowAdd: handleYWorkflowAdd,
@@ -389,5 +366,6 @@ export default ({
     handleCopy,
     handleCut,
     handlePaste,
+    handleProjectSnapshotSave,
   };
 };
