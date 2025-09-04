@@ -1,5 +1,5 @@
 export function intermediateDataTransform(parsedData: any) {
-  console.log("parsedData", parsedData)
+  console.log("parsedData", parsedData);
   if (parsedData.geometry) {
     const is2D = "flowGeometry2D" in parsedData.geometry.value;
     const is3D = "flowGeometry3D" in parsedData.geometry.value;
@@ -34,7 +34,9 @@ export function intermediateDataTransform(parsedData: any) {
         id: parsedData.id,
         type: "Feature",
         properties: { ...parsedData.attributes },
-        geometry: handleCityGmlGeometry(parsedData.geometry.value.cityGmlGeometry),
+        geometry: handleCityGmlGeometry(
+          parsedData.geometry.value.cityGmlGeometry,
+        ),
       };
     }
   }
@@ -167,12 +169,22 @@ function handle3DGeometry(geometry: any) {
     const coordinateValues = Object.values(geometry.point);
     return {
       type: "Point",
-      coordinates: [coordinateValues[0], coordinateValues[1], coordinateValues[2]],
+      coordinates: [
+        coordinateValues[0],
+        coordinateValues[1],
+        coordinateValues[2],
+      ],
     };
   }
   if ("polygon" in geometry) {
     const coordinates = [
-      [...geometry.polygon.exterior.map((point: any) => [point.x, point.y, point.z || 0])],
+      [
+        ...geometry.polygon.exterior.map((point: any) => [
+          point.x,
+          point.y,
+          point.z || 0,
+        ]),
+      ],
     ];
     if (geometry.polygon.interiors && geometry.polygon.interiors.length) {
       coordinates.push([
@@ -209,7 +221,13 @@ function handle3DGeometry(geometry: any) {
   if ("multiPolygon" in geometry) {
     const coordinates = geometry.multiPolygon.map((polygon: any) => {
       const polyCoords = [
-        [...polygon.exterior.map((point: any) => [point.x, point.y, point.z || 0])],
+        [
+          ...polygon.exterior.map((point: any) => [
+            point.x,
+            point.y,
+            point.z || 0,
+          ]),
+        ],
       ];
       if (polygon.interiors) {
         polyCoords.push(...polygon.interiors);
@@ -233,7 +251,7 @@ function handle3DGeometry(geometry: any) {
       coordinates,
     };
   }
-  
+
   // For any 3D geometry types not handled above, return the raw structure
   return {
     type: "FlowGeometry3D",

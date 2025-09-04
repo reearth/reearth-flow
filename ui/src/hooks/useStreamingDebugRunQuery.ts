@@ -230,13 +230,17 @@ export const useStreamingDebugRunQuery = (
           if (currentDataLength < displayLimit) {
             const remainingToDisplay = displayLimit - currentDataLength;
             const rawDataToAdd = result.data.slice(0, remainingToDisplay);
-            
+
             // Apply intermediateDataTransform to match non-streaming behavior
-            newDataToAdd = rawDataToAdd.map(feature => {
+            newDataToAdd = rawDataToAdd.map((feature) => {
               try {
                 return intermediateDataTransform(feature);
               } catch (error) {
-                console.warn("Failed to transform streaming feature:", error, feature);
+                console.warn(
+                  "Failed to transform streaming feature:",
+                  error,
+                  feature,
+                );
                 return feature; // Return raw feature as fallback
               }
             });
@@ -448,10 +452,13 @@ export const useStreamingDebugRunQuery = (
   });
 
   // Memoize fileContent to prevent infinite re-renders
-  const fileContent = useMemo(() => ({
-    type: "FeatureCollection" as const,
-    features: streamingState.data,
-  }), [streamingState.data]);
+  const fileContent = useMemo(
+    () => ({
+      type: "FeatureCollection" as const,
+      features: streamingState.data,
+    }),
+    [streamingState.data],
+  );
 
   return {
     // Streaming-specific data

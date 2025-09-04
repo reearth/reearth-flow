@@ -88,20 +88,20 @@ export const useStreamingDataColumnizer = (
       });
 
       return sortedColumns.map((columnName) => {
-          // Convert column name to match traditional columnizer format (remove all dots)
-          const accessorKey = columnName.replace(/\./g, "");
-          return {
-            accessorKey,
-            header: columnName,
-            size: 200, // Default column width
-            maxSize: 400, // Maximum column width
-            minSize: 100, // Minimum column width
-            cell: ({ row }) => {
-              const value = row.original[accessorKey];
-              return formatCellValue(value);
-            },
-          };
-        });
+        // Convert column name to match traditional columnizer format (remove all dots)
+        const accessorKey = columnName.replace(/\./g, "");
+        return {
+          accessorKey,
+          header: columnName,
+          size: 200, // Default column width
+          maxSize: 400, // Maximum column width
+          minSize: 100, // Minimum column width
+          cell: ({ row }) => {
+            const value = row.original[accessorKey];
+            return formatCellValue(value);
+          },
+        };
+      });
     },
     [],
   );
@@ -115,7 +115,7 @@ export const useStreamingDataColumnizer = (
           // Convert column name to match traditional columnizer format (remove all dots)
           const key = columnName.replace(/\./g, "");
           const value = getNestedValue(feature, columnName);
-          
+
           // Special handling for coordinates to match useDataColumnizer behavior
           let processedValue: any;
           if (columnName === "geometry.coordinates" && feature.geometry) {
@@ -127,7 +127,7 @@ export const useStreamingDataColumnizer = (
           } else {
             processedValue = value;
           }
-          
+
           // Store raw values - formatting happens in cell renderer
           row[key] = processedValue;
           row[`${key}_original`] = value; // Store original value for copying
