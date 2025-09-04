@@ -55,14 +55,7 @@ type Props = {
   
   // Streaming props
   isStreaming?: boolean;
-  streamingProgress?: {
-    bytesProcessed: number;
-    featuresProcessed: number;
-    estimatedTotal?: number;
-    percentage?: number;
-  };
   loadMore?: () => void;
-  detectedGeometryType?: string;
 };
 const DebugPreview: React.FC<Props> = ({
   fileType,
@@ -82,9 +75,7 @@ const DebugPreview: React.FC<Props> = ({
   
   // Streaming props
   isStreaming,
-  streamingProgress,
   loadMore,
-  detectedGeometryType,
 }) => {
   const t = useT();
   const [tabValue, setTabValue] = useState<string>("2d-viewer");
@@ -179,27 +170,6 @@ const DebugPreview: React.FC<Props> = ({
               <p className="text-sm font-thin select-none">{t("3D Viewer")}</p>
             </TabsTrigger>
           </div>
-          
-          {/* Streaming Progress Indicator */}
-          {isStreaming && (
-            <div className="flex items-center gap-2 text-xs">
-              <div className="flex items-center gap-1 text-blue-600">
-                <div className="h-2 w-2 animate-pulse rounded-full bg-blue-600" />
-                <span className="font-medium">STREAMING</span>
-              </div>
-              {streamingProgress && (
-                <span className="text-muted-foreground">
-                  {t("Features")}: {streamingProgress.featuresProcessed.toLocaleString()}
-                  {streamingProgress.percentage && ` (${Math.round(streamingProgress.percentage)}%)`}
-                </span>
-              )}
-              {detectedGeometryType && (
-                <span className="rounded bg-muted px-2 py-1 text-xs">
-                  {detectedGeometryType}
-                </span>
-              )}
-            </div>
-          )}
           {tabValue === "2d-viewer" && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

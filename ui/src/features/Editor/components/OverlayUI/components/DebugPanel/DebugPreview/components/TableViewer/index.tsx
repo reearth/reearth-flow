@@ -96,33 +96,6 @@ const TableViewer: React.FC<Props> = ({
       )}
       textSize="sm">
       <div className="flex h-full flex-1 flex-col">
-        {/* Streaming Status Header */}
-        {isStreaming && (
-          <div className="flex items-center justify-between border-b border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-            <div className="flex items-center gap-4">
-              <span>
-                {t("Rows")}: {(tableData || []).length.toLocaleString()}
-                {streamingProgress && ` / ${streamingProgress.featuresProcessed.toLocaleString()} ${t("total")}`}
-              </span>
-              {detectedGeometryType && (
-                <span className="rounded bg-muted px-2 py-1 text-xs">
-                  {detectedGeometryType}
-                </span>
-              )}
-              <span>
-                {t("Columns")}: {(tableColumns || []).length}
-                {isStreaming && streamingColumnizer.knownColumnCount > (tableColumns || []).length && 
-                  ` (+${streamingColumnizer.knownColumnCount - (tableColumns || []).length} ${t("discovered")})`}
-              </span>
-            </div>
-            {loadMore && (
-              <Button variant="ghost" size="sm" onClick={loadMore}>
-                {t("Load More")}
-              </Button>
-            )}
-          </div>
-        )}
-        
         {/* Table */}
         <div className="flex-1 overflow-hidden">
           <VirtualizedTable
@@ -137,6 +110,32 @@ const TableViewer: React.FC<Props> = ({
             useStrictSelectedRow
           />
         </div>
+            {/* Streaming Status Header */}
+        {isStreaming && (
+          <div className="mt-1 flex items-center justify-between rounded-md bg-muted/50 px-3 py-1 text-xs text-muted-foreground">
+            <div className="flex items-center gap-4">
+              <span>
+                {t("Rows")}: {(tableData || []).length.toLocaleString()}
+                {streamingProgress && ` / ${streamingProgress.featuresProcessed.toLocaleString()} ${t("total")}`}
+              </span>
+              {detectedGeometryType && (
+                <span className="rounded bg-muted px-2 text-xs">
+                  {detectedGeometryType}
+                </span>
+              )}
+              <span>
+                {t("Columns")}: {(tableColumns || []).length}
+                {isStreaming && streamingColumnizer.knownColumnCount > (tableColumns || []).length && 
+                  ` (+${streamingColumnizer.knownColumnCount - (tableColumns || []).length} ${t("discovered")})`}
+              </span>
+            </div>
+            {loadMore && (
+              <Button variant="ghost" size="sm" className="h-[20px]" onClick={loadMore}>
+                {t("Load More")}
+              </Button>
+            )}
+          </div>
+        )}
       </div>
       
       {/* Feature Details Dialog */}

@@ -245,9 +245,7 @@ const DebugPanel: React.FC = () => {
                   
                   // Streaming props
                   isStreaming={isStreaming}
-                  streamingProgress={streamingProgress || undefined}
                   loadMore={loadMore || undefined}
-                  detectedGeometryType={detectedGeometryType || undefined}
                 />
               </ResizablePanel>
             </ResizablePanelGroup>
