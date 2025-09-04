@@ -63,6 +63,7 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		TempNewWorkspace: tempNewWorkspace, // TODO: After migration, remove Workspace and rename TempNewWorkspace to Workspace.
 		Trigger:          NewTrigger(r, g, job, permissionChecker),
 		User:             accountinteractor.NewMultiUser(ar, ag, config.SignupSecret, config.AuthSrvUIDomain, ar.Users),
+		UserFacingLog:    NewUserFacingLogInteractor(g.Redis, r.Job, permissionChecker),
 		TempNewUser:      tempNewUser, // TODO: After migration, remove User and rename tempNewUser to User.
 	}
 }
