@@ -16,7 +16,12 @@ const FeatureDetailsDialog: React.FC<Props> = ({ feature, open, onOpenChange }) 
 
   const handleCopy = async (key: string, value: any) => {
     try {
-      const textToCopy = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+      // Try to get the original value first, fallback to the displayed value
+      const originalKey = `${key}_original`;
+      const originalValue = feature[originalKey];
+      const valueToCopy = originalValue !== undefined ? originalValue : value;
+      
+      const textToCopy = typeof valueToCopy === 'string' ? valueToCopy : JSON.stringify(valueToCopy, null, 2);
       await navigator.clipboard.writeText(textToCopy);
       setCopiedKey(key);
       setTimeout(() => setCopiedKey(null), 2000);
@@ -75,7 +80,9 @@ const FeatureDetailsDialog: React.FC<Props> = ({ feature, open, onOpenChange }) 
 
   if (!feature) return null;
 
-  const entries = Object.entries(feature).sort(([a], [b]) => a.localeCompare(b));
+  const entries = Object.entries(feature)
+    .filter(([key]) => !key.endsWith('_original')) // Hide original values from display
+    .sort(([a], [b]) => a.localeCompare(b));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

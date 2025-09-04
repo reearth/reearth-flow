@@ -4,7 +4,6 @@ import {
   MapPinAreaIcon,
   TargetIcon,
   WarningIcon,
-  DownloadIcon,
 } from "@phosphor-icons/react";
 import { memo, useCallback, useMemo, useState } from "react";
 
@@ -53,9 +52,6 @@ type Props = {
   onEnableClusteringChange: (value: boolean) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
   
-  // Streaming props
-  isStreaming?: boolean;
-  loadMore?: () => void;
 };
 const DebugPreview: React.FC<Props> = ({
   fileType,
@@ -72,10 +68,6 @@ const DebugPreview: React.FC<Props> = ({
   onSelectedFeature,
   onEnableClusteringChange,
   onFlyToSelectedFeature,
-  
-  // Streaming props
-  isStreaming,
-  loadMore,
 }) => {
   const t = useT();
   const [tabValue, setTabValue] = useState<string>("2d-viewer");
@@ -192,12 +184,6 @@ const DebugPreview: React.FC<Props> = ({
                   <TargetIcon />
                   {t("Center Data")}
                 </DropdownMenuItem>
-                {isStreaming && loadMore && (
-                  <DropdownMenuItem onClick={loadMore}>
-                    <DownloadIcon />
-                    {t("Load More Data")}
-                  </DropdownMenuItem>
-                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}

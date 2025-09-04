@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 
-import { RenderFallback, Button } from "@flow/components";
+import { RenderFallback } from "@flow/components";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useStreamingDataColumnizer } from "@flow/hooks/useStreamingDataColumnizer";
@@ -18,14 +18,8 @@ type Props = {
   
   // Streaming props
   isStreaming?: boolean;
-  streamingProgress?: {
-    bytesProcessed: number;
-    featuresProcessed: number;
-    estimatedTotal?: number;
-    percentage?: number;
-  };
-  loadMore?: () => void;
   detectedGeometryType?: string;
+  totalFeatures?: number;
 };
 
 const TableViewer: React.FC<Props> = ({
@@ -37,9 +31,8 @@ const TableViewer: React.FC<Props> = ({
   
   // Streaming props
   isStreaming,
-  streamingProgress,
-  loadMore,
   detectedGeometryType,
+  totalFeatures,
 }) => {
   const t = useT();
   
@@ -56,22 +49,38 @@ const TableViewer: React.FC<Props> = ({
   
   // Add new data to streaming columnizer when fileContent changes
   const prevFileContentLength = useRef(0);
+  const prevFileContentRef = useRef<any[]>([]);
   
   // Feature details dialog state
   const [selectedFeatureDetails, setSelectedFeatureDetails] = useState<any | null>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   
   useEffect(() => {
-    if (isStreaming && fileContent && Array.isArray(fileContent)) {
-      // Only process if the array has actually grown
-      if (fileContent.length > prevFileContentLength.current) {
+    if (fileContent && Array.isArray(fileContent) && fileContent.length > 0) {
+      // Check if this is a new file by comparing actual data content, not just length
+      const isNewFile = prevFileContentLength.current === 0 || 
+                       prevFileContentLength.current > fileContent.length ||
+                       (fileContent.length > 0 && prevFileContentRef.current.length > 0 && 
+                        JSON.stringify(fileContent[0]) !== JSON.stringify(prevFileContentRef.current[0]));
+      
+      if (isNewFile) {
+        // Reset columnizer for new file (both streaming and cached data)
+        streamingColumnizer.reset();
+        streamingColumnizer.addBatch(fileContent);
+        prevFileContentLength.current = fileContent.length;
+        prevFileContentRef.current = fileContent;
+      } else if (isStreaming && fileContent.length > prevFileContentLength.current) {
+        // Incremental update for same file during streaming
         const newFeatures = fileContent.slice(prevFileContentLength.current);
         streamingColumnizer.addBatch(newFeatures);
         prevFileContentLength.current = fileContent.length;
+        prevFileContentRef.current = fileContent;
       }
-    } else if (!isStreaming) {
-      // Reset when not streaming
+    } else if ((!fileContent || fileContent.length === 0) && prevFileContentLength.current > 0) {
+      // File was cleared or switched to empty - reset
+      streamingColumnizer.reset();
       prevFileContentLength.current = 0;
+      prevFileContentRef.current = [];
     }
   }, [fileContent, isStreaming, streamingColumnizer]);
   
@@ -89,6 +98,7 @@ const TableViewer: React.FC<Props> = ({
   // Choose which columnizer to use
   const tableData = isStreaming ? streamingColumnizer.tableData : traditionalColumnizer.tableData;
   const tableColumns = isStreaming ? streamingColumnizer.tableColumns : traditionalColumnizer.tableColumns;
+  
   return (
     <RenderFallback
       message={t(
@@ -116,7 +126,8 @@ const TableViewer: React.FC<Props> = ({
             <div className="flex items-center gap-4">
               <span>
                 {t("Rows")}: {(tableData || []).length.toLocaleString()}
-                {streamingProgress && ` / ${streamingProgress.featuresProcessed.toLocaleString()} ${t("total")}`}
+                {isStreaming && totalFeatures !== undefined && 
+                  ` / ${totalFeatures.toLocaleString()} ${t("total")}`}
               </span>
               {detectedGeometryType && (
                 <span className="rounded bg-muted px-2 text-xs">
@@ -129,11 +140,6 @@ const TableViewer: React.FC<Props> = ({
                   ` (+${streamingColumnizer.knownColumnCount - (tableColumns || []).length} ${t("discovered")})`}
               </span>
             </div>
-            {loadMore && (
-              <Button variant="ghost" size="sm" className="h-[20px]" onClick={loadMore}>
-                {t("Load More")}
-              </Button>
-            )}
           </div>
         )}
       </div>

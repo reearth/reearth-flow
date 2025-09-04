@@ -1,7 +1,6 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
 
-type GeometryType = 'FlowGeometry2D' | 'FlowGeometry3D' | 'CityGmlGeometry' | 'Unknown' | null;
 
 type StreamingTableData = {
   rows: any[];
@@ -29,28 +28,6 @@ export const useStreamingDataColumnizer = (
     knownColumns: new Set<string>(),
   });
 
-  const [geometryType, setGeometryType] = useState<GeometryType>(null);
-
-  const detectGeometryType = useCallback((features: any[]): GeometryType => {
-    if (features.length === 0) return null;
-    
-    // Check first few features to determine type
-    for (let i = 0; i < Math.min(5, features.length); i++) {
-      const geometryValue = features[i]?.geometry?.value;
-      if (!geometryValue) continue;
-      
-      if (geometryValue.FlowGeometry2D || geometryValue.flowGeometry2D) {
-        return 'FlowGeometry2D';
-      }
-      if (geometryValue.FlowGeometry3D || geometryValue.flowGeometry3D) {
-        return 'FlowGeometry3D';
-      }
-      if (geometryValue.CityGmlGeometry) {
-        return 'CityGmlGeometry';
-      }
-    }
-    return 'Unknown';
-  }, []);
 
   const extractColumns = useCallback((features: any[], currentKnownColumns: Set<string>) => {
     const newColumns = new Set(currentKnownColumns);
@@ -113,6 +90,9 @@ export const useStreamingDataColumnizer = (
         return {
           accessorKey,
           header: columnName,
+          size: 200, // Default column width
+          maxSize: 400, // Maximum column width
+          minSize: 100, // Minimum column width
           cell: ({ row }) => {
             const value = row.original[accessorKey];
             return formatCellValue(value);
@@ -129,7 +109,9 @@ export const useStreamingDataColumnizer = (
         // Convert column name to match traditional columnizer format (remove dots)
         const key = columnName.replace('.', '');
         const value = getNestedValue(feature, columnName);
+        // Store both formatted (for display) and original (for copying) values
         row[key] = formatCellValue(value);
+        row[`${key}_original`] = value; // Store original value for copying
       });
       
       // Ensure we have an ID
@@ -144,12 +126,6 @@ export const useStreamingDataColumnizer = (
   const addBatch = useCallback((newFeatures: any[]) => {
     if (newFeatures.length === 0) return;
 
-    // Detect geometry type from first batch
-    if (!geometryType) {
-      const detectedType = detectGeometryType(newFeatures);
-      setGeometryType(detectedType);
-    }
-
     setTableData(prev => {
       // Extract new columns if auto-expand is enabled
       const updatedColumns = autoExpandColumns 
@@ -162,11 +138,8 @@ export const useStreamingDataColumnizer = (
         ? createTableColumns(updatedColumns)
         : prev.columns;
 
-      // Check if we're at the max rows limit before adding more
-      if (maxRows && prev.rows.length >= maxRows) {
-        console.log('Max rows limit reached, not adding more features');
-        return prev; // Don't add more features if we're at the limit
-      }
+      // Note: We allow adding features beyond maxRows when user explicitly requests "Load More"
+      // The maxRows limit is enforced by the slice operation below
 
       // Transform new features to table rows
       const newRows = transformFeaturesForTable(newFeatures, updatedColumns);
@@ -185,8 +158,6 @@ export const useStreamingDataColumnizer = (
       };
     });
   }, [
-    geometryType, 
-    detectGeometryType, 
     autoExpandColumns, 
     extractColumns, 
     createTableColumns, 
@@ -201,7 +172,6 @@ export const useStreamingDataColumnizer = (
       totalRows: 0,
       knownColumns: new Set(),
     });
-    setGeometryType(null);
   }, []);
 
   return {
@@ -209,9 +179,6 @@ export const useStreamingDataColumnizer = (
     tableData: tableData.rows,
     tableColumns: tableData.columns,
     totalRows: tableData.totalRows,
-    
-    // Geometry information
-    detectedGeometryType: geometryType,
     
     // Statistics
     displayedRows: tableData.rows.length,

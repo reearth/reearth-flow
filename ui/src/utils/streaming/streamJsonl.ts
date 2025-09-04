@@ -95,6 +95,28 @@ export class JsonlStreamer<T = any> {
         }
       }
 
+      // Process any remaining buffer and yield final batch
+      const remainingFeatures = this.processBuffer();
+      if (remainingFeatures.length > 0) {
+        batch.push(...remainingFeatures);
+        this.featuresProcessed += remainingFeatures.length;
+      }
+
+      // Yield final batch if there are any remaining features
+      if (batch.length > 0) {
+        const progress = this.getProgress();
+        this.options.onProgress?.(progress);
+        
+        yield {
+          data: [...batch],
+          progress,
+          isComplete: true,
+          hasMore: false, // This is the final batch
+        };
+
+        this.options.onBatch?.(batch);
+      }
+
       this.options.onComplete?.();
     } catch (error) {
       const err = error as Error;
@@ -123,7 +145,7 @@ export class JsonlStreamer<T = any> {
         try {
           const parsed = JSON.parse(trimmed);
           features.push(parsed);
-        } catch (error) {
+        } catch (_error) {
           // Continue processing other lines rather than failing completely
           console.warn('Failed to parse JSONL line:', trimmed.substring(0, 50) + '...');
         }

@@ -62,9 +62,8 @@ const DebugPanel: React.FC = () => {
     handleFlyToSelectedFeature,
     // Streaming-specific properties
     isStreaming,
-    loadMore,
-    streamingProgress,
     detectedGeometryType,
+    totalFeatures,
   } = useHooks();
   const t = useT();
   const [tabValue, setTabValue] = useState("debug-logs");
@@ -217,9 +216,8 @@ const DebugPanel: React.FC = () => {
                     
                     // Streaming props
                     isStreaming={isStreaming}
-                    streamingProgress={streamingProgress || undefined}
-                    loadMore={loadMore || undefined}
                     detectedGeometryType={detectedGeometryType || undefined}
+                    totalFeatures={totalFeatures || undefined}
                   />
                 </div>
               </ResizablePanel>
@@ -242,10 +240,6 @@ const DebugPanel: React.FC = () => {
                   onSelectedFeature={setSelectedFeature}
                   onEnableClusteringChange={setEnableClustering}
                   onFlyToSelectedFeature={handleFlyToSelectedFeature}
-                  
-                  // Streaming props
-                  isStreaming={isStreaming}
-                  loadMore={loadMore || undefined}
                 />
               </ResizablePanel>
             </ResizablePanelGroup>

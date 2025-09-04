@@ -53,12 +53,21 @@ export default ({
 
         // Create columns for table
         const tableColumns: ColumnDef<any>[] = [
-          { accessorKey: "id", header: "id" },
+          { 
+            accessorKey: "id", 
+            header: "id",
+            size: 200,
+            maxSize: 400,
+            minSize: 100,
+          },
           ...Array.from(allGeometry).map(
             (geometry) =>
               ({
                 accessorKey: `geometry${geometry}`,
                 header: `geometry.${geometry}`,
+                size: 200,
+                maxSize: 400,
+                minSize: 100,
               }) as ColumnDef<any>,
           ),
           ...Array.from(allProps).map(
@@ -66,6 +75,9 @@ export default ({
               ({
                 accessorKey: `properties${prop}`,
                 header: `properties.${prop}`,
+                size: 200,
+                maxSize: 400,
+                minSize: 100,
               }) as ColumnDef<any>,
           ),
         ];

@@ -155,6 +155,7 @@ export default () => {
   const [selectedDataURL, setSelectedDataURL] = useState<string | undefined>(
     undefined,
   );
+  
 
   useEffect(() => {
     if (intermediateDataURLs !== prevIntermediateDataUrls.current) {
@@ -338,8 +339,8 @@ export default () => {
     // Streaming-specific features
     isStreaming: !shouldUseTraditionalLoading,
     streamingQuery: shouldUseTraditionalLoading ? null : streamingQuery,
-    loadMore: shouldUseTraditionalLoading ? null : streamingQuery.loadMore,
     streamingProgress: shouldUseTraditionalLoading ? null : streamingQuery.progress,
     detectedGeometryType: shouldUseTraditionalLoading ? null : streamingQuery.detectedGeometryType,
+    totalFeatures: shouldUseTraditionalLoading ? null : streamingQuery.totalFeatures,
   };
 };

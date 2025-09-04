@@ -179,7 +179,8 @@ function VirtualizedTable<TData, TValue>({
                   return (
                     <TableHead
                       key={header.id}
-                      className={`${condensed ? "h-8" : "h-10"}`}>
+                      className={`${condensed ? "h-8" : "h-10"}`}
+                      style={{ width: header.getSize() }}>
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -226,7 +227,8 @@ function VirtualizedTable<TData, TValue>({
                       return (
                         <TableCell
                           key={cell.id}
-                          className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>
+                          className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}
+                          style={{ width: cell.column.getSize() }}>
                           {flexRender(
                             cell.column.columnDef.cell,
                             cell.getContext(),
