@@ -56,7 +56,7 @@ export default ({
     () =>
       openWorkflowIds
         .map((owi) => workflows.find((w) => owi === w.id))
-        .filter(isDefined),
+        .filter(isDefined) as { id: string; name: string }[],
     [workflows, openWorkflowIds],
   );
 
