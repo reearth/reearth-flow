@@ -505,19 +505,19 @@ type ComplexityRoot struct {
 		Name     func(childComplexity int) int
 	}
 
+	UserFacingLog struct {
+		JobID     func(childComplexity int) int
+		Message   func(childComplexity int) int
+		Metadata  func(childComplexity int) int
+		Timestamp func(childComplexity int) int
+	}
+
 	UserMetadata struct {
 		Description func(childComplexity int) int
 		Lang        func(childComplexity int) int
 		PhotoURL    func(childComplexity int) int
 		Theme       func(childComplexity int) int
 		Website     func(childComplexity int) int
-	}
-
-	UserFacingLog struct {
-		JobID     func(childComplexity int) int
-		Message   func(childComplexity int) int
-		Metadata  func(childComplexity int) int
-		Timestamp func(childComplexity int) int
 	}
 
 	Workspace struct {
@@ -2962,7 +2962,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.User.Name(childComplexity), true
 
-<<<<<<< HEAD
 	case "UserFacingLog.jobId":
 		if e.complexity.UserFacingLog.JobID == nil {
 			break
@@ -2990,7 +2989,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UserFacingLog.Timestamp(childComplexity), true
-=======
+
 	case "UserMetadata.description":
 		if e.complexity.UserMetadata.Description == nil {
 			break
@@ -3025,7 +3024,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UserMetadata.Website(childComplexity), true
->>>>>>> origin/main
 
 	case "Workspace.assets":
 		if e.complexity.Workspace.Assets == nil {
@@ -4191,7 +4189,8 @@ extend type Mutation {
 
 extend type Subscription {
   userFacingLogs(jobId: ID!): UserFacingLog
-}`, BuiltIn: false},
+}
+`, BuiltIn: false},
 	{Name: "../../../gql/workspace.graphql", Input: `type Workspace implements Node {
   assets(pagination: Pagination): AssetConnection!
   id: ID!
@@ -21634,7 +21633,62 @@ func (ec *executionContext) fieldContext_User_name(_ context.Context, field grap
 	return fc, nil
 }
 
-<<<<<<< HEAD
+func (ec *executionContext) _User_metadata(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.User) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_User_metadata(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Metadata, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.UserMetadata)
+	fc.Result = res
+	return ec.marshalNUserMetadata2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUserMetadata(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_User_metadata(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "description":
+				return ec.fieldContext_UserMetadata_description(ctx, field)
+			case "website":
+				return ec.fieldContext_UserMetadata_website(ctx, field)
+			case "photoURL":
+				return ec.fieldContext_UserMetadata_photoURL(ctx, field)
+			case "theme":
+				return ec.fieldContext_UserMetadata_theme(ctx, field)
+			case "lang":
+				return ec.fieldContext_UserMetadata_lang(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UserMetadata", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UserFacingLog_jobId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.UserFacingLog) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserFacingLog_jobId(ctx, field)
 	if err != nil {
@@ -21769,10 +21823,6 @@ func (ec *executionContext) fieldContext_UserFacingLog_message(_ context.Context
 
 func (ec *executionContext) _UserFacingLog_metadata(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.UserFacingLog) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UserFacingLog_metadata(ctx, field)
-=======
-func (ec *executionContext) _User_metadata(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.User) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_User_metadata(ctx, field)
->>>>>>> origin/main
 	if err != nil {
 		return graphql.Null
 	}
@@ -21792,7 +21842,6 @@ func (ec *executionContext) _User_metadata(ctx context.Context, field graphql.Co
 		return graphql.Null
 	}
 	if resTmp == nil {
-<<<<<<< HEAD
 		return graphql.Null
 	}
 	res := resTmp.(gqlmodel.JSON)
@@ -21803,41 +21852,11 @@ func (ec *executionContext) _User_metadata(ctx context.Context, field graphql.Co
 func (ec *executionContext) fieldContext_UserFacingLog_metadata(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "UserFacingLog",
-=======
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*gqlmodel.UserMetadata)
-	fc.Result = res
-	return ec.marshalNUserMetadata2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUserMetadata(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_User_metadata(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "User",
->>>>>>> origin/main
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-<<<<<<< HEAD
 			return nil, errors.New("field of type JSON does not have child fields")
-=======
-			switch field.Name {
-			case "description":
-				return ec.fieldContext_UserMetadata_description(ctx, field)
-			case "website":
-				return ec.fieldContext_UserMetadata_website(ctx, field)
-			case "photoURL":
-				return ec.fieldContext_UserMetadata_photoURL(ctx, field)
-			case "theme":
-				return ec.fieldContext_UserMetadata_theme(ctx, field)
-			case "lang":
-				return ec.fieldContext_UserMetadata_lang(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type UserMetadata", field.Name)
 		},
 	}
 	return fc, nil
@@ -22049,7 +22068,6 @@ func (ec *executionContext) fieldContext_UserMetadata_lang(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Lang does not have child fields")
->>>>>>> origin/main
 		},
 	}
 	return fc, nil
@@ -30105,56 +30123,6 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 	return out
 }
 
-var userMetadataImplementors = []string{"UserMetadata"}
-
-func (ec *executionContext) _UserMetadata(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.UserMetadata) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, userMetadataImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("UserMetadata")
-		case "description":
-			out.Values[i] = ec._UserMetadata_description(ctx, field, obj)
-		case "website":
-			out.Values[i] = ec._UserMetadata_website(ctx, field, obj)
-		case "photoURL":
-			out.Values[i] = ec._UserMetadata_photoURL(ctx, field, obj)
-		case "theme":
-			out.Values[i] = ec._UserMetadata_theme(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "lang":
-			out.Values[i] = ec._UserMetadata_lang(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var userFacingLogImplementors = []string{"UserFacingLog"}
 
 func (ec *executionContext) _UserFacingLog(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.UserFacingLog) graphql.Marshaler {
@@ -30183,6 +30151,56 @@ func (ec *executionContext) _UserFacingLog(ctx context.Context, sel ast.Selectio
 			}
 		case "metadata":
 			out.Values[i] = ec._UserFacingLog_metadata(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var userMetadataImplementors = []string{"UserMetadata"}
+
+func (ec *executionContext) _UserMetadata(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.UserMetadata) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, userMetadataImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UserMetadata")
+		case "description":
+			out.Values[i] = ec._UserMetadata_description(ctx, field, obj)
+		case "website":
+			out.Values[i] = ec._UserMetadata_website(ctx, field, obj)
+		case "photoURL":
+			out.Values[i] = ec._UserMetadata_photoURL(ctx, field, obj)
+		case "theme":
+			out.Values[i] = ec._UserMetadata_theme(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lang":
+			out.Values[i] = ec._UserMetadata_lang(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
