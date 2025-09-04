@@ -220,7 +220,10 @@ function getNestedValue(obj: any, path: string): any {
 }
 
 // Helper function to format cell values for display
-function formatCellValue(value: any, maxLength = DEFAULT_CELL_VALUE_MAX_LENGTH): string {
+function formatCellValue(
+  value: any,
+  maxLength = DEFAULT_CELL_VALUE_MAX_LENGTH,
+): string {
   if (value == null) return "";
 
   let formatted: string;

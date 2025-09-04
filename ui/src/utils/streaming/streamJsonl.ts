@@ -102,7 +102,6 @@ export class JsonlStreamer<T = any> {
         }
       }
 
-
       this.options.onComplete?.();
     } catch (error) {
       const err = error as Error;
@@ -160,7 +159,9 @@ export class JsonlStreamer<T = any> {
   abort(): void {
     // The signal should be controlled externally via options.signal
     // This class doesn't manage its own AbortController
-    throw new Error("Use the AbortController passed in options.signal to abort the stream");
+    throw new Error(
+      "Use the AbortController passed in options.signal to abort the stream",
+    );
   }
 }
 
