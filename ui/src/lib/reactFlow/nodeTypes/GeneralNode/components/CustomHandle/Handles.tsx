@@ -19,7 +19,6 @@ type Props = {
 
 const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
   const [isOpen, setIsOpen] = useState(false);
-
   return (
     <Collapsible
       className="flex flex-col"
@@ -74,6 +73,37 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
           </div>
         )}
       </div>
+      {!isOpen && (
+        <>
+          {nodeType !== "reader" &&
+            inputs &&
+            inputs
+              .slice(5)
+              .map((input, index) => (
+                <CustomHandle
+                  key={`collapsed-${input}-${index}`}
+                  type="target"
+                  className="absolute left-1 w-[8px] rounded-none transition-colors"
+                  position={Position.Left}
+                  id={input}
+                  style={{ top: "88%", transform: "translateY(-50%)" }}
+                />
+              ))}
+          {outputs &&
+            outputs
+              .slice(5)
+              .map((output, index) => (
+                <CustomHandle
+                  key={`collapsed-${output}-${index}`}
+                  type="source"
+                  className="absolute right-1 z-10 w-[8px] rounded-none transition-colors"
+                  position={Position.Right}
+                  id={output}
+                  style={{ top: "88%", transform: "translateY(-50%)" }}
+                />
+              ))}
+        </>
+      )}
       <CollapsibleContent className="flex justify-between gap-2">
         {nodeType !== "reader" && inputs && (
           <div className="inset-x-0 mx-auto min-w-0 flex-1">
