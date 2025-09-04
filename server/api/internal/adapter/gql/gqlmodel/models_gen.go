@@ -648,20 +648,19 @@ type User struct {
 func (User) IsNode()        {}
 func (this User) GetID() ID { return this.ID }
 
-<<<<<<< HEAD
 type UserFacingLog struct {
 	JobID     ID        `json:"jobId"`
 	Timestamp time.Time `json:"timestamp"`
 	Message   string    `json:"message"`
 	Metadata  JSON      `json:"metadata,omitempty"`
-=======
+}
+
 type UserMetadata struct {
 	Description *string      `json:"description,omitempty"`
 	Website     *string      `json:"website,omitempty"`
 	PhotoURL    *string      `json:"photoURL,omitempty"`
 	Theme       Theme        `json:"theme"`
 	Lang        language.Tag `json:"lang"`
->>>>>>> origin/main
 }
 
 type Workspace struct {
