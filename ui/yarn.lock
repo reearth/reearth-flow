@@ -4804,6 +4804,7 @@ __metadata:
     react-datepicker: "npm:8.4.0"
     react-dom: "npm:19.1.1"
     react-error-boundary: "npm:6.0.0"
+    react-hotkeys-hook: "npm:5.1.0"
     react-i18next: "npm:15.6.1"
     react-map-gl: "npm:8.0.4"
     react-resizable-panels: "npm:3.0.4"
@@ -13315,6 +13316,16 @@ __metadata:
   peerDependencies:
     react: ">=16.13.1"
   checksum: 10c0/1914d600dee95a14f14af4afe9867b0d35c26c4f7826d23208800ba2a99728659029aad60a6ef95e13430b4d79c2c4c9b3585f50bf508450478760d2e4e732d8
+  languageName: node
+  linkType: hard
+
+"react-hotkeys-hook@npm:5.1.0":
+  version: 5.1.0
+  resolution: "react-hotkeys-hook@npm:5.1.0"
+  peerDependencies:
+    react: ">=16.8.0"
+    react-dom: ">=16.8.0"
+  checksum: 10c0/99df6d3c305b139ac7afd073b58575961bf30a819fb23e8f1251b1b3a9f1c7662737f8b6266e3fc42bd5bdfdaca81aa1e019613f95f9a6313267de265e45836d
   languageName: node
   linkType: hard
 

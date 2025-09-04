@@ -5,8 +5,10 @@ import {
   XYPosition,
 } from "@xyflow/react";
 import { MouseEvent, useCallback, useRef, useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 
 import type { ContextMenuMeta } from "@flow/components";
+import { CANVAS_HOT_KEYS } from "@flow/global-constants";
 import { useEdges, useNodes } from "@flow/lib/reactFlow";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
@@ -19,7 +21,14 @@ type Props = {
   onNodeSettings?: (e: MouseEvent | undefined, nodeId: string) => void;
   onEdgesAdd?: (newEdges: Edge[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
-  onNodePickerOpen?: (position: XYPosition, nodeType?: ActionNodeType) => void;
+  onNodePickerOpen?: (
+    position: XYPosition,
+    nodeType?: ActionNodeType,
+    isMainWorkflow?: boolean,
+  ) => void;
+  onCopy?: (node?: Node) => void;
+  onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
+  onPaste?: () => void;
 };
 
 export const defaultEdgeOptions: DefaultEdgeOptions = {
@@ -49,6 +58,9 @@ export default ({
   onEdgesAdd,
   onEdgesChange,
   onNodePickerOpen,
+  onCopy,
+  onCut,
+  onPaste,
 }: Props) => {
   const {
     handleNodesChange,
@@ -143,6 +155,30 @@ export default ({
   const handleCloseContextmenu = () => {
     setContextMenu(null);
   };
+
+  useHotkeys(CANVAS_HOT_KEYS, (event, handler) => {
+    const hasModifier = event.metaKey || event.ctrlKey;
+    switch (handler.keys?.join("")) {
+      case "r":
+        onNodePickerOpen?.({ x: 0, y: 0 }, "reader", true);
+        break;
+      case "t":
+        onNodePickerOpen?.({ x: 0, y: 0 }, "transformer");
+        break;
+      case "w":
+        onNodePickerOpen?.({ x: 0, y: 0 }, "writer", true);
+        break;
+      case "c":
+        if (hasModifier) onCopy?.();
+        break;
+      case "x":
+        if (hasModifier) onCut?.();
+        break;
+      case "v":
+        if (hasModifier) onPaste?.();
+        break;
+    }
+  });
 
   return {
     handleNodesChange,
