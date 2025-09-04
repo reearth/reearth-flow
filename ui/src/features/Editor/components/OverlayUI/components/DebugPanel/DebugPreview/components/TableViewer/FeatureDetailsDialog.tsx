@@ -108,8 +108,8 @@ const FeatureDetailsDialog: React.FC<Props> = ({
         <DialogContentWrapper className="h-[500px]">
           <div className="flex-1 space-y-2 overflow-auto pr-4">
             {entries.map(([key, value]) => (
-              <div className="flex flex-col">
-                <div key={key} className="flex justify-between space-y-1">
+              <div key={key} className="flex flex-col">
+                <div className="flex justify-between space-y-1">
                   <div className="flex w-full items-center justify-between">
                     <h4 className="flex w-[175px] shrink-0 flex-col text-sm font-medium break-all">
                       <code className="rounded px-1 py-0.5 text-xs">{key}</code>

@@ -16,6 +16,8 @@ import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
 
+import { STREAMING_SIZE_THRESHOLD_MB } from "./constants";
+
 export default () => {
   const t = useT();
 
@@ -219,7 +221,7 @@ export default () => {
     }
 
     const sizeInMB = parseInt(contentLength) / (1024 * 1024);
-    const useTraditional = sizeInMB < 10;
+    const useTraditional = sizeInMB < STREAMING_SIZE_THRESHOLD_MB;
 
     return useTraditional; // Use traditional loading for files under 10MB
   }, [fileMetadata, metadataUrl, intermediateDataURLs, outputURLs]);

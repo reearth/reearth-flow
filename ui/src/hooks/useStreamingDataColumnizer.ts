@@ -15,6 +15,8 @@ type UseStreamingDataColumnizerOptions = {
   autoExpandColumns?: boolean;
 };
 
+export const DEFAULT_CELL_VALUE_MAX_LENGTH = 100;
+
 export const useStreamingDataColumnizer = (
   options: UseStreamingDataColumnizerOptions = {},
 ) => {
@@ -218,7 +220,7 @@ function getNestedValue(obj: any, path: string): any {
 }
 
 // Helper function to format cell values for display
-function formatCellValue(value: any, maxLength = 100): string {
+function formatCellValue(value: any, maxLength = DEFAULT_CELL_VALUE_MAX_LENGTH): string {
   if (value == null) return "";
 
   let formatted: string;

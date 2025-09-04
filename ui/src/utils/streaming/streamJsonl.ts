@@ -10,8 +10,6 @@ export class JsonlStreamer<T = any> {
   private bytesProcessed = 0;
   private featuresProcessed = 0;
   private estimatedTotal?: number;
-  private controller?: AbortController;
-
   constructor(private options: StreamingOptions = {}) {
     const {
       batchSize = 1000,
@@ -54,6 +52,7 @@ export class JsonlStreamer<T = any> {
           if (this.buffer.trim()) {
             const remainingFeatures = this.processBuffer();
             batch.push(...remainingFeatures);
+            this.featuresProcessed += remainingFeatures.length;
           }
 
           // Yield final batch if it has data
@@ -103,27 +102,6 @@ export class JsonlStreamer<T = any> {
         }
       }
 
-      // Process any remaining buffer and yield final batch
-      const remainingFeatures = this.processBuffer();
-      if (remainingFeatures.length > 0) {
-        batch.push(...remainingFeatures);
-        this.featuresProcessed += remainingFeatures.length;
-      }
-
-      // Yield final batch if there are any remaining features
-      if (batch.length > 0) {
-        const progress = this.getProgress();
-        this.options.onProgress?.(progress);
-
-        yield {
-          data: [...batch],
-          progress,
-          isComplete: true,
-          hasMore: false, // This is the final batch
-        };
-
-        this.options.onBatch?.(batch);
-      }
 
       this.options.onComplete?.();
     } catch (error) {
@@ -180,7 +158,9 @@ export class JsonlStreamer<T = any> {
   }
 
   abort(): void {
-    this.controller?.abort();
+    // The signal should be controlled externally via options.signal
+    // This class doesn't manage its own AbortController
+    throw new Error("Use the AbortController passed in options.signal to abort the stream");
   }
 }
 
