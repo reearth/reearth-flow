@@ -84,10 +84,6 @@ export function getDefaultValueForProjectVar(type: VarType): any {
       // Represent a yes/no value as a boolean; defaulting to false.
       return false;
 
-    case "unsupported":
-      // For unsupported types, you might return undefined or null
-      return undefined;
-
     default:
       // Fallback for any future cases or errors
       return null;

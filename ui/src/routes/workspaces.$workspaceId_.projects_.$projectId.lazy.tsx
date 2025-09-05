@@ -1,6 +1,7 @@
 import { createLazyFileRoute, useParams } from "@tanstack/react-router";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { useEffect, useMemo, useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 
 import { Button, FlowLogo, LoadingSplashscreen } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
@@ -12,18 +13,16 @@ import {
   ProjectIdWrapper,
   WorkspaceIdWrapper,
 } from "@flow/features/PageWrapper";
-import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import {
-  useJobSubscriptionsSetup,
-  useFullscreen,
-  useShortcuts,
-} from "@flow/hooks";
+  DEFAULT_ENTRY_GRAPH_ID,
+  GLOBAL_HOT_KEYS,
+} from "@flow/global-constants";
+import { useFullscreen, useJobSubscriptionsSetup } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import useYjsSetup from "@flow/lib/yjs/useYjsSetup";
 import { useCurrentProject } from "@flow/stores";
-// import { useShortcut } from "@flow/hooks/useShortcut";
 
 export const Route = createLazyFileRoute(
   "/workspaces/$workspaceId_/projects_/$projectId",
@@ -59,24 +58,28 @@ const EditorComponent = () => {
     }
   }, [accessToken, getAccessToken]);
 
-  useShortcuts([
-    {
-      keyBinding: { key: "+", commandKey: false },
-      callback: zoomIn,
+  useHotkeys(
+    GLOBAL_HOT_KEYS,
+    (event, handler) => {
+      const hasModifier = event.metaKey || event.ctrlKey;
+
+      switch (handler.keys?.join("")) {
+        case "equal":
+          zoomIn();
+          break;
+        case "minus":
+          zoomOut();
+          break;
+        case "0":
+          fitView();
+          break;
+        case "f":
+          if (hasModifier) handleFullscreenToggle();
+          break;
+      }
     },
-    {
-      keyBinding: { key: "-", commandKey: false },
-      callback: zoomOut,
-    },
-    {
-      keyBinding: { key: "0", commandKey: true },
-      callback: fitView,
-    },
-    {
-      keyBinding: { key: "f", commandKey: true },
-      callback: handleFullscreenToggle,
-    },
-  ]);
+    { preventDefault: true },
+  );
 
   const { projectId }: { projectId: string } = useParams({
     strict: false,

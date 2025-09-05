@@ -7,3 +7,32 @@ export const ALLOWED_PROJECT_IMPORT_EXTENSIONS = ".zip";
 export const ALLOWED_ASSET_IMPORT_EXTENSIONS =
   ".csv, .geojson, .gml, .json, .tsv, .py, .zip";
 export const CLIPBOARD_EXPIRATION_TIME = 1000 * 60 * 5;
+export const GENERAL_HOT_KEYS = ["ctrl+slash", "meta+slash"];
+export const GLOBAL_HOT_KEYS = [
+  "equal", // zoom in
+  "minus", // zoom out
+  "meta+0", // fit view mac
+  "ctrl+0", // fit view win
+  "meta+f", // fullscreen mac
+  "ctrl+f", // fullscreen win
+];
+
+export const CANVAS_HOT_KEYS = [
+  "r", // reader dialog
+  "t", // transformer dialog
+  "w", //  writer dialog
+  "meta+c", // copy mac
+  "ctrl+c", // copy win
+  "meta+x", // cut mac
+  "ctrl+x", // cut win
+  "meta+v", // paste mac
+  "ctrl+v", // paste win
+];
+export const EDITOR_HOT_KEYS = [
+  "shift+meta+z", // redo mac
+  "shift+ctrl+z", // redo win
+  "meta+z", // undo mac
+  "ctrl+z", // undo win
+  "meta+s", // save mac
+  "ctrl+s", // save win
+];

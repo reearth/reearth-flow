@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 
+import { useProjectVars } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { ProjectVariable, VarType } from "@flow/types";
 import {
@@ -79,47 +80,7 @@ export default ({
   const [editingVariable, setEditingVariable] =
     useState<ProjectVariable | null>(null);
 
-  const getUserFacingName = useCallback(
-    (type: VarType): string => {
-      switch (type) {
-        case "attribute_name":
-          return t("Attribute Name");
-        case "choice":
-          return t("Choice");
-        case "color":
-          return t("Color");
-        case "coordinate_system":
-          return t("Coordinate System");
-        case "database_connection":
-          return t("Database Connection");
-        case "datetime":
-          return t("Date and Time");
-        case "file_folder":
-          return t("File or Folder");
-        case "geometry":
-          return t("Geometry");
-        case "message":
-          return t("Message");
-        case "number":
-          return t("Number");
-        case "password":
-          return t("Password");
-        case "reprojection_file":
-          return t("Reprojection File");
-        case "text":
-          return t("Text");
-        case "web_connection":
-          return t("Web Connection");
-        case "yes_no":
-          return t("Yes/No");
-        case "unsupported":
-          return t("Unsupported");
-        default:
-          return t("Unknown");
-      }
-    },
-    [t],
-  );
+  const { getUserFacingName } = useProjectVars();
 
   useEffect(() => {
     if (currentProjectVariables) {
