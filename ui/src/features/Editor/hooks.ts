@@ -46,7 +46,7 @@ export default ({
 }: {
   yDoc: Doc | null;
   yWorkflows: YMap<YWorkflow>;
-  yAwareness?: Awareness | null;
+  yAwareness: Awareness;
   undoManager: YUndoManager | null;
   undoTrackerActionWrapper: (
     callback: () => void,
@@ -101,10 +101,10 @@ export default ({
 
   const [currentProject] = useCurrentProject();
 
-  const yUsers = yAwareness ? useUsers(yAwareness) : [];
+  const rawUsers = useUsers(yAwareness);
 
   const users = Array.from(
-    yUsers.entries() as IterableIterator<[number, AwarenessUser]>,
+    rawUsers.entries() as IterableIterator<[number, AwarenessUser]>,
   )
     .filter(([key]) => key !== yAwareness?.clientID)
     .reduce<Record<string, AwarenessUser>>((acc, [key, value]) => {
