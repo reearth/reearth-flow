@@ -323,6 +323,7 @@ export default ({
 
   return {
     currentWorkflowId,
+    currentYWorkflow,
     openWorkflows,
     currentProject,
     nodes,

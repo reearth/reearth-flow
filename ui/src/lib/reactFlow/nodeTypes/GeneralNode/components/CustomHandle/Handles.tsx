@@ -1,6 +1,6 @@
 import { ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons";
 import { Position } from "@xyflow/react";
-import { memo, useState } from "react";
+import { memo } from "react";
 
 import {
   Collapsible,
@@ -15,15 +15,19 @@ type Props = {
   nodeType?: string;
   inputs?: string[];
   outputs?: string[];
+  isCollapsed?: boolean;
+  onCollapsedToggle?: (isCollapsed: boolean) => void;
 };
 
-const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const Handles: React.FC<Props> = ({
+  nodeType,
+  inputs,
+  outputs,
+  isCollapsed,
+  onCollapsedToggle,
+}) => {
   return (
-    <Collapsible
-      className="flex flex-col"
-      open={isOpen}
-      onOpenChange={setIsOpen}>
+    <Collapsible className="flex flex-col" open={!isCollapsed}>
       <div className="flex justify-between gap-0.5">
         {nodeType !== "reader" && inputs && (
           <div className="inset-x-0 mx-auto min-w-0 flex-1">
@@ -73,7 +77,7 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
           </div>
         )}
       </div>
-      {!isOpen && (
+      {isCollapsed && (
         <>
           {nodeType !== "reader" &&
             inputs &&
@@ -156,8 +160,9 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
       {((inputs && inputs.length >= 5) || (outputs && outputs.length >= 5)) && (
         <CollapsibleTrigger asChild className="justify-center self-center">
           <IconButton
+            onClick={() => onCollapsedToggle?.(!isCollapsed)}
             className="h-6 w-6"
-            icon={isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+            icon={!isCollapsed ? <ChevronUpIcon /> : <ChevronDownIcon />}
           />
         </CollapsibleTrigger>
       )}

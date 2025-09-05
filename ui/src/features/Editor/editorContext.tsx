@@ -6,11 +6,13 @@ import {
   useContext,
 } from "react";
 
+import type { YWorkflow } from "@flow/lib/yjs/types";
 import { NodeChange } from "@flow/types";
 
 export type EditorContextType = {
   onNodesChange?: (changes: NodeChange[]) => void;
   onNodeSettings?: (_e: MouseEvent | undefined, nodeId: string) => void;
+  currentYWorkflow?: YWorkflow;
 };
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
