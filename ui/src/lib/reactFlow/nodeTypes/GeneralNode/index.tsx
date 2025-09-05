@@ -23,6 +23,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
   data,
   type,
   selected,
+  id,
 }) => {
   const {
     officialName,
@@ -33,7 +34,8 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
     borderColor,
     selectedColor,
     selectedBackgroundColor,
-  } = useHooks({ data, type });
+    handleCollapsedToggle,
+  } = useHooks({ data, type, nodeId: id });
 
   return (
     <div
@@ -58,7 +60,13 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
         </div>
         {/* <CaretRight weight="fill" /> */}
       </div>
-      <Handles nodeType={type} inputs={inputs} outputs={outputs} />
+      <Handles
+        nodeType={type}
+        inputs={inputs}
+        outputs={outputs}
+        isCollapsed={data.isCollapsed}
+        onCollapsedToggle={handleCollapsedToggle}
+      />
     </div>
   );
 };
