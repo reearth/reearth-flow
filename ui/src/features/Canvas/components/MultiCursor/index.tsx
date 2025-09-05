@@ -1,12 +1,10 @@
 import { ViewportPortal } from "@xyflow/react";
 import type { Awareness } from "y-protocols/awareness";
 
-import { AwarenessUser } from "@flow/lib/yjs/types";
-
 import { Cursor } from "./PerfectCursor";
 
 type MultiCursorProps = {
-  users: AwarenessUser[];
+  users: any;
   yAwareness: Awareness;
   currentUserName?: string;
 };

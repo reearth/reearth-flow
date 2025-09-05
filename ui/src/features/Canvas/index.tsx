@@ -19,7 +19,6 @@ import {
   connectionLineStyle,
   nodeTypes,
 } from "@flow/lib/reactFlow";
-import type { AwarenessUser } from "@flow/lib/yjs/types";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
 import { CanvasContextMenu, MultiCursor } from "./components";
@@ -38,7 +37,7 @@ type Props = {
   selectedEdgeIds?: string[];
   yDoc?: Doc | null;
   yAwareness?: Awareness | null;
-  users?: AwarenessUser[];
+  users?: any;
   currentUserName?: string;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onWorkflowOpen?: (workflowId: string) => void;

@@ -22,7 +22,7 @@ import {
 import { useProjectExport, useProjectSave } from "@flow/hooks";
 import { useSharedProject, useUser } from "@flow/lib/gql";
 import { useYjsStore } from "@flow/lib/yjs";
-import type { AwarenessUser, YWorkflow } from "@flow/lib/yjs/types";
+import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { useCurrentProject } from "@flow/stores";
 import type { Algorithm, Direction, Edge, Node } from "@flow/types";
@@ -97,7 +97,7 @@ export default ({
 
   const [currentProject] = useCurrentProject();
 
-  const users = yAwareness ? (useUsers(yAwareness) as AwarenessUser[]) : [];
+  const users = yAwareness ? useUsers(yAwareness) : [];
 
   const { handleProjectSnapshotSave, isSaving } = useProjectSave({
     projectId: currentProject?.id,
