@@ -417,12 +417,15 @@ impl<
                 for i in 0..self.0.len().saturating_sub(1) {
                     let p1 = &self.0[i];
                     let p2 = &self.0[i + 1];
-                    let distance = crate::utils::calculate_geo_distance_3d(p1, p2);
-                    if distance <= DISTANCE_THRESHOLD {
-                        reason.push(ValidationProblemAtPosition(
-                            ValidationProblem::DuplicateConsecutiveCoords,
-                            ValidationProblemPosition::LineString(CoordinatePosition(i as isize)),
-                        ));
+                    if let Some(distance) = crate::utils::calculate_geo_distance_3d(p1, p2) {
+                        if distance <= DISTANCE_THRESHOLD {
+                            reason.push(ValidationProblemAtPosition(
+                                ValidationProblem::DuplicateConsecutiveCoords,
+                                ValidationProblemPosition::LineString(CoordinatePosition(
+                                    i as isize,
+                                )),
+                            ));
+                        }
                     }
                 }
             }
@@ -533,15 +536,16 @@ impl<
                 for i in 0..coords.len().saturating_sub(1) {
                     let p1 = &coords[i];
                     let p2 = &coords[i + 1];
-                    let distance = crate::utils::calculate_geo_distance_3d(p1, p2);
-                    if distance <= DISTANCE_THRESHOLD {
-                        reason.push(ValidationProblemAtPosition(
-                            ValidationProblem::DuplicateConsecutiveCoords,
-                            ValidationProblemPosition::Polygon(
-                                RingRole::Exterior,
-                                CoordinatePosition(i as isize),
-                            ),
-                        ));
+                    if let Some(distance) = crate::utils::calculate_geo_distance_3d(p1, p2) {
+                        if distance <= DISTANCE_THRESHOLD {
+                            reason.push(ValidationProblemAtPosition(
+                                ValidationProblem::DuplicateConsecutiveCoords,
+                                ValidationProblemPosition::Polygon(
+                                    RingRole::Exterior,
+                                    CoordinatePosition(i as isize),
+                                ),
+                            ));
+                        }
                     }
                 }
 
@@ -551,15 +555,16 @@ impl<
                     for i in 0..coords.len().saturating_sub(1) {
                         let p1 = &coords[i];
                         let p2 = &coords[i + 1];
-                        let distance = crate::utils::calculate_geo_distance_3d(p1, p2);
-                        if distance <= DISTANCE_THRESHOLD {
-                            reason.push(ValidationProblemAtPosition(
-                                ValidationProblem::DuplicateConsecutiveCoords,
-                                ValidationProblemPosition::Polygon(
-                                    RingRole::Interior(j as isize),
-                                    CoordinatePosition(i as isize),
-                                ),
-                            ));
+                        if let Some(distance) = crate::utils::calculate_geo_distance_3d(p1, p2) {
+                            if distance <= DISTANCE_THRESHOLD {
+                                reason.push(ValidationProblemAtPosition(
+                                    ValidationProblem::DuplicateConsecutiveCoords,
+                                    ValidationProblemPosition::Polygon(
+                                        RingRole::Interior(j as isize),
+                                        CoordinatePosition(i as isize),
+                                    ),
+                                ));
+                            }
                         }
                     }
                 }

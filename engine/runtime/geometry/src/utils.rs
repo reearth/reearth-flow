@@ -367,14 +367,15 @@ fn is_colinear<Z: CoordFloat>(
 }
 
 /// Calculate 3D distance between two coordinates using geo-distance conversion
+/// Returns None if coordinate conversion fails
 pub fn calculate_geo_distance_3d<T: CoordFloat, Z: CoordFloat>(
     p1: &Coordinate<T, Z>,
     p2: &Coordinate<T, Z>,
-) -> f64 {
-    let lng1 = p1.x.to_f64().unwrap_or(0.0);
-    let lat1 = p1.y.to_f64().unwrap_or(0.0);
-    let lng2 = p2.x.to_f64().unwrap_or(0.0);
-    let lat2 = p2.y.to_f64().unwrap_or(0.0);
+) -> Option<f64> {
+    let lng1 = p1.x.to_f64()?;
+    let lat1 = p1.y.to_f64()?;
+    let lng2 = p2.x.to_f64()?;
+    let lat2 = p2.y.to_f64()?;
 
     let dlng = lng2 - lng1;
     let dlat = lat2 - lat1;
@@ -384,11 +385,11 @@ pub fn calculate_geo_distance_3d<T: CoordFloat, Z: CoordFloat>(
     let (dx_meters, dy_meters) = coordinate_diff_to_meter(dlng, dlat, mid_lat);
 
     // Handle Z coordinate (already in meters)
-    let dz_meters = if let (Some(z1), Some(z2)) = (p1.z.to_f64(), p2.z.to_f64()) {
-        z2 - z1
-    } else {
-        0.0
+    let dz_meters = match (p1.z.to_f64(), p2.z.to_f64()) {
+        (Some(z1), Some(z2)) => z2 - z1,
+        (None, None) => 0.0, // Both missing Z is valid
+        _ => return None,    // Inconsistent Z coordinate availability
     };
 
-    (dx_meters * dx_meters + dy_meters * dy_meters + dz_meters * dz_meters).sqrt()
+    Some((dx_meters * dx_meters + dy_meters * dy_meters + dz_meters * dz_meters).sqrt())
 }
