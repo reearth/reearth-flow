@@ -19,7 +19,7 @@ import {
   connectionLineStyle,
   nodeTypes,
 } from "@flow/lib/reactFlow";
-import type { ActionNodeType, Edge, Node } from "@flow/types";
+import type { ActionNodeType, AwarenessUser, Edge, Node } from "@flow/types";
 
 import { CanvasContextMenu, MultiCursor } from "./components";
 import useHooks, { defaultEdgeOptions } from "./hooks";
@@ -37,7 +37,7 @@ type Props = {
   selectedEdgeIds?: string[];
   yDoc?: Doc | null;
   yAwareness?: Awareness | null;
-  users?: any;
+  users?: Record<string, AwarenessUser>;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onWorkflowOpen?: (workflowId: string) => void;
   onNodesAdd?: (newNode: Node[]) => void;
@@ -62,7 +62,6 @@ const Canvas: React.FC<Props> = ({
   nodes,
   edges,
   selectedEdgeIds,
-  yDoc,
   yAwareness,
   users,
   onWorkflowAdd,
@@ -151,9 +150,7 @@ const Canvas: React.FC<Props> = ({
           gap={gridSize}
           color="rgba(63, 63, 70, 1)"
         />
-        {!readonly && yDoc && yAwareness && users && (
-          <MultiCursor users={users} yAwareness={yAwareness} />
-        )}
+        {!readonly && yAwareness && users && <MultiCursor users={users} />}
         {contextMenu && (
           <CanvasContextMenu
             data={contextMenu.data}

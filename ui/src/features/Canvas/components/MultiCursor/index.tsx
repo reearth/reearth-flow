@@ -1,46 +1,37 @@
 import { ViewportPortal } from "@xyflow/react";
-import type { Awareness } from "y-protocols/awareness";
+
+import type { AwarenessUser } from "@flow/types";
 
 import { Cursor } from "./PerfectCursor";
 
 type MultiCursorProps = {
-  users: any;
-  yAwareness: Awareness;
+  users: Record<string, AwarenessUser>;
 };
 
-type UserData = {
-  color?: string;
-  cursor?: { x: number; y: number };
-  userName?: string;
-};
-
-const MultiCursor: React.FC<MultiCursorProps> = ({ users, yAwareness }) => {
+const MultiCursor: React.FC<MultiCursorProps> = ({ users }) => {
   return (
     <ViewportPortal>
-      {Array.from(users.entries() as IterableIterator<[number, UserData]>).map(
-        ([key, value]) => {
-          if (key === yAwareness.clientID) return null;
-          if (!value.cursor) return null;
+      {Object.entries(users).map(([key, value]) => {
+        if (!value.cursor) return null;
 
-          return (
-            <div
-              key={key}
-              style={{
-                position: "absolute",
-                left: value.cursor.x,
-                top: value.cursor.y,
-                pointerEvents: "none",
-                zIndex: 1000,
-              }}>
-              <Cursor
-                color={value.color}
-                point={[0, 0]}
-                userName={value.userName}
-              />
-            </div>
-          );
-        },
-      )}
+        return (
+          <div
+            key={key}
+            style={{
+              position: "absolute",
+              left: value.cursor.x,
+              top: value.cursor.y,
+              pointerEvents: "none",
+              zIndex: 1000,
+            }}>
+            <Cursor
+              color={value.color}
+              point={[0, 0]}
+              userName={value.userName}
+            />
+          </div>
+        );
+      })}
     </ViewportPortal>
   );
 };

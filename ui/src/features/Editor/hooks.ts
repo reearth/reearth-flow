@@ -15,17 +15,22 @@ import type { Awareness } from "y-protocols/awareness";
 import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 
 import {
-  CURSOR_COLORS,
   DEFAULT_ENTRY_GRAPH_ID,
   EDITOR_HOT_KEYS,
 } from "@flow/global-constants";
 import { useProjectExport, useProjectSave } from "@flow/hooks";
-import { useSharedProject, useUser } from "@flow/lib/gql";
+import { useSharedProject } from "@flow/lib/gql";
 import { useYjsStore } from "@flow/lib/yjs";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { useCurrentProject } from "@flow/stores";
-import type { Algorithm, Direction, Edge, Node } from "@flow/types";
+import type {
+  Algorithm,
+  AwarenessUser,
+  Direction,
+  Edge,
+  Node,
+} from "@flow/types";
 
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
 import useDebugRun from "./useDebugRun";
@@ -56,8 +61,7 @@ export default ({
 
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
-  const { useGetMe } = useUser();
-  const { me } = useGetMe();
+
   const [openNode, setOpenNode] = useState<Node | undefined>(undefined);
 
   // TODO: If we split canvas more, or use refs, etc, this will become unnecessary @KaWaite
@@ -97,7 +101,19 @@ export default ({
 
   const [currentProject] = useCurrentProject();
 
-  const users = yAwareness ? useUsers(yAwareness) : [];
+  const yUsers = yAwareness ? useUsers(yAwareness) : [];
+
+  const users = Array.from(
+    yUsers.entries() as IterableIterator<[number, AwarenessUser]>,
+  )
+    .filter(([key]) => key !== yAwareness?.clientID)
+    .reduce<Record<string, AwarenessUser>>((acc, [key, value]) => {
+      if (!value.userName) {
+        value.userName = "Unknown user";
+      }
+      acc[key.toString()] = value;
+      return acc;
+    }, {});
 
   const { handleProjectSnapshotSave, isSaving } = useProjectSave({
     projectId: currentProject?.id,
@@ -329,16 +345,6 @@ export default ({
       handleProjectExport({ yDoc, project: currentProject });
     }
   };
-
-  useEffect(() => {
-    if (yAwareness && !yAwareness.getLocalState()?.color) {
-      const color =
-        CURSOR_COLORS[Math.floor(Math.random() * CURSOR_COLORS.length)];
-      yAwareness.setLocalStateField("color", color);
-      yAwareness.setLocalStateField("clientId", yAwareness.clientID);
-      yAwareness.setLocalStateField("userName", me?.name || "Unknown user");
-    }
-  }, [me, yAwareness]);
 
   const throttledMouseMove = useMemo(
     () =>
