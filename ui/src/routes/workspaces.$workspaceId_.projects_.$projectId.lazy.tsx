@@ -103,6 +103,7 @@ const EditorComponent = () => {
     undoManager,
     undoTrackerActionWrapper,
     yDocState,
+    awareness,
   } = useYjsSetup({
     isProtected: true,
     projectId,
@@ -116,6 +117,7 @@ const EditorComponent = () => {
       yWorkflows={yWorkflows}
       undoManager={undoManager}
       yDoc={yDocState}
+      awareness={awareness}
       undoTrackerActionWrapper={undoTrackerActionWrapper}
     />
   );
