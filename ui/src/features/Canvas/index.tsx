@@ -107,68 +107,66 @@ const Canvas: React.FC<Props> = ({
   });
 
   return (
-    <div className="relative h-full w-full">
-      <ReactFlow
-        ref={paneRef}
-        // Readonly props START
-        nodesConnectable={!readonly}
-        nodesFocusable={!readonly}
-        elementsSelectable={!readonly}
-        reconnectRadius={!readonly ? 10 : 0}
-        // Readonly props END
-        attributionPosition="bottom-left"
-        nodeDragThreshold={2}
-        snapToGrid
-        snapGrid={snapGrid}
-        selectionMode={SelectionMode["Partial"]}
-        nodes={nodes}
-        nodeTypes={nodeTypes}
-        edges={edges}
-        edgeTypes={edgeTypes}
-        defaultEdgeOptions={defaultEdgeOptions}
-        connectionLineComponent={CustomConnectionLine}
-        connectionLineStyle={connectionLineStyle}
-        isValidConnection={isValidConnection}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeDoubleClick={handleNodeSettings}
-        onNodeDragStart={handleCloseContextmenu}
-        onNodesDelete={handleNodesDelete}
-        onNodeContextMenu={handleNodeContextMenu}
-        onSelectionContextMenu={handleSelectionContextMenu}
-        onPaneContextMenu={handlePaneContextMenu}
-        onMoveStart={handleCloseContextmenu}
-        onDrop={handleNodeDrop}
-        onDragOver={handleNodeDragOver}
-        onConnect={handleConnect}
-        onReconnect={handleReconnect}
-        onBeforeDelete={onBeforeDelete}
-        onPaneMouseMove={onPaneMouseMove}>
-        <Background
-          className="bg-background"
-          variant={BackgroundVariant["Dots"]}
-          gap={gridSize}
-          color="rgba(63, 63, 70, 1)"
+    <ReactFlow
+      ref={paneRef}
+      // Readonly props START
+      nodesConnectable={!readonly}
+      nodesFocusable={!readonly}
+      elementsSelectable={!readonly}
+      reconnectRadius={!readonly ? 10 : 0}
+      // Readonly props END
+      attributionPosition="bottom-left"
+      nodeDragThreshold={2}
+      snapToGrid
+      snapGrid={snapGrid}
+      selectionMode={SelectionMode["Partial"]}
+      nodes={nodes}
+      nodeTypes={nodeTypes}
+      edges={edges}
+      edgeTypes={edgeTypes}
+      defaultEdgeOptions={defaultEdgeOptions}
+      connectionLineComponent={CustomConnectionLine}
+      connectionLineStyle={connectionLineStyle}
+      isValidConnection={isValidConnection}
+      onNodesChange={onNodesChange}
+      onEdgesChange={onEdgesChange}
+      onNodeDoubleClick={handleNodeSettings}
+      onNodeDragStart={handleCloseContextmenu}
+      onNodesDelete={handleNodesDelete}
+      onNodeContextMenu={handleNodeContextMenu}
+      onSelectionContextMenu={handleSelectionContextMenu}
+      onPaneContextMenu={handlePaneContextMenu}
+      onMoveStart={handleCloseContextmenu}
+      onDrop={handleNodeDrop}
+      onDragOver={handleNodeDragOver}
+      onConnect={handleConnect}
+      onReconnect={handleReconnect}
+      onBeforeDelete={onBeforeDelete}
+      onPaneMouseMove={onPaneMouseMove}>
+      <Background
+        className="bg-background"
+        variant={BackgroundVariant["Dots"]}
+        gap={gridSize}
+        color="rgba(63, 63, 70, 1)"
+      />
+      {!readonly && yAwareness && users && <MultiCursor users={users} />}
+      {contextMenu && (
+        <CanvasContextMenu
+          data={contextMenu.data}
+          selectedEdgeIds={selectedEdgeIds}
+          contextMenu={contextMenu}
+          onBeforeDelete={onBeforeDelete}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onWorkflowOpen={onWorkflowOpen}
+          onNodeSettings={onNodeSettings}
+          onCopy={onCopy}
+          onCut={onCut}
+          onPaste={onPaste}
+          onClose={handleCloseContextmenu}
         />
-        {!readonly && yAwareness && users && <MultiCursor users={users} />}
-        {contextMenu && (
-          <CanvasContextMenu
-            data={contextMenu.data}
-            selectedEdgeIds={selectedEdgeIds}
-            contextMenu={contextMenu}
-            onBeforeDelete={onBeforeDelete}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onWorkflowOpen={onWorkflowOpen}
-            onNodeSettings={onNodeSettings}
-            onCopy={onCopy}
-            onCut={onCut}
-            onPaste={onPaste}
-            onClose={handleCloseContextmenu}
-          />
-        )}
-      </ReactFlow>
-    </div>
+      )}
+    </ReactFlow>
   );
 };
 
