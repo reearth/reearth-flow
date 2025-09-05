@@ -4799,6 +4799,7 @@ __metadata:
     lodash-es: "npm:4.17.21"
     maplibre-gl: "npm:5.6.1"
     msw: "npm:2.10.4"
+    perfect-cursors: "npm:1.0.5"
     prettier: "npm:3.6.2"
     react: "npm:19.1.1"
     react-datepicker: "npm:8.4.0"
@@ -4822,6 +4823,7 @@ __metadata:
     vite: "npm:7.0.6"
     vite-plugin-cesium: "npm:1.2.23"
     vitest: "npm:3.2.4"
+    y-presence: "npm:0.2.3"
     y-websocket: "npm:3.0.0"
     yjs: "npm:13.6.27"
   languageName: unknown
@@ -5705,6 +5707,13 @@ __metadata:
   peerDependencies:
     "@testing-library/dom": ">=7.21.4"
   checksum: 10c0/75fea130a52bf320d35d46ed54f3eec77e71a56911b8b69a3fe29497b0b9947b2dc80d30f04054ad4ce7f577856ae3e5397ea7dff0ef14944d3909784c7a93fe
+  languageName: node
+  linkType: hard
+
+"@tldraw/vec@npm:^1.4.3":
+  version: 1.9.2
+  resolution: "@tldraw/vec@npm:1.9.2"
+  checksum: 10c0/3c17784d415fcad74a0711c018aeeed48880cb69bce2fb4a9ea14af41a9ee910adad9459eae71aaceef6749dff8cf8cadeae9aebf3992c985a09981468fc4db2
   languageName: node
   linkType: hard
 
@@ -12987,6 +12996,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"perfect-cursors@npm:1.0.5":
+  version: 1.0.5
+  resolution: "perfect-cursors@npm:1.0.5"
+  dependencies:
+    "@tldraw/vec": "npm:^1.4.3"
+  checksum: 10c0/551544d20a1f809b50f80d9850234d5994f200938b6c1102d8ab830ff499061b069ab01a9b3fcc7c3d1d9d26d8a51e19988486e7a716c1d7a9faea0ed43c5e5e
+  languageName: node
+  linkType: hard
+
 "picocolors@npm:1.1.1, picocolors@npm:^1.0.0, picocolors@npm:^1.1.1":
   version: 1.1.1
   resolution: "picocolors@npm:1.1.1"
@@ -15687,21 +15705,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"use-sync-external-store@npm:^1.2.0, use-sync-external-store@npm:^1.5.0":
+  version: 1.5.0
+  resolution: "use-sync-external-store@npm:1.5.0"
+  peerDependencies:
+    react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+  checksum: 10c0/1b8663515c0be34fa653feb724fdcce3984037c78dd4a18f68b2c8be55cc1a1084c578d5b75f158d41b5ddffc2bf5600766d1af3c19c8e329bb20af2ec6f52f4
+  languageName: node
+  linkType: hard
+
 "use-sync-external-store@npm:^1.2.2, use-sync-external-store@npm:^1.4.0":
   version: 1.4.0
   resolution: "use-sync-external-store@npm:1.4.0"
   peerDependencies:
     react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
   checksum: 10c0/ec011a5055962c0f6b509d6e78c0b143f8cd069890ae370528753053c55e3b360d3648e76cfaa854faa7a59eb08d6c5fb1015e60ffde9046d32f5b2a295acea5
-  languageName: node
-  linkType: hard
-
-"use-sync-external-store@npm:^1.5.0":
-  version: 1.5.0
-  resolution: "use-sync-external-store@npm:1.5.0"
-  peerDependencies:
-    react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-  checksum: 10c0/1b8663515c0be34fa653feb724fdcce3984037c78dd4a18f68b2c8be55cc1a1084c578d5b75f158d41b5ddffc2bf5600766d1af3c19c8e329bb20af2ec6f52f4
   languageName: node
   linkType: hard
 
@@ -16365,6 +16383,17 @@ __metadata:
   version: 4.0.2
   resolution: "xtend@npm:4.0.2"
   checksum: 10c0/366ae4783eec6100f8a02dff02ac907bf29f9a00b82ac0264b4d8b832ead18306797e283cf19de776538babfdcb2101375ec5646b59f08c52128ac4ab812ed0e
+  languageName: node
+  linkType: hard
+
+"y-presence@npm:0.2.3":
+  version: 0.2.3
+  resolution: "y-presence@npm:0.2.3"
+  dependencies:
+    use-sync-external-store: "npm:^1.2.0"
+  peerDependencies:
+    react: ">=16.8"
+  checksum: 10c0/8411075d6ebe5a63863e32581bfb487a90209a29d1c52bd3b2111f45c7d52a12bd0e7e44cc1ea23de003988fae12246f711fa930627310c48ec0f7178aeb8f27
   languageName: node
   linkType: hard
 

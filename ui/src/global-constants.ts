@@ -36,3 +36,14 @@ export const EDITOR_HOT_KEYS = [
   "meta+s", // save mac
   "ctrl+s", // save win
 ];
+
+export const CURSOR_COLORS = [
+  "#ef4444",
+  "#f59e0b",
+  "#10b981",
+  "#3b82f6",
+  "#8b5cf6",
+  "#ec4899",
+  "#06b6d4",
+  "#84cc16",
+];

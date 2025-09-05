@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
+import type { Awareness } from "y-protocols/awareness";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
 import { config } from "@flow/config";
-import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
+import { CURSOR_COLORS, DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 
 import { useAuth } from "../auth";
+import { useUser } from "../gql";
 
 import { yWorkflowConstructor } from "./conversions";
 import type { YWorkflow } from "./types";
@@ -25,6 +27,9 @@ export default ({
 
   const [yDocState, setYDocState] = useState<Y.Doc | null>(null);
   const [isSynced, setIsSynced] = useState(false);
+  const [yAwareness, setYAwareness] = useState<Awareness | null>(null);
+  const { useGetMe } = useUser();
+  const { me } = useGetMe();
 
   useEffect(() => {
     const yDoc = new Y.Doc();
@@ -39,14 +44,30 @@ export default ({
           params.token = token;
         }
 
-        yWebSocketProvider = new WebsocketProvider(
-          websocket,
-          `${projectId}:${workflowId}`,
-          yDoc,
-          {
-            params,
-          },
-        );
+        const roomName = `${projectId}:${workflowId}`;
+
+        yWebSocketProvider = new WebsocketProvider(websocket, roomName, yDoc, {
+          params,
+        });
+
+        if (
+          yWebSocketProvider.awareness &&
+          !yWebSocketProvider.awareness.getLocalState()?.color
+        ) {
+          const color =
+            CURSOR_COLORS[Math.floor(Math.random() * CURSOR_COLORS.length)];
+          yWebSocketProvider.awareness.setLocalStateField("color", color);
+          yWebSocketProvider.awareness.setLocalStateField(
+            "clientId",
+            yWebSocketProvider.awareness.clientID,
+          );
+          yWebSocketProvider.awareness.setLocalStateField(
+            "userName",
+            me?.name || "Unknown user",
+          );
+        }
+
+        setYAwareness(yWebSocketProvider.awareness);
 
         yWebSocketProvider.once("sync", () => {
           const metadata = yDoc.getMap("metadata");
@@ -76,9 +97,14 @@ export default ({
 
     return () => {
       setIsSynced(false);
+      // Clear awareness state before destroying
+      if (yWebSocketProvider?.awareness) {
+        yWebSocketProvider?.awareness.setLocalState(null);
+      }
       yWebSocketProvider?.destroy();
+      setYAwareness(null);
     };
-  }, [projectId, workflowId, isProtected, getAccessToken]);
+  }, [projectId, workflowId, isProtected, me, getAccessToken]);
 
   const currentUserClientId = yDocState?.clientID;
 
@@ -147,5 +173,6 @@ export default ({
     undoManager,
     undoTrackerActionWrapper,
     yDocState,
+    yAwareness,
   };
 };
