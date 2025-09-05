@@ -47,8 +47,11 @@ import type {
   CmsSchemaField,
   CmsSchemaFieldType,
   CmsAsset,
+  FacingLog,
 } from "@flow/types";
 import { formatDate, formatFileSize } from "@flow/utils";
+
+import { UserFacingLogFragment } from "./__gen__/graphql";
 
 export const toProject = (project: ProjectFragment): Project => ({
   id: project.id,
@@ -134,6 +137,13 @@ export const toLog = (log: LogFragment): Log => ({
   timestamp: log.timestamp,
   status: log.logLevel,
   message: log.message,
+});
+
+export const toUserFacingLog = (log: UserFacingLogFragment): FacingLog => ({
+  jobId: log.jobId,
+  timestamp: log.timestamp,
+  message: log.message,
+  metadata: log.metadata ?? undefined,
 });
 
 export const toProjectSnapShotMeta = (

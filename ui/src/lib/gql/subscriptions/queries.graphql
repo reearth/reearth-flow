@@ -15,3 +15,12 @@ subscription RealTimeLogs($jobId: ID!) {
 subscription OnNodeStatusChange($jobId: ID!, $nodeId: String!) {
   nodeStatus(jobId: $jobId, nodeId: $nodeId)
 }
+
+subscription UserFacingLogs($jobId: ID!) {
+  userFacingLogs(jobId: $jobId) {
+    jobId
+    timestamp
+    message
+    metadata
+  }
+}

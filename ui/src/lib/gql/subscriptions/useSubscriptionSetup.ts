@@ -9,6 +9,7 @@ export enum SubscriptionKeys {
   GetSubscribedJobStatus = "getSubscribedJobStatus",
   GetSubscribedEdgeStatus = "getSubscribedEdgeStatus", // TODO: Delete
   GetSubscribedNodeStatus = "getSubscribedNodeStatus",
+  GetSubscribedUserFacingLogs = "getSubscribedUserFacingLogs",
 }
 
 export type PossibleSubscriptionKeys = keyof typeof SubscriptionKeys;
@@ -43,11 +44,23 @@ const Node_STATUS_SUBSCRIPTION = `
   }
 `;
 
+const USER_FACING_LOGS = `
+ subscription UserFacingLogs($jobId: ID!) {
+   userFacingLogs(jobId: $jobId) {
+     jobId
+     timestamp
+     message
+     metadata
+   }
+ }
+`;
+
 const SubscriptionStrings: Record<PossibleSubscriptionKeys, string> = {
   GetSubscribedJobStatus: JOB_STATUS_SUBSCRIPTION,
   GetSubscribedEdgeStatus: EDGE_STATUS_SUBSCRIPTION, // TODO: Delete
   GetSubscribedNodeStatus: Node_STATUS_SUBSCRIPTION,
   GetSubscribedLogs: LOG_SUBSCRIPTION,
+  GetSubscribedUserFacingLogs: USER_FACING_LOGS,
 };
 
 const getWebSocketClient = (disabled?: boolean) => {

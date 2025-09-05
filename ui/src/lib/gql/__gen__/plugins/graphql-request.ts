@@ -1101,6 +1101,12 @@ export type SubscriptionUserFacingLogsArgs = {
   jobId: Scalars['ID']['input'];
 };
 
+export enum Theme {
+  Dark = 'DARK',
+  Default = 'DEFAULT',
+  Light = 'LIGHT'
+}
+
 export type TimeDriverInput = {
   interval: TimeInterval;
 };
@@ -1231,6 +1237,7 @@ export type User = Node & {
   email: Scalars['String']['output'];
   host?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
+  metadata: UserMetadata;
   name: Scalars['String']['output'];
 };
 
@@ -1240,6 +1247,15 @@ export type UserFacingLog = {
   message: Scalars['String']['output'];
   metadata?: Maybe<Scalars['JSON']['output']>;
   timestamp: Scalars['DateTime']['output'];
+};
+
+export type UserMetadata = {
+  __typename?: 'UserMetadata';
+  description?: Maybe<Scalars['String']['output']>;
+  lang: Scalars['Lang']['output'];
+  photoURL?: Maybe<Scalars['String']['output']>;
+  theme: Theme;
+  website?: Maybe<Scalars['String']['output']>;
 };
 
 export type Workspace = Node & {
@@ -1464,6 +1480,8 @@ export type ProjectSnapshotFragment = { __typename?: 'ProjectSnapshot', timestam
 
 export type LogFragment = { __typename?: 'Log', jobId: string, nodeId?: string | null, timestamp: any, logLevel: LogLevel, message: string };
 
+export type UserFacingLogFragment = { __typename?: 'UserFacingLog', jobId: string, timestamp: any, message: string, metadata?: any | null };
+
 export type CmsProjectFragment = { __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, createdAt: any, updatedAt: any };
 
 export type CmsModelFragment = { __typename?: 'CMSModel', id: string, projectId: string, name: string, description: string, editorUrl: string, key: string, publicApiEp: string, createdAt: any, updatedAt: any, schema: { __typename?: 'CMSSchema', schemaId: string, fields: Array<{ __typename?: 'CMSSchemaField', fieldId: string, key: string, type: CmsSchemaFieldType, name: string, description?: string | null }> } };
@@ -1638,6 +1656,13 @@ export type OnNodeStatusChangeSubscriptionVariables = Exact<{
 
 
 export type OnNodeStatusChangeSubscription = { __typename?: 'Subscription', nodeStatus: NodeStatus };
+
+export type UserFacingLogsSubscriptionVariables = Exact<{
+  jobId: Scalars['ID']['input'];
+}>;
+
+
+export type UserFacingLogsSubscription = { __typename?: 'Subscription', userFacingLogs?: { __typename?: 'UserFacingLog', jobId: string, timestamp: any, message: string, metadata?: any | null } | null };
 
 export type CreateTriggerMutationVariables = Exact<{
   input: CreateTriggerInput;
@@ -1894,6 +1919,14 @@ export const LogFragmentDoc = gql`
   timestamp
   logLevel
   message
+}
+    `;
+export const UserFacingLogFragmentDoc = gql`
+    fragment UserFacingLog on UserFacingLog {
+  jobId
+  timestamp
+  message
+  metadata
 }
     `;
 export const CmsProjectFragmentDoc = gql`
@@ -2346,6 +2379,16 @@ export const OnNodeStatusChangeDocument = gql`
   nodeStatus(jobId: $jobId, nodeId: $nodeId)
 }
     `;
+export const UserFacingLogsDocument = gql`
+    subscription UserFacingLogs($jobId: ID!) {
+  userFacingLogs(jobId: $jobId) {
+    jobId
+    timestamp
+    message
+    metadata
+  }
+}
+    `;
 export const CreateTriggerDocument = gql`
     mutation CreateTrigger($input: CreateTriggerInput!) {
   createTrigger(input: $input) {
@@ -2638,6 +2681,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     OnNodeStatusChange(variables: OnNodeStatusChangeSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<OnNodeStatusChangeSubscription> {
       return withWrapper((wrappedRequestHeaders) => client.request<OnNodeStatusChangeSubscription>({ document: OnNodeStatusChangeDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'OnNodeStatusChange', 'subscription', variables);
+    },
+    UserFacingLogs(variables: UserFacingLogsSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UserFacingLogsSubscription> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UserFacingLogsSubscription>({ document: UserFacingLogsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UserFacingLogs', 'subscription', variables);
     },
     CreateTrigger(variables: CreateTriggerMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateTriggerMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateTriggerMutation>({ document: CreateTriggerDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateTrigger', 'mutation', variables);
