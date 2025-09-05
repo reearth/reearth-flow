@@ -22,6 +22,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/kennygrant/sanitize v1.2.4
 	github.com/labstack/echo/v4 v4.13.3
+	github.com/oklog/ulid/v2 v2.1.1
 	github.com/ravilushqa/otelgqlgen v0.17.0
 	github.com/redis/go-redis/v9 v9.2.0
 	github.com/reearth/reearthx v0.0.0-20250711044138-418475ad1421
