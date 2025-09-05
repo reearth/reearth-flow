@@ -2,7 +2,7 @@ import { parseGeoJson } from "./geojson";
 import { parseJSONL } from "./jsonl";
 import { intermediateDataTransform } from "./jsonl/transformIntermediateData";
 
-export type SupportedDataTypes = "geojson";
+export type SupportedDataTypes = "geojson" | "jsonl";
 
 export async function fetchAndReadData(fileUrl: string): Promise<{
   fileContent: any;

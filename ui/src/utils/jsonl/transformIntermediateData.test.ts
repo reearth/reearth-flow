@@ -36,23 +36,129 @@ describe("intermediateDataTransform", () => {
     );
   });
 
-  it("should return the original data with a warning for 3D geometry", () => {
+  it("should transform 3D geometry correctly", () => {
     const data = {
       id: "123",
-      attributes: { name: "Test" },
+      attributes: { name: "Test 3D Point" },
       geometry: {
         value: {
-          flowGeometry3D: {},
+          flowGeometry3D: {
+            point: { x: 10, y: 20, z: 30 },
+          },
         },
       },
     };
 
-    const result = intermediateDataTransform(data);
+    const expected = {
+      id: "123",
+      type: "Feature",
+      properties: { name: "Test 3D Point" },
+      geometry: {
+        type: "Point",
+        coordinates: [10, 20, 30],
+      },
+    };
 
-    expect(result).toEqual(data);
-    expect(console.warn).toHaveBeenCalledWith(
-      "3D geometry detected, but 3D viewer is not supported yet. Displaying raw data.",
-    );
+    expect(intermediateDataTransform(data)).toEqual(expected);
+  });
+
+  it("should transform CityGML geometry correctly", () => {
+    const data = {
+      id: "123",
+      attributes: { name: "Test CityGML" },
+      geometry: {
+        value: {
+          cityGmlGeometry: {
+            building: { height: 10, type: "residential" },
+            surface: "roof",
+          },
+        },
+      },
+    };
+
+    const expected = {
+      id: "123",
+      type: "Feature",
+      properties: { name: "Test CityGML" },
+      geometry: {
+        type: "CityGmlGeometry",
+        building: { height: 10, type: "residential" },
+        surface: "roof",
+      },
+    };
+
+    expect(intermediateDataTransform(data)).toEqual(expected);
+  });
+
+  describe("3D geometry transformation", () => {
+    it("should transform 3D polygon geometry correctly", () => {
+      const data = {
+        id: "123",
+        attributes: { name: "Test 3D Polygon" },
+        geometry: {
+          value: {
+            flowGeometry3D: {
+              polygon: {
+                exterior: [
+                  { x: 0, y: 0, z: 0 },
+                  { x: 10, y: 0, z: 0 },
+                  { x: 10, y: 10, z: 5 },
+                  { x: 0, y: 10, z: 5 },
+                  { x: 0, y: 0, z: 0 },
+                ],
+                interiors: [],
+              },
+            },
+          },
+        },
+      };
+
+      const expected = {
+        id: "123",
+        type: "Feature",
+        properties: { name: "Test 3D Polygon" },
+        geometry: {
+          type: "Polygon",
+          coordinates: [
+            [
+              [0, 0, 0],
+              [10, 0, 0],
+              [10, 10, 5],
+              [0, 10, 5],
+              [0, 0, 0],
+            ],
+          ],
+        },
+      };
+
+      expect(intermediateDataTransform(data)).toEqual(expected);
+    });
+
+    it("should handle 3D geometry with fallback type", () => {
+      const data = {
+        id: "123",
+        attributes: { name: "Test Unknown 3D" },
+        geometry: {
+          value: {
+            flowGeometry3D: {
+              unknownType: { data: "test" },
+            },
+          },
+        },
+      };
+
+      const expected = {
+        id: "123",
+        type: "Feature",
+        properties: { name: "Test Unknown 3D" },
+        geometry: {
+          type: "FlowGeometry3D",
+          unknownType: { data: "test" },
+        },
+      };
+
+      expect(intermediateDataTransform(data)).toEqual(expected);
+    });
   });
 
   describe("2D geometry transformation", () => {

@@ -13,6 +13,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/log"
+	"github.com/reearth/reearth-flow/api/pkg/userfacinglog"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/appx"
@@ -36,6 +37,10 @@ func (m *mockLogGateway) GetNodeExecutions(ctx context.Context, jobID id.JobID) 
 
 func (m *mockLogGateway) GetLogs(ctx context.Context, since time.Time, until time.Time, jobID id.JobID) ([]*log.Log, error) {
 	return m.logs, m.err
+}
+
+func (m *mockLogGateway) GetUserFacingLogs(ctx context.Context, since time.Time, until time.Time, jobID id.JobID) ([]*userfacinglog.UserFacingLog, error) {
+	return []*userfacinglog.UserFacingLog{}, nil
 }
 
 type mockJobRepo struct {

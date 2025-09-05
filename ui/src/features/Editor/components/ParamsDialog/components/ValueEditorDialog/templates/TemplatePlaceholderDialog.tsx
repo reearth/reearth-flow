@@ -117,8 +117,8 @@ const TemplatePlaceholderDialog: React.FC<Props> = ({
 
         <div className="flex flex-col space-y-6">
           {/* Template Info */}
-          <div className="bg-muted/30 rounded-lg p-4">
-            <p className="text-sm text-muted-foreground mb-2">
+          <div className="rounded-lg bg-muted/30 p-4">
+            <p className="mb-2 text-sm text-muted-foreground">
               {template.description}
             </p>
             {template.usageExample && (
@@ -155,12 +155,12 @@ const TemplatePlaceholderDialog: React.FC<Props> = ({
                         <Label
                           htmlFor={`placeholder-${placeholder.key}`}
                           className="text-sm">
-                          <code className="bg-muted/50 px-1.5 py-0.5 rounded text-xs font-mono mr-2">
+                          <code className="mr-2 rounded bg-muted/50 px-1.5 py-0.5 font-mono text-xs">
                             {placeholder.key}
                           </code>
                           {placeholder.description}
                           {!placeholder.defaultValue && (
-                            <span className="text-red-500 ml-1">*</span>
+                            <span className="ml-1 text-red-500">*</span>
                           )}
                         </Label>
 
@@ -183,14 +183,14 @@ const TemplatePlaceholderDialog: React.FC<Props> = ({
                         {placeholder.defaultValue && (
                           <p className="text-xs text-muted-foreground">
                             {t("Default")}:{" "}
-                            <code className="bg-muted/50 px-1 rounded">
+                            <code className="rounded bg-muted/50 px-1">
                               {placeholder.defaultValue}
                             </code>
                           </p>
                         )}
 
                         {hasError && (
-                          <p className="text-xs text-red-600 flex items-center gap-1">
+                          <p className="flex items-center gap-1 text-xs text-red-600">
                             <WarningCircleIcon className="h-3 w-3" />
                             {hasError}
                           </p>
@@ -212,13 +212,13 @@ const TemplatePlaceholderDialog: React.FC<Props> = ({
                 size="sm"
                 onClick={() => setShowPreview(!showPreview)}
                 className="h-8">
-                <EyeIcon className="h-4 w-4 mr-1" />
+                <EyeIcon className="mr-1 h-4 w-4" />
                 {showPreview ? t("Hide") : t("Show")} {t("Full Code")}
               </Button>
             </div>
 
-            <div className="bg-muted/30 rounded-lg p-4">
-              <pre className="text-xs font-mono overflow-x-auto">
+            <div className="rounded-lg bg-muted/30 p-4">
+              <pre className="overflow-x-auto font-mono text-xs">
                 <code>
                   {showPreview
                     ? processedTemplate.populatedCode
@@ -260,7 +260,7 @@ const TemplatePlaceholderDialog: React.FC<Props> = ({
             onClick={handleInsert}
             disabled={!canInsert || hasValidationErrors}
             className="min-w-[100px]">
-            <MagicWandIcon className="h-4 w-4 mr-2" />
+            <MagicWandIcon className="mr-2 h-4 w-4" />
             {t("Insert Template")}
           </Button>
         </DialogFooter>

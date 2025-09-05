@@ -113,6 +113,7 @@ nodes:
     action: GeometryValidator
     with:
       validationTypes:
+        - duplicateConsecutivePoints
         - selfIntersection
 
   ## Ring not closed
@@ -194,6 +195,8 @@ nodes:
       groupBy:
         - surfaceId
         - holeId
+      # TODO: Temporary value, fix later
+      tolerance: 0.001
       outputAttribute: overlap
 
   ## Intersection between Interior and Interior
@@ -470,4 +473,9 @@ edges:
     from: 6920a4e3-70e9-4e01-9a21-d5b7af9c0425
     to: b0885dfa-5ad2-4927-9911-c17c49e6728d
     fromPort: incorrectInterior
+    toPort: default
+  - id: 7e02297a-3aa4-44a4-909b-c0a15aa2fd9c
+    from: 7e02297a-3aa4-44a4-909b-c0a15aa2fd8c
+    to: b0885dfa-5ad2-4927-9911-c17c49e6728d
+    fromPort: failed
     toPort: default
