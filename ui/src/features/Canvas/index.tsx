@@ -44,7 +44,11 @@ type Props = {
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onBeforeDelete?: (args: { nodes: Node[] }) => Promise<boolean>;
   onNodeSettings?: (e: MouseEvent | undefined, nodeId: string) => void;
-  onNodePickerOpen?: (position: XYPosition, nodeType?: ActionNodeType) => void;
+  onNodePickerOpen?: (
+    position: XYPosition,
+    nodeType?: ActionNodeType,
+    isMainWorkflow?: boolean,
+  ) => void;
   onEdgesAdd?: (newEdges: Edge[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onCopy?: (node?: Node) => void;
@@ -107,6 +111,9 @@ const Canvas: React.FC<Props> = ({
     onEdgesAdd,
     onEdgesChange,
     onNodePickerOpen,
+    onCopy,
+    onCut,
+    onPaste,
   });
 
   const handlePaneMouseMove = useCallback((event: MouseEvent) => {

@@ -223,19 +223,20 @@ type ComplexityRoot struct {
 	}
 
 	Job struct {
-		CompletedAt   func(childComplexity int) int
-		Debug         func(childComplexity int) int
-		Deployment    func(childComplexity int) int
-		DeploymentID  func(childComplexity int) int
-		ID            func(childComplexity int) int
-		Logs          func(childComplexity int, since time.Time) int
-		LogsURL       func(childComplexity int) int
-		OutputURLs    func(childComplexity int) int
-		StartedAt     func(childComplexity int) int
-		Status        func(childComplexity int) int
-		WorkerLogsURL func(childComplexity int) int
-		Workspace     func(childComplexity int) int
-		WorkspaceID   func(childComplexity int) int
+		CompletedAt       func(childComplexity int) int
+		Debug             func(childComplexity int) int
+		Deployment        func(childComplexity int) int
+		DeploymentID      func(childComplexity int) int
+		ID                func(childComplexity int) int
+		Logs              func(childComplexity int, since time.Time) int
+		LogsURL           func(childComplexity int) int
+		OutputURLs        func(childComplexity int) int
+		StartedAt         func(childComplexity int) int
+		Status            func(childComplexity int) int
+		UserFacingLogsURL func(childComplexity int) int
+		WorkerLogsURL     func(childComplexity int) int
+		Workspace         func(childComplexity int) int
+		WorkspaceID       func(childComplexity int) int
 	}
 
 	JobConnection struct {
@@ -449,9 +450,10 @@ type ComplexityRoot struct {
 	}
 
 	Subscription struct {
-		JobStatus  func(childComplexity int, jobID gqlmodel.ID) int
-		Logs       func(childComplexity int, jobID gqlmodel.ID) int
-		NodeStatus func(childComplexity int, jobID gqlmodel.ID, nodeID string) int
+		JobStatus      func(childComplexity int, jobID gqlmodel.ID) int
+		Logs           func(childComplexity int, jobID gqlmodel.ID) int
+		NodeStatus     func(childComplexity int, jobID gqlmodel.ID, nodeID string) int
+		UserFacingLogs func(childComplexity int, jobID gqlmodel.ID) int
 	}
 
 	Trigger struct {
@@ -501,6 +503,13 @@ type ComplexityRoot struct {
 		ID       func(childComplexity int) int
 		Metadata func(childComplexity int) int
 		Name     func(childComplexity int) int
+	}
+
+	UserFacingLog struct {
+		JobID     func(childComplexity int) int
+		Message   func(childComplexity int) int
+		Metadata  func(childComplexity int) int
+		Timestamp func(childComplexity int) int
 	}
 
 	UserMetadata struct {
@@ -626,6 +635,7 @@ type SubscriptionResolver interface {
 	JobStatus(ctx context.Context, jobID gqlmodel.ID) (<-chan gqlmodel.JobStatus, error)
 	Logs(ctx context.Context, jobID gqlmodel.ID) (<-chan *gqlmodel.Log, error)
 	NodeStatus(ctx context.Context, jobID gqlmodel.ID, nodeID string) (<-chan gqlmodel.NodeStatus, error)
+	UserFacingLogs(ctx context.Context, jobID gqlmodel.ID) (<-chan *gqlmodel.UserFacingLog, error)
 }
 type TriggerResolver interface {
 	Workspace(ctx context.Context, obj *gqlmodel.Trigger) (*gqlmodel.Workspace, error)
@@ -1377,6 +1387,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Job.Status(childComplexity), true
+
+	case "Job.userFacingLogsURL":
+		if e.complexity.Job.UserFacingLogsURL == nil {
+			break
+		}
+
+		return e.complexity.Job.UserFacingLogsURL(childComplexity), true
 
 	case "Job.workerLogsURL":
 		if e.complexity.Job.WorkerLogsURL == nil {
@@ -2758,6 +2775,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Subscription.NodeStatus(childComplexity, args["jobId"].(gqlmodel.ID), args["nodeId"].(string)), true
 
+	case "Subscription.userFacingLogs":
+		if e.complexity.Subscription.UserFacingLogs == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_userFacingLogs_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Subscription.UserFacingLogs(childComplexity, args["jobId"].(gqlmodel.ID)), true
+
 	case "Trigger.authToken":
 		if e.complexity.Trigger.AuthToken == nil {
 			break
@@ -2932,6 +2961,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.User.Name(childComplexity), true
+
+	case "UserFacingLog.jobId":
+		if e.complexity.UserFacingLog.JobID == nil {
+			break
+		}
+
+		return e.complexity.UserFacingLog.JobID(childComplexity), true
+
+	case "UserFacingLog.message":
+		if e.complexity.UserFacingLog.Message == nil {
+			break
+		}
+
+		return e.complexity.UserFacingLog.Message(childComplexity), true
+
+	case "UserFacingLog.metadata":
+		if e.complexity.UserFacingLog.Metadata == nil {
+			break
+		}
+
+		return e.complexity.UserFacingLog.Metadata(childComplexity), true
+
+	case "UserFacingLog.timestamp":
+		if e.complexity.UserFacingLog.Timestamp == nil {
+			break
+		}
+
+		return e.complexity.UserFacingLog.Timestamp(childComplexity), true
 
 	case "UserMetadata.description":
 		if e.complexity.UserMetadata.Description == nil {
@@ -3629,6 +3686,7 @@ extend type Query {
   id: ID!
   logsURL: String
   workerLogsURL: String
+  userFacingLogsURL: String
   outputURLs: [String!]
   startedAt: DateTime!
   status: JobStatus!
@@ -4120,6 +4178,17 @@ extend type Mutation {
   updateMe(input: UpdateMeInput!): UpdateMePayload
   removeMyAuth(input: RemoveMyAuthInput!): UpdateMePayload
   deleteMe(input: DeleteMeInput!): DeleteMePayload
+}
+`, BuiltIn: false},
+	{Name: "../../../gql/userfacinglog.graphql", Input: `type UserFacingLog {
+  jobId: ID!
+  timestamp: DateTime!
+  message: String!
+  metadata: JSON
+}
+
+extend type Subscription {
+  userFacingLogs(jobId: ID!): UserFacingLog
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/workspace.graphql", Input: `type Workspace implements Node {
@@ -6887,6 +6956,34 @@ func (ec *executionContext) field_Subscription_nodeStatus_argsNodeID(
 	}
 
 	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_userFacingLogs_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Subscription_userFacingLogs_argsJobID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["jobId"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Subscription_userFacingLogs_argsJobID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (gqlmodel.ID, error) {
+	if _, ok := rawArgs["jobId"]; !ok {
+		var zeroVal gqlmodel.ID
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("jobId"))
+	if tmp, ok := rawArgs["jobId"]; ok {
+		return ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+	}
+
+	var zeroVal gqlmodel.ID
 	return zeroVal, nil
 }
 
@@ -10255,6 +10352,8 @@ func (ec *executionContext) fieldContext_CancelJobPayload_job(_ context.Context,
 				return ec.fieldContext_Job_logsURL(ctx, field)
 			case "workerLogsURL":
 				return ec.fieldContext_Job_workerLogsURL(ctx, field)
+			case "userFacingLogsURL":
+				return ec.fieldContext_Job_userFacingLogsURL(ctx, field)
 			case "outputURLs":
 				return ec.fieldContext_Job_outputURLs(ctx, field)
 			case "startedAt":
@@ -11741,6 +11840,47 @@ func (ec *executionContext) fieldContext_Job_workerLogsURL(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _Job_userFacingLogsURL(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Job_userFacingLogsURL(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UserFacingLogsURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Job_userFacingLogsURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Job",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Job_outputURLs(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Job_outputURLs(ctx, field)
 	if err != nil {
@@ -12086,6 +12226,8 @@ func (ec *executionContext) fieldContext_JobConnection_nodes(_ context.Context, 
 				return ec.fieldContext_Job_logsURL(ctx, field)
 			case "workerLogsURL":
 				return ec.fieldContext_Job_workerLogsURL(ctx, field)
+			case "userFacingLogsURL":
+				return ec.fieldContext_Job_userFacingLogsURL(ctx, field)
 			case "outputURLs":
 				return ec.fieldContext_Job_outputURLs(ctx, field)
 			case "startedAt":
@@ -12254,6 +12396,8 @@ func (ec *executionContext) fieldContext_JobPayload_job(_ context.Context, field
 				return ec.fieldContext_Job_logsURL(ctx, field)
 			case "workerLogsURL":
 				return ec.fieldContext_Job_workerLogsURL(ctx, field)
+			case "userFacingLogsURL":
+				return ec.fieldContext_Job_userFacingLogsURL(ctx, field)
 			case "outputURLs":
 				return ec.fieldContext_Job_outputURLs(ctx, field)
 			case "startedAt":
@@ -18919,6 +19063,8 @@ func (ec *executionContext) fieldContext_Query_job(ctx context.Context, field gr
 				return ec.fieldContext_Job_logsURL(ctx, field)
 			case "workerLogsURL":
 				return ec.fieldContext_Job_workerLogsURL(ctx, field)
+			case "userFacingLogsURL":
+				return ec.fieldContext_Job_userFacingLogsURL(ctx, field)
 			case "outputURLs":
 				return ec.fieldContext_Job_outputURLs(ctx, field)
 			case "startedAt":
@@ -19707,6 +19853,8 @@ func (ec *executionContext) fieldContext_RunProjectPayload_job(_ context.Context
 				return ec.fieldContext_Job_logsURL(ctx, field)
 			case "workerLogsURL":
 				return ec.fieldContext_Job_workerLogsURL(ctx, field)
+			case "userFacingLogsURL":
+				return ec.fieldContext_Job_userFacingLogsURL(ctx, field)
 			case "outputURLs":
 				return ec.fieldContext_Job_outputURLs(ctx, field)
 			case "startedAt":
@@ -20214,6 +20362,82 @@ func (ec *executionContext) fieldContext_Subscription_nodeStatus(ctx context.Con
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Subscription_nodeStatus_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_userFacingLogs(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_userFacingLogs(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().UserFacingLogs(rctx, fc.Args["jobId"].(gqlmodel.ID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *gqlmodel.UserFacingLog):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalOUserFacingLog2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUserFacingLog(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_userFacingLogs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "jobId":
+				return ec.fieldContext_UserFacingLog_jobId(ctx, field)
+			case "timestamp":
+				return ec.fieldContext_UserFacingLog_timestamp(ctx, field)
+			case "message":
+				return ec.fieldContext_UserFacingLog_message(ctx, field)
+			case "metadata":
+				return ec.fieldContext_UserFacingLog_metadata(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UserFacingLog", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_userFacingLogs_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -21460,6 +21684,179 @@ func (ec *executionContext) fieldContext_User_metadata(_ context.Context, field 
 				return ec.fieldContext_UserMetadata_lang(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UserMetadata", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserFacingLog_jobId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.UserFacingLog) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UserFacingLog_jobId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.JobID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.ID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UserFacingLog_jobId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserFacingLog",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserFacingLog_timestamp(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.UserFacingLog) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UserFacingLog_timestamp(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Timestamp, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNDateTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UserFacingLog_timestamp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserFacingLog",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserFacingLog_message(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.UserFacingLog) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UserFacingLog_message(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Message, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UserFacingLog_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserFacingLog",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserFacingLog_metadata(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.UserFacingLog) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UserFacingLog_metadata(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Metadata, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.JSON)
+	fc.Result = res
+	return ec.marshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UserFacingLog_metadata(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserFacingLog",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type JSON does not have child fields")
 		},
 	}
 	return fc, nil
@@ -27069,6 +27466,8 @@ func (ec *executionContext) _Job(ctx context.Context, sel ast.SelectionSet, obj 
 			out.Values[i] = ec._Job_logsURL(ctx, field, obj)
 		case "workerLogsURL":
 			out.Values[i] = ec._Job_workerLogsURL(ctx, field, obj)
+		case "userFacingLogsURL":
+			out.Values[i] = ec._Job_userFacingLogsURL(ctx, field, obj)
 		case "outputURLs":
 			out.Values[i] = ec._Job_outputURLs(ctx, field, obj)
 		case "startedAt":
@@ -29273,6 +29672,8 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 		return ec._Subscription_logs(ctx, fields[0])
 	case "nodeStatus":
 		return ec._Subscription_nodeStatus(ctx, fields[0])
+	case "userFacingLogs":
+		return ec._Subscription_userFacingLogs(ctx, fields[0])
 	default:
 		panic("unknown field " + strconv.Quote(fields[0].Name))
 	}
@@ -29699,6 +30100,57 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var userFacingLogImplementors = []string{"UserFacingLog"}
+
+func (ec *executionContext) _UserFacingLog(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.UserFacingLog) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, userFacingLogImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UserFacingLog")
+		case "jobId":
+			out.Values[i] = ec._UserFacingLog_jobId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "timestamp":
+			out.Values[i] = ec._UserFacingLog_timestamp(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "message":
+			out.Values[i] = ec._UserFacingLog_message(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "metadata":
+			out.Values[i] = ec._UserFacingLog_metadata(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -32863,6 +33315,13 @@ func (ec *executionContext) marshalOUser2ᚖgithubᚗcomᚋreearthᚋreearthᚑf
 		return graphql.Null
 	}
 	return ec._User(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOUserFacingLog2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUserFacingLog(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.UserFacingLog) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._UserFacingLog(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOWorkspace2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐWorkspace(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.Workspace) graphql.Marshaler {

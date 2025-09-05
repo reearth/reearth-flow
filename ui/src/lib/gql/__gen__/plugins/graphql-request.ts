@@ -359,6 +359,7 @@ export type Job = Node & {
   outputURLs?: Maybe<Array<Scalars['String']['output']>>;
   startedAt: Scalars['DateTime']['output'];
   status: JobStatus;
+  userFacingLogsURL?: Maybe<Scalars['String']['output']>;
   workerLogsURL?: Maybe<Scalars['String']['output']>;
   workspace?: Maybe<Workspace>;
   workspaceId: Scalars['ID']['output'];
@@ -1076,6 +1077,7 @@ export type Subscription = {
   jobStatus: JobStatus;
   logs?: Maybe<Log>;
   nodeStatus: NodeStatus;
+  userFacingLogs?: Maybe<UserFacingLog>;
 };
 
 
@@ -1092,6 +1094,11 @@ export type SubscriptionLogsArgs = {
 export type SubscriptionNodeStatusArgs = {
   jobId: Scalars['ID']['input'];
   nodeId: Scalars['String']['input'];
+};
+
+
+export type SubscriptionUserFacingLogsArgs = {
+  jobId: Scalars['ID']['input'];
 };
 
 export type TimeDriverInput = {
@@ -1225,6 +1232,14 @@ export type User = Node & {
   host?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
+};
+
+export type UserFacingLog = {
+  __typename?: 'UserFacingLog';
+  jobId: Scalars['ID']['output'];
+  message: Scalars['String']['output'];
+  metadata?: Maybe<Scalars['JSON']['output']>;
+  timestamp: Scalars['DateTime']['output'];
 };
 
 export type Workspace = Node & {
