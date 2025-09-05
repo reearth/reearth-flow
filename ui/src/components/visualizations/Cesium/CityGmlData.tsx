@@ -29,7 +29,7 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData }) => {
     (feature: CityGmlFeature): Entity | null => {
       return convertFeatureToEntity(feature);
     },
-    []
+    [],
   );
 
   // Process CityGML data and create entities
@@ -43,16 +43,18 @@ const CityGmlData: React.FC<Props> = ({ cityGmlData }) => {
 
     const newEntities: Entity[] = [];
 
-    
     cityGmlData.features.forEach((feature) => {
       const entity = createCityGmlEntity(feature);
       if (entity) {
         viewer.entities.add(entity);
         newEntities.push(entity);
-        
+
         // Add surface entities if they exist
         const entityWithSurfaces = entity as any;
-        if (entityWithSurfaces.surfaces && Array.isArray(entityWithSurfaces.surfaces)) {
+        if (
+          entityWithSurfaces.surfaces &&
+          Array.isArray(entityWithSurfaces.surfaces)
+        ) {
           entityWithSurfaces.surfaces.forEach((surfaceEntity: any) => {
             viewer.entities.add(surfaceEntity);
             newEntities.push(surfaceEntity);

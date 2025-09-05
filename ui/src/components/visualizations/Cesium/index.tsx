@@ -35,13 +35,15 @@ const CesiumViewer: React.FC<Props> = ({ fileContent, fileType }) => {
   }, [isLoaded]);
 
   // Separate features by geometry type
-  const geoJsonFeatures = fileContent?.features?.filter(
-    (feature: any) => feature?.geometry?.type !== "CityGmlGeometry"
-  ) || [];
+  const geoJsonFeatures =
+    fileContent?.features?.filter(
+      (feature: any) => feature?.geometry?.type !== "CityGmlGeometry",
+    ) || [];
 
-  const cityGmlFeatures = fileContent?.features?.filter(
-    (feature: any) => feature?.geometry?.type === "CityGmlGeometry"
-  ) || [];
+  const cityGmlFeatures =
+    fileContent?.features?.filter(
+      (feature: any) => feature?.geometry?.type === "CityGmlGeometry",
+    ) || [];
 
   return (
     <Viewer full {...defaultCesiumProps}>
@@ -49,21 +51,21 @@ const CesiumViewer: React.FC<Props> = ({ fileContent, fileType }) => {
         <>
           {/* Standard GeoJSON features */}
           {geoJsonFeatures.length > 0 && (
-            <GeoJsonData 
+            <GeoJsonData
               geoJsonData={{
                 type: "FeatureCollection",
-                features: geoJsonFeatures
-              }} 
+                features: geoJsonFeatures,
+              }}
             />
           )}
-          
+
           {/* CityGML features */}
           {cityGmlFeatures.length > 0 && (
-            <CityGmlData 
+            <CityGmlData
               cityGmlData={{
                 type: "FeatureCollection",
-                features: cityGmlFeatures
-              }} 
+                features: cityGmlFeatures,
+              }}
             />
           )}
         </>
