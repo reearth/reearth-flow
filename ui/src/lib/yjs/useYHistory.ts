@@ -33,7 +33,9 @@ export default ({
       } catch (e) {
         console.error("Undo operation failed: ", e);
 
-        undoManager?.undoStack.splice(undoManager?.undoStack.length - 1, 1);
+        if (undoManager && undoManager.undoStack) {
+          undoManager.undoStack.splice(undoManager.undoStack.length - 1, 1);
+        }
 
         if (undoManager?.undoStack.length) {
           setTimeout(handleYWorkflowUndo, 0);
@@ -52,7 +54,9 @@ export default ({
       } catch (e) {
         console.error("Redo operation failed: ", e);
 
-        undoManager?.redoStack.splice(undoManager?.redoStack.length - 1, 1);
+        if (undoManager && undoManager.redoStack) {
+          undoManager.redoStack.splice(undoManager.redoStack.length - 1, 1);
+        }
 
         if (undoManager?.redoStack.length) {
           setTimeout(handleYWorkflowRedo, 0);

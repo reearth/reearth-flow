@@ -118,24 +118,21 @@ export default ({
 
     undoManager?.addToScope([sharedType]);
 
-    if (sharedType instanceof Y.Map) {
-      sharedType.forEach((value: any) => {
-        if (value instanceof Y.Map) {
-          recursivelyTrackSharedType(value);
+    sharedType.forEach((value: any) => {
+      if (value instanceof Y.Map) {
+        recursivelyTrackSharedType(value);
+      }
+    });
+    sharedType.observe((event: Y.YMapEvent<any>) => {
+      event.changes.keys.forEach((change: any, key: string) => {
+        if (change.action === "add" || change.action === "update") {
+          const newValue: any = sharedType.get(key);
+          if (newValue instanceof Y.Map) {
+            recursivelyTrackSharedType(newValue);
+          }
         }
       });
-
-      sharedType.observe((event: Y.YMapEvent<any>) => {
-        event.changes.keys.forEach((change: any, key: string) => {
-          if (change.action === "add" || change.action === "update") {
-            const newValue: any = sharedType.get(key);
-            if (newValue instanceof Y.Map) {
-              recursivelyTrackSharedType(newValue);
-            }
-          }
-        });
-      });
-    }
+    });
   }
 
   // Start the recursive tracking
