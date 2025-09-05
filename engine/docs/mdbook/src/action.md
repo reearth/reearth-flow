@@ -3131,6 +3131,7 @@ Validate Feature Geometry Quality
       "type": "string",
       "enum": [
         "duplicatePoints",
+        "duplicateConsecutivePoints",
         "corruptGeometry",
         "selfIntersection"
       ]
