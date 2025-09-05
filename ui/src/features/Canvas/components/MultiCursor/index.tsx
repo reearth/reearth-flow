@@ -6,12 +6,12 @@ import { Cursor } from "./PerfectCursor";
 type MultiCursorProps = {
   users: any;
   yAwareness: Awareness;
-  currentUserName?: string;
 };
 
 type UserData = {
   color?: string;
   cursor?: { x: number; y: number };
+  userName?: string;
 };
 
 const MultiCursor: React.FC<MultiCursorProps> = ({ users, yAwareness }) => {
@@ -32,7 +32,11 @@ const MultiCursor: React.FC<MultiCursorProps> = ({ users, yAwareness }) => {
                 pointerEvents: "none",
                 zIndex: 1000,
               }}>
-              <Cursor color={value.color} point={[0, 0]} />
+              <Cursor
+                color={value.color}
+                point={[0, 0]}
+                userName={value.userName}
+              />
             </div>
           );
         },

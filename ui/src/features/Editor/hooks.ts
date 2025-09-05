@@ -336,8 +336,9 @@ export default ({
         CURSOR_COLORS[Math.floor(Math.random() * CURSOR_COLORS.length)];
       yAwareness.setLocalStateField("color", color);
       yAwareness.setLocalStateField("clientId", yAwareness.clientID);
+      yAwareness.setLocalStateField("userName", me?.name || "Unknown user");
     }
-  }, [yAwareness]);
+  }, [me, yAwareness]);
 
   const throttledMouseMove = useMemo(
     () =>
