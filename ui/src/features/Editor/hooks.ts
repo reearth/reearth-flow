@@ -1,4 +1,5 @@
 import { useReactFlow } from "@xyflow/react";
+import { throttle } from "lodash-es";
 import {
   MouseEvent,
   useCallback,
@@ -9,16 +10,19 @@ import {
 } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useY } from "react-yjs";
+import { useUsers } from "y-presence";
+import type { Awareness } from "y-protocols/awareness";
 import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 
 import {
+  CURSOR_COLORS,
   DEFAULT_ENTRY_GRAPH_ID,
   EDITOR_HOT_KEYS,
 } from "@flow/global-constants";
 import { useProjectExport, useProjectSave } from "@flow/hooks";
 import { useSharedProject, useUser } from "@flow/lib/gql";
 import { useYjsStore } from "@flow/lib/yjs";
-import type { YWorkflow } from "@flow/lib/yjs/types";
+import type { AwarenessUser, YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { useCurrentProject } from "@flow/stores";
 import type { Algorithm, Direction, Edge, Node } from "@flow/types";
@@ -31,18 +35,20 @@ import useUIState from "./useUIState";
 export default ({
   yDoc,
   yWorkflows,
+  yAwareness,
   undoManager,
   undoTrackerActionWrapper,
 }: {
   yDoc: Doc | null;
   yWorkflows: YMap<YWorkflow>;
+  yAwareness?: Awareness | null;
   undoManager: YUndoManager | null;
   undoTrackerActionWrapper: (
     callback: () => void,
     originPrepend?: string,
   ) => void;
 }) => {
-  const { fitView } = useReactFlow();
+  const { fitView, screenToFlowPosition } = useReactFlow();
 
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(
     DEFAULT_ENTRY_GRAPH_ID,
@@ -90,6 +96,8 @@ export default ({
   const { shareProject, unshareProject } = useSharedProject();
 
   const [currentProject] = useCurrentProject();
+
+  const users = yAwareness ? (useUsers(yAwareness) as AwarenessUser[]) : [];
 
   const { handleProjectSnapshotSave, isSaving } = useProjectSave({
     projectId: currentProject?.id,
@@ -322,11 +330,53 @@ export default ({
     }
   };
 
+  useEffect(() => {
+    if (yAwareness && !yAwareness.getLocalState()?.color) {
+      const color =
+        CURSOR_COLORS[Math.floor(Math.random() * CURSOR_COLORS.length)];
+      yAwareness.setLocalStateField("color", color);
+      yAwareness.setLocalStateField("clientId", yAwareness.clientID);
+    }
+  }, [yAwareness]);
+
+  const throttledMouseMove = useMemo(
+    () =>
+      throttle(
+        (
+          event: MouseEvent,
+          awareness: Awareness,
+          positionFn: typeof screenToFlowPosition,
+        ) => {
+          const flowPosition = positionFn(
+            {
+              x: event.clientX,
+              y: event.clientY,
+            },
+            { snapToGrid: false },
+          );
+          awareness.setLocalStateField("cursor", flowPosition);
+        },
+        32,
+        { leading: true, trailing: true },
+      ),
+    [],
+  );
+
+  const handlePaneMouseMove = useCallback(
+    (event: MouseEvent) => {
+      if (yAwareness) {
+        throttledMouseMove(event, yAwareness, screenToFlowPosition);
+      }
+    },
+    [yAwareness, screenToFlowPosition, throttledMouseMove],
+  );
+
   return {
     currentWorkflowId,
     openWorkflows,
     currentProject,
     me,
+    users,
     nodes,
     edges,
     selectedEdgeIds,
@@ -369,5 +419,6 @@ export default ({
     handleCut,
     handlePaste,
     handleProjectSnapshotSave,
+    handlePaneMouseMove,
   };
 };

@@ -26,7 +26,7 @@ export default ({
 
   const [yDocState, setYDocState] = useState<Y.Doc | null>(null);
   const [isSynced, setIsSynced] = useState(false);
-  const [awareness, setAwareness] = useState<Awareness | null>(null);
+  const [yAwareness, setYAwareness] = useState<Awareness | null>(null);
 
   useEffect(() => {
     const yDoc = new Y.Doc();
@@ -47,7 +47,7 @@ export default ({
           params,
         });
 
-        setAwareness(yWebSocketProvider.awareness);
+        setYAwareness(yWebSocketProvider.awareness);
 
         yWebSocketProvider.once("sync", () => {
           const metadata = yDoc.getMap("metadata");
@@ -82,7 +82,7 @@ export default ({
         yWebSocketProvider?.awareness.setLocalState(null);
       }
       yWebSocketProvider?.destroy();
-      setAwareness(null);
+      setYAwareness(null);
     };
   }, [projectId, workflowId, isProtected, getAccessToken]);
 
@@ -153,6 +153,6 @@ export default ({
     undoManager,
     undoTrackerActionWrapper,
     yDocState,
-    awareness,
+    yAwareness,
   };
 };

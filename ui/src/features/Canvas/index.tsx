@@ -8,7 +8,7 @@ import {
   NodeChange,
   EdgeChange,
 } from "@xyflow/react";
-import { MouseEvent, memo, useCallback, useRef } from "react";
+import { MouseEvent, memo } from "react";
 import type { Awareness } from "y-protocols/awareness";
 import type { Doc } from "yjs";
 
@@ -19,6 +19,7 @@ import {
   connectionLineStyle,
   nodeTypes,
 } from "@flow/lib/reactFlow";
+import type { AwarenessUser } from "@flow/lib/yjs/types";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
 import { CanvasContextMenu, MultiCursor } from "./components";
@@ -36,7 +37,8 @@ type Props = {
   edges: Edge[];
   selectedEdgeIds?: string[];
   yDoc?: Doc | null;
-  awareness?: Awareness | null;
+  yAwareness?: Awareness | null;
+  users?: AwarenessUser[];
   currentUserName?: string;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onWorkflowOpen?: (workflowId: string) => void;
@@ -54,6 +56,7 @@ type Props = {
   onCopy?: (node?: Node) => void;
   onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: () => void;
+  onPaneMouseMove?: (event: MouseEvent<Element, globalThis.MouseEvent>) => void;
 };
 
 const Canvas: React.FC<Props> = ({
@@ -62,7 +65,8 @@ const Canvas: React.FC<Props> = ({
   edges,
   selectedEdgeIds,
   yDoc,
-  awareness,
+  yAwareness,
+  users,
   currentUserName,
   onWorkflowAdd,
   onWorkflowOpen,
@@ -76,18 +80,8 @@ const Canvas: React.FC<Props> = ({
   onCopy,
   onCut,
   onPaste,
+  onPaneMouseMove,
 }) => {
-  const cursorUpdateRef = useRef<
-    ((clientX: number, clientY: number) => void) | null
-  >(null);
-
-  const handleCursorUpdate = useCallback(
-    (updateFn: (clientX: number, clientY: number) => void) => {
-      cursorUpdateRef.current = updateFn;
-    },
-    [],
-  );
-
   const {
     handleNodesDelete,
     handleNodeDragOver,
@@ -115,12 +109,6 @@ const Canvas: React.FC<Props> = ({
     onCut,
     onPaste,
   });
-
-  const handlePaneMouseMove = useCallback((event: MouseEvent) => {
-    if (cursorUpdateRef.current) {
-      cursorUpdateRef.current(event.clientX, event.clientY);
-    }
-  }, []);
 
   return (
     <div className="relative h-full w-full">
@@ -159,18 +147,18 @@ const Canvas: React.FC<Props> = ({
         onConnect={handleConnect}
         onReconnect={handleReconnect}
         onBeforeDelete={onBeforeDelete}
-        onPaneMouseMove={handlePaneMouseMove}>
+        onPaneMouseMove={onPaneMouseMove}>
         <Background
           className="bg-background"
           variant={BackgroundVariant["Dots"]}
           gap={gridSize}
           color="rgba(63, 63, 70, 1)"
         />
-        {!readonly && yDoc && awareness && (
+        {!readonly && yDoc && yAwareness && users && (
           <MultiCursor
-            awareness={awareness}
+            users={users}
+            yAwareness={yAwareness}
             currentUserName={currentUserName}
-            onCursorUpdate={handleCursorUpdate}
           />
         )}
         {contextMenu && (

@@ -22,7 +22,7 @@ type Props = {
     originPrepend?: string,
   ) => void;
   yDoc: Doc | null;
-  awareness?: Awareness | null;
+  yAwareness?: Awareness | null;
 };
 
 export default function Editor({
@@ -30,13 +30,14 @@ export default function Editor({
   undoManager,
   undoTrackerActionWrapper,
   yDoc,
-  awareness,
+  yAwareness,
 }: Props) {
   const {
     currentWorkflowId,
     openWorkflows,
     currentProject,
     me,
+    users,
     nodes,
     edges,
     selectedEdgeIds,
@@ -77,7 +78,14 @@ export default function Editor({
     handleCut,
     handlePaste,
     handleProjectSnapshotSave,
-  } = useHooks({ yDoc, yWorkflows, undoManager, undoTrackerActionWrapper });
+    handlePaneMouseMove,
+  } = useHooks({
+    yDoc,
+    yWorkflows,
+    yAwareness,
+    undoManager,
+    undoTrackerActionWrapper,
+  });
 
   const editorContext = useMemo(
     (): EditorContextType => ({
@@ -106,40 +114,42 @@ export default function Editor({
           onDebugRunStop={handleDebugRunStop}
           onProjectSnapshotSave={handleProjectSnapshotSave}
         />
-        <div className="relative flex flex-1">
-          <div className="flex flex-1 flex-col">
-            <OverlayUI
-              nodePickerOpen={nodePickerOpen}
-              canUndo={canUndo}
-              canRedo={canRedo}
-              isMainWorkflow={isMainWorkflow}
+
+        <div className="flex flex-1 flex-col">
+          <OverlayUI
+            nodePickerOpen={nodePickerOpen}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            isMainWorkflow={isMainWorkflow}
+            onNodesAdd={handleNodesAdd}
+            onNodePickerClose={handleNodePickerClose}
+            onWorkflowUndo={handleWorkflowUndo}
+            onWorkflowRedo={handleWorkflowRedo}
+            onLayoutChange={handleLayoutChange}>
+            <Canvas
+              nodes={nodes}
+              edges={edges}
+              selectedEdgeIds={selectedEdgeIds}
+              yDoc={yDoc}
+              yAwareness={yAwareness}
+              users={users}
+              currentUserName={me?.name}
+              onWorkflowAdd={handleWorkflowAdd}
+              onWorkflowOpen={handleWorkflowOpen}
               onNodesAdd={handleNodesAdd}
-              onNodePickerClose={handleNodePickerClose}
-              onWorkflowUndo={handleWorkflowUndo}
-              onWorkflowRedo={handleWorkflowRedo}
-              onLayoutChange={handleLayoutChange}>
-              <Canvas
-                nodes={nodes}
-                edges={edges}
-                selectedEdgeIds={selectedEdgeIds}
-                yDoc={yDoc}
-                awareness={awareness}
-                currentUserName={me?.name}
-                onWorkflowAdd={handleWorkflowAdd}
-                onWorkflowOpen={handleWorkflowOpen}
-                onNodesAdd={handleNodesAdd}
-                onBeforeDelete={handleBeforeDeleteNodes}
-                onNodesChange={handleNodesChange}
-                onNodeSettings={handleNodeSettings}
-                onNodePickerOpen={handleNodePickerOpen}
-                onEdgesAdd={handleEdgesAdd}
-                onEdgesChange={handleEdgesChange}
-                onCopy={handleCopy}
-                onCut={handleCut}
-                onPaste={handlePaste}
-              />
-            </OverlayUI>
-          </div>
+              onBeforeDelete={handleBeforeDeleteNodes}
+              onNodesChange={handleNodesChange}
+              onNodeSettings={handleNodeSettings}
+              onNodePickerOpen={handleNodePickerOpen}
+              onEdgesAdd={handleEdgesAdd}
+              onEdgesChange={handleEdgesChange}
+              onCopy={handleCopy}
+              onCut={handleCut}
+              onPaste={handlePaste}
+              onPaneMouseMove={handlePaneMouseMove}
+            />
+          </OverlayUI>
+
           {openNode && (
             <ParamsDialog
               openNode={openNode}

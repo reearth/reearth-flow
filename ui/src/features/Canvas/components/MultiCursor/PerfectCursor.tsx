@@ -1,12 +1,12 @@
-import * as React from "react";
+import { useRef, useCallback, useEffect, memo } from "react";
 
 import { usePerfectCursor } from "./hooks";
 
-export const Cursor = React.memo(
+export const Cursor = memo(
   ({ point, color }: { point?: number[]; color?: string }) => {
-    const rCursor = React.useRef<SVGSVGElement>(null);
+    const rCursor = useRef<SVGSVGElement>(null);
 
-    const animateCursor = React.useCallback((point: number[]) => {
+    const animateCursor = useCallback((point: number[]) => {
       const elm = rCursor.current;
       if (!elm) return;
       elm.style.setProperty(
@@ -17,9 +17,11 @@ export const Cursor = React.memo(
 
     const onPointMove = usePerfectCursor(animateCursor);
 
-    if (point) {
-      onPointMove(point);
-    }
+    useEffect(() => {
+      if (point) {
+        onPointMove(point);
+      }
+    }, [point, onPointMove]);
 
     if (!point || !color) return null;
 

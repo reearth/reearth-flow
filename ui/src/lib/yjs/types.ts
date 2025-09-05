@@ -13,3 +13,12 @@ export type YNodesMap = Y.Map<YNode>;
 export type YEdgesMap = Y.Map<YEdge>;
 
 export type YWorkflow = Y.Map<Y.Text | YNodesMap | YEdgesMap>;
+
+export type AwarenessUser = {
+  key: number;
+  value: {
+    clientId: number;
+    color?: string;
+    cursor?: { x: number; y: number };
+  };
+};
