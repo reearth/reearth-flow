@@ -36,7 +36,6 @@ export default function Editor({
     currentWorkflowId,
     openWorkflows,
     currentProject,
-    me,
     users,
     nodes,
     edges,
@@ -133,7 +132,6 @@ export default function Editor({
               yDoc={yDoc}
               yAwareness={yAwareness}
               users={users}
-              currentUserName={me?.name}
               onWorkflowAdd={handleWorkflowAdd}
               onWorkflowOpen={handleWorkflowOpen}
               onNodesAdd={handleNodesAdd}

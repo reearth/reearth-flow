@@ -38,7 +38,6 @@ type Props = {
   yDoc?: Doc | null;
   yAwareness?: Awareness | null;
   users?: any;
-  currentUserName?: string;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onWorkflowOpen?: (workflowId: string) => void;
   onNodesAdd?: (newNode: Node[]) => void;
@@ -66,7 +65,6 @@ const Canvas: React.FC<Props> = ({
   yDoc,
   yAwareness,
   users,
-  currentUserName,
   onWorkflowAdd,
   onWorkflowOpen,
   onNodesAdd,
@@ -154,11 +152,7 @@ const Canvas: React.FC<Props> = ({
           color="rgba(63, 63, 70, 1)"
         />
         {!readonly && yDoc && yAwareness && users && (
-          <MultiCursor
-            users={users}
-            yAwareness={yAwareness}
-            currentUserName={currentUserName}
-          />
+          <MultiCursor users={users} yAwareness={yAwareness} />
         )}
         {contextMenu && (
           <CanvasContextMenu

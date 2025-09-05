@@ -376,7 +376,6 @@ export default ({
     currentWorkflowId,
     openWorkflows,
     currentProject,
-    me,
     users,
     nodes,
     edges,

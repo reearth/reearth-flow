@@ -65,7 +65,7 @@ export const Cursor = memo(
         </svg>
         {userName && (
           <div
-            className="absolute top-3 left-3 max-w-[125px] shrink-0 rounded px-1.5 py-0.5 text-xs font-medium whitespace-nowrap text-white"
+            className="absolute top-3 left-3 max-w-[150px] shrink-0 rounded px-1.5 py-0.5 text-xs font-medium whitespace-nowrap text-white"
             style={{
               backgroundColor: color,
               boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
