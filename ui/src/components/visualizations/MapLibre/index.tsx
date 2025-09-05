@@ -67,6 +67,7 @@ const MapLibre: React.FC<Props> = ({
         {fileType === "geojson" && (
           <GeoJsonDataSource
             key={`geojson-source-${enableClustering}`}
+            mapRef={mapRef}
             fileType={fileType}
             fileContent={fileContent}
             enableClustering={enableClustering}
