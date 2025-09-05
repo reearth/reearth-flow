@@ -60,6 +60,10 @@ const DebugPanel: React.FC = () => {
     handleRowSingleClick,
     handleRowDoubleClick,
     handleFlyToSelectedFeature,
+    // Streaming-specific properties
+    isStreaming,
+    detectedGeometryType,
+    totalFeatures,
   } = useHooks();
   const t = useT();
   const [tabValue, setTabValue] = useState("debug-logs");
@@ -209,6 +213,10 @@ const DebugPanel: React.FC = () => {
                     selectedFeature={selectedFeature}
                     onSingleClick={handleRowSingleClick}
                     onDoubleClick={handleRowDoubleClick}
+                    // Streaming props
+                    isStreaming={isStreaming}
+                    detectedGeometryType={detectedGeometryType || undefined}
+                    totalFeatures={totalFeatures || undefined}
                   />
                 </div>
               </ResizablePanel>
