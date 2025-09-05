@@ -130,7 +130,6 @@ export default function Editor({
               edges={edges}
               selectedEdgeIds={selectedEdgeIds}
               yDoc={yDoc}
-              yAwareness={yAwareness}
               users={users}
               onWorkflowAdd={handleWorkflowAdd}
               onWorkflowOpen={handleWorkflowOpen}

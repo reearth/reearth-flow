@@ -9,7 +9,6 @@ import {
   EdgeChange,
 } from "@xyflow/react";
 import { MouseEvent, memo } from "react";
-import type { Awareness } from "y-protocols/awareness";
 import type { Doc } from "yjs";
 
 import {
@@ -36,7 +35,6 @@ type Props = {
   edges: Edge[];
   selectedEdgeIds?: string[];
   yDoc?: Doc | null;
-  yAwareness?: Awareness | null;
   users?: Record<string, AwarenessUser>;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onWorkflowOpen?: (workflowId: string) => void;
@@ -62,7 +60,6 @@ const Canvas: React.FC<Props> = ({
   nodes,
   edges,
   selectedEdgeIds,
-  yAwareness,
   users,
   onWorkflowAdd,
   onWorkflowOpen,
@@ -149,7 +146,7 @@ const Canvas: React.FC<Props> = ({
         gap={gridSize}
         color="rgba(63, 63, 70, 1)"
       />
-      {!readonly && yAwareness && users && <MultiCursor users={users} />}
+      {!readonly && users && <MultiCursor users={users} />}
       {contextMenu && (
         <CanvasContextMenu
           data={contextMenu.data}
