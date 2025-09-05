@@ -171,6 +171,41 @@ function convertBuildingGeometry(
               }),
             });
 
+            // Add InfoBox content for individual surfaces
+            const surfaceInfoHtml = `
+            <div style="font-family: sans-serif; line-height: 1.4;">
+              <h3 style="margin: 0 0 10px 0; color: #2c3e50;">${surfaceType === 'Wall' ? '🧱' : surfaceType === 'Roof' ? '🏠' : '🏢'} ${surfaceType} Surface</h3>
+              
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 4px 8px 4px 0; font-weight: bold; width: 40%;">Building:</td>
+                  <td style="padding: 4px 0;">${entity.name}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 4px 8px 4px 0; font-weight: bold;">Surface Type:</td>
+                  <td style="padding: 4px 0;">${surfaceType}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 4px 8px 4px 0; font-weight: bold;">Height Range:</td>
+                  <td style="padding: 4px 0;">${minZ.toFixed(1)}m - ${maxZ.toFixed(1)}m</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                  <td style="padding: 4px 8px 4px 0; font-weight: bold;">Surface #:</td>
+                  <td style="padding: 4px 0;">${index + 1} of ${buildingPolygons.length}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 4px 8px 4px 0; font-weight: bold;">Vertices:</td>
+                  <td style="padding: 4px 0;">${positions.length}</td>
+                </tr>
+              </table>
+              
+              <p style="margin: 10px 0 0 0; font-size: 11px; color: #666;">
+                Part of building with ${buildingPolygons.length} total surfaces
+              </p>
+            </div>`;
+            
+            surfaceEntity.description = new ConstantProperty(surfaceInfoHtml);
+
             const propertyBag = new PropertyBag(properties);
             propertyBag.addProperty("cityGmlType", surfaceType);
             propertyBag.addProperty("lod", 1);
@@ -189,10 +224,122 @@ function convertBuildingGeometry(
   }
 
   if (hasValidGeometry) {
+    // Extract key building attributes for InfoBox
+    const buildingHeight = extractHeight(geometry, properties);
+    const buildingUsage = properties?.cityGmlAttributes?.["bldg:usage"] || properties?.["bldg:usage"] || "Unknown";
+    const constructionYear = properties?.cityGmlAttributes?.["bldg:yearOfConstruction"] || properties?.["bldg:yearOfConstruction"] || "Unknown";
+    const buildingClass = properties?.cityGmlAttributes?.["bldg:class"] || properties?.["bldg:class"] || "Unknown";
+    const buildingId = properties?.gmlId || properties?.id || "Unknown";
+    const totalFloorArea = properties?.cityGmlAttributes?.uro?.BuildingDetailAttribute?.uro?.totalFloorArea || "Unknown";
+    const buildingFootprint = properties?.cityGmlAttributes?.uro?.BuildingDetailAttribute?.uro?.buildingFootprintArea || "Unknown";
+    
+    // Create HTML content for InfoBox
+    const infoBoxHtml = `
+    <div style="font-family: sans-serif; line-height: 1.4;">
+      <h3 style="margin: 0 0 10px 0; color: #2c3e50;">🏢 CityGML Building</h3>
+      
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #eee;">
+          <td style="padding: 4px 8px 4px 0; font-weight: bold; width: 40%;">ID:</td>
+          <td style="padding: 4px 0;">${buildingId}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #eee;">
+          <td style="padding: 4px 8px 4px 0; font-weight: bold;">Height:</td>
+          <td style="padding: 4px 0;">${buildingHeight.toFixed(1)}m</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #eee;">
+          <td style="padding: 4px 8px 4px 0; font-weight: bold;">Usage:</td>
+          <td style="padding: 4px 0;">${buildingUsage}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #eee;">
+          <td style="padding: 4px 8px 4px 0; font-weight: bold;">Class:</td>
+          <td style="padding: 4px 0;">${buildingClass}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #eee;">
+          <td style="padding: 4px 8px 4px 0; font-weight: bold;">Year Built:</td>
+          <td style="padding: 4px 0;">${constructionYear}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #eee;">
+          <td style="padding: 4px 8px 4px 0; font-weight: bold;">Floor Area:</td>
+          <td style="padding: 4px 0;">${totalFloorArea}${typeof totalFloorArea === 'number' ? 'm²' : ''}</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #eee;">
+          <td style="padding: 4px 8px 4px 0; font-weight: bold;">Footprint:</td>
+          <td style="padding: 4px 0;">${buildingFootprint}${typeof buildingFootprint === 'number' ? 'm²' : ''}</td>
+        </tr>
+        <tr>
+          <td style="padding: 4px 8px 4px 0; font-weight: bold;">Surfaces:</td>
+          <td style="padding: 4px 0;">${entity.surfaces ? entity.surfaces.length : 0} (${entity.surfaces?.filter(s => s.properties?.getValue()?.cityGmlType === 'Wall').length || 0} walls, ${entity.surfaces?.filter(s => s.properties?.getValue()?.cityGmlType === 'Roof').length || 0} roofs, ${entity.surfaces?.filter(s => s.properties?.getValue()?.cityGmlType === 'Floor').length || 0} floors)</td>
+        </tr>
+      </table>
+      
+      <p style="margin: 10px 0 0 0; font-size: 11px; color: #666;">
+        Click on any building surface (wall/roof/floor) for combined surface + building details
+      </p>
+    </div>`;
+
+    // Set the InfoBox description on the main entity
+    entity.description = new ConstantProperty(infoBoxHtml);
+    
+    // Instead of creating separate point entities, make surfaces clickable for main building info
+    // Add building info to each surface entity so clicking any surface shows both surface AND building details
+    if (entity.surfaces && entity.surfaces.length > 0) {
+      entity.surfaces.forEach(surface => {
+        // Add building information to each surface's description
+        const currentSurfaceDescription = surface.description?.getValue() || '';
+        const combinedDescription = `
+        <div style="font-family: sans-serif;">
+          <div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #ddd;">
+            ${currentSurfaceDescription}
+          </div>
+          
+          <div>
+            <h4 style="margin: 0 0 8px 0; color: #2c3e50;">🏢 Parent Building Details</h4>
+            ${infoBoxHtml}
+          </div>
+        </div>`;
+        
+        surface.description = new ConstantProperty(combinedDescription);
+      });
+      
+      // Calculate a simple building center for positioning (without creating a point entity)
+      // This is just for potential future use, not for rendering
+      const floorSurfaces = entity.surfaces.filter(s => s.properties?.getValue()?.cityGmlType === 'Floor');
+      
+      if (floorSurfaces.length > 0) {
+        // Use floor center as building center (more reliable than averaging all vertices)
+        const floorSurface = floorSurfaces[0];
+        if (floorSurface.polygon && floorSurface.polygon.hierarchy) {
+          const hierarchy = floorSurface.polygon.hierarchy.getValue();
+          if (hierarchy && hierarchy.positions && hierarchy.positions.length > 0) {
+            let totalX = 0, totalY = 0, totalZ = 0;
+            hierarchy.positions.forEach((pos: Cartesian3) => {
+              totalX += pos.x;
+              totalY += pos.y;
+              totalZ += pos.z;
+            });
+            
+            const centerPosition = new Cartesian3(
+              totalX / hierarchy.positions.length,
+              totalY / hierarchy.positions.length,
+              totalZ / hierarchy.positions.length + buildingHeight * 0.5
+            );
+            
+            // Store center position without creating a point entity
+            entity.position = new ConstantPositionProperty(centerPosition);
+          }
+        }
+      }
+    }
+
     // Store CityGML-specific properties on the main entity
     const propertyBag = new PropertyBag(properties);
     propertyBag.addProperty("cityGmlType", "Building");
-    propertyBag.addProperty("height", extractHeight(geometry, properties));
+    propertyBag.addProperty("height", buildingHeight);
+    propertyBag.addProperty("usage", buildingUsage);
+    propertyBag.addProperty("constructionYear", constructionYear);
+    propertyBag.addProperty("buildingClass", buildingClass);
+    propertyBag.addProperty("buildingId", buildingId);
     propertyBag.addProperty("surfaceCount", entity.surfaces ? entity.surfaces.length : 0);
     entity.properties = propertyBag;
 
