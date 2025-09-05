@@ -435,6 +435,8 @@
   "Deploy project's workflow": "プロジェクトのワークフローをデプロイ",
   "Manual Save": "手動保存",
   "Export Project": "プロジェクトをエクスポート",
+  "Currently Viewing": "現在表示中",
+  "Collaboration": "コラボレーション",
   "Stop Workflow": "ワークフローを停止",
   "Are you sure you want to stop the workflow's debug run?": "ワークフローのデバッグ実行を停止しますか？",
   "Stop": "停止",
