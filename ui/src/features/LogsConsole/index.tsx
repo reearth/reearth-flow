@@ -43,6 +43,12 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
   const debugJob = useGetJob(jobId).job;
 
   const { data: liveLogs } = useSubscription("GetSubscribedLogs", jobId);
+  const { data: urlLogsData } = useSubscription(
+    "GetSubscribedUserFacingLogs",
+    jobId,
+  );
+
+  console.log("URL LOGS DATA", urlLogsData);
 
   const logs = useMemo(() => urlLogs || liveLogs || [], [liveLogs, urlLogs]);
 

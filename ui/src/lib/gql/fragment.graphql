@@ -135,6 +135,13 @@ fragment Log on Log {
   message
 }
 
+fragment UserFacingLog on UserFacingLog {
+  jobId
+  timestamp
+  message
+  metadata
+}
+
 fragment ProjectDocument on ProjectDocument {
   id
   timestamp

@@ -16,6 +16,13 @@ export type Log = {
   message: string;
 };
 
+export type FacingLog = {
+  jobId: string;
+  timestamp: string;
+  message: string;
+  metadata?: Record<string, any> | null | undefined;
+};
+
 export type GetLogs = {
   logs?: Log[];
 } & ApiResponse;
