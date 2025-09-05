@@ -104,6 +104,7 @@ export default function Editor({
           openWorkflows={openWorkflows}
           allowedToDeploy={allowedToDeploy}
           isSaving={isSaving}
+          users={users}
           onProjectShare={handleProjectShare}
           onProjectExport={handleCurrentProjectExport}
           onWorkflowDeployment={handleWorkflowDeployment}
