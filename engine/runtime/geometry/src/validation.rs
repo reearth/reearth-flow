@@ -17,6 +17,9 @@ use crate::{
     utils,
 };
 
+/// Distance threshold in meters for duplicate consecutive points detection
+const DUPLICATE_CONSECUTIVE_DISTANCE_THRESHOLD: f64 = 0.01;
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 /// The role of a ring in a polygon.
 pub enum RingRole {
@@ -412,13 +415,11 @@ impl<
         }
         match valid_type {
             ValidationType::DuplicateConsecutivePoints => {
-                const DISTANCE_THRESHOLD: f64 = 0.01; // 0.01m threshold
-
                 for i in 0..self.0.len().saturating_sub(1) {
                     let p1 = &self.0[i];
                     let p2 = &self.0[i + 1];
                     if let Some(distance) = crate::utils::calculate_geo_distance_3d(p1, p2) {
-                        if distance <= DISTANCE_THRESHOLD {
+                        if distance <= DUPLICATE_CONSECUTIVE_DISTANCE_THRESHOLD {
                             reason.push(ValidationProblemAtPosition(
                                 ValidationProblem::DuplicateConsecutiveCoords,
                                 ValidationProblemPosition::LineString(CoordinatePosition(
@@ -529,15 +530,13 @@ impl<
         let mut reason = Vec::new();
         match valid_type {
             ValidationType::DuplicateConsecutivePoints => {
-                const DISTANCE_THRESHOLD: f64 = 0.01; // 0.01m threshold
-
                 // Check exterior ring
                 let coords: Vec<Coordinate<T, Z>> = self.exterior().coords().cloned().collect();
                 for i in 0..coords.len().saturating_sub(1) {
                     let p1 = &coords[i];
                     let p2 = &coords[i + 1];
                     if let Some(distance) = crate::utils::calculate_geo_distance_3d(p1, p2) {
-                        if distance <= DISTANCE_THRESHOLD {
+                        if distance <= DUPLICATE_CONSECUTIVE_DISTANCE_THRESHOLD {
                             reason.push(ValidationProblemAtPosition(
                                 ValidationProblem::DuplicateConsecutiveCoords,
                                 ValidationProblemPosition::Polygon(
@@ -556,7 +555,7 @@ impl<
                         let p1 = &coords[i];
                         let p2 = &coords[i + 1];
                         if let Some(distance) = crate::utils::calculate_geo_distance_3d(p1, p2) {
-                            if distance <= DISTANCE_THRESHOLD {
+                            if distance <= DUPLICATE_CONSECUTIVE_DISTANCE_THRESHOLD {
                                 reason.push(ValidationProblemAtPosition(
                                     ValidationProblem::DuplicateConsecutiveCoords,
                                     ValidationProblemPosition::Polygon(
