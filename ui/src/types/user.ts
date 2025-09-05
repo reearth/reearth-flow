@@ -31,3 +31,12 @@ export type SearchUser = {
 export type UpdateMe = {
   me?: User;
 } & ApiResponse;
+
+export type AwarenessUser = {
+  cursor?: {
+    x: number;
+    y: number;
+  };
+  color: string;
+  userName?: string;
+};
