@@ -17,6 +17,8 @@ import {
   Cartographic,
 } from "cesium";
 
+import { generateUUID } from "@flow/utils";
+
 // Extend Entity type to include surfaces
 type EntityWithSurfaces = Entity & {
   surfaces?: Entity[];
@@ -48,7 +50,7 @@ export function convertFeatureToEntity(
   }
 
   const entity = new Entity({
-    id: id || `citygml-${Math.random().toString(36).substr(2, 9)}`,
+    id: id || generateUUID(),
     name:
       properties?.name || extractBuildingName(geometry) || "CityGML Feature",
   });
@@ -273,6 +275,13 @@ function convertBuildingGeometry(
     const buildingFootprint =
       properties?.cityGmlAttributes?.uro?.BuildingDetailAttribute?.uro
         ?.buildingFootprintArea || "Unknown";
+    const buildingSurfacesMeta = () => {
+      const length = entity.surfaces?.length || 0;
+      const walls = entity.surfaces?.filter((s) => s.properties?.getValue()?.cityGmlType === "Wall").length || 0;
+      const roofs = entity.surfaces?.filter((s) => s.properties?.getValue()?.cityGmlType === "Roof").length || 0;
+      const floors = entity.surfaces?.filter((s) => s.properties?.getValue()?.cityGmlType === "Floor").length || 0;
+      return { length, walls, roofs, floors };
+    };
 
     // Create HTML content for InfoBox
     const infoBoxHtml = `
@@ -310,7 +319,7 @@ function convertBuildingGeometry(
         </tr>
         <tr>
           <td style="padding: 4px 8px 4px 0; font-weight: bold;">Surfaces:</td>
-          <td style="padding: 4px 0;">${entity.surfaces ? entity.surfaces.length : 0} (${entity.surfaces?.filter((s) => s.properties?.getValue()?.cityGmlType === "Wall").length || 0} walls, ${entity.surfaces?.filter((s) => s.properties?.getValue()?.cityGmlType === "Roof").length || 0} roofs, ${entity.surfaces?.filter((s) => s.properties?.getValue()?.cityGmlType === "Floor").length || 0} floors)</td>
+          <td style="padding: 4px 0;">${buildingSurfacesMeta().length} (${buildingSurfacesMeta().walls} walls, ${buildingSurfacesMeta().roofs} roofs, ${buildingSurfacesMeta().floors} floors)</td>
         </tr>
       </table>
       
