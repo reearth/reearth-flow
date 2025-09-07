@@ -4,7 +4,7 @@ use axum::{
 };
 use std::sync::Arc;
 
-use crate::AppState;
+use crate::{interface::http::handlers::DocumentHandler, AppState};
 
 pub fn document_routes() -> Router<Arc<AppState>> {
     Router::new()
