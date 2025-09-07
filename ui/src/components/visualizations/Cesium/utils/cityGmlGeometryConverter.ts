@@ -277,9 +277,18 @@ function convertBuildingGeometry(
         ?.buildingFootprintArea || "Unknown";
     const buildingSurfacesMeta = () => {
       const length = entity.surfaces?.length || 0;
-      const walls = entity.surfaces?.filter((s) => s.properties?.getValue()?.cityGmlType === "Wall").length || 0;
-      const roofs = entity.surfaces?.filter((s) => s.properties?.getValue()?.cityGmlType === "Roof").length || 0;
-      const floors = entity.surfaces?.filter((s) => s.properties?.getValue()?.cityGmlType === "Floor").length || 0;
+      const walls =
+        entity.surfaces?.filter(
+          (s) => s.properties?.getValue()?.cityGmlType === "Wall",
+        ).length || 0;
+      const roofs =
+        entity.surfaces?.filter(
+          (s) => s.properties?.getValue()?.cityGmlType === "Roof",
+        ).length || 0;
+      const floors =
+        entity.surfaces?.filter(
+          (s) => s.properties?.getValue()?.cityGmlType === "Floor",
+        ).length || 0;
       return { length, walls, roofs, floors };
     };
 
