@@ -179,9 +179,7 @@ pub async fn ws_handler(
         }
     };
 
-    ws.on_upgrade(move |socket| {
-        handle_socket(socket, bcast, doc_id, user_token, Arc::clone(&state.pool))
-    })
+    ws.on_upgrade(move |socket| handle_socket(socket, bcast, doc_id, user_token))
 }
 
 async fn handle_socket(
@@ -189,7 +187,6 @@ async fn handle_socket(
     bcast: Arc<super::BroadcastGroup>,
     doc_id: String,
     user_token: Option<String>,
-    pool: Arc<super::BroadcastPool>,
 ) {
     let (sender, receiver) = socket.split();
 
@@ -217,26 +214,6 @@ async fn handle_socket(
             "WebSocket connection error for document '{}': {}",
             doc_id, e
         );
-    }
-
-    let _ = bcast.decrement_connections().await;
-
-    let count = bcast.connection_count();
-    info!(
-        "Connection closed for document {}. Remaining connections: {}",
-        doc_id, count
-    );
-
-    if count == 0 {
-        info!(
-            "No more connections for document {}. Triggering cleanup...",
-            doc_id
-        );
-        if let Err(e) = pool.cleanup_empty_group(&doc_id).await {
-            error!("Failed to cleanup empty group for {}: {}", doc_id, e);
-        } else {
-            info!("Successfully triggered cleanup for document {}", doc_id);
-        }
     }
 }
 

@@ -407,51 +407,14 @@ impl BroadcastGroup {
         self: Arc<Self>,
         sink: Arc<Mutex<Sink>>,
         stream: Stream,
-        user_token: Option<String>,
-    ) -> (Subscription, Option<u64>)
+    ) -> Subscription
     where
         Sink: SinkExt<Bytes> + Send + Sync + Unpin + 'static,
         Stream: StreamExt<Item = Result<Bytes, E>> + Send + Sync + Unpin + 'static,
         <Sink as futures_util::Sink<Bytes>>::Error: std::error::Error + Send + Sync,
         E: std::error::Error + Send + Sync + 'static,
     {
-        let client_id = if let Some(token) = user_token {
-            let awareness = self.awareness().clone();
-            let client_id = rand::random::<u64>();
-
-            let awareness = awareness.write().await;
-            let mut local_state = std::collections::HashMap::new();
-
-            local_state.insert(
-                "user",
-                serde_json::json!({
-                    "id": token,
-                    "name": format!("User-{}", client_id % 1000),
-                }),
-            );
-
-            if let Err(e) = awareness.set_local_state(Some(local_state)) {
-                error!("Failed to set awareness state: {}", e);
-            }
-
-            Some(client_id)
-        } else {
-            None
-        };
-
-        let subscription = self.listen(sink, stream, DefaultProtocol).await;
-
-        let (tx, _) = tokio::sync::oneshot::channel();
-
-        let _ = tx.send(());
-
-        (
-            Subscription {
-                sink_task: subscription.sink_task,
-                stream_task: subscription.stream_task,
-            },
-            client_id,
-        )
+        self.listen(sink, stream, DefaultProtocol).await
     }
 
     pub async fn listen<Sink, Stream, E, P>(
@@ -651,15 +614,19 @@ impl BroadcastGroup {
         }
     }
 
-    pub async fn cleanup_client_awareness(&self, client_id: u64) -> Result<()> {
+    pub async fn cleanup_client_awareness(&self) -> Result<()> {
         let awareness = self.awareness().clone();
+        let client_id = {
+            let awareness_read = awareness.read().await;
+            awareness_read.client_id()
+        };
 
-        {
-            let awareness_write = awareness.read().await;
-            awareness_write.remove_state(client_id);
-        }
+        info!("Cleaning up awareness for client: {}", client_id);
 
-        info!("Awareness cleanup completed for client: {}", client_id);
+        let awareness_read = awareness.read().await;
+        awareness_read.clean_local_state();
+        info!("Cleaned local awareness state for client: {}", client_id);
+
         Ok(())
     }
 

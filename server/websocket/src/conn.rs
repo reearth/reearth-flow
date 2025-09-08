@@ -18,7 +18,6 @@ pub struct Connection<Sink, Stream> {
     broadcast_sub: Option<Subscription>,
     completion_future: Option<CompletionFuture>,
     user_token: Option<String>,
-    client_id: Option<u64>,
     broadcast_group: Option<Arc<BroadcastGroup>>,
     sink: PhantomData<Sink>,
     stream: PhantomData<Stream>,
@@ -38,15 +37,13 @@ where
     ) -> Self {
         let sink = Arc::new(Mutex::new(sink));
         let group_clone = broadcast_group.clone();
-        let (broadcast_sub, client_id) = broadcast_group
-            .subscribe(sink.clone(), stream, user_token.clone())
-            .await;
+
+        let broadcast_sub = broadcast_group.subscribe(sink.clone(), stream).await;
 
         Connection {
             broadcast_sub: Some(broadcast_sub),
             completion_future: None,
             user_token,
-            client_id,
             broadcast_group: Some(group_clone),
             sink: PhantomData,
             stream: PhantomData,
@@ -85,14 +82,11 @@ impl<Sink, Stream> Unpin for Connection<Sink, Stream> {}
 
 impl<Sink, Stream> Drop for Connection<Sink, Stream> {
     fn drop(&mut self) {
-        if let (Some(client_id), Some(group)) = (self.client_id, self.broadcast_group.take()) {
+        if let Some(group) = self.broadcast_group.take() {
+            tracing::info!("Dropping connection connection");
             tokio::spawn(async move {
-                if let Err(e) = group.cleanup_client_awareness(client_id).await {
-                    tracing::warn!(
-                        "Failed to cleanup awareness for client {}: {}",
-                        client_id,
-                        e
-                    );
+                if let Err(e) = group.cleanup_client_awareness().await {
+                    tracing::warn!("Failed to cleanup awareness: {}", e);
                 }
             });
         }

@@ -5,12 +5,9 @@ use crate::storage::redis::RedisStore;
 use crate::AwarenessRef;
 use anyhow::Result;
 use bytes;
-use dashmap::DashMap;
 use rand;
-use scopeguard;
 use std::sync::Arc;
-use tokio::time::{sleep, Duration};
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
@@ -24,7 +21,6 @@ pub struct BroadcastGroupManager {
     store: Arc<GcsStore>,
     redis_store: Arc<RedisStore>,
     buffer_capacity: usize,
-    doc_to_id_map: Arc<DashMap<String, Arc<BroadcastGroup>>>,
 }
 
 impl BroadcastGroupManager {
@@ -33,37 +29,20 @@ impl BroadcastGroupManager {
             store,
             redis_store,
             buffer_capacity: 512,
-            doc_to_id_map: Arc::new(DashMap::new()),
         }
     }
 
     async fn create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
-        match self.doc_to_id_map.entry(doc_id.to_string()) {
-            dashmap::mapref::entry::Entry::Occupied(entry) => {
-                let group_clone = entry.get().clone();
-                drop(entry);
-                return Ok(group_clone);
+        let doc = Doc::new();
+        {
+            let mut txn = doc.transact_mut();
+            let loaded = self.store.load_doc(doc_id, &mut txn).await.unwrap_or(false);
+            if !loaded {
+                let _ = self.store.load_doc(DEFAULT_DOC_ID, &mut txn).await;
             }
-            dashmap::mapref::entry::Entry::Vacant(_) => {}
         }
 
-        let awareness: AwarenessRef = match self.store.load_doc_v2(doc_id).await {
-            Ok(direct_doc) => Arc::new(tokio::sync::RwLock::new(Awareness::new(direct_doc))),
-            Err(_) => {
-                let doc = Doc::new();
-                {
-                    let mut txn = doc.transact_mut();
-
-                    let loaded = self.store.load_doc(doc_id, &mut txn).await.unwrap_or(false);
-
-                    if !loaded {
-                        let _ = self.store.load_doc(DEFAULT_DOC_ID, &mut txn).await;
-                    }
-                }
-
-                Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)))
-            }
-        };
+        let awareness: AwarenessRef = Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)));
 
         let mut start_id = "0".to_string();
         let batch_size = 2048;
@@ -171,32 +150,19 @@ impl BroadcastGroupManager {
             *last_id_guard = final_last_id;
         }
 
-        match self.doc_to_id_map.entry(doc_id.to_string()) {
-            dashmap::mapref::entry::Entry::Occupied(entry) => {
-                let existing_group = entry.get().clone();
-                Ok(existing_group)
-            }
-            dashmap::mapref::entry::Entry::Vacant(entry) => {
-                let new_group = entry.insert(Arc::clone(&group)).clone();
-                Ok(new_group)
-            }
-        }
+        Ok(group)
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct BroadcastPool {
     manager: BroadcastGroupManager,
-    cleanup_locks: Arc<DashMap<String, bool>>,
 }
 
 impl BroadcastPool {
     pub fn new(store: Arc<GcsStore>, redis_store: Arc<RedisStore>) -> Self {
         let manager = BroadcastGroupManager::new(store, redis_store);
-        Self {
-            manager,
-            cleanup_locks: Arc::new(DashMap::new()),
-        }
+        Self { manager }
     }
 
     pub fn get_store(&self) -> Arc<GcsStore> {
@@ -204,23 +170,11 @@ impl BroadcastPool {
     }
 
     pub async fn get_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
-        if let Some(group) = self.manager.doc_to_id_map.get(doc_id) {
-            tracing::info!("Found group for doc_id: {}", doc_id);
-            return Ok(group.clone());
-        }
-
         let group: Arc<BroadcastGroup> = self.manager.create_group(doc_id).await?;
         Ok(group)
     }
 
     pub async fn flush_to_gcs(&self, doc_id: &str) -> Result<()> {
-        let broadcast_group = match self.manager.doc_to_id_map.get(doc_id) {
-            Some(group) => group.clone(),
-            None => {
-                return Ok(());
-            }
-        };
-
         let lock_id = format!("gcs:lock:{doc_id}");
         let instance_id = format!("sync-{}", rand::random::<u64>());
 
@@ -232,19 +186,37 @@ impl BroadcastPool {
 
         if lock_acquired {
             let redis_store = self.manager.redis_store.clone();
-            let awareness = broadcast_group.awareness().read().await;
-            let awareness_doc = awareness.doc();
 
-            let gcs_doc = Doc::new();
-            let mut gcs_txn = gcs_doc.transact_mut();
+            let temp_doc = Doc::new();
+            let mut temp_txn = temp_doc.transact_mut();
 
-            if let Err(e) = self.manager.store.load_doc(doc_id, &mut gcs_txn).await {
+            if let Err(e) = self.manager.store.load_doc(doc_id, &mut temp_txn).await {
                 warn!("Failed to load current state from GCS: {}", e);
             }
 
+            match redis_store.read_all_stream_data(doc_id).await {
+                Ok(updates) => {
+                    for update_data in updates {
+                        if let Ok(update) = Update::decode_v1(&update_data) {
+                            if let Err(e) = temp_txn.apply_update(update) {
+                                warn!("Failed to apply Redis update: {}", e);
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!("Failed to read updates from Redis: {}", e);
+                }
+            }
+
+            let gcs_doc = Doc::new();
+            let mut gcs_txn = gcs_doc.transact_mut();
+            if let Err(e) = self.manager.store.load_doc(doc_id, &mut gcs_txn).await {
+                warn!("Failed to load current state from GCS: {}", e);
+            }
             let gcs_state = gcs_txn.state_vector();
-            let awareness_txn = awareness_doc.transact();
-            let update = awareness_txn.encode_diff_v1(&gcs_state);
+            let temp_txn_read = temp_doc.transact();
+            let update = temp_txn_read.encode_diff_v1(&gcs_state);
 
             if !update.is_empty() {
                 let update_bytes = bytes::Bytes::from(update);
@@ -255,7 +227,7 @@ impl BroadcastPool {
 
                 self.manager
                     .store
-                    .flush_doc_v2(doc_id, &awareness_txn)
+                    .flush_doc_v2(doc_id, &temp_txn_read)
                     .await?;
             }
 
@@ -383,54 +355,6 @@ impl BroadcastPool {
         drop(gcs_txn); // drop the mut txn
         let gcs_txn = gcs_doc.transact();
         self.manager.store.flush_doc_v2(doc_id, &gcs_txn).await?;
-        Ok(())
-    }
-
-    pub async fn cleanup_empty_group(&self, doc_id: &str) -> Result<()> {
-        sleep(Duration::from_secs(5)).await;
-        info!("cleanup_empty_group called for document: {}", doc_id);
-        if let Some(group) = self.manager.doc_to_id_map.get(doc_id) {
-            let conn_count = group.connection_count();
-            info!("Document {} has {} connections", doc_id, conn_count);
-            if conn_count > 0 {
-                info!("Skipping cleanup for {} - still has connections", doc_id);
-                return Ok(());
-            }
-        } else {
-            info!("Document {} not found in map", doc_id);
-        }
-        match self.cleanup_locks.entry(doc_id.to_string()) {
-            dashmap::mapref::entry::Entry::Occupied(_) => {
-                return Ok(());
-            }
-            dashmap::mapref::entry::Entry::Vacant(entry) => {
-                entry.insert(true);
-            }
-        }
-
-        let _cleanup_guard = scopeguard::guard(doc_id.to_string(), |key| {
-            self.cleanup_locks.remove(&key);
-        });
-
-        let group_to_shutdown: Option<Arc<BroadcastGroup>> = {
-            match self.manager.doc_to_id_map.entry(doc_id.to_string()) {
-                dashmap::mapref::entry::Entry::Occupied(entry) => {
-                    if entry.get().connection_count() == 0 {
-                        Some(entry.remove())
-                    } else {
-                        None
-                    }
-                }
-                dashmap::mapref::entry::Entry::Vacant(_) => None,
-            }
-        };
-
-        if let Some(group) = group_to_shutdown {
-            if let Err(e) = group.shutdown().await {
-                error!("Error shutting down group for doc_id {}: {}", doc_id, e);
-            }
-        }
-
         Ok(())
     }
 }
