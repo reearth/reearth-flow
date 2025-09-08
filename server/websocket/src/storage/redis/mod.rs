@@ -788,37 +788,6 @@ impl RedisStore {
         Ok(())
     }
 
-    pub async fn remove_awareness(&self, doc_id: &str, instance_id: &str) -> Result<()> {
-        let mut conn = self.pool.get().await?;
-        let awareness_key = format!("awareness:{doc_id}");
-        let stream_key = format!("awareness:stream:{doc_id}");
-
-        let script = redis::Script::new(
-            r#"
-            local awareness_key = KEYS[1]
-            local stream_key = KEYS[2] 
-            local instance_id = ARGV[1]
-            
-            -- Remove awareness data for this instance
-            redis.call('HDEL', awareness_key, instance_id)
-            
-            -- Broadcast removal to stream
-            redis.call('XADD', stream_key, '*', 'data', '', 'instance_id', instance_id, 'action', 'remove')
-            
-            return 1
-            "#,
-        );
-
-        let _: () = script
-            .key(&awareness_key)
-            .key(&stream_key)
-            .arg(instance_id)
-            .invoke_async(&mut *conn)
-            .await?;
-
-        Ok(())
-    }
-
     pub async fn read_awareness_updates(
         &self,
         conn: &mut redis::aio::MultiplexedConnection,

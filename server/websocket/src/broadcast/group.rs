@@ -659,15 +659,7 @@ impl BroadcastGroup {
             awareness_write.remove_state(client_id);
         }
 
-        let client_instance_id = format!("client-{}", client_id);
-        if let Err(e) = self
-            .redis_store
-            .remove_awareness(&self.doc_name, &client_instance_id)
-            .await
-        {
-            warn!("Failed to remove awareness from Redis: {}", e);
-        }
-
+        info!("Awareness cleanup completed for client: {}", client_id);
         Ok(())
     }
 
