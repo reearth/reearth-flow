@@ -13,7 +13,6 @@ use tracing::{debug, error, info, warn};
 use yrs::types::ToJson;
 
 use serde_json;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::select;
 use tokio::sync::broadcast::{channel, Sender};
