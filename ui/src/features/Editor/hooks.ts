@@ -106,7 +106,7 @@ export default ({
   const self: AwarenessUser = {
     clientId: rawSelf?.clientID,
     userName: rawSelf?.userName || "Unknown user",
-    color: rawSelf?.color || "#fffff",
+    color: rawSelf?.color || "#ffffff",
     cursor: rawSelf?.cursor || { x: 0, y: 0 },
   };
   const users = Array.from(

@@ -25,7 +25,12 @@ const CollaborationPopover: React.FC<Props> = ({ self, users }) => {
                 {t("Currently Viewing")}
               </span>
               {Object.entries(users).map(([_key, value]) => {
-                return <CollaborationCard userName={value.userName} />;
+                return (
+                  <CollaborationCard
+                    key={value.clientId}
+                    userName={value.userName}
+                  />
+                );
               })}
             </div>
           </div>
