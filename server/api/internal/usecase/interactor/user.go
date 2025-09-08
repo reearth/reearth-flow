@@ -6,7 +6,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/user"
-	"github.com/reearth/reearth-flow/api/pkg/workspace"
 )
 
 type User struct {
@@ -38,7 +37,7 @@ func (i *User) UpdateMe(ctx context.Context, p interfaces.UpdateMeParam) (*user.
 	return i.userRepo.UpdateMe(ctx, attrs)
 }
 
-func (i *User) SignupOIDC(ctx context.Context, p interfaces.SignupOIDCParam) (*user.User, *workspace.Workspace, error) {
+func (i *User) SignupOIDC(ctx context.Context, p interfaces.SignupOIDCParam) (*user.User, error) {
 	attrs := user.SignupOIDCAttrs{
 		UserID:      p.UserID,
 		Lang:        p.Lang,

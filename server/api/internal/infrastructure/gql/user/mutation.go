@@ -12,7 +12,6 @@ type updateMeMutation struct {
 
 type signupOIDCMutation struct {
 	SignupOIDC struct {
-		User      gqlmodel.User      `graphql:"user"`
-		Workspace gqlmodel.Workspace `graphql:"workspace"`
+		User gqlmodel.User `graphql:"user"`
 	} `graphql:"signupOIDC(input: $input)"`
 }

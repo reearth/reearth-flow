@@ -15,7 +15,6 @@ import (
 
 	id "github.com/reearth/reearth-flow/api/pkg/id"
 	user "github.com/reearth/reearth-flow/api/pkg/user"
-	workspace "github.com/reearth/reearth-flow/api/pkg/workspace"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -74,13 +73,12 @@ func (mr *MockUserRepoMockRecorder) FindMe(ctx any) *gomock.Call {
 }
 
 // SignupOIDC mocks base method.
-func (m *MockUserRepo) SignupOIDC(ctx context.Context, attrs user.SignupOIDCAttrs) (*user.User, *workspace.Workspace, error) {
+func (m *MockUserRepo) SignupOIDC(ctx context.Context, attrs user.SignupOIDCAttrs) (*user.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SignupOIDC", ctx, attrs)
 	ret0, _ := ret[0].(*user.User)
-	ret1, _ := ret[1].(*workspace.Workspace)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // SignupOIDC indicates an expected call of SignupOIDC.
