@@ -39,5 +39,5 @@ export type AwarenessUser = {
     y: number;
   };
   color: string;
-  userName?: string;
+  userName: string;
 };

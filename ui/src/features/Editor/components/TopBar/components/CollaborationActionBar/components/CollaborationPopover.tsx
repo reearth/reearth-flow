@@ -15,7 +15,7 @@ const CollaborationPopover: React.FC<Props> = ({ self, users }) => {
   return (
     <div className="flex flex-col gap-2">
       <div className="p-2">
-        <CollaborationCard userName={self?.userName} />
+        <CollaborationCard userName={self?.userName} color={self.color} />
       </div>
       {users && Object.entries(users).length >= 1 && (
         <ScrollArea className="border-t pt-1">
@@ -29,6 +29,7 @@ const CollaborationPopover: React.FC<Props> = ({ self, users }) => {
                   <CollaborationCard
                     key={value.clientId}
                     userName={value.userName}
+                    color={value.color}
                   />
                 );
               })}

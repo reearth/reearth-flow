@@ -47,9 +47,11 @@ const CollaborationActionBar: React.FC<Props> = ({
           onClick={() => onDialogOpen("collaboration")}>
           <div className="flex items-center -space-x-2">
             <div key={self?.clientId} className="relative">
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary ring-2 ring-background">
+              <div
+                className="flex h-6 w-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
+                style={{ backgroundColor: self?.color || undefined }}>
                 <span className="text-xs font-medium">
-                  {self?.userName?.charAt(0).toUpperCase()}
+                  {self.userName.charAt(0).toUpperCase()}
                 </span>
               </div>
             </div>
@@ -59,17 +61,19 @@ const CollaborationActionBar: React.FC<Props> = ({
                 .map(([_key, value]) => {
                   return (
                     <div key={value.clientId} className="relative">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary ring-2 ring-background">
+                      <div
+                        className="flex h-6 w-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
+                        style={{ backgroundColor: value.color || undefined }}>
                         <span className="text-xs font-medium">
-                          {value.userName?.charAt(0).toUpperCase()}
+                          {value.userName.charAt(0).toUpperCase()}
                         </span>
                       </div>
                     </div>
                   );
                 })}
             {users && Object.entries(users).length > 2 && (
-              <div className="z-10 flex h-6 w-6 items-center justify-center rounded-full bg-secondary ring-2 ring-background">
-                <span className="text-xs font-medium">
+              <div className="z-10 flex h-6 w-6 items-center justify-center rounded-full bg-secondary ring-2 ring-secondary/20">
+                <span className="text-[10px] font-medium">
                   + {Object.entries(users).length - 2}
                 </span>
               </div>
