@@ -3,6 +3,7 @@ package interactor
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -195,6 +196,10 @@ func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *
 
 	log.Debugfc(ctx, "job: starting monitoring for jobID=%s workspace=%s", j.ID(), j.Workspace())
 
+	hostname, _ := os.Hostname()
+	log.Debugfc(ctx, "[%s] StartMonitoring called for job %s", hostname, j.ID())
+	log.Debugfc(ctx, "[%s] Current active watchers: %v", hostname, i.activeWatchers)
+
 	i.watchersMu.Lock()
 	defer i.watchersMu.Unlock()
 
@@ -228,6 +233,9 @@ func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *
 }
 
 func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
+	hostname, _ := os.Hostname()
+	log.Debugfc(ctx, "[%s] Starting monitoring loop for job %s", hostname, j.ID().String())
+
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
@@ -327,6 +335,9 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 }
 
 func (i *Job) updateJobStatus(ctx context.Context, j *job.Job, status job.Status) error {
+	hostname, _ := os.Hostname()
+	log.Debugfc(ctx, "[%s] Updating job %s status from %s to %s", hostname, j.ID().String(), j.Status(), status)
+
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return err
 	}
@@ -490,6 +501,9 @@ func (i *Job) Subscribe(ctx context.Context, jobID id.JobID) (chan job.Status, e
 	}
 
 	ch := i.subscriptions.Subscribe(jobID.String())
+
+	hostname, _ := os.Hostname()
+	log.Debugfc(ctx, "[%s] WebSocket subscription started for job %s", hostname, jobID.String())
 
 	go func() {
 		j, err := i.FindByID(context.Background(), jobID)
