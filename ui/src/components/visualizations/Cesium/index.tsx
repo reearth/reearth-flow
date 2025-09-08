@@ -19,6 +19,7 @@ const defaultCesiumProps: Partial<ViewerProps> = {
   geocoder: false,
   animation: false,
   navigationHelpButton: false,
+  creditContainer: document.createElement("none"),
 };
 
 type Props = {

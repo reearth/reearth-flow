@@ -3,9 +3,9 @@ import {
   BookIcon,
   BroadcastIcon,
   CaretDownIcon,
+  CopyrightIcon,
   GavelIcon,
   HardDriveIcon,
-  InfoIcon,
   KeyboardIcon,
   RocketIcon,
   SignOutIcon,
@@ -72,9 +72,25 @@ const HomeMenu: React.FC<Props> = ({
   const handleTosPageOpen = openLinkInNewTab(tosUrl ?? "");
   const handleDocumentationPageOpen = openLinkInNewTab(documentationUrl ?? "");
 
-  const handleAboutDialogOpen = useCallback(() => {
-    alert(t("About dialog is not implemented yet."));
-  }, [t]);
+  const handleAttributionsOpen = useCallback(() => {
+    const attributionsText = [
+      "This application uses the following open source libraries:",
+      "",
+      "• ReactFlow (@xyflow/react) - MIT License",
+      "  Node-based workflow visualization",
+      "  https://reactflow.dev",
+      "",
+      "• Cesium (cesium) - Apache License 2.0",
+      "  3D geospatial visualization engine",
+      "  https://cesium.com",
+      "",
+      "• MapLibre GL JS (maplibre-gl) - BSD-3-Clause License",
+      "  Interactive vector maps in web browsers",
+      "  https://maplibre.org",
+    ].join("\n");
+
+    alert(attributionsText);
+  }, []);
 
   useHotkeys(GENERAL_HOT_KEYS, () => setOpenShortcutDialog(true));
 
@@ -163,12 +179,9 @@ const HomeMenu: React.FC<Props> = ({
               </div>
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem
-            className="gap-3"
-            onClick={handleAboutDialogOpen}
-            disabled>
-            <InfoIcon weight="light" />
-            <p>{t("About")}</p>
+          <DropdownMenuItem className="gap-3" onClick={handleAttributionsOpen}>
+            <CopyrightIcon weight="light" />
+            <p>{t("Attributions")}</p>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem

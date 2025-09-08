@@ -59,7 +59,8 @@ const MapLibre: React.FC<Props> = ({
         }}
         mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
         style={{ width: "100%", height: "100%" }}
-        maplibreLogo={true}
+        maplibreLogo={false}
+        attributionControl={false}
         interactiveLayerIds={["point-layer", "line-layer", "polygon-layer"]}
         onClick={handleMapClick}
         onDblClick={handleMapDoubleClick}
