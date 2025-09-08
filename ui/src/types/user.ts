@@ -38,6 +38,7 @@ export type AwarenessUser = {
     x: number;
     y: number;
   };
+  zoomLevel?: number;
   color: string;
   userName: string;
 };

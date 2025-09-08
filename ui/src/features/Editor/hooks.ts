@@ -53,7 +53,7 @@ export default ({
     originPrepend?: string,
   ) => void;
 }) => {
-  const { fitView, screenToFlowPosition, setCenter } = useReactFlow();
+  const { fitView, screenToFlowPosition, setCenter, getZoom } = useReactFlow();
   const [spotlightUserClientId, setSpotlightUserClientId] = useState<
     number | null
   >(null);
@@ -382,15 +382,18 @@ export default ({
     (event: MouseEvent) => {
       if (yAwareness) {
         throttledMouseMove(event, yAwareness, screenToFlowPosition);
+        yAwareness.setLocalStateField("zoomLevel", getZoom());
       }
     },
-    [yAwareness, screenToFlowPosition, throttledMouseMove],
+    [yAwareness, screenToFlowPosition, throttledMouseMove, getZoom],
   );
   const spotlightUser = spotlightUserClientId
     ? users[spotlightUserClientId]
     : null;
 
   const cursor = spotlightUser?.cursor;
+
+  const zoomLevel = spotlightUser?.zoomLevel;
 
   const handleSpotlightUserSelect = useCallback((clientId: number) => {
     setSpotlightUserClientId(clientId);
@@ -401,9 +404,9 @@ export default ({
   }, []);
 
   useEffect(() => {
-    if (!cursor) return;
-    setCenter(cursor.x, cursor.y, { zoom: 1.5, duration: 100 });
-  }, [cursor, setCenter]);
+    if (!cursor || !zoomLevel) return;
+    setCenter(cursor.x, cursor.y, { zoom: zoomLevel, duration: 100 });
+  }, [cursor, zoomLevel, setCenter]);
 
   return {
     currentWorkflowId,
