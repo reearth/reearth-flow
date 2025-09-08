@@ -6,6 +6,7 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	pkgworkspace "github.com/reearth/reearth-flow/api/pkg/workspace"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountdomain/workspace"
 )
@@ -110,6 +111,15 @@ func (r *mutationResolver) updateWorkspaceWithTempNewUsecase(ctx context.Context
 }
 
 func (r *mutationResolver) AddMemberToWorkspace(ctx context.Context, input gqlmodel.AddMemberToWorkspaceInput) (*gqlmodel.AddMemberToWorkspacePayload, error) {
+	if usecases(ctx).TempNewWorkspace != nil {
+		tempNewWorkspace := r.addMemberToWorkspaceWithTempNewUsecase(ctx, input)
+		if tempNewWorkspace != nil {
+			log.Printf("DEBUG:[mutationResolver.addMemberToWorkspaceWithTempNewUsecase] Added member to workspace with tempNewUsecase")
+			return tempNewWorkspace, nil
+		}
+	}
+	log.Printf("WARNING:[mutationResolver.AddMemberToWorkspace] Fallback to traditional usecase")
+
 	tid, uid, err := gqlmodel.ToID2[accountdomain.Workspace, accountdomain.User](input.WorkspaceID, input.UserID)
 	if err != nil {
 		return nil, err
@@ -121,6 +131,22 @@ func (r *mutationResolver) AddMemberToWorkspace(ctx context.Context, input gqlmo
 	}
 
 	return &gqlmodel.AddMemberToWorkspacePayload{Workspace: gqlmodel.ToWorkspace(res)}, nil
+}
+
+func (r *mutationResolver) addMemberToWorkspaceWithTempNewUsecase(ctx context.Context, input gqlmodel.AddMemberToWorkspaceInput) *gqlmodel.AddMemberToWorkspacePayload {
+	tid, uid, err := gqlmodel.ToID2[id.Workspace, id.User](input.WorkspaceID, input.UserID)
+	if err != nil {
+		log.Printf("WARNING:[mutationResolver.addMemberToWorkspaceWithTempNewUsecase] Failed to convert IDs: %v", err)
+		return nil
+	}
+
+	res, err := usecases(ctx).TempNewWorkspace.AddUserMember(ctx, tid, map[id.UserID]pkgworkspace.Role{uid: gqlmodel.FromRoleToFlow(input.Role)})
+	if err != nil {
+		log.Printf("WARNING:[mutationResolver.updateWorkspaceWithTempNewUsecase] Failed to add member to workspace: %v", err)
+		return nil
+	}
+
+	return &gqlmodel.AddMemberToWorkspacePayload{Workspace: gqlmodel.ToWorkspaceFromFlow(res)}
 }
 
 func (r *mutationResolver) RemoveMemberFromWorkspace(ctx context.Context, input gqlmodel.RemoveMemberFromWorkspaceInput) (*gqlmodel.RemoveMemberFromWorkspacePayload, error) {

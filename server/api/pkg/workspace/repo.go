@@ -13,4 +13,5 @@ type Repo interface {
 	Create(ctx context.Context, name string) (*Workspace, error)
 	Update(ctx context.Context, wid id.WorkspaceID, name string) (*Workspace, error)
 	Delete(ctx context.Context, wid id.WorkspaceID) error
+	AddUserMember(ctx context.Context, wid id.WorkspaceID, users map[id.UserID]Role) (*Workspace, error)
 }

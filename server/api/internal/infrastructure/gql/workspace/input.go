@@ -16,3 +16,13 @@ type UpdateWorkspaceInput struct {
 type DeleteWorkspaceInput struct {
 	WorkspaceID graphql.ID `json:"workspaceId"`
 }
+
+type AddUsersToWorkspaceInput struct {
+	WorkspaceID graphql.ID    `json:"workspaceId"`
+	Users       []MemberInput `json:"users"`
+}
+
+type MemberInput struct {
+	UserID graphql.ID     `json:"userId"`
+	Role   graphql.String `json:"role"`
+}
