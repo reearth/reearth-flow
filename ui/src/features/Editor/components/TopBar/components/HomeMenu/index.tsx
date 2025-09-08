@@ -87,10 +87,6 @@ const HomeMenu: React.FC<Props> = ({
       "• MapLibre GL JS (maplibre-gl) - BSD-3-Clause License",
       "  Interactive vector maps in web browsers",
       "  https://maplibre.org",
-      "",
-      "• Resium (resium) - MIT License",
-      "  React components for Cesium",
-      "  https://github.com/reearth/resium",
     ].join("\n");
 
     alert(attributionsText);
