@@ -1,10 +1,10 @@
 import { useQuery, useQueryClient, QueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 import { intermediateDataTransform } from "@flow/utils/jsonl/transformIntermediateData";
 import { streamJsonl } from "@flow/utils/streaming";
-import type { StreamingState, StreamingProgress } from "@flow/utils/streaming";
+import type { StreamingProgress } from "@flow/utils/streaming";
 
 type GeometryType =
   | "FlowGeometry2D"
@@ -133,32 +133,187 @@ export const useStreamingDebugRunQuery = (
   const queryClient = useQueryClient();
   const queryKey = useMemo(() => ["streamingDataUrl", dataUrl], [dataUrl]);
   const abortControllerRef = useRef<AbortController>(null);
-  const [detectedFileType, setDetectedFileType] = useState<GeometryType>(null);
 
-  const [streamingState, setStreamingState] = useState<
-    StreamingState<any> & {
-      totalFeatures: number;
-    }
-  >({
+  // State for progressive streaming updates
+  const [streamingState, setStreamingState] = useState<{
+    data: any[];
+    detectedGeometryType: GeometryType;
+    totalFeatures: number;
+    isStreaming: boolean;
+    isComplete: boolean;
+    progress: { bytesProcessed: number; featuresProcessed: number };
+    hasMore: boolean;
+    error: Error | null;
+  }>({
     data: [],
+    detectedGeometryType: null,
+    totalFeatures: 0,
     isStreaming: false,
     isComplete: false,
-    progress: {
-      bytesProcessed: 0,
-      featuresProcessed: 0,
-    },
-    error: null,
+    progress: { bytesProcessed: 0, featuresProcessed: 0 },
     hasMore: false,
-    totalFeatures: 0,
+    error: null,
   });
 
-  // Create a separate query for metadata/initial check
+  // Main streaming query - handles caching and final storage
+  const streamingQuery = useQuery({
+    queryKey,
+    queryFn: async () => {
+      if (!dataUrl) return null;
+
+      let detectedGeometryType: GeometryType = null;
+      const streamData: any[] = [];
+      let totalFeatures = 0;
+      let isComplete = false;
+      let progress = { bytesProcessed: 0, featuresProcessed: 0 };
+
+      // Create abort controller for this query
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      // Initialize streaming state
+      setStreamingState(prev => ({
+        ...prev,
+        isStreaming: true,
+        error: null,
+      }));
+
+      try {
+        const streamGenerator = await streamJsonl(dataUrl, {
+          batchSize,
+          chunkSize,
+          signal: controller.signal,
+          onProgress: (streamProgress) => {
+            progress = streamProgress;
+            onProgress?.(streamProgress);
+          },
+          onError,
+        });
+
+        // Process stream with progressive updates
+        for await (const result of streamGenerator) {
+          totalFeatures = result.progress.featuresProcessed;
+          
+          // Detect geometry type from first batch
+          if (!detectedGeometryType && result.data.length > 0) {
+            detectedGeometryType = analyzeDataType(result.data);
+          }
+
+          // Only store data up to display limit, but always update progress
+          let shouldUpdateData = false;
+          if (streamData.length < displayLimit) {
+            const remainingToAdd = displayLimit - streamData.length;
+            const dataToAdd = result.data.slice(0, remainingToAdd);
+            const transformedData = dataToAdd.map((feature) => {
+              try {
+                return intermediateDataTransform(feature);
+              } catch (error) {
+                console.warn("Failed to transform streaming feature:", error, feature);
+                return feature;
+              }
+            });
+            streamData.push(...transformedData);
+            shouldUpdateData = true;
+          }
+
+          // Always update streaming state to show current progress and total count
+          setStreamingState(prev => ({
+            ...prev,
+            data: shouldUpdateData ? [...streamData] : prev.data, // Only update data if we added new items
+            detectedGeometryType,
+            totalFeatures, // Always update total count
+            progress: result.progress, // Always update progress
+            hasMore: totalFeatures > displayLimit,
+            isComplete: result.isComplete,
+            isStreaming: !result.isComplete,
+          }));
+
+          if (result.isComplete) {
+            isComplete = true;
+            break;
+          }
+        }
+
+        // Store final result in React Query cache
+        const finalResult = {
+          data: streamData,
+          fileContent: streamData,
+          detectedGeometryType,
+          totalFeatures,
+          isComplete,
+          isStreaming: false,
+          progress,
+          hasMore: totalFeatures > displayLimit,
+          error: null,
+          cachedAt: Date.now(),
+        };
+
+        // Smart cache management to prevent memory issues
+        manageCacheSize(queryClient);
+
+        return finalResult;
+
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          setStreamingState(prev => ({
+            ...prev,
+            isStreaming: false,
+          }));
+          throw error;
+        }
+        const err = error as Error;
+        setStreamingState(prev => ({
+          ...prev,
+          error: err,
+          isStreaming: false,
+        }));
+        throw error;
+      }
+    },
+    enabled: enabled && !!dataUrl,
+    staleTime: 30 * 60 * 1000, // 30 minutes
+    gcTime: 2 * 60 * 60 * 1000, // 2 hours
+    retry: false,
+  });
+
+  // Initialize from cache on mount/URL change
+  useEffect(() => {
+    if (dataUrl) {
+      const cachedData = queryClient.getQueryData(queryKey) as any;
+      if (cachedData && cachedData.isComplete) {
+        // Use cached data immediately
+        setStreamingState({
+          data: cachedData.data || cachedData.fileContent || [],
+          detectedGeometryType: cachedData.detectedGeometryType,
+          totalFeatures: cachedData.totalFeatures || 0,
+          isStreaming: false,
+          isComplete: true,
+          progress: cachedData.progress || { bytesProcessed: 0, featuresProcessed: 0 },
+          hasMore: cachedData.hasMore || false,
+          error: null,
+        });
+      } else {
+        // Reset to empty state
+        setStreamingState({
+          data: [],
+          detectedGeometryType: null,
+          totalFeatures: 0,
+          isStreaming: false,
+          isComplete: false,
+          progress: { bytesProcessed: 0, featuresProcessed: 0 },
+          hasMore: false,
+          error: null,
+        });
+      }
+    }
+  }, [dataUrl, queryKey, queryClient]);
+
+  // Create a separate query for metadata/initial check  
   const metadataQuery = useQuery({
     queryKey: [...queryKey, "metadata"],
     queryFn: async () => {
       if (!dataUrl) return null;
 
-      // Just fetch headers to check content length and type
       const response = await fetch(dataUrl, { method: "HEAD" });
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -174,205 +329,6 @@ export const useStreamingDebugRunQuery = (
     gcTime: 60 * 60 * 1000, // 1 hour
   });
 
-  const startStreaming = useCallback(async () => {
-    if (!dataUrl || streamingState.isStreaming) return;
-
-    // Create new abort controller
-    abortControllerRef.current = new AbortController();
-
-    setStreamingState((prev) => ({
-      ...prev,
-      isStreaming: true,
-      error: null,
-    }));
-
-    try {
-      const streamGenerator = await streamJsonl(dataUrl, {
-        batchSize,
-        chunkSize,
-        signal: abortControllerRef.current.signal,
-        onProgress: (progress) => {
-          setStreamingState((prev) => ({
-            ...prev,
-            progress,
-            totalFeatures: progress.featuresProcessed,
-          }));
-          onProgress?.(progress);
-        },
-        onError: (error) => {
-          setStreamingState((prev) => ({
-            ...prev,
-            error,
-            isStreaming: false,
-          }));
-          onError?.(error);
-        },
-      });
-
-      // Process stream
-      for await (const result of streamGenerator) {
-        // Always count all features for total
-        const currentTotal = result.progress.featuresProcessed;
-
-        // Detect file type from first batch if not already detected
-        if (!detectedFileType && result.data.length > 0) {
-          const type = analyzeDataType(result.data);
-          setDetectedFileType(type);
-        }
-
-        // Update state with current progress and total count
-        setStreamingState((prev) => {
-          const currentDataLength = prev.data.length;
-
-          // Only add data to display if we haven't reached our display limit
-          let newDataToAdd: any[] = [];
-
-          if (currentDataLength < displayLimit) {
-            const remainingToDisplay = displayLimit - currentDataLength;
-            const rawDataToAdd = result.data.slice(0, remainingToDisplay);
-
-            // Apply intermediateDataTransform to match non-streaming behavior
-            newDataToAdd = rawDataToAdd.map((feature) => {
-              try {
-                return intermediateDataTransform(feature);
-              } catch (error) {
-                console.warn(
-                  "Failed to transform streaming feature:",
-                  error,
-                  feature,
-                );
-                return feature; // Return raw feature as fallback
-              }
-            });
-          }
-
-          const newState = {
-            ...prev,
-            data:
-              newDataToAdd.length > 0
-                ? [...prev.data, ...newDataToAdd]
-                : prev.data,
-            progress: result.progress,
-            totalFeatures: currentTotal,
-            isComplete: result.isComplete,
-            hasMore: result.hasMore,
-            isStreaming: !result.isComplete,
-          };
-
-          // Update query cache immediately with the new state
-          if (result.isComplete) {
-            queryClient.setQueryData(queryKey, {
-              data: newState.data,
-              progress: result.progress,
-              isComplete: result.isComplete,
-              hasMore: result.hasMore,
-              fileContent: newState.data,
-              type:
-                detectedFileType || analyzeDataType(newState.data) || "jsonl",
-              totalFeatures: currentTotal,
-              detectedGeometryType: detectedFileType,
-              cachedAt: Date.now(),
-            });
-
-            // Smart cache invalidation - limit total cached files
-            manageCacheSize(queryClient);
-          }
-
-          return newState;
-        });
-
-        // If we've hit our display limit, we continue streaming but only for counting
-        // (no need to break - let it count the full file for totalFeatures)
-
-        // If streaming is complete, break the loop
-        if (result.isComplete) {
-          break;
-        }
-      }
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        // Stream was aborted (likely due to URL change), clear any partial data
-        setStreamingState((prev) => ({
-          ...prev,
-          isStreaming: false,
-          // Keep existing data if we were just switching files
-        }));
-        // Don't cache partial streaming results when aborted
-      } else {
-        const err = error as Error;
-        setStreamingState((prev) => ({
-          ...prev,
-          error: err,
-          isStreaming: false,
-        }));
-        onError?.(err);
-      }
-    }
-  }, [
-    dataUrl,
-    batchSize,
-    chunkSize,
-    displayLimit,
-    onProgress,
-    onError,
-    queryClient,
-    queryKey,
-    streamingState.isStreaming,
-    detectedFileType,
-  ]);
-
-  const resetStreaming = useCallback(() => {
-    // Stop any ongoing streaming
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-
-    setStreamingState({
-      data: [],
-      isStreaming: false,
-      isComplete: false,
-      progress: {
-        bytesProcessed: 0,
-        featuresProcessed: 0,
-      },
-      error: null,
-      hasMore: false,
-      totalFeatures: 0,
-    });
-    setDetectedFileType(null);
-    queryClient.removeQueries({ queryKey });
-  }, [queryClient, queryKey]);
-
-  // Auto-start streaming when enabled and URL changes (but not if we have cached data)
-  useEffect(() => {
-    if (
-      enabled &&
-      dataUrl &&
-      !streamingState.isStreaming &&
-      streamingState.data.length === 0
-    ) {
-      // Check if we have cached data before starting streaming
-      const cachedData = queryClient.getQueryData(queryKey);
-      if (!cachedData || !(cachedData as any).isComplete) {
-        // Small delay to ensure any abort operations have completed
-        const timeoutId = setTimeout(() => {
-          startStreaming();
-        }, 100);
-
-        return () => clearTimeout(timeoutId);
-      }
-    }
-  }, [
-    enabled,
-    dataUrl,
-    startStreaming,
-    streamingState.isStreaming,
-    streamingState.data.length,
-    queryClient,
-    queryKey,
-  ]);
-
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -381,75 +337,6 @@ export const useStreamingDebugRunQuery = (
       }
     };
   }, []);
-
-  // Reset state and check for cached data when URL changes
-  useEffect(() => {
-    // First, stop any ongoing streaming when URL changes
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-
-    if (dataUrl) {
-      // Always reset state first when URL changes
-      const defaultState = {
-        data: [],
-        isStreaming: false,
-        isComplete: false,
-        progress: {
-          bytesProcessed: 0,
-          featuresProcessed: 0,
-        },
-        error: null,
-        hasMore: false,
-        totalFeatures: 0,
-      };
-
-      // Reset detected file type
-      setDetectedFileType(null);
-
-      // Check for cached data and override default state if available
-      const cachedData = queryClient.getQueryData(queryKey);
-      if (cachedData && (cachedData as any).isComplete) {
-        const cacheDataArray =
-          (cachedData as any).fileContent || (cachedData as any).data || [];
-        // Initialize state from cached data
-        setStreamingState({
-          data: cacheDataArray,
-          isStreaming: false,
-          isComplete: true,
-          progress: (cachedData as any).progress || {
-            bytesProcessed: 0,
-            featuresProcessed: cacheDataArray.length,
-          },
-          error: null,
-          hasMore: false,
-          totalFeatures:
-            (cachedData as any).totalFeatures || cacheDataArray.length,
-        });
-
-        // Also set detected file type from cache
-        if ((cachedData as any).detectedGeometryType) {
-          setDetectedFileType((cachedData as any).detectedGeometryType);
-        }
-      } else {
-        // Set default empty state
-        setStreamingState(defaultState);
-      }
-    }
-  }, [dataUrl, queryKey, queryClient]);
-
-  // Also provide the cached data from React Query for compatibility
-  const cachedQuery = useQuery({
-    queryKey,
-    queryFn: () => {
-      // This function shouldn't actually run since we're manually setting the data
-      return Promise.resolve(null);
-    },
-    enabled: false,
-    staleTime: 30 * 60 * 1000, // 30 minutes
-    gcTime: 2 * 60 * 60 * 1000, // 2 hours
-  });
 
   // Memoize fileContent to prevent infinite re-renders
   const fileContent = useMemo(
@@ -461,25 +348,17 @@ export const useStreamingDebugRunQuery = (
   );
 
   return {
-    // Streaming-specific data
+    // Progressive streaming data (immediately available)
     ...streamingState,
-    resetStreaming,
-
-    // Metadata
-    metadata: metadataQuery.data,
-    detectedGeometryType: detectedFileType,
-
-    // Compatibility with existing useFetchAndReadData interface
+    
+    // Compatibility with existing interface
     fileContent,
-    fileType: "geojson", // All streaming data normalized to geojson format
-    isLoading: streamingState.isStreaming || metadataQuery.isLoading,
-
-    // Additional query states
-    isFetching: streamingState.isStreaming,
-
-    // React Query compatibility
-    data: cachedQuery.data,
-    isError: !!streamingState.error || metadataQuery.isError,
-    error: streamingState.error || metadataQuery.error,
+    fileType: "geojson" as SupportedDataTypes,
+    isLoading: streamingQuery.isLoading || metadataQuery.isLoading,
+    
+    // React Query compatibility  
+    data: streamingQuery.data,
+    isError: streamingQuery.isError || metadataQuery.isError,
+    error: streamingState.error || streamingQuery.error || metadataQuery.error,
   };
 };

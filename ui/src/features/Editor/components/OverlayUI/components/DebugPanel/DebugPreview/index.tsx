@@ -175,7 +175,7 @@ const DebugPreview: React.FC<Props> = ({
   return debugJobState && dataURLs ? (
     <div className="h-full w-full">
       {!shouldShowViewer() ? (
-        <div className="h-full flex items-center justify-center">
+        <div className="flex h-full items-center justify-center">
           <div className="text-center text-muted-foreground">
             <LoadingSkeleton className="mb-4" />
             <p className="text-sm">
@@ -183,7 +183,7 @@ const DebugPreview: React.FC<Props> = ({
                 <>
                   Loading streaming data... {selectedOutputData?.features?.length || 0} features loaded
                   {selectedOutputData?.features?.length >= 2000 && 
-                    <span className="block text-xs mt-1">
+                    <span className="mt-1 block text-xs">
                       ({(selectedOutputData?.features?.length >= 2000 && !isComplete) ? 
                         'Hit display limit of 2000 - viewer will show shortly' : 
                         'Processing...'}
