@@ -78,6 +78,7 @@ const Canvas: React.FC<Props> = ({
   const {
     handleNodesDelete,
     handleNodeDragOver,
+    handleNodeDragStop,
     handleNodeDrop,
     handleNodeSettings,
     handleConnect,
@@ -129,6 +130,7 @@ const Canvas: React.FC<Props> = ({
       onEdgesChange={onEdgesChange}
       onNodeDoubleClick={handleNodeSettings}
       onNodeDragStart={handleCloseContextmenu}
+      onNodeDragStop={handleNodeDragStop}
       onNodesDelete={handleNodesDelete}
       onNodeContextMenu={handleNodeContextMenu}
       onSelectionContextMenu={handleSelectionContextMenu}
