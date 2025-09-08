@@ -36,6 +36,7 @@ export default function Editor({
     currentWorkflowId,
     openWorkflows,
     currentProject,
+    self,
     users,
     nodes,
     edges,
@@ -104,6 +105,8 @@ export default function Editor({
           openWorkflows={openWorkflows}
           allowedToDeploy={allowedToDeploy}
           isSaving={isSaving}
+          self={self}
+          users={users}
           onProjectShare={handleProjectShare}
           onProjectExport={handleCurrentProjectExport}
           onWorkflowDeployment={handleWorkflowDeployment}
