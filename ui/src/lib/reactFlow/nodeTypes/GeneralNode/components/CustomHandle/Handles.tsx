@@ -8,6 +8,7 @@ import {
   CollapsibleTrigger,
   IconButton,
 } from "@flow/components";
+import { useT } from "@flow/lib/i18n";
 
 import CustomHandle from "./CustomHandle";
 
@@ -26,12 +27,14 @@ const Handles: React.FC<Props> = ({
   isCollapsed,
   onCollapsedToggle,
 }) => {
+  const t = useT();
+  const hasMoreThanFiveOutputHandles = outputs && outputs.length >= 5;
   return (
     <Collapsible className="flex flex-col" open={!isCollapsed}>
       <div className="flex justify-between gap-0.5">
         {nodeType !== "reader" && inputs && (
           <div className="inset-x-0 mx-auto min-w-0 flex-1">
-            {inputs.slice(0, 5).map((input, index) => (
+            {inputs.map((input, index) => (
               <div
                 key={input + index}
                 className="relative flex items-center border-b py-0.5 last-of-type:border-none">
@@ -54,9 +57,9 @@ const Handles: React.FC<Props> = ({
             ))}
           </div>
         )}
-        {outputs && (
+        {outputs && !hasMoreThanFiveOutputHandles && (
           <div className="inset-x-0 mx-auto min-w-0 flex-1 overflow-hidden">
-            {outputs.slice(0, 5).map((output, index) => (
+            {outputs.map((output, index) => (
               <div
                 key={output + index}
                 className="relative flex items-center justify-end border-b py-0.5 last-of-type:border-none">
@@ -76,70 +79,44 @@ const Handles: React.FC<Props> = ({
             ))}
           </div>
         )}
+        {outputs && outputs.length >= 5 && isCollapsed && (
+          <div className="inset-x-0 mx-auto min-w-0 flex-1 overflow-hidden">
+            <div className="relative flex items-center justify-end border-b py-0.5 last-of-type:border-none">
+              <div className="right-1 z-10 w-[8px] rounded-none transition-colors" />
+              <div className="flex w-full -translate-x-0.5 items-center justify-end">
+                <p className="w-[90%] pr-1 text-end text-[10px] break-words italic dark:font-thin">
+                  {t("Multiple")}
+                </p>
+                <div className="size-1.5 rounded-full bg-gray-300" />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       {isCollapsed && (
         <>
-          {nodeType !== "reader" &&
-            inputs &&
-            inputs
-              .slice(5)
-              .map((input, index) => (
-                <CustomHandle
-                  key={`collapsed-${input}-${index}`}
-                  type="target"
-                  className="absolute left-1 w-[8px] rounded-none transition-colors"
-                  position={Position.Left}
-                  id={input}
-                  style={{ top: "88%", transform: "translateY(-50%)" }}
-                />
-              ))}
           {outputs &&
-            outputs
-              .slice(5)
-              .map((output, index) => (
-                <CustomHandle
-                  key={`collapsed-${output}-${index}`}
-                  type="source"
-                  className="absolute right-1 z-10 w-[8px] rounded-none transition-colors"
-                  position={Position.Right}
-                  id={output}
-                  style={{ top: "88%", transform: "translateY(-50%)" }}
-                />
-              ))}
+            outputs.map((output, index) => (
+              <CustomHandle
+                key={`collapsed-${output}-${index}`}
+                type="source"
+                className="absolute right-1 z-10 w-[8px] rounded-none transition-colors"
+                position={Position.Right}
+                id={output}
+                isConnectable={1}
+                style={{ top: "55%", transform: "translateY(-50%)" }}
+              />
+            ))}
         </>
       )}
       <CollapsibleContent className="flex justify-between gap-2">
-        {nodeType !== "reader" && inputs && (
-          <div className="inset-x-0 mx-auto min-w-0 flex-1">
-            {inputs.slice(5).map((input, index) => (
-              <div
-                key={input + index}
-                className="relative flex items-center border-b py-0.5 first-of-type:border-t last-of-type:border-none">
-                <CustomHandle
-                  type="target"
-                  className={`left-1 w-[8px] rounded-none transition-colors ${index === (!outputs && inputs && inputs.length - 1) ? "rounded-bl-sm" : undefined}`}
-                  position={Position.Left}
-                  id={input}
-                  // isConnectable={1}
-                />
-                <div className="flex w-full translate-x-0.5 items-center">
-                  <div>
-                    <div className="size-1.5 rounded-full bg-gray-300" />
-                  </div>
-                  <p className="w-[90%] pl-1 text-[10px] break-words italic dark:font-thin">
-                    {input}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        {outputs && (
+        <div className="inset-x-0 mx-auto min-w-0 flex-1" />
+        {outputs && hasMoreThanFiveOutputHandles && (
           <div className="inset-x-0 mx-auto min-w-0 flex-1 overflow-hidden">
-            {outputs.slice(5).map((output, index) => (
+            {outputs.map((output, index) => (
               <div
                 key={output + index}
-                className="relative flex items-center justify-end  border-b py-0.5 first-of-type:border-t last-of-type:border-none">
+                className="relative flex items-center justify-end  border-b py-0.5 last-of-type:border-none">
                 <CustomHandle
                   type="source"
                   className="right-1 z-10 w-[8px] rounded-none transition-colors"
@@ -157,7 +134,7 @@ const Handles: React.FC<Props> = ({
           </div>
         )}
       </CollapsibleContent>
-      {((inputs && inputs.length >= 5) || (outputs && outputs.length >= 5)) && (
+      {outputs && outputs.length >= 5 && (
         <CollapsibleTrigger asChild className="justify-center self-center">
           <IconButton
             onClick={() => onCollapsedToggle?.(!isCollapsed)}

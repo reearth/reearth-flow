@@ -803,6 +803,7 @@
   "Member's Role has been successfully updated.": "成员角色已成功更新。",
   "Member's Role Could Not Be Updated": "成员角色无法更新",
   "There was an error when trying to update the members persmissons.": "更新成员权限时发生错误。",
+  "Multiple": "多个",
   "Batch": "批处理",
   "Subworkflow": "子工作流",
   "Please check the shared URL is correct.": "请检查共享URL是否正确。",
