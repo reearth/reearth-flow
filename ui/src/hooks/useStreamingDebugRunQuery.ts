@@ -172,7 +172,7 @@ export const useStreamingDebugRunQuery = (
       abortControllerRef.current = controller;
 
       // Initialize streaming state
-      setStreamingState(prev => ({
+      setStreamingState((prev) => ({
         ...prev,
         isStreaming: true,
         error: null,
@@ -193,7 +193,7 @@ export const useStreamingDebugRunQuery = (
         // Process stream with progressive updates
         for await (const result of streamGenerator) {
           totalFeatures = result.progress.featuresProcessed;
-          
+
           // Detect geometry type from first batch
           if (!detectedGeometryType && result.data.length > 0) {
             detectedGeometryType = analyzeDataType(result.data);
@@ -208,7 +208,11 @@ export const useStreamingDebugRunQuery = (
               try {
                 return intermediateDataTransform(feature);
               } catch (error) {
-                console.warn("Failed to transform streaming feature:", error, feature);
+                console.warn(
+                  "Failed to transform streaming feature:",
+                  error,
+                  feature,
+                );
                 return feature;
               }
             });
@@ -217,7 +221,7 @@ export const useStreamingDebugRunQuery = (
           }
 
           // Always update streaming state to show current progress and total count
-          setStreamingState(prev => ({
+          setStreamingState((prev) => ({
             ...prev,
             data: shouldUpdateData ? [...streamData] : prev.data, // Only update data if we added new items
             detectedGeometryType,
@@ -252,17 +256,16 @@ export const useStreamingDebugRunQuery = (
         manageCacheSize(queryClient);
 
         return finalResult;
-
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
-          setStreamingState(prev => ({
+          setStreamingState((prev) => ({
             ...prev,
             isStreaming: false,
           }));
           throw error;
         }
         const err = error as Error;
-        setStreamingState(prev => ({
+        setStreamingState((prev) => ({
           ...prev,
           error: err,
           isStreaming: false,
@@ -288,7 +291,10 @@ export const useStreamingDebugRunQuery = (
           totalFeatures: cachedData.totalFeatures || 0,
           isStreaming: false,
           isComplete: true,
-          progress: cachedData.progress || { bytesProcessed: 0, featuresProcessed: 0 },
+          progress: cachedData.progress || {
+            bytesProcessed: 0,
+            featuresProcessed: 0,
+          },
           hasMore: cachedData.hasMore || false,
           error: null,
         });
@@ -308,7 +314,7 @@ export const useStreamingDebugRunQuery = (
     }
   }, [dataUrl, queryKey, queryClient]);
 
-  // Create a separate query for metadata/initial check  
+  // Create a separate query for metadata/initial check
   const metadataQuery = useQuery({
     queryKey: [...queryKey, "metadata"],
     queryFn: async () => {
@@ -350,13 +356,13 @@ export const useStreamingDebugRunQuery = (
   return {
     // Progressive streaming data (immediately available)
     ...streamingState,
-    
+
     // Compatibility with existing interface
     fileContent,
     fileType: "geojson" as SupportedDataTypes,
     isLoading: streamingQuery.isLoading || metadataQuery.isLoading,
-    
-    // React Query compatibility  
+
+    // React Query compatibility
     data: streamingQuery.data,
     isError: streamingQuery.isError || metadataQuery.isError,
     error: streamingState.error || streamingQuery.error || metadataQuery.error,

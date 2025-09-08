@@ -71,11 +71,11 @@ const DebugPreview: React.FC<Props> = ({
   isComplete,
 }) => {
   const t = useT();
-  
+
   // Auto-detect which viewer to show based on geometry type
   const getViewerType = (detectedType: string | null): "2d" | "3d" | null => {
     if (!detectedType) return null; // Unknown type - no viewer
-    
+
     switch (detectedType) {
       case "CityGmlGeometry":
       case "FlowGeometry3D":
@@ -86,22 +86,22 @@ const DebugPreview: React.FC<Props> = ({
         return null; // Unknown type - no viewer
     }
   };
-  
+
   const viewerType = getViewerType(detectedGeometryType);
-  
+
   // Determine if we should show the viewer based on streaming state
   const shouldShowViewer = () => {
     // For non-streaming data, use the existing loading logic
     if (!isStreaming) {
       return !isLoadingData;
     }
-    
+
     // For streaming data, show viewer when:
     // 1. Stream is complete (we have the total count)
     // 2. OR we have data and hit the display limit (2000 features)
     const hasData = selectedOutputData?.features?.length > 0;
     const hitDisplayLimit = selectedOutputData?.features?.length >= 2000;
-    
+
     return hasData && (isComplete || hitDisplayLimit);
   };
 
@@ -181,18 +181,21 @@ const DebugPreview: React.FC<Props> = ({
             <p className="text-sm">
               {isStreaming ? (
                 <>
-                  Loading streaming data... {selectedOutputData?.features?.length || 0} features loaded
-                  {selectedOutputData?.features?.length >= 2000 && 
+                  Loading streaming data...{" "}
+                  {selectedOutputData?.features?.length || 0} features loaded
+                  {selectedOutputData?.features?.length >= 2000 && (
                     <span className="mt-1 block text-xs">
-                      ({(selectedOutputData?.features?.length >= 2000 && !isComplete) ? 
-                        'Hit display limit of 2000 - viewer will show shortly' : 
-                        'Processing...'}
+                      (
+                      {selectedOutputData?.features?.length >= 2000 &&
+                      !isComplete
+                        ? "Hit display limit of 2000 - viewer will show shortly"
+                        : "Processing..."}
                       )
                     </span>
-                  }
+                  )}
                 </>
               ) : (
-                'Loading data...'
+                "Loading data..."
               )}
             </p>
           </div>
@@ -204,7 +207,9 @@ const DebugPreview: React.FC<Props> = ({
             <div className="flex w-full justify-between rounded-md bg-muted/30 p-1">
               <div className="flex items-center gap-1 px-2">
                 <MapPinAreaIcon size={16} />
-                <p className="text-sm font-medium select-none">{t("2D Viewer")}</p>
+                <p className="text-sm font-medium select-none">
+                  {t("2D Viewer")}
+                </p>
                 {detectedGeometryType && (
                   <span className="rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
                     {detectedGeometryType}
@@ -255,7 +260,9 @@ const DebugPreview: React.FC<Props> = ({
           <div className="py-1">
             <div className="flex items-center gap-1 rounded-md bg-muted/30 px-3 py-2">
               <GlobeIcon size={16} />
-              <p className="text-sm font-medium select-none">{t("3D Viewer")}</p>
+              <p className="text-sm font-medium select-none">
+                {t("3D Viewer")}
+              </p>
               {detectedGeometryType && (
                 <span className="rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
                   {detectedGeometryType}
@@ -273,8 +280,12 @@ const DebugPreview: React.FC<Props> = ({
       ) : (
         <div className="flex h-full items-center justify-center text-muted-foreground">
           <div className="text-center">
-            <p className="text-sm">{t("No viewer available for this data type")}</p>
-            <p className="mt-1 text-xs">{t("Data type")}: {detectedGeometryType || "Unknown"}</p>
+            <p className="text-sm">
+              {t("No viewer available for this data type")}
+            </p>
+            <p className="mt-1 text-xs">
+              {t("Data type")}: {detectedGeometryType || "Unknown"}
+            </p>
           </div>
         </div>
       )}
