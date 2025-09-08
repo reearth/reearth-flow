@@ -596,17 +596,8 @@ impl BroadcastGroup {
 
     pub async fn cleanup_client_awareness(&self) -> Result<()> {
         let awareness = self.awareness().clone();
-        let client_id = {
-            let awareness_read = awareness.read().await;
-            awareness_read.client_id()
-        };
-
-        info!("Cleaning up awareness for client: {}", client_id);
-
         let awareness_read = awareness.read().await;
         awareness_read.clean_local_state();
-        info!("Cleaned local awareness state for client: {}", client_id);
-
         Ok(())
     }
 
