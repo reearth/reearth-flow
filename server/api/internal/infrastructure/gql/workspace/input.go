@@ -22,6 +22,12 @@ type AddUsersToWorkspaceInput struct {
 	Users       []MemberInput `json:"users"`
 }
 
+type UpdateUserOfWorkspaceInput struct {
+	WorkspaceID graphql.ID     `json:"workspaceId"`
+	UserID      graphql.ID     `json:"userId"`
+	Role        graphql.String `json:"role"`
+}
+
 type MemberInput struct {
 	UserID graphql.ID     `json:"userId"`
 	Role   graphql.String `json:"role"`

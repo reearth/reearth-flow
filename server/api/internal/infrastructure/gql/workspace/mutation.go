@@ -28,3 +28,9 @@ type addUsersToWorkspaceMutation struct {
 		Workspace gqlmodel.Workspace `graphql:"workspace"`
 	} `graphql:"addUsersToWorkspace(input: $input)"`
 }
+
+type updateUserOfWorkspaceMutation struct {
+	UpdateUserOfWorkspace struct {
+		Workspace gqlmodel.Workspace `graphql:"workspace"`
+	} `graphql:"updateUserOfWorkspace(input: $input)"`
+}
