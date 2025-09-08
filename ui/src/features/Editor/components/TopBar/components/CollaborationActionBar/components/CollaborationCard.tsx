@@ -9,12 +9,6 @@ type Props = {
   clientId: number;
   userName: string;
   color: string;
-  cursor:
-    | {
-        x: number;
-        y: number;
-      }
-    | undefined;
   spotlightUserClientId?: number | null;
   onSpotlightUserSelect?: (clientId: number) => void;
   onSpotlightUserDeselect?: () => void;
@@ -35,7 +29,7 @@ const CollaborationCard: React.FC<Props> = ({
 
   return (
     <div
-      className="flex items-center gap-2 p-1 pt-1 hover:bg-primary"
+      className="flex items-center gap-2 p-1 hover:bg-primary"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}>
       <div

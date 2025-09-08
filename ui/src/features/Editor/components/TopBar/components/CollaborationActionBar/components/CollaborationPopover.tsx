@@ -27,7 +27,6 @@ const CollaborationPopover: React.FC<Props> = ({
         <CollaborationCard
           self
           clientId={self.clientId}
-          cursor={self.cursor}
           userName={self?.userName}
           color={self.color}
         />
@@ -43,7 +42,6 @@ const CollaborationPopover: React.FC<Props> = ({
                 return (
                   <CollaborationCard
                     clientId={value.clientId}
-                    cursor={value.cursor}
                     key={value.clientId}
                     userName={value.userName}
                     color={value.color}
