@@ -197,10 +197,6 @@ async fn handle_socket(
 
     let conn = crate::conn::Connection::new(bcast.clone(), sink, stream, user_token).await;
 
-    if let Err(e) = bcast.increment_connections().await {
-        error!("Failed to increment connections: {}", e);
-    }
-
     let connection_result = tokio::select! {
         result = conn => result,
         _ = tokio::time::sleep(tokio::time::Duration::from_secs(86400)) => {
@@ -214,6 +210,10 @@ async fn handle_socket(
             "WebSocket connection error for document '{}': {}",
             doc_id, e
         );
+    }
+
+    if let Err(e) = bcast.shutdown().await {
+        error!("Failed to shutdown BroadcastGroup for {}: {}", doc_id, e);
     }
 }
 

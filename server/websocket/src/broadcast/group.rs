@@ -28,7 +28,6 @@ use yrs::{Doc, ReadTxn, Transact, Update};
 use super::types::BroadcastConfig;
 
 pub struct BroadcastGroup {
-    connections: Arc<AtomicUsize>,
     awareness_ref: AwarenessRef,
     sender: Sender<Bytes>,
     doc_sub: yrs::Subscription,
@@ -51,7 +50,6 @@ pub struct BroadcastGroup {
 impl std::fmt::Debug for BroadcastGroup {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("BroadcastGroup")
-            .field("connections", &self.connections)
             .field("awareness_ref", &self.awareness_ref)
             .field("doc_name", &self.doc_name)
             .finish()
@@ -59,20 +57,6 @@ impl std::fmt::Debug for BroadcastGroup {
 }
 
 impl BroadcastGroup {
-    pub async fn increment_connections(&self) -> Result<()> {
-        let _ = self.connections.fetch_add(1, Ordering::Relaxed);
-        Ok(())
-    }
-
-    pub async fn decrement_connections(&self) -> usize {
-        let prev_count = self.connections.fetch_sub(1, Ordering::Relaxed);
-        prev_count - 1
-    }
-
-    pub fn connection_count(&self) -> usize {
-        self.connections.load(Ordering::Relaxed)
-    }
-
     pub async fn new(
         awareness: AwarenessRef,
         buffer_capacity: usize,
@@ -366,7 +350,6 @@ impl BroadcastGroup {
         });
 
         Ok(BroadcastGroup {
-            connections: Arc::new(AtomicUsize::new(0)),
             awareness_ref: awareness,
             sender,
             doc_sub,
@@ -631,8 +614,7 @@ impl BroadcastGroup {
     }
 
     pub async fn shutdown(&self) -> Result<()> {
-        info!("Shutdown called for document: {}", self.doc_name);
-        if self.connection_count() == 0 {
+        if self.awareness().read().await.iter().count() == 0 {
             if let Err(e) = self
                 .redis_store
                 .remove_instance_heartbeat(&self.doc_name, &self.instance_id)
@@ -763,7 +745,7 @@ impl BroadcastGroup {
 
         tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
-        if self.connection_count() == 0 {
+        if self.awareness().read().await.iter().count() == 0 {
             self.redis_store
                 .safe_delete_stream(&self.doc_name, &self.instance_id)
                 .await?;
