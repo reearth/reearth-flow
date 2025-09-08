@@ -94,7 +94,7 @@ const DebugPanel: React.FC = () => {
     <div
       className={`${fullscreenDebug ? "fixed inset-0" : ""} z-30 flex items-end`}>
       <Tabs
-        className={`pointer-events-auto w-[95vw] rounded-md border border-primary bg-secondary/70 p-2 shadow-md shadow-secondary backdrop-blur transition-all ${minimized ? "h-[42px]" : fullscreenDebug ? "h-[100vh] w-[100vw]" : expanded ? "h-[60vh]" : "h-[40vh]"}`}
+        className={`pointer-events-auto w-[95vw] rounded-md border border-primary bg-secondary/70 p-2 shadow-md shadow-secondary backdrop-blur transition-all ${minimized ? "h-[42px]" : fullscreenDebug ? "h-[100vh] w-[100vw]" : expanded ? "h-[75vh]" : "h-[45vh]"}`}
         value={tabValue}
         defaultValue="debug-logs"
         onValueChange={setTabValue}>
@@ -183,7 +183,7 @@ const DebugPanel: React.FC = () => {
             className="h-[calc(100%-30px)] overflow-scroll">
             <ResizablePanelGroup direction="horizontal">
               <ResizablePanel
-                defaultSize={70}
+                defaultSize={60}
                 minSize={20}
                 className="flex flex-col">
                 <Tabs defaultValue="data-viewer">
@@ -222,7 +222,7 @@ const DebugPanel: React.FC = () => {
                 </div>
               </ResizablePanel>
               <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 mx-2 h-[30%] w-1 self-center rounded-md border border-accent bg-accent transition hover:border-transparent hover:bg-logo/70" />
-              <ResizablePanel defaultSize={30} minSize={20}>
+              <ResizablePanel defaultSize={40} minSize={20}>
                 <DebugPreview
                   debugJobState={debugJobState}
                   dataURLs={dataURLs}

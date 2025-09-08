@@ -1,12 +1,10 @@
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback } from "react";
 
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useT } from "@flow/lib/i18n";
 import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
-
-import FeatureDetailsDialog from "./FeatureDetailsDialog";
 
 type Props = {
   fileContent: any | null;
@@ -42,24 +40,12 @@ const TableViewer: React.FC<Props> = memo(
       type: fileType,
     });
 
-    // Feature details dialog state
-    const [selectedFeatureDetails, setSelectedFeatureDetails] = useState<
-      any | null
-    >(null);
-    const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-
-    // Handle feature details dialog
-    const handleShowDetails = useCallback((feature: any) => {
-      setSelectedFeatureDetails(feature);
-      setShowDetailsDialog(true);
-    }, []);
-
+    // Handle row double click
     const handleRowDoubleClick = useCallback(
       (feature: any) => {
-        handleShowDetails(feature);
         onDoubleClick?.(feature);
       },
-      [handleShowDetails, onDoubleClick],
+      [onDoubleClick],
     );
 
     // Loading state
@@ -118,13 +104,6 @@ const TableViewer: React.FC<Props> = memo(
             </div>
           </div>
         </div>
-
-        {/* Feature details dialog */}
-        <FeatureDetailsDialog
-          feature={selectedFeatureDetails}
-          open={showDetailsDialog}
-          onOpenChange={setShowDetailsDialog}
-        />
       </div>
     );
   },
