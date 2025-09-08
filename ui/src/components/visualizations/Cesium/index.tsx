@@ -5,6 +5,7 @@ import { Viewer, ViewerProps } from "resium";
 
 import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 
+import CityGmlData from "./CityGmlData";
 import GeoJsonData from "./GeoJson";
 
 const defaultCesiumProps: Partial<ViewerProps> = {
@@ -33,10 +34,41 @@ const CesiumViewer: React.FC<Props> = ({ fileContent, fileType }) => {
     setIsLoaded(true);
   }, [isLoaded]);
 
+  // Separate features by geometry type
+  const geoJsonFeatures =
+    fileContent?.features?.filter(
+      (feature: any) => feature?.geometry?.type !== "CityGmlGeometry",
+    ) || [];
+
+  const cityGmlFeatures =
+    fileContent?.features?.filter(
+      (feature: any) => feature?.geometry?.type === "CityGmlGeometry",
+    ) || [];
+
   return (
     <Viewer full {...defaultCesiumProps}>
       {isLoaded && fileType === "geojson" && (
-        <GeoJsonData geoJsonData={fileContent} />
+        <>
+          {/* Standard GeoJSON features */}
+          {geoJsonFeatures.length > 0 && (
+            <GeoJsonData
+              geoJsonData={{
+                type: "FeatureCollection",
+                features: geoJsonFeatures,
+              }}
+            />
+          )}
+
+          {/* CityGML features */}
+          {cityGmlFeatures.length > 0 && (
+            <CityGmlData
+              cityGmlData={{
+                type: "FeatureCollection",
+                features: cityGmlFeatures,
+              }}
+            />
+          )}
+        </>
       )}
     </Viewer>
   );
