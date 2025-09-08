@@ -382,7 +382,7 @@ impl RedisStore {
         Ok(result == 1)
     }
 
-    pub async fn update_instance_heartbeat(&self, doc_id: &str, instance_id: &str) -> Result<()> {
+    pub async fn update_instance_heartbeat(&self, doc_id: &str, instance_id: &u64) -> Result<()> {
         let key = format!("doc:instances:{doc_id}");
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -445,7 +445,7 @@ impl RedisStore {
         Ok(count)
     }
 
-    pub async fn remove_instance_heartbeat(&self, doc_id: &str, instance_id: &str) -> Result<bool> {
+    pub async fn remove_instance_heartbeat(&self, doc_id: &str, instance_id: &u64) -> Result<bool> {
         let key = format!("doc:instances:{doc_id}");
 
         let mut conn = self.pool.get().await?;
