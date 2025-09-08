@@ -51,6 +51,7 @@ export default function Editor({
     showBeforeDeleteDialog,
     isSaving,
     spotlightUserClientId,
+    spotlightUser,
     handleWorkflowAdd,
     handleWorkflowDeployment,
     handleProjectShare,
@@ -123,7 +124,9 @@ export default function Editor({
           onSpotlightUserDeselect={handleSpotlightUserDeselect}
         />
 
-        <div className="flex flex-1 flex-col">
+        <div
+          className={`flex flex-1 flex-col ${spotlightUser ? "border" : ""}`}
+          style={{ borderColor: spotlightUser?.color || "" }}>
           <OverlayUI
             nodePickerOpen={nodePickerOpen}
             canUndo={canUndo}

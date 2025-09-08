@@ -425,6 +425,7 @@ export default ({
     isSaving,
     showBeforeDeleteDialog,
     spotlightUserClientId,
+    spotlightUser,
     handleRightPanelOpen,
     handleWorkflowAdd: handleYWorkflowAdd,
     handleWorkflowDeployment,
