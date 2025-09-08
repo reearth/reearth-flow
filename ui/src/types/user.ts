@@ -33,6 +33,7 @@ export type UpdateMe = {
 } & ApiResponse;
 
 export type AwarenessUser = {
+  clientId: number;
   cursor?: {
     x: number;
     y: number;

@@ -30,7 +30,8 @@ type Props = {
   yDoc: Doc | null;
   allowedToDeploy: boolean;
   isSaving: boolean;
-  users?: Record<string, AwarenessUser>;
+  self: AwarenessUser;
+  users: Record<string, AwarenessUser>;
   onWorkflowDeployment: (
     description: string,
     deploymentId?: string,
@@ -51,6 +52,7 @@ const TopBar: React.FC<Props> = ({
   yDoc,
   allowedToDeploy,
   isSaving,
+  self,
   users,
   onWorkflowDeployment,
   onProjectExport,
@@ -114,16 +116,17 @@ const TopBar: React.FC<Props> = ({
       </div>
       <div
         className={`flex h-full items-center justify-center gap-2 self-center border-b px-1 select-none ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
-        <div className="h-4/5 border-r" />
-        <DebugActionBar
-          onDebugRunStart={onDebugRunStart}
-          onDebugRunStop={onDebugRunStop}
-        />
         <CollaborationActionBar
+          self={self}
           users={users}
           showDialog={showDialog}
           onDialogOpen={handleDialogOpen}
           onDialogClose={handleDialogClose}
+        />
+        <div className="h-4/5 border-r" />
+        <DebugActionBar
+          onDebugRunStart={onDebugRunStart}
+          onDebugRunStop={onDebugRunStop}
         />
         <div className="h-4/5 border-r" />
         <ActionBar

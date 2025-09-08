@@ -16,20 +16,21 @@ import { CollaborationPopover } from "./components";
 const tooltipOffset = 6;
 
 type Props = {
-  users?: Record<string, AwarenessUser>;
+  self: AwarenessUser;
+  users: Record<string, AwarenessUser>;
   showDialog: DialogOptions;
   onDialogOpen: (dialog: DialogOptions) => void;
   onDialogClose: () => void;
 };
 
 const CollaborationActionBar: React.FC<Props> = ({
+  self,
   users,
   showDialog,
   onDialogOpen,
   onDialogClose,
 }) => {
   const t = useT();
-  console.log("users", users);
 
   return (
     <Popover
@@ -41,26 +42,35 @@ const CollaborationActionBar: React.FC<Props> = ({
         <ButtonWithTooltip
           className="p-1"
           variant={"ghost"}
-          tooltipText={t("Collaboration")}
+          tooltipText={t("Collaborators")}
           tooltipOffset={tooltipOffset}
           onClick={() => onDialogOpen("collaboration")}>
-          <div className="flex items-center -space-x-3">
-            {users &&
-              Object.entries(users).map(([_key, value]) => {
-                return (
-                  <div key={value.userName} className="relative">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary ring-2 ring-background">
-                      <span className="text-xs font-medium">
-                        {value.userName?.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            {users && Object.entries(users).length > 3 && (
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted ring-2 ring-background">
+          <div className="flex items-center -space-x-2">
+            <div key={self?.clientId} className="relative">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary ring-2 ring-background">
                 <span className="text-xs font-medium">
-                  +{Object.entries(users).length - 3}
+                  {self?.userName?.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            </div>
+            {users &&
+              Object.entries(users)
+                .slice(0, 2)
+                .map(([_key, value]) => {
+                  return (
+                    <div key={value.clientId} className="relative">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary ring-2 ring-background">
+                        <span className="text-xs font-medium">
+                          {value.userName?.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+            {users && Object.entries(users).length > 2 && (
+              <div className="z-10 flex h-6 w-6 items-center justify-center rounded-full bg-secondary ring-2 ring-background">
+                <span className="text-xs font-medium">
+                  + {Object.entries(users).length - 2}
                 </span>
               </div>
             )}
@@ -71,7 +81,7 @@ const CollaborationActionBar: React.FC<Props> = ({
         sideOffset={16}
         className="w-60 bg-primary/50 backdrop-blur">
         {showDialog === "collaboration" && (
-          <CollaborationPopover users={users} />
+          <CollaborationPopover self={self} users={users} />
         )}
       </PopoverContent>
     </Popover>

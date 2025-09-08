@@ -10,7 +10,6 @@ const CollaborationCard: React.FC<Props> = ({ userName }) => {
           {userName?.charAt(0).toUpperCase()}
         </span>
       </div>
-
       <div className="flex flex-col items-start">
         <span className="text-sm dark:font-light">{userName}</span>
       </div>
