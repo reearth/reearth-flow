@@ -652,8 +652,6 @@ impl BroadcastGroup {
     }
 
     pub async fn cleanup_client_awareness(&self, client_id: u64) -> Result<()> {
-        info!("Cleaning up awareness for client: {}", client_id);
-
         let awareness = self.awareness().clone();
 
         {
