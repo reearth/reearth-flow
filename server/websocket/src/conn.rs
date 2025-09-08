@@ -7,6 +7,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::sync::Mutex;
+use tracing::{debug, error};
 use yrs::sync::Error;
 
 use crate::broadcast::sub::Subscription;
@@ -65,10 +66,10 @@ impl<Sink, Stream> Future for Connection<Sink, Stream> {
             let poll_result = fut.as_mut().poll(cx);
             match &poll_result {
                 Poll::Ready(result) => {
-                    tracing::debug!("Connection future completed with result: {:?}", result);
+                    debug!("Connection future completed with result: {:?}", result);
                 }
                 Poll::Pending => {
-                    tracing::debug!("Connection future is pending");
+                    debug!("Connection future is pending");
                 }
             }
             poll_result
@@ -83,9 +84,15 @@ impl<Sink, Stream> Unpin for Connection<Sink, Stream> {}
 impl<Sink, Stream> Drop for Connection<Sink, Stream> {
     fn drop(&mut self) {
         if let Some(group) = self.broadcast_group.take() {
+            let group_clone = group.clone();
             tokio::spawn(async move {
-                if let Err(e) = group.cleanup_client_awareness().await {
-                    tracing::warn!("Failed to cleanup awareness: {}", e);
+                if let Err(e) = group_clone.cleanup_client_awareness().await {
+                    error!("Failed to cleanup awareness: {}", e);
+                }
+            });
+            tokio::spawn(async move {
+                if let Err(e) = group.shutdown().await {
+                    error!("Failed to shutdown group: {}", e);
                 }
             });
         }

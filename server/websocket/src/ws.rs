@@ -211,10 +211,6 @@ async fn handle_socket(
             doc_id, e
         );
     }
-
-    if let Err(e) = bcast.shutdown().await {
-        error!("Failed to shutdown BroadcastGroup for {}: {}", doc_id, e);
-    }
 }
 
 fn normalize_doc_id(doc_id: &str) -> String {
