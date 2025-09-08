@@ -53,7 +53,10 @@ export default ({
     originPrepend?: string,
   ) => void;
 }) => {
-  const { fitView, screenToFlowPosition } = useReactFlow();
+  const { fitView, screenToFlowPosition, setCenter } = useReactFlow();
+  const [spotlightUserClientId, setSpotlightUserClientId] = useState<
+    number | null
+  >(null);
 
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(
     DEFAULT_ENTRY_GRAPH_ID,
@@ -383,6 +386,24 @@ export default ({
     },
     [yAwareness, screenToFlowPosition, throttledMouseMove],
   );
+  const spotlightUser = spotlightUserClientId
+    ? users[spotlightUserClientId]
+    : null;
+
+  const cursor = spotlightUser?.cursor;
+
+  const handleSpotlightUserSelect = useCallback((clientId: number) => {
+    setSpotlightUserClientId(clientId);
+  }, []);
+
+  const handleSpotlightUserDeselect = useCallback(() => {
+    setSpotlightUserClientId(null);
+  }, []);
+
+  useEffect(() => {
+    if (!cursor) return;
+    setCenter(cursor.x, cursor.y, { zoom: 1.5, duration: 100 });
+  }, [cursor, setCenter]);
 
   return {
     currentWorkflowId,
@@ -403,6 +424,7 @@ export default ({
     deferredDeleteRef,
     isSaving,
     showBeforeDeleteDialog,
+    spotlightUserClientId,
     handleRightPanelOpen,
     handleWorkflowAdd: handleYWorkflowAdd,
     handleWorkflowDeployment,
@@ -433,5 +455,7 @@ export default ({
     handlePaste,
     handleProjectSnapshotSave,
     handlePaneMouseMove,
+    handleSpotlightUserSelect,
+    handleSpotlightUserDeselect,
   };
 };
