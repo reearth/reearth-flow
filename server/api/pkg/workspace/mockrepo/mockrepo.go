@@ -42,6 +42,21 @@ func (m *MockWorkspaceRepo) EXPECT() *MockWorkspaceRepoMockRecorder {
 	return m.recorder
 }
 
+// AddUserMember mocks base method.
+func (m *MockWorkspaceRepo) AddUserMember(ctx context.Context, wid id.WorkspaceID, users map[id.UserID]workspace.Role) (*workspace.Workspace, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddUserMember", ctx, wid, users)
+	ret0, _ := ret[0].(*workspace.Workspace)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AddUserMember indicates an expected call of AddUserMember.
+func (mr *MockWorkspaceRepoMockRecorder) AddUserMember(ctx, wid, users any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddUserMember", reflect.TypeOf((*MockWorkspaceRepo)(nil).AddUserMember), ctx, wid, users)
+}
+
 // Create mocks base method.
 func (m *MockWorkspaceRepo) Create(ctx context.Context, name string) (*workspace.Workspace, error) {
 	m.ctrl.T.Helper()
@@ -55,6 +70,20 @@ func (m *MockWorkspaceRepo) Create(ctx context.Context, name string) (*workspace
 func (mr *MockWorkspaceRepoMockRecorder) Create(ctx, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockWorkspaceRepo)(nil).Create), ctx, name)
+}
+
+// Delete mocks base method.
+func (m *MockWorkspaceRepo) Delete(ctx context.Context, wid id.WorkspaceID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, wid)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockWorkspaceRepoMockRecorder) Delete(ctx, wid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockWorkspaceRepo)(nil).Delete), ctx, wid)
 }
 
 // FindByIDs mocks base method.
@@ -87,6 +116,21 @@ func (mr *MockWorkspaceRepoMockRecorder) FindByUser(ctx, uid any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUser", reflect.TypeOf((*MockWorkspaceRepo)(nil).FindByUser), ctx, uid)
 }
 
+// RemoveUserMember mocks base method.
+func (m *MockWorkspaceRepo) RemoveUserMember(ctx context.Context, wid id.WorkspaceID, uid id.UserID) (*workspace.Workspace, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveUserMember", ctx, wid, uid)
+	ret0, _ := ret[0].(*workspace.Workspace)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RemoveUserMember indicates an expected call of RemoveUserMember.
+func (mr *MockWorkspaceRepoMockRecorder) RemoveUserMember(ctx, wid, uid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveUserMember", reflect.TypeOf((*MockWorkspaceRepo)(nil).RemoveUserMember), ctx, wid, uid)
+}
+
 // Update mocks base method.
 func (m *MockWorkspaceRepo) Update(ctx context.Context, wid id.WorkspaceID, name string) (*workspace.Workspace, error) {
 	m.ctrl.T.Helper()
@@ -100,4 +144,19 @@ func (m *MockWorkspaceRepo) Update(ctx context.Context, wid id.WorkspaceID, name
 func (mr *MockWorkspaceRepoMockRecorder) Update(ctx, wid, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockWorkspaceRepo)(nil).Update), ctx, wid, name)
+}
+
+// UpdateUserMember mocks base method.
+func (m *MockWorkspaceRepo) UpdateUserMember(ctx context.Context, wid id.WorkspaceID, uid id.UserID, role workspace.Role) (*workspace.Workspace, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateUserMember", ctx, wid, uid, role)
+	ret0, _ := ret[0].(*workspace.Workspace)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateUserMember indicates an expected call of UpdateUserMember.
+func (mr *MockWorkspaceRepoMockRecorder) UpdateUserMember(ctx, wid, uid, role any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserMember", reflect.TypeOf((*MockWorkspaceRepo)(nil).UpdateUserMember), ctx, wid, uid, role)
 }

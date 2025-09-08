@@ -6,6 +6,7 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	pkgworkspace "github.com/reearth/reearth-flow/api/pkg/workspace"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountdomain/workspace"
 )
@@ -34,6 +35,15 @@ func (r *mutationResolver) CreateWorkspace(ctx context.Context, input gqlmodel.C
 }
 
 func (r *mutationResolver) DeleteWorkspace(ctx context.Context, input gqlmodel.DeleteWorkspaceInput) (*gqlmodel.DeleteWorkspacePayload, error) {
+	if usecases(ctx).TempNewWorkspace != nil {
+		res := r.deleteWorkspaceWithTempNewUsecase(ctx, input)
+		if res != nil {
+			log.Printf("DEBUG:[mutationResolver.deleteWorkspaceWithTempNewUsecase] Deleted workspace with tempNewUsecase")
+			return res, nil
+		}
+	}
+	log.Printf("WARNING:[mutationResolver.deleteWorkspace] Fallback to traditional usecase")
+
 	tid, err := gqlmodel.ToID[accountdomain.Workspace](input.WorkspaceID)
 	if err != nil {
 		return nil, err
@@ -44,6 +54,21 @@ func (r *mutationResolver) DeleteWorkspace(ctx context.Context, input gqlmodel.D
 	}
 
 	return &gqlmodel.DeleteWorkspacePayload{WorkspaceID: input.WorkspaceID}, nil
+}
+
+func (r *mutationResolver) deleteWorkspaceWithTempNewUsecase(ctx context.Context, input gqlmodel.DeleteWorkspaceInput) *gqlmodel.DeleteWorkspacePayload {
+	tid, err := gqlmodel.ToID[id.Workspace](input.WorkspaceID)
+	if err != nil {
+		log.Printf("WARNING:[mutationResolver.deleteWorkspaceWithTempNewUsecase] Failed to convert ID: %v", err)
+		return nil
+	}
+
+	if err := usecases(ctx).TempNewWorkspace.Delete(ctx, tid); err != nil {
+		log.Printf("WARNING:[mutationResolver.deleteWorkspaceWithTempNewUsecase] Failed to delete workspace: %v", err)
+		return nil
+	}
+
+	return &gqlmodel.DeleteWorkspacePayload{WorkspaceID: input.WorkspaceID}
 }
 
 func (r *mutationResolver) UpdateWorkspace(ctx context.Context, input gqlmodel.UpdateWorkspaceInput) (*gqlmodel.UpdateWorkspacePayload, error) {
@@ -86,6 +111,15 @@ func (r *mutationResolver) updateWorkspaceWithTempNewUsecase(ctx context.Context
 }
 
 func (r *mutationResolver) AddMemberToWorkspace(ctx context.Context, input gqlmodel.AddMemberToWorkspaceInput) (*gqlmodel.AddMemberToWorkspacePayload, error) {
+	if usecases(ctx).TempNewWorkspace != nil {
+		tempNewWorkspace := r.addMemberToWorkspaceWithTempNewUsecase(ctx, input)
+		if tempNewWorkspace != nil {
+			log.Printf("DEBUG:[mutationResolver.addMemberToWorkspaceWithTempNewUsecase] Added member to workspace with tempNewUsecase")
+			return tempNewWorkspace, nil
+		}
+	}
+	log.Printf("WARNING:[mutationResolver.AddMemberToWorkspace] Fallback to traditional usecase")
+
 	tid, uid, err := gqlmodel.ToID2[accountdomain.Workspace, accountdomain.User](input.WorkspaceID, input.UserID)
 	if err != nil {
 		return nil, err
@@ -99,7 +133,32 @@ func (r *mutationResolver) AddMemberToWorkspace(ctx context.Context, input gqlmo
 	return &gqlmodel.AddMemberToWorkspacePayload{Workspace: gqlmodel.ToWorkspace(res)}, nil
 }
 
+func (r *mutationResolver) addMemberToWorkspaceWithTempNewUsecase(ctx context.Context, input gqlmodel.AddMemberToWorkspaceInput) *gqlmodel.AddMemberToWorkspacePayload {
+	tid, uid, err := gqlmodel.ToID2[id.Workspace, id.User](input.WorkspaceID, input.UserID)
+	if err != nil {
+		log.Printf("WARNING:[mutationResolver.addMemberToWorkspaceWithTempNewUsecase] Failed to convert IDs: %v", err)
+		return nil
+	}
+
+	res, err := usecases(ctx).TempNewWorkspace.AddUserMember(ctx, tid, map[id.UserID]pkgworkspace.Role{uid: gqlmodel.FromRoleToFlow(input.Role)})
+	if err != nil {
+		log.Printf("WARNING:[mutationResolver.addMemberToWorkspaceWithTempNewUsecase] Failed to add member to workspace: %v", err)
+		return nil
+	}
+
+	return &gqlmodel.AddMemberToWorkspacePayload{Workspace: gqlmodel.ToWorkspaceFromFlow(res)}
+}
+
 func (r *mutationResolver) RemoveMemberFromWorkspace(ctx context.Context, input gqlmodel.RemoveMemberFromWorkspaceInput) (*gqlmodel.RemoveMemberFromWorkspacePayload, error) {
+	if usecases(ctx).TempNewWorkspace != nil {
+		tempNewWorkspace := r.removeMemberFromWorkspaceWithTempNewUsecase(ctx, input)
+		if tempNewWorkspace != nil {
+			log.Printf("DEBUG:[mutationResolver.removeMemberFromWorkspaceWithTempNewUsecase] Removed member from workspace with tempNewUsecase")
+			return tempNewWorkspace, nil
+		}
+	}
+	log.Printf("WARNING:[mutationResolver.RemoveMemberFromWorkspace] Fallback to traditional usecase")
+
 	tid, uid, err := gqlmodel.ToID2[accountdomain.Workspace, accountdomain.User](input.WorkspaceID, input.UserID)
 	if err != nil {
 		return nil, err
@@ -113,7 +172,32 @@ func (r *mutationResolver) RemoveMemberFromWorkspace(ctx context.Context, input 
 	return &gqlmodel.RemoveMemberFromWorkspacePayload{Workspace: gqlmodel.ToWorkspace(res)}, nil
 }
 
+func (r *mutationResolver) removeMemberFromWorkspaceWithTempNewUsecase(ctx context.Context, input gqlmodel.RemoveMemberFromWorkspaceInput) *gqlmodel.RemoveMemberFromWorkspacePayload {
+	tid, uid, err := gqlmodel.ToID2[id.Workspace, id.User](input.WorkspaceID, input.UserID)
+	if err != nil {
+		log.Printf("WARNING:[mutationResolver.removeMemberFromWorkspaceWithTempNewUsecase] Failed to convert IDs: %v", err)
+		return nil
+	}
+
+	res, err := usecases(ctx).TempNewWorkspace.RemoveUserMember(ctx, tid, uid)
+	if err != nil {
+		log.Printf("WARNING:[mutationResolver.removeMemberFromWorkspaceWithTempNewUsecase] Failed to add member to workspace: %v", err)
+		return nil
+	}
+
+	return &gqlmodel.RemoveMemberFromWorkspacePayload{Workspace: gqlmodel.ToWorkspaceFromFlow(res)}
+}
+
 func (r *mutationResolver) UpdateMemberOfWorkspace(ctx context.Context, input gqlmodel.UpdateMemberOfWorkspaceInput) (*gqlmodel.UpdateMemberOfWorkspacePayload, error) {
+	if usecases(ctx).TempNewWorkspace != nil {
+		tempNewWorkspace := r.updateMemberOfWorkspaceWithTempNewUsecase(ctx, input)
+		if tempNewWorkspace != nil {
+			log.Printf("DEBUG:[mutationResolver.updateMemberOfWorkspaceWithTempNewUsecase] Updated member of workspace with tempNewUsecase")
+			return tempNewWorkspace, nil
+		}
+	}
+	log.Printf("WARNING:[mutationResolver.updateMemberOfWorkspace] Fallback to traditional usecase")
+
 	tid, uid, err := gqlmodel.ToID2[accountdomain.Workspace, accountdomain.User](input.WorkspaceID, input.UserID)
 	if err != nil {
 		return nil, err
@@ -125,4 +209,20 @@ func (r *mutationResolver) UpdateMemberOfWorkspace(ctx context.Context, input gq
 	}
 
 	return &gqlmodel.UpdateMemberOfWorkspacePayload{Workspace: gqlmodel.ToWorkspace(res)}, nil
+}
+
+func (r *mutationResolver) updateMemberOfWorkspaceWithTempNewUsecase(ctx context.Context, input gqlmodel.UpdateMemberOfWorkspaceInput) *gqlmodel.UpdateMemberOfWorkspacePayload {
+	tid, uid, err := gqlmodel.ToID2[id.Workspace, id.User](input.WorkspaceID, input.UserID)
+	if err != nil {
+		log.Printf("WARNING:[mutationResolver.updateMemberOfWorkspaceWithTempNewUsecase] Failed to convert IDs: %v", err)
+		return nil
+	}
+
+	res, err := usecases(ctx).TempNewWorkspace.UpdateUserMember(ctx, tid, uid, gqlmodel.FromRoleToFlow(input.Role))
+	if err != nil {
+		log.Printf("WARNING:[mutationResolver.updateMemberOfWorkspaceWithTempNewUsecase] Failed to add member to workspace: %v", err)
+		return nil
+	}
+
+	return &gqlmodel.UpdateMemberOfWorkspacePayload{Workspace: gqlmodel.ToWorkspaceFromFlow(res)}
 }

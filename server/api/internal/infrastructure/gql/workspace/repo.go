@@ -80,3 +80,76 @@ func (r *workspaceRepo) Update(ctx context.Context, wid id.WorkspaceID, name str
 
 	return util.ToWorkspace(m.UpdateWorkspace.Workspace)
 }
+
+func (r *workspaceRepo) Delete(ctx context.Context, wid id.WorkspaceID) error {
+	in := DeleteWorkspaceInput{WorkspaceID: graphql.ID(wid.String())}
+
+	var m deleteWorkspaceMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *workspaceRepo) AddUserMember(ctx context.Context, wid id.WorkspaceID, users map[id.UserID]workspace.Role) (*workspace.Workspace, error) {
+	in := AddUsersToWorkspaceInput{
+		WorkspaceID: graphql.ID(wid.String()),
+		Users:       make([]MemberInput, 0, len(users)),
+	}
+
+	for uid, role := range users {
+		in.Users = append(in.Users, MemberInput{
+			UserID: graphql.ID(uid.String()),
+			Role:   graphql.String(role),
+		})
+	}
+
+	var m addUsersToWorkspaceMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return nil, err
+	}
+
+	return util.ToWorkspace(m.AddUsersToWorkspace.Workspace)
+}
+
+func (r *workspaceRepo) UpdateUserMember(ctx context.Context, wid id.WorkspaceID, uid id.UserID, role workspace.Role) (*workspace.Workspace, error) {
+	in := UpdateUserOfWorkspaceInput{
+		WorkspaceID: graphql.ID(wid.String()),
+		UserID:      graphql.ID(uid.String()),
+		Role:        graphql.String(role),
+	}
+
+	var m updateUserOfWorkspaceMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return nil, err
+	}
+
+	return util.ToWorkspace(m.UpdateUserOfWorkspace.Workspace)
+}
+
+func (r *workspaceRepo) RemoveUserMember(ctx context.Context, wid id.WorkspaceID, uid id.UserID) (*workspace.Workspace, error) {
+	in := RemoveUserFromWorkspaceInput{
+		WorkspaceID: graphql.ID(wid.String()),
+		UserID:      graphql.ID(uid.String()),
+	}
+
+	var m removeUserFromWorkspaceMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return nil, err
+	}
+
+	return util.ToWorkspace(m.RemoveUserFromWorkspace.Workspace)
+}

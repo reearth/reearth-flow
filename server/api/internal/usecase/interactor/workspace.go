@@ -33,3 +33,19 @@ func (i *Workspace) Create(ctx context.Context, name string) (*workspace.Workspa
 func (i *Workspace) Update(ctx context.Context, wid id.WorkspaceID, name string) (*workspace.Workspace, error) {
 	return i.workspaceRepo.Update(ctx, wid, name)
 }
+
+func (i *Workspace) Delete(ctx context.Context, wid id.WorkspaceID) error {
+	return i.workspaceRepo.Delete(ctx, wid)
+}
+
+func (i *Workspace) AddUserMember(ctx context.Context, wid id.WorkspaceID, users map[id.UserID]workspace.Role) (*workspace.Workspace, error) {
+	return i.workspaceRepo.AddUserMember(ctx, wid, users)
+}
+
+func (i *Workspace) UpdateUserMember(ctx context.Context, wid id.WorkspaceID, uid id.UserID, role workspace.Role) (*workspace.Workspace, error) {
+	return i.workspaceRepo.UpdateUserMember(ctx, wid, uid, role)
+}
+
+func (i *Workspace) RemoveUserMember(ctx context.Context, wid id.WorkspaceID, uid id.UserID) (*workspace.Workspace, error) {
+	return i.workspaceRepo.RemoveUserMember(ctx, wid, uid)
+}
