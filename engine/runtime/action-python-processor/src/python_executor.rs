@@ -507,9 +507,7 @@ mod tests {
     use super::*;
     use indexmap::IndexMap;
     use reearth_flow_geometry::types::point::Point2D;
-    use reearth_flow_runtime::{
-        event::EventHub, executor_operation::NodeContext,
-    };
+    use reearth_flow_runtime::{event::EventHub, executor_operation::NodeContext};
     use reearth_flow_types::{
         geometry::Geometry as FlowGeometry, Attribute, AttributeValue, Feature,
     };
@@ -524,7 +522,7 @@ mod tests {
         );
         attributes.insert(
             Attribute::new("value".to_string()),
-        AttributeValue::Number(serde_json::Number::from(42)),
+            AttributeValue::Number(serde_json::Number::from(42)),
         );
 
         let point = Point2D::from((139.7, 35.7)); // Tokyo coordinates
@@ -535,7 +533,7 @@ mod tests {
         Feature::new_with_attributes_and_geometry(
             attributes,
             geometry,
-            Default::default() // Empty metadata
+            Default::default(), // Empty metadata
         )
     }
 
