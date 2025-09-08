@@ -445,7 +445,6 @@
   "Start debug run of workflow": "Iniciar ejecución de depuración del flujo de trabajo",
   "Stop debug run of workflow": "Detener ejecución de depuración del flujo de trabajo",
   "Clear debug run and results": "Borrar ejecución de depuración y resultados",
-  "About dialog is not implemented yet.": "El diálogo Acerca de aún no está implementado.",
   "Dashboard": "Tablero",
   "Projects": "Proyectos",
   "Deployments": "Despliegues",

@@ -445,7 +445,6 @@
   "Start debug run of workflow": "ワークフローのデバッグ実行を開始",
   "Stop debug run of workflow": "ワークフローのデバッグ実行を停止",
   "Clear debug run and results": "デバッグ実行と結果をクリア",
-  "About dialog is not implemented yet.": "アバウトダイアログはまだ実装されていません。",
   "Dashboard": "ダッシュボード",
   "Projects": "プロジェクト",
   "Deployments": "デプロイ",
