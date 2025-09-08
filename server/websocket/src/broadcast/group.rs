@@ -408,14 +408,14 @@ impl BroadcastGroup {
         sink: Arc<Mutex<Sink>>,
         stream: Stream,
         user_token: Option<String>,
-    ) -> Subscription
+    ) -> (Subscription, Option<u64>)
     where
         Sink: SinkExt<Bytes> + Send + Sync + Unpin + 'static,
         Stream: StreamExt<Item = Result<Bytes, E>> + Send + Sync + Unpin + 'static,
         <Sink as futures_util::Sink<Bytes>>::Error: std::error::Error + Send + Sync,
         E: std::error::Error + Send + Sync + 'static,
     {
-        if let Some(token) = user_token {
+        let client_id = if let Some(token) = user_token {
             let awareness = self.awareness().clone();
             let client_id = rand::random::<u64>();
 
@@ -433,7 +433,11 @@ impl BroadcastGroup {
             if let Err(e) = awareness.set_local_state(Some(local_state)) {
                 error!("Failed to set awareness state: {}", e);
             }
-        }
+
+            Some(client_id)
+        } else {
+            None
+        };
 
         let subscription = self.listen(sink, stream, DefaultProtocol).await;
 
@@ -441,10 +445,13 @@ impl BroadcastGroup {
 
         let _ = tx.send(());
 
-        Subscription {
-            sink_task: subscription.sink_task,
-            stream_task: subscription.stream_task,
-        }
+        (
+            Subscription {
+                sink_task: subscription.sink_task,
+                stream_task: subscription.stream_task,
+            },
+            client_id,
+        )
     }
 
     pub async fn listen<Sink, Stream, E, P>(
@@ -642,6 +649,28 @@ impl BroadcastGroup {
                 false
             }
         }
+    }
+
+    pub async fn cleanup_client_awareness(&self, client_id: u64) -> Result<()> {
+        info!("Cleaning up awareness for client: {}", client_id);
+
+        let awareness = self.awareness().clone();
+
+        {
+            let awareness_write = awareness.read().await;
+            awareness_write.remove_state(client_id);
+        }
+
+        let client_instance_id = format!("client-{}", client_id);
+        if let Err(e) = self
+            .redis_store
+            .remove_awareness(&self.doc_name, &client_instance_id)
+            .await
+        {
+            warn!("Failed to remove awareness from Redis: {}", e);
+        }
+
+        Ok(())
     }
 
     pub async fn shutdown(&self) -> Result<()> {
