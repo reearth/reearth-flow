@@ -45,3 +45,7 @@ func (i *Workspace) AddUserMember(ctx context.Context, wid id.WorkspaceID, users
 func (i *Workspace) UpdateUserMember(ctx context.Context, wid id.WorkspaceID, uid id.UserID, role workspace.Role) (*workspace.Workspace, error) {
 	return i.workspaceRepo.UpdateUserMember(ctx, wid, uid, role)
 }
+
+func (i *Workspace) RemoveUserMember(ctx context.Context, wid id.WorkspaceID, uid id.UserID) (*workspace.Workspace, error) {
+	return i.workspaceRepo.RemoveUserMember(ctx, wid, uid)
+}

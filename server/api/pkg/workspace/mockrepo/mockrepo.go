@@ -116,6 +116,21 @@ func (mr *MockWorkspaceRepoMockRecorder) FindByUser(ctx, uid any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByUser", reflect.TypeOf((*MockWorkspaceRepo)(nil).FindByUser), ctx, uid)
 }
 
+// RemoveUserMember mocks base method.
+func (m *MockWorkspaceRepo) RemoveUserMember(ctx context.Context, wid id.WorkspaceID, uid id.UserID) (*workspace.Workspace, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveUserMember", ctx, wid, uid)
+	ret0, _ := ret[0].(*workspace.Workspace)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RemoveUserMember indicates an expected call of RemoveUserMember.
+func (mr *MockWorkspaceRepoMockRecorder) RemoveUserMember(ctx, wid, uid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveUserMember", reflect.TypeOf((*MockWorkspaceRepo)(nil).RemoveUserMember), ctx, wid, uid)
+}
+
 // Update mocks base method.
 func (m *MockWorkspaceRepo) Update(ctx context.Context, wid id.WorkspaceID, name string) (*workspace.Workspace, error) {
 	m.ctrl.T.Helper()
