@@ -80,7 +80,7 @@ const HomeMenu: React.FC<Props> = ({
       "  Node-based workflow visualization",
       "  https://reactflow.dev",
       "",
-      "• Cesium (cesium) - Apache License 2.0", 
+      "• Cesium (cesium) - Apache License 2.0",
       "  3D geospatial visualization engine",
       "  https://cesium.com",
       "",
@@ -90,9 +90,9 @@ const HomeMenu: React.FC<Props> = ({
       "",
       "• Resium (resium) - MIT License",
       "  React components for Cesium",
-      "  https://github.com/reearth/resium"
+      "  https://github.com/reearth/resium",
     ].join("\n");
-    
+
     alert(attributionsText);
   }, []);
 
@@ -183,9 +183,7 @@ const HomeMenu: React.FC<Props> = ({
               </div>
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem
-            className="gap-3"
-            onClick={handleAttributionsOpen}>
+          <DropdownMenuItem className="gap-3" onClick={handleAttributionsOpen}>
             <CopyrightIcon weight="light" />
             <p>{t("Attributions")}</p>
           </DropdownMenuItem>
