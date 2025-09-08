@@ -83,7 +83,6 @@ impl<Sink, Stream> Unpin for Connection<Sink, Stream> {}
 impl<Sink, Stream> Drop for Connection<Sink, Stream> {
     fn drop(&mut self) {
         if let Some(group) = self.broadcast_group.take() {
-            tracing::info!("Dropping connection connection");
             tokio::spawn(async move {
                 if let Err(e) = group.cleanup_client_awareness().await {
                     tracing::warn!("Failed to cleanup awareness: {}", e);
