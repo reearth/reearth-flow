@@ -80,3 +80,17 @@ func (r *workspaceRepo) Update(ctx context.Context, wid id.WorkspaceID, name str
 
 	return util.ToWorkspace(m.UpdateWorkspace.Workspace)
 }
+
+func (r *workspaceRepo) Delete(ctx context.Context, wid id.WorkspaceID) error {
+	in := DeleteWorkspaceInput{WorkspaceID: graphql.ID(wid.String())}
+
+	var m deleteWorkspaceMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return err
+	}
+
+	return nil
+}

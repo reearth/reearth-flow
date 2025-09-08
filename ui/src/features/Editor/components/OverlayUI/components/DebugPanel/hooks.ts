@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import bbox from "@turf/bbox";
 import {
   MouseEvent,
@@ -9,10 +10,13 @@ import {
 } from "react";
 
 import useFetchAndReadData from "@flow/hooks/useFetchAndReadData";
+import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useJob } from "@flow/lib/gql/job";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
+
+import { STREAMING_SIZE_THRESHOLD_MB } from "./constants";
 
 export default () => {
   const t = useT();
@@ -175,13 +179,79 @@ export default () => {
     setMinimized(false);
   };
 
-  const {
-    fileContent: selectedOutputData,
-    fileType,
-    isLoading: isLoadingData,
-  } = useFetchAndReadData({
-    dataUrl: selectedDataURL ?? (dataURLs?.length ? dataURLs[0].key : ""),
+  // First, get metadata to determine file size
+  const metadataUrl =
+    selectedDataURL ?? (dataURLs?.length ? dataURLs[0].key : "");
+
+  // Check file size first with a HEAD request
+  const { data: fileMetadata } = useQuery({
+    queryKey: ["fileMetadata", metadataUrl],
+    queryFn: async () => {
+      if (!metadataUrl) return null;
+
+      const response = await fetch(metadataUrl, { method: "HEAD" });
+      if (!response.ok) return null;
+
+      return {
+        contentLength: response.headers.get("content-length"),
+        contentType: response.headers.get("content-type"),
+      };
+    },
+    enabled: !!metadataUrl,
+    staleTime: Infinity,
+    gcTime: Infinity,
   });
+
+  // Determine if we should use traditional loading based on data type and file size
+  const shouldUseTraditionalLoading = useMemo(() => {
+    const contentLength = fileMetadata?.contentLength;
+
+    // Check if this is intermediate data (JSONL) vs output data
+    const isIntermediateData = intermediateDataURLs?.includes(metadataUrl);
+    const isOutputData = outputURLs?.includes(metadataUrl);
+
+    // Only use streaming for JSONL intermediate data
+    if (!isIntermediateData || isOutputData) {
+      return true; // Use traditional for output data or non-intermediate data
+    }
+
+    // For intermediate JSONL data, use streaming by default since content-length is often missing
+    if (!contentLength) {
+      return false; // Default to streaming for JSONL when size unknown
+    }
+
+    const sizeInMB = parseInt(contentLength) / (1024 * 1024);
+    const useTraditional = sizeInMB < STREAMING_SIZE_THRESHOLD_MB;
+
+    return useTraditional; // Use traditional loading for files under 10MB
+  }, [fileMetadata, metadataUrl, intermediateDataURLs, outputURLs]);
+
+  // Use streaming query only for large files
+  const streamingQuery = useStreamingDebugRunQuery(metadataUrl, {
+    enabled: !!metadataUrl && !shouldUseTraditionalLoading,
+  });
+
+  // Use traditional fetch for small files or when streaming fails
+  const {
+    fileContent: traditionalData,
+    fileType: traditionalFileType,
+    isLoading: isLoadingTraditional,
+  } = useFetchAndReadData({
+    dataUrl: shouldUseTraditionalLoading
+      ? (selectedDataURL ?? (dataURLs?.length ? dataURLs[0].key : ""))
+      : "",
+  });
+
+  // Choose which data source to use
+  const selectedOutputData = shouldUseTraditionalLoading
+    ? traditionalData
+    : streamingQuery.fileContent;
+  const fileType = shouldUseTraditionalLoading
+    ? traditionalFileType
+    : streamingQuery.fileType;
+  const isLoadingData = shouldUseTraditionalLoading
+    ? isLoadingTraditional
+    : streamingQuery.isLoading;
 
   const handleExpand = () => {
     setExpanded((prev) => !prev);
@@ -271,5 +341,19 @@ export default () => {
     handleRowSingleClick,
     handleRowDoubleClick,
     handleFlyToSelectedFeature,
+
+    // Streaming-specific features
+    isStreaming: !shouldUseTraditionalLoading,
+    streamingQuery: shouldUseTraditionalLoading ? null : streamingQuery,
+    streamingProgress: shouldUseTraditionalLoading
+      ? null
+      : streamingQuery.progress,
+    detectedGeometryType: shouldUseTraditionalLoading
+      ? null
+      : streamingQuery.detectedGeometryType,
+    totalFeatures: shouldUseTraditionalLoading
+      ? null
+      : streamingQuery.totalFeatures,
+    isComplete: shouldUseTraditionalLoading ? null : streamingQuery.isComplete,
   };
 };

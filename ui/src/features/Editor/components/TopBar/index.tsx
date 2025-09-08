@@ -6,13 +6,14 @@ import { IconButton } from "@flow/components";
 import AssetsDialog from "@flow/features/AssetsDialog";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
-import { Project } from "@flow/types";
+import type { AwarenessUser, Project } from "@flow/types";
 
 import { WorkflowTabs } from "..";
 
 import {
   ActionBar,
   Breadcrumb,
+  CollaborationActionBar,
   DebugActionBar,
   HomeMenu,
   ProjectVariableDialog,
@@ -29,6 +30,8 @@ type Props = {
   yDoc: Doc | null;
   allowedToDeploy: boolean;
   isSaving: boolean;
+  self: AwarenessUser;
+  users: Record<string, AwarenessUser>;
   onWorkflowDeployment: (
     description: string,
     deploymentId?: string,
@@ -49,6 +52,8 @@ const TopBar: React.FC<Props> = ({
   yDoc,
   allowedToDeploy,
   isSaving,
+  self,
+  users,
   onWorkflowDeployment,
   onProjectExport,
   onProjectShare,
@@ -111,6 +116,13 @@ const TopBar: React.FC<Props> = ({
       </div>
       <div
         className={`flex h-full items-center justify-center gap-2 self-center border-b px-1 select-none ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
+        <CollaborationActionBar
+          self={self}
+          users={users}
+          showDialog={showDialog}
+          onDialogOpen={handleDialogOpen}
+          onDialogClose={handleDialogClose}
+        />
         <div className="h-4/5 border-r" />
         <DebugActionBar
           onDebugRunStart={onDebugRunStart}

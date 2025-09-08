@@ -113,6 +113,44 @@ yarn format:write   # Apply Prettier formatting (CRITICAL for CI/CD)
 yarn test --run     # Ensure all tests pass
 ```
 
+### Todo List Management
+
+When using the TodoWrite tool to track progress:
+
+**NEVER mark a todo item as completed without explicit developer confirmation.** Always:
+
+1. **Complete the implementation**
+2. **Ask the developer to test** the specific functionality
+3. **Wait for confirmation** that it works as expected
+4. **Only then mark the todo as completed**
+
+Example flow:
+
+```
+✅ Good: "I've implemented the streaming fix. Can you test file switching to confirm it works before I mark this todo complete?"
+❌ Bad: Immediately marking todo complete after implementation without testing confirmation
+```
+
+This prevents issues where implementation appears complete but has functional problems discovered during user testing.
+
+### Documentation for Complex Features
+
+When completing very complex tasks (multi-file implementations, new architectural patterns, performance optimizations, etc.), always ask the developer:
+
+1. **"Is this task complete?"** - Confirm all requirements are met
+2. **"Would you like me to create documentation for this feature?"** - Offer to generate dev docs
+
+If the developer agrees, create developer documentation that includes:
+
+- **Architecture overview** and data flow
+- **Key implementation details** and configuration
+- **Performance considerations** and limitations
+- **Troubleshooting guide** with common issues
+- **Testing scenarios** and edge cases
+- **Future improvement areas**
+
+Place documentation files adjacent to the main implementation (e.g., `src/hooks/feature-name.md` for hook implementations) to ensure discoverability.
+
 ### Workflow Data Flow
 
 1. **UI creates workflows** via visual editor (ReactFlow)

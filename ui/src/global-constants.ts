@@ -36,3 +36,24 @@ export const EDITOR_HOT_KEYS = [
   "meta+s", // save mac
   "ctrl+s", // save win
 ];
+
+export const CURSOR_COLORS = [
+  "#5b61d4", // Indigo - muted professional
+  "#7c3acd", // Purple - softer tone
+  "#0ea5be", // Cyan - more subdued
+  "#059669", // Emerald - darker variant
+  "#d97706", // Amber - less bright
+  "#dc2626", // Red - deeper tone
+  "#64748b", // Slate - neutral
+  "#65a30d", // Lime - toned down
+  "#c2410c", // Orange - muted warm
+  "#be185d", // Pink - deeper rose
+  "#0f766e", // Teal - darker blue-green
+  "#7c2d12", // Brown - earthy tone
+  "#166534", // Green - forest shade
+  "#991b1b", // Dark red - professional
+  "#075985", // Sky blue - muted variant
+  "#581c87", // Purple - deep violet
+  "#365314", // Olive - natural tone
+  "#92400e", // Burnt orange - warm earth
+];

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { Awareness } from "y-protocols/awareness";
 import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 
 import Canvas from "@flow/features/Canvas";
@@ -21,6 +22,7 @@ type Props = {
     originPrepend?: string,
   ) => void;
   yDoc: Doc | null;
+  yAwareness: Awareness;
 };
 
 export default function Editor({
@@ -28,11 +30,14 @@ export default function Editor({
   undoManager,
   undoTrackerActionWrapper,
   yDoc,
+  yAwareness,
 }: Props) {
   const {
     currentWorkflowId,
     openWorkflows,
     currentProject,
+    self,
+    users,
     nodes,
     edges,
     selectedEdgeIds,
@@ -73,7 +78,14 @@ export default function Editor({
     handleCut,
     handlePaste,
     handleProjectSnapshotSave,
-  } = useHooks({ yDoc, yWorkflows, undoManager, undoTrackerActionWrapper });
+    handlePaneMouseMove,
+  } = useHooks({
+    yDoc,
+    yWorkflows,
+    yAwareness,
+    undoManager,
+    undoTrackerActionWrapper,
+  });
 
   const editorContext = useMemo(
     (): EditorContextType => ({
@@ -93,6 +105,8 @@ export default function Editor({
           openWorkflows={openWorkflows}
           allowedToDeploy={allowedToDeploy}
           isSaving={isSaving}
+          self={self}
+          users={users}
           onProjectShare={handleProjectShare}
           onProjectExport={handleCurrentProjectExport}
           onWorkflowDeployment={handleWorkflowDeployment}
@@ -102,37 +116,40 @@ export default function Editor({
           onDebugRunStop={handleDebugRunStop}
           onProjectSnapshotSave={handleProjectSnapshotSave}
         />
-        <div className="relative flex flex-1">
-          <div className="flex flex-1 flex-col">
-            <OverlayUI
-              nodePickerOpen={nodePickerOpen}
-              canUndo={canUndo}
-              canRedo={canRedo}
-              isMainWorkflow={isMainWorkflow}
+
+        <div className="flex flex-1 flex-col">
+          <OverlayUI
+            nodePickerOpen={nodePickerOpen}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            isMainWorkflow={isMainWorkflow}
+            onNodesAdd={handleNodesAdd}
+            onNodePickerClose={handleNodePickerClose}
+            onWorkflowUndo={handleWorkflowUndo}
+            onWorkflowRedo={handleWorkflowRedo}
+            onLayoutChange={handleLayoutChange}>
+            <Canvas
+              nodes={nodes}
+              edges={edges}
+              selectedEdgeIds={selectedEdgeIds}
+              yDoc={yDoc}
+              users={users}
+              onWorkflowAdd={handleWorkflowAdd}
+              onWorkflowOpen={handleWorkflowOpen}
               onNodesAdd={handleNodesAdd}
-              onNodePickerClose={handleNodePickerClose}
-              onWorkflowUndo={handleWorkflowUndo}
-              onWorkflowRedo={handleWorkflowRedo}
-              onLayoutChange={handleLayoutChange}>
-              <Canvas
-                nodes={nodes}
-                edges={edges}
-                selectedEdgeIds={selectedEdgeIds}
-                onWorkflowAdd={handleWorkflowAdd}
-                onWorkflowOpen={handleWorkflowOpen}
-                onNodesAdd={handleNodesAdd}
-                onBeforeDelete={handleBeforeDeleteNodes}
-                onNodesChange={handleNodesChange}
-                onNodeSettings={handleNodeSettings}
-                onNodePickerOpen={handleNodePickerOpen}
-                onEdgesAdd={handleEdgesAdd}
-                onEdgesChange={handleEdgesChange}
-                onCopy={handleCopy}
-                onCut={handleCut}
-                onPaste={handlePaste}
-              />
-            </OverlayUI>
-          </div>
+              onBeforeDelete={handleBeforeDeleteNodes}
+              onNodesChange={handleNodesChange}
+              onNodeSettings={handleNodeSettings}
+              onNodePickerOpen={handleNodePickerOpen}
+              onEdgesAdd={handleEdgesAdd}
+              onEdgesChange={handleEdgesChange}
+              onCopy={handleCopy}
+              onCut={handleCut}
+              onPaste={handlePaste}
+              onPaneMouseMove={handlePaneMouseMove}
+            />
+          </OverlayUI>
+
           {openNode && (
             <ParamsDialog
               openNode={openNode}

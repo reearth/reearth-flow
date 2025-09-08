@@ -3133,6 +3133,7 @@
             "type": "string",
             "enum": [
               "duplicatePoints",
+              "duplicateConsecutivePoints",
               "corruptGeometry",
               "selfIntersection"
             ]

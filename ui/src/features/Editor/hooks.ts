@@ -1,4 +1,5 @@
 import { useReactFlow } from "@xyflow/react";
+import { throttle } from "lodash-es";
 import {
   MouseEvent,
   useCallback,
@@ -9,6 +10,8 @@ import {
 } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useY } from "react-yjs";
+import { useUsers, useSelf } from "y-presence";
+import type { Awareness } from "y-protocols/awareness";
 import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 
 import {
@@ -21,7 +24,13 @@ import { useYjsStore } from "@flow/lib/yjs";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { useCurrentProject } from "@flow/stores";
-import type { Algorithm, Direction, Edge, Node } from "@flow/types";
+import type {
+  Algorithm,
+  AwarenessUser,
+  Direction,
+  Edge,
+  Node,
+} from "@flow/types";
 
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
 import useDebugRun from "./useDebugRun";
@@ -31,18 +40,20 @@ import useUIState from "./useUIState";
 export default ({
   yDoc,
   yWorkflows,
+  yAwareness,
   undoManager,
   undoTrackerActionWrapper,
 }: {
   yDoc: Doc | null;
   yWorkflows: YMap<YWorkflow>;
+  yAwareness: Awareness;
   undoManager: YUndoManager | null;
   undoTrackerActionWrapper: (
     callback: () => void,
     originPrepend?: string,
   ) => void;
 }) => {
-  const { fitView } = useReactFlow();
+  const { fitView, screenToFlowPosition } = useReactFlow();
 
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(
     DEFAULT_ENTRY_GRAPH_ID,
@@ -89,6 +100,26 @@ export default ({
   const { shareProject, unshareProject } = useSharedProject();
 
   const [currentProject] = useCurrentProject();
+  const rawSelf = useSelf(yAwareness);
+  const rawUsers = useUsers(yAwareness);
+
+  const self: AwarenessUser = {
+    clientId: rawSelf?.clientID,
+    userName: rawSelf?.userName || "Unknown user",
+    color: rawSelf?.color || "#ffffff",
+    cursor: rawSelf?.cursor || { x: 0, y: 0 },
+  };
+  const users = Array.from(
+    rawUsers.entries() as IterableIterator<[number, AwarenessUser]>,
+  )
+    .filter(([key]) => key !== yAwareness?.clientID)
+    .reduce<Record<string, AwarenessUser>>((acc, [key, value]) => {
+      if (!value.userName) {
+        value.userName = "Unknown user";
+      }
+      acc[key.toString()] = value;
+      return acc;
+    }, {});
 
   const { handleProjectSnapshotSave, isSaving } = useProjectSave({
     projectId: currentProject?.id,
@@ -321,10 +352,44 @@ export default ({
     }
   };
 
+  const throttledMouseMove = useMemo(
+    () =>
+      throttle(
+        (
+          event: MouseEvent,
+          awareness: Awareness,
+          positionFn: typeof screenToFlowPosition,
+        ) => {
+          const flowPosition = positionFn(
+            {
+              x: event.clientX,
+              y: event.clientY,
+            },
+            { snapToGrid: false },
+          );
+          awareness.setLocalStateField("cursor", flowPosition);
+        },
+        32,
+        { leading: true, trailing: true },
+      ),
+    [],
+  );
+
+  const handlePaneMouseMove = useCallback(
+    (event: MouseEvent) => {
+      if (yAwareness) {
+        throttledMouseMove(event, yAwareness, screenToFlowPosition);
+      }
+    },
+    [yAwareness, screenToFlowPosition, throttledMouseMove],
+  );
+
   return {
     currentWorkflowId,
     openWorkflows,
     currentProject,
+    self,
+    users,
     nodes,
     edges,
     selectedEdgeIds,
@@ -367,5 +432,6 @@ export default ({
     handleCut,
     handlePaste,
     handleProjectSnapshotSave,
+    handlePaneMouseMove,
   };
 };
