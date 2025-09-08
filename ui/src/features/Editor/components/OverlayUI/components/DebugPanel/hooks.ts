@@ -354,5 +354,8 @@ export default () => {
     totalFeatures: shouldUseTraditionalLoading
       ? null
       : streamingQuery.totalFeatures,
+    isComplete: shouldUseTraditionalLoading
+      ? null
+      : streamingQuery.isComplete,
   };
 };
