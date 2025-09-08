@@ -435,6 +435,8 @@
   "Deploy project's workflow": "部署项目的工作流",
   "Manual Save": "手动保存",
   "Export Project": "导出项目",
+  "Currently Viewing": "当前查看",
+  "Collaborators": "协作者",
   "Stop Workflow": "停止工作流",
   "Are you sure you want to stop the workflow's debug run?": "您确定要停止工作流的调试运行吗？",
   "Stop": "停止",

@@ -14,6 +14,7 @@ export type DialogOptions =
   | "assets"
   | "debugStop"
   | "projectVariables"
+  | "collaboration"
   | undefined;
 
 export default ({
