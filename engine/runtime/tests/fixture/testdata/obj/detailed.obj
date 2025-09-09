@@ -1,0 +1,103 @@
+# Detailed OBJ test file with all features
+# This tests comprehensive OBJ support
+
+mtllib materials.mtl
+
+# Object 1: Cube with texture coordinates and normals
+o Cube
+g cube_group
+
+# Vertices
+v -1.0 -1.0 -1.0
+v 1.0 -1.0 -1.0
+v 1.0 1.0 -1.0
+v -1.0 1.0 -1.0
+v -1.0 -1.0 1.0
+v 1.0 -1.0 1.0
+v 1.0 1.0 1.0
+v -1.0 1.0 1.0
+
+# Texture coordinates
+vt 0.0 0.0
+vt 1.0 0.0
+vt 1.0 1.0
+vt 0.0 1.0
+vt 0.0 0.0
+vt 1.0 0.0
+vt 1.0 1.0
+vt 0.0 1.0
+
+# Normals
+vn 0.0 0.0 -1.0
+vn 0.0 0.0 1.0
+vn 0.0 -1.0 0.0
+vn 1.0 0.0 0.0
+vn 0.0 1.0 0.0
+vn -1.0 0.0 0.0
+
+# Material
+usemtl red_material
+
+# Faces with texture and normal indices
+f 1/1/1 2/2/1 3/3/1 4/4/1
+f 5/5/2 8/8/2 7/7/2 6/6/2
+f 1/1/3 5/5/3 6/6/3 2/2/3
+f 2/2/4 6/6/4 7/7/4 3/3/4
+f 3/3/5 7/7/5 8/8/5 4/4/5
+f 5/5/6 1/1/6 4/4/6 8/8/6
+
+# Object 2: Pyramid with different material
+o Pyramid
+g pyramid_group
+
+v 0.0 2.0 0.0
+v -1.0 0.0 -1.0
+v 1.0 0.0 -1.0
+v 1.0 0.0 1.0
+v -1.0 0.0 1.0
+
+vt 0.5 1.0
+vt 0.0 0.0
+vt 1.0 0.0
+vt 1.0 1.0
+vt 0.0 1.0
+
+vn 0.0 0.447 -0.894
+vn 0.894 0.447 0.0
+vn 0.0 0.447 0.894
+vn -0.894 0.447 0.0
+vn 0.0 -1.0 0.0
+
+usemtl blue_material
+
+# Triangular faces
+f 9/9/7 10/10/7 11/11/7
+f 9/9/8 11/11/8 12/12/8
+f 9/9/9 12/12/9 13/13/9
+f 9/9/10 13/13/10 10/10/10
+f 10/10/11 13/13/11 12/12/11 11/11/11
+
+# Object 3: Complex polygon (will test triangulation)
+o ComplexShape
+g complex_group
+
+v -2.0 0.0 -2.0
+v 2.0 0.0 -2.0
+v 2.0 0.0 2.0
+v 0.0 0.0 3.0
+v -2.0 0.0 2.0
+
+usemtl green_material
+
+# Non-triangular face (5 vertices)
+f 14 15 16 17 18
+
+# Test negative indices (relative indexing)
+g negative_index_group
+v 3.0 0.0 0.0
+v 4.0 0.0 0.0
+v 4.0 1.0 0.0
+v 3.0 1.0 0.0
+
+# Using negative indices (last 4 vertices)
+f -4 -3 -2 -1

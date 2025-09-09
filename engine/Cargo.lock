@@ -103,12 +103,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
-name = "android-tzdata"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e999941b234f3131b00bc13c22d06e8c5ff726d1b6318ac7eb276997bbb4fef0"
-
-[[package]]
 name = "android_system_properties"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -938,7 +932,7 @@ name = "cesiumtiles"
 version = "0.0.0"
 source = "git+https://github.com/reearth/cesiumtiles-rs?tag=v0.0.1#a6a11d2b42aead81e5e7103317a8abd705cdcbb5"
 dependencies = [
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "serde",
  "serde_json",
  "serde_repr",
@@ -1003,17 +997,16 @@ checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 
 [[package]]
 name = "chrono"
-version = "0.4.41"
+version = "0.4.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c469d952047f47f91b68d1cba3f10d63c11d73e4636f24f08daf0278abf01c4d"
+checksum = "145052bdd345b87320e369255277e3fb5152762ad123a901ef5c262dd38fe8d2"
 dependencies = [
- "android-tzdata",
  "iana-time-zone",
  "js-sys",
  "num-traits",
  "serde",
  "wasm-bindgen",
- "windows-link 0.1.3",
+ "windows-link 0.2.0",
 ]
 
 [[package]]
@@ -1930,7 +1923,7 @@ dependencies = [
  "faer",
  "gltf",
  "image 0.25.8",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "lazy_static",
  "paste",
  "remain",
@@ -2144,12 +2137,12 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
 name = "errno"
-version = "0.3.13"
+version = "0.3.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "778e2ac28f6c47af28e4907f13ffd1e1ddbd400980a9abd7c8df189bf578a5ad"
+checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.0",
 ]
 
 [[package]]
@@ -2920,7 +2913,7 @@ dependencies = [
  "js-sys",
  "libc",
  "r-efi",
- "wasi 0.14.4+wasi-0.2.4",
+ "wasi 0.14.5+wasi-0.2.4",
  "wasm-bindgen",
 ]
 
@@ -2941,7 +2934,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4271d37baee1b8c7e4b708028c57d816cf9d2434acb33a549475f78c181f6253"
 dependencies = [
  "fallible-iterator",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "stable_deref_trait",
 ]
 
@@ -3268,7 +3261,7 @@ dependencies = [
  "futures-core",
  "futures-sink",
  "http 1.3.1",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "slab",
  "tokio",
  "tokio-util",
@@ -3847,9 +3840,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "2.11.0"
+version = "2.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2481980430f9f78649238835720ddccc57e52df14ffce1c6f37391d61b563e9"
+checksum = "206a8042aec68fa4a62e8d3f7aa4ceb508177d9324faf261e1959e495b7a1921"
 dependencies = [
  "equivalent",
  "hashbrown 0.15.5",
@@ -4353,9 +4346,9 @@ checksum = "d26c52dbd32dccf2d10cac7725f8eae5296885fb5703b261f7d0a0739ec807ab"
 
 [[package]]
 name = "linux-raw-sys"
-version = "0.9.4"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd945864f07fe9f5371a27ad7b52a172b4b499999f1d97574c9fa68373937e12"
+checksum = "df1d3c3b53da64cf5760482273a98e575c651a67eec7f77df96b5b642de8f039"
 
 [[package]]
 name = "litemap"
@@ -5039,7 +5032,7 @@ dependencies = [
  "ahash 0.8.12",
  "chrono",
  "flatgeom",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "log",
  "macros",
  "nusamai-projection",
@@ -5092,7 +5085,7 @@ dependencies = [
  "chrono",
  "flatgeom",
  "hashbrown 0.15.5",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "log",
  "nusamai-citygml",
  "once_cell",
@@ -5192,7 +5185,7 @@ dependencies = [
  "crc32fast",
  "flate2",
  "hashbrown 0.14.5",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "memchr",
  "ruzstd",
 ]
@@ -5577,7 +5570,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4c5cc86750666a3ed20bdaf5ca2a0344f9c67674cae0515bec2da16fbaa47db"
 dependencies = [
  "fixedbitset 0.4.2",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
 ]
 
 [[package]]
@@ -5587,7 +5580,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3672b37090dbd86368a4145bc067582552b29c27377cad4e0a306c97f9bd7772"
 dependencies = [
  "fixedbitset 0.5.7",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
 ]
 
 [[package]]
@@ -5802,7 +5795,7 @@ checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 
 [[package]]
 name = "plateau-gis-quality-checker"
-version = "0.0.97"
+version = "0.0.98"
 dependencies = [
  "directories",
  "log",
@@ -5836,7 +5829,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3af6b589e163c5a788fab00ce0c0366f6efbb9959c2f9874b224936af7fce7e1"
 dependencies = [
  "base64 0.22.1",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "quick-xml 0.38.3",
  "serde",
  "time",
@@ -6577,7 +6570,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-log"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "futures",
  "once_cell",
@@ -6597,14 +6590,14 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-plateau-processor"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "approx",
  "async-trait",
  "bytes",
  "calamine",
  "chrono",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "itertools 0.14.0",
  "num-traits",
  "nusamai-citygml",
@@ -6640,7 +6633,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-processor"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "Inflector",
  "approx",
@@ -6648,7 +6641,7 @@ dependencies = [
  "bytes",
  "chrono",
  "csv",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "itertools 0.14.0",
  "num-traits",
  "num_cpus",
@@ -6686,9 +6679,9 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-python-processor"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "once_cell",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
@@ -6706,7 +6699,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-sink"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "ahash 0.8.12",
  "async-trait",
@@ -6727,7 +6720,7 @@ dependencies = [
  "glam",
  "hashbrown 0.15.5",
  "image 0.25.8",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "itertools 0.14.0",
  "kv-extsort",
  "nusamai-citygml",
@@ -6769,7 +6762,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-source"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "async-trait",
  "async_zip",
@@ -6777,7 +6770,7 @@ dependencies = [
  "csv",
  "futures",
  "geojson",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "nusamai-citygml",
  "nusamai-czml",
  "nusamai-plateau",
@@ -6810,10 +6803,10 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-wasm-processor"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "chrono",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "itertools 0.14.0",
  "once_cell",
  "reearth-flow-common",
@@ -6837,7 +6830,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-cli"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "bytes",
  "clap",
@@ -6876,7 +6869,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-common"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "approx",
  "async-recursion",
@@ -6911,7 +6904,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-eval-expr"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "chrono",
  "futures",
@@ -6925,7 +6918,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-examples"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "async-trait",
  "bytes",
@@ -6955,7 +6948,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-geometry"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "approx",
  "bytes",
@@ -6980,13 +6973,13 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-gltf"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "ahash 0.8.12",
  "byteorder",
  "chrono",
  "draco-oxide",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "itertools 0.14.0",
  "nusamai-citygml",
  "nusamai-gltf",
@@ -7009,7 +7002,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-macros"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7018,7 +7011,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runner"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "async-trait",
  "bytes",
@@ -7048,7 +7041,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runtime"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -7081,7 +7074,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sevenz"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "bit-set",
  "byteorder",
@@ -7098,7 +7091,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sql"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "futures-util",
  "once_cell",
@@ -7110,7 +7103,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-state"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "bytes",
  "reearth-flow-common",
@@ -7124,7 +7117,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-storage"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "bytes",
  "futures",
@@ -7142,7 +7135,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-telemetry"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "once_cell",
  "opentelemetry",
@@ -7156,7 +7149,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-tests"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "bytes",
  "directories",
@@ -7185,7 +7178,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-types"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "ahash 0.8.12",
  "bytes",
@@ -7196,7 +7189,7 @@ dependencies = [
  "geojson",
  "hashbrown 0.15.5",
  "image 0.25.8",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "itertools 0.14.0",
  "nusamai-citygml",
  "nusamai-gltf",
@@ -7222,7 +7215,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-worker"
-version = "0.0.100"
+version = "0.0.98"
 dependencies = [
  "async-trait",
  "backon",
@@ -7553,7 +7546,7 @@ dependencies = [
  "bytecheck 0.8.1",
  "bytes",
  "hashbrown 0.15.5",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "munge",
  "ptr_meta 0.3.0",
  "rancor",
@@ -7763,15 +7756,15 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "1.0.8"
+version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11181fbabf243db407ef8df94a6ce0b2f9a733bd8be4ad02b4eda9602296cac8"
+checksum = "cd15f8a2c5551a84d56efdc1cd049089e409ac19a3072d5037a17fd70719ff3e"
 dependencies = [
  "bitflags 2.9.4",
  "errno",
  "libc",
- "linux-raw-sys 0.9.4",
- "windows-sys 0.60.2",
+ "linux-raw-sys 0.11.0",
+ "windows-sys 0.61.0",
 ]
 
 [[package]]
@@ -7884,11 +7877,11 @@ dependencies = [
 
 [[package]]
 name = "schannel"
-version = "0.1.27"
+version = "0.1.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f29ebaa345f945cec9fbbc532eb307f0fdad8161f281b6369539c8d84876b3d"
+checksum = "891d81b926048e76efe18581bf793546b4c0eaf8448d72be8de2bbee5fd166e1"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.61.0",
 ]
 
 [[package]]
@@ -8083,7 +8076,7 @@ version = "1.0.143"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d401abef1d108fbd9cbaebc3e46611f4b1021f714a0597a71f41ee463f5f4a5a"
 dependencies = [
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "itoa 1.0.15",
  "memchr",
  "ryu",
@@ -8132,7 +8125,7 @@ dependencies = [
  "chrono",
  "hex",
  "indexmap 1.9.3",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "schemars 0.9.0",
  "schemars 1.0.4",
  "serde",
@@ -8160,7 +8153,7 @@ version = "0.9.34+deprecated"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a8b1a1a2ebf674015cc02edccce75287f1a0130d394307b36743c2f5d504b47"
 dependencies = [
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "itoa 1.0.15",
  "ryu",
  "serde",
@@ -8173,7 +8166,7 @@ version = "0.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59e2dd588bf1597a252c3b920e0143eb99b0f76e4e082f4c92ce34fbc9e71ddd"
 dependencies = [
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "itoa 1.0.15",
  "libyml",
  "memchr",
@@ -8591,7 +8584,7 @@ dependencies = [
  "futures-util",
  "hashbrown 0.15.5",
  "hashlink",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "log",
  "memchr",
  "once_cell",
@@ -9151,7 +9144,7 @@ dependencies = [
 [[package]]
 name = "tauri-plugin-log"
 version = "0.0.0"
-source = "git+https://github.com/tauri-apps/plugins-workspace?branch=v1#658733918e939a6693c9e43e60f99e2c6dd681ac"
+source = "git+https://github.com/tauri-apps/plugins-workspace?branch=v1#b9ba371a7fddaff9b9fd6802a0cc5c79928dbfa4"
 dependencies = [
  "byte-unit",
  "fern",
@@ -9246,15 +9239,15 @@ dependencies = [
 
 [[package]]
 name = "tempfile"
-version = "3.21.0"
+version = "3.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15b61f8f20e3a6f7e0649d825294eaf317edce30f82cf6026e7e4cb9222a7d1e"
+checksum = "84fa4d11fadde498443cca10fd3ac23c951f0dc59e080e9f4b93d4df4e4eea53"
 dependencies = [
  "fastrand",
  "getrandom 0.3.3",
  "once_cell",
- "rustix 1.0.8",
- "windows-sys 0.60.2",
+ "rustix 1.1.2",
+ "windows-sys 0.61.0",
 ]
 
 [[package]]
@@ -9270,11 +9263,11 @@ dependencies = [
 
 [[package]]
 name = "term"
-version = "1.1.0"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a43bddab41f8626c7bdaab872bbba75f8df5847b516d77c569c746e2ae5eb746"
+checksum = "2111ef44dae28680ae9752bb89409e7310ca33a8c621ebe7b106cf5c928b3ac0"
 dependencies = [
- "windows-sys 0.60.2",
+ "windows-sys 0.61.0",
 ]
 
 [[package]]
@@ -9421,7 +9414,7 @@ version = "0.0.1"
 source = "git+https://github.com/MIERUNE/tinymvt.git?tag=v0.0.1#4c36b181cdaedb615b28556f53ba089dda956076"
 dependencies = [
  "ahash 0.8.12",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "prost",
  "prost-build",
 ]
@@ -9595,7 +9588,7 @@ version = "0.19.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b5bb770da30e5cbfde35a2d7b9b8a2c4b8ef89548a7a6aeab5c9a576e3e7421"
 dependencies = [
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "serde",
  "serde_spanned",
  "toml_datetime",
@@ -9608,7 +9601,7 @@ version = "0.22.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41fe8c660ae4257887cf66394862d21dbca4a6ddd26f04a3560410406a2f819a"
 dependencies = [
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "serde",
  "serde_spanned",
  "toml_datetime",
@@ -10289,9 +10282,18 @@ checksum = "ccf3ec651a847eb01de73ccad15eb7d99f80485de043efb2f370cd654f4ea44b"
 
 [[package]]
 name = "wasi"
-version = "0.14.4+wasi-0.2.4"
+version = "0.14.5+wasi-0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88a5f4a424faf49c3c2c344f166f0662341d470ea185e939657aaff130f0ec4a"
+checksum = "a4494f6290a82f5fe584817a676a34b9d6763e8d9d18204009fb31dceca98fd4"
+dependencies = [
+ "wasip2",
+]
+
+[[package]]
+name = "wasip2"
+version = "1.0.0+wasi-0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "03fa2761397e5bd52002cd7e73110c71af2109aca4e521a9f40473fe685b0a24"
 dependencies = [
  "wit-bindgen",
 ]
@@ -10376,12 +10378,12 @@ dependencies = [
 
 [[package]]
 name = "wasm-encoder"
-version = "0.238.1"
+version = "0.239.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d50d48c31c615f77679b61c607b8151378a5d03159616bf3d17e8e2005afdaf5"
+checksum = "5be00faa2b4950c76fe618c409d2c3ea5a3c9422013e079482d78544bb2d184c"
 dependencies = [
  "leb128fmt",
- "wasmparser 0.238.1",
+ "wasmparser 0.239.0",
 ]
 
 [[package]]
@@ -10493,7 +10495,7 @@ dependencies = [
  "ciborium",
  "derive_builder",
  "hex",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "schemars 0.8.22",
  "semver",
  "serde",
@@ -10515,7 +10517,7 @@ dependencies = [
  "ciborium",
  "derive_builder",
  "hex",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "schemars 0.8.22",
  "semver",
  "serde",
@@ -10602,7 +10604,7 @@ dependencies = [
  "enumset",
  "getrandom 0.2.16",
  "hex",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "more-asserts",
  "rkyv 0.8.11",
  "serde",
@@ -10626,7 +10628,7 @@ dependencies = [
  "dashmap",
  "enum-iterator",
  "fnv",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "lazy_static",
  "libc",
  "mach2",
@@ -10740,26 +10742,26 @@ dependencies = [
  "ahash 0.8.12",
  "bitflags 2.9.4",
  "hashbrown 0.14.5",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "semver",
 ]
 
 [[package]]
 name = "wasmparser"
-version = "0.238.1"
+version = "0.239.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fa99c8328024423875ae4a55345cfde8f0371327fb2d0f33b0f52a06fc44408"
+checksum = "8c9d90bb93e764f6beabf1d02028c70a2156a6583e63ac4218dd07ef733368b0"
 dependencies = [
  "bitflags 2.9.4",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "semver",
 ]
 
 [[package]]
 name = "wast"
-version = "238.0.1"
+version = "239.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0a564e7eab2abb8920c1302b90eb2c98a15efbbe30fc060d4e2d88483aa23fe"
+checksum = "9139176fe8a2590e0fb174cdcaf373b224cb93c3dde08e4297c1361d2ba1ea5d"
 dependencies = [
  "bumpalo",
  "leb128fmt",
@@ -10770,9 +10772,9 @@ dependencies = [
 
 [[package]]
 name = "wat"
-version = "1.238.1"
+version = "1.239.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0eb84e6ac2997025f80482266fdc9f60fa28ba791b674bfd33855e77fe867631"
+checksum = "3e1c941927d34709f255558166f8901a2005f8ab4a9650432e9281b7cc6f3b75"
 dependencies = [
  "wast",
 ]
@@ -10810,7 +10812,7 @@ dependencies = [
  "ciborium",
  "document-features",
  "ignore",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "leb128",
  "lexical-sort",
  "libc",
@@ -11682,7 +11684,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af3a19837351dc82ba89f8a125e22a3c475f05aba604acc023d62b2739ae2909"
 dependencies = [
  "libc",
- "rustix 1.0.8",
+ "rustix 1.1.2",
 ]
 
 [[package]]
@@ -11867,7 +11869,7 @@ dependencies = [
  "flate2",
  "getrandom 0.3.3",
  "hmac",
- "indexmap 2.11.0",
+ "indexmap 2.11.1",
  "lzma-rs",
  "memchr",
  "pbkdf2",
