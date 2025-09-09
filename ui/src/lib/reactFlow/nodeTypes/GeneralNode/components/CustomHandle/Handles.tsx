@@ -92,6 +92,31 @@ const Handles: React.FC<Props> = ({
             </div>
           </div>
         )}
+        <CollapsibleContent>
+          <div className="inset-x-0 mx-auto min-w-0 flex-1" />
+          {outputs && hasMoreThanFiveOutputHandles && (
+            <div className="inset-x-0 mx-auto min-w-0 flex-1 overflow-hidden">
+              {outputs.map((output, index) => (
+                <div
+                  key={output + index}
+                  className="relative flex items-center justify-end  border-b py-0.5 last-of-type:border-none">
+                  <CustomHandle
+                    type="source"
+                    className="right-1 z-10 w-[8px] rounded-none transition-colors"
+                    position={Position.Right}
+                    id={output}
+                  />
+                  <div className="flex w-full -translate-x-0.5 items-center justify-end">
+                    <p className="w-[90%] pr-1 text-end text-[10px] break-words italic dark:font-thin">
+                      {output}
+                    </p>
+                    <div className="size-1.5 rounded-full bg-gray-300" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CollapsibleContent>
       </div>
       {isCollapsed && (
         <>
@@ -109,31 +134,7 @@ const Handles: React.FC<Props> = ({
             ))}
         </>
       )}
-      <CollapsibleContent className="flex justify-between gap-2">
-        <div className="inset-x-0 mx-auto min-w-0 flex-1" />
-        {outputs && hasMoreThanFiveOutputHandles && (
-          <div className="inset-x-0 mx-auto min-w-0 flex-1 overflow-hidden">
-            {outputs.map((output, index) => (
-              <div
-                key={output + index}
-                className="relative flex items-center justify-end  border-b py-0.5 last-of-type:border-none">
-                <CustomHandle
-                  type="source"
-                  className="right-1 z-10 w-[8px] rounded-none transition-colors"
-                  position={Position.Right}
-                  id={output}
-                />
-                <div className="flex w-full -translate-x-0.5 items-center justify-end">
-                  <p className="w-[90%] pr-1 text-end text-[10px] break-words italic dark:font-thin">
-                    {output}
-                  </p>
-                  <div className="size-1.5 rounded-full bg-gray-300" />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </CollapsibleContent>
+
       {outputs && outputs.length >= 5 && (
         <CollapsibleTrigger asChild className="justify-center self-center">
           <IconButton
