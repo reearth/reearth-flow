@@ -7,7 +7,7 @@ use crate::{
     feature_creator::FeatureCreatorFactory,
     file::{
         csv::CsvReaderFactory, czml::CzmlReaderFactory, geojson::GeoJsonReaderFactory,
-        path_extractor::FilePathExtractorFactory, reader::FileReaderFactory,
+        obj::ObjReaderFactory, path_extractor::FilePathExtractorFactory, reader::FileReaderFactory,
         shapefile::ShapefileReaderFactory,
     },
     sql::SqlReaderFactory,
@@ -22,6 +22,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<CsvReaderFactory>::default(),
         Box::<CzmlReaderFactory>::default(),
         Box::<GeoJsonReaderFactory>::default(),
+        Box::<ObjReaderFactory>::default(),
         Box::<ShapefileReaderFactory>::default(),
     ];
     factories
