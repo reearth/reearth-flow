@@ -15,6 +15,8 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Button,
   Input,
@@ -90,6 +92,30 @@ function VirtualizedTable<TData, TValue>({
     manualPagination: true,
   });
 
+  // Handle select all columns
+  const handleSelectAllColumns = useCallback(() => {
+    const visibilityUpdate: Record<string, boolean> = {};
+    table
+      .getAllColumns()
+      .filter((column) => column.getCanHide())
+      .forEach((column) => {
+        visibilityUpdate[column.id] = true;
+      });
+    setColumnVisibility(visibilityUpdate);
+  }, [table]);
+
+  // Handle deselect all columns
+  const handleDeselectAllColumns = useCallback(() => {
+    const visibilityUpdate: Record<string, boolean> = {};
+    table
+      .getAllColumns()
+      .filter((column) => column.getCanHide())
+      .forEach((column) => {
+        visibilityUpdate[column.id] = false;
+      });
+    setColumnVisibility(visibilityUpdate);
+  }, [table]);
+
   const parentRef = useRef<HTMLDivElement>(null);
   const { rows } = table.getRowModel();
   const virtualizer = useVirtualizer({
@@ -141,6 +167,13 @@ function VirtualizedTable<TData, TValue>({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleSelectAllColumns}>
+                  {t("Select All")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDeselectAllColumns}>
+                  {t("Deselect All")}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 {table
                   .getAllColumns()
                   .filter((column) => column.getCanHide())

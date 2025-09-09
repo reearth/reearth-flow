@@ -48,6 +48,7 @@ lto = "fat"
 reearth-flow-action-log = { path = "runtime/action-log" }
 reearth-flow-action-plateau-processor = { path = "runtime/action-plateau-processor" }
 reearth-flow-action-processor = { path = "runtime/action-processor" }
+reearth-flow-action-python-processor = { path = "runtime/action-python-processor" }
 reearth-flow-action-sink = { path = "runtime/action-sink" }
 reearth-flow-action-source = { path = "runtime/action-source" }
 reearth-flow-action-wasm-processor = { path = "runtime/action-wasm-processor" }

@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
 import bbox from "@turf/bbox";
+import { Cartesian3 } from "cesium";
 import {
   MouseEvent,
   useCallback,
@@ -9,14 +9,11 @@ import {
   useState,
 } from "react";
 
-import useFetchAndReadData from "@flow/hooks/useFetchAndReadData";
 import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useJob } from "@flow/lib/gql/job";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
-
-import { STREAMING_SIZE_THRESHOLD_MB } from "./constants";
 
 export default () => {
   const t = useT();
@@ -30,6 +27,7 @@ export default () => {
   const [convertedSelectedFeature, setConvertedSelectedFeature] =
     useState(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const cesiumViewerRef = useRef<any>(null);
 
   const [currentProject] = useCurrentProject();
 
@@ -183,75 +181,12 @@ export default () => {
   const metadataUrl =
     selectedDataURL ?? (dataURLs?.length ? dataURLs[0].key : "");
 
-  // Check file size first with a HEAD request
-  const { data: fileMetadata } = useQuery({
-    queryKey: ["fileMetadata", metadataUrl],
-    queryFn: async () => {
-      if (!metadataUrl) return null;
-
-      const response = await fetch(metadataUrl, { method: "HEAD" });
-      if (!response.ok) return null;
-
-      return {
-        contentLength: response.headers.get("content-length"),
-        contentType: response.headers.get("content-type"),
-      };
-    },
-    enabled: !!metadataUrl,
-    staleTime: Infinity,
-    gcTime: Infinity,
-  });
-
-  // Determine if we should use traditional loading based on data type and file size
-  const shouldUseTraditionalLoading = useMemo(() => {
-    const contentLength = fileMetadata?.contentLength;
-
-    // Check if this is intermediate data (JSONL) vs output data
-    const isIntermediateData = intermediateDataURLs?.includes(metadataUrl);
-    const isOutputData = outputURLs?.includes(metadataUrl);
-
-    // Only use streaming for JSONL intermediate data
-    if (!isIntermediateData || isOutputData) {
-      return true; // Use traditional for output data or non-intermediate data
-    }
-
-    // For intermediate JSONL data, use streaming by default since content-length is often missing
-    if (!contentLength) {
-      return false; // Default to streaming for JSONL when size unknown
-    }
-
-    const sizeInMB = parseInt(contentLength) / (1024 * 1024);
-    const useTraditional = sizeInMB < STREAMING_SIZE_THRESHOLD_MB;
-
-    return useTraditional; // Use traditional loading for files under 10MB
-  }, [fileMetadata, metadataUrl, intermediateDataURLs, outputURLs]);
-
-  // Use streaming query only for large files
   const streamingQuery = useStreamingDebugRunQuery(metadataUrl, {
-    enabled: !!metadataUrl && !shouldUseTraditionalLoading,
+    enabled: !!metadataUrl,
   });
 
-  // Use traditional fetch for small files or when streaming fails
-  const {
-    fileContent: traditionalData,
-    fileType: traditionalFileType,
-    isLoading: isLoadingTraditional,
-  } = useFetchAndReadData({
-    dataUrl: shouldUseTraditionalLoading
-      ? (selectedDataURL ?? (dataURLs?.length ? dataURLs[0].key : ""))
-      : "",
-  });
-
-  // Choose which data source to use
-  const selectedOutputData = shouldUseTraditionalLoading
-    ? traditionalData
-    : streamingQuery.fileContent;
-  const fileType = shouldUseTraditionalLoading
-    ? traditionalFileType
-    : streamingQuery.fileType;
-  const isLoadingData = shouldUseTraditionalLoading
-    ? isLoadingTraditional
-    : streamingQuery.isLoading;
+  const selectedOutputData = streamingQuery.fileContent;
+  const fileType = streamingQuery.fileType;
 
   const handleExpand = () => {
     setExpanded((prev) => !prev);
@@ -274,7 +209,166 @@ export default () => {
 
   const handleFlyToSelectedFeature = useCallback(
     (selectedFeature: any) => {
-      if (mapRef.current && selectedFeature) {
+      if (!selectedFeature) return;
+
+      // Get the current geometry type
+      const currentDetectedGeometryType = streamingQuery.detectedGeometryType;
+
+      // Determine which viewer to use based on detected geometry type
+      const is3D =
+        currentDetectedGeometryType === "CityGmlGeometry" ||
+        currentDetectedGeometryType === "FlowGeometry3D";
+
+      if (is3D && cesiumViewerRef.current) {
+        // 3D Cesium viewer - zoom to entities by feature ID
+        try {
+          // Access the actual Cesium viewer from Resium component
+          const cesiumViewer = cesiumViewerRef.current?.cesiumElement;
+
+          if (!cesiumViewer) {
+            console.warn("Cesium viewer not initialized yet");
+            return;
+          }
+
+          const featureId =
+            selectedFeature.id || selectedFeature.properties?._originalId;
+          if (!featureId) {
+            console.warn("No feature ID found for Cesium zoom");
+            return;
+          }
+
+          // Safety check for entities collection
+          if (!cesiumViewer.entities || !cesiumViewer.entities.values) {
+            console.warn("Cesium entities collection not available yet");
+            return;
+          }
+
+          // Find all entities that belong to this feature
+          const matchingEntities = cesiumViewer.entities.values.filter(
+            (entity: any) => {
+              // Check direct entity ID match (main building entity)
+              if (
+                entity.id === featureId ||
+                JSON.stringify(entity.id) === JSON.stringify(featureId)
+              ) {
+                return true;
+              }
+
+              // Check buildingId property (surface entities)
+              const buildingId = entity.properties?.getValue()?.buildingId;
+              if (
+                buildingId &&
+                (buildingId === featureId ||
+                  JSON.stringify(buildingId) === JSON.stringify(featureId))
+              ) {
+                return true;
+              }
+
+              // Check compound ID prefix (surface entities like "buildingId_wall_1")
+              if (
+                entity.id &&
+                typeof entity.id === "string" &&
+                entity.id.includes("_")
+              ) {
+                const baseId = entity.id.split("_")[0];
+                if (
+                  baseId === featureId ||
+                  JSON.stringify(baseId) === JSON.stringify(featureId)
+                ) {
+                  return true;
+                }
+              }
+
+              return false;
+            },
+          );
+
+          if (matchingEntities.length > 0) {
+            // Validate entities have reasonable coordinates
+            const validEntities = matchingEntities.filter((entity: any) => {
+              try {
+                if (entity.polygon?.hierarchy?.getValue) {
+                  const hierarchy = entity.polygon.hierarchy.getValue();
+                  if (hierarchy?.positions) {
+                    // Check if any position has invalid coordinates
+                    return hierarchy.positions.every(
+                      (pos: any) =>
+                        pos &&
+                        typeof pos.x === "number" &&
+                        !isNaN(pos.x) &&
+                        isFinite(pos.x) &&
+                        typeof pos.y === "number" &&
+                        !isNaN(pos.y) &&
+                        isFinite(pos.y) &&
+                        typeof pos.z === "number" &&
+                        !isNaN(pos.z) &&
+                        isFinite(pos.z),
+                    );
+                  }
+                }
+                return true; // If no polygon, assume valid
+              } catch {
+                return false;
+              }
+            });
+
+            if (validEntities.length === 0) {
+              console.warn(
+                "No valid entities found - all have invalid coordinates",
+              );
+              return;
+            }
+
+            try {
+              // Try different zoom approaches to handle potential coordinate issues
+
+              // Approach 1: Simple zoomTo without offset on valid entities
+              cesiumViewer.zoomTo(validEntities);
+            } catch (zoomError) {
+              console.warn(
+                "Direct zoomTo failed, trying fallback approach:",
+                zoomError,
+              );
+
+              try {
+                // Approach 2: Zoom to first valid entity only
+                if (validEntities[0]) {
+                  cesiumViewer.zoomTo(validEntities[0]);
+                }
+              } catch (fallbackError) {
+                console.error("All zoom approaches failed:", fallbackError);
+
+                // Approach 3: Manual camera positioning using entity bounds
+                try {
+                  const entity = validEntities[0];
+                  if (entity.position) {
+                    const position = entity.position.getValue();
+                    if (position) {
+                      cesiumViewer.camera.lookAt(
+                        position,
+                        new Cartesian3(100, 100, 100), // Simple offset
+                      );
+                    }
+                  }
+                } catch (manualError) {
+                  console.error(
+                    "Manual camera positioning failed:",
+                    manualError,
+                  );
+                }
+              }
+            }
+          } else {
+            console.warn(
+              "No matching Cesium entities found for feature ID:",
+              featureId,
+            );
+          }
+        } catch (err) {
+          console.error("Error zooming to Cesium feature:", err);
+        }
+      } else if (!is3D && mapRef.current) {
+        // 2D MapLibre viewer - use existing bbox approach
         try {
           const [minLng, minLat, maxLng, maxLat] = bbox(selectedFeature);
           mapRef.current.fitBounds(
@@ -289,7 +383,7 @@ export default () => {
         }
       }
     },
-    [mapRef],
+    [streamingQuery.detectedGeometryType, cesiumViewerRef, mapRef],
   );
 
   const handleRowSingleClick = useCallback(
@@ -319,6 +413,7 @@ export default () => {
     debugJobState,
     fileType,
     mapRef,
+    cesiumViewerRef,
     fullscreenDebug,
     expanded,
     minimized,
@@ -326,7 +421,6 @@ export default () => {
     selectedDataURL,
     dataURLs,
     selectedOutputData,
-    isLoadingData,
     enableClustering,
     selectedFeature,
     setSelectedFeature,
@@ -342,18 +436,11 @@ export default () => {
     handleRowDoubleClick,
     handleFlyToSelectedFeature,
 
-    // Streaming-specific features
-    isStreaming: !shouldUseTraditionalLoading,
-    streamingQuery: shouldUseTraditionalLoading ? null : streamingQuery,
-    streamingProgress: shouldUseTraditionalLoading
-      ? null
-      : streamingQuery.progress,
-    detectedGeometryType: shouldUseTraditionalLoading
-      ? null
-      : streamingQuery.detectedGeometryType,
-    totalFeatures: shouldUseTraditionalLoading
-      ? null
-      : streamingQuery.totalFeatures,
-    isComplete: shouldUseTraditionalLoading ? null : streamingQuery.isComplete,
+    // Data loading features (always available now)
+    streamingQuery: streamingQuery,
+    streamingProgress: streamingQuery.progress,
+    detectedGeometryType: streamingQuery.detectedGeometryType,
+    totalFeatures: streamingQuery.totalFeatures,
+    isComplete: streamingQuery.isComplete,
   };
 };
