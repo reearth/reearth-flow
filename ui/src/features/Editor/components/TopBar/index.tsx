@@ -32,6 +32,7 @@ type Props = {
   isSaving: boolean;
   self: AwarenessUser;
   users: Record<string, AwarenessUser>;
+  spotlightUserClientId: number | null;
   onWorkflowDeployment: (
     description: string,
     deploymentId?: string,
@@ -43,6 +44,8 @@ type Props = {
   onWorkflowClose: (workflowId: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
   onProjectSnapshotSave: () => Promise<void>;
+  onSpotlightUserSelect: (clientId: number) => void;
+  onSpotlightUserDeselect: () => void;
 };
 
 const TopBar: React.FC<Props> = ({
@@ -54,6 +57,7 @@ const TopBar: React.FC<Props> = ({
   isSaving,
   self,
   users,
+  spotlightUserClientId,
   onWorkflowDeployment,
   onProjectExport,
   onProjectShare,
@@ -62,6 +66,8 @@ const TopBar: React.FC<Props> = ({
   onWorkflowClose,
   onWorkflowChange,
   onProjectSnapshotSave,
+  onSpotlightUserSelect,
+  onSpotlightUserDeselect,
 }) => {
   const t = useT();
   const {
@@ -120,8 +126,11 @@ const TopBar: React.FC<Props> = ({
           self={self}
           users={users}
           showDialog={showDialog}
+          spotlightUserClientId={spotlightUserClientId}
           onDialogOpen={handleDialogOpen}
           onDialogClose={handleDialogClose}
+          onSpotlightUserSelect={onSpotlightUserSelect}
+          onSpotlightUserDeselect={onSpotlightUserDeselect}
         />
         <div className="h-4/5 border-r" />
         <DebugActionBar

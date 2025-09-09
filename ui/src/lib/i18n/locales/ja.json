@@ -437,6 +437,8 @@
   "Deploy project's workflow": "プロジェクトのワークフローをデプロイ",
   "Manual Save": "手動保存",
   "Export Project": "プロジェクトをエクスポート",
+  "Spotlight User": "スポットライトユーザー",
+  "Remove Spotlight": "スポットライトを削除",
   "Currently Viewing": "現在表示中",
   "Collaborators": "共同作業者",
   "Stop Workflow": "ワークフローを停止",

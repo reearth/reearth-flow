@@ -50,6 +50,8 @@ export default function Editor({
     deferredDeleteRef,
     showBeforeDeleteDialog,
     isSaving,
+    spotlightUserClientId,
+    spotlightUser,
     handleWorkflowAdd,
     handleWorkflowDeployment,
     handleProjectShare,
@@ -79,6 +81,8 @@ export default function Editor({
     handlePaste,
     handleProjectSnapshotSave,
     handlePaneMouseMove,
+    handleSpotlightUserSelect,
+    handleSpotlightUserDeselect,
   } = useHooks({
     yDoc,
     yWorkflows,
@@ -107,6 +111,7 @@ export default function Editor({
           isSaving={isSaving}
           self={self}
           users={users}
+          spotlightUserClientId={spotlightUserClientId}
           onProjectShare={handleProjectShare}
           onProjectExport={handleCurrentProjectExport}
           onWorkflowDeployment={handleWorkflowDeployment}
@@ -115,9 +120,13 @@ export default function Editor({
           onDebugRunStart={handleDebugRunStart}
           onDebugRunStop={handleDebugRunStop}
           onProjectSnapshotSave={handleProjectSnapshotSave}
+          onSpotlightUserSelect={handleSpotlightUserSelect}
+          onSpotlightUserDeselect={handleSpotlightUserDeselect}
         />
 
-        <div className="flex flex-1 flex-col">
+        <div
+          className={`flex flex-1 flex-col ${spotlightUser ? "border" : ""}`}
+          style={{ borderColor: spotlightUser?.color || "" }}>
           <OverlayUI
             nodePickerOpen={nodePickerOpen}
             canUndo={canUndo}
