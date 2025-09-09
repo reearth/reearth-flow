@@ -62,9 +62,7 @@ export default ({
     zoom,
   });
 
-  useEffect(() => {
-    latestViewportRef.current = { x, y, zoom };
-  }, [x, y, zoom]);
+  latestViewportRef.current = { x, y, zoom };
 
   const [spotlightUserClientId, setSpotlightUserClientId] = useState<
     number | null
