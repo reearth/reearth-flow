@@ -19,16 +19,22 @@ type Props = {
   self: AwarenessUser;
   users: Record<string, AwarenessUser>;
   showDialog: DialogOptions;
+  spotlightUserClientId: number | null;
   onDialogOpen: (dialog: DialogOptions) => void;
   onDialogClose: () => void;
+  onSpotlightUserSelect: (clientId: number) => void;
+  onSpotlightUserDeselect: () => void;
 };
 
 const CollaborationActionBar: React.FC<Props> = ({
   self,
   users,
   showDialog,
+  spotlightUserClientId,
   onDialogOpen,
   onDialogClose,
+  onSpotlightUserSelect,
+  onSpotlightUserDeselect,
 }) => {
   const t = useT();
 
@@ -85,7 +91,13 @@ const CollaborationActionBar: React.FC<Props> = ({
         sideOffset={16}
         className="w-60 bg-primary/50 backdrop-blur">
         {showDialog === "collaboration" && (
-          <CollaborationPopover self={self} users={users} />
+          <CollaborationPopover
+            self={self}
+            users={users}
+            spotlightUserClientId={spotlightUserClientId}
+            onSpotlightUserSelect={onSpotlightUserSelect}
+            onSpotlightUserDeselect={onSpotlightUserDeselect}
+          />
         )}
       </PopoverContent>
     </Popover>
