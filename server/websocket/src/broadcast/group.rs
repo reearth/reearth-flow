@@ -354,6 +354,10 @@ impl BroadcastGroup {
         &self.last_read_id
     }
 
+    pub fn get_active_connections(&self) -> usize {
+        self.sender.receiver_count()
+    }
+
     pub async fn subscribe<Sink, Stream, E>(
         self: Arc<Self>,
         sink: Arc<Mutex<Sink>>,
