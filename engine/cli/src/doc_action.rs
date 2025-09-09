@@ -5,9 +5,7 @@ use indoc::indoc;
 use reearth_flow_runtime::node::SYSTEM_ACTION_FACTORY_MAPPINGS;
 
 use crate::{
-    factory::{
-        BUILTIN_ACTION_FACTORIES, PLATEAU_ACTION_FACTORIES, PYTHON_ACTION_FACTORIES,
-    },
+    factory::{BUILTIN_ACTION_FACTORIES, PLATEAU_ACTION_FACTORIES, PYTHON_ACTION_FACTORIES},
     utils::create_action_schema,
 };
 
