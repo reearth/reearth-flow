@@ -1,7 +1,10 @@
 package monitor
 
 import (
+	"os"
 	"sync"
+
+	"github.com/reearth/reearthx/log"
 )
 
 type Monitor struct {
@@ -21,6 +24,8 @@ func (m *Monitor) Register(jobID string, config *Config) {
 
 	if oldConfig, exists := m.configs[jobID]; exists {
 		oldConfig.Cancel()
+		hostname, _ := os.Hostname()
+		log.Debugf("[%s] Monitor: Replaced existing config for job %s", hostname, jobID)
 	}
 	m.configs[jobID] = config
 }
@@ -38,5 +43,7 @@ func (m *Monitor) Remove(jobID string) {
 	if config, exists := m.configs[jobID]; exists {
 		config.Cancel()
 		delete(m.configs, jobID)
+		hostname, _ := os.Hostname()
+		log.Debugf("[%s] Monitor: Removed config for job %s", hostname, jobID)
 	}
 }

@@ -3,6 +3,7 @@ package interactor
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -52,7 +53,7 @@ func NewJob(
 	gr *gateway.Container,
 	permissionChecker gateway.PermissionChecker,
 ) interfaces.Job {
-	return &Job{
+	job := &Job{
 		jobRepo:           r.Job,
 		workspaceRepo:     r.Workspace,
 		transaction:       r.Transaction,
@@ -65,6 +66,10 @@ func NewJob(
 		activeWatchers:    make(map[string]bool),
 		jobLocks:          make(map[string]*sync.Mutex),
 	}
+
+	log.Debugf("[NewJob] Created Job[%p] subs[%p] mon[%p]", job, job.subscriptions, job.monitor)
+
+	return job
 }
 
 func (i *Job) getJobLock(jobID string) *sync.Mutex {
@@ -189,11 +194,17 @@ func (i *Job) GetStatus(ctx context.Context, jobID id.JobID) (job.Status, error)
 }
 
 func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *string) error {
+	log.Debugfc(ctx, "[StartMonitoring] Job[%p] subs[%p] mon[%p]", i, i.subscriptions, i.monitor)
+
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return err
 	}
 
 	log.Debugfc(ctx, "job: starting monitoring for jobID=%s workspace=%s", j.ID(), j.Workspace())
+
+	hostname, _ := os.Hostname()
+	log.Debugfc(ctx, "[%s] StartMonitoring called for job %s", hostname, j.ID())
+	log.Debugfc(ctx, "[%s] Current active watchers: %v", hostname, i.activeWatchers)
 
 	i.watchersMu.Lock()
 	defer i.watchersMu.Unlock()
@@ -228,6 +239,9 @@ func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *
 }
 
 func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
+	hostname, _ := os.Hostname()
+	log.Debugfc(ctx, "[%s] Starting monitoring loop for job %s", hostname, j.ID().String())
+
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
@@ -327,6 +341,11 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 }
 
 func (i *Job) updateJobStatus(ctx context.Context, j *job.Job, status job.Status) error {
+	log.Debugfc(ctx, "[updateJobStatus] Job[%p] subs[%p] mon[%p]", i, i.subscriptions, i.monitor)
+
+	hostname, _ := os.Hostname()
+	log.Debugfc(ctx, "[%s] Updating job %s status from %s to %s", hostname, j.ID().String(), j.Status(), status)
+
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return err
 	}
@@ -485,11 +504,16 @@ func (i *Job) sendCompletionNotification(
 }
 
 func (i *Job) Subscribe(ctx context.Context, jobID id.JobID) (chan job.Status, error) {
+	log.Debugfc(ctx, "[Subscribe] Job[%p] subs[%p] mon[%p]", i, i.subscriptions, i.monitor)
+
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, err
 	}
 
 	ch := i.subscriptions.Subscribe(jobID.String())
+
+	hostname, _ := os.Hostname()
+	log.Debugfc(ctx, "[%s] WebSocket subscription started for job %s", hostname, jobID.String())
 
 	go func() {
 		j, err := i.FindByID(context.Background(), jobID)
@@ -504,6 +528,8 @@ func (i *Job) Subscribe(ctx context.Context, jobID id.JobID) (chan job.Status, e
 }
 
 func (i *Job) startMonitoringIfNeeded(jobID id.JobID) {
+	log.Debugf("[startMonitoringIfNeeded] Job[%p] subs[%p] for job %s", i, i.subscriptions, jobID)
+
 	j, err := i.jobRepo.FindByID(context.Background(), jobID)
 	if err != nil {
 		log.Errorfc(context.Background(), "job: failed to find job for monitoring: %v", err)

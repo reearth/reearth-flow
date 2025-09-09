@@ -13,7 +13,6 @@ use tracing::{debug, error, info, warn};
 use yrs::types::ToJson;
 
 use serde_json;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::select;
 use tokio::sync::broadcast::{channel, Sender};
@@ -28,7 +27,6 @@ use yrs::{Doc, ReadTxn, Transact, Update};
 use super::types::BroadcastConfig;
 
 pub struct BroadcastGroup {
-    connections: Arc<AtomicUsize>,
     awareness_ref: AwarenessRef,
     sender: Sender<Bytes>,
     doc_sub: yrs::Subscription,
@@ -51,7 +49,6 @@ pub struct BroadcastGroup {
 impl std::fmt::Debug for BroadcastGroup {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("BroadcastGroup")
-            .field("connections", &self.connections)
             .field("awareness_ref", &self.awareness_ref)
             .field("doc_name", &self.doc_name)
             .finish()
@@ -59,20 +56,6 @@ impl std::fmt::Debug for BroadcastGroup {
 }
 
 impl BroadcastGroup {
-    pub async fn increment_connections(&self) -> Result<()> {
-        let _ = self.connections.fetch_add(1, Ordering::Relaxed);
-        Ok(())
-    }
-
-    pub async fn decrement_connections(&self) -> usize {
-        let prev_count = self.connections.fetch_sub(1, Ordering::Relaxed);
-        prev_count - 1
-    }
-
-    pub fn connection_count(&self) -> usize {
-        self.connections.load(Ordering::Relaxed)
-    }
-
     pub async fn new(
         awareness: AwarenessRef,
         buffer_capacity: usize,
@@ -181,13 +164,13 @@ impl BroadcastGroup {
 
         let doc_name_for_sub = doc_name.clone();
         let redis_store_for_sub = redis_store.clone();
-        let instance_id_clone = instance_id.clone();
         let (heartbeat_shutdown_tx, mut heartbeat_shutdown_rx) = tokio::sync::oneshot::channel();
+        let awareness_clone = Arc::clone(&awareness);
 
         let heartbeat_task = tokio::spawn(async move {
             let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(30));
             interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-
+            let client_id = awareness_clone.read().await.client_id();
             loop {
                 select! {
                     _ = &mut heartbeat_shutdown_rx => {
@@ -195,7 +178,7 @@ impl BroadcastGroup {
                     },
                     _ = interval.tick() => {
                         if let Err(e) = redis_store_for_sub
-                            .update_instance_heartbeat(&doc_name_for_sub, &instance_id_clone)
+                            .update_instance_heartbeat(&doc_name_for_sub, &client_id)
                             .await
                         {
                             warn!("Failed to update instance heartbeat: {}", e);
@@ -306,8 +289,6 @@ impl BroadcastGroup {
                         match result {
                             Ok(awareness_updates) => {
                                 let update_count = awareness_updates.len();
-                                let sleep_duration = sleep_for_update_count(update_count);
-                                tokio::time::sleep(sleep_duration).await;
                                 if update_count > 0 {
                                     let awareness = awareness_clone.write().await;
                                     for (_instance_id, data) in awareness_updates {
@@ -366,7 +347,6 @@ impl BroadcastGroup {
         });
 
         Ok(BroadcastGroup {
-            connections: Arc::new(AtomicUsize::new(0)),
             awareness_ref: awareness,
             sender,
             doc_sub,
@@ -407,7 +387,6 @@ impl BroadcastGroup {
         self: Arc<Self>,
         sink: Arc<Mutex<Sink>>,
         stream: Stream,
-        user_token: Option<String>,
     ) -> Subscription
     where
         Sink: SinkExt<Bytes> + Send + Sync + Unpin + 'static,
@@ -415,36 +394,7 @@ impl BroadcastGroup {
         <Sink as futures_util::Sink<Bytes>>::Error: std::error::Error + Send + Sync,
         E: std::error::Error + Send + Sync + 'static,
     {
-        if let Some(token) = user_token {
-            let awareness = self.awareness().clone();
-            let client_id = rand::random::<u64>();
-
-            let awareness = awareness.write().await;
-            let mut local_state = std::collections::HashMap::new();
-
-            local_state.insert(
-                "user",
-                serde_json::json!({
-                    "id": token,
-                    "name": format!("User-{}", client_id % 1000),
-                }),
-            );
-
-            if let Err(e) = awareness.set_local_state(Some(local_state)) {
-                error!("Failed to set awareness state: {}", e);
-            }
-        }
-
-        let subscription = self.listen(sink, stream, DefaultProtocol).await;
-
-        let (tx, _) = tokio::sync::oneshot::channel();
-
-        let _ = tx.send(());
-
-        Subscription {
-            sink_task: subscription.sink_task,
-            stream_task: subscription.stream_task,
-        }
+        self.listen(sink, stream, DefaultProtocol).await
     }
 
     pub async fn listen<Sink, Stream, E, P>(
@@ -644,140 +594,110 @@ impl BroadcastGroup {
         }
     }
 
+    pub async fn cleanup_client_awareness(&self) -> Result<()> {
+        let awareness = self.awareness().clone();
+        let awareness_read = awareness.read().await;
+        awareness_read.clean_local_state();
+        Ok(())
+    }
+
     pub async fn shutdown(&self) -> Result<()> {
-        info!("Shutdown called for document: {}", self.doc_name);
-        if self.connection_count() == 0 {
+        let client_id = {
+            let awareness_read = self.awareness_ref.read().await;
+            awareness_read.client_id()
+        };
+        self.redis_store
+            .remove_instance_heartbeat(&self.doc_name, &client_id)
+            .await?;
+
+        let conn_count = self
+            .redis_store
+            .get_active_instances(&self.doc_name, 60)
+            .await?;
+        if conn_count <= 0 {
+            let lock_id = format!("gcs:lock:{}", self.doc_name);
+            let instance_id = format!("instance-{}", rand::random::<u64>());
+
+            let lock_acquired = self
+                .redis_store
+                .acquire_doc_lock(&lock_id, &instance_id)
+                .await?;
+
+            if lock_acquired {
+                let awareness = self.awareness_ref.write().await;
+                let awareness_doc = awareness.doc();
+
+                {
+                    let last_stream_id = self
+                        .redis_store
+                        .get_stream_last_id(&self.doc_name)
+                        .await
+                        .ok()
+                        .flatten();
+
+                    if let Some(ref id) = last_stream_id {
+                        info!("Got last stream ID before GCS save: {}", id);
+                    } else {
+                        info!("No stream ID found before GCS save");
+                    }
+
+                    let gcs_doc = Doc::new();
+                    let mut gcs_txn = gcs_doc.transact_mut();
+
+                    if let Err(e) = self.storage.load_doc(&self.doc_name, &mut gcs_txn).await {
+                        warn!("Failed to load current state from GCS: {}", e);
+                    }
+
+                    let gcs_state = gcs_txn.state_vector();
+
+                    let awareness_txn = awareness_doc.transact();
+
+                    let update = awareness_txn.encode_diff_v1(&gcs_state);
+                    let update_bytes = Bytes::from(update);
+
+                    if !(update_bytes.is_empty()
+                        || (update_bytes.len() == 2
+                            && update_bytes[0] == 0
+                            && update_bytes[1] == 0))
+                    {
+                        let update_future = self.storage.push_update(
+                            &self.doc_name,
+                            &update_bytes,
+                            &self.redis_store,
+                        );
+                        let flush_future =
+                            self.storage.flush_doc_v2(&self.doc_name, &awareness_txn);
+
+                        let (update_result, flush_result) =
+                            tokio::join!(update_future, flush_future);
+
+                        if let Err(e) = flush_result {
+                            warn!("Failed to flush document directly to storage: {}", e);
+                        }
+                        if let Err(e) = update_result {
+                            warn!("Failed to update document in storage: {}", e);
+                        }
+
+                        if let Some(last_id) = last_stream_id {
+                            if let Err(e) = self
+                                .redis_store
+                                .trim_stream_before(&self.doc_name, &last_id)
+                                .await
+                            {
+                                warn!("Failed to trim Redis stream after GCS save: {}", e);
+                            }
+                        }
+                    }
+                }
+            }
+
             if let Err(e) = self
                 .redis_store
-                .remove_instance_heartbeat(&self.doc_name, &self.instance_id)
+                .release_doc_lock(&lock_id, &instance_id)
                 .await
             {
-                warn!(
-                    "Failed to remove instance heartbeat before checking connections: {}",
-                    e
-                );
+                warn!("Failed to release GCS lock: {}", e);
             }
-            let should_save = match self
-                .redis_store
-                .get_active_instances(&self.doc_name, 60)
-                .await
-            {
-                Ok(connections) => {
-                    if connections <= 0 {
-                        info!(
-                            "All instances disconnected from '{}', proceeding with GCS save",
-                            self.doc_name
-                        );
-                        true
-                    } else {
-                        info!(
-                            "Other instances still connected to '{}' (count: {}), skipping GCS save",
-                            self.doc_name, connections
-                        );
-                        false
-                    }
-                }
-                Err(e) => {
-                    warn!("Failed to get Redis connection count: {}", e);
-                    true
-                }
-            };
-
-            if should_save {
-                let lock_id = format!("gcs:lock:{}", self.doc_name);
-                let instance_id = format!("instance-{}", rand::random::<u64>());
-
-                let lock_acquired = self
-                    .redis_store
-                    .acquire_doc_lock(&lock_id, &instance_id)
-                    .await?;
-
-                if lock_acquired {
-                    let awareness = self.awareness_ref.write().await;
-                    let awareness_doc = awareness.doc();
-
-                    // Always save to GCS to ensure proper synchronization
-                    // Previously we skipped saves when nodes lacked positions, but this caused
-                    // deleted nodes to reappear after reload because the Redis stream wasn't trimmed
-                    info!("Proceeding with GCS save for document {}", self.doc_name);
-                    {
-                        // Get the last stream ID before saving
-                        let last_stream_id = self
-                            .redis_store
-                            .get_stream_last_id(&self.doc_name)
-                            .await
-                            .ok()
-                            .flatten();
-
-                        if let Some(ref id) = last_stream_id {
-                            info!("Got last stream ID before GCS save: {}", id);
-                        } else {
-                            info!("No stream ID found before GCS save");
-                        }
-
-                        let gcs_doc = Doc::new();
-                        let mut gcs_txn = gcs_doc.transact_mut();
-
-                        if let Err(e) = self.storage.load_doc(&self.doc_name, &mut gcs_txn).await {
-                            warn!("Failed to load current state from GCS: {}", e);
-                        }
-
-                        let gcs_state = gcs_txn.state_vector();
-
-                        let awareness_txn = awareness_doc.transact();
-
-                        let update = awareness_txn.encode_diff_v1(&gcs_state);
-                        let update_bytes = Bytes::from(update);
-
-                        if !(update_bytes.is_empty()
-                            || (update_bytes.len() == 2
-                                && update_bytes[0] == 0
-                                && update_bytes[1] == 0))
-                        {
-                            let update_future = self.storage.push_update(
-                                &self.doc_name,
-                                &update_bytes,
-                                &self.redis_store,
-                            );
-                            let flush_future =
-                                self.storage.flush_doc_v2(&self.doc_name, &awareness_txn);
-
-                            let (update_result, flush_result) =
-                                tokio::join!(update_future, flush_future);
-
-                            if let Err(e) = flush_result {
-                                warn!("Failed to flush document directly to storage: {}", e);
-                            }
-                            if let Err(e) = update_result {
-                                warn!("Failed to update document in storage: {}", e);
-                            }
-
-                            if let Some(last_id) = last_stream_id {
-                                if let Err(e) = self
-                                    .redis_store
-                                    .trim_stream_before(&self.doc_name, &last_id)
-                                    .await
-                                {
-                                    warn!("Failed to trim Redis stream after GCS save: {}", e);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if let Err(e) = self
-                    .redis_store
-                    .release_doc_lock(&lock_id, &instance_id)
-                    .await
-                {
-                    warn!("Failed to release GCS lock: {}", e);
-                }
-            }
-        }
-
-        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
-
-        if self.connection_count() == 0 {
             self.redis_store
                 .safe_delete_stream(&self.doc_name, &self.instance_id)
                 .await?;
@@ -821,22 +741,5 @@ impl Drop for BroadcastGroup {
                 }
             }
         }
-    }
-}
-
-fn sleep_for_update_count(update_count: usize) -> tokio::time::Duration {
-    match update_count {
-        0 => tokio::time::Duration::from_millis(500),
-        1 => tokio::time::Duration::from_millis(200),
-        2 => tokio::time::Duration::from_millis(150),
-        3 => tokio::time::Duration::from_millis(95),
-        4 => tokio::time::Duration::from_millis(90),
-        5 => tokio::time::Duration::from_millis(85),
-        6 => tokio::time::Duration::from_millis(80),
-        7 => tokio::time::Duration::from_millis(75),
-        8 => tokio::time::Duration::from_millis(70),
-        9 => tokio::time::Duration::from_millis(65),
-        10 => tokio::time::Duration::from_millis(60),
-        _ => tokio::time::Duration::from_millis(1),
     }
 }

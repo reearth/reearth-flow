@@ -1,4 +1,4 @@
-import { useReactFlow } from "@xyflow/react";
+import { useReactFlow, useViewport } from "@xyflow/react";
 import { throttle } from "lodash-es";
 import {
   MouseEvent,
@@ -53,7 +53,20 @@ export default ({
     originPrepend?: string,
   ) => void;
 }) => {
-  const { fitView, screenToFlowPosition } = useReactFlow();
+  const { fitView, screenToFlowPosition, setViewport } = useReactFlow();
+  const { x, y, zoom } = useViewport();
+
+  const latestViewportRef = useRef<{ x: number; y: number; zoom: number }>({
+    x,
+    y,
+    zoom,
+  });
+
+  latestViewportRef.current = { x, y, zoom };
+
+  const [spotlightUserClientId, setSpotlightUserClientId] = useState<
+    number | null
+  >(null);
 
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(
     DEFAULT_ENTRY_GRAPH_ID,
@@ -367,7 +380,9 @@ export default ({
             },
             { snapToGrid: false },
           );
+
           awareness.setLocalStateField("cursor", flowPosition);
+          awareness.setLocalStateField("viewport", latestViewportRef.current);
         },
         32,
         { leading: true, trailing: true },
@@ -383,6 +398,31 @@ export default ({
     },
     [yAwareness, screenToFlowPosition, throttledMouseMove],
   );
+  const spotlightUser = spotlightUserClientId
+    ? users[spotlightUserClientId]
+    : null;
+
+  const spotlightUserViewport = spotlightUser?.viewport;
+
+  const handleSpotlightUserSelect = useCallback((clientId: number) => {
+    setSpotlightUserClientId(clientId);
+  }, []);
+
+  const handleSpotlightUserDeselect = useCallback(() => {
+    setSpotlightUserClientId(null);
+  }, []);
+
+  useEffect(() => {
+    if (!spotlightUserViewport) return;
+    setViewport(
+      {
+        x: spotlightUserViewport.x,
+        y: spotlightUserViewport.y,
+        zoom: spotlightUserViewport.zoom,
+      },
+      { duration: 100 },
+    );
+  }, [spotlightUserViewport, setViewport]);
 
   return {
     currentWorkflowId,
@@ -403,6 +443,8 @@ export default ({
     deferredDeleteRef,
     isSaving,
     showBeforeDeleteDialog,
+    spotlightUserClientId,
+    spotlightUser,
     handleRightPanelOpen,
     handleWorkflowAdd: handleYWorkflowAdd,
     handleWorkflowDeployment,
@@ -433,5 +475,7 @@ export default ({
     handlePaste,
     handleProjectSnapshotSave,
     handlePaneMouseMove,
+    handleSpotlightUserSelect,
+    handleSpotlightUserDeselect,
   };
 };
