@@ -66,14 +66,16 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
             icon={<ArrowLeftIcon size={16} />}
             onClick={onClose}
             tooltipText={t("Back to table")}
-            />
+          />
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-medium">{t("Feature Details")}</h3>
             {detectedGeometryType && (
               <span className="text-xs text-muted-foreground">
                 {detectedGeometryType}
               </span>
             )}
+            <h3 className="text-sm">
+              {t("Feature ID: ")} {processedFeature.id}
+            </h3>
           </div>
         </div>
         <div className="flex gap-2">

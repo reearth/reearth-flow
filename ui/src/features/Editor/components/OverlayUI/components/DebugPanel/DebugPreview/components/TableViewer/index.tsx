@@ -57,7 +57,7 @@ const TableViewer: React.FC<Props> = memo(
       },
       [onSingleClick],
     );
-    
+
     // Handle row double click
     const handleRowDoubleClick = useCallback(
       (feature: any) => {
