@@ -187,7 +187,6 @@ export default () => {
 
   const selectedOutputData = streamingQuery.fileContent;
   const fileType = streamingQuery.fileType;
-  const isLoadingData = streamingQuery.isLoading;
 
   const handleExpand = () => {
     setExpanded((prev) => !prev);
@@ -386,7 +385,6 @@ export default () => {
     selectedDataURL,
     dataURLs,
     selectedOutputData,
-    isLoadingData,
     enableClustering,
     selectedFeature,
     setSelectedFeature,
@@ -402,8 +400,7 @@ export default () => {
     handleRowDoubleClick,
     handleFlyToSelectedFeature,
 
-    // Streaming features (always available now)
-    isStreaming: true,
+    // Data loading features (always available now)
     streamingQuery: streamingQuery,
     streamingProgress: streamingQuery.progress,
     detectedGeometryType: streamingQuery.detectedGeometryType,

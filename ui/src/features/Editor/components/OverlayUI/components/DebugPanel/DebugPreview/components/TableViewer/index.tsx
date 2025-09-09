@@ -12,9 +12,6 @@ type Props = {
   selectedFeature: any;
   onSingleClick?: (feature: any) => void;
   onDoubleClick?: (feature: any) => void;
-
-  // Streaming props
-  isStreaming: boolean;
   detectedGeometryType: string | null;
   totalFeatures: number;
 };
@@ -26,9 +23,6 @@ const TableViewer: React.FC<Props> = memo(
     selectedFeature,
     onSingleClick,
     onDoubleClick,
-
-    // Streaming props
-    isStreaming,
     detectedGeometryType,
     totalFeatures,
   }) => {
@@ -49,9 +43,9 @@ const TableViewer: React.FC<Props> = memo(
     );
 
     // Loading state
-    if (isStreaming && (!fileContent || !columnizer.tableData)) {
+    if (!fileContent || !columnizer.tableData) {
       return (
-        <BasicBoiler text={t("Loading streaming data...")} className="h-full" />
+        <BasicBoiler text={t("Loading data...")} className="h-full" />
       );
     }
 

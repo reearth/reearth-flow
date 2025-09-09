@@ -46,7 +46,6 @@ const DebugPanel: React.FC = () => {
     selectedDataURL,
     dataURLs,
     selectedOutputData,
-    isLoadingData,
     enableClustering,
     selectedFeature,
     setSelectedFeature,
@@ -61,8 +60,7 @@ const DebugPanel: React.FC = () => {
     handleRowSingleClick,
     handleRowDoubleClick,
     handleFlyToSelectedFeature,
-    // Streaming-specific properties
-    isStreaming,
+    // Data properties
     detectedGeometryType,
     totalFeatures,
     isComplete,
@@ -215,8 +213,6 @@ const DebugPanel: React.FC = () => {
                     selectedFeature={selectedFeature}
                     onSingleClick={handleRowSingleClick}
                     onDoubleClick={handleRowDoubleClick}
-                    // Streaming props
-                    isStreaming={isStreaming}
                     detectedGeometryType={detectedGeometryType || undefined}
                     totalFeatures={totalFeatures || undefined}
                   />
@@ -229,7 +225,6 @@ const DebugPanel: React.FC = () => {
                   dataURLs={dataURLs}
                   fileType={fileType}
                   selectedOutputData={selectedOutputData}
-                  isLoadingData={isLoadingData}
                   showTempPossibleIssuesDialog={showTempPossibleIssuesDialog}
                   selectedFeature={selectedFeature}
                   enableClustering={enableClustering}
@@ -242,9 +237,8 @@ const DebugPanel: React.FC = () => {
                   onSelectedFeature={setSelectedFeature}
                   onEnableClusteringChange={setEnableClustering}
                   onFlyToSelectedFeature={handleFlyToSelectedFeature}
-                  // Streaming props for auto-detection
+                  // Data detection props
                   detectedGeometryType={detectedGeometryType}
-                  isStreaming={isStreaming}
                   isComplete={isComplete}
                 />
               </ResizablePanel>
