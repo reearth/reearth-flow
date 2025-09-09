@@ -58,7 +58,7 @@ impl RedisStore {
         conn: &mut redis::aio::MultiplexedConnection,
         stream_key: &str,
         update: &[u8],
-        instance_id: &str,
+        instance_id: &u64,
     ) -> Result<()> {
         let script = redis::Script::new(
             r#"
@@ -66,7 +66,7 @@ impl RedisStore {
             local update = ARGV[1]
             local instance_id = ARGV[2]
             
-            redis.call('XADD', stream_key, '*', 'instance_id', update)
+            redis.call('XADD', stream_key, '*', instance_id, update)
             return 1
             "#,
         );
@@ -86,7 +86,7 @@ impl RedisStore {
         conn: &mut redis::aio::MultiplexedConnection,
         stream_key: &str,
         update: &[u8],
-        instance_id: &str,
+        instance_id: &u64,
         ttl: u64,
     ) -> Result<()> {
         let script = redis::Script::new(
@@ -95,7 +95,7 @@ impl RedisStore {
             local update = ARGV[1]
             local instance_id = ARGV[2]
             local ttl = ARGV[3]
-            redis.call('XADD', stream_key, '*', 'instance_id', update)
+            redis.call('XADD', stream_key, '*', instance_id, update)
             redis.call('EXPIRE', stream_key, ttl)
             return 1
             "#,
@@ -227,7 +227,7 @@ impl RedisStore {
         &self,
         stream_key: &str,
         count: usize,
-        instance_id: &str,
+        instance_id: &u64,
         last_read_id: &Arc<Mutex<String>>,
     ) -> Result<Vec<Bytes>> {
         let block_ms = 1000;
@@ -256,7 +256,10 @@ impl RedisStore {
         let mut last_msg_id = String::new();
 
         for (msg_id, fields) in result[0].1.iter() {
-            if let Some((_, value)) = fields.iter().find(|(name, _)| name != instance_id) {
+            if let Some((_, value)) = fields
+                .iter()
+                .find(|(name, _)| name != &instance_id.to_string())
+            {
                 updates.push(value.clone());
             }
             last_msg_id = msg_id.clone();
@@ -792,7 +795,7 @@ impl RedisStore {
         doc_id: &str,
         last_read_id: &Arc<Mutex<String>>,
         count: usize,
-        instance_id_filter: Option<&str>,
+        instance_id_filter: Option<&u64>,
     ) -> Result<Vec<(String, Option<Bytes>)>> {
         let mut conn = self.pool.get().await?;
         let stream_key = format!("awareness:stream:{doc_id}");
@@ -840,7 +843,7 @@ impl RedisStore {
             }
 
             if let Some(filter_instance_id) = instance_id_filter {
-                if message_instance_id == filter_instance_id {
+                if message_instance_id == filter_instance_id.to_string() {
                     last_msg_id = msg_id.clone();
                     continue;
                 }

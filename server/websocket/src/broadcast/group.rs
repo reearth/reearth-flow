@@ -191,7 +191,7 @@ impl BroadcastGroup {
         let last_read_id = Arc::new(Mutex::new("0".to_string()));
         let last_read_id_clone = Arc::clone(&last_read_id);
         let awareness_clone = Arc::clone(&awareness);
-        let instance_id_clone = instance_id.clone();
+        let instance_id_clone = awareness_clone.read().await.client_id();
         let redis_store_for_sub_clone = Arc::clone(&redis_store);
         let doc_name_for_sub_clone = doc_name.clone();
         let (redis_subscriber_shutdown_tx, mut redis_subscriber_shutdown_rx) =
@@ -252,7 +252,7 @@ impl BroadcastGroup {
                                 &doc_name_for_sub_clone,
                                 &awareness_last_read_id,
                                 500,
-                                Some(instance_id_clone.as_str()),
+                                Some(&instance_id_clone),
                             )
                             .await;
 
@@ -401,7 +401,7 @@ impl BroadcastGroup {
             let redis_store = self.redis_store.clone();
             let doc_name = self.doc_name.clone();
             let stream_key = format!("yjs:stream:{doc_name}");
-            let instance_id = self.instance_id.clone();
+            let client_id = awareness.read().await.client_id();
             let mut conn = match redis_store.create_dedicated_connection().await {
                 Ok(conn) => conn,
                 Err(e) => {
@@ -437,7 +437,7 @@ impl BroadcastGroup {
                         &redis_store,
                         &mut conn,
                         &stream_key,
-                        &instance_id,
+                        &client_id,
                     )
                     .await
                     {
@@ -468,7 +468,7 @@ impl BroadcastGroup {
         redis_store: &RedisStore,
         conn: &mut redis::aio::MultiplexedConnection,
         stream_key: &str,
-        instance_id: &str,
+        instance_id: &u64,
     ) -> Result<Option<Message>, Error> {
         match msg {
             Message::Sync(msg) => {
