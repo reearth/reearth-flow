@@ -13,7 +13,7 @@ graphs:
         type: "action"
         action: "ObjReader"
         with:
-          dataset: "{{objFile}}"
+          dataset: "runtime/tests/fixture/testdata/obj/simple.obj"
           parseMaterials: true
           triangulate: false
           mergeGroups: false
@@ -26,11 +26,11 @@ graphs:
         action: "FeatureWriter"
         with:
           output: "output.json"
-          format: "geojson"
+          format: "json"
 
     edges:
       - id: "550e8400-e29b-41d4-a716-446655440004"
-        source: "550e8400-e29b-41d4-a716-446655440002"
-        target: "550e8400-e29b-41d4-a716-446655440003"
-        sourcePort: "default"
-        targetPort: "default"
+        from: "550e8400-e29b-41d4-a716-446655440002"
+        to: "550e8400-e29b-41d4-a716-446655440003"
+        fromPort: "default"
+        toPort: "default"

@@ -200,7 +200,7 @@ async fn read_obj(
                         all_materials.extend(mats);
                     }
                     Err(e) => {
-                        eprintln!("Warning: Failed to parse material file {}: {}", mtl_lib, e);
+                        tracing::warn!("Failed to parse material file {}: {}", mtl_lib, e);
                     }
                 }
             }
