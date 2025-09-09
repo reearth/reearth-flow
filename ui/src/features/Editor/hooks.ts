@@ -57,6 +57,7 @@ export default ({
   const [spotlightUserClientId, setSpotlightUserClientId] = useState<
     number | null
   >(null);
+  const prevZoomRef = useRef<number | null>(null);
 
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(
     DEFAULT_ENTRY_GRAPH_ID,
@@ -371,21 +372,25 @@ export default ({
             { snapToGrid: false },
           );
           awareness.setLocalStateField("cursor", flowPosition);
+          const currentZoom = getZoom();
+          if (prevZoomRef.current !== currentZoom) {
+            awareness.setLocalStateField("zoomLevel", currentZoom);
+            prevZoomRef.current = currentZoom;
+          }
         },
         32,
         { leading: true, trailing: true },
       ),
-    [],
+    [getZoom],
   );
 
   const handlePaneMouseMove = useCallback(
     (event: MouseEvent) => {
       if (yAwareness) {
         throttledMouseMove(event, yAwareness, screenToFlowPosition);
-        yAwareness.setLocalStateField("zoomLevel", getZoom());
       }
     },
-    [yAwareness, screenToFlowPosition, throttledMouseMove, getZoom],
+    [yAwareness, screenToFlowPosition, throttledMouseMove],
   );
   const spotlightUser = spotlightUserClientId
     ? users[spotlightUserClientId]
