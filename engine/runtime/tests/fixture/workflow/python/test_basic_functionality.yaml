@@ -1,0 +1,84 @@
+# Test Case 1: Basic Python Functionality
+id: 00000000-0000-0000-0000-000000000001
+name: "Python Script Processor - Basic Functionality Test"
+entryGraphId: 10000000-0000-0000-0000-000000000001
+with:
+  outputFilePath:
+
+graphs:
+  - id: 10000000-0000-0000-0000-000000000001
+    name: main
+    nodes:
+      - id: 20000000-0000-0000-0000-000000000001
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                name: "test_feature_1",
+                description: "Sample feature",
+                value: 5,
+                count: 10,
+                geometry: #{
+                  type: "Point",
+                  coordinates: [139.6917, 35.6895]
+                }
+              },
+              #{
+                name: "test_feature_2", 
+                description: "Another sample",
+                value: 7.5,
+                count: 20,
+                geometry: #{
+                  type: "Point", 
+                  coordinates: [139.7, 35.7]
+                }
+              }
+            ]
+
+      - id: 30000000-0000-0000-0000-000000000001
+        name: PythonScriptProcessor
+        type: action
+        action: PythonScriptProcessor
+        with:
+          script: |
+            # Test Case 1: Basic attribute modification
+            
+            # Add suffix to string attributes, multiply numbers by 2
+            for key, value in properties.items():
+                if isinstance(value, str):
+                    properties[key] = value + "_processed"
+                elif isinstance(value, (int, float)):
+                    properties[key] = value * 2
+            
+            # Add computed field
+            properties['processed'] = True
+            properties['original_geometry_type'] = get_geometry_type(geometry)
+            
+            # Test geometry access
+            if get_geometry_type(geometry) == "Point":
+                coords = get_coordinates(geometry)
+                properties['coordinates'] = f"{coords[0]}, {coords[1]}"
+
+      - id: 40000000-0000-0000-0000-000000000001
+        name: FileWriter
+        type: action
+        action: FileWriter
+        with:
+          format: json
+          output: |
+            env.get("outputFilePath")
+
+    edges:
+      - id: 50000000-0000-0000-0000-000000000001
+        from: 20000000-0000-0000-0000-000000000001
+        to: 30000000-0000-0000-0000-000000000001
+        fromPort: default
+        toPort: default
+      - id: 60000000-0000-0000-0000-000000000001
+        from: 30000000-0000-0000-0000-000000000001
+        to: 40000000-0000-0000-0000-000000000001
+        fromPort: default
+        toPort: default

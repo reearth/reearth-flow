@@ -25,9 +25,14 @@ const defaultCesiumProps: Partial<ViewerProps> = {
 type Props = {
   fileContent: any | null;
   fileType: SupportedDataTypes | null;
+  viewerRef?: React.RefObject<any>;
 };
 
-const CesiumViewer: React.FC<Props> = ({ fileContent, fileType }) => {
+const CesiumViewer: React.FC<Props> = ({
+  fileContent,
+  fileType,
+  viewerRef,
+}) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -47,7 +52,7 @@ const CesiumViewer: React.FC<Props> = ({ fileContent, fileType }) => {
     ) || [];
 
   return (
-    <Viewer full {...defaultCesiumProps}>
+    <Viewer ref={viewerRef} full {...defaultCesiumProps}>
       {isLoaded && fileType === "geojson" && (
         <>
           {/* Standard GeoJSON features */}
