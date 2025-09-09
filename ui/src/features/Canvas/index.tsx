@@ -78,6 +78,7 @@ const Canvas: React.FC<Props> = ({
   const {
     handleNodesDelete,
     handleNodeDragOver,
+    handleNodeDragStop,
     handleNodeDrop,
     handleNodeSettings,
     handleConnect,
@@ -112,7 +113,7 @@ const Canvas: React.FC<Props> = ({
       elementsSelectable={!readonly}
       reconnectRadius={!readonly ? 10 : 0}
       // Readonly props END
-      attributionPosition="bottom-left"
+      proOptions={{ hideAttribution: true }}
       nodeDragThreshold={2}
       snapToGrid
       snapGrid={snapGrid}
@@ -129,6 +130,7 @@ const Canvas: React.FC<Props> = ({
       onEdgesChange={onEdgesChange}
       onNodeDoubleClick={handleNodeSettings}
       onNodeDragStart={handleCloseContextmenu}
+      onNodeDragStop={handleNodeDragStop}
       onNodesDelete={handleNodesDelete}
       onNodeContextMenu={handleNodeContextMenu}
       onSelectionContextMenu={handleSelectionContextMenu}

@@ -64,6 +64,7 @@ const DebugPanel: React.FC = () => {
     isStreaming,
     detectedGeometryType,
     totalFeatures,
+    isComplete,
   } = useHooks();
   const t = useT();
   const [tabValue, setTabValue] = useState("debug-logs");
@@ -239,6 +240,10 @@ const DebugPanel: React.FC = () => {
                   onSelectedFeature={setSelectedFeature}
                   onEnableClusteringChange={setEnableClustering}
                   onFlyToSelectedFeature={handleFlyToSelectedFeature}
+                  // Streaming props for auto-detection
+                  detectedGeometryType={detectedGeometryType}
+                  isStreaming={isStreaming}
+                  isComplete={isComplete}
                 />
               </ResizablePanel>
             </ResizablePanelGroup>

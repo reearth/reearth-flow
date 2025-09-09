@@ -10,7 +10,7 @@ import {
 } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useY } from "react-yjs";
-import { useUsers } from "y-presence";
+import { useUsers, useSelf } from "y-presence";
 import type { Awareness } from "y-protocols/awareness";
 import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 
@@ -100,9 +100,15 @@ export default ({
   const { shareProject, unshareProject } = useSharedProject();
 
   const [currentProject] = useCurrentProject();
-
+  const rawSelf = useSelf(yAwareness);
   const rawUsers = useUsers(yAwareness);
 
+  const self: AwarenessUser = {
+    clientId: rawSelf?.clientID,
+    userName: rawSelf?.userName || "Unknown user",
+    color: rawSelf?.color || "#ffffff",
+    cursor: rawSelf?.cursor || { x: 0, y: 0 },
+  };
   const users = Array.from(
     rawUsers.entries() as IterableIterator<[number, AwarenessUser]>,
   )
@@ -383,6 +389,7 @@ export default ({
     currentYWorkflow,
     openWorkflows,
     currentProject,
+    self,
     users,
     nodes,
     edges,

@@ -5,7 +5,7 @@ import {
   TargetIcon,
   WarningIcon,
 } from "@phosphor-icons/react";
-import { memo, useCallback, useMemo, useState } from "react";
+import { memo, useCallback, useMemo } from "react";
 
 import {
   Button,
@@ -23,10 +23,6 @@ import {
   DropdownMenuTrigger,
   IconButton,
   LoadingSkeleton,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { JobState } from "@flow/stores";
@@ -51,6 +47,9 @@ type Props = {
   onSelectedFeature: (value: any) => void;
   onEnableClusteringChange: (value: boolean) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
+  detectedGeometryType: string | null;
+  isStreaming?: boolean;
+  isComplete?: boolean;
 };
 const DebugPreview: React.FC<Props> = ({
   fileType,
@@ -67,9 +66,44 @@ const DebugPreview: React.FC<Props> = ({
   onSelectedFeature,
   onEnableClusteringChange,
   onFlyToSelectedFeature,
+  detectedGeometryType,
+  isStreaming,
+  isComplete,
 }) => {
   const t = useT();
-  const [tabValue, setTabValue] = useState<string>("2d-viewer");
+
+  // Auto-detect which viewer to show based on geometry type
+  const getViewerType = (detectedType: string | null): "2d" | "3d" | null => {
+    if (!detectedType) return null; // Unknown type - no viewer
+
+    switch (detectedType) {
+      case "CityGmlGeometry":
+      case "FlowGeometry3D":
+        return "3d";
+      case "FlowGeometry2D":
+        return "2d";
+      default:
+        return null; // Unknown type - no viewer
+    }
+  };
+
+  const viewerType = getViewerType(detectedGeometryType);
+
+  // Determine if we should show the viewer based on streaming state
+  const shouldShowViewer = () => {
+    // For non-streaming data, use the existing loading logic
+    if (!isStreaming) {
+      return !isLoadingData;
+    }
+
+    // For streaming data, show viewer when:
+    // 1. Stream is complete (we have the total count)
+    // 2. OR we have data and hit the display limit (2000 features)
+    const hasData = selectedOutputData?.features?.length > 0;
+    const hitDisplayLimit = selectedOutputData?.features?.length >= 2000;
+
+    return hasData && (isComplete || hitDisplayLimit);
+  };
 
   const { handleMapLoad } = useHooks({
     mapRef,
@@ -139,62 +173,75 @@ const DebugPreview: React.FC<Props> = ({
   }, [selectedFeature, onConvertedSelectedFeature, convertFeature]);
 
   return debugJobState && dataURLs ? (
-    <Tabs
-      className="h-full w-full"
-      defaultValue={tabValue}
-      onValueChange={setTabValue}>
-      <div className="py-1">
-        <TabsList className="flex w-full justify-between p-1">
-          <div className="flex gap-2">
-            <TabsTrigger
-              className="gap-1 bg-card"
-              value="2d-viewer"
-              onClick={() => setTabValue("2d-viewer")}>
-              <MapPinAreaIcon />
-              <p className="text-sm font-thin select-none">{t("2D Viewer")}</p>
-            </TabsTrigger>
-            <TabsTrigger
-              className="gap-1 bg-card"
-              value="3d-viewer"
-              onClick={() => setTabValue("3d-viewer")}>
-              <GlobeIcon />
-              <p className="text-sm font-thin select-none">{t("3D Viewer")}</p>
-            </TabsTrigger>
+    <div className="h-full w-full">
+      {!shouldShowViewer() ? (
+        <div className="flex h-full items-center justify-center">
+          <div className="text-center text-muted-foreground">
+            <LoadingSkeleton className="mb-4" />
+            <p className="text-sm">
+              {isStreaming ? (
+                <>
+                  Loading streaming data...{" "}
+                  {selectedOutputData?.features?.length || 0} features loaded
+                  {selectedOutputData?.features?.length >= 2000 && (
+                    <span className="mt-1 block text-xs">
+                      (
+                      {selectedOutputData?.features?.length >= 2000 &&
+                      !isComplete
+                        ? "Hit display limit of 2000 - viewer will show shortly"
+                        : "Processing..."}
+                      )
+                    </span>
+                  )}
+                </>
+              ) : (
+                "Loading data..."
+              )}
+            </p>
           </div>
-          {tabValue === "2d-viewer" && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <IconButton
-                  className="w-[25px]"
-                  tooltipText={t("Additional actions")}
-                  tooltipOffset={12}
-                  icon={<DotsThreeVerticalIcon size={18} />}
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuCheckboxItem
-                  checked={enableClustering}
-                  onCheckedChange={(checked) =>
-                    onEnableClusteringChange(!!checked)
-                  }>
-                  {t("Enable Clustering")}
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuItem onClick={() => handleMapLoad(true)}>
-                  <TargetIcon />
-                  {t("Center Data")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </TabsList>
-      </div>
-      {isLoadingData ? (
-        <LoadingSkeleton />
-      ) : (
-        <>
-          <TabsContent
-            className="m-0 h-[calc(100%-32px)] overflow-hidden rounded-md"
-            value="2d-viewer">
+        </div>
+      ) : viewerType === "2d" ? (
+        <div className="h-full">
+          {/* 2D Viewer Header with actions */}
+          <div className="py-1">
+            <div className="flex w-full justify-between rounded-md bg-muted/30 p-1">
+              <div className="flex items-center gap-1 px-2">
+                <MapPinAreaIcon size={16} />
+                <p className="text-sm font-medium select-none">
+                  {t("2D Viewer")}
+                </p>
+                {detectedGeometryType && (
+                  <span className="rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
+                    {detectedGeometryType}
+                  </span>
+                )}
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton
+                    className="w-[25px]"
+                    tooltipText={t("Additional actions")}
+                    tooltipOffset={12}
+                    icon={<DotsThreeVerticalIcon size={18} />}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuCheckboxItem
+                    checked={enableClustering}
+                    onCheckedChange={(checked) =>
+                      onEnableClusteringChange(!!checked)
+                    }>
+                    {t("Enable Clustering")}
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuItem onClick={() => handleMapLoad(true)}>
+                    <TargetIcon />
+                    {t("Center Data")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+          <div className="h-[calc(100%-55px)] overflow-hidden rounded-md">
             <TwoDViewer
               fileContent={processedOutputData}
               fileType={fileType}
@@ -205,19 +252,44 @@ const DebugPreview: React.FC<Props> = ({
               onSelectedFeature={onSelectedFeature}
               onFlyToSelectedFeature={onFlyToSelectedFeature}
             />
-          </TabsContent>
-          <TabsContent
-            className="m-0 h-[calc(100%-32px)]"
-            value="3d-viewer"
-            id="cesiumContainer">
+          </div>
+        </div>
+      ) : viewerType === "3d" ? (
+        <div className="h-full">
+          {/* 3D Viewer Header */}
+          <div className="py-1">
+            <div className="flex items-center gap-1 rounded-md bg-muted/30 px-3 py-2">
+              <GlobeIcon size={16} />
+              <p className="text-sm font-medium select-none">
+                {t("3D Viewer")}
+              </p>
+              {detectedGeometryType && (
+                <span className="rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
+                  {detectedGeometryType}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="h-[calc(100%-55px)]" id="cesiumContainer">
             <ThreeDViewer
               fileContent={selectedOutputData}
               fileType={fileType}
             />
-          </TabsContent>
-        </>
+          </div>
+        </div>
+      ) : (
+        <div className="flex h-full items-center justify-center text-muted-foreground">
+          <div className="text-center">
+            <p className="text-sm">
+              {t("No viewer available for this data type")}
+            </p>
+            <p className="mt-1 text-xs">
+              {t("Data type")}: {detectedGeometryType || "Unknown"}
+            </p>
+          </div>
+        </div>
       )}
-    </Tabs>
+    </div>
   ) : showTempPossibleIssuesDialog ? (
     <Dialog open={showTempPossibleIssuesDialog}>
       <DialogContent size="sm" hideCloseButton>
