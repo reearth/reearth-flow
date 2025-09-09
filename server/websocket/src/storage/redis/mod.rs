@@ -225,14 +225,13 @@ impl RedisStore {
 
     pub async fn read_and_filter(
         &self,
-        conn: &mut redis::aio::MultiplexedConnection,
         stream_key: &str,
         count: usize,
         instance_id: &str,
         last_read_id: &Arc<Mutex<String>>,
     ) -> Result<Vec<Bytes>> {
         let block_ms = 1000;
-
+        let mut conn = self.pool.get().await?;
         let read_id = {
             let last_id = last_read_id.lock().await;
             last_id.clone()
@@ -246,7 +245,7 @@ impl RedisStore {
             .arg("STREAMS")
             .arg(stream_key)
             .arg(read_id)
-            .query_async(conn)
+            .query_async(&mut *conn)
             .await?;
 
         if result.is_empty() || result[0].1.is_empty() {
@@ -790,12 +789,12 @@ impl RedisStore {
 
     pub async fn read_awareness_updates(
         &self,
-        conn: &mut redis::aio::MultiplexedConnection,
         doc_id: &str,
         last_read_id: &Arc<Mutex<String>>,
         count: usize,
         instance_id_filter: Option<&str>,
     ) -> Result<Vec<(String, Option<Bytes>)>> {
+        let mut conn = self.pool.get().await?;
         let stream_key = format!("awareness:stream:{doc_id}");
         let block_ms = 1000;
 
@@ -812,7 +811,7 @@ impl RedisStore {
             .arg("STREAMS")
             .arg(&stream_key)
             .arg(read_id)
-            .query_async(conn)
+            .query_async(&mut *conn)
             .await?;
 
         if result.is_empty() || result[0].1.is_empty() {

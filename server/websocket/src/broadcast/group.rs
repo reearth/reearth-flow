@@ -201,34 +201,6 @@ impl BroadcastGroup {
             let stream_key = format!("yjs:stream:{doc_name_for_sub_clone}");
             let awareness_last_read_id = Arc::new(Mutex::new("0".to_string()));
 
-            let mut doc_conn = match redis_store_for_sub_clone
-                .create_dedicated_connection()
-                .await
-            {
-                Ok(conn) => conn,
-                Err(e) => {
-                    error!(
-                        "Failed to create dedicated Redis connection for documents: {}",
-                        e
-                    );
-                    return;
-                }
-            };
-
-            let mut awareness_conn = match redis_store_for_sub_clone
-                .create_dedicated_connection()
-                .await
-            {
-                Ok(conn) => conn,
-                Err(e) => {
-                    error!(
-                        "Failed to create dedicated Redis connection for awareness: {}",
-                        e
-                    );
-                    return;
-                }
-            };
-
             loop {
                 select! {
                     _ = &mut redis_subscriber_shutdown_rx => {
@@ -237,7 +209,6 @@ impl BroadcastGroup {
                     _ = async {
                         let result = redis_store_for_sub_clone
                             .read_and_filter(
-                                &mut doc_conn,
                                 &stream_key,
                                 512,
                                 &instance_id_clone,
@@ -278,7 +249,6 @@ impl BroadcastGroup {
                     _ = async {
                         let result = redis_store_for_sub_clone
                             .read_awareness_updates(
-                                &mut awareness_conn,
                                 &doc_name_for_sub_clone,
                                 &awareness_last_read_id,
                                 500,
