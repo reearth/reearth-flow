@@ -6,7 +6,7 @@ import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useT } from "@flow/lib/i18n";
 import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 
-import FeatureDetailsDialog from "./FeatureDetailsDialog";
+import FeatureDetailsOverlay from "./FeatureDetailsOverlay";
 
 type Props = {
   fileContent: any | null;
@@ -14,9 +14,6 @@ type Props = {
   selectedFeature: any;
   onSingleClick?: (feature: any) => void;
   onDoubleClick?: (feature: any) => void;
-
-  // Streaming props
-  isStreaming: boolean;
   detectedGeometryType: string | null;
   totalFeatures: number;
 };
@@ -28,13 +25,12 @@ const TableViewer: React.FC<Props> = memo(
     selectedFeature,
     onSingleClick,
     onDoubleClick,
-
-    // Streaming props
-    isStreaming,
     detectedGeometryType,
     totalFeatures,
   }) => {
     const t = useT();
+    const [detailsOverlayOpen, setDetailsOverlayOpen] = useState(false);
+    const [detailsFeature, setDetailsFeature] = useState<any>(null);
 
     // Use traditional columnizer for all data (streaming is now pre-transformed)
     const columnizer = useDataColumnizer({
@@ -42,31 +38,38 @@ const TableViewer: React.FC<Props> = memo(
       type: fileType,
     });
 
-    // Feature details dialog state
-    const [selectedFeatureDetails, setSelectedFeatureDetails] = useState<
-      any | null
-    >(null);
-    const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-
-    // Handle feature details dialog
-    const handleShowDetails = useCallback((feature: any) => {
-      setSelectedFeatureDetails(feature);
-      setShowDetailsDialog(true);
+    // Handle showing feature details
+    const handleShowFeatureDetails = useCallback((feature: any) => {
+      setDetailsFeature(feature);
+      setDetailsOverlayOpen(true);
     }, []);
 
+    // Handle closing feature details
+    const handleCloseFeatureDetails = useCallback(() => {
+      setDetailsOverlayOpen(false);
+      setDetailsFeature(null);
+    }, []);
+
+    // Handle row single click - select feature and show details
+    const handleRowSingleClick = useCallback(
+      (feature: any) => {
+        onSingleClick?.(feature);
+      },
+      [onSingleClick],
+    );
+
+    // Handle row double click
     const handleRowDoubleClick = useCallback(
       (feature: any) => {
-        handleShowDetails(feature);
         onDoubleClick?.(feature);
+        handleShowFeatureDetails(feature);
       },
-      [handleShowDetails, onDoubleClick],
+      [onDoubleClick, handleShowFeatureDetails],
     );
 
     // Loading state
-    if (isStreaming && (!fileContent || !columnizer.tableData)) {
-      return (
-        <BasicBoiler text={t("Loading streaming data...")} className="h-full" />
-      );
+    if (!fileContent || !columnizer.tableData) {
+      return <BasicBoiler text={t("Loading data...")} className="h-full" />;
     }
 
     // No data state
@@ -80,7 +83,7 @@ const TableViewer: React.FC<Props> = memo(
     }
 
     return (
-      <div className="flex h-full flex-col">
+      <div className="relative flex h-full flex-col">
         <div className="flex h-full flex-1 flex-col">
           {/* Table */}
           <div className="flex-1 overflow-hidden">
@@ -92,7 +95,7 @@ const TableViewer: React.FC<Props> = memo(
               condensed={true}
               selectedRow={selectedFeature}
               useStrictSelectedRow={true}
-              onRowClick={onSingleClick}
+              onRowClick={handleRowSingleClick}
               onRowDoubleClick={handleRowDoubleClick}
             />
           </div>
@@ -119,11 +122,12 @@ const TableViewer: React.FC<Props> = memo(
           </div>
         </div>
 
-        {/* Feature details dialog */}
-        <FeatureDetailsDialog
-          feature={selectedFeatureDetails}
-          open={showDetailsDialog}
-          onOpenChange={setShowDetailsDialog}
+        {/* Feature Details Overlay */}
+        <FeatureDetailsOverlay
+          feature={detailsFeature}
+          isOpen={detailsOverlayOpen}
+          onClose={handleCloseFeatureDetails}
+          detectedGeometryType={detectedGeometryType}
         />
       </div>
     );

@@ -36,19 +36,18 @@ type Props = {
   fileType: SupportedDataTypes | null;
   selectedOutputData: any;
   debugJobState?: JobState;
-  isLoadingData: boolean;
   onConvertedSelectedFeature: (value: any) => void;
   dataURLs?: { key: string; name: string }[];
   showTempPossibleIssuesDialog: boolean;
   selectedFeature: any;
   enableClustering?: boolean;
   mapRef: React.RefObject<maplibregl.Map | null>;
+  cesiumViewerRef: React.RefObject<any>;
   onShowTempPossibleIssuesDialogClose: () => void;
   onSelectedFeature: (value: any) => void;
   onEnableClusteringChange: (value: boolean) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
   detectedGeometryType: string | null;
-  isStreaming?: boolean;
   isComplete?: boolean;
 };
 const DebugPreview: React.FC<Props> = ({
@@ -57,17 +56,16 @@ const DebugPreview: React.FC<Props> = ({
   selectedOutputData,
   dataURLs,
   onConvertedSelectedFeature,
-  isLoadingData,
   showTempPossibleIssuesDialog,
   enableClustering,
   mapRef,
+  cesiumViewerRef,
   selectedFeature,
   onShowTempPossibleIssuesDialogClose,
   onSelectedFeature,
   onEnableClusteringChange,
   onFlyToSelectedFeature,
   detectedGeometryType,
-  isStreaming,
   isComplete,
 }) => {
   const t = useT();
@@ -89,14 +87,9 @@ const DebugPreview: React.FC<Props> = ({
 
   const viewerType = getViewerType(detectedGeometryType);
 
-  // Determine if we should show the viewer based on streaming state
+  // Determine if we should show the viewer based on data availability
   const shouldShowViewer = () => {
-    // For non-streaming data, use the existing loading logic
-    if (!isStreaming) {
-      return !isLoadingData;
-    }
-
-    // For streaming data, show viewer when:
+    // Show viewer when:
     // 1. Stream is complete (we have the total count)
     // 2. OR we have data and hit the display limit (2000 features)
     const hasData = selectedOutputData?.features?.length > 0;
@@ -179,23 +172,16 @@ const DebugPreview: React.FC<Props> = ({
           <div className="text-center text-muted-foreground">
             <LoadingSkeleton className="mb-4" />
             <p className="text-sm">
-              {isStreaming ? (
-                <>
-                  Loading streaming data...{" "}
-                  {selectedOutputData?.features?.length || 0} features loaded
-                  {selectedOutputData?.features?.length >= 2000 && (
-                    <span className="mt-1 block text-xs">
-                      (
-                      {selectedOutputData?.features?.length >= 2000 &&
-                      !isComplete
-                        ? "Hit display limit of 2000 - viewer will show shortly"
-                        : "Processing..."}
-                      )
-                    </span>
-                  )}
-                </>
-              ) : (
-                "Loading data..."
+              Loading data... {selectedOutputData?.features?.length || 0}{" "}
+              features loaded
+              {selectedOutputData?.features?.length >= 2000 && (
+                <span className="mt-1 block text-xs">
+                  (
+                  {selectedOutputData?.features?.length >= 2000 && !isComplete
+                    ? "Hit display limit of 2000 - viewer will show shortly"
+                    : "Processing..."}
+                  )
+                </span>
               )}
             </p>
           </div>
@@ -274,6 +260,7 @@ const DebugPreview: React.FC<Props> = ({
             <ThreeDViewer
               fileContent={selectedOutputData}
               fileType={fileType}
+              cesiumViewerRef={cesiumViewerRef}
             />
           </div>
         </div>
