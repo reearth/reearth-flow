@@ -1,1 +1,0 @@
-export const STREAMING_SIZE_THRESHOLD_MB = 10;
