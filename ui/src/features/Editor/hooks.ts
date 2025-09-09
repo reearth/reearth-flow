@@ -1,4 +1,4 @@
-import { useReactFlow } from "@xyflow/react";
+import { useReactFlow, useViewport } from "@xyflow/react";
 import { throttle } from "lodash-es";
 import {
   MouseEvent,
@@ -53,11 +53,22 @@ export default ({
     originPrepend?: string,
   ) => void;
 }) => {
-  const { fitView, screenToFlowPosition, setCenter, getZoom } = useReactFlow();
+  const { fitView, screenToFlowPosition, setViewport } = useReactFlow();
+  const { x, y, zoom } = useViewport();
+
+  const latestViewportRef = useRef<{ x: number; y: number; zoom: number }>({
+    x,
+    y,
+    zoom,
+  });
+
+  useEffect(() => {
+    latestViewportRef.current = { x, y, zoom };
+  }, [x, y, zoom]);
+
   const [spotlightUserClientId, setSpotlightUserClientId] = useState<
     number | null
   >(null);
-  const prevZoomRef = useRef<number | null>(null);
 
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(
     DEFAULT_ENTRY_GRAPH_ID,
@@ -371,17 +382,14 @@ export default ({
             },
             { snapToGrid: false },
           );
+
           awareness.setLocalStateField("cursor", flowPosition);
-          const currentZoom = getZoom();
-          if (prevZoomRef.current !== currentZoom) {
-            awareness.setLocalStateField("zoomLevel", currentZoom);
-            prevZoomRef.current = currentZoom;
-          }
+          awareness.setLocalStateField("viewport", latestViewportRef.current);
         },
         32,
         { leading: true, trailing: true },
       ),
-    [getZoom],
+    [],
   );
 
   const handlePaneMouseMove = useCallback(
@@ -396,9 +404,9 @@ export default ({
     ? users[spotlightUserClientId]
     : null;
 
-  const cursor = spotlightUser?.cursor;
+  const spotlightUsercursor = spotlightUser?.cursor;
 
-  const zoomLevel = spotlightUser?.zoomLevel;
+  const spotlightUserViewport = spotlightUser?.viewport;
 
   const handleSpotlightUserSelect = useCallback((clientId: number) => {
     setSpotlightUserClientId(clientId);
@@ -409,9 +417,21 @@ export default ({
   }, []);
 
   useEffect(() => {
-    if (!cursor || !zoomLevel) return;
-    setCenter(cursor.x, cursor.y, { zoom: zoomLevel, duration: 100 });
-  }, [cursor, zoomLevel, setCenter]);
+    if (
+      !spotlightUsercursor ||
+      !spotlightUserViewport ||
+      !spotlightUserViewport.zoom
+    )
+      return;
+    setViewport(
+      {
+        x: spotlightUserViewport.x,
+        y: spotlightUserViewport.y,
+        zoom: spotlightUserViewport.zoom,
+      },
+      { duration: 100 },
+    );
+  }, [spotlightUsercursor, spotlightUserViewport, setViewport]);
 
   return {
     currentWorkflowId,
