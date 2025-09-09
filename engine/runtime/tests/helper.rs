@@ -21,11 +21,9 @@ pub(crate) static BUILTIN_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> = La
     let sink = SINK_MAPPINGS.clone();
     let source = SOURCE_MAPPINGS.clone();
     let processor = PROCESSOR_MAPPINGS.clone();
-    let wasm = reearth_flow_action_wasm_processor::mapping::ACTION_FACTORY_MAPPINGS.clone();
     common.extend(sink);
     common.extend(source);
     common.extend(processor);
-    common.extend(wasm);
     common
 });
 
