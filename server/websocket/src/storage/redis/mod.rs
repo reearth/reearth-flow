@@ -858,4 +858,15 @@ impl RedisStore {
 
         Ok(updates)
     }
+
+    pub async fn delete_awareness_stream(&self, doc_id: &str) -> Result<()> {
+        let stream_key = format!("awareness:stream:{doc_id}");
+        let mut conn = self.pool.get().await?;
+        let _: () = redis::cmd("DEL")
+            .arg(&stream_key)
+            .query_async(&mut *conn)
+            .await?;
+
+        Ok(())
+    }
 }

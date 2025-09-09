@@ -312,6 +312,7 @@ impl BroadcastGroup {
                         }
                     } => {}
                 }
+                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
                 tokio::task::yield_now().await;
             }
         });
@@ -700,6 +701,9 @@ impl BroadcastGroup {
             }
             self.redis_store
                 .safe_delete_stream(&self.doc_name, &self.instance_id)
+                .await?;
+            self.redis_store
+                .delete_awareness_stream(&self.doc_name)
                 .await?;
         }
 
