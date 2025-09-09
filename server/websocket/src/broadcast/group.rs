@@ -191,7 +191,7 @@ impl BroadcastGroup {
         let last_read_id = Arc::new(Mutex::new("0".to_string()));
         let last_read_id_clone = Arc::clone(&last_read_id);
         let awareness_clone = Arc::clone(&awareness);
-        let instance_id_clone = instance_id.clone();
+        let instance_id_clone = awareness_clone.read().await.client_id();
         let redis_store_for_sub_clone = Arc::clone(&redis_store);
         let doc_name_for_sub_clone = doc_name.clone();
         let (redis_subscriber_shutdown_tx, mut redis_subscriber_shutdown_rx) =
@@ -201,34 +201,6 @@ impl BroadcastGroup {
             let stream_key = format!("yjs:stream:{doc_name_for_sub_clone}");
             let awareness_last_read_id = Arc::new(Mutex::new("0".to_string()));
 
-            let mut doc_conn = match redis_store_for_sub_clone
-                .create_dedicated_connection()
-                .await
-            {
-                Ok(conn) => conn,
-                Err(e) => {
-                    error!(
-                        "Failed to create dedicated Redis connection for documents: {}",
-                        e
-                    );
-                    return;
-                }
-            };
-
-            let mut awareness_conn = match redis_store_for_sub_clone
-                .create_dedicated_connection()
-                .await
-            {
-                Ok(conn) => conn,
-                Err(e) => {
-                    error!(
-                        "Failed to create dedicated Redis connection for awareness: {}",
-                        e
-                    );
-                    return;
-                }
-            };
-
             loop {
                 select! {
                     _ = &mut redis_subscriber_shutdown_rx => {
@@ -237,7 +209,6 @@ impl BroadcastGroup {
                     _ = async {
                         let result = redis_store_for_sub_clone
                             .read_and_filter(
-                                &mut doc_conn,
                                 &stream_key,
                                 512,
                                 &instance_id_clone,
@@ -278,11 +249,10 @@ impl BroadcastGroup {
                     _ = async {
                         let result = redis_store_for_sub_clone
                             .read_awareness_updates(
-                                &mut awareness_conn,
                                 &doc_name_for_sub_clone,
                                 &awareness_last_read_id,
                                 500,
-                                Some(instance_id_clone.as_str()),
+                                Some(&instance_id_clone),
                             )
                             .await;
 
@@ -312,6 +282,7 @@ impl BroadcastGroup {
                         }
                     } => {}
                 }
+                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
                 tokio::task::yield_now().await;
             }
         });
@@ -383,6 +354,10 @@ impl BroadcastGroup {
         &self.last_read_id
     }
 
+    pub fn get_active_connections(&self) -> usize {
+        self.sender.receiver_count()
+    }
+
     pub async fn subscribe<Sink, Stream, E>(
         self: Arc<Self>,
         sink: Arc<Mutex<Sink>>,
@@ -430,7 +405,7 @@ impl BroadcastGroup {
             let redis_store = self.redis_store.clone();
             let doc_name = self.doc_name.clone();
             let stream_key = format!("yjs:stream:{doc_name}");
-            let instance_id = self.instance_id.clone();
+            let client_id = awareness.read().await.client_id();
             let mut conn = match redis_store.create_dedicated_connection().await {
                 Ok(conn) => conn,
                 Err(e) => {
@@ -466,7 +441,7 @@ impl BroadcastGroup {
                         &redis_store,
                         &mut conn,
                         &stream_key,
-                        &instance_id,
+                        &client_id,
                     )
                     .await
                     {
@@ -497,7 +472,7 @@ impl BroadcastGroup {
         redis_store: &RedisStore,
         conn: &mut redis::aio::MultiplexedConnection,
         stream_key: &str,
-        instance_id: &str,
+        instance_id: &u64,
     ) -> Result<Option<Message>, Error> {
         match msg {
             Message::Sync(msg) => {
@@ -700,6 +675,9 @@ impl BroadcastGroup {
             }
             self.redis_store
                 .safe_delete_stream(&self.doc_name, &self.instance_id)
+                .await?;
+            self.redis_store
+                .delete_awareness_stream(&self.doc_name)
                 .await?;
         }
 

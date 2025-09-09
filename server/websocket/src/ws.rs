@@ -179,7 +179,8 @@ pub async fn ws_handler(
         }
     };
 
-    ws.on_upgrade(move |socket| handle_socket(socket, bcast, doc_id, user_token))
+    let pool = state.pool.clone();
+    ws.on_upgrade(move |socket| handle_socket(socket, bcast, doc_id, user_token, pool))
 }
 
 async fn handle_socket(
@@ -187,6 +188,7 @@ async fn handle_socket(
     bcast: Arc<super::BroadcastGroup>,
     doc_id: String,
     user_token: Option<String>,
+    pool: Arc<super::BroadcastPool>,
 ) {
     let (sender, receiver) = socket.split();
 
@@ -210,6 +212,24 @@ async fn handle_socket(
             "WebSocket connection error for document '{}': {}",
             doc_id, e
         );
+    }
+
+    let active_connections = bcast.get_active_connections();
+
+    if active_connections == 0 {
+        tokio::spawn(async move {
+            tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+
+            let current_connections = pool
+                .get_group(&doc_id)
+                .await
+                .map(|group| group.get_active_connections())
+                .unwrap_or(0);
+
+            if current_connections == 0 {
+                pool.cleanup_group(&doc_id).await;
+            }
+        });
     }
 }
 
