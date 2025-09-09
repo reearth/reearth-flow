@@ -293,25 +293,111 @@ export default () => {
       if (is3D && cesiumViewerRef.current) {
         // 3D Cesium viewer - zoom to entities by feature ID
         try {
+          // Access the actual Cesium viewer from Resium component
+          const cesiumViewer = cesiumViewerRef.current?.cesiumElement;
+          
+          if (!cesiumViewer) {
+            console.warn('Cesium viewer not initialized yet');
+            return;
+          }
+          
           const featureId = selectedFeature.id || selectedFeature.properties?._originalId;
           if (!featureId) {
             console.warn('No feature ID found for Cesium zoom');
             return;
           }
 
+          // Safety check for entities collection
+          if (!cesiumViewer.entities || !cesiumViewer.entities.values) {
+            console.warn('Cesium entities collection not available yet');
+            return;
+          }
+
           // Find all entities that belong to this feature
-          const matchingEntities = cesiumViewerRef.current.entities.values.filter((entity: any) => {
-            const entityFeatureId = entity.properties?.getValue()?.buildingId || 
-                                   entity.properties?.getValue()?.originalFeatureId ||
-                                   entity.id?.split('_')[0]; // Extract base ID from compound IDs
-            return entityFeatureId === featureId || 
-                   JSON.stringify(entityFeatureId) === JSON.stringify(featureId);
+          const matchingEntities = cesiumViewer.entities.values.filter((entity: any) => {
+            // Check direct entity ID match (main building entity)
+            if (entity.id === featureId || JSON.stringify(entity.id) === JSON.stringify(featureId)) {
+              return true;
+            }
+            
+            // Check buildingId property (surface entities)
+            const buildingId = entity.properties?.getValue()?.buildingId;
+            if (buildingId && (buildingId === featureId || JSON.stringify(buildingId) === JSON.stringify(featureId))) {
+              return true;
+            }
+            
+            // Check compound ID prefix (surface entities like "buildingId_wall_1")
+            if (entity.id && typeof entity.id === 'string' && entity.id.includes('_')) {
+              const baseId = entity.id.split('_')[0];
+              if (baseId === featureId || JSON.stringify(baseId) === JSON.stringify(featureId)) {
+                return true;
+              }
+            }
+            
+            return false;
           });
 
           if (matchingEntities.length > 0) {
-            cesiumViewerRef.current.zoomTo(matchingEntities, {
-              offset: new Cartesian3(0, 0, 100) // 100m offset from the building
+            // Validate entities have reasonable coordinates
+            const validEntities = matchingEntities.filter((entity: any) => {
+              try {
+                if (entity.polygon?.hierarchy?.getValue) {
+                  const hierarchy = entity.polygon.hierarchy.getValue();
+                  if (hierarchy?.positions) {
+                    // Check if any position has invalid coordinates
+                    return hierarchy.positions.every((pos: any) => 
+                      pos && 
+                      typeof pos.x === 'number' && !isNaN(pos.x) && isFinite(pos.x) &&
+                      typeof pos.y === 'number' && !isNaN(pos.y) && isFinite(pos.y) &&
+                      typeof pos.z === 'number' && !isNaN(pos.z) && isFinite(pos.z)
+                    );
+                  }
+                }
+                return true; // If no polygon, assume valid
+              } catch {
+                return false;
+              }
             });
+            
+            if (validEntities.length === 0) {
+              console.warn('No valid entities found - all have invalid coordinates');
+              return;
+            }
+            
+            try {
+              // Try different zoom approaches to handle potential coordinate issues
+              
+              // Approach 1: Simple zoomTo without offset on valid entities
+              cesiumViewer.zoomTo(validEntities);
+              
+            } catch (zoomError) {
+              console.warn('Direct zoomTo failed, trying fallback approach:', zoomError);
+              
+              try {
+                // Approach 2: Zoom to first valid entity only
+                if (validEntities[0]) {
+                  cesiumViewer.zoomTo(validEntities[0]);
+                }
+              } catch (fallbackError) {
+                console.error('All zoom approaches failed:', fallbackError);
+                
+                // Approach 3: Manual camera positioning using entity bounds
+                try {
+                  const entity = validEntities[0];
+                  if (entity.position) {
+                    const position = entity.position.getValue();
+                    if (position) {
+                      cesiumViewer.camera.lookAt(
+                        position,
+                        new Cartesian3(100, 100, 100) // Simple offset
+                      );
+                    }
+                  }
+                } catch (manualError) {
+                  console.error('Manual camera positioning failed:', manualError);
+                }
+              }
+            }
           } else {
             console.warn('No matching Cesium entities found for feature ID:', featureId);
           }
