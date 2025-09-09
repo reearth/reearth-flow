@@ -269,7 +269,7 @@ async fn read_obj(
         }
 
         attributes.insert(
-            Attribute::new("face_count"),
+            Attribute::new("faceCount"),
             AttributeValue::Number(serde_json::Number::from(obj_data.faces.len())),
         );
 
@@ -344,7 +344,7 @@ async fn read_obj(
             }
 
             attributes.insert(
-                Attribute::new("face_count"),
+                Attribute::new("faceCount"),
                 AttributeValue::Number(serde_json::Number::from(face_refs.len())),
             );
 
