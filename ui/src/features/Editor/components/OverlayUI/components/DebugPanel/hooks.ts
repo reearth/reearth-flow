@@ -213,56 +213,75 @@ export default () => {
 
       // Get the current geometry type
       const currentDetectedGeometryType = streamingQuery.detectedGeometryType;
-      
+
       // Determine which viewer to use based on detected geometry type
-      const is3D = currentDetectedGeometryType === 'CityGmlGeometry' || currentDetectedGeometryType === 'FlowGeometry3D';
+      const is3D =
+        currentDetectedGeometryType === "CityGmlGeometry" ||
+        currentDetectedGeometryType === "FlowGeometry3D";
 
       if (is3D && cesiumViewerRef.current) {
         // 3D Cesium viewer - zoom to entities by feature ID
         try {
           // Access the actual Cesium viewer from Resium component
           const cesiumViewer = cesiumViewerRef.current?.cesiumElement;
-          
+
           if (!cesiumViewer) {
-            console.warn('Cesium viewer not initialized yet');
+            console.warn("Cesium viewer not initialized yet");
             return;
           }
-          
-          const featureId = selectedFeature.id || selectedFeature.properties?._originalId;
+
+          const featureId =
+            selectedFeature.id || selectedFeature.properties?._originalId;
           if (!featureId) {
-            console.warn('No feature ID found for Cesium zoom');
+            console.warn("No feature ID found for Cesium zoom");
             return;
           }
 
           // Safety check for entities collection
           if (!cesiumViewer.entities || !cesiumViewer.entities.values) {
-            console.warn('Cesium entities collection not available yet');
+            console.warn("Cesium entities collection not available yet");
             return;
           }
 
           // Find all entities that belong to this feature
-          const matchingEntities = cesiumViewer.entities.values.filter((entity: any) => {
-            // Check direct entity ID match (main building entity)
-            if (entity.id === featureId || JSON.stringify(entity.id) === JSON.stringify(featureId)) {
-              return true;
-            }
-            
-            // Check buildingId property (surface entities)
-            const buildingId = entity.properties?.getValue()?.buildingId;
-            if (buildingId && (buildingId === featureId || JSON.stringify(buildingId) === JSON.stringify(featureId))) {
-              return true;
-            }
-            
-            // Check compound ID prefix (surface entities like "buildingId_wall_1")
-            if (entity.id && typeof entity.id === 'string' && entity.id.includes('_')) {
-              const baseId = entity.id.split('_')[0];
-              if (baseId === featureId || JSON.stringify(baseId) === JSON.stringify(featureId)) {
+          const matchingEntities = cesiumViewer.entities.values.filter(
+            (entity: any) => {
+              // Check direct entity ID match (main building entity)
+              if (
+                entity.id === featureId ||
+                JSON.stringify(entity.id) === JSON.stringify(featureId)
+              ) {
                 return true;
               }
-            }
-            
-            return false;
-          });
+
+              // Check buildingId property (surface entities)
+              const buildingId = entity.properties?.getValue()?.buildingId;
+              if (
+                buildingId &&
+                (buildingId === featureId ||
+                  JSON.stringify(buildingId) === JSON.stringify(featureId))
+              ) {
+                return true;
+              }
+
+              // Check compound ID prefix (surface entities like "buildingId_wall_1")
+              if (
+                entity.id &&
+                typeof entity.id === "string" &&
+                entity.id.includes("_")
+              ) {
+                const baseId = entity.id.split("_")[0];
+                if (
+                  baseId === featureId ||
+                  JSON.stringify(baseId) === JSON.stringify(featureId)
+                ) {
+                  return true;
+                }
+              }
+
+              return false;
+            },
+          );
 
           if (matchingEntities.length > 0) {
             // Validate entities have reasonable coordinates
@@ -272,11 +291,18 @@ export default () => {
                   const hierarchy = entity.polygon.hierarchy.getValue();
                   if (hierarchy?.positions) {
                     // Check if any position has invalid coordinates
-                    return hierarchy.positions.every((pos: any) => 
-                      pos && 
-                      typeof pos.x === 'number' && !isNaN(pos.x) && isFinite(pos.x) &&
-                      typeof pos.y === 'number' && !isNaN(pos.y) && isFinite(pos.y) &&
-                      typeof pos.z === 'number' && !isNaN(pos.z) && isFinite(pos.z)
+                    return hierarchy.positions.every(
+                      (pos: any) =>
+                        pos &&
+                        typeof pos.x === "number" &&
+                        !isNaN(pos.x) &&
+                        isFinite(pos.x) &&
+                        typeof pos.y === "number" &&
+                        !isNaN(pos.y) &&
+                        isFinite(pos.y) &&
+                        typeof pos.z === "number" &&
+                        !isNaN(pos.z) &&
+                        isFinite(pos.z),
                     );
                   }
                 }
@@ -285,29 +311,33 @@ export default () => {
                 return false;
               }
             });
-            
+
             if (validEntities.length === 0) {
-              console.warn('No valid entities found - all have invalid coordinates');
+              console.warn(
+                "No valid entities found - all have invalid coordinates",
+              );
               return;
             }
-            
+
             try {
               // Try different zoom approaches to handle potential coordinate issues
-              
+
               // Approach 1: Simple zoomTo without offset on valid entities
               cesiumViewer.zoomTo(validEntities);
-              
             } catch (zoomError) {
-              console.warn('Direct zoomTo failed, trying fallback approach:', zoomError);
-              
+              console.warn(
+                "Direct zoomTo failed, trying fallback approach:",
+                zoomError,
+              );
+
               try {
                 // Approach 2: Zoom to first valid entity only
                 if (validEntities[0]) {
                   cesiumViewer.zoomTo(validEntities[0]);
                 }
               } catch (fallbackError) {
-                console.error('All zoom approaches failed:', fallbackError);
-                
+                console.error("All zoom approaches failed:", fallbackError);
+
                 // Approach 3: Manual camera positioning using entity bounds
                 try {
                   const entity = validEntities[0];
@@ -316,20 +346,26 @@ export default () => {
                     if (position) {
                       cesiumViewer.camera.lookAt(
                         position,
-                        new Cartesian3(100, 100, 100) // Simple offset
+                        new Cartesian3(100, 100, 100), // Simple offset
                       );
                     }
                   }
                 } catch (manualError) {
-                  console.error('Manual camera positioning failed:', manualError);
+                  console.error(
+                    "Manual camera positioning failed:",
+                    manualError,
+                  );
                 }
               }
             }
           } else {
-            console.warn('No matching Cesium entities found for feature ID:', featureId);
+            console.warn(
+              "No matching Cesium entities found for feature ID:",
+              featureId,
+            );
           }
         } catch (err) {
-          console.error('Error zooming to Cesium feature:', err);
+          console.error("Error zooming to Cesium feature:", err);
         }
       } else if (!is3D && mapRef.current) {
         // 2D MapLibre viewer - use existing bbox approach

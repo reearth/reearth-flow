@@ -23,8 +23,8 @@ const ThreeDViewer: React.FC<Props> = ({
       message={t("3D Viewer Could Not Be Loaded. Check if the data is valid.")}
       textSize="sm">
       <div className={`relative size-full ${className}`}>
-        <CesiumViewer 
-          fileContent={fileContent} 
+        <CesiumViewer
+          fileContent={fileContent}
           fileType={fileType}
           viewerRef={cesiumViewerRef}
         />

@@ -28,7 +28,11 @@ type Props = {
   viewerRef?: React.RefObject<any>;
 };
 
-const CesiumViewer: React.FC<Props> = ({ fileContent, fileType, viewerRef }) => {
+const CesiumViewer: React.FC<Props> = ({
+  fileContent,
+  fileType,
+  viewerRef,
+}) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {

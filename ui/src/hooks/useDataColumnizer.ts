@@ -6,7 +6,7 @@ import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 
 // Helper function to format cell values with truncation
 function formatCellValue(value: any): string {
-  if (value == null) return "";
+  if (value == null) return "-";
 
   const formatted = JSON.stringify(value);
 

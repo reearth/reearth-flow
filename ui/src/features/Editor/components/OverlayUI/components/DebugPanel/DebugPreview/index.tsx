@@ -172,13 +172,12 @@ const DebugPreview: React.FC<Props> = ({
           <div className="text-center text-muted-foreground">
             <LoadingSkeleton className="mb-4" />
             <p className="text-sm">
-              Loading data...{" "}
-              {selectedOutputData?.features?.length || 0} features loaded
+              Loading data... {selectedOutputData?.features?.length || 0}{" "}
+              features loaded
               {selectedOutputData?.features?.length >= 2000 && (
                 <span className="mt-1 block text-xs">
                   (
-                  {selectedOutputData?.features?.length >= 2000 &&
-                  !isComplete
+                  {selectedOutputData?.features?.length >= 2000 && !isComplete
                     ? "Hit display limit of 2000 - viewer will show shortly"
                     : "Processing..."}
                   )
