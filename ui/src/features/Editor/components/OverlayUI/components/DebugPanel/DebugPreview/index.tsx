@@ -43,6 +43,7 @@ type Props = {
   selectedFeature: any;
   enableClustering?: boolean;
   mapRef: React.RefObject<maplibregl.Map | null>;
+  cesiumViewerRef: React.RefObject<any>;
   onShowTempPossibleIssuesDialogClose: () => void;
   onSelectedFeature: (value: any) => void;
   onEnableClusteringChange: (value: boolean) => void;
@@ -61,6 +62,7 @@ const DebugPreview: React.FC<Props> = ({
   showTempPossibleIssuesDialog,
   enableClustering,
   mapRef,
+  cesiumViewerRef,
   selectedFeature,
   onShowTempPossibleIssuesDialogClose,
   onSelectedFeature,
@@ -274,6 +276,7 @@ const DebugPreview: React.FC<Props> = ({
             <ThreeDViewer
               fileContent={selectedOutputData}
               fileType={fileType}
+              cesiumViewerRef={cesiumViewerRef}
             />
           </div>
         </div>

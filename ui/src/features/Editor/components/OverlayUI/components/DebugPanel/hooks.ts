@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import bbox from "@turf/bbox";
+import { Cartesian3 } from "cesium";
 import {
   MouseEvent,
   useCallback,
@@ -30,6 +31,7 @@ export default () => {
   const [convertedSelectedFeature, setConvertedSelectedFeature] =
     useState(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const cesiumViewerRef = useRef<any>(null);
 
   const [currentProject] = useCurrentProject();
 
@@ -274,7 +276,50 @@ export default () => {
 
   const handleFlyToSelectedFeature = useCallback(
     (selectedFeature: any) => {
-      if (mapRef.current && selectedFeature) {
+      if (!selectedFeature) return;
+
+      // Get the current geometry type from streaming data or detect from selectedFeature
+      let currentDetectedGeometryType = null;
+      if (!shouldUseTraditionalLoading) {
+        currentDetectedGeometryType = streamingQuery.detectedGeometryType;
+      } else {
+        // For traditional loading, detect from the selectedFeature geometry
+        currentDetectedGeometryType = selectedFeature.geometry?.type;
+      }
+
+      // Determine which viewer to use based on detected geometry type
+      const is3D = currentDetectedGeometryType === 'CityGmlGeometry' || currentDetectedGeometryType === 'FlowGeometry3D';
+
+      if (is3D && cesiumViewerRef.current) {
+        // 3D Cesium viewer - zoom to entities by feature ID
+        try {
+          const featureId = selectedFeature.id || selectedFeature.properties?._originalId;
+          if (!featureId) {
+            console.warn('No feature ID found for Cesium zoom');
+            return;
+          }
+
+          // Find all entities that belong to this feature
+          const matchingEntities = cesiumViewerRef.current.entities.values.filter((entity: any) => {
+            const entityFeatureId = entity.properties?.getValue()?.buildingId || 
+                                   entity.properties?.getValue()?.originalFeatureId ||
+                                   entity.id?.split('_')[0]; // Extract base ID from compound IDs
+            return entityFeatureId === featureId || 
+                   JSON.stringify(entityFeatureId) === JSON.stringify(featureId);
+          });
+
+          if (matchingEntities.length > 0) {
+            cesiumViewerRef.current.zoomTo(matchingEntities, {
+              offset: new Cartesian3(0, 0, 100) // 100m offset from the building
+            });
+          } else {
+            console.warn('No matching Cesium entities found for feature ID:', featureId);
+          }
+        } catch (err) {
+          console.error('Error zooming to Cesium feature:', err);
+        }
+      } else if (!is3D && mapRef.current) {
+        // 2D MapLibre viewer - use existing bbox approach
         try {
           const [minLng, minLat, maxLng, maxLat] = bbox(selectedFeature);
           mapRef.current.fitBounds(
@@ -289,7 +334,7 @@ export default () => {
         }
       }
     },
-    [mapRef],
+    [shouldUseTraditionalLoading, streamingQuery.detectedGeometryType, cesiumViewerRef, mapRef],
   );
 
   const handleRowSingleClick = useCallback(
@@ -319,6 +364,7 @@ export default () => {
     debugJobState,
     fileType,
     mapRef,
+    cesiumViewerRef,
     fullscreenDebug,
     expanded,
     minimized,

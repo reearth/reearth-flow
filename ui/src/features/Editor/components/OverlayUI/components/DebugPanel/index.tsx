@@ -38,6 +38,7 @@ const DebugPanel: React.FC = () => {
     debugJobState,
     fileType,
     mapRef,
+    cesiumViewerRef,
     fullscreenDebug,
     expanded,
     minimized,
@@ -233,6 +234,7 @@ const DebugPanel: React.FC = () => {
                   selectedFeature={selectedFeature}
                   enableClustering={enableClustering}
                   mapRef={mapRef}
+                  cesiumViewerRef={cesiumViewerRef}
                   onConvertedSelectedFeature={setConvertedSelectedFeature}
                   onShowTempPossibleIssuesDialogClose={
                     handleShowTempPossibleIssuesDialogClose
