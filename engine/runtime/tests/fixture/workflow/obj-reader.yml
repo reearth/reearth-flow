@@ -1,0 +1,36 @@
+id: "550e8400-e29b-41d4-a716-446655440000"
+name: "Test OBJ Reader Workflow"
+entryGraphId: "550e8400-e29b-41d4-a716-446655440001"
+with:
+  objFile: "runtime/tests/fixture/testdata/obj/simple.obj"
+
+graphs:
+  - id: "550e8400-e29b-41d4-a716-446655440001"
+    name: "OBJ Processing Graph"
+    nodes:
+      - id: "550e8400-e29b-41d4-a716-446655440002"
+        name: "Read OBJ File"
+        type: "action"
+        action: "ObjReader"
+        with:
+          dataset: "{{objFile}}"
+          parseMaterials: true
+          triangulate: false
+          mergeGroups: false
+          includeNormals: true
+          includeTexcoords: true
+
+      - id: "550e8400-e29b-41d4-a716-446655440003"
+        name: "Write Features"
+        type: "action"
+        action: "FeatureWriter"
+        with:
+          output: "output.json"
+          format: "geojson"
+
+    edges:
+      - id: "550e8400-e29b-41d4-a716-446655440004"
+        source: "550e8400-e29b-41d4-a716-446655440002"
+        target: "550e8400-e29b-41d4-a716-446655440003"
+        sourcePort: "default"
+        targetPort: "default"
