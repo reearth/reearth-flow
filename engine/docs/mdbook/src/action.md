@@ -4158,6 +4158,54 @@ Filter Features by Geometry Planarity
 ### Category
 * Geometry
 
+## PythonScriptProcessor
+### Type
+* processor
+### Description
+Execute Python Scripts with Geospatial Data Processing
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PythonScriptProcessorParam",
+  "type": "object",
+  "required": [
+    "script"
+  ],
+  "properties": {
+    "pythonPath": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "script": {
+      "$ref": "#/definitions/Expr"
+    },
+    "timeoutSeconds": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "minimum": 0.0
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Script
+* Python
+
 ## Refiner
 ### Type
 * processor

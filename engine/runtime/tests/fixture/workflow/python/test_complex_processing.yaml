@@ -1,0 +1,142 @@
+# Test Case 2: Complex Data Processing
+id: 00000000-0000-0000-0000-000000000002
+name: "Python Script Processor - Complex Processing Test"
+entryGraphId: 10000000-0000-0000-0000-000000000002
+with:
+  outputFilePath:
+
+graphs:
+  - id: 10000000-0000-0000-0000-000000000002
+    name: main
+    nodes:
+      - id: 20000000-0000-0000-0000-000000000002
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                name: "location_1",
+                lat: 35.6895,
+                lon: 139.6917,
+                values: [1, 2, 3, 4, 5, 10, 15],
+                text: "Hello world test data",
+                geometry: #{
+                  type: "Point",
+                  coordinates: [139.6917, 35.6895]
+                }
+              },
+              #{
+                name: "location_2",
+                lat: 35.7,
+                lon: 139.7,
+                values: [2, 4, 6, 8, 10],
+                text: "Complex geospatial data processing example",
+                geometry: #{
+                  type: "Polygon",
+                  coordinates: [[
+                    [139.695, 35.695],
+                    [139.705, 35.695],
+                    [139.705, 35.705], 
+                    [139.695, 35.705],
+                    [139.695, 35.695]
+                  ]]
+                }
+              }
+            ]
+
+      - id: 30000000-0000-0000-0000-000000000002
+        name: PythonScriptProcessor
+        type: action
+        action: PythonScriptProcessor
+        with:
+          script: |
+            import math
+            
+            # Test Case 2: Complex data processing with geospatial calculations
+            
+            def calculate_distance(lat1, lon1, lat2=35.6762, lon2=139.7006):
+                """Calculate Haversine distance between two points"""
+                R = 6371  # Earth radius in km
+                
+                lat1_rad = math.radians(lat1)
+                lon1_rad = math.radians(lon1)
+                lat2_rad = math.radians(lat2)
+                lon2_rad = math.radians(lon2)
+                
+                dlat = lat2_rad - lat1_rad
+                dlon = lon2_rad - lon1_rad
+                
+                a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon/2)**2
+                c = 2 * math.asin(math.sqrt(a))
+                
+                return R * c
+            
+            # Process attributes with complex calculations
+            if 'lat' in properties and 'lon' in properties:
+                lat = properties['lat']
+                lon = properties['lon']
+                properties['distance_from_shibuya_km'] = round(calculate_distance(lat, lon), 3)
+            
+            # Statistical operations on arrays
+            if 'values' in properties and isinstance(properties['values'], list):
+                values = properties['values']
+                properties['values_mean'] = sum(values) / len(values)
+                properties['values_max'] = max(values)
+                properties['values_min'] = min(values)
+                properties['values_sum'] = sum(values)
+                properties['values_count'] = len(values)
+            
+            # Text processing
+            if 'text' in properties:
+                text = properties['text']
+                words = text.split()
+                properties['word_count'] = len(words)
+                properties['char_count'] = len(text)
+                properties['first_word'] = words[0] if words else ""
+            
+            # Geometry-based calculations
+            geom_type = get_geometry_type(geometry)
+            properties['geometry_type'] = geom_type
+            
+            if geom_type == "Point":
+                coords = get_coordinates(geometry)
+                properties['point_x'] = coords[0]
+                properties['point_y'] = coords[1]
+            elif geom_type == "Polygon":
+                coords = get_coordinates(geometry)
+                if coords and len(coords) > 0:
+                    exterior = coords[0]
+                    # Calculate approximate area using shoelace formula
+                    area = 0
+                    for i in range(len(exterior) - 1):
+                        area += exterior[i][0] * exterior[i+1][1]
+                        area -= exterior[i+1][0] * exterior[i][1]
+                    area = abs(area) / 2
+                    properties['calculated_area'] = area
+            
+            # Add processing metadata
+            properties['processing_complete'] = True
+            properties['processing_type'] = 'complex'
+
+      - id: 40000000-0000-0000-0000-000000000002
+        name: FileWriter
+        type: action
+        action: FileWriter
+        with:
+          format: json
+          output: |
+            env.get("outputFilePath")
+
+    edges:
+      - id: 50000000-0000-0000-0000-000000000002
+        from: 20000000-0000-0000-0000-000000000002
+        to: 30000000-0000-0000-0000-000000000002
+        fromPort: default
+        toPort: default
+      - id: 60000000-0000-0000-0000-000000000002
+        from: 30000000-0000-0000-0000-000000000002
+        to: 40000000-0000-0000-0000-000000000002
+        fromPort: default
+        toPort: default

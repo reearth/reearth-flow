@@ -18,7 +18,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.88" # Remember to update clippy.toml as well
-version = "0.0.99"
+version = "0.0.100"
 
 [profile.dev]
 opt-level = 0
@@ -48,6 +48,7 @@ lto = "fat"
 reearth-flow-action-log = { path = "runtime/action-log" }
 reearth-flow-action-plateau-processor = { path = "runtime/action-plateau-processor" }
 reearth-flow-action-processor = { path = "runtime/action-processor" }
+reearth-flow-action-python-processor = { path = "runtime/action-python-processor" }
 reearth-flow-action-sink = { path = "runtime/action-sink" }
 reearth-flow-action-source = { path = "runtime/action-source" }
 reearth-flow-action-wasm-processor = { path = "runtime/action-wasm-processor" }

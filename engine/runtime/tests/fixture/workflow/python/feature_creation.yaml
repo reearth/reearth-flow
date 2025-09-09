@@ -1,0 +1,168 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 5c8a9b4f-2d3e-4a17-9f8c-1e7d6b2a4c89
+name: "PythonFeatureCreationExample"
+entryGraphId: 4f7e2a1b-8c9d-4e5f-a6b7-3c8e9f1a2b4d
+with:
+  outputFilePath:
+graphs:
+  - id: 4f7e2a1b-8c9d-4e5f-a6b7-3c8e9f1a2b4d
+    name: entry_point
+    nodes:
+      - id: A1B2C3D4-E5F6-7890-ABCD-EF1234567890
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                name: "multipoint_feature",
+                category: "transportation",
+                geometry: #{
+                  type: "MultiPoint",
+                  coordinates: [
+                    [139.6917, 35.6895],  // Tokyo Station
+                    [139.7006, 35.6762],  // Shimbashi
+                    [139.7138, 35.6658],  // Shinagawa
+                    [139.6870, 35.6938]   // Akihabara
+                  ]
+                }
+              }
+            ]
+
+      - id: B2C3D4E5-F6G7-8901-BCDE-F23456789012
+        name: PythonFeatureCreator
+        type: action
+        action: PythonScriptProcessor
+        with:
+          script: |
+            # Split MultiPoint into individual station features with connections
+            if get_geometry_type(geometry) == "MultiPoint":
+                coords = get_coordinates(geometry)
+                
+                # Station names corresponding to coordinates
+                station_names = ["Tokyo Station", "Shimbashi", "Shinagawa", "Akihabara"]
+                station_codes = ["TKY", "SHB", "SHI", "AKB"]
+                
+                features = []
+                
+                # Create individual station point features
+                for i, (point_coords, name, code) in enumerate(zip(coords, station_names, station_codes)):
+                    x, y = point_coords[0], point_coords[1]
+                    
+                    station_feature = {
+                        "type": "Feature",
+                        "properties": {
+                            "name": name,
+                            "station_code": code,
+                            "category": "station",
+                            "station_id": i + 1,
+                            "coordinates": f"{x}, {y}",
+                            "source_feature": properties.get("name", "unknown")
+                        },
+                        "geometry": create_point(x, y)
+                    }
+                    features.append(station_feature)
+                    
+                    # Create service area (buffer) around each station
+                    buffer_size = 0.005  # roughly 500m
+                    service_area = {
+                        "type": "Feature", 
+                        "properties": {
+                            "name": f"{name} Service Area",
+                            "station_code": code,
+                            "category": "service_area",
+                            "serves_station": name,
+                            "buffer_radius_deg": buffer_size,
+                            "source_feature": properties.get("name", "unknown")
+                        },
+                        "geometry": create_polygon([[
+                            [x - buffer_size, y - buffer_size],
+                            [x + buffer_size, y - buffer_size],
+                            [x + buffer_size, y + buffer_size], 
+                            [x - buffer_size, y + buffer_size],
+                            [x - buffer_size, y - buffer_size]
+                        ]])
+                    }
+                    features.append(service_area)
+                
+                # Create connections between adjacent stations
+                for i in range(len(coords) - 1):
+                    start_coords = coords[i]
+                    end_coords = coords[i + 1]
+                    
+                    connection = {
+                        "type": "Feature",
+                        "properties": {
+                            "name": f"{station_names[i]} to {station_names[i + 1]}",
+                            "category": "connection",
+                            "from_station": station_names[i],
+                            "to_station": station_names[i + 1], 
+                            "from_code": station_codes[i],
+                            "to_code": station_codes[i + 1],
+                            "connection_id": f"{station_codes[i]}-{station_codes[i + 1]}",
+                            "source_feature": properties.get("name", "unknown")
+                        },
+                        "geometry": create_linestring([
+                            [start_coords[0], start_coords[1]],
+                            [end_coords[0], end_coords[1]]
+                        ])
+                    }
+                    features.append(connection)
+                
+                # Create a bounding polygon for the entire network
+                min_x = min(coord[0] for coord in coords)
+                max_x = max(coord[0] for coord in coords) 
+                min_y = min(coord[1] for coord in coords)
+                max_y = max(coord[1] for coord in coords)
+                
+                # Expand bounds slightly
+                margin = 0.01
+                network_boundary = {
+                    "type": "Feature",
+                    "properties": {
+                        "name": "Station Network Boundary",
+                        "category": "network_boundary",
+                        "total_stations": len(coords),
+                        "station_list": ", ".join(station_names),
+                        "bounds": f"({min_x}, {min_y}) to ({max_x}, {max_y})",
+                        "source_feature": properties.get("name", "unknown")
+                    },
+                    "geometry": create_polygon([[
+                        [min_x - margin, min_y - margin],
+                        [max_x + margin, min_y - margin],
+                        [max_x + margin, max_y + margin],
+                        [min_x - margin, max_y + margin],
+                        [min_x - margin, min_y - margin]
+                    ]])
+                }
+                features.append(network_boundary)
+                
+                return features
+            else:
+                # For non-MultiPoint geometries, just pass through with metadata
+                properties['processed_by'] = 'PythonFeatureCreator'
+                properties['geometry_type'] = get_geometry_type(geometry)
+                properties['note'] = 'Passed through - not a MultiPoint'
+
+      - id: C3D4E5F6-G7H8-9012-CDEF-345678901234
+        name: FileWriter
+        type: action
+        action: FileWriter
+        with:
+          format: json
+          output: |
+            env.get("outputFilePath")
+
+    edges:
+      - id: e1f2g3h4-i5j6-k7l8-mnop-qr9012345678
+        from: A1B2C3D4-E5F6-7890-ABCD-EF1234567890
+        to: B2C3D4E5-F6G7-8901-BCDE-F23456789012
+        fromPort: default
+        toPort: default
+
+      - id: f2g3h4i5-j6k7-l8m9-nopq-rs0123456789
+        from: B2C3D4E5-F6G7-8901-BCDE-F23456789012
+        to: C3D4E5F6-G7H8-9012-CDEF-345678901234
+        fromPort: default
+        toPort: default
