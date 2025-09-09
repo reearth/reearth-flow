@@ -33,12 +33,26 @@ const Handles: React.FC<Props> = ({
   return (
     <Collapsible className="flex flex-col" open={!isCollapsed}>
       <div className="flex justify-between gap-0.5">
+        {nodeType !== "reader" &&
+          hasMoreThanFiveInputHandles &&
+          isCollapsed && (
+            <div className="inset-x-0 min-w-0 flex-1 overflow-hidden">
+              <div className="relative flex items-center py-0.5">
+                <div className="flex w-full translate-x-0.5 items-center">
+                  <div className="size-1.5 rounded-full bg-gray-300" />
+                  <p className="w-[90%] pl-1 text-[10px] break-words italic dark:font-thin">
+                    {t("Multiple")}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         {nodeType !== "reader" && inputs && !hasMoreThanFiveInputHandles && (
           <div className="inset-x-0 mx-auto min-w-0 flex-1">
             {inputs.map((input, index) => (
               <div
                 key={input + index}
-                className="relative flex items-center border-b py-0.5 last-of-type:border-none">
+                className="relative flex items-center py-0.5">
                 <CustomHandle
                   type="target"
                   className={`left-1 w-[8px] rounded-none transition-colors ${index === (!outputs && inputs && inputs.length - 1) ? "rounded-bl-sm" : undefined}`}
@@ -58,27 +72,10 @@ const Handles: React.FC<Props> = ({
             ))}
           </div>
         )}
-        {nodeType !== "reader" &&
-          inputs &&
-          inputs.length >= 5 &&
-          isCollapsed && (
-            <div className="inset-x-0 min-w-0 flex-1 overflow-hidden">
-              <div className="relative flex items-center py-0.5">
-                <div className="left-1 z-10 w-[8px] rounded-none transition-colors" />
-                <div className="flex w-full translate-x-0.5 items-center">
-                  <div className="size-1.5 rounded-full bg-gray-300" />
-                  <p className="w-[90%] pl-1 text-[10px] break-words italic dark:font-thin">
-                    {t("Multiple")}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
 
-        {outputs && outputs.length >= 5 && isCollapsed && (
+        {hasMoreThanFiveOutputHandles && isCollapsed && (
           <div className="inset-x-0 mx-auto min-w-0 flex-1 overflow-hidden">
-            <div className="relative flex items-center justify-end py-0.5 last-of-type:border-none">
-              <div className="right-1 z-10 w-[8px] rounded-none transition-colors" />
+            <div className="relative flex items-center justify-end py-0.5">
               <div className="flex w-full -translate-x-0.5 items-center justify-end">
                 <p className="w-[90%] pr-1 text-end text-[10px] break-words italic dark:font-thin">
                   {t("Multiple")}
@@ -88,8 +85,9 @@ const Handles: React.FC<Props> = ({
             </div>
           </div>
         )}
-        <div className="max-w[50%]">
-          <CollapsibleContent>
+
+        <CollapsibleContent>
+          <div className="flex justify-between gap-0.5">
             {nodeType !== "reader" && inputs && hasMoreThanFiveInputHandles && (
               <div className="inset-x-0 mx-auto min-w-0 flex-1">
                 {inputs.map((input, index) => (
@@ -136,9 +134,8 @@ const Handles: React.FC<Props> = ({
                 ))}
               </div>
             )}
-          </CollapsibleContent>
-        </div>
-
+          </div>
+        </CollapsibleContent>
         {outputs && !hasMoreThanFiveOutputHandles && (
           <div className="inset-x-0 mx-auto min-w-0 flex-1 overflow-hidden">
             {outputs.map((output, index) => (
