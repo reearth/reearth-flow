@@ -404,8 +404,6 @@ export default ({
     ? users[spotlightUserClientId]
     : null;
 
-  const spotlightUsercursor = spotlightUser?.cursor;
-
   const spotlightUserViewport = spotlightUser?.viewport;
 
   const handleSpotlightUserSelect = useCallback((clientId: number) => {
@@ -417,12 +415,7 @@ export default ({
   }, []);
 
   useEffect(() => {
-    if (
-      !spotlightUsercursor ||
-      !spotlightUserViewport ||
-      !spotlightUserViewport.zoom
-    )
-      return;
+    if (!spotlightUserViewport) return;
     setViewport(
       {
         x: spotlightUserViewport.x,
@@ -431,7 +424,7 @@ export default ({
       },
       { duration: 100 },
     );
-  }, [spotlightUsercursor, spotlightUserViewport, setViewport]);
+  }, [spotlightUserViewport, setViewport]);
 
   return {
     currentWorkflowId,

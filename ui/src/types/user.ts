@@ -41,7 +41,7 @@ export type AwarenessUser = {
   viewport?: {
     x: number;
     y: number;
-    zoom?: number;
+    zoom: number;
   };
   color: string;
   userName: string;
