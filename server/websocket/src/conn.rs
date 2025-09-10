@@ -84,12 +84,6 @@ impl<Sink, Stream> Unpin for Connection<Sink, Stream> {}
 impl<Sink, Stream> Drop for Connection<Sink, Stream> {
     fn drop(&mut self) {
         if let Some(group) = self.broadcast_group.take() {
-            let group_clone = group.clone();
-            tokio::spawn(async move {
-                if let Err(e) = group_clone.cleanup_client_awareness().await {
-                    error!("Failed to cleanup awareness: {}", e);
-                }
-            });
             tokio::spawn(async move {
                 if let Err(e) = group.shutdown().await {
                     error!("Failed to shutdown group: {}", e);

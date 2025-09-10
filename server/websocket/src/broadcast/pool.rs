@@ -8,7 +8,7 @@ use bytes;
 use dashmap::DashMap;
 use rand;
 use std::sync::Arc;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
@@ -139,6 +139,7 @@ impl BroadcastGroupManager {
                 Arc::clone(&self.store),
                 BroadcastConfig {
                     storage_enabled: true,
+                    room_name: Some(doc_id.to_string()),
                     doc_name: Some(doc_id.to_string()),
                 },
             )
@@ -146,9 +147,11 @@ impl BroadcastGroupManager {
         );
 
         if final_last_id != "0" {
-            let last_read_id = group.get_last_read_id();
-            let mut last_id_guard = last_read_id.lock().await;
-            *last_id_guard = final_last_id;
+            debug!(
+                "Final last ID: {}, Initial sub ID: {}",
+                final_last_id,
+                group.get_initial_redis_sub_id()
+            );
         }
 
         Ok(group)
@@ -185,6 +188,29 @@ impl BroadcastPool {
 
         self.groups.insert(doc_id.to_string(), group.clone());
         Ok(group)
+    }
+
+    pub async fn cleanup_inactive_groups(&self) {
+        let mut to_remove = Vec::new();
+
+        for entry in self.groups.iter() {
+            let (doc_id, group) = entry.pair();
+
+            if group.get_active_connections() == 0 {
+                debug!("Marking group for cleanup: {}", doc_id);
+                to_remove.push(doc_id.clone());
+            }
+        }
+
+        for doc_id in to_remove {
+            if let Some((_, group)) = self.groups.remove(&doc_id) {
+                info!("Cleaning up inactive group: {}", doc_id);
+
+                if let Err(e) = group.cleanup_client_awareness().await {
+                    warn!("Error cleaning up awareness for group {}: {}", doc_id, e);
+                }
+            }
+        }
     }
 
     pub async fn cleanup_group(&self, doc_id: &str) {

@@ -17,10 +17,27 @@ type RedisStreamResults = Vec<RedisStreamResult>;
 
 const OID_LOCK_KEY: &str = "lock:oid_generation";
 
+pub const MESSAGE_TYPE_SYNC: &str = "sync";
+pub const MESSAGE_TYPE_AWARENESS: &str = "awareness";
+
+#[derive(Debug, Clone)]
+pub struct StreamMessages {
+    pub sync_updates: Vec<Bytes>,
+    pub awareness_updates: Vec<(String, Bytes)>,
+}
+
+#[derive(Debug, Clone)]
+pub struct StreamMessageResult {
+    pub stream: String,
+    pub messages: Vec<Bytes>,
+    pub last_id: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct RedisConfig {
     pub url: String,
     pub ttl: u64,
+    pub prefix: String,
 }
 
 pub type RedisPool = Pool;
@@ -47,38 +64,138 @@ impl RedisStore {
         self.config.clone()
     }
 
+    pub fn get_prefix(&self) -> String {
+        self.config.prefix.clone()
+    }
+
+    /// format: {prefix}:room:{room}:{docid}
+    pub fn compute_redis_room_stream_name(&self, room: &str, docid: &str) -> String {
+        format!(
+            "{}:room:{}:{}",
+            self.config.prefix,
+            urlencoding::encode(room),
+            urlencoding::encode(docid)
+        )
+    }
+
     pub async fn create_dedicated_connection(&self) -> Result<redis::aio::MultiplexedConnection> {
         let client = redis::Client::open(self.config.url.clone())?;
         let conn = client.get_multiplexed_async_connection().await?;
         Ok(conn)
     }
 
-    pub async fn publish_update(
+    pub async fn add_message(
         &self,
         conn: &mut redis::aio::MultiplexedConnection,
         stream_key: &str,
-        update: &[u8],
-        instance_id: &u64,
+        message: &[u8],
+        worker_stream_name: &str,
     ) -> Result<()> {
         let script = redis::Script::new(
             r#"
-            local stream_key = KEYS[1]
-            local update = ARGV[1]
-            local instance_id = ARGV[2]
-            
-            redis.call('XADD', stream_key, '*', instance_id, update)
-            return 1
+            if redis.call("EXISTS", KEYS[1]) == 0 then
+              redis.call("XADD", ARGV[1], "*", "compact", KEYS[1])
+              redis.call("XREADGROUP", "GROUP", ARGV[2], "pending", "STREAMS", ARGV[1], ">")
+            end
+            redis.call("XADD", KEYS[1], "*", "m", ARGV[3])
             "#,
         );
 
         let _: () = script
             .key(stream_key)
-            .arg(update)
-            .arg(instance_id)
+            .arg(worker_stream_name)
+            .arg(format!("{}:worker", self.get_prefix()))
+            .arg(message)
             .invoke_async(&mut *conn)
             .await?;
 
         Ok(())
+    }
+
+    pub async fn get_messages(
+        &self,
+        streams: Vec<(String, String)>,
+    ) -> Result<Vec<StreamMessageResult>> {
+        if streams.is_empty() {
+            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+            return Ok(vec![]);
+        }
+
+        let mut conn = self.pool.get().await?;
+        let mut args: Vec<String> = vec![];
+
+        for (stream, id) in streams {
+            args.push(stream);
+            args.push(id);
+        }
+
+        let result: redis::Value = redis::cmd("XREAD")
+            .arg("BLOCK")
+            .arg(1000)
+            .arg("COUNT")
+            .arg(1000)
+            .arg("STREAMS")
+            .arg(&args)
+            .query_async(&mut *conn)
+            .await?;
+
+        let mut res = Vec::new();
+        if let redis::Value::Array(streams) = result {
+            for stream_data in streams {
+                if let redis::Value::Array(stream_info) = stream_data {
+                    if stream_info.len() >= 2 {
+                        let stream_name = match &stream_info[0] {
+                            redis::Value::BulkString(name) => {
+                                std::str::from_utf8(name).unwrap_or("").to_string()
+                            }
+                            _ => continue,
+                        };
+
+                        let mut messages = Vec::new();
+                        let mut last_id = "0".to_string();
+
+                        if let redis::Value::Array(entries) = &stream_info[1] {
+                            for entry in entries {
+                                if let redis::Value::Array(entry_data) = entry {
+                                    if entry_data.len() >= 2 {
+                                        if let redis::Value::BulkString(id_bytes) = &entry_data[0] {
+                                            last_id = std::str::from_utf8(id_bytes)
+                                                .unwrap_or("0")
+                                                .to_string();
+                                        }
+
+                                        if let redis::Value::Array(fields) = &entry_data[1] {
+                                            for chunk in fields.chunks(2) {
+                                                if chunk.len() == 2 {
+                                                    if let (
+                                                        redis::Value::BulkString(key),
+                                                        redis::Value::BulkString(value),
+                                                    ) = (&chunk[0], &chunk[1])
+                                                    {
+                                                        if key == b"m" {
+                                                            messages
+                                                                .push(Bytes::from(value.clone()));
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        res.push(StreamMessageResult {
+                            stream: stream_name,
+                            messages,
+                            last_id,
+                        });
+                    }
+                }
+            }
+        }
+
+        Ok(res)
     }
 
     pub async fn publish_update_with_ttl(
@@ -89,21 +206,36 @@ impl RedisStore {
         instance_id: &u64,
         ttl: u64,
     ) -> Result<()> {
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+
         let script = redis::Script::new(
             r#"
             local stream_key = KEYS[1]
-            local update = ARGV[1]
-            local instance_id = ARGV[2]
-            local ttl = ARGV[3]
-            redis.call('XADD', stream_key, '*', instance_id, update)
+            local msg_type = ARGV[1]
+            local data = ARGV[2]
+            local client_id = ARGV[3]
+            local timestamp = ARGV[4]
+            local ttl = ARGV[5]
+            
+            redis.call('XADD', stream_key, '*', 
+                'type', msg_type, 
+                'data', data, 
+                'clientId', client_id, 
+                'timestamp', timestamp)
             redis.call('EXPIRE', stream_key, ttl)
             return 1
             "#,
         );
+
         let _: () = script
             .key(stream_key)
+            .arg(MESSAGE_TYPE_SYNC)
             .arg(update)
             .arg(instance_id)
+            .arg(timestamp)
             .arg(ttl)
             .invoke_async(&mut *conn)
             .await?;
@@ -229,7 +361,7 @@ impl RedisStore {
         count: usize,
         instance_id: &u64,
         last_read_id: &Arc<Mutex<String>>,
-    ) -> Result<Vec<Bytes>> {
+    ) -> Result<StreamMessages> {
         let block_ms = 1000;
         let mut conn = self.pool.get().await?;
         let read_id = {
@@ -249,19 +381,54 @@ impl RedisStore {
             .await?;
 
         if result.is_empty() || result[0].1.is_empty() {
-            return Ok(vec![]);
+            return Ok(StreamMessages {
+                sync_updates: vec![],
+                awareness_updates: vec![],
+            });
         }
 
-        let mut updates = Vec::with_capacity(result[0].1.len());
+        let mut sync_updates = Vec::new();
+        let mut awareness_updates = Vec::new();
         let mut last_msg_id = String::new();
 
         for (msg_id, fields) in result[0].1.iter() {
-            if let Some((_, value)) = fields
-                .iter()
-                .find(|(name, _)| name != &instance_id.to_string())
-            {
-                updates.push(value.clone());
+            let mut message_type = String::new();
+            let mut client_id = String::new();
+            let mut data: Option<Bytes> = None;
+
+            for (field_name, field_value) in fields.iter() {
+                match field_name.as_str() {
+                    "type" => {
+                        if let Ok(type_str) = std::str::from_utf8(field_value) {
+                            message_type = type_str.to_string();
+                        }
+                    }
+                    "clientId" => {
+                        if let Ok(client_str) = std::str::from_utf8(field_value) {
+                            client_id = client_str.to_string();
+                        }
+                    }
+                    "data" => {
+                        data = Some(field_value.clone());
+                    }
+                    _ => {}
+                }
             }
+
+            if client_id != instance_id.to_string() {
+                if let Some(data) = data {
+                    match message_type.as_str() {
+                        MESSAGE_TYPE_SYNC => {
+                            sync_updates.push(data);
+                        }
+                        MESSAGE_TYPE_AWARENESS => {
+                            awareness_updates.push((client_id, data));
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
             last_msg_id = msg_id.clone();
         }
 
@@ -270,7 +437,10 @@ impl RedisStore {
             *last_id = last_msg_id;
         }
 
-        Ok(updates)
+        Ok(StreamMessages {
+            sync_updates,
+            awareness_updates,
+        })
     }
 
     pub async fn delete_stream(&self, doc_id: &str) -> Result<()> {
@@ -747,126 +917,46 @@ impl RedisStore {
         Ok(result == 1)
     }
 
-    pub async fn set_awareness(
+    pub async fn publish_awareness(
         &self,
-        doc_id: &str,
-        instance_id: &str,
         conn: &mut redis::aio::MultiplexedConnection,
+        stream_key: &str,
         awareness_data: &[u8],
+        instance_id: &u64,
         ttl_seconds: u64,
     ) -> Result<()> {
-        let awareness_key = format!("awareness:{doc_id}");
-        let stream_key = format!("awareness:stream:{doc_id}");
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
 
         let script = redis::Script::new(
             r#"
-            local awareness_key = KEYS[1]
-            local stream_key = KEYS[2]
-            local awareness_data = ARGV[1]
-            local ttl = tonumber(ARGV[2])
-            local instance_id = ARGV[3]
+            local stream_key = KEYS[1]
+            local msg_type = ARGV[1]
+            local data = ARGV[2]
+            local client_id = ARGV[3]
+            local timestamp = ARGV[4]
+            local ttl = ARGV[5]
             
-            -- Store awareness data with TTL (use instance_id as key)
-            redis.call('HSET', awareness_key, instance_id, awareness_data)
-            redis.call('EXPIRE', awareness_key, ttl)
-            
-            -- Broadcast awareness update to stream
-            redis.call('XADD', stream_key, '*', 'data', awareness_data, 'instance_id', instance_id)
+            redis.call('XADD', stream_key, '*', 
+                'type', msg_type, 
+                'data', data, 
+                'clientId', client_id, 
+                'timestamp', timestamp)
             redis.call('EXPIRE', stream_key, ttl)
-            
             return 1
             "#,
         );
 
         let _: () = script
-            .key(&awareness_key)
-            .key(&stream_key)
+            .key(stream_key)
+            .arg(MESSAGE_TYPE_AWARENESS)
             .arg(awareness_data)
-            .arg(ttl_seconds)
             .arg(instance_id)
+            .arg(timestamp)
+            .arg(ttl_seconds)
             .invoke_async(&mut *conn)
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn read_awareness_updates(
-        &self,
-        doc_id: &str,
-        last_read_id: &Arc<Mutex<String>>,
-        count: usize,
-        instance_id_filter: Option<&u64>,
-    ) -> Result<Vec<(String, Option<Bytes>)>> {
-        let mut conn = self.pool.get().await?;
-        let stream_key = format!("awareness:stream:{doc_id}");
-        let block_ms = 1000;
-
-        let read_id = {
-            let last_id = last_read_id.lock().await;
-            last_id.clone()
-        };
-
-        let result: RedisStreamResults = redis::cmd("XREAD")
-            .arg("COUNT")
-            .arg(count)
-            .arg("BLOCK")
-            .arg(block_ms)
-            .arg("STREAMS")
-            .arg(&stream_key)
-            .arg(read_id)
-            .query_async(&mut *conn)
-            .await?;
-
-        if result.is_empty() || result[0].1.is_empty() {
-            return Ok(vec![]);
-        }
-
-        let mut updates = Vec::new();
-        let mut last_msg_id = String::new();
-
-        for (msg_id, fields) in result[0].1.iter() {
-            let mut data: Option<Bytes> = None;
-            let mut message_instance_id = String::new();
-
-            for (field_name, field_value) in fields.iter() {
-                match field_name.as_str() {
-                    "data" => {
-                        data = Some(field_value.clone());
-                    }
-                    "instance_id" => {
-                        if let Ok(instance_str) = std::str::from_utf8(field_value) {
-                            message_instance_id = instance_str.to_string();
-                        }
-                    }
-                    _ => {}
-                }
-            }
-
-            if let Some(filter_instance_id) = instance_id_filter {
-                if message_instance_id == filter_instance_id.to_string() {
-                    last_msg_id = msg_id.clone();
-                    continue;
-                }
-            }
-
-            updates.push((message_instance_id, data));
-            last_msg_id = msg_id.clone();
-        }
-
-        if !last_msg_id.is_empty() {
-            let mut last_id = last_read_id.lock().await;
-            *last_id = last_msg_id;
-        }
-
-        Ok(updates)
-    }
-
-    pub async fn delete_awareness_stream(&self, doc_id: &str) -> Result<()> {
-        let stream_key = format!("awareness:stream:{doc_id}");
-        let mut conn = self.pool.get().await?;
-        let _: () = redis::cmd("DEL")
-            .arg(&stream_key)
-            .query_async(&mut *conn)
             .await?;
 
         Ok(())

@@ -4,12 +4,16 @@ use tokio::sync::RwLock;
 #[cfg(feature = "auth")]
 pub mod auth;
 
+pub mod api;
 mod broadcast;
 pub mod conf;
 pub mod conn;
 pub mod doc;
+pub mod protocol;
 pub mod storage;
+pub mod subscriber;
 pub mod tools;
+pub mod worker;
 pub mod ws;
 
 pub use broadcast::group;
