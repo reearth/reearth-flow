@@ -11,13 +11,10 @@ import {
 
 import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useJob } from "@flow/lib/gql/job";
-import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
 
 export default () => {
-  const t = useT();
-
   const prevIntermediateDataUrls = useRef<string[] | undefined>(undefined);
   const [fullscreenDebug, setFullscreenDebug] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -131,6 +128,7 @@ export default () => {
     [debugJobState],
   );
 
+  // Separate intermediate data URLs (for dropdown) from output data URLs (for download)
   const dataURLs = useMemo(() => {
     const urls: { key: string; name: string }[] = [];
     if (debugJobState?.selectedIntermediateData) {
@@ -141,16 +139,18 @@ export default () => {
         });
       });
     }
-    if (outputURLs) {
-      urls.push(
-        ...outputURLs.map((url) => ({
-          key: url,
-          name: url.split("/").pop() + `(${t("Output data")})`,
-        })),
-      );
-    }
+    // Remove output data from dropdown - now handled separately
     return urls.length ? urls : undefined;
-  }, [outputURLs, debugJobState?.selectedIntermediateData, t]);
+  }, [debugJobState?.selectedIntermediateData]);
+
+  // Separate output data for download functionality
+  const outputDataForDownload = useMemo(() => {
+    if (!outputURLs) return undefined;
+    return outputURLs.map((url) => ({
+      url,
+      name: url.split("/").pop() || url,
+    }));
+  }, [outputURLs]);
 
   const [selectedDataURL, setSelectedDataURL] = useState<string | undefined>(
     undefined,
@@ -509,6 +509,7 @@ export default () => {
     showTempPossibleIssuesDialog,
     selectedDataURL,
     dataURLs,
+    outputDataForDownload,
     selectedOutputData,
     enableClustering,
     selectedFeature,

@@ -31,6 +31,7 @@ import DebugLogs from "./DebugLogs";
 import DebugPreview from "./DebugPreview";
 import TableViewer from "./DebugPreview/components/TableViewer";
 import useHooks from "./hooks";
+import OutputDataDownload from "./OutputDataDownload";
 
 const DebugPanel: React.FC = () => {
   const {
@@ -45,6 +46,7 @@ const DebugPanel: React.FC = () => {
     showTempPossibleIssuesDialog,
     selectedDataURL,
     dataURLs,
+    outputDataForDownload,
     selectedOutputData,
     enableClustering,
     selectedFeature,
@@ -185,8 +187,7 @@ const DebugPanel: React.FC = () => {
                 defaultSize={60}
                 minSize={20}
                 className="flex flex-col">
-                <Tabs defaultValue="data-viewer">
-                  <div className="py-2">
+                  <div className="flex gap-2 py-2">
                     <Select
                       defaultValue={dataURLs[0].key}
                       value={selectedDataURL}
@@ -204,8 +205,8 @@ const DebugPanel: React.FC = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    <OutputDataDownload outputData={outputDataForDownload} />
                   </div>
-                </Tabs>
                 <div className="min-h-0 flex-1">
                   <TableViewer
                     fileContent={selectedOutputData}
