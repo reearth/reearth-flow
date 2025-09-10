@@ -31,7 +31,6 @@ impl Subscriber {
             running: Arc::new(Mutex::new(true)),
         };
 
-        // Start the subscription runner
         subscriber.start_runner().await;
         subscriber
     }
@@ -50,7 +49,6 @@ impl Subscriber {
                     continue;
                 }
 
-                // Collect stream requests
                 let streams: Vec<(String, String)> = subs_read
                     .iter()
                     .map(|(stream, sub)| (stream.clone(), sub.id.clone()))
@@ -72,7 +70,6 @@ impl Subscriber {
         subs: &Arc<RwLock<HashMap<String, StreamSubscription>>>,
         streams: Vec<(String, String)>,
     ) -> Result<()> {
-        // Use a timeout to prevent hanging
         let timeout = tokio::time::timeout(
             tokio::time::Duration::from_secs(5),
             api.get_messages(streams),
@@ -86,7 +83,7 @@ impl Subscriber {
             }
             Err(_) => {
                 error!("Timeout getting messages from Redis");
-                return Ok(()); // Continue instead of failing
+                return Ok(());
             }
         };
 
@@ -100,19 +97,15 @@ impl Subscriber {
                     sub.id = next_id;
                 }
 
-                // Call all handlers for this stream
                 let handlers = sub.handlers.clone();
                 drop(subs_write);
 
                 for handler in handlers {
-                    // Process messages directly without merging first - just like JavaScript
-                    // This ensures each message gets processed individually for proper ydoc sync
                     for individual_message in &message_result.messages {
-                        // Wrap handler calls in a safe context
                         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                             handler(
                                 message_result.stream.clone(),
-                                vec![individual_message.clone()], // Send one message at a time
+                                vec![individual_message.clone()],
                             );
                         }))
                         .unwrap_or_else(|_| {
@@ -126,7 +119,6 @@ impl Subscriber {
         Ok(())
     }
 
-    /// Subscribe to a stream like JavaScript version
     pub async fn subscribe<F>(&self, stream: String, handler: F) -> SubscriptionResult
     where
         F: Fn(String, Vec<Bytes>) + Send + Sync + 'static,
@@ -156,8 +148,6 @@ impl Subscriber {
         let mut subs_write = self.subs.write().await;
 
         if let Some(subscription) = subs_write.get_mut(stream) {
-            // For simplicity, we remove all handlers
-            // In a more sophisticated implementation, you'd compare function pointers
             subscription.handlers.clear();
 
             if subscription.handlers.is_empty() {
@@ -166,7 +156,6 @@ impl Subscriber {
         }
     }
 
-    /// Ensure subscription ID like JavaScript version
     pub async fn ensure_sub_id(&self, stream: &str, id: &str) {
         let mut subs_write = self.subs.write().await;
 
@@ -191,7 +180,6 @@ pub struct SubscriptionResult {
     pub redis_id: String,
 }
 
-/// Create subscriber like JavaScript version
 pub async fn create_subscriber(redis_store: Arc<RedisStore>, api: Arc<Api>) -> Result<Subscriber> {
     Ok(Subscriber::new(redis_store, api).await)
 }

@@ -163,6 +163,23 @@ impl BroadcastGroup {
 
         let instance_id = format!("instance-{}", rand::random::<u64>());
 
+        // Register this instance in Redis for tracking like JavaScript version
+        let doc_key = format!("{}/{}", room, doc_name);
+        let client_id = {
+            let awareness_read = awareness.read().await;
+            awareness_read.client_id()
+        };
+
+        // Register instance heartbeat
+        if let Err(e) = redis_store
+            .update_instance_heartbeat(&doc_key, &client_id)
+            .await
+        {
+            warn!("Failed to register initial instance heartbeat: {}", e);
+        } else {
+            debug!("Registered instance heartbeat for doc: {}", doc_key);
+        }
+
         // Simplified awareness updater
         let api_for_awareness = api.clone();
         let room_for_awareness = room.clone();
@@ -655,21 +672,32 @@ impl BroadcastGroup {
     }
 
     pub async fn shutdown(&self) -> Result<()> {
+        // Set closing flag first to prevent new Redis operations
+        {
+            let mut closing = self.is_closing.lock().await;
+            *closing = true;
+            debug!("Set closing flag for BroadcastGroup shutdown");
+        }
+
         let client_id = {
             let awareness_read = self.awareness_ref.read().await;
             awareness_read.client_id()
         };
+
+        let doc_key = format!("{}/{}", self.room, self.doc_name);
         self.redis_store
-            .remove_instance_heartbeat(&self.doc_name, &client_id)
+            .remove_instance_heartbeat(&doc_key, &client_id)
             .await?;
 
-        let conn_count = self
-            .redis_store
-            .get_active_instances(&self.doc_name, 60)
-            .await?;
+        let conn_count = self.redis_store.get_active_instances(&doc_key, 60).await?;
+
+        debug!("Active instances for doc {}: {}", doc_key, conn_count);
+
         if conn_count <= 0 {
-            let lock_id = format!("gcs:lock:{}", self.doc_name);
-            let instance_id = format!("instance-{}", rand::random::<u64>());
+            info!("Last user for doc {}, cleaning up Redis data...", doc_key);
+
+            let lock_id = format!("cleanup:lock:{}", doc_key);
+            let instance_id = format!("cleanup-{}", rand::random::<u64>());
 
             let lock_acquired = self
                 .redis_store
@@ -681,28 +709,28 @@ impl BroadcastGroup {
                 let awareness_doc = awareness.doc();
 
                 {
+                    let stream_key = self
+                        .redis_store
+                        .compute_redis_room_stream_name(&self.room, &self.doc_name);
                     let last_stream_id = self
                         .redis_store
-                        .get_stream_last_id(&self.doc_name)
+                        .get_stream_last_id(&doc_key)
                         .await
                         .ok()
                         .flatten();
 
                     if let Some(ref id) = last_stream_id {
-                        info!("Got last stream ID before GCS save: {}", id);
-                    } else {
-                        info!("No stream ID found before GCS save");
+                        info!("Got last stream ID before cleanup: {}", id);
                     }
 
                     let gcs_doc = Doc::new();
                     let mut gcs_txn = gcs_doc.transact_mut();
 
-                    if let Err(e) = self.storage.load_doc(&self.doc_name, &mut gcs_txn).await {
-                        warn!("Failed to load current state from GCS: {}", e);
+                    if let Err(e) = self.storage.load_doc(&doc_key, &mut gcs_txn).await {
+                        warn!("Failed to load current state from storage: {}", e);
                     }
 
                     let gcs_state = gcs_txn.state_vector();
-
                     let awareness_txn = awareness_doc.transact();
 
                     let update = awareness_txn.encode_diff_v1(&gcs_state);
@@ -713,47 +741,72 @@ impl BroadcastGroup {
                             && update_bytes[0] == 0
                             && update_bytes[1] == 0))
                     {
-                        let update_future = self.storage.push_update(
-                            &self.doc_name,
-                            &update_bytes,
-                            &self.redis_store,
-                        );
-                        let flush_future =
-                            self.storage.flush_doc_v2(&self.doc_name, &awareness_txn);
+                        info!("Saving final document state for {} before cleanup", doc_key);
 
-                        let (update_result, flush_result) =
-                            tokio::join!(update_future, flush_future);
-
+                        let flush_result =
+                            self.storage.flush_doc_v2(&doc_key, &awareness_txn).await;
                         if let Err(e) = flush_result {
-                            warn!("Failed to flush document directly to storage: {}", e);
-                        }
-                        if let Err(e) = update_result {
-                            warn!("Failed to update document in storage: {}", e);
+                            warn!("Failed to flush final document state to storage: {}", e);
+                        } else {
+                            info!("Successfully saved final document state for {}", doc_key);
                         }
 
                         if let Some(last_id) = last_stream_id {
                             if let Err(e) = self
                                 .redis_store
-                                .trim_stream_before(&self.doc_name, &last_id)
+                                .trim_stream_before(&doc_key, &last_id)
                                 .await
                             {
-                                warn!("Failed to trim Redis stream after GCS save: {}", e);
+                                warn!("Failed to trim Redis stream after final save: {}", e);
+                            } else {
+                                info!("Trimmed Redis stream after final save");
                             }
                         }
                     }
-                }
-            }
 
-            if let Err(e) = self
-                .redis_store
-                .release_doc_lock(&lock_id, &instance_id)
-                .await
-            {
-                warn!("Failed to release GCS lock: {}", e);
+                    info!("Cleaning up Redis data for document: {}", doc_key);
+
+                    if let Err(e) = self.redis_store.delete_stream(&doc_key).await {
+                        warn!("Failed to delete Redis stream: {}", e);
+                    } else {
+                        info!("Successfully deleted Redis stream for {}", doc_key);
+                    }
+
+                    let stream_key = self
+                        .redis_store
+                        .compute_redis_room_stream_name(&self.room, &self.doc_name);
+                    let worker_cleanup_result = self
+                        .redis_store
+                        .safe_delete_stream(&doc_key, &self.instance_id)
+                        .await;
+                    if let Err(e) = worker_cleanup_result {
+                        warn!("Failed to clean up worker queue for {}: {}", doc_key, e);
+                    } else {
+                        info!("Cleaned up worker queue for {}", doc_key);
+                    }
+                }
+
+                // Release the cleanup lock
+                if let Err(e) = self
+                    .redis_store
+                    .release_doc_lock(&lock_id, &instance_id)
+                    .await
+                {
+                    warn!("Failed to release cleanup lock: {}", e);
+                }
+
+                info!("Completed cleanup for last user of document: {}", doc_key);
+            } else {
+                debug!(
+                    "Another instance is already cleaning up document: {}",
+                    doc_key
+                );
             }
-            self.redis_store
-                .safe_delete_stream(&self.doc_name, &self.instance_id)
-                .await?;
+        } else {
+            debug!(
+                "Other users still active for doc {}, skipping cleanup",
+                doc_key
+            );
         }
 
         Ok(())
@@ -762,7 +815,7 @@ impl BroadcastGroup {
 
 impl Drop for BroadcastGroup {
     fn drop(&mut self) {
-        debug!("Dropping BroadcastGroup for room: {}", self.room);
+        info!("Dropping BroadcastGroup for room: {}", self.room);
 
         // Set closing flag to prevent new Redis operations
         let is_closing_clone = self.is_closing.clone();
@@ -781,7 +834,7 @@ impl Drop for BroadcastGroup {
             subscriber_clone
                 .unsubscribe(&stream_name_clone, dummy_handler)
                 .await;
-            debug!("Unsubscribed from Redis stream: {}", stream_name_clone);
+            info!("Unsubscribed from Redis stream: {}", stream_name_clone);
         });
 
         // Send shutdown signals and abort tasks if sending fails
@@ -797,7 +850,7 @@ impl Drop for BroadcastGroup {
         // Shutdown Redis handler task first to stop processing messages
         if let Some(tx) = self.redis_handler_shutdown_tx.take() {
             if tx.send(()).is_err() {
-                debug!("Redis handler shutdown channel already closed");
+                info!("Redis handler shutdown channel already closed");
                 if let Some(task) = self.redis_handler_task.take() {
                     task.abort();
                 }
@@ -806,7 +859,7 @@ impl Drop for BroadcastGroup {
 
         if let Some(tx) = self.heartbeat_shutdown_tx.take() {
             if tx.send(()).is_err() {
-                debug!("Heartbeat shutdown channel already closed");
+                info!("Heartbeat shutdown channel already closed");
                 if let Some(task) = self.heartbeat_task.take() {
                     task.abort();
                 }
@@ -815,14 +868,14 @@ impl Drop for BroadcastGroup {
 
         if let Some(tx) = self.sync_shutdown_tx.take() {
             if tx.send(()).is_err() {
-                debug!("Sync shutdown channel already closed");
+                info!("Sync shutdown channel already closed");
                 if let Some(task) = self.sync_task.take() {
                     task.abort();
                 }
             }
         }
 
-        debug!(
+        info!(
             "BroadcastGroup dropped successfully for room: {}",
             self.room
         );

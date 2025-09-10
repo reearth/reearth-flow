@@ -28,15 +28,15 @@ pub fn is_smaller_redis_id(a: &str, b: &str) -> bool {
 
 #[derive(Debug, Clone)]
 pub struct ApiConfig {
-    pub redis_task_debounce: u64,        // Default: 10 seconds
-    pub redis_min_message_lifetime: u64, // Default: 60 seconds
+    pub redis_task_debounce: u64,
+    pub redis_min_message_lifetime: u64,
 }
 
 impl Default for ApiConfig {
     fn default() -> Self {
         Self {
-            redis_task_debounce: 10000,        // 10 seconds in ms
-            redis_min_message_lifetime: 60000, // 1 minute in ms
+            redis_task_debounce: 10000,
+            redis_min_message_lifetime: 60000,
         }
     }
 }
@@ -73,7 +73,6 @@ impl Api {
         let redis_worker_stream_name = format!("{}:worker", prefix);
         let redis_worker_group_name = format!("{}:worker", prefix);
 
-        // Try to create consumer group
         if let Ok(mut conn) = redis_store.get_pool().get().await {
             let _: Result<(), redis::RedisError> = redis::cmd("XGROUP")
                 .arg("CREATE")
@@ -97,28 +96,23 @@ impl Api {
         })
     }
 
-    /// Get messages from multiple streams like JavaScript version
     pub async fn get_messages(
         &self,
-        streams: Vec<(String, String)>, // (stream_key, id) pairs
+        streams: Vec<(String, String)>,
     ) -> Result<Vec<StreamMessageResult>> {
         self.redis_store.get_messages(streams).await
     }
 
-    /// Add message to stream like JavaScript version
     pub async fn add_message(&self, room: &str, docid: &str, message: &[u8]) -> Result<()> {
         let mut conn = self.redis_store.create_dedicated_connection().await?;
         let stream_key = self.redis_store.compute_redis_room_stream_name(room, docid);
 
-        // Handle sync step 2 like a normal update message (like JavaScript)
         let mut message_to_send = message.to_vec();
         if message.len() >= 2 && message[0] == 0 && message[1] == 1 {
-            // sync step 2
             if message.len() < 4 {
-                // message does not contain any content, don't distribute
                 return Ok(());
             }
-            message_to_send[1] = 2; // change to sync update
+            message_to_send[1] = 2;
         }
 
         self.redis_store
@@ -131,9 +125,7 @@ impl Api {
             .await
     }
 
-    /// Get state vector from storage
     pub async fn get_state_vector(&self, room: &str, docid: &str) -> Result<Option<Vec<u8>>> {
-        // Try to load document from GCS storage and compute state vector
         let temp_doc = Doc::new();
         {
             let mut txn = temp_doc.transact_mut();
@@ -151,7 +143,6 @@ impl Api {
         Ok(Some(state_vector))
     }
 
-    /// Get document like JavaScript version
     pub async fn get_doc(&self, room: &str, docid: &str) -> Result<GetDocResult> {
         debug!("getDoc({}, {})", room, docid);
 
@@ -163,7 +154,6 @@ impl Api {
 
         let doc_messages = messages.first();
 
-        // Load existing document state from storage
         let ydoc = Doc::new();
         let mut doc_loaded = false;
         {
@@ -193,7 +183,7 @@ impl Api {
         debug!("getDoc({}, {}) - retrieved doc from storage", room, docid);
 
         let awareness = Awareness::new(ydoc.clone());
-        let _ = awareness.set_local_state(None::<serde_json::Value>); // we don't want to propagate awareness state
+        let _ = awareness.set_local_state(None::<serde_json::Value>);
 
         let mut doc_changed = false;
         let mut redis_last_id = "0".to_string();
@@ -205,8 +195,6 @@ impl Api {
             let initial_state = txn.state_vector();
 
             for message in &messages_result.messages {
-                // Try to decode and apply the message safely
-                // Skip messages that can't be parsed to avoid crashes
                 match Update::decode_v1(message) {
                     Ok(update) => {
                         if let Err(e) = txn.apply_update(update) {
@@ -215,7 +203,6 @@ impl Api {
                     }
                     Err(e) => {
                         debug!("Skipping unparseable message (likely legacy format): {}", e);
-                        // Continue processing other messages instead of failing
                     }
                 }
             }
@@ -224,7 +211,6 @@ impl Api {
             doc_changed = initial_state != final_state;
         }
 
-        // Generate references for tracking document versions
         let store_references = if doc_loaded {
             Some(vec![uuid::Uuid::new_v4().to_string()])
         } else {
@@ -246,12 +232,10 @@ impl Api {
         Ok(())
     }
 
-    /// Consume worker queue like JavaScript version
     pub async fn consume_worker_queue(&self, opts: &WorkerOpts) -> Result<Vec<String>> {
         let mut tasks = Vec::new();
         let mut conn = self.redis_store.get_pool().get().await?;
 
-        // Try to reclaim tasks using XAUTOCLAIM
         let reclaimed_result: redis::Value = redis::cmd("XAUTOCLAIM")
             .arg(&self.redis_worker_stream_name)
             .arg(&self.redis_worker_group_name)
@@ -263,7 +247,6 @@ impl Api {
             .query_async(&mut *conn)
             .await?;
 
-        // Parse reclaimed tasks
         let mut task_streams = Vec::new();
         if let redis::Value::Array(reclaimed_array) = reclaimed_result {
             if reclaimed_array.len() >= 2 {
@@ -311,7 +294,6 @@ impl Api {
 
         debug!("Accepted {} tasks", task_streams.len());
 
-        // Process each task stream
         for (i, stream) in task_streams.iter().enumerate() {
             let stream_len: usize = redis::cmd("XLEN")
                 .arg(stream)
@@ -319,7 +301,6 @@ impl Api {
                 .await?;
 
             if stream_len == 0 {
-                // Stream is empty, remove the task
                 let _: () = redis::cmd("DEL")
                     .arg(stream)
                     .query_async(&mut *conn)
@@ -338,12 +319,10 @@ impl Api {
                     stream
                 );
             } else {
-                // Process the stream - compact the document
                 if let Err(e) = self.process_stream_for_compaction(stream).await {
                     warn!("Failed to compact stream {}: {}", stream, e);
                 }
 
-                // Re-add the task to the queue for future processing
                 let _: () = redis::cmd("XADD")
                     .arg(&self.redis_worker_stream_name)
                     .arg("*")
@@ -352,7 +331,6 @@ impl Api {
                     .query_async(&mut *conn)
                     .await?;
 
-                // Remove the current task
                 if let Some(task_id) = tasks.get(i) {
                     let _: () = redis::cmd("XDEL")
                         .arg(&self.redis_worker_stream_name)
@@ -368,9 +346,7 @@ impl Api {
         Ok(task_streams)
     }
 
-    /// Process a stream for document compaction like JavaScript version
     async fn process_stream_for_compaction(&self, stream: &str) -> Result<()> {
-        // Extract room and docid from stream name (format: prefix:room:room:docid)
         let stream_parts: Vec<&str> = stream.split(':').collect();
         if stream_parts.len() >= 4 && stream_parts[1] == "room" {
             let room = urlencoding::decode(stream_parts[2])?.into_owned();
@@ -381,10 +357,8 @@ impl Api {
                 room, docid
             );
 
-            // Get the document state and persist it if changed
             let doc_result = self.get_doc(&room, &docid).await?;
             if doc_result.doc_changed {
-                // Save the document to persistent storage
                 let doc_key = format!("{}/{}", room, docid);
                 if let Err(e) = self
                     .storage
@@ -399,7 +373,6 @@ impl Api {
                     );
                 }
 
-                // Trim the Redis stream to remove old entries
                 let last_id = if doc_result.redis_last_id != "0" {
                     doc_result.redis_last_id
                 } else {
