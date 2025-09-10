@@ -11,7 +11,7 @@ use bytes::Bytes;
 use futures_util::{SinkExt, StreamExt};
 use rand;
 use tokio::task::JoinHandle;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 use yrs::types::ToJson;
 
 use serde_json;
@@ -41,6 +41,8 @@ pub struct BroadcastGroup {
     doc_name: String,
     instance_id: String,
     initial_redis_sub_id: String,
+    stream_name: String,
+    is_closing: Arc<tokio::sync::Mutex<bool>>,
     awareness_updater: Option<JoinHandle<()>>,
     awareness_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
     redis_handler_task: Option<JoinHandle<()>>,
@@ -83,10 +85,14 @@ impl BroadcastGroup {
         let mut lock = awareness.write().await;
         let sink = sender.clone();
 
+        // Create is_closing flag to prevent Redis operations during shutdown
+        let is_closing = Arc::new(tokio::sync::Mutex::new(false));
+
         // Doc update handler - when local doc changes, send to Redis
         let api_for_updates = api.clone();
         let room_for_updates = room.clone();
         let doc_name_for_updates = doc_name.clone();
+        let is_closing_for_doc = is_closing.clone();
         let doc_sub = {
             lock.doc_mut().observe_update_v1(move |_txn, u| {
                 let mut encoder = EncoderV1::new();
@@ -97,19 +103,30 @@ impl BroadcastGroup {
 
                 // Send to local subscribers
                 if let Err(e) = sink.send(msg.clone()) {
-                    error!("broadcast channel closed: {}", e);
+                    debug!("broadcast channel closed (likely during shutdown): {}", e);
+                    return; // Don't continue if local broadcast fails
                 }
 
-                // Send to Redis using JavaScript-style API
+                // Only send to Redis if not closing
                 let api_clone = api_for_updates.clone();
                 let room_clone = room_for_updates.clone();
                 let doc_name_clone = doc_name_for_updates.clone();
+                let is_closing_clone = is_closing_for_doc.clone();
                 tokio::spawn(async move {
+                    // Check if we're in shutdown state
+                    if *is_closing_clone.lock().await {
+                        debug!("Skipping Redis send during shutdown");
+                        return;
+                    }
+
                     if let Err(e) = api_clone
                         .add_message(&room_clone, &doc_name_clone, &msg)
                         .await
                     {
-                        warn!("Failed to add message to Redis: {}", e);
+                        debug!(
+                            "Failed to add message to Redis (likely during shutdown): {}",
+                            e
+                        );
                     }
                 });
             })?
@@ -150,6 +167,7 @@ impl BroadcastGroup {
         let api_for_awareness = api.clone();
         let room_for_awareness = room.clone();
         let doc_name_for_awareness = doc_name.clone();
+        let is_closing_for_awareness = is_closing.clone();
         let awareness_updater = tokio::task::spawn(async move {
             loop {
                 select! {
@@ -177,14 +195,20 @@ impl BroadcastGroup {
                                             return;
                                         }
 
-                                        // Send awareness to Redis
+                                        // Send awareness to Redis only if not closing
                                         let api_clone = api_for_awareness.clone();
                                         let room_clone = room_for_awareness.clone();
                                         let doc_name_clone = doc_name_for_awareness.clone();
+                                        let is_closing_clone = is_closing_for_awareness.clone();
                                         tokio::spawn(async move {
-                                            if api_clone.add_message(&room_clone, &doc_name_clone, &msg_bytes).await.is_err() {
-                                                // Silently ignore Redis errors during disconnection
-                                                debug!("Failed to add awareness message to Redis (likely during disconnection)");
+                                            // Check if we're in shutdown state
+                                            if *is_closing_clone.lock().await {
+                                                debug!("Skipping Redis awareness send during shutdown");
+                                                return;
+                                            }
+
+                                            if let Err(e) = api_clone.add_message(&room_clone, &doc_name_clone, &msg_bytes).await {
+                                                debug!("Failed to add awareness message to Redis (likely during shutdown): {}", e);
                                             }
                                         });
                                     }
@@ -327,9 +351,13 @@ impl BroadcastGroup {
             let tx = redis_msg_tx.clone();
             let sub_result = subscriber_for_messages
                 .subscribe(stream_key, move |stream: String, messages: Vec<Bytes>| {
-                    // Send to async handler
+                    // Send to async handler, but handle channel closure gracefully
                     if let Err(e) = tx.send((stream.clone(), messages)) {
-                        error!("Failed to send Redis messages to handler: {}", e);
+                        // Only log as debug during shutdown to avoid spam
+                        debug!(
+                            "Redis messages channel closed during shutdown for stream {}: {}",
+                            stream, e
+                        );
                     }
                 })
                 .await;
@@ -399,6 +427,8 @@ impl BroadcastGroup {
             doc_name,
             instance_id,
             initial_redis_sub_id,
+            stream_name,
+            is_closing,
             awareness_updater: Some(awareness_updater),
             awareness_shutdown_tx: Some(awareness_shutdown_tx),
             redis_handler_task: Some(redis_handler_task),
@@ -734,6 +764,26 @@ impl Drop for BroadcastGroup {
     fn drop(&mut self) {
         debug!("Dropping BroadcastGroup for room: {}", self.room);
 
+        // Set closing flag to prevent new Redis operations
+        let is_closing_clone = self.is_closing.clone();
+        tokio::spawn(async move {
+            let mut closing = is_closing_clone.lock().await;
+            *closing = true;
+            debug!("Set closing flag to prevent Redis operations");
+        });
+
+        // Unsubscribe from Redis to stop receiving new messages
+        let subscriber_clone = self.subscriber.clone();
+        let stream_name_clone = self.stream_name.clone();
+        tokio::spawn(async move {
+            // Use a dummy handler for unsubscribe (the function signature requires it)
+            let dummy_handler = |_: String, _: Vec<Bytes>| {};
+            subscriber_clone
+                .unsubscribe(&stream_name_clone, dummy_handler)
+                .await;
+            debug!("Unsubscribed from Redis stream: {}", stream_name_clone);
+        });
+
         // Send shutdown signals and abort tasks if sending fails
         if let Some(tx) = self.awareness_shutdown_tx.take() {
             if tx.send(()).is_err() {
@@ -744,7 +794,7 @@ impl Drop for BroadcastGroup {
             }
         }
 
-        // Shutdown Redis handler task
+        // Shutdown Redis handler task first to stop processing messages
         if let Some(tx) = self.redis_handler_shutdown_tx.take() {
             if tx.send(()).is_err() {
                 debug!("Redis handler shutdown channel already closed");
