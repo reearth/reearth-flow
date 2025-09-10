@@ -62,9 +62,6 @@ impl Worker {
 }
 
 /// Create worker like JavaScript version
-pub async fn create_worker(
-    api: Arc<Api>,
-    opts: Option<WorkerOpts>
-) -> Result<Worker> {
+pub async fn create_worker(api: Arc<Api>, opts: Option<WorkerOpts>) -> Result<Worker> {
     Ok(Worker::new(api, opts))
 }

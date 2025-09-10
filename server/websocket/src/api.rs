@@ -205,11 +205,17 @@ impl Api {
             let initial_state = txn.state_vector();
 
             for message in &messages_result.messages {
-                // Try to decode and apply the message
-                // This is a simplified version - you might need more sophisticated message parsing
-                if let Ok(update) = Update::decode_v1(message) {
-                    if let Err(e) = txn.apply_update(update) {
-                        warn!("Failed to apply update: {}", e);
+                // Try to decode and apply the message safely
+                // Skip messages that can't be parsed to avoid crashes
+                match Update::decode_v1(message) {
+                    Ok(update) => {
+                        if let Err(e) = txn.apply_update(update) {
+                            warn!("Failed to apply update: {}", e);
+                        }
+                    }
+                    Err(e) => {
+                        debug!("Skipping unparseable message (likely legacy format): {}", e);
+                        // Continue processing other messages instead of failing
                     }
                 }
             }

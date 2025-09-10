@@ -72,7 +72,23 @@ impl Subscriber {
         subs: &Arc<RwLock<HashMap<String, StreamSubscription>>>,
         streams: Vec<(String, String)>,
     ) -> Result<()> {
-        let messages = api.get_messages(streams).await?;
+        // Use a timeout to prevent hanging
+        let timeout = tokio::time::timeout(
+            tokio::time::Duration::from_secs(5),
+            api.get_messages(streams)
+        );
+
+        let messages = match timeout.await {
+            Ok(Ok(messages)) => messages,
+            Ok(Err(e)) => {
+                error!("Error getting messages from Redis: {}", e);
+                return Err(e);
+            }
+            Err(_) => {
+                error!("Timeout getting messages from Redis");
+                return Ok(()); // Continue instead of failing
+            }
+        };
 
         for message_result in messages {
             let mut subs_write = subs.write().await;
@@ -89,10 +105,15 @@ impl Subscriber {
                 drop(subs_write);
 
                 for handler in handlers {
-                    handler(
-                        message_result.stream.clone(),
-                        message_result.messages.clone(),
-                    );
+                    // Wrap handler calls in a safe context
+                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        handler(
+                            message_result.stream.clone(),
+                            message_result.messages.clone(),
+                        );
+                    })).unwrap_or_else(|_| {
+                        error!("Handler panicked for stream: {}", message_result.stream);
+                    });
                 }
             }
         }

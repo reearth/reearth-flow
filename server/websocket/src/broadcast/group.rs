@@ -3,7 +3,7 @@ use crate::api::Api;
 use crate::storage::gcs::GcsStore;
 use crate::storage::kv::DocOps;
 use crate::storage::redis::RedisStore;
-use crate::subscriber::{Subscriber, create_subscriber};
+use crate::subscriber::{create_subscriber, Subscriber};
 use crate::{AwarenessRef, Subscription};
 
 use anyhow::Result;
@@ -68,11 +68,12 @@ impl BroadcastGroup {
     ) -> Result<Self> {
         // Create API and Subscriber like JavaScript version
         let api: Arc<Api> = Arc::new(Api::new(redis_store.clone(), storage.clone(), None).await?);
-        let subscriber: Arc<Subscriber> = Arc::new(create_subscriber(redis_store.clone(), api.clone()).await?);
-        
+        let subscriber: Arc<Subscriber> =
+            Arc::new(create_subscriber(redis_store.clone(), api.clone()).await?);
+
         let room = config.room_name.clone().unwrap_or_default();
         let doc_name = config.doc_name.clone().unwrap_or("index".to_string());
-        
+
         // Compute stream name using JavaScript format
         let stream_name = redis_store.compute_redis_room_stream_name(&room, &doc_name);
         let (sender, _) = channel(buffer_capacity.max(512));
@@ -91,18 +92,21 @@ impl BroadcastGroup {
                 encoder.write_var(MSG_SYNC_UPDATE);
                 encoder.write_buf(&u.update);
                 let msg = Bytes::from(encoder.to_vec());
-                
+
                 // Send to local subscribers
                 if let Err(e) = sink.send(msg.clone()) {
                     error!("broadcast channel closed: {}", e);
                 }
-                
+
                 // Send to Redis using JavaScript-style API
                 let api_clone = api_for_updates.clone();
                 let room_clone = room_for_updates.clone();
                 let doc_name_clone = doc_name_for_updates.clone();
                 tokio::spawn(async move {
-                    if let Err(e) = api_clone.add_message(&room_clone, &doc_name_clone, &msg).await {
+                    if let Err(e) = api_clone
+                        .add_message(&room_clone, &doc_name_clone, &msg)
+                        .await
+                    {
                         warn!("Failed to add message to Redis: {}", e);
                     }
                 });
@@ -127,14 +131,19 @@ impl BroadcastGroup {
             changed.extend_from_slice(updated);
             changed.extend_from_slice(removed);
 
-            if let Err(e) = tx.send(changed) {
-                warn!("failed to send awareness update: {}", e);
+            // Check if sender is still available before sending
+            if tx.is_closed() {
+                return; // Silently return if channel is closed
+            }
+
+            if tx.send(changed).is_err() {
+                // Don't log warning as this is expected when client disconnects
             }
         });
         drop(lock);
 
         let instance_id = format!("instance-{}", rand::random::<u64>());
-        
+
         // Simplified awareness updater
         let api_for_awareness = api.clone();
         let room_for_awareness = room.clone();
@@ -152,8 +161,17 @@ impl BroadcastGroup {
                                     let awareness = awareness.read().await;
                                     if let Ok(update) = awareness.update_with_clients(changed_clients.clone()) {
                                         let msg_bytes = Bytes::from(Message::Awareness(update.clone()).encode_v1());
-                                        if let Err(e) = sink.send(msg_bytes.clone()) {
-                                            error!("couldn't broadcast awareness update {}", e);
+
+                                        // Check if the broadcast channel is still open
+                                        if sink.receiver_count() == 0 {
+                                            // No receivers, break the loop
+                                            debug!("No receivers for awareness updates, stopping updater");
+                                            break;
+                                        }
+
+                                        if sink.send(msg_bytes.clone()).is_err() {
+                                            // Channel closed, stop the updater gracefully
+                                            debug!("Awareness broadcast channel closed, stopping updater");
                                             return;
                                         }
 
@@ -162,8 +180,9 @@ impl BroadcastGroup {
                                         let room_clone = room_for_awareness.clone();
                                         let doc_name_clone = doc_name_for_awareness.clone();
                                         tokio::spawn(async move {
-                                            if let Err(e) = api_clone.add_message(&room_clone, &doc_name_clone, &msg_bytes).await {
-                                                warn!("Failed to add awareness message to Redis: {}", e);
+                                            if api_clone.add_message(&room_clone, &doc_name_clone, &msg_bytes).await.is_err() {
+                                                // Silently ignore Redis errors during disconnection
+                                                debug!("Failed to add awareness message to Redis (likely during disconnection)");
                                             }
                                         });
                                     }
@@ -186,23 +205,28 @@ impl BroadcastGroup {
         let subscriber_for_messages = subscriber.clone();
         let initial_redis_sub_id = {
             let stream_key = stream_name.clone();
-            let sub_result = subscriber_for_messages.subscribe(
-                stream_key,
-                move |_stream: String, messages: Vec<Bytes>| {
-                    // Merge and send messages like JavaScript version
-                    let merged_messages = if messages.len() == 1 {
-                        messages
-                    } else {
-                        crate::protocol::merge_messages(messages)
-                    };
-                    
-                    for merged_message in merged_messages {
-                        if let Err(e) = sender_for_sub.send(merged_message) {
-                            warn!("Failed to send Redis message to local subscribers: {}", e);
+            let sub_result = subscriber_for_messages
+                .subscribe(stream_key, move |_stream: String, messages: Vec<Bytes>| {
+                    // Safely handle messages to prevent panics
+                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        // Merge and send messages like JavaScript version
+                        let merged_messages = if messages.len() == 1 {
+                            messages
+                        } else {
+                            crate::protocol::merge_messages(messages)
+                        };
+
+                        for merged_message in merged_messages {
+                            if let Err(e) = sender_for_sub.send(merged_message) {
+                                warn!("Failed to send Redis message to local subscribers: {}", e);
+                            }
                         }
-                    }
-                }
-            ).await;
+                    }))
+                    .unwrap_or_else(|_| {
+                        error!("Handler panicked while processing Redis messages");
+                    });
+                })
+                .await;
             sub_result.redis_id
         };
 
@@ -211,7 +235,7 @@ impl BroadcastGroup {
         let heartbeat_task = tokio::spawn(async move {
             let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(30));
             interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-            
+
             loop {
                 select! {
                     _ = &mut heartbeat_shutdown_rx => {
@@ -513,6 +537,8 @@ impl BroadcastGroup {
         let awareness = self.awareness().clone();
         let awareness_read = awareness.read().await;
         awareness_read.clean_local_state();
+
+        debug!("Cleaned up client awareness for room: {}", self.room);
         Ok(())
     }
 
@@ -624,30 +650,39 @@ impl BroadcastGroup {
 
 impl Drop for BroadcastGroup {
     fn drop(&mut self) {
+        debug!("Dropping BroadcastGroup for room: {}", self.room);
+
+        // Send shutdown signals and abort tasks if sending fails
         if let Some(tx) = self.awareness_shutdown_tx.take() {
-            if let Err(e) = tx.send(()) {
-                warn!("Failed to send awareness shutdown signal: {:?}", e);
+            if tx.send(()).is_err() {
+                debug!("Awareness shutdown channel already closed");
                 if let Some(task) = self.awareness_updater.take() {
                     task.abort();
                 }
             }
         }
+
         if let Some(tx) = self.heartbeat_shutdown_tx.take() {
-            if let Err(e) = tx.send(()) {
-                warn!("Failed to send heartbeat shutdown signal: {:?}", e);
+            if tx.send(()).is_err() {
+                debug!("Heartbeat shutdown channel already closed");
                 if let Some(task) = self.heartbeat_task.take() {
                     task.abort();
                 }
             }
         }
-        // Redis subscriber is now handled by the Subscriber struct
+
         if let Some(tx) = self.sync_shutdown_tx.take() {
-            if let Err(e) = tx.send(()) {
-                warn!("Failed to send sync shutdown signal: {:?}", e);
+            if tx.send(()).is_err() {
+                debug!("Sync shutdown channel already closed");
                 if let Some(task) = self.sync_task.take() {
                     task.abort();
                 }
             }
         }
+
+        debug!(
+            "BroadcastGroup dropped successfully for room: {}",
+            self.room
+        );
     }
 }

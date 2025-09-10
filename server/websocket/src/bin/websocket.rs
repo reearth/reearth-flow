@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use tracing::{error, info};
+use tracing::{debug, error, info};
 use uuid::Uuid;
 use websocket::{
     api::Api, conf::Config, pool::BroadcastPool, server::start_server, storage::gcs::GcsStore,
@@ -104,6 +104,19 @@ async fn main() {
         std::process::exit(1);
     }
     info!("Worker started successfully");
+
+    // Set up periodic cleanup for inactive broadcast groups
+    let pool_for_cleanup = pool.clone();
+    tokio::spawn(async move {
+        let mut cleanup_interval = tokio::time::interval(tokio::time::Duration::from_secs(60));
+        cleanup_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+        loop {
+            cleanup_interval.tick().await;
+            debug!("Running periodic cleanup of inactive broadcast groups");
+            pool_for_cleanup.cleanup_inactive_groups().await;
+        }
+    });
 
     // Set up graceful shutdown handlers
     let subscriber_clone = subscriber.clone();
