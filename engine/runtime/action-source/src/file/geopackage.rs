@@ -95,6 +95,12 @@ pub(super) struct GeoPackageReaderParam {
     include_metadata: bool,
     #[serde(default)]
     tile_format: TileFormat,
+    attribute_filter: Option<String>,
+    #[serde(default)]
+    batch_size: Option<usize>,
+    #[serde(default)]
+    force_2d: bool,
+    spatial_filter: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
@@ -197,6 +203,26 @@ async fn process_geopackage(
     Ok(all_features)
 }
 
+fn validate_table_name(name: &str) -> Result<(), SourceError> {
+    if !name
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+    {
+        return Err(SourceError::GeoPackageReader(format!(
+            "Invalid table name: {name}"
+        )));
+    }
+    Ok(())
+}
+
+fn escape_identifier(name: &str) -> String {
+    name.replace('"', "\"\"")
+}
+
+fn escape_string(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "''"))
+}
+
 async fn verify_geopackage(adapter: &SqlAdapter) -> Result<(), SourceError> {
     let query = "SELECT name FROM sqlite_master WHERE type='table' AND name='gpkg_contents'";
     let rows = adapter.fetch_many(query).await.map_err(|e| {
@@ -224,7 +250,7 @@ async fn read_features(
 
     let mut all_features = Vec::new();
     for layer in layers {
-        let features = read_layer_features(adapter, &layer).await?;
+        let features = read_layer_features(adapter, &layer, params.force_2d).await?;
         all_features.extend(features);
     }
 
@@ -248,18 +274,20 @@ async fn get_feature_layers(adapter: &SqlAdapter) -> Result<Vec<String>, SourceE
 async fn read_layer_features(
     adapter: &SqlAdapter,
     layer_name: &str,
+    force_2d: bool,
 ) -> Result<Vec<Feature>, SourceError> {
     let geom_col = get_geometry_column(adapter, layer_name).await?;
     let srs_id = get_layer_srs_id(adapter, layer_name).await?;
 
-    let query = format!("SELECT * FROM \"{layer_name}\"");
+    validate_table_name(layer_name)?;
+    let query = format!("SELECT * FROM \"{}\"", escape_identifier(layer_name));
     let rows = adapter.fetch_many(&query).await.map_err(|e| {
         SourceError::GeoPackageReader(format!("Failed to query layer {layer_name}: {e}"))
     })?;
 
     let mut features = Vec::new();
     for row in rows {
-        let feature = row_to_feature(&row, &geom_col, srs_id)?;
+        let feature = row_to_feature(&row, &geom_col, srs_id, force_2d)?;
         features.push(feature);
     }
 
@@ -271,7 +299,8 @@ async fn get_geometry_column(
     table_name: &str,
 ) -> Result<String, SourceError> {
     let query = format!(
-        "SELECT column_name FROM gpkg_geometry_columns WHERE table_name = '{table_name}'"
+        "SELECT column_name FROM gpkg_geometry_columns WHERE table_name = {}",
+        escape_string(table_name)
     );
     let rows = adapter.fetch_many(&query).await.map_err(|e| {
         SourceError::GeoPackageReader(format!("Failed to query geometry column: {e}"))
@@ -287,8 +316,10 @@ async fn get_geometry_column(
 }
 
 async fn get_layer_srs_id(adapter: &SqlAdapter, table_name: &str) -> Result<i32, SourceError> {
+    // Escape table name to prevent SQL injection
     let query = format!(
-        "SELECT srs_id FROM gpkg_geometry_columns WHERE table_name = '{table_name}'"
+        "SELECT srs_id FROM gpkg_geometry_columns WHERE table_name = {}",
+        escape_string(table_name)
     );
     let rows = adapter
         .fetch_many(&query)
@@ -304,7 +335,12 @@ async fn get_layer_srs_id(adapter: &SqlAdapter, table_name: &str) -> Result<i32,
     Ok(4326)
 }
 
-fn row_to_feature(row: &AnyRow, geom_col: &str, srs_id: i32) -> Result<Feature, SourceError> {
+fn row_to_feature(
+    row: &AnyRow,
+    geom_col: &str,
+    srs_id: i32,
+    force_2d: bool,
+) -> Result<Feature, SourceError> {
     let mut attributes = IndexMap::new();
     let mut geometry = None;
 
@@ -313,7 +349,7 @@ fn row_to_feature(row: &AnyRow, geom_col: &str, srs_id: i32) -> Result<Feature, 
 
         if col_name == geom_col {
             if let Ok(blob) = row.try_get::<Vec<u8>, _>(idx) {
-                geometry = Some(parse_geopackage_geometry(&blob, srs_id)?);
+                geometry = Some(parse_geopackage_geometry(&blob, srs_id, force_2d)?);
             }
         } else {
             let value = get_attribute_value(row, idx)?;
@@ -389,7 +425,7 @@ fn get_attribute_value(row: &AnyRow, idx: usize) -> Result<AttributeValue, Sourc
     }
 }
 
-fn parse_geopackage_geometry(blob: &[u8], srs_id: i32) -> Result<Geometry, SourceError> {
+fn parse_geopackage_geometry(blob: &[u8], srs_id: i32, force_2d: bool) -> Result<Geometry, SourceError> {
     if blob.len() < 8 {
         return Err(SourceError::GeoPackageReader(
             "Invalid geometry blob: too short".to_string(),
@@ -451,17 +487,15 @@ fn parse_geopackage_geometry(blob: &[u8], srs_id: i32) -> Result<Geometry, Sourc
     let wkb_start = cursor.position() as usize;
     let wkb = &blob[wkb_start..];
 
-
     // Use SRS ID from GP header if available, otherwise use the one from database
     let final_srs_id = if gp_srs_id != 0 { gp_srs_id } else { srs_id };
-    parse_wkb(wkb, final_srs_id)
+    parse_wkb(wkb, final_srs_id, force_2d)
 }
 
-fn parse_wkb(wkb: &[u8], srs_id: i32) -> Result<Geometry, SourceError> {
+fn parse_wkb(wkb: &[u8], srs_id: i32, force_2d: bool) -> Result<Geometry, SourceError> {
     if wkb.len() < 5 {
         return Err(SourceError::GeoPackageReader("WKB too short".to_string()));
     }
-
 
     let mut cursor = std::io::Cursor::new(wkb);
     use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
@@ -470,21 +504,19 @@ fn parse_wkb(wkb: &[u8], srs_id: i32) -> Result<Geometry, SourceError> {
         .read_u8()
         .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read byte order: {e}")))?;
 
-
     let wkb_type = if byte_order == 0x01 {
         let t = cursor
             .read_u32::<LittleEndian>()
             .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}")))?;
-        
+
         t
     } else {
         let t = cursor
             .read_u32::<BigEndian>()
             .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}")))?;
-        
+
         t
     };
-    
 
     let has_z = (wkb_type & 0x80000000) != 0;
     let has_m = (wkb_type & 0x40000000) != 0;
@@ -497,13 +529,13 @@ fn parse_wkb(wkb: &[u8], srs_id: i32) -> Result<Geometry, SourceError> {
     };
 
     match geom_type {
-        1 => parse_point(&mut cursor, has_z, has_m, epsg, byte_order),
-        2 => parse_linestring(&mut cursor, has_z, has_m, epsg, byte_order),
-        3 => parse_polygon(&mut cursor, has_z, has_m, epsg, byte_order),
-        4 => parse_multipoint(&mut cursor, has_z, has_m, epsg, byte_order),
-        5 => parse_multilinestring(&mut cursor, has_z, has_m, epsg, byte_order),
-        6 => parse_multipolygon(&mut cursor, has_z, has_m, epsg, byte_order),
-        7 => parse_geometrycollection(&mut cursor, has_z, has_m, epsg, byte_order),
+        1 => parse_point(&mut cursor, has_z, has_m, epsg, byte_order, force_2d),
+        2 => parse_linestring(&mut cursor, has_z, has_m, epsg, byte_order, force_2d),
+        3 => parse_polygon(&mut cursor, has_z, has_m, epsg, byte_order, force_2d),
+        4 => parse_multipoint(&mut cursor, has_z, has_m, epsg, byte_order, force_2d),
+        5 => parse_multilinestring(&mut cursor, has_z, has_m, epsg, byte_order, force_2d),
+        6 => parse_multipolygon(&mut cursor, has_z, has_m, epsg, byte_order, force_2d),
+        7 => parse_geometrycollection(&mut cursor, has_z, has_m, epsg, byte_order, force_2d),
         _ => {
             // More detailed error message
             Err(SourceError::GeoPackageReader(format!(
@@ -519,28 +551,29 @@ fn parse_point(
     _has_m: bool,
     epsg: Option<u16>,
     byte_order: u8,
+    force_2d: bool,
 ) -> Result<Geometry, SourceError> {
     use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 
     let (x, y) = if byte_order == 0x01 {
-        let x = cursor
-            .read_f64::<LittleEndian>()
-            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read X coordinate: {e}")))?;
-        let y = cursor
-            .read_f64::<LittleEndian>()
-            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read Y coordinate: {e}")))?;
+        let x = cursor.read_f64::<LittleEndian>().map_err(|e| {
+            SourceError::GeoPackageReader(format!("Failed to read X coordinate: {e}"))
+        })?;
+        let y = cursor.read_f64::<LittleEndian>().map_err(|e| {
+            SourceError::GeoPackageReader(format!("Failed to read Y coordinate: {e}"))
+        })?;
         (x, y)
     } else {
-        let x = cursor
-            .read_f64::<BigEndian>()
-            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read X coordinate: {e}")))?;
-        let y = cursor
-            .read_f64::<BigEndian>()
-            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read Y coordinate: {e}")))?;
+        let x = cursor.read_f64::<BigEndian>().map_err(|e| {
+            SourceError::GeoPackageReader(format!("Failed to read X coordinate: {e}"))
+        })?;
+        let y = cursor.read_f64::<BigEndian>().map_err(|e| {
+            SourceError::GeoPackageReader(format!("Failed to read Y coordinate: {e}"))
+        })?;
         (x, y)
     };
 
-    if has_z {
+    if has_z && !force_2d {
         let z = if byte_order == 0x01 {
             cursor.read_f64::<LittleEndian>().map_err(|e| {
                 SourceError::GeoPackageReader(format!("Failed to read Z coordinate: {e}"))
@@ -555,6 +588,15 @@ fn parse_point(
             value: GeometryValue::FlowGeometry3D(Geometry3D::Point(Point3D::from([x, y, z]))),
         })
     } else {
+        // If force_2d is true or it's a 2D point, skip Z coordinate if present
+        if has_z && force_2d {
+            // Read and discard Z coordinate
+            let _ = if byte_order == 0x01 {
+                cursor.read_f64::<LittleEndian>()
+            } else {
+                cursor.read_f64::<BigEndian>()
+            };
+        }
         Ok(Geometry {
             epsg,
             value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point2D::from([x, y]))),
@@ -568,22 +610,23 @@ fn parse_linestring(
     has_m: bool,
     epsg: Option<u16>,
     byte_order: u8,
+    force_2d: bool,
 ) -> Result<Geometry, SourceError> {
     use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 
     let num_points = if byte_order == 0x01 {
-        cursor
-            .read_u32::<LittleEndian>()
-            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read point count: {e}")))?        
+        cursor.read_u32::<LittleEndian>().map_err(|e| {
+            SourceError::GeoPackageReader(format!("Failed to read point count: {e}"))
+        })?
     } else {
-        cursor
-            .read_u32::<BigEndian>()
-            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read point count: {e}")))?        
+        cursor.read_u32::<BigEndian>().map_err(|e| {
+            SourceError::GeoPackageReader(format!("Failed to read point count: {e}"))
+        })?
     };
 
     let coords = read_coordinates(cursor, num_points, has_z, has_m, byte_order)?;
 
-    if has_z {
+    if has_z && !force_2d {
         let coords_3d: Vec<(f64, f64, f64)> = coords
             .into_iter()
             .map(|c| (c.0, c.1, c.2.unwrap_or(0.0)))
@@ -611,17 +654,18 @@ fn parse_polygon(
     has_m: bool,
     epsg: Option<u16>,
     byte_order: u8,
+    force_2d: bool,
 ) -> Result<Geometry, SourceError> {
     use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 
     let num_rings = if byte_order == 0x01 {
         cursor
             .read_u32::<LittleEndian>()
-            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read ring count: {e}")))?        
+            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read ring count: {e}")))?
     } else {
         cursor
             .read_u32::<BigEndian>()
-            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read ring count: {e}")))?        
+            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read ring count: {e}")))?
     };
 
     let mut rings = Vec::new();
@@ -645,7 +689,7 @@ fn parse_polygon(
         ));
     }
 
-    if has_z {
+    if has_z && !force_2d {
         let exterior: Vec<(f64, f64, f64)> = rings[0]
             .iter()
             .map(|c| (c.0, c.1, c.2.unwrap_or(0.0)))
@@ -689,17 +733,18 @@ fn parse_multipoint(
     has_m: bool,
     epsg: Option<u16>,
     byte_order: u8,
+    force_2d: bool,
 ) -> Result<Geometry, SourceError> {
     use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 
     let num_points = if byte_order == 0x01 {
-        cursor
-            .read_u32::<LittleEndian>()
-            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read point count: {e}")))?        
+        cursor.read_u32::<LittleEndian>().map_err(|e| {
+            SourceError::GeoPackageReader(format!("Failed to read point count: {e}"))
+        })?
     } else {
-        cursor
-            .read_u32::<BigEndian>()
-            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read point count: {e}")))?        
+        cursor.read_u32::<BigEndian>().map_err(|e| {
+            SourceError::GeoPackageReader(format!("Failed to read point count: {e}"))
+        })?
     };
 
     let mut points = Vec::new();
@@ -708,13 +753,13 @@ fn parse_multipoint(
             SourceError::GeoPackageReader(format!("Failed to read byte order: {e}"))
         })?;
         let _wkb_type = if inner_byte_order == 0x01 {
-            cursor
-                .read_u32::<LittleEndian>()
-                .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}")))?            
+            cursor.read_u32::<LittleEndian>().map_err(|e| {
+                SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}"))
+            })?
         } else {
-            cursor
-                .read_u32::<BigEndian>()
-                .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}")))?            
+            cursor.read_u32::<BigEndian>().map_err(|e| {
+                SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}"))
+            })?
         };
 
         let coords = read_coordinates(cursor, 1, has_z, has_m, inner_byte_order)?;
@@ -723,7 +768,7 @@ fn parse_multipoint(
         }
     }
 
-    if has_z {
+    if has_z && !force_2d {
         let points_3d: Vec<Point3D<f64>> = points
             .into_iter()
             .map(|c| Point3D::from([c.0, c.1, c.2.unwrap_or(0.0)]))
@@ -754,17 +799,18 @@ fn parse_multilinestring(
     has_m: bool,
     epsg: Option<u16>,
     byte_order: u8,
+    force_2d: bool,
 ) -> Result<Geometry, SourceError> {
     use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 
     let num_lines = if byte_order == 0x01 {
         cursor
             .read_u32::<LittleEndian>()
-            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read line count: {e}")))?        
+            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read line count: {e}")))?
     } else {
         cursor
             .read_u32::<BigEndian>()
-            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read line count: {e}")))?        
+            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read line count: {e}")))?
     };
 
     let mut lines = Vec::new();
@@ -773,13 +819,13 @@ fn parse_multilinestring(
             SourceError::GeoPackageReader(format!("Failed to read byte order: {e}"))
         })?;
         let _wkb_type = if inner_byte_order == 0x01 {
-            cursor
-                .read_u32::<LittleEndian>()
-                .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}")))?            
+            cursor.read_u32::<LittleEndian>().map_err(|e| {
+                SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}"))
+            })?
         } else {
-            cursor
-                .read_u32::<BigEndian>()
-                .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}")))?            
+            cursor.read_u32::<BigEndian>().map_err(|e| {
+                SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}"))
+            })?
         };
 
         let num_points = if inner_byte_order == 0x01 {
@@ -795,7 +841,7 @@ fn parse_multilinestring(
         lines.push(coords);
     }
 
-    if has_z {
+    if has_z && !force_2d {
         let lines_3d: Vec<LineString3D<f64>> = lines
             .into_iter()
             .map(|coords| {
@@ -835,17 +881,18 @@ fn parse_multipolygon(
     has_m: bool,
     epsg: Option<u16>,
     byte_order: u8,
+    force_2d: bool,
 ) -> Result<Geometry, SourceError> {
     use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 
     let num_polygons = if byte_order == 0x01 {
-        cursor
-            .read_u32::<LittleEndian>()
-            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read polygon count: {e}")))?        
+        cursor.read_u32::<LittleEndian>().map_err(|e| {
+            SourceError::GeoPackageReader(format!("Failed to read polygon count: {e}"))
+        })?
     } else {
-        cursor
-            .read_u32::<BigEndian>()
-            .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read polygon count: {e}")))?        
+        cursor.read_u32::<BigEndian>().map_err(|e| {
+            SourceError::GeoPackageReader(format!("Failed to read polygon count: {e}"))
+        })?
     };
 
     let mut polygons = Vec::new();
@@ -854,13 +901,13 @@ fn parse_multipolygon(
             SourceError::GeoPackageReader(format!("Failed to read byte order: {e}"))
         })?;
         let _wkb_type = if inner_byte_order == 0x01 {
-            cursor
-                .read_u32::<LittleEndian>()
-                .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}")))?            
+            cursor.read_u32::<LittleEndian>().map_err(|e| {
+                SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}"))
+            })?
         } else {
-            cursor
-                .read_u32::<BigEndian>()
-                .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}")))?            
+            cursor.read_u32::<BigEndian>().map_err(|e| {
+                SourceError::GeoPackageReader(format!("Failed to read WKB type: {e}"))
+            })?
         };
 
         let num_rings = if inner_byte_order == 0x01 {
@@ -890,7 +937,7 @@ fn parse_multipolygon(
         polygons.push(rings);
     }
 
-    if has_z {
+    if has_z && !force_2d {
         let polygons_3d: Vec<Polygon3D<f64>> = polygons
             .into_iter()
             .filter_map(|rings| {
@@ -956,6 +1003,7 @@ fn parse_geometrycollection(
     _has_m: bool,
     _epsg: Option<u16>,
     _byte_order: u8,
+    _force_2d: bool,
 ) -> Result<Geometry, SourceError> {
     Err(SourceError::GeoPackageReader(
         "GeometryCollection not yet supported".to_string(),
@@ -1088,9 +1136,8 @@ async fn read_layer_tiles(
     layer_name: &str,
     tile_format: &TileFormat,
 ) -> Result<Vec<Feature>, SourceError> {
-    let query = format!(
-        "SELECT zoom_level, tile_column, tile_row, tile_data FROM \"{layer_name}\""
-    );
+    let query =
+        format!("SELECT zoom_level, tile_column, tile_row, tile_data FROM \"{layer_name}\"");
     let rows = adapter.fetch_many(&query).await.map_err(|e| {
         SourceError::GeoPackageReader(format!("Failed to query tiles from {layer_name}: {e}"))
     })?;
@@ -1329,7 +1376,7 @@ mod tests {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40,
         ];
 
-        let geom = parse_wkb(&wkb, 4326).unwrap();
+        let geom = parse_wkb(&wkb, 4326, false).unwrap();
         match geom.value {
             GeometryValue::FlowGeometry2D(Geometry2D::Point(p)) => {
                 assert_eq!(p.x(), 1.0);
@@ -1354,7 +1401,7 @@ mod tests {
     fn test_camelcase_serialization() {
         use crate::file::reader::runner::FileReaderCommonParam;
         use reearth_flow_types::Expr;
-        
+
         let params = GeoPackageReaderParam {
             common_property: FileReaderCommonParam {
                 dataset: Some(Expr::new("test.gpkg")),
@@ -1364,16 +1411,20 @@ mod tests {
             layer_name: Some("test_layer".to_string()),
             include_metadata: true,
             tile_format: TileFormat::Png,
+            attribute_filter: None,
+            batch_size: None,
+            force_2d: false,
+            spatial_filter: None,
         };
-        
+
         let json = serde_json::to_string(&params).unwrap();
-        
+
         // Check that snake_case fields are serialized as camelCase
         assert!(json.contains("\"readMode\""));
         assert!(json.contains("\"layerName\""));
         assert!(json.contains("\"includeMetadata\""));
         assert!(json.contains("\"tileFormat\""));
-        
+
         // Check that values are serialized correctly
         assert!(json.contains("\"layerName\":\"test_layer\""));
         assert!(json.contains("\"includeMetadata\":true"));
