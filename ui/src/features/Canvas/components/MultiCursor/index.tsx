@@ -9,11 +9,15 @@ type MultiCursorProps = {
   currentWorkflowId: string;
 };
 
-const MultiCursor: React.FC<MultiCursorProps> = ({ users, currentWorkflowId }) => {
+const MultiCursor: React.FC<MultiCursorProps> = ({
+  users,
+  currentWorkflowId,
+}) => {
   return (
     <ViewportPortal>
       {Object.entries(users).map(([key, value]) => {
-        if (!value.cursor || value.currentWorkflowId !== currentWorkflowId) return null;
+        if (!value.cursor || value.currentWorkflowId !== currentWorkflowId)
+          return null;
 
         return (
           <div
