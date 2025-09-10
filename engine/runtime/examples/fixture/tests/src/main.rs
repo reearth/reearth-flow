@@ -9,6 +9,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
+use tempfile::TempDir;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -149,6 +150,7 @@ pub struct TestContext {
     pub fixture_dir: PathBuf,
     pub profile: WorkflowTestProfile,
     pub temp_dir: PathBuf,
+    _temp_base: TempDir,
 }
 
 impl TestContext {
@@ -158,7 +160,8 @@ impl TestContext {
         fixture_dir: PathBuf,
         profile: WorkflowTestProfile,
     ) -> Result<Self> {
-        let temp_dir = std::env::temp_dir().join("workflow-tests").join(&test_name);
+        let temp_base = TempDir::new()?;
+        let temp_dir = temp_base.path().join(&test_name);
 
         // Remove existing temp directory if it exists to ensure clean state
         if temp_dir.exists() {
@@ -174,6 +177,7 @@ impl TestContext {
             fixture_dir,
             profile,
             temp_dir,
+            _temp_base: temp_base,
         })
     }
 
