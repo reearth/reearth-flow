@@ -44,26 +44,6 @@ export default ({
     [nodes, target],
   );
 
-  const edgeDisplayName = useMemo(() => {
-    const sourceCustomizations = sourceNode?.data.customizations as
-      | NodeCustomizations
-      | undefined;
-    const targetCustomizations = targetNode?.data.customizations as
-      | NodeCustomizations
-      | undefined;
-    const sourceName =
-      sourceCustomizations?.customName ||
-      sourceNode?.data?.officialName ||
-      sourceNode?.type ||
-      `Node ${source}`;
-    const targetName =
-      targetCustomizations?.customName ||
-      targetNode?.data?.officialName ||
-      targetNode?.type ||
-      `Node ${target}`;
-    return `${sourceName} → ${targetName}`;
-  }, [sourceNode, targetNode, source, target]);
-
   const jobStatus = useMemo(
     () => debugJobState?.status,
     [debugJobState?.status],
@@ -143,6 +123,22 @@ export default ({
               // Keep as empty array (don't set to undefined) - user has interacted
               newSelectedIntermediateData = filtered;
             } else {
+              const sourceCustomizations = sourceNode?.data.customizations as
+                | NodeCustomizations
+                | undefined;
+              const targetCustomizations = targetNode?.data.customizations as
+                | NodeCustomizations
+                | undefined;
+              const sourceName = (sourceCustomizations?.customName ||
+                sourceNode?.data?.officialName ||
+                sourceNode?.type ||
+                `Node ${source}`) as string;
+              const targetName = (targetCustomizations?.customName ||
+                targetNode?.data?.officialName ||
+                targetNode?.type ||
+                `Node ${target}`) as string;
+              const edgeDisplayName = `${sourceName} → ${targetName}`;
+
               // Add the item (initialize array if undefined)
               newSelectedIntermediateData = [
                 ...currentData,
@@ -150,14 +146,8 @@ export default ({
                   edgeId: id,
                   url: intermediateDataUrl,
                   displayName: edgeDisplayName,
-                  sourceName: (sourceNode?.data?.name ||
-                    sourceNode?.data?.title ||
-                    sourceNode?.type ||
-                    `Node ${source}`) as string,
-                  targetName: (targetNode?.data?.name ||
-                    targetNode?.data?.title ||
-                    targetNode?.type ||
-                    `Node ${target}`) as string,
+                  sourceName: sourceName,
+                  targetName: targetName,
                 },
               ];
             }
@@ -177,7 +167,6 @@ export default ({
       currentProject,
       id,
       updateValue,
-      edgeDisplayName,
       sourceNode,
       targetNode,
       source,
