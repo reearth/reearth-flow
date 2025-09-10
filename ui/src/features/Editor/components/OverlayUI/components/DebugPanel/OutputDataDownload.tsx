@@ -45,25 +45,28 @@ const OutputDataDownload: React.FC<Props> = ({ outputData }) => {
     document.body.removeChild(link);
   }, []);
 
-  const handleDownload = useCallback((url: string, filename: string) => {
-    setConfirmDialog({
-      isOpen: true,
-      fileName: filename,
-      fileUrl: url,
-      onConfirm: () => {
-        performDownload(url, filename);
-        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
-      },
-    });
-  }, [performDownload]);
+  const handleDownload = useCallback(
+    (url: string, filename: string) => {
+      setConfirmDialog({
+        isOpen: true,
+        fileName: filename,
+        fileUrl: url,
+        onConfirm: () => {
+          performDownload(url, filename);
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        },
+      });
+    },
+    [performDownload],
+  );
 
   const handleDownloadAll = useCallback(() => {
     if (!outputData) return;
-    
+
     // For "Download All", show confirmation with summary
     const totalFiles = outputData.length;
     const summaryName = `${totalFiles} output files`;
-    
+
     setConfirmDialog({
       isOpen: true,
       fileName: summaryName,
@@ -92,48 +95,46 @@ const OutputDataDownload: React.FC<Props> = ({ outputData }) => {
 
   return (
     <>
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <ButtonWithTooltip
-          className="h-[25px] gap-1 px-2 text-xs font-thin hover:bg-primary"
-          variant="outline"
-          tooltipText={t("Download output files")}
-          tooltipOffset={12}
-        >
-          <FolderIcon size={14} />
-          {t("Output data")} ({count})
-        </ButtonWithTooltip>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start">
-        {count > 1 && (
-          <>
-            <DropdownMenuItem onClick={handleDownloadAll}>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <ButtonWithTooltip
+            className="h-[25px] gap-1 px-2 text-xs font-thin hover:bg-primary"
+            variant="outline"
+            tooltipText={t("Download output files")}
+            tooltipOffset={12}>
+            <FolderIcon size={14} />
+            {t("Output data")} ({count})
+          </ButtonWithTooltip>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          {count > 1 && (
+            <>
+              <DropdownMenuItem onClick={handleDownloadAll}>
+                <DownloadIcon size={16} />
+                {t("Download All")}
+              </DropdownMenuItem>
+              <div className="my-1 h-px bg-border" />
+            </>
+          )}
+          {outputData.map((item, index) => (
+            <DropdownMenuItem
+              key={`${item.url}-${index}`}
+              onClick={() => handleDownload(item.url, item.name)}>
               <DownloadIcon size={16} />
-              {t("Download All")}
+              {item.name}
             </DropdownMenuItem>
-            <div className="my-1 h-px bg-border" />
-          </>
-        )}
-        {outputData.map((item, index) => (
-          <DropdownMenuItem
-            key={`${item.url}-${index}`}
-            onClick={() => handleDownload(item.url, item.name)}
-          >
-            <DownloadIcon size={16} />
-            {item.name}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-    
-    <DownloadConfirmDialog
-      isOpen={confirmDialog.isOpen}
-      fileName={confirmDialog.fileName}
-      fileUrl={confirmDialog.fileUrl}
-      onConfirm={confirmDialog.onConfirm}
-      onCancel={handleCancelDownload}
-    />
-  </>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <DownloadConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        fileName={confirmDialog.fileName}
+        fileUrl={confirmDialog.fileUrl}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={handleCancelDownload}
+      />
+    </>
   );
 };
 

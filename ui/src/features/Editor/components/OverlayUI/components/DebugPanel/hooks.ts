@@ -135,7 +135,10 @@ export default () => {
       debugJobState.selectedIntermediateData.forEach((selectedData) => {
         urls.push({
           key: selectedData.url,
-          name: selectedData.displayName || selectedData.url.split("/").pop() || selectedData.url,
+          name:
+            selectedData.displayName ||
+            selectedData.url.split("/").pop() ||
+            selectedData.url,
         });
       });
     }

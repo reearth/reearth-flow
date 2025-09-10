@@ -187,26 +187,24 @@ const DebugPanel: React.FC = () => {
                 defaultSize={60}
                 minSize={20}
                 className="flex flex-col">
-                  <div className="flex gap-2 py-2">
-                    <Select
-                      defaultValue={dataURLs[0].key}
-                      value={selectedDataURL}
-                      onValueChange={handleSelectedDataChange}>
-                      <SelectTrigger className="h-[26px] w-auto max-w-[250px] text-xs font-bold">
-                        <SelectValue
-                          placeholder={t("Select Data to Preview")}
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {dataURLs.map(({ key, name }) => (
-                          <SelectItem key={key} value={key}>
-                            {name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <OutputDataDownload outputData={outputDataForDownload} />
-                  </div>
+                <div className="flex gap-2 py-2">
+                  <Select
+                    defaultValue={dataURLs[0].key}
+                    value={selectedDataURL}
+                    onValueChange={handleSelectedDataChange}>
+                    <SelectTrigger className="h-[26px] w-auto max-w-[250px] text-xs font-bold">
+                      <SelectValue placeholder={t("Select Data to Preview")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dataURLs.map(({ key, name }) => (
+                        <SelectItem key={key} value={key}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <OutputDataDownload outputData={outputDataForDownload} />
+                </div>
                 <div className="min-h-0 flex-1">
                   <TableViewer
                     fileContent={selectedOutputData}
