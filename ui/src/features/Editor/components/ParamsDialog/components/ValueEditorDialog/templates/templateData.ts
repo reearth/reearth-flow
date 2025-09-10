@@ -21,7 +21,7 @@ export const getExpressionTemplates = (
 ): ExpressionTemplate[] => [
   // Advanced File Operations (beyond Simple Builder capabilities)
   {
-    id: "output-path",
+    id: "create-output-path",
     name: t("Create Output File Path"),
     category: "file-operations",
     description: t("Generate output file path to write a file"),
