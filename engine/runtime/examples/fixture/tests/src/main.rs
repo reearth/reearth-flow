@@ -455,8 +455,8 @@ impl TestContext {
 
                 // Remove excluded fields if specified
                 if let Some(except_fields) = except {
-                    self.remove_json_fields(&mut actual_json, except_fields);
-                    self.remove_json_fields(&mut expected_json, except_fields);
+                    Self::remove_json_fields(&mut actual_json, except_fields);
+                    Self::remove_json_fields(&mut expected_json, except_fields);
                 }
 
                 assert_eq!(actual_json, expected_json);
@@ -607,7 +607,7 @@ impl TestContext {
         Ok(())
     }
 
-    fn remove_json_fields(&self, json: &mut serde_json::Value, except: &ExceptFields) {
+    fn remove_json_fields(json: &mut serde_json::Value, except: &ExceptFields) {
         match json {
             serde_json::Value::Object(map) => {
                 // Remove excluded fields from this object
@@ -623,13 +623,13 @@ impl TestContext {
 
                 // Recursively process nested objects and arrays
                 for value in map.values_mut() {
-                    self.remove_json_fields(value, except);
+                    Self::remove_json_fields(value, except);
                 }
             }
             serde_json::Value::Array(arr) => {
                 // Recursively process array elements
                 for value in arr.iter_mut() {
-                    self.remove_json_fields(value, except);
+                    Self::remove_json_fields(value, except);
                 }
             }
             _ => {
