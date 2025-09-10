@@ -133,11 +133,11 @@ export default () => {
 
   const dataURLs = useMemo(() => {
     const urls: { key: string; name: string }[] = [];
-    if (intermediateDataURLs) {
-      intermediateDataURLs.forEach((intermediateDataURL) => {
+    if (debugJobState?.selectedIntermediateData) {
+      debugJobState.selectedIntermediateData.forEach((selectedData) => {
         urls.push({
-          key: intermediateDataURL,
-          name: intermediateDataURL.split("/").pop() || intermediateDataURL,
+          key: selectedData.url,
+          name: selectedData.displayName || selectedData.url.split("/").pop() || selectedData.url,
         });
       });
     }
@@ -150,7 +150,7 @@ export default () => {
       );
     }
     return urls.length ? urls : undefined;
-  }, [outputURLs, intermediateDataURLs, t]);
+  }, [outputURLs, debugJobState?.selectedIntermediateData, t]);
 
   const [selectedDataURL, setSelectedDataURL] = useState<string | undefined>(
     undefined,

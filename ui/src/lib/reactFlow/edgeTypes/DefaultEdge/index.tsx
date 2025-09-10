@@ -14,6 +14,8 @@ export type CustomEdgeProps = EdgeProps<Edge>;
 
 const DefaultEdge: React.FC<CustomEdgeProps> = ({
   id,
+  source,
+  target,
   sourceX,
   sourceY,
   sourcePosition,
@@ -42,7 +44,8 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
     handleIntermediateDataSet,
   } = useHooks({
     id,
-    // source,
+    source,
+    target,
     selected,
   });
 

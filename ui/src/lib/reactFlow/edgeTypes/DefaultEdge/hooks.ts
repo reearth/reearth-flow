@@ -1,29 +1,52 @@
-// import { useNodes } from "@xyflow/react";
+import { useNodes } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { config } from "@flow/config";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { DebugRunState, useCurrentProject } from "@flow/stores";
+import { NodeCustomizations } from "@flow/types";
 
 export default ({
   id,
-  // source,
+  source,
+  target,
   selected,
 }: {
   id: string;
-  // source: string;
+  source: string;
+  target: string;
   selected?: boolean;
 }) => {
   const [currentProject] = useCurrentProject();
   const { api } = config();
 
   const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
+  const nodes = useNodes();
 
   const debugJobState = useMemo(
     () =>
       debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id),
     [debugRunState, currentProject],
   );
+
+  // Get source and target node names
+  const sourceNode = useMemo(
+    () => nodes.find((node) => node.id === source),
+    [nodes, source],
+  );
+
+  const targetNode = useMemo(
+    () => nodes.find((node) => node.id === target),
+    [nodes, target],
+  );
+
+  const edgeDisplayName = useMemo(() => {
+    const sourceCustomizations = sourceNode?.data.customizations as NodeCustomizations | undefined;
+    const targetCustomizations = targetNode?.data.customizations as NodeCustomizations | undefined;
+    const sourceName = sourceCustomizations?.customName || sourceNode?.data?.officialName || sourceNode?.type || `Node ${source}`;
+    const targetName = targetCustomizations?.customName || targetNode?.data?.officialName || targetNode?.type || `Node ${target}`;
+    return `${sourceName} → ${targetName}`;
+  }, [sourceNode, targetNode, source, target]);
 
   const jobStatus = useMemo(
     () => debugJobState?.status,
@@ -93,7 +116,13 @@ export default ({
                   )
                 : [
                     ...(job.selectedIntermediateData ?? []),
-                    { edgeId: id, url: intermediateDataUrl },
+                    { 
+                      edgeId: id, 
+                      url: intermediateDataUrl,
+                      displayName: edgeDisplayName,
+                      sourceName: (sourceNode?.data?.name || sourceNode?.data?.title || sourceNode?.type || `Node ${source}`) as string,
+                      targetName: (targetNode?.data?.name || targetNode?.data?.title || targetNode?.type || `Node ${target}`) as string
+                    },
                   ]
               : job.selectedIntermediateData;
           return {
@@ -110,18 +139,20 @@ export default ({
     currentProject,
     id,
     updateValue,
+    edgeDisplayName,
+    sourceNode,
+    targetNode,
+    source,
+    target,
   ]);
 
-  // const nodes = useNodes();
+  // Optional: Add source node status if needed later
   // const sourceNodeStatus = useMemo(() => {
   //   if (!debugJobState?.nodeExecutions) return undefined;
-  //   const sourceNode = nodes.find((node) => node.id === source);
-
-  //   console.log("sourceNode", sourceNode); // TODO: delete
   //   return debugJobState?.nodeExecutions?.find(
-  //     (nodeExecution) => nodeExecution.nodeId === sourceNode?.id,
+  //     (nodeExecution) => nodeExecution.nodeId === source,
   //   )?.status;
-  // }, [debugJobState?.nodeExecutions, nodes, source]);
+  // }, [debugJobState?.nodeExecutions, source]);
 
   return {
     // sourceNodeStatus,

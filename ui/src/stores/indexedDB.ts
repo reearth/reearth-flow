@@ -8,6 +8,9 @@ export type GeneralState = {
 export type SelectedIntermediateData = {
   edgeId: string;
   url: string;
+  displayName?: string;
+  sourceName?: string;
+  targetName?: string;
 };
 
 export type JobState = {
