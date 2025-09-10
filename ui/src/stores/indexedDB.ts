@@ -19,7 +19,7 @@ export type JobState = {
   status: JobStatus;
   nodeExecutions?: NodeExecution[];
   tempWorkflowHasPossibleIssuesFlag?: boolean;
-  selectedIntermediateData?: SelectedIntermediateData[];
+  selectedIntermediateData?: SelectedIntermediateData[]; // undefined = never touched, [] = user has selected/deselected
 };
 
 export type DebugRunState = {
