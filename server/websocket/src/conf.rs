@@ -191,6 +191,7 @@ impl ConfigBuilder {
                     .redis_url
                     .unwrap_or_else(|| DEFAULT_REDIS_URL.to_string()),
                 ttl: self.redis_ttl.unwrap_or(DEFAULT_REDIS_TTL),
+                prefix: "y".to_string(), // Default prefix like JavaScript version
             },
             gcs: GcsConfig {
                 bucket_name: self

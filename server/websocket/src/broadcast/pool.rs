@@ -8,7 +8,7 @@ use bytes;
 use dashmap::DashMap;
 use rand;
 use std::sync::Arc;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
@@ -139,6 +139,7 @@ impl BroadcastGroupManager {
                 Arc::clone(&self.store),
                 BroadcastConfig {
                     storage_enabled: true,
+                    room_name: Some(doc_id.to_string()),
                     doc_name: Some(doc_id.to_string()),
                 },
             )
@@ -146,9 +147,10 @@ impl BroadcastGroupManager {
         );
 
         if final_last_id != "0" {
-            let last_read_id = group.get_last_read_id();
-            let mut last_id_guard = last_read_id.lock().await;
-            *last_id_guard = final_last_id;
+            // Note: In the new JavaScript-style implementation, 
+            // the initial redis sub id is set during group creation
+            debug!("Final last ID: {}, Initial sub ID: {}", 
+                   final_last_id, group.get_initial_redis_sub_id());
         }
 
         Ok(group)

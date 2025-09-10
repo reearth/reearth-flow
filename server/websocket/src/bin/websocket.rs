@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use tracing::error;
+use tracing::{error, info};
 use uuid::Uuid;
 use websocket::{
-    conf::Config, pool::BroadcastPool, server::start_server, storage::gcs::GcsStore,
-    storage::redis::RedisStore, AppState,
+    api::Api, conf::Config, pool::BroadcastPool, server::start_server, storage::gcs::GcsStore,
+    storage::redis::RedisStore, subscriber::create_subscriber, worker::create_worker, AppState,
 };
 
 #[cfg(feature = "auth")]
@@ -53,8 +53,8 @@ async fn main() {
         }
     };
 
-    let pool = Arc::new(match redis_store {
-        Some(rs) => BroadcastPool::new(store, rs),
+    let pool = Arc::new(match redis_store.clone() {
+        Some(rs) => BroadcastPool::new(store.clone(), rs),
         None => {
             error!("Cannot proceed without Redis store");
             std::process::exit(1);
@@ -62,7 +62,74 @@ async fn main() {
     });
 
     let instance_id = Uuid::new_v4().to_string();
-    tracing::info!("Generated instance ID: {}", instance_id);
+    info!("Generated instance ID: {}", instance_id);
+
+    // Initialize JavaScript-style API, Subscriber, and Worker
+    let api = match Api::new(redis_store.clone().unwrap(), store.clone(), None).await {
+        Ok(api) => {
+            info!("JavaScript-style API initialized");
+            Arc::new(api)
+        }
+        Err(e) => {
+            error!("Failed to initialize API: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    let subscriber = match create_subscriber(redis_store.clone().unwrap(), api.clone()).await {
+        Ok(subscriber) => {
+            info!("JavaScript-style Subscriber initialized");
+            Arc::new(subscriber)
+        }
+        Err(e) => {
+            error!("Failed to initialize Subscriber: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    let worker = match create_worker(api.clone(), None).await {
+        Ok(worker) => {
+            info!("JavaScript-style Worker initialized");
+            Arc::new(worker)
+        }
+        Err(e) => {
+            error!("Failed to initialize Worker: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    // Start the worker in the background
+    if let Err(e) = worker.start().await {
+        error!("Failed to start worker: {}", e);
+        std::process::exit(1);
+    }
+    info!("Worker started successfully");
+
+    // Set up graceful shutdown handlers
+    let subscriber_clone = subscriber.clone();
+    let worker_clone = worker.clone();
+    let api_clone = api.clone();
+
+    tokio::spawn(async move {
+        if tokio::signal::ctrl_c().await.is_ok() {
+            info!("Shutdown signal received, cleaning up...");
+
+            // Stop worker
+            if let Err(e) = worker_clone.stop().await {
+                error!("Error stopping worker: {}", e);
+            }
+
+            // Destroy subscriber
+            subscriber_clone.destroy().await;
+
+            // Destroy API
+            if let Err(e) = api_clone.destroy().await {
+                error!("Error destroying API: {}", e);
+            }
+
+            info!("Cleanup completed");
+        }
+    });
 
     let state = Arc::new({
         #[cfg(feature = "auth")]

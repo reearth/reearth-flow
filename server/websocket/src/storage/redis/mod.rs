@@ -27,9 +27,17 @@ pub struct StreamMessages {
 }
 
 #[derive(Debug, Clone)]
+pub struct StreamMessageResult {
+    pub stream: String,
+    pub messages: Vec<Bytes>,
+    pub last_id: String,
+}
+
+#[derive(Debug, Clone)]
 pub struct RedisConfig {
     pub url: String,
     pub ttl: u64,
+    pub prefix: String,
 }
 
 pub type RedisPool = Pool;
@@ -56,51 +64,140 @@ impl RedisStore {
         self.config.clone()
     }
 
+    pub fn get_prefix(&self) -> String {
+        self.config.prefix.clone()
+    }
+
+    /// Compute Redis room stream name like JavaScript version
+    /// format: {prefix}:room:{room}:{docid}
+    pub fn compute_redis_room_stream_name(&self, room: &str, docid: &str) -> String {
+        format!(
+            "{}:room:{}:{}",
+            self.config.prefix,
+            urlencoding::encode(room),
+            urlencoding::encode(docid)
+        )
+    }
+
     pub async fn create_dedicated_connection(&self) -> Result<redis::aio::MultiplexedConnection> {
         let client = redis::Client::open(self.config.url.clone())?;
         let conn = client.get_multiplexed_async_connection().await?;
         Ok(conn)
     }
 
-    pub async fn publish_update(
+    pub async fn add_message(
         &self,
         conn: &mut redis::aio::MultiplexedConnection,
         stream_key: &str,
-        update: &[u8],
-        instance_id: &u64,
+        message: &[u8],
+        worker_stream_name: &str,
     ) -> Result<()> {
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis();
-
         let script = redis::Script::new(
             r#"
-            local stream_key = KEYS[1]
-            local msg_type = ARGV[1]
-            local data = ARGV[2]
-            local client_id = ARGV[3]
-            local timestamp = ARGV[4]
-            
-            redis.call('XADD', stream_key, '*', 
-                'type', msg_type, 
-                'data', data, 
-                'clientId', client_id, 
-                'timestamp', timestamp)
-            return 1
+            if redis.call("EXISTS", KEYS[1]) == 0 then
+              redis.call("XADD", ARGV[1], "*", "compact", KEYS[1])
+              redis.call("XREADGROUP", "GROUP", ARGV[2], "pending", "STREAMS", ARGV[1], ">")
+            end
+            redis.call("XADD", KEYS[1], "*", "m", ARGV[3])
             "#,
         );
 
         let _: () = script
             .key(stream_key)
-            .arg(MESSAGE_TYPE_SYNC)
-            .arg(update)
-            .arg(instance_id)
-            .arg(timestamp)
+            .arg(worker_stream_name)
+            .arg(format!("{}:worker", self.get_prefix()))
+            .arg(message)
             .invoke_async(&mut *conn)
             .await?;
 
         Ok(())
+    }
+
+    /// Get messages from Redis streams like JavaScript version
+    pub async fn get_messages(
+        &self,
+        streams: Vec<(String, String)>, // (stream_key, id) pairs
+    ) -> Result<Vec<StreamMessageResult>> {
+        if streams.is_empty() {
+            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+            return Ok(vec![]);
+        }
+
+        let mut conn = self.pool.get().await?;
+        let mut args: Vec<String> = vec![];
+
+        for (stream, id) in streams {
+            args.push(stream);
+            args.push(id);
+        }
+
+        let result: redis::Value = redis::cmd("XREAD")
+            .arg("BLOCK")
+            .arg(1000)
+            .arg("COUNT")
+            .arg(1000)
+            .arg("STREAMS")
+            .arg(&args)
+            .query_async(&mut *conn)
+            .await?;
+
+        let mut res = Vec::new();
+        if let redis::Value::Array(streams) = result {
+            for stream_data in streams {
+                if let redis::Value::Array(stream_info) = stream_data {
+                    if stream_info.len() >= 2 {
+                        let stream_name = match &stream_info[0] {
+                            redis::Value::BulkString(name) => {
+                                std::str::from_utf8(name).unwrap_or("").to_string()
+                            }
+                            _ => continue,
+                        };
+
+                        let mut messages = Vec::new();
+                        let mut last_id = "0".to_string();
+
+                        if let redis::Value::Array(entries) = &stream_info[1] {
+                            for entry in entries {
+                                if let redis::Value::Array(entry_data) = entry {
+                                    if entry_data.len() >= 2 {
+                                        if let redis::Value::BulkString(id_bytes) = &entry_data[0] {
+                                            last_id = std::str::from_utf8(id_bytes)
+                                                .unwrap_or("0")
+                                                .to_string();
+                                        }
+
+                                        if let redis::Value::Array(fields) = &entry_data[1] {
+                                            for chunk in fields.chunks(2) {
+                                                if chunk.len() == 2 {
+                                                    if let (
+                                                        redis::Value::BulkString(key),
+                                                        redis::Value::BulkString(value),
+                                                    ) = (&chunk[0], &chunk[1])
+                                                    {
+                                                        if key == b"m" {
+                                                            messages
+                                                                .push(Bytes::from(value.clone()));
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        res.push(StreamMessageResult {
+                            stream: stream_name,
+                            messages,
+                            last_id,
+                        });
+                    }
+                }
+            }
+        }
+
+        Ok(res)
     }
 
     pub async fn publish_update_with_ttl(
