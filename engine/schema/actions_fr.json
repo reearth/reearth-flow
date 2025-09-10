@@ -2882,6 +2882,147 @@
       ]
     },
     {
+      "name": "GeoPackageReader",
+      "type": "source",
+      "description": "Reads geographic features from GeoPackage (.gpkg) files with support for vector features, tiles, and metadata",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GeoPackageReader Parameters",
+        "description": "Configuration for reading GeoPackage files (.gpkg). GeoPackage is an SQLite-based standard for geospatial data supporting: - Vector features (points, lines, polygons) - Raster tiles - Attributes and metadata - Spatial indexes",
+        "type": "object",
+        "properties": {
+          "attributeFilter": {
+            "title": "Attribute Filter",
+            "description": "Optional SQL WHERE clause to filter features by attributes",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "batchSize": {
+            "title": "Batch Size",
+            "description": "Number of features to process in each batch (for memory efficiency)",
+            "default": 1000,
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0.0
+          },
+          "dataset": {
+            "title": "File Path",
+            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "force2d": {
+            "title": "Force 2D",
+            "description": "If true, forces all geometries to be 2D (ignoring Z and M values)",
+            "default": false,
+            "type": "boolean"
+          },
+          "includeMetadata": {
+            "title": "Include Metadata",
+            "description": "If true, includes GeoPackage metadata tables in the output",
+            "default": false,
+            "type": "boolean"
+          },
+          "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "layerName": {
+            "title": "Layer Name",
+            "description": "Specific layer to read from the GeoPackage. If not specified, reads all feature layers.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "readMode": {
+            "title": "Read Mode",
+            "description": "What type of data to read from the GeoPackage",
+            "default": "features",
+            "allOf": [
+              {
+                "$ref": "#/definitions/GeoPackageReadMode"
+              }
+            ]
+          },
+          "spatialFilter": {
+            "title": "Spatial Filter",
+            "description": "Optional bounding box filter [minX, minY, maxX, maxY] in the layer's CRS",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          },
+          "GeoPackageReadMode": {
+            "oneOf": [
+              {
+                "description": "Read vector features",
+                "type": "string",
+                "enum": [
+                  "features"
+                ]
+              },
+              {
+                "description": "Read raster tiles",
+                "type": "string",
+                "enum": [
+                  "tiles"
+                ]
+              },
+              {
+                "description": "Read both features and tiles",
+                "type": "string",
+                "enum": [
+                  "all"
+                ]
+              },
+              {
+                "description": "Read only metadata and layer information",
+                "type": "string",
+                "enum": [
+                  "metadataOnly"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "File",
+        "Database"
+      ]
+    },
+    {
       "name": "GeometryCoercer",
       "type": "processor",
       "description": "Coerces and converts feature geometries to specified target geometry types",
