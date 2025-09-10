@@ -23,7 +23,6 @@ export const mockUsers: GraphqlUser[] = [
       theme: Theme.Default,
       lang: "ja",
     },
-
   },
   {
     id: "user-2",
