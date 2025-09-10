@@ -1,5 +1,5 @@
 import bbox from "@turf/bbox";
-import { Cartesian3 } from "cesium";
+import { Cartesian3, GeoJsonDataSource } from "cesium";
 import {
   MouseEvent,
   useCallback,
@@ -246,7 +246,7 @@ export default () => {
           // Find all entities that belong to this feature
           const matchingEntities = cesiumViewer.entities.values.filter(
             (entity: any) => {
-              // Check direct entity ID match (main building entity)
+              // Method 1: Direct entity ID match (CityGML entities)
               if (
                 entity.id === featureId ||
                 JSON.stringify(entity.id) === JSON.stringify(featureId)
@@ -254,7 +254,7 @@ export default () => {
                 return true;
               }
 
-              // Check buildingId property (surface entities)
+              // Method 2: Check buildingId property (CityGML surface entities)
               const buildingId = entity.properties?.getValue()?.buildingId;
               if (
                 buildingId &&
@@ -264,7 +264,7 @@ export default () => {
                 return true;
               }
 
-              // Check compound ID prefix (surface entities like "buildingId_wall_1")
+              // Method 3: Check compound ID prefix (CityGML surface entities like "buildingId_wall_1")
               if (
                 entity.id &&
                 typeof entity.id === "string" &&
@@ -277,6 +277,34 @@ export default () => {
                 ) {
                   return true;
                 }
+              }
+
+              // Method 4: Check GeoJSON entity properties for original feature data
+              try {
+                const entityProps = entity.properties?.getValue();
+                if (entityProps) {
+                  // Check if this entity has original GeoJSON feature data
+                  const originalId = entityProps._originalId || entityProps.id;
+                  if (
+                    originalId === featureId ||
+                    JSON.stringify(originalId) === JSON.stringify(featureId)
+                  ) {
+                    return true;
+                  }
+
+                  // Also check all property keys for potential ID matches
+                  for (const [key, value] of Object.entries(entityProps)) {
+                    if (
+                      key.toLowerCase().includes("id") &&
+                      (value === featureId ||
+                        JSON.stringify(value) === JSON.stringify(featureId))
+                    ) {
+                      return true;
+                    }
+                  }
+                }
+              } catch {
+                // Silent fail for property access errors
               }
 
               return false;
@@ -363,6 +391,67 @@ export default () => {
               "No matching Cesium entities found for feature ID:",
               featureId,
             );
+
+            // Fallback: Try to zoom to feature using its original geometry
+            // This is useful for simple GeoJSON data where entity matching fails
+            try {
+              if (selectedFeature.geometry) {
+                console.log("Attempting fallback zoom using feature geometry");
+
+                // Create a temporary entity from the feature geometry to zoom to
+                const tempEntity = cesiumViewer.entities.add({
+                  id: `temp_zoom_${featureId}`,
+                  position: undefined, // Will be determined by geometry
+                });
+
+                // Try to set geometry on temp entity and zoom to it
+                if (
+                  selectedFeature.geometry.type === "Point" &&
+                  selectedFeature.geometry.coordinates
+                ) {
+                  const [lng, lat, height = 0] =
+                    selectedFeature.geometry.coordinates;
+                  tempEntity.position = Cartesian3.fromDegrees(
+                    lng,
+                    lat,
+                    height,
+                  );
+
+                  cesiumViewer.zoomTo(tempEntity);
+                } else {
+                  // For other geometry types, try to use Cesium's GeoJSON processing
+                  // Create a minimal feature collection for this single feature
+                  const tempGeoJSON = {
+                    type: "FeatureCollection",
+                    features: [selectedFeature],
+                  };
+
+                  // Load as temporary data source and zoom to it
+                  GeoJsonDataSource.load(tempGeoJSON)
+                    .then((dataSource: any) => {
+                      cesiumViewer.dataSources.add(dataSource);
+                      cesiumViewer.zoomTo(dataSource.entities);
+                      // Clean up after zoom
+                      setTimeout(() => {
+                        cesiumViewer.dataSources.remove(dataSource);
+                      }, 1000);
+                    })
+                    .catch(() => {
+                      // Final fallback: just zoom to a reasonable area
+                      console.warn(
+                        "All zoom methods failed, using default view",
+                      );
+                    });
+                }
+
+                // Clean up temp entity
+                setTimeout(() => {
+                  cesiumViewer.entities.removeById(`temp_zoom_${featureId}`);
+                }, 500);
+              }
+            } catch (fallbackError) {
+              console.error("Fallback zoom method also failed:", fallbackError);
+            }
           }
         } catch (err) {
           console.error("Error zooming to Cesium feature:", err);
