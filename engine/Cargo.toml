@@ -1,11 +1,11 @@
 [workspace]
+exclude = ["runtime/action-wasm-processor"]
 members = [
   "cli",
   "plateau-gis-quality-checker/src-tauri",
   "runtime/*",
   "worker",
 ]
-exclude = ["runtime/action-wasm-processor"]
 
 default-members = ["runtime/*"]
 
