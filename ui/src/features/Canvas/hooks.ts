@@ -160,12 +160,15 @@ export default ({
     const hasModifier = event.metaKey || event.ctrlKey;
     switch (handler.keys?.join("")) {
       case "r":
+        event.preventDefault();
         onNodePickerOpen?.({ x: 0, y: 0 }, "reader", true);
         break;
       case "t":
+        event.preventDefault();
         onNodePickerOpen?.({ x: 0, y: 0 }, "transformer");
         break;
       case "w":
+        event.preventDefault();
         onNodePickerOpen?.({ x: 0, y: 0 }, "writer", true);
         break;
       case "c":

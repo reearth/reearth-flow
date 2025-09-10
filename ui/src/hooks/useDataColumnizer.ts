@@ -5,15 +5,10 @@ import { Polygon, PolygonCoordinateRing } from "@flow/types/gisTypes/geoJSON";
 import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 
 // Helper function to format cell values with truncation
-function formatCellValue(value: any, maxLength = 100): string {
-  if (value == null) return "";
+function formatCellValue(value: any): string {
+  if (value == null) return "-";
 
   const formatted = JSON.stringify(value);
-
-  // Truncate long content with ellipsis
-  if (formatted.length > maxLength) {
-    return formatted.substring(0, maxLength - 3) + "...";
-  }
 
   return formatted;
 }

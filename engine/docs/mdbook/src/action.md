@@ -3536,6 +3536,77 @@ No-Operation Sink (Discard Features)
 ### Category
 * Noop
 
+## ObjReader
+### Type
+* source
+### Description
+Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, texture coordinates, and materials
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ObjReaderParam",
+  "type": "object",
+  "properties": {
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "includeNormals": {
+      "default": true,
+      "type": "boolean"
+    },
+    "includeTexcoords": {
+      "default": true,
+      "type": "boolean"
+    },
+    "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "mergeGroups": {
+      "default": false,
+      "type": "boolean"
+    },
+    "parseMaterials": {
+      "default": true,
+      "type": "boolean"
+    },
+    "triangulate": {
+      "default": false,
+      "type": "boolean"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+### Output Ports
+* default
+### Category
+* File
+* 3D
+
 ## Offsetter
 ### Type
 * processor
@@ -4157,6 +4228,54 @@ Filter Features by Geometry Planarity
 * notplanarity
 ### Category
 * Geometry
+
+## PythonScriptProcessor
+### Type
+* processor
+### Description
+Execute Python Scripts with Geospatial Data Processing
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PythonScriptProcessorParam",
+  "type": "object",
+  "required": [
+    "script"
+  ],
+  "properties": {
+    "pythonPath": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "script": {
+      "$ref": "#/definitions/Expr"
+    },
+    "timeoutSeconds": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "minimum": 0.0
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Script
+* Python
 
 ## Refiner
 ### Type

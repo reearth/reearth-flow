@@ -7,15 +7,29 @@ import CollaborationCard from "./CollaborationCard";
 type Props = {
   self: AwarenessUser;
   users: Record<string, AwarenessUser>;
+  spotlightUserClientId: number | null;
+  onSpotlightUserSelect: (clientId: number) => void;
+  onSpotlightUserDeselect: () => void;
 };
 
-const CollaborationPopover: React.FC<Props> = ({ self, users }) => {
+const CollaborationPopover: React.FC<Props> = ({
+  self,
+  users,
+  spotlightUserClientId,
+  onSpotlightUserSelect,
+  onSpotlightUserDeselect,
+}) => {
   const t = useT();
 
   return (
     <div className="flex flex-col gap-2">
       <div className="p-2">
-        <CollaborationCard userName={self?.userName} color={self.color} />
+        <CollaborationCard
+          self
+          clientId={self.clientId}
+          userName={self?.userName}
+          color={self.color}
+        />
       </div>
       {users && Object.entries(users).length >= 1 && (
         <ScrollArea className="border-t pt-1">
@@ -27,9 +41,13 @@ const CollaborationPopover: React.FC<Props> = ({ self, users }) => {
               {Object.entries(users).map(([_key, value]) => {
                 return (
                   <CollaborationCard
+                    clientId={value.clientId}
                     key={value.clientId}
                     userName={value.userName}
                     color={value.color}
+                    spotlightUserClientId={spotlightUserClientId}
+                    onSpotlightUserSelect={onSpotlightUserSelect}
+                    onSpotlightUserDeselect={onSpotlightUserDeselect}
                   />
                 );
               })}

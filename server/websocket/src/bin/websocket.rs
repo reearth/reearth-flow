@@ -61,8 +61,6 @@ async fn main() {
         }
     });
 
-    tracing::info!("Broadcast pool initialized");
-
     let instance_id = Uuid::new_v4().to_string();
     tracing::info!("Generated instance ID: {}", instance_id);
 

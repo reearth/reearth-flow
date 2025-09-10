@@ -58,7 +58,7 @@ impl RedisStore {
         conn: &mut redis::aio::MultiplexedConnection,
         stream_key: &str,
         update: &[u8],
-        instance_id: &str,
+        instance_id: &u64,
     ) -> Result<()> {
         let script = redis::Script::new(
             r#"
@@ -66,7 +66,7 @@ impl RedisStore {
             local update = ARGV[1]
             local instance_id = ARGV[2]
             
-            redis.call('XADD', stream_key, '*', 'instance_id', update)
+            redis.call('XADD', stream_key, '*', instance_id, update)
             return 1
             "#,
         );
@@ -86,7 +86,7 @@ impl RedisStore {
         conn: &mut redis::aio::MultiplexedConnection,
         stream_key: &str,
         update: &[u8],
-        instance_id: &str,
+        instance_id: &u64,
         ttl: u64,
     ) -> Result<()> {
         let script = redis::Script::new(
@@ -95,7 +95,7 @@ impl RedisStore {
             local update = ARGV[1]
             local instance_id = ARGV[2]
             local ttl = ARGV[3]
-            redis.call('XADD', stream_key, '*', 'instance_id', update)
+            redis.call('XADD', stream_key, '*', instance_id, update)
             redis.call('EXPIRE', stream_key, ttl)
             return 1
             "#,
@@ -225,14 +225,13 @@ impl RedisStore {
 
     pub async fn read_and_filter(
         &self,
-        conn: &mut redis::aio::MultiplexedConnection,
         stream_key: &str,
         count: usize,
-        instance_id: &str,
+        instance_id: &u64,
         last_read_id: &Arc<Mutex<String>>,
     ) -> Result<Vec<Bytes>> {
         let block_ms = 1000;
-
+        let mut conn = self.pool.get().await?;
         let read_id = {
             let last_id = last_read_id.lock().await;
             last_id.clone()
@@ -246,7 +245,7 @@ impl RedisStore {
             .arg("STREAMS")
             .arg(stream_key)
             .arg(read_id)
-            .query_async(conn)
+            .query_async(&mut *conn)
             .await?;
 
         if result.is_empty() || result[0].1.is_empty() {
@@ -257,7 +256,10 @@ impl RedisStore {
         let mut last_msg_id = String::new();
 
         for (msg_id, fields) in result[0].1.iter() {
-            if let Some((_, value)) = fields.iter().find(|(name, _)| name != instance_id) {
+            if let Some((_, value)) = fields
+                .iter()
+                .find(|(name, _)| name != &instance_id.to_string())
+            {
                 updates.push(value.clone());
             }
             last_msg_id = msg_id.clone();
@@ -382,7 +384,7 @@ impl RedisStore {
         Ok(result == 1)
     }
 
-    pub async fn update_instance_heartbeat(&self, doc_id: &str, instance_id: &str) -> Result<()> {
+    pub async fn update_instance_heartbeat(&self, doc_id: &str, instance_id: &u64) -> Result<()> {
         let key = format!("doc:instances:{doc_id}");
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -445,7 +447,7 @@ impl RedisStore {
         Ok(count)
     }
 
-    pub async fn remove_instance_heartbeat(&self, doc_id: &str, instance_id: &str) -> Result<bool> {
+    pub async fn remove_instance_heartbeat(&self, doc_id: &str, instance_id: &u64) -> Result<bool> {
         let key = format!("doc:instances:{doc_id}");
 
         let mut conn = self.pool.get().await?;
@@ -790,12 +792,12 @@ impl RedisStore {
 
     pub async fn read_awareness_updates(
         &self,
-        conn: &mut redis::aio::MultiplexedConnection,
         doc_id: &str,
         last_read_id: &Arc<Mutex<String>>,
         count: usize,
-        instance_id_filter: Option<&str>,
+        instance_id_filter: Option<&u64>,
     ) -> Result<Vec<(String, Option<Bytes>)>> {
+        let mut conn = self.pool.get().await?;
         let stream_key = format!("awareness:stream:{doc_id}");
         let block_ms = 1000;
 
@@ -812,7 +814,7 @@ impl RedisStore {
             .arg("STREAMS")
             .arg(&stream_key)
             .arg(read_id)
-            .query_async(conn)
+            .query_async(&mut *conn)
             .await?;
 
         if result.is_empty() || result[0].1.is_empty() {
@@ -841,7 +843,7 @@ impl RedisStore {
             }
 
             if let Some(filter_instance_id) = instance_id_filter {
-                if message_instance_id == filter_instance_id {
+                if message_instance_id == filter_instance_id.to_string() {
                     last_msg_id = msg_id.clone();
                     continue;
                 }
@@ -857,5 +859,16 @@ impl RedisStore {
         }
 
         Ok(updates)
+    }
+
+    pub async fn delete_awareness_stream(&self, doc_id: &str) -> Result<()> {
+        let stream_key = format!("awareness:stream:{doc_id}");
+        let mut conn = self.pool.get().await?;
+        let _: () = redis::cmd("DEL")
+            .arg(&stream_key)
+            .query_async(&mut *conn)
+            .await?;
+
+        Ok(())
     }
 }

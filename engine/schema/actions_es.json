@@ -3548,6 +3548,76 @@
       ]
     },
     {
+      "name": "ObjReader",
+      "type": "source",
+      "description": "Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, texture coordinates, and materials",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ObjReaderParam",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "File Path",
+            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "includeNormals": {
+            "default": true,
+            "type": "boolean"
+          },
+          "includeTexcoords": {
+            "default": true,
+            "type": "boolean"
+          },
+          "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mergeGroups": {
+            "default": false,
+            "type": "boolean"
+          },
+          "parseMaterials": {
+            "default": true,
+            "type": "boolean"
+          },
+          "triangulate": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "File",
+        "3D"
+      ]
+    },
+    {
       "name": "Offsetter",
       "type": "processor",
       "description": "Añade desplazamientos a las coordenadas de la entidad.",
@@ -4192,6 +4262,54 @@
       ],
       "categories": [
         "Geometry"
+      ]
+    },
+    {
+      "name": "PythonScriptProcessor",
+      "type": "processor",
+      "description": "Execute Python Scripts with Geospatial Data Processing",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "PythonScriptProcessorParam",
+        "type": "object",
+        "required": [
+          "script"
+        ],
+        "properties": {
+          "pythonPath": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "script": {
+            "$ref": "#/definitions/Expr"
+          },
+          "timeoutSeconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Script",
+        "Python"
       ]
     },
     {
