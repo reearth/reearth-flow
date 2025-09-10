@@ -65,7 +65,7 @@ nodes:
             env.get("__value").fileIndex
         - attribute: Filename
           expr: |
-            file::extract_filename(env.get("__value").cityGmlPath)
+            file::extract_filename(env.get("__value").gmlPath)
         - attribute: "Building gml:id"
           expr: |
             env.get("__value").gmlId
@@ -115,7 +115,7 @@ nodes:
             env.get("__value").fileIndex
         - attribute: Filename
           expr: |
-            file::extract_filename(env.get("__value").cityGmlPath)
+            file::extract_filename(env.get("__value").gmlPath)
         - attribute: "Building gml:id"
           expr: |
             env.get("__value").bldgGmlId
