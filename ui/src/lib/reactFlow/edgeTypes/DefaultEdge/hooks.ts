@@ -34,7 +34,7 @@ export default ({
     () => nodes.find((node) => node.id === source),
     [nodes, source],
   );
-
+  
   const targetNode = useMemo(
     () => nodes.find((node) => node.id === target),
     [nodes, target],
@@ -102,8 +102,8 @@ export default ({
     id,
   ]);
 
-  const handleIntermediateDataSet = useCallback(async () => {
-    if (!selected || !intermediateDataUrl) return;
+  const handleIntermediateDataSet = useCallback(async (autoSelect = false) => {
+    if ((!selected && !autoSelect) || !intermediateDataUrl) return;
     const newDebugRunState: DebugRunState = {
       ...debugRunState,
       jobs:
@@ -144,6 +144,24 @@ export default ({
     targetNode,
     source,
     target,
+  ]);
+
+  // Auto-select intermediate data for writer target nodes
+  useEffect(() => {
+    if (
+      hasIntermediateData && 
+      targetNode?.type === 'writer' && 
+      !intermediateDataIsSet &&
+      debugJobState?.status === 'completed'
+    ) {
+      handleIntermediateDataSet(true); // Pass autoSelect=true
+    }
+  }, [
+    hasIntermediateData, 
+    targetNode?.type, 
+    intermediateDataIsSet, 
+    debugJobState?.status,
+    handleIntermediateDataSet
   ]);
 
   // Optional: Add source node status if needed later

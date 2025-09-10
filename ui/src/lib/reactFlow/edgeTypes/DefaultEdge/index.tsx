@@ -70,7 +70,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
               pointerEvents: "all",
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             }}
-            onDoubleClick={handleIntermediateDataSet}
+            onDoubleClick={() => handleIntermediateDataSet()}
           />
         )}
       </EdgeLabelRenderer>
