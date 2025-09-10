@@ -1,5 +1,5 @@
 import { DownloadIcon, FolderIcon } from "@phosphor-icons/react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 import {
   ButtonWithTooltip,
@@ -9,6 +9,8 @@ import {
   DropdownMenuTrigger,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+
+import DownloadConfirmDialog from "./DownloadConfirmDialog";
 
 type OutputDataItem = {
   url: string;
@@ -21,8 +23,19 @@ type Props = {
 
 const OutputDataDownload: React.FC<Props> = ({ outputData }) => {
   const t = useT();
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    fileName: string;
+    fileUrl: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    fileName: "",
+    fileUrl: "",
+    onConfirm: () => {},
+  });
 
-  const handleDownload = useCallback((url: string, filename: string) => {
+  const performDownload = useCallback((url: string, filename: string) => {
     // Create a temporary anchor element to trigger download
     const link = document.createElement("a");
     link.href = url;
@@ -32,16 +45,44 @@ const OutputDataDownload: React.FC<Props> = ({ outputData }) => {
     document.body.removeChild(link);
   }, []);
 
+  const handleDownload = useCallback((url: string, filename: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      fileName: filename,
+      fileUrl: url,
+      onConfirm: () => {
+        performDownload(url, filename);
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
+  }, [performDownload]);
+
   const handleDownloadAll = useCallback(() => {
     if (!outputData) return;
     
-    // Download each file with a small delay to avoid overwhelming the browser
-    outputData.forEach((item, index) => {
-      setTimeout(() => {
-        handleDownload(item.url, item.name);
-      }, index * 500); // 500ms delay between downloads
+    // For "Download All", show confirmation with summary
+    const totalFiles = outputData.length;
+    const summaryName = `${totalFiles} output files`;
+    
+    setConfirmDialog({
+      isOpen: true,
+      fileName: summaryName,
+      fileUrl: "", // No single URL for batch download
+      onConfirm: () => {
+        // Download each file with a small delay to avoid overwhelming the browser
+        outputData.forEach((item, index) => {
+          setTimeout(() => {
+            performDownload(item.url, item.name);
+          }, index * 500); // 500ms delay between downloads
+        });
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+      },
     });
-  }, [outputData, handleDownload]);
+  }, [outputData, performDownload]);
+
+  const handleCancelDownload = useCallback(() => {
+    setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+  }, []);
 
   if (!outputData || outputData.length === 0) {
     return null;
@@ -50,6 +91,7 @@ const OutputDataDownload: React.FC<Props> = ({ outputData }) => {
   const count = outputData.length;
 
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <ButtonWithTooltip
@@ -83,6 +125,15 @@ const OutputDataDownload: React.FC<Props> = ({ outputData }) => {
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
+    
+    <DownloadConfirmDialog
+      isOpen={confirmDialog.isOpen}
+      fileName={confirmDialog.fileName}
+      fileUrl={confirmDialog.fileUrl}
+      onConfirm={confirmDialog.onConfirm}
+      onCancel={handleCancelDownload}
+    />
+  </>
   );
 };
 
