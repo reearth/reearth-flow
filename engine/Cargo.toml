@@ -3,8 +3,8 @@ members = [
   "cli",
   "plateau-gis-quality-checker/src-tauri",
   "runtime/*",
-  "worker",
   "runtime/examples/fixture/tests",
+  "worker",
 ]
 
 default-members = ["runtime/*"]
