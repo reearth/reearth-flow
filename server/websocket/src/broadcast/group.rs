@@ -200,31 +200,110 @@ impl BroadcastGroup {
             }
         });
 
-        // Set up JavaScript-style subscription
+        // Set up JavaScript-style subscription with proper ydoc sync
         let sender_for_sub = sender.clone();
+        let awareness_for_redis = awareness.clone();
         let subscriber_for_messages = subscriber.clone();
-        let initial_redis_sub_id = {
-            let stream_key = stream_name.clone();
-            let sub_result = subscriber_for_messages
-                .subscribe(stream_key, move |_stream: String, messages: Vec<Bytes>| {
-                    // Safely handle messages to prevent panics
-                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                        // Merge and send messages like JavaScript version
-                        let merged_messages = if messages.len() == 1 {
-                            messages
-                        } else {
-                            crate::protocol::merge_messages(messages)
-                        };
 
-                        for merged_message in merged_messages {
-                            if let Err(e) = sender_for_sub.send(merged_message) {
-                                warn!("Failed to send Redis message to local subscribers: {}", e);
+        // Create a channel for async processing of Redis messages
+        let (redis_msg_tx, mut redis_msg_rx) =
+            tokio::sync::mpsc::unbounded_channel::<(String, Vec<Bytes>)>();
+
+        // Spawn a task to handle Redis messages asynchronously
+        let awareness_for_handler = awareness_for_redis.clone();
+        let sender_for_handler = sender_for_sub.clone();
+        tokio::spawn(async move {
+            while let Some((stream, messages)) = redis_msg_rx.recv().await {
+                debug!(
+                    "Processing {} Redis messages from stream: {}",
+                    messages.len(),
+                    stream
+                );
+
+                // Apply each message to local document AND broadcast
+                for message in messages {
+                    if message.is_empty() {
+                        continue;
+                    }
+
+                    // Try to decode and apply the message to local ydoc
+                    match yrs::sync::Message::decode_v1(&message) {
+                        Ok(parsed_msg) => {
+                            match parsed_msg {
+                                yrs::sync::Message::Sync(sync_msg) => {
+                                    match sync_msg {
+                                        yrs::sync::SyncMessage::Update(update) => {
+                                            // Apply sync update to local document
+                                            if let Ok(decoded_update) =
+                                                yrs::Update::decode_v1(&update)
+                                            {
+                                                let awareness_guard =
+                                                    awareness_for_handler.write().await;
+                                                let mut txn = awareness_guard.doc().transact_mut();
+                                                if let Err(e) = txn.apply_update(decoded_update) {
+                                                    warn!("Failed to apply Redis update to local doc: {}", e);
+                                                } else {
+                                                    debug!("Applied sync update from Redis to local doc");
+                                                }
+                                            }
+                                        }
+                                        yrs::sync::SyncMessage::SyncStep2(update) => {
+                                            // Apply sync step 2 to local document
+                                            if let Ok(decoded_update) =
+                                                yrs::Update::decode_v1(&update)
+                                            {
+                                                let awareness_guard =
+                                                    awareness_for_handler.write().await;
+                                                let mut txn = awareness_guard.doc().transact_mut();
+                                                if let Err(e) = txn.apply_update(decoded_update) {
+                                                    warn!("Failed to apply Redis sync step 2 to local doc: {}", e);
+                                                } else {
+                                                    debug!("Applied sync step 2 from Redis to local doc");
+                                                }
+                                            }
+                                        }
+                                        yrs::sync::SyncMessage::SyncStep1(_) => {
+                                            // Sync step 1 doesn't modify the document, just broadcast
+                                        }
+                                    }
+                                }
+                                yrs::sync::Message::Awareness(awareness_update) => {
+                                    // Apply awareness update to local awareness
+                                    let awareness_guard = awareness_for_handler.write().await;
+                                    if let Err(e) = awareness_guard.apply_update(awareness_update) {
+                                        warn!("Failed to apply Redis awareness update: {}", e);
+                                    } else {
+                                        debug!("Applied awareness update from Redis");
+                                    }
+                                }
+                                _ => {
+                                    debug!("Ignoring non-sync message from Redis");
+                                }
                             }
                         }
-                    }))
-                    .unwrap_or_else(|_| {
-                        error!("Handler panicked while processing Redis messages");
-                    });
+                        Err(e) => {
+                            warn!("Failed to decode Redis message: {}", e);
+                        }
+                    }
+
+                    // Broadcast the original message to connected clients
+                    if let Err(e) = sender_for_handler.send(message) {
+                        warn!("Failed to send Redis message to local subscribers: {}", e);
+                        break;
+                    }
+                }
+            }
+        });
+
+        let initial_redis_sub_id = {
+            let stream_key = stream_name.clone();
+            let tx = redis_msg_tx.clone();
+            let sub_result = subscriber_for_messages
+                .subscribe(stream_key, move |stream: String, messages: Vec<Bytes>| {
+                    // Send to async handler
+                    if let Err(e) = tx.send((stream.clone(), messages)) {
+                        error!("Failed to send Redis messages to handler: {}", e);
+                    }
                 })
                 .await;
             sub_result.redis_id
@@ -366,20 +445,10 @@ impl BroadcastGroup {
 
         let stream_task = {
             let awareness = self.awareness().clone();
-            let redis_store = self.redis_store.clone();
+            let api = self.api.clone();
+            let room = self.room.clone();
             let doc_name = self.doc_name.clone();
-            let stream_key = format!("yjs:stream:{doc_name}");
-            let client_id = awareness.read().await.client_id();
-            let mut conn = match redis_store.create_dedicated_connection().await {
-                Ok(conn) => conn,
-                Err(e) => {
-                    error!("Failed to create dedicated Redis connection: {}", e);
-                    return Subscription {
-                        sink_task: tokio::spawn(async { Ok(()) }),
-                        stream_task: tokio::spawn(async { Ok(()) }),
-                    };
-                }
-            };
+
             tokio::spawn(async move {
                 while let Some(res) = stream.next().await {
                     let data = match res.map_err(anyhow::Error::from) {
@@ -398,16 +467,7 @@ impl BroadcastGroup {
                         }
                     };
 
-                    match Self::handle_msg(
-                        &protocol,
-                        &awareness,
-                        msg,
-                        &redis_store,
-                        &mut conn,
-                        &stream_key,
-                        &client_id,
-                    )
-                    .await
+                    match Self::handle_msg(&protocol, &awareness, msg, &api, &room, &doc_name).await
                     {
                         Ok(Some(reply)) => {
                             let mut sink_lock = sink.lock().await;
@@ -433,51 +493,44 @@ impl BroadcastGroup {
         protocol: &P,
         awareness: &AwarenessRef,
         msg: Message,
-        redis_store: &RedisStore,
-        conn: &mut redis::aio::MultiplexedConnection,
-        stream_key: &str,
-        instance_id: &u64,
+        api: &Arc<Api>,
+        room: &str,
+        doc_name: &str,
     ) -> Result<Option<Message>, Error> {
-        match msg {
-            Message::Sync(msg) => {
-                let update_bytes = match &msg {
-                    SyncMessage::Update(update) => update.clone(),
-                    SyncMessage::SyncStep2(update) => update.clone(),
-                    _ => Vec::new(),
-                };
+        // Send all messages to Redis using JavaScript-style API
+        let encoded_msg = msg.encode_v1();
+        let api_clone = api.clone();
+        let room_clone = room.to_string();
+        let doc_name_clone = doc_name.to_string();
 
-                if !update_bytes.is_empty() {
-                    if let Err(e) = redis_store
-                        .publish_update_with_ttl(
-                            conn,
-                            stream_key,
-                            &update_bytes,
-                            instance_id,
-                            43200,
-                        )
-                        .await
-                    {
-                        warn!("Failed to publish update to Redis: {}", e);
-                    }
-                }
-
-                match msg {
-                    SyncMessage::SyncStep1(state_vector) => {
-                        let awareness = awareness.read().await;
-                        protocol.handle_sync_step1(&awareness, state_vector)
-                    }
-                    SyncMessage::SyncStep2(update) => {
-                        let decoded_update = Update::decode_v1(&update)?;
-                        let awareness = awareness.write().await;
-                        protocol.handle_sync_step2(&awareness, decoded_update)
-                    }
-                    SyncMessage::Update(update) => {
-                        let update = Update::decode_v1(&update)?;
-                        let awareness = awareness.write().await;
-                        protocol.handle_sync_step2(&awareness, update)
-                    }
-                }
+        // Send to Redis using JavaScript format
+        tokio::spawn(async move {
+            if let Err(e) = api_clone
+                .add_message(&room_clone, &doc_name_clone, &encoded_msg)
+                .await
+            {
+                warn!("Failed to add message to Redis: {}", e);
             }
+        });
+
+        // Handle the message locally
+        match msg {
+            Message::Sync(msg) => match msg {
+                SyncMessage::SyncStep1(state_vector) => {
+                    let awareness = awareness.read().await;
+                    protocol.handle_sync_step1(&awareness, state_vector)
+                }
+                SyncMessage::SyncStep2(update) => {
+                    let decoded_update = Update::decode_v1(&update)?;
+                    let awareness = awareness.write().await;
+                    protocol.handle_sync_step2(&awareness, decoded_update)
+                }
+                SyncMessage::Update(update) => {
+                    let update = Update::decode_v1(&update)?;
+                    let awareness = awareness.write().await;
+                    protocol.handle_sync_step2(&awareness, update)
+                }
+            },
             Message::Auth(deny_reason) => {
                 let awareness = awareness.read().await;
                 protocol.handle_auth(&awareness, deny_reason)

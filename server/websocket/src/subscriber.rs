@@ -75,7 +75,7 @@ impl Subscriber {
         // Use a timeout to prevent hanging
         let timeout = tokio::time::timeout(
             tokio::time::Duration::from_secs(5),
-            api.get_messages(streams)
+            api.get_messages(streams),
         );
 
         let messages = match timeout.await {
@@ -105,15 +105,20 @@ impl Subscriber {
                 drop(subs_write);
 
                 for handler in handlers {
-                    // Wrap handler calls in a safe context
-                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                        handler(
-                            message_result.stream.clone(),
-                            message_result.messages.clone(),
-                        );
-                    })).unwrap_or_else(|_| {
-                        error!("Handler panicked for stream: {}", message_result.stream);
-                    });
+                    // Process messages directly without merging first - just like JavaScript
+                    // This ensures each message gets processed individually for proper ydoc sync
+                    for individual_message in &message_result.messages {
+                        // Wrap handler calls in a safe context
+                        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                            handler(
+                                message_result.stream.clone(),
+                                vec![individual_message.clone()], // Send one message at a time
+                            );
+                        }))
+                        .unwrap_or_else(|_| {
+                            error!("Handler panicked for stream: {}", message_result.stream);
+                        });
+                    }
                 }
             }
         }
