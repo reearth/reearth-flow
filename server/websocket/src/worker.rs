@@ -20,7 +20,6 @@ impl Worker {
         }
     }
 
-    /// Start the worker to continuously process worker queue like JavaScript version
     pub async fn start(&self) -> Result<()> {
         let api = Arc::clone(&self.api);
         let opts = self.opts.clone();
@@ -52,8 +51,6 @@ impl Worker {
         Ok(())
     }
 
-    // Worker queue consumption is now handled by the Api struct
-
     pub async fn stop(&self) -> Result<()> {
         let mut running = self.running.lock().await;
         *running = false;
@@ -61,7 +58,6 @@ impl Worker {
     }
 }
 
-/// Create worker like JavaScript version
 pub async fn create_worker(api: Arc<Api>, opts: Option<WorkerOpts>) -> Result<Worker> {
     Ok(Worker::new(api, opts))
 }

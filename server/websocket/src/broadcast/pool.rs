@@ -147,8 +147,6 @@ impl BroadcastGroupManager {
         );
 
         if final_last_id != "0" {
-            // Note: In the new JavaScript-style implementation,
-            // the initial redis sub id is set during group creation
             debug!(
                 "Final last ID: {}, Initial sub ID: {}",
                 final_last_id,
@@ -192,14 +190,12 @@ impl BroadcastPool {
         Ok(group)
     }
 
-    /// Clean up inactive groups to prevent resource leaks
     pub async fn cleanup_inactive_groups(&self) {
         let mut to_remove = Vec::new();
 
         for entry in self.groups.iter() {
             let (doc_id, group) = entry.pair();
 
-            // Check if the group has any active connections
             if group.get_active_connections() == 0 {
                 debug!("Marking group for cleanup: {}", doc_id);
                 to_remove.push(doc_id.clone());
@@ -210,12 +206,9 @@ impl BroadcastPool {
             if let Some((_, group)) = self.groups.remove(&doc_id) {
                 info!("Cleaning up inactive group: {}", doc_id);
 
-                // Clean up awareness and trigger shutdown
                 if let Err(e) = group.cleanup_client_awareness().await {
                     warn!("Error cleaning up awareness for group {}: {}", doc_id, e);
                 }
-
-                // The group will be dropped here, which triggers the Drop trait
             }
         }
     }
