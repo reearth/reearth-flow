@@ -12,8 +12,6 @@ use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, Transact, Update};
 
-/// Compare Redis IDs like JavaScript version
-/// Returns true if a < b
 pub fn is_smaller_redis_id(a: &str, b: &str) -> bool {
     let a_parts: Vec<&str> = a.split('-').collect();
     let b_parts: Vec<&str> = b.split('-').collect();

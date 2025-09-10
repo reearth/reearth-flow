@@ -68,7 +68,6 @@ impl RedisStore {
         self.config.prefix.clone()
     }
 
-    /// Compute Redis room stream name like JavaScript version
     /// format: {prefix}:room:{room}:{docid}
     pub fn compute_redis_room_stream_name(&self, room: &str, docid: &str) -> String {
         format!(
@@ -113,10 +112,9 @@ impl RedisStore {
         Ok(())
     }
 
-    /// Get messages from Redis streams like JavaScript version
     pub async fn get_messages(
         &self,
-        streams: Vec<(String, String)>, // (stream_key, id) pairs
+        streams: Vec<(String, String)>,
     ) -> Result<Vec<StreamMessageResult>> {
         if streams.is_empty() {
             tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;

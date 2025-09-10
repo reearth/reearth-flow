@@ -70,7 +70,6 @@ impl BroadcastGroup {
         storage: Arc<GcsStore>,
         config: BroadcastConfig,
     ) -> Result<Self> {
-        // Create API and Subscriber like JavaScript version
         let api: Arc<Api> = Arc::new(Api::new(redis_store.clone(), storage.clone(), None).await?);
         let subscriber: Arc<Subscriber> =
             Arc::new(create_subscriber(redis_store.clone(), api.clone()).await?);
@@ -78,17 +77,14 @@ impl BroadcastGroup {
         let room = config.room_name.clone().unwrap_or_default();
         let doc_name = config.doc_name.clone().unwrap_or("index".to_string());
 
-        // Compute stream name using JavaScript format
         let stream_name = redis_store.compute_redis_room_stream_name(&room, &doc_name);
         let (sender, _) = channel(buffer_capacity.max(512));
         let awareness_c = Arc::downgrade(&awareness);
         let mut lock = awareness.write().await;
         let sink = sender.clone();
 
-        // Create is_closing flag to prevent Redis operations during shutdown
         let is_closing = Arc::new(tokio::sync::Mutex::new(false));
 
-        // Doc update handler - when local doc changes, send to Redis
         let api_for_updates = api.clone();
         let room_for_updates = room.clone();
         let doc_name_for_updates = doc_name.clone();
@@ -150,20 +146,16 @@ impl BroadcastGroup {
             changed.extend_from_slice(updated);
             changed.extend_from_slice(removed);
 
-            // Check if sender is still available before sending
             if tx.is_closed() {
-                return; // Silently return if channel is closed
+                return;
             }
 
-            if tx.send(changed).is_err() {
-                // Don't log warning as this is expected when client disconnects
-            }
+            if tx.send(changed).is_err() {}
         });
         drop(lock);
 
         let instance_id = format!("instance-{}", rand::random::<u64>());
 
-        // Register this instance in Redis for tracking like JavaScript version
         let doc_key = format!("{}/{}", room, doc_name);
         let client_id = {
             let awareness_read = awareness.read().await;
@@ -243,16 +235,13 @@ impl BroadcastGroup {
             }
         });
 
-        // Set up JavaScript-style subscription with proper ydoc sync
         let sender_for_sub = sender.clone();
         let awareness_for_redis = awareness.clone();
         let subscriber_for_messages = subscriber.clone();
 
-        // Create a channel for async processing of Redis messages
         let (redis_msg_tx, mut redis_msg_rx) =
             tokio::sync::mpsc::unbounded_channel::<(String, Vec<Bytes>)>();
 
-        // Spawn a task to handle Redis messages asynchronously
         let awareness_for_handler = awareness_for_redis.clone();
         let sender_for_handler = sender_for_sub.clone();
         let (redis_handler_shutdown_tx, mut redis_handler_shutdown_rx) =
@@ -381,7 +370,6 @@ impl BroadcastGroup {
             sub_result.redis_id
         };
 
-        // Simplified heartbeat (optional - not in JavaScript version)
         let (heartbeat_shutdown_tx, mut heartbeat_shutdown_rx) = tokio::sync::oneshot::channel();
         let heartbeat_task = tokio::spawn(async move {
             let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(30));
@@ -573,13 +561,11 @@ impl BroadcastGroup {
         room: &str,
         doc_name: &str,
     ) -> Result<Option<Message>, Error> {
-        // Send all messages to Redis using JavaScript-style API
         let encoded_msg = msg.encode_v1();
         let api_clone = api.clone();
         let room_clone = room.to_string();
         let doc_name_clone = doc_name.to_string();
 
-        // Send to Redis using JavaScript format
         tokio::spawn(async move {
             if let Err(e) = api_clone
                 .add_message(&room_clone, &doc_name_clone, &encoded_msg)
@@ -589,7 +575,6 @@ impl BroadcastGroup {
             }
         });
 
-        // Handle the message locally
         match msg {
             Message::Sync(msg) => match msg {
                 SyncMessage::SyncStep1(state_vector) => {

@@ -64,10 +64,9 @@ async fn main() {
     let instance_id = Uuid::new_v4().to_string();
     info!("Generated instance ID: {}", instance_id);
 
-    // Initialize JavaScript-style API, Subscriber, and Worker
     let api = match Api::new(redis_store.clone().unwrap(), store.clone(), None).await {
         Ok(api) => {
-            info!("JavaScript-style API initialized");
+            info!("API initialized");
             Arc::new(api)
         }
         Err(e) => {
@@ -77,10 +76,7 @@ async fn main() {
     };
 
     let subscriber = match create_subscriber(redis_store.clone().unwrap(), api.clone()).await {
-        Ok(subscriber) => {
-            info!("JavaScript-style Subscriber initialized");
-            Arc::new(subscriber)
-        }
+        Ok(subscriber) => Arc::new(subscriber),
         Err(e) => {
             error!("Failed to initialize Subscriber: {}", e);
             std::process::exit(1);
@@ -88,10 +84,7 @@ async fn main() {
     };
 
     let worker = match create_worker(api.clone(), None).await {
-        Ok(worker) => {
-            info!("JavaScript-style Worker initialized");
-            Arc::new(worker)
-        }
+        Ok(worker) => Arc::new(worker),
         Err(e) => {
             error!("Failed to initialize Worker: {}", e);
             std::process::exit(1);
