@@ -132,7 +132,7 @@ impl BroadcastGroup {
                                         }
 
                                         let update_bytes = update.encode_v1();
-                                        let stream_key = format!("yjs:stream:{}", doc_name_for_awareness);
+                                        let stream_key = format!("yjs:stream:{doc_name_for_awareness}");
                                         if let Some(awareness_ref) = awareness_c.upgrade() {
                                             let client_id = awareness_ref.read().await.client_id();
                                             if let Err(e) = redis_store_for_awareness
