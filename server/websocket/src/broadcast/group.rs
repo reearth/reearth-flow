@@ -139,7 +139,7 @@ impl BroadcastGroup {
                                                 &instance_id_for_awareness,
                                                 &mut conn,
                                                 &update_bytes,
-                                                300,
+                                                2,
                                             )
                                             .await
                                         {
