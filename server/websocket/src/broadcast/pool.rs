@@ -147,13 +147,10 @@ impl BroadcastGroupManager {
         );
 
         if final_last_id != "0" {
-            // Note: In the new JavaScript-style implementation,
-            // the initial redis sub id is set during group creation
-            debug!(
-                "Final last ID: {}, Initial sub ID: {}",
-                final_last_id,
-                group.get_initial_redis_sub_id()
-            );
+            let last_read_id = group.get_last_read_id();
+            let mut last_id_guard = last_read_id.lock().await;
+            *last_id_guard = final_last_id;
+            drop(last_id_guard);
         }
 
         Ok(group)
