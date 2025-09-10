@@ -613,7 +613,7 @@ impl<
             }
             ValidationType::SelfIntersection => {
                 for (j, line_string) in self.rings().iter().enumerate() {
-                    if utils::linestring_has_self_intersection(line_string) {
+                    if utils::linestring_has_self_intersection_3d(line_string) {
                         reason.push(ValidationProblemAtPosition(
                             ValidationProblem::SelfIntersection,
                             ValidationProblemPosition::Polygon(
