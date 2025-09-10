@@ -38,6 +38,11 @@ export type AwarenessUser = {
     x: number;
     y: number;
   };
+  viewport?: {
+    x: number;
+    y: number;
+    zoom: number;
+  };
   color: string;
   userName: string;
 };
