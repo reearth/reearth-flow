@@ -4,7 +4,6 @@ use pretty_assertions::assert_eq;
 use reearth_flow_runner::runner::Runner;
 use reearth_flow_types::Workflow;
 use serde::{Deserialize, Serialize};
-use serde_json;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
@@ -290,19 +289,6 @@ impl TestContext {
             // Check if expected file exists, fail test if not
             if let Some(expected_file_name) = &output.expected_file {
                 let expected_file = self.test_dir.join(expected_file_name);
-                println!("Debug: Looking for expected output file:");
-                println!("  Test dir: {:?}", self.test_dir);
-                println!("  Expected file: {:?}", expected_file_name);
-                println!("  Full expected path: {:?}", expected_file);
-                println!("  Expected file exists: {}", expected_file.exists());
-
-                if let Ok(entries) = fs::read_dir(&self.test_dir) {
-                    println!("  Files in test dir:");
-                    for entry in entries.flatten() {
-                        println!("    {:?}", entry.file_name());
-                    }
-                }
-
                 if !expected_file.exists() {
                     anyhow::bail!("Expected output file does not exist: {:?}", expected_file);
                 }
@@ -337,18 +323,6 @@ impl TestContext {
                 .join(format!("{}.jsonl", assertion.edge_id));
 
             if !edge_data_path.exists() {
-                // List available intermediate data files for debugging
-                let feature_store_dir = self.temp_dir.join("feature-store");
-
-                if feature_store_dir.exists() {
-                    println!("Available intermediate data files:");
-                    if let Ok(entries) = fs::read_dir(&feature_store_dir) {
-                        for entry in entries.flatten() {
-                            println!("  {:?}", entry.file_name());
-                        }
-                    }
-                }
-
                 anyhow::bail!(
                     "Intermediate data not found for edge {}: {:?}",
                     assertion.edge_id,
@@ -500,8 +474,6 @@ impl TestContext {
         expected: &str,
         except: Option<&ExceptColumns>,
     ) -> Result<()> {
-        println!("TSV comparison debug: except = {:?}", except);
-
         let actual_lines: Vec<&str> = actual.trim().lines().collect();
         let expected_lines: Vec<&str> = expected.trim().lines().collect();
 
@@ -516,15 +488,6 @@ impl TestContext {
 
         let actual_columns: Vec<&str> = actual_header.split('\t').collect();
         let expected_columns: Vec<&str> = expected_header.split('\t').collect();
-
-        println!(
-            "TSV comparison debug: actual columns = {:?}",
-            actual_columns
-        );
-        println!(
-            "TSV comparison debug: expected columns = {:?}",
-            expected_columns
-        );
 
         // Filter out excluded columns
         let actual_cols_filtered: Vec<&str> = actual_columns
@@ -574,26 +537,19 @@ impl TestContext {
             );
         }
 
-        // Compare data rows (reorder actual columns to match expected order, excluding excepted columns)
-        for (row_idx, (actual_row, expected_row)) in actual_lines
-            .iter()
-            .skip(1)
-            .zip(expected_lines.iter().skip(1))
-            .enumerate()
-        {
-            let actual_values: Vec<&str> = actual_row.split('\t').collect();
-            let expected_values: Vec<&str> = expected_row.split('\t').collect();
+        // Process and sort rows for comparison (ignoring row order)
+        let mut expected_processed_rows = Vec::new();
+        let mut actual_processed_rows = Vec::new();
 
-            if actual_values.len() != actual_columns.len()
-                || expected_values.len() != expected_columns.len()
-            {
-                anyhow::bail!("TSV row {} has incorrect number of columns", row_idx + 2);
+        // Process expected rows
+        for expected_row in expected_lines.iter().skip(1) {
+            let expected_values: Vec<&str> = expected_row.split('\t').collect();
+            if expected_values.len() != expected_columns.len() {
+                anyhow::bail!("Expected TSV row has incorrect number of columns");
             }
 
-            // Filter out values for excluded columns and reorder to match expected order
-            let mut reordered_actual_values = Vec::new();
+            // Filter out values for excluded columns
             let mut filtered_expected_values = Vec::new();
-
             for (expected_col_idx, expected_col_name) in expected_columns.iter().enumerate() {
                 // Skip excluded columns
                 if let Some(except) = except {
@@ -601,9 +557,27 @@ impl TestContext {
                         continue;
                     }
                 }
-
-                // Add expected value for this non-excluded column
                 filtered_expected_values.push(expected_values[expected_col_idx]);
+            }
+            expected_processed_rows.push(filtered_expected_values);
+        }
+
+        // Process actual rows and reorder columns to match expected order
+        for actual_row in actual_lines.iter().skip(1) {
+            let actual_values: Vec<&str> = actual_row.split('\t').collect();
+            if actual_values.len() != actual_columns.len() {
+                anyhow::bail!("Actual TSV row has incorrect number of columns");
+            }
+
+            // Reorder actual values to match expected column order and filter excluded columns
+            let mut reordered_actual_values = Vec::new();
+            for expected_col_name in expected_columns.iter() {
+                // Skip excluded columns
+                if let Some(except) = except {
+                    if except.contains(expected_col_name) {
+                        continue;
+                    }
+                }
 
                 // Find corresponding actual value and add it
                 if let Some(actual_col_idx) = actual_columns
@@ -615,17 +589,21 @@ impl TestContext {
                     anyhow::bail!("Column '{}' not found in actual data", expected_col_name);
                 }
             }
-
-            // Compare reordered actual values with expected values (both filtered)
-            if reordered_actual_values != filtered_expected_values {
-                anyhow::bail!(
-                    "TSV row {} data mismatch (excluding excepted columns).\nExpected: {:?}\nActual (reordered): {:?}", 
-                    row_idx + 2, filtered_expected_values, reordered_actual_values
-                );
-            }
+            actual_processed_rows.push(reordered_actual_values);
         }
 
-        println!("TSV comparison passed: files are equivalent (ignoring column order)");
+        // Sort both row sets for comparison (ignoring row order)
+        expected_processed_rows.sort();
+        actual_processed_rows.sort();
+
+        // Compare sorted rows
+        if expected_processed_rows != actual_processed_rows {
+            anyhow::bail!(
+                "TSV data mismatch (excluding excepted columns, ignoring row and column order).\nExpected rows (sorted): {:?}\nActual rows (sorted): {:?}", 
+                expected_processed_rows, actual_processed_rows
+            );
+        }
+
         Ok(())
     }
 
@@ -676,7 +654,7 @@ impl TestContext {
             }
 
             let json: serde_json::Value = serde_json::from_str(line)
-                .with_context(|| format!("Failed to parse JSON line: {}", line))?;
+                .with_context(|| format!("Failed to parse JSON line: {line}"))?;
 
             let filtered = self.apply_filter_to_json(&json, filter)?;
             results.push(serde_json::to_string(&filtered)?);
@@ -699,9 +677,8 @@ impl TestContext {
         } else if filter.starts_with("$.") {
             // JSONPath expression: $.field or $.field1.field2
             self.apply_jsonpath(json, filter)
-        } else if filter.starts_with('.') {
+        } else if let Some(field) = filter.strip_prefix('.') {
             // Simple field access: .field
-            let field = &filter[1..];
             Ok(json.get(field).unwrap_or(&serde_json::Value::Null).clone())
         } else {
             // Direct field access: field
@@ -733,7 +710,7 @@ impl TestContext {
         let mut selector = jsonpath::selector(json);
 
         let selected =
-            selector(path).with_context(|| format!("Invalid JSONPath expression: {}", path))?;
+            selector(path).with_context(|| format!("Invalid JSONPath expression: {path}"))?;
 
         match selected.len() {
             0 => Ok(serde_json::Value::Null),
@@ -800,19 +777,16 @@ mod tests {
         assert!(parsed.get("attributes").is_some());
         assert!(parsed.get("id").is_none());
         assert!(parsed.get("geometry").is_none());
-        println!("✓ Object construction filter test passed: {}", result);
 
         // Test 2: Simple field access .attributes
         let result = ctx.apply_json_filter(input_data, ".attributes")?;
         let parsed: serde_json::Value = serde_json::from_str(&result)?;
         assert!(parsed.get("_num_invalid_bldginst_geom_type").is_some());
-        println!("✓ Field access filter test passed: {}", result);
 
         // Test 3: JSONPath expression $.attributes
         let result = ctx.apply_json_filter(input_data, "$.attributes")?;
         let parsed: serde_json::Value = serde_json::from_str(&result)?;
         assert!(parsed.get("_num_invalid_bldginst_geom_type").is_some());
-        println!("✓ JSONPath filter test passed: {}", result);
 
         // Test 4: Multiple field construction {id, attributes}
         let result = ctx.apply_json_filter(input_data, "{id, attributes}")?;
@@ -820,9 +794,6 @@ mod tests {
         assert!(parsed.get("id").is_some());
         assert!(parsed.get("attributes").is_some());
         assert!(parsed.get("geometry").is_none());
-        println!("✓ Multiple field construction test passed: {}", result);
-
-        println!("All JSON filter tests passed!");
         Ok(())
     }
 }

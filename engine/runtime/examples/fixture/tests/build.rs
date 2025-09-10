@@ -2,7 +2,6 @@ use anyhow::{Context, Result};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use serde::{Deserialize, Serialize};
-use serde_json;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -78,7 +77,8 @@ fn main() -> Result<()> {
 
     fs::write(&out_path, generated_code.to_string())?;
 
-    println!("cargo:warning=Generated {} test cases", test_cases.len());
+    println!("cargo:rustc-env=WORKFLOW_TEST_COUNT={}", test_cases.len());
+    println!("Generated {} workflow test cases", test_cases.len());
 
     Ok(())
 }
@@ -87,10 +87,7 @@ fn discover_tests(testdata_dir: &Path) -> Result<Vec<TestCase>> {
     let mut test_cases = Vec::new();
 
     if !testdata_dir.exists() {
-        println!(
-            "cargo:warning=Test data directory does not exist: {:?}",
-            testdata_dir
-        );
+        eprintln!("Test data directory does not exist: {testdata_dir:?}");
         return Ok(test_cases);
     }
 
@@ -105,8 +102,7 @@ fn discover_tests(testdata_dir: &Path) -> Result<Vec<TestCase>> {
                 .strip_prefix(testdata_dir)
                 .unwrap()
                 .to_string_lossy()
-                .replace('/', "_")
-                .replace('-', "_")
+                .replace(['/', '-'], "_")
                 .to_lowercase();
 
             let profile_str = fs::read_to_string(entry.path())?;
@@ -172,22 +168,6 @@ fn generate_test_code(test_cases: &[TestCase], testdata_dir: &Path) -> Result<To
                 let workflow = ctx.load_workflow()?;
                 ctx.run_workflow(workflow)?;
 
-                // Debug: List files in temp directory
-                println!("=== Files in temp directory after workflow execution (recursive) ===");
-                fn list_dir_recursive(dir: &std::path::Path, prefix: &str) {
-                    if let Ok(entries) = std::fs::read_dir(dir) {
-                        for entry in entries.flatten() {
-                            let path = entry.path();
-                            if path.is_dir() {
-                                println!("{}[DIR] {:?}", prefix, entry.file_name());
-                                list_dir_recursive(&path, &format!("{}  ", prefix));
-                            } else {
-                                println!("{}{:?}", prefix, entry.file_name());
-                            }
-                        }
-                    }
-                }
-                list_dir_recursive(&ctx.temp_dir, "  ");
 
                 // Verify output
                 ctx.verify_output()?;
