@@ -21,6 +21,23 @@ export const getExpressionTemplates = (
 ): ExpressionTemplate[] => [
   // Advanced File Operations (beyond Simple Builder capabilities)
   {
+    id: "output-path",
+    name: t("Create Output File Path"),
+    category: "file-operations",
+    description: t("Generate output file path to write a file"),
+    tags: ["file", "path", "output"],
+    rhaiCode: `file::join_path(env.get("workerArtifactPath"), "{{fileNameWithExtension}}")`,
+    placeholders: [
+      {
+        key: "fileNameWithExtension",
+        description: t("Output filename with extension"),
+        defaultValue: "example.geojson",
+      },
+    ],
+    preview: `file::join_path(env.get("workerArtifactPath"), "example.geojson")`,
+    usageExample: t("Create output path for processed data files"),
+  },
+  {
     id: "file-extract-without-extension",
     name: t("Extract Filename Without Extension"),
     category: "file-operations",
