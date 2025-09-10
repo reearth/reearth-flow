@@ -1,10 +1,9 @@
 {
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
-  "description": "Test PLATEAU4 building format checks with instance histogram creation",
+  "description": "Test PLATEAU4 L-BLDG-06",
   "expectedOutput": {
-    "expectedFile": "02_bldg_地物インスタンス数.tsv",
-    "comparison": "exact",
-    "except": "\"GmlFilePath\""
+    "expectedFile": "02_bldg_l_bldg_06エラー.tsv",
+    "comparison": "exact"
   },
   "cityGmlPath": "udx/bldg/input.gml",
   "codelists": "codelists",

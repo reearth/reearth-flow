@@ -4,6 +4,7 @@ members = [
   "plateau-gis-quality-checker/src-tauri",
   "runtime/*",
   "worker",
+  "runtime/examples/fixture/tests",
 ]
 
 default-members = ["runtime/*"]
@@ -18,7 +19,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.88" # Remember to update clippy.toml as well
-version = "0.0.99"
+version = "0.0.100"
 
 [profile.dev]
 opt-level = 0
