@@ -6,13 +6,14 @@ import { Cursor } from "./PerfectCursor";
 
 type MultiCursorProps = {
   users: Record<string, AwarenessUser>;
+  currentWorkflowId: string;
 };
 
-const MultiCursor: React.FC<MultiCursorProps> = ({ users }) => {
+const MultiCursor: React.FC<MultiCursorProps> = ({ users, currentWorkflowId }) => {
   return (
     <ViewportPortal>
       {Object.entries(users).map(([key, value]) => {
-        if (!value.cursor) return null;
+        if (!value.cursor || value.currentWorkflowId !== currentWorkflowId) return null;
 
         return (
           <div

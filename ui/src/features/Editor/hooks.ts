@@ -122,6 +122,7 @@ export default ({
     color: rawSelf?.color || "#ffffff",
     cursor: rawSelf?.cursor || { x: 0, y: 0 },
   };
+
   const users = Array.from(
     rawUsers.entries() as IterableIterator<[number, AwarenessUser]>,
   )
@@ -199,6 +200,12 @@ export default ({
     rawWorkflows,
     setCurrentWorkflowId,
   });
+
+  useEffect(() => {
+    if (yAwareness) {
+      yAwareness.setLocalStateField("currentWorkflowId", currentWorkflowId);
+    }
+  }, [currentWorkflowId, yAwareness]);
 
   const handleOpenNode = useCallback(
     (nodeId?: string) => {
@@ -398,11 +405,12 @@ export default ({
     },
     [yAwareness, screenToFlowPosition, throttledMouseMove],
   );
+
   const spotlightUser = spotlightUserClientId
     ? users[spotlightUserClientId]
     : null;
-
   const spotlightUserViewport = spotlightUser?.viewport;
+  const spotlightUserCurrentWorkflowId = spotlightUser?.currentWorkflowId;
 
   const handleSpotlightUserSelect = useCallback((clientId: number) => {
     setSpotlightUserClientId(clientId);
@@ -413,7 +421,7 @@ export default ({
   }, []);
 
   useEffect(() => {
-    if (!spotlightUserViewport) return;
+    if (!spotlightUserViewport || !spotlightUserCurrentWorkflowId) return;
     setViewport(
       {
         x: spotlightUserViewport.x,
@@ -422,7 +430,16 @@ export default ({
       },
       { duration: 100 },
     );
-  }, [spotlightUserViewport, setViewport]);
+    if (spotlightUserCurrentWorkflowId !== currentWorkflowId) {
+      handleWorkflowOpen(spotlightUserCurrentWorkflowId);
+    }
+  }, [
+    spotlightUserViewport,
+    spotlightUserCurrentWorkflowId,
+    currentWorkflowId,
+    setViewport,
+    handleWorkflowOpen,
+  ]);
 
   return {
     currentWorkflowId,
