@@ -11,6 +11,7 @@ with:
 graphs:
   - !include ../../../../graphs/lod_splitter_with_dm.yml
   - !include ../../../../graphs/surface_validator_2d.yml
+  - !include format_checks.yml
   - !include ref_and_type_checks.yml
   - !include surface_validation_01.yml
   - id: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
