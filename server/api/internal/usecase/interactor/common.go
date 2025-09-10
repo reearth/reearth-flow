@@ -32,11 +32,10 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 	ar *accountrepo.Container, ag *accountgateway.Container,
 	permissionChecker gateway.PermissionChecker,
 	GQLClient *gql.Client,
+	job interfaces.Job,
 	config ContainerConfig,
 ) interfaces.Container {
 	setSkipPermissionCheck(config.SkipPermissionCheck)
-
-	job := NewJob(r, g, permissionChecker)
 
 	var tempNewUser interfaces.User
 	if GQLClient != nil && GQLClient.UserRepo != nil {
