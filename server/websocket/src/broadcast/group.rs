@@ -43,6 +43,8 @@ pub struct BroadcastGroup {
     initial_redis_sub_id: String,
     awareness_updater: Option<JoinHandle<()>>,
     awareness_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
+    redis_handler_task: Option<JoinHandle<()>>,
+    redis_handler_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
     heartbeat_task: Option<JoinHandle<()>>,
     heartbeat_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
     sync_task: Option<JoinHandle<()>>,
@@ -212,84 +214,109 @@ impl BroadcastGroup {
         // Spawn a task to handle Redis messages asynchronously
         let awareness_for_handler = awareness_for_redis.clone();
         let sender_for_handler = sender_for_sub.clone();
-        tokio::spawn(async move {
-            while let Some((stream, messages)) = redis_msg_rx.recv().await {
-                debug!(
-                    "Processing {} Redis messages from stream: {}",
-                    messages.len(),
-                    stream
-                );
+        let (redis_handler_shutdown_tx, mut redis_handler_shutdown_rx) =
+            tokio::sync::oneshot::channel();
 
-                // Apply each message to local document AND broadcast
-                for message in messages {
-                    if message.is_empty() {
-                        continue;
+        let redis_handler_task = tokio::spawn(async move {
+            loop {
+                select! {
+                    _ = &mut redis_handler_shutdown_rx => {
+                        debug!("Redis handler received shutdown signal");
+                        break;
                     }
+                    msg = redis_msg_rx.recv() => {
+                        match msg {
+                            Some((stream, messages)) => {
+                                debug!(
+                                    "Processing {} Redis messages from stream: {}",
+                                    messages.len(),
+                                    stream
+                                );
 
-                    // Try to decode and apply the message to local ydoc
-                    match yrs::sync::Message::decode_v1(&message) {
-                        Ok(parsed_msg) => {
-                            match parsed_msg {
-                                yrs::sync::Message::Sync(sync_msg) => {
-                                    match sync_msg {
-                                        yrs::sync::SyncMessage::Update(update) => {
-                                            // Apply sync update to local document
-                                            if let Ok(decoded_update) =
-                                                yrs::Update::decode_v1(&update)
-                                            {
-                                                let awareness_guard =
-                                                    awareness_for_handler.write().await;
-                                                let mut txn = awareness_guard.doc().transact_mut();
-                                                if let Err(e) = txn.apply_update(decoded_update) {
-                                                    warn!("Failed to apply Redis update to local doc: {}", e);
-                                                } else {
-                                                    debug!("Applied sync update from Redis to local doc");
+                                // Apply each message to local document AND broadcast
+                                for message in messages {
+                                    if message.is_empty() {
+                                        continue;
+                                    }
+
+                                    // Try to decode and apply the message to local ydoc
+                                    match yrs::sync::Message::decode_v1(&message) {
+                                        Ok(parsed_msg) => {
+                                            match parsed_msg {
+                                                yrs::sync::Message::Sync(sync_msg) => {
+                                                    match sync_msg {
+                                                        yrs::sync::SyncMessage::Update(update) => {
+                                                            // Apply sync update to local document
+                                                            if let Ok(decoded_update) =
+                                                                yrs::Update::decode_v1(&update)
+                                                            {
+                                                                let awareness_guard =
+                                                                    awareness_for_handler.write().await;
+                                                                let mut txn = awareness_guard.doc().transact_mut();
+                                                                if let Err(e) = txn.apply_update(decoded_update) {
+                                                                    warn!("Failed to apply Redis update to local doc: {}", e);
+                                                                } else {
+                                                                    debug!("Applied sync update from Redis to local doc");
+                                                                }
+                                                            }
+                                                        }
+                                                        yrs::sync::SyncMessage::SyncStep2(update) => {
+                                                            // Apply sync step 2 to local document
+                                                            if let Ok(decoded_update) =
+                                                                yrs::Update::decode_v1(&update)
+                                                            {
+                                                                let awareness_guard =
+                                                                    awareness_for_handler.write().await;
+                                                                let mut txn = awareness_guard.doc().transact_mut();
+                                                                if let Err(e) = txn.apply_update(decoded_update) {
+                                                                    warn!("Failed to apply Redis sync step 2 to local doc: {}", e);
+                                                                } else {
+                                                                    debug!("Applied sync step 2 from Redis to local doc");
+                                                                }
+                                                            }
+                                                        }
+                                                        yrs::sync::SyncMessage::SyncStep1(_) => {
+                                                            // Sync step 1 doesn't modify the document, just broadcast
+                                                        }
+                                                    }
+                                                }
+                                                yrs::sync::Message::Awareness(awareness_update) => {
+                                                    // Apply awareness update to local awareness
+                                                    let awareness_guard = awareness_for_handler.write().await;
+                                                    if let Err(e) = awareness_guard.apply_update(awareness_update) {
+                                                        warn!("Failed to apply Redis awareness update: {}", e);
+                                                    } else {
+                                                        debug!("Applied awareness update from Redis");
+                                                    }
+                                                }
+                                                _ => {
+                                                    debug!("Ignoring non-sync message from Redis");
                                                 }
                                             }
                                         }
-                                        yrs::sync::SyncMessage::SyncStep2(update) => {
-                                            // Apply sync step 2 to local document
-                                            if let Ok(decoded_update) =
-                                                yrs::Update::decode_v1(&update)
-                                            {
-                                                let awareness_guard =
-                                                    awareness_for_handler.write().await;
-                                                let mut txn = awareness_guard.doc().transact_mut();
-                                                if let Err(e) = txn.apply_update(decoded_update) {
-                                                    warn!("Failed to apply Redis sync step 2 to local doc: {}", e);
-                                                } else {
-                                                    debug!("Applied sync step 2 from Redis to local doc");
-                                                }
-                                            }
-                                        }
-                                        yrs::sync::SyncMessage::SyncStep1(_) => {
-                                            // Sync step 1 doesn't modify the document, just broadcast
+                                        Err(e) => {
+                                            warn!("Failed to decode Redis message: {}", e);
                                         }
                                     }
-                                }
-                                yrs::sync::Message::Awareness(awareness_update) => {
-                                    // Apply awareness update to local awareness
-                                    let awareness_guard = awareness_for_handler.write().await;
-                                    if let Err(e) = awareness_guard.apply_update(awareness_update) {
-                                        warn!("Failed to apply Redis awareness update: {}", e);
-                                    } else {
-                                        debug!("Applied awareness update from Redis");
+
+                                    // Check if sender is still available before broadcasting
+                                    if sender_for_handler.receiver_count() == 0 {
+                                        debug!("No more receivers, stopping Redis message processing");
+                                        return;
                                     }
-                                }
-                                _ => {
-                                    debug!("Ignoring non-sync message from Redis");
+
+                                    // Broadcast the original message to connected clients
+                                    if let Err(e) = sender_for_handler.send(message) {
+                                        debug!("Channel closed, stopping Redis message processing: {}", e);
+                                        return; // Exit gracefully when channel is closed
+                                    }
                                 }
                             }
+                            None => {
+                                debug!("Redis message channel closed");
+                                break;
+                            }
                         }
-                        Err(e) => {
-                            warn!("Failed to decode Redis message: {}", e);
-                        }
-                    }
-
-                    // Broadcast the original message to connected clients
-                    if let Err(e) = sender_for_handler.send(message) {
-                        warn!("Failed to send Redis message to local subscribers: {}", e);
-                        break;
                     }
                 }
             }
@@ -374,6 +401,8 @@ impl BroadcastGroup {
             initial_redis_sub_id,
             awareness_updater: Some(awareness_updater),
             awareness_shutdown_tx: Some(awareness_shutdown_tx),
+            redis_handler_task: Some(redis_handler_task),
+            redis_handler_shutdown_tx: Some(redis_handler_shutdown_tx),
             heartbeat_task: Some(heartbeat_task),
             heartbeat_shutdown_tx: Some(heartbeat_shutdown_tx),
             sync_task: Some(sync_task),
@@ -710,6 +739,16 @@ impl Drop for BroadcastGroup {
             if tx.send(()).is_err() {
                 debug!("Awareness shutdown channel already closed");
                 if let Some(task) = self.awareness_updater.take() {
+                    task.abort();
+                }
+            }
+        }
+
+        // Shutdown Redis handler task
+        if let Some(tx) = self.redis_handler_shutdown_tx.take() {
+            if tx.send(()).is_err() {
+                debug!("Redis handler shutdown channel already closed");
+                if let Some(task) = self.redis_handler_task.take() {
                     task.abort();
                 }
             }
