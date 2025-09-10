@@ -218,7 +218,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_LOD1面のエラー.csv")
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_LOD1境界面のエラー.csv")
 
   # TODO: SurfaceValidator3D (LOD2,3,4)
 

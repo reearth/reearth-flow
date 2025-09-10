@@ -21,11 +21,9 @@ nodes:
       routingPort: default
 
   - id: 1a9c4e7b-2f5d-4e8a-b3c6-9f2a5e8b1c4d
-    name: GeometryExtractor
+    name: GeometryPartExtractor
     type: action
-    action: GeometryExtractor
-    with:
-      outputAttribute: dumpGeometry
+    action: GeometryPartExtractor
 
   ## Incorrect orientation
   - id: 3d6f9a2c-5b8e-4a1d-c7f4-2e5a8c3b6f9d
@@ -283,7 +281,7 @@ edges:
   - id: 2c5f8a1d-6e9b-4c2f-a7e4-5c2f8a1d6e9b
     from: 1a9c4e7b-2f5d-4e8a-b3c6-9f2a5e8b1c4d
     to: 3d6f9a2c-5b8e-4a1d-c7f4-2e5a8c3b6f9d
-    fromPort: default
+    fromPort: extracted
     toPort: default
   - id: 4a7e1c5b-9f2d-4a8e-c6f3-7e4a1c5b9f2d
     from: 3d6f9a2c-5b8e-4a1d-c7f4-2e5a8c3b6f9d
@@ -310,7 +308,7 @@ edges:
   - id: 3f6c9a2d-7e4b-4f3c-a8e1-6c3f9a2d7e4b
     from: 1a9c4e7b-2f5d-4e8a-b3c6-9f2a5e8b1c4d
     to: 4f8b3e6a-7d1c-4e5a-c2f9-3a6f9b4e7c1d
-    fromPort: default
+    fromPort: extracted
     toPort: default
   - id: 5c8a1f4d-9e2b-4c5a-f7d2-8c5a1f4d9e2b
     from: 4f8b3e6a-7d1c-4e5a-c2f9-3a6f9b4e7c1d

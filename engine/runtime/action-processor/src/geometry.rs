@@ -13,6 +13,7 @@ pub(crate) mod errors;
 pub(crate) mod extractor;
 pub(crate) mod extruder;
 pub(crate) mod filter;
+pub(crate) mod geometry_part_extractor;
 pub(crate) mod hole_counter;
 pub(crate) mod hole_extractor;
 pub(crate) mod horizontal_reprojector;
