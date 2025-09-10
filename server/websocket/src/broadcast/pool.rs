@@ -5,6 +5,7 @@ use crate::storage::redis::RedisStore;
 use crate::AwarenessRef;
 use anyhow::Result;
 use bytes;
+use dashmap::DashMap;
 use rand;
 use std::sync::Arc;
 use tracing::{info, warn};
@@ -157,12 +158,16 @@ impl BroadcastGroupManager {
 #[derive(Clone, Debug)]
 pub struct BroadcastPool {
     manager: BroadcastGroupManager,
+    groups: Arc<DashMap<String, Arc<BroadcastGroup>>>,
 }
 
 impl BroadcastPool {
     pub fn new(store: Arc<GcsStore>, redis_store: Arc<RedisStore>) -> Self {
         let manager = BroadcastGroupManager::new(store, redis_store);
-        Self { manager }
+        Self {
+            manager,
+            groups: Arc::new(DashMap::new()),
+        }
     }
 
     pub fn get_store(&self) -> Arc<GcsStore> {
@@ -170,8 +175,26 @@ impl BroadcastPool {
     }
 
     pub async fn get_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
-        let group: Arc<BroadcastGroup> = self.manager.create_group(doc_id).await?;
+        if let Some(group) = self.groups.get(doc_id) {
+            info!("Reusing existing BroadcastGroup for doc_id: {}", doc_id);
+            return Ok(group.clone());
+        }
+
+        info!("Creating new BroadcastGroup for doc_id: {}", doc_id);
+        let group = self.manager.create_group(doc_id).await?;
+
+        self.groups.insert(doc_id.to_string(), group.clone());
         Ok(group)
+    }
+
+    pub async fn cleanup_group(&self, doc_id: &str) {
+        if let Some((_, _group)) = self.groups.remove(doc_id) {
+            info!("Cleaned up BroadcastGroup for doc_id: {}", doc_id);
+        }
+    }
+
+    pub fn get_cached_groups_count(&self) -> usize {
+        self.groups.len()
     }
 
     pub async fn flush_to_gcs(&self, doc_id: &str) -> Result<()> {

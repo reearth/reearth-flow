@@ -3,6 +3,7 @@ members = [
   "cli",
   "plateau-gis-quality-checker/src-tauri",
   "runtime/*",
+  "runtime/examples/fixture/tests",
   "worker",
 ]
 
