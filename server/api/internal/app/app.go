@@ -83,7 +83,6 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 		log.Infofc(ctx, "gql: GraphQL Playground is available")
 	}
 
-	// Create Job singleton at startup and reuse it for all requests
 	sharedJob := interactor.NewJob(cfg.Repos, cfg.Gateways, cfg.PermissionChecker)
 	e.Use(UsecaseMiddleware(cfg.Repos, cfg.Gateways, cfg.AccountRepos, cfg.AccountGateways, cfg.PermissionChecker, cfg.AccountGQLClient, sharedJob, interactor.ContainerConfig{
 		SignupSecret:        cfg.Config.SignupSecret,
