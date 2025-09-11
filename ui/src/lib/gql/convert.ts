@@ -19,6 +19,7 @@ import {
   type CmsAssetFragment,
   type CmsVisibility as GraphqlCmsVisibility,
   type CmsSchemaFieldType as GraphQlCmsSchemaFieldType,
+  type UserFacingLogLevel as GraphqlUserFacingLogLevel,
   ParameterType,
   ProjectSnapshotFragment,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
@@ -49,6 +50,7 @@ import type {
   CmsAsset,
   FacingLog,
 } from "@flow/types";
+import { FacingLogLevel } from "@flow/types";
 import { formatDate, formatFileSize } from "@flow/utils";
 
 import { UserFacingLogFragment } from "./__gen__/graphql";
@@ -144,6 +146,9 @@ export const toUserFacingLog = (log: UserFacingLogFragment): FacingLog => ({
   timestamp: log.timestamp,
   message: log.message,
   metadata: log.metadata ?? undefined,
+  nodeId: log.nodeId ?? "",
+  nodeName: log.nodeName ?? "",
+  level: toFacingLogLevel(log.level),
 });
 
 export const toProjectSnapShotMeta = (
@@ -259,6 +264,19 @@ export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
     case "PENDING":
     default:
       return "queued";
+  }
+};
+
+export const toFacingLogLevel = (level: GraphqlUserFacingLogLevel): FacingLogLevel => {
+  switch (level) {
+    case "ERROR":
+      return FacingLogLevel.Error;
+    case "INFO":
+      return FacingLogLevel.Info;
+    case "SUCCESS":
+      return FacingLogLevel.Success;
+    default:
+      return FacingLogLevel.Info;
   }
 };
 

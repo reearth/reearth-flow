@@ -20,6 +20,9 @@ subscription UserFacingLogs($jobId: ID!) {
   userFacingLogs(jobId: $jobId) {
     jobId
     timestamp
+    nodeId
+    nodeName
+    level
     message
     metadata
   }

@@ -78,7 +78,7 @@ export default (accessToken?: string, jobId?: string, projectId?: string) => {
         const logEntry = toUserFacingLog(rawLog);
 
         // Create unique ID - IMPORTANT: Use 'status' not 'logLevel' after conversion
-        const logId = `${logEntry.message}-${logEntry.timestamp}`;
+        const logId = `${logEntry.message}-${logEntry.level}`;
 
         // Skip if already processed
         if (processedLogIds.current.has(logId)) return;

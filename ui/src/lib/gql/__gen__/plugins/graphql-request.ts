@@ -1243,10 +1243,19 @@ export type User = Node & {
 export type UserFacingLog = {
   __typename?: 'UserFacingLog';
   jobId: Scalars['ID']['output'];
+  level: UserFacingLogLevel;
   message: Scalars['String']['output'];
   metadata?: Maybe<Scalars['JSON']['output']>;
+  nodeId?: Maybe<Scalars['ID']['output']>;
+  nodeName?: Maybe<Scalars['String']['output']>;
   timestamp: Scalars['DateTime']['output'];
 };
+
+export enum UserFacingLogLevel {
+  Error = 'ERROR',
+  Info = 'INFO',
+  Success = 'SUCCESS'
+}
 
 export type UserMetadata = {
   __typename?: 'UserMetadata';
@@ -1479,7 +1488,7 @@ export type ProjectSnapshotFragment = { __typename?: 'ProjectSnapshot', timestam
 
 export type LogFragment = { __typename?: 'Log', jobId: string, nodeId?: string | null, timestamp: any, logLevel: LogLevel, message: string };
 
-export type UserFacingLogFragment = { __typename?: 'UserFacingLog', jobId: string, timestamp: any, message: string, metadata?: any | null };
+export type UserFacingLogFragment = { __typename?: 'UserFacingLog', jobId: string, timestamp: any, nodeId?: string | null, nodeName?: string | null, level: UserFacingLogLevel, message: string, metadata?: any | null };
 
 export type CmsProjectFragment = { __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, createdAt: any, updatedAt: any };
 
@@ -1661,7 +1670,7 @@ export type UserFacingLogsSubscriptionVariables = Exact<{
 }>;
 
 
-export type UserFacingLogsSubscription = { __typename?: 'Subscription', userFacingLogs?: { __typename?: 'UserFacingLog', jobId: string, timestamp: any, message: string, metadata?: any | null } | null };
+export type UserFacingLogsSubscription = { __typename?: 'Subscription', userFacingLogs?: { __typename?: 'UserFacingLog', jobId: string, timestamp: any, nodeId?: string | null, nodeName?: string | null, level: UserFacingLogLevel, message: string, metadata?: any | null } | null };
 
 export type CreateTriggerMutationVariables = Exact<{
   input: CreateTriggerInput;
@@ -1924,6 +1933,9 @@ export const UserFacingLogFragmentDoc = gql`
     fragment UserFacingLog on UserFacingLog {
   jobId
   timestamp
+  nodeId
+  nodeName
+  level
   message
   metadata
 }
@@ -2383,6 +2395,9 @@ export const UserFacingLogsDocument = gql`
   userFacingLogs(jobId: $jobId) {
     jobId
     timestamp
+    nodeId
+    nodeName
+    level
     message
     metadata
   }

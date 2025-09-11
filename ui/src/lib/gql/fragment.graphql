@@ -138,6 +138,9 @@ fragment Log on Log {
 fragment UserFacingLog on UserFacingLog {
   jobId
   timestamp
+  nodeId
+  nodeName
+  level
   message
   metadata
 }
