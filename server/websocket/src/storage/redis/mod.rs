@@ -828,7 +828,6 @@ impl RedisStore {
         stream_key: &str,
         awareness_data: &[u8],
         instance_id: &u64,
-        ttl_seconds: u64,
     ) -> Result<()> {
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -842,14 +841,12 @@ impl RedisStore {
             local data = ARGV[2]
             local client_id = ARGV[3]
             local timestamp = ARGV[4]
-            local ttl = ARGV[5]
             
             redis.call('XADD', stream_key, '*', 
                 'type', msg_type, 
                 'data', data, 
                 'clientId', client_id, 
                 'timestamp', timestamp)
-            redis.call('EXPIRE', stream_key, ttl)
             return 1
             "#,
         );
@@ -860,7 +857,6 @@ impl RedisStore {
             .arg(awareness_data)
             .arg(instance_id)
             .arg(timestamp)
-            .arg(ttl_seconds)
             .invoke_async(&mut *conn)
             .await?;
 

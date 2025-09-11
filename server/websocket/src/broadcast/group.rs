@@ -120,42 +120,32 @@ impl BroadcastGroup {
                         break;
                     },
                     client_update = rx.recv() => {
-                        match client_update {
-                            Some(changed_clients) => {
-                                if let Some(awareness) = awareness_c.upgrade() {
-                                    let awareness = awareness.read().await;
-                                    if let Ok(update) = awareness.update_with_clients(changed_clients.clone()) {
-                                        let msg_bytes = Bytes::from(Message::Awareness(update.clone()).encode_v1());
-                                        if let Err(e) = sink.send(msg_bytes) {
-                                            error!("couldn't broadcast awareness update {}", e);
-                                            return;
+                        if let Some(changed_clients) = client_update {
+                            if let Some(awareness) = awareness_c.upgrade() {
+                                let awareness = awareness.read().await;
+                                let client_id = awareness.client_id();
+                                if let Ok(update) = awareness.update_with_clients(changed_clients.clone()) {
+                                    let msg_bytes = Bytes::from(Message::Awareness(update.clone()).encode_v1());
+                                    if let Err(e) = sink.send(msg_bytes) {
+                                        error!("couldn't broadcast awareness update {}", e);
+                                        return;
+                                    }
+
+                                    let update_bytes = update.encode_v1();
+                                    let stream_key = format!("yjs:stream:{doc_name_for_awareness}");
+                                        if let Err(e) = redis_store_for_awareness
+                                            .publish_awareness(
+                                                &mut conn,
+                                                &stream_key,
+                                                &update_bytes,
+                                                &client_id,
+                                            )
+                                            .await
+                                        {
+                                            warn!("Failed to store awareness update in Redis: {}", e);
                                         }
 
-                                        let update_bytes = update.encode_v1();
-                                        let stream_key = format!("yjs:stream:{doc_name_for_awareness}");
-                                        if let Some(awareness_ref) = awareness_c.upgrade() {
-                                            let client_id = awareness_ref.read().await.client_id();
-                                            if let Err(e) = redis_store_for_awareness
-                                                .publish_awareness(
-                                                    &mut conn,
-                                                    &stream_key,
-                                                    &update_bytes,
-                                                    &client_id,
-                                                    1200,
-                                                )
-                                                .await
-                                            {
-                                                warn!("Failed to store awareness update in Redis: {}", e);
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    break;
                                 }
-                            },
-                            None => {
-                                debug!("Awareness update channel closed");
-                                break;
                             }
                         }
                     }
@@ -294,7 +284,6 @@ impl BroadcastGroup {
                         let msg = Bytes::from(encoded_msg);
                         if let Err(e) = sender_clone.send(msg) {
                             warn!("Failed to send periodic sync message: {}", e);
-                            break;
                         }
                     }
                 }
@@ -406,7 +395,7 @@ impl BroadcastGroup {
                         Ok(data) => data,
                         Err(e) => {
                             warn!("Error receiving message: {}", e);
-                            break;
+                            continue;
                         }
                     };
 
@@ -468,13 +457,7 @@ impl BroadcastGroup {
 
                 if !update_bytes.is_empty() {
                     if let Err(e) = redis_store
-                        .publish_update_with_ttl(
-                            conn,
-                            stream_key,
-                            &update_bytes,
-                            instance_id,
-                            43200,
-                        )
+                        .publish_update(conn, stream_key, &update_bytes, instance_id)
                         .await
                     {
                         warn!("Failed to publish update to Redis: {}", e);
