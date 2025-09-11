@@ -1,6 +1,6 @@
 import { useReactFlow, useViewport } from "@xyflow/react";
 import { throttle } from "lodash-es";
-import { useCallback, useMemo, useRef } from "react";
+import { MouseEvent, useCallback, useMemo, useRef } from "react";
 import { useUsers, useSelf } from "y-presence";
 import type { Awareness } from "y-protocols/awareness";
 
@@ -44,7 +44,7 @@ export default ({ yAwareness }: { yAwareness: Awareness }) => {
     () =>
       throttle(
         (
-          event: MouseEvent,
+          event: MouseEvent<Element, globalThis.MouseEvent>,
           awareness: Awareness,
           positionFn: typeof screenToFlowPosition,
         ) => {
@@ -66,7 +66,7 @@ export default ({ yAwareness }: { yAwareness: Awareness }) => {
   );
 
   const handlePaneMouseMove = useCallback(
-    (event: MouseEvent) => {
+    (event: MouseEvent<Element, globalThis.MouseEvent>) => {
       throttledMouseMove(event, yAwareness, screenToFlowPosition);
     },
     [yAwareness, screenToFlowPosition, throttledMouseMove],
