@@ -3131,6 +3131,7 @@ Validate Feature Geometry Quality
       "type": "string",
       "enum": [
         "duplicatePoints",
+        "duplicateConsecutivePoints",
         "corruptGeometry",
         "selfIntersection"
       ]
@@ -3535,6 +3536,77 @@ No-Operation Sink (Discard Features)
 ### Category
 * Noop
 
+## ObjReader
+### Type
+* source
+### Description
+Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, texture coordinates, and materials
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ObjReaderParam",
+  "type": "object",
+  "properties": {
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "includeNormals": {
+      "default": true,
+      "type": "boolean"
+    },
+    "includeTexcoords": {
+      "default": true,
+      "type": "boolean"
+    },
+    "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "mergeGroups": {
+      "default": false,
+      "type": "boolean"
+    },
+    "parseMaterials": {
+      "default": true,
+      "type": "boolean"
+    },
+    "triangulate": {
+      "default": false,
+      "type": "boolean"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+### Output Ports
+* default
+### Category
+* File
+* 3D
+
 ## Offsetter
 ### Type
 * processor
@@ -3894,6 +3966,36 @@ Checks BuildingInstallation's geometry type
 ### Category
 * PLATEAU
 
+## PLATEAU4.BuildingUsageAttributeValidator
+### Type
+* processor
+### Description
+This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BuildingUsageAttributeValidatorParam",
+  "type": "object",
+  "properties": {
+    "codelists": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* l0405BldgError
+* cityCodeError
+* default
+### Category
+* PLATEAU
+
 ## PLATEAU4.CityCodeExtractor
 ### Type
 * processor
@@ -3955,6 +4057,26 @@ Validates domain of definition of CityGML features
 * default
 * rejected
 * duplicateGmlIdStats
+### Category
+* PLATEAU
+
+## PLATEAU4.InstanceHistogramCreator
+### Type
+* processor
+### Description
+Creates instance histogram for PLATEAU4 building features
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstanceHistogramCreatorParam",
+  "type": "object"
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
 ### Category
 * PLATEAU
 
@@ -4156,6 +4278,54 @@ Filter Features by Geometry Planarity
 * notplanarity
 ### Category
 * Geometry
+
+## PythonScriptProcessor
+### Type
+* processor
+### Description
+Execute Python Scripts with Geospatial Data Processing
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PythonScriptProcessorParam",
+  "type": "object",
+  "required": [
+    "script"
+  ],
+  "properties": {
+    "pythonPath": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "script": {
+      "$ref": "#/definitions/Expr"
+    },
+    "timeoutSeconds": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "minimum": 0.0
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Script
+* Python
 
 ## Refiner
 ### Type
@@ -4799,78 +4969,6 @@ Reproject Vertical Coordinates Between Datums
 * default
 ### Category
 * Geometry
-
-## WasmRuntimeExecutor
-### Type
-* processor
-### Description
-Compiles scripts (Python) into WebAssembly and executes them in a WASM runtime
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "WasmRuntimeExecutor Parameters",
-  "description": "Configuration for compiling and executing scripts in WebAssembly runtime.",
-  "type": "object",
-  "required": [
-    "processorType",
-    "programmingLanguage",
-    "source"
-  ],
-  "properties": {
-    "processorType": {
-      "title": "Processor Type",
-      "description": "Type of processor to create (Source, Processor, or Sink)",
-      "allOf": [
-        {
-          "$ref": "#/definitions/ProcessorType"
-        }
-      ]
-    },
-    "programmingLanguage": {
-      "title": "Programming Language",
-      "description": "Programming language of the source script (currently supports Python)",
-      "allOf": [
-        {
-          "$ref": "#/definitions/ProgrammingLanguage"
-        }
-      ]
-    },
-    "source": {
-      "title": "Source Code",
-      "description": "Script source code or path to compile to WebAssembly",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
-    },
-    "ProcessorType": {
-      "type": "string",
-      "enum": [
-        "Attribute"
-      ]
-    },
-    "ProgrammingLanguage": {
-      "type": "string",
-      "enum": [
-        "Python"
-      ]
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* default
-### Category
-* Wasm
 
 ## XMLFragmenter
 ### Type

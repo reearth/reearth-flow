@@ -1069,7 +1069,6 @@ export type SignupInput = {
 export type SignupPayload = {
   __typename?: 'SignupPayload';
   user: User;
-  workspace: Workspace;
 };
 
 export type Subscription = {

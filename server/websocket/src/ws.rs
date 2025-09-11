@@ -16,7 +16,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::sync::mpsc;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, warn};
 use yrs::sync::Error;
 
 #[cfg(feature = "auth")]
@@ -179,9 +179,8 @@ pub async fn ws_handler(
         }
     };
 
-    ws.on_upgrade(move |socket| {
-        handle_socket(socket, bcast, doc_id, user_token, Arc::clone(&state.pool))
-    })
+    let pool = state.pool.clone();
+    ws.on_upgrade(move |socket| handle_socket(socket, bcast, doc_id, user_token, pool))
 }
 
 async fn handle_socket(
@@ -200,10 +199,6 @@ async fn handle_socket(
 
     let conn = crate::conn::Connection::new(bcast.clone(), sink, stream, user_token).await;
 
-    if let Err(e) = bcast.increment_connections().await {
-        error!("Failed to increment connections: {}", e);
-    }
-
     let connection_result = tokio::select! {
         result = conn => result,
         _ = tokio::time::sleep(tokio::time::Duration::from_secs(86400)) => {
@@ -219,24 +214,21 @@ async fn handle_socket(
         );
     }
 
-    let _ = bcast.decrement_connections().await;
+    let active_connections = bcast.get_active_connections();
 
-    let count = bcast.connection_count();
-    info!(
-        "Connection closed for document {}. Remaining connections: {}",
-        doc_id, count
-    );
+    if active_connections == 0 {
+        tokio::spawn(async move {
+            let current_connections = pool
+                .get_group(&doc_id)
+                .await
+                .map(|group| group.get_active_connections())
+                .unwrap_or(0);
 
-    if count == 0 {
-        info!(
-            "No more connections for document {}. Triggering cleanup...",
-            doc_id
-        );
-        if let Err(e) = pool.cleanup_empty_group(&doc_id).await {
-            error!("Failed to cleanup empty group for {}: {}", doc_id, e);
-        } else {
-            info!("Successfully triggered cleanup for document {}", doc_id);
-        }
+            if current_connections == 0 {
+                pool.cleanup_group(&doc_id).await;
+                tracing::info!("Cleaned up BroadcastGroup for doc_id: {}", doc_id);
+            }
+        });
     }
 }
 

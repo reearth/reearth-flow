@@ -1,0 +1,73 @@
+# Test Case 3: Error Handling
+id: python-test-error
+name: "Python Script Processor - Error Handling Test"
+entryGraphId: main
+with:
+  outputFilePath:
+
+graphs:
+  - id: main
+    name: main
+    nodes:
+      - id: creator
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                name: "test_feature",
+                value: 10,
+                geometry: #{
+                  type: "Point",
+                  coordinates: [139.6917, 35.6895]
+                }
+              }
+            ]
+
+      - id: processor
+        name: PythonScriptProcessor
+        type: action
+        action: PythonScriptProcessor
+        with:
+          script: |
+            # Test Case 3: Intentionally broken code to test error handling
+            
+            # This should cause a division by zero error
+            try:
+                result = 1 / 0
+                properties['result'] = result
+            except ZeroDivisionError as e:
+                properties['error_caught'] = str(e)
+                properties['error_handled'] = True
+            
+            # This should cause a key error but we'll handle it
+            try:
+                missing_value = properties['non_existent_key']
+            except KeyError as e:
+                properties['key_error_handled'] = True
+            
+            # This should work fine
+            properties['status'] = 'error_test_completed'
+
+      - id: writer
+        name: FileWriter
+        type: action
+        action: FileWriter
+        with:
+          format: json
+          output: |
+            env.get("outputFilePath")
+
+    edges:
+      - id: edge1
+        from: creator
+        to: processor
+        fromPort: default
+        toPort: default
+      - id: edge2
+        from: processor
+        to: writer
+        fromPort: default
+        toPort: default

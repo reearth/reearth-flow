@@ -10,7 +10,10 @@ with:
   outputPath:
 graphs:
   - !include ../../../../graphs/lod_splitter_with_dm.yml
+  - !include ../../../../graphs/surface_validator_2d.yml
+  - !include format_checks.yml
   - !include ref_and_type_checks.yml
+  - !include surface_validation_01.yml
   - id: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
     name: entry_point
     nodes:
@@ -138,21 +141,24 @@ graphs:
               outputPort: buildingPart
 
       - id: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b
-        name: Dummy2
+        name: FormatChecker
+        type: subGraph
+        subGraphId: 36d6a846-80a8-48e9-9c34-d7c0b8af2d6d
+
+      - id: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+        name: SurfaceValidation01
+        type: subGraph
+        subGraphId: a9952b0d-e085-4a0b-bb76-fa36b969c96b
+
+      - id: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f
+        # name: PLATEAU3.LODSplitterWithDM2
+        # type: subGraph
+        # subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+        name: Dummy3
         type: action
         action: AttributeManager
         with:
           operations: []
-
-      - id: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-        name: PLATEAU3.LodSplitterWithDM
-        type: subGraph
-        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
-
-      - id: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f
-        name: PLATEAU3.LODSplitterWithDM2
-        type: subGraph
-        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
 
     edges:
       - id: 8c9e2f4a-7b1d-4e5c-a3f2-9d8b6c4e1a7f

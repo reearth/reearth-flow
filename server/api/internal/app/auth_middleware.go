@@ -16,12 +16,38 @@ type tempNewAuthMiddlewares []echo.MiddlewareFunc
 
 type tempNewAuthMiddlewaresParam struct {
 	GQLClient *gql.Client
+	SkipOps   map[string]struct{}
 }
 
 func newTempNewAuthMiddlewares(param *tempNewAuthMiddlewaresParam) tempNewAuthMiddlewares {
 	return []echo.MiddlewareFunc{
+		gqlOpNameMiddleware(),
 		jwtContextMiddleware(),
-		tempNewAuthMiddleware(param.GQLClient),
+		tempNewAuthMiddleware(param.GQLClient, param.SkipOps),
+	}
+}
+
+func gqlOpNameMiddleware() echo.MiddlewareFunc {
+	type bodyShape struct {
+		OperationName string `json:"operationName"`
+	}
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			if c.Path() == "/api/graphql" && c.Request().Method == http.MethodPost {
+				data, err := io.ReadAll(c.Request().Body)
+				if err == nil && len(data) > 0 {
+					_ = c.Request().Body.Close()
+					c.Request().Body = io.NopCloser(bytes.NewBuffer(data))
+
+					var b bodyShape
+					if json.Unmarshal(data, &b) == nil && b.OperationName != "" {
+						ctx := adapter.AttachGQLOperationName(c.Request().Context(), b.OperationName)
+						c.SetRequest(c.Request().WithContext(ctx))
+					}
+				}
+			}
+			return next(c)
+		}
 	}
 }
 
@@ -43,9 +69,13 @@ func jwtContextMiddleware() echo.MiddlewareFunc {
 	}
 }
 
-func tempNewAuthMiddleware(gqlClient *gql.Client) echo.MiddlewareFunc {
+func tempNewAuthMiddleware(gqlClient *gql.Client, skipOps map[string]struct{}) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if _, skip := skipOps[adapter.GQLOperationName(c.Request().Context())]; skip {
+				return next(c)
+			}
+
 			ctx := c.Request().Context()
 
 			// TODO: Optimize performance by including necessary user information (userID, email, etc.)
@@ -90,7 +120,7 @@ func conditionalGraphQLAuthMiddleware(
 				switch body.OperationName {
 				case "GetMe":
 					middlewares = tempNewAuthMWs
-				case "GetWorkspaceById", "GetWorkspaces", "SearchUser", "UpdateMe", "CreateWorkspace", "UpdateWorkspace":
+				case "GetWorkspaceById", "GetWorkspaces", "SearchUser", "UpdateMe", "CreateWorkspace", "UpdateWorkspace", "DeleteWorkspace", "AddMemberToWorkspace", "UpdateMemberOfWorkspace", "RemoveMemberFromWorkspace", "Signup":
 					middlewares = append(defaultMWs, tempNewAuthMWs...)
 				}
 			}

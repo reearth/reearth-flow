@@ -4,7 +4,7 @@ use num_traits::FromPrimitive;
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::{
     algorithm::{GeoFloat, GeoNum},
-    types::geometry::Geometry as FlowGeometry,
+    types::{coordnum::CoordNum, geometry::Geometry as FlowGeometry},
     validation::*,
 };
 use reearth_flow_runtime::{
@@ -14,7 +14,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::GeometryValue;
+use reearth_flow_types::{geometry::CityGmlGeometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -88,6 +88,8 @@ impl ProcessorFactory for GeometryValidatorFactory {
 pub enum ValidationType {
     #[serde(rename = "duplicatePoints")]
     DuplicatePoints,
+    #[serde(rename = "duplicateConsecutivePoints")]
+    DuplicateConsecutivePoints,
     #[serde(rename = "corruptGeometry")]
     CorruptGeometry,
     #[serde(rename = "selfIntersection")]
@@ -99,6 +101,9 @@ impl From<ValidationType> for reearth_flow_geometry::validation::ValidationType 
         match validation_type {
             ValidationType::DuplicatePoints => {
                 reearth_flow_geometry::validation::ValidationType::DuplicatePoints
+            }
+            ValidationType::DuplicateConsecutivePoints => {
+                reearth_flow_geometry::validation::ValidationType::DuplicateConsecutivePoints
             }
             ValidationType::CorruptGeometry => {
                 reearth_flow_geometry::validation::ValidationType::CorruptGeometry
@@ -180,34 +185,7 @@ impl Processor for GeometryValidator {
                 self.process_flow_geometry(&ctx, fw, geometry)?;
             }
             GeometryValue::CityGmlGeometry(gml_geometry) => {
-                let result = gml_geometry
-                    .gml_geometries
-                    .iter()
-                    .flat_map(|feature| {
-                        feature.polygons.iter().map(|polygon| {
-                            let mut result = Vec::new();
-                            for validation_type in &self.validation_types {
-                                if let Some(report) =
-                                    polygon.validate(validation_type.clone().into())
-                                {
-                                    result.push(ValidationResult::from(report));
-                                }
-                            }
-                            result
-                        })
-                    })
-                    .flatten()
-                    .collect::<Vec<ValidationResult>>();
-                if result.is_empty() {
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()));
-                } else {
-                    let mut feature = feature.clone();
-                    feature.insert(
-                        "validationResult",
-                        serde_json::to_value(ValidationResult::merge(result))?.into(),
-                    );
-                    fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
-                }
+                self.process_citygml_geometry(&ctx, fw, gml_geometry)?;
             }
         }
         Ok(())
@@ -223,9 +201,46 @@ impl Processor for GeometryValidator {
 }
 
 impl GeometryValidator {
+    fn process_citygml_geometry(
+        &self,
+        ctx: &ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+        gml_geometry: &CityGmlGeometry,
+    ) -> Result<(), BoxedError> {
+        let feature = &ctx.feature;
+        let result = gml_geometry
+            .gml_geometries
+            .iter()
+            .flat_map(|gml_feature| {
+                gml_feature.polygons.iter().map(|polygon| {
+                    let mut result = Vec::new();
+                    for validation_type in &self.validation_types {
+                        if let Some(report) = polygon.validate(validation_type.clone().into()) {
+                            result.push(ValidationResult::from(report));
+                        }
+                    }
+                    result
+                })
+            })
+            .flatten()
+            .collect::<Vec<ValidationResult>>();
+
+        if result.is_empty() {
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()));
+        } else {
+            let mut feature = feature.clone();
+            feature.insert(
+                "validationResult",
+                serde_json::to_value(ValidationResult::merge(result))?.into(),
+            );
+            fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
+        }
+        Ok(())
+    }
+
     fn process_flow_geometry<
         T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        Z: CoordNum + GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
     >(
         &self,
         ctx: &ExecutorContext,
@@ -234,11 +249,13 @@ impl GeometryValidator {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let mut result = Vec::new();
+
         for validation_type in &self.validation_types {
             if let Some(report) = geometry.validate(validation_type.clone().into()) {
                 result.push(ValidationResult::from(report));
             }
         }
+
         if result.is_empty() {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()));
         } else {

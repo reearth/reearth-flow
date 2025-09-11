@@ -1,0 +1,126 @@
+# Test Case 4: Python Standard Library
+id: python-test-stdlib
+name: "Python Script Processor - Standard Library Test"
+entryGraphId: main
+with:
+  outputFilePath:
+
+graphs:
+  - id: main
+    name: main
+    nodes:
+      - id: creator
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                name: "stdlib_test_feature",
+                text: "The quick brown fox jumps over the lazy dog",
+                numbers: [1, 2, 3, 4, 5, 1, 2, 3],
+                geometry: #{
+                  type: "Point",
+                  coordinates: [139.6917, 35.6895]
+                }
+              }
+            ]
+
+      - id: processor
+        name: PythonScriptProcessor
+        type: action
+        action: PythonScriptProcessor
+        with:
+          script: |
+            # Test Case 4: Python Standard Library modules
+            import json
+            import math
+            import re
+            import datetime
+            from collections import Counter
+            
+            # Test datetime module
+            now = datetime.datetime.now()
+            properties['timestamp'] = now.isoformat()
+            properties['year'] = now.year
+            properties['month'] = now.month
+            properties['day'] = now.day
+            
+            # Test math module
+            properties['pi'] = math.pi
+            properties['e'] = math.e
+            properties['sqrt_2'] = math.sqrt(2)
+            
+            if 'numbers' in properties:
+                numbers = properties['numbers']
+                properties['numbers_sum'] = sum(numbers)
+                properties['numbers_mean'] = sum(numbers) / len(numbers)
+                properties['numbers_sqrt_sum'] = math.sqrt(sum(numbers))
+            
+            # Test regular expressions
+            if 'text' in properties:
+                text = properties['text']
+                
+                # Count words using regex
+                words = re.findall(r'\w+', text)
+                properties['regex_word_count'] = len(words)
+                
+                # Find all vowels
+                vowels = re.findall(r'[aeiouAEIOU]', text)
+                properties['vowel_count'] = len(vowels)
+                
+                # Replace spaces with underscores
+                properties['text_underscored'] = re.sub(r'\s+', '_', text)
+                
+                # Test collections.Counter
+                if 'numbers' in properties:
+                    number_counts = Counter(properties['numbers'])
+                    properties['most_common_number'] = number_counts.most_common(1)[0][0]
+                    properties['number_frequencies'] = dict(number_counts)
+                
+                # Test string methods
+                properties['text_upper'] = text.upper()
+                properties['text_title'] = text.title()
+                properties['text_length'] = len(text)
+            
+            # Test json module (encode/decode)
+            test_data = {"test": True, "value": 42}
+            json_string = json.dumps(test_data)
+            parsed_data = json.loads(json_string)
+            properties['json_test'] = parsed_data['test']
+            properties['json_value'] = parsed_data['value']
+            
+            # Test list comprehensions and built-in functions
+            test_range = list(range(1, 6))  # [1, 2, 3, 4, 5]
+            properties['range_sum'] = sum(test_range)
+            properties['range_max'] = max(test_range)
+            properties['range_min'] = min(test_range)
+            properties['range_squares'] = [x*x for x in test_range]
+            
+            # Test string formatting
+            properties['formatted_string'] = f"Pi is approximately {math.pi:.4f}"
+            
+            # Mark test completion
+            properties['stdlib_test_complete'] = True
+
+      - id: writer
+        name: FileWriter
+        type: action
+        action: FileWriter
+        with:
+          format: json
+          output: |
+            env.get("outputFilePath")
+
+    edges:
+      - id: edge1
+        from: creator
+        to: processor
+        fromPort: default
+        toPort: default
+      - id: edge2
+        from: processor
+        to: writer
+        fromPort: default
+        toPort: default

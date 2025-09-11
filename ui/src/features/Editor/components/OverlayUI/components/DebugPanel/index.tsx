@@ -31,6 +31,7 @@ import DebugLogs from "./DebugLogs";
 import DebugPreview from "./DebugPreview";
 import TableViewer from "./DebugPreview/components/TableViewer";
 import useHooks from "./hooks";
+import OutputDataDownload from "./OutputDataDownload";
 
 const DebugPanel: React.FC = () => {
   const {
@@ -38,14 +39,15 @@ const DebugPanel: React.FC = () => {
     debugJobState,
     fileType,
     mapRef,
+    cesiumViewerRef,
     fullscreenDebug,
     expanded,
     minimized,
     showTempPossibleIssuesDialog,
     selectedDataURL,
     dataURLs,
+    outputDataForDownload,
     selectedOutputData,
-    isLoadingData,
     enableClustering,
     selectedFeature,
     setSelectedFeature,
@@ -60,10 +62,10 @@ const DebugPanel: React.FC = () => {
     handleRowSingleClick,
     handleRowDoubleClick,
     handleFlyToSelectedFeature,
-    // Streaming-specific properties
-    isStreaming,
+    // Data properties
     detectedGeometryType,
     totalFeatures,
+    isComplete,
   } = useHooks();
   const t = useT();
   const [tabValue, setTabValue] = useState("debug-logs");
@@ -93,7 +95,7 @@ const DebugPanel: React.FC = () => {
     <div
       className={`${fullscreenDebug ? "fixed inset-0" : ""} z-30 flex items-end`}>
       <Tabs
-        className={`pointer-events-auto w-[95vw] rounded-md border border-primary bg-secondary/70 p-2 shadow-md shadow-secondary backdrop-blur transition-all ${minimized ? "h-[42px]" : fullscreenDebug ? "h-[100vh] w-[100vw]" : expanded ? "h-[60vh]" : "h-[40vh]"}`}
+        className={`pointer-events-auto w-[95vw] rounded-md border border-primary bg-secondary/70 p-2 shadow-md shadow-secondary backdrop-blur transition-all ${minimized ? "h-[42px]" : fullscreenDebug ? "h-[100vh] w-[100vw]" : expanded ? "h-[75vh]" : "h-[45vh]"}`}
         value={tabValue}
         defaultValue="debug-logs"
         onValueChange={setTabValue}>
@@ -182,30 +184,27 @@ const DebugPanel: React.FC = () => {
             className="h-[calc(100%-30px)] overflow-scroll">
             <ResizablePanelGroup direction="horizontal">
               <ResizablePanel
-                defaultSize={70}
+                defaultSize={60}
                 minSize={20}
                 className="flex flex-col">
-                <Tabs defaultValue="data-viewer">
-                  <div className="py-2">
-                    <Select
-                      defaultValue={dataURLs[0].key}
-                      value={selectedDataURL}
-                      onValueChange={handleSelectedDataChange}>
-                      <SelectTrigger className="h-[26px] w-auto max-w-[250px] text-xs font-bold">
-                        <SelectValue
-                          placeholder={t("Select Data to Preview")}
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {dataURLs.map(({ key, name }) => (
-                          <SelectItem key={key} value={key}>
-                            {name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </Tabs>
+                <div className="flex gap-2 py-2">
+                  <Select
+                    defaultValue={dataURLs[0].key}
+                    value={selectedDataURL}
+                    onValueChange={handleSelectedDataChange}>
+                    <SelectTrigger className="h-[26px] w-auto max-w-[250px] text-xs font-bold">
+                      <SelectValue placeholder={t("Select Data to Preview")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dataURLs.map(({ key, name }) => (
+                        <SelectItem key={key} value={key}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <OutputDataDownload outputData={outputDataForDownload} />
+                </div>
                 <div className="min-h-0 flex-1">
                   <TableViewer
                     fileContent={selectedOutputData}
@@ -213,25 +212,23 @@ const DebugPanel: React.FC = () => {
                     selectedFeature={selectedFeature}
                     onSingleClick={handleRowSingleClick}
                     onDoubleClick={handleRowDoubleClick}
-                    // Streaming props
-                    isStreaming={isStreaming}
                     detectedGeometryType={detectedGeometryType || undefined}
                     totalFeatures={totalFeatures || undefined}
                   />
                 </div>
               </ResizablePanel>
               <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 mx-2 h-[30%] w-1 self-center rounded-md border border-accent bg-accent transition hover:border-transparent hover:bg-logo/70" />
-              <ResizablePanel defaultSize={30} minSize={20}>
+              <ResizablePanel defaultSize={40} minSize={20}>
                 <DebugPreview
                   debugJobState={debugJobState}
                   dataURLs={dataURLs}
                   fileType={fileType}
                   selectedOutputData={selectedOutputData}
-                  isLoadingData={isLoadingData}
                   showTempPossibleIssuesDialog={showTempPossibleIssuesDialog}
                   selectedFeature={selectedFeature}
                   enableClustering={enableClustering}
                   mapRef={mapRef}
+                  cesiumViewerRef={cesiumViewerRef}
                   onConvertedSelectedFeature={setConvertedSelectedFeature}
                   onShowTempPossibleIssuesDialogClose={
                     handleShowTempPossibleIssuesDialogClose
@@ -239,6 +236,9 @@ const DebugPanel: React.FC = () => {
                   onSelectedFeature={setSelectedFeature}
                   onEnableClusteringChange={setEnableClustering}
                   onFlyToSelectedFeature={handleFlyToSelectedFeature}
+                  // Data detection props
+                  detectedGeometryType={detectedGeometryType}
+                  isComplete={isComplete}
                 />
               </ResizablePanel>
             </ResizablePanelGroup>

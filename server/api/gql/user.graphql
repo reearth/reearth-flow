@@ -64,7 +64,6 @@ type UpdateMePayload {
 
 type SignupPayload {
   user: User!
-  workspace: Workspace!
 }
 
 type DeleteMePayload {

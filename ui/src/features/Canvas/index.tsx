@@ -9,6 +9,7 @@ import {
   EdgeChange,
 } from "@xyflow/react";
 import { MouseEvent, memo } from "react";
+import type { Doc } from "yjs";
 
 import {
   isValidConnection,
@@ -17,9 +18,9 @@ import {
   connectionLineStyle,
   nodeTypes,
 } from "@flow/lib/reactFlow";
-import type { ActionNodeType, Edge, Node } from "@flow/types";
+import type { ActionNodeType, AwarenessUser, Edge, Node } from "@flow/types";
 
-import { CanvasContextMenu } from "./components";
+import { CanvasContextMenu, MultiCursor } from "./components";
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
@@ -33,6 +34,8 @@ type Props = {
   nodes: Node[];
   edges: Edge[];
   selectedEdgeIds?: string[];
+  yDoc?: Doc | null;
+  users?: Record<string, AwarenessUser>;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onWorkflowOpen?: (workflowId: string) => void;
   onNodesAdd?: (newNode: Node[]) => void;
@@ -49,6 +52,7 @@ type Props = {
   onCopy?: (node?: Node) => void;
   onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: () => void;
+  onPaneMouseMove?: (event: MouseEvent<Element, globalThis.MouseEvent>) => void;
 };
 
 const Canvas: React.FC<Props> = ({
@@ -56,6 +60,7 @@ const Canvas: React.FC<Props> = ({
   nodes,
   edges,
   selectedEdgeIds,
+  users,
   onWorkflowAdd,
   onWorkflowOpen,
   onNodesAdd,
@@ -68,11 +73,12 @@ const Canvas: React.FC<Props> = ({
   onCopy,
   onCut,
   onPaste,
+  onPaneMouseMove,
 }) => {
   const {
     handleNodesDelete,
-    handleNodeDragStop,
     handleNodeDragOver,
+    handleNodeDragStop,
     handleNodeDrop,
     handleNodeSettings,
     handleConnect,
@@ -107,7 +113,7 @@ const Canvas: React.FC<Props> = ({
       elementsSelectable={!readonly}
       reconnectRadius={!readonly ? 10 : 0}
       // Readonly props END
-      attributionPosition="bottom-left"
+      proOptions={{ hideAttribution: true }}
       nodeDragThreshold={2}
       snapToGrid
       snapGrid={snapGrid}
@@ -134,13 +140,15 @@ const Canvas: React.FC<Props> = ({
       onDragOver={handleNodeDragOver}
       onConnect={handleConnect}
       onReconnect={handleReconnect}
-      onBeforeDelete={onBeforeDelete}>
+      onBeforeDelete={onBeforeDelete}
+      onPaneMouseMove={onPaneMouseMove}>
       <Background
         className="bg-background"
         variant={BackgroundVariant["Dots"]}
         gap={gridSize}
         color="rgba(63, 63, 70, 1)"
       />
+      {!readonly && users && <MultiCursor users={users} />}
       {contextMenu && (
         <CanvasContextMenu
           data={contextMenu.data}
