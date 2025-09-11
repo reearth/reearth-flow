@@ -1,29 +1,39 @@
-import { useEffect, useRef } from "react";
+import { useReactFlow } from "@xyflow/react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Awareness } from "y-protocols/awareness";
 
 import type { AwarenessUser } from "@flow/types";
 
 export default ({
-  spotlightUser,
+  yAwareness,
+  users,
   currentWorkflowId,
-  spotlightUserClientId,
   openWorkflowIds,
   handleWorkflowOpen,
   handleWorkflowClose,
 }: {
-  spotlightUser: AwarenessUser | null;
+  yAwareness: Awareness;
+  users: Record<string, AwarenessUser>;
   currentWorkflowId: string;
-  spotlightUserClientId: number | null;
   openWorkflowIds: string[];
   handleWorkflowOpen: (workflowId: string) => void;
   handleWorkflowClose: (workflowId: string) => void;
 }) => {
+  const { setViewport } = useReactFlow();
+  const [spotlightUserClientId, setSpotlightUserClientId] = useState<
+    number | null
+  >(null);
+  const spotlightUser = spotlightUserClientId
+    ? users[spotlightUserClientId]
+    : null;
   const spotlightUserCurrentWorkflowId = spotlightUser?.currentWorkflowId;
   const spotlightUserOpenWorkflowIds = spotlightUser?.openWorkflowIds;
-
+  const spotlightUserViewport = spotlightUser?.viewport;
   const workflowsOpenedBySpotlight = useRef<Set<string>>(new Set());
   const prevSpotlightUserOpenWorkflowIds = useRef<string[] | undefined>(
     undefined,
   );
+
   useEffect(() => {
     if (!spotlightUserCurrentWorkflowId || !spotlightUserOpenWorkflowIds)
       return;
@@ -60,8 +70,43 @@ export default ({
   ]);
 
   useEffect(() => {
+    if (!spotlightUserViewport) return;
+    setViewport(
+      {
+        x: spotlightUserViewport.x,
+        y: spotlightUserViewport.y,
+        zoom: spotlightUserViewport.zoom,
+      },
+      { duration: 100 },
+    );
+  }, [spotlightUserViewport, setViewport]);
+
+  useEffect(() => {
     if (!spotlightUserClientId || !spotlightUserOpenWorkflowIds) return;
 
     prevSpotlightUserOpenWorkflowIds.current = spotlightUserOpenWorkflowIds;
   }, [spotlightUserClientId, spotlightUserOpenWorkflowIds]);
+
+  const handleSpotlightUserSelect = useCallback((clientId: number) => {
+    setSpotlightUserClientId(clientId);
+  }, []);
+
+  const handleSpotlightUserDeselect = useCallback(() => {
+    setSpotlightUserClientId(null);
+  }, []);
+
+  useEffect(() => {
+    yAwareness.setLocalStateField("currentWorkflowId", currentWorkflowId);
+  }, [currentWorkflowId, yAwareness]);
+
+  useEffect(() => {
+    yAwareness.setLocalStateField("openWorkflowIds", openWorkflowIds);
+  }, [openWorkflowIds, yAwareness]);
+
+  return {
+    spotlightUser,
+    spotlightUserClientId,
+    handleSpotlightUserSelect,
+    handleSpotlightUserDeselect,
+  };
 };
