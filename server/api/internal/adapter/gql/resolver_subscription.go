@@ -2,19 +2,14 @@ package gql
 
 import (
 	"context"
-	"os"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/log"
 )
 
 type subscriptionResolver struct{ *Resolver }
 
 func (r *subscriptionResolver) JobStatus(ctx context.Context, jobID gqlmodel.ID) (<-chan gqlmodel.JobStatus, error) {
-	hostname, _ := os.Hostname()
-	log.Debugfc(ctx, "[%s] GraphQL subscription created for job %s", hostname, jobID)
-
 	jID, err := id.JobIDFrom(string(jobID))
 	if err != nil {
 		return nil, err

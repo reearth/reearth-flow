@@ -218,8 +218,6 @@ async fn handle_socket(
 
     if active_connections == 0 {
         tokio::spawn(async move {
-            tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-
             let current_connections = pool
                 .get_group(&doc_id)
                 .await
@@ -228,6 +226,7 @@ async fn handle_socket(
 
             if current_connections == 0 {
                 pool.cleanup_group(&doc_id).await;
+                tracing::info!("Cleaned up BroadcastGroup for doc_id: {}", doc_id);
             }
         });
     }

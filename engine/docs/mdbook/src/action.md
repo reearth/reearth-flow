@@ -4087,6 +4087,36 @@ Checks BuildingInstallation's geometry type
 ### Category
 * PLATEAU
 
+## PLATEAU4.BuildingUsageAttributeValidator
+### Type
+* processor
+### Description
+This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BuildingUsageAttributeValidatorParam",
+  "type": "object",
+  "properties": {
+    "codelists": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* l0405BldgError
+* cityCodeError
+* default
+### Category
+* PLATEAU
+
 ## PLATEAU4.CityCodeExtractor
 ### Type
 * processor
@@ -4148,6 +4178,26 @@ Validates domain of definition of CityGML features
 * default
 * rejected
 * duplicateGmlIdStats
+### Category
+* PLATEAU
+
+## PLATEAU4.InstanceHistogramCreator
+### Type
+* processor
+### Description
+Creates instance histogram for PLATEAU4 building features
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstanceHistogramCreatorParam",
+  "type": "object"
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
 ### Category
 * PLATEAU
 

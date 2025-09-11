@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_9d8ed669-98d2-430a-8e2c-c4158b869749">
+	<gml:name>Common_localPublicAuthoritiesType</gml:name>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="id2">
+			<gml:description>北海道札幌市</gml:description>
+			<gml:name>01100</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="id778">
+			<gml:description>富山県射水市</gml:description>
+			<gml:name>16211</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+</gml:Dictionary>
