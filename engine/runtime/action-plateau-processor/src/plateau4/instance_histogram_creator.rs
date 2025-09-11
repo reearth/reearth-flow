@@ -98,7 +98,6 @@ impl ProcessorFactory for InstanceHistogramCreatorFactory {
 #[derive(Default)]
 struct InstanceHistogramCreatorParam {}
 
-
 #[derive(Debug, Clone)]
 struct InstanceHistogramCreator {
     file_histograms: HashMap<String, FileHistogram>,
