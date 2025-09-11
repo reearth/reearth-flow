@@ -44,6 +44,7 @@ describe("useYNode", () => {
           outputs: ["output1"],
           params: {},
           customizations: {},
+          isCollapsed: true,
           pseudoInputs: [],
           pseudoOutputs: [],
         },
@@ -67,6 +68,7 @@ describe("useYNode", () => {
         outputs: node.data.outputs,
         params: node.data.params,
         customizations: node.data.customizations,
+        isCollapsed: node.data.isCollapsed ?? false,
       },
     }));
 
