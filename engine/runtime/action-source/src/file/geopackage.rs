@@ -99,7 +99,7 @@ pub(super) struct GeoPackageReaderParam {
     attribute_filter: Option<String>,
     #[serde(default)]
     batch_size: Option<usize>,
-    #[serde(default)]
+    #[serde(default, rename = "force2D")]
     force_2d: bool,
     #[serde(default)]
     spatial_filter: Option<String>,
@@ -1430,6 +1430,7 @@ mod tests {
         assert!(json.contains("\"layerName\""));
         assert!(json.contains("\"includeMetadata\""));
         assert!(json.contains("\"tileFormat\""));
+        assert!(json.contains("\"force2D\""));  // Verify explicit rename
 
         // Check that values are serialized correctly
         assert!(json.contains("\"layerName\":\"test_layer\""));
