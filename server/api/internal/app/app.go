@@ -60,8 +60,12 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	authMiddleware := echo.WrapMiddleware(lo.Must(appx.AuthMiddleware(authConfig, adapter.ContextAuthInfo, true)))
 	// TODO: During migration, continue using this temporary middleware for selected GraphQL operations.
 	// After migration, this will become the standard authMiddleware and the function will be renamed accordingly.
+	skipOps := map[string]struct{}{
+		"Signup": {},
+	}
 	tempNewAuthMiddlewares := newTempNewAuthMiddlewares(&tempNewAuthMiddlewaresParam{
 		GQLClient: cfg.AccountGQLClient,
+		SkipOps:   skipOps,
 	})
 
 	// enable pprof

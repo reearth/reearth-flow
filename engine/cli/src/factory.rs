@@ -20,9 +20,6 @@ pub(crate) static BUILTIN_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> = La
 pub(crate) static PLATEAU_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> =
     Lazy::new(|| PLATEAU_MAPPINGS.clone());
 
-pub(crate) static WASM_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> =
-    Lazy::new(|| reearth_flow_action_wasm_processor::mapping::ACTION_FACTORY_MAPPINGS.clone());
-
 pub(crate) static PYTHON_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> =
     Lazy::new(|| PYTHON_MAPPINGS.clone());
 
@@ -30,7 +27,6 @@ pub(crate) static ALL_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> = Lazy::
     BUILTIN_ACTION_FACTORIES
         .iter()
         .chain(PLATEAU_ACTION_FACTORIES.iter())
-        .chain(WASM_ACTION_FACTORIES.iter())
         .chain(PYTHON_ACTION_FACTORIES.iter())
         .map(|(k, v)| (k.clone(), v.clone()))
         .collect()

@@ -1,4 +1,5 @@
 [workspace]
+exclude = ["runtime/action-wasm-processor"]
 members = [
   "cli",
   "plateau-gis-quality-checker/src-tauri",
@@ -52,7 +53,6 @@ reearth-flow-action-processor = { path = "runtime/action-processor" }
 reearth-flow-action-python-processor = { path = "runtime/action-python-processor" }
 reearth-flow-action-sink = { path = "runtime/action-sink" }
 reearth-flow-action-source = { path = "runtime/action-source" }
-reearth-flow-action-wasm-processor = { path = "runtime/action-wasm-processor" }
 reearth-flow-common = { path = "runtime/common" }
 reearth-flow-eval-expr = { path = "runtime/eval-expr" }
 reearth-flow-geometry = { path = "runtime/geometry" }
@@ -243,7 +243,5 @@ uuid = { version = "1.15.1", features = [
   "v4",
 ] }
 walkdir = "2.5.0"
-wasmer = "5.0.3"
-wasmer-wasix = "0.33.0"
 zip = "2.2.3"
 zstd = "0.13.3"

@@ -8,6 +8,9 @@ export type GeneralState = {
 export type SelectedIntermediateData = {
   edgeId: string;
   url: string;
+  displayName?: string;
+  sourceName?: string;
+  targetName?: string;
 };
 
 export type JobState = {
@@ -16,7 +19,7 @@ export type JobState = {
   status: JobStatus;
   nodeExecutions?: NodeExecution[];
   tempWorkflowHasPossibleIssuesFlag?: boolean;
-  selectedIntermediateData?: SelectedIntermediateData[];
+  selectedIntermediateData?: SelectedIntermediateData[]; // undefined = never touched, [] = user has selected/deselected
 };
 
 export type DebugRunState = {
