@@ -6,7 +6,7 @@ This directory contains the test data and configuration for the Re:Earth Flow wo
 
 ### Test Configuration (`workflow_test.json`)
 
-Each testdata is a folder consisting of a test profile named `workflow_test.json` and various supporting files. `workflow_test.json` specifies the testing configurations such as input variables, input files, expected output files, expected intermediate data, and so on. The testing system automatically detects the testdata and write the rust unit test at compile time.
+Each testdata is a folder consisting of a test profile named `workflow_test.json` and various supporting files. `workflow_test.json` specifies the testing configurations such as input variables, input files, expected output files, expected intermediate data, and so on. The testing system automatically detects the testdata and writes the corresponding rust unit tests at compile time.
 
 ### Configuration Fields
 
