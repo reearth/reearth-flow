@@ -20,7 +20,7 @@ import {
 } from "@flow/global-constants";
 import { useProjectExport, useProjectSave } from "@flow/hooks";
 import { useSharedProject } from "@flow/lib/gql";
-import { useYjsStore } from "@flow/lib/yjs";
+import { useSpotlightUser, useYjsStore } from "@flow/lib/yjs";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { useCurrentProject } from "@flow/stores";
@@ -417,13 +417,6 @@ export default ({
     ? users[spotlightUserClientId]
     : null;
   const spotlightUserViewport = spotlightUser?.viewport;
-  const spotlightUserCurrentWorkflowId = spotlightUser?.currentWorkflowId;
-  const spotlightUserOpenWorkflowIds = spotlightUser?.openWorkflowIds;
-
-  const workflowsOpenedBySpotlight = useRef<Set<string>>(new Set());
-  const prevSpotlightUserOpenWorkflowIds = useRef<string[] | undefined>(
-    undefined,
-  );
 
   const handleSpotlightUserSelect = useCallback((clientId: number) => {
     setSpotlightUserClientId(clientId);
@@ -434,12 +427,7 @@ export default ({
   }, []);
 
   useEffect(() => {
-    if (
-      !spotlightUserViewport ||
-      !spotlightUserCurrentWorkflowId ||
-      !spotlightUserOpenWorkflowIds
-    )
-      return;
+    if (!spotlightUserViewport) return;
     setViewport(
       {
         x: spotlightUserViewport.x,
@@ -448,45 +436,16 @@ export default ({
       },
       { duration: 100 },
     );
-    if (spotlightUserCurrentWorkflowId !== currentWorkflowId) {
-      if (!openWorkflowIds.includes(spotlightUserCurrentWorkflowId)) {
-        workflowsOpenedBySpotlight.current.add(spotlightUserCurrentWorkflowId);
-      }
-      handleWorkflowOpen(spotlightUserCurrentWorkflowId);
-    }
+  }, [spotlightUserViewport, setViewport]);
 
-    const prevIds = prevSpotlightUserOpenWorkflowIds.current;
-    if (prevIds) {
-      const closedWorkflowIds = prevIds.filter(
-        (id) => !spotlightUserOpenWorkflowIds.includes(id),
-      );
-
-      closedWorkflowIds.forEach((workflowId) => {
-        if (
-          openWorkflowIds.includes(workflowId) &&
-          workflowsOpenedBySpotlight.current.has(workflowId)
-        ) {
-          handleWorkflowClose(workflowId);
-          workflowsOpenedBySpotlight.current.delete(workflowId);
-        }
-      });
-    }
-  }, [
-    spotlightUserViewport,
-    spotlightUserCurrentWorkflowId,
+  useSpotlightUser({
+    spotlightUser,
     currentWorkflowId,
     openWorkflowIds,
-    spotlightUserOpenWorkflowIds,
-    setViewport,
+    spotlightUserClientId,
     handleWorkflowOpen,
     handleWorkflowClose,
-  ]);
-
-  useEffect(() => {
-    if (!spotlightUserClientId || !spotlightUserOpenWorkflowIds) return;
-
-    prevSpotlightUserOpenWorkflowIds.current = spotlightUserOpenWorkflowIds;
-  }, [spotlightUserClientId, spotlightUserOpenWorkflowIds]);
+  });
 
   return {
     currentWorkflowId,
