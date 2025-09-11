@@ -67,9 +67,7 @@ export default ({ yAwareness }: { yAwareness: Awareness }) => {
 
   const handlePaneMouseMove = useCallback(
     (event: MouseEvent) => {
-      if (yAwareness) {
-        throttledMouseMove(event, yAwareness, screenToFlowPosition);
-      }
+      throttledMouseMove(event, yAwareness, screenToFlowPosition);
     },
     [yAwareness, screenToFlowPosition, throttledMouseMove],
   );
