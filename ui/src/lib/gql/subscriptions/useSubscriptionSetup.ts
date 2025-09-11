@@ -36,6 +36,9 @@ const USER_FACING_LOGS = `
    userFacingLogs(jobId: $jobId) {
      jobId
      timestamp
+     level
+     nodeId
+     nodeName
      message
      metadata
    }
