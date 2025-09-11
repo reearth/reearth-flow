@@ -1,9 +1,9 @@
-import { FacingLog, FacingLogLevel } from "@flow/types";
+import { UserFacingLog, UserFacingLogLevel } from "@flow/types";
 
-export const logData: FacingLog[] = [
+export const logData: UserFacingLog[] = [
   {
     jobId: "1",
-    level: FacingLogLevel.Info,
+    level: UserFacingLogLevel.Info,
     message: "Job started",
     timestamp: "2021-09-01T00:00:00Z",
     nodeId: "node-1",
@@ -11,7 +11,7 @@ export const logData: FacingLog[] = [
   },
   {
     jobId: "1",
-    level: FacingLogLevel.Info,
+    level: UserFacingLogLevel.Info,
     message: "Job started",
     timestamp: "2021-09-01T00:00:00Z",
     nodeId: "node-1",
@@ -19,7 +19,7 @@ export const logData: FacingLog[] = [
   },
   {
     jobId: "1",
-    level: FacingLogLevel.Info,
+    level: UserFacingLogLevel.Info,
     message: "Job started",
     timestamp: "2021-09-01T00:00:00Z",
     nodeId: "node-1",
@@ -27,7 +27,7 @@ export const logData: FacingLog[] = [
   },
   {
     jobId: "1",
-    level: FacingLogLevel.Info,
+    level: UserFacingLogLevel.Info,
     message: "Job started",
     timestamp: "2021-09-01T00:00:00Z",
     nodeId: "node-1",
@@ -35,7 +35,7 @@ export const logData: FacingLog[] = [
   },
   {
     jobId: "1",
-    level: FacingLogLevel.Info,
+    level: UserFacingLogLevel.Info,
     message: "Job started",
     timestamp: "2021-09-01T00:00:00Z",
     nodeId: "node-1",
@@ -43,7 +43,7 @@ export const logData: FacingLog[] = [
   },
   {
     jobId: "1",
-    level: FacingLogLevel.Info,
+    level: UserFacingLogLevel.Info,
     message: "Job started",
     timestamp: "2021-09-01T00:00:00Z",
     nodeId: "node-1",
@@ -51,7 +51,7 @@ export const logData: FacingLog[] = [
   },
   {
     jobId: "1",
-    level: FacingLogLevel.Info,
+    level: UserFacingLogLevel.Info,
     message: "Job started",
     timestamp: "2021-09-01T00:00:00Z",
     nodeId: "node-1",

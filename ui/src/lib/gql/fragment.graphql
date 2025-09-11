@@ -127,14 +127,6 @@ fragment ProjectSnapshot on ProjectSnapshot {
   version
 }
 
-fragment Log on Log {
-  jobId
-  nodeId
-  timestamp
-  logLevel
-  message
-}
-
 fragment UserFacingLog on UserFacingLog {
   jobId
   timestamp

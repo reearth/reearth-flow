@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import {
-  LogFragment,
   OnJobStatusChangeSubscription,
-  RealTimeLogsSubscription,
   UserFacingLogFragment,
   UserFacingLogsSubscription,
 } from "@flow/lib/gql/__gen__/graphql";
-import { toJobStatus, toLog, toUserFacingLog } from "@flow/lib/gql/convert";
+import { toJobStatus, toUserFacingLog } from "@flow/lib/gql/convert";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useSubscriptionSetup } from "@flow/lib/gql/subscriptions/useSubscriptionSetup";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { JobStatus, Log, FacingLog } from "@flow/types";
+import { JobStatus, UserFacingLog } from "@flow/types";
 
 export default (accessToken?: string, jobId?: string, projectId?: string) => {
   const processedLogIds = useRef(new Set<string>());
@@ -31,44 +29,10 @@ export default (accessToken?: string, jobId?: string, projectId?: string) => {
 
   const variables = useMemo(() => ({ jobId }), [jobId]);
 
-  const logsDataFormatter = useCallback(
-    (data: RealTimeLogsSubscription, cachedData?: Log[] | undefined) => {
-      if (data?.logs && (!cachedData || Array.isArray(cachedData))) {
-        const cachedLogs = [...(cachedData ?? [])];
-        // Get log data and transform it
-        const rawLog = data.logs as LogFragment;
-        const logEntry = toLog(rawLog);
-
-        // Create unique ID - IMPORTANT: Use 'status' not 'logLevel' after conversion
-        const logId = `${logEntry.message}-${logEntry.status}`;
-
-        // Skip if already processed
-        if (processedLogIds.current.has(logId)) return;
-
-        // Mark as processed
-        processedLogIds.current.add(logId);
-
-        // Add to local logs
-        cachedLogs.push(logEntry);
-
-        // Sort logs by timestamp
-        cachedLogs.sort((a, b) => {
-          const dateA = new Date(a.timestamp).getTime();
-          const dateB = new Date(b.timestamp).getTime();
-          return dateA - dateB;
-        });
-
-        // Update React Query cache
-        return [...cachedLogs];
-      }
-    },
-    [],
-  );
-
   const userFacingLogsDataFormatter = useCallback(
     (
       data: UserFacingLogsSubscription,
-      cachedData?: FacingLog[] | undefined,
+      cachedData?: UserFacingLog[] | undefined,
     ) => {
       if (data?.userFacingLogs && (!cachedData || Array.isArray(cachedData))) {
         const cachedLogs = [...(cachedData ?? [])];
@@ -117,14 +81,6 @@ export default (accessToken?: string, jobId?: string, projectId?: string) => {
     jobStatusDataFormatter,
     !jobId || debugRun?.status === "completed" || debugRun?.status === "failed",
   );
-  useSubscriptionSetup<RealTimeLogsSubscription, Log[]>(
-    "GetSubscribedLogs",
-    accessToken,
-    variables,
-    jobId,
-    logsDataFormatter,
-    !jobId,
-  );
 
   const { data: realTimeJobStatus } = useSubscription(
     "GetSubscribedJobStatus",
@@ -132,7 +88,7 @@ export default (accessToken?: string, jobId?: string, projectId?: string) => {
     !jobId || debugRun?.status === "completed" || debugRun?.status === "failed",
   );
 
-  useSubscriptionSetup<UserFacingLogsSubscription, FacingLog[]>(
+  useSubscriptionSetup<UserFacingLogsSubscription, UserFacingLog[]>(
     "GetSubscribedUserFacingLogs",
     accessToken,
     variables,

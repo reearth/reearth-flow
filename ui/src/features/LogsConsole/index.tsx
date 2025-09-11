@@ -5,7 +5,7 @@ import { LogsTable } from "@flow/components/LogsTable";
 import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
-import type { FacingLog } from "@flow/types";
+import type { UserFacingLog } from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
 import { parseJSONL } from "@flow/utils/jsonl";
 
@@ -15,7 +15,7 @@ type LogsConsoleProps = {
 
 const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
   const t = useT();
-  const columns: ColumnDef<FacingLog>[] = [
+  const columns: ColumnDef<UserFacingLog>[] = [
     {
       accessorKey: "timestamp",
       header: t("Timestamp"),
@@ -35,7 +35,7 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
     },
   ];
 
-  const [urlLogs, setUrlLogs] = useState<FacingLog[] | null>(null);
+  const [urlLogs, setUrlLogs] = useState<UserFacingLog[] | null>(null);
   const [isFetchingLogsUrl, setIsFetchingLogsUrl] = useState<boolean>(false);
 
   const { useGetJob } = useJob();

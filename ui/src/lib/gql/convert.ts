@@ -6,7 +6,6 @@ import {
   type NodeStatus as GraphqlNodeStatus,
   type ArchiveExtractionStatus as GraphqlArchiveExtractionStatus,
   type TriggerFragment,
-  type LogFragment,
   type ProjectDocumentFragment,
   type NodeExecutionFragment,
   type ProjectSnapshotMetadataFragment,
@@ -24,7 +23,6 @@ import {
   ProjectSnapshotFragment,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
 import type {
-  Log,
   Deployment,
   Job,
   JobStatus,
@@ -48,9 +46,9 @@ import type {
   CmsSchemaField,
   CmsSchemaFieldType,
   CmsAsset,
-  FacingLog,
+  UserFacingLog,
 } from "@flow/types";
-import { FacingLogLevel } from "@flow/types";
+import { UserFacingLogLevel } from "@flow/types";
 import { formatDate, formatFileSize } from "@flow/utils";
 
 import { UserFacingLogFragment } from "./__gen__/graphql";
@@ -133,22 +131,14 @@ export const toJob = (job: JobFragment): Job => ({
   outputURLs: job.outputURLs ?? undefined,
 });
 
-export const toLog = (log: LogFragment): Log => ({
-  nodeId: log.nodeId,
-  jobId: log.jobId,
-  timestamp: log.timestamp,
-  status: log.logLevel,
-  message: log.message,
-});
-
-export const toUserFacingLog = (log: UserFacingLogFragment): FacingLog => ({
+export const toUserFacingLog = (log: UserFacingLogFragment): UserFacingLog => ({
   jobId: log.jobId,
   timestamp: log.timestamp,
   message: log.message,
   metadata: log.metadata ?? undefined,
   nodeId: log.nodeId ?? undefined,
   nodeName: log.nodeName ?? undefined,
-  level: toFacingLogLevel(log.level),
+  level: toUserFacingLogLevel(log.level),
 });
 
 export const toProjectSnapShotMeta = (
@@ -267,18 +257,18 @@ export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
   }
 };
 
-export const toFacingLogLevel = (
+export const toUserFacingLogLevel = (
   level: GraphqlUserFacingLogLevel,
-): FacingLogLevel => {
+): UserFacingLogLevel => {
   switch (level) {
     case "ERROR":
-      return FacingLogLevel.Error;
+      return UserFacingLogLevel.Error;
     case "INFO":
-      return FacingLogLevel.Info;
+      return UserFacingLogLevel.Info;
     case "SUCCESS":
-      return FacingLogLevel.Success;
+      return UserFacingLogLevel.Success;
     default:
-      return FacingLogLevel.Info;
+      return UserFacingLogLevel.Info;
   }
 };
 

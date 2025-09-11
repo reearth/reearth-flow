@@ -1486,8 +1486,6 @@ export type ProjectSnapshotMetadataFragment = { __typename?: 'ProjectSnapshotMet
 
 export type ProjectSnapshotFragment = { __typename?: 'ProjectSnapshot', timestamp: any, updates: Array<number>, version: number };
 
-export type LogFragment = { __typename?: 'Log', jobId: string, nodeId?: string | null, timestamp: any, logLevel: LogLevel, message: string };
-
 export type UserFacingLogFragment = { __typename?: 'UserFacingLog', jobId: string, timestamp: any, nodeId?: string | null, nodeName?: string | null, level: UserFacingLogLevel, message: string, metadata?: any | null };
 
 export type CmsProjectFragment = { __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, createdAt: any, updatedAt: any };
@@ -1649,13 +1647,6 @@ export type OnJobStatusChangeSubscriptionVariables = Exact<{
 
 
 export type OnJobStatusChangeSubscription = { __typename?: 'Subscription', jobStatus: JobStatus };
-
-export type RealTimeLogsSubscriptionVariables = Exact<{
-  jobId: Scalars['ID']['input'];
-}>;
-
-
-export type RealTimeLogsSubscription = { __typename?: 'Subscription', logs?: { __typename?: 'Log', jobId: string, nodeId?: string | null, timestamp: any, logLevel: LogLevel, message: string } | null };
 
 export type OnNodeStatusChangeSubscriptionVariables = Exact<{
   jobId: Scalars['ID']['input'];
@@ -1918,15 +1909,6 @@ export const ProjectSnapshotFragmentDoc = gql`
   timestamp
   updates
   version
-}
-    `;
-export const LogFragmentDoc = gql`
-    fragment Log on Log {
-  jobId
-  nodeId
-  timestamp
-  logLevel
-  message
 }
     `;
 export const UserFacingLogFragmentDoc = gql`
@@ -2374,17 +2356,6 @@ export const OnJobStatusChangeDocument = gql`
   jobStatus(jobId: $jobId)
 }
     `;
-export const RealTimeLogsDocument = gql`
-    subscription RealTimeLogs($jobId: ID!) {
-  logs(jobId: $jobId) {
-    jobId
-    nodeId
-    timestamp
-    logLevel
-    message
-  }
-}
-    `;
 export const OnNodeStatusChangeDocument = gql`
     subscription OnNodeStatusChange($jobId: ID!, $nodeId: String!) {
   nodeStatus(jobId: $jobId, nodeId: $nodeId)
@@ -2689,9 +2660,6 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     OnJobStatusChange(variables: OnJobStatusChangeSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<OnJobStatusChangeSubscription> {
       return withWrapper((wrappedRequestHeaders) => client.request<OnJobStatusChangeSubscription>({ document: OnJobStatusChangeDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'OnJobStatusChange', 'subscription', variables);
-    },
-    RealTimeLogs(variables: RealTimeLogsSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<RealTimeLogsSubscription> {
-      return withWrapper((wrappedRequestHeaders) => client.request<RealTimeLogsSubscription>({ document: RealTimeLogsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'RealTimeLogs', 'subscription', variables);
     },
     OnNodeStatusChange(variables: OnNodeStatusChangeSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<OnNodeStatusChangeSubscription> {
       return withWrapper((wrappedRequestHeaders) => client.request<OnNodeStatusChangeSubscription>({ document: OnNodeStatusChangeDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'OnNodeStatusChange', 'subscription', variables);

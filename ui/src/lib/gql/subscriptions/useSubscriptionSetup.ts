@@ -5,7 +5,6 @@ import { useEffect, useRef } from "react";
 import { config } from "@flow/config";
 
 export enum SubscriptionKeys {
-  GetSubscribedLogs = "getSubscribedLogs",
   GetSubscribedJobStatus = "getSubscribedJobStatus",
   GetSubscribedEdgeStatus = "getSubscribedEdgeStatus", // TODO: Delete
   GetSubscribedNodeStatus = "getSubscribedNodeStatus",
@@ -17,18 +16,6 @@ export type PossibleSubscriptionKeys = keyof typeof SubscriptionKeys;
 const JOB_STATUS_SUBSCRIPTION = `
  subscription OnJobStatusChange($jobId: ID!) {
    jobStatus(jobId: $jobId)
- }
-`;
-
-const LOG_SUBSCRIPTION = `
- subscription RealTimeLogs($jobId: ID!) {
-   logs(jobId: $jobId) {
-     jobId
-     nodeId
-     timestamp
-     logLevel
-     message
-   }
  }
 `;
 
@@ -59,7 +46,6 @@ const SubscriptionStrings: Record<PossibleSubscriptionKeys, string> = {
   GetSubscribedJobStatus: JOB_STATUS_SUBSCRIPTION,
   GetSubscribedEdgeStatus: EDGE_STATUS_SUBSCRIPTION, // TODO: Delete
   GetSubscribedNodeStatus: Node_STATUS_SUBSCRIPTION,
-  GetSubscribedLogs: LOG_SUBSCRIPTION,
   GetSubscribedUserFacingLogs: USER_FACING_LOGS,
 };
 

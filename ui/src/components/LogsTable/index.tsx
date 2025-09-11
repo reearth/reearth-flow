@@ -30,14 +30,14 @@ import {
   LoadingSkeleton,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { FacingLog, FacingLogLevel } from "@flow/types";
+import { UserFacingLog, UserFacingLogLevel } from "@flow/types";
 
 import BasicBoiler from "../BasicBoiler";
 import { Table, TableBody, TableCell, TableRow } from "../Table";
 
 type LogProps = {
-  columns: ColumnDef<FacingLog, unknown>[];
-  data: FacingLog[];
+  columns: ColumnDef<UserFacingLog, unknown>[];
+  data: UserFacingLog[];
   isFetching: boolean;
   selectColumns?: boolean;
   showFiltering?: boolean;
@@ -82,7 +82,7 @@ const LogsTable = ({
     },
   });
 
-  const handleStatusChange = (status: FacingLogLevel) => {
+  const handleStatusChange = (status: UserFacingLogLevel) => {
     if (getStatusValue === status) {
       setColumnFilters([]);
     } else {
@@ -128,35 +128,14 @@ const LogsTable = ({
             size="icon"
             variant={getStatusValue === "ERROR" ? "default" : "outline"}
             tooltipText={t("Error")}
-            onClick={() => handleStatusChange(FacingLogLevel.Error)}
+            onClick={() => handleStatusChange(UserFacingLogLevel.Error)}
             icon={<CrossCircledIcon />}
           />
-          {/* <IconButton
-            size="icon"
-            variant={getStatusValue === "WARN" ? "default" : "outline"}
-            tooltipText={t("Warning")}
-            onClick={() => handleStatusChange(FacingLogLevel.Warn)}
-            icon={<ExclamationTriangleIcon />}
-          /> */}
-          {/* <IconButton
-            size="icon"
-            variant={getStatusValue === "DEBUG" ? "default" : "outline"}
-            tooltipText={t("Debug")}
-            onClick={() => handleStatusChange(FacingLogLevel.Debug)}
-            icon={<BugIcon />}
-          /> */}
-          {/* <IconButton
-            size="icon"
-            variant={getStatusValue === "TRACE" ? "default" : "outline"}
-            tooltipText={t("Trace")}
-            onClick={() => handleStatusChange(FacingLogLevel.Trace)}
-            icon={<MagnifyingGlassIcon />}
-          /> */}
           <IconButton
             size="icon"
             variant={getStatusValue === "INFO" ? "default" : "outline"}
             tooltipText={t("Info")}
-            onClick={() => handleStatusChange(FacingLogLevel.Info)}
+            onClick={() => handleStatusChange(UserFacingLogLevel.Info)}
             icon={<InfoCircledIcon />}
           />
           <IconButton
