@@ -267,7 +267,9 @@ export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
   }
 };
 
-export const toFacingLogLevel = (level: GraphqlUserFacingLogLevel): FacingLogLevel => {
+export const toFacingLogLevel = (
+  level: GraphqlUserFacingLogLevel,
+): FacingLogLevel => {
   switch (level) {
     case "ERROR":
       return FacingLogLevel.Error;
