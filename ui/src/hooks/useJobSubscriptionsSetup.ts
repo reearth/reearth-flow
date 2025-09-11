@@ -74,11 +74,10 @@ export default (accessToken?: string, jobId?: string, projectId?: string) => {
         const cachedLogs = [...(cachedData ?? [])];
         // Get log data and transform it
         const rawLog = data.userFacingLogs as UserFacingLogFragment;
-        console.log("RAW LOG", rawLog);
         const logEntry = toUserFacingLog(rawLog);
 
         // Create unique ID - IMPORTANT: Use 'status' not 'logLevel' after conversion
-        const logId = `${logEntry.message}-${logEntry.level}`;
+        const logId = `${logEntry.message}-${logEntry.level}-${logEntry.timestamp}`;
 
         // Skip if already processed
         if (processedLogIds.current.has(logId)) return;

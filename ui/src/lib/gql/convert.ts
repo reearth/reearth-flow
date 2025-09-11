@@ -146,8 +146,8 @@ export const toUserFacingLog = (log: UserFacingLogFragment): FacingLog => ({
   timestamp: log.timestamp,
   message: log.message,
   metadata: log.metadata ?? undefined,
-  nodeId: log.nodeId ?? "",
-  nodeName: log.nodeName ?? "",
+  nodeId: log.nodeId ?? undefined,
+  nodeName: log.nodeName ?? undefined,
   level: toFacingLogLevel(log.level),
 });
 

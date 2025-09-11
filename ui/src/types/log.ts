@@ -25,8 +25,8 @@ export type Log = {
 export type FacingLog = {
   jobId: string;
   timestamp: string;
-  nodeId: string;
-  nodeName: string;
+  nodeId?: string;
+  nodeName?: string;
   level: FacingLogLevel;
   message: string;
   metadata?: Record<string, any> | null | undefined;
