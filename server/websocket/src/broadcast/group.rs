@@ -389,6 +389,11 @@ impl BroadcastGroup {
                     };
                 }
             };
+
+            let _ = redis_store
+                .publish_update_with_ttl(&stream_key, &[], &client_id, 21600)
+                .await;
+
             tokio::spawn(async move {
                 while let Some(res) = stream.next().await {
                     let data = match res.map_err(anyhow::Error::from) {
@@ -652,32 +657,28 @@ impl BroadcastGroup {
 impl Drop for BroadcastGroup {
     fn drop(&mut self) {
         if let Some(tx) = self.awareness_shutdown_tx.take() {
-            if let Err(e) = tx.send(()) {
-                warn!("Failed to send awareness shutdown signal: {:?}", e);
+            if tx.send(()).is_err() {
                 if let Some(task) = self.awareness_updater.take() {
                     task.abort();
                 }
             }
         }
         if let Some(tx) = self.heartbeat_shutdown_tx.take() {
-            if let Err(e) = tx.send(()) {
-                warn!("Failed to send heartbeat shutdown signal: {:?}", e);
+            if tx.send(()).is_err() {
                 if let Some(task) = self.heartbeat_task.take() {
                     task.abort();
                 }
             }
         }
         if let Some(tx) = self.redis_subscriber_shutdown_tx.take() {
-            if let Err(e) = tx.send(()) {
-                warn!("Failed to send redis subscriber shutdown signal: {:?}", e);
+            if tx.send(()).is_err() {
                 if let Some(task) = self.redis_subscriber_task.take() {
                     task.abort();
                 }
             }
         }
         if let Some(tx) = self.sync_shutdown_tx.take() {
-            if let Err(e) = tx.send(()) {
-                warn!("Failed to send sync shutdown signal: {:?}", e);
+            if tx.send(()).is_err() {
                 if let Some(task) = self.sync_task.take() {
                     task.abort();
                 }

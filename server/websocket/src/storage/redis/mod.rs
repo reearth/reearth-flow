@@ -105,12 +105,12 @@ impl RedisStore {
 
     pub async fn publish_update_with_ttl(
         &self,
-        conn: &mut redis::aio::MultiplexedConnection,
         stream_key: &str,
         update: &[u8],
         instance_id: &u64,
         ttl: u64,
     ) -> Result<()> {
+        let mut conn = self.pool.get().await?;
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
