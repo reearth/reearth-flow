@@ -240,8 +240,7 @@ impl Processor for BuildingUsageAttributeValidator {
                     && !detail_keys.contains(&value.to_string())
                 {
                     error_messages.push(format!(
-                        "{}年建物利用現況: '{}' が存在しますが '{}' が存在しません。",
-                        survey_year, key, value
+                        "{survey_year}年建物利用現況: '{key}' が存在しますが '{value}' が存在しません。"
                     ));
                 }
             }

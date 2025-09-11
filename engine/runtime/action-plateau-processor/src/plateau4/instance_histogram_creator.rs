@@ -95,13 +95,9 @@ impl ProcessorFactory for InstanceHistogramCreatorFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 struct InstanceHistogramCreatorParam {}
 
-impl Default for InstanceHistogramCreatorParam {
-    fn default() -> Self {
-        Self {}
-    }
-}
 
 #[derive(Debug, Clone)]
 struct InstanceHistogramCreator {

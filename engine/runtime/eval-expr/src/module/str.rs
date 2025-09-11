@@ -54,24 +54,24 @@ mod tests {
         let haystack = "12345-bldg-789";
         let regex = r"^\d{5}-bldg-\d+$";
         let result = matches(haystack, regex);
-        assert_eq!(result, true);
+        assert!(result);
 
         // Test case 2: Pattern does not match
         let haystack = "invalid-format";
         let regex = r"^\d{5}-bldg-\d+$";
         let result = matches(haystack, regex);
-        assert_eq!(result, false);
+        assert!(!result);
 
         // Test case 3: Partial match
         let haystack = "prefix-12345-bldg-789-suffix";
         let regex = r"\d{5}-bldg-\d+";
         let result = matches(haystack, regex);
-        assert_eq!(result, true);
+        assert!(result);
 
         // Test case 4: Test our specific failing case from GML file
         let haystack = "1621-bldg-77"; // Only 4 digits, should fail
         let regex = r"^\d{5}-bldg-\d+$";
         let result = matches(haystack, regex);
-        assert_eq!(result, false); // This should fail because 1621 has only 4 digits, not 5
+        assert!(!result); // This should fail because 1621 has only 4 digits, not 5
     }
 }
