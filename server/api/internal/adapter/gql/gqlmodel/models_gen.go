@@ -648,10 +648,13 @@ func (User) IsNode()        {}
 func (this User) GetID() ID { return this.ID }
 
 type UserFacingLog struct {
-	JobID     ID        `json:"jobId"`
-	Timestamp time.Time `json:"timestamp"`
-	Message   string    `json:"message"`
-	Metadata  JSON      `json:"metadata,omitempty"`
+	JobID     ID                 `json:"jobId"`
+	Timestamp time.Time          `json:"timestamp"`
+	Level     UserFacingLogLevel `json:"level"`
+	NodeID    *ID                `json:"nodeId,omitempty"`
+	NodeName  *string            `json:"nodeName,omitempty"`
+	Message   string             `json:"message"`
+	Metadata  JSON               `json:"metadata,omitempty"`
 }
 
 type UserMetadata struct {
@@ -1525,6 +1528,63 @@ func (e *TimeInterval) UnmarshalJSON(b []byte) error {
 }
 
 func (e TimeInterval) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type UserFacingLogLevel string
+
+const (
+	UserFacingLogLevelInfo    UserFacingLogLevel = "INFO"
+	UserFacingLogLevelSuccess UserFacingLogLevel = "SUCCESS"
+	UserFacingLogLevelError   UserFacingLogLevel = "ERROR"
+)
+
+var AllUserFacingLogLevel = []UserFacingLogLevel{
+	UserFacingLogLevelInfo,
+	UserFacingLogLevelSuccess,
+	UserFacingLogLevelError,
+}
+
+func (e UserFacingLogLevel) IsValid() bool {
+	switch e {
+	case UserFacingLogLevelInfo, UserFacingLogLevelSuccess, UserFacingLogLevelError:
+		return true
+	}
+	return false
+}
+
+func (e UserFacingLogLevel) String() string {
+	return string(e)
+}
+
+func (e *UserFacingLogLevel) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = UserFacingLogLevel(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid UserFacingLogLevel", str)
+	}
+	return nil
+}
+
+func (e UserFacingLogLevel) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *UserFacingLogLevel) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e UserFacingLogLevel) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

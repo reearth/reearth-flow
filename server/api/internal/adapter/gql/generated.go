@@ -506,8 +506,11 @@ type ComplexityRoot struct {
 
 	UserFacingLog struct {
 		JobID     func(childComplexity int) int
+		Level     func(childComplexity int) int
 		Message   func(childComplexity int) int
 		Metadata  func(childComplexity int) int
+		NodeID    func(childComplexity int) int
+		NodeName  func(childComplexity int) int
 		Timestamp func(childComplexity int) int
 	}
 
@@ -2961,6 +2964,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UserFacingLog.JobID(childComplexity), true
 
+	case "UserFacingLog.level":
+		if e.complexity.UserFacingLog.Level == nil {
+			break
+		}
+
+		return e.complexity.UserFacingLog.Level(childComplexity), true
+
 	case "UserFacingLog.message":
 		if e.complexity.UserFacingLog.Message == nil {
 			break
@@ -2974,6 +2984,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UserFacingLog.Metadata(childComplexity), true
+
+	case "UserFacingLog.nodeId":
+		if e.complexity.UserFacingLog.NodeID == nil {
+			break
+		}
+
+		return e.complexity.UserFacingLog.NodeID(childComplexity), true
+
+	case "UserFacingLog.nodeName":
+		if e.complexity.UserFacingLog.NodeName == nil {
+			break
+		}
+
+		return e.complexity.UserFacingLog.NodeName(childComplexity), true
 
 	case "UserFacingLog.timestamp":
 		if e.complexity.UserFacingLog.Timestamp == nil {
@@ -4171,9 +4195,18 @@ extend type Mutation {
   deleteMe(input: DeleteMeInput!): DeleteMePayload
 }
 `, BuiltIn: false},
-	{Name: "../../../gql/userfacinglog.graphql", Input: `type UserFacingLog {
+	{Name: "../../../gql/userfacinglog.graphql", Input: `enum UserFacingLogLevel {
+  INFO
+  SUCCESS
+  ERROR
+}
+
+type UserFacingLog {
   jobId: ID!
   timestamp: DateTime!
+  level: UserFacingLogLevel!
+  nodeId: ID
+  nodeName: String
   message: String!
   metadata: JSON
 }
@@ -20353,6 +20386,12 @@ func (ec *executionContext) fieldContext_Subscription_userFacingLogs(ctx context
 				return ec.fieldContext_UserFacingLog_jobId(ctx, field)
 			case "timestamp":
 				return ec.fieldContext_UserFacingLog_timestamp(ctx, field)
+			case "level":
+				return ec.fieldContext_UserFacingLog_level(ctx, field)
+			case "nodeId":
+				return ec.fieldContext_UserFacingLog_nodeId(ctx, field)
+			case "nodeName":
+				return ec.fieldContext_UserFacingLog_nodeName(ctx, field)
 			case "message":
 				return ec.fieldContext_UserFacingLog_message(ctx, field)
 			case "metadata":
@@ -21703,6 +21742,132 @@ func (ec *executionContext) fieldContext_UserFacingLog_timestamp(_ context.Conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserFacingLog_level(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.UserFacingLog) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UserFacingLog_level(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Level, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.UserFacingLogLevel)
+	fc.Result = res
+	return ec.marshalNUserFacingLogLevel2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUserFacingLogLevel(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UserFacingLog_level(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserFacingLog",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type UserFacingLogLevel does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserFacingLog_nodeId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.UserFacingLog) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UserFacingLog_nodeId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NodeID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.ID)
+	fc.Result = res
+	return ec.marshalOID2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UserFacingLog_nodeId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserFacingLog",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserFacingLog_nodeName(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.UserFacingLog) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UserFacingLog_nodeName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NodeName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UserFacingLog_nodeName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserFacingLog",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -30070,6 +30235,15 @@ func (ec *executionContext) _UserFacingLog(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "level":
+			out.Values[i] = ec._UserFacingLog_level(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "nodeId":
+			out.Values[i] = ec._UserFacingLog_nodeId(ctx, field, obj)
+		case "nodeName":
+			out.Values[i] = ec._UserFacingLog_nodeName(ctx, field, obj)
 		case "message":
 			out.Values[i] = ec._UserFacingLog_message(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -32179,6 +32353,16 @@ func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋreearthᚋreearthᚑf
 		return graphql.Null
 	}
 	return ec._User(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNUserFacingLogLevel2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUserFacingLogLevel(ctx context.Context, v any) (gqlmodel.UserFacingLogLevel, error) {
+	var res gqlmodel.UserFacingLogLevel
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNUserFacingLogLevel2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUserFacingLogLevel(ctx context.Context, sel ast.SelectionSet, v gqlmodel.UserFacingLogLevel) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNUserMetadata2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUserMetadata(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.UserMetadata) graphql.Marshaler {
