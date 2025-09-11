@@ -1,6 +1,15 @@
+enum UserFacingLogLevel {
+  INFO
+  SUCCESS
+  ERROR
+}
+
 type UserFacingLog {
   jobId: ID!
   timestamp: DateTime!
+  level: UserFacingLogLevel!
+  nodeId: ID
+  nodeName: String
   message: String!
   metadata: JSON
 }

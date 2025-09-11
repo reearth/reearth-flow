@@ -19,9 +19,32 @@ func ToUserFacingLog(d *userfacinglog.UserFacingLog) *UserFacingLog {
 		}
 	}
 
+	// Map LogLevel to GraphQL enum
+	var level UserFacingLogLevel
+	switch d.Level() {
+	case userfacinglog.LogLevelInfo:
+		level = UserFacingLogLevelInfo
+	case userfacinglog.LogLevelSuccess:
+		level = UserFacingLogLevelSuccess
+	case userfacinglog.LogLevelError:
+		level = UserFacingLogLevelError
+	default:
+		level = UserFacingLogLevelInfo
+	}
+
+	// Convert node ID and name
+	var nodeID *ID
+	if d.NodeID() != nil {
+		id := ID(*d.NodeID())
+		nodeID = &id
+	}
+
 	return &UserFacingLog{
 		JobID:     ID(d.JobID().String()),
 		Timestamp: d.Timestamp(),
+		Level:     level,
+		NodeID:    nodeID,
+		NodeName:  d.NodeName(),
 		Message:   d.Message(),
 		Metadata:  metadata,
 	}
