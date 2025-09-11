@@ -1430,7 +1430,7 @@ mod tests {
         assert!(json.contains("\"layerName\""));
         assert!(json.contains("\"includeMetadata\""));
         assert!(json.contains("\"tileFormat\""));
-        assert!(json.contains("\"force2D\""));  // Verify explicit rename
+        assert!(json.contains("\"force2D\"")); // Verify explicit rename
 
         // Check that values are serialized correctly
         assert!(json.contains("\"layerName\":\"test_layer\""));
