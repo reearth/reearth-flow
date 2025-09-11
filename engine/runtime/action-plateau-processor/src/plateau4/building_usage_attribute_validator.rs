@@ -103,7 +103,7 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
                 "codelistsPath is required".to_string(),
             ),
         )?;
-        
+
         let dir = Uri::from_str(&codelists).map_err(|e| {
             PlateauProcessorError::BuildingUsageAttributeValidatorFactory(format!(
                 "Failed to parse codelists path: {e}"
@@ -144,13 +144,12 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
                 "Failed to create context: {e}"
             ))
         })?;
-        let nodes =
-            xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//gml:Definition", &root_node)
-                .map_err(|e| {
-                    PlateauProcessorError::BuildingUsageAttributeValidatorFactory(format!(
-                        "Failed to find nodes: {e}"
-                    ))
-                })?;
+        let nodes = xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//gml:Definition", &root_node)
+            .map_err(|e| {
+                PlateauProcessorError::BuildingUsageAttributeValidatorFactory(format!(
+                    "Failed to find nodes: {e}"
+                ))
+            })?;
         for node in nodes {
             let mut name = None;
             let mut code = None;
@@ -205,7 +204,7 @@ impl Processor for BuildingUsageAttributeValidator {
         let survey_year = {
             let Some(attr) = gml_attributes.get("uro:BuildingDetailAttribute") else {
                 // No BuildingDetailAttribute means no usage attributes, so no error.
-                return Ok(())
+                return Ok(());
             };
             if let AttributeValue::Map(attr) = attr {
                 let Some(year_attr) = attr.get("uro:surveyYear") else {
@@ -228,27 +227,27 @@ impl Processor for BuildingUsageAttributeValidator {
         };
         let mut error_messages = Vec::<String>::new();
         // Check usage attributes only inside uro:BuildingDetailAttribute
-        if let Some(AttributeValue::Map(building_detail_attr)) = 
-            gml_attributes.get("uro:BuildingDetailAttribute") {
+        if let Some(AttributeValue::Map(building_detail_attr)) =
+            gml_attributes.get("uro:BuildingDetailAttribute")
+        {
             let detail_keys: Vec<String> = building_detail_attr
                 .keys()
                 .map(|key| key.to_string())
                 .collect();
-            
+
             for (key, value) in USAGE_ATTRIBUTES.iter() {
-                if detail_keys.contains(&key.to_string()) && !detail_keys.contains(&value.to_string()) {
+                if detail_keys.contains(&key.to_string())
+                    && !detail_keys.contains(&value.to_string())
+                {
                     error_messages.push(format!(
                         "{}年建物利用現況: '{}' が存在しますが '{}' が存在しません。",
-                        survey_year,
-                        key,
-                        value
+                        survey_year, key, value
                     ));
                 }
             }
         }
-        let Some(AttributeValue::Map(id_attr)) =
-            gml_attributes.get("uro:BuildingIDAttribute")
-         else {
+        let Some(AttributeValue::Map(id_attr)) = gml_attributes.get("uro:BuildingIDAttribute")
+        else {
             Err(PlateauProcessorError::BuildingUsageAttributeValidator(
                 "uro:BuildingIDAttribute must be specified as per cityGML specification, but it is not.".to_string()
             ))?
@@ -262,7 +261,9 @@ impl Processor for BuildingUsageAttributeValidator {
             };
             if let Some(city_name) = self.city_code_to_name.get(city_code) {
                 if MAJOR_CITY_CODES.contains(&city_code.as_str()) {
-                    Some(format!("{city_code} {city_name}:要修正（区のコードとする）"))
+                    Some(format!(
+                        "{city_code} {city_name}:要修正（区のコードとする）"
+                    ))
                 } else {
                     None
                 }

@@ -69,9 +69,9 @@ mod tests {
         assert_eq!(result, true);
 
         // Test case 4: Test our specific failing case from GML file
-        let haystack = "1621-bldg-77";  // Only 4 digits, should fail
+        let haystack = "1621-bldg-77"; // Only 4 digits, should fail
         let regex = r"^\d{5}-bldg-\d+$";
         let result = matches(haystack, regex);
-        assert_eq!(result, false);  // This should fail because 1621 has only 4 digits, not 5
+        assert_eq!(result, false); // This should fail because 1621 has only 4 digits, not 5
     }
 }

@@ -132,26 +132,29 @@ impl Processor for InstanceHistogramCreator {
         };
 
         // Get or create histogram for this file
-        let histogram = self.file_histograms.entry(gml_path.clone()).or_insert_with(|| FileHistogram {
-            gml_file_path: gml_path.clone(),
-            room: 0,
-            door: 0,
-            ground_surface: 0,
-            wall_surface: 0,
-            building_furniture: 0,
-            outer_floor_surface: 0,
-            building_installation: 0,
-            floor_surface: 0,
-            window: 0,
-            building: 0,
-            closure_surface: 0,
-            ceiling_surface: 0,
-            roof_surface: 0,
-            building_part: 0,
-            interior_wall_surface: 0,
-            int_building_installation: 0,
-            outer_ceiling_surface: 0,
-        });
+        let histogram = self
+            .file_histograms
+            .entry(gml_path.clone())
+            .or_insert_with(|| FileHistogram {
+                gml_file_path: gml_path.clone(),
+                room: 0,
+                door: 0,
+                ground_surface: 0,
+                wall_surface: 0,
+                building_furniture: 0,
+                outer_floor_surface: 0,
+                building_installation: 0,
+                floor_surface: 0,
+                window: 0,
+                building: 0,
+                closure_surface: 0,
+                ceiling_surface: 0,
+                roof_surface: 0,
+                building_part: 0,
+                interior_wall_surface: 0,
+                int_building_installation: 0,
+                outer_ceiling_surface: 0,
+            });
 
         // Aggregate counts
         histogram.room += count_rooms(attributes);
@@ -187,24 +190,78 @@ impl Processor for InstanceHistogramCreator {
             let mut feature = Feature::new();
 
             // Add counts with the expected column names and order
-            feature.insert(Attribute::new("ClosureSurface".to_string()), AttributeValue::Number(histogram.closure_surface.into()));
-            feature.insert(Attribute::new("IntBuildingInstallation".to_string()), AttributeValue::Number(histogram.int_building_installation.into()));
-            feature.insert(Attribute::new("GroundSurface".to_string()), AttributeValue::Number(histogram.ground_surface.into()));
-            feature.insert(Attribute::new("RoofSurface".to_string()), AttributeValue::Number(histogram.roof_surface.into()));
-            feature.insert(Attribute::new("OuterFloorSurface".to_string()), AttributeValue::Number(histogram.outer_floor_surface.into()));
-            feature.insert(Attribute::new("Door".to_string()), AttributeValue::Number(histogram.door.into()));
-            feature.insert(Attribute::new("BuildingPart".to_string()), AttributeValue::Number(histogram.building_part.into()));
-            feature.insert(Attribute::new("BuildingFurniture".to_string()), AttributeValue::Number(histogram.building_furniture.into()));
-            feature.insert(Attribute::new("Building".to_string()), AttributeValue::Number(histogram.building.into()));
-            feature.insert(Attribute::new("Room".to_string()), AttributeValue::Number(histogram.room.into()));
-            feature.insert(Attribute::new("GmlFilePath".to_string()), AttributeValue::String(histogram.gml_file_path.clone()));
-            feature.insert(Attribute::new("BuildingInstallation".to_string()), AttributeValue::Number(histogram.building_installation.into()));
-            feature.insert(Attribute::new("InteriorWallSurface".to_string()), AttributeValue::Number(histogram.interior_wall_surface.into()));
-            feature.insert(Attribute::new("Window".to_string()), AttributeValue::Number(histogram.window.into()));
-            feature.insert(Attribute::new("FloorSurface".to_string()), AttributeValue::Number(histogram.floor_surface.into()));
-            feature.insert(Attribute::new("OuterCeilingSurface".to_string()), AttributeValue::Number(histogram.outer_ceiling_surface.into()));
-            feature.insert(Attribute::new("WallSurface".to_string()), AttributeValue::Number(histogram.wall_surface.into()));
-            feature.insert(Attribute::new("CeilingSurface".to_string()), AttributeValue::Number(histogram.ceiling_surface.into()));
+            feature.insert(
+                Attribute::new("ClosureSurface".to_string()),
+                AttributeValue::Number(histogram.closure_surface.into()),
+            );
+            feature.insert(
+                Attribute::new("IntBuildingInstallation".to_string()),
+                AttributeValue::Number(histogram.int_building_installation.into()),
+            );
+            feature.insert(
+                Attribute::new("GroundSurface".to_string()),
+                AttributeValue::Number(histogram.ground_surface.into()),
+            );
+            feature.insert(
+                Attribute::new("RoofSurface".to_string()),
+                AttributeValue::Number(histogram.roof_surface.into()),
+            );
+            feature.insert(
+                Attribute::new("OuterFloorSurface".to_string()),
+                AttributeValue::Number(histogram.outer_floor_surface.into()),
+            );
+            feature.insert(
+                Attribute::new("Door".to_string()),
+                AttributeValue::Number(histogram.door.into()),
+            );
+            feature.insert(
+                Attribute::new("BuildingPart".to_string()),
+                AttributeValue::Number(histogram.building_part.into()),
+            );
+            feature.insert(
+                Attribute::new("BuildingFurniture".to_string()),
+                AttributeValue::Number(histogram.building_furniture.into()),
+            );
+            feature.insert(
+                Attribute::new("Building".to_string()),
+                AttributeValue::Number(histogram.building.into()),
+            );
+            feature.insert(
+                Attribute::new("Room".to_string()),
+                AttributeValue::Number(histogram.room.into()),
+            );
+            feature.insert(
+                Attribute::new("GmlFilePath".to_string()),
+                AttributeValue::String(histogram.gml_file_path.clone()),
+            );
+            feature.insert(
+                Attribute::new("BuildingInstallation".to_string()),
+                AttributeValue::Number(histogram.building_installation.into()),
+            );
+            feature.insert(
+                Attribute::new("InteriorWallSurface".to_string()),
+                AttributeValue::Number(histogram.interior_wall_surface.into()),
+            );
+            feature.insert(
+                Attribute::new("Window".to_string()),
+                AttributeValue::Number(histogram.window.into()),
+            );
+            feature.insert(
+                Attribute::new("FloorSurface".to_string()),
+                AttributeValue::Number(histogram.floor_surface.into()),
+            );
+            feature.insert(
+                Attribute::new("OuterCeilingSurface".to_string()),
+                AttributeValue::Number(histogram.outer_ceiling_surface.into()),
+            );
+            feature.insert(
+                Attribute::new("WallSurface".to_string()),
+                AttributeValue::Number(histogram.wall_surface.into()),
+            );
+            feature.insert(
+                Attribute::new("CeilingSurface".to_string()),
+                AttributeValue::Number(histogram.ceiling_surface.into()),
+            );
 
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
@@ -223,7 +280,10 @@ impl Processor for InstanceHistogramCreator {
 // Helper functions to count instances
 fn count_rooms(attributes: &HashMap<String, AttributeValue>) -> i64 {
     let mut count = 0;
-    if let Some(rooms) = attributes.get("bldg:Room").or_else(|| attributes.get("bldg:interiorRoom")) {
+    if let Some(rooms) = attributes
+        .get("bldg:Room")
+        .or_else(|| attributes.get("bldg:interiorRoom"))
+    {
         match rooms {
             AttributeValue::Array(arr) => count = arr.len() as i64,
             _ => count = 1,
@@ -242,12 +302,12 @@ fn count_windows(attributes: &HashMap<String, AttributeValue>) -> i64 {
 
 fn search_nested_count(obj: &HashMap<String, AttributeValue>, target_name: &str) -> i64 {
     let mut count = 0;
-    
+
     for (key, value) in obj {
         if key == target_name {
             match value {
                 AttributeValue::Array(arr) => count += arr.len() as i64,
-                AttributeValue::Null => {},
+                AttributeValue::Null => {}
                 _ => count += 1,
             }
         } else {
@@ -266,7 +326,7 @@ fn search_nested_count(obj: &HashMap<String, AttributeValue>, target_name: &str)
             }
         }
     }
-    
+
     count
 }
 
@@ -280,7 +340,10 @@ fn count_wall_surfaces(attributes: &HashMap<String, AttributeValue>) -> i64 {
 
 fn count_building_furniture(attributes: &HashMap<String, AttributeValue>) -> i64 {
     let mut count = 0;
-    if let Some(rooms) = attributes.get("bldg:Room").or_else(|| attributes.get("bldg:interiorRoom")) {
+    if let Some(rooms) = attributes
+        .get("bldg:Room")
+        .or_else(|| attributes.get("bldg:interiorRoom"))
+    {
         match rooms {
             AttributeValue::Array(arr) => {
                 for room in arr {
@@ -312,7 +375,10 @@ fn count_building_installations(attributes: &HashMap<String, AttributeValue>) ->
 
 fn count_floor_surfaces(attributes: &HashMap<String, AttributeValue>) -> i64 {
     let mut count = 0;
-    if let Some(rooms) = attributes.get("bldg:Room").or_else(|| attributes.get("bldg:interiorRoom")) {
+    if let Some(rooms) = attributes
+        .get("bldg:Room")
+        .or_else(|| attributes.get("bldg:interiorRoom"))
+    {
         match rooms {
             AttributeValue::Array(arr) => {
                 for room in arr {
@@ -336,7 +402,10 @@ fn count_closure_surfaces(attributes: &HashMap<String, AttributeValue>) -> i64 {
 
 fn count_ceiling_surfaces(attributes: &HashMap<String, AttributeValue>) -> i64 {
     let mut count = 0;
-    if let Some(rooms) = attributes.get("bldg:Room").or_else(|| attributes.get("bldg:interiorRoom")) {
+    if let Some(rooms) = attributes
+        .get("bldg:Room")
+        .or_else(|| attributes.get("bldg:interiorRoom"))
+    {
         match rooms {
             AttributeValue::Array(arr) => {
                 for room in arr {
@@ -364,7 +433,10 @@ fn count_building_parts(attributes: &HashMap<String, AttributeValue>) -> i64 {
 
 fn count_interior_wall_surfaces(attributes: &HashMap<String, AttributeValue>) -> i64 {
     let mut count = 0;
-    if let Some(rooms) = attributes.get("bldg:Room").or_else(|| attributes.get("bldg:interiorRoom")) {
+    if let Some(rooms) = attributes
+        .get("bldg:Room")
+        .or_else(|| attributes.get("bldg:interiorRoom"))
+    {
         match rooms {
             AttributeValue::Array(arr) => {
                 for room in arr {
@@ -384,13 +456,17 @@ fn count_interior_wall_surfaces(attributes: &HashMap<String, AttributeValue>) ->
 
 fn count_int_building_installations(attributes: &HashMap<String, AttributeValue>) -> i64 {
     let mut count = 0;
-    if let Some(rooms) = attributes.get("bldg:Room").or_else(|| attributes.get("bldg:interiorRoom")) {
+    if let Some(rooms) = attributes
+        .get("bldg:Room")
+        .or_else(|| attributes.get("bldg:interiorRoom"))
+    {
         match rooms {
             AttributeValue::Array(arr) => {
                 for room in arr {
                     if let AttributeValue::Map(room_map) = room {
                         count += count_direct_attribute(room_map, "bldg:IntBuildingInstallation");
-                        count += count_direct_attribute(room_map, "bldg:interiorBuildingInstallation");
+                        count +=
+                            count_direct_attribute(room_map, "bldg:interiorBuildingInstallation");
                     }
                 }
             }
