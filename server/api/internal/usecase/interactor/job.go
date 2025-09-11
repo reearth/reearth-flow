@@ -53,7 +53,7 @@ func NewJob(
 	gr *gateway.Container,
 	permissionChecker gateway.PermissionChecker,
 ) interfaces.Job {
-	job := &Job{
+	return &Job{
 		jobRepo:           r.Job,
 		workspaceRepo:     r.Workspace,
 		transaction:       r.Transaction,
@@ -66,10 +66,6 @@ func NewJob(
 		activeWatchers:    make(map[string]bool),
 		jobLocks:          make(map[string]*sync.Mutex),
 	}
-
-	log.Debugf("[NewJob] Created Job[%p] subs[%p] mon[%p]", job, job.subscriptions, job.monitor)
-
-	return job
 }
 
 func (i *Job) getJobLock(jobID string) *sync.Mutex {
@@ -194,8 +190,6 @@ func (i *Job) GetStatus(ctx context.Context, jobID id.JobID) (job.Status, error)
 }
 
 func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *string) error {
-	log.Debugfc(ctx, "[StartMonitoring] Job[%p] subs[%p] mon[%p]", i, i.subscriptions, i.monitor)
-
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return err
 	}
@@ -341,8 +335,6 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 }
 
 func (i *Job) updateJobStatus(ctx context.Context, j *job.Job, status job.Status) error {
-	log.Debugfc(ctx, "[updateJobStatus] Job[%p] subs[%p] mon[%p]", i, i.subscriptions, i.monitor)
-
 	hostname, _ := os.Hostname()
 	log.Debugfc(ctx, "[%s] Updating job %s status from %s to %s", hostname, j.ID().String(), j.Status(), status)
 
@@ -504,8 +496,6 @@ func (i *Job) sendCompletionNotification(
 }
 
 func (i *Job) Subscribe(ctx context.Context, jobID id.JobID) (chan job.Status, error) {
-	log.Debugfc(ctx, "[Subscribe] Job[%p] subs[%p] mon[%p]", i, i.subscriptions, i.monitor)
-
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, err
 	}
@@ -528,8 +518,6 @@ func (i *Job) Subscribe(ctx context.Context, jobID id.JobID) (chan job.Status, e
 }
 
 func (i *Job) startMonitoringIfNeeded(jobID id.JobID) {
-	log.Debugf("[startMonitoringIfNeeded] Job[%p] subs[%p] for job %s", i, i.subscriptions, jobID)
-
 	j, err := i.jobRepo.FindByID(context.Background(), jobID)
 	if err != nil {
 		log.Errorfc(context.Background(), "job: failed to find job for monitoring: %v", err)
