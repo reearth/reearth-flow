@@ -95,11 +95,13 @@ pub(super) struct GeoPackageReaderParam {
     include_metadata: bool,
     #[serde(default)]
     tile_format: TileFormat,
+    #[serde(default)]
     attribute_filter: Option<String>,
     #[serde(default)]
     batch_size: Option<usize>,
     #[serde(default)]
     force_2d: bool,
+    #[serde(default)]
     spatial_filter: Option<String>,
 }
 
@@ -425,7 +427,11 @@ fn get_attribute_value(row: &AnyRow, idx: usize) -> Result<AttributeValue, Sourc
     }
 }
 
-fn parse_geopackage_geometry(blob: &[u8], srs_id: i32, force_2d: bool) -> Result<Geometry, SourceError> {
+fn parse_geopackage_geometry(
+    blob: &[u8],
+    srs_id: i32,
+    force_2d: bool,
+) -> Result<Geometry, SourceError> {
     if blob.len() < 8 {
         return Err(SourceError::GeoPackageReader(
             "Invalid geometry blob: too short".to_string(),
