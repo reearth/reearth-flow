@@ -23,7 +23,7 @@ const commonArgs = {
       header: "Timestamp",
     },
     {
-      accessorKey: "status",
+      accessorKey: "level",
       header: "Status",
     },
     {
