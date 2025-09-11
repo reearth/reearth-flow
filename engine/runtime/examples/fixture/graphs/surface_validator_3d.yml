@@ -255,6 +255,17 @@ nodes:
             env.get("__value").innerOrientation == env.get("__value").outerOrientation
           outputPort: incorrectInterior
 
+  - id: 4b8e2a7d-3f6c-4a1e-b9d5-7a4b8e2d3f6c
+    name: AttributeManagerIncorrectInteriorOrientation
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: issue
+        method: create
+        value: |
+          "IncorrectInteriorOrientation"
+
   - id: 3c6f9a1e-8d4b-4f3c-a7e2-6f3c9a1e8d4b
     name: InvalidSurfaceRouter
     type: action
@@ -469,8 +480,13 @@ edges:
     toPort: default
   - id: 9f2e5c8a-1d4b-4f9f-e4c7-2e9f5c8a1d4b
     from: 1a4d7c2f-9e5b-4d8a-f6c3-4d1a7c2f9e5b
-    to: 3c6f9a1e-8d4b-4f3c-a7e2-6f3c9a1e8d4b
+    to: 4b8e2a7d-3f6c-4a1e-b9d5-7a4b8e2d3f6c
     fromPort: incorrectInterior
+    toPort: default
+  - id: 7c3f1a6e-9d2b-4c8f-a5e1-3f7c1a6e9d2b
+    from: 4b8e2a7d-3f6c-4a1e-b9d5-7a4b8e2d3f6c
+    to: 3c6f9a1e-8d4b-4f3c-a7e2-6f3c9a1e8d4b
+    fromPort: default
     toPort: default
   - id: 2a5c8f1d-7e4b-4f2a-c9e6-5c2a8f1d7e4b
     from: 4f8b3e6a-7d1c-4e5a-c2f9-3a6f9b4e7c1d

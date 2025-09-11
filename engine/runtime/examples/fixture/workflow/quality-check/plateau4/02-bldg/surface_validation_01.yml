@@ -38,7 +38,7 @@ nodes:
           method: create
           value: |
             if env.get("__value").validationResult?.details == () {
-              return "FIXME: ";
+              return "UnknownError";
             }
             env.get("__value").validationResult.details[0][0]
 
@@ -150,7 +150,7 @@ nodes:
             if "issue" in value {
               return value.issue;
             }
-            "TODO: "
+            "UnknownError"
 
         # remove
         - attribute: validationResult
