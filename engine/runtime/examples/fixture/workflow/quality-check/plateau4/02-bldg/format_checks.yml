@@ -310,9 +310,9 @@ nodes:
       requestorAttributeValue: |
         let attributes = env.get("__value").cityGmlAttributes ?? #{};
         let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? [];
-        building_id_attribute["uro:buildingID"] ?? "" + "-" + building_id_attribute["uro:branchID"] ?? "" + "-" + building_id_attribute["uro:partID"] ?? ""
+        (building_id_attribute["uro:buildingID"] ?? "") + "-" + (building_id_attribute["uro:branchID"] ?? "") + "-" + (building_id_attribute["uro:partID"] ?? "")
       supplierAttributeValue: |
-        env.get("__value").uroBuildingId ?? "" + "-" + env.get("__value").uroBranchId ?? "" + "-" + env.get("__value").uroPartId ?? ""
+        (env.get("__value").uroBuildingId ?? "") + "-" + (env.get("__value").uroBranchId ?? "") + "-" + (env.get("__value").uroPartId ?? "")
 
   - id: f003fa53-d8da-488b-9be2-9f871a7394b5
     name: FeatureFilterByMultipleBuildingId-c-bldg-01
