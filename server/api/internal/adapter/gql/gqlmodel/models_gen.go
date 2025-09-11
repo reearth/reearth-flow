@@ -516,8 +516,7 @@ type SignupInput struct {
 }
 
 type SignupPayload struct {
-	User      *User      `json:"user"`
-	Workspace *Workspace `json:"workspace"`
+	User *User `json:"user"`
 }
 
 type Subscription struct {

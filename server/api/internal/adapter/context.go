@@ -13,6 +13,7 @@ import (
 
 type flowUserKey struct{}
 type jwtTokenKey struct{}
+type gqlOperationNameKey struct{}
 
 type ContextKey string
 
@@ -59,6 +60,10 @@ func AttachUsecases(ctx context.Context, u *interfaces.Container) context.Contex
 
 func AttachJWT(ctx context.Context, token string) context.Context {
 	return context.WithValue(ctx, jwtTokenKey{}, token)
+}
+
+func AttachGQLOperationName(ctx context.Context, op string) context.Context {
+	return context.WithValue(ctx, gqlOperationNameKey{}, op)
 }
 
 func User(ctx context.Context) *user.User {
@@ -120,6 +125,11 @@ func Usecases(ctx context.Context) *interfaces.Container {
 
 func JWT(ctx context.Context) string {
 	t, _ := ctx.Value(jwtTokenKey{}).(string)
+	return t
+}
+
+func GQLOperationName(ctx context.Context) string {
+	t, _ := ctx.Value(gqlOperationNameKey{}).(string)
 	return t
 }
 

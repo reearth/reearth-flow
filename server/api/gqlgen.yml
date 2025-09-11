@@ -8,9 +8,6 @@ exec:
   filename: internal/adapter/gql/generated.go
 model:
   filename: internal/adapter/gql/gqlmodel/models_gen.go
-resolver:
-  filename: internal/adapter/gql/resolver.go
-  type: Resolver
 models:
   DateTime:
     model: github.com/99designs/gqlgen/graphql.Time

@@ -11,6 +11,7 @@ import {
   ProjectFragment,
   WorkspaceFragment,
   Role as GraphqlRole,
+  Theme,
   User as GraphqlUser,
 } from "@flow/lib/gql/__gen__/graphql";
 
@@ -650,6 +651,13 @@ export const resolvers = {
         name: "New User",
         email: "newuser@reearth.io",
         host: "reearth.io",
+        metadata: {
+          description: "user description",
+          website: "https://example.com/user",
+          photoURL: "https://example.com/user/analyst.png",
+          theme: Theme.Default,
+          lang: "en",
+        },
       };
 
       const newWorkspace = {
