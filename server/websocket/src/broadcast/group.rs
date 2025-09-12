@@ -44,6 +44,7 @@ pub struct BroadcastGroup {
     heartbeat_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
     sync_task: Option<JoinHandle<()>>,
     sync_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
+    connections_count: Arc<Mutex<usize>>,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -256,7 +257,7 @@ impl BroadcastGroup {
                         }
                     } => {},
                 }
-                tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+                tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
                 tokio::task::yield_now().await;
             }
         });
@@ -277,6 +278,7 @@ impl BroadcastGroup {
                         let awareness = awareness_clone.read().await;
                         let txn = awareness.doc().transact();
                         let state_vector = txn.state_vector();
+                        let doc_name = awareness_clone.read().await.client_id();
 
                         let sync_msg = Message::Sync(SyncMessage::SyncStep1(state_vector));
                         let encoded_msg = sync_msg.encode_v1();
@@ -308,7 +310,23 @@ impl BroadcastGroup {
             heartbeat_shutdown_tx: Some(heartbeat_shutdown_tx),
             sync_task: Some(sync_task),
             sync_shutdown_tx: Some(sync_shutdown_tx),
+            connections_count: Arc::new(Mutex::new(0)),
         })
+    }
+
+    pub async fn increment_connections_count(&self) {
+        let mut connections_count = self.connections_count.lock().await;
+        *connections_count += 1;
+    }
+
+    pub async fn decrement_connections_count(&self) {
+        let mut connections_count = self.connections_count.lock().await;
+        *connections_count -= 1;
+    }
+
+    pub async fn get_connections_count(&self) -> usize {
+        let connections_count = self.connections_count.lock().await;
+        *connections_count
     }
 
     pub fn awareness(&self) -> &AwarenessRef {
@@ -389,6 +407,11 @@ impl BroadcastGroup {
                     };
                 }
             };
+
+            let _ = redis_store
+                .publish_update_with_ttl(&stream_key, &[], &client_id, 21600)
+                .await;
+
             tokio::spawn(async move {
                 while let Some(res) = stream.next().await {
                     let data = match res.map_err(anyhow::Error::from) {
@@ -651,33 +674,30 @@ impl BroadcastGroup {
 
 impl Drop for BroadcastGroup {
     fn drop(&mut self) {
+        info!("Dropping BroadcastGroup");
         if let Some(tx) = self.awareness_shutdown_tx.take() {
-            if let Err(e) = tx.send(()) {
-                warn!("Failed to send awareness shutdown signal: {:?}", e);
+            if tx.send(()).is_err() {
                 if let Some(task) = self.awareness_updater.take() {
                     task.abort();
                 }
             }
         }
         if let Some(tx) = self.heartbeat_shutdown_tx.take() {
-            if let Err(e) = tx.send(()) {
-                warn!("Failed to send heartbeat shutdown signal: {:?}", e);
+            if tx.send(()).is_err() {
                 if let Some(task) = self.heartbeat_task.take() {
                     task.abort();
                 }
             }
         }
         if let Some(tx) = self.redis_subscriber_shutdown_tx.take() {
-            if let Err(e) = tx.send(()) {
-                warn!("Failed to send redis subscriber shutdown signal: {:?}", e);
+            if tx.send(()).is_err() {
                 if let Some(task) = self.redis_subscriber_task.take() {
                     task.abort();
                 }
             }
         }
         if let Some(tx) = self.sync_shutdown_tx.take() {
-            if let Err(e) = tx.send(()) {
-                warn!("Failed to send sync shutdown signal: {:?}", e);
+            if tx.send(()).is_err() {
                 if let Some(task) = self.sync_task.take() {
                     task.abort();
                 }
