@@ -11,5 +11,4 @@ export type UserFacingLog = {
   nodeName?: string;
   level: UserFacingLogLevel;
   message: string;
-  metadata?: Record<string, any> | null | undefined;
 };

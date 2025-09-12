@@ -134,7 +134,6 @@ fragment UserFacingLog on UserFacingLog {
   nodeName
   level
   message
-  metadata
 }
 
 fragment ProjectDocument on ProjectDocument {

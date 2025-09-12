@@ -21,9 +21,13 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
       header: t("Timestamp"),
       cell: ({ getValue }) => formatTimestamp(getValue<string>()),
     },
+    // {
+    //   accessorKey: "nodeId",
+    //   header: t("Node Id"),
+    // },
     {
-      accessorKey: "nodeId",
-      header: t("Node Id"),
+      accessorKey: "nodeName",
+      header: t("Node Name"),
     },
     {
       accessorKey: "level",
@@ -77,7 +81,6 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
             timestamp: parsedLog.ts,
             level: parsedLog.level,
             nodeName: parsedLog.nodeName,
-            metadata: parsedLog.metadata,
           };
         },
         onError: (error, line, index) => {

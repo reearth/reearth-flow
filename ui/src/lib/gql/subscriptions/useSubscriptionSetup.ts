@@ -40,7 +40,6 @@ const USER_FACING_LOGS = `
      nodeId
      nodeName
      message
-     metadata
    }
  }
 `;

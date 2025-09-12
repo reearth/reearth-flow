@@ -1486,7 +1486,7 @@ export type ProjectSnapshotMetadataFragment = { __typename?: 'ProjectSnapshotMet
 
 export type ProjectSnapshotFragment = { __typename?: 'ProjectSnapshot', timestamp: any, updates: Array<number>, version: number };
 
-export type UserFacingLogFragment = { __typename?: 'UserFacingLog', jobId: string, timestamp: any, nodeId?: string | null, nodeName?: string | null, level: UserFacingLogLevel, message: string, metadata?: any | null };
+export type UserFacingLogFragment = { __typename?: 'UserFacingLog', jobId: string, timestamp: any, nodeId?: string | null, nodeName?: string | null, level: UserFacingLogLevel, message: string };
 
 export type CmsProjectFragment = { __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, createdAt: any, updatedAt: any };
 
@@ -1661,7 +1661,7 @@ export type UserFacingLogsSubscriptionVariables = Exact<{
 }>;
 
 
-export type UserFacingLogsSubscription = { __typename?: 'Subscription', userFacingLogs?: { __typename?: 'UserFacingLog', jobId: string, timestamp: any, nodeId?: string | null, nodeName?: string | null, level: UserFacingLogLevel, message: string, metadata?: any | null } | null };
+export type UserFacingLogsSubscription = { __typename?: 'Subscription', userFacingLogs?: { __typename?: 'UserFacingLog', jobId: string, timestamp: any, nodeId?: string | null, nodeName?: string | null, level: UserFacingLogLevel, message: string } | null };
 
 export type CreateTriggerMutationVariables = Exact<{
   input: CreateTriggerInput;
@@ -1919,7 +1919,6 @@ export const UserFacingLogFragmentDoc = gql`
   nodeName
   level
   message
-  metadata
 }
     `;
 export const CmsProjectFragmentDoc = gql`
@@ -2370,7 +2369,6 @@ export const UserFacingLogsDocument = gql`
     nodeName
     level
     message
-    metadata
   }
 }
     `;
