@@ -3168,6 +3168,54 @@ Filter Features by Geometry Type
 ### Category
 * Geometry
 
+## GeometryPartExtractor
+### Type
+* processor
+### Description
+Extract geometry parts (surfaces) from 3D geometries as separate features
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Geometry Part Extractor Parameters",
+  "description": "Configure which geometry parts to extract from 3D geometries",
+  "type": "object",
+  "properties": {
+    "geometryPartType": {
+      "title": "Part Type",
+      "description": "Type of geometry part to extract",
+      "default": "surface",
+      "allOf": [
+        {
+          "$ref": "#/definitions/GeometryPartType"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "GeometryPartType": {
+      "oneOf": [
+        {
+          "description": "Extract surfaces as separate features",
+          "type": "string",
+          "enum": [
+            "surface"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* extracted
+* remaining
+* untouched
+### Category
+* Geometry
+
 ## GeometryReplacer
 ### Type
 * processor
