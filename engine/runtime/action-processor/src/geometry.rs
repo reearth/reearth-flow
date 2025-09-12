@@ -26,6 +26,7 @@ pub(crate) mod planarity_filter;
 pub(crate) mod refiner;
 pub(crate) mod replacer;
 pub(crate) mod splitter;
+pub(crate) mod solid_boundary_validator;
 pub(crate) mod surface_footprint_replacer;
 pub(crate) mod three_dimension_box_replacer;
 pub(crate) mod three_dimension_planarity_rotator;
