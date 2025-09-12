@@ -28,6 +28,8 @@ nusamai-projection.workspace = true
 
 async-trait.workspace = true
 async_zip.workspace = true
+base64.workspace = true
+byteorder.workspace = true
 bytes.workspace = true
 csv.workspace = true
 futures.workspace = true
@@ -42,6 +44,8 @@ schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 shapefile.workspace = true
+sqlx.workspace = true
+tempfile.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true

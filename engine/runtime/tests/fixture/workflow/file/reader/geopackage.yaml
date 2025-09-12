@@ -1,0 +1,34 @@
+id: 01234567-0000-0000-0000-000000000001
+name: GeoPackageReader Test
+entryGraphId: 01234567-0000-0000-0000-000000000002
+with:
+  outputFilePath:
+
+graphs:
+  - id: 01234567-0000-0000-0000-000000000002
+    name: Main
+    nodes:
+      - id: 01234567-0000-0000-0000-000000000003
+        name: ReadGeoPackage
+        type: action
+        action: GeoPackageReader
+        with:
+          dataset: ram:///fixture/testdata/file/reader/geopackage/test_geopackage.gpkg
+          readMode: all
+          includeMetadata: true
+
+      - id: 01234567-0000-0000-0000-000000000004
+        name: WriteToFile
+        type: action
+        action: FileWriter
+        with:
+          output: |
+            env.get("outputFilePath")
+          format: json
+
+    edges:
+      - id: 01234567-0000-0000-0000-000000000005
+        from: 01234567-0000-0000-0000-000000000003
+        to: 01234567-0000-0000-0000-000000000004
+        fromPort: default
+        toPort: default
