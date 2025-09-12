@@ -6,7 +6,6 @@ import {
   type NodeStatus as GraphqlNodeStatus,
   type ArchiveExtractionStatus as GraphqlArchiveExtractionStatus,
   type TriggerFragment,
-  type LogFragment,
   type ProjectDocumentFragment,
   type NodeExecutionFragment,
   type ProjectSnapshotMetadataFragment,
@@ -19,11 +18,11 @@ import {
   type CmsAssetFragment,
   type CmsVisibility as GraphqlCmsVisibility,
   type CmsSchemaFieldType as GraphQlCmsSchemaFieldType,
+  type UserFacingLogLevel as GraphqlUserFacingLogLevel,
   ParameterType,
   ProjectSnapshotFragment,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
 import type {
-  Log,
   Deployment,
   Job,
   JobStatus,
@@ -47,8 +46,12 @@ import type {
   CmsSchemaField,
   CmsSchemaFieldType,
   CmsAsset,
+  UserFacingLog,
 } from "@flow/types";
+import { UserFacingLogLevel } from "@flow/types";
 import { formatDate, formatFileSize } from "@flow/utils";
+
+import { UserFacingLogFragment } from "./__gen__/graphql";
 
 export const toProject = (project: ProjectFragment): Project => ({
   id: project.id,
@@ -128,12 +131,13 @@ export const toJob = (job: JobFragment): Job => ({
   outputURLs: job.outputURLs ?? undefined,
 });
 
-export const toLog = (log: LogFragment): Log => ({
-  nodeId: log.nodeId,
+export const toUserFacingLog = (log: UserFacingLogFragment): UserFacingLog => ({
   jobId: log.jobId,
   timestamp: log.timestamp,
-  status: log.logLevel,
   message: log.message,
+  nodeId: log.nodeId ?? undefined,
+  nodeName: log.nodeName ?? undefined,
+  level: toUserFacingLogLevel(log.level),
 });
 
 export const toProjectSnapShotMeta = (
@@ -249,6 +253,21 @@ export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
     case "PENDING":
     default:
       return "queued";
+  }
+};
+
+export const toUserFacingLogLevel = (
+  level: GraphqlUserFacingLogLevel,
+): UserFacingLogLevel => {
+  switch (level) {
+    case "ERROR":
+      return UserFacingLogLevel.Error;
+    case "INFO":
+      return UserFacingLogLevel.Info;
+    case "SUCCESS":
+      return UserFacingLogLevel.Success;
+    default:
+      return UserFacingLogLevel.Info;
   }
 };
 

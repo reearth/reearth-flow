@@ -2878,6 +2878,127 @@ Writes geographic features to GeoJSON files with optional grouping
 ### Category
 * File
 
+## GeoPackageReader
+### Type
+* source
+### Description
+Reads geographic features from GeoPackage (.gpkg) files with support for vector features, tiles, and metadata
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GeoPackageReaderParam",
+  "type": "object",
+  "properties": {
+    "attributeFilter": {
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "batchSize": {
+      "default": null,
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint",
+      "minimum": 0.0
+    },
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "force2D": {
+      "default": false,
+      "type": "boolean"
+    },
+    "includeMetadata": {
+      "default": false,
+      "type": "boolean"
+    },
+    "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "layerName": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "readMode": {
+      "default": "features",
+      "allOf": [
+        {
+          "$ref": "#/definitions/GeoPackageReadMode"
+        }
+      ]
+    },
+    "spatialFilter": {
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tileFormat": {
+      "default": "png",
+      "allOf": [
+        {
+          "$ref": "#/definitions/TileFormat"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    },
+    "GeoPackageReadMode": {
+      "type": "string",
+      "enum": [
+        "features",
+        "tiles",
+        "all",
+        "metadataOnly"
+      ]
+    },
+    "TileFormat": {
+      "type": "string",
+      "enum": [
+        "png",
+        "jpeg",
+        "webp"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+### Output Ports
+* default
+### Category
+* File
+* Database
+
 ## GeometryCoercer
 ### Type
 * processor
@@ -3044,6 +3165,54 @@ Filter Features by Geometry Type
 * multiPoint
 * point
 * tin
+### Category
+* Geometry
+
+## GeometryPartExtractor
+### Type
+* processor
+### Description
+Extract geometry parts (surfaces) from 3D geometries as separate features
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Geometry Part Extractor Parameters",
+  "description": "Configure which geometry parts to extract from 3D geometries",
+  "type": "object",
+  "properties": {
+    "geometryPartType": {
+      "title": "Part Type",
+      "description": "Type of geometry part to extract",
+      "default": "surface",
+      "allOf": [
+        {
+          "$ref": "#/definitions/GeometryPartType"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "GeometryPartType": {
+      "oneOf": [
+        {
+          "description": "Extract surfaces as separate features",
+          "type": "string",
+          "enum": [
+            "surface"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* extracted
+* remaining
+* untouched
 ### Category
 * Geometry
 

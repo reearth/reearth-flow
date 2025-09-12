@@ -6,13 +6,13 @@ import {
   DeploymentFragment,
   JobFragment,
   JobStatus as GraphqlJobStatus,
-  LogFragment,
-  LogLevel as GraphqlLogLevel,
+  UserFacingLogLevel as GraphqlUserFacingLogLevel,
   ProjectFragment,
   WorkspaceFragment,
   Role as GraphqlRole,
   Theme,
   User as GraphqlUser,
+  UserFacingLogFragment,
 } from "@flow/lib/gql/__gen__/graphql";
 
 import { mockAssets } from "../data/asset";
@@ -277,11 +277,11 @@ export const resolvers = {
   },
 
   Log: {
-    jobId: (log: LogFragment) => log.jobId,
-    nodeId: (log: LogFragment) => log.nodeId,
-    timestamp: (log: LogFragment) => log.timestamp,
-    logLevel: (log: LogFragment) => log.logLevel,
-    message: (log: LogFragment) => log.message,
+    jobId: (log: UserFacingLogFragment) => log.jobId,
+    nodeId: (log: UserFacingLogFragment) => log.nodeId,
+    timestamp: (log: UserFacingLogFragment) => log.timestamp,
+    logLevel: (log: UserFacingLogFragment) => log.level,
+    message: (log: UserFacingLogFragment) => log.message,
   },
 
   Deployment: {
@@ -888,7 +888,7 @@ export const resolvers = {
       logs.push({
         jobId: newJob.id,
         timestamp: new Date().toISOString(),
-        logLevel: GraphqlLogLevel.Info,
+        level: GraphqlUserFacingLogLevel.Info,
         message: "Job queued for execution",
       });
 
@@ -900,7 +900,7 @@ export const resolvers = {
           logs.push({
             jobId: newJob.id,
             timestamp: new Date().toISOString(),
-            logLevel: GraphqlLogLevel.Info,
+            level: GraphqlUserFacingLogLevel.Info,
             message: "Job started",
           });
         }
@@ -1116,7 +1116,7 @@ export const resolvers = {
         logs.push({
           jobId: input.jobId,
           timestamp: new Date().toISOString(),
-          logLevel: GraphqlLogLevel.Warn,
+          level: GraphqlUserFacingLogLevel.Error,
           message: "Job cancelled by user request",
         });
       }

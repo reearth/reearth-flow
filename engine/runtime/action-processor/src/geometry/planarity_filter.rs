@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{AttributeValue, GeometryValue};
+use reearth_flow_types::{AttributeValue, Feature, GeometryValue};
 use serde_json::Value;
 
 pub static PLANARITY_PORT: Lazy<Port> = Lazy::new(|| Port::new("planarity"));
@@ -66,20 +66,18 @@ impl Processor for PlanarityFilter {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
         if geometry.is_empty() {
-            fw.send(ctx.new_with_feature_and_port(feature.clone(), NOT_PLANARITY_PORT.clone()));
+            send_feature_as_non_planar_surface(feature, &ctx, fw);
             return Ok(());
         };
         match &geometry.value {
             GeometryValue::None => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), NOT_PLANARITY_PORT.clone()))
+                send_feature_as_non_planar_surface(feature, &ctx, fw);
             }
             GeometryValue::FlowGeometry2D(geometry) => {
                 if geometry.are_points_coplanar() {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), PLANARITY_PORT.clone()));
                 } else {
-                    fw.send(
-                        ctx.new_with_feature_and_port(feature.clone(), NOT_PLANARITY_PORT.clone()),
-                    );
+                    send_feature_as_non_planar_surface(feature, &ctx, fw);
                 }
             }
             GeometryValue::FlowGeometry3D(geometry) => {
@@ -103,18 +101,14 @@ impl Processor for PlanarityFilter {
                     insert_number("pointOnSurfaceZ", result.center.z());
                     fw.send(ctx.new_with_feature_and_port(feature, PLANARITY_PORT.clone()));
                 } else {
-                    fw.send(
-                        ctx.new_with_feature_and_port(feature.clone(), NOT_PLANARITY_PORT.clone()),
-                    );
+                    send_feature_as_non_planar_surface(feature, &ctx, fw);
                 }
             }
             GeometryValue::CityGmlGeometry(geometry) => {
                 if geometry.are_points_coplanar() {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), PLANARITY_PORT.clone()));
                 } else {
-                    fw.send(
-                        ctx.new_with_feature_and_port(feature.clone(), NOT_PLANARITY_PORT.clone()),
-                    );
+                    send_feature_as_non_planar_surface(feature, &ctx, fw);
                 }
             }
         }
@@ -128,6 +122,19 @@ impl Processor for PlanarityFilter {
     fn name(&self) -> &str {
         "PlanarityFilter"
     }
+}
+
+fn send_feature_as_non_planar_surface(
+    feature: &Feature,
+    ctx: &ExecutorContext,
+    fw: &ProcessorChannelForwarder,
+) {
+    let mut feature = feature.clone();
+    feature.insert(
+        "issue",
+        AttributeValue::String("NonPlanarSurface".to_string()),
+    );
+    fw.send(ctx.new_with_feature_and_port(feature, NOT_PLANARITY_PORT.clone()));
 }
 
 #[cfg(test)]

@@ -18,6 +18,8 @@ pub enum SourceError {
     ShapefileReader(String),
     #[error("CzmlReader error: {0}")]
     CzmlReader(String),
+    #[error("GeoPackageReader error: {0}")]
+    GeoPackageReader(String),
     #[error("File Path Extractor Factory error: {0}")]
     FilePathExtractorFactory(String),
     #[error("File Path Extractor error: {0}")]

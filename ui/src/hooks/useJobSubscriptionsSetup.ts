@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import {
-  LogFragment,
   OnJobStatusChangeSubscription,
-  RealTimeLogsSubscription,
+  UserFacingLogFragment,
+  UserFacingLogsSubscription,
 } from "@flow/lib/gql/__gen__/graphql";
-import { toJobStatus, toLog } from "@flow/lib/gql/convert";
+import { toJobStatus, toUserFacingLog } from "@flow/lib/gql/convert";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useSubscriptionSetup } from "@flow/lib/gql/subscriptions/useSubscriptionSetup";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { JobStatus, Log } from "@flow/types";
+import { JobStatus, UserFacingLog } from "@flow/types";
 
 export default (accessToken?: string, jobId?: string, projectId?: string) => {
   const processedLogIds = useRef(new Set<string>());
@@ -29,16 +29,19 @@ export default (accessToken?: string, jobId?: string, projectId?: string) => {
 
   const variables = useMemo(() => ({ jobId }), [jobId]);
 
-  const logsDataFormatter = useCallback(
-    (data: RealTimeLogsSubscription, cachedData?: Log[] | undefined) => {
-      if (data?.logs && (!cachedData || Array.isArray(cachedData))) {
+  const userFacingLogsDataFormatter = useCallback(
+    (
+      data: UserFacingLogsSubscription,
+      cachedData?: UserFacingLog[] | undefined,
+    ) => {
+      if (data?.userFacingLogs && (!cachedData || Array.isArray(cachedData))) {
         const cachedLogs = [...(cachedData ?? [])];
         // Get log data and transform it
-        const rawLog = data.logs as LogFragment;
-        const logEntry = toLog(rawLog);
+        const rawLog = data.userFacingLogs as UserFacingLogFragment;
+        const logEntry = toUserFacingLog(rawLog);
 
         // Create unique ID - IMPORTANT: Use 'status' not 'logLevel' after conversion
-        const logId = `${logEntry.message}-${logEntry.status}`;
+        const logId = `${logEntry.message}-${logEntry.level}-${logEntry.timestamp}`;
 
         // Skip if already processed
         if (processedLogIds.current.has(logId)) return;
@@ -78,19 +81,20 @@ export default (accessToken?: string, jobId?: string, projectId?: string) => {
     jobStatusDataFormatter,
     !jobId || debugRun?.status === "completed" || debugRun?.status === "failed",
   );
-  useSubscriptionSetup<RealTimeLogsSubscription, Log[]>(
-    "GetSubscribedLogs",
-    accessToken,
-    variables,
-    jobId,
-    logsDataFormatter,
-    !jobId,
-  );
 
   const { data: realTimeJobStatus } = useSubscription(
     "GetSubscribedJobStatus",
     jobId,
     !jobId || debugRun?.status === "completed" || debugRun?.status === "failed",
+  );
+
+  useSubscriptionSetup<UserFacingLogsSubscription, UserFacingLog[]>(
+    "GetSubscribedUserFacingLogs",
+    accessToken,
+    variables,
+    jobId,
+    userFacingLogsDataFormatter,
+    !jobId,
   );
 
   useEffect(() => {

@@ -196,6 +196,7 @@ async fn handle_socket(
 
     let sink = WarpSink(sender);
     let stream = WarpStream::with_pong_sender(receiver, pong_tx);
+    bcast.increment_connections_count().await;
 
     let conn = crate::conn::Connection::new(bcast.clone(), sink, stream, user_token).await;
 
@@ -213,21 +214,19 @@ async fn handle_socket(
             doc_id, e
         );
     }
+    bcast.decrement_connections_count().await;
 
-    let active_connections = bcast.get_active_connections();
+    let active_connections = bcast.get_connections_count().await;
+    tracing::info!(
+        "Active connections for document '{}': {}",
+        doc_id,
+        active_connections
+    );
 
     if active_connections == 0 {
         tokio::spawn(async move {
-            let current_connections = pool
-                .get_group(&doc_id)
-                .await
-                .map(|group| group.get_active_connections())
-                .unwrap_or(0);
-
-            if current_connections == 0 {
-                pool.cleanup_group(&doc_id).await;
-                tracing::info!("Cleaned up BroadcastGroup for doc_id: {}", doc_id);
-            }
+            pool.cleanup_group(&doc_id).await;
+            tracing::info!("Cleaned up BroadcastGroup for doc_id: {}", doc_id);
         });
     }
 }
