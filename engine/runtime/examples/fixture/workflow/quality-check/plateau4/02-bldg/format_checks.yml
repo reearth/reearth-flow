@@ -1,0 +1,568 @@
+id: 36d6a846-80a8-48e9-9c34-d7c0b8af2d6d
+name: FormatChecker
+nodes:
+  - id: cbe26f1a-d39d-48e1-9d42-a9e0b61962ba
+    name: InputRouter
+    type: action
+    action: InputRouter
+    with:
+      routingPort: default
+
+  # C02 (Creates a histogram for the instances only, and does not include any testing)
+  - id: 793ebebf-6903-4691-bed5-5913d3062a39
+    name: InstanceHistogramCreator
+    type: action
+    action: PLATEAU4.InstanceHistogramCreator
+
+  - id: 7debf320-37c4-414e-acab-9f2fb41e2848
+    name: FileTSVWriterC02
+    type: action
+    action: FileWriter
+    with:
+      format: tsv
+      output: |
+        file::join_path(env.get("outputPath"), "02_bldg_地物インスタンス数.tsv")
+  # === End of C02 ===
+
+  - id: 80b7d9fd-6514-49d0-88e6-a87c3c1d36c9
+    name: FeatureFilterBuildingAndBuildingPart
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value")["gmlName"] == "bldg:Building" || env.get("__value")["gmlName"] == "bldg:BuildingPart"
+        outputPort: default
+
+  # === Beginning of L-BLDG-04, 05, City Code Checks ===
+  - id: b942f28a-3783-4672-8196-f124e8cc5f51
+    name: BuildingUsageAttributeValidator
+    type: action
+    action: PLATEAU4.BuildingUsageAttributeValidator
+
+  - id: 8f2a1b3c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+    name: AttributeManager-l-bldg-04-05-transform
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: gmlFilename
+          method: rename
+          value: Filename
+        - attribute: fileIndex
+          method: rename
+          value: Index
+        - attribute: gmlId
+          method: rename
+          value: gml_id
+        - attribute: errors
+          method: rename
+          value: Building Usage Attribute Error
+        - attribute: Feature Type
+          method: create
+          value: |
+            env.get("__value").gmlName
+        - attribute: admin
+          method: remove
+        - attribute: maxLod
+          method: remove
+        - attribute: package
+          method: remove
+        - attribute: gmlRootId
+          method: remove
+        - attribute: gmlName
+          method: remove
+        - attribute: extension
+          method: remove
+        - attribute: area
+          method: remove
+        - attribute: root
+          method: remove
+        - attribute: dirSchemas
+          method: remove
+        - attribute: dirRoot
+          method: remove
+        - attribute: cityCodeError
+          method: remove
+        - attribute: featureIndex
+          method: remove
+        - attribute: gmlPath
+          method: remove
+        - attribute: dirCodelists
+          method: remove
+        - attribute: udxDirs
+          method: remove
+        - attribute: cityGmlAttributes
+          method: remove
+
+  - id: 72b70428-0bb9-401b-a295-881556adc526
+    name: FileTSVWriterLBDLG04-05
+    type: action
+    action: FileWriter
+    with:
+      format: tsv
+      output: |
+        file::join_path(env.get("outputPath"), "02_bldg_l-bldg-04-05エラー.tsv")
+
+  - id: 5d8e7f4a-3b2c-4f1e-9a8d-6c5b4e3f2a1b
+    name: AttributeManager-city-code-error-transform
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: gmlFilename
+          method: rename
+          value: Filename
+        - attribute: fileIndex
+          method: rename
+          value: Index
+        - attribute: gmlId
+          method: rename
+          value: gml_id
+        - attribute: cityCodeError
+          method: rename
+          value: City Code Error
+        - attribute: Feature Type
+          method: create
+          value: |
+            env.get("__value").gmlName
+        - attribute: package
+          method: remove
+        - attribute: dirRoot
+          method: remove
+        - attribute: maxLod
+          method: remove
+        - attribute: udxDirs
+          method: remove
+        - attribute: dirSchemas
+          method: remove
+        - attribute: root
+          method: remove
+        - attribute: area
+          method: remove
+        - attribute: gmlPath
+          method: remove
+        - attribute: gmlName
+          method: remove
+        - attribute: gmlRootId
+          method: remove
+        - attribute: admin
+          method: remove
+        - attribute: cityGmlAttributes
+          method: remove
+        - attribute: featureIndex
+          method: remove
+        - attribute: dirCodelists
+          method: remove
+        - attribute: extension
+          method: remove
+
+  - id: ab3505ad-4e89-4442-ab36-c52ac29c332e
+    name: FileTSVWriterCityCodeError
+    type: action
+    action: FileWriter
+    with:
+      format: tsv
+      output: |
+        file::join_path(env.get("outputPath"), "02_bldg_市区町村コードエラー.tsv")
+
+  - id: 33c1a2b3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+    name: CityCodeErrorCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      aggregateAttribute: |
+        env.get("__value").fileIndex
+      calculations:
+        - newAttribute: _num_incorrect_city_code
+          expr: "1"
+
+  - id: 44d2b3c4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+    name: ErrorCount-CityCode
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: error-count-city-code
+
+  - id: 55e3c4d5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
+    name: L0405BldgErrorCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      aggregateAttribute: |
+        env.get("__value").fileIndex
+      calculations:
+        - newAttribute: _num_incorrect_usage_attribute
+          expr: "1"
+
+  - id: 66f4d5e6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
+    name: ErrorCount-L0405Bldg
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: error-count-l0405-bldg
+  # === End of L-BLDG-04, 05, City Code Checks ===
+
+  # === Beginning of C-bldg-01 ===
+  - id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+    name: FeatureFilterValidBuildingIds
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr: |
+            let attributes = env.get("__value").cityGmlAttributes ?? #{};
+            let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
+            let building_id = building_id_attribute["uro:buildingID"] ?? "";
+            let branch_id = building_id_attribute["uro:branchID"]  ?? "";
+            let part_id = building_id_attribute["uro:partID"] ?? "";
+            let gml_name = env.get("__value").gmlName ?? "";
+            
+            // Condition 1: buildingID matches regex ^\d{5}-bldg-\d+$
+            let building_id_valid = str::matches(building_id, `^\d{5}-bldg-\d+$`);
+
+            // Condition 2: branchID is missing or integer type
+            let branch_id_valid = branch_id == "" || type_of(branch_id) == "i64";
+
+            // Condition 3: Building with missing partID, or BuildingPart with integer partID
+            let part_id_valid = false;
+            if gml_name == "bldg:Building" {
+                part_id_valid = part_id == "";
+            } else if gml_name == "bldg:BuildingPart" {
+                part_id_valid = type_of(part_id) == "i64";
+            }
+            
+            building_id_valid && branch_id_valid && part_id_valid
+          outputPort: goodUroFormatting
+
+  - id: 3b4c5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e
+    name: AttributeMapper-invalid-building-id-format
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Index
+          expr: |
+            env.get("__value").fileIndex
+        - attribute: Filename
+          expr: |
+            env.get("__value").gmlFilename
+        - attribute: FeatureType
+          expr: |
+            env.get("__value").gmlName
+        - attribute: "uro:buildingID"
+          expr: |
+            let attributes = env.get("__value").cityGmlAttributes ?? #{};
+            let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
+            building_id_attribute["uro:buildingID"] ?? ""
+        - attribute: "uro:branchID"
+          expr: |
+            let attributes = env.get("__value").cityGmlAttributes ?? #{};
+            let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
+            building_id_attribute["uro:branchID"] ?? "（なし）"
+        - attribute: "uro:partID"
+          expr: |
+            let attributes = env.get("__value").cityGmlAttributes ?? #{};
+            let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
+            building_id_attribute["uro:partID"] ?? "（なし）"
+
+  - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
+    name: FileWriter-invalid-building-id-format
+    type: action
+    action: FileWriter
+    with:
+      format: tsv
+      output: |
+        file::join_path(env.get("outputPath"), "02_bldg_建物ID書式不正.tsv")
+
+  - id: 0b291ad6-cdfa-4371-bcbb-3422b2cd53cf
+    name: AttributeAggregator-c-bldg-01
+    type: action
+    action: AttributeAggregator
+    with:
+      aggregateAttributes:
+        - newAttribute: uroBuildingId
+          attributeValue: |
+            let attributes = env.get("__value").cityGmlAttributes ?? #{};
+            let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? [];
+            building_id_attribute["uro:buildingID"] ?? ""
+        - newAttribute: uroBranchId
+          attributeValue: |
+            let attributes = env.get("__value").cityGmlAttributes ?? #{};
+            let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? [];
+            building_id_attribute["uro:branchID"] ?? ""
+        - newAttribute: uroPartId
+          attributeValue: |
+            let attributes = env.get("__value").cityGmlAttributes ?? #{};
+            let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? [];
+            building_id_attribute["uro:partID"] ?? ""
+      calculation: |
+        1
+      calculationAttribute: |
+        uroBuildingIdCount
+      method: count
+
+  - id: 9feabfe5-44eb-43c9-a892-ca439a0c0562
+    name: FeatureMerger-c-bldg-01
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttributeValue: |
+        let attributes = env.get("__value").cityGmlAttributes ?? #{};
+        let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? [];
+        (building_id_attribute["uro:buildingID"] ?? "") + "-" + (building_id_attribute["uro:branchID"] ?? "") + "-" + (building_id_attribute["uro:partID"] ?? "")
+      supplierAttributeValue: |
+        (env.get("__value").uroBuildingId ?? "") + "-" + (env.get("__value").uroBranchId ?? "") + "-" + (env.get("__value").uroPartId ?? "")
+
+  - id: f003fa53-d8da-488b-9be2-9f871a7394b5
+    name: FeatureFilterByMultipleBuildingId-c-bldg-01
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr: |
+            env.get("__value").uroBuildingIdCount > 1
+          outputPort: multipleBuildingId
+
+  - id: b6238f2d-e1d3-497b-a632-93d9d489ccfc
+    name: AttributeMapper-c-bldg-01
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: Index
+          expr: |
+            env.get("__value").fileIndex
+        - attribute: Filename
+          expr: |
+            env.get("__value").gmlFilename
+        - attribute: GmlId
+          expr: |
+            env.get("__value").gmlId
+        - attribute: UroBuildingId
+          expr: |
+            let city_gml_attrs = env.get("__value").cityGmlAttributes ?? #{};
+            let bldg_id_attr = city_gml_attrs["uro:BuildingIDAttribute"];
+            bldg_id_attr["uro:buildingID"] ?? ""
+        - attribute: UroBranchId
+          expr: |
+            let city_gml_attrs = env.get("__value").cityGmlAttributes ?? #{};
+            let bldg_id_attr = city_gml_attrs["uro:BuildingIDAttribute"];
+            let branch_id = bldg_id_attr["uro:branchID"] ?? "";
+            if (branch_id == "") {
+              "（なし）"
+            } else {
+              branch_id
+            }
+
+        - attribute: UroPartId
+          expr: |
+            let city_gml_attrs = env.get("__value").cityGmlAttributes ?? #{};
+            let bldg_id_attr = city_gml_attrs["uro:BuildingIDAttribute"] ?? #{};
+            let part_id = bldg_id_attr["uro:partID"] ?? "";
+            if (part_id == "") {
+              "（なし）"
+            } else {
+              part_id
+            }
+
+  - id: bba483d0-9813-499e-a0f6-22874646450d
+    name: FileWriterTsv-c-bldg-01
+    type: action
+    action: FileWriter
+    with:
+      format: tsv
+      output: |
+        file::join_path(env.get("outputPath"), "02_bldg_c_bldg_01エラー.tsv")
+
+  - id: 124b1896-04c2-41d9-9e76-0ce32b04089f
+    name: C-BLDG-01ErrorCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      aggregateAttribute: |
+        env.get("__value").fileIndex
+      calculations:
+        - newAttribute: _num_duplicate_building_id
+          expr: "1"
+
+  - id: aa7d7462-2b7f-472f-a381-90bc3cdba432
+    name: ErrorCount-C-BLDG-01
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: error-count-c-bldg-01
+
+  - id: 77a5e6f7-8b9c-0d1e-2f3a-4b5c6d7e8f9a
+    name: MissingBuildingIdErrorCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      aggregateAttribute: |
+        env.get("__value").fileIndex
+      calculations:
+        - newAttribute: _num_missing_building_id
+          expr: "1"
+
+  - id: 88b6f7a8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
+    name: ErrorCount-MissingBuildingId
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: error-count-missing-building-id
+
+edges:
+  # === Beginning of C02 ===
+  - id: 63110e28-8d45-46a7-afa8-8a1877d1739a
+    from: cbe26f1a-d39d-48e1-9d42-a9e0b61962ba
+    fromPort: default
+    to: 793ebebf-6903-4691-bed5-5913d3062a39
+    toPort: default
+  - id: 1ba43f25-e4b1-42a5-ab0d-732380a7124c
+    from: 793ebebf-6903-4691-bed5-5913d3062a39
+    fromPort: default
+    to: 7debf320-37c4-414e-acab-9f2fb41e2848
+    toPort: default
+  # === End of C02 ===
+
+  # === Beginning of L-BLDG-04, 05, City Code Check ===
+  - id: 6546098c-dca0-4a81-8342-c993c28d36f6
+    from: cbe26f1a-d39d-48e1-9d42-a9e0b61962ba
+    fromPort: default
+    to: 80b7d9fd-6514-49d0-88e6-a87c3c1d36c9
+    toPort: default
+
+  - id: 8ac73cfb-7496-462b-a9fb-e42f81dbb198
+    from: 80b7d9fd-6514-49d0-88e6-a87c3c1d36c9
+    fromPort: default
+    to: b942f28a-3783-4672-8196-f124e8cc5f51
+    toPort: default
+
+  - id: 452c80b4-97e5-48f3-a6fc-80630b9a7f17
+    from: b942f28a-3783-4672-8196-f124e8cc5f51
+    fromPort: l0405BldgError
+    to: 8f2a1b3c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+    toPort: default
+
+  - id: 9e8d7c6b-5a4f-3e2d-1c0b-9a8e7f6d5c4b
+    from: 8f2a1b3c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+    fromPort: default
+    to: 72b70428-0bb9-401b-a295-881556adc526
+    toPort: default
+
+  - id: 9b8fd1b8-4f51-48f7-b727-933626555fd7
+    from: b942f28a-3783-4672-8196-f124e8cc5f51
+    fromPort: cityCodeError
+    to: 5d8e7f4a-3b2c-4f1e-9a8d-6c5b4e3f2a1b
+    toPort: default
+
+  - id: 2c4e5f1a-8b9d-4a7e-9c2f-5e8d6a4b1c3f
+    from: 5d8e7f4a-3b2c-4f1e-9a8d-6c5b4e3f2a1b
+    fromPort: default
+    to: ab3505ad-4e89-4442-ab36-c52ac29c332e
+    toPort: default
+
+  - id: 11a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+    from: b942f28a-3783-4672-8196-f124e8cc5f51
+    fromPort: cityCodeError
+    to: 33c1a2b3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+    toPort: default
+
+  - id: 22b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+    from: 33c1a2b3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+    fromPort: default
+    to: 44d2b3c4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+    toPort: default
+
+  - id: 33c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
+    from: b942f28a-3783-4672-8196-f124e8cc5f51
+    fromPort: l0405BldgError
+    to: 55e3c4d5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
+    toPort: default
+
+  - id: 44d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
+    from: 55e3c4d5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
+    fromPort: default
+    to: 66f4d5e6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
+    toPort: default
+  # === End of L-BLDG-04, 05, City Code Check ===
+
+  # === Beginning of C-bldg-01 ===
+  - id: 5a6a854c-8778-4c58-aa9c-f3f87635a569
+    from: 80b7d9fd-6514-49d0-88e6-a87c3c1d36c9
+    fromPort: default
+    to: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+    toPort: default
+
+  - id: 2f3a4b5c-6d7e-8f9a-0b1c-2d3e4f5a6b7c
+    from: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+    fromPort: goodUroFormatting
+    to: 0b291ad6-cdfa-4371-bcbb-3422b2cd53cf
+    toPort: default
+
+  - id: 5e6f7a8b-9c0d-1e2f-3a4b-5c6d7e8f9a0b
+    from: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+    fromPort: unfiltered
+    to: 3b4c5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e
+    toPort: default
+
+  - id: 6f7a8b9c-0d1e-2f3a-4b5c-6d7e8f9a0b1c
+    from: 3b4c5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e
+    fromPort: default
+    to: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
+    toPort: default
+
+  - id: 62d508e6-0c0d-45c5-8322-5369e50b693c
+    from: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+    fromPort: goodUroFormatting
+    to: 9feabfe5-44eb-43c9-a892-ca439a0c0562
+    toPort: requestor
+      
+  - id: e4dff82e-7c9f-469d-b60f-eee0afa28405
+    from: 0b291ad6-cdfa-4371-bcbb-3422b2cd53cf
+    fromPort: default
+    to: 9feabfe5-44eb-43c9-a892-ca439a0c0562
+    toPort: supplier
+
+  - id: 0a83d16c-30e0-4ea3-86fa-c7794641a0d6
+    from: 9feabfe5-44eb-43c9-a892-ca439a0c0562
+    fromPort: merged
+    to: f003fa53-d8da-488b-9be2-9f871a7394b5
+    toPort: default
+
+  - id: cfd17a81-3251-43d3-b161-8499ec64eadf
+    from: f003fa53-d8da-488b-9be2-9f871a7394b5
+    fromPort: multipleBuildingId
+    to: b6238f2d-e1d3-497b-a632-93d9d489ccfc
+    toPort: default
+
+  - id: d0341071-8164-480f-bad5-73caeec1dc22
+    from: b6238f2d-e1d3-497b-a632-93d9d489ccfc
+    fromPort: default
+    to: bba483d0-9813-499e-a0f6-22874646450d
+    toPort: default
+
+  - id: 174aea4f-a7a9-4dee-8b6d-b7eb2234a4ce
+    from: f003fa53-d8da-488b-9be2-9f871a7394b5
+    fromPort: multipleBuildingId
+    to: 124b1896-04c2-41d9-9e76-0ce32b04089f
+    toPort: default
+
+  - id: ccc937ca-4311-4c80-a30b-e8939d70c23c
+    from: 124b1896-04c2-41d9-9e76-0ce32b04089f
+    fromPort: default
+    to: aa7d7462-2b7f-472f-a381-90bc3cdba432
+    toPort: default
+
+  - id: 55e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a
+    from: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+    fromPort: unfiltered
+    to: 77a5e6f7-8b9c-0d1e-2f3a-4b5c6d7e8f9a
+    toPort: default
+
+  - id: 66f6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
+    from: 77a5e6f7-8b9c-0d1e-2f3a-4b5c6d7e8f9a
+    fromPort: default
+    to: 88b6f7a8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
+    toPort: default
+  # === End of C-bldg-01 ===

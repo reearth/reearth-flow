@@ -7,11 +7,29 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountusecase/accountinterfaces"
 )
 
 func (r *mutationResolver) Signup(ctx context.Context, input gqlmodel.SignupInput) (*gqlmodel.SignupPayload, error) {
+	// TODO: After migration, remove this logic and use the new usecase directly.
+	if usecases(ctx).TempNewUser != nil {
+		flowUser, err := usecases(ctx).TempNewUser.SignupOIDC(ctx, interfaces.SignupOIDCParam{
+			UserID:      gqlmodel.ToIDRef[id.User](input.UserID),
+			Lang:        input.Lang,
+			WorkspaceID: gqlmodel.ToIDRef[id.Workspace](input.WorkspaceID),
+			Secret:      input.Secret,
+		})
+		if err != nil {
+			log.Printf("WARNING:[mutationResolver.signupWithTempNewUsecase] Failed to sign up user: %v", err)
+		} else {
+			log.Printf("DEBUG:[mutationResolver.signupWithTempNewUsecase] Signed up user with tempNewUsecase")
+			return &gqlmodel.SignupPayload{User: gqlmodel.ToUserFromFlow(flowUser)}, nil
+		}
+	}
+	log.Printf("WARNING:[mutationResolver.Signup] Fallback to traditional usecase")
+
 	au := adapter.GetAuthInfo(ctx)
 	if au == nil {
 		return nil, interfaces.ErrOperationDenied

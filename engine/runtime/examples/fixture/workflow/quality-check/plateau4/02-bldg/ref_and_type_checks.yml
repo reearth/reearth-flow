@@ -157,6 +157,24 @@ nodes:
     type: action
     action: NoopSink
 
+  - id: 99a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+    name: InvalidBldgInstGeomTypeCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      aggregateAttribute: |
+        env.get("__value").fileIndex
+      calculations:
+        - newAttribute: _num_invalid_bldginst_geom_type
+          expr: "1"
+
+  - id: 88d2c3e4-5f6a-7b8c-9d0e-1f2a3b4c5d6e
+    name: ErrorCount-InvalidBldgInstGeomType
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: error-count-invalid-bldginst-geom-type
+
 edges:
   - id: 93431d4e-fcd2-4308-af3c-9da9441ac911
     from: ab309f69-4758-491b-831c-75ea5c0f05fe
@@ -234,4 +252,16 @@ edges:
     from: 35e0e6d2-44f4-4e75-abce-5280c2b80a5d
     to: 630081e4-0ea1-4fd3-ba31-8154b2980258
     fromPort: default
+    toPort: default
+
+  - id: 77a7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
+    from: 690f9475-1821-4f50-8315-f00f53251a00
+    fromPort: unfiltered
+    to: 99a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+    toPort: default
+
+  - id: 66b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d
+    from: 99a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+    fromPort: default
+    to: 88d2c3e4-5f6a-7b8c-9d0e-1f2a3b4c5d6e
     toPort: default

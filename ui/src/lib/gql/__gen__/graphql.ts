@@ -1068,7 +1068,6 @@ export type SignupInput = {
 export type SignupPayload = {
   __typename?: 'SignupPayload';
   user: User;
-  workspace: Workspace;
 };
 
 export type Subscription = {
@@ -1099,6 +1098,12 @@ export type SubscriptionNodeStatusArgs = {
 export type SubscriptionUserFacingLogsArgs = {
   jobId: Scalars['ID']['input'];
 };
+
+export enum Theme {
+  Dark = 'DARK',
+  Default = 'DEFAULT',
+  Light = 'LIGHT'
+}
 
 export type TimeDriverInput = {
   interval: TimeInterval;
@@ -1230,6 +1235,7 @@ export type User = Node & {
   email: Scalars['String']['output'];
   host?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
+  metadata: UserMetadata;
   name: Scalars['String']['output'];
 };
 
@@ -1239,6 +1245,15 @@ export type UserFacingLog = {
   message: Scalars['String']['output'];
   metadata?: Maybe<Scalars['JSON']['output']>;
   timestamp: Scalars['DateTime']['output'];
+};
+
+export type UserMetadata = {
+  __typename?: 'UserMetadata';
+  description?: Maybe<Scalars['String']['output']>;
+  lang: Scalars['Lang']['output'];
+  photoURL?: Maybe<Scalars['String']['output']>;
+  theme: Theme;
+  website?: Maybe<Scalars['String']['output']>;
 };
 
 export type Workspace = Node & {
