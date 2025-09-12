@@ -5,7 +5,7 @@ import { LogsTable } from "@flow/components/LogsTable";
 import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
-import type { Log } from "@flow/types";
+import type { UserFacingLog } from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
 import { parseJSONL } from "@flow/utils/jsonl";
 
@@ -15,7 +15,7 @@ type LogsConsoleProps = {
 
 const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
   const t = useT();
-  const columns: ColumnDef<Log>[] = [
+  const columns: ColumnDef<UserFacingLog>[] = [
     {
       accessorKey: "timestamp",
       header: t("Timestamp"),
@@ -26,7 +26,7 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
       header: t("Node Id"),
     },
     {
-      accessorKey: "status",
+      accessorKey: "level",
       header: t("Status"),
     },
     {
@@ -35,14 +35,17 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
     },
   ];
 
-  const [urlLogs, setUrlLogs] = useState<Log[] | null>(null);
+  const [urlLogs, setUrlLogs] = useState<UserFacingLog[] | null>(null);
   const [isFetchingLogsUrl, setIsFetchingLogsUrl] = useState<boolean>(false);
 
   const { useGetJob } = useJob();
 
   const debugJob = useGetJob(jobId).job;
 
-  const { data: liveLogs } = useSubscription("GetSubscribedLogs", jobId);
+  const { data: liveLogs } = useSubscription(
+    "GetSubscribedUserFacingLogs",
+    jobId,
+  );
 
   const logs = useMemo(() => urlLogs || liveLogs || [], [liveLogs, urlLogs]);
 
@@ -72,7 +75,9 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
             jobId: debugJob.id,
             message: parsedLog.msg,
             timestamp: parsedLog.ts,
-            status: parsedLog.level,
+            level: parsedLog.level,
+            nodeName: parsedLog.nodeName,
+            metadata: parsedLog.metadata,
           };
         },
         onError: (error, line, index) => {
