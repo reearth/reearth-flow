@@ -96,12 +96,14 @@ export default ({
   }, []);
 
   useEffect(() => {
+    if (Object.keys(users).length === 0) return;
     yAwareness.setLocalStateField("currentWorkflowId", currentWorkflowId);
-  }, [currentWorkflowId, yAwareness]);
+  }, [currentWorkflowId, yAwareness, users]);
 
   useEffect(() => {
+    if (Object.keys(users).length === 0) return;
     yAwareness.setLocalStateField("openWorkflowIds", openWorkflowIds);
-  }, [openWorkflowIds, yAwareness]);
+  }, [openWorkflowIds, yAwareness, users]);
 
   return {
     spotlightUser,

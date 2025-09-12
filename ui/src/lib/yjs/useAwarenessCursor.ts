@@ -30,6 +30,8 @@ export default ({ yAwareness }: { yAwareness: Awareness }) => {
       return acc;
     }, {});
 
+  console.log("Users:", users);
+
   const { x, y, zoom } = useViewport();
 
   const latestViewportRef = useRef<{ x: number; y: number; zoom: number }>({
@@ -67,10 +69,13 @@ export default ({ yAwareness }: { yAwareness: Awareness }) => {
 
   const handlePaneMouseMove = useCallback(
     (event: MouseEvent<Element, globalThis.MouseEvent>) => {
+      if (Object.keys(users).length === 0) return;
       throttledMouseMove(event, yAwareness, screenToFlowPosition);
     },
-    [yAwareness, screenToFlowPosition, throttledMouseMove],
+    [yAwareness, users, screenToFlowPosition, throttledMouseMove],
   );
+
+  console.log("Self:", self);
 
   return { self, users, handlePaneMouseMove };
 };
