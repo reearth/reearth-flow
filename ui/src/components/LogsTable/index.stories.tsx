@@ -1,8 +1,67 @@
 import type { Meta, StoryObj } from "@storybook/react";
 
-import { logData } from "./logsData";
+import { UserFacingLog, UserFacingLogLevel } from "@flow/types";
 
 import { LogsTable } from ".";
+
+export const logData: UserFacingLog[] = [
+  {
+    jobId: "1",
+    level: UserFacingLogLevel.Info,
+    message: "Job started",
+    timestamp: "2021-09-01T00:00:00Z",
+    nodeId: "node-1",
+    nodeName: "Node 1",
+  },
+  {
+    jobId: "1",
+    level: UserFacingLogLevel.Info,
+    message: "Job started",
+    timestamp: "2021-09-01T00:00:00Z",
+    nodeId: "node-1",
+    nodeName: "Node 1",
+  },
+  {
+    jobId: "1",
+    level: UserFacingLogLevel.Info,
+    message: "Job started",
+    timestamp: "2021-09-01T00:00:00Z",
+    nodeId: "node-1",
+    nodeName: "Node 1",
+  },
+  {
+    jobId: "1",
+    level: UserFacingLogLevel.Info,
+    message: "Job started",
+    timestamp: "2021-09-01T00:00:00Z",
+    nodeId: "node-1",
+    nodeName: "Node 1",
+  },
+  {
+    jobId: "1",
+    level: UserFacingLogLevel.Info,
+    message: "Job started",
+    timestamp: "2021-09-01T00:00:00Z",
+    nodeId: "node-1",
+    nodeName: "Node 1",
+  },
+  {
+    jobId: "1",
+    level: UserFacingLogLevel.Info,
+    message: "Job started",
+    timestamp: "2021-09-01T00:00:00Z",
+    nodeId: "node-1",
+    nodeName: "Node 1",
+  },
+  {
+    jobId: "1",
+    level: UserFacingLogLevel.Info,
+    message: "Job started",
+    timestamp: "2021-09-01T00:00:00Z",
+    nodeId: "node-1",
+    nodeName: "Node 1",
+  },
+];
 
 const meta = {
   component: LogsTable,
