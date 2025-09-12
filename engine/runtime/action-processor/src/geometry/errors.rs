@@ -119,6 +119,10 @@ pub(super) enum GeometryProcessorError {
     BoundsExtractorFactory(String),
     #[error("BoundsExtractor error: {0}")]
     BoundsExtractor(String),
+    #[error("GeometryPartExtractor Factory error: {0}")]
+    GeometryPartExtractorFactory(String),
+    #[error("GeometryPartExtractor error: {0}")]
+    GeometryPartExtractor(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;
