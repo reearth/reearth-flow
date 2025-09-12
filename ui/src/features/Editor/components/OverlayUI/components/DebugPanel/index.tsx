@@ -99,7 +99,9 @@ const DebugPanel: React.FC = () => {
         value={tabValue}
         defaultValue="debug-logs"
         onValueChange={setTabValue}>
-        <div className="flex justify-between pb-2" onDoubleClick={handleExpand}>
+        <div
+          className="relative flex justify-between pb-2"
+          onDoubleClick={handleExpand}>
           <div className="flex w-fit items-center">
             <TabsList className="gap-2">
               <TabsTrigger
@@ -122,8 +124,10 @@ const DebugPanel: React.FC = () => {
                 </p>
               </TabsTrigger>
             </TabsList>
+            <div className="ml-2 h-full w-1 border-l" />
+            <OutputDataDownload outputData={outputDataForDownload} />
           </div>
-          <div className="mr-[120px] flex items-center justify-center gap-2">
+          <div className="absolute left-1/2 mr-[120px] flex translate-x-1/2 items-center justify-center gap-2">
             <TerminalIcon />
             <p className="text-sm font-thin select-none">{t("Debug Run")}</p>
           </div>
@@ -203,7 +207,6 @@ const DebugPanel: React.FC = () => {
                       ))}
                     </SelectContent>
                   </Select>
-                  <OutputDataDownload outputData={outputDataForDownload} />
                 </div>
                 <div className="min-h-0 flex-1">
                   <TableViewer
