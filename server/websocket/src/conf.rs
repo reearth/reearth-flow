@@ -1,3 +1,7 @@
+use crate::domain::value_objects::conf::{
+    DEFAULT_APP_ENV, DEFAULT_AUTH_URL, DEFAULT_GCS_BUCKET, DEFAULT_ORIGINS, DEFAULT_REDIS_TTL,
+    DEFAULT_REDIS_URL, DEFAULT_WS_PORT,
+};
 use dotenv;
 use serde::Deserialize;
 use std::env;
@@ -5,22 +9,7 @@ use std::path::Path;
 use thiserror::Error;
 use tracing::{info, warn};
 
-use crate::{storage::gcs::GcsConfig, storage::redis::RedisConfig};
-
-const DEFAULT_REDIS_URL: &str = "redis://127.0.0.1:6379";
-const DEFAULT_REDIS_TTL: u64 = 43200;
-const DEFAULT_GCS_BUCKET: &str = "yrs-dev";
-#[cfg(feature = "auth")]
-const DEFAULT_AUTH_URL: &str = "http://localhost:8080";
-const DEFAULT_APP_ENV: &str = "development";
-const DEFAULT_ORIGINS: &[&str] = &[
-    "http://localhost:3000",
-    "https://api.flow.test.reearth.dev",
-    "https://api.flow.reearth.dev",
-    "http://localhost:8000",
-    "http://localhost:8080",
-];
-const DEFAULT_WS_PORT: &str = "8000";
+use crate::{storage::gcs::GcsConfig, RedisConfig};
 
 #[derive(Debug, Error)]
 pub enum ConfigError {

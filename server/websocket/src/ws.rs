@@ -1,4 +1,4 @@
-use crate::conn::Connection;
+use crate::Connection;
 use axum::extract::ws::{Message, WebSocket};
 use axum::{
     extract::{Path, State, WebSocketUpgrade},
@@ -198,7 +198,7 @@ async fn handle_socket(
     let stream = WarpStream::with_pong_sender(receiver, pong_tx);
     bcast.increment_connections_count().await;
 
-    let conn = crate::conn::Connection::new(bcast.clone(), sink, stream, user_token).await;
+    let conn = Connection::new(bcast.clone(), sink, stream, user_token).await;
 
     let connection_result = tokio::select! {
         result = conn => result,

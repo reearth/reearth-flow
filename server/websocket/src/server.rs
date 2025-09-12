@@ -19,7 +19,7 @@ use tracing::info;
 
 #[cfg(feature = "auth")]
 use crate::AuthQuery;
-use crate::{doc::document_routes, AppState};
+use crate::{interface::http::router::document_routes, AppState};
 use anyhow::Result;
 #[cfg(feature = "auth")]
 use axum::extract::Query;
