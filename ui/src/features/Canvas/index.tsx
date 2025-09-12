@@ -36,6 +36,7 @@ type Props = {
   selectedEdgeIds?: string[];
   yDoc?: Doc | null;
   users?: Record<string, AwarenessUser>;
+  currentWorkflowId?: string;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onWorkflowOpen?: (workflowId: string) => void;
   onNodesAdd?: (newNode: Node[]) => void;
@@ -61,6 +62,7 @@ const Canvas: React.FC<Props> = ({
   edges,
   selectedEdgeIds,
   users,
+  currentWorkflowId,
   onWorkflowAdd,
   onWorkflowOpen,
   onNodesAdd,
@@ -148,7 +150,9 @@ const Canvas: React.FC<Props> = ({
         gap={gridSize}
         color="rgba(63, 63, 70, 1)"
       />
-      {!readonly && users && <MultiCursor users={users} />}
+      {!readonly && users && currentWorkflowId && (
+        <MultiCursor users={users} currentWorkflowId={currentWorkflowId} />
+      )}
       {contextMenu && (
         <CanvasContextMenu
           data={contextMenu.data}
