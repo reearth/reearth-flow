@@ -1,8 +1,8 @@
 import {
   JobFragment,
   JobStatus as GraphqlJobStatus,
-  LogFragment,
-  LogLevel as GraphqlLogLevel,
+  UserFacingLogLevel as GraphqlUserLogLevel,
+  UserFacingLogFragment,
 } from "@flow/lib/gql/__gen__/graphql";
 
 export const mockJobs: JobFragment[] = [
@@ -81,101 +81,11 @@ export const mockJobs: JobFragment[] = [
   },
 ];
 
-export const mockLogs: LogFragment[] = [
+export const mockLogs: UserFacingLogFragment[] = [
   {
     jobId: "job-1",
     timestamp: "2024-01-15T10:00:10Z",
-    logLevel: GraphqlLogLevel.Info,
+    level: GraphqlUserLogLevel.Info,
     message: "Job started successfully",
-  },
-  {
-    jobId: "job-1",
-    timestamp: "2024-01-15T10:01:00Z",
-    logLevel: GraphqlLogLevel.Info,
-    message: "Processing input data",
-  },
-  {
-    jobId: "job-1",
-    timestamp: "2024-01-15T10:03:20Z",
-    logLevel: GraphqlLogLevel.Info,
-    message: "Data transformation completed",
-  },
-  {
-    jobId: "job-1",
-    timestamp: "2024-01-15T10:05:30Z",
-    logLevel: GraphqlLogLevel.Info,
-    message: "Job completed successfully",
-  },
-  {
-    jobId: "job-2",
-    timestamp: "2024-01-28T14:20:05Z",
-    logLevel: GraphqlLogLevel.Info,
-    message: "Job started in debug mode",
-  },
-  {
-    jobId: "job-2",
-    timestamp: "2024-01-28T14:20:30Z",
-    logLevel: GraphqlLogLevel.Debug,
-    message: "Initializing ML model",
-  },
-  {
-    jobId: "job-2",
-    timestamp: "2024-01-28T14:22:15Z",
-    logLevel: GraphqlLogLevel.Info,
-    message: "Loading training data",
-  },
-  {
-    jobId: "job-2",
-    timestamp: "2024-01-28T14:25:45Z",
-    logLevel: GraphqlLogLevel.Info,
-    message: "Model training in progress",
-  },
-  {
-    jobId: "job-3",
-    timestamp: "2024-01-25T09:15:10Z",
-    logLevel: GraphqlLogLevel.Info,
-    message: "Job started",
-  },
-  {
-    jobId: "job-3",
-    timestamp: "2024-01-25T09:16:00Z",
-    logLevel: GraphqlLogLevel.Warn,
-    message: "Input validation warnings detected",
-  },
-  {
-    jobId: "job-3",
-    timestamp: "2024-01-25T09:18:30Z",
-    logLevel: GraphqlLogLevel.Error,
-    message: "Failed to connect to external API",
-  },
-  {
-    jobId: "job-3",
-    timestamp: "2024-01-25T09:18:45Z",
-    logLevel: GraphqlLogLevel.Error,
-    message: "Job failed due to external dependency error",
-  },
-  {
-    jobId: "job-4",
-    timestamp: "2024-01-28T16:00:00Z",
-    logLevel: GraphqlLogLevel.Info,
-    message: "Job queued for execution",
-  },
-  {
-    jobId: "job-5",
-    timestamp: "2024-01-20T11:30:05Z",
-    logLevel: GraphqlLogLevel.Info,
-    message: "Job started",
-  },
-  {
-    jobId: "job-5",
-    timestamp: "2024-01-20T11:32:00Z",
-    logLevel: GraphqlLogLevel.Info,
-    message: "Processing data batch 1 of 10",
-  },
-  {
-    jobId: "job-5",
-    timestamp: "2024-01-20T11:35:15Z",
-    logLevel: GraphqlLogLevel.Warn,
-    message: "Job cancelled by user request",
   },
 ];

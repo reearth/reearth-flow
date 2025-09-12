@@ -6,7 +6,7 @@ export * from "./document";
 export * from "./edge";
 export * from "./job";
 export * from "./layout";
-export * from "./log";
+export * from "./userFacingLog";
 export * from "./member";
 export * from "./node";
 export * from "./project";
