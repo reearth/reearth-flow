@@ -44,6 +44,7 @@ pub struct BroadcastGroup {
     heartbeat_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
     sync_task: Option<JoinHandle<()>>,
     sync_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
+    connections_count: Arc<Mutex<usize>>,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -277,6 +278,7 @@ impl BroadcastGroup {
                         let awareness = awareness_clone.read().await;
                         let txn = awareness.doc().transact();
                         let state_vector = txn.state_vector();
+                        let doc_name = awareness_clone.read().await.client_id();
 
                         let sync_msg = Message::Sync(SyncMessage::SyncStep1(state_vector));
                         let encoded_msg = sync_msg.encode_v1();
@@ -308,7 +310,23 @@ impl BroadcastGroup {
             heartbeat_shutdown_tx: Some(heartbeat_shutdown_tx),
             sync_task: Some(sync_task),
             sync_shutdown_tx: Some(sync_shutdown_tx),
+            connections_count: Arc::new(Mutex::new(0)),
         })
+    }
+
+    pub async fn increment_connections_count(&self) {
+        let mut connections_count = self.connections_count.lock().await;
+        *connections_count += 1;
+    }
+
+    pub async fn decrement_connections_count(&self) {
+        let mut connections_count = self.connections_count.lock().await;
+        *connections_count -= 1;
+    }
+
+    pub async fn get_connections_count(&self) -> usize {
+        let connections_count = self.connections_count.lock().await;
+        *connections_count
     }
 
     pub fn awareness(&self) -> &AwarenessRef {
@@ -656,6 +674,7 @@ impl BroadcastGroup {
 
 impl Drop for BroadcastGroup {
     fn drop(&mut self) {
+        info!("Dropping BroadcastGroup");
         if let Some(tx) = self.awareness_shutdown_tx.take() {
             if tx.send(()).is_err() {
                 if let Some(task) = self.awareness_updater.take() {
