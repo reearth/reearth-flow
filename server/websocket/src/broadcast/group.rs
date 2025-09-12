@@ -278,7 +278,6 @@ impl BroadcastGroup {
                         let awareness = awareness_clone.read().await;
                         let txn = awareness.doc().transact();
                         let state_vector = txn.state_vector();
-                        let doc_name = awareness_clone.read().await.client_id();
 
                         let sync_msg = Message::Sync(SyncMessage::SyncStep1(state_vector));
                         let encoded_msg = sync_msg.encode_v1();
