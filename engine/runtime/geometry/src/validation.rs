@@ -73,7 +73,7 @@ pub enum ValidationProblem {
     /// Identical coords
     IdenticalCoords,
     /// Duplicate consecutive coordinates within distance threshold
-    DuplicateConsecutiveCoords,
+    DuplicateConsecutivePoints,
     /// Collinear coords
     CollinearCoords,
     /// A ring has a self-intersection
@@ -240,7 +240,7 @@ impl Display for ValidationProblemReport {
                     ValidationProblem::IdenticalCoords => {
                         str_buffer.push("Identical coords".to_string())
                     }
-                    ValidationProblem::DuplicateConsecutiveCoords => str_buffer.push(
+                    ValidationProblem::DuplicateConsecutivePoints => str_buffer.push(
                         "Duplicate consecutive coordinates within distance threshold".to_string(),
                     ),
                     ValidationProblem::CollinearCoords => {
@@ -421,7 +421,7 @@ impl<
                     if let Some(distance) = crate::utils::calculate_geo_distance_3d(p1, p2) {
                         if distance <= DUPLICATE_CONSECUTIVE_DISTANCE_THRESHOLD {
                             reason.push(ValidationProblemAtPosition(
-                                ValidationProblem::DuplicateConsecutiveCoords,
+                                ValidationProblem::DuplicateConsecutivePoints,
                                 ValidationProblemPosition::LineString(CoordinatePosition(
                                     i as isize,
                                 )),
@@ -538,7 +538,7 @@ impl<
                     if let Some(distance) = crate::utils::calculate_geo_distance_3d(p1, p2) {
                         if distance <= DUPLICATE_CONSECUTIVE_DISTANCE_THRESHOLD {
                             reason.push(ValidationProblemAtPosition(
-                                ValidationProblem::DuplicateConsecutiveCoords,
+                                ValidationProblem::DuplicateConsecutivePoints,
                                 ValidationProblemPosition::Polygon(
                                     RingRole::Exterior,
                                     CoordinatePosition(i as isize),
@@ -557,7 +557,7 @@ impl<
                         if let Some(distance) = crate::utils::calculate_geo_distance_3d(p1, p2) {
                             if distance <= DUPLICATE_CONSECUTIVE_DISTANCE_THRESHOLD {
                                 reason.push(ValidationProblemAtPosition(
-                                    ValidationProblem::DuplicateConsecutiveCoords,
+                                    ValidationProblem::DuplicateConsecutivePoints,
                                     ValidationProblemPosition::Polygon(
                                         RingRole::Interior(j as isize),
                                         CoordinatePosition(i as isize),
@@ -613,7 +613,7 @@ impl<
             }
             ValidationType::SelfIntersection => {
                 for (j, line_string) in self.rings().iter().enumerate() {
-                    if utils::linestring_has_self_intersection(line_string) {
+                    if utils::linestring_has_self_intersection_3d(line_string) {
                         reason.push(ValidationProblemAtPosition(
                             ValidationProblem::SelfIntersection,
                             ValidationProblemPosition::Polygon(
@@ -861,7 +861,7 @@ mod tests {
         assert_eq!(report.error_count(), 1);
         assert_eq!(
             report.reports()[0].0,
-            ValidationProblem::DuplicateConsecutiveCoords
+            ValidationProblem::DuplicateConsecutivePoints
         );
     }
 
