@@ -15,3 +15,9 @@ type signupOIDCMutation struct {
 		User gqlmodel.User `graphql:"user"`
 	} `graphql:"signupOIDC(input: $input)"`
 }
+
+type removeMyAuthMutation struct {
+	RemoveMyAuth struct {
+		Me gqlmodel.Me `graphql:"me"`
+	} `graphql:"removeMyAuth(input: $input)"`
+}
