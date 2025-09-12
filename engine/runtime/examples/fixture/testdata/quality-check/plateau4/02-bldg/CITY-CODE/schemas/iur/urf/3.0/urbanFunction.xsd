@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:urf="https://www.geospatial.jp/iur/urf/3.0" xmlns:core="http://www.opengis.net/citygml/2.0" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:gml="http://www.opengis.net/gml" xmlns:uro="https://www.geospatial.jp/iur/uro/3.0" targetNamespace="https://www.geospatial.jp/iur/urf/3.0" elementFormDefault="qualified" attributeFormDefault="unqualified" version="3.0.5">
+</xs:schema>
