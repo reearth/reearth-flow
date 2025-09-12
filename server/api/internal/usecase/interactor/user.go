@@ -46,3 +46,7 @@ func (i *User) SignupOIDC(ctx context.Context, p interfaces.SignupOIDCParam) (*u
 	}
 	return i.userRepo.SignupOIDC(ctx, attrs)
 }
+
+func (i *User) RemoveMyAuth(ctx context.Context, authProvider string) (*user.User, error) {
+	return i.userRepo.RemoveMyAuth(ctx, authProvider)
+}

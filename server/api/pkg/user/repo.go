@@ -13,4 +13,5 @@ type Repo interface {
 	UserByNameOrEmail(ctx context.Context, nameOrEmail string) (*User, error)
 	UpdateMe(ctx context.Context, attrs UpdateAttrs) (*User, error)
 	SignupOIDC(ctx context.Context, attrs SignupOIDCAttrs) (*User, error)
+	RemoveMyAuth(ctx context.Context, authProvider string) (*User, error)
 }
