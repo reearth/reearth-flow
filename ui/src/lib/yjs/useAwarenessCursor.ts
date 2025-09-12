@@ -30,8 +30,6 @@ export default ({ yAwareness }: { yAwareness: Awareness }) => {
       return acc;
     }, {});
 
-  console.log("Users:", users);
-
   const { x, y, zoom } = useViewport();
 
   const latestViewportRef = useRef<{ x: number; y: number; zoom: number }>({
@@ -74,8 +72,6 @@ export default ({ yAwareness }: { yAwareness: Awareness }) => {
     },
     [yAwareness, users, screenToFlowPosition, throttledMouseMove],
   );
-
-  console.log("Self:", self);
 
   return { self, users, handlePaneMouseMove };
 };
