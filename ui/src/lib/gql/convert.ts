@@ -135,7 +135,6 @@ export const toUserFacingLog = (log: UserFacingLogFragment): UserFacingLog => ({
   jobId: log.jobId,
   timestamp: log.timestamp,
   message: log.message,
-  metadata: log.metadata ?? undefined,
   nodeId: log.nodeId ?? undefined,
   nodeName: log.nodeName ?? undefined,
   level: toUserFacingLogLevel(log.level),
