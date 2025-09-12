@@ -21,10 +21,10 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
       header: t("Timestamp"),
       cell: ({ getValue }) => formatTimestamp(getValue<string>()),
     },
-    {
-      accessorKey: "nodeId",
-      header: t("Node Id"),
-    },
+    // {
+    //   accessorKey: "nodeId",
+    //   header: t("Node Id"),
+    // },
     {
       accessorKey: "nodeName",
       header: t("Node Name"),
