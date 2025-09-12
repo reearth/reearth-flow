@@ -1,8 +1,8 @@
-import { DownloadIcon, FolderIcon } from "@phosphor-icons/react";
+import { CaretDownIcon, DownloadIcon, FolderIcon } from "@phosphor-icons/react";
 import { useCallback, useState } from "react";
 
 import {
-  ButtonWithTooltip,
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -87,24 +87,20 @@ const OutputDataDownload: React.FC<Props> = ({ outputData }) => {
     setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
   }, []);
 
-  if (!outputData || outputData.length === 0) {
-    return null;
-  }
-
-  const count = outputData.length;
+  const count = outputData?.length || 0;
 
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <ButtonWithTooltip
+        <DropdownMenuTrigger asChild disabled={count === 0}>
+          <Button
             className="h-[25px] gap-1 px-2 text-xs font-thin hover:bg-primary"
-            variant="outline"
-            tooltipText={t("Download output files")}
-            tooltipOffset={12}>
+            variant="ghost"
+            disabled={count === 0}>
             <FolderIcon size={14} />
             {t("Output data")} ({count})
-          </ButtonWithTooltip>
+            <CaretDownIcon size={10} />
+          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           {count > 1 && (
@@ -116,7 +112,7 @@ const OutputDataDownload: React.FC<Props> = ({ outputData }) => {
               <div className="my-1 h-px bg-border" />
             </>
           )}
-          {outputData.map((item, index) => (
+          {outputData?.map((item, index) => (
             <DropdownMenuItem
               key={`${item.url}-${index}`}
               onClick={() => handleDownload(item.url, item.name)}>
