@@ -55,10 +55,13 @@ pub use auth::AuthService;
 pub use broadcast::sub::Subscription;
 pub use conf::Config;
 pub use domain::value_objects::conf::{
-    DEFAULT_APP_ENV, DEFAULT_AUTH_URL, DEFAULT_GCS_BUCKET, DEFAULT_ORIGINS, DEFAULT_REDIS_TTL,
-    DEFAULT_REDIS_URL, DEFAULT_WS_PORT,
+    DEFAULT_APP_ENV, DEFAULT_GCS_BUCKET, DEFAULT_ORIGINS, DEFAULT_REDIS_TTL, DEFAULT_REDIS_URL,
+    DEFAULT_WS_PORT,
 };
 pub use domain::value_objects::http::*;
+
+#[cfg(feature = "auth")]
+pub use domain::value_objects::conf::DEFAULT_AUTH_URL;
 pub use domain::value_objects::redis::{
     RedisConfig, RedisField, RedisFields, RedisPool, RedisStreamMessage, RedisStreamResult,
     RedisStreamResults, StreamMessages, MESSAGE_TYPE_AWARENESS, MESSAGE_TYPE_SYNC, OID_LOCK_KEY,
