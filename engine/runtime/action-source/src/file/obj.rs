@@ -190,12 +190,20 @@ async fn read_obj(
 ) -> Result<(), SourceError> {
     let obj_data = parse_obj_content(content)?;
 
+    let obj_uri = if let Some(dataset) = &params.common.dataset {
+        Uri::from_str(dataset.to_string().trim_matches('"'))
+            .unwrap_or_else(|_| Uri::from_str("file://./unknown.obj").unwrap())
+    } else {
+        Uri::from_str("file://./unknown.obj").unwrap()
+    };
+
     let materials = if params.parse_materials && !obj_data.material_libs.is_empty() {
         let mut all_materials = HashMap::new();
         for mtl_lib in &obj_data.material_libs {
-            let mtl_path = resolve_material_path(ctx, storage_resolver.clone(), mtl_lib).await?;
-            if let Some(mtl_path) = mtl_path {
-                match parse_mtl(ctx, storage_resolver.clone(), &mtl_path).await {
+            let mtl_uri =
+                resolve_material_path(ctx, storage_resolver.clone(), &obj_uri, mtl_lib).await?;
+            if let Some(mtl_uri) = mtl_uri {
+                match parse_mtl(ctx, storage_resolver.clone(), &mtl_uri).await {
                     Ok(mats) => {
                         all_materials.extend(mats);
                     }
@@ -265,6 +273,105 @@ async fn read_obj(
                             .collect(),
                     ),
                 );
+
+                let mut material_details = HashMap::new();
+                for mat_name in &used_materials {
+                    if let Some(mat) = materials.get(mat_name) {
+                        let mut mat_props = HashMap::new();
+
+                        if let Some(ambient) = mat.ambient {
+                            mat_props.insert(
+                                "ambient".to_string(),
+                                AttributeValue::Array(vec![
+                                    AttributeValue::Number(
+                                        serde_json::Number::from_f64(ambient[0] as f64).unwrap(),
+                                    ),
+                                    AttributeValue::Number(
+                                        serde_json::Number::from_f64(ambient[1] as f64).unwrap(),
+                                    ),
+                                    AttributeValue::Number(
+                                        serde_json::Number::from_f64(ambient[2] as f64).unwrap(),
+                                    ),
+                                ]),
+                            );
+                        }
+
+                        if let Some(diffuse) = mat.diffuse {
+                            mat_props.insert(
+                                "diffuse".to_string(),
+                                AttributeValue::Array(vec![
+                                    AttributeValue::Number(
+                                        serde_json::Number::from_f64(diffuse[0] as f64).unwrap(),
+                                    ),
+                                    AttributeValue::Number(
+                                        serde_json::Number::from_f64(diffuse[1] as f64).unwrap(),
+                                    ),
+                                    AttributeValue::Number(
+                                        serde_json::Number::from_f64(diffuse[2] as f64).unwrap(),
+                                    ),
+                                ]),
+                            );
+                        }
+
+                        if let Some(specular) = mat.specular {
+                            mat_props.insert(
+                                "specular".to_string(),
+                                AttributeValue::Array(vec![
+                                    AttributeValue::Number(
+                                        serde_json::Number::from_f64(specular[0] as f64).unwrap(),
+                                    ),
+                                    AttributeValue::Number(
+                                        serde_json::Number::from_f64(specular[1] as f64).unwrap(),
+                                    ),
+                                    AttributeValue::Number(
+                                        serde_json::Number::from_f64(specular[2] as f64).unwrap(),
+                                    ),
+                                ]),
+                            );
+                        }
+
+                        if let Some(shininess) = mat.shininess {
+                            mat_props.insert(
+                                "shininess".to_string(),
+                                AttributeValue::Number(
+                                    serde_json::Number::from_f64(shininess as f64).unwrap(),
+                                ),
+                            );
+                        }
+
+                        if let Some(transparency) = mat.transparency {
+                            mat_props.insert(
+                                "transparency".to_string(),
+                                AttributeValue::Number(
+                                    serde_json::Number::from_f64(transparency as f64).unwrap(),
+                                ),
+                            );
+                        }
+
+                        if let Some(illumination) = mat.illumination {
+                            mat_props.insert(
+                                "illumination".to_string(),
+                                AttributeValue::Number(serde_json::Number::from(illumination)),
+                            );
+                        }
+
+                        if let Some(texture_map) = &mat.texture_map {
+                            mat_props.insert(
+                                "textureMap".to_string(),
+                                AttributeValue::String(texture_map.clone()),
+                            );
+                        }
+
+                        material_details.insert(mat_name.clone(), AttributeValue::Map(mat_props));
+                    }
+                }
+
+                if !material_details.is_empty() {
+                    attributes.insert(
+                        Attribute::new("materialProperties"),
+                        AttributeValue::Map(material_details),
+                    );
+                }
             }
         }
 
@@ -332,6 +439,7 @@ async fn read_obj(
                 .collect();
 
             if !group_materials.is_empty() {
+                // Add material names list
                 attributes.insert(
                     Attribute::new("materials"),
                     AttributeValue::Array(
@@ -341,6 +449,105 @@ async fn read_obj(
                             .collect(),
                     ),
                 );
+
+                let mut material_details = HashMap::new();
+                for mat_name in &group_materials {
+                    if let Some(mat) = materials.get(mat_name) {
+                        let mut mat_props = HashMap::new();
+
+                        if let Some(ambient) = mat.ambient {
+                            mat_props.insert(
+                                "ambient".to_string(),
+                                AttributeValue::Array(vec![
+                                    AttributeValue::Number(
+                                        serde_json::Number::from_f64(ambient[0] as f64).unwrap(),
+                                    ),
+                                    AttributeValue::Number(
+                                        serde_json::Number::from_f64(ambient[1] as f64).unwrap(),
+                                    ),
+                                    AttributeValue::Number(
+                                        serde_json::Number::from_f64(ambient[2] as f64).unwrap(),
+                                    ),
+                                ]),
+                            );
+                        }
+
+                        if let Some(diffuse) = mat.diffuse {
+                            mat_props.insert(
+                                "diffuse".to_string(),
+                                AttributeValue::Array(vec![
+                                    AttributeValue::Number(
+                                        serde_json::Number::from_f64(diffuse[0] as f64).unwrap(),
+                                    ),
+                                    AttributeValue::Number(
+                                        serde_json::Number::from_f64(diffuse[1] as f64).unwrap(),
+                                    ),
+                                    AttributeValue::Number(
+                                        serde_json::Number::from_f64(diffuse[2] as f64).unwrap(),
+                                    ),
+                                ]),
+                            );
+                        }
+
+                        if let Some(specular) = mat.specular {
+                            mat_props.insert(
+                                "specular".to_string(),
+                                AttributeValue::Array(vec![
+                                    AttributeValue::Number(
+                                        serde_json::Number::from_f64(specular[0] as f64).unwrap(),
+                                    ),
+                                    AttributeValue::Number(
+                                        serde_json::Number::from_f64(specular[1] as f64).unwrap(),
+                                    ),
+                                    AttributeValue::Number(
+                                        serde_json::Number::from_f64(specular[2] as f64).unwrap(),
+                                    ),
+                                ]),
+                            );
+                        }
+
+                        if let Some(shininess) = mat.shininess {
+                            mat_props.insert(
+                                "shininess".to_string(),
+                                AttributeValue::Number(
+                                    serde_json::Number::from_f64(shininess as f64).unwrap(),
+                                ),
+                            );
+                        }
+
+                        if let Some(transparency) = mat.transparency {
+                            mat_props.insert(
+                                "transparency".to_string(),
+                                AttributeValue::Number(
+                                    serde_json::Number::from_f64(transparency as f64).unwrap(),
+                                ),
+                            );
+                        }
+
+                        if let Some(illumination) = mat.illumination {
+                            mat_props.insert(
+                                "illumination".to_string(),
+                                AttributeValue::Number(serde_json::Number::from(illumination)),
+                            );
+                        }
+
+                        if let Some(texture_map) = &mat.texture_map {
+                            mat_props.insert(
+                                "textureMap".to_string(),
+                                AttributeValue::String(texture_map.clone()),
+                            );
+                        }
+
+                        material_details.insert(mat_name.clone(), AttributeValue::Map(mat_props));
+                    }
+                }
+
+                if !material_details.is_empty() {
+                    attributes.insert(
+                        Attribute::new("materialProperties"),
+                        AttributeValue::Map(material_details),
+                    );
+                }
             }
 
             attributes.insert(
@@ -568,24 +775,52 @@ fn parse_face_vertex(vertex_str: &str) -> Result<FaceVertex, String> {
 
 async fn resolve_material_path(
     _ctx: &NodeContext,
-    _storage_resolver: Arc<reearth_flow_storage::resolve::StorageResolver>,
+    storage_resolver: Arc<reearth_flow_storage::resolve::StorageResolver>,
+    obj_uri: &Uri,
     mtl_lib: &str,
-) -> Result<Option<String>, SourceError> {
-    Ok(Some(mtl_lib.to_string()))
+) -> Result<Option<Uri>, SourceError> {
+    if let Ok(uri) = Uri::from_str(mtl_lib) {
+        let storage = storage_resolver
+            .resolve(&uri)
+            .map_err(|e| SourceError::FileReader(format!("Failed to resolve MTL storage: {e}")))?;
+
+        if storage.get(&uri.path()).await.is_ok() {
+            return Ok(Some(uri));
+        }
+    }
+
+    let obj_path = obj_uri.path();
+    if let Some(parent_path) = Path::new(&obj_path).parent() {
+        let mtl_path = parent_path.join(mtl_lib);
+        let _mtl_path_str = mtl_path.to_string_lossy();
+
+        let obj_uri_str = obj_uri.to_string();
+        let base_uri = if let Some(slash_pos) = obj_uri_str.rfind('/') {
+            &obj_uri_str[..slash_pos]
+        } else {
+            &obj_uri_str
+        };
+        let mtl_uri_str = format!("{base_uri}/{mtl_lib}");
+
+        if let Ok(mtl_uri) = Uri::from_str(&mtl_uri_str) {
+            return Ok(Some(mtl_uri));
+        }
+    }
+
+    tracing::warn!("Could not resolve material file path: {}", mtl_lib);
+    Ok(None)
 }
 
 async fn parse_mtl(
     _ctx: &NodeContext,
     storage_resolver: Arc<reearth_flow_storage::resolve::StorageResolver>,
-    mtl_path: &str,
+    mtl_uri: &Uri,
 ) -> Result<HashMap<String, Material>, SourceError> {
-    let uri = Uri::from_str(mtl_path)
-        .map_err(|e| SourceError::FileReader(format!("Invalid MTL path: {e}")))?;
     let storage = storage_resolver
-        .resolve(&uri)
+        .resolve(mtl_uri)
         .map_err(|e| SourceError::FileReader(format!("Failed to resolve MTL storage: {e}")))?;
     let result = storage
-        .get(Path::new(mtl_path))
+        .get(&mtl_uri.path())
         .await
         .map_err(|e| SourceError::FileReader(format!("Failed to read MTL file: {e}")))?;
     let content = result
