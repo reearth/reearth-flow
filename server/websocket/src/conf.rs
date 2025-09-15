@@ -1,6 +1,8 @@
+#[cfg(feature = "auth")]
+use crate::domain::value_objects::conf::DEFAULT_AUTH_URL;
 use crate::domain::value_objects::conf::{
-    DEFAULT_APP_ENV, DEFAULT_AUTH_URL, DEFAULT_GCS_BUCKET, DEFAULT_ORIGINS, DEFAULT_REDIS_TTL,
-    DEFAULT_REDIS_URL, DEFAULT_WS_PORT,
+    DEFAULT_APP_ENV, DEFAULT_GCS_BUCKET, DEFAULT_ORIGINS, DEFAULT_REDIS_TTL, DEFAULT_REDIS_URL,
+    DEFAULT_WS_PORT,
 };
 use dotenv;
 use serde::Deserialize;
@@ -63,12 +65,9 @@ impl Config {
         if let Ok(endpoint) = env::var("REEARTH_FLOW_GCS_ENDPOINT") {
             builder = builder.gcs_endpoint(Some(endpoint));
         }
-
         #[cfg(feature = "auth")]
-        {
-            if let Ok(url) = env::var("REEARTH_FLOW_THRIFT_AUTH_URL") {
-                builder = builder.auth_url(url);
-            }
+        if let Ok(url) = env::var("REEARTH_FLOW_THRIFT_AUTH_URL") {
+            builder = builder.auth_url(url);
         }
 
         if let Ok(env_val) = env::var("REEARTH_FLOW_APP_ENV") {
