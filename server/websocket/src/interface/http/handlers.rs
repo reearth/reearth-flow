@@ -9,11 +9,11 @@ use std::sync::Arc;
 use tracing::error;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
-use crate::doc::types::{
+use crate::domain::value_objects::http::{
     CreateSnapshotRequest, DocumentResponse, HistoryMetadataResponse, HistoryResponse,
     RollbackRequest, SnapshotResponse,
 };
-use crate::doc::types::{Document, HistoryItem};
+use crate::domain::value_objects::http::{Document, HistoryItem};
 use crate::storage::kv::DocOps;
 use crate::AppState;
 
