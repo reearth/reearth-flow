@@ -181,6 +181,104 @@ struct Material {
     texture_map: Option<String>,
 }
 
+fn safe_f64_to_number(value: f64) -> serde_json::Number {
+    if value.is_finite() {
+        serde_json::Number::from_f64(value).unwrap_or_else(|| serde_json::Number::from(0))
+    } else {
+        serde_json::Number::from(0)
+    }
+}
+
+fn extract_material_properties(
+    materials: &HashMap<String, Material>,
+    used_materials: &[String],
+) -> (AttributeValue, AttributeValue) {
+    let materials_array = AttributeValue::Array(
+        used_materials
+            .iter()
+            .map(|m| AttributeValue::String(m.clone()))
+            .collect(),
+    );
+
+    let mut material_details = HashMap::new();
+    for mat_name in used_materials {
+        if let Some(mat) = materials.get(mat_name) {
+            let mut mat_props = HashMap::new();
+
+            if let Some(ambient) = mat.ambient {
+                mat_props.insert(
+                    "ambient".to_string(),
+                    AttributeValue::Array(vec![
+                        AttributeValue::Number(safe_f64_to_number(ambient[0] as f64)),
+                        AttributeValue::Number(safe_f64_to_number(ambient[1] as f64)),
+                        AttributeValue::Number(safe_f64_to_number(ambient[2] as f64)),
+                    ]),
+                );
+            }
+
+            if let Some(diffuse) = mat.diffuse {
+                mat_props.insert(
+                    "diffuse".to_string(),
+                    AttributeValue::Array(vec![
+                        AttributeValue::Number(safe_f64_to_number(diffuse[0] as f64)),
+                        AttributeValue::Number(safe_f64_to_number(diffuse[1] as f64)),
+                        AttributeValue::Number(safe_f64_to_number(diffuse[2] as f64)),
+                    ]),
+                );
+            }
+
+            if let Some(specular) = mat.specular {
+                mat_props.insert(
+                    "specular".to_string(),
+                    AttributeValue::Array(vec![
+                        AttributeValue::Number(safe_f64_to_number(specular[0] as f64)),
+                        AttributeValue::Number(safe_f64_to_number(specular[1] as f64)),
+                        AttributeValue::Number(safe_f64_to_number(specular[2] as f64)),
+                    ]),
+                );
+            }
+
+            if let Some(shininess) = mat.shininess {
+                mat_props.insert(
+                    "shininess".to_string(),
+                    AttributeValue::Number(safe_f64_to_number(shininess as f64)),
+                );
+            }
+
+            if let Some(transparency) = mat.transparency {
+                mat_props.insert(
+                    "transparency".to_string(),
+                    AttributeValue::Number(safe_f64_to_number(transparency as f64)),
+                );
+            }
+
+            if let Some(illumination) = mat.illumination {
+                mat_props.insert(
+                    "illumination".to_string(),
+                    AttributeValue::Number(serde_json::Number::from(illumination)),
+                );
+            }
+
+            if let Some(texture_map) = &mat.texture_map {
+                mat_props.insert(
+                    "textureMap".to_string(),
+                    AttributeValue::String(texture_map.clone()),
+                );
+            }
+
+            material_details.insert(mat_name.clone(), AttributeValue::Map(mat_props));
+        }
+    }
+
+    let material_properties = if !material_details.is_empty() {
+        AttributeValue::Map(material_details)
+    } else {
+        AttributeValue::Map(HashMap::new())
+    };
+
+    (materials_array, material_properties)
+}
+
 async fn read_obj(
     ctx: &NodeContext,
     storage_resolver: Arc<reearth_flow_storage::resolve::StorageResolver>,
@@ -264,113 +362,16 @@ async fn read_obj(
                 .collect();
 
             if !used_materials.is_empty() {
-                attributes.insert(
-                    Attribute::new("materials"),
-                    AttributeValue::Array(
-                        used_materials
-                            .iter()
-                            .map(|m| AttributeValue::String(m.clone()))
-                            .collect(),
-                    ),
-                );
+                let (materials_array, material_properties) =
+                    extract_material_properties(&materials, &used_materials);
 
-                let mut material_details = HashMap::new();
-                for mat_name in &used_materials {
-                    if let Some(mat) = materials.get(mat_name) {
-                        let mut mat_props = HashMap::new();
+                attributes.insert(Attribute::new("materials"), materials_array);
 
-                        if let Some(ambient) = mat.ambient {
-                            mat_props.insert(
-                                "ambient".to_string(),
-                                AttributeValue::Array(vec![
-                                    AttributeValue::Number(
-                                        serde_json::Number::from_f64(ambient[0] as f64).unwrap(),
-                                    ),
-                                    AttributeValue::Number(
-                                        serde_json::Number::from_f64(ambient[1] as f64).unwrap(),
-                                    ),
-                                    AttributeValue::Number(
-                                        serde_json::Number::from_f64(ambient[2] as f64).unwrap(),
-                                    ),
-                                ]),
-                            );
-                        }
-
-                        if let Some(diffuse) = mat.diffuse {
-                            mat_props.insert(
-                                "diffuse".to_string(),
-                                AttributeValue::Array(vec![
-                                    AttributeValue::Number(
-                                        serde_json::Number::from_f64(diffuse[0] as f64).unwrap(),
-                                    ),
-                                    AttributeValue::Number(
-                                        serde_json::Number::from_f64(diffuse[1] as f64).unwrap(),
-                                    ),
-                                    AttributeValue::Number(
-                                        serde_json::Number::from_f64(diffuse[2] as f64).unwrap(),
-                                    ),
-                                ]),
-                            );
-                        }
-
-                        if let Some(specular) = mat.specular {
-                            mat_props.insert(
-                                "specular".to_string(),
-                                AttributeValue::Array(vec![
-                                    AttributeValue::Number(
-                                        serde_json::Number::from_f64(specular[0] as f64).unwrap(),
-                                    ),
-                                    AttributeValue::Number(
-                                        serde_json::Number::from_f64(specular[1] as f64).unwrap(),
-                                    ),
-                                    AttributeValue::Number(
-                                        serde_json::Number::from_f64(specular[2] as f64).unwrap(),
-                                    ),
-                                ]),
-                            );
-                        }
-
-                        if let Some(shininess) = mat.shininess {
-                            mat_props.insert(
-                                "shininess".to_string(),
-                                AttributeValue::Number(
-                                    serde_json::Number::from_f64(shininess as f64).unwrap(),
-                                ),
-                            );
-                        }
-
-                        if let Some(transparency) = mat.transparency {
-                            mat_props.insert(
-                                "transparency".to_string(),
-                                AttributeValue::Number(
-                                    serde_json::Number::from_f64(transparency as f64).unwrap(),
-                                ),
-                            );
-                        }
-
-                        if let Some(illumination) = mat.illumination {
-                            mat_props.insert(
-                                "illumination".to_string(),
-                                AttributeValue::Number(serde_json::Number::from(illumination)),
-                            );
-                        }
-
-                        if let Some(texture_map) = &mat.texture_map {
-                            mat_props.insert(
-                                "textureMap".to_string(),
-                                AttributeValue::String(texture_map.clone()),
-                            );
-                        }
-
-                        material_details.insert(mat_name.clone(), AttributeValue::Map(mat_props));
+                if let AttributeValue::Map(ref props) = material_properties {
+                    if !props.is_empty() {
+                        attributes
+                            .insert(Attribute::new("materialProperties"), material_properties);
                     }
-                }
-
-                if !material_details.is_empty() {
-                    attributes.insert(
-                        Attribute::new("materialProperties"),
-                        AttributeValue::Map(material_details),
-                    );
                 }
             }
         }
@@ -439,114 +440,16 @@ async fn read_obj(
                 .collect();
 
             if !group_materials.is_empty() {
-                // Add material names list
-                attributes.insert(
-                    Attribute::new("materials"),
-                    AttributeValue::Array(
-                        group_materials
-                            .iter()
-                            .map(|m| AttributeValue::String(m.clone()))
-                            .collect(),
-                    ),
-                );
+                let (materials_array, material_properties) =
+                    extract_material_properties(&materials, &group_materials);
 
-                let mut material_details = HashMap::new();
-                for mat_name in &group_materials {
-                    if let Some(mat) = materials.get(mat_name) {
-                        let mut mat_props = HashMap::new();
+                attributes.insert(Attribute::new("materials"), materials_array);
 
-                        if let Some(ambient) = mat.ambient {
-                            mat_props.insert(
-                                "ambient".to_string(),
-                                AttributeValue::Array(vec![
-                                    AttributeValue::Number(
-                                        serde_json::Number::from_f64(ambient[0] as f64).unwrap(),
-                                    ),
-                                    AttributeValue::Number(
-                                        serde_json::Number::from_f64(ambient[1] as f64).unwrap(),
-                                    ),
-                                    AttributeValue::Number(
-                                        serde_json::Number::from_f64(ambient[2] as f64).unwrap(),
-                                    ),
-                                ]),
-                            );
-                        }
-
-                        if let Some(diffuse) = mat.diffuse {
-                            mat_props.insert(
-                                "diffuse".to_string(),
-                                AttributeValue::Array(vec![
-                                    AttributeValue::Number(
-                                        serde_json::Number::from_f64(diffuse[0] as f64).unwrap(),
-                                    ),
-                                    AttributeValue::Number(
-                                        serde_json::Number::from_f64(diffuse[1] as f64).unwrap(),
-                                    ),
-                                    AttributeValue::Number(
-                                        serde_json::Number::from_f64(diffuse[2] as f64).unwrap(),
-                                    ),
-                                ]),
-                            );
-                        }
-
-                        if let Some(specular) = mat.specular {
-                            mat_props.insert(
-                                "specular".to_string(),
-                                AttributeValue::Array(vec![
-                                    AttributeValue::Number(
-                                        serde_json::Number::from_f64(specular[0] as f64).unwrap(),
-                                    ),
-                                    AttributeValue::Number(
-                                        serde_json::Number::from_f64(specular[1] as f64).unwrap(),
-                                    ),
-                                    AttributeValue::Number(
-                                        serde_json::Number::from_f64(specular[2] as f64).unwrap(),
-                                    ),
-                                ]),
-                            );
-                        }
-
-                        if let Some(shininess) = mat.shininess {
-                            mat_props.insert(
-                                "shininess".to_string(),
-                                AttributeValue::Number(
-                                    serde_json::Number::from_f64(shininess as f64).unwrap(),
-                                ),
-                            );
-                        }
-
-                        if let Some(transparency) = mat.transparency {
-                            mat_props.insert(
-                                "transparency".to_string(),
-                                AttributeValue::Number(
-                                    serde_json::Number::from_f64(transparency as f64).unwrap(),
-                                ),
-                            );
-                        }
-
-                        if let Some(illumination) = mat.illumination {
-                            mat_props.insert(
-                                "illumination".to_string(),
-                                AttributeValue::Number(serde_json::Number::from(illumination)),
-                            );
-                        }
-
-                        if let Some(texture_map) = &mat.texture_map {
-                            mat_props.insert(
-                                "textureMap".to_string(),
-                                AttributeValue::String(texture_map.clone()),
-                            );
-                        }
-
-                        material_details.insert(mat_name.clone(), AttributeValue::Map(mat_props));
+                if let AttributeValue::Map(ref props) = material_properties {
+                    if !props.is_empty() {
+                        attributes
+                            .insert(Attribute::new("materialProperties"), material_properties);
                     }
-                }
-
-                if !material_details.is_empty() {
-                    attributes.insert(
-                        Attribute::new("materialProperties"),
-                        AttributeValue::Map(material_details),
-                    );
                 }
             }
 
@@ -1156,5 +1059,60 @@ f 4 5 6
         assert_eq!(obj_data.faces[0].group, Some("cube_group".to_string()));
         assert_eq!(obj_data.faces[1].object, Some("Pyramid".to_string()));
         assert_eq!(obj_data.faces[1].group, Some("pyramid_group".to_string()));
+    }
+
+    #[test]
+    fn test_safe_f64_to_number() {
+        assert_eq!(
+            safe_f64_to_number(1.5),
+            serde_json::Number::from_f64(1.5).unwrap()
+        );
+        assert_eq!(
+            safe_f64_to_number(0.0),
+            serde_json::Number::from_f64(0.0).unwrap()
+        );
+        assert_eq!(
+            safe_f64_to_number(-1.5),
+            serde_json::Number::from_f64(-1.5).unwrap()
+        );
+
+        assert_eq!(safe_f64_to_number(f64::NAN), serde_json::Number::from(0));
+        assert_eq!(
+            safe_f64_to_number(f64::INFINITY),
+            serde_json::Number::from(0)
+        );
+        assert_eq!(
+            safe_f64_to_number(f64::NEG_INFINITY),
+            serde_json::Number::from(0)
+        );
+    }
+
+    #[test]
+    fn test_material_properties_with_edge_values() {
+        let mut materials = HashMap::new();
+        let mat = Material {
+            name: "test_mat".to_string(),
+            diffuse: Some([1.0, f32::NAN, 0.5]),
+            shininess: Some(f32::INFINITY),
+            ..Default::default()
+        };
+        materials.insert("test_mat".to_string(), mat);
+
+        let used_materials = vec!["test_mat".to_string()];
+        let (_, material_properties) = extract_material_properties(&materials, &used_materials);
+
+        if let AttributeValue::Map(props) = material_properties {
+            if let Some(AttributeValue::Map(mat_props)) = props.get("test_mat") {
+                if let Some(AttributeValue::Array(diffuse)) = mat_props.get("diffuse") {
+                    assert_eq!(diffuse.len(), 3);
+                    if let AttributeValue::Number(n) = &diffuse[1] {
+                        assert_eq!(*n, serde_json::Number::from(0));
+                    }
+                }
+                if let Some(AttributeValue::Number(n)) = mat_props.get("shininess") {
+                    assert_eq!(*n, serde_json::Number::from(0));
+                }
+            }
+        }
     }
 }
