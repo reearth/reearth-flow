@@ -18,7 +18,7 @@ import {
   yNodeConstructor,
   yWorkflowConstructor,
 } from "./conversions";
-import type { YNode, YNodesMap, YWorkflow } from "./types";
+import type { YNode, YNodesMap, YEdgesMap, YWorkflow } from "./types";
 
 export default ({
   yWorkflows,
@@ -158,120 +158,115 @@ export default ({
     ],
   );
 
-  // const handleYWorkflowAddFromSelection = useCallback(
-  //   async (nodes: Node[], edges: Edge[]) => {
-  //     try {
-  //       const routers = await fetchRouterConfigs();
+  const handleYWorkflowAddFromSelection = useCallback(
+    async (nodes: Node[], edges: Edge[]) => {
+      try {
+        const routers = await fetchRouterConfigs();
 
-  //       undoTrackerActionWrapper(() => {
-  //         const nodesByParentId = new Map<string, Node[]>();
-  //         nodes.forEach((node) => {
-  //           if (node.parentId) {
-  //             if (!nodesByParentId.has(node.parentId)) {
-  //               nodesByParentId.set(node.parentId, []);
-  //             }
-  //             nodesByParentId.get(node.parentId)?.push(node);
-  //           }
-  //         });
+        undoTrackerActionWrapper(() => {
+          const nodesByParentId = new Map<string, Node[]>();
+          nodes.forEach((node) => {
+            if (node.parentId) {
+              if (!nodesByParentId.has(node.parentId)) {
+                nodesByParentId.set(node.parentId, []);
+              }
+              nodesByParentId.get(node.parentId)?.push(node);
+            }
+          });
 
-  //         const selectedNodes = nodes.filter((n) => n.selected);
-  //         if (selectedNodes.length === 0) return;
+          const selectedNodes = nodes.filter((n) => n.selected);
+          console.log("SELECTED NODES", selectedNodes);
+          if (selectedNodes.length === 0) return;
 
-  //         const getBatchNodes = (batchId: string): Node[] =>
-  //           nodesByParentId.get(batchId) ?? [];
+          const getBatchNodes = (batchId: string): Node[] =>
+            nodesByParentId.get(batchId) ?? [];
 
-  //         const allIncludedNodeIds = new Set<string>();
-  //         selectedNodes.forEach((node) => {
-  //           allIncludedNodeIds.add(node.id);
-  //           if (node.type === "batch") {
-  //             getBatchNodes(node.id).forEach((batchNode) =>
-  //               allIncludedNodeIds.add(batchNode.id),
-  //             );
-  //           }
-  //         });
+          const allIncludedNodeIds = new Set<string>();
+          selectedNodes.forEach((node) => {
+            allIncludedNodeIds.add(node.id);
+            if (node.type === "batch") {
+              getBatchNodes(node.id).forEach((batchNode) =>
+                allIncludedNodeIds.add(batchNode.id),
+              );
+            }
+          });
 
-  //         const allIncludedNodes = nodes.filter((n) =>
-  //           allIncludedNodeIds.has(n.id),
-  //         );
-  //         const position = {
-  //           x: Math.min(...selectedNodes.map((n) => n.position.x)),
-  //           y: Math.min(...selectedNodes.map((n) => n.position.y)),
-  //         };
+          const allIncludedNodes = nodes.filter((n) =>
+            allIncludedNodeIds.has(n.id),
+          );
+          const position = {
+            x: Math.min(...selectedNodes.map((n) => n.position.x)),
+            y: Math.min(...selectedNodes.map((n) => n.position.y)),
+          };
 
-  //         const adjustedNodes = allIncludedNodes.map((node) => ({
-  //           ...node,
-  //           position: node.parentId
-  //             ? node.position
-  //             : {
-  //                 x: node.position.x - position.x + 400,
-  //                 y: node.position.y - position.y + 200,
-  //               },
-  //           selected: false,
-  //         }));
+          const adjustedNodes = allIncludedNodes.map((node) => ({
+            ...node,
+            position: node.parentId
+              ? node.position
+              : {
+                  x: node.position.x - position.x + 400,
+                  y: node.position.y - position.y + 200,
+                },
+            selected: false,
+          }));
 
-  //         const internalEdges = edges.filter(
-  //           (e) =>
-  //             allIncludedNodeIds.has(e.source) &&
-  //             allIncludedNodeIds.has(e.target),
-  //         );
+          const internalEdges = edges.filter(
+            (e) =>
+              allIncludedNodeIds.has(e.source) &&
+              allIncludedNodeIds.has(e.target),
+          );
 
-  //         const workflowId = generateUUID();
-  //         const workflowName = t("Subworkflow");
+          const workflowId = generateUUID();
+          const workflowName = t("Subworkflow");
 
-  //         const { newYWorkflow, newSubworkflowNode } = createYWorkflow(
-  //           workflowId,
-  //           workflowName,
-  //           position,
-  //           routers,
-  //           adjustedNodes,
-  //           internalEdges,
-  //         );
+          const { newYWorkflow, newSubworkflowNode } = createYWorkflow(
+            workflowId,
+            workflowName,
+            position,
+            routers,
+            adjustedNodes,
+            internalEdges,
+          );
 
-  //         const parentWorkflow = currentYWorkflow;
-  //         const parentWorkflowNodes = parentWorkflow?.get("nodes") as
-  //           | YNodesArray
-  //           | undefined;
+          const parentWorkflow = currentYWorkflow;
+          const parentWorkflowNodesMap = parentWorkflow?.get("nodes") as
+            | YNodesMap
+            | undefined;
+          const parentWorkflowEdgesMap = parentWorkflow?.get("edges") as
+            | YEdgesMap
+            | undefined;
 
-  //         const parentWorkflowEdges = parentWorkflow?.get("edges") as
-  //           | YEdgesMap
-  //           | undefined;
+          allIncludedNodeIds.forEach((nodeId) => {
+            parentWorkflowNodesMap?.delete(nodeId);
+          });
 
-  //         const remainingNodes = nodes
-  //           .filter((n) => !allIncludedNodeIds.has(n.id))
-  //           .map((n) => yNodeConstructor(n));
+          edges.forEach((edge) => {
+            if (
+              allIncludedNodeIds.has(edge.source) ||
+              allIncludedNodeIds.has(edge.target)
+            ) {
+              parentWorkflowEdgesMap?.delete(edge.id);
+            }
+          });
 
-  //         const remainingEdges = edges
-  //           .filter(
-  //             (e) =>
-  //               !allIncludedNodeIds.has(e.source) ||
-  //               !allIncludedNodeIds.has(e.target),
-  //           )
-  //           .map((e) => yEdgeConstructor(e));
+          parentWorkflowNodesMap?.set(workflowId, newSubworkflowNode);
 
-  //         parentWorkflowEdges?.delete(0, parentWorkflowEdges.length);
-  //         parentWorkflowNodes?.delete(0, parentWorkflowNodes.length);
-  //         parentWorkflowNodes?.insert(0, [
-  //           ...remainingNodes,
-  //           newSubworkflowNode,
-  //         ]);
-  //         parentWorkflowEdges?.insert(0, remainingEdges);
-
-  //         yWorkflows.set(workflowId, newYWorkflow);
-  //       });
-  //     } catch (error) {
-  //       console.error("Failed to add workflow from selection:", error);
-  //       throw error;
-  //     }
-  //   },
-  //   [
-  //     yWorkflows,
-  //     currentYWorkflow,
-  //     t,
-  //     createYWorkflow,
-  //     fetchRouterConfigs,
-  //     undoTrackerActionWrapper,
-  //   ],
-  // );
+          yWorkflows.set(workflowId, newYWorkflow);
+        });
+      } catch (error) {
+        console.error("Failed to add workflow from selection:", error);
+        throw error;
+      }
+    },
+    [
+      yWorkflows,
+      currentYWorkflow,
+      t,
+      createYWorkflow,
+      fetchRouterConfigs,
+      undoTrackerActionWrapper,
+    ],
+  );
 
   const handleYWorkflowUpdate = useCallback(
     (workflowId: string, nodes?: Node[], edges?: Edge[]) =>
@@ -344,6 +339,6 @@ export default ({
     handleYWorkflowUpdate,
     handleYWorkflowRemove,
     handleYWorkflowRename,
-    handleYWorkflowAddFromSelection: undefined,
+    handleYWorkflowAddFromSelection,
   };
 };
