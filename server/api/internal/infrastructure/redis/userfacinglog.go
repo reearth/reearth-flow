@@ -13,11 +13,14 @@ import (
 )
 
 type UserFacingLogEntry struct {
-	WorkflowID string          `json:"workflowId"`
-	JobID      string          `json:"jobId"`
-	Timestamp  time.Time       `json:"timestamp"`
-	Message    string          `json:"message"`
-	Metadata   json.RawMessage `json:"metadata,omitempty"`
+	WorkflowID     string          `json:"workflowId"`
+	JobID          string          `json:"jobId"`
+	Timestamp      time.Time       `json:"timestamp"`
+	Level          string          `json:"level"`
+	NodeID         *string         `json:"nodeId,omitempty"`
+	NodeName       *string         `json:"nodeName,omitempty"`
+	DisplayMessage string          `json:"displayMessage"`
+	Metadata       json.RawMessage `json:"metadata,omitempty"`
 }
 
 func ToUserFacingLogEntry(l *userfacinglog.UserFacingLog) *UserFacingLogEntry {
@@ -26,10 +29,13 @@ func ToUserFacingLogEntry(l *userfacinglog.UserFacingLog) *UserFacingLogEntry {
 	}
 
 	return &UserFacingLogEntry{
-		JobID:     l.JobID().String(),
-		Timestamp: l.Timestamp().UTC(),
-		Message:   l.Message(),
-		Metadata:  l.Metadata(),
+		JobID:          l.JobID().String(),
+		Timestamp:      l.Timestamp().UTC(),
+		Level:          string(l.Level()),
+		NodeID:         l.NodeID(),
+		NodeName:       l.NodeName(),
+		DisplayMessage: l.Message(),
+		Metadata:       l.Metadata(),
 	}
 }
 
@@ -39,10 +45,25 @@ func (e *UserFacingLogEntry) ToDomain() (*userfacinglog.UserFacingLog, error) {
 		return nil, err
 	}
 
-	return userfacinglog.NewUserFacingLog(
+	var level userfacinglog.LogLevel
+	switch e.Level {
+	case "info", "INFO":
+		level = userfacinglog.LogLevelInfo
+	case "success", "SUCCESS":
+		level = userfacinglog.LogLevelSuccess
+	case "error", "ERROR":
+		level = userfacinglog.LogLevelError
+	default:
+		level = userfacinglog.LogLevelInfo
+	}
+
+	return userfacinglog.NewUserFacingLogWithDetails(
 		jid,
 		e.Timestamp.UTC(),
-		e.Message,
+		level,
+		e.NodeID,
+		e.NodeName,
+		e.DisplayMessage, // Use DisplayMessage field
 		e.Metadata,
 	), nil
 }

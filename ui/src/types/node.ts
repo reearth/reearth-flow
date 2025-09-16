@@ -4,8 +4,9 @@ import type {
 } from "@xyflow/react";
 
 export type NodeParams = Record<string, any>;
+
 // TODO: Add generic for NodeCustomization for better type checking and separation of concerns
-type NodeCustomizations = {
+export type NodeCustomizations = {
   customName?: string;
   content?: string;
   backgroundColor?: string;

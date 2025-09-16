@@ -44,6 +44,7 @@ pub struct BroadcastGroup {
     heartbeat_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
     sync_task: Option<JoinHandle<()>>,
     sync_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
+    connections_count: Arc<Mutex<usize>>,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -107,7 +108,6 @@ impl BroadcastGroup {
         drop(lock);
 
         let instance_id = format!("instance-{}", rand::random::<u64>());
-        let instance_id_for_awareness = instance_id.clone();
         let redis_store_for_awareness = redis_store.clone();
         let doc_name_for_awareness = config.doc_name.clone().unwrap_or_default();
         let mut conn = redis_store_for_awareness
@@ -121,38 +121,32 @@ impl BroadcastGroup {
                         break;
                     },
                     client_update = rx.recv() => {
-                        match client_update {
-                            Some(changed_clients) => {
-                                if let Some(awareness) = awareness_c.upgrade() {
-                                    let awareness = awareness.read().await;
-                                    if let Ok(update) = awareness.update_with_clients(changed_clients.clone()) {
-                                        let msg_bytes = Bytes::from(Message::Awareness(update.clone()).encode_v1());
-                                        if let Err(e) = sink.send(msg_bytes) {
-                                            error!("couldn't broadcast awareness update {}", e);
-                                            return;
-                                        }
+                        if let Some(changed_clients) = client_update {
+                            if let Some(awareness) = awareness_c.upgrade() {
+                                let awareness = awareness.read().await;
+                                let client_id = awareness.client_id();
+                                if let Ok(update) = awareness.update_with_clients(changed_clients.clone()) {
+                                    let msg_bytes = Bytes::from(Message::Awareness(update.clone()).encode_v1());
+                                    if let Err(e) = sink.send(msg_bytes) {
+                                        error!("couldn't broadcast awareness update {}", e);
+                                        return;
+                                    }
 
-                                        let update_bytes = update.encode_v1();
+                                    let update_bytes = update.encode_v1();
+                                    let stream_key = format!("yjs:stream:{doc_name_for_awareness}");
                                         if let Err(e) = redis_store_for_awareness
-                                            .set_awareness(
-                                                &doc_name_for_awareness,
-                                                &instance_id_for_awareness,
+                                            .publish_awareness(
                                                 &mut conn,
+                                                &stream_key,
                                                 &update_bytes,
-                                                300,
+                                                &client_id,
                                             )
                                             .await
                                         {
                                             warn!("Failed to store awareness update in Redis: {}", e);
                                         }
-                                    }
-                                } else {
-                                    break;
+
                                 }
-                            },
-                            None => {
-                                debug!("Awareness update channel closed");
-                                break;
                             }
                         }
                     }
@@ -199,7 +193,6 @@ impl BroadcastGroup {
 
         let redis_subscriber_task = tokio::spawn(async move {
             let stream_key = format!("yjs:stream:{doc_name_for_sub_clone}");
-            let awareness_last_read_id = Arc::new(Mutex::new("0".to_string()));
 
             loop {
                 select! {
@@ -217,26 +210,43 @@ impl BroadcastGroup {
                             .await;
 
                         match result {
-                            Ok(updates) => {
-                                let update_count = updates.len();
-                                let mut decoded_updates = Vec::with_capacity(update_count);
+                            Ok(stream_messages) => {
+                                let sync_count = stream_messages.sync_updates.len();
+                                if sync_count > 0 {
+                                    let mut decoded_updates = Vec::with_capacity(sync_count);
 
-                                for update in updates.iter() {
-                                    if let Ok(decoded) = Update::decode_v1(update) {
-                                        decoded_updates.push(decoded);
+                                    for update in stream_messages.sync_updates.iter() {
+                                        if let Ok(decoded) = Update::decode_v1(update) {
+                                            decoded_updates.push(decoded);
+                                        }
+                                    }
+
+                                    if !decoded_updates.is_empty() {
+                                        let awareness = awareness_clone.write().await;
+                                        let mut txn = awareness.doc().transact_mut();
+
+                                        for decoded in decoded_updates {
+                                            if let Err(e) = txn.apply_update(decoded) {
+                                                warn!("Failed to apply update from Redis: {}", e);
+                                            }
+                                        }
+                                        drop(txn);
+                                        drop(awareness);
                                     }
                                 }
 
-                                if !decoded_updates.is_empty() {
+                                let awareness_count = stream_messages.awareness_updates.len();
+                                if awareness_count > 0 {
                                     let awareness = awareness_clone.write().await;
-                                    let mut txn = awareness.doc().transact_mut();
-
-                                    for decoded in decoded_updates {
-                                        if let Err(e) = txn.apply_update(decoded) {
-                                            warn!("Failed to apply update from Redis: {}", e);
+                                    for (_client_id, data) in stream_messages.awareness_updates {
+                                        if let Ok(awareness_update) = yrs::sync::awareness::AwarenessUpdate::decode_v1(&data) {
+                                            if let Err(e) = awareness.apply_update(awareness_update) {
+                                                warn!("Failed to apply awareness update from Redis: {}", e);
+                                            }
+                                        } else {
+                                            warn!("Failed to decode awareness update from Redis");
                                         }
                                     }
-                                    drop(txn);
                                     drop(awareness);
                                 }
                             },
@@ -246,43 +256,8 @@ impl BroadcastGroup {
                             },
                         }
                     } => {},
-                    _ = async {
-                        let result = redis_store_for_sub_clone
-                            .read_awareness_updates(
-                                &doc_name_for_sub_clone,
-                                &awareness_last_read_id,
-                                500,
-                                Some(&instance_id_clone),
-                            )
-                            .await;
-
-                        match result {
-                            Ok(awareness_updates) => {
-                                let update_count = awareness_updates.len();
-                                if update_count > 0 {
-                                    let awareness = awareness_clone.write().await;
-                                    for (_instance_id, data) in awareness_updates {
-                                        if let Some(data) = data {
-                                            if let Ok(awareness_update) = yrs::sync::awareness::AwarenessUpdate::decode_v1(&data) {
-                                                if let Err(e) = awareness.apply_update(awareness_update) {
-                                                    warn!("Failed to apply awareness update from Redis: {}", e);
-                                                }
-                                            } else {
-                                                warn!("Failed to decode awareness update from Redis");
-                                            }
-                                        }
-                                    }
-                                    drop(awareness);
-                                }
-                            },
-                            Err(e) => {
-                                warn!("Error reading awareness updates from Redis: {}", e);
-                                tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
-                            },
-                        }
-                    } => {}
                 }
-                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
                 tokio::task::yield_now().await;
             }
         });
@@ -310,7 +285,6 @@ impl BroadcastGroup {
                         let msg = Bytes::from(encoded_msg);
                         if let Err(e) = sender_clone.send(msg) {
                             warn!("Failed to send periodic sync message: {}", e);
-                            break;
                         }
                     }
                 }
@@ -335,7 +309,23 @@ impl BroadcastGroup {
             heartbeat_shutdown_tx: Some(heartbeat_shutdown_tx),
             sync_task: Some(sync_task),
             sync_shutdown_tx: Some(sync_shutdown_tx),
+            connections_count: Arc::new(Mutex::new(0)),
         })
+    }
+
+    pub async fn increment_connections_count(&self) {
+        let mut connections_count = self.connections_count.lock().await;
+        *connections_count += 1;
+    }
+
+    pub async fn decrement_connections_count(&self) {
+        let mut connections_count = self.connections_count.lock().await;
+        *connections_count -= 1;
+    }
+
+    pub async fn get_connections_count(&self) -> usize {
+        let connections_count = self.connections_count.lock().await;
+        *connections_count
     }
 
     pub fn awareness(&self) -> &AwarenessRef {
@@ -416,13 +406,18 @@ impl BroadcastGroup {
                     };
                 }
             };
+
+            let _ = redis_store
+                .publish_update_with_ttl(&stream_key, &[], &client_id, 21600)
+                .await;
+
             tokio::spawn(async move {
                 while let Some(res) = stream.next().await {
                     let data = match res.map_err(anyhow::Error::from) {
                         Ok(data) => data,
                         Err(e) => {
                             warn!("Error receiving message: {}", e);
-                            break;
+                            continue;
                         }
                     };
 
@@ -484,13 +479,7 @@ impl BroadcastGroup {
 
                 if !update_bytes.is_empty() {
                     if let Err(e) = redis_store
-                        .publish_update_with_ttl(
-                            conn,
-                            stream_key,
-                            &update_bytes,
-                            instance_id,
-                            43200,
-                        )
+                        .publish_update(conn, stream_key, &update_bytes, instance_id)
                         .await
                     {
                         warn!("Failed to publish update to Redis: {}", e);
@@ -676,9 +665,6 @@ impl BroadcastGroup {
             self.redis_store
                 .safe_delete_stream(&self.doc_name, &self.instance_id)
                 .await?;
-            self.redis_store
-                .delete_awareness_stream(&self.doc_name)
-                .await?;
         }
 
         Ok(())
@@ -687,33 +673,30 @@ impl BroadcastGroup {
 
 impl Drop for BroadcastGroup {
     fn drop(&mut self) {
+        info!("Dropping BroadcastGroup");
         if let Some(tx) = self.awareness_shutdown_tx.take() {
-            if let Err(e) = tx.send(()) {
-                warn!("Failed to send awareness shutdown signal: {:?}", e);
+            if tx.send(()).is_err() {
                 if let Some(task) = self.awareness_updater.take() {
                     task.abort();
                 }
             }
         }
         if let Some(tx) = self.heartbeat_shutdown_tx.take() {
-            if let Err(e) = tx.send(()) {
-                warn!("Failed to send heartbeat shutdown signal: {:?}", e);
+            if tx.send(()).is_err() {
                 if let Some(task) = self.heartbeat_task.take() {
                     task.abort();
                 }
             }
         }
         if let Some(tx) = self.redis_subscriber_shutdown_tx.take() {
-            if let Err(e) = tx.send(()) {
-                warn!("Failed to send redis subscriber shutdown signal: {:?}", e);
+            if tx.send(()).is_err() {
                 if let Some(task) = self.redis_subscriber_task.take() {
                     task.abort();
                 }
             }
         }
         if let Some(tx) = self.sync_shutdown_tx.take() {
-            if let Err(e) = tx.send(()) {
-                warn!("Failed to send sync shutdown signal: {:?}", e);
+            if tx.send(()).is_err() {
                 if let Some(task) = self.sync_task.take() {
                     task.abort();
                 }

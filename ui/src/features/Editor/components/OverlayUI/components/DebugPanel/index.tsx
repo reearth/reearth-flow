@@ -31,6 +31,7 @@ import DebugLogs from "./DebugLogs";
 import DebugPreview from "./DebugPreview";
 import TableViewer from "./DebugPreview/components/TableViewer";
 import useHooks from "./hooks";
+import OutputDataDownload from "./OutputDataDownload";
 
 const DebugPanel: React.FC = () => {
   const {
@@ -45,6 +46,7 @@ const DebugPanel: React.FC = () => {
     showTempPossibleIssuesDialog,
     selectedDataURL,
     dataURLs,
+    outputDataForDownload,
     selectedOutputData,
     enableClustering,
     selectedFeature,
@@ -97,7 +99,9 @@ const DebugPanel: React.FC = () => {
         value={tabValue}
         defaultValue="debug-logs"
         onValueChange={setTabValue}>
-        <div className="flex justify-between pb-2" onDoubleClick={handleExpand}>
+        <div
+          className="relative flex justify-between pb-2"
+          onDoubleClick={handleExpand}>
           <div className="flex w-fit items-center">
             <TabsList className="gap-2">
               <TabsTrigger
@@ -120,8 +124,10 @@ const DebugPanel: React.FC = () => {
                 </p>
               </TabsTrigger>
             </TabsList>
+            <div className="ml-2 h-full w-1 border-l" />
+            <OutputDataDownload outputData={outputDataForDownload} />
           </div>
-          <div className="mr-[120px] flex items-center justify-center gap-2">
+          <div className="absolute left-1/2 mr-[120px] flex translate-x-1/2 items-center justify-center gap-2">
             <TerminalIcon />
             <p className="text-sm font-thin select-none">{t("Debug Run")}</p>
           </div>
@@ -185,27 +191,23 @@ const DebugPanel: React.FC = () => {
                 defaultSize={60}
                 minSize={20}
                 className="flex flex-col">
-                <Tabs defaultValue="data-viewer">
-                  <div className="py-2">
-                    <Select
-                      defaultValue={dataURLs[0].key}
-                      value={selectedDataURL}
-                      onValueChange={handleSelectedDataChange}>
-                      <SelectTrigger className="h-[26px] w-auto max-w-[250px] text-xs font-bold">
-                        <SelectValue
-                          placeholder={t("Select Data to Preview")}
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {dataURLs.map(({ key, name }) => (
-                          <SelectItem key={key} value={key}>
-                            {name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </Tabs>
+                <div className="flex gap-2 py-2">
+                  <Select
+                    defaultValue={dataURLs[0].key}
+                    value={selectedDataURL}
+                    onValueChange={handleSelectedDataChange}>
+                    <SelectTrigger className="h-[26px] w-auto max-w-[250px] text-xs font-bold">
+                      <SelectValue placeholder={t("Select Data to Preview")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dataURLs.map(({ key, name }) => (
+                        <SelectItem key={key} value={key}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="min-h-0 flex-1">
                   <TableViewer
                     fileContent={selectedOutputData}

@@ -11,6 +11,8 @@ with:
 graphs:
   - !include ../../../../graphs/lod_splitter_with_dm.yml
   - !include ../../../../graphs/surface_validator_2d.yml
+  - !include ../../../../graphs/surface_validator_3d.yml
+  - !include format_checks.yml
   - !include ref_and_type_checks.yml
   - !include surface_validation_01.yml
   - id: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
@@ -140,11 +142,9 @@ graphs:
               outputPort: buildingPart
 
       - id: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b
-        name: Dummy2
-        type: action
-        action: AttributeManager
-        with:
-          operations: []
+        name: FormatChecker
+        type: subGraph
+        subGraphId: 36d6a846-80a8-48e9-9c34-d7c0b8af2d6d
 
       - id: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
         name: SurfaceValidation01
@@ -227,7 +227,6 @@ graphs:
         to: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f
         fromPort: buildingPart
         toPort: default
-
       - id: 050b179b-e063-4541-b08f-31ea54ceec0f
         from: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
         to: 7a561c34-2e94-4883-91e4-4026b09c2f8a
