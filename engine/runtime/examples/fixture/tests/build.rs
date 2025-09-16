@@ -159,11 +159,6 @@ fn generate_test_code(test_cases: &[TestCase], testdata_dir: &Path) -> Result<To
                     profile,
                 )?;
 
-                // Test description: #_description
-
-                // Setup environment
-                ctx.setup_environment()?;
-
                 // Load and run workflow
                 let workflow = ctx.load_workflow()?;
                 ctx.run_workflow(workflow)?;
