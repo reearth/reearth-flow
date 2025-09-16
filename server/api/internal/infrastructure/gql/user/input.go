@@ -18,3 +18,7 @@ type SignupOIDCInput struct {
 	WorkspaceID *graphql.ID     `json:"workspaceId,omitempty"`
 	Secret      *graphql.String `json:"secret,omitempty"`
 }
+
+type RemoveMyAuthInput struct {
+	Auth graphql.String `json:"auth"`
+}
