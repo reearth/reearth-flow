@@ -89,6 +89,18 @@ func (r *mutationResolver) UpdateMe(ctx context.Context, input gqlmodel.UpdateMe
 }
 
 func (r *mutationResolver) RemoveMyAuth(ctx context.Context, input gqlmodel.RemoveMyAuthInput) (*gqlmodel.UpdateMePayload, error) {
+	// TODO: After migration, remove this logic and use the new usecase directly.
+	if usecases(ctx).TempNewUser != nil {
+		tempRes, err := usecases(ctx).TempNewUser.RemoveMyAuth(ctx, input.Auth)
+		if err != nil {
+			log.Printf("WARNING:[mutationResolver.RemoveMyAuth] Failed to remove auth: %v", err)
+		} else {
+			log.Printf("DEBUG:[mutationResolver.RemoveMyAuth] Removed auth with tempNewUsecase")
+			return &gqlmodel.UpdateMePayload{Me: gqlmodel.ToMeFromFlow(tempRes)}, nil
+		}
+	}
+	log.Printf("WARNING:[mutationResolver.RemoveMyAuth] Fallback to traditional usecase")
+
 	res, err := usecases(ctx).User.RemoveMyAuth(ctx, input.Auth, getAcOperator(ctx))
 	if err != nil {
 		return nil, err
