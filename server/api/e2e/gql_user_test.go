@@ -305,13 +305,29 @@ func TestSearchUser(t *testing.T) {
 }
 
 func TestNode(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operatorID := pkguser.NewID()
+	operator := factory.NewUser(func(b *pkguser.Builder) {
+		b.ID(operatorID)
+		b.Name("operator")
+		b.Email("operator@e2e.com")
+	})
+
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(pkguser.List{operator}, nil)
+	mock := &TestMocks{
+		UserRepo: mockUserRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true, nil)
-	query := fmt.Sprintf(` { node(id: "%s", type: USER){ id } }`, uId1.String())
+	}, true, baseSeederUser, true, mock)
+	query := fmt.Sprintf(` { node(id: "%s", type: USER){ id } }`, operatorID.String())
 	request := GraphQLRequest{
 		Query: query,
 	}
@@ -322,19 +338,35 @@ func TestNode(t *testing.T) {
 	o := e.POST("/api/graphql").
 		WithHeader("authorization", "Bearer test").
 		WithHeader("Content-Type", "application/json").
-		WithHeader("X-Reearth-Debug-User", uId1.String()).
+		WithHeader("X-Reearth-Debug-User", operatorID.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object().Value("data").Object().Value("node").Object()
-	o.Value("id").String().IsEqual(uId1.String())
+	o.Value("id").String().IsEqual(operatorID.String())
 }
 
 func TestNodes(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operatorID := pkguser.NewID()
+	operator := factory.NewUser(func(b *pkguser.Builder) {
+		b.ID(operatorID)
+		b.Name("operator")
+		b.Email("operator@e2e.com")
+	})
+
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(pkguser.List{operator}, nil)
+	mock := &TestMocks{
+		UserRepo: mockUserRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true, nil)
-	query := fmt.Sprintf(` { nodes(id: "%s", type: USER){ id } }`, uId1.String())
+	}, true, baseSeederUser, true, mock)
+	query := fmt.Sprintf(` { nodes(id: "%s", type: USER){ id } }`, operatorID.String())
 	request := GraphQLRequest{
 		Query: query,
 	}
@@ -345,7 +377,7 @@ func TestNodes(t *testing.T) {
 	o := e.POST("/api/graphql").
 		WithHeader("authorization", "Bearer test").
 		WithHeader("Content-Type", "application/json").
-		WithHeader("X-Reearth-Debug-User", uId1.String()).
+		WithHeader("X-Reearth-Debug-User", operatorID.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object().Value("data").Object().Value("nodes")
-	o.Array().ContainsAny(map[string]string{"id": uId1.String()})
+	o.Array().ContainsAny(map[string]string{"id": operatorID.String()})
 }
