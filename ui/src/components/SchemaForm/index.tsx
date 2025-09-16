@@ -16,21 +16,88 @@ import { ThemedForm } from "./ThemedForm";
 type SchemaFormProps = {
   readonly?: boolean;
   schema?: RJSFSchema;
+  originalSchema?: any; // Original schema before patching, used for UI schema generation
+  actionName?: string; // Action name to help identify field types
   defaultFormData?: any;
   onChange: (data: any) => void;
   onError?: (errors: RJSFValidationError[]) => void;
   onValidationChange?: (isValid: boolean) => void;
   onEditorOpen?: (fieldContext: FieldContext) => void;
+  onPythonEditorOpen?: (fieldContext: FieldContext) => void;
+};
+
+// Function to recursively scan schema for Expr types and build UI schema
+const buildExprUiSchema = (
+  schemaObj: any,
+  actionName?: string,
+  path = "",
+): any => {
+  if (!schemaObj || typeof schemaObj !== "object") return {};
+
+  const uiSchema: any = {};
+
+  // Determine if this is a Python script field or regular Rhai expression
+  const isExprType =
+    schemaObj.$ref === "#/definitions/Expr" ||
+    schemaObj.allOf?.some((item: any) => item.$ref === "#/definitions/Expr");
+
+  if (isExprType) {
+    const fieldName = path.split(".").pop() || "";
+
+    // Only treat as Python script if it's specifically PythonScriptProcessor and the field is 'script'
+    const isPythonScript =
+      actionName === "PythonScriptProcessor" && fieldName === "script";
+
+    return { "ui:exprType": isPythonScript ? "python" : "rhai" };
+  }
+
+  // Recursively check properties
+  if (schemaObj.properties) {
+    for (const [key, value] of Object.entries(schemaObj.properties)) {
+      const childPath = path ? `${path}.${key}` : key;
+      const childUiSchema = buildExprUiSchema(value, actionName, childPath);
+      if (Object.keys(childUiSchema).length > 0) {
+        uiSchema[key] = childUiSchema;
+      }
+    }
+  }
+
+  // Also recursively check allOf, oneOf, anyOf structures
+  if (schemaObj.allOf) {
+    for (const subSchema of schemaObj.allOf) {
+      const childUiSchema = buildExprUiSchema(subSchema, actionName, path);
+      Object.assign(uiSchema, childUiSchema);
+    }
+  }
+
+  if (schemaObj.oneOf) {
+    for (const subSchema of schemaObj.oneOf) {
+      const childUiSchema = buildExprUiSchema(subSchema, actionName, path);
+      Object.assign(uiSchema, childUiSchema);
+    }
+  }
+
+  if (schemaObj.anyOf) {
+    for (const subSchema of schemaObj.anyOf) {
+      const childUiSchema = buildExprUiSchema(subSchema, actionName, path);
+      Object.assign(uiSchema, childUiSchema);
+    }
+  }
+
+  return uiSchema;
 };
 
 const SchemaForm: React.FC<SchemaFormProps> = ({
   readonly,
   schema,
+  originalSchema,
+  actionName,
   defaultFormData,
   onChange,
   onError,
   onValidationChange,
   onEditorOpen,
+  onPythonEditorOpen,
 }) => {
   const t = useT();
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +147,15 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
     }
   }, [schema, defaultFormData, onValidationChange, t]);
 
+  // Generate UI schema to mark Expr fields from original schema (before patching)
+  const exprUiSchema = originalSchema
+    ? buildExprUiSchema(originalSchema, actionName)
+    : {};
+  const finalUiSchema = {
+    ...exprUiSchema,
+    "ui:submitButtonOptions": { norender: true },
+  };
+
   return schema ? (
     <SchemaFormErrorBoundary>
       <ThemedForm
@@ -88,8 +164,8 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
         readonly={readonly}
         formData={defaultFormData}
         validator={validator}
-        uiSchema={{ "ui:submitButtonOptions": { norender: true } }} // We handle submissions outside of this component
-        formContext={{ onEditorOpen }}
+        uiSchema={finalUiSchema}
+        formContext={{ onEditorOpen, onPythonEditorOpen }}
         onChange={handleChange}
         onError={handleError}
       />
