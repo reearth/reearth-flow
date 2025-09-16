@@ -51,6 +51,7 @@
   "Cut": "Cortar",
   "Paste": "Pegar",
   "Open Subworkflow": "Abrir subflujo de trabajo",
+  "Group into Subworkflow": "Agrupar en subflujo de trabajo",
   "Node Settings": "Configuración del nodo",
   "Delete Node": "Eliminar nodo",
   "Delete Selection": "Eliminar selección",

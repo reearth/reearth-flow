@@ -73,6 +73,7 @@ export default function Editor({
     handleWorkflowRedo,
     handleWorkflowUndo,
     handleWorkflowRename,
+    handleWorkflowAddFromSelection,
     handleDebugRunStart,
     handleDebugRunStop,
     handleLayoutChange,
@@ -145,6 +146,7 @@ export default function Editor({
               users={users}
               onWorkflowAdd={handleWorkflowAdd}
               onWorkflowOpen={handleWorkflowOpen}
+              onWorkflowAddFromSelection={handleWorkflowAddFromSelection}
               onNodesAdd={handleNodesAdd}
               onBeforeDelete={handleBeforeDeleteNodes}
               onNodesChange={handleNodesChange}

@@ -51,6 +51,7 @@
   "Cut": "剪切",
   "Paste": "粘贴",
   "Open Subworkflow": "打开子工作流",
+  "Group into Subworkflow": "分组到子工作流",
   "Node Settings": "节点设置",
   "Delete Node": "删除节点",
   "Delete Selection": "删除选定内容",

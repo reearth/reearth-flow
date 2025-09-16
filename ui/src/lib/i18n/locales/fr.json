@@ -51,6 +51,7 @@
   "Cut": "Couper",
   "Paste": "Coller",
   "Open Subworkflow": "Ouvrir le sous-flux de travail",
+  "Group into Subworkflow": "Regrouper dans un sous-flux de travail",
   "Node Settings": "Paramètres du nœud",
   "Delete Node": "Supprimer le nœud",
   "Delete Selection": "Supprimer la sélection",

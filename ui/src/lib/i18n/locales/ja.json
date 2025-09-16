@@ -51,6 +51,7 @@
   "Cut": "切り取り",
   "Paste": "貼り付け",
   "Open Subworkflow": "サブワークフローを開く",
+  "Group into Subworkflow": "サブワークフローにグループ化",
   "Node Settings": "ノード設定",
   "Delete Node": "ノードを削除",
   "Delete Selection": "選択を削除",

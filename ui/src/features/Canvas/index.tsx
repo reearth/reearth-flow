@@ -38,6 +38,7 @@ type Props = {
   users?: Record<string, AwarenessUser>;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onWorkflowOpen?: (workflowId: string) => void;
+  onWorkflowAddFromSelection?: (nodes: Node[], edges: Edge[]) => Promise<void>;
   onNodesAdd?: (newNode: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onBeforeDelete?: (args: { nodes: Node[] }) => Promise<boolean>;
@@ -63,6 +64,7 @@ const Canvas: React.FC<Props> = ({
   users,
   onWorkflowAdd,
   onWorkflowOpen,
+  onWorkflowAddFromSelection,
   onNodesAdd,
   onNodesChange,
   onBeforeDelete,
@@ -152,12 +154,15 @@ const Canvas: React.FC<Props> = ({
       {contextMenu && (
         <CanvasContextMenu
           data={contextMenu.data}
+          rawNodes={nodes}
+          edges={edges}
           selectedEdgeIds={selectedEdgeIds}
           contextMenu={contextMenu}
           onBeforeDelete={onBeforeDelete}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onWorkflowOpen={onWorkflowOpen}
+          onWorkflowAddFromSelection={onWorkflowAddFromSelection}
           onNodeSettings={onNodeSettings}
           onCopy={onCopy}
           onCut={onCut}
