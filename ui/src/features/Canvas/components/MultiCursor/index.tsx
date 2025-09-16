@@ -27,7 +27,7 @@ const MultiCursor: React.FC<MultiCursorProps> = ({
               left: value.cursor.x,
               top: value.cursor.y,
               pointerEvents: "none",
-              zIndex: 1000,
+              zIndex: 2000,
             }}>
             <Cursor
               color={value.color}
