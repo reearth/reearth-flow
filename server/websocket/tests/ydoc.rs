@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests {
     use async_trait::async_trait;
-    use websocket::storage::kv::keys::{key_doc, key_oid, key_state_vector, key_update, OID};
+    use websocket::domain::value_objects::keys::{
+        key_doc, key_oid, key_state_vector, key_update, OID,
+    };
     use yrs::updates::encoder::Encode;
     use yrs::{Doc, GetString, ReadTxn, StateVector, Text, Transact};
 
