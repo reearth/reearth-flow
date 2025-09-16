@@ -130,7 +130,11 @@ const GeoJsonDataSource: React.FC<Props> = ({
           ? ["case", ["==", ["get", "_originalId"], selectedFeatureId], 4, 2]
           : 2,
       },
-      filter: ["==", ["geometry-type"], "LineString"],
+      filter: [
+        "any",
+        ["==", ["geometry-type"], "LineString"],
+        ["==", ["geometry-type"], "MultiLineString"],
+      ],
     }),
     [selectedFeatureId],
   );
@@ -157,7 +161,11 @@ const GeoJsonDataSource: React.FC<Props> = ({
             ]
           : 0.8,
       },
-      filter: ["==", ["geometry-type"], "Polygon"],
+      filter: [
+        "any",
+        ["==", ["geometry-type"], "Polygon"],
+        ["==", ["geometry-type"], "MultiPolygon"],
+      ],
     }),
     [selectedFeatureId],
   );
@@ -232,14 +240,27 @@ const GeoJsonDataSource: React.FC<Props> = ({
   );
 
   const hasLineStringFeatures = useMemo(
-    () => fileContent?.features?.some((f) => f.geometry.type === "LineString"),
+    () =>
+      fileContent?.features?.some(
+        (f) =>
+          f.geometry.type === "LineString" ||
+          f.geometry.type === "MultiLineString",
+      ),
     [fileContent?.features],
   );
 
   const hasPolygonFeatures = useMemo(
-    () => fileContent?.features?.some((f) => f.geometry.type === "Polygon"),
+    () =>
+      fileContent?.features?.some(
+        (f) =>
+          f.geometry.type === "Polygon" || f.geometry.type === "MultiPolygon",
+      ),
     [fileContent?.features],
   );
+
+  console.log("hasPointFeatures", hasPointFeatures);
+  console.log("hasLineStringFeatures", hasLineStringFeatures);
+  console.log("hasPolygonFeatures", hasPolygonFeatures);
 
   return (
     <Source
