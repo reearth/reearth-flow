@@ -1,0 +1,12 @@
+{
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
+  "description": "Test PLATEAU4 L-BLDG-06",
+  "expectedOutput": {
+    "expectedFile": "02_bldg_l_bldg_06エラー.tsv",
+    "comparison": "exact"
+  },
+  "cityGmlPath": "udx/bldg/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "skip": false
+}

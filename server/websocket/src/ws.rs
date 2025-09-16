@@ -1,4 +1,4 @@
-use crate::conn::Connection;
+use crate::Connection;
 use axum::extract::ws::{Message, WebSocket};
 use axum::{
     extract::{Path, State, WebSocketUpgrade},
@@ -16,7 +16,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::sync::mpsc;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, warn};
 use yrs::sync::Error;
 
 #[cfg(feature = "auth")]
@@ -179,9 +179,8 @@ pub async fn ws_handler(
         }
     };
 
-    ws.on_upgrade(move |socket| {
-        handle_socket(socket, bcast, doc_id, user_token, Arc::clone(&state.pool))
-    })
+    let pool = state.pool.clone();
+    ws.on_upgrade(move |socket| handle_socket(socket, bcast, doc_id, user_token, pool))
 }
 
 async fn handle_socket(
@@ -197,12 +196,9 @@ async fn handle_socket(
 
     let sink = WarpSink(sender);
     let stream = WarpStream::with_pong_sender(receiver, pong_tx);
+    bcast.increment_connections_count().await;
 
-    let conn = crate::conn::Connection::new(bcast.clone(), sink, stream, user_token).await;
-
-    if let Err(e) = bcast.increment_connections().await {
-        error!("Failed to increment connections: {}", e);
-    }
+    let conn = Connection::new(bcast.clone(), sink, stream, user_token).await;
 
     let connection_result = tokio::select! {
         result = conn => result,
@@ -218,25 +214,20 @@ async fn handle_socket(
             doc_id, e
         );
     }
+    bcast.decrement_connections_count().await;
 
-    let _ = bcast.decrement_connections().await;
-
-    let count = bcast.connection_count();
-    info!(
-        "Connection closed for document {}. Remaining connections: {}",
-        doc_id, count
+    let active_connections = bcast.get_connections_count().await;
+    tracing::info!(
+        "Active connections for document '{}': {}",
+        doc_id,
+        active_connections
     );
 
-    if count == 0 {
-        info!(
-            "No more connections for document {}. Triggering cleanup...",
-            doc_id
-        );
-        if let Err(e) = pool.cleanup_empty_group(&doc_id).await {
-            error!("Failed to cleanup empty group for {}: {}", doc_id, e);
-        } else {
-            info!("Successfully triggered cleanup for document {}", doc_id);
-        }
+    if active_connections == 0 {
+        tokio::spawn(async move {
+            pool.cleanup_group(&doc_id).await;
+            tracing::info!("Cleaned up BroadcastGroup for doc_id: {}", doc_id);
+        });
     }
 }
 

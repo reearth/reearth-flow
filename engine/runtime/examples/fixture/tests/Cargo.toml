@@ -1,0 +1,35 @@
+[package]
+name = "workflow-tests"
+version = "0.1.5"
+edition = "2021"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+reearth-flow-runtime.workspace = true
+reearth-flow-runner.workspace = true
+reearth-flow-types.workspace = true
+reearth-flow-common.workspace = true
+reearth-flow-action-source.workspace = true
+reearth-flow-action-sink.workspace = true
+reearth-flow-action-processor.workspace = true
+reearth-flow-action-plateau-processor.workspace = true
+reearth-flow-action-log.workspace = true
+reearth-flow-state.workspace = true
+reearth-flow-storage.workspace = true
+tokio.workspace = true
+anyhow = "1.0"
+pretty_assertions.workspace = true
+uuid.workspace = true
+yaml-include = "0.7"
+tempfile.workspace = true
+jsonpath_lib.workspace = true
+
+[build-dependencies]
+serde.workspace = true
+serde_json.workspace = true
+walkdir.workspace = true
+anyhow = "1.0"
+quote = "1.0"
+proc-macro2 = "1.0"

@@ -1,28 +1,47 @@
-// import { useNodes } from "@xyflow/react";
+import { useNodes } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { config } from "@flow/config";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { DebugRunState, useCurrentProject } from "@flow/stores";
+import {
+  DebugRunState,
+  SelectedIntermediateData,
+  useCurrentProject,
+} from "@flow/stores";
+import { NodeCustomizations } from "@flow/types";
 
 export default ({
   id,
-  // source,
+  source,
+  target,
   selected,
 }: {
   id: string;
-  // source: string;
+  source: string;
+  target: string;
   selected?: boolean;
 }) => {
   const [currentProject] = useCurrentProject();
   const { api } = config();
 
   const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
+  const nodes = useNodes();
 
   const debugJobState = useMemo(
     () =>
       debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id),
     [debugRunState, currentProject],
+  );
+
+  // Get source and target node names
+  const sourceNode = useMemo(
+    () => nodes.find((node) => node.id === source),
+    [nodes, source],
+  );
+
+  const targetNode = useMemo(
+    () => nodes.find((node) => node.id === target),
+    [nodes, target],
   );
 
   const jobStatus = useMemo(
@@ -79,49 +98,112 @@ export default ({
     id,
   ]);
 
-  const handleIntermediateDataSet = useCallback(async () => {
-    if (!selected || !intermediateDataUrl) return;
-    const newDebugRunState: DebugRunState = {
-      ...debugRunState,
-      jobs:
-        debugRunState?.jobs?.map((job) => {
-          const newSelectedIntermediateData =
-            job.projectId === currentProject?.id
-              ? job.selectedIntermediateData?.find((sid) => id === sid.edgeId)
-                ? job.selectedIntermediateData.filter(
-                    (sid) => id !== sid.edgeId,
-                  )
-                : [
-                    ...(job.selectedIntermediateData ?? []),
-                    { edgeId: id, url: intermediateDataUrl },
-                  ]
-              : job.selectedIntermediateData;
-          return {
-            ...job,
-            selectedIntermediateData: newSelectedIntermediateData,
-          };
-        }) ?? [],
-    };
-    await updateValue(newDebugRunState);
+  const handleIntermediateDataSet = useCallback(
+    async (autoSelect = false) => {
+      if ((!selected && !autoSelect) || !intermediateDataUrl) return;
+
+      const newDebugRunState: DebugRunState = {
+        ...debugRunState,
+        jobs:
+          debugRunState?.jobs?.map((job) => {
+            if (job.projectId !== currentProject?.id) return job;
+
+            const currentData = job.selectedIntermediateData ?? [];
+            const isCurrentlySelected = currentData.find(
+              (sid) => sid.edgeId === id,
+            );
+
+            let newSelectedIntermediateData:
+              | SelectedIntermediateData[]
+              | undefined;
+
+            if (isCurrentlySelected) {
+              // Remove the item
+              const filtered = currentData.filter((sid) => sid.edgeId !== id);
+              // Keep as empty array (don't set to undefined) - user has interacted
+              newSelectedIntermediateData = filtered;
+            } else {
+              const sourceCustomizations = sourceNode?.data.customizations as
+                | NodeCustomizations
+                | undefined;
+              const targetCustomizations = targetNode?.data.customizations as
+                | NodeCustomizations
+                | undefined;
+              const sourceName = (sourceCustomizations?.customName ||
+                sourceNode?.data?.officialName ||
+                sourceNode?.type ||
+                `Node ${source}`) as string;
+              const targetName = (targetCustomizations?.customName ||
+                targetNode?.data?.officialName ||
+                targetNode?.type ||
+                `Node ${target}`) as string;
+              const edgeDisplayName = `${sourceName} → ${targetName}`;
+
+              // Add the item (initialize array if undefined)
+              newSelectedIntermediateData = [
+                ...currentData,
+                {
+                  edgeId: id,
+                  url: intermediateDataUrl,
+                  displayName: edgeDisplayName,
+                  sourceName: sourceName,
+                  targetName: targetName,
+                },
+              ];
+            }
+
+            return {
+              ...job,
+              selectedIntermediateData: newSelectedIntermediateData,
+            };
+          }) ?? [],
+      };
+      await updateValue(newDebugRunState);
+    },
+    [
+      selected,
+      intermediateDataUrl,
+      debugRunState,
+      currentProject,
+      id,
+      updateValue,
+      sourceNode,
+      targetNode,
+      source,
+      target,
+    ],
+  );
+
+  // Auto-select intermediate data for writer target nodes
+  useEffect(() => {
+    const hasNeverBeenTouched =
+      debugJobState?.selectedIntermediateData === undefined;
+
+    if (
+      hasIntermediateData &&
+      targetNode?.type === "writer" &&
+      !intermediateDataIsSet &&
+      hasNeverBeenTouched && // Only auto-select if user has never interacted with selections
+      debugJobState?.status === "completed"
+    ) {
+      handleIntermediateDataSet(true); // Pass autoSelect=true
+    }
   }, [
-    selected,
-    intermediateDataUrl,
-    debugRunState,
-    currentProject,
-    id,
-    updateValue,
+    hasIntermediateData,
+    targetNode?.type,
+    intermediateDataIsSet,
+    debugJobState?.selectedIntermediateData,
+    debugJobState?.status,
+    handleIntermediateDataSet,
   ]);
 
-  // const nodes = useNodes();
+  // Optional: Add source node status if needed later
   // const sourceNodeStatus = useMemo(() => {
   //   if (!debugJobState?.nodeExecutions) return undefined;
-  //   const sourceNode = nodes.find((node) => node.id === source);
-
-  //   console.log("sourceNode", sourceNode); // TODO: delete
   //   return debugJobState?.nodeExecutions?.find(
-  //     (nodeExecution) => nodeExecution.nodeId === sourceNode?.id,
+  //     (nodeExecution) => nodeExecution.nodeId === source,
   //   )?.status;
-  // }, [debugJobState?.nodeExecutions, nodes, source]);
+  // }, [debugJobState?.nodeExecutions, source]);
 
   return {
     // sourceNodeStatus,

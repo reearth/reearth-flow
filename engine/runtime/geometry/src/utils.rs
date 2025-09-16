@@ -260,6 +260,24 @@ pub fn check_too_few_points<T: CoordFloat + FromPrimitive, Z: CoordFloat + FromP
     false
 }
 
+/// Check for self-intersection with 3D-aware analysis
+/// This function first checks if the LineString is planar, and if so, rotates it to XY plane for accurate intersection testing
+pub fn linestring_has_self_intersection_3d<
+    T: GeoNum + num_traits::FromPrimitive + num_traits::ToPrimitive,
+    Z: GeoNum + num_traits::FromPrimitive + num_traits::ToPrimitive,
+>(
+    geom: &LineString<T, Z>,
+) -> bool {
+    if let Some(planarity_info) = is_linestring_planar(geom, 1e-6) {
+        if let Some(rotated_geom) = rotate_linestring_to_xy_plane(geom, &planarity_info) {
+            return linestring_has_self_intersection(&rotated_geom);
+        }
+    }
+
+    // If not planar or rotation failed, use 2D projection method (fallback)
+    linestring_has_self_intersection(geom)
+}
+
 pub fn linestring_has_self_intersection<T: GeoNum, Z: GeoNum>(geom: &LineString<T, Z>) -> bool {
     for (i, line) in geom.lines().enumerate() {
         for (j, other_line) in geom.lines().enumerate() {
@@ -392,4 +410,201 @@ pub fn calculate_geo_distance_3d<T: CoordFloat, Z: CoordFloat>(
     };
 
     Some((dx_meters * dx_meters + dy_meters * dy_meters + dz_meters * dz_meters).sqrt())
+}
+
+/// Check if a LineString is planar (all points lie on the same plane)
+/// Returns Some(PointsCoplanar) if planar, None if not planar
+pub fn is_linestring_planar<T, Z>(
+    line_string: &LineString<T, Z>,
+    tolerance: f64,
+) -> Option<PointsCoplanar>
+where
+    T: CoordFloat + num_traits::ToPrimitive,
+    Z: CoordFloat + num_traits::ToPrimitive,
+{
+    if line_string.0.len() < 3 {
+        return None; // Less than 3 points cannot define a plane
+    }
+
+    let points: Result<Vec<nalgebra::Point3<f64>>, &str> = line_string
+        .coords()
+        .map(|coord| {
+            Ok(nalgebra::Point3::new(
+                coord.x.to_f64().ok_or("Failed to convert x coordinate")?,
+                coord.y.to_f64().ok_or("Failed to convert y coordinate")?,
+                coord.z.to_f64().ok_or("Failed to convert z coordinate")?,
+            ))
+        })
+        .collect();
+
+    let points = points.ok()?;
+    are_points_coplanar(points, tolerance)
+}
+
+/// Rotate a planar LineString to lie on the XY plane (Z=0)
+/// Returns the rotated LineString if successful, None if the operation fails
+pub fn rotate_linestring_to_xy_plane<T, Z>(
+    line_string: &LineString<T, Z>,
+    planarity_info: &PointsCoplanar,
+) -> Option<LineString<T, Z>>
+where
+    T: CoordFloat + num_traits::FromPrimitive + num_traits::ToPrimitive,
+    Z: CoordFloat + num_traits::FromPrimitive + num_traits::ToPrimitive,
+{
+    use nalgebra::{Matrix3, Vector3};
+
+    // Calculate rotation matrix to align surface normal with Z-axis
+    let from_vector = Vector3::new(
+        planarity_info.normal.x(),
+        planarity_info.normal.y(),
+        planarity_info.normal.z(),
+    );
+    let to_vector = Vector3::new(0.0, 0.0, 1.0);
+
+    // Skip rotation if already aligned with Z-axis
+    if (from_vector - to_vector).norm() < 1e-6 {
+        return Some(line_string.clone());
+    }
+
+    // Calculate rotation axis and angle
+    let cross_product = from_vector.cross(&to_vector);
+
+    let (rotation_axis, rotation_angle) = if cross_product.norm() < 1e-10 {
+        // Vectors are parallel - either same direction (already handled above) or opposite
+        // For opposite direction, we need a 180-degree rotation around any perpendicular axis
+        let perpendicular = if from_vector.x.abs() < 0.9 {
+            Vector3::new(1.0, 0.0, 0.0).cross(&from_vector)
+        } else {
+            Vector3::new(0.0, 1.0, 0.0).cross(&from_vector)
+        };
+        (perpendicular.normalize(), std::f64::consts::PI)
+    } else {
+        (
+            cross_product.normalize(),
+            from_vector.dot(&to_vector).acos(),
+        )
+    };
+
+    // Create rotation matrix using Rodrigues' rotation formula
+    let k = rotation_axis;
+    let cos_theta = rotation_angle.cos();
+    let sin_theta = rotation_angle.sin();
+
+    let rotation_matrix = Matrix3::identity() * cos_theta
+        + Matrix3::from_columns(&[
+            Vector3::new(0.0, -k.z, k.y),
+            Vector3::new(k.z, 0.0, -k.x),
+            Vector3::new(-k.y, k.x, 0.0),
+        ]) * sin_theta
+        + k * k.transpose() * (1.0 - cos_theta);
+
+    // Apply rotation to each coordinate
+    let rotated_coords: Result<Vec<Coordinate<T, Z>>, &str> = line_string
+        .coords()
+        .map(|coord| {
+            let original = Vector3::new(
+                coord.x.to_f64().ok_or("Failed to convert x coordinate")?,
+                coord.y.to_f64().ok_or("Failed to convert y coordinate")?,
+                coord.z.to_f64().ok_or("Failed to convert z coordinate")?,
+            );
+
+            let rotated = rotation_matrix * original;
+
+            Ok(Coordinate::new__(
+                T::from_f64(rotated.x).ok_or("Failed to convert rotated x coordinate")?,
+                T::from_f64(rotated.y).ok_or("Failed to convert rotated y coordinate")?,
+                Z::from_f64(0.0).ok_or("Failed to convert z coordinate to zero")?, // Force Z to 0 for XY plane
+            ))
+        })
+        .collect();
+
+    let rotated_coords = rotated_coords.ok()?;
+    Some(LineString::from(rotated_coords))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_self_intersection_3d_ok() {
+        assert!(!linestring_has_self_intersection_3d(&floor_surface()));
+        assert!(!linestring_has_self_intersection_3d(&roof_surface()));
+        assert!(!linestring_has_self_intersection_3d(&wall_surface()));
+    }
+
+    #[test]
+    fn test_self_intersection_3d_error() {
+        assert!(linestring_has_self_intersection_3d(
+            &floor_surface_with_self_intersection()
+        ));
+
+        assert!(linestring_has_self_intersection_3d(
+            &roof_surface_with_self_intersection()
+        ));
+
+        assert!(linestring_has_self_intersection_3d(
+            &wall_surface_with_self_intersection()
+        ));
+    }
+
+    fn floor_surface() -> LineString<f64, f64> {
+        LineString::from(vec![
+            Coordinate::new__(0.0, 0.0, 0.0),
+            Coordinate::new__(1.0, 0.0, 0.0),
+            Coordinate::new__(1.0, 1.0, 0.0),
+            Coordinate::new__(0.0, 1.0, 0.0),
+            Coordinate::new__(0.0, 0.0, 0.0),
+        ])
+    }
+
+    fn floor_surface_with_self_intersection() -> LineString<f64, f64> {
+        LineString::from(vec![
+            Coordinate::new__(0.0, 0.0, 0.0),
+            Coordinate::new__(1.0, 0.0, 0.0),
+            Coordinate::new__(0.0, 1.0, 0.0),
+            Coordinate::new__(1.0, 1.0, 0.0),
+            Coordinate::new__(0.0, 0.0, 0.0),
+        ])
+    }
+
+    fn roof_surface() -> LineString<f64, f64> {
+        LineString::from(vec![
+            Coordinate::new__(0.0, 0.0, 8.0),
+            Coordinate::new__(1.0, 0.0, 8.0),
+            Coordinate::new__(1.0, 1.0, 8.0),
+            Coordinate::new__(0.0, 1.0, 8.0),
+            Coordinate::new__(0.0, 0.0, 8.0),
+        ])
+    }
+
+    fn roof_surface_with_self_intersection() -> LineString<f64, f64> {
+        LineString::from(vec![
+            Coordinate::new__(0.0, 0.0, 8.0),
+            Coordinate::new__(1.0, 0.0, 8.0),
+            Coordinate::new__(0.0, 1.0, 8.0),
+            Coordinate::new__(1.0, 1.0, 8.0),
+            Coordinate::new__(0.0, 0.0, 8.0),
+        ])
+    }
+
+    fn wall_surface() -> LineString<f64, f64> {
+        LineString::from(vec![
+            Coordinate::new__(0.0, 0.0, 0.0),
+            Coordinate::new__(0.0, 1.0, 0.0),
+            Coordinate::new__(0.0, 1.0, 8.0),
+            Coordinate::new__(0.0, 0.0, 8.0),
+            Coordinate::new__(0.0, 0.0, 0.0),
+        ])
+    }
+
+    fn wall_surface_with_self_intersection() -> LineString<f64, f64> {
+        LineString::from(vec![
+            Coordinate::new__(0.0, 0.0, 0.0),
+            Coordinate::new__(1.0, 0.0, 8.0),
+            Coordinate::new__(0.0, 1.0, 8.0),
+            Coordinate::new__(1.0, 0.0, 0.0),
+            Coordinate::new__(0.0, 0.0, 0.0),
+        ])
+    }
 }

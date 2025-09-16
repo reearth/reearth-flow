@@ -20,7 +20,6 @@ reearth-flow-action-plateau-processor.workspace = true
 reearth-flow-action-processor.workspace = true
 reearth-flow-action-sink.workspace = true
 reearth-flow-action-source.workspace = true
-reearth-flow-action-wasm-processor.workspace = true
 reearth-flow-common.workspace = true
 reearth-flow-runner.workspace = true
 reearth-flow-runtime.workspace = true

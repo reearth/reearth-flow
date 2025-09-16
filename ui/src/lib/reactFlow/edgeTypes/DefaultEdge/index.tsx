@@ -14,6 +14,8 @@ export type CustomEdgeProps = EdgeProps<Edge>;
 
 const DefaultEdge: React.FC<CustomEdgeProps> = ({
   id,
+  source,
+  target,
   sourceX,
   sourceY,
   sourcePosition,
@@ -42,7 +44,8 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
     handleIntermediateDataSet,
   } = useHooks({
     id,
-    // source,
+    source,
+    target,
     selected,
   });
 
@@ -67,7 +70,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
               pointerEvents: "all",
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             }}
-            onDoubleClick={handleIntermediateDataSet}
+            onDoubleClick={() => handleIntermediateDataSet()}
           />
         )}
       </EdgeLabelRenderer>

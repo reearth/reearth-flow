@@ -60,7 +60,7 @@ const DialogContent = forwardRef<
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
-          "fixed top-[50%] left-[50%] z-50 w-full max-w-xl translate-x-[-50%] gap-4 border border-primary bg-card/50 shadow-lg backdrop-blur duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:rounded-lg",
+          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-xl translate-x-[-50%] gap-4 border border-primary bg-card/50 shadow-lg backdrop-blur duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:rounded-lg",
           size === "xs"
             ? "max-w-[300px]"
             : size === "sm"

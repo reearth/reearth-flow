@@ -6,8 +6,8 @@ pub mod auth;
 
 mod broadcast;
 pub mod conf;
-pub mod conn;
-pub mod doc;
+pub mod domain;
+pub mod interface;
 pub mod storage;
 pub mod tools;
 pub mod ws;
@@ -54,7 +54,22 @@ pub use auth::AuthService;
 
 pub use broadcast::sub::Subscription;
 pub use conf::Config;
+pub use domain::value_objects::conf::{
+    DEFAULT_APP_ENV, DEFAULT_GCS_BUCKET, DEFAULT_ORIGINS, DEFAULT_REDIS_TTL, DEFAULT_REDIS_URL,
+    DEFAULT_WS_PORT,
+};
+pub use domain::value_objects::http::*;
+
+#[cfg(feature = "auth")]
+pub use domain::value_objects::conf::DEFAULT_AUTH_URL;
+pub use domain::value_objects::redis::{
+    RedisConfig, RedisField, RedisFields, RedisPool, RedisStreamMessage, RedisStreamResult,
+    RedisStreamResults, StreamMessages, MESSAGE_TYPE_AWARENESS, MESSAGE_TYPE_SYNC, OID_LOCK_KEY,
+};
 pub use group::BroadcastGroup;
+pub use interface::http::handlers::DocumentHandler;
+pub use interface::http::router::document_routes;
+pub use interface::websocket::conn::Connection;
 pub use pool::BroadcastPool;
 pub use server::{ensure_bucket, start_server};
 pub use storage::gcs::GcsStore;

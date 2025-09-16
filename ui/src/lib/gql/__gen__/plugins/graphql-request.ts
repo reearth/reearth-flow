@@ -1069,7 +1069,6 @@ export type SignupInput = {
 export type SignupPayload = {
   __typename?: 'SignupPayload';
   user: User;
-  workspace: Workspace;
 };
 
 export type Subscription = {
@@ -1100,6 +1099,12 @@ export type SubscriptionNodeStatusArgs = {
 export type SubscriptionUserFacingLogsArgs = {
   jobId: Scalars['ID']['input'];
 };
+
+export enum Theme {
+  Dark = 'DARK',
+  Default = 'DEFAULT',
+  Light = 'LIGHT'
+}
 
 export type TimeDriverInput = {
   interval: TimeInterval;
@@ -1231,15 +1236,34 @@ export type User = Node & {
   email: Scalars['String']['output'];
   host?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
+  metadata: UserMetadata;
   name: Scalars['String']['output'];
 };
 
 export type UserFacingLog = {
   __typename?: 'UserFacingLog';
   jobId: Scalars['ID']['output'];
+  level: UserFacingLogLevel;
   message: Scalars['String']['output'];
   metadata?: Maybe<Scalars['JSON']['output']>;
+  nodeId?: Maybe<Scalars['ID']['output']>;
+  nodeName?: Maybe<Scalars['String']['output']>;
   timestamp: Scalars['DateTime']['output'];
+};
+
+export enum UserFacingLogLevel {
+  Error = 'ERROR',
+  Info = 'INFO',
+  Success = 'SUCCESS'
+}
+
+export type UserMetadata = {
+  __typename?: 'UserMetadata';
+  description?: Maybe<Scalars['String']['output']>;
+  lang: Scalars['Lang']['output'];
+  photoURL?: Maybe<Scalars['String']['output']>;
+  theme: Theme;
+  website?: Maybe<Scalars['String']['output']>;
 };
 
 export type Workspace = Node & {
@@ -1462,7 +1486,7 @@ export type ProjectSnapshotMetadataFragment = { __typename?: 'ProjectSnapshotMet
 
 export type ProjectSnapshotFragment = { __typename?: 'ProjectSnapshot', timestamp: any, updates: Array<number>, version: number };
 
-export type LogFragment = { __typename?: 'Log', jobId: string, nodeId?: string | null, timestamp: any, logLevel: LogLevel, message: string };
+export type UserFacingLogFragment = { __typename?: 'UserFacingLog', jobId: string, timestamp: any, nodeId?: string | null, nodeName?: string | null, level: UserFacingLogLevel, message: string };
 
 export type CmsProjectFragment = { __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, createdAt: any, updatedAt: any };
 
@@ -1624,13 +1648,6 @@ export type OnJobStatusChangeSubscriptionVariables = Exact<{
 
 export type OnJobStatusChangeSubscription = { __typename?: 'Subscription', jobStatus: JobStatus };
 
-export type RealTimeLogsSubscriptionVariables = Exact<{
-  jobId: Scalars['ID']['input'];
-}>;
-
-
-export type RealTimeLogsSubscription = { __typename?: 'Subscription', logs?: { __typename?: 'Log', jobId: string, nodeId?: string | null, timestamp: any, logLevel: LogLevel, message: string } | null };
-
 export type OnNodeStatusChangeSubscriptionVariables = Exact<{
   jobId: Scalars['ID']['input'];
   nodeId: Scalars['String']['input'];
@@ -1638,6 +1655,13 @@ export type OnNodeStatusChangeSubscriptionVariables = Exact<{
 
 
 export type OnNodeStatusChangeSubscription = { __typename?: 'Subscription', nodeStatus: NodeStatus };
+
+export type UserFacingLogsSubscriptionVariables = Exact<{
+  jobId: Scalars['ID']['input'];
+}>;
+
+
+export type UserFacingLogsSubscription = { __typename?: 'Subscription', userFacingLogs?: { __typename?: 'UserFacingLog', jobId: string, timestamp: any, nodeId?: string | null, nodeName?: string | null, level: UserFacingLogLevel, message: string } | null };
 
 export type CreateTriggerMutationVariables = Exact<{
   input: CreateTriggerInput;
@@ -1887,12 +1911,13 @@ export const ProjectSnapshotFragmentDoc = gql`
   version
 }
     `;
-export const LogFragmentDoc = gql`
-    fragment Log on Log {
+export const UserFacingLogFragmentDoc = gql`
+    fragment UserFacingLog on UserFacingLog {
   jobId
-  nodeId
   timestamp
-  logLevel
+  nodeId
+  nodeName
+  level
   message
 }
     `;
@@ -2330,20 +2355,21 @@ export const OnJobStatusChangeDocument = gql`
   jobStatus(jobId: $jobId)
 }
     `;
-export const RealTimeLogsDocument = gql`
-    subscription RealTimeLogs($jobId: ID!) {
-  logs(jobId: $jobId) {
-    jobId
-    nodeId
-    timestamp
-    logLevel
-    message
-  }
-}
-    `;
 export const OnNodeStatusChangeDocument = gql`
     subscription OnNodeStatusChange($jobId: ID!, $nodeId: String!) {
   nodeStatus(jobId: $jobId, nodeId: $nodeId)
+}
+    `;
+export const UserFacingLogsDocument = gql`
+    subscription UserFacingLogs($jobId: ID!) {
+  userFacingLogs(jobId: $jobId) {
+    jobId
+    timestamp
+    nodeId
+    nodeName
+    level
+    message
+  }
 }
     `;
 export const CreateTriggerDocument = gql`
@@ -2633,11 +2659,11 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     OnJobStatusChange(variables: OnJobStatusChangeSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<OnJobStatusChangeSubscription> {
       return withWrapper((wrappedRequestHeaders) => client.request<OnJobStatusChangeSubscription>({ document: OnJobStatusChangeDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'OnJobStatusChange', 'subscription', variables);
     },
-    RealTimeLogs(variables: RealTimeLogsSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<RealTimeLogsSubscription> {
-      return withWrapper((wrappedRequestHeaders) => client.request<RealTimeLogsSubscription>({ document: RealTimeLogsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'RealTimeLogs', 'subscription', variables);
-    },
     OnNodeStatusChange(variables: OnNodeStatusChangeSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<OnNodeStatusChangeSubscription> {
       return withWrapper((wrappedRequestHeaders) => client.request<OnNodeStatusChangeSubscription>({ document: OnNodeStatusChangeDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'OnNodeStatusChange', 'subscription', variables);
+    },
+    UserFacingLogs(variables: UserFacingLogsSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UserFacingLogsSubscription> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UserFacingLogsSubscription>({ document: UserFacingLogsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UserFacingLogs', 'subscription', variables);
     },
     CreateTrigger(variables: CreateTriggerMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateTriggerMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateTriggerMutation>({ document: CreateTriggerDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateTrigger', 'mutation', variables);

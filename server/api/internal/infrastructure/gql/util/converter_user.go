@@ -35,7 +35,7 @@ func ToMe(m gqlmodel.Me) (*user.User, error) {
 		Build()
 }
 
-func toUser(u gqlmodel.User) (*user.User, error) {
+func ToUser(u gqlmodel.User) (*user.User, error) {
 	uid, err := user.IDFrom(string(u.ID))
 	if err != nil {
 		return nil, err
@@ -74,7 +74,7 @@ func ToUserFromSimple(u gqlmodel.UserSimple) (*user.User, error) {
 func ToUsers(gqlUsers []gqlmodel.User) (user.List, error) {
 	users := make(user.List, 0, len(gqlUsers))
 	for _, gu := range gqlUsers {
-		u, err := toUser(gu)
+		u, err := ToUser(gu)
 		if err != nil {
 			return nil, err
 		}

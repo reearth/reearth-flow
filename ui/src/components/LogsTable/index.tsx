@@ -1,12 +1,9 @@
-import { BugIcon } from "@phosphor-icons/react";
 import {
   CaretSortIcon,
   ClockIcon,
   CrossCircledIcon,
-  ExclamationTriangleIcon,
   InfoCircledIcon,
   UpdateIcon,
-  MagnifyingGlassIcon,
 } from "@radix-ui/react-icons";
 import {
   ColumnDef,
@@ -33,14 +30,14 @@ import {
   LoadingSkeleton,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { Log, LogLevel } from "@flow/types";
+import { UserFacingLog, UserFacingLogLevel } from "@flow/types";
 
 import BasicBoiler from "../BasicBoiler";
 import { Table, TableBody, TableCell, TableRow } from "../Table";
 
 type LogProps = {
-  columns: ColumnDef<Log, unknown>[];
-  data: Log[];
+  columns: ColumnDef<UserFacingLog, unknown>[];
+  data: UserFacingLog[];
   isFetching: boolean;
   selectColumns?: boolean;
   showFiltering?: boolean;
@@ -85,11 +82,11 @@ const LogsTable = ({
     },
   });
 
-  const handleStatusChange = (status: LogLevel) => {
+  const handleStatusChange = (status: UserFacingLogLevel) => {
     if (getStatusValue === status) {
       setColumnFilters([]);
     } else {
-      setColumnFilters([{ id: "status", value: status }]);
+      setColumnFilters([{ id: "level", value: status }]);
     }
   };
 
@@ -106,12 +103,12 @@ const LogsTable = ({
   };
 
   const getStatusValue = useMemo(() => {
-    const value = columnFilters.find((id) => id.id === "status");
+    const value = columnFilters.find((id) => id.id === "level");
     return value?.value;
   }, [columnFilters]);
 
   const hasValidLogs = data.some(
-    (log) => log.timestamp || log.status || log.message,
+    (log) => log.timestamp || log.level || log.message,
   );
 
   return (
@@ -131,35 +128,14 @@ const LogsTable = ({
             size="icon"
             variant={getStatusValue === "ERROR" ? "default" : "outline"}
             tooltipText={t("Error")}
-            onClick={() => handleStatusChange(LogLevel.Error)}
+            onClick={() => handleStatusChange(UserFacingLogLevel.Error)}
             icon={<CrossCircledIcon />}
-          />
-          <IconButton
-            size="icon"
-            variant={getStatusValue === "WARN" ? "default" : "outline"}
-            tooltipText={t("Warning")}
-            onClick={() => handleStatusChange(LogLevel.Warn)}
-            icon={<ExclamationTriangleIcon />}
-          />
-          <IconButton
-            size="icon"
-            variant={getStatusValue === "DEBUG" ? "default" : "outline"}
-            tooltipText={t("Debug")}
-            onClick={() => handleStatusChange(LogLevel.Debug)}
-            icon={<BugIcon />}
-          />
-          <IconButton
-            size="icon"
-            variant={getStatusValue === "TRACE" ? "default" : "outline"}
-            tooltipText={t("Trace")}
-            onClick={() => handleStatusChange(LogLevel.Trace)}
-            icon={<MagnifyingGlassIcon />}
           />
           <IconButton
             size="icon"
             variant={getStatusValue === "INFO" ? "default" : "outline"}
             tooltipText={t("Info")}
-            onClick={() => handleStatusChange(LogLevel.Info)}
+            onClick={() => handleStatusChange(UserFacingLogLevel.Info)}
             icon={<InfoCircledIcon />}
           />
           <IconButton
@@ -230,7 +206,7 @@ const LogsTable = ({
               {table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className={` ${row.original.status === "ERROR" ? "text-destructive" : row.original.status === "WARN" ? "text-warning" : ""}`}
+                  className={` ${row.original.level === "ERROR" ? "text-destructive" : ""}`}
                   data-state={row.getIsSelected() && "selected"}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell

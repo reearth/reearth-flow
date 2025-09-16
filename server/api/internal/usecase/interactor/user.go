@@ -36,3 +36,17 @@ func (i *User) UpdateMe(ctx context.Context, p interfaces.UpdateMeParam) (*user.
 	}
 	return i.userRepo.UpdateMe(ctx, attrs)
 }
+
+func (i *User) SignupOIDC(ctx context.Context, p interfaces.SignupOIDCParam) (*user.User, error) {
+	attrs := user.SignupOIDCAttrs{
+		UserID:      p.UserID,
+		Lang:        p.Lang,
+		WorkspaceID: p.WorkspaceID,
+		Secret:      p.Secret,
+	}
+	return i.userRepo.SignupOIDC(ctx, attrs)
+}
+
+func (i *User) RemoveMyAuth(ctx context.Context, authProvider string) (*user.User, error) {
+	return i.userRepo.RemoveMyAuth(ctx, authProvider)
+}
