@@ -99,7 +99,12 @@ export default function Editor({
       currentYWorkflow,
       undoTrackerActionWrapper,
     }),
-    [handleNodesChange, handleNodeSettings, currentYWorkflow, undoTrackerActionWrapper],
+    [
+      handleNodesChange,
+      handleNodeSettings,
+      currentYWorkflow,
+      undoTrackerActionWrapper,
+    ],
   );
 
   return (
