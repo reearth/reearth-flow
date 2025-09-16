@@ -145,20 +145,24 @@ export FLOW_VAR_cityGmlPath="file:///root/53395658_bldg_6697_op.gml"
 export FLOW_VAR_targetPackages='["bldg", "fld"]'
 ```
 
-### Runtime Environment Variables
+### Runtime Configuration
 
-| Name                                          | Description                                                        | Default |
-| --------------------------------------------- | ------------------------------------------------------------------ | ------- |
-| FLOW_RUNTIME_ACTION_LOG_DISABLE               | Whether to disable the Action log                                  | false   |
-| FLOW_RUNTIME_CHANNEL_BUFFER_SIZE              | Buffer size for channels exchanged by worker threads               | 256     |
-| FLOW_RUNTIME_EVENT_HUB_CAPACITY               | Capacity size of event hub channels                                | 8192    |
-| FLOW_RUNTIME_THREAD_POOL_SIZE                 | Worker thread pool size                                            | 30      |
-| FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD          | Sink node flush threadshold size                                   | 512     |
-| FLOW_RUNTIME_ASYNC_WORKER_NUM                 | Tokio Worker number                                                | cpu num |
-| FLOW_RUNTIME_FEATURE_WRITER_DISABLE           | Whether to disable the ability to export data to the feature store | false   |
-| FLOW_RUNTIME_SLOW_ACTION_THRESHOLD            | Threshold for writing slow action logs(ms)                         | 300     |
-| FLOW_RUNTIME_WORKING_DIRECTORY                | working directory                                                  | macOS: `$HOME/Library/Caches/<project_path>`, Linux: `$HOME/.cache/<project_path>`, Windows: `%LOCALAPPDATA%\<project_path>` |
-| FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS | Delay (ms) to ensure node status events propagate                  | 500     |
+Runtime configuration can be set via CLI arguments or environment variables. **CLI arguments take precedence over environment variables.**
+
+#### CLI Arguments and Environment Variables
+
+| Name                                          | CLI Argument                         | Description                                                        | Default |
+| --------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------ | ------- |
+| FLOW_RUNTIME_ACTION_LOG_DISABLE               | `--action-log-disable`               | Whether to disable the Action log                                  | false   |
+| FLOW_RUNTIME_CHANNEL_BUFFER_SIZE              | `--channel-buffer-size`              | Buffer size for channels exchanged by worker threads               | 256     |
+| FLOW_RUNTIME_EVENT_HUB_CAPACITY               | `--event-hub-capacity`               | Capacity size of event hub channels                                | 8192    |
+| FLOW_RUNTIME_THREAD_POOL_SIZE                 | `--thread-pool-size`                 | Worker thread pool size                                            | 30      |
+| FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD          | `--feature-flush-threshold`          | Sink node flush threshold size                                     | 512     |
+| FLOW_RUNTIME_ASYNC_WORKER_NUM                 | `--async-worker-num`                 | Tokio Worker number                                                | number of CPUs |
+| FLOW_RUNTIME_FEATURE_WRITER_DISABLE           | `--feature-writer-disable`           | Whether to disable the ability to export data to the feature store | false   |
+| FLOW_RUNTIME_SLOW_ACTION_THRESHOLD_MS         | `--slow-action-threshold-ms`         | Threshold for writing slow action logs (ms)                        | 300     |
+| FLOW_RUNTIME_WORKING_DIRECTORY                | `--working-dir`                      | Working directory                                                  | macOS: `$HOME/Library/Caches/<project_path>`, Linux: `$HOME/.cache/<project_path>`, Windows: `%LOCALAPPDATA%\<project_path>` |
+| FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS | `--node-status-propagation-delay-ms`| Delay (ms) to ensure node status events propagate                  | 500     |
 
 ## Intermediate Data & Cache
 
@@ -210,7 +214,16 @@ ls <cache_directory>/projects/<project>/jobs/<job_id>/
 ### Run workflow
 
 ```console
+# Basic usage
 $ cargo run --package reearth-flow-cli -- run --workflow ${workflow_path}
+
+# With runtime configuration
+$ cargo run --package reearth-flow-cli -- run --workflow ${workflow_path} \
+  --working-dir /custom/work/dir \
+  --thread-pool-size 50
+
+# View all available options
+$ cargo run --package reearth-flow-cli -- run --help
 ```
 
 ### Run example

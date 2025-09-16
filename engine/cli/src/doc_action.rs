@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use clap::Command;
+use clap::{Args, Command};
 use indoc::indoc;
 use reearth_flow_runtime::node::SYSTEM_ACTION_FACTORY_MAPPINGS;
 
@@ -10,13 +10,15 @@ use crate::{
 };
 
 pub fn build_doc_action_command() -> Command {
-    Command::new("doc-action")
-        .about("Show action doc.")
-        .long_about("Show action doc.")
+    DocActionCliCommand::augment_args(
+        Command::new("doc-action")
+            .about("Show action doc.")
+            .long_about("Show action doc."),
+    )
 }
 
-#[derive(Debug, Eq, PartialEq)]
-pub struct DocActionCliCommand;
+#[derive(Debug, Args, Eq, PartialEq)]
+pub struct DocActionCliCommand {}
 
 impl DocActionCliCommand {
     pub fn execute(&self) -> crate::Result<()> {

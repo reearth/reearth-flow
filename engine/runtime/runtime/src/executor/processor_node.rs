@@ -1,14 +1,13 @@
-use std::env;
 use std::fmt::Debug;
 use std::sync::atomic::{AtomicU32, AtomicU64};
 use std::sync::Arc;
-use std::time::{self, Duration};
+use std::time;
 use std::{borrow::Cow, mem::swap};
 
 use crossbeam::channel::Receiver;
 use futures::Future;
-use once_cell::sync::Lazy;
 use petgraph::graph::NodeIndex;
+use reearth_flow_common::runtime_config::{NODE_STATUS_PROPAGATION_DELAY, SLOW_ACTION_THRESHOLD};
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::runtime::Handle;
@@ -28,22 +27,6 @@ use crate::{
 
 use super::receiver_loop::init_select;
 use super::{execution_dag::ExecutionDag, receiver_loop::ReceiverLoop};
-
-static NODE_STATUS_PROPAGATION_DELAY: Lazy<Duration> = Lazy::new(|| {
-    env::var("FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .map(Duration::from_millis)
-        .unwrap_or(Duration::from_millis(500))
-});
-
-static SLOW_ACTION_THRESHOLD: Lazy<Duration> = Lazy::new(|| {
-    env::var("FLOW_RUNTIME_SLOW_ACTION_THRESHOLD")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .map(Duration::from_millis)
-        .unwrap_or(Duration::from_millis(1000))
-});
 
 /// A processor in the execution DAG.
 #[derive(Debug)]

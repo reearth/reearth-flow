@@ -23,7 +23,7 @@ pub fn build_cli() -> Command {
 
 #[derive(Debug, PartialEq)]
 pub enum CliCommand {
-    Run(RunCliCommand),
+    Run(Box<RunCliCommand>),
     Dot(DotCliCommand),
     SchemaAction(SchemaActionCliCommand),
     SchemaWorkflow(SchemaWorkflowCliCommand),
@@ -36,13 +36,15 @@ impl CliCommand {
             .remove_subcommand()
             .ok_or(crate::errors::Error::parse("missing subcommand"))?;
         match subcommand.as_str() {
-            "run" => RunCliCommand::parse_cli_args(submatches).map(CliCommand::Run),
+            "run" => {
+                RunCliCommand::parse_cli_args(submatches).map(|cmd| CliCommand::Run(Box::new(cmd)))
+            }
             "dot" => DotCliCommand::parse_cli_args(submatches).map(CliCommand::Dot),
             "schema-action" => Ok(CliCommand::SchemaAction(
                 SchemaActionCliCommand::parse_cli_args(submatches)?,
             )),
-            "schema-workflow" => Ok(CliCommand::SchemaWorkflow(SchemaWorkflowCliCommand)),
-            "doc-action" => Ok(CliCommand::DocAction(DocActionCliCommand)),
+            "schema-workflow" => Ok(CliCommand::SchemaWorkflow(SchemaWorkflowCliCommand {})),
+            "doc-action" => Ok(CliCommand::DocAction(DocActionCliCommand {})),
             _ => Err(crate::errors::Error::unknown_command(subcommand)),
         }
     }

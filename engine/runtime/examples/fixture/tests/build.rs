@@ -163,7 +163,6 @@ fn generate_test_code(test_cases: &[TestCase], testdata_dir: &Path) -> Result<To
                 let workflow = ctx.load_workflow()?;
                 ctx.run_workflow(workflow)?;
 
-
                 // Verify output
                 ctx.verify_output()?;
 

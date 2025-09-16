@@ -95,6 +95,7 @@ pub mod fs;
 pub mod future;
 pub mod image;
 pub mod json;
+pub mod runtime_config;
 pub mod serde;
 pub mod str;
 pub mod texture;

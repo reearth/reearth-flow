@@ -1,7 +1,7 @@
-use std::{collections::HashMap, env, sync::Arc, time::Instant};
+use std::{collections::HashMap, sync::Arc, time::Instant};
 
-use once_cell::sync::Lazy;
 use reearth_flow_action_log::factory::LoggerFactory;
+use reearth_flow_common::runtime_config::ASYNC_WORKER_NUM;
 use reearth_flow_runtime::{event::EventHandler, node::NodeKind, shutdown};
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
@@ -9,19 +9,6 @@ use reearth_flow_types::workflow::Workflow;
 use tracing::{error, info, info_span};
 
 use crate::{log_event_handler::LogEventHandler, orchestrator::Orchestrator};
-
-/// Controls the number of worker threads in the Tokio runtime.
-///
-/// # Environment Variable
-/// - FLOW_RUNTIME_ASYNC_WORKER_NUM: Number of worker threads (default: number of CPUs)
-///
-/// # Notes
-static ASYNC_WORKER_NUM: Lazy<usize> = Lazy::new(|| {
-    env::var("FLOW_RUNTIME_ASYNC_WORKER_NUM")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(num_cpus::get())
-});
 
 pub struct Runner;
 

@@ -1,16 +1,12 @@
 use std::{
-    env, fs,
+    fs,
     path::{Path, PathBuf},
     str::FromStr,
 };
 
-use directories::ProjectDirs;
-use once_cell::sync::Lazy;
-
+use crate::runtime_config::WORKING_DIRECTORY;
 use crate::{uri::Uri, Error};
-
-static WORKING_DIRECTORY: Lazy<Option<String>> =
-    Lazy::new(|| env::var("FLOW_RUNTIME_WORKING_DIRECTORY").ok());
+use directories::ProjectDirs;
 
 pub fn project_temp_dir(id: &str) -> crate::Result<PathBuf> {
     let p = get_project_cache_dir_path("temp")?;

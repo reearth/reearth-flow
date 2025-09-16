@@ -2,16 +2,14 @@ use anyhow::{Context, Result};
 use csv::{ReaderBuilder, StringRecord};
 use jsonpath_lib as jsonpath;
 use pretty_assertions::assert_eq;
-use reearth_flow_runner::runner::Runner;
-use reearth_flow_types::Workflow;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fs;
 use std::io::Cursor;
 use std::path::PathBuf;
-use std::str::FromStr;
-use std::sync::Arc;
+use std::process::Command;
 use tempfile::TempDir;
+use yaml_include::Transformer;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -169,99 +167,106 @@ impl TestContext {
         })
     }
 
-    pub fn load_workflow(&self) -> Result<Workflow> {
-        let workflow_path = self
-            .fixture_dir
-            .join("workflow")
-            .join(&self.profile.workflow_path);
+    pub fn setup_environment(&self) -> Result<()> {
+        // Change to temp directory for the test execution
+        std::env::set_current_dir(&self.temp_dir)?;
 
-        // Use yaml-include to process the YAML with includes first
-        let yaml_transformer = yaml_include::Transformer::new(workflow_path.clone(), false)?;
-        let yaml_str = yaml_transformer.to_string();
-
-        let mut workflow: Workflow = Workflow::try_from(yaml_str.as_str())?;
-
-        // Add current path context like in example_main.rs
-        let current_dir = std::env::current_dir()?;
-        let current_path = current_dir.to_string_lossy().to_string();
-        workflow.extend_with(HashMap::from([("currentPath".to_string(), current_path)]))?;
-
-        Ok(workflow)
+        Ok(())
     }
 
-    pub fn run_workflow(&self, mut workflow: Workflow) -> Result<()> {
-        use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
-        use reearth_flow_action_plateau_processor::mapping::ACTION_FACTORY_MAPPINGS as PLATEAU_MAPPINGS;
-        use reearth_flow_action_processor::mapping::ACTION_FACTORY_MAPPINGS as PROCESSOR_MAPPINGS;
-        use reearth_flow_action_sink::mapping::ACTION_FACTORY_MAPPINGS as SINK_MAPPINGS;
-        use reearth_flow_action_source::mapping::ACTION_FACTORY_MAPPINGS as SOURCE_MAPPINGS;
-        use reearth_flow_state::State;
-        use reearth_flow_storage::resolve::StorageResolver;
+    pub fn get_workflow_path(&self) -> PathBuf {
+        self.fixture_dir
+            .join("workflow")
+            .join(&self.profile.workflow_path)
+    }
 
-        // Inject test-specific variables directly into workflow instead of using environment variables
-        let mut test_variables = HashMap::new();
+    pub fn run_workflow(&self) -> Result<()> {
+        // Get the path to the reearth-flow binary
+        // The binary is located in the engine/target/debug directory
+        // CARGO_MANIFEST_DIR = .../engine/runtime/examples/fixture/tests
+        // We need to go up to engine: tests -> fixture -> examples -> runtime -> engine
+        let manifest_dir = env!("CARGO_MANIFEST_DIR");
+        let cli_path = PathBuf::from(manifest_dir)
+            .parent() // -> fixture
+            .unwrap()
+            .parent() // -> examples
+            .unwrap()
+            .parent() // -> runtime
+            .unwrap()
+            .parent() // -> engine
+            .unwrap()
+            .join("target")
+            .join("debug")
+            .join("reearth-flow");
 
+        if !cli_path.exists() {
+            anyhow::bail!(
+                "reearth-flow binary not found at {:?}. Please run 'cargo build --package reearth-flow-cli' first.",
+                cli_path
+            );
+        }
+
+        // Pre-process the workflow YAML to handle includes
+        let workflow_path = self.get_workflow_path();
+        let yaml_transformer = Transformer::new(workflow_path, false)
+            .with_context(|| "Failed to create YAML transformer")?;
+        let processed_yaml = yaml_transformer.to_string();
+
+        // Save the processed workflow to a temporary file
+        let temp_workflow_path = self.temp_dir.join("processed_workflow.yml");
+        fs::write(&temp_workflow_path, processed_yaml).with_context(|| {
+            format!(
+                "Failed to write processed workflow to {temp_workflow_path:?}",
+            )
+        })?;
+
+        // Build the CLI command
+        let mut cmd = Command::new(&cli_path);
+
+        cmd.arg("run")
+            .arg("--workflow")
+            .arg(&temp_workflow_path)
+            .arg("--working-dir")
+            .arg(&self.temp_dir);
+
+        // Add workflow variables as CLI arguments
         let city_gml_path = self.test_dir.join(&self.profile.city_gml_path);
         let city_gml_url = format!("file://{}", city_gml_path.display());
-        test_variables.insert("cityGmlPath".to_string(), city_gml_url);
+        cmd.arg("--var")
+            .arg(format!("cityGmlPath={city_gml_url}"));
 
         if let Some(codelists) = &self.profile.codelists {
             let codelists_path = self.test_dir.join(codelists);
             let codelists_url = format!("file://{}", codelists_path.display());
-            test_variables.insert("codelists".to_string(), codelists_url);
+            cmd.arg("--var").arg(format!("codelists={codelists_url}"));
         }
 
         if let Some(schemas) = &self.profile.schemas {
             let schemas_path = self.test_dir.join(schemas);
             let schemas_url = format!("file://{}", schemas_path.display());
-            test_variables.insert("schemas".to_string(), schemas_url);
+            cmd.arg("--var").arg(format!("schemas={schemas_url}"));
         }
 
-        test_variables.insert(
-            "outputPath".to_string(),
-            self.temp_dir.display().to_string(),
-        );
-        test_variables.insert(
-            "currentPath".to_string(),
-            self.temp_dir.display().to_string(),
-        );
+        cmd.arg("--var")
+            .arg(format!("outputPath={}", self.temp_dir.display()));
+        cmd.arg("--var")
+            .arg(format!("currentPath={}", self.temp_dir.display()));
 
-        // Extend workflow with test variables
-        workflow.extend_with(test_variables)?;
+        // Run the command
+        let output = cmd
+            .output()
+            .with_context(|| format!("Failed to execute CLI command: {cli_path:?}"))?;
 
-        // Setup action factories
-        let mut action_factories = HashMap::new();
-        action_factories.extend(SINK_MAPPINGS.clone());
-        action_factories.extend(SOURCE_MAPPINGS.clone());
-        action_factories.extend(PROCESSOR_MAPPINGS.clone());
-        action_factories.extend(PLATEAU_MAPPINGS.clone());
-
-        // Setup logging and state
-        let job_id = uuid::Uuid::new_v4();
-        let action_log_path = self.temp_dir.join("action-log");
-        fs::create_dir_all(&action_log_path)?;
-        let state_path = self.temp_dir.join("feature-store");
-        fs::create_dir_all(&state_path)?;
-
-        let logger_factory = Arc::new(LoggerFactory::new(
-            create_root_logger(action_log_path.clone()),
-            action_log_path,
-        ));
-
-        let storage_resolver = Arc::new(StorageResolver::new());
-        let state_uri = format!("file://{}", state_path.display());
-        let state_uri = reearth_flow_common::uri::Uri::from_str(&state_uri)?;
-        let state = Arc::new(State::new(&state_uri, &storage_resolver).unwrap());
-
-        // Run workflow
-        Runner::run(
-            job_id,
-            workflow,
-            action_factories,
-            logger_factory,
-            storage_resolver,
-            state,
-        )?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            anyhow::bail!(
+                "CLI command failed with status {}:\nstdout: {}\nstderr: {}",
+                output.status,
+                stdout,
+                stderr
+            );
+        }
 
         Ok(())
     }
@@ -314,8 +319,25 @@ impl TestContext {
                 );
             }
 
-            let edge_data_path = self
-                .temp_dir
+            // Look for the edge data in the projects/engine/jobs directory structure
+            let jobs_dir = self.temp_dir.join("projects").join("engine").join("jobs");
+
+            // Find the job directory (there should be one)
+            let job_dirs: Vec<_> = if jobs_dir.exists() {
+                fs::read_dir(&jobs_dir)?
+                    .filter_map(|entry| entry.ok())
+                    .collect()
+            } else {
+                anyhow::bail!("No jobs directory found at {:?}", jobs_dir);
+            };
+
+            if job_dirs.is_empty() {
+                anyhow::bail!("No job directories found in {:?}", jobs_dir);
+            }
+
+            // Use the first (and should be only) job directory
+            let job_dir = &job_dirs[0].path();
+            let edge_data_path = job_dir
                 .join("feature-store")
                 .join(format!("{}.jsonl", assertion.edge_id));
 

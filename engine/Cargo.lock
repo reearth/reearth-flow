@@ -6186,6 +6186,7 @@ dependencies = [
  "image 0.25.8",
  "jsonpath_lib",
  "libxml",
+ "num_cpus",
  "once_cell",
  "parking_lot",
  "rayon",

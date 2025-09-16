@@ -1,7 +1,6 @@
-use std::env;
 use std::path::PathBuf;
 
-use once_cell::sync::Lazy;
+use reearth_flow_common::runtime_config::ACTION_LOG_DISABLE;
 use slog::Logger;
 use sloggers::file::FileLoggerBuilder;
 use sloggers::null::NullLoggerBuilder;
@@ -9,13 +8,6 @@ use sloggers::types::Severity;
 use sloggers::{Build, BuildWithCustomFormat};
 
 use crate::json::Json;
-
-static ACTION_LOG_DISABLE: Lazy<bool> = Lazy::new(|| {
-    env::var("FLOW_RUNTIME_ACTION_LOG_DISABLE")
-        .ok()
-        .map(|s| s.to_lowercase() == "true")
-        .unwrap_or(false)
-});
 
 pub(crate) fn action_logger(root_path: PathBuf, action: &str) -> Logger {
     if *ACTION_LOG_DISABLE {

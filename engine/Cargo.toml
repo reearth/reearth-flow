@@ -98,7 +98,7 @@ bytes = { version = "1.10.1", features = ["serde"] }
 calamine = "0.26.1"
 cesiumtiles = { git = "https://github.com/reearth/cesiumtiles-rs", tag = "v0.0.1" }
 chrono = { version = "0.4.40", features = ["serde"] }
-clap = { version = "4.5.32", features = ["env", "string"] }
+clap = { version = "4.5.32", features = ["derive", "env", "string"] }
 clipper-sys = "0.8.0"
 color-eyre = "0.6.3"
 colored = "3.0.0"

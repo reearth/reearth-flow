@@ -1,17 +1,16 @@
 use std::{
-    env,
     fmt::Debug,
     future::Future,
     pin::pin,
     sync::{atomic::AtomicU64, Arc},
-    time::{self, Duration},
+    time,
 };
 
-use once_cell::sync::Lazy;
 use petgraph::visit::IntoNodeIdentifiers;
 
 use async_stream::stream;
 use futures::{future::select_all, future::Either, Stream, StreamExt};
+use reearth_flow_common::runtime_config::NODE_STATUS_PROPAGATION_DELAY;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::{
@@ -32,14 +31,6 @@ use crate::{
 
 use super::execution_dag::ExecutionDag;
 use super::node::Node;
-
-static NODE_STATUS_PROPAGATION_DELAY: Lazy<Duration> = Lazy::new(|| {
-    env::var("FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .map(Duration::from_millis)
-        .unwrap_or(Duration::from_millis(500))
-});
 
 /// The source operation collector.
 #[derive(Debug)]

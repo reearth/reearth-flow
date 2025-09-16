@@ -1,22 +1,15 @@
+use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
-use std::{collections::VecDeque, env};
 
-use once_cell::sync::Lazy;
+use reearth_flow_common::runtime_config::FEATURE_WRITER_DISABLE;
 use reearth_flow_state::State;
 use reearth_flow_types::Feature;
 use thiserror::Error;
 use tokio::sync::RwLock;
 
 use crate::node::{EdgeId, Port};
-
-static FEATURE_WRITER_DISABLE: Lazy<bool> = Lazy::new(|| {
-    env::var("FLOW_RUNTIME_FEATURE_WRITER_DISABLE")
-        .ok()
-        .map(|s| s.to_lowercase() == "true")
-        .unwrap_or(false)
-});
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FeatureWriterKey(pub(crate) Port, pub(crate) Port);
