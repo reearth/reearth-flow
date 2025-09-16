@@ -1,6 +1,8 @@
 pub use super::kv as store;
-use super::kv::{get_oid, get_or_create_oid, DocOps, KVEntry, KVStore};
+use super::kv::{get_oid, get_or_create_oid, DocOps};
 use super::redis::RedisStore;
+use crate::domain::repository::kv::KVEntry;
+use crate::domain::repository::kv::KVStore;
 use crate::domain::value_objects::keys::{
     key_doc, key_state_vector, key_update, KEYSPACE_DOC, SUB_DOC, SUB_STATE_VEC, SUB_UPDATE, V1,
 };
