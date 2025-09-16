@@ -6,13 +6,18 @@ import { Cursor } from "./PerfectCursor";
 
 type MultiCursorProps = {
   users: Record<string, AwarenessUser>;
+  currentWorkflowId: string;
 };
 
-const MultiCursor: React.FC<MultiCursorProps> = ({ users }) => {
+const MultiCursor: React.FC<MultiCursorProps> = ({
+  users,
+  currentWorkflowId,
+}) => {
   return (
     <ViewportPortal>
       {Object.entries(users).map(([key, value]) => {
-        if (!value.cursor) return null;
+        if (!value.cursor || value.currentWorkflowId !== currentWorkflowId)
+          return null;
 
         return (
           <div
@@ -22,7 +27,7 @@ const MultiCursor: React.FC<MultiCursorProps> = ({ users }) => {
               left: value.cursor.x,
               top: value.cursor.y,
               pointerEvents: "none",
-              zIndex: 1000,
+              zIndex: 2000,
             }}>
             <Cursor
               color={value.color}
