@@ -42,7 +42,7 @@ const Handles: React.FC<Props> = ({
                   <div className="flex items-center -space-x-0.75">
                     {Array.from({ length: 3 }).map(() => {
                       return (
-                        <div className="size-1.5 rounded-full bg-gray-300" />
+                        <div className="size-1.5 rounded-full bg-gray-300 ring ring-secondary/20" />
                       );
                     })}
                   </div>
@@ -90,7 +90,7 @@ const Handles: React.FC<Props> = ({
                 <div className="flex items-center -space-x-0.75">
                   {Array.from({ length: 3 }).map(() => {
                     return (
-                      <div className="size-1.5 rounded-full bg-gray-300" />
+                      <div className="size-1.5 rounded-full bg-gray-300 ring ring-secondary/20" />
                     );
                   })}
                 </div>
