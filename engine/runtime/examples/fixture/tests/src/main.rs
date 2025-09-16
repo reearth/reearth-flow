@@ -215,9 +215,7 @@ impl TestContext {
         // Save the processed workflow to a temporary file
         let temp_workflow_path = self.temp_dir.join("processed_workflow.yml");
         fs::write(&temp_workflow_path, processed_yaml).with_context(|| {
-            format!(
-                "Failed to write processed workflow to {temp_workflow_path:?}",
-            )
+            format!("Failed to write processed workflow to {temp_workflow_path:?}",)
         })?;
 
         // Build the CLI command
@@ -232,8 +230,7 @@ impl TestContext {
         // Add workflow variables as CLI arguments
         let city_gml_path = self.test_dir.join(&self.profile.city_gml_path);
         let city_gml_url = format!("file://{}", city_gml_path.display());
-        cmd.arg("--var")
-            .arg(format!("cityGmlPath={city_gml_url}"));
+        cmd.arg("--var").arg(format!("cityGmlPath={city_gml_url}"));
 
         if let Some(codelists) = &self.profile.codelists {
             let codelists_path = self.test_dir.join(codelists);
