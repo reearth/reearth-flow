@@ -62,11 +62,7 @@ pub struct TestOutput {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expected_inline: Option<serde_json::Value>,
 
-    /// Comparison method
-    #[serde(default)]
-    pub comparison: ComparisonMethod,
-
-    /// Column names to exclude from comparison (for TSV files)
+    /// Column names to exclude from comparison (for TSV/CSV files)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub except: Option<ExceptColumns>,
 
@@ -107,16 +103,10 @@ impl ExceptFields {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub enum ComparisonMethod {
-    #[default]
-    Exact,
-    JsonEquals,
-    JsonSubset,
-    Contains,
-    Regex,
-    FileCount,
+#[derive(Debug)]
+enum FileComparisonMethod {
+    Text,
+    Json,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -127,10 +117,6 @@ pub struct IntermediateAssertion {
 
     /// Path to expected data file (relative to test folder)
     pub expected_file: String,
-
-    /// Comparison method for intermediate data
-    #[serde(default)]
-    pub comparison: ComparisonMethod,
 
     /// JSON fields to exclude from comparison
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -298,16 +284,31 @@ impl TestContext {
                 if !expected_file.exists() {
                     anyhow::bail!("Expected output file does not exist: {:?}", expected_file);
                 }
-            }
 
-            match output.comparison {
-                ComparisonMethod::Exact => self.verify_exact_output(output)?,
-                ComparisonMethod::JsonEquals => self.verify_json_equals(output)?,
-                ComparisonMethod::JsonSubset => self.verify_json_subset(output)?,
-                ComparisonMethod::Contains => self.verify_contains(output)?,
-                ComparisonMethod::Regex => self.verify_regex(output)?,
-                ComparisonMethod::FileCount => self.verify_file_count(output)?,
+                // Validate file format and route to appropriate verification method
+                self.verify_file_based_on_extension(output, expected_file_name)?;
             }
+        }
+        Ok(())
+    }
+
+    fn verify_file_based_on_extension(&self, output: &TestOutput, file_name: &str) -> Result<()> {
+        // Determine file format based on extension
+        if file_name.ends_with(".json") {
+            self.verify_json_file(file_name)?;
+        } else if file_name.ends_with(".jsonl") {
+            self.verify_jsonl_file(file_name)?;
+        } else if file_name.ends_with(".csv") {
+            self.verify_csv_file(output, file_name, b',')?;
+        } else if file_name.ends_with(".tsv") {
+            self.verify_csv_file(output, file_name, b'\t')?;
+        } else {
+            // Extract extension for error message
+            let extension = file_name.rsplit('.').next().unwrap_or("unknown");
+            anyhow::bail!(
+                "Unsupported file format '.{}'. Only json, jsonl, csv, and tsv files are supported.",
+                extension
+            );
         }
         Ok(())
     }
@@ -345,119 +346,113 @@ impl TestContext {
                 actual_data = self.apply_json_filter(&actual_data, json_filter)?;
             }
 
+            // Determine comparison method based on file extension
+            let comparison_method = self.determine_comparison_method(&assertion.expected_file)?;
             self.compare_data(
                 &actual_data,
                 &expected_data,
-                &assertion.comparison,
+                &comparison_method,
                 assertion.except.as_ref(),
             )?;
         }
         Ok(())
     }
 
-    fn verify_exact_output(&self, output: &TestOutput) -> Result<()> {
-        if let Some(expected_file_name) = &output.expected_file {
-            // Expected file contains the answer data
-            let expected_file = self.test_dir.join(expected_file_name);
-            if !expected_file.exists() {
-                anyhow::bail!("Expected output file does not exist: {:?}", expected_file);
-            }
+    fn verify_csv_file(&self, output: &TestOutput, file_name: &str, delimiter: u8) -> Result<()> {
+        let expected_file = self.test_dir.join(file_name);
+        let actual_file = self.temp_dir.join(file_name);
 
-            // The actual output file has the same name but is in the temp directory
-            let actual_file = self.temp_dir.join(expected_file_name);
+        if !actual_file.exists() {
+            anyhow::bail!("Output file not found at {:?}", actual_file);
+        }
 
-            if !actual_file.exists() {
-                anyhow::bail!("Output file not found at {:?}", actual_file);
-            }
+        let expected = fs::read_to_string(&expected_file)?;
+        let actual = fs::read_to_string(&actual_file)?;
 
-            let expected = fs::read_to_string(&expected_file)?;
-            let actual = fs::read_to_string(&actual_file)?;
+        self.compare_csv(&actual, &expected, delimiter, output.except.as_ref())?;
+        Ok(())
+    }
 
-            // Check if this is a TSV/CSV file and handle column order differences
-            if expected_file_name.ends_with(".tsv") {
-                self.compare_csv(&actual, &expected, b'\t', output.except.as_ref())?;
-            } else if expected_file_name.ends_with(".csv") {
-                self.compare_csv(&actual, &expected, b',', output.except.as_ref())?;
-            } else {
-                assert_eq!(actual, expected, "Output mismatch for {}", self.test_name);
+    fn verify_json_file(&self, file_name: &str) -> Result<()> {
+        let expected_file = self.test_dir.join(file_name);
+        let actual_file = self.temp_dir.join(file_name);
+
+        if !actual_file.exists() {
+            anyhow::bail!("Output file not found at {:?}", actual_file);
+        }
+
+        let expected: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&expected_file)?)?;
+        let actual: serde_json::Value = serde_json::from_str(&fs::read_to_string(&actual_file)?)?;
+
+        assert_eq!(
+            actual, expected,
+            "JSON output mismatch for {}",
+            self.test_name
+        );
+        Ok(())
+    }
+
+    fn verify_jsonl_file(&self, file_name: &str) -> Result<()> {
+        let expected_file = self.test_dir.join(file_name);
+        let actual_file = self.temp_dir.join(file_name);
+
+        if !actual_file.exists() {
+            anyhow::bail!("Output file not found at {:?}", actual_file);
+        }
+
+        let expected_content = fs::read_to_string(&expected_file)?;
+        let actual_content = fs::read_to_string(&actual_file)?;
+
+        // Parse each line as JSON and collect
+        let mut expected_values: Vec<serde_json::Value> = Vec::new();
+        for line in expected_content.lines() {
+            if !line.trim().is_empty() {
+                expected_values.push(serde_json::from_str(line)?);
             }
         }
-        Ok(())
-    }
 
-    fn verify_json_equals(&self, output: &TestOutput) -> Result<()> {
-        if let Some(expected_file_name) = &output.expected_file {
-            // Expected file contains the answer data
-            let expected_file = self.test_dir.join(expected_file_name);
-            if !expected_file.exists() {
-                anyhow::bail!("Expected output file does not exist: {:?}", expected_file);
-            }
-
-            // The actual output file has the same name but is in the temp directory
-            let actual_file = self.temp_dir.join(expected_file_name);
-            if !actual_file.exists() {
-                anyhow::bail!("Output file not found at {:?}", actual_file);
-            }
-
-            let expected: serde_json::Value =
-                serde_json::from_str(&fs::read_to_string(&expected_file)?)?;
-            let actual: serde_json::Value =
-                serde_json::from_str(&fs::read_to_string(&actual_file)?)?;
-
-            assert_eq!(
-                actual, expected,
-                "JSON output mismatch for {}",
-                self.test_name
-            );
-        }
-        Ok(())
-    }
-
-    fn verify_json_subset(&self, _output: &TestOutput) -> Result<()> {
-        // TODO: Implement JSON subset comparison
-        Ok(())
-    }
-
-    fn verify_contains(&self, _output: &TestOutput) -> Result<()> {
-        // TODO: Implement contains comparison
-        Ok(())
-    }
-
-    fn verify_regex(&self, _output: &TestOutput) -> Result<()> {
-        // TODO: Implement regex comparison
-        Ok(())
-    }
-
-    fn verify_file_count(&self, output: &TestOutput) -> Result<()> {
-        if let Some(expected_file_name) = &output.expected_file {
-            let dir = self.temp_dir.join(expected_file_name);
-            let count = fs::read_dir(&dir)?.count();
-
-            if let Some(expected_inline) = &output.expected_inline {
-                if let Some(expected_count) = expected_inline.as_u64() {
-                    assert_eq!(
-                        count as u64, expected_count,
-                        "File count mismatch for {}",
-                        self.test_name
-                    );
-                }
+        let mut actual_values: Vec<serde_json::Value> = Vec::new();
+        for line in actual_content.lines() {
+            if !line.trim().is_empty() {
+                actual_values.push(serde_json::from_str(line)?);
             }
         }
+
+        assert_eq!(
+            actual_values, expected_values,
+            "JSONL output mismatch for {}",
+            self.test_name
+        );
         Ok(())
+    }
+
+    fn determine_comparison_method(&self, file_name: &str) -> Result<FileComparisonMethod> {
+        if file_name.ends_with(".json") || file_name.ends_with(".jsonl") {
+            Ok(FileComparisonMethod::Json)
+        } else if file_name.ends_with(".csv") || file_name.ends_with(".tsv") {
+            Ok(FileComparisonMethod::Text)
+        } else {
+            let extension = file_name.rsplit('.').next().unwrap_or("unknown");
+            anyhow::bail!(
+                "Unsupported file format '.{}'. Only json, jsonl, csv, and tsv files are supported.",
+                extension
+            )
+        }
     }
 
     fn compare_data(
         &self,
         actual: &str,
         expected: &str,
-        method: &ComparisonMethod,
+        method: &FileComparisonMethod,
         except: Option<&ExceptFields>,
     ) -> Result<()> {
         match method {
-            ComparisonMethod::Exact => {
+            FileComparisonMethod::Text => {
                 assert_eq!(actual, expected);
             }
-            ComparisonMethod::JsonEquals => {
+            FileComparisonMethod::Json => {
                 let mut actual_json: serde_json::Value = serde_json::from_str(actual)?;
                 let mut expected_json: serde_json::Value = serde_json::from_str(expected)?;
 
@@ -468,9 +463,6 @@ impl TestContext {
                 }
 
                 assert_eq!(actual_json, expected_json);
-            }
-            _ => {
-                // TODO: Implement other comparison methods
             }
         }
         Ok(())
@@ -535,8 +527,10 @@ impl TestContext {
         }
 
         // Collect all rows from both readers
-        let actual_rows: Vec<StringRecord> = actual_reader.records().collect::<Result<Vec<_>, _>>()?;
-        let expected_rows: Vec<StringRecord> = expected_reader.records().collect::<Result<Vec<_>, _>>()?;
+        let actual_rows: Vec<StringRecord> =
+            actual_reader.records().collect::<Result<Vec<_>, _>>()?;
+        let expected_rows: Vec<StringRecord> =
+            expected_reader.records().collect::<Result<Vec<_>, _>>()?;
 
         // Check same number of data rows
         if actual_rows.len() != expected_rows.len() {
@@ -584,7 +578,7 @@ impl TestContext {
         // Process actual rows and reorder columns to match expected order
         for actual_row in actual_rows {
             let mut reordered_actual_values = Vec::new();
-            
+
             // Reorder actual values to match expected column order and filter excluded columns
             for (expected_idx, expected_col_name) in expected_headers.iter().enumerate() {
                 // Skip excluded columns
@@ -597,7 +591,8 @@ impl TestContext {
                     .iter()
                     .position(|col| col == expected_col_name)
                 {
-                    reordered_actual_values.push(actual_row.get(actual_col_idx).unwrap_or("").to_string());
+                    reordered_actual_values
+                        .push(actual_row.get(actual_col_idx).unwrap_or("").to_string());
                 } else {
                     anyhow::bail!("Column '{}' not found in actual data", expected_col_name);
                 }
@@ -615,7 +610,7 @@ impl TestContext {
             anyhow::bail!(
                 "{} data mismatch (excluding excepted columns, ignoring row and column order).\nExpected rows (sorted): {:?}\nActual rows (sorted): {:?}", 
                 file_type,
-                expected_processed_rows, 
+                expected_processed_rows,
                 actual_processed_rows
             );
         }
@@ -858,11 +853,18 @@ mod tests {
         let actual_csv_with_extra = "name,age,city,country\nJohn,30,NYC,USA\nJane,25,LA,USA\n";
         let expected_csv_with_extra = "city,name,country\nNYC,John,USA\nLA,Jane,USA\n";
 
-        ctx.compare_csv(actual_csv_with_extra, expected_csv_with_extra, b',', Some(&except_columns))?;
+        ctx.compare_csv(
+            actual_csv_with_extra,
+            expected_csv_with_extra,
+            b',',
+            Some(&except_columns),
+        )?;
 
         // Test with different column orders AND different row orders
-        let actual_csv_mixed = "name,age,city\nAlice,35,Boston\nBob,40,Chicago\nCharlie,28,Seattle\n";
-        let expected_csv_mixed = "city,age,name\nSeattle,28,Charlie\nBoston,35,Alice\nChicago,40,Bob\n";
+        let actual_csv_mixed =
+            "name,age,city\nAlice,35,Boston\nBob,40,Chicago\nCharlie,28,Seattle\n";
+        let expected_csv_mixed =
+            "city,age,name\nSeattle,28,Charlie\nBoston,35,Alice\nChicago,40,Bob\n";
 
         // Test CSV comparison with both column and row reordering (should pass)
         ctx.compare_csv(actual_csv_mixed, expected_csv_mixed, b',', None)?;
