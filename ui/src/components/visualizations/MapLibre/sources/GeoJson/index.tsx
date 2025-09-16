@@ -258,10 +258,6 @@ const GeoJsonDataSource: React.FC<Props> = ({
     [fileContent?.features],
   );
 
-  console.log("hasPointFeatures", hasPointFeatures);
-  console.log("hasLineStringFeatures", hasLineStringFeatures);
-  console.log("hasPolygonFeatures", hasPolygonFeatures);
-
   return (
     <Source
       id={SOURCE_ID}
