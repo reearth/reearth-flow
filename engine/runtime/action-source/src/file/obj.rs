@@ -1101,18 +1101,27 @@ f 4 5 6
         let used_materials = vec!["test_mat".to_string()];
         let (_, material_properties) = extract_material_properties(&materials, &used_materials);
 
-        if let AttributeValue::Map(props) = material_properties {
-            if let Some(AttributeValue::Map(mat_props)) = props.get("test_mat") {
-                if let Some(AttributeValue::Array(diffuse)) = mat_props.get("diffuse") {
-                    assert_eq!(diffuse.len(), 3);
-                    if let AttributeValue::Number(n) = &diffuse[1] {
-                        assert_eq!(*n, serde_json::Number::from(0));
-                    }
-                }
-                if let Some(AttributeValue::Number(n)) = mat_props.get("shininess") {
-                    assert_eq!(*n, serde_json::Number::from(0));
-                }
-            }
-        }
+        let AttributeValue::Map(props) = material_properties else {
+            panic!("Expected material_properties to be a Map");
+        };
+
+        let Some(AttributeValue::Map(mat_props)) = props.get("test_mat") else {
+            panic!("Expected test_mat material to exist and be a Map");
+        };
+
+        let Some(AttributeValue::Array(diffuse)) = mat_props.get("diffuse") else {
+            panic!("Expected diffuse property to exist and be an Array");
+        };
+        assert_eq!(diffuse.len(), 3);
+
+        let AttributeValue::Number(n) = &diffuse[1] else {
+            panic!("Expected diffuse[1] to be a Number");
+        };
+        assert_eq!(*n, serde_json::Number::from(0));
+
+        let Some(AttributeValue::Number(shininess)) = mat_props.get("shininess") else {
+            panic!("Expected shininess property to exist and be a Number");
+        };
+        assert_eq!(*shininess, serde_json::Number::from(0));
     }
 }
