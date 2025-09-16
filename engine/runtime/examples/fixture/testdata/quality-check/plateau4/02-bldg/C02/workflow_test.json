@@ -5,7 +5,7 @@
     "expectedFile": "02_建築物_地物インスタンス数.csv",
     "except": "GmlFilePath"
   },
-  "cityGmlPath": "udx/bldg/c2.gml",
+  "cityGmlPath": "udx/bldg/input.gml",
   "codelists": "codelists",
   "schemas": "schemas",
   "skip": false

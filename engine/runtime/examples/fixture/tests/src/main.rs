@@ -79,7 +79,7 @@ pub enum ExceptColumns {
 }
 
 impl ExceptColumns {
-    pub fn contains(&self, column: &str) -> bool {
+    fn contains(&self, column: &str) -> bool {
         match self {
             ExceptColumns::Single(name) => name == column,
             ExceptColumns::Multiple(names) => names.contains(&column.to_string()),
@@ -95,7 +95,7 @@ pub enum ExceptFields {
 }
 
 impl ExceptFields {
-    pub fn contains(&self, field: &str) -> bool {
+    fn contains(&self, field: &str) -> bool {
         match self {
             ExceptFields::Single(name) => name == field,
             ExceptFields::Multiple(names) => names.contains(&field.to_string()),
@@ -167,16 +167,6 @@ impl TestContext {
             temp_dir,
             _temp_base: temp_base,
         })
-    }
-
-    pub fn setup_environment(&self) -> Result<()> {
-        // Set working directory for intermediate data capture
-        std::env::set_var("FLOW_RUNTIME_WORKING_DIRECTORY", &self.temp_dir);
-
-        // Change to temp directory for the test execution
-        std::env::set_current_dir(&self.temp_dir)?;
-
-        Ok(())
     }
 
     pub fn load_workflow(&self) -> Result<Workflow> {
