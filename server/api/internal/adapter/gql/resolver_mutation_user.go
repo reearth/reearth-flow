@@ -110,6 +110,16 @@ func (r *mutationResolver) RemoveMyAuth(ctx context.Context, input gqlmodel.Remo
 }
 
 func (r *mutationResolver) DeleteMe(ctx context.Context, input gqlmodel.DeleteMeInput) (*gqlmodel.DeleteMePayload, error) {
+	// TODO: After migration, remove this logic and use the new usecase directly.
+	if usecases(ctx).TempNewUser != nil {
+		res := r.deleteMeWithTempNewUsecase(ctx, input)
+		if res != nil {
+			log.Printf("DEBUG:[mutationResolver.deleteMeWithTempNewUsecase] Deleted me with tempNewUsecase")
+			return res, nil
+		}
+	}
+	log.Printf("WARNING:[mutationResolver.DeleteMe] Fallback to traditional usecase")
+
 	uid, err := gqlmodel.ToID[accountdomain.User](input.UserID)
 	if err != nil {
 		return nil, err
@@ -120,4 +130,19 @@ func (r *mutationResolver) DeleteMe(ctx context.Context, input gqlmodel.DeleteMe
 	}
 
 	return &gqlmodel.DeleteMePayload{UserID: input.UserID}, nil
+}
+
+func (r *mutationResolver) deleteMeWithTempNewUsecase(ctx context.Context, input gqlmodel.DeleteMeInput) *gqlmodel.DeleteMePayload {
+	uid, err := gqlmodel.ToID[id.User](input.UserID)
+	if err != nil {
+		log.Printf("WARNING:[mutationResolver.deleteMeWithTempNewUsecase] Failed to convert ID: %v", err)
+		return nil
+	}
+
+	if err := usecases(ctx).TempNewUser.DeleteMe(ctx, uid); err != nil {
+		log.Printf("WARNING:[mutationResolver.deleteMeWithTempNewUsecase] Failed to delete me: %v", err)
+		return nil
+	}
+
+	return &gqlmodel.DeleteMePayload{UserID: input.UserID}
 }

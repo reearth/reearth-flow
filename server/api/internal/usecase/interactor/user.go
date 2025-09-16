@@ -50,3 +50,7 @@ func (i *User) SignupOIDC(ctx context.Context, p interfaces.SignupOIDCParam) (*u
 func (i *User) RemoveMyAuth(ctx context.Context, authProvider string) (*user.User, error) {
 	return i.userRepo.RemoveMyAuth(ctx, authProvider)
 }
+
+func (i *User) DeleteMe(ctx context.Context, uid id.UserID) error {
+	return i.userRepo.DeleteMe(ctx, uid)
+}
