@@ -1,38 +1,17 @@
 use anyhow::Result;
 use bytes::Bytes;
 use deadpool::Runtime;
-use deadpool_redis::{Config, Pool};
+use deadpool_redis::Config;
 use redis::AsyncCommands;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::{debug, error};
 use uuid;
 
-type RedisField = (String, Bytes);
-type RedisFields = Vec<RedisField>;
-type RedisStreamMessage = (String, RedisFields);
-type RedisStreamMessages = Vec<RedisStreamMessage>;
-type RedisStreamResult = (String, RedisStreamMessages);
-type RedisStreamResults = Vec<RedisStreamResult>;
-
-const OID_LOCK_KEY: &str = "lock:oid_generation";
-
-pub const MESSAGE_TYPE_SYNC: &str = "sync";
-pub const MESSAGE_TYPE_AWARENESS: &str = "awareness";
-
-#[derive(Debug, Clone)]
-pub struct StreamMessages {
-    pub sync_updates: Vec<Bytes>,
-    pub awareness_updates: Vec<(String, Bytes)>,
-}
-
-#[derive(Debug, Clone)]
-pub struct RedisConfig {
-    pub url: String,
-    pub ttl: u64,
-}
-
-pub type RedisPool = Pool;
+use crate::{
+    RedisConfig, RedisPool, RedisStreamResults, StreamMessages, MESSAGE_TYPE_AWARENESS,
+    MESSAGE_TYPE_SYNC, OID_LOCK_KEY,
+};
 
 #[derive(Debug, Clone)]
 pub struct RedisStore {
