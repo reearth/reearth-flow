@@ -59,8 +59,6 @@ const CanvasContextMenu: React.FC<Props> = ({
 
   const nodes = Array.isArray(data) ? data : undefined;
   const node = Array.isArray(data) ? undefined : data;
-  console.log("NODES", nodes);
-  console.log("Node", node);
 
   const handleNodeSettingsOpen = useCallback(
     (node: Node) => {
@@ -156,7 +154,7 @@ const CanvasContextMenu: React.FC<Props> = ({
             },
           ]
         : []),
-      ...(nodes && node?.type !== "subworkflow"
+      ...(nodes
         ? [
             {
               type: "action" as const,
