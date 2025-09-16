@@ -1,11 +1,11 @@
 package gqlmodel
 
 import (
-	pkgworkspace "github.com/reearth/reearth-flow/api/pkg/workspace"
-	"github.com/reearth/reearthx/account/accountdomain/workspace"
+	"github.com/reearth/reearth-flow/api/pkg/workspace"
+	reearthxworkspace "github.com/reearth/reearthx/account/accountdomain/workspace"
 )
 
-func ToWorkspace(t *pkgworkspace.Workspace) *Workspace {
+func ToWorkspace(t *workspace.Workspace) *Workspace {
 	if t == nil {
 		return nil
 	}
@@ -14,7 +14,7 @@ func ToWorkspace(t *pkgworkspace.Workspace) *Workspace {
 
 	for _, member := range t.Members() {
 		switch m := member.(type) {
-		case pkgworkspace.UserMember:
+		case workspace.UserMember:
 			workspaceMember := &WorkspaceMember{
 				UserID: IDFrom(m.UserID),
 				Role:   Role(m.Role),
@@ -28,7 +28,7 @@ func ToWorkspace(t *pkgworkspace.Workspace) *Workspace {
 				}
 			}
 			members = append(members, workspaceMember)
-		case pkgworkspace.IntegrationMember:
+		case workspace.IntegrationMember:
 			// For IntegrationMember, the current WorkspaceMember structure does not support it.
 			continue
 		}
@@ -42,30 +42,46 @@ func ToWorkspace(t *pkgworkspace.Workspace) *Workspace {
 	}
 }
 
-func ToRole(r workspace.Role) Role {
+// TODO: After migration, rename this function to ToRole
+func ToRoleFromReearthx(r reearthxworkspace.Role) Role {
 	switch r {
-	case workspace.RoleReader:
+	case reearthxworkspace.RoleReader:
 		return RoleReader
-	case workspace.RoleWriter:
+	case reearthxworkspace.RoleWriter:
 		return RoleWriter
-	case workspace.RoleMaintainer:
+	case reearthxworkspace.RoleMaintainer:
 		return RoleMaintainer
-	case workspace.RoleOwner:
+	case reearthxworkspace.RoleOwner:
 		return RoleOwner
 	}
 	return Role("")
 }
 
-func FromRole(r Role) pkgworkspace.Role {
+// TODO: After migration, remove this function
+func FromRoleToReearthx(r Role) reearthxworkspace.Role {
 	switch r {
 	case RoleReader:
-		return pkgworkspace.RoleReader
+		return reearthxworkspace.RoleReader
 	case RoleWriter:
-		return pkgworkspace.RoleWriter
+		return reearthxworkspace.RoleWriter
 	case RoleMaintainer:
-		return pkgworkspace.RoleMaintainer
+		return reearthxworkspace.RoleMaintainer
 	case RoleOwner:
-		return pkgworkspace.RoleOwner
+		return reearthxworkspace.RoleOwner
 	}
-	return pkgworkspace.Role("")
+	return reearthxworkspace.Role("")
+}
+
+func FromRole(r Role) workspace.Role {
+	switch r {
+	case RoleReader:
+		return workspace.RoleReader
+	case RoleWriter:
+		return workspace.RoleWriter
+	case RoleMaintainer:
+		return workspace.RoleMaintainer
+	case RoleOwner:
+		return workspace.RoleOwner
+	}
+	return workspace.Role("")
 }
