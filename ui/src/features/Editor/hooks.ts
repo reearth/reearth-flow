@@ -338,8 +338,10 @@ export default ({
 
       switch (handler.keys?.join("")) {
         case "s":
-          if (hasModifier && !isSaving) handleProjectSnapshotSave?.();
-          if (!hasModifier) handleYWorkflowAddFromSelection(nodes, edges);
+          if (hasModifier && !isSaving && !hasShift)
+            handleProjectSnapshotSave?.();
+          if (hasModifier && hasShift)
+            handleYWorkflowAddFromSelection(nodes, edges);
 
           break;
         case "z":
