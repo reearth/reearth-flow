@@ -39,7 +39,14 @@ const Handles: React.FC<Props> = ({
             <div className="inset-x-0 min-w-0 flex-1 overflow-hidden">
               <div className="relative flex items-center py-0.5">
                 <div className="flex w-full translate-x-0.5 items-center">
-                  <div className="size-1.5 rounded-full bg-gray-300" />
+                  <div className="flex items-center -space-x-0.75">
+                    {Array.from({ length: 3 }).map(() => {
+                      return (
+                        <div className="size-1.5 rounded-full bg-gray-300" />
+                      );
+                    })}
+                  </div>
+
                   <p className="w-[90%] pl-1 text-[10px] break-words italic dark:font-thin">
                     {t("Multiple")}
                   </p>
@@ -80,7 +87,13 @@ const Handles: React.FC<Props> = ({
                 <p className="w-[90%] pr-1 text-end text-[10px] break-words italic dark:font-thin">
                   {t("Multiple")}
                 </p>
-                <div className="size-1.5 rounded-full bg-gray-300" />
+                <div className="flex items-center -space-x-0.75">
+                  {Array.from({ length: 3 }).map(() => {
+                    return (
+                      <div className="size-1.5 rounded-full bg-gray-300" />
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
