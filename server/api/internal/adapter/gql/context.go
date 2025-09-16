@@ -4,11 +4,8 @@ import (
 	"context"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter"
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
-	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
-	"github.com/reearth/reearthx/account/accountdomain/user"
-	"github.com/reearth/reearthx/account/accountusecase"
+	"github.com/reearth/reearth-flow/api/pkg/user"
 )
 
 type ContextKey string
@@ -31,23 +28,6 @@ func AttachUsecases(ctx context.Context, u *interfaces.Container, enableDataLoad
 
 func getUser(ctx context.Context) *user.User {
 	return adapter.User(ctx)
-}
-
-// TODO: Keep using getUser during the migration period.
-// After migration, unify it so that getUser returns a FlowUser (from flow/pkg).
-func getFlowUser(ctx context.Context) *pkguser.User {
-	return adapter.FlowUser(ctx)
-}
-
-func getOperator(ctx context.Context) *usecase.Operator {
-	return adapter.Operator(ctx)
-}
-
-func getAcOperator(ctx context.Context) *accountusecase.Operator {
-	if op := getOperator(ctx); op != nil {
-		return op.AcOperator
-	}
-	return nil
 }
 
 func usecases(ctx context.Context) *interfaces.Container {

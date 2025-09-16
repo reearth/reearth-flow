@@ -29,7 +29,7 @@ func TestTrigger_Create(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachUser(ctx, mockUser)
+	ctx = adapter.AttachReearthxUser(ctx, mockUser)
 
 	c := mongotest.Connect(t)(t)
 
@@ -101,7 +101,7 @@ func TestTrigger_Update(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachUser(ctx, mockUser)
+	ctx = adapter.AttachReearthxUser(ctx, mockUser)
 
 	c := mongotest.Connect(t)(t)
 
@@ -200,7 +200,7 @@ func TestTrigger_Fetch(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachUser(ctx, mockUser)
+	ctx = adapter.AttachReearthxUser(ctx, mockUser)
 
 	c := mongotest.Connect(t)(t)
 
@@ -257,7 +257,7 @@ func TestTrigger_Delete(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachUser(ctx, mockUser)
+	ctx = adapter.AttachReearthxUser(ctx, mockUser)
 
 	c := mongotest.Connect(t)(t)
 

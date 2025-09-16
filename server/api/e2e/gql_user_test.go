@@ -8,13 +8,18 @@ import (
 	"testing"
 
 	"github.com/reearth/reearth-flow/api/internal/app/config"
+	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
+	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
+	usermockrepo "github.com/reearth/reearth-flow/api/pkg/user/mockrepo"
+	pkgworkspace "github.com/reearth/reearth-flow/api/pkg/workspace"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/account/accountdomain/workspace"
 	"github.com/reearth/reearthx/idx"
-	"github.com/reearth/reearthx/rerror"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
+	"golang.org/x/text/language"
 )
 
 var (
@@ -93,15 +98,42 @@ func baseSeederUser(ctx context.Context, r *repo.Container) error {
 }
 
 func TestUpdateMe(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operatorID := pkguser.NewID()
+	uid := pkguser.NewID()
+	wid := pkgworkspace.NewID()
+	operator := factory.NewUser(func(b *pkguser.Builder) {
+		b.ID(uid)
+		b.Name("updated")
+		b.Email("hoge@test.com")
+		md := pkguser.NewMetadata().
+			Lang(language.English).
+			MustBuild()
+		b.Metadata(md)
+		b.MyWorkspaceID(wid)
+	})
+
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	gomock.InOrder(
+		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
+		mockUserRepo.EXPECT().UpdateMe(gomock.Any(), gomock.Any()).Return(operator, nil),
+	)
+	mock := &TestMocks{
+		UserRepo: mockUserRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
-	query := `mutation { updateMe(input: {name: "updated", email: "hoge@test.com", lang: "ja", password: "Ajsownndww1", passwordConfirmation: "Ajsownndww1"}){ me { id name email lang auths myWorkspaceId } }}`
+	}, true, baseSeederUser, true, mock)
+	query := `mutation UpdateMe { updateMe(input: {name: "updated", email: "hoge@test.com", lang: "ja", password: "Ajsownndww1", passwordConfirmation: "Ajsownndww1"}){ me { id name email lang auths myWorkspaceId } }}`
 	request := GraphQLRequest{
-		Query: query,
+		OperationName: "UpdateMe",
+		Query:         query,
 	}
 	jsonData, err := json.Marshal(request)
 	if err != nil {
@@ -110,83 +142,137 @@ func TestUpdateMe(t *testing.T) {
 	o := e.POST("/api/graphql").
 		WithHeader("authorization", "Bearer test").
 		WithHeader("Content-Type", "application/json").
-		WithHeader("X-Reearth-Debug-User", uId1.String()).
+		WithHeader("X-Reearth-Debug-User", operatorID.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object().Value("data").Object().Value("updateMe").Object().Value("me").Object()
 	o.Value("name").String().IsEqual("updated")
 	o.Value("email").String().IsEqual("hoge@test.com")
 	o.Value("lang").String().IsEqual("en")
-	o.Value("myWorkspaceId").String().IsEqual(wId1.String())
+	o.Value("myWorkspaceId").String().IsEqual(wid.String())
 }
 
 func TestRemoveMyAuth(t *testing.T) {
-	e, r := StartGQLServer(t, &config.Config{
-		Origins: []string{"https://example.com"},
-		AuthSrv: config.AuthSrvConfig{
-			Disabled: true,
-		},
-	}, true, baseSeederUser, true)
-	u, err := r.User.FindByID(context.Background(), uId1)
-	assert.Nil(t, err)
-	assert.Equal(t, &user.Auth{Provider: "reearth", Sub: "reearth|" + uId1.String()}, u.Auths().GetByProvider("reearth"))
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-	query := `mutation { removeMyAuth(input: {auth: "reearth"}){ me { id name email lang auths } }}`
-	request := GraphQLRequest{
-		Query: query,
+	operatorID := pkguser.NewID()
+	operator := factory.NewUser(func(b *pkguser.Builder) {
+		b.ID(operatorID)
+		b.Name("operator")
+		b.Email("operator@e2e.com")
+	})
+
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	gomock.InOrder(
+		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
+		mockUserRepo.EXPECT().RemoveMyAuth(gomock.Any(), gomock.Any()).Return(operator, nil),
+	)
+	mock := &TestMocks{
+		UserRepo: mockUserRepo,
 	}
-	jsonData, err := json.Marshal(request)
-	if err != nil {
-		assert.NoError(t, err)
-	}
-	e.POST("/api/graphql").
-		WithHeader("authorization", "Bearer test").
-		WithHeader("Content-Type", "application/json").
-		WithHeader("X-Reearth-Debug-User", uId1.String()).
-		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
-
-	u, err = r.User.FindByID(context.Background(), uId1)
-	assert.Nil(t, err)
-	assert.Nil(t, u.Auths().Get("sub"))
-}
-
-func TestDeleteMe(t *testing.T) {
-	e, r := StartGQLServer(t, &config.Config{
-		Origins: []string{"https://example.com"},
-		AuthSrv: config.AuthSrvConfig{
-			Disabled: true,
-		},
-	}, true, baseSeederUser, true)
-	u, err := r.User.FindByID(context.Background(), uId1)
-	assert.Nil(t, err)
-	assert.NotNil(t, u)
-
-	query := fmt.Sprintf(`mutation { deleteMe(input: {userId: "%s"}){ userId }}`, uId1)
-	request := GraphQLRequest{
-		Query: query,
-	}
-	jsonData, err := json.Marshal(request)
-	if err != nil {
-		assert.NoError(t, err)
-	}
-	e.POST("/api/graphql").
-		WithHeader("authorization", "Bearer test").
-		WithHeader("Content-Type", "application/json").
-		WithHeader("X-Reearth-Debug-User", uId1.String()).
-		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
-
-	_, err = r.User.FindByID(context.Background(), uId1)
-	assert.Equal(t, rerror.ErrNotFound, err)
-}
-
-func TestSearchUser(t *testing.T) {
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
-	query := fmt.Sprintf(` { searchUser(nameOrEmail: "%s"){ id name email } }`, "e2e")
+	}, true, baseSeederUser, true, mock)
+
+	query := `mutation RemoveMyAuth { removeMyAuth(input: {auth: "reearth"}){ me { id name email lang auths } }}`
 	request := GraphQLRequest{
-		Query: query,
+		OperationName: "RemoveMyAuth",
+		Query:         query,
+	}
+	jsonData, err := json.Marshal(request)
+	if err != nil {
+		assert.NoError(t, err)
+	}
+	e.POST("/api/graphql").
+		WithHeader("authorization", "Bearer test").
+		WithHeader("Content-Type", "application/json").
+		WithHeader("X-Reearth-Debug-User", operatorID.String()).
+		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
+}
+
+func TestDeleteMe(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operatorID := pkguser.NewID()
+	uid := pkguser.NewID()
+	operator := factory.NewUser(func(b *pkguser.Builder) {
+		b.ID(uid)
+		b.Name("updated")
+		b.Email("hoge@test.com")
+	})
+
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	gomock.InOrder(
+		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
+		mockUserRepo.EXPECT().DeleteMe(gomock.Any(), gomock.Any()).Return(nil),
+	)
+	mock := &TestMocks{
+		UserRepo: mockUserRepo,
+	}
+
+	e, _ := StartGQLServer(t, &config.Config{
+		Origins: []string{"https://example.com"},
+		AuthSrv: config.AuthSrvConfig{
+			Disabled: true,
+		},
+	}, true, baseSeederUser, true, mock)
+	query := fmt.Sprintf(`mutation DeleteMe { deleteMe(input: {userId: "%s"}){ userId }}`, uId1)
+	request := GraphQLRequest{
+		OperationName: "DeleteMe",
+		Query:         query,
+	}
+	jsonData, err := json.Marshal(request)
+	if err != nil {
+		assert.NoError(t, err)
+	}
+	e.POST("/api/graphql").
+		WithHeader("authorization", "Bearer test").
+		WithHeader("Content-Type", "application/json").
+		WithHeader("X-Reearth-Debug-User", operatorID.String()).
+		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
+}
+
+func TestSearchUser(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operatorID := pkguser.NewID()
+	uid := pkguser.NewID()
+	operator := factory.NewUser(func(b *pkguser.Builder) {
+		b.ID(operatorID)
+		b.Name("operator")
+		b.Email("operator@e2e.com")
+	})
+	u := factory.NewUser(func(b *pkguser.Builder) {
+		b.ID(uid)
+		b.Name("e2e")
+		b.Email("e2e@e2e.com")
+	})
+
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	gomock.InOrder(
+		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
+		mockUserRepo.EXPECT().UserByNameOrEmail(gomock.Any(), "e2e").Return(u, nil),
+		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
+		mockUserRepo.EXPECT().UserByNameOrEmail(gomock.Any(), "notfound").Return(nil, nil),
+	)
+	mock := &TestMocks{
+		UserRepo: mockUserRepo,
+	}
+
+	e, _ := StartGQLServer(t, &config.Config{
+		Origins: []string{"https://example.com"},
+		AuthSrv: config.AuthSrvConfig{
+			Disabled: true,
+		},
+	}, true, baseSeederUser, true, mock)
+	query := fmt.Sprintf(`query SearchUser { searchUser(nameOrEmail: "%s"){ id name email } }`, "e2e")
+	request := GraphQLRequest{
+		OperationName: "SearchUser",
+		Query:         query,
 	}
 	jsonData, err := json.Marshal(request)
 	if err != nil {
@@ -195,15 +281,16 @@ func TestSearchUser(t *testing.T) {
 	o := e.POST("/api/graphql").
 		WithHeader("authorization", "Bearer test").
 		WithHeader("Content-Type", "application/json").
-		WithHeader("X-Reearth-Debug-User", uId1.String()).
+		WithHeader("X-Reearth-Debug-User", operatorID.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object().Value("data").Object().Value("searchUser").Object()
-	o.Value("id").String().IsEqual(uId1.String())
+	o.Value("id").String().IsEqual(uid.String())
 	o.Value("name").String().IsEqual("e2e")
 	o.Value("email").String().IsEqual("e2e@e2e.com")
 
-	query = fmt.Sprintf(` { searchUser(nameOrEmail: "%s"){ id name email } }`, "notfound")
+	query = fmt.Sprintf(`query SearchUser { searchUser(nameOrEmail: "%s"){ id name email } }`, "notfound")
 	request = GraphQLRequest{
-		Query: query,
+		OperationName: "SearchUser",
+		Query:         query,
 	}
 	jsonData, err = json.Marshal(request)
 	if err != nil {
@@ -212,7 +299,7 @@ func TestSearchUser(t *testing.T) {
 	e.POST("/api/graphql").
 		WithHeader("authorization", "Bearer test").
 		WithHeader("Content-Type", "application/json").
-		WithHeader("X-Reearth-Debug-User", uId1.String()).
+		WithHeader("X-Reearth-Debug-User", operatorID.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object().
 		Value("data").Object().Value("searchUser").IsNull()
 }
@@ -223,7 +310,7 @@ func TestNode(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser, true, nil)
 	query := fmt.Sprintf(` { node(id: "%s", type: USER){ id } }`, uId1.String())
 	request := GraphQLRequest{
 		Query: query,
@@ -246,7 +333,7 @@ func TestNodes(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser, true, nil)
 	query := fmt.Sprintf(` { nodes(id: "%s", type: USER){ id } }`, uId1.String())
 	request := GraphQLRequest{
 		Query: query,

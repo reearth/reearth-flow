@@ -90,7 +90,7 @@ func tempNewAuthMiddleware(gqlClient *gql.Client, skipOps map[string]struct{}) e
 				return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized: user not found")
 			}
 
-			ctx = adapter.AttachFlowUser(ctx, u)
+			ctx = adapter.AttachUser(ctx, u)
 			c.SetRequest(c.Request().WithContext(ctx))
 			return next(c)
 		}

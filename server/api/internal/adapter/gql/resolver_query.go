@@ -2,7 +2,6 @@ package gql
 
 import (
 	"context"
-	"log"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 )
@@ -14,20 +13,11 @@ func (r *queryResolver) Assets(ctx context.Context, workspaceID gqlmodel.ID, key
 }
 
 func (r *queryResolver) Me(ctx context.Context) (*gqlmodel.Me, error) {
-	// TODO: During migration, fallback to legacy getUser if FlowUser is unavailable.
-	// Eventually, getUser will be unified to return FlowUser from flow package.
-	u := getFlowUser(ctx)
-	if u != nil {
-		log.Printf("DEBUG:[queryResolver.Me] Uses FlowUser %s", u.ID())
-		return gqlmodel.ToMeFromFlow(u), nil
-	}
-	log.Printf("WARNING:[queryResolver.Me] Fallback to legacy getUser")
-
-	u2 := getUser(ctx)
-	if u2 == nil {
+	u := getUser(ctx)
+	if u == nil {
 		return nil, nil
 	}
-	return gqlmodel.ToMe(u2), nil
+	return gqlmodel.ToMe(u), nil
 }
 
 func (r *queryResolver) Deployments(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error) {

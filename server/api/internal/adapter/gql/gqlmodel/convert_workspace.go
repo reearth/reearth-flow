@@ -5,30 +5,7 @@ import (
 	"github.com/reearth/reearthx/account/accountdomain/workspace"
 )
 
-func ToWorkspace(t *workspace.Workspace) *Workspace {
-	if t == nil {
-		return nil
-	}
-
-	memberMap := t.Members().Users()
-	members := make([]*WorkspaceMember, 0, len(memberMap))
-	for u, r := range memberMap {
-		members = append(members, &WorkspaceMember{
-			UserID: IDFrom(u),
-			Role:   ToRole(r.Role),
-		})
-	}
-
-	return &Workspace{
-		ID:       IDFrom(t.ID()),
-		Name:     t.Name(),
-		Personal: t.IsPersonal(),
-		Members:  members,
-	}
-}
-
-// TODO: After migration, delete ToWorkspace and rename ToWorkspaceFromFlow to ToWorkspace.
-func ToWorkspaceFromFlow(t *pkgworkspace.Workspace) *Workspace {
+func ToWorkspace(t *pkgworkspace.Workspace) *Workspace {
 	if t == nil {
 		return nil
 	}
@@ -79,22 +56,7 @@ func ToRole(r workspace.Role) Role {
 	return Role("")
 }
 
-func FromRole(r Role) workspace.Role {
-	switch r {
-	case RoleReader:
-		return workspace.RoleReader
-	case RoleWriter:
-		return workspace.RoleWriter
-	case RoleMaintainer:
-		return workspace.RoleMaintainer
-	case RoleOwner:
-		return workspace.RoleOwner
-	}
-	return workspace.Role("")
-}
-
-// TODO: After migration, delete FromRole and rename FromRoleToFlow to FromRole.
-func FromRoleToFlow(r Role) pkgworkspace.Role {
+func FromRole(r Role) pkgworkspace.Role {
 	switch r {
 	case RoleReader:
 		return pkgworkspace.RoleReader
