@@ -47,7 +47,7 @@ pub struct RunCliCommand {
     action_log: Option<String>,
 
     /// Workflow variables (format: KEY=VALUE)
-    #[arg(long = "var", action = clap::ArgAction::Append, display_order = 5, value_parser = parse_key_value)]
+    #[arg(long = "var", action = clap::ArgAction::Append, display_order = 5, value_parser = parse_key_val)]
     vars: Vec<(String, String)>,
 
     /// Runtime Working Directory
@@ -131,13 +131,10 @@ pub struct RunCliCommand {
     node_status_propagation_delay_ms: Option<u64>,
 }
 
-fn parse_key_value(s: &str) -> Result<(String, String), String> {
-    let parts: Vec<&str> = s.splitn(2, '=').collect();
-    if parts.len() == 2 {
-        Ok((parts[0].to_string(), parts[1].to_string()))
-    } else {
-        Err(format!("Invalid key=value pair: '{s}'"))
-    }
+fn parse_key_val(s: &str) -> Result<(String, String), String> {
+    s.split_once('=')
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .ok_or_else(|| format!("Invalid key=value pair: '{s}'"))
 }
 
 impl RunCliCommand {

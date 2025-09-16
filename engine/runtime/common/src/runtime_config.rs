@@ -92,7 +92,7 @@ pub static FEATURE_WRITER_DISABLE: LazyLock<bool> = LazyLock::new(|| {
 
 pub static SLOW_ACTION_THRESHOLD: LazyLock<Duration> = LazyLock::new(|| {
     Duration::from_millis(get_config(
-        "slow-action-threshold",
+        "slow-action-threshold-ms",
         "FLOW_RUNTIME_SLOW_ACTION_THRESHOLD_MS",
         300,
     ))
