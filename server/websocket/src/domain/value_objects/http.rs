@@ -1,4 +1,4 @@
-use crate::storage::gcs::UpdateInfo;
+use crate::infrastructure::gcs::UpdateInfo;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use yrs::updates::encoder::Encode;

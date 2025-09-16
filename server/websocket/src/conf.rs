@@ -11,7 +11,7 @@ use std::path::Path;
 use thiserror::Error;
 use tracing::{info, warn};
 
-use crate::{storage::gcs::GcsConfig, RedisConfig};
+use crate::{infrastructure::gcs::GcsConfig, RedisConfig};
 
 #[derive(Debug, Error)]
 pub enum ConfigError {

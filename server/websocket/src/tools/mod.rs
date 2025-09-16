@@ -21,3 +21,7 @@ pub fn decompress_brotli(compressed_data: &[u8]) -> Result<Vec<u8>> {
     brotli::BrotliDecompress(&mut input, &mut decompressed_data)?;
     Ok(decompressed_data)
 }
+
+pub fn first_zero_bit(x: u32) -> u32 {
+    (x + 1) & !x
+}
