@@ -120,7 +120,7 @@ func conditionalGraphQLAuthMiddleware(
 				switch body.OperationName {
 				case "GetMe":
 					middlewares = tempNewAuthMWs
-				case "GetWorkspaceById", "GetWorkspaces", "SearchUser", "UpdateMe", "CreateWorkspace", "UpdateWorkspace", "DeleteWorkspace", "AddMemberToWorkspace", "UpdateMemberOfWorkspace", "RemoveMemberFromWorkspace", "Signup":
+				case "GetWorkspaceById", "GetWorkspaces", "SearchUser", "UpdateMe", "CreateWorkspace", "UpdateWorkspace", "DeleteWorkspace", "AddMemberToWorkspace", "UpdateMemberOfWorkspace", "RemoveMemberFromWorkspace", "Signup", "RemoveMyAuth":
 					middlewares = append(defaultMWs, tempNewAuthMWs...)
 				}
 			}
