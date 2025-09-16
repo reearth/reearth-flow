@@ -25,6 +25,7 @@ uuid.workspace = true
 yaml-include = "0.7"
 tempfile.workspace = true
 jsonpath_lib.workspace = true
+csv.workspace = true
 
 [build-dependencies]
 serde.workspace = true

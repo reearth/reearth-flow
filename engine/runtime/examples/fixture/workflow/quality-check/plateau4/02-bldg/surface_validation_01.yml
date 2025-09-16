@@ -230,6 +230,12 @@ nodes:
     with:
       routingPort: default
 
+
+  # - id: ecaceb7b-ff98-4744-acf7-17e80829d6f3
+  #   name: SolidBoundaryValidator
+  #   type: action
+  #   action: SolidBoundaryValidator
+
 edges:
   - id: 8c4d7e2a-5b6f-4918-a3e5-9d1c8b7a6e4f
     from: 5d8f3c2e-9a4b-4e1c-8f7a-3c5d9e2b8a1f
@@ -296,3 +302,8 @@ edges:
     to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
     fromPort: default
     toPort: default
+  # - id: 1edf5ec7-a567-4ef6-9c70-92497d359ddf
+  #   from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+  #   fromPort: lod1
+  #   to: ecaceb7b-ff98-4744-acf7-17e80829d6f3
+  #   toPort: default

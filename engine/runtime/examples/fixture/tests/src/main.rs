@@ -1,11 +1,13 @@
 use anyhow::{Context, Result};
+use csv::{ReaderBuilder, StringRecord};
 use jsonpath_lib as jsonpath;
 use pretty_assertions::assert_eq;
 use reearth_flow_runner::runner::Runner;
 use reearth_flow_types::Workflow;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
+use std::io::Cursor;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -371,9 +373,11 @@ impl TestContext {
             let expected = fs::read_to_string(&expected_file)?;
             let actual = fs::read_to_string(&actual_file)?;
 
-            // Check if this is a TSV file and handle column order differences
+            // Check if this is a TSV/CSV file and handle column order differences
             if expected_file_name.ends_with(".tsv") {
-                self.compare_tsv(&actual, &expected, output.except.as_ref())?;
+                self.compare_csv(&actual, &expected, b'\t', output.except.as_ref())?;
+            } else if expected_file_name.ends_with(".csv") {
+                self.compare_csv(&actual, &expected, b',', output.except.as_ref())?;
             } else {
                 assert_eq!(actual, expected, "Output mismatch for {}", self.test_name);
             }
@@ -472,29 +476,27 @@ impl TestContext {
         Ok(())
     }
 
-    fn compare_tsv(
+    fn compare_csv(
         &self,
         actual: &str,
         expected: &str,
+        delimiter: u8,
         except: Option<&ExceptColumns>,
     ) -> Result<()> {
-        let actual_lines: Vec<&str> = actual.trim().lines().collect();
-        let expected_lines: Vec<&str> = expected.trim().lines().collect();
+        // Build CSV readers with the specified delimiter
+        let mut actual_reader = ReaderBuilder::new()
+            .delimiter(delimiter)
+            .from_reader(Cursor::new(actual));
+        let mut expected_reader = ReaderBuilder::new()
+            .delimiter(delimiter)
+            .from_reader(Cursor::new(expected));
 
-        if actual_lines.is_empty() || expected_lines.is_empty() {
-            assert_eq!(actual, expected, "TSV comparison failed: empty content");
-            return Ok(());
-        }
-
-        // Parse headers and data rows
-        let actual_header = actual_lines[0];
-        let expected_header = expected_lines[0];
-
-        let actual_columns: Vec<&str> = actual_header.split('\t').collect();
-        let expected_columns: Vec<&str> = expected_header.split('\t').collect();
+        // Get headers
+        let actual_headers = actual_reader.headers()?.clone();
+        let expected_headers = expected_reader.headers()?.clone();
 
         // Filter out excluded columns
-        let actual_cols_filtered: Vec<&str> = actual_columns
+        let actual_cols_filtered: Vec<&str> = actual_headers
             .iter()
             .filter(|col| {
                 if let Some(except) = except {
@@ -503,10 +505,9 @@ impl TestContext {
                     true
                 }
             })
-            .copied()
             .collect();
 
-        let expected_cols_filtered: Vec<&str> = expected_columns
+        let expected_cols_filtered: Vec<&str> = expected_headers
             .iter()
             .filter(|col| {
                 if let Some(except) = except {
@@ -515,7 +516,6 @@ impl TestContext {
                     true
                 }
             })
-            .copied()
             .collect();
 
         // Check that both files have the same columns (regardless of order, excluding excepted columns)
@@ -525,70 +525,79 @@ impl TestContext {
         expected_cols_sorted.sort();
 
         if actual_cols_sorted != expected_cols_sorted {
+            let file_type = if delimiter == b'\t' { "TSV" } else { "CSV" };
             anyhow::bail!(
-                "TSV column mismatch. Expected columns: {:?}, Actual columns: {:?}",
+                "{} column mismatch. Expected columns: {:?}, Actual columns: {:?}",
+                file_type,
                 expected_cols_sorted,
                 actual_cols_sorted
             );
         }
 
+        // Collect all rows from both readers
+        let actual_rows: Vec<StringRecord> = actual_reader.records().collect::<Result<Vec<_>, _>>()?;
+        let expected_rows: Vec<StringRecord> = expected_reader.records().collect::<Result<Vec<_>, _>>()?;
+
         // Check same number of data rows
-        if actual_lines.len() != expected_lines.len() {
+        if actual_rows.len() != expected_rows.len() {
+            let file_type = if delimiter == b'\t' { "TSV" } else { "CSV" };
             anyhow::bail!(
-                "TSV row count mismatch. Expected {} rows, got {} rows",
-                expected_lines.len(),
-                actual_lines.len()
+                "{} row count mismatch. Expected {} rows, got {} rows",
+                file_type,
+                expected_rows.len(),
+                actual_rows.len()
             );
         }
+
+        // Create a set of excluded column indices for expected data
+        let excluded_expected_indices: HashSet<usize> = if let Some(except) = except {
+            expected_headers
+                .iter()
+                .enumerate()
+                .filter_map(|(idx, col)| {
+                    if except.contains(col) {
+                        Some(idx)
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        } else {
+            HashSet::new()
+        };
 
         // Process and sort rows for comparison (ignoring row order)
         let mut expected_processed_rows = Vec::new();
         let mut actual_processed_rows = Vec::new();
 
         // Process expected rows
-        for expected_row in expected_lines.iter().skip(1) {
-            let expected_values: Vec<&str> = expected_row.split('\t').collect();
-            if expected_values.len() != expected_columns.len() {
-                anyhow::bail!("Expected TSV row has incorrect number of columns");
-            }
-
-            // Filter out values for excluded columns
+        for expected_row in expected_rows {
             let mut filtered_expected_values = Vec::new();
-            for (expected_col_idx, expected_col_name) in expected_columns.iter().enumerate() {
-                // Skip excluded columns
-                if let Some(except) = except {
-                    if except.contains(expected_col_name) {
-                        continue;
-                    }
+            for (idx, value) in expected_row.iter().enumerate() {
+                if !excluded_expected_indices.contains(&idx) {
+                    filtered_expected_values.push(value.to_string());
                 }
-                filtered_expected_values.push(expected_values[expected_col_idx]);
             }
             expected_processed_rows.push(filtered_expected_values);
         }
 
         // Process actual rows and reorder columns to match expected order
-        for actual_row in actual_lines.iter().skip(1) {
-            let actual_values: Vec<&str> = actual_row.split('\t').collect();
-            if actual_values.len() != actual_columns.len() {
-                anyhow::bail!("Actual TSV row has incorrect number of columns");
-            }
-
-            // Reorder actual values to match expected column order and filter excluded columns
+        for actual_row in actual_rows {
             let mut reordered_actual_values = Vec::new();
-            for expected_col_name in expected_columns.iter() {
+            
+            // Reorder actual values to match expected column order and filter excluded columns
+            for (expected_idx, expected_col_name) in expected_headers.iter().enumerate() {
                 // Skip excluded columns
-                if let Some(except) = except {
-                    if except.contains(expected_col_name) {
-                        continue;
-                    }
+                if excluded_expected_indices.contains(&expected_idx) {
+                    continue;
                 }
 
                 // Find corresponding actual value and add it
-                if let Some(actual_col_idx) = actual_columns
+                if let Some(actual_col_idx) = actual_headers
                     .iter()
                     .position(|col| col == expected_col_name)
                 {
-                    reordered_actual_values.push(actual_values[actual_col_idx]);
+                    reordered_actual_values.push(actual_row.get(actual_col_idx).unwrap_or("").to_string());
                 } else {
                     anyhow::bail!("Column '{}' not found in actual data", expected_col_name);
                 }
@@ -602,9 +611,12 @@ impl TestContext {
 
         // Compare sorted rows
         if expected_processed_rows != actual_processed_rows {
+            let file_type = if delimiter == b'\t' { "TSV" } else { "CSV" };
             anyhow::bail!(
-                "TSV data mismatch (excluding excepted columns, ignoring row and column order).\nExpected rows (sorted): {:?}\nActual rows (sorted): {:?}", 
-                expected_processed_rows, actual_processed_rows
+                "{} data mismatch (excluding excepted columns, ignoring row and column order).\nExpected rows (sorted): {:?}\nActual rows (sorted): {:?}", 
+                file_type,
+                expected_processed_rows, 
+                actual_processed_rows
             );
         }
 
@@ -798,6 +810,63 @@ mod tests {
         assert!(parsed.get("id").is_some());
         assert!(parsed.get("attributes").is_some());
         assert!(parsed.get("geometry").is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn test_csv_comparison_functionality() -> Result<()> {
+        // Create a temporary test context
+        let temp_dir = TempDir::new()?;
+        let test_dir = temp_dir.path().to_path_buf();
+        let fixture_dir = PathBuf::from("dummy");
+
+        let profile = WorkflowTestProfile {
+            workflow_path: "dummy".to_string(),
+            description: None,
+            expected_output: None,
+            city_gml_path: "dummy".to_string(),
+            codelists: None,
+            schemas: None,
+            intermediate_assertions: vec![],
+            skip: false,
+            skip_reason: None,
+        };
+
+        let ctx = TestContext::new(
+            "test_csv_comparison".to_string(),
+            test_dir,
+            fixture_dir,
+            profile,
+        )?;
+
+        // Test CSV data with different column orders
+        let actual_csv = "name,age,city\nJohn,30,NYC\nJane,25,LA\n";
+        let expected_csv = "age,name,city\n30,John,NYC\n25,Jane,LA\n";
+
+        // Test CSV comparison (should pass - reorders columns)
+        ctx.compare_csv(actual_csv, expected_csv, b',', None)?;
+
+        // Test TSV data with different column orders
+        let actual_tsv = "name\tage\tcity\nJohn\t30\tNYC\nJane\t25\tLA\n";
+        let expected_tsv = "age\tname\tcity\n30\tJohn\tNYC\n25\tJane\tLA\n";
+
+        // Test TSV comparison (should pass - reorders columns)
+        ctx.compare_csv(actual_tsv, expected_tsv, b'\t', None)?;
+
+        // Test with excluded columns
+        let except_columns = ExceptColumns::Single("age".to_string());
+        let actual_csv_with_extra = "name,age,city,country\nJohn,30,NYC,USA\nJane,25,LA,USA\n";
+        let expected_csv_with_extra = "city,name,country\nNYC,John,USA\nLA,Jane,USA\n";
+
+        ctx.compare_csv(actual_csv_with_extra, expected_csv_with_extra, b',', Some(&except_columns))?;
+
+        // Test with different column orders AND different row orders
+        let actual_csv_mixed = "name,age,city\nAlice,35,Boston\nBob,40,Chicago\nCharlie,28,Seattle\n";
+        let expected_csv_mixed = "city,age,name\nSeattle,28,Charlie\nBoston,35,Alice\nChicago,40,Bob\n";
+
+        // Test CSV comparison with both column and row reordering (should pass)
+        ctx.compare_csv(actual_csv_mixed, expected_csv_mixed, b',', None)?;
+
         Ok(())
     }
 }

@@ -10087,6 +10087,7 @@ name = "workflow-tests"
 version = "0.1.5"
 dependencies = [
  "anyhow",
+ "csv",
  "jsonpath_lib",
  "pretty_assertions",
  "proc-macro2",
