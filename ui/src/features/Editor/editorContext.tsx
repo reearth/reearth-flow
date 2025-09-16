@@ -13,6 +13,10 @@ export type EditorContextType = {
   onNodesChange?: (changes: NodeChange[]) => void;
   onNodeSettings?: (_e: MouseEvent | undefined, nodeId: string) => void;
   currentYWorkflow?: YWorkflow;
+  undoTrackerActionWrapper?: (
+    callback: () => void,
+    originPrepend?: string,
+  ) => void;
 };
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);

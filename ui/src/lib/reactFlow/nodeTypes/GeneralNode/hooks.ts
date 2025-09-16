@@ -19,7 +19,7 @@ export default ({
   nodeId: string;
 }) => {
   const { officialName, inputs: defaultInputs, outputs: defaultOutputs } = data;
-  const { currentYWorkflow } = useEditorContext();
+  const { currentYWorkflow, undoTrackerActionWrapper } = useEditorContext();
 
   const inputs: string[] = useMemo(() => {
     if (data.params?.conditions) {
@@ -46,13 +46,15 @@ export default ({
 
   const handleCollapsedToggle = useCallback(
     (collapsed: boolean) => {
-      const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
-      const yNode = yNodes?.get(nodeId);
-      if (!yNode) return;
-      const yData = yNode?.get("data") as Y.Map<YNodeValue>;
-      yData?.set("isCollapsed", collapsed);
+      undoTrackerActionWrapper?.(() => {
+        const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
+        const yNode = yNodes?.get(nodeId);
+        if (!yNode) return;
+        const yData = yNode?.get("data") as Y.Map<YNodeValue>;
+        yData?.set("isCollapsed", collapsed);
+      });
     },
-    [currentYWorkflow, nodeId],
+    [currentYWorkflow, nodeId, undoTrackerActionWrapper],
   );
 
   return {
