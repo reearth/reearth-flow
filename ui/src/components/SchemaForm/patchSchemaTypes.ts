@@ -131,7 +131,7 @@ const simplifyAnyOfInsideOneOf = (
 // Function to simplify `allOf` with single `$ref` - common pattern from schemars with default values
 const simplifyAllOf = (
   schema: JSONSchema7Definition,
-  definitions?: Record<string, JSONSchema7Definition>
+  definitions?: Record<string, JSONSchema7Definition>,
 ): JSONSchema7Definition => {
   if (!isJSONSchema(schema)) return schema;
 
@@ -142,7 +142,7 @@ const simplifyAllOf = (
     const subSchema = newSchema.allOf[0];
     if (isJSONSchema(subSchema) && subSchema.$ref) {
       // Extract the reference key from "#/definitions/EnumName"
-      const refKey = subSchema.$ref.split('/').pop();
+      const refKey = subSchema.$ref.split("/").pop();
       if (refKey && definitions?.[refKey]) {
         const resolvedSchema = definitions[refKey];
         if (isJSONSchema(resolvedSchema)) {
@@ -166,7 +166,9 @@ const simplifyAllOf = (
 
   if (newSchema.items) {
     if (Array.isArray(newSchema.items)) {
-      newSchema.items = newSchema.items.map(item => simplifyAllOf(item, definitions));
+      newSchema.items = newSchema.items.map((item) =>
+        simplifyAllOf(item, definitions),
+      );
     } else {
       newSchema.items = simplifyAllOf(newSchema.items, definitions);
     }
