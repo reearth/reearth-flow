@@ -19,7 +19,7 @@ func TestQueryAssets(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser, true, nil)
 
 	// Query assets for the workspace
 	query := fmt.Sprintf(`query { assets(workspaceId: "%s", pagination: {page: 1, pageSize: 10}) { nodes { id fileName size contentType } totalCount } }`, wId1)
@@ -45,7 +45,7 @@ func TestCreateAsset(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser, true, nil)
 
 	// Create multipart form with file upload
 	body := &bytes.Buffer{}
@@ -97,7 +97,7 @@ func TestDeleteAsset(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser, true, nil)
 
 	// Create an asset first
 	body := &bytes.Buffer{}
@@ -173,7 +173,7 @@ func TestAssetSorting(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser, true, nil)
 
 	// Create multiple assets
 	fileNames := []string{"b.png", "a.png", "c.png"}
@@ -235,7 +235,7 @@ func TestAssetKeywordSearch(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser, true, nil)
 
 	// Create assets with different names
 	fileNames := []string{"document.pdf", "image.png", "data.csv"}
@@ -295,7 +295,7 @@ func TestWorkspaceAssetsQuery(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser, true, nil)
 
 	// Query workspace with assets field - should return empty
 	query := fmt.Sprintf(`query { node(id: "%s", type: WORKSPACE) { ... on Workspace { id assets(pagination: {page: 1, pageSize: 10}) { nodes { id } totalCount } } } }`, wId1)

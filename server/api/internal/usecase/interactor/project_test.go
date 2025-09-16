@@ -37,7 +37,7 @@ func TestProject_Create(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachUser(ctx, mockUser)
+	ctx = adapter.AttachReearthxUser(ctx, mockUser)
 
 	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
 		return true, nil

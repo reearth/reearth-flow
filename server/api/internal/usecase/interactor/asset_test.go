@@ -29,7 +29,7 @@ func TestAsset_Create(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachUser(ctx, mockUser)
+	ctx = adapter.AttachReearthxUser(ctx, mockUser)
 
 	// aid := asset.NewID() - removed as the ID is generated in the interactor
 
