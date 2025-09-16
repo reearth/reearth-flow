@@ -175,7 +175,6 @@ export default ({
           });
 
           const selectedNodes = nodes.filter((n) => n.selected);
-          console.log("SELECTED NODES", selectedNodes);
           if (selectedNodes.length === 0) return;
 
           const getBatchNodes = (batchId: string): Node[] =>
