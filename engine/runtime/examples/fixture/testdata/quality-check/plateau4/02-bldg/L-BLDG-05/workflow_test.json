@@ -2,8 +2,7 @@
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "description": "Test PLATEAU4 L-BLDG-04-05 quality check",
   "expectedOutput": {
-    "expectedFile": "02_bldg_l-bldg-04-05エラー.tsv",
-    "except": ""
+    "expectedFile": "02_建築物_L-bldg-04,05エラー.csv"
   },
   "cityGmlPath": "udx/bldg/input.gml",
   "codelists": "codelists",

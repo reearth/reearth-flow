@@ -2,8 +2,7 @@
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "description": "Test PLATEAU4 URO building ID format check",
   "expectedOutput": {
-    "expectedFile": "02_bldg_建物ID書式不正.tsv",
-    "except": ""
+    "expectedFile": "02_建築物_建物ID書式不正.csv"
   },
   "cityGmlPath": "udx/bldg/input.gml",
   "codelists": "codelists",

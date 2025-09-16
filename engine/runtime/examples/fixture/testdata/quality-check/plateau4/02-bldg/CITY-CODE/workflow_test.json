@@ -2,8 +2,7 @@
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "description": "Test PLATEAU4 city code validation check",
   "expectedOutput": {
-    "expectedFile": "02_bldg_市区町村コードエラー.tsv",
-    "except": ""
+    "expectedFile": "02_建築物_市区町村コードエラー.csv"
   },
   "cityGmlPath": "udx/bldg/input.gml",
   "codelists": "codelists",
