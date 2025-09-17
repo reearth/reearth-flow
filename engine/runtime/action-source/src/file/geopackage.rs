@@ -289,7 +289,15 @@ async fn read_layer_features(
 
     let mut features = Vec::new();
     for row in rows {
-        let feature = row_to_feature(&row, &geom_col, srs_id, force_2d)?;
+        let mut feature = row_to_feature(&row, &geom_col, srs_id, force_2d)?;
+        feature.insert(
+            "_geopackage_source",
+            AttributeValue::String("features".to_string()),
+        );
+        feature.insert(
+            "_geopackage_layer",
+            AttributeValue::String(layer_name.to_string()),
+        );
         features.push(feature);
     }
 
@@ -1156,8 +1164,13 @@ async fn read_layer_tiles(
         let tile_data = row.try_get::<Vec<u8>, _>(3).unwrap_or_default();
 
         let mut attributes = IndexMap::new();
+        // Add a marker to indicate this is from a tile layer
         attributes.insert(
-            Attribute::new("layer".to_string()),
+            Attribute::new("_geopackage_source".to_string()),
+            AttributeValue::String("tiles".to_string()),
+        );
+        attributes.insert(
+            Attribute::new("_geopackage_layer".to_string()),
             AttributeValue::String(layer_name.to_string()),
         );
         attributes.insert(
@@ -1262,6 +1275,15 @@ async fn read_srs_metadata(adapter: &SqlAdapter) -> Result<Vec<Feature>, SourceE
     for row in rows {
         let mut attributes = IndexMap::new();
 
+        attributes.insert(
+            Attribute::new("_geopackage_source".to_string()),
+            AttributeValue::String("metadata".to_string()),
+        );
+        attributes.insert(
+            Attribute::new("_metadata_type".to_string()),
+            AttributeValue::String("spatial_ref_sys".to_string()),
+        );
+
         if let Ok(v) = row.try_get::<String, _>(0) {
             attributes.insert(
                 Attribute::new("srsName".to_string()),
@@ -1299,11 +1321,6 @@ async fn read_srs_metadata(adapter: &SqlAdapter) -> Result<Vec<Feature>, SourceE
             );
         }
 
-        attributes.insert(
-            Attribute::new("_type".to_string()),
-            AttributeValue::String("spatial_ref_sys".to_string()),
-        );
-
         let mut feature = Feature::new();
         feature.attributes = attributes;
         features.push(feature);
@@ -1326,6 +1343,15 @@ async fn read_extensions_metadata(adapter: &SqlAdapter) -> Result<Vec<Feature>, 
     let mut features = Vec::new();
     for row in rows {
         let mut attributes = IndexMap::new();
+
+        attributes.insert(
+            Attribute::new("_geopackage_source".to_string()),
+            AttributeValue::String("metadata".to_string()),
+        );
+        attributes.insert(
+            Attribute::new("_metadata_type".to_string()),
+            AttributeValue::String("extension".to_string()),
+        );
 
         if let Ok(v) = row.try_get::<String, _>(0) {
             attributes.insert(
@@ -1357,11 +1383,6 @@ async fn read_extensions_metadata(adapter: &SqlAdapter) -> Result<Vec<Feature>, 
                 AttributeValue::String(v),
             );
         }
-
-        attributes.insert(
-            Attribute::new("_type".to_string()),
-            AttributeValue::String("extension".to_string()),
-        );
 
         let mut feature = Feature::new();
         feature.attributes = attributes;
