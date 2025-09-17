@@ -29,6 +29,7 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  DialogFooter,
 } from "@flow/components";
 import AssetsDialog from "@flow/features/AssetsDialog";
 import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
@@ -196,10 +197,10 @@ const ValueEditorDialog: React.FC<Props> = ({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent size="3xl">
+      <Dialog open={open} onOpenChange={onClose} >
+        <DialogContent size="3xl" onInteractOutside={(e) => e.preventDefault()} hideCloseButton>
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <PencilLineIcon weight="thin" />
                 {t("Value Editor")} -{" "}
@@ -207,17 +208,6 @@ const ValueEditorDialog: React.FC<Props> = ({
                   fieldContext?.fieldName ||
                   t("Unknown Field")}{" "}
                 {fieldType ? `(${fieldType})` : ""}
-              </div>
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="flex h-[600px] flex-col">
-            {/* Action Bar */}
-            <div className="flex items-center justify-between border-b p-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground">
-                  {t("Expression Editor")}
-                </span>
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -267,26 +257,13 @@ const ValueEditorDialog: React.FC<Props> = ({
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline" size="sm" className="px-2">
-                      <QuestionIcon className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    <p className="text-sm">{t("Expression Editor Help")}</p>
-                    <p className="mt-1 max-w-[200px] text-xs text-muted-foreground">
-                      {t(
-                        "Write Rhai expressions directly or use the visual builder below for assistance.",
-                      )}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
               </div>
-            </div>
+            </DialogTitle>
+          </DialogHeader>
 
+          <div className="flex h-[600px] flex-col">
             {/* Raw Rhai Editor - Always Visible */}
-            <div className="flex-1 border-b">
+            <div className="relative flex-1 border-b">
               <RhaiCodeEditor
                 ref={rhaiEditorRef}
                 className="h-full rounded-none bg-card/20 backdrop-blur-sm"
@@ -297,6 +274,21 @@ const ValueEditorDialog: React.FC<Props> = ({
                 aria-label={t("Raw Expression Editor")}
                 data-placeholder={t("Enter expression...")}
               />
+               <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="absolute right-2 bottom-2 cursor-pointer p-1">
+                      <QuestionIcon className="h-6 w-6" weight="thin" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" align="end">
+                    <p className="text-sm">{t("Expression Editor Help")}</p>
+                    <p className="mt-1 max-w-[200px] text-xs text-muted-foreground">
+                      {t(
+                        "Write Rhai expressions directly or use the visual builder below for assistance.",
+                      )}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
             </div>
 
             {/* Collapsible Simple Builder Panel */}
@@ -410,11 +402,14 @@ const ValueEditorDialog: React.FC<Props> = ({
                 </div>
               </CollapsibleContent>
             </Collapsible>
-
-            {/* Submit Button */}
-            <div className="flex justify-end gap-2 p-3">
+            <DialogFooter className="flex justify-end gap-2 p-4">
+                <Button
+                variant="outline"
+                onClick={onClose}>
+                {t("Cancel")}
+              </Button>
               <Button onClick={handleSubmit}>{t("Submit")}</Button>
-            </div>
+            </DialogFooter>
           </div>
         </DialogContent>
       </Dialog>
