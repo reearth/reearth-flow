@@ -16,6 +16,7 @@ import { TextInput } from "./BaseInputTemplate/TextInput";
 
 export type ExtendedFormContext = FormContextType & {
   onEditorOpen?: (fieldContext: FieldContext) => void;
+  onPythonEditorOpen?: (fieldContext: FieldContext) => void;
   onAssetsOpen?: (fieldContext: FieldContext) => void;
 };
 
@@ -27,19 +28,32 @@ const BaseInputTemplate = <
 >(
   props: BaseInputTemplateProps<T, S, F>,
 ) => {
-  const { schema, formContext, id, name, value } = props;
+  const { schema, formContext, id, name, value, uiSchema } = props;
 
-  // Extract onEditorOpen from formContext
-  const { onEditorOpen, onAssetsOpen } =
+  // Extract context from formContext
+  const { onEditorOpen, onPythonEditorOpen, onAssetsOpen } =
     (formContext as ExtendedFormContext) || {};
 
-  // Create a field-specific onEditorOpen handler
-  const handleEditorOpen = onEditorOpen
-    ? () => {
-        const fieldContext = createFieldContext({ id, name, value, schema });
-        onEditorOpen(fieldContext);
-      }
-    : undefined;
+  // Check if this field is marked as an Expr type in the UI schema
+  const isExprField = uiSchema?.["ui:exprType"] === "rhai";
+  const isPythonField = uiSchema?.["ui:exprType"] === "python";
+
+  // Create field-specific editor handlers
+  const handleEditorOpen =
+    onEditorOpen && isExprField
+      ? () => {
+          const fieldContext = createFieldContext({ id, name, value, schema });
+          onEditorOpen(fieldContext);
+        }
+      : undefined;
+
+  const handlePythonEditorOpen =
+    onPythonEditorOpen && isPythonField
+      ? () => {
+          const fieldContext = createFieldContext({ id, name, value, schema });
+          onPythonEditorOpen(fieldContext);
+        }
+      : undefined;
 
   const handleAssetsOpen = onAssetsOpen
     ? () => {
@@ -59,8 +73,14 @@ const BaseInputTemplate = <
     );
   }
 
-  // Handle number and integer inputs
-  if (schema.type === "number" || schema.type === "integer") {
+  // Handle number and integer inputs (including arrays like ["integer", "null"])
+  const isNumberType =
+    schema.type === "number" ||
+    schema.type === "integer" ||
+    (Array.isArray(schema.type) &&
+      (schema.type.includes("number") || schema.type.includes("integer")));
+
+  if (isNumberType) {
     return (
       <NumberInput
         {...props}
@@ -75,6 +95,7 @@ const BaseInputTemplate = <
     <TextInput
       {...props}
       onEditorOpen={handleEditorOpen}
+      onPythonEditorOpen={handlePythonEditorOpen}
       onAssetsOpen={handleAssetsOpen}
     />
   );
