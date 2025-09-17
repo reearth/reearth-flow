@@ -8,6 +8,8 @@ import {
   CaretUpIcon,
   WrenchIcon,
   CodeIcon,
+  CornersInIcon,
+  CornersOutIcon,
 } from "@phosphor-icons/react";
 import { QuestionIcon } from "@phosphor-icons/react/dist/ssr";
 import { useCallback, useState, useRef } from "react";
@@ -30,6 +32,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
   DialogFooter,
+  IconButton,
 } from "@flow/components";
 import AssetsDialog from "@flow/features/AssetsDialog";
 import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
@@ -92,6 +95,9 @@ const ValueEditorDialog: React.FC<Props> = ({
   const [selectedTemplate, setSelectedTemplate] =
     useState<ExpressionTemplate | null>(null);
   const [showPlaceholderDialog, setShowPlaceholderDialog] = useState(false);
+
+  // Fullscreen state
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Ref for RhaiCodeEditor to enable cursor insertion
   const rhaiEditorRef = useRef<RhaiCodeEditorRef>(null);
@@ -195,73 +201,101 @@ const ValueEditorDialog: React.FC<Props> = ({
     setSelectedTemplate(null);
   }, []);
 
+  const handleFullscreenToggle = useCallback(() => {
+    setIsFullscreen((prev) => !prev);
+  }, []);
+
   return (
     <>
-      <Dialog open={open} onOpenChange={onClose} >
-        <DialogContent size="3xl" onInteractOutside={(e) => e.preventDefault()} hideCloseButton>
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent
+          size={isFullscreen ? "full" : "3xl"}
+          onInteractOutside={(e) => e.preventDefault()}
+          hideCloseButton>
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <PencilLineIcon weight="thin" />
-                {t("Value Editor")} -{" "}
-                {fieldContext.schema.title ||
-                  fieldContext?.fieldName ||
-                  t("Unknown Field")}{" "}
-                {fieldType ? `(${fieldType})` : ""}
+            <DialogTitle className="relative flex h-[52px] items-center justify-between">
+              <div className="flex flex-1 gap-4">
+                <div className="flex items-center gap-2">
+                  <PencilLineIcon weight="thin" />
+                  {t("Value Editor")} -{" "}
+                  {fieldContext.schema.title ||
+                    fieldContext?.fieldName ||
+                    t("Unknown Field")}{" "}
+                  {fieldType ? `(${fieldType})` : ""}
+                </div>
+                <div className="flex flex-1 items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDialogOpen("templates")}>
+                    <CodeIcon className="h-4 w-4" />
+                    {t("Templates")}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDialogOpen("assets")}>
+                    <ArchiveIcon className="h-4 w-4" />
+                    {t("Asset")}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDialogOpen("cms")}>
+                    <DatabaseIcon className="h-4 w-4" />
+                    {t("CMS")}
+                  </Button>
+                  {projectVariables && projectVariables.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <CircleIcon className="h-4 w-4" />
+                          {t("Variables")}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-64">
+                        {projectVariables.map((variable) => (
+                          <DropdownMenuItem
+                            key={variable.id}
+                            onClick={() => handleProjectVariableSet(variable)}
+                            className="flex flex-col items-start">
+                            <div className="font-mono text-sm">
+                              {variable.name}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {variable.type} •{" "}
+                              {variable.defaultValue || t("No value set")}
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDialogOpen("templates")}>
-                  <CodeIcon className="mr-2 h-4 w-4" />
-                  {t("Templates")}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDialogOpen("assets")}>
-                  <ArchiveIcon className="mr-2 h-4 w-4" />
-                  {t("Asset")}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDialogOpen("cms")}>
-                  <DatabaseIcon className="mr-2 h-4 w-4" />
-                  {t("CMS")}
-                </Button>
-                {projectVariables && projectVariables.length > 0 && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <CircleIcon className="mr-2 h-4 w-4" />
-                        {t("Variables")}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-64">
-                      {projectVariables.map((variable) => (
-                        <DropdownMenuItem
-                          key={variable.id}
-                          onClick={() => handleProjectVariableSet(variable)}
-                          className="flex flex-col items-start">
-                          <div className="font-mono text-sm">
-                            {variable.name}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {variable.type} •{" "}
-                            {variable.defaultValue || t("No value set")}
-                          </div>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
+              <div className="-mr-2 flex items-center">
+                <IconButton
+                  className="rounded-[4px]"
+                  tooltipText={
+                    isFullscreen ? t("Exit fullscreen") : t("Enter fullscreen")
+                  }
+                  tooltipOffset={6}
+                  tooltipPosition="left"
+                  icon={
+                    isFullscreen ? (
+                      <CornersInIcon weight="thin" size={18} />
+                    ) : (
+                      <CornersOutIcon weight="thin" size={18} />
+                    )
+                  }
+                  onClick={handleFullscreenToggle}
+                />
               </div>
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex h-[600px] flex-col">
+          <div
+            className={`flex flex-col ${isFullscreen ? "h-[calc(100vh-52px)]" : "h-[600px]"}`}>
             {/* Raw Rhai Editor - Always Visible */}
             <div className="relative flex-1 border-b">
               <RhaiCodeEditor
@@ -274,21 +308,21 @@ const ValueEditorDialog: React.FC<Props> = ({
                 aria-label={t("Raw Expression Editor")}
                 data-placeholder={t("Enter expression...")}
               />
-               <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="absolute right-2 bottom-2 cursor-pointer p-1">
-                      <QuestionIcon className="h-6 w-6" weight="thin" />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" align="end">
-                    <p className="text-sm">{t("Expression Editor Help")}</p>
-                    <p className="mt-1 max-w-[200px] text-xs text-muted-foreground">
-                      {t(
-                        "Write Rhai expressions directly or use the visual builder below for assistance.",
-                      )}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="absolute right-2 bottom-2 cursor-pointer p-1">
+                    <QuestionIcon className="h-6 w-6" weight="thin" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" align="end">
+                  <p className="text-sm">{t("Expression Editor Help")}</p>
+                  <p className="mt-1 max-w-[200px] text-xs text-muted-foreground">
+                    {t(
+                      "Write Rhai expressions directly or use the visual builder below for assistance.",
+                    )}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
             </div>
 
             {/* Collapsible Simple Builder Panel */}
@@ -403,9 +437,7 @@ const ValueEditorDialog: React.FC<Props> = ({
               </CollapsibleContent>
             </Collapsible>
             <DialogFooter className="flex justify-end gap-2 p-4">
-                <Button
-                variant="outline"
-                onClick={onClose}>
+              <Button variant="outline" onClick={onClose}>
                 {t("Cancel")}
               </Button>
               <Button onClick={handleSubmit}>{t("Submit")}</Button>

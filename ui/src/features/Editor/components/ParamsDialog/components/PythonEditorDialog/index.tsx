@@ -1,5 +1,5 @@
 import { Editor } from "@monaco-editor/react";
-import { CodeIcon } from "@phosphor-icons/react";
+import { CodeIcon, CornersInIcon, CornersOutIcon } from "@phosphor-icons/react";
 import { useCallback, useState } from "react";
 
 import {
@@ -9,6 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  IconButton,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 
@@ -29,6 +30,7 @@ const PythonEditorDialog: React.FC<Props> = ({
 }) => {
   const t = useT();
   const [value, setValue] = useState(fieldContext.value || "");
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const handleSubmit = useCallback(() => {
     if (!onValueSubmit) return;
@@ -40,11 +42,20 @@ const PythonEditorDialog: React.FC<Props> = ({
     setValue(newValue || "");
   }, []);
 
+  const handleFullscreenToggle = useCallback(() => {
+    setIsFullscreen((prev) => !prev);
+  }, []);
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent size="3xl" onInteractOutside={(e) => e.preventDefault()} hideCloseButton>
+      <DialogContent
+        size={isFullscreen ? "full" : "3xl"}
+        onInteractOutside={(e) => e.preventDefault()}
+        hideCloseButton
+        // className={isFullscreen ? "fixed inset-0 max-h-screen max-w-screen" : ""}
+      >
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="relative flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CodeIcon weight="thin" />
               {t("Python Editor")} -{" "}
@@ -53,12 +64,29 @@ const PythonEditorDialog: React.FC<Props> = ({
                 t("Unknown Field")}{" "}
               (Python Script)
             </div>
+            <IconButton
+              className="absolute top-2 right-2 rounded-[4px]"
+              tooltipText={
+                isFullscreen ? t("Exit fullscreen") : t("Enter fullscreen")
+              }
+              tooltipOffset={6}
+              tooltipPosition="left"
+              icon={
+                isFullscreen ? (
+                  <CornersInIcon weight="thin" size={18} />
+                ) : (
+                  <CornersOutIcon weight="thin" size={18} />
+                )
+              }
+              onClick={handleFullscreenToggle}
+            />
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex h-[70vh] flex-col">
+        <div
+          className={`flex flex-col ${isFullscreen ? "h-[calc(100vh-52px)]" : "h-[70vh]"}`}>
           {/* Editor */}
-          <div className="flex-1 overflow-hidden rounded-md border border-border">
+          <div className="flex-1 overflow-hidden">
             <Editor
               height="100%"
               defaultLanguage="python"
