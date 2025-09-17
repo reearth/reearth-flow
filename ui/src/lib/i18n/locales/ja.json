@@ -823,6 +823,7 @@
   "Member's Role has been successfully updated.": "メンバーの役割が正常に更新されました。",
   "Member's Role Could Not Be Updated": "メンバーの役割を更新できませんでした",
   "There was an error when trying to update the members persmissons.": "メンバーの権限を更新しようとした際にエラーが発生しました。",
+  "Multiple": "複数",
   "Batch": "バッチ",
   "Subworkflow": "サブワークフロー",
   "Please check the shared URL is correct.": "共有URLが正しいか確認してください。",

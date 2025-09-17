@@ -825,6 +825,7 @@
   "Member's Role has been successfully updated.": "Le rôle du membre a été mis à jour avec succès.",
   "Member's Role Could Not Be Updated": "Le rôle du membre n'a pas pu être mis à jour.",
   "There was an error when trying to update the members persmissons.": "Une erreur s'est produite lors de la tentative de mise à jour des autorisations des membres.",
+  "Multiple": "Multiple",
   "Batch": "Lot",
   "Subworkflow": "Sous-flux de travail",
   "Please check the shared URL is correct.": "Veuillez vérifier que l'URL partagée est correcte.",
