@@ -19,7 +19,7 @@ type Props = {
   isCollapsed?: boolean;
   onCollapsedToggle?: (isCollapsed: boolean) => void;
 };
-
+const MIN_HANDLES_FOR_COLLAPSE = 5;
 const Handles: React.FC<Props> = ({
   nodeType,
   inputs,
@@ -28,8 +28,10 @@ const Handles: React.FC<Props> = ({
   onCollapsedToggle,
 }) => {
   const t = useT();
-  const hasMoreThanFiveInputHandles = inputs && inputs.length >= 5;
-  const hasMoreThanFiveOutputHandles = outputs && outputs.length >= 5;
+  const hasMoreThanFiveInputHandles =
+    inputs && inputs.length >= MIN_HANDLES_FOR_COLLAPSE;
+  const hasMoreThanFiveOutputHandles =
+    outputs && outputs.length >= MIN_HANDLES_FOR_COLLAPSE;
   return (
     <Collapsible className="flex flex-col" open={!isCollapsed}>
       <div className="flex justify-between gap-0.5">
@@ -40,9 +42,12 @@ const Handles: React.FC<Props> = ({
               <div className="relative flex items-center py-0.5">
                 <div className="flex w-full translate-x-0.5 items-center">
                   <div className="flex items-center -space-x-0.75">
-                    {Array.from({ length: 3 }).map(() => {
+                    {Array.from({ length: 3 }).map((_, idx) => {
                       return (
-                        <div className="size-1.5 rounded-full bg-gray-300 ring ring-secondary/20" />
+                        <div
+                          key={idx}
+                          className="size-1.5 rounded-full bg-gray-300 ring ring-secondary/20"
+                        />
                       );
                     })}
                   </div>
@@ -88,9 +93,12 @@ const Handles: React.FC<Props> = ({
                   {t("Multiple")}
                 </p>
                 <div className="flex items-center -space-x-0.75">
-                  {Array.from({ length: 3 }).map(() => {
+                  {Array.from({ length: 3 }).map((_, idx) => {
                     return (
-                      <div className="size-1.5 rounded-full bg-gray-300 ring ring-secondary/20" />
+                      <div
+                        key={idx}
+                        className="size-1.5 rounded-full bg-gray-300 ring ring-secondary/20"
+                      />
                     );
                   })}
                 </div>
@@ -206,8 +214,8 @@ const Handles: React.FC<Props> = ({
         </>
       )}
 
-      {((nodeType !== "reader" && inputs && inputs.length >= 5) ||
-        (outputs && outputs.length >= 5)) && (
+      {((nodeType !== "reader" && hasMoreThanFiveInputHandles) ||
+        hasMoreThanFiveOutputHandles) && (
         <CollapsibleTrigger asChild className="justify-center self-center">
           <IconButton
             onClick={() => onCollapsedToggle?.(!isCollapsed)}

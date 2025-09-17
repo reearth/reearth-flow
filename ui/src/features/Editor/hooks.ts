@@ -152,7 +152,7 @@ export default ({
             selectedEdgeIds.includes(edge.id) && !edge.selected
               ? true
               : (edge.selected ?? false),
-          reconnectable: sourceIsCollapsed || targetIsCollapsed ? false : true,
+          reconnectable: !(sourceIsCollapsed || targetIsCollapsed),
         };
       }),
     [rawEdges, selectedEdgeIds, nodes],
