@@ -1,6 +1,6 @@
+use crate::application::kv::DocOps;
 use crate::broadcast::group::BroadcastGroup;
-use crate::storage::gcs::GcsStore;
-use crate::storage::kv::DocOps;
+use crate::infrastructure::gcs::GcsStore;
 use crate::storage::redis::RedisStore;
 use crate::AwarenessRef;
 use anyhow::Result;

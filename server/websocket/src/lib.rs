@@ -4,14 +4,15 @@ use tokio::sync::RwLock;
 #[cfg(feature = "auth")]
 pub mod auth;
 
+pub mod application;
 mod broadcast;
 pub mod conf;
 pub mod domain;
+pub mod infrastructure;
 pub mod interface;
 pub mod storage;
 pub mod tools;
 pub mod ws;
-
 pub use broadcast::group;
 pub use broadcast::pool;
 
@@ -67,10 +68,9 @@ pub use domain::value_objects::redis::{
     RedisStreamResults, StreamMessages, MESSAGE_TYPE_AWARENESS, MESSAGE_TYPE_SYNC, OID_LOCK_KEY,
 };
 pub use group::BroadcastGroup;
+pub use infrastructure::gcs::GcsStore;
 pub use interface::http::handlers::DocumentHandler;
 pub use interface::http::router::document_routes;
 pub use interface::websocket::conn::Connection;
 pub use pool::BroadcastPool;
 pub use server::{ensure_bucket, start_server};
-pub use storage::gcs::GcsStore;
-pub use storage::kv::DocOps;

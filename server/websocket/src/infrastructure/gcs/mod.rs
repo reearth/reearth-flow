@@ -1,8 +1,11 @@
-pub use super::kv as store;
-use super::kv::keys::{key_doc, key_state_vector, key_update};
-use super::kv::keys::{KEYSPACE_DOC, SUB_DOC, SUB_STATE_VEC, SUB_UPDATE, V1};
-use super::kv::{get_oid, get_or_create_oid, DocOps, KVEntry, KVStore};
-use super::redis::RedisStore;
+use crate::application::kv::{get_oid, get_or_create_oid, DocOps};
+use crate::domain::repository::kv::KVEntry;
+use crate::domain::repository::kv::KVStore;
+use crate::domain::value_objects::keys::{
+    key_doc, key_state_vector, key_update, KEYSPACE_DOC, SUB_DOC, SUB_STATE_VEC, SUB_UPDATE, V1,
+};
+
+use crate::storage::redis::RedisStore;
 use anyhow::Result;
 use futures::future::join_all;
 use google_cloud_storage::{
@@ -14,6 +17,7 @@ use google_cloud_storage::{
     http::objects::upload::{Media, UploadObjectRequest, UploadType},
     http::objects::Object,
 };
+
 use hex;
 use serde::Deserialize;
 use time::OffsetDateTime;
@@ -22,7 +26,7 @@ use yrs::{
     updates::decoder::Decode, updates::encoder::Encode, Doc, ReadTxn, StateVector, Transact, Update,
 };
 
-use super::first_zero_bit;
+use crate::tools::first_zero_bit;
 
 const BATCH_SIZE: usize = 50;
 
@@ -109,7 +113,7 @@ impl GcsStore {
         doc_id: &str,
         update: &bytes::Bytes,
         redis: &RedisStore,
-    ) -> Result<u32, store::error::Error> {
+    ) -> Result<u32> {
         let oid = get_oid(self, doc_id.as_bytes()).await?;
         let oid = match oid {
             Some(oid) => oid,
@@ -174,10 +178,7 @@ impl GcsStore {
         Ok(clock)
     }
 
-    pub async fn get_last_checkpoint(
-        &self,
-        doc_id: &str,
-    ) -> Result<Option<u32>, store::error::Error> {
+    pub async fn get_last_checkpoint(&self, doc_id: &str) -> Result<Option<u32>> {
         let checkpoint_key = format!("checkpoint:{}", hex::encode(doc_id.as_bytes()));
         if let Some(data) = self.get(checkpoint_key.as_bytes()).await? {
             let data_ref: &[u8] = data.as_ref();
