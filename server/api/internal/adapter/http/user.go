@@ -3,19 +3,22 @@ package http
 import (
 	"context"
 
-	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/account/accountdomain/user"
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
+	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/user"
 	"github.com/reearth/reearthx/account/accountusecase/accountinterfaces"
 	"golang.org/x/text/language"
 )
 
 type UserController struct {
-	usecase accountinterfaces.User
+	usecase         interfaces.User
+	reearthxUsecase accountinterfaces.User
 }
 
-func NewUserController(usecase accountinterfaces.User) *UserController {
+func NewUserController(usecase interfaces.User, reearthxUsecase accountinterfaces.User) *UserController {
 	return &UserController{
-		usecase: usecase,
+		usecase:         usecase,
+		reearthxUsecase: reearthxUsecase,
 	}
 }
 
@@ -26,17 +29,17 @@ type PasswordResetInput struct {
 }
 
 type SignupInput struct {
-	Sub         *string                    `json:"sub"`
-	Secret      *string                    `json:"secret"`
-	UserID      *accountdomain.UserID      `json:"userId"`
-	WorkspaceID *accountdomain.WorkspaceID `json:"workspaceId"`
-	TeamID      *accountdomain.WorkspaceID `json:"teamId"` // TeamID is an alias of WorkspaceID
-	Name        string                     `json:"name"`
-	Username    string                     `json:"username"` // ysername is an alias of Name
-	Email       string                     `json:"email"`
-	Password    string                     `json:"password"`
-	Theme       *user.Theme                `json:"theme"`
-	Lang        *language.Tag              `json:"lang"`
+	Sub         *string         `json:"sub"`
+	Secret      *string         `json:"secret"`
+	UserID      *id.UserID      `json:"userId"`
+	WorkspaceID *id.WorkspaceID `json:"workspaceId"`
+	TeamID      *id.WorkspaceID `json:"teamId"` // TeamID is an alias of WorkspaceID
+	Name        string          `json:"name"`
+	Username    string          `json:"username"` // ysername is an alias of Name
+	Email       string          `json:"email"`
+	Password    string          `json:"password"`
+	Theme       *user.Theme     `json:"theme"`
+	Lang        *language.Tag   `json:"lang"`
 }
 
 type CreateVerificationInput struct {
@@ -63,7 +66,7 @@ func (c *UserController) Signup(ctx context.Context, input SignupInput) (SignupO
 	}
 
 	if input.Sub != nil && *input.Sub != "" && input.Email != "" && input.Name != "" {
-		u, err := c.usecase.SignupOIDC(ctx, accountinterfaces.SignupOIDCParam{
+		u, err := c.reearthxUsecase.SignupOIDC(ctx, accountinterfaces.SignupOIDCParam{
 			Name:   input.Name,
 			Email:  input.Email,
 			Sub:    *input.Sub,
@@ -80,7 +83,7 @@ func (c *UserController) Signup(ctx context.Context, input SignupInput) (SignupO
 		}, nil
 	}
 
-	u, err := c.usecase.Signup(ctx, accountinterfaces.SignupParam{
+	u, err := c.usecase.Signup(ctx, interfaces.SignupParam{
 		Name:        input.Name,
 		Email:       input.Email,
 		Password:    input.Password,
@@ -102,11 +105,11 @@ func (c *UserController) Signup(ctx context.Context, input SignupInput) (SignupO
 }
 
 func (c *UserController) CreateVerification(ctx context.Context, input CreateVerificationInput) error {
-	return c.usecase.CreateVerification(ctx, input.Email)
+	return c.reearthxUsecase.CreateVerification(ctx, input.Email)
 }
 
 func (c *UserController) VerifyUser(ctx context.Context, code string) (VerifyUserOutput, error) {
-	u, err := c.usecase.VerifyUser(ctx, code)
+	u, err := c.reearthxUsecase.VerifyUser(ctx, code)
 	if err != nil {
 		return VerifyUserOutput{}, err
 	}
@@ -117,9 +120,9 @@ func (c *UserController) VerifyUser(ctx context.Context, code string) (VerifyUse
 }
 
 func (c *UserController) StartPasswordReset(ctx context.Context, input PasswordResetInput) error {
-	return c.usecase.StartPasswordReset(ctx, input.Email)
+	return c.reearthxUsecase.StartPasswordReset(ctx, input.Email)
 }
 
 func (c *UserController) PasswordReset(ctx context.Context, input PasswordResetInput) error {
-	return c.usecase.PasswordReset(ctx, input.Password, input.Token)
+	return c.reearthxUsecase.PasswordReset(ctx, input.Password, input.Token)
 }
