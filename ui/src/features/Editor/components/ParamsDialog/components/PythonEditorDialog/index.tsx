@@ -51,9 +51,7 @@ const PythonEditorDialog: React.FC<Props> = ({
       <DialogContent
         size={isFullscreen ? "full" : "3xl"}
         onInteractOutside={(e) => e.preventDefault()}
-        hideCloseButton
-        // className={isFullscreen ? "fixed inset-0 max-h-screen max-w-screen" : ""}
-      >
+        hideCloseButton>
         <DialogHeader>
           <DialogTitle className="relative flex items-center justify-between">
             <div className="flex items-center gap-2">
