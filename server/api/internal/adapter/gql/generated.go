@@ -3815,6 +3815,7 @@ extend type Query {
 }
 
 enum ParameterType {
+  ARRAY
   TEXT
   NUMBER
   CHOICE

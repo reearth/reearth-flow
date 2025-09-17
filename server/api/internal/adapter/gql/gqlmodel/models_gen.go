@@ -1296,6 +1296,7 @@ func (e OrderDirection) MarshalJSON() ([]byte, error) {
 type ParameterType string
 
 const (
+	ParameterTypeArray      ParameterType = "ARRAY"
 	ParameterTypeText       ParameterType = "TEXT"
 	ParameterTypeNumber     ParameterType = "NUMBER"
 	ParameterTypeChoice     ParameterType = "CHOICE"
@@ -1306,6 +1307,7 @@ const (
 )
 
 var AllParameterType = []ParameterType{
+	ParameterTypeArray,
 	ParameterTypeText,
 	ParameterTypeNumber,
 	ParameterTypeChoice,
@@ -1317,7 +1319,7 @@ var AllParameterType = []ParameterType{
 
 func (e ParameterType) IsValid() bool {
 	switch e {
-	case ParameterTypeText, ParameterTypeNumber, ParameterTypeChoice, ParameterTypeFileFolder, ParameterTypeYesNo, ParameterTypeDatetime, ParameterTypeColor:
+	case ParameterTypeArray, ParameterTypeText, ParameterTypeNumber, ParameterTypeChoice, ParameterTypeFileFolder, ParameterTypeYesNo, ParameterTypeDatetime, ParameterTypeColor:
 		return true
 	}
 	return false
