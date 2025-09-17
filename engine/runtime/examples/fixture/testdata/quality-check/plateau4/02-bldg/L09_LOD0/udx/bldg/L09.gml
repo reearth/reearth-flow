@@ -28,6 +28,25 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
 			<bldg:storeysBelowGround>9999</bldg:storeysBelowGround>
 			<bldg:lod0RoofEdge>
 				<gml:MultiSurface>
+                    <!-- Passes -->
+                    <!--
+                    <gml:surfaceMember>
+                        <gml:Polygon>
+                            <gml:exterior>
+                                <gml:LinearRing>
+                                    <gml:posList>
+                                        0.0 0.0 0.0
+                                        1.0 0.0 0.0
+                                        1.0 1.0 0.0
+                                        0.0 1.0 0.0
+                                        0.0 0.0 0.0
+                                </gml:posList>
+                                </gml:LinearRing>
+                            </gml:exterior>
+                        </gml:Polygon>
+                    </gml:surfaceMember>
+                    -->
+                    <!-- Fails due to self-intersection -->
                     <gml:surfaceMember>
                         <gml:Polygon>
                             <gml:exterior>
@@ -35,106 +54,36 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
                                     <gml:posList>
                                         0.0 0.0 0.0
                                         0.0 1.0 0.0
+                                        0.5 1.0 0.0
+                                        0.0 0.5 0.0
                                         1.0 1.0 0.0
                                         1.0 0.0 0.0
                                         0.0 0.0 0.0
-                                    </gml:posList>
+                                </gml:posList>
                                 </gml:LinearRing>
                             </gml:exterior>
-                            <gml:interior>
-                                <gml:LinearRing>
-                                    <gml:posList>
-                                        0.1 0.1 0.0
-                                        0.1 0.5 0.0
-                                        0.5 0.5 0.0
-                                        0.5 0.1 0.0
-                                        0.1 0.1 0.0
-                                    </gml:posList>
-                                </gml:LinearRing>
-                            </gml:interior>
-                            <gml:interior>
-                                <gml:LinearRing>
-                                    <gml:posList>
-                                        0.4 0.4 0.0
-                                        0.4 0.8 0.0
-                                        0.8 0.8 0.0
-                                        0.8 0.4 0.0
-                                        0.4 0.4 0.0
-                                    </gml:posList>
-                                </gml:LinearRing>
-                            </gml:interior>
-                            <!--
-                            <gml:exterior>
-                                <gml:LinearRing>
-                                    <gml:posList>
-                                        0.0 0.0 0.0
-                                        0.0 1.0 0.0
-                                        1.0 1.0 0.0
-                                        1.0 0.0 0.0
-                                        0.0 0.0 0.0
-                                    </gml:posList>
-                                </gml:LinearRing>
-                            </gml:exterior>
-                            <gml:interior>
-                                <gml:LinearRing>
-                                    <gml:posList>
-                                        0.1 0.1 0.0
-                                        0.1 0.5 0.0
-                                        0.5 0.5 0.0
-                                        0.5 0.1 0.0
-                                        0.1 0.1 0.0
-                                    </gml:posList>
-                                </gml:LinearRing>
-                            </gml:interior>
-                            <gml:interior>
-                                <gml:LinearRing>
-                                    <gml:posList>
-                                        0.1 0.1 0.0
-                                        0.1 0.5 0.0
-                                        0.5 0.5 0.0
-                                        0.5 0.1 0.0
-                                        0.1 0.1 0.0
-                                    </gml:posList>
-                                </gml:LinearRing>
-                            </gml:interior>
-                            -->
-                            <!--
-                            <gml:exterior>
-                                <gml:LinearRing>
-                                    <gml:posList>
-                                        0.0 0.0 0.0
-                                        0.0 1.0 0.0
-                                        1.0 1.0 0.0
-                                        1.0 0.0 0.0
-                                        0.0 0.0 0.0
-                                    </gml:posList>
-                                </gml:LinearRing>
-                            </gml:exterior>
-                            <gml:interior>
-                                <gml:LinearRing>
-                                    <gml:posList>
-                                        0.1 0.1 0.0
-                                        0.1 0.5 0.0
-                                        0.5 0.5 0.0
-                                        0.5 0.1 0.0
-                                        0.1 0.1 0.0
-                                    </gml:posList>
-                                </gml:LinearRing>
-                            </gml:interior>
-                            <gml:interior>
-                                <gml:LinearRing>
-                                    <gml:posList>
-                                        0.5 0.5 0.0
-                                        0.5 0.9 0.0
-                                        0.9 0.9 0.0
-                                        0.9 0.5 0.0
-                                        0.5 0.5 0.0
-                                    </gml:posList>
-                                </gml:LinearRing>
-                            </gml:interior>
-                            -->
                         </gml:Polygon>
                     </gml:surfaceMember>
+                    <!-- Fails due to self-crossing -->
+                    <!--
+                    <gml:surfaceMember>
+                        <gml:Polygon>
+                            <gml:exterior>
+                                <gml:LinearRing>
+                                    <gml:posList>
+                                        -1.0 0.0 0.0
+                                        1.0 0.0 0.0
+                                        1.0 1.0 0.0
+                                        0.0 1.0 0.0
+                                        0.0 -1.0 0.0
+                                        -1.0 -1.0 0.0
+                                        -1.0 0.0 0.0
+                                </gml:posList>
+                                </gml:LinearRing>
+                            </gml:exterior>
+                        </gml:Polygon>
+                    </gml:surfaceMember>
+                    -->
                 </gml:MultiSurface>
 			</bldg:lod0RoofEdge>
 <!--
