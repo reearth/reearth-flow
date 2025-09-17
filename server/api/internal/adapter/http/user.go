@@ -6,19 +6,16 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/user"
-	"github.com/reearth/reearthx/account/accountusecase/accountinterfaces"
 	"golang.org/x/text/language"
 )
 
 type UserController struct {
-	usecase         interfaces.User
-	reearthxUsecase accountinterfaces.User
+	usecase interfaces.User
 }
 
-func NewUserController(usecase interfaces.User, reearthxUsecase accountinterfaces.User) *UserController {
+func NewUserController(usecase interfaces.User) *UserController {
 	return &UserController{
-		usecase:         usecase,
-		reearthxUsecase: reearthxUsecase,
+		usecase: usecase,
 	}
 }
 
@@ -105,24 +102,24 @@ func (c *UserController) Signup(ctx context.Context, input SignupInput) (SignupO
 }
 
 func (c *UserController) CreateVerification(ctx context.Context, input CreateVerificationInput) error {
-	return c.reearthxUsecase.CreateVerification(ctx, input.Email)
+	return c.usecase.CreateVerification(ctx, input.Email)
 }
 
 func (c *UserController) VerifyUser(ctx context.Context, code string) (VerifyUserOutput, error) {
-	u, err := c.reearthxUsecase.VerifyUser(ctx, code)
+	u, err := c.usecase.VerifyUser(ctx, code)
 	if err != nil {
 		return VerifyUserOutput{}, err
 	}
 	return VerifyUserOutput{
 		UserID:   u.ID().String(),
-		Verified: u.Verification().IsVerified(),
+		Verified: true,
 	}, nil
 }
 
 func (c *UserController) StartPasswordReset(ctx context.Context, input PasswordResetInput) error {
-	return c.reearthxUsecase.StartPasswordReset(ctx, input.Email)
+	return c.usecase.StartPasswordReset(ctx, input.Email)
 }
 
 func (c *UserController) PasswordReset(ctx context.Context, input PasswordResetInput) error {
-	return c.reearthxUsecase.PasswordReset(ctx, input.Password, input.Token)
+	return c.usecase.PasswordReset(ctx, input.Password, input.Token)
 }
