@@ -45,9 +45,9 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
                                 <gml:LinearRing>
                                     <gml:posList>
                                         0.1 0.1 0.0
-                                        0.1 0.5 0.0
-                                        0.5 0.5 0.0
                                         0.5 0.1 0.0
+                                        0.5 0.5 0.0
+                                        0.1 0.5 0.0
                                         0.1 0.1 0.0
                                     </gml:posList>
                                 </gml:LinearRing>
@@ -56,9 +56,9 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
                                 <gml:LinearRing>
                                     <gml:posList>
                                         0.4 0.4 0.0
-                                        0.4 0.8 0.0
-                                        0.8 0.8 0.0
                                         0.8 0.4 0.0
+                                        0.8 0.8 0.0
+                                        0.4 0.8 0.0
                                         0.4 0.4 0.0
                                     </gml:posList>
                                 </gml:LinearRing>

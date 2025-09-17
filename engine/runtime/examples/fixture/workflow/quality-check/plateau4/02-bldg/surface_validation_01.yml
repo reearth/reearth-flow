@@ -37,10 +37,14 @@ nodes:
         - attribute: issue
           method: create
           value: |
-            if env.get("__value").validationResult?.details == () {
-              return "UnknownError";
+            let value = env.get("__value");
+            if value.validationResult?.details != () {
+              return value.validationResult.details[0][0];
             }
-            env.get("__value").validationResult.details[0][0]
+            if "issue" in value {
+              return value.issue;
+            }
+            "UnknownError"
 
         # remove
         - attribute: validationResult
