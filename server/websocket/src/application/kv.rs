@@ -39,7 +39,7 @@ use crate::domain::value_objects::keys::{
     doc_oid_name, key_doc, key_doc_end, key_doc_start, key_meta, key_meta_end, key_meta_start,
     key_oid, key_state_vector, key_update, Key, KEYSPACE_DOC, KEYSPACE_OID, OID, V1,
 };
-use crate::infrastructure::redis::RedisStore;
+use crate::storage::redis::RedisStore;
 use crate::tools::{compress_brotli, decompress_brotli, first_zero_bit};
 use anyhow;
 use async_trait::async_trait;

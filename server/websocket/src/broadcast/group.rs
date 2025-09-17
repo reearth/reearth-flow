@@ -1,12 +1,13 @@
 #![allow(dead_code)]
 use crate::application::kv::DocOps;
 use crate::infrastructure::gcs::GcsStore;
-use crate::infrastructure::redis::RedisStore;
+use crate::storage::redis::RedisStore;
 use crate::{AwarenessRef, Subscription};
 
 use anyhow::Result;
 use bytes::Bytes;
 use futures_util::{SinkExt, StreamExt};
+use rand;
 use tokio::task::JoinHandle;
 use tracing::{debug, error, info, warn};
 use yrs::types::ToJson;
@@ -24,7 +25,6 @@ use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
 use yrs::{Doc, ReadTxn, Transact, Update};
 
 use super::types::BroadcastConfig;
-use crate::domain::value_objects::count::Count;
 
 pub struct BroadcastGroup {
     awareness_ref: AwarenessRef,
@@ -34,6 +34,7 @@ pub struct BroadcastGroup {
     storage: Arc<GcsStore>,
     redis_store: Arc<RedisStore>,
     doc_name: String,
+    instance_id: String,
     last_read_id: Arc<Mutex<String>>,
     awareness_updater: Option<JoinHandle<()>>,
     awareness_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
@@ -43,7 +44,7 @@ pub struct BroadcastGroup {
     heartbeat_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
     sync_task: Option<JoinHandle<()>>,
     sync_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
-    connections_count: Count,
+    connections_count: Arc<Mutex<usize>>,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -106,6 +107,7 @@ impl BroadcastGroup {
         });
         drop(lock);
 
+        let instance_id = format!("instance-{}", rand::random::<u64>());
         let redis_store_for_awareness = redis_store.clone();
         let doc_name_for_awareness = config.doc_name.clone().unwrap_or_default();
         let mut conn = redis_store_for_awareness
@@ -297,6 +299,7 @@ impl BroadcastGroup {
             storage,
             redis_store,
             doc_name,
+            instance_id,
             last_read_id,
             awareness_updater: Some(awareness_updater),
             awareness_shutdown_tx: Some(awareness_shutdown_tx),
@@ -306,20 +309,23 @@ impl BroadcastGroup {
             heartbeat_shutdown_tx: Some(heartbeat_shutdown_tx),
             sync_task: Some(sync_task),
             sync_shutdown_tx: Some(sync_shutdown_tx),
-            connections_count: Count::new(),
+            connections_count: Arc::new(Mutex::new(0)),
         })
     }
 
     pub async fn increment_connections_count(&self) {
-        self.connections_count.increment();
+        let mut connections_count = self.connections_count.lock().await;
+        *connections_count += 1;
     }
 
     pub async fn decrement_connections_count(&self) {
-        self.connections_count.decrement();
+        let mut connections_count = self.connections_count.lock().await;
+        *connections_count -= 1;
     }
 
     pub async fn get_connections_count(&self) -> usize {
-        self.connections_count.get()
+        let connections_count = self.connections_count.lock().await;
+        *connections_count
     }
 
     pub fn awareness(&self) -> &AwarenessRef {
@@ -574,7 +580,7 @@ impl BroadcastGroup {
             .await?;
         if conn_count <= 0 {
             let lock_id = format!("gcs:lock:{}", self.doc_name);
-            let instance_id = format!("instance-{}", self.awareness_ref.read().await.client_id());
+            let instance_id = format!("instance-{}", rand::random::<u64>());
 
             let lock_acquired = self
                 .redis_store
@@ -657,7 +663,7 @@ impl BroadcastGroup {
                 warn!("Failed to release GCS lock: {}", e);
             }
             self.redis_store
-                .safe_delete_stream(&self.doc_name, &instance_id)
+                .safe_delete_stream(&self.doc_name, &self.instance_id)
                 .await?;
         }
 
