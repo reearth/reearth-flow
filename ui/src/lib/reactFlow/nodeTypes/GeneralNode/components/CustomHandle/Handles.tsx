@@ -70,7 +70,6 @@ const Handles: React.FC<Props> = ({
                   className={`left-1 w-[8px] rounded-none transition-colors ${index === (!outputs && inputs && inputs.length - 1) ? "rounded-bl-sm" : undefined}`}
                   position={Position.Left}
                   id={input}
-                  // isConnectable={1}
                 />
                 <div className="flex w-full translate-x-0.5 items-center">
                   <div>
