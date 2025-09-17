@@ -17,7 +17,7 @@ nodes:
   - id: 3c8d9e7f-2a5b-4f1c-8e6a-9d3c5b8e1a4f
     name: PLATEAU3.SurfaceValidator2D
     type: subGraph
-    subGraphId: f4e71783-0b7d-4d4a-9377-cf8d7f061f3b
+    subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
 
   - id: b1f5a9c3-7e2d-4a8c-9f6b-2d8e5c3a7b9f
     name: AttributeManagerLod0InvalidSurface
