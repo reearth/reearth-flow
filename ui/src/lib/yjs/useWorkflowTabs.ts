@@ -94,6 +94,7 @@ export default ({
   return {
     isMainWorkflow,
     openWorkflows,
+    openWorkflowIds,
     workflowNames,
     handleWorkflowOpen,
     handleWorkflowClose,

@@ -81,7 +81,7 @@ const ColorInput = <
           aria-required={required}
           aria-invalid={rawErrors.length > 0}
           aria-describedby={rawErrors.length > 0 ? `${id}-error` : undefined}
-          className={rawErrors.length > 0 ? "border-destructive" : ""}
+          className={`${rawErrors.length > 0 ? "border-destructive" : ""} h-7 w-12 p-0`}
         />
         <ActionArea
           value={value}

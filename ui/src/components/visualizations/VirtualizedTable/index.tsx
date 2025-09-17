@@ -203,7 +203,7 @@ function VirtualizedTable<TData, TValue>({
         <div
           className="w-full caption-bottom overflow-auto text-xs"
           style={{
-            height: `${virtualizer.getTotalSize()}px`,
+            height: `${virtualizer.getTotalSize() + 32}px`,
           }}>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

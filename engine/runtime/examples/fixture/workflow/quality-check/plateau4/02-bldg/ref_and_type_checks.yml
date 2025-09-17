@@ -84,9 +84,9 @@ nodes:
     type: action
     action: FileWriter
     with:
-      format: tsv
+      format: csv
       output: |
-        file::join_path(env.get("outputPath"), "02_bldg_l_bldg_06エラー.tsv")
+        file::join_path(env.get("outputPath"), "02_建築物_L-bldg-06エラー.csv")
 
   # t-bldg-02
   - id: 1c480edd-fa61-4b43-b851-8cfc560f5859
@@ -131,9 +131,9 @@ nodes:
     type: action
     action: FileWriter
     with:
-      format: tsv
+      format: csv
       output: |
-        file::join_path(env.get("outputPath"), "02_bldg_t_bldg_02エラー.tsv")
+        file::join_path(env.get("outputPath"), "02_建築物_T-bldg-02エラー.csv")
 
   - id: 35e0e6d2-44f4-4e75-abce-5280c2b80a5d
     name: StatisticsCalculatorT-bldg-02

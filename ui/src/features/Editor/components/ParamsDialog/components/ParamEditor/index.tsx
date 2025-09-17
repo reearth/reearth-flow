@@ -36,6 +36,7 @@ type Props = {
   ) => Promise<void>;
   onWorkflowRename?: (id: string, name: string) => void;
   onValueEditorOpen: (fieldContext: FieldContext) => void;
+  onPythonEditorOpen?: (fieldContext: FieldContext) => void;
 };
 
 const ParamEditor: React.FC<Props> = ({
@@ -48,6 +49,7 @@ const ParamEditor: React.FC<Props> = ({
   onUpdate,
   onWorkflowRename,
   onValueEditorOpen,
+  onPythonEditorOpen,
 }) => {
   const t = useT();
   const { useGetActionById } = useAction(i18n.language);
@@ -70,6 +72,9 @@ const ParamEditor: React.FC<Props> = ({
         : undefined,
     [createdAction?.parameter],
   );
+
+  // Generate UI schema from original schema (before patching) to preserve Expr detection
+  const originalSchema = createdAction?.parameter;
 
   const [updatedCustomization, setUpdatedCustomization] = useState(
     nodeMeta.customizations,
@@ -150,10 +155,13 @@ const ParamEditor: React.FC<Props> = ({
                 <SchemaForm
                   readonly={readonly}
                   schema={patchedSchemaParams}
+                  originalSchema={originalSchema}
+                  actionName={nodeMeta.officialName}
                   defaultFormData={nodeParams}
                   onChange={onParamsUpdate}
                   onValidationChange={handleParamsValidationChange}
                   onEditorOpen={onValueEditorOpen}
+                  onPythonEditorOpen={onPythonEditorOpen}
                 />
               )}
             </div>

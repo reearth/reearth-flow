@@ -45,7 +45,7 @@ export default () => {
 
       try {
         await handleProjectImport({
-          projectName: projectMeta.name + " (import)",
+          projectName: projectMeta.name + " " + "(import)",
           projectDescription: projectMeta.description,
           workspace: currentWorkspace,
           yDocBinary,

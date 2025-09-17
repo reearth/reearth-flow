@@ -34,6 +34,7 @@ export default function Editor({
 }: Props) {
   const {
     currentWorkflowId,
+    currentYWorkflow,
     openWorkflows,
     currentProject,
     self,
@@ -95,8 +96,15 @@ export default function Editor({
     (): EditorContextType => ({
       onNodesChange: handleNodesChange,
       onNodeSettings: handleNodeSettings,
+      currentYWorkflow,
+      undoTrackerActionWrapper,
     }),
-    [handleNodesChange, handleNodeSettings],
+    [
+      handleNodesChange,
+      handleNodeSettings,
+      currentYWorkflow,
+      undoTrackerActionWrapper,
+    ],
   );
 
   return (
@@ -143,6 +151,7 @@ export default function Editor({
               selectedEdgeIds={selectedEdgeIds}
               yDoc={yDoc}
               users={users}
+              currentWorkflowId={currentWorkflowId}
               onWorkflowAdd={handleWorkflowAdd}
               onWorkflowOpen={handleWorkflowOpen}
               onNodesAdd={handleNodesAdd}

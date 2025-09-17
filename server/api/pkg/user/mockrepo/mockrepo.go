@@ -72,6 +72,21 @@ func (mr *MockUserRepoMockRecorder) FindMe(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindMe", reflect.TypeOf((*MockUserRepo)(nil).FindMe), ctx)
 }
 
+// RemoveMyAuth mocks base method.
+func (m *MockUserRepo) RemoveMyAuth(ctx context.Context, authProvider string) (*user.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveMyAuth", ctx, authProvider)
+	ret0, _ := ret[0].(*user.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RemoveMyAuth indicates an expected call of RemoveMyAuth.
+func (mr *MockUserRepoMockRecorder) RemoveMyAuth(ctx, authProvider any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveMyAuth", reflect.TypeOf((*MockUserRepo)(nil).RemoveMyAuth), ctx, authProvider)
+}
+
 // SignupOIDC mocks base method.
 func (m *MockUserRepo) SignupOIDC(ctx context.Context, attrs user.SignupOIDCAttrs) (*user.User, error) {
 	m.ctrl.T.Helper()
