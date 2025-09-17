@@ -25,6 +25,7 @@ use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
 use yrs::{Doc, ReadTxn, Transact, Update};
 
 use super::types::BroadcastConfig;
+use crate::domain::value_objects::count::Count;
 
 pub struct BroadcastGroup {
     awareness_ref: AwarenessRef,
@@ -44,7 +45,7 @@ pub struct BroadcastGroup {
     heartbeat_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
     sync_task: Option<JoinHandle<()>>,
     sync_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
-    connections_count: Arc<Mutex<usize>>,
+    connections_count: Count,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -309,23 +310,20 @@ impl BroadcastGroup {
             heartbeat_shutdown_tx: Some(heartbeat_shutdown_tx),
             sync_task: Some(sync_task),
             sync_shutdown_tx: Some(sync_shutdown_tx),
-            connections_count: Arc::new(Mutex::new(0)),
+            connections_count: Count::new(),
         })
     }
 
     pub async fn increment_connections_count(&self) {
-        let mut connections_count = self.connections_count.lock().await;
-        *connections_count += 1;
+        self.connections_count.increment();
     }
 
     pub async fn decrement_connections_count(&self) {
-        let mut connections_count = self.connections_count.lock().await;
-        *connections_count -= 1;
+        self.connections_count.decrement();
     }
 
     pub async fn get_connections_count(&self) -> usize {
-        let connections_count = self.connections_count.lock().await;
-        *connections_count
+        self.connections_count.get()
     }
 
     pub fn awareness(&self) -> &AwarenessRef {
