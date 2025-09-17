@@ -10,7 +10,7 @@ use tokio::sync::Mutex;
 use tracing::{debug, error};
 use yrs::sync::Error;
 
-use crate::domain::entity::sub::Subscription;
+use crate::domain::value_objects::sub::Subscription;
 use crate::group::BroadcastGroup;
 
 type CompletionFuture = Pin<Box<dyn Future<Output = Result<(), Error>> + Send>>;

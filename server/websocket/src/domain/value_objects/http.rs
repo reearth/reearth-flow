@@ -4,30 +4,6 @@ use serde::{Deserialize, Serialize};
 use yrs::updates::encoder::Encode;
 
 #[derive(Debug, Clone)]
-pub struct Document {
-    pub id: String,
-    pub updates: Vec<u8>,
-    pub version: u64,
-    pub timestamp: chrono::DateTime<Utc>,
-}
-
-impl Document {
-    pub fn new(
-        id: String,
-        updates: Vec<u8>,
-        version: u64,
-        timestamp: chrono::DateTime<Utc>,
-    ) -> Self {
-        Self {
-            id,
-            updates,
-            version,
-            timestamp,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
 pub struct HistoryItem {
     pub version: u64,
     pub updates: Vec<u8>,

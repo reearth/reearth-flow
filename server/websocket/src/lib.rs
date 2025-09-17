@@ -54,12 +54,12 @@ pub struct AppState {
 pub use auth::AuthService;
 
 pub use conf::Config;
-pub use domain::entity::sub::Subscription;
 pub use domain::value_objects::conf::{
     DEFAULT_APP_ENV, DEFAULT_GCS_BUCKET, DEFAULT_ORIGINS, DEFAULT_REDIS_TTL, DEFAULT_REDIS_URL,
     DEFAULT_WS_PORT,
 };
 pub use domain::value_objects::http::*;
+pub use domain::value_objects::sub::Subscription;
 
 #[cfg(feature = "auth")]
 pub use domain::value_objects::conf::DEFAULT_AUTH_URL;
