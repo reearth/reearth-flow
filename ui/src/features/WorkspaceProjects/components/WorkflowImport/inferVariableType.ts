@@ -48,8 +48,8 @@ export function inferProjectVariableType(value: any, name: string): VarType {
   }
 
   if (Array.isArray(value)) {
-    // Arrays become choice selectors
-    return "choice";
+    // Arrays should be mapped to array type
+    return "array";
   }
 
   if (typeof value === "string") {
@@ -93,6 +93,8 @@ export function getDefaultValue(value: any, type: VarType): any {
   // If value is null/undefined, provide appropriate defaults
   if (value === null || value === undefined) {
     switch (type) {
+      case "array":
+        return [];
       case "number":
         return 0;
       case "yes_no":
@@ -110,9 +112,15 @@ export function getDefaultValue(value: any, type: VarType): any {
     }
   }
 
-  // For arrays, convert to comma-separated string for choice type
-  if (Array.isArray(value) && type === "choice") {
-    return value.join(", ");
+  // For arrays, preserve as-is if type is array, otherwise convert based on target type
+  if (Array.isArray(value)) {
+    if (type === "array") {
+      return value; // Keep arrays as arrays for array type
+    } else if (type === "choice") {
+      return value.join(", "); // Convert to comma-separated for choice type
+    } else if (type === "text") {
+      return JSON.stringify(value); // Convert to JSON string for text type
+    }
   }
 
   // For non-null values, use as-is
