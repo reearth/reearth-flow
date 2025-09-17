@@ -11,6 +11,22 @@ pub struct Document {
     pub timestamp: chrono::DateTime<Utc>,
 }
 
+impl Document {
+    pub fn new(
+        id: String,
+        updates: Vec<u8>,
+        version: u64,
+        timestamp: chrono::DateTime<Utc>,
+    ) -> Self {
+        Self {
+            id,
+            updates,
+            version,
+            timestamp,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct HistoryItem {
     pub version: u64,
