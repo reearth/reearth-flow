@@ -1,7 +1,7 @@
 /* eslint-disable */
 import { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core';
 export type Maybe<T> = T | null;
-export type InputMaybe<T> = Maybe<T>;
+export type InputMaybe<T> = T | null | undefined;
 export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
 export type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]?: Maybe<T[SubKey]> };
 export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]: Maybe<T[SubKey]> };
@@ -724,6 +724,7 @@ export type ParameterBatchInput = {
 };
 
 export enum ParameterType {
+  Array = 'ARRAY',
   Choice = 'CHOICE',
   Color = 'COLOR',
   Datetime = 'DATETIME',
@@ -1608,10 +1609,20 @@ export type GetProjectByIdQueryVariables = Exact<{
 }>;
 
 
-export type GetProjectByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Deployment' } | { __typename: 'Job' } | { __typename: 'NodeExecution' } | (
-    { __typename: 'Project' }
-    & { ' $fragmentRefs'?: { 'ProjectFragment': ProjectFragment } }
-  ) | { __typename: 'ProjectDocument' } | { __typename: 'Trigger' } | { __typename: 'User' } | { __typename: 'Workspace' } | null };
+export type GetProjectByIdQuery = { __typename?: 'Query', node?:
+    | { __typename: 'Asset' }
+    | { __typename: 'Deployment' }
+    | { __typename: 'Job' }
+    | { __typename: 'NodeExecution' }
+    | (
+      { __typename: 'Project' }
+      & { ' $fragmentRefs'?: { 'ProjectFragment': ProjectFragment } }
+    )
+    | { __typename: 'ProjectDocument' }
+    | { __typename: 'Trigger' }
+    | { __typename: 'User' }
+    | { __typename: 'Workspace' }
+   | null };
 
 export type UpdateProjectMutationVariables = Exact<{
   input: UpdateProjectInput;
@@ -1837,10 +1848,20 @@ export type GetWorkspaceByIdQueryVariables = Exact<{
 }>;
 
 
-export type GetWorkspaceByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Deployment' } | { __typename: 'Job' } | { __typename: 'NodeExecution' } | { __typename: 'Project' } | { __typename: 'ProjectDocument' } | { __typename: 'Trigger' } | { __typename: 'User' } | (
-    { __typename: 'Workspace' }
-    & { ' $fragmentRefs'?: { 'WorkspaceFragment': WorkspaceFragment } }
-  ) | null };
+export type GetWorkspaceByIdQuery = { __typename?: 'Query', node?:
+    | { __typename: 'Asset' }
+    | { __typename: 'Deployment' }
+    | { __typename: 'Job' }
+    | { __typename: 'NodeExecution' }
+    | { __typename: 'Project' }
+    | { __typename: 'ProjectDocument' }
+    | { __typename: 'Trigger' }
+    | { __typename: 'User' }
+    | (
+      { __typename: 'Workspace' }
+      & { ' $fragmentRefs'?: { 'WorkspaceFragment': WorkspaceFragment } }
+    )
+   | null };
 
 export type UpdateWorkspaceMutationVariables = Exact<{
   input: UpdateWorkspaceInput;
