@@ -6,6 +6,7 @@ import {
   Button,
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@flow/components";
@@ -41,7 +42,7 @@ const PythonEditorDialog: React.FC<Props> = ({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent size="3xl">
+      <DialogContent size="3xl" onInteractOutside={(e) => e.preventDefault()} hideCloseButton>
         <DialogHeader>
           <DialogTitle>
             <div className="flex items-center gap-2">
@@ -85,27 +86,25 @@ const PythonEditorDialog: React.FC<Props> = ({
               }}
             />
           </div>
-
-          {/* Footer with help text */}
-          <div className="mt-4 rounded bg-muted/20 p-3 text-sm text-muted-foreground">
+          <div className="border-b bg-muted/20 p-4 text-sm text-muted-foreground">
             <p>
-              <strong>Available functions:</strong> get_geometry_type(),
+              <strong>{t("Available functions:")}</strong> get_geometry_type(),
               get_coordinates(), create_point(), create_polygon(),
               create_linestring()
             </p>
             <p>
-              <strong>Available variables:</strong> properties, geometry,
-              feature_id, attributes (alias for properties)
+              <strong>{t("Available variables:")}</strong> properties, geometry,
+              feature_id, attributes ({t("alias for properties")})
             </p>
           </div>
-
-          {/* Submit Button */}
-          <div className="mt-4 flex justify-end gap-2">
-            <Button variant="outline" onClick={onClose}>
-              {t("Cancel")}
-            </Button>
-            <Button onClick={handleSubmit}>{t("Apply")}</Button>
-          </div>
+          <DialogFooter className="p-4">
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={onClose}>
+                {t("Cancel")}
+              </Button>
+              <Button onClick={handleSubmit}>{t("Apply")}</Button>
+            </div>
+          </DialogFooter>
         </div>
       </DialogContent>
     </Dialog>
