@@ -1,15 +1,25 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
+import * as Y from "yjs";
 
+import { useEditorContext } from "@flow/features/Editor/editorContext";
+import type { YNodesMap, YNodeValue } from "@flow/lib/yjs/types";
 import type { NodeData } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
 import { getNodeColors } from "./nodeColors";
 // import useNodeStatus from "./useNodeStatus";
 
-export default ({ data, type }: { data: NodeData; type: string }) => {
+export default ({
+  data,
+  type,
+  nodeId,
+}: {
+  data: NodeData;
+  type: string;
+  nodeId: string;
+}) => {
   const { officialName, inputs: defaultInputs, outputs: defaultOutputs } = data;
-
-  // const { nodeStatus } = useNodeStatus();
+  const { currentYWorkflow, undoTrackerActionWrapper } = useEditorContext();
 
   const inputs: string[] = useMemo(() => {
     if (data.params?.conditions) {
@@ -34,6 +44,19 @@ export default ({ data, type }: { data: NodeData; type: string }) => {
   const [borderColor, selectedColor, selectedBackgroundColor] =
     getNodeColors(type);
 
+  const handleCollapsedToggle = useCallback(
+    (collapsed: boolean) => {
+      undoTrackerActionWrapper?.(() => {
+        const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
+        const yNode = yNodes?.get(nodeId);
+        if (!yNode) return;
+        const yData = yNode?.get("data") as Y.Map<YNodeValue>;
+        yData?.set("isCollapsed", collapsed);
+      });
+    },
+    [currentYWorkflow, nodeId, undoTrackerActionWrapper],
+  );
+
   return {
     officialName,
     inputs,
@@ -42,5 +65,6 @@ export default ({ data, type }: { data: NodeData; type: string }) => {
     borderColor,
     selectedColor,
     selectedBackgroundColor,
+    handleCollapsedToggle,
   };
 };
