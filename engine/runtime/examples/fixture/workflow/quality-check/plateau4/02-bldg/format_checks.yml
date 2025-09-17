@@ -19,9 +19,9 @@ nodes:
     type: action
     action: FileWriter
     with:
-      format: tsv
+      format: csv
       output: |
-        file::join_path(env.get("outputPath"), "02_bldg_地物インスタンス数.tsv")
+        file::join_path(env.get("outputPath"), "02_建築物_地物インスタンス数.csv")
   # === End of C02 ===
 
   - id: 80b7d9fd-6514-49d0-88e6-a87c3c1d36c9
@@ -100,9 +100,9 @@ nodes:
     type: action
     action: FileWriter
     with:
-      format: tsv
+      format: csv
       output: |
-        file::join_path(env.get("outputPath"), "02_bldg_l-bldg-04-05エラー.tsv")
+        file::join_path(env.get("outputPath"), "02_建築物_L-bldg-04,05エラー.csv")
 
   - id: 5d8e7f4a-3b2c-4f1e-9a8d-6c5b4e3f2a1b
     name: AttributeManager-city-code-error-transform
@@ -162,9 +162,9 @@ nodes:
     type: action
     action: FileWriter
     with:
-      format: tsv
+      format: csv
       output: |
-        file::join_path(env.get("outputPath"), "02_bldg_市区町村コードエラー.tsv")
+        file::join_path(env.get("outputPath"), "02_建築物_市区町村コードエラー.csv")
 
   - id: 33c1a2b3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: CityCodeErrorCounter
@@ -271,9 +271,9 @@ nodes:
     type: action
     action: FileWriter
     with:
-      format: tsv
+      format: csv
       output: |
-        file::join_path(env.get("outputPath"), "02_bldg_建物ID書式不正.tsv")
+        file::join_path(env.get("outputPath"), "02_建築物_建物ID書式不正.csv")
 
   - id: 0b291ad6-cdfa-4371-bcbb-3422b2cd53cf
     name: AttributeAggregator-c-bldg-01
@@ -371,9 +371,9 @@ nodes:
     type: action
     action: FileWriter
     with:
-      format: tsv
+      format: csv
       output: |
-        file::join_path(env.get("outputPath"), "02_bldg_c_bldg_01エラー.tsv")
+        file::join_path(env.get("outputPath"), "02_建築物_C-bldg-01エラー.csv")
 
   - id: 124b1896-04c2-41d9-9e76-0ce32b04089f
     name: C-BLDG-01ErrorCounter

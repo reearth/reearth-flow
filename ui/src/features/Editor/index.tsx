@@ -151,6 +151,7 @@ export default function Editor({
               selectedEdgeIds={selectedEdgeIds}
               yDoc={yDoc}
               users={users}
+              currentWorkflowId={currentWorkflowId}
               onWorkflowAdd={handleWorkflowAdd}
               onWorkflowOpen={handleWorkflowOpen}
               onNodesAdd={handleNodesAdd}

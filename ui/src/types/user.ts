@@ -45,4 +45,6 @@ export type AwarenessUser = {
   };
   color: string;
   userName: string;
+  currentWorkflowId?: string;
+  openWorkflowIds?: string[];
 };

@@ -124,3 +124,23 @@ func (r *userRepo) SignupOIDC(ctx context.Context, a user.SignupOIDCAttrs) (*use
 
 	return util.ToUser(m.SignupOIDC.User)
 }
+
+func (r *userRepo) RemoveMyAuth(ctx context.Context, authProvider string) (*user.User, error) {
+	if authProvider == "" {
+		return nil, nil
+	}
+
+	in := RemoveMyAuthInput{
+		Auth: graphql.String(string(authProvider)),
+	}
+
+	var m removeMyAuthMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return nil, err
+	}
+
+	return util.ToMe(m.RemoveMyAuth.Me)
+}
