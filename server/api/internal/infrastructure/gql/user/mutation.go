@@ -34,3 +34,21 @@ type deleteMeMutation struct {
 		ID graphql.ID `graphql:"userId"`
 	} `graphql:"deleteMe(input: $input)"`
 }
+
+type createVerificationMutation struct {
+	CreateVerification graphql.Boolean `graphql:"createVerification(input: $input)"`
+}
+
+type verifyUserMutation struct {
+	VerifyUser struct {
+		User gqlmodel.User `graphql:"user"`
+	} `graphql:"verifyUser(input: $input)"`
+}
+
+type startPasswordResetMutation struct {
+	StartPasswordReset graphql.Boolean `graphql:"startPasswordReset(input: $input)"`
+}
+
+type passwordResetMutation struct {
+	PasswordReset graphql.Boolean `graphql:"passwordReset(input: $input)"`
+}

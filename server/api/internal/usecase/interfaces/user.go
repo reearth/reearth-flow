@@ -47,4 +47,8 @@ type User interface {
 	SignupOIDC(context.Context, SignupOIDCParam) (*user.User, error)
 	RemoveMyAuth(context.Context, string) (*user.User, error)
 	DeleteMe(context.Context, id.UserID) error
+	CreateVerification(context.Context, string) error
+	VerifyUser(context.Context, string) (*user.User, error)
+	StartPasswordReset(context.Context, string) error
+	PasswordReset(context.Context, string, string) error
 }
