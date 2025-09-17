@@ -31,6 +31,9 @@ type SignupParam struct {
 
 type SignupOIDCParam struct {
 	UserID      *id.UserID
+	Name        *string
+	Email       *string
+	Sub         *string
 	Lang        *language.Tag
 	WorkspaceID *id.WorkspaceID
 	Secret      *string
