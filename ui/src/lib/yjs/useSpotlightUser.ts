@@ -92,8 +92,8 @@ export default ({
   }, []);
 
   const handleSpotlightUserDeselect = useCallback(() => {
-    setSpotlightUserClientId(null);
-  }, []);
+    if (spotlightUser && spotlightUserClientId) setSpotlightUserClientId(null);
+  }, [spotlightUser, spotlightUserClientId]);
 
   useEffect(() => {
     if (Object.keys(users).length === 0) return;
