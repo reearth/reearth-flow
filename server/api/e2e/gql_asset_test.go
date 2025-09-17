@@ -10,7 +10,11 @@ import (
 	"testing"
 
 	"github.com/reearth/reearth-flow/api/internal/app/config"
+	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
+	pkgworkspace "github.com/reearth/reearth-flow/api/pkg/workspace"
+	workspacemockrepo "github.com/reearth/reearth-flow/api/pkg/workspace/mockrepo"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 func TestQueryAssets(t *testing.T) {
@@ -290,12 +294,25 @@ func TestAssetKeywordSearch(t *testing.T) {
 }
 
 func TestWorkspaceAssetsQuery(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+
+	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
+	gomock.InOrder(
+		mockWorkspaceRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(pkgworkspace.List{w}, nil),
+	)
+	mock := &TestMocks{
+		WorkspaceRepo: mockWorkspaceRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true, nil)
+	}, true, baseSeederUser, true, mock)
 
 	// Query workspace with assets field - should return empty
 	query := fmt.Sprintf(`query { node(id: "%s", type: WORKSPACE) { ... on Workspace { id assets(pagination: {page: 1, pageSize: 10}) { nodes { id } totalCount } } } }`, wId1)
