@@ -66,10 +66,10 @@ func (c *UserController) Signup(ctx context.Context, input SignupInput) (SignupO
 	}
 
 	if input.Sub != nil && *input.Sub != "" && input.Email != "" && input.Name != "" {
-		u, err := c.reearthxUsecase.SignupOIDC(ctx, accountinterfaces.SignupOIDCParam{
-			Name:   input.Name,
-			Email:  input.Email,
-			Sub:    *input.Sub,
+		u, err := c.usecase.SignupOIDC(ctx, interfaces.SignupOIDCParam{
+			Name:   &input.Name,
+			Email:  &input.Email,
+			Sub:    input.Sub,
 			Secret: input.Secret,
 		})
 		if err != nil {

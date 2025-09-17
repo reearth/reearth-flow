@@ -26,6 +26,9 @@ type SignupInput struct {
 
 type SignupOIDCInput struct {
 	ID          *graphql.ID     `json:"id,omitempty"`
+	Name        *graphql.String `json:"name"`
+	Email       *graphql.String `json:"email"`
+	Sub         *graphql.String `json:"sub"`
 	Lang        *graphql.String `json:"lang,omitempty"`
 	WorkspaceID *graphql.ID     `json:"workspaceId,omitempty"`
 	Secret      *graphql.String `json:"secret,omitempty"`

@@ -55,6 +55,9 @@ func (i *User) Signup(ctx context.Context, p interfaces.SignupParam) (*user.User
 func (i *User) SignupOIDC(ctx context.Context, p interfaces.SignupOIDCParam) (*user.User, error) {
 	attrs := user.SignupOIDCAttrs{
 		UserID:      p.UserID,
+		Name:        p.Name,
+		Email:       p.Email,
+		Sub:         p.Sub,
 		Lang:        p.Lang,
 		WorkspaceID: p.WorkspaceID,
 		Secret:      p.Secret,

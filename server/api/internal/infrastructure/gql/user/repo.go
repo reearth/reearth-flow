@@ -142,6 +142,18 @@ func (r *userRepo) SignupOIDC(ctx context.Context, a user.SignupOIDCAttrs) (*use
 		s := graphql.ID(a.UserID.String())
 		in.ID = &s
 	}
+	if a.Name != nil {
+		s := graphql.String(*a.Name)
+		in.Name = &s
+	}
+	if a.Email != nil {
+		s := graphql.String(*a.Email)
+		in.Email = &s
+	}
+	if a.Sub != nil {
+		s := graphql.String(*a.Sub)
+		in.Sub = &s
+	}
 	if a.Lang != nil {
 		langCode := graphql.String(a.Lang.String())
 		in.Lang = &langCode
