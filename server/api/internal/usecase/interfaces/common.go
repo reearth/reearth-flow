@@ -2,8 +2,6 @@ package interfaces
 
 import (
 	"errors"
-
-	"github.com/reearth/reearthx/account/accountusecase/accountinterfaces"
 )
 
 type ListOperation string
@@ -35,6 +33,5 @@ type Container struct {
 	Trigger       Trigger
 	UserFacingLog UserFacingLog
 	User          User
-	ReearthxUser  accountinterfaces.User // TODO: After migration, remove this
 	Workspace     Workspace
 }

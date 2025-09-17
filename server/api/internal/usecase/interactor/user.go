@@ -72,3 +72,19 @@ func (i *User) RemoveMyAuth(ctx context.Context, authProvider string) (*user.Use
 func (i *User) DeleteMe(ctx context.Context, uid id.UserID) error {
 	return i.userRepo.DeleteMe(ctx, uid)
 }
+
+func (i *User) CreateVerification(ctx context.Context, email string) error {
+	return i.userRepo.CreateVerification(ctx, email)
+}
+
+func (i *User) VerifyUser(ctx context.Context, code string) (*user.User, error) {
+	return i.userRepo.VerifyUser(ctx, code)
+}
+
+func (i *User) StartPasswordReset(ctx context.Context, email string) error {
+	return i.userRepo.StartPasswordReset(ctx, email)
+}
+
+func (i *User) PasswordReset(ctx context.Context, password string, token string) error {
+	return i.userRepo.PasswordReset(ctx, password, token)
+}

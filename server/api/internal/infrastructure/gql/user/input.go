@@ -41,3 +41,20 @@ type RemoveMyAuthInput struct {
 type DeleteMeInput struct {
 	ID graphql.ID `json:"userId"`
 }
+
+type CreateVerificationInput struct {
+	Email graphql.String `json:"email"`
+}
+
+type VerifyUserInput struct {
+	Code graphql.String `json:"code"`
+}
+
+type StartPasswordResetInput struct {
+	Email graphql.String `json:"email"`
+}
+
+type PasswordResetInput struct {
+	Password graphql.String `json:"password"`
+	Token    graphql.String `json:"token"`
+}

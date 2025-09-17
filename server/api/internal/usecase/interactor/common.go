@@ -61,7 +61,6 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		Workspace:     workspace,
 		Trigger:       NewTrigger(r, g, job, permissionChecker),
 		User:          user,
-		ReearthxUser:  accountinteractor.NewMultiUser(ar, ag, config.SignupSecret, config.AuthSrvUIDomain, ar.Users), // TODO: After migration, remove this
 		UserFacingLog: NewUserFacingLogInteractor(g.Redis, r.Job, permissionChecker),
 	}
 }
