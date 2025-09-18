@@ -4,7 +4,7 @@ use tracing::error;
 use uuid::Uuid;
 use websocket::{
     conf::Config, infrastructure::gcs::GcsStore, pool::BroadcastPool, server::start_server,
-    storage::redis::RedisStore, AppState,
+    storage::redis::RedisStore, tools::stream_trimmer::spawn_stream_trimmer, AppState,
 };
 
 #[cfg(feature = "auth")]
@@ -53,6 +53,24 @@ async fn main() {
         }
     };
 
+    let trimmer_shutdown = if let Some(ref rs) = redis_store {
+        let trimmer_shutdown = spawn_stream_trimmer(
+            Arc::clone(rs),
+            config.redis.stream_trim_interval,
+            config.redis.stream_max_message_age,
+            config.redis.stream_max_length,
+        );
+        tracing::info!(
+            "Stream trimmer started with interval: {}s, max age: {}ms, max length: {}",
+            config.redis.stream_trim_interval,
+            config.redis.stream_max_message_age,
+            config.redis.stream_max_length
+        );
+        Some(trimmer_shutdown)
+    } else {
+        None
+    };
+
     let pool = Arc::new(match redis_store {
         Some(rs) => BroadcastPool::new(store, rs),
         None => {
@@ -87,7 +105,17 @@ async fn main() {
         }
     });
 
-    if let Err(e) = start_server(state, &config.ws_port, &config).await {
+    let server_result = start_server(state, &config.ws_port, &config).await;
+
+    if let Some(shutdown_sender) = trimmer_shutdown {
+        if shutdown_sender.send(()).is_err() {
+            tracing::warn!("Stream trimmer already stopped");
+        } else {
+            tracing::info!("Sent shutdown signal to stream trimmer");
+        }
+    }
+
+    if let Err(e) = server_result {
         error!("Server error: {}", e);
         std::process::exit(1);
     }
