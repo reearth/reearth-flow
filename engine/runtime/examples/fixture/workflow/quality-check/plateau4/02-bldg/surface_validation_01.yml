@@ -332,6 +332,48 @@ nodes:
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_LOD2以上境界面のエラー.csv")
 
+  # GeometryCoercer ~ Surface Intersection (LOD0)
+  - id: aa1bb2cc-3dd4-4ee5-9ff6-0aa7bb8cc9dd
+    name: GeometryCoercerDummy
+    type: action
+    action: NoopProcessor
+
+  - id: bb2cc3dd-4ee5-4ff6-9aa7-1bb8cc9dd0ee
+    name: AreaOnAreaOverlayer
+    type: action
+    action: AreaOnAreaOverlayer
+    with:
+      outputAttribute: overlap
+
+  - id: dd4ee5ff-6aa7-4bb8-9cc9-2dd0ee1ff2aa
+    name: FeatureFilterByAreaOnAreaOverlap
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr: |
+            env.get("__value").overlap > 1
+          outputPort: intersectionSurface
+
+  - id: ff6aa7bb-8cc9-4dd0-9ee1-4ff2aa3bb4cc
+    name: AttributeManagerLod0IntersectionSurface
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: dummy
+          method: create
+          value: dummy
+
+  - id: aa7bb8cc-9dd0-4ee1-9ff2-5aa3bb4cc5dd
+    name: FeatureWriterLod0IntersectionSurface
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_LOD0面の交差.csv")
+
   # Output
   - id: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
     name: OutputRouter
@@ -450,6 +492,47 @@ edges:
   # FeatureWriterLod2-4InvalidSurface to OutputRouter
   - id: 4d8f6f1b-5e0c-4f7d-9f5b-8c1f4d7e0f6b
     from: 9e3c6b8f-5a2d-4f7e-8c1a-4d9b6e3c8f5a
+    to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
+    fromPort: default
+    toPort: default
+
+  - id: 11aa22bb-33cc-44dd-55ee-66ff77aa88bb
+    from: 3c8d9e7f-2a5b-4f1c-8e6a-9d3c5b8e1a4f
+    to: aa1bb2cc-3dd4-4ee5-9ff6-0aa7bb8cc9dd
+    fromPort: default
+    toPort: default
+
+  # GeometryCoercerDummy to AreaOnAreaOverlayer
+  - id: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1ff
+    from: aa1bb2cc-3dd4-4ee5-9ff6-0aa7bb8cc9dd
+    to: bb2cc3dd-4ee5-4ff6-9aa7-1bb8cc9dd0ee
+    fromPort: default
+    toPort: default
+
+  # AreaOnAreaOverlayer to FeatureFilterByAreaOnAreaOverlap
+  - id: ee5ff6aa-7bb8-4cc9-9dd0-3ee1ff2aa3bb
+    from: bb2cc3dd-4ee5-4ff6-9aa7-1bb8cc9dd0ee
+    to: dd4ee5ff-6aa7-4bb8-9cc9-2dd0ee1ff2aa
+    fromPort: area
+    toPort: default
+
+  # FeatureFilterByAreaOnAreaOverlap to AttributeManagerLod0IntersectionSurface
+  - id: bb8cc9dd-0ee1-4ff2-9aa3-6bb4cc5dd6ee
+    from: dd4ee5ff-6aa7-4bb8-9cc9-2dd0ee1ff2aa
+    to: ff6aa7bb-8cc9-4dd0-9ee1-4ff2aa3bb4cc
+    fromPort: intersectionSurface
+    toPort: default
+
+  # AttributeManagerLod0IntersectionSurface to FeatureWriterLod0IntersectionSurface
+  - id: cc9dd0ee-1ff2-4aa3-9bb4-7cc5dd6ee7ff
+    from: ff6aa7bb-8cc9-4dd0-9ee1-4ff2aa3bb4cc
+    to: aa7bb8cc-9dd0-4ee1-9ff2-5aa3bb4cc5dd
+    fromPort: default
+    toPort: default
+
+  # FeatureWriterLod0IntersectionSurface to OutputRouter
+  - id: dd0ee1ff-2aa3-4bb4-9cc5-8dd6ee7ff8aa
+    from: aa7bb8cc-9dd0-4ee1-9ff2-5aa3bb4cc5dd
     to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
     fromPort: default
     toPort: default
