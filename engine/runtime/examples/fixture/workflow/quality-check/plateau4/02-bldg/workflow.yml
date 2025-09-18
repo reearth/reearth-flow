@@ -93,6 +93,7 @@ graphs:
         with:
           flatten: true
           format: citygml
+          flatten: true
           dataset: |
             env.get("__value")["gmlPath"]
 

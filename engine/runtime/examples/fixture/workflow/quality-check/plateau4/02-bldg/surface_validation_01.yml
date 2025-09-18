@@ -496,11 +496,6 @@ edges:
     from: d5a7b9f3-6e4c-4d8a-9f2b-3c7e8d5a6b9f
     to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
     fromPort: default
-    
-  - id: 1edf5ec7-a567-4ef6-9c70-92497d359ddf
-    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    fromPort: lod1
-    to: ecaceb7b-ff98-4744-acf7-17e80829d6f3
     toPort: default
 
   # LodSplitterWithDM to FeatureFilter
@@ -599,3 +594,8 @@ edges:
     to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
     fromPort: default
     toPort: default
+  # - id: 1edf5ec7-a567-4ef6-9c70-92497d359ddf
+  #   from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+  #   fromPort: lod1
+  #   to: ecaceb7b-ff98-4744-acf7-17e80829d6f3
+  #   toPort: default
