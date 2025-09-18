@@ -4260,26 +4260,6 @@
       ]
     },
     {
-      "name": "PLATEAU4.InstanceHistogramCreator",
-      "type": "processor",
-      "description": "Creates instance histogram for PLATEAU4 building features",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "InstanceHistogramCreatorParam",
-        "type": "object"
-      },
-      "builtin": false,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "default"
-      ],
-      "categories": [
-        "PLATEAU"
-      ]
-    },
-    {
       "name": "PLATEAU4.MaxLodExtractor",
       "type": "processor",
       "description": "Extrae Nivel de Detalle máximo para PLATEAU4",

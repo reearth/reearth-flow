@@ -1,0 +1,10 @@
+{
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
+  "description": "Test quality check L11 for LOD1",
+  "expectedOutput": {
+    "expectedFile": "02_建築物_LOD1境界面のエラー.csv"
+  },
+  "cityGmlPath": "udx/bldg/l11.gml",
+  "codelists": "codelists",
+  "schemas": "schemas"
+}

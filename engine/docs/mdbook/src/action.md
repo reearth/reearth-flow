@@ -4229,26 +4229,6 @@ Validates domain of definition of CityGML features
 ### Category
 * PLATEAU
 
-## PLATEAU4.InstanceHistogramCreator
-### Type
-* processor
-### Description
-Creates instance histogram for PLATEAU4 building features
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "InstanceHistogramCreatorParam",
-  "type": "object"
-}
-```
-### Input Ports
-* default
-### Output Ports
-* default
-### Category
-* PLATEAU
-
 ## PLATEAU4.MaxLodExtractor
 ### Type
 * processor
