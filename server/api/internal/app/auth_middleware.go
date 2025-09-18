@@ -24,6 +24,8 @@ func newAuthMiddlewares(param *authMiddlewaresParam) authMiddlewares {
 		gqlOpNameMiddleware(),
 		jwtContextMiddleware(),
 		authMiddleware(param.Cfg.AccountGQLClient, param.SkipOps),
+		// TODO: Currently, the following middleware is necessary because permission checks such as filterByWorkspaces are performed in mongo.repo.
+		// It will be removed when centralized permission checks by the account server are implemented.
 		attachOpMiddleware(param.Cfg),
 	}
 }
