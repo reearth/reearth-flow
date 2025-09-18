@@ -209,11 +209,20 @@ fn parse_tree_reader<R: BufRead>(
             let nusamai_citygml::object::ObjectStereotype::Feature { .. } = &obj.stereotype else {
                 continue;
             };
+            let mut attributes = attributes.clone();
+            if flatten {
+                if let Some(typename) = &ent.typename {
+                    attributes.insert(
+                        Attribute::new("featureType"),
+                        AttributeValue::String(typename.to_string()),
+                    );
+                }
+            }
             let geometry: Geometry = ent.try_into().map_err(|e| {
                 crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
             })?;
             let mut feature: Feature = geometry.into();
-            feature.extend(attributes.clone());
+            feature.extend(attributes);
             feature.metadata = metadata.clone();
             fw.send(ExecutorContext::new_with_context_feature_and_port(
                 ctx,

@@ -37,8 +37,6 @@ pub(super) enum PlateauProcessorError {
     BuildingUsageAttributeValidator(String),
     #[error("BuildingUsageAttributeValidator Factory error: {0}")]
     BuildingUsageAttributeValidatorFactory(String),
-    #[error("InstanceHistogramCreator Factory error: {0}")]
-    InstanceHistogramCreatorFactory(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;
