@@ -1,5 +1,5 @@
-use crate::broadcast::pool::BroadcastPool;
 use crate::storage::redis::RedisStore;
+use crate::{application::kv::DocOps, broadcast::pool::BroadcastPool};
 use anyhow::Result;
 use std::sync::Arc;
 use tokio::time::{interval, Duration};
@@ -114,16 +114,15 @@ impl StreamTrimmer {
                 return Ok(false);
             }
         };
+        let gcs_store = group.get_storage();
+        let gcs_doc = gcs_store.load_doc_v2(doc_id).await?;
+        let gcs_state = gcs_doc.transact().state_vector();
 
-        // Get the complete document state from awareness
         let awareness_ref = group.awareness();
         let awareness_guard = awareness_ref.read().await;
         let awareness_doc = awareness_guard.doc();
         let awareness_txn = awareness_doc.transact();
-
-        // Encode the complete document state using empty state vector to get full state
-        let empty_state = yrs::StateVector::default();
-        let complete_state = awareness_txn.encode_diff_v1(&empty_state);
+        let complete_state = awareness_txn.encode_diff_v1(&gcs_state);
 
         if complete_state.is_empty() {
             tracing::debug!("No state to save for doc '{}'", doc_id);
