@@ -53,15 +53,25 @@ async fn main() {
         }
     };
 
+    let pool = Arc::new(match &redis_store {
+        Some(rs) => BroadcastPool::new(Arc::clone(&store), Arc::clone(rs)),
+        None => {
+            error!("Cannot proceed without Redis store");
+            std::process::exit(1);
+        }
+    });
+
     let trimmer_shutdown = if let Some(ref rs) = redis_store {
         let trimmer_shutdown = spawn_stream_trimmer(
+            Arc::clone(&pool),
             Arc::clone(rs),
+            Arc::clone(&store),
             config.redis.stream_trim_interval,
             config.redis.stream_max_message_age,
             config.redis.stream_max_length,
         );
         tracing::info!(
-            "Stream trimmer started with interval: {}s, max age: {}ms, max length: {}",
+            "Stream trimmer started with awareness integration: interval: {}s, max age: {}ms, max length: {}",
             config.redis.stream_trim_interval,
             config.redis.stream_max_message_age,
             config.redis.stream_max_length
@@ -70,14 +80,6 @@ async fn main() {
     } else {
         None
     };
-
-    let pool = Arc::new(match redis_store {
-        Some(rs) => BroadcastPool::new(store, rs),
-        None => {
-            error!("Cannot proceed without Redis store");
-            std::process::exit(1);
-        }
-    });
 
     let instance_id = Uuid::new_v4().to_string();
     tracing::info!("Generated instance ID: {}", instance_id);
