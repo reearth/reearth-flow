@@ -15,7 +15,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
-	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 	"github.com/reearth/reearthx/usecasex"
 )
 
@@ -24,7 +23,6 @@ type Deployment struct {
 	projectRepo       repo.Project
 	workflowRepo      repo.Workflow
 	jobRepo           repo.Job
-	workspaceRepo     accountrepo.Workspace
 	transaction       usecasex.Transaction
 	batch             gateway.Batch
 	file              gateway.File
@@ -38,7 +36,6 @@ func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfac
 		projectRepo:       r.Project,
 		workflowRepo:      r.Workflow,
 		jobRepo:           r.Job,
-		workspaceRepo:     r.Workspace,
 		transaction:       r.Transaction,
 		batch:             gr.Batch,
 		file:              gr.File,
