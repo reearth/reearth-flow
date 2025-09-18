@@ -17,7 +17,7 @@ nodes:
   - id: 3c8d9e7f-2a5b-4f1c-8e6a-9d3c5b8e1a4f
     name: PLATEAU3.SurfaceValidator2D
     type: subGraph
-    subGraphId: f4e71783-0b7d-4d4a-9377-cf8d7f061f3b
+    subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
 
   - id: b1f5a9c3-7e2d-4a8c-9f6b-2d8e5c3a7b9f
     name: AttributeManagerLod0InvalidSurface
@@ -37,10 +37,14 @@ nodes:
         - attribute: issue
           method: create
           value: |
-            if env.get("__value").validationResult?.details == () {
-              return "UnknownError";
+            let value = env.get("__value");
+            if value.validationResult?.details != () {
+              return value.validationResult.details[0][0];
             }
-            env.get("__value").validationResult.details[0][0]
+            if "issue" in value {
+              return value.issue;
+            }
+            "UnknownError"
 
         # remove
         - attribute: validationResult
@@ -220,7 +224,113 @@ nodes:
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_LOD1境界面のエラー.csv")
 
-  # TODO: SurfaceValidator3D (LOD2,3,4)
+  # SurfaceValidator3D (LOD2,3,4)
+  # FIXME: replace this with GeometryFilter.
+  #   Send `Surface`s to `SurfaceValidator3D` and `Solid`s to `SolidBoundaryValidator`
+  - id: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
+    name: Dummy_GeometryFilter
+    type: action
+    action: NoopProcessor
+
+  - id: 3b6e9c5d-8f2a-4d7b-9e3c-6a1f4b9e2c5d
+    name: PLATEAU3.SurfaceValidator3D_LOD2-4
+    type: subGraph
+    subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+
+  - id: 7f2a5c8d-4b9e-4c3a-9f6d-2e8b5c7a4f9d
+    name: AttributeManagerLod2-4InvalidSurface
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: gmlFilename
+          method: rename
+          value: filename
+        - attribute: featureType
+          method: rename
+          value: feature_type
+        - attribute: gmlId
+          method: rename
+          value: gml_id
+        - attribute: issue
+          method: create
+          value: |
+            let value = env.get("__value");
+            if value.validationResult?.details != () {
+              return value.validationResult.details[0][0];
+            }
+            if "issue" in value {
+              return value.issue;
+            }
+            "UnknownError"
+
+        # remove
+        - attribute: validationResult
+          method: remove
+        - attribute: surfaceId
+          method: remove
+        - attribute: dirCodelists
+          method: remove
+        - attribute: featureIndex
+          method: remove
+        - attribute: featureId
+          method: remove
+        - attribute: gmlPath
+          method: remove
+        - attribute: fileIndex
+          method: remove
+        - attribute: holeCount
+          method: remove
+        - attribute: maxLod
+          method: remove
+        - attribute: cityGmlAttributes
+          method: remove
+        - attribute: featureParentId
+          method: remove
+        - attribute: dumpGeometry
+          method: remove
+        - attribute: gmlName
+          method: remove
+        - attribute: geometryName
+          method: remove
+        - attribute: gmlRootId
+          method: remove
+        #
+        - attribute: baseCityCode
+          method: remove
+        - attribute: cityCode
+          method: remove
+        - attribute: extension
+          method: remove
+        - attribute: package
+          method: remove
+        - attribute: root
+          method: remove
+        - attribute: admin
+          method: remove
+        - attribute: area
+          method: remove
+        - attribute: dirRoot
+          method: remove
+        - attribute: udxDirs
+          method: remove
+        - attribute: codelists
+          method: remove
+        - attribute: dirSchemas
+          method: remove
+        - attribute: schemas
+          method: remove
+        - attribute: objectListPath
+          method: remove
+
+  - id: 9e3c6b8f-5a2d-4f7e-8c1a-4d9b6e3c8f5a
+    name: FeatureWriterLod2-4InvalidSurface
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_LOD2以上境界面のエラー.csv")
 
   # Output
   - id: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
@@ -293,6 +403,53 @@ edges:
 
   - id: 7e1d9c5b-3f8a-4e2c-9b6d-8a5c2e7f4b1c
     from: d5a7b9f3-6e4c-4d8a-9f2b-3c7e8d5a6b9f
+    to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
+    fromPort: default
+    toPort: default
+
+  # LodSplitterWithDM to FeatureFilter
+  - id: 9d3f6a8e-4c7b-4e2a-8f5d-2b9c5e8a1f6d
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
+    fromPort: lod2
+    toPort: default
+
+  - id: 8e5b7c4f-2a9d-4f6e-9c3b-7a4f8e2c5b9d
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
+    fromPort: lod3
+    toPort: default
+
+  - id: 6c2e9f5a-7b4d-4c8e-9f2a-5d8c3e6f9b2a
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
+    fromPort: lod4
+    toPort: default
+
+  # Dummy_GeometryFilter to SurfaceValidator3D_LOD2-4
+  - id: 1a5f3c8d-9e2b-4d7a-8c6f-5b9e3d2a6f8c
+    from: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
+    to: 3b6e9c5d-8f2a-4d7b-9e3c-6a1f4b9e2c5d
+    fromPort: default
+    toPort: default
+
+  # SurfaceValidator3D_LOD2-4 to AttributeManagerLod2-4InvalidSurface
+  - id: 2b6f4d9e-3c8a-4e5b-9d7c-6a8f2e5c9b4d
+    from: 3b6e9c5d-8f2a-4d7b-9e3c-6a1f4b9e2c5d
+    to: 7f2a5c8d-4b9e-4c3a-9f6d-2e8b5c7a4f9d
+    fromPort: invalidSurface
+    toPort: default
+
+  # AttributeManagerLod2-4InvalidSurface to FeatureWriterLod2-4InvalidSurface
+  - id: 3c7f5e0a-4d9b-4f6c-8e4a-7b0f3c6d8e5a
+    from: 7f2a5c8d-4b9e-4c3a-9f6d-2e8b5c7a4f9d
+    to: 9e3c6b8f-5a2d-4f7e-8c1a-4d9b6e3c8f5a
+    fromPort: default
+    toPort: default
+
+  # FeatureWriterLod2-4InvalidSurface to OutputRouter
+  - id: 4d8f6f1b-5e0c-4f7d-9f5b-8c1f4d7e0f6b
+    from: 9e3c6b8f-5a2d-4f7e-8c1a-4d9b6e3c8f5a
     to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
     fromPort: default
     toPort: default
