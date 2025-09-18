@@ -68,7 +68,7 @@ func TestAsset_Create(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, res)
 	assert.NotEmpty(t, res.ID())
-	assert.Equal(t, ws.ID(), res.Workspace())
+	assert.Equal(t, workspace.ID(ws.ID()), res.Workspace())
 	assert.Equal(t, "hoge.txt", res.Name())
 	assert.Equal(t, uint64(buflen), res.Size())
 	assert.Equal(t, "", res.ContentType())

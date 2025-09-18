@@ -241,6 +241,7 @@ func TestNode(t *testing.T) {
 	})
 
 	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil)
 	mockUserRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(pkguser.List{operator}, nil)
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
@@ -280,6 +281,7 @@ func TestNodes(t *testing.T) {
 	})
 
 	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil)
 	mockUserRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(pkguser.List{operator}, nil)
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
