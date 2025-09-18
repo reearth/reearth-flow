@@ -65,13 +65,12 @@ async fn main() {
         let trimmer_shutdown = spawn_stream_trimmer(
             Arc::clone(&pool),
             Arc::clone(rs),
-            Arc::clone(&store),
             config.redis.stream_trim_interval,
             config.redis.stream_max_message_age,
             config.redis.stream_max_length,
         );
         tracing::info!(
-            "Stream trimmer started with awareness integration: interval: {}s, max age: {}ms, max length: {}",
+            "Stream trimmer started with complete state preservation: interval: {}s, max age: {}ms, max length: {}",
             config.redis.stream_trim_interval,
             config.redis.stream_max_message_age,
             config.redis.stream_max_length

@@ -1,17 +1,14 @@
-use crate::application::kv::DocOps;
 use crate::broadcast::pool::BroadcastPool;
-use crate::infrastructure::gcs::GcsStore;
 use crate::storage::redis::RedisStore;
 use anyhow::Result;
 use std::sync::Arc;
 use tokio::time::{interval, Duration};
 use tracing::{error, info, warn};
-use yrs::{Doc, ReadTxn, Transact};
+use yrs::{ReadTxn, Transact};
 
 pub struct StreamTrimmer {
     broadcast_pool: Arc<BroadcastPool>,
     redis_store: Arc<RedisStore>,
-    gcs_store: Arc<GcsStore>,
     trim_interval: Duration,
     max_message_age_ms: u64,
     max_stream_length: u64,
@@ -22,7 +19,6 @@ impl StreamTrimmer {
     pub fn new(
         broadcast_pool: Arc<BroadcastPool>,
         redis_store: Arc<RedisStore>,
-        gcs_store: Arc<GcsStore>,
         trim_interval_secs: u64,
         max_message_age_ms: u64,
         max_stream_length: u64,
@@ -32,7 +28,6 @@ impl StreamTrimmer {
         let trimmer = Self {
             broadcast_pool,
             redis_store,
-            gcs_store,
             trim_interval: Duration::from_secs(trim_interval_secs),
             max_message_age_ms,
             max_stream_length,
@@ -74,14 +69,14 @@ impl StreamTrimmer {
     async fn perform_trim_cycle(&self) -> Result<()> {
         let start_time = std::time::Instant::now();
 
-        match self.trim_streams_with_flush().await {
-            Ok((streams_processed, total_trimmed, flushed_count)) => {
+        match self.trim_streams_with_state_save().await {
+            Ok((streams_processed, total_trimmed, saved_count)) => {
                 let duration = start_time.elapsed();
 
                 if streams_processed > 0 || total_trimmed > 0 {
                     info!(
-                        "Stream trimming cycle completed in {:?}: processed {} streams, flushed {} docs, trimmed {} entries",
-                        duration, streams_processed, flushed_count, total_trimmed
+                        "Stream trimming cycle completed in {:?}: processed {} streams, saved {} complete states, trimmed {} entries",
+                        duration, streams_processed, saved_count, total_trimmed
                     );
                 } else {
                     tracing::debug!(
@@ -99,7 +94,8 @@ impl StreamTrimmer {
         Ok(())
     }
 
-    async fn flush_doc_before_trim(&self, doc_id: &str) -> Result<bool> {
+    /// Saves complete document state to Redis before trimming the stream
+    async fn save_complete_state_before_trim(&self, doc_id: &str) -> Result<bool> {
         let stream_length = match self.redis_store.get_stream_length(doc_id).await {
             Ok(length) => length,
             Err(_) => {
@@ -119,45 +115,54 @@ impl StreamTrimmer {
             }
         };
 
-        let gcs_doc = Doc::new();
-        let mut gcs_txn = gcs_doc.transact_mut();
-
-        if let Err(e) = self.gcs_store.load_doc(doc_id, &mut gcs_txn).await {
-            warn!(
-                "Failed to load current state from GCS for doc '{}': {}",
-                doc_id, e
-            );
-        }
-
-        let gcs_state = gcs_txn.state_vector();
-
+        // Get the complete document state from awareness
         let awareness_ref = group.awareness();
         let awareness_guard = awareness_ref.read().await;
         let awareness_doc = awareness_guard.doc();
         let awareness_txn = awareness_doc.transact();
 
-        let diff = awareness_txn.encode_diff_v1(&gcs_state);
-        if diff.is_empty() || (diff.len() == 2 && diff[0] == 0 && diff[1] == 0) {
-            tracing::debug!("No new changes to flush for doc '{}'", doc_id);
+        // Encode the complete document state using empty state vector to get full state
+        let empty_state = yrs::StateVector::default();
+        let complete_state = awareness_txn.encode_state_as_update_v1(&empty_state);
+
+        if complete_state.is_empty() {
+            tracing::debug!("No state to save for doc '{}'", doc_id);
             return Ok(false);
         }
 
-        match self.gcs_store.flush_doc_v2(doc_id, &awareness_txn).await {
-            Ok(_) => {
-                tracing::debug!(
-                    "Successfully flushed doc '{}' to GCS before trimming",
-                    doc_id
-                );
+        let complete_state_key = format!("yjs:complete:{doc_id}");
+        match self.redis_store.get_pool().get().await {
+            Ok(mut conn) => {
+                use redis::AsyncCommands;
+                let _: () = match conn.set(&complete_state_key, &complete_state[..]).await {
+                    Ok(result) => result,
+                    Err(e) => {
+                        warn!("Failed to save complete state for doc '{}': {}", doc_id, e);
+                        return Ok(false);
+                    }
+                };
+
+                let _: () = match conn.expire(&complete_state_key, 86400).await {
+                    Ok(result) => result,
+                    Err(e) => {
+                        warn!(
+                            "Failed to set TTL for complete state of doc '{}': {}",
+                            doc_id, e
+                        );
+                    }
+                };
+
+                tracing::debug!("Saved complete state for doc '{}' before trimming", doc_id);
                 Ok(true)
             }
             Err(e) => {
-                warn!("Failed to flush doc '{}' to GCS: {}", doc_id, e);
+                warn!("Failed to get Redis connection: {}", e);
                 Ok(false)
             }
         }
     }
 
-    async fn trim_streams_with_flush(&self) -> Result<(u64, u64, u64)> {
+    async fn trim_streams_with_state_save(&self) -> Result<(u64, u64, u64)> {
         let streams = self.redis_store.list_all_streams().await?;
         let current_time = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -169,18 +174,24 @@ impl StreamTrimmer {
 
         let mut streams_processed = 0u64;
         let mut total_trimmed = 0u64;
-        let mut flushed_count = 0u64;
+        let mut saved_count = 0u64;
 
         for stream_key in streams {
             if let Some(doc_id) = stream_key.strip_prefix("yjs:stream:") {
-                match self.flush_doc_before_trim(doc_id).await {
+                match self.save_complete_state_before_trim(doc_id).await {
                     Ok(true) => {
-                        flushed_count += 1;
-                        tracing::debug!("Flushed doc '{}' to GCS before trimming", doc_id);
+                        saved_count += 1;
+                        tracing::debug!(
+                            "Saved complete state for doc '{}' before trimming",
+                            doc_id
+                        );
                     }
                     Ok(false) => {}
                     Err(e) => {
-                        warn!("Failed to flush doc '{}' before trimming: {}", doc_id, e);
+                        warn!(
+                            "Failed to save complete state for doc '{}' before trimming: {}",
+                            doc_id, e
+                        );
                     }
                 }
 
@@ -239,19 +250,18 @@ impl StreamTrimmer {
 
         if streams_processed > 0 {
             info!(
-                "Stream trimming with flush completed: processed {} streams, flushed {} docs, trimmed {} total entries",
-                streams_processed, flushed_count, total_trimmed
+                "Stream trimming with state preservation completed: processed {} streams, saved {} complete states, trimmed {} total entries",
+                streams_processed, saved_count, total_trimmed
             );
         }
 
-        Ok((streams_processed, total_trimmed, flushed_count))
+        Ok((streams_processed, total_trimmed, saved_count))
     }
 }
 
 pub fn spawn_stream_trimmer(
     broadcast_pool: Arc<BroadcastPool>,
     redis_store: Arc<RedisStore>,
-    gcs_store: Arc<GcsStore>,
     trim_interval_secs: u64,
     max_message_age_ms: u64,
     max_stream_length: u64,
@@ -259,7 +269,6 @@ pub fn spawn_stream_trimmer(
     let (trimmer, shutdown_sender) = StreamTrimmer::new(
         broadcast_pool,
         redis_store,
-        gcs_store,
         trim_interval_secs,
         max_message_age_ms,
         max_stream_length,
@@ -300,7 +309,7 @@ mod tests {
 
         let broadcast_pool = Arc::new(BroadcastPool::new(gcs_store.clone(), redis_store.clone()));
         let (trimmer, _shutdown) =
-            StreamTrimmer::new(broadcast_pool, redis_store, gcs_store, 60, 3600000, 1000);
+            StreamTrimmer::new(broadcast_pool, redis_store, 60, 3600000, 1000);
 
         assert_eq!(trimmer.trim_interval, Duration::from_secs(60));
         assert_eq!(trimmer.max_message_age_ms, 3600000);
