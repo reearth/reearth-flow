@@ -123,7 +123,7 @@ impl StreamTrimmer {
 
         // Encode the complete document state using empty state vector to get full state
         let empty_state = yrs::StateVector::default();
-        let complete_state = awareness_txn.encode_state_as_update_v1(&empty_state);
+        let complete_state = awareness_txn.encode_diff_v1(&empty_state);
 
         if complete_state.is_empty() {
             tracing::debug!("No state to save for doc '{}'", doc_id);
