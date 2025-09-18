@@ -41,6 +41,8 @@ func ToParameters(params *parameter.ParameterList) []*Parameter {
 
 func ToParameterType(t parameter.Type) ParameterType {
 	switch t {
+	case parameter.TypeArray:
+		return ParameterTypeArray
 	case parameter.TypeChoice:
 		return ParameterTypeChoice
 	case parameter.TypeColor:
@@ -78,6 +80,8 @@ func ToParameterType(t parameter.Type) ParameterType {
 
 func FromParameterType(t ParameterType) parameter.Type {
 	switch t {
+	case ParameterTypeArray:
+		return parameter.TypeArray
 	case ParameterTypeChoice:
 		return parameter.TypeChoice
 	case ParameterTypeColor:
