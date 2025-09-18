@@ -118,7 +118,6 @@
   "2D Viewer Could Not Be Loaded. Check if the data is valid.": "2Dビューアを読み込めませんでした。データが有効かどうかを確認してください。",
   "2D Viewer": "2Dビューア",
   "Additional actions": "追加アクション",
-  "Enable Clustering": "クラスタリングを有効にする",
   "Center Data": "データを中央に配置",
   "3D Viewer": "3Dビューア",
   "No viewer available for this data type": "このデータタイプに利用可能なビューワーはありません",

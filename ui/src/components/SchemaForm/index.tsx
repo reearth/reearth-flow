@@ -40,10 +40,6 @@ const buildExprUiSchema = (
     uiSchema["ui:description"] = schemaObj.description;
   }
 
-  // if (schemaObj.definitions.Operation.properties) {
-  //   uiSchema["ui:description"] = schemaObj.description;
-  // }
-
   // Determine if this is a Python script field or regular Rhai expression
   const isExprType =
     schemaObj.$ref === "#/definitions/Expr" ||
@@ -171,7 +167,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
 
     "ui:submitButtonOptions": { norender: true },
   };
-  console.log("ORIGINAL SCHEMA", finalUiSchema);
+
   return schema ? (
     <SchemaFormErrorBoundary>
       <ThemedForm
