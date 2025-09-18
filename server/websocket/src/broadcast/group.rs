@@ -313,6 +313,10 @@ impl BroadcastGroup {
         })
     }
 
+    pub fn get_storage(&self) -> &Arc<GcsStore> {
+        &self.storage
+    }
+
     pub async fn increment_connections_count(&self) {
         let mut connections_count = self.connections_count.lock().await;
         *connections_count += 1;

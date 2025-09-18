@@ -22,6 +22,9 @@ pub struct StreamMessages {
 pub struct RedisConfig {
     pub url: String,
     pub ttl: u64,
+    pub stream_trim_interval: u64,
+    pub stream_max_message_age: u64,
+    pub stream_max_length: u64,
 }
 
 pub type RedisPool = Pool;
