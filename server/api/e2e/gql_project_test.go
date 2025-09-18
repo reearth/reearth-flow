@@ -9,27 +9,61 @@ import (
 
 	"github.com/gavv/httpexpect/v2"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
+	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
+	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
+	usermockrepo "github.com/reearth/reearth-flow/api/pkg/user/mockrepo"
+	pkgworkspace "github.com/reearth/reearth-flow/api/pkg/workspace"
+	workspacemockrepo "github.com/reearth/reearth-flow/api/pkg/workspace/mockrepo"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 func TestProjectWorkflows(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operatorID := pkguser.NewID()
+	operator := factory.NewUser(func(b *pkguser.Builder) {
+		b.ID(operatorID)
+		b.Name("operator")
+		b.Email("operator@e2e.com")
+	})
+
+	wid := pkgworkspace.NewID()
+	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {
+		b.ID(wid)
+	})
+
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
+	gomock.InOrder(
+		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
+		mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil),
+		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
+		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
+	)
+	mock := &TestMocks{
+		UserRepo:      mockUserRepo,
+		WorkspaceRepo: mockWorkspaceRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true, nil)
+	}, true, true, mock)
 
-	projectId := testCreateProject(t, e)
+	projectId := testCreateProject(t, e, operatorID.String(), wid.String())
 
 	// Test update project
-	testUpdateProject(t, e, projectId)
+	testUpdateProject(t, e, projectId, operatorID.String(), wid.String())
 
 	// Test delete project
-	testDeleteProject(t, e, projectId)
+	testDeleteProject(t, e, projectId, operatorID.String())
 }
 
-func testCreateProject(t *testing.T, e *httpexpect.Expect) string {
+func testCreateProject(t *testing.T, e *httpexpect.Expect, operatorID string, wid string) string {
 	query := `mutation($input: CreateProjectInput!) {
 		createProject(input: $input) {
 			project {
@@ -55,7 +89,7 @@ func testCreateProject(t *testing.T, e *httpexpect.Expect) string {
 			"description": "Test project description",
 			"archived": false
 		}
-	}`, wId1.String())
+	}`, wid)
 
 	var variablesMap map[string]any
 	err := json.Unmarshal([]byte(variables), &variablesMap)
@@ -71,7 +105,7 @@ func testCreateProject(t *testing.T, e *httpexpect.Expect) string {
 	resp := e.POST("/api/graphql").
 		WithHeader("authorization", "Bearer test").
 		WithHeader("Content-Type", "application/json").
-		WithHeader("X-Reearth-Debug-User", uId1.String()).
+		WithHeader("X-Reearth-Debug-User", operatorID).
 		WithBytes(jsonData).
 		Expect().Status(http.StatusOK)
 
@@ -98,13 +132,13 @@ func testCreateProject(t *testing.T, e *httpexpect.Expect) string {
 	assert.Equal(t, "Test Project", project.Name)
 	assert.Equal(t, "Test project description", project.Description)
 	assert.False(t, project.IsArchived)
-	assert.Equal(t, wId1.String(), project.WorkspaceID)
+	assert.Equal(t, wid, project.WorkspaceID)
 	assert.Equal(t, 0, project.Version)
 
 	return project.ID
 }
 
-func testUpdateProject(t *testing.T, e *httpexpect.Expect, projectId string) {
+func testUpdateProject(t *testing.T, e *httpexpect.Expect, projectId string, operatorID string, wid string) {
 	query := `mutation($input: UpdateProjectInput!) {
 		updateProject(input: $input) {
 			project {
@@ -145,7 +179,7 @@ func testUpdateProject(t *testing.T, e *httpexpect.Expect, projectId string) {
 	resp := e.POST("/api/graphql").
 		WithHeader("authorization", "Bearer test").
 		WithHeader("Content-Type", "application/json").
-		WithHeader("X-Reearth-Debug-User", uId1.String()).
+		WithHeader("X-Reearth-Debug-User", operatorID).
 		WithBytes(jsonData).
 		Expect().Status(http.StatusOK)
 
@@ -178,7 +212,7 @@ func testUpdateProject(t *testing.T, e *httpexpect.Expect, projectId string) {
 	assert.Equal(t, "testpass", project.BasicAuthPassword)
 }
 
-func testDeleteProject(t *testing.T, e *httpexpect.Expect, projectId string) {
+func testDeleteProject(t *testing.T, e *httpexpect.Expect, projectId string, operatorID string) {
 	query := `mutation($input: DeleteProjectInput!) {
 		deleteProject(input: $input) {
 			projectId
@@ -205,7 +239,7 @@ func testDeleteProject(t *testing.T, e *httpexpect.Expect, projectId string) {
 	resp := e.POST("/api/graphql").
 		WithHeader("authorization", "Bearer test").
 		WithHeader("Content-Type", "application/json").
-		WithHeader("X-Reearth-Debug-User", uId1.String()).
+		WithHeader("X-Reearth-Debug-User", operatorID).
 		WithBytes(jsonData).
 		Expect().Status(http.StatusOK)
 
@@ -224,12 +258,43 @@ func testDeleteProject(t *testing.T, e *httpexpect.Expect, projectId string) {
 }
 
 func TestListProjects(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operatorID := pkguser.NewID()
+	operator := factory.NewUser(func(b *pkguser.Builder) {
+		b.ID(operatorID)
+		b.Name("operator")
+		b.Email("operator@e2e.com")
+	})
+
+	wid := pkgworkspace.NewID()
+	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {
+		b.ID(wid)
+	})
+
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
+	gomock.InOrder(
+		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
+		mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil),
+		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
+		mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil),
+		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
+		mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil),
+		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
+	)
+	mock := &TestMocks{
+		UserRepo:      mockUserRepo,
+		WorkspaceRepo: mockWorkspaceRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true, nil)
+	}, true, true, mock)
 
 	// Create test projects
 	projectIDs := make([]string, 3)
@@ -248,7 +313,7 @@ func TestListProjects(t *testing.T) {
 				"name": "Test Project %d",
 				"description": "Test project description %d"
 			}
-		}`, wId1.String(), i, i)
+		}`, wid.String(), i, i)
 
 		var variablesMap map[string]any
 		err := json.Unmarshal([]byte(variables), &variablesMap)
@@ -264,7 +329,7 @@ func TestListProjects(t *testing.T) {
 		resp := e.POST("/api/graphql").
 			WithHeader("authorization", "Bearer test").
 			WithHeader("Content-Type", "application/json").
-			WithHeader("X-Reearth-Debug-User", uId1.String()).
+			WithHeader("X-Reearth-Debug-User", operatorID.String()).
 			WithBytes(jsonData).
 			Expect().Status(http.StatusOK)
 
@@ -309,7 +374,7 @@ func TestListProjects(t *testing.T) {
 				currentPage
 			}
 		}
-	}`, wId1.String())
+	}`, wid.String())
 
 	request := GraphQLRequest{
 		Query: query,
@@ -320,7 +385,7 @@ func TestListProjects(t *testing.T) {
 	resp := e.POST("/api/graphql").
 		WithHeader("authorization", "Bearer test").
 		WithHeader("Content-Type", "application/json").
-		WithHeader("X-Reearth-Debug-User", uId1.String()).
+		WithHeader("X-Reearth-Debug-User", operatorID.String()).
 		WithBytes(jsonData).
 		Expect().Status(http.StatusOK)
 

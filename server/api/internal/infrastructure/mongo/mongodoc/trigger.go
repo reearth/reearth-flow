@@ -5,7 +5,6 @@ import (
 
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
-	"github.com/reearth/reearthx/account/accountdomain"
 	"golang.org/x/exp/slices"
 )
 
@@ -24,7 +23,7 @@ type TriggerDocument struct {
 
 type TriggerConsumer = Consumer[*TriggerDocument, *trigger.Trigger]
 
-func NewTriggerConsumer(workspaces []accountdomain.WorkspaceID) *TriggerConsumer {
+func NewTriggerConsumer(workspaces []id.WorkspaceID) *TriggerConsumer {
 	return NewConsumer[*TriggerDocument, *trigger.Trigger](func(t *trigger.Trigger) bool {
 		return workspaces == nil || slices.Contains(workspaces, t.Workspace())
 	})
@@ -66,7 +65,7 @@ func (d *TriggerDocument) Model() (*trigger.Trigger, error) {
 		return nil, err
 	}
 
-	wid, err := accountdomain.WorkspaceIDFrom(d.WorkspaceID)
+	wid, err := id.WorkspaceIDFrom(d.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}

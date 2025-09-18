@@ -5,7 +5,6 @@ import (
 
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/rerror"
 	"golang.org/x/exp/slices"
 )
@@ -24,7 +23,7 @@ type DeploymentDocument struct {
 
 type DeploymentConsumer = Consumer[*DeploymentDocument, *deployment.Deployment]
 
-func NewDeploymentConsumer(workspaces []accountdomain.WorkspaceID) *DeploymentConsumer {
+func NewDeploymentConsumer(workspaces []id.WorkspaceID) *DeploymentConsumer {
 	return NewConsumer[*DeploymentDocument, *deployment.Deployment](func(d *deployment.Deployment) bool {
 		return workspaces == nil || slices.Contains(workspaces, d.Workspace())
 	})
@@ -70,7 +69,7 @@ func (d *DeploymentDocument) Model() (*deployment.Deployment, error) {
 	if err != nil {
 		return nil, err
 	}
-	wid, err := accountdomain.WorkspaceIDFrom(d.WorkspaceID)
+	wid, err := id.WorkspaceIDFrom(d.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}

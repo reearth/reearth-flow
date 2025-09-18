@@ -9,7 +9,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
-	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/mongox/mongotest"
 	"github.com/stretchr/testify/assert"
@@ -21,7 +20,7 @@ func TestTrigger_FindByID(t *testing.T) {
 	ctx := context.Background()
 
 	tid := id.NewTriggerID()
-	wid := accountdomain.NewWorkspaceID()
+	wid := id.NewWorkspaceID()
 
 	_, _ = c.Collection("trigger").InsertOne(ctx, bson.M{
 		"id":          tid.String(),
@@ -42,7 +41,7 @@ func TestTrigger_FindByIDs(t *testing.T) {
 
 	tid1 := id.NewTriggerID()
 	tid2 := id.NewTriggerID()
-	wid := accountdomain.NewWorkspaceID()
+	wid := id.NewWorkspaceID()
 
 	_, _ = c.Collection("trigger").InsertMany(ctx, []any{
 		bson.M{"id": tid1.String(), "workspaceid": wid.String()},
@@ -62,8 +61,8 @@ func TestTrigger_FindByWorkspace(t *testing.T) {
 	c := mongotest.Connect(t)(t)
 	ctx := context.Background()
 
-	wid := accountdomain.NewWorkspaceID()
-	wid2 := accountdomain.NewWorkspaceID()
+	wid := id.NewWorkspaceID()
+	wid2 := id.NewWorkspaceID()
 
 	_, _ = c.Collection("trigger").InsertMany(ctx, []any{
 		bson.M{"id": "t1", "workspaceid": wid.String(), "eventsource": "TIME_DRIVEN"},
@@ -86,7 +85,7 @@ func TestTrigger_Save(t *testing.T) {
 	ctx := context.Background()
 
 	tid := id.NewTriggerID()
-	wid := accountdomain.NewWorkspaceID()
+	wid := id.NewWorkspaceID()
 
 	tr := trigger.New().
 		ID(tid).
@@ -128,8 +127,8 @@ func TestTrigger_Remove_WithWorkspaceFilter(t *testing.T) {
 	c := mongotest.Connect(t)(t)
 	ctx := context.Background()
 
-	wid1 := accountdomain.NewWorkspaceID()
-	wid2 := accountdomain.NewWorkspaceID()
+	wid1 := id.NewWorkspaceID()
+	wid2 := id.NewWorkspaceID()
 	tid1 := id.NewTriggerID()
 	tid2 := id.NewTriggerID()
 
@@ -139,8 +138,8 @@ func TestTrigger_Remove_WithWorkspaceFilter(t *testing.T) {
 	})
 
 	filter := repo.WorkspaceFilter{
-		Readable: accountdomain.WorkspaceIDList{wid1},
-		Writable: accountdomain.WorkspaceIDList{wid1},
+		Readable: id.WorkspaceIDList{wid1},
+		Writable: id.WorkspaceIDList{wid1},
 	}
 	r := NewTrigger(mongox.NewClientWithDatabase(c)).Filtered(filter)
 
@@ -164,7 +163,7 @@ func TestTrigger_DeploymentUpdates(t *testing.T) {
 	c := mongotest.Connect(t)(t)
 	ctx := context.Background()
 
-	wid := accountdomain.NewWorkspaceID()
+	wid := id.NewWorkspaceID()
 	did := id.NewDeploymentID()
 	tid := id.NewTriggerID()
 

@@ -9,7 +9,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/rerror"
 )
 
@@ -32,7 +31,7 @@ func (r *Deployment) Filtered(f repo.WorkspaceFilter) repo.Deployment {
 	}
 }
 
-func (r *Deployment) FindByWorkspace(_ context.Context, wid accountdomain.WorkspaceID, p *interfaces.PaginationParam) ([]*deployment.Deployment, *interfaces.PageBasedInfo, error) {
+func (r *Deployment) FindByWorkspace(_ context.Context, wid id.WorkspaceID, p *interfaces.PaginationParam) ([]*deployment.Deployment, *interfaces.PageBasedInfo, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -153,7 +152,7 @@ func (r *Deployment) FindByIDs(ctx context.Context, ids id.DeploymentIDList) ([]
 	return result, nil
 }
 
-func (r *Deployment) FindByVersion(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID, version string) (*deployment.Deployment, error) {
+func (r *Deployment) FindByVersion(ctx context.Context, wsID id.WorkspaceID, projectID *id.ProjectID, version string) (*deployment.Deployment, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -176,7 +175,7 @@ func (r *Deployment) FindByVersion(ctx context.Context, wsID accountdomain.Works
 	return nil, rerror.ErrNotFound
 }
 
-func (r *Deployment) FindHead(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID) (*deployment.Deployment, error) {
+func (r *Deployment) FindHead(ctx context.Context, wsID id.WorkspaceID, projectID *id.ProjectID) (*deployment.Deployment, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -199,7 +198,7 @@ func (r *Deployment) FindHead(ctx context.Context, wsID accountdomain.WorkspaceI
 	return nil, rerror.ErrNotFound
 }
 
-func (r *Deployment) FindVersions(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID) ([]*deployment.Deployment, error) {
+func (r *Deployment) FindVersions(ctx context.Context, wsID id.WorkspaceID, projectID *id.ProjectID) ([]*deployment.Deployment, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 

@@ -10,7 +10,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/rerror"
 	"go.mongodb.org/mongo-driver/bson"
@@ -77,7 +76,7 @@ func (r *Deployment) FindByIDs(ctx context.Context, ids id.DeploymentIDList) ([]
 	return filterDeployments(ids, c.Result), nil
 }
 
-func (r *DeploymentAdapter) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*deployment.Deployment, *interfaces.PageBasedInfo, error) {
+func (r *DeploymentAdapter) FindByWorkspace(ctx context.Context, id id.WorkspaceID, pagination *interfaces.PaginationParam) ([]*deployment.Deployment, *interfaces.PageBasedInfo, error) {
 	if !r.f.CanRead(id) {
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
@@ -138,7 +137,7 @@ func (r *Deployment) FindByProject(ctx context.Context, pid id.ProjectID) (*depl
 	}, true)
 }
 
-func (r *Deployment) FindByVersion(ctx context.Context, wsID accountdomain.WorkspaceID, pID *id.ProjectID, version string) (*deployment.Deployment, error) {
+func (r *Deployment) FindByVersion(ctx context.Context, wsID id.WorkspaceID, pID *id.ProjectID, version string) (*deployment.Deployment, error) {
 	filter := bson.M{
 		"workspaceid": wsID.String(),
 		"version":     version,
@@ -149,7 +148,7 @@ func (r *Deployment) FindByVersion(ctx context.Context, wsID accountdomain.Works
 	return r.findOne(ctx, filter, true)
 }
 
-func (r *Deployment) FindHead(ctx context.Context, wsID accountdomain.WorkspaceID, pID *id.ProjectID) (*deployment.Deployment, error) {
+func (r *Deployment) FindHead(ctx context.Context, wsID id.WorkspaceID, pID *id.ProjectID) (*deployment.Deployment, error) {
 	filter := bson.M{
 		"workspaceid": wsID.String(),
 		"ishead":      true,
@@ -160,7 +159,7 @@ func (r *Deployment) FindHead(ctx context.Context, wsID accountdomain.WorkspaceI
 	return r.findOne(ctx, filter, true)
 }
 
-func (r *Deployment) FindVersions(ctx context.Context, wsID accountdomain.WorkspaceID, pID *id.ProjectID) ([]*deployment.Deployment, error) {
+func (r *Deployment) FindVersions(ctx context.Context, wsID id.WorkspaceID, pID *id.ProjectID) ([]*deployment.Deployment, error) {
 	filter := bson.M{
 		"workspaceid": wsID.String(),
 	}
@@ -272,7 +271,7 @@ func (r *Deployment) Remove(ctx context.Context, id id.DeploymentID) error {
 }
 
 func (r *Deployment) findOne(ctx context.Context, filter any, filterByWorkspaces bool) (*deployment.Deployment, error) {
-	var f []accountdomain.WorkspaceID
+	var f []id.WorkspaceID
 	if filterByWorkspaces {
 		f = r.f.Readable
 	}

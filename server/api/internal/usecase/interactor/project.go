@@ -12,8 +12,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/project"
-	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
+	"github.com/reearth/reearth-flow/api/pkg/workspace"
 	"github.com/reearth/reearthx/usecasex"
 )
 
@@ -22,8 +21,7 @@ type Project struct {
 	workflowRepo      repo.Workflow
 	projectRepo       repo.Project
 	jobRepo           repo.Job
-	userRepo          accountrepo.User
-	workspaceRepo     accountrepo.Workspace
+	workspaceRepo     workspace.Repo
 	transaction       usecasex.Transaction
 	file              gateway.File
 	batch             gateway.Batch
@@ -31,14 +29,13 @@ type Project struct {
 	permissionChecker gateway.PermissionChecker
 }
 
-func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job, permissionChecker gateway.PermissionChecker) interfaces.Project {
+func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job, permissionChecker gateway.PermissionChecker, workspaceRepo workspace.Repo) interfaces.Project {
 	return &Project{
 		assetRepo:         r.Asset,
 		workflowRepo:      r.Workflow,
 		projectRepo:       r.Project,
 		jobRepo:           r.Job,
-		userRepo:          r.User,
-		workspaceRepo:     r.Workspace,
+		workspaceRepo:     workspaceRepo,
 		transaction:       r.Transaction,
 		file:              gr.File,
 		batch:             gr.Batch,
@@ -59,7 +56,7 @@ func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID) ([]*project.Pro
 	return i.projectRepo.FindByIDs(ctx, ids)
 }
 
-func (i *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*project.Project, *interfaces.PageBasedInfo, error) {
+func (i *Project) FindByWorkspace(ctx context.Context, id id.WorkspaceID, pagination *interfaces.PaginationParam) ([]*project.Project, *interfaces.PageBasedInfo, error) {
 	if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
 		return nil, nil, err
 	}

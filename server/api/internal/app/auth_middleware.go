@@ -12,18 +12,19 @@ import (
 	"github.com/reearth/reearthx/log"
 )
 
-type tempNewAuthMiddlewares []echo.MiddlewareFunc
+type authMiddlewares []echo.MiddlewareFunc
 
-type tempNewAuthMiddlewaresParam struct {
-	GQLClient *gql.Client
-	SkipOps   map[string]struct{}
+type authMiddlewaresParam struct {
+	Cfg     *ServerConfig
+	SkipOps map[string]struct{}
 }
 
-func newTempNewAuthMiddlewares(param *tempNewAuthMiddlewaresParam) tempNewAuthMiddlewares {
+func newAuthMiddlewares(param *authMiddlewaresParam) authMiddlewares {
 	return []echo.MiddlewareFunc{
 		gqlOpNameMiddleware(),
 		jwtContextMiddleware(),
-		tempNewAuthMiddleware(param.GQLClient, param.SkipOps),
+		authMiddleware(param.Cfg.AccountGQLClient, param.SkipOps),
+		attachOpMiddleware(param.Cfg),
 	}
 }
 
@@ -69,7 +70,7 @@ func jwtContextMiddleware() echo.MiddlewareFunc {
 	}
 }
 
-func tempNewAuthMiddleware(gqlClient *gql.Client, skipOps map[string]struct{}) echo.MiddlewareFunc {
+func authMiddleware(gqlClient *gql.Client, skipOps map[string]struct{}) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			if c.Path() == "/api/signup" {
@@ -81,10 +82,6 @@ func tempNewAuthMiddleware(gqlClient *gql.Client, skipOps map[string]struct{}) e
 			}
 
 			ctx := c.Request().Context()
-
-			// TODO: Optimize performance by including necessary user information (userID, email, etc.)
-			// directly in the JWT token instead of executing a GQL query on every request.
-			// This will eliminate the overhead of making an API call to fetch user data for each request.
 			u, err := gqlClient.UserRepo.FindMe(ctx)
 			if err != nil {
 				log.Errorc(ctx, err, "failed to fetch user")
@@ -97,49 +94,6 @@ func tempNewAuthMiddleware(gqlClient *gql.Client, skipOps map[string]struct{}) e
 			ctx = adapter.AttachUser(ctx, u)
 			c.SetRequest(c.Request().WithContext(ctx))
 			return next(c)
-		}
-	}
-}
-
-// TODO: This function is in the process of migrating the task "Replace user management in API with reearth accounts".
-// Once completed, only `tempNewAuthMWs` will be used, making this function unnecessary.
-func conditionalGraphQLAuthMiddleware(
-	defaultMWs []echo.MiddlewareFunc,
-	tempNewAuthMWs []echo.MiddlewareFunc,
-) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			middlewares := defaultMWs
-
-			if c.Path() == "/api/signup" && c.Request().Method == http.MethodPost {
-				middlewares = tempNewAuthMWs
-			} else if c.Path() == "/api/signup/verify" && c.Request().Method == http.MethodPost {
-				middlewares = tempNewAuthMWs
-			} else if c.Path() == "/api/signup/verify/:code" && c.Request().Method == http.MethodPost {
-				middlewares = tempNewAuthMWs
-			} else if c.Path() == "/api/password-reset" && c.Request().Method == http.MethodPost {
-				middlewares = tempNewAuthMWs
-			} else if c.Path() == "/api/graphql" && c.Request().Method == http.MethodPost {
-				var body struct {
-					OperationName string `json:"operationName"`
-				}
-				data, err := io.ReadAll(c.Request().Body)
-				if err == nil {
-					_ = json.Unmarshal(data, &body)
-					c.Request().Body = io.NopCloser(bytes.NewBuffer(data))
-				}
-
-				switch body.OperationName {
-				case "GetMe", "GetWorkspaceById", "GetWorkspaces", "SearchUser", "UpdateMe", "CreateWorkspace", "UpdateWorkspace", "DeleteWorkspace", "AddMemberToWorkspace", "UpdateMemberOfWorkspace", "RemoveMemberFromWorkspace", "Signup", "RemoveMyAuth", "DeleteMe":
-					middlewares = tempNewAuthMWs
-				}
-			}
-
-			composed := next
-			for i := len(middlewares) - 1; i >= 0; i-- {
-				composed = middlewares[i](composed)
-			}
-			return composed(c)
 		}
 	}
 }

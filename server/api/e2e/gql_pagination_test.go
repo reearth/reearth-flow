@@ -10,16 +10,36 @@ import (
 	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/app/config"
+	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
+	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
+	usermockrepo "github.com/reearth/reearth-flow/api/pkg/user/mockrepo"
+	pkgworkspace "github.com/reearth/reearth-flow/api/pkg/workspace"
+	workspacemockrepo "github.com/reearth/reearth-flow/api/pkg/workspace/mockrepo"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 func TestProjectsPagination(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operator := factory.NewUser(func(b *pkguser.Builder) {})
+	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
+	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil).AnyTimes()
+	mock := &TestMocks{
+		UserRepo:      mockUserRepo,
+		WorkspaceRepo: mockWorkspaceRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true, nil)
+	}, true, true, mock)
 
 	// Create multiple projects for testing
 	projectIDs := make([]string, 5)
@@ -257,12 +277,26 @@ func TestProjectsPagination(t *testing.T) {
 }
 
 func TestJobsPagination(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operator := factory.NewUser(func(b *pkguser.Builder) {})
+	ws := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
+	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(ws, nil).AnyTimes()
+	mock := &TestMocks{
+		UserRepo:      mockUserRepo,
+		WorkspaceRepo: mockWorkspaceRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true, nil)
+	}, true, true, mock)
 
 	deploymentQuery := `mutation($input: CreateDeploymentInput!) {
 		createDeployment(input: $input) {
@@ -658,12 +692,26 @@ func TestJobsPagination(t *testing.T) {
 }
 
 func TestTriggersPagination(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operator := factory.NewUser(func(b *pkguser.Builder) {})
+	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
+	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil).AnyTimes()
+	mock := &TestMocks{
+		UserRepo:      mockUserRepo,
+		WorkspaceRepo: mockWorkspaceRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true, nil)
+	}, true, true, mock)
 
 	// Create a test deployment first
 	deploymentId := createTestDeployment(t, e)

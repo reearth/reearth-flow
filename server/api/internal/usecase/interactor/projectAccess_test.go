@@ -10,8 +10,9 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearth-flow/api/pkg/projectAccess"
-	"github.com/reearth/reearthx/account/accountdomain/user"
-	"github.com/reearth/reearthx/account/accountdomain/workspace"
+	"github.com/reearth/reearth-flow/api/pkg/user"
+	"github.com/reearth/reearth-flow/api/pkg/workspace"
+	reearthxworkspace "github.com/reearth/reearthx/account/accountdomain/workspace"
 	"github.com/reearth/reearthx/appx"
 	"github.com/stretchr/testify/assert"
 )
@@ -25,7 +26,7 @@ func TestProjectAccess_Fetch(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachReearthxUser(ctx, mockUser)
+	ctx = adapter.AttachUser(ctx, mockUser)
 
 	mem := memory.New()
 	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
@@ -38,11 +39,11 @@ func TestProjectAccess_Fetch(t *testing.T) {
 	}
 
 	// Set up a workspace, project, and shared project access
-	ws := workspace.New().NewID().MustBuild()
+	ws := reearthxworkspace.New().NewID().MustBuild()
 	_ = mem.Workspace.Save(ctx, ws)
 
 	pid1 := project.NewID()
-	prjPublic := project.New().ID(pid1).Workspace(ws.ID()).Name("testproject1").UpdatedAt(time.Now()).MustBuild()
+	prjPublic := project.New().ID(pid1).Workspace(workspace.ID(ws.ID())).Name("testproject1").UpdatedAt(time.Now()).MustBuild()
 	_ = mem.Project.Save(ctx, prjPublic)
 
 	paPublic, _ := projectAccess.New().
@@ -53,7 +54,7 @@ func TestProjectAccess_Fetch(t *testing.T) {
 	_ = mem.ProjectAccess.Save(ctx, paPublic)
 
 	pid2 := project.NewID()
-	prjPrivate := project.New().ID(pid2).Workspace(ws.ID()).Name("testproject2").UpdatedAt(time.Now()).MustBuild()
+	prjPrivate := project.New().ID(pid2).Workspace(workspace.ID(ws.ID())).Name("testproject2").UpdatedAt(time.Now()).MustBuild()
 	_ = mem.Project.Save(ctx, prjPrivate)
 
 	paPrivate, _ := projectAccess.New().
@@ -111,7 +112,7 @@ func TestProjectAccess_Share(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachReearthxUser(ctx, mockUser)
+	ctx = adapter.AttachUser(ctx, mockUser)
 
 	mem := memory.New()
 	config := ContainerConfig{
@@ -132,11 +133,11 @@ func TestProjectAccess_Share(t *testing.T) {
 	}
 
 	// Set up a workspace, project
-	ws := workspace.New().NewID().MustBuild()
+	ws := reearthxworkspace.New().NewID().MustBuild()
 	_ = mem.Workspace.Save(ctx, ws)
 
 	pid := project.NewID()
-	prj := project.New().ID(pid).Workspace(ws.ID()).Name("testproject").UpdatedAt(time.Now()).MustBuild()
+	prj := project.New().ID(pid).Workspace(workspace.ID(ws.ID())).Name("testproject").UpdatedAt(time.Now()).MustBuild()
 	_ = mem.Project.Save(ctx, prj)
 
 	tests := []struct {
@@ -189,7 +190,7 @@ func TestProjectAccess_Unshare(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachReearthxUser(ctx, mockUser)
+	ctx = adapter.AttachUser(ctx, mockUser)
 
 	mem := memory.New()
 	config := ContainerConfig{
@@ -208,11 +209,11 @@ func TestProjectAccess_Unshare(t *testing.T) {
 	}
 
 	// Set up a workspace, project, and shared project access
-	ws := workspace.New().NewID().MustBuild()
+	ws := reearthxworkspace.New().NewID().MustBuild()
 	_ = mem.Workspace.Save(ctx, ws)
 
 	pid := project.NewID()
-	prj := project.New().ID(pid).Workspace(ws.ID()).Name("testproject").UpdatedAt(time.Now()).MustBuild()
+	prj := project.New().ID(pid).Workspace(workspace.ID(ws.ID())).Name("testproject").UpdatedAt(time.Now()).MustBuild()
 	_ = mem.Project.Save(ctx, prj)
 
 	pa, _ := projectAccess.New().
