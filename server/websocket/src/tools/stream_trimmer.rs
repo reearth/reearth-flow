@@ -69,13 +69,13 @@ impl StreamTrimmer {
     async fn perform_trim_cycle(&self) -> Result<()> {
         let start_time = std::time::Instant::now();
 
-        match self.trim_streams_with_state_save().await {
+        match self.trim_streams_with_gcs_flush().await {
             Ok((streams_processed, total_trimmed, saved_count)) => {
                 let duration = start_time.elapsed();
 
                 if streams_processed > 0 || total_trimmed > 0 {
                     info!(
-                        "Stream trimming cycle completed in {:?}: processed {} streams, saved {} complete states, trimmed {} entries",
+                        "Stream trimming cycle completed in {:?}: processed {} streams, flushed {} docs to GCS, trimmed {} entries",
                         duration, streams_processed, saved_count, total_trimmed
                     );
                 } else {
@@ -94,8 +94,8 @@ impl StreamTrimmer {
         Ok(())
     }
 
-    /// Saves complete document state to Redis before trimming the stream
-    async fn save_complete_state_before_trim(&self, doc_id: &str) -> Result<bool> {
+    /// Flushes complete document state to GCS before trimming the stream
+    async fn flush_complete_state_before_trim(&self, doc_id: &str) -> Result<bool> {
         let stream_length = match self.redis_store.get_stream_length(doc_id).await {
             Ok(length) => length,
             Err(_) => {
@@ -114,54 +114,47 @@ impl StreamTrimmer {
                 return Ok(false);
             }
         };
+
         let gcs_store = group.get_storage();
-        let gcs_doc = gcs_store.load_doc_v2(doc_id).await?;
-        let gcs_state = gcs_doc.transact().state_vector();
+
+        // Try to load existing GCS document, if it doesn't exist, that's ok
+        let gcs_state = match gcs_store.load_doc_v2(doc_id).await {
+            Ok(gcs_doc) => gcs_doc.transact().state_vector(),
+            Err(_) => {
+                // Document doesn't exist in GCS yet, use empty state vector
+                yrs::StateVector::default()
+            }
+        };
 
         let awareness_ref = group.awareness();
         let awareness_guard = awareness_ref.read().await;
         let awareness_doc = awareness_guard.doc();
         let awareness_txn = awareness_doc.transact();
-        let complete_state = awareness_txn.encode_diff_v1(&gcs_state);
 
-        if complete_state.is_empty() {
-            tracing::debug!("No state to save for doc '{}'", doc_id);
+        // Check if there are any differences to flush
+        let diff = awareness_txn.encode_diff_v1(&gcs_state);
+        if diff.is_empty() || (diff.len() == 2 && diff[0] == 0 && diff[1] == 0) {
+            tracing::debug!("No new changes to flush for doc '{}'", doc_id);
             return Ok(false);
         }
 
-        let complete_state_key = format!("yjs:complete:{doc_id}");
-        match self.redis_store.get_pool().get().await {
-            Ok(mut conn) => {
-                use redis::AsyncCommands;
-                let _: () = match conn.set(&complete_state_key, &complete_state[..]).await {
-                    Ok(result) => result,
-                    Err(e) => {
-                        warn!("Failed to save complete state for doc '{}': {}", doc_id, e);
-                        return Ok(false);
-                    }
-                };
-
-                let _: () = match conn.expire(&complete_state_key, 86400).await {
-                    Ok(result) => result,
-                    Err(e) => {
-                        warn!(
-                            "Failed to set TTL for complete state of doc '{}': {}",
-                            doc_id, e
-                        );
-                    }
-                };
-
-                tracing::debug!("Saved complete state for doc '{}' before trimming", doc_id);
+        // Flush the complete current state to GCS
+        match gcs_store.flush_doc_v2(doc_id, &awareness_txn).await {
+            Ok(_) => {
+                tracing::debug!(
+                    "Successfully flushed doc '{}' to GCS before trimming",
+                    doc_id
+                );
                 Ok(true)
             }
             Err(e) => {
-                warn!("Failed to get Redis connection: {}", e);
+                warn!("Failed to flush doc '{}' to GCS: {}", doc_id, e);
                 Ok(false)
             }
         }
     }
 
-    async fn trim_streams_with_state_save(&self) -> Result<(u64, u64, u64)> {
+    async fn trim_streams_with_gcs_flush(&self) -> Result<(u64, u64, u64)> {
         let streams = self.redis_store.list_all_streams().await?;
         let current_time = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -177,18 +170,18 @@ impl StreamTrimmer {
 
         for stream_key in streams {
             if let Some(doc_id) = stream_key.strip_prefix("yjs:stream:") {
-                match self.save_complete_state_before_trim(doc_id).await {
+                match self.flush_complete_state_before_trim(doc_id).await {
                     Ok(true) => {
                         saved_count += 1;
                         tracing::debug!(
-                            "Saved complete state for doc '{}' before trimming",
+                            "Flushed complete state for doc '{}' to GCS before trimming",
                             doc_id
                         );
                     }
                     Ok(false) => {}
                     Err(e) => {
                         warn!(
-                            "Failed to save complete state for doc '{}' before trimming: {}",
+                            "Failed to flush complete state for doc '{}' before trimming: {}",
                             doc_id, e
                         );
                     }
@@ -249,7 +242,7 @@ impl StreamTrimmer {
 
         if streams_processed > 0 {
             info!(
-                "Stream trimming with state preservation completed: processed {} streams, saved {} complete states, trimmed {} total entries",
+                "Stream trimming with GCS flush completed: processed {} streams, flushed {} docs to GCS, trimmed {} total entries",
                 streams_processed, saved_count, total_trimmed
             );
         }
