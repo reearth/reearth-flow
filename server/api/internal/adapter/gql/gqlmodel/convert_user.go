@@ -1,14 +1,11 @@
 package gqlmodel
 
 import (
-	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
-	"github.com/reearth/reearthx/account/accountdomain/user"
-	"github.com/reearth/reearthx/util"
+	"github.com/reearth/reearth-flow/api/pkg/user"
 	"github.com/samber/lo"
-	"golang.org/x/text/language"
 )
 
-func ToUser(u *pkguser.User) *User {
+func ToUser(u *user.User) *User {
 	if u == nil {
 		return nil
 	}
@@ -22,26 +19,7 @@ func ToUser(u *pkguser.User) *User {
 	}
 }
 
-func ToUsersFromSimple(users user.SimpleList) []*User {
-	return util.Map(users, ToUserFromSimple)
-}
-
-func ToUserFromSimple(u *user.Simple) *User {
-	if u == nil {
-		return nil
-	}
-
-	return &User{
-		ID:    IDFrom(u.ID),
-		Name:  u.Name,
-		Email: u.Email,
-		Metadata: &UserMetadata{
-			Lang: language.English,
-		},
-	}
-}
-
-func ToMe(u *pkguser.User) *Me {
+func ToMe(u *user.User) *Me {
 	if u == nil {
 		return nil
 	}
@@ -56,27 +34,12 @@ func ToMe(u *pkguser.User) *Me {
 	}
 }
 
-func ToUserMetadata(m pkguser.Metadata) *UserMetadata {
+func ToUserMetadata(m user.Metadata) *UserMetadata {
 	return &UserMetadata{
 		Description: lo.EmptyableToPtr(m.Description()),
 		Website:     lo.EmptyableToPtr(m.Website()),
 		Theme:       Theme(m.Theme()),
 		PhotoURL:    lo.EmptyableToPtr(m.PhotoURL()),
-		Lang:        m.Lang(),
-	}
-}
-
-func ToUserMetadataFromAccount(m *user.Metadata) *UserMetadata {
-	if m == nil {
-		return &UserMetadata{
-			Lang: language.English,
-		}
-	}
-	return &UserMetadata{
-		Description: lo.EmptyableToPtr(m.Description()),
-		Website:     lo.EmptyableToPtr(m.Website()),
-		PhotoURL:    lo.EmptyableToPtr(m.PhotoURL()),
-		Theme:       Theme(m.Theme()),
 		Lang:        m.Lang(),
 	}
 }

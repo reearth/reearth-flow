@@ -9,12 +9,10 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interactor"
 	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/rerror"
-	"github.com/samber/lo"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 )
 
@@ -57,15 +55,12 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	authConfig := cfg.Config.JWTProviders()
 
 	log.Infof("auth: config: %#v", authConfig)
-	authMiddleware := echo.WrapMiddleware(lo.Must(appx.AuthMiddleware(authConfig, adapter.ContextAuthInfo, true)))
-	// TODO: During migration, continue using this temporary middleware for selected GraphQL operations.
-	// After migration, this will become the standard authMiddleware and the function will be renamed accordingly.
 	skipOps := map[string]struct{}{
 		"Signup": {},
 	}
-	tempNewAuthMiddlewares := newTempNewAuthMiddlewares(&tempNewAuthMiddlewaresParam{
-		GQLClient: cfg.AccountGQLClient,
-		SkipOps:   skipOps,
+	authMiddleware := newAuthMiddlewares(&authMiddlewaresParam{
+		Cfg:     cfg,
+		SkipOps: skipOps,
 	})
 
 	// enable pprof
@@ -88,7 +83,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	}
 
 	sharedJob := interactor.NewJob(cfg.Repos, cfg.Gateways, cfg.PermissionChecker)
-	e.Use(UsecaseMiddleware(cfg.Repos, cfg.Gateways, cfg.AccountRepos, cfg.AccountGateways, cfg.PermissionChecker, cfg.AccountGQLClient, sharedJob, interactor.ContainerConfig{
+	e.Use(UsecaseMiddleware(cfg.Repos, cfg.Gateways, cfg.AccountGateways, cfg.PermissionChecker, cfg.AccountGQLClient, sharedJob, interactor.ContainerConfig{
 		SignupSecret:             cfg.Config.SignupSecret,
 		AuthSrvUIDomain:          cfg.Config.Host_Web,
 		Host:                     cfg.Config.Host,
@@ -97,21 +92,13 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 		SkipPermissionCheck:      cfg.Config.SkipPermissionCheck,
 	}))
 
-	// auth srv
-	authServer(ctx, e, &cfg.Config.AuthSrv, cfg.Repos)
-
 	// apis
 	api := e.Group("/api")
 	api.GET("/ping", Ping(), privateCache)
 
 	// authenticated routes
 	apiPrivate := api.Group("", privateCache)
-	apiPrivate.Use(
-		conditionalGraphQLAuthMiddleware(
-			[]echo.MiddlewareFunc{authMiddleware, attachOpMiddleware(cfg)},
-			tempNewAuthMiddlewares,
-		),
-	)
+	apiPrivate.Use(authMiddleware...)
 	apiPrivate.POST("/signup", Signup())
 	apiPrivate.Any("/graphql", GraphqlAPI(cfg.Config.GraphQL, gqldev, origins))
 

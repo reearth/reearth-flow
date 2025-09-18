@@ -86,6 +86,21 @@ func (mr *MockWorkspaceRepoMockRecorder) Delete(ctx, wid any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockWorkspaceRepo)(nil).Delete), ctx, wid)
 }
 
+// FindByID mocks base method.
+func (m *MockWorkspaceRepo) FindByID(ctx context.Context, arg1 id.WorkspaceID) (*workspace.Workspace, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByID", ctx, arg1)
+	ret0, _ := ret[0].(*workspace.Workspace)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByID indicates an expected call of FindByID.
+func (mr *MockWorkspaceRepoMockRecorder) FindByID(ctx, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByID", reflect.TypeOf((*MockWorkspaceRepo)(nil).FindByID), ctx, arg1)
+}
+
 // FindByIDs mocks base method.
 func (m *MockWorkspaceRepo) FindByIDs(ctx context.Context, ids id.WorkspaceIDList) (workspace.List, error) {
 	m.ctrl.T.Helper()

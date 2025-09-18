@@ -23,8 +23,7 @@ func TestMe(t *testing.T) {
 	})
 
 	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
-	mockUserRepo.EXPECT().
-		FindMe(gomock.Any()).Return(userEntity, nil)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(userEntity, nil)
 
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
@@ -36,8 +35,7 @@ func TestMe(t *testing.T) {
 			Disabled: true,
 		},
 		AccountsApiHost: "http://localhost:8080",
-	},
-		true, baseSeeder, true, mock)
+	}, true, true, mock)
 
 	requestBody := GraphQLRequest{
 		OperationName: "GetMe",

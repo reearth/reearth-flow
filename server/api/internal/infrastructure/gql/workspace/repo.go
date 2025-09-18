@@ -17,6 +17,18 @@ func NewRepo(gql *graphql.Client) workspace.Repo {
 	return &workspaceRepo{client: gql}
 }
 
+func (r *workspaceRepo) FindByID(ctx context.Context, id id.WorkspaceID) (*workspace.Workspace, error) {
+	var q findByIDQuery
+	vars := map[string]interface{}{
+		"Id": graphql.ID(id.String()),
+	}
+	if err := r.client.Query(ctx, &q, vars); err != nil {
+		return nil, err
+	}
+
+	return util.ToWorkspace(q.Workspace)
+}
+
 func (r *workspaceRepo) FindByIDs(ctx context.Context, ids id.WorkspaceIDList) (workspace.List, error) {
 	if len(ids) == 0 {
 		return nil, nil

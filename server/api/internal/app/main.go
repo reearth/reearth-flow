@@ -149,8 +149,6 @@ func NewServer(ctx context.Context, cfg *ServerConfig) *WebServer {
 
 	e := initEcho(ctx, cfg)
 
-	authServer(ctx, e, &cfg.Config.AuthSrv, cfg.Repos)
-
 	return &WebServer{
 		address:   address,
 		appServer: e,

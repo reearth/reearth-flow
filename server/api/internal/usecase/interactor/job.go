@@ -15,7 +15,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/job/monitor"
 	"github.com/reearth/reearth-flow/api/pkg/notification"
 	"github.com/reearth/reearth-flow/api/pkg/subscription"
-	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/usecasex"
@@ -166,7 +165,7 @@ func (i *Job) Fetch(ctx context.Context, ids []id.JobID) ([]*job.Job, error) {
 
 func (i *Job) FindByWorkspace(
 	ctx context.Context,
-	wsID accountdomain.WorkspaceID,
+	wsID id.WorkspaceID,
 	p *interfaces.PaginationParam,
 ) ([]*job.Job, *interfaces.PageBasedInfo, error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {

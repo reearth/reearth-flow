@@ -3,7 +3,6 @@ package mongodoc
 import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/workflow"
-	"github.com/reearth/reearthx/account/accountdomain"
 	"golang.org/x/exp/slices"
 )
 
@@ -16,7 +15,7 @@ type WorkflowDocument struct {
 
 type WorkflowConsumer = Consumer[*WorkflowDocument, *workflow.Workflow]
 
-func NewWorkflowConsumer(workspaces []accountdomain.WorkspaceID) *WorkflowConsumer {
+func NewWorkflowConsumer(workspaces []id.WorkspaceID) *WorkflowConsumer {
 	return NewConsumer[*WorkflowDocument, *workflow.Workflow](func(a *workflow.Workflow) bool {
 		return workspaces == nil || slices.Contains(workspaces, a.Workspace())
 	})
@@ -41,7 +40,7 @@ func (d *WorkflowDocument) Model() (*workflow.Workflow, error) {
 	if err != nil {
 		return nil, err
 	}
-	tid, err := accountdomain.WorkspaceIDFrom(d.Workspace)
+	tid, err := id.WorkspaceIDFrom(d.Workspace)
 	if err != nil {
 		return nil, err
 	}
