@@ -79,7 +79,7 @@ nodes:
             } else {
               0
             }
-        
+
         - newAttribute: OuterFloorSurface
           expr: |
             let feature_type = env.get("__value").featureType ?? "";
