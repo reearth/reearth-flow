@@ -308,6 +308,8 @@ export const toProjectVariable = (
 
 export const toUserParamVarType = (type: ParameterType): VarType => {
   switch (type) {
+    case "ARRAY":
+      return "array";
     case "CHOICE":
       return "choice";
     case "COLOR":
@@ -347,6 +349,8 @@ export const toGqlParameterType = (
   type: VarType,
 ): ParameterType | undefined => {
   switch (type) {
+    case "array":
+      return ParameterType.Array;
     case "choice":
       return ParameterType.Choice;
     case "color":

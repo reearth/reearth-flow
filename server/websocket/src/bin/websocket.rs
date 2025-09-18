@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tracing::error;
 use uuid::Uuid;
 use websocket::{
-    conf::Config, pool::BroadcastPool, server::start_server, storage::gcs::GcsStore,
+    conf::Config, infrastructure::gcs::GcsStore, pool::BroadcastPool, server::start_server,
     storage::redis::RedisStore, AppState,
 };
 

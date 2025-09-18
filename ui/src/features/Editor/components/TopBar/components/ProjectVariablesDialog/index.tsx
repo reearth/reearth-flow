@@ -68,6 +68,7 @@ const allVarTypes: VarType[] = [
   // "attribute_name",
   "text",
   "number",
+  "array",
   "choice",
   "file_folder",
   "yes_no",
