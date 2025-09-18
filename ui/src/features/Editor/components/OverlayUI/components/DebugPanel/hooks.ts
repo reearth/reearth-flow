@@ -19,7 +19,7 @@ export default () => {
   const [fullscreenDebug, setFullscreenDebug] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [minimized, setMinimized] = useState(false);
-  const [enableClustering, setEnableClustering] = useState<boolean>(true);
+  // const [enableClustering, setEnableClustering] = useState<boolean>(true);
   const [selectedFeature, setSelectedFeature] = useState<any>(null);
   const [convertedSelectedFeature, setConvertedSelectedFeature] =
     useState(null);
@@ -480,24 +480,19 @@ export default () => {
 
   const handleRowSingleClick = useCallback(
     (value: any) => {
-      setEnableClustering(false);
+      // setEnableClustering(false);
       setSelectedFeature(value);
     },
-    [setSelectedFeature, setEnableClustering],
+    [setSelectedFeature],
   );
 
   const handleRowDoubleClick = useCallback(
     (value: any) => {
-      setEnableClustering(false);
+      // setEnableClustering(false);
       setSelectedFeature(value);
       handleFlyToSelectedFeature(convertedSelectedFeature);
     },
-    [
-      convertedSelectedFeature,
-      handleFlyToSelectedFeature,
-      setSelectedFeature,
-      setEnableClustering,
-    ],
+    [convertedSelectedFeature, handleFlyToSelectedFeature, setSelectedFeature],
   );
 
   return {
@@ -514,11 +509,11 @@ export default () => {
     dataURLs,
     outputDataForDownload,
     selectedOutputData,
-    enableClustering,
+    // enableClustering,
     selectedFeature,
     setSelectedFeature,
     setConvertedSelectedFeature,
-    setEnableClustering,
+    // setEnableClustering,
     handleFullscreenExpand,
     handleExpand,
     handleMinimize,

@@ -33,8 +33,16 @@ const buildExprUiSchema = (
   path = "",
 ): any => {
   if (!schemaObj || typeof schemaObj !== "object") return {};
-
   const uiSchema: any = {};
+
+  // Add description to UI schema if available
+  if (schemaObj.description) {
+    uiSchema["ui:description"] = schemaObj.description;
+  }
+
+  // if (schemaObj.definitions.Operation.properties) {
+  //   uiSchema["ui:description"] = schemaObj.description;
+  // }
 
   // Determine if this is a Python script field or regular Rhai expression
   const isExprType =
@@ -48,7 +56,12 @@ const buildExprUiSchema = (
     const isPythonScript =
       actionName === "PythonScriptProcessor" && fieldName === "script";
 
-    return { "ui:exprType": isPythonScript ? "python" : "rhai" };
+    return {
+      "ui:exprType": isPythonScript ? "python" : "rhai",
+      ...(schemaObj.description
+        ? { "ui:description": schemaObj.description }
+        : {}),
+    };
   }
 
   // Recursively check properties
@@ -148,14 +161,17 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
   }, [schema, defaultFormData, onValidationChange, t]);
 
   // Generate UI schema to mark Expr fields from original schema (before patching)
+
   const exprUiSchema = originalSchema
     ? buildExprUiSchema(originalSchema, actionName)
     : {};
+
   const finalUiSchema = {
     ...exprUiSchema,
+
     "ui:submitButtonOptions": { norender: true },
   };
-
+  console.log("ORIGINAL SCHEMA", finalUiSchema);
   return schema ? (
     <SchemaFormErrorBoundary>
       <ThemedForm
