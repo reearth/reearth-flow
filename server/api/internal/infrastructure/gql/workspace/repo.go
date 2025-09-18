@@ -20,7 +20,7 @@ func NewRepo(gql *graphql.Client) workspace.Repo {
 func (r *workspaceRepo) FindByID(ctx context.Context, id id.WorkspaceID) (*workspace.Workspace, error) {
 	var q findByIDQuery
 	vars := map[string]interface{}{
-		"Id": graphql.ID(id.String()),
+		"id": graphql.ID(id.String()),
 	}
 	if err := r.client.Query(ctx, &q, vars); err != nil {
 		return nil, err
