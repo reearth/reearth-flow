@@ -3,11 +3,10 @@ use std::collections::{HashMap, HashSet};
 use num_traits::FromPrimitive;
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::{
-    algorithm::GeoFloat,
-    types::{
-        coordinate::Coordinate, face::Face3D, geometry::Geometry as FlowGeometry3D, point::Point3D,
+    algorithm::GeoFloat, error, types::{
+        coordinate::Coordinate, face::Face3D, geometry::Geometry, point::Point3D,
         solid::Solid3D,
-    },
+    }
 };
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -124,19 +123,22 @@ impl Processor for SolidBoundaryValidator {
             return Ok(());
         }
 
-        // Extract Solid geometry from feature
-        let geoms = match &geometry.value {
-            GeometryValue::FlowGeometry3D(geom) => vec![geom],
+        // Extract solid geometry from feature
+        let geom = match &geometry.value {
+            GeometryValue::FlowGeometry3D(geom) => geom,
             GeometryValue::CityGmlGeometry(gml_geom) => {
-                // for geom in &gml_geom.gml_geometries {
-                //     if geom.feature_type == "Solid" {
-                //         if let Some(FlowGeometry3D::Solid(solid)) = &geom.geometry {
-                //             // Process the solid geometry
-                //             return self.process_solid_geometry(&ctx, fw, solid);
-                //         }
-                //     }
-                // }
-                Vec::new()
+                if gml_geom.gml_geometries.len() > 1 {
+                    panic!();
+                }
+                let Some(geom) = gml_geom.gml_geometries.first() else {
+                    fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+                    return Ok(());
+                };
+
+
+                println!("DEBUG: line_strings = {:?}", geom.line_strings);
+
+                panic!();
             }
             _ => {
                 // Not a solid geometry, send to rejected port
@@ -146,7 +148,7 @@ impl Processor for SolidBoundaryValidator {
         };
 
         // Extract vertices, edges, and triangles from the solid
-        let (vertices, edges_with_multiplicity, triangles) = self.extract_topology(&geoms[0].as_solid().unwrap());
+        let (vertices, edges_with_multiplicity, triangles) = self.extract_topology(&geom.as_solid().unwrap());
 
         // Run validation checks and collect issues
         let mut validation_results = Vec::new();
