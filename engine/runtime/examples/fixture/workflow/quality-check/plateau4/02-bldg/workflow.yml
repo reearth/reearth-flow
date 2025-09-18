@@ -92,6 +92,7 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
+          flatten: true
           format: citygml
           dataset: |
             env.get("__value")["gmlPath"]

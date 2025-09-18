@@ -10,9 +10,165 @@ nodes:
 
   # C02 (Creates a histogram for the instances only, and does not include any testing)
   - id: 793ebebf-6903-4691-bed5-5913d3062a39
-    name: InstanceHistogramCreator
+    name: SurfaceValidationC02
     type: action
-    action: PLATEAU4.InstanceHistogramCreator
+    action: StatisticsCalculator
+    with:
+      aggregateAttribute: |
+        env.get("__value").fileIndex
+      calculations:
+        - newAttribute: Building
+          expr: |
+            let feature_type = env.get("__value").featureType ?? "";
+            if feature_type == "bldg:Building" {
+              1
+            } else {
+              0
+            }
+
+        - newAttribute: BuildingPart
+          expr: |
+            let feature_type = env.get("__value").featureType ?? "";
+            if feature_type == "bldg:BuildingPart" {
+              1
+            } else {
+              0
+            }
+
+        - newAttribute: RoofSurface
+          expr: |
+            let feature_type = env.get("__value").featureType ?? "";
+            if feature_type == "bldg:RoofSurface" {
+              1
+            } else {
+              0
+            }
+
+        - newAttribute: GroundSurface
+          expr: |
+            let feature_type = env.get("__value").featureType ?? "";
+            if feature_type == "bldg:GroundSurface" {
+              1
+            } else {
+              0
+            }
+
+        - newAttribute: WallSurface
+          expr: |
+            let feature_type = env.get("__value").featureType ?? "";
+            if feature_type == "bldg:WallSurface" {
+              1
+            } else {
+              0
+            }
+
+        - newAttribute: ClosureSurface
+          expr: |
+            let feature_type = env.get("__value").featureType ?? "";
+            if feature_type == "bldg:ClosureSurface" {
+              1
+            } else {
+              0
+            }
+
+        - newAttribute: OuterCeilingSurface
+          expr: |
+            let feature_type = env.get("__value").featureType ?? "";
+            if feature_type == "bldg:OuterCeilingSurface" {
+              1
+            } else {
+              0
+            }
+
+        - newAttribute: OuterFloorSurface
+          expr: |
+            let feature_type = env.get("__value").featureType ?? "";
+            if feature_type == "bldg:OuterFloorSurface" {
+              1
+            } else {
+              0
+            }
+
+        - newAttribute: BuildingInstallation
+          expr: |
+            let feature_type = env.get("__value").featureType ?? "";
+            if feature_type == "bldg:BuildingInstallation" {
+              1
+            } else {
+              0
+            }
+
+        - newAttribute: Door
+          expr: |
+            let feature_type = env.get("__value").featureType ?? "";
+            if feature_type == "bldg:Door" {
+              1
+            } else {
+              0
+            }
+
+        - newAttribute: Window
+          expr: |
+            let feature_type = env.get("__value").featureType ?? "";
+            if feature_type == "bldg:Window" {
+              1
+            } else {
+              0
+            }
+
+        - newAttribute: Room
+          expr: |
+            let feature_type = env.get("__value").featureType ?? "";
+            if feature_type == "bldg:Room" {
+              1
+            } else {
+              0
+            }
+
+        - newAttribute: InteriorWallSurface
+          expr: |
+            let feature_type = env.get("__value").featureType ?? "";
+            if feature_type == "bldg:InteriorWallSurface" {
+              1
+            } else {
+              0
+            }
+
+        - newAttribute: CeilingSurface
+          expr: |
+            let feature_type = env.get("__value").featureType ?? "";
+            if feature_type == "bldg:CeilingSurface" {
+              1
+            } else {
+              0
+            }
+
+        - newAttribute: FloorSurface
+          expr: |
+            let feature_type = env.get("__value").featureType ?? "";
+            if feature_type == "bldg:FloorSurface" {
+              1
+            } else {
+              0
+            }
+
+        - newAttribute: IntBuildingInstallation
+          expr: |
+            let feature_type = env.get("__value").featureType ?? "";
+            if feature_type == "bldg:IntBuildingInstallation" {
+              1
+            } else {
+              0
+            }
+
+        - newAttribute: BuildingFurniture
+          expr: |
+            let feature_type = env.get("__value").featureType ?? "";
+            if feature_type == "bldg:BuildingFurniture" {
+              1
+            } else {
+              0
+            }
 
   - id: 7debf320-37c4-414e-acab-9f2fb41e2848
     name: FileTSVWriterC02
@@ -58,10 +214,9 @@ nodes:
         - attribute: errors
           method: rename
           value: Building Usage Attribute Error
-        - attribute: Feature Type
-          method: create
-          value: |
-            env.get("__value").gmlName
+        - attribute: featureType
+          method: rename
+          value: Feature Type
         - attribute: admin
           method: remove
         - attribute: maxLod
@@ -122,10 +277,9 @@ nodes:
         - attribute: cityCodeError
           method: rename
           value: City Code Error
-        - attribute: Feature Type
-          method: create
-          value: |
-            env.get("__value").gmlName
+        - attribute: featureType
+          method: rename
+          value: Feature Type
         - attribute: package
           method: remove
         - attribute: dirRoot
