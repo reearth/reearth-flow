@@ -90,7 +90,7 @@ func tempNewAuthMiddleware(gqlClient *gql.Client, skipOps map[string]struct{}) e
 				return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized: user not found")
 			}
 
-			ctx = adapter.AttachFlowUser(ctx, u)
+			ctx = adapter.AttachUser(ctx, u)
 			c.SetRequest(c.Request().WithContext(ctx))
 			return next(c)
 		}
@@ -118,10 +118,8 @@ func conditionalGraphQLAuthMiddleware(
 				}
 
 				switch body.OperationName {
-				case "GetMe":
+				case "GetMe", "GetWorkspaceById", "GetWorkspaces", "SearchUser", "UpdateMe", "CreateWorkspace", "UpdateWorkspace", "DeleteWorkspace", "AddMemberToWorkspace", "UpdateMemberOfWorkspace", "RemoveMemberFromWorkspace", "Signup", "RemoveMyAuth", "DeleteMe":
 					middlewares = tempNewAuthMWs
-				case "GetWorkspaceById", "GetWorkspaces", "SearchUser", "UpdateMe", "CreateWorkspace", "UpdateWorkspace", "DeleteWorkspace", "AddMemberToWorkspace", "UpdateMemberOfWorkspace", "RemoveMemberFromWorkspace", "Signup", "RemoveMyAuth", "DeleteMe":
-					middlewares = append(defaultMWs, tempNewAuthMWs...)
 				}
 			}
 

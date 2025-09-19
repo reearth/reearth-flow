@@ -138,18 +138,18 @@ type GraphQLRequest struct {
 	Variables     map[string]any `json:"variables"`
 }
 
-func StartGQLServer(t *testing.T, cfg *config.Config, useMongo bool, seeder Seeder, allowPermission bool) (*httpexpect.Expect, *accountrepo.Container) {
-	e, r := StartGQLServerAndRepos(t, cfg, useMongo, seeder, allowPermission)
+func StartGQLServer(t *testing.T, cfg *config.Config, useMongo bool, seeder Seeder, allowPermission bool, mock *TestMocks) (*httpexpect.Expect, *accountrepo.Container) {
+	e, r := StartGQLServerAndRepos(t, cfg, useMongo, seeder, allowPermission, mock)
 	return e, r
 }
 
-func StartGQLServerAndRepos(t *testing.T, cfg *config.Config, useMongo bool, seeder Seeder, allowPermission bool) (*httpexpect.Expect, *accountrepo.Container) {
+func StartGQLServerAndRepos(t *testing.T, cfg *config.Config, useMongo bool, seeder Seeder, allowPermission bool, mock *TestMocks) (*httpexpect.Expect, *accountrepo.Container) {
 	repos := initRepos(t, useMongo, seeder)
 	acRepos := repos.AccountRepos()
-	return StartGQLServerWithRepos(t, cfg, repos, acRepos, allowPermission), acRepos
+	return StartGQLServerWithRepos(t, cfg, repos, acRepos, allowPermission, mock), acRepos
 }
 
-func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Container, accountrepos *accountrepo.Container, allowPermission bool) *httpexpect.Expect {
+func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Container, accountrepos *accountrepo.Container, allowPermission bool, mock *TestMocks) *httpexpect.Expect {
 	t.Helper()
 
 	if testing.Short() {
@@ -167,6 +167,15 @@ func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Conta
 	mockPermissionChecker := gateway.NewMockPermissionChecker()
 	mockPermissionChecker.Allow = allowPermission
 
+	// mockAccountGQLClient
+	var accountGQLClient *gql.Client
+	if mock != nil {
+		accountGQLClient = gql.NewMockClient(&gql.MockClientParam{
+			UserRepo:      mock.UserRepo,
+			WorkspaceRepo: mock.WorkspaceRepo,
+		})
+	}
+
 	cfg.SkipPermissionCheck = true
 	srv := app.NewServer(ctx, &app.ServerConfig{
 		Config:       cfg,
@@ -180,6 +189,7 @@ func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Conta
 		},
 		Debug:             true,
 		PermissionChecker: mockPermissionChecker,
+		AccountGQLClient:  accountGQLClient,
 	})
 
 	ch := make(chan error)
