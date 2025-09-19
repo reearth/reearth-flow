@@ -4,6 +4,7 @@ pub(crate) mod errors;
 pub(crate) mod file_path_extractor;
 pub(crate) mod filter;
 pub(crate) mod list_exploder;
+pub(crate) mod list_indexer;
 pub(crate) mod lod_filter;
 pub(crate) mod mapping;
 pub(crate) mod merger;
