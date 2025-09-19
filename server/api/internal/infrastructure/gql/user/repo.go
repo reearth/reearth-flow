@@ -213,3 +213,88 @@ func (r *userRepo) DeleteMe(ctx context.Context, uid id.UserID) error {
 
 	return nil
 }
+
+func (r *userRepo) CreateVerification(ctx context.Context, email string) error {
+	if email == "" {
+		return nil
+	}
+
+	in := CreateVerificationInput{
+		Email: graphql.String(string(email)),
+	}
+
+	var m createVerificationMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *userRepo) VerifyUser(ctx context.Context, code string) (*user.User, error) {
+	if code == "" {
+		return nil, nil
+	}
+
+	in := VerifyUserInput{
+		Code: graphql.String(string(code)),
+	}
+
+	var m verifyUserMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return nil, err
+	}
+
+	return util.ToUser(m.VerifyUser.User)
+}
+
+func (r *userRepo) StartPasswordReset(ctx context.Context, email string) error {
+	if email == "" {
+		return nil
+	}
+
+	in := StartPasswordResetInput{
+		Email: graphql.String(string(email)),
+	}
+
+	var m startPasswordResetMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *userRepo) PasswordReset(ctx context.Context, password string, token string) error {
+	if password == "" || token == "" {
+		return nil
+	}
+
+	in := PasswordResetInput{
+		Password: graphql.String(string(password)),
+		Token:    graphql.String(string(token)),
+	}
+
+	var m passwordResetMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return err
+	}
+
+	return nil
+}
