@@ -144,3 +144,19 @@ func (r *userRepo) RemoveMyAuth(ctx context.Context, authProvider string) (*user
 
 	return util.ToMe(m.RemoveMyAuth.Me)
 }
+
+func (r *userRepo) DeleteMe(ctx context.Context, uid id.UserID) error {
+	in := DeleteMeInput{
+		ID: graphql.ID(uid.String()),
+	}
+
+	var m deleteMeMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return err
+	}
+
+	return nil
+}

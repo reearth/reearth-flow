@@ -42,6 +42,20 @@ func (m *MockUserRepo) EXPECT() *MockUserRepoMockRecorder {
 	return m.recorder
 }
 
+// DeleteMe mocks base method.
+func (m *MockUserRepo) DeleteMe(ctx context.Context, uid id.UserID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteMe", ctx, uid)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteMe indicates an expected call of DeleteMe.
+func (mr *MockUserRepoMockRecorder) DeleteMe(ctx, uid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMe", reflect.TypeOf((*MockUserRepo)(nil).DeleteMe), ctx, uid)
+}
+
 // FindByIDs mocks base method.
 func (m *MockUserRepo) FindByIDs(ctx context.Context, ids id.UserIDList) (user.List, error) {
 	m.ctrl.T.Helper()
