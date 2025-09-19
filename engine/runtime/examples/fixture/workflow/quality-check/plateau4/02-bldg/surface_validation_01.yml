@@ -363,18 +363,52 @@ nodes:
             env.get("__value").overlap > 1
           outputPort: intersectionSurface
 
-  - id: ff6aa7bb-8cc9-4dd0-9ee1-4ff2aa3bb4cc
-    name: AttributeManagerLod0IntersectionSurface
+  - id: ee1ff2aa-3bb4-4cc5-9dd6-7ee8ff3aa9bb
+    name: ListIndexer1
     type: action
-    action: AttributeManager
+    action: ListIndexer
     with:
-      operations:
-        - attribute: dummy
-          method: create
-          value: dummy
+      listAttribute: _list
+      listIndexToCopy: 0
+      copiedAttributeSuffix: _1
+
+  - id: ff2aa3bb-4cc5-4dd6-9ee7-8ff9aa2bb0cc
+    name: ListIndexer2
+    type: action
+    action: ListIndexer
+    with:
+      listAttribute: _list
+      listIndexToCopy: 1
+      copiedAttributeSuffix: _2
+
+  - id: ff6aa7bb-8cc9-4dd0-9ee1-4ff2aa3bb4cc
+    name: AttributeMapperLod0SurfaceIntersection
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: filename_a
+          expr: env.get("__value").gmlFilename_1
+        - attribute: filename_b
+          expr: env.get("__value").gmlFilename_2
+        - attribute: feature_type_a
+          expr: env.get("__value").featureType_1
+        - attribute: feature_type_b
+          expr: env.get("__value").featureType_2
+        - attribute: lod_a
+          expr: env.get("__value").lod_1
+        - attribute: lod_b
+          expr: env.get("__value").lod_2
+        - attribute: gml_id_a
+          expr: env.get("__value").gmlId_1
+        - attribute: gml_id_b
+          expr: env.get("__value").gmlId_2
+        - attribute: issue
+          expr: |
+            "Surface Intersection"
 
   - id: aa7bb8cc-9dd0-4ee1-9ff2-5aa3bb4cc5dd
-    name: FeatureWriterLod0IntersectionSurface
+    name: FeatureWriterLod0SurfaceIntersection
     type: action
     action: FeatureWriter
     with:
@@ -476,28 +510,24 @@ edges:
     fromPort: lod4
     toPort: default
 
-  # Dummy_GeometryFilter to SurfaceValidator3D_LOD2-4
   - id: 1a5f3c8d-9e2b-4d7a-8c6f-5b9e3d2a6f8c
     from: 4f7a9b2e-5c8d-4e3a-9f6b-1d4c7e9a2b5f
     to: 3b6e9c5d-8f2a-4d7b-9e3c-6a1f4b9e2c5d
     fromPort: default
     toPort: default
 
-  # SurfaceValidator3D_LOD2-4 to AttributeManagerLod2-4InvalidSurface
   - id: 2b6f4d9e-3c8a-4e5b-9d7c-6a8f2e5c9b4d
     from: 3b6e9c5d-8f2a-4d7b-9e3c-6a1f4b9e2c5d
     to: 7f2a5c8d-4b9e-4c3a-9f6d-2e8b5c7a4f9d
     fromPort: invalidSurface
     toPort: default
 
-  # AttributeManagerLod2-4InvalidSurface to FeatureWriterLod2-4InvalidSurface
   - id: 3c7f5e0a-4d9b-4f6c-8e4a-7b0f3c6d8e5a
     from: 7f2a5c8d-4b9e-4c3a-9f6d-2e8b5c7a4f9d
     to: 9e3c6b8f-5a2d-4f7e-8c1a-4d9b6e3c8f5a
     fromPort: default
     toPort: default
 
-  # FeatureWriterLod2-4InvalidSurface to OutputRouter
   - id: 4d8f6f1b-5e0c-4f7d-9f5b-8c1f4d7e0f6b
     from: 9e3c6b8f-5a2d-4f7e-8c1a-4d9b6e3c8f5a
     to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
@@ -510,42 +540,48 @@ edges:
     fromPort: default
     toPort: default
 
-  # GeometryCoercerLod0SurfaceIntersection to TwoDimensionForcer
   - id: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1ff
     from: aa1bb2cc-3dd4-4ee5-9ff6-0aa7bb8cc9dd
     to: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1aa
     fromPort: default
     toPort: default
 
-  # TwoDimensionForcer to AreaOnAreaOverlayer
   - id: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1bb
     from: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1aa
     to: bb2cc3dd-4ee5-4ff6-9aa7-1bb8cc9dd0ee
     fromPort: default
     toPort: default
 
-  # AreaOnAreaOverlayer to FeatureFilterByAreaOnAreaOverlap
   - id: ee5ff6aa-7bb8-4cc9-9dd0-3ee1ff2aa3bb
     from: bb2cc3dd-4ee5-4ff6-9aa7-1bb8cc9dd0ee
     to: dd4ee5ff-6aa7-4bb8-9cc9-2dd0ee1ff2aa
     fromPort: area
     toPort: default
 
-  # FeatureFilterByAreaOnAreaOverlap to AttributeManagerLod0IntersectionSurface
   - id: bb8cc9dd-0ee1-4ff2-9aa3-6bb4cc5dd6ee
     from: dd4ee5ff-6aa7-4bb8-9cc9-2dd0ee1ff2aa
-    to: ff6aa7bb-8cc9-4dd0-9ee1-4ff2aa3bb4cc
+    to: ee1ff2aa-3bb4-4cc5-9dd6-7ee8ff3aa9bb
     fromPort: intersectionSurface
     toPort: default
 
-  # AttributeManagerLod0IntersectionSurface to FeatureWriterLod0IntersectionSurface
+  - id: aa2bb3cc-4dd5-4ee6-9ff7-8aa0bb1cc2dd
+    from: ee1ff2aa-3bb4-4cc5-9dd6-7ee8ff3aa9bb
+    to: ff2aa3bb-4cc5-4dd6-9ee7-8ff9aa2bb0cc
+    fromPort: default
+    toPort: default
+
+  - id: bb3cc4dd-5ee6-4ff7-9aa8-9bb0cc1dd2ee
+    from: ff2aa3bb-4cc5-4dd6-9ee7-8ff9aa2bb0cc
+    to: ff6aa7bb-8cc9-4dd0-9ee1-4ff2aa3bb4cc
+    fromPort: default
+    toPort: default
+
   - id: cc9dd0ee-1ff2-4aa3-9bb4-7cc5dd6ee7ff
     from: ff6aa7bb-8cc9-4dd0-9ee1-4ff2aa3bb4cc
     to: aa7bb8cc-9dd0-4ee1-9ff2-5aa3bb4cc5dd
     fromPort: default
     toPort: default
 
-  # FeatureWriterLod0IntersectionSurface to OutputRouter
   - id: dd0ee1ff-2aa3-4bb4-9cc5-8dd6ee7ff8aa
     from: aa7bb8cc-9dd0-4ee1-9ff2-5aa3bb4cc5dd
     to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
