@@ -334,9 +334,16 @@ nodes:
 
   # GeometryCoercer ~ Surface Intersection (LOD0)
   - id: aa1bb2cc-3dd4-4ee5-9ff6-0aa7bb8cc9dd
-    name: GeometryCoercerDummy
+    name: GeometryCoercerLod0SurfaceIntersection
     type: action
-    action: NoopProcessor
+    action: GeometryCoercer
+    with:
+      coercerType: lineString
+
+  - id: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1aa
+    name: TwoDimensionForcer
+    type: action
+    action: TwoDimensionForcer
 
   - id: bb2cc3dd-4ee5-4ff6-9aa7-1bb8cc9dd0ee
     name: AreaOnAreaOverlayer
@@ -344,6 +351,7 @@ nodes:
     action: AreaOnAreaOverlayer
     with:
       outputAttribute: overlap
+      generateList: _list
 
   - id: dd4ee5ff-6aa7-4bb8-9cc9-2dd0ee1ff2aa
     name: FeatureFilterByAreaOnAreaOverlap
@@ -502,9 +510,16 @@ edges:
     fromPort: default
     toPort: default
 
-  # GeometryCoercerDummy to AreaOnAreaOverlayer
+  # GeometryCoercerLod0SurfaceIntersection to TwoDimensionForcer
   - id: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1ff
     from: aa1bb2cc-3dd4-4ee5-9ff6-0aa7bb8cc9dd
+    to: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1aa
+    fromPort: default
+    toPort: default
+
+  # TwoDimensionForcer to AreaOnAreaOverlayer
+  - id: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1bb
+    from: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1aa
     to: bb2cc3dd-4ee5-4ff6-9aa7-1bb8cc9dd0ee
     fromPort: default
     toPort: default
