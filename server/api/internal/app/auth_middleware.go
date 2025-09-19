@@ -72,6 +72,10 @@ func jwtContextMiddleware() echo.MiddlewareFunc {
 func tempNewAuthMiddleware(gqlClient *gql.Client, skipOps map[string]struct{}) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if c.Path() == "/api/signup" {
+				return next(c)
+			}
+
 			if _, skip := skipOps[adapter.GQLOperationName(c.Request().Context())]; skip {
 				return next(c)
 			}
@@ -107,7 +111,9 @@ func conditionalGraphQLAuthMiddleware(
 		return func(c echo.Context) error {
 			middlewares := defaultMWs
 
-			if c.Path() == "/api/graphql" && c.Request().Method == http.MethodPost {
+			if c.Path() == "/api/signup" && c.Request().Method == http.MethodPost {
+				middlewares = tempNewAuthMWs
+			} else if c.Path() == "/api/graphql" && c.Request().Method == http.MethodPost {
 				var body struct {
 					OperationName string `json:"operationName"`
 				}

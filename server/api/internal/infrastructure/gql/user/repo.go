@@ -95,11 +95,64 @@ func (r *userRepo) UpdateMe(ctx context.Context, a user.UpdateAttrs) (*user.User
 	return util.ToMe(m.UpdateMe.Me)
 }
 
+func (r *userRepo) Signup(ctx context.Context, a user.SignupAttrs) (*user.User, error) {
+	in := SignupInput{}
+	if a.ID != nil {
+		s := graphql.ID(a.ID.String())
+		in.ID = &s
+	}
+	if a.WorkspaceID != nil {
+		s := graphql.ID(a.WorkspaceID.String())
+		in.WorkspaceID = &s
+	}
+	in.Name = graphql.String(a.Name)
+	in.Email = graphql.String(a.Email)
+	in.Password = graphql.String(a.Password)
+	if a.Secret != nil {
+		s := graphql.String(*a.Secret)
+		in.Secret = &s
+	}
+	if a.Lang != nil {
+		langCode := graphql.String(a.Lang.String())
+		in.Lang = &langCode
+	}
+	if a.Theme != nil {
+		theme := graphql.String(string(*a.Theme))
+		in.Theme = &theme
+	}
+	if a.MockAuth {
+		mockAuth := graphql.Boolean(a.MockAuth)
+		in.MockAuth = &mockAuth
+	}
+
+	var m signupMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return nil, err
+	}
+
+	return util.ToUser(m.Signup.User)
+}
+
 func (r *userRepo) SignupOIDC(ctx context.Context, a user.SignupOIDCAttrs) (*user.User, error) {
 	in := SignupOIDCInput{}
 	if a.UserID != nil {
 		s := graphql.ID(a.UserID.String())
 		in.ID = &s
+	}
+	if a.Name != nil {
+		s := graphql.String(*a.Name)
+		in.Name = &s
+	}
+	if a.Email != nil {
+		s := graphql.String(*a.Email)
+		in.Email = &s
+	}
+	if a.Sub != nil {
+		s := graphql.String(*a.Sub)
+		in.Sub = &s
 	}
 	if a.Lang != nil {
 		langCode := graphql.String(a.Lang.String())
