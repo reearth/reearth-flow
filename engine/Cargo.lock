@@ -6534,6 +6534,7 @@ dependencies = [
  "reearth-flow-action-log",
  "reearth-flow-action-plateau-processor",
  "reearth-flow-action-processor",
+ "reearth-flow-action-python-processor",
  "reearth-flow-action-sink",
  "reearth-flow-action-source",
  "reearth-flow-common",
