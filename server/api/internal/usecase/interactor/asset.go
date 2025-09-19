@@ -80,7 +80,7 @@ func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam) (re
 	}
 
 	// Get user ID from context
-	user := adapter.User(ctx)
+	user := adapter.ReearthxUser(ctx)
 	if user == nil {
 		return nil, interfaces.ErrOperationDenied
 	}
