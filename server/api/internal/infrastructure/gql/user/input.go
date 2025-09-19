@@ -22,3 +22,7 @@ type SignupOIDCInput struct {
 type RemoveMyAuthInput struct {
 	Auth graphql.String `json:"auth"`
 }
+
+type DeleteMeInput struct {
+	ID graphql.ID `json:"userId"`
+}

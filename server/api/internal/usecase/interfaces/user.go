@@ -29,4 +29,5 @@ type User interface {
 	UpdateMe(context.Context, UpdateMeParam) (*user.User, error)
 	SignupOIDC(context.Context, SignupOIDCParam) (*user.User, error)
 	RemoveMyAuth(context.Context, string) (*user.User, error)
+	DeleteMe(context.Context, id.UserID) error
 }

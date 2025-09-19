@@ -1,6 +1,7 @@
 package user
 
 import (
+	"github.com/hasura/go-graphql-client"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gql/gqlmodel"
 )
 
@@ -20,4 +21,10 @@ type removeMyAuthMutation struct {
 	RemoveMyAuth struct {
 		Me gqlmodel.Me `graphql:"me"`
 	} `graphql:"removeMyAuth(input: $input)"`
+}
+
+type deleteMeMutation struct {
+	DeleteMe struct {
+		ID graphql.ID `graphql:"userId"`
+	} `graphql:"deleteMe(input: $input)"`
 }
