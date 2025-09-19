@@ -84,6 +84,10 @@ func authMiddleware(gqlClient *gql.Client, skipOps map[string]struct{}) echo.Mid
 			}
 
 			ctx := c.Request().Context()
+
+			// TODO: Optimize performance by including necessary user information (userID, email, etc.)
+			// directly in the JWT token instead of executing a GQL query on every request.
+			// This will eliminate the overhead of making an API call to fetch user data for each request.
 			u, err := gqlClient.UserRepo.FindMe(ctx)
 			if err != nil {
 				log.Errorc(ctx, err, "failed to fetch user")
