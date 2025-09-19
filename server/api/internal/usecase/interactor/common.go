@@ -37,33 +37,32 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 ) interfaces.Container {
 	setSkipPermissionCheck(config.SkipPermissionCheck)
 
-	var tempNewUser interfaces.User
+	var user interfaces.User
 	if GQLClient != nil && GQLClient.UserRepo != nil {
-		tempNewUser = NewUser(GQLClient.UserRepo)
+		user = NewUser(GQLClient.UserRepo)
 	}
 
-	var tempNewWorkspace interfaces.Workspace
+	var workspace interfaces.Workspace
 	if GQLClient != nil && GQLClient.WorkspaceRepo != nil {
-		tempNewWorkspace = NewWorkspace(GQLClient.WorkspaceRepo)
+		workspace = NewWorkspace(GQLClient.WorkspaceRepo)
 	}
 
 	return interfaces.Container{
-		Asset:            NewAsset(r, g, permissionChecker),
-		CMS:              NewCMS(r, g, permissionChecker),
-		Job:              job,
-		Deployment:       NewDeployment(r, g, job, permissionChecker),
-		EdgeExecution:    NewEdgeExecution(r, g, permissionChecker),
-		Log:              NewLogInteractor(g.Redis, r.Job, permissionChecker),
-		NodeExecution:    NewNodeExecution(r.NodeExecution, g.Redis, permissionChecker),
-		Parameter:        NewParameter(r, permissionChecker),
-		Project:          NewProject(r, g, job, permissionChecker),
-		ProjectAccess:    NewProjectAccess(r, g, config, permissionChecker),
-		Workspace:        accountinteractor.NewWorkspace(ar, workspaceMemberCountEnforcer(r)),
-		TempNewWorkspace: tempNewWorkspace, // TODO: After migration, remove Workspace and rename TempNewWorkspace to Workspace.
-		Trigger:          NewTrigger(r, g, job, permissionChecker),
-		User:             accountinteractor.NewMultiUser(ar, ag, config.SignupSecret, config.AuthSrvUIDomain, ar.Users),
-		UserFacingLog:    NewUserFacingLogInteractor(g.Redis, r.Job, permissionChecker),
-		TempNewUser:      tempNewUser, // TODO: After migration, remove User and rename tempNewUser to User.
+		Asset:         NewAsset(r, g, permissionChecker),
+		CMS:           NewCMS(r, g, permissionChecker),
+		Job:           job,
+		Deployment:    NewDeployment(r, g, job, permissionChecker),
+		EdgeExecution: NewEdgeExecution(r, g, permissionChecker),
+		Log:           NewLogInteractor(g.Redis, r.Job, permissionChecker),
+		NodeExecution: NewNodeExecution(r.NodeExecution, g.Redis, permissionChecker),
+		Parameter:     NewParameter(r, permissionChecker),
+		Project:       NewProject(r, g, job, permissionChecker),
+		ProjectAccess: NewProjectAccess(r, g, config, permissionChecker),
+		Workspace:     workspace,
+		Trigger:       NewTrigger(r, g, job, permissionChecker),
+		User:          user,
+		ReearthxUser:  accountinteractor.NewMultiUser(ar, ag, config.SignupSecret, config.AuthSrvUIDomain, ar.Users), // TODO: After migration, remove this
+		UserFacingLog: NewUserFacingLogInteractor(g.Redis, r.Job, permissionChecker),
 	}
 }
 
@@ -107,7 +106,7 @@ func checkPermission(ctx context.Context, permissionChecker gateway.PermissionCh
 		return nil
 	}
 
-	user := adapter.User(ctx)
+	user := adapter.ReearthxUser(ctx)
 	if user == nil {
 		log.Printf("WARNING: User not found for resource=%s action=%s", resource, action)
 		return nil

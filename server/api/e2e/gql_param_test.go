@@ -74,7 +74,7 @@ func TestDeclareParameter(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser, true, nil)
 
 	// Create a test project first
 	projectID := createTestProject(t, e)
@@ -221,7 +221,7 @@ func TestUpdateParameter(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser, true, nil)
 
 	// Create a test project first
 	projectID := createTestProject(t, e)
@@ -323,7 +323,7 @@ func TestUpdateParameterOrder(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser, true, nil)
 
 	// Create a test project first
 	projectID := createTestProject(t, e)
@@ -424,7 +424,7 @@ func TestRemoveParameter(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser, true, nil)
 
 	// Create a test project first
 	projectID := createTestProject(t, e)
@@ -506,7 +506,7 @@ func TestParametersQuery(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser, true, nil)
 
 	// Create a test project first
 	projectID := createTestProject(t, e)

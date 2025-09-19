@@ -3,7 +3,6 @@ package repo
 import (
 	"errors"
 
-	"github.com/reearth/reearth-flow/api/pkg/workspace"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 	"github.com/reearth/reearthx/authserver"
@@ -13,25 +12,24 @@ import (
 var ErrOperationDenied = errors.New("operation denied")
 
 type Container struct {
-	Asset            Asset
-	AuthRequest      authserver.RequestRepo
-	Config           Config
-	Deployment       Deployment
-	EdgeExecution    EdgeExecution
-	Job              Job
-	Lock             Lock
-	NodeExecution    NodeExecution
-	Parameter        Parameter
-	Permittable      accountrepo.Permittable // TODO: Delete this once the permission check migration is complete.
-	Project          Project
-	ProjectAccess    ProjectAccess
-	Role             accountrepo.Role // TODO: Delete this once the permission check migration is complete.
-	Transaction      usecasex.Transaction
-	Trigger          Trigger
-	User             accountrepo.User
-	Workflow         Workflow
-	Workspace        accountrepo.Workspace
-	TempNewWorkspace workspace.Repo // TODO: After migration, delete Workspace and rename TempNewWorkspace to Workspace.
+	Asset         Asset
+	AuthRequest   authserver.RequestRepo
+	Config        Config
+	Deployment    Deployment
+	EdgeExecution EdgeExecution
+	Job           Job
+	Lock          Lock
+	NodeExecution NodeExecution
+	Parameter     Parameter
+	Permittable   accountrepo.Permittable // TODO: Delete this once the permission check migration is complete.
+	Project       Project
+	ProjectAccess ProjectAccess
+	Role          accountrepo.Role // TODO: Delete this once the permission check migration is complete.
+	Transaction   usecasex.Transaction
+	Trigger       Trigger
+	User          accountrepo.User
+	Workflow      Workflow
+	Workspace     accountrepo.Workspace
 }
 
 func (c *Container) AccountRepos() *accountrepo.Container {

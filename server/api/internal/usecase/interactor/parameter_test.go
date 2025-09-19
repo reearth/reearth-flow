@@ -29,7 +29,7 @@ func setupParameterInteractor() (interfaces.Parameter, context.Context, *repo.Co
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachUser(ctx, mockUser)
+	ctx = adapter.AttachReearthxUser(ctx, mockUser)
 
 	paramRepo := memory.NewParameter()
 	projectRepo := memory.NewProject()
