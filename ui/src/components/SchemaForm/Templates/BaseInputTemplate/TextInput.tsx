@@ -1,3 +1,4 @@
+import { QuestionIcon } from "@phosphor-icons/react";
 import {
   BaseInputTemplateProps,
   FormContextType,
@@ -6,7 +7,12 @@ import {
 } from "@rjsf/utils";
 import { useCallback, useRef } from "react";
 
-import { Input } from "@flow/components";
+import {
+  Input,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@flow/components";
 
 import ActionArea from "../../components/ActionArea";
 
@@ -28,6 +34,7 @@ const TextInput = <
     readonly,
     disabled,
     value,
+    uiSchema,
     onChange,
     onBlur,
     onFocus,
@@ -91,6 +98,20 @@ const TextInput = <
         onPythonEditorOpen={onPythonEditorOpen}
         onReset={handleReset}
       />
+      {uiSchema?.["ui:description"] && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="cursor-pointer p-1">
+              <QuestionIcon className="h-5 w-5" weight="thin" />
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top" align="end" className="bg-primary">
+            <p className="max-w-[200px] text-xs text-muted-foreground">
+              {uiSchema?.["ui:description"]}
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      )}
     </div>
   );
 };

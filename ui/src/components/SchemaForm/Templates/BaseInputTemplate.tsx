@@ -18,6 +18,8 @@ export type ExtendedFormContext = FormContextType & {
   onEditorOpen?: (fieldContext: FieldContext) => void;
   onPythonEditorOpen?: (fieldContext: FieldContext) => void;
   onAssetsOpen?: (fieldContext: FieldContext) => void;
+  originalSchema?: any;
+  actionName?: string;
 };
 
 /** The `BaseInputTemplate` handles all input types directly */
@@ -29,14 +31,40 @@ const BaseInputTemplate = <
   props: BaseInputTemplateProps<T, S, F>,
 ) => {
   const { schema, formContext, id, name, value, uiSchema } = props;
-
   // Extract context from formContext
-  const { onEditorOpen, onPythonEditorOpen, onAssetsOpen } =
-    (formContext as ExtendedFormContext) || {};
+  const {
+    onEditorOpen,
+    onPythonEditorOpen,
+    onAssetsOpen,
+    originalSchema,
+    actionName,
+  } = (formContext as ExtendedFormContext) || {};
 
   // Check if this field is marked as an Expr type in the UI schema
-  const isExprField = uiSchema?.["ui:exprType"] === "rhai";
-  const isPythonField = uiSchema?.["ui:exprType"] === "python";
+  let isExprField = uiSchema?.["ui:exprType"] === "rhai";
+  let isPythonField = uiSchema?.["ui:exprType"] === "python";
+
+  // Fallback: detect expression types from schema or originalSchema (for dynamic array items)
+  if (!isExprField && !isPythonField) {
+    // Dynamically check if ANY definition in originalSchema has this field name with Expr support
+    let hasExprSupport = false;
+    if (originalSchema?.definitions) {
+      hasExprSupport = Object.values(originalSchema.definitions).some(
+        (def: any) =>
+          def?.properties?.[name]?.$ref === "#/definitions/Expr" ||
+          def?.properties?.[name]?.allOf?.some(
+            (item: any) => item.$ref === "#/definitions/Expr",
+          ),
+      );
+    }
+
+    if (hasExprSupport) {
+      // Only treat as Python script if it's specifically PythonScriptProcessor and the field is 'script'
+      isPythonField =
+        actionName === "PythonScriptProcessor" && name === "script";
+      isExprField = !isPythonField;
+    }
+  }
 
   // Create field-specific editor handlers
   const handleEditorOpen =

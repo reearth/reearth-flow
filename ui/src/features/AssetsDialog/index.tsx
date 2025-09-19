@@ -137,7 +137,7 @@ const AssetsDialog: React.FC<Props> = ({
             </Button>
           </div>
 
-          <DialogContentSection className="flex min-h-[350px] flex-col overflow-hidden">
+          <DialogContentSection className="flex h-[500px] flex-col overflow-hidden">
             {layoutView === "list" ? (
               <AssetsListView
                 assets={assets}
