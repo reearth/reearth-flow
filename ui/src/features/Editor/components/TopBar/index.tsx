@@ -105,6 +105,7 @@ const TopBar: React.FC<Props> = ({
             onClick={() => handleDialogOpen("projectVariables")}
           />
           <IconButton
+            className="h-8"
             variant="outline"
             tooltipText={t("Assets")}
             icon={<ArchiveIcon weight="thin" size={18} />}
