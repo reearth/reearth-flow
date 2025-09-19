@@ -191,11 +191,12 @@ async fn process_geopackage(
             all_features.extend(read_features(&adapter, params).await?);
         }
         GeoPackageReadMode::Tiles => {
-            all_features.extend(read_tiles(&adapter, params).await?);
+            // Temporarily disabled tile processing - only read features instead
+            all_features.extend(read_features(&adapter, params).await?);
         }
         GeoPackageReadMode::All => {
+            // Temporarily disabled tile processing - only read features
             all_features.extend(read_features(&adapter, params).await?);
-            all_features.extend(read_tiles(&adapter, params).await?);
         }
         GeoPackageReadMode::MetadataOnly => {
             all_features.extend(read_metadata(&adapter, params).await?);
