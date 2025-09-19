@@ -10,11 +10,11 @@ pub mod conf;
 pub mod domain;
 pub mod infrastructure;
 pub mod interface;
-pub mod storage;
 pub mod tools;
 pub mod ws;
 pub use broadcast::group;
 pub use broadcast::pool;
+pub use infrastructure::redis::RedisStore;
 
 pub type AwarenessRef = Arc<RwLock<yrs::sync::Awareness>>;
 
@@ -53,13 +53,13 @@ pub struct AppState {
 #[cfg(feature = "auth")]
 pub use auth::AuthService;
 
-pub use broadcast::sub::Subscription;
 pub use conf::Config;
 pub use domain::value_objects::conf::{
     DEFAULT_APP_ENV, DEFAULT_GCS_BUCKET, DEFAULT_ORIGINS, DEFAULT_REDIS_TTL, DEFAULT_REDIS_URL,
     DEFAULT_WS_PORT,
 };
 pub use domain::value_objects::http::*;
+pub use domain::value_objects::sub::Subscription;
 
 #[cfg(feature = "auth")]
 pub use domain::value_objects::conf::DEFAULT_AUTH_URL;
