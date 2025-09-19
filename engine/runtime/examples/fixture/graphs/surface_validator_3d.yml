@@ -214,7 +214,8 @@ nodes:
     with:
       groupBy:
         - surfaceId
-      outputAttribute: overlap
+      # FIXME: uncommenting this line causes the workflow to panic
+      # outputAttribute: overlap
 
   - id: 4e1b7c5a-6f9d-4c2e-b8a5-1c4e7b5a6f9d
     name: FeatureFilterByAreaOnAreaOverlap

@@ -351,7 +351,7 @@ nodes:
     action: AreaOnAreaOverlayer
     with:
       outputAttribute: overlap
-      generateList: _list
+      generateList: list
 
   - id: dd4ee5ff-6aa7-4bb8-9cc9-2dd0ee1ff2aa
     name: FeatureFilterByAreaOnAreaOverlap
@@ -368,7 +368,7 @@ nodes:
     type: action
     action: ListIndexer
     with:
-      listAttribute: _list
+      listAttribute: list
       listIndexToCopy: 0
       copiedAttributeSuffix: _1
 
@@ -377,7 +377,7 @@ nodes:
     type: action
     action: ListIndexer
     with:
-      listAttribute: _list
+      listAttribute: list
       listIndexToCopy: 1
       copiedAttributeSuffix: _2
 
