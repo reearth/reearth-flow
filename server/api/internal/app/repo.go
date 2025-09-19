@@ -89,7 +89,6 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 
 	// Auth0
 	auth0 := auth0.New(conf.Auth0.Domain, conf.Auth0.ClientID, conf.Auth0.ClientSecret)
-	gateways.Authenticator = auth0
 	acGateways.Authenticator = auth0
 
 	// CMS

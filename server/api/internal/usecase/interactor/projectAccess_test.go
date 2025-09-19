@@ -7,12 +7,12 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
+	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearth-flow/api/pkg/projectAccess"
 	"github.com/reearth/reearth-flow/api/pkg/user"
 	"github.com/reearth/reearth-flow/api/pkg/workspace"
-	reearthxworkspace "github.com/reearth/reearthx/account/accountdomain/workspace"
 	"github.com/reearth/reearthx/appx"
 	"github.com/stretchr/testify/assert"
 )
@@ -39,8 +39,7 @@ func TestProjectAccess_Fetch(t *testing.T) {
 	}
 
 	// Set up a workspace, project, and shared project access
-	ws := reearthxworkspace.New().NewID().MustBuild()
-	_ = mem.Workspace.Save(ctx, ws)
+	ws := factory.NewWorkspace(func(b *workspace.Builder) {})
 
 	pid1 := project.NewID()
 	prjPublic := project.New().ID(pid1).Workspace(workspace.ID(ws.ID())).Name("testproject1").UpdatedAt(time.Now()).MustBuild()
@@ -133,8 +132,7 @@ func TestProjectAccess_Share(t *testing.T) {
 	}
 
 	// Set up a workspace, project
-	ws := reearthxworkspace.New().NewID().MustBuild()
-	_ = mem.Workspace.Save(ctx, ws)
+	ws := factory.NewWorkspace(func(b *workspace.Builder) {})
 
 	pid := project.NewID()
 	prj := project.New().ID(pid).Workspace(workspace.ID(ws.ID())).Name("testproject").UpdatedAt(time.Now()).MustBuild()
@@ -209,8 +207,7 @@ func TestProjectAccess_Unshare(t *testing.T) {
 	}
 
 	// Set up a workspace, project, and shared project access
-	ws := reearthxworkspace.New().NewID().MustBuild()
-	_ = mem.Workspace.Save(ctx, ws)
+	ws := factory.NewWorkspace(func(b *workspace.Builder) {})
 
 	pid := project.NewID()
 	prj := project.New().ID(pid).Workspace(workspace.ID(ws.ID())).Name("testproject").UpdatedAt(time.Now()).MustBuild()

@@ -83,7 +83,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	}
 
 	sharedJob := interactor.NewJob(cfg.Repos, cfg.Gateways, cfg.PermissionChecker)
-	e.Use(UsecaseMiddleware(cfg.Repos, cfg.Gateways, cfg.AccountGateways, cfg.PermissionChecker, cfg.AccountGQLClient, sharedJob, interactor.ContainerConfig{
+	e.Use(UsecaseMiddleware(cfg.Repos, cfg.Gateways, cfg.PermissionChecker, cfg.AccountGQLClient, sharedJob, interactor.ContainerConfig{
 		SignupSecret:             cfg.Config.SignupSecret,
 		AuthSrvUIDomain:          cfg.Config.Host_Web,
 		Host:                     cfg.Config.Host,

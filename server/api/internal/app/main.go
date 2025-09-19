@@ -124,9 +124,9 @@ type ServerConfig struct {
 	Config            *config.Config
 	Debug             bool
 	Repos             *repo.Container
-	AccountRepos      *accountrepo.Container
+	AccountRepos      *accountrepo.Container // TODO: Remove this field once the migration is complete.
 	Gateways          *gateway.Container
-	AccountGateways   *accountgateway.Container
+	AccountGateways   *accountgateway.Container // TODO: Remove this field once the migration is complete.
 	PermissionChecker gateway.PermissionChecker
 	AccountGQLClient  *gql.Client
 }
