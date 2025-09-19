@@ -27,18 +27,19 @@ type Container struct {
 	Role          accountrepo.Role // TODO: Delete this once the permission check migration is complete.
 	Transaction   usecasex.Transaction
 	Trigger       Trigger
-	User          accountrepo.User
+	User          accountrepo.User // TODO: Remove this once the replace user management is complete.
 	Workflow      Workflow
-	Workspace     accountrepo.Workspace
+	Workspace     accountrepo.Workspace // TODO: Remove this once the replace user management is complete.
 }
 
+// TODO: Remove this once the replace user management is complete.
 func (c *Container) AccountRepos() *accountrepo.Container {
 	return &accountrepo.Container{
 		Workspace:   c.Workspace,
 		User:        c.User,
 		Transaction: c.Transaction,
-		Role:        c.Role,        // TODO: Delete this once the permission check migration is complete.
-		Permittable: c.Permittable, // TODO: Delete this once the permission check migration is complete.
+		Role:        c.Role,
+		Permittable: c.Permittable,
 	}
 }
 

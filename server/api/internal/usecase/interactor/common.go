@@ -10,7 +10,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/project"
-	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
 )
 
 var skipPermissionCheck bool
@@ -24,7 +23,6 @@ type ContainerConfig struct {
 }
 
 func NewContainer(r *repo.Container, g *gateway.Container,
-	ag *accountgateway.Container,
 	permissionChecker gateway.PermissionChecker,
 	GQLClient *gql.Client,
 	job interfaces.Job,

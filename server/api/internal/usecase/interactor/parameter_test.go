@@ -7,6 +7,7 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
+	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -14,8 +15,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearth-flow/api/pkg/user"
 	"github.com/reearth/reearth-flow/api/pkg/workspace"
-	reearthxworkspace "github.com/reearth/reearthx/account/accountdomain/workspace"
-	"github.com/reearth/reearthx/account/accountinfrastructure/accountmemory"
 	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
@@ -34,7 +33,6 @@ func setupParameterInteractor() (interfaces.Parameter, context.Context, *repo.Co
 
 	paramRepo := memory.NewParameter()
 	projectRepo := memory.NewProject()
-	workspaceRepo := accountmemory.NewWorkspace()
 
 	r := &repo.Container{
 		Parameter:   paramRepo,
@@ -42,9 +40,7 @@ func setupParameterInteractor() (interfaces.Parameter, context.Context, *repo.Co
 		Transaction: &usecasex.NopTransaction{},
 	}
 
-	ws := reearthxworkspace.New().NewID().MustBuild()
-	_ = workspaceRepo.Save(ctx, ws)
-
+	ws := factory.NewWorkspace(func(b *workspace.Builder) {})
 	pid := project.NewID()
 	defer project.MockNewID(pid)()
 	prj := project.New().ID(pid).Workspace(workspace.ID(ws.ID())).Name("testproject").UpdatedAt(time.Now()).MustBuild()

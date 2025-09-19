@@ -17,6 +17,7 @@ import (
 	"github.com/reearth/reearthx/rerror"
 )
 
+// TODO: Remove this file once the migration is complete.
 const (
 	debugUserHeader = "X-Reearth-Debug-User"
 )
