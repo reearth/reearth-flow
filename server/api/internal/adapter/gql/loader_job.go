@@ -7,7 +7,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/account/accountdomain"
 )
 
 type JobLoader struct {
@@ -56,7 +55,7 @@ func (c *JobLoader) FindByID(ctx context.Context, jobID gqlmodel.ID) (*gqlmodel.
 }
 
 func (c *JobLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error) {
-	tid, err := gqlmodel.ToID[accountdomain.Workspace](wsID)
+	tid, err := gqlmodel.ToID[id.Workspace](wsID)
 	if err != nil {
 		return nil, err
 	}

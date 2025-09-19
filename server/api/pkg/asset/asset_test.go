@@ -5,15 +5,14 @@ import (
 	"time"
 
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAsset_Builder(t *testing.T) {
 	aid := NewID()
 	pid := id.NewProjectID()
-	wid := accountdomain.NewWorkspaceID()
-	uid := accountdomain.NewUserID()
+	wid := id.NewWorkspaceID()
+	uid := id.NewUserID()
 	now := time.Now()
 
 	status := ArchiveExtractionStatusDone
@@ -56,11 +55,11 @@ func TestAsset_Builder(t *testing.T) {
 
 func TestAsset_NilHandling(t *testing.T) {
 	// Create minimal asset with a user (required by reearthx)
-	uid := accountdomain.NewUserID()
+	uid := id.NewUserID()
 	a := New().
 		NewID().
 		Project(id.NewProjectID()).
-		Workspace(accountdomain.NewWorkspaceID()).
+		Workspace(id.NewWorkspaceID()).
 		CreatedByUser(uid).
 		FileName("test.txt").
 		Name("test").
@@ -87,7 +86,7 @@ func TestAsset_CreatedByIntegration(t *testing.T) {
 	a := New().
 		NewID().
 		Project(id.NewProjectID()).
-		Workspace(accountdomain.NewWorkspaceID()).
+		Workspace(id.NewWorkspaceID()).
 		CreatedByIntegration(&iid).
 		FileName("test.txt").
 		Name("test").
@@ -105,12 +104,12 @@ func TestAsset_List(t *testing.T) {
 	aid1 := NewID()
 	aid2 := NewID()
 	aid3 := NewID()
-	uid := accountdomain.NewUserID()
+	uid := id.NewUserID()
 
 	a1 := New().
 		ID(aid1).
 		Project(id.NewProjectID()).
-		Workspace(accountdomain.NewWorkspaceID()).
+		Workspace(id.NewWorkspaceID()).
 		CreatedByUser(uid).
 		FileName("test1.txt").
 		Name("test1").
@@ -123,7 +122,7 @@ func TestAsset_List(t *testing.T) {
 	a2 := New().
 		ID(aid2).
 		Project(id.NewProjectID()).
-		Workspace(accountdomain.NewWorkspaceID()).
+		Workspace(id.NewWorkspaceID()).
 		CreatedByUser(uid).
 		FileName("test2.txt").
 		Name("test2").
@@ -136,7 +135,7 @@ func TestAsset_List(t *testing.T) {
 	a3 := New().
 		ID(aid3).
 		Project(id.NewProjectID()).
-		Workspace(accountdomain.NewWorkspaceID()).
+		Workspace(id.NewWorkspaceID()).
 		CreatedByUser(uid).
 		FileName("test3.txt").
 		Name("test3").
@@ -156,8 +155,8 @@ func TestAsset_List(t *testing.T) {
 }
 
 func TestAsset_WorkspaceOnly(t *testing.T) {
-	ws := accountdomain.NewWorkspaceID()
-	uid := accountdomain.NewUserID()
+	ws := id.NewWorkspaceID()
+	uid := id.NewUserID()
 
 	// Test creating a workspace-only asset (no project)
 	a := New().

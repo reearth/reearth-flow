@@ -5,7 +5,7 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo/migration"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
-	"github.com/reearth/reearthx/account/accountdomain/user"
+	"github.com/reearth/reearth-flow/api/pkg/user"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmongo"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 	"github.com/reearth/reearthx/authserver"

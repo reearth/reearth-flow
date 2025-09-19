@@ -1,7 +1,6 @@
 package e2e
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,93 +8,19 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
-	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
 	usermockrepo "github.com/reearth/reearth-flow/api/pkg/user/mockrepo"
-	pkgworkspace "github.com/reearth/reearth-flow/api/pkg/workspace"
-	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/account/accountdomain/user"
-	"github.com/reearth/reearthx/account/accountdomain/workspace"
-	"github.com/reearth/reearthx/idx"
+	"github.com/reearth/reearth-flow/api/pkg/workspace"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 	"golang.org/x/text/language"
 )
 
 var (
-	uId1 = accountdomain.NewUserID()
-	uId2 = accountdomain.NewUserID()
-	uId3 = accountdomain.NewUserID()
-	wId1 = accountdomain.NewWorkspaceID()
-	wId2 = accountdomain.NewWorkspaceID()
-	iId1 = accountdomain.NewIntegrationID()
+	uId1 = id.NewUserID()
+	wId1 = id.NewWorkspaceID()
 )
-
-func baseSeederUser(ctx context.Context, r *repo.Container) error {
-	auth := user.ReearthSub(uId1.String())
-	u := user.New().ID(uId1).
-		Name("e2e").
-		Email("e2e@e2e.com").
-		Auths([]user.Auth{*auth}).
-		Workspace(wId1).
-		MustBuild()
-	if err := r.User.Save(ctx, u); err != nil {
-		return err
-	}
-	u2 := user.New().ID(uId2).
-		Name("e2e2").
-		Workspace(wId2).
-		Email("e2e2@e2e.com").
-		MustBuild()
-	if err := r.User.Save(ctx, u2); err != nil {
-		return err
-	}
-	u3 := user.New().ID(uId3).
-		Name("e2e3").
-		Workspace(wId2).
-		Email("e2e3@e2e.com").
-		MustBuild()
-	if err := r.User.Save(ctx, u3); err != nil {
-		return err
-	}
-	roleOwner := workspace.Member{
-		Role:      workspace.RoleOwner,
-		InvitedBy: uId1,
-	}
-	roleReader := workspace.Member{
-		Role:      workspace.RoleReader,
-		InvitedBy: uId2,
-	}
-
-	w := workspace.New().ID(wId1).
-		Name("e2e").
-		Members(map[idx.ID[accountdomain.User]]workspace.Member{
-			uId1: roleOwner,
-		}).
-		Integrations(map[idx.ID[accountdomain.Integration]]workspace.Member{
-			iId1: roleOwner,
-		}).
-		MustBuild()
-	if err := r.Workspace.Save(ctx, w); err != nil {
-		return err
-	}
-
-	w2 := workspace.New().ID(wId2).
-		Name("e2e2").
-		Members(map[idx.ID[accountdomain.User]]workspace.Member{
-			uId1: roleOwner,
-			uId3: roleReader,
-		}).
-		Integrations(map[idx.ID[accountdomain.Integration]]workspace.Member{
-			iId1: roleOwner,
-		}).
-		MustBuild()
-	if err := r.Workspace.Save(ctx, w2); err != nil {
-		return err
-	}
-
-	return nil
-}
 
 func TestUpdateMe(t *testing.T) {
 	ctrl := gomock.NewController(t)
@@ -103,7 +28,7 @@ func TestUpdateMe(t *testing.T) {
 
 	operatorID := pkguser.NewID()
 	uid := pkguser.NewID()
-	wid := pkgworkspace.NewID()
+	wid := workspace.NewID()
 	operator := factory.NewUser(func(b *pkguser.Builder) {
 		b.ID(uid)
 		b.Name("updated")
@@ -129,7 +54,7 @@ func TestUpdateMe(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true, mock)
+	}, true, true, mock)
 	query := `mutation UpdateMe { updateMe(input: {name: "updated", email: "hoge@test.com", lang: "ja", password: "Ajsownndww1", passwordConfirmation: "Ajsownndww1"}){ me { id name email lang auths myWorkspaceId } }}`
 	request := GraphQLRequest{
 		OperationName: "UpdateMe",
@@ -174,7 +99,7 @@ func TestRemoveMyAuth(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true, mock)
+	}, true, true, mock)
 
 	query := `mutation RemoveMyAuth { removeMyAuth(input: {auth: "reearth"}){ me { id name email lang auths } }}`
 	request := GraphQLRequest{
@@ -218,8 +143,8 @@ func TestDeleteMe(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true, mock)
-	query := fmt.Sprintf(`mutation DeleteMe { deleteMe(input: {userId: "%s"}){ userId }}`, uId1)
+	}, true, true, mock)
+	query := fmt.Sprintf(`mutation DeleteMe { deleteMe(input: {userId: "%s"}){ userId }}`, uid)
 	request := GraphQLRequest{
 		OperationName: "DeleteMe",
 		Query:         query,
@@ -268,7 +193,7 @@ func TestSearchUser(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true, mock)
+	}, true, true, mock)
 	query := fmt.Sprintf(`query SearchUser { searchUser(nameOrEmail: "%s"){ id name email } }`, "e2e")
 	request := GraphQLRequest{
 		OperationName: "SearchUser",
@@ -316,6 +241,7 @@ func TestNode(t *testing.T) {
 	})
 
 	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil)
 	mockUserRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(pkguser.List{operator}, nil)
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
@@ -326,7 +252,7 @@ func TestNode(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true, mock)
+	}, true, true, mock)
 	query := fmt.Sprintf(` { node(id: "%s", type: USER){ id } }`, operatorID.String())
 	request := GraphQLRequest{
 		Query: query,
@@ -355,6 +281,7 @@ func TestNodes(t *testing.T) {
 	})
 
 	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil)
 	mockUserRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(pkguser.List{operator}, nil)
 	mock := &TestMocks{
 		UserRepo: mockUserRepo,
@@ -365,7 +292,7 @@ func TestNodes(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true, mock)
+	}, true, true, mock)
 	query := fmt.Sprintf(` { nodes(id: "%s", type: USER){ id } }`, operatorID.String())
 	request := GraphQLRequest{
 		Query: query,

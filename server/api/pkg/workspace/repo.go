@@ -8,6 +8,7 @@ import (
 )
 
 type Repo interface {
+	FindByID(ctx context.Context, id id.WorkspaceID) (*Workspace, error)
 	FindByIDs(ctx context.Context, ids id.WorkspaceIDList) (List, error)
 	FindByUser(ctx context.Context, uid id.UserID) (List, error)
 	Create(ctx context.Context, name string) (*Workspace, error)

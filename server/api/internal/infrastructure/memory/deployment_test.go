@@ -8,13 +8,12 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDeployment(t *testing.T) {
 	ctx := context.Background()
-	wsID, _ := accountdomain.WorkspaceIDFrom("workspace1")
+	wsID, _ := id.WorkspaceIDFrom("workspace1")
 	projectID := id.NewProjectID()
 	deploymentID := id.NewDeploymentID()
 	version := "v1"
@@ -105,8 +104,8 @@ func TestDeployment(t *testing.T) {
 
 func TestDeployment_FindByWorkspace(t *testing.T) {
 	ctx := context.Background()
-	wsID := accountdomain.NewWorkspaceID()
-	wsID2 := accountdomain.NewWorkspaceID()
+	wsID := id.NewWorkspaceID()
+	wsID2 := id.NewWorkspaceID()
 
 	// Create test data
 	d1 := deployment.New().NewID().Workspace(wsID).Version("v1").MustBuild()
@@ -117,7 +116,7 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 	tests := []struct {
 		name       string
 		init       map[id.DeploymentID]*deployment.Deployment
-		wsID       accountdomain.WorkspaceID
+		wsID       id.WorkspaceID
 		pagination *interfaces.PaginationParam
 		want       []*deployment.Deployment
 		wantInfo   *interfaces.PageBasedInfo
@@ -203,7 +202,7 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &Deployment{
 				data: tt.init,
-				f:    repo.WorkspaceFilter{Readable: []accountdomain.WorkspaceID{tt.wsID}},
+				f:    repo.WorkspaceFilter{Readable: []id.WorkspaceID{tt.wsID}},
 			}
 
 			got, gotInfo, err := r.FindByWorkspace(ctx, tt.wsID, tt.pagination)

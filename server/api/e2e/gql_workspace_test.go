@@ -48,7 +48,7 @@ func TestCreateWorkspace(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true, mock)
+	}, true, true, mock)
 	query := `mutation CreateWorkspace { createWorkspace(input: {name: "test"}){ workspace{ id name } }}`
 	request := GraphQLRequest{
 		OperationName: "CreateWorkspace",
@@ -97,7 +97,7 @@ func TestDeleteWorkspace(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true, mock)
+	}, true, true, mock)
 	query := fmt.Sprintf(`mutation DeleteWorkspace { deleteWorkspace(input: {workspaceId: "%s"}){ workspaceId }}`, wid)
 	request := GraphQLRequest{
 		OperationName: "DeleteWorkspace",
@@ -164,7 +164,7 @@ func TestUpdateWorkspace(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true, mock)
+	}, true, true, mock)
 
 	query := fmt.Sprintf(`mutation UpdateWorkspace { updateWorkspace(input: {workspaceId: "%s",name: "%s"}){ workspace{ id name } }}`, wid, "updated")
 	request := GraphQLRequest{
@@ -231,7 +231,7 @@ func TestAddMemberToWorkspace(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true, mock)
+	}, true, true, mock)
 
 	query := fmt.Sprintf(`mutation AddMemberToWorkspace { addMemberToWorkspace(input: {workspaceId: "%s", userId: "%s", role: READER}){ workspace{ id } }}`, wid, uid)
 	request := GraphQLRequest{
@@ -297,7 +297,7 @@ func TestRemoveMemberFromWorkspace(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true, mock)
+	}, true, true, mock)
 
 	query := fmt.Sprintf(`mutation RemoveMemberFromWorkspace { removeMemberFromWorkspace(input: {workspaceId: "%s", userId: "%s"}){ workspace{ id } }}`, wid, uid)
 	request := GraphQLRequest{
@@ -356,7 +356,7 @@ func TestUpdateMemberOfWorkspace(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true, mock)
+	}, true, true, mock)
 
 	query := fmt.Sprintf(`mutation UpdateMemberOfWorkspace { updateMemberOfWorkspace(input: {workspaceId: "%s", userId: "%s", role: WRITER}){ workspace{ id } }}`, wid, uid)
 	request := GraphQLRequest{

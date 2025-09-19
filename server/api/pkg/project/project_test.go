@@ -3,7 +3,7 @@ package project
 import (
 	"testing"
 
-	"github.com/reearth/reearthx/account/accountdomain"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,7 +27,7 @@ func TestProject_SetUpdateDescription(t *testing.T) {
 
 func TestProject_SetUpdateWorkspace(t *testing.T) {
 	p := &Project{}
-	p.SetUpdateWorkspace(accountdomain.NewWorkspaceID())
+	p.SetUpdateWorkspace(id.NewWorkspaceID())
 	assert.NotNil(t, p.Workspace())
 }
 

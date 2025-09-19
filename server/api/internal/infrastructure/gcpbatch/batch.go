@@ -13,7 +13,6 @@ import (
 	"github.com/googleapis/gax-go/v2"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/log"
 	"google.golang.org/api/iterator"
 )
@@ -89,7 +88,7 @@ func (b *BatchRepo) SubmitJob(
 	workflowsURL, metadataURL string,
 	variables map[string]interface{},
 	projectID id.ProjectID,
-	workspaceID accountdomain.WorkspaceID,
+	workspaceID id.WorkspaceID,
 ) (string, error) {
 	formattedJobID := formatJobID(jobID.String())
 

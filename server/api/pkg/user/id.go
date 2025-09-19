@@ -5,8 +5,9 @@ import (
 )
 
 type (
-	ID          = id.UserID
-	WorkspaceID = id.WorkspaceID
+	ID              = id.UserID
+	WorkspaceID     = id.WorkspaceID
+	WorkspaceIDList = id.WorkspaceIDList
 )
 
 var NewID = id.NewUserID
