@@ -8,6 +8,8 @@ import {
   DialogTitle,
 } from "@flow/components";
 import { Button } from "@flow/components/buttons/BaseButton";
+import AssetsDialog from "@flow/features/AssetsDialog";
+import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
 import { useT } from "@flow/lib/i18n";
 import { ProjectVariable, VarType } from "@flow/types";
 
@@ -39,6 +41,11 @@ const VariableEditDialog: React.FC<Props> = ({
   const {
     localVariable,
     hasChanges,
+    showDialog,
+    handleAssetDoubleClick,
+    handleCmsItemValue,
+    handleDialogOpen,
+    handleDialogClose,
     handleFieldUpdate,
     handleSave,
     handleCancel,
@@ -95,6 +102,7 @@ const VariableEditDialog: React.FC<Props> = ({
           <DefaultEditor
             variable={localVariable}
             onUpdate={handleFieldUpdate}
+            onDialogOpen={handleDialogOpen}
           />
         );
       case "number":
@@ -125,6 +133,7 @@ const VariableEditDialog: React.FC<Props> = ({
           <DefaultEditor
             variable={localVariable}
             onUpdate={handleFieldUpdate}
+            onDialogOpen={handleDialogOpen}
           />
         );
     }
@@ -141,9 +150,7 @@ const VariableEditDialog: React.FC<Props> = ({
             </div>
           </DialogTitle>
         </DialogHeader>
-
         <div className="flex-1 overflow-y-auto p-4">{renderEditor()}</div>
-
         <DialogFooter className="flex justify-end gap-2">
           <Button variant="outline" onClick={handleCancel}>
             {t("Cancel")}
@@ -153,6 +160,18 @@ const VariableEditDialog: React.FC<Props> = ({
           </Button>
         </DialogFooter>
       </DialogContent>
+      {showDialog === "assets" && (
+        <AssetsDialog
+          onDialogClose={handleDialogClose}
+          onAssetDoubleClick={handleAssetDoubleClick}
+        />
+      )}
+      {showDialog === "cms" && (
+        <CmsIntegrationDialog
+          onDialogClose={handleDialogClose}
+          onCmsItemValue={handleCmsItemValue}
+        />
+      )}
     </Dialog>
   );
 };

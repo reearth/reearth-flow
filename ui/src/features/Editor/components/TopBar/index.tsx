@@ -1,4 +1,4 @@
-import { ChalkboardTeacherIcon } from "@phosphor-icons/react";
+import { ArchiveIcon, ChalkboardTeacherIcon } from "@phosphor-icons/react";
 import { memo } from "react";
 import { Doc } from "yjs";
 
@@ -104,12 +104,12 @@ const TopBar: React.FC<Props> = ({
             icon={<ChalkboardTeacherIcon weight="thin" size={18} />}
             onClick={() => handleDialogOpen("projectVariables")}
           />
-          {/* <IconButton
+          <IconButton
             variant="outline"
             tooltipText={t("Assets")}
-            icon={<HardDriveIcon weight="thin" size={18} />}
+            icon={<ArchiveIcon weight="thin" size={18} />}
             onClick={() => handleDialogOpen("assets")}
-          /> */}
+          />
         </div>
       </div>
       <div className="flex h-full flex-1 gap-2 overflow-hidden">
@@ -152,9 +152,6 @@ const TopBar: React.FC<Props> = ({
           onProjectSnapshotSave={onProjectSnapshotSave}
         />
       </div>
-      {showDialog === "assets" && (
-        <AssetsDialog onDialogClose={handleDialogClose} />
-      )}
       {showDialog === "projectVariables" && (
         <ProjectVariableDialog
           currentProjectVariables={currentProjectVariables}
@@ -166,6 +163,9 @@ const TopBar: React.FC<Props> = ({
           onDeleteBatch={handleProjectVariablesBatchDelete}
           onBatchUpdate={handleProjectVariablesBatchUpdate}
         />
+      )}
+      {showDialog === "assets" && (
+        <AssetsDialog onDialogClose={handleDialogClose} />
       )}
     </div>
   );
