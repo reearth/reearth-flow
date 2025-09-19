@@ -37,9 +37,27 @@ func (i *User) UpdateMe(ctx context.Context, p interfaces.UpdateMeParam) (*user.
 	return i.userRepo.UpdateMe(ctx, attrs)
 }
 
+func (i *User) Signup(ctx context.Context, p interfaces.SignupParam) (*user.User, error) {
+	attrs := user.SignupAttrs{
+		ID:          p.UserID,
+		WorkspaceID: p.WorkspaceID,
+		Name:        p.Name,
+		Email:       p.Email,
+		Password:    p.Password,
+		Secret:      p.Secret,
+		Lang:        p.Lang,
+		Theme:       p.Theme,
+		MockAuth:    p.MockAuth,
+	}
+	return i.userRepo.Signup(ctx, attrs)
+}
+
 func (i *User) SignupOIDC(ctx context.Context, p interfaces.SignupOIDCParam) (*user.User, error) {
 	attrs := user.SignupOIDCAttrs{
 		UserID:      p.UserID,
+		Name:        p.Name,
+		Email:       p.Email,
+		Sub:         p.Sub,
 		Lang:        p.Lang,
 		WorkspaceID: p.WorkspaceID,
 		Secret:      p.Secret,
