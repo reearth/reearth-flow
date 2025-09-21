@@ -34,14 +34,18 @@ impl BroadcastGroupManager {
     }
 
     async fn create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
-        let doc = Doc::new();
-        {
+        let doc = if let Ok(doc) = self.store.load_doc_v2(doc_id).await {
+            doc
+        } else {
+            let doc = Doc::new();
             let mut txn = doc.transact_mut();
             let loaded = self.store.load_doc(doc_id, &mut txn).await.unwrap_or(false);
             if !loaded {
                 let _ = self.store.load_doc(DEFAULT_DOC_ID, &mut txn).await;
             }
-        }
+            drop(txn);
+            doc
+        };
 
         let awareness: AwarenessRef = Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)));
 

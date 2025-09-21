@@ -123,6 +123,7 @@ impl StreamTrimmer {
         let awareness_txn = awareness_doc.transact();
 
         self.gcs_store.flush_doc_v2(doc_id, &awareness_txn).await?;
+        info!("Flushed doc '{}' to GCS before trimming", doc_id);
 
         Ok(true)
     }
