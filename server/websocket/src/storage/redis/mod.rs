@@ -630,33 +630,33 @@ impl RedisStore {
         Ok(exists)
     }
 
-    pub async fn read_all_stream_data(&self, doc_id: &str) -> Result<Vec<Bytes>> {
+    pub async fn read_all_stream_data(&self, doc_id: &str) -> Result<(Vec<Bytes>, Option<String>)> {
         let stream_key = format!("yjs:stream:{doc_id}");
-
         let mut conn = self.pool.get().await?;
-        let script = redis::Script::new(
-            r#"
-            if redis.call('EXISTS', KEYS[1]) == 0 then
-                return {}
-            end
-            
-            local result = redis.call('XRANGE', KEYS[1], '-', '+')
-            local updates = {}
-            
-            for i, entry in ipairs(result) do
-                local fields = entry[2]
-                for j = 1, #fields, 2 do
-                    table.insert(updates, fields[j+1])
-                end
-            end
-            
-            return updates
-        "#,
-        );
 
-        let updates: Vec<Bytes> = script.key(&stream_key).invoke_async(&mut *conn).await?;
+        let entries: Vec<(String, Vec<(String, bytes::Bytes)>)> = redis::cmd("XRANGE")
+            .arg(&stream_key)
+            .arg("-")
+            .arg("+")
+            .query_async(&mut *conn)
+            .await?;
 
-        Ok(updates)
+        if entries.is_empty() {
+            return Ok((Vec::new(), None));
+        }
+
+        let mut updates = Vec::new();
+        let last_id = entries.last().map(|(id, _)| id.clone());
+
+        for (_entry_id, fields) in entries {
+            for (field_name, field_value) in fields {
+                if field_name == "data" {
+                    updates.push(field_value);
+                }
+            }
+        }
+
+        Ok((updates, last_id))
     }
 
     pub async fn read_stream_data_in_batches(

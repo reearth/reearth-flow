@@ -49,86 +49,30 @@ impl BroadcastGroupManager {
 
         let awareness: AwarenessRef = Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)));
 
-        let mut start_id = "0".to_string();
-        let batch_size = 2048;
         let mut final_last_id = "0".to_string();
-
-        let mut lock_value: Option<String> = None;
 
         let awareness_guard = awareness.write().await;
         let mut txn = awareness_guard.doc().transact_mut();
 
-        loop {
-            match self
-                .redis_store
-                .read_stream_data_in_batches(
-                    doc_id,
-                    batch_size,
-                    &start_id,
-                    start_id == "0",
-                    false,
-                    &mut lock_value,
-                )
-                .await
-            {
-                Ok((updates, last_id)) => {
-                    if updates.is_empty() {
-                        if start_id != "0" {
-                            if let Err(e) = self
-                                .redis_store
-                                .read_stream_data_in_batches(
-                                    doc_id,
-                                    1,
-                                    &last_id,
-                                    false,
-                                    true,
-                                    &mut lock_value,
-                                )
-                                .await
-                            {
-                                warn!("Failed to release lock in final batch: {}", e);
-                            }
-                        }
-                        break;
-                    }
-
-                    for update_data in &updates {
-                        if let Ok(update) = Update::decode_v1(update_data) {
-                            if let Err(e) = txn.apply_update(update) {
-                                warn!("Failed to apply Redis update: {}", e);
-                            }
+        match self.redis_store.read_all_stream_data(doc_id).await {
+            Ok((updates, last_id)) => {
+                for update_data in &updates {
+                    if let Ok(update) = Update::decode_v1(update_data) {
+                        if let Err(e) = txn.apply_update(update) {
+                            warn!("Failed to apply Redis update: {}", e);
                         }
                     }
-
-                    final_last_id = last_id.clone();
-
-                    if last_id == start_id {
-                        if let Err(e) = self
-                            .redis_store
-                            .read_stream_data_in_batches(
-                                doc_id,
-                                1,
-                                &last_id,
-                                false,
-                                true,
-                                &mut lock_value,
-                            )
-                            .await
-                        {
-                            warn!("Failed to release lock in final batch: {}", e);
-                        }
-                        break;
-                    }
-
-                    start_id = last_id;
                 }
-                Err(e) => {
-                    warn!(
-                        "Failed to read updates from Redis stream for document '{}': {}",
-                        doc_id, e
-                    );
-                    break;
+
+                if let Some(last_id) = last_id {
+                    final_last_id = last_id;
                 }
+            }
+            Err(e) => {
+                warn!(
+                    "Failed to read updates from Redis stream for document '{}': {}",
+                    doc_id, e
+                );
             }
         }
 
@@ -220,9 +164,8 @@ impl BroadcastPool {
             if let Err(e) = self.manager.store.load_doc(doc_id, &mut temp_txn).await {
                 warn!("Failed to load current state from GCS: {}", e);
             }
-
             match redis_store.read_all_stream_data(doc_id).await {
-                Ok(updates) => {
+                Ok((updates, _last_id)) => {
                     for update_data in updates {
                         if let Ok(update) = Update::decode_v1(&update_data) {
                             if let Err(e) = temp_txn.apply_update(update) {
@@ -289,83 +232,21 @@ impl BroadcastPool {
             doc_id
         );
 
-        let mut start_id = "0".to_string();
-        let batch_size = 2048;
-
-        let mut lock_value: Option<String> = None;
-
-        loop {
-            match self
-                .manager
-                .redis_store
-                .read_stream_data_in_batches(
-                    doc_id,
-                    batch_size,
-                    &start_id,
-                    start_id == "0",
-                    false,
-                    &mut lock_value,
-                )
-                .await
-            {
-                Ok((updates, last_id)) => {
-                    if updates.is_empty() {
-                        if start_id != "0" {
-                            if let Err(e) = self
-                                .manager
-                                .redis_store
-                                .read_stream_data_in_batches(
-                                    doc_id,
-                                    1,
-                                    &last_id,
-                                    false,
-                                    true,
-                                    &mut lock_value,
-                                )
-                                .await
-                            {
-                                warn!("Failed to release lock in final batch: {}", e);
-                            }
-                        }
-                        break;
-                    }
-
-                    for update_data in &updates {
-                        if let Ok(update) = Update::decode_v1(update_data) {
-                            if let Err(e) = txn.apply_update(update) {
-                                warn!("Failed to apply Redis update: {}", e);
-                            }
+        match self.manager.redis_store.read_all_stream_data(doc_id).await {
+            Ok((updates, _last_id)) => {
+                for update_data in &updates {
+                    if let Ok(update) = Update::decode_v1(update_data) {
+                        if let Err(e) = txn.apply_update(update) {
+                            warn!("Failed to apply Redis update: {}", e);
                         }
                     }
-
-                    if last_id == start_id {
-                        if let Err(e) = self
-                            .manager
-                            .redis_store
-                            .read_stream_data_in_batches(
-                                doc_id,
-                                1,
-                                &last_id,
-                                false,
-                                true,
-                                &mut lock_value,
-                            )
-                            .await
-                        {
-                            warn!("Failed to release lock in final batch: {}", e);
-                        }
-                        break;
-                    }
-
-                    start_id = last_id;
                 }
-                Err(e) => {
-                    warn!(
-                        "Failed to read updates from Redis stream for document '{}': {}",
-                        doc_id, e
-                    );
-                    break;
-                }
+            }
+            Err(e) => {
+                warn!(
+                    "Failed to read updates from Redis stream for document '{}': {}",
+                    doc_id, e
+                );
             }
         }
 
@@ -379,7 +260,7 @@ impl BroadcastPool {
 
         let update = Update::decode_v1(&update_bytes)?;
         gcs_txn.apply_update(update)?;
-        drop(gcs_txn); // drop the mut txn
+        drop(gcs_txn);
         let gcs_txn = gcs_doc.transact();
         self.manager.store.flush_doc_v2(doc_id, &gcs_txn).await?;
         Ok(())
