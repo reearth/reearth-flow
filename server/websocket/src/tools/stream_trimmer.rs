@@ -6,7 +6,7 @@ use anyhow::Result;
 use std::sync::Arc;
 use tokio::time::{interval, Duration};
 use tracing::{error, info, warn};
-use yrs::{Doc, ReadTxn, Transact};
+use yrs::Transact;
 
 pub struct StreamTrimmer {
     broadcast_pool: Arc<BroadcastPool>,
@@ -67,8 +67,6 @@ impl StreamTrimmer {
                 }
             }
         }
-
-        info!("Stream trimmer stopped");
     }
 
     async fn perform_trim_cycle(&self) -> Result<()> {
@@ -119,42 +117,14 @@ impl StreamTrimmer {
             }
         };
 
-        let gcs_doc = Doc::new();
-        let mut gcs_txn = gcs_doc.transact_mut();
-
-        if let Err(e) = self.gcs_store.load_doc(doc_id, &mut gcs_txn).await {
-            warn!(
-                "Failed to load current state from GCS for doc '{}': {}",
-                doc_id, e
-            );
-        }
-
-        let gcs_state = gcs_txn.state_vector();
-
         let awareness_ref = group.awareness();
         let awareness_guard = awareness_ref.read().await;
         let awareness_doc = awareness_guard.doc();
         let awareness_txn = awareness_doc.transact();
 
-        let diff = awareness_txn.encode_diff_v1(&gcs_state);
-        if diff.is_empty() || (diff.len() == 2 && diff[0] == 0 && diff[1] == 0) {
-            tracing::debug!("No new changes to flush for doc '{}'", doc_id);
-            return Ok(false);
-        }
+        self.gcs_store.flush_doc_v2(doc_id, &awareness_txn).await?;
 
-        match self.gcs_store.flush_doc_v2(doc_id, &awareness_txn).await {
-            Ok(_) => {
-                tracing::debug!(
-                    "Successfully flushed doc '{}' to GCS before trimming",
-                    doc_id
-                );
-                Ok(true)
-            }
-            Err(e) => {
-                warn!("Failed to flush doc '{}' to GCS: {}", doc_id, e);
-                Ok(false)
-            }
-        }
+        Ok(true)
     }
 
     async fn trim_streams_with_flush(&self) -> Result<(u64, u64, u64)> {
