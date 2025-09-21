@@ -10,12 +10,11 @@ use tracing::error;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
 use crate::application::kv::DocOps;
-use crate::domain::entity::doc::Document;
-use crate::domain::value_objects::http::HistoryItem;
 use crate::domain::value_objects::http::{
     CreateSnapshotRequest, DocumentResponse, HistoryMetadataResponse, HistoryResponse,
     RollbackRequest, SnapshotResponse,
 };
+use crate::domain::value_objects::http::{Document, HistoryItem};
 use crate::AppState;
 
 pub struct DocumentHandler;

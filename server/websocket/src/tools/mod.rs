@@ -1,5 +1,7 @@
 use anyhow::Result;
 
+pub mod stream_trimmer;
+
 pub fn compress_brotli(uncompressed_data: &[u8], quality: i32, lgwin: i32) -> Result<Vec<u8>> {
     let mut input = std::io::Cursor::new(uncompressed_data);
     let mut compressed_data = Vec::new();

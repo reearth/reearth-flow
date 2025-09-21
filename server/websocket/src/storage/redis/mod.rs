@@ -5,7 +5,7 @@ use deadpool_redis::Config;
 use redis::AsyncCommands;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 use uuid;
 
 use crate::{
@@ -630,33 +630,33 @@ impl RedisStore {
         Ok(exists)
     }
 
-    pub async fn read_all_stream_data(&self, doc_id: &str) -> Result<Vec<Bytes>> {
+    pub async fn read_all_stream_data(&self, doc_id: &str) -> Result<(Vec<Bytes>, Option<String>)> {
         let stream_key = format!("yjs:stream:{doc_id}");
-
         let mut conn = self.pool.get().await?;
-        let script = redis::Script::new(
-            r#"
-            if redis.call('EXISTS', KEYS[1]) == 0 then
-                return {}
-            end
-            
-            local result = redis.call('XRANGE', KEYS[1], '-', '+')
-            local updates = {}
-            
-            for i, entry in ipairs(result) do
-                local fields = entry[2]
-                for j = 1, #fields, 2 do
-                    table.insert(updates, fields[j+1])
-                end
-            end
-            
-            return updates
-        "#,
-        );
 
-        let updates: Vec<Bytes> = script.key(&stream_key).invoke_async(&mut *conn).await?;
+        let entries: Vec<(String, Vec<(String, bytes::Bytes)>)> = redis::cmd("XRANGE")
+            .arg(&stream_key)
+            .arg("-")
+            .arg("+")
+            .query_async(&mut *conn)
+            .await?;
 
-        Ok(updates)
+        if entries.is_empty() {
+            return Ok((Vec::new(), None));
+        }
+
+        let mut updates = Vec::new();
+        let last_id = entries.last().map(|(id, _)| id.clone());
+
+        for (_entry_id, fields) in entries {
+            for (field_name, field_value) in fields {
+                if field_name == "data" {
+                    updates.push(field_value);
+                }
+            }
+        }
+
+        Ok((updates, last_id))
     }
 
     pub async fn read_stream_data_in_batches(
@@ -840,5 +840,136 @@ impl RedisStore {
             .await?;
 
         Ok(())
+    }
+
+    pub async fn trim_stream_by_length(&self, doc_id: &str, max_length: u64) -> Result<u64> {
+        let stream_key = format!("yjs:stream:{doc_id}");
+        let mut conn = self.pool.get().await?;
+
+        let trimmed_count: u64 = redis::cmd("XTRIM")
+            .arg(&stream_key)
+            .arg("MAXLEN")
+            .arg("~")
+            .arg(max_length)
+            .query_async(&mut *conn)
+            .await?;
+
+        debug!(
+            "Trimmed {} entries from stream '{}' by max length {}",
+            trimmed_count, stream_key, max_length
+        );
+        Ok(trimmed_count)
+    }
+
+    pub async fn trim_stream_by_min_id(&self, doc_id: &str, min_id: &str) -> Result<u64> {
+        let stream_key = format!("yjs:stream:{doc_id}");
+        let mut conn = self.pool.get().await?;
+
+        let trimmed_count: u64 = redis::cmd("XTRIM")
+            .arg(&stream_key)
+            .arg("MINID")
+            .arg("~")
+            .arg(min_id)
+            .query_async(&mut *conn)
+            .await?;
+
+        debug!(
+            "Trimmed {} entries from stream '{}' by min ID {}",
+            trimmed_count, stream_key, min_id
+        );
+        Ok(trimmed_count)
+    }
+
+    pub async fn get_stream_length(&self, doc_id: &str) -> Result<u64> {
+        let stream_key = format!("yjs:stream:{doc_id}");
+        let mut conn = self.pool.get().await?;
+
+        let length: u64 = redis::cmd("XLEN")
+            .arg(&stream_key)
+            .query_async(&mut *conn)
+            .await?;
+
+        Ok(length)
+    }
+
+    pub async fn list_all_streams(&self) -> Result<Vec<String>> {
+        let mut conn = self.pool.get().await?;
+        let pattern = "yjs:stream:*";
+
+        let keys: Vec<String> = redis::cmd("KEYS")
+            .arg(pattern)
+            .query_async(&mut *conn)
+            .await?;
+
+        Ok(keys)
+    }
+
+    pub async fn trim_streams_comprehensive(
+        &self,
+        max_message_age_ms: u64,
+        max_length: u64,
+    ) -> Result<(u64, u64)> {
+        let streams = self.list_all_streams().await?;
+        let current_time = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64;
+
+        let cutoff_time = current_time.saturating_sub(max_message_age_ms);
+        let min_id = format!("{}-0", cutoff_time);
+
+        let mut streams_processed = 0u64;
+        let mut total_trimmed = 0u64;
+
+        for stream_key in streams {
+            if let Some(doc_id) = stream_key.strip_prefix("yjs:stream:") {
+                match self.trim_stream_by_min_id(doc_id, &min_id).await {
+                    Ok(trimmed) => {
+                        total_trimmed += trimmed;
+                        if trimmed > 0 {
+                            debug!("Trimmed {} old entries from stream '{}'", trimmed, doc_id);
+                        }
+                    }
+                    Err(e) => {
+                        error!("Failed to trim stream '{}' by age: {}", doc_id, e);
+                        continue;
+                    }
+                }
+
+                match self.get_stream_length(doc_id).await {
+                    Ok(length) if length > max_length => {
+                        match self.trim_stream_by_length(doc_id, max_length).await {
+                            Ok(trimmed) => {
+                                total_trimmed += trimmed;
+                                debug!(
+                                    "Trimmed {} entries from stream '{}' by length",
+                                    trimmed, doc_id
+                                );
+                            }
+                            Err(e) => {
+                                error!("Failed to trim stream '{}' by length: {}", doc_id, e);
+                                continue;
+                            }
+                        }
+                    }
+                    Ok(_) => {}
+                    Err(e) => {
+                        error!("Failed to get length for stream '{}': {}", doc_id, e);
+                        continue;
+                    }
+                }
+
+                streams_processed += 1;
+            }
+        }
+
+        if streams_processed > 0 {
+            info!(
+                "Stream trimming completed: processed {} streams, trimmed {} total entries",
+                streams_processed, total_trimmed
+            );
+        }
+
+        Ok((streams_processed, total_trimmed))
     }
 }

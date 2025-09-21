@@ -5,7 +5,7 @@ use crate::domain::value_objects::keys::{
     key_doc, key_state_vector, key_update, KEYSPACE_DOC, SUB_DOC, SUB_STATE_VEC, SUB_UPDATE, V1,
 };
 
-use crate::infrastructure::redis::RedisStore;
+use crate::storage::redis::RedisStore;
 use anyhow::Result;
 use futures::future::join_all;
 use google_cloud_storage::{
