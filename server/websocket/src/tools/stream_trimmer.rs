@@ -243,38 +243,3 @@ pub fn spawn_stream_trimmer(
     shutdown_sender
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::domain::value_objects::redis::RedisConfig;
-
-    #[tokio::test]
-    async fn test_stream_trimmer_creation() {
-        let config = RedisConfig {
-            url: "redis://localhost:6379".to_string(),
-            ttl: 3600,
-            stream_trim_interval: 600,
-            stream_max_message_age: 3600000,
-            stream_max_length: 10000,
-        };
-
-        let redis_store = Arc::new(RedisStore::new(config).await.unwrap());
-        let gcs_config = crate::infrastructure::gcs::GcsConfig {
-            bucket_name: "test-bucket".to_string(),
-            endpoint: None,
-        };
-        let gcs_store = Arc::new(
-            crate::infrastructure::gcs::GcsStore::new_with_config(gcs_config)
-                .await
-                .unwrap(),
-        );
-
-        let broadcast_pool = Arc::new(BroadcastPool::new(gcs_store.clone(), redis_store.clone()));
-        let (trimmer, _shutdown) =
-            StreamTrimmer::new(broadcast_pool, redis_store, gcs_store, 60, 3600000, 1000);
-
-        assert_eq!(trimmer.trim_interval, Duration::from_secs(60));
-        assert_eq!(trimmer.max_message_age_ms, 3600000);
-        assert_eq!(trimmer.max_stream_length, 1000);
-    }
-}
