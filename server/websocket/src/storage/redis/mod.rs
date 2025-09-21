@@ -916,7 +916,7 @@ impl RedisStore {
             .as_millis() as u64;
 
         let cutoff_time = current_time.saturating_sub(max_message_age_ms);
-        let min_id = format!("{}-0", cutoff_time);
+        let min_id = format!("{cutoff_time}-0");
 
         let mut streams_processed = 0u64;
         let mut total_trimmed = 0u64;
