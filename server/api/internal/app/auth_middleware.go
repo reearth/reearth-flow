@@ -113,6 +113,12 @@ func conditionalGraphQLAuthMiddleware(
 
 			if c.Path() == "/api/signup" && c.Request().Method == http.MethodPost {
 				middlewares = tempNewAuthMWs
+			} else if c.Path() == "/api/signup/verify" && c.Request().Method == http.MethodPost {
+				middlewares = tempNewAuthMWs
+			} else if c.Path() == "/api/signup/verify/:code" && c.Request().Method == http.MethodPost {
+				middlewares = tempNewAuthMWs
+			} else if c.Path() == "/api/password-reset" && c.Request().Method == http.MethodPost {
+				middlewares = tempNewAuthMWs
 			} else if c.Path() == "/api/graphql" && c.Request().Method == http.MethodPost {
 				var body struct {
 					OperationName string `json:"operationName"`
