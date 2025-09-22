@@ -10,7 +10,6 @@ pub mod conf;
 pub mod domain;
 pub mod infrastructure;
 pub mod interface;
-pub mod storage;
 pub mod tools;
 pub mod ws;
 pub use broadcast::group;
