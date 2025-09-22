@@ -316,7 +316,9 @@ mod tests {
         let txn = doc.transact();
         store.flush_doc_v2(doc_name, &txn).await.unwrap();
 
-        let loaded_doc = store.load_doc_v2(doc_name).await.unwrap();
+        let loaded_doc = Doc::new();
+        let mut txn = loaded_doc.transact_mut();
+        store.load_doc_v2(doc_name, &mut txn).await.unwrap();
 
         let loaded_text = loaded_doc.get_or_insert_text("test");
         let txn = loaded_doc.transact();

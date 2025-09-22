@@ -85,13 +85,14 @@ impl DocumentHandler {
         }
 
         let storage = state.pool.get_store();
+        let doc = Doc::new();
+        let mut txn = doc.transact_mut();
 
         let result = async {
-            match storage.load_doc_v2(&doc_id).await {
-                Ok(doc) => {
-                    let read_txn = doc.transact();
-                    let state = read_txn.encode_diff_v1(&StateVector::default());
-                    drop(read_txn);
+            match storage.load_doc_v2(&doc_id, &mut txn).await {
+                Ok(()) => {
+                    let state = txn.encode_diff_v1(&StateVector::default());
+                    drop(txn);
 
                     let metadata = storage.get_latest_update_metadata(&doc_id).await?;
 
@@ -169,6 +170,20 @@ impl DocumentHandler {
                 };
 
                 (status_code, format!("Error: {err}")).into_response()
+            }
+        }
+    }
+
+    pub async fn copy_document(
+        Path(doc_id): Path<String>,
+        State(state): State<Arc<AppState>>,
+    ) -> Response {
+        let storage = state.pool.get_store();
+        match storage.copy_document(&doc_id).await {
+            Ok(_) => StatusCode::OK.into_response(),
+            Err(err) => {
+                error!("Failed to copy document {}: {}", doc_id, err);
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
             }
         }
     }
