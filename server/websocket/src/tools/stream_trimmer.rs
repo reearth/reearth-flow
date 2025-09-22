@@ -242,4 +242,3 @@ pub fn spawn_stream_trimmer(
 
     shutdown_sender
 }
-
