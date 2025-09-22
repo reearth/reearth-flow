@@ -86,13 +86,14 @@ impl DocumentHandler {
         }
 
         let storage = state.pool.get_store();
+        let doc = Doc::new();
+        let mut txn = doc.transact_mut();
 
         let result = async {
-            match storage.load_doc_v2(&doc_id).await {
-                Ok(doc) => {
-                    let read_txn = doc.transact();
-                    let state = read_txn.encode_diff_v1(&StateVector::default());
-                    drop(read_txn);
+            match storage.load_doc_v2(&doc_id, &mut txn).await {
+                Ok(()) => {
+                    let state = txn.encode_diff_v1(&StateVector::default());
+                    drop(txn);
 
                     let metadata = storage.get_latest_update_metadata(&doc_id).await?;
 
