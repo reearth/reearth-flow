@@ -8,6 +8,8 @@ use tokio::sync::Mutex;
 use tracing::{debug, error, info};
 use uuid;
 
+pub mod stream_trimmer;
+
 use crate::{
     RedisConfig, RedisPool, RedisStreamResults, StreamMessages, MESSAGE_TYPE_AWARENESS,
     MESSAGE_TYPE_SYNC, OID_LOCK_KEY,

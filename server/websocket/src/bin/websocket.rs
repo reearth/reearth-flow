@@ -3,9 +3,9 @@ use std::sync::Arc;
 use tracing::error;
 use uuid::Uuid;
 use websocket::{
-    conf::Config, infrastructure::gcs::GcsStore, infrastructure::redis::RedisStore,
-    pool::BroadcastPool, server::start_server, tools::stream_trimmer::spawn_stream_trimmer,
-    AppState,
+    conf::Config, infrastructure::gcs::GcsStore,
+    infrastructure::redis::stream_trimmer::spawn_stream_trimmer, infrastructure::redis::RedisStore,
+    pool::BroadcastPool, server::start_server, AppState,
 };
 
 #[cfg(feature = "auth")]
