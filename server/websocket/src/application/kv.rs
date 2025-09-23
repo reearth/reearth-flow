@@ -445,6 +445,21 @@ where
         self.flush_doc_v2(name, &doc.transact()).await?;
         Ok(())
     }
+
+    async fn import_document<K: AsRef<[u8]> + ?Sized + Sync>(
+        &self,
+        name: &K,
+        data: &[u8],
+    ) -> Result<(), Error> {
+        let doc = Doc::new();
+        let mut txn = doc.transact_mut();
+        let update = Update::decode_v2(data)?;
+
+        txn.apply_update(update)?;
+        drop(txn);
+        self.flush_doc_v2(name, &doc.transact()).await?;
+        Ok(())
+    }
 }
 
 pub async fn get_oid<'a, DB: DocOps<'a>>(db: &DB, name: &[u8]) -> Result<Option<OID>, Error>

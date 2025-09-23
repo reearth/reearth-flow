@@ -14,7 +14,7 @@ use crate::domain::entity::doc::Document;
 use crate::domain::value_objects::http::HistoryItem;
 use crate::domain::value_objects::http::{
     CreateSnapshotRequest, DocumentResponse, HistoryMetadataResponse, HistoryResponse,
-    RollbackRequest, SnapshotResponse,
+    ImportDocumentRequest, RollbackRequest, SnapshotResponse,
 };
 use crate::AppState;
 
@@ -380,6 +380,21 @@ impl DocumentHandler {
             Ok(_) => StatusCode::OK.into_response(),
             Err(err) => {
                 error!("Failed to copy document {}: {}", doc_id, err);
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+        }
+    }
+
+    pub async fn import_document(
+        Path(doc_id): Path<String>,
+        State(state): State<Arc<AppState>>,
+        Json(request): Json<ImportDocumentRequest>,
+    ) -> Response {
+        let storage = state.pool.get_store();
+        match storage.import_document(&doc_id, &request.data).await {
+            Ok(_) => StatusCode::OK.into_response(),
+            Err(err) => {
+                error!("Failed to import document {}: {}", doc_id, err);
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()
             }
         }
