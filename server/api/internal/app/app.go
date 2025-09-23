@@ -89,11 +89,12 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 
 	sharedJob := interactor.NewJob(cfg.Repos, cfg.Gateways, cfg.PermissionChecker)
 	e.Use(UsecaseMiddleware(cfg.Repos, cfg.Gateways, cfg.AccountRepos, cfg.AccountGateways, cfg.PermissionChecker, cfg.AccountGQLClient, sharedJob, interactor.ContainerConfig{
-		SignupSecret:        cfg.Config.SignupSecret,
-		AuthSrvUIDomain:     cfg.Config.Host_Web,
-		Host:                cfg.Config.Host,
-		SharedPath:          cfg.Config.SharedPath,
-		SkipPermissionCheck: cfg.Config.SkipPermissionCheck,
+		SignupSecret:             cfg.Config.SignupSecret,
+		AuthSrvUIDomain:          cfg.Config.Host_Web,
+		Host:                     cfg.Config.Host,
+		SharedPath:               cfg.Config.SharedPath,
+		WebsocketThriftServerURL: cfg.Config.WebsocketThriftServerURL,
+		SkipPermissionCheck:      cfg.Config.SkipPermissionCheck,
 	}))
 
 	// auth srv

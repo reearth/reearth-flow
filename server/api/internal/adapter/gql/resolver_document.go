@@ -4,11 +4,10 @@ import (
 	"context"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
-	"github.com/reearth/reearth-flow/api/internal/usecase/interactor"
 )
 
 func (r *queryResolver) LatestProjectSnapshot(ctx context.Context, projectId gqlmodel.ID) (*gqlmodel.ProjectDocument, error) {
-	doc, err := interactor.GetLatest(ctx, string(projectId))
+	doc, err := usecases(ctx).Websocket.GetLatest(ctx, string(projectId))
 	if err != nil {
 		return nil, err
 	}
@@ -22,7 +21,7 @@ func (r *queryResolver) LatestProjectSnapshot(ctx context.Context, projectId gql
 }
 
 func (r *queryResolver) ProjectSnapshot(ctx context.Context, projectId gqlmodel.ID, version int) (*gqlmodel.ProjectSnapshot, error) {
-	history, err := interactor.GetHistoryByVersion(ctx, string(projectId), version)
+	history, err := usecases(ctx).Websocket.GetHistoryByVersion(ctx, string(projectId), version)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +34,7 @@ func (r *queryResolver) ProjectSnapshot(ctx context.Context, projectId gqlmodel.
 }
 
 func (r *queryResolver) ProjectHistory(ctx context.Context, projectId gqlmodel.ID) ([]*gqlmodel.ProjectSnapshotMetadata, error) {
-	metadata, err := interactor.GetHistoryMetadata(ctx, string(projectId))
+	metadata, err := usecases(ctx).Websocket.GetHistoryMetadata(ctx, string(projectId))
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +51,7 @@ func (r *queryResolver) ProjectHistory(ctx context.Context, projectId gqlmodel.I
 }
 
 func (r *mutationResolver) RollbackProject(ctx context.Context, projectId gqlmodel.ID, version int) (*gqlmodel.ProjectDocument, error) {
-	doc, err := interactor.Rollback(ctx, string(projectId), version)
+	doc, err := usecases(ctx).Websocket.Rollback(ctx, string(projectId), version)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +65,7 @@ func (r *mutationResolver) RollbackProject(ctx context.Context, projectId gqlmod
 }
 
 func (r *mutationResolver) SaveSnapshot(ctx context.Context, projectId gqlmodel.ID) (bool, error) {
-	err := interactor.FlushToGCS(ctx, string(projectId))
+	err := usecases(ctx).Websocket.FlushToGCS(ctx, string(projectId))
 	if err != nil {
 		return false, err
 	}
@@ -79,7 +78,7 @@ func (r *mutationResolver) PreviewSnapshot(ctx context.Context, projectID gqlmod
 		snapshotName = *name
 	}
 
-	history, err := interactor.CreateSnapshot(ctx, string(projectID), version, snapshotName)
+	history, err := usecases(ctx).Websocket.CreateSnapshot(ctx, string(projectID), version, snapshotName)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +93,7 @@ func (r *mutationResolver) PreviewSnapshot(ctx context.Context, projectID gqlmod
 }
 
 func (r *mutationResolver) CopyProject(ctx context.Context, projectId gqlmodel.ID) (bool, error) {
-	err := interactor.CopyProject(ctx, string(projectId))
+	err := usecases(ctx).Websocket.CopyDocument(ctx, string(projectId))
 	if err != nil {
 		return false, err
 	}
@@ -102,7 +101,7 @@ func (r *mutationResolver) CopyProject(ctx context.Context, projectId gqlmodel.I
 }
 
 func (r *mutationResolver) ImportProject(ctx context.Context, projectId gqlmodel.ID, data gqlmodel.Bytes) (bool, error) {
-	err := interactor.ImportProject(ctx, string(projectId), []byte(data))
+	err := usecases(ctx).Websocket.ImportDocument(ctx, string(projectId), []byte(data))
 	if err != nil {
 		return false, err
 	}

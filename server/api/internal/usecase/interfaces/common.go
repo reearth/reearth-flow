@@ -34,4 +34,5 @@ type Container struct {
 	UserFacingLog UserFacingLog
 	User          User
 	Workspace     Workspace
+	Websocket     WebsocketClient
 }

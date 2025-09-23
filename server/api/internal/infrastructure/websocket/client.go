@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/websocket"
 	"github.com/reearth/reearthx/log"
 )
@@ -22,41 +23,7 @@ type Client struct {
 	client *http.Client
 }
 
-type documentResponse struct {
-	ID        string `json:"id"`
-	Updates   []byte `json:"updates"`
-	Version   uint64 `json:"version"`
-	Timestamp string `json:"timestamp"`
-}
-
-type historyResponse struct {
-	Updates   []byte `json:"updates"`
-	Version   uint64 `json:"version"`
-	Timestamp string `json:"timestamp"`
-}
-
-type rollbackRequest struct {
-	DocID   string `json:"doc_id"`
-	Version uint64 `json:"version"`
-}
-
-type createSnapshotRequest struct {
-	DocID   string `json:"doc_id"`
-	Version uint64 `json:"version"`
-	Name    string `json:"name"`
-}
-
-type snapshotResponse struct {
-	ID        string `json:"id"`
-	Updates   []byte `json:"updates"`
-	Version   uint64 `json:"version"`
-	Timestamp string `json:"timestamp"`
-	Name      string `json:"name"`
-}
-
-type importDocumentRequest struct {
-	Data []byte `json:"data"`
-}
+var _ interfaces.WebsocketClient = &Client{}
 
 func NewClient(config Config) (*Client, error) {
 	if config.ServerURL == "" {

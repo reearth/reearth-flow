@@ -2,110 +2,55 @@ package interactor
 
 import (
 	"context"
-	"fmt"
-	"sync"
 
-	"github.com/reearth/reearth-flow/api/internal/infrastructure/websocket"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	ws "github.com/reearth/reearth-flow/api/pkg/websocket"
-	"github.com/reearth/reearthx/log"
 )
 
-var (
-	defaultClient interfaces.WebsocketClient
-	clientConfig  websocket.Config
-	clientOnce    sync.Once
-)
-
-func InitWebsocket(websocketThriftServerURL string) {
-	clientConfig = websocket.Config{
-		ServerURL: websocketThriftServerURL,
-	}
+type Websocket struct {
+	client interfaces.WebsocketClient
 }
 
-func getDefaultWebsocketClient() interfaces.WebsocketClient {
-	clientOnce.Do(func() {
-		client, err := websocket.NewClient(clientConfig)
-		if err != nil {
-			log.Errorf("Failed to create websocket client: %v", err)
-			return
-		}
-		defaultClient = client
-	})
-	if defaultClient == nil {
-		log.Error("Websocket client is not initialized")
-	}
-	return defaultClient
+func NewWebsocket(client interfaces.WebsocketClient) *Websocket {
+	return &Websocket{client: client}
 }
 
-func GetLatest(ctx context.Context, id string) (*ws.Document, error) {
-	client := getDefaultWebsocketClient()
-	if client == nil {
-		return nil, fmt.Errorf("websocket client is not initialized")
-	}
-	return client.GetLatest(ctx, id)
+func (i *Websocket) GetLatest(ctx context.Context, id string) (*ws.Document, error) {
+	return i.client.GetLatest(ctx, id)
 }
 
-func GetHistory(ctx context.Context, id string) ([]*ws.History, error) {
-	client := getDefaultWebsocketClient()
-	if client == nil {
-		return nil, fmt.Errorf("websocket client is not initialized")
-	}
-	return client.GetHistory(ctx, id)
+func (i *Websocket) GetHistory(ctx context.Context, id string) ([]*ws.History, error) {
+	return i.client.GetHistory(ctx, id)
 }
 
-func GetHistoryByVersion(ctx context.Context, id string, version int) (*ws.History, error) {
-	client := getDefaultWebsocketClient()
-	if client == nil {
-		return nil, fmt.Errorf("websocket client is not initialized")
-	}
-	return client.GetHistoryByVersion(ctx, id, version)
+func (i *Websocket) GetHistoryByVersion(ctx context.Context, id string, version int) (*ws.History, error) {
+	return i.client.GetHistoryByVersion(ctx, id, version)
 }
 
-func GetHistoryMetadata(ctx context.Context, id string) ([]*ws.HistoryMetadata, error) {
-	client := getDefaultWebsocketClient()
-	if client == nil {
-		return nil, fmt.Errorf("websocket client is not initialized")
-	}
-	return client.GetHistoryMetadata(ctx, id)
+func (i *Websocket) GetHistoryMetadata(ctx context.Context, id string) ([]*ws.HistoryMetadata, error) {
+	return i.client.GetHistoryMetadata(ctx, id)
 }
 
-func Rollback(ctx context.Context, id string, version int) (*ws.Document, error) {
-	client := getDefaultWebsocketClient()
-	if client == nil {
-		return nil, fmt.Errorf("websocket client is not initialized")
-	}
-	return client.Rollback(ctx, id, version)
+func (i *Websocket) Rollback(ctx context.Context, id string, version int) (*ws.Document, error) {
+	return i.client.Rollback(ctx, id, version)
 }
 
-func FlushToGCS(ctx context.Context, id string) error {
-	client := getDefaultWebsocketClient()
-	if client == nil {
-		return fmt.Errorf("websocket client is not initialized")
-	}
-	return client.FlushToGCS(ctx, id)
+func (i *Websocket) FlushToGCS(ctx context.Context, id string) error {
+	return i.client.FlushToGCS(ctx, id)
 }
 
-func CreateSnapshot(ctx context.Context, docID string, version int, name string) (*ws.Document, error) {
-	client := getDefaultWebsocketClient()
-	if client == nil {
-		return nil, fmt.Errorf("websocket client is not initialized")
-	}
-	return client.CreateSnapshot(ctx, docID, version, name)
+func (i *Websocket) CreateSnapshot(ctx context.Context, docID string, version int, name string) (*ws.Document, error) {
+	return i.client.CreateSnapshot(ctx, docID, version, name)
 }
 
-func CopyProject(ctx context.Context, id string) error {
-	client := getDefaultWebsocketClient()
-	if client == nil {
-		return fmt.Errorf("websocket client is not initialized")
-	}
-	return client.CopyDocument(ctx, id)
+func (i *Websocket) CopyProject(ctx context.Context, id string) error {
+	return i.client.CopyDocument(ctx, id)
 }
 
-func ImportProject(ctx context.Context, id string, data []byte) error {
-	client := getDefaultWebsocketClient()
-	if client == nil {
-		return fmt.Errorf("websocket client is not initialized")
-	}
-	return client.ImportDocument(ctx, id, data)
+func (i *Websocket) ImportProject(ctx context.Context, id string, data []byte) error {
+	return i.client.ImportDocument(ctx, id, data)
+}
+
+func (i *Websocket) Close() error {
+	return i.client.Close()
 }
