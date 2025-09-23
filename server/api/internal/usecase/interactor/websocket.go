@@ -93,3 +93,19 @@ func CreateSnapshot(ctx context.Context, docID string, version int, name string)
 	}
 	return client.CreateSnapshot(ctx, docID, version, name)
 }
+
+func CopyProject(ctx context.Context, id string) error {
+	client := getDefaultWebsocketClient()
+	if client == nil {
+		return fmt.Errorf("websocket client is not initialized")
+	}
+	return client.CopyDocument(ctx, id)
+}
+
+func ImportProject(ctx context.Context, id string, data []byte) error {
+	client := getDefaultWebsocketClient()
+	if client == nil {
+		return fmt.Errorf("websocket client is not initialized")
+	}
+	return client.ImportDocument(ctx, id, data)
+}

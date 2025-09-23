@@ -93,6 +93,22 @@ func (r *mutationResolver) PreviewSnapshot(ctx context.Context, projectID gqlmod
 	}, nil
 }
 
+func (r *mutationResolver) CopyProject(ctx context.Context, projectId gqlmodel.ID) (bool, error) {
+	err := interactor.CopyProject(ctx, string(projectId))
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (r *mutationResolver) ImportProject(ctx context.Context, projectId gqlmodel.ID, data gqlmodel.Bytes) (bool, error) {
+	err := interactor.ImportProject(ctx, string(projectId), []byte(data))
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 type projectDocumentResolver struct{ *Resolver }
 
 func (r *projectDocumentResolver) Updates(ctx context.Context, obj *gqlmodel.ProjectDocument) ([]int, error) {

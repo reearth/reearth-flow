@@ -54,6 +54,10 @@ type snapshotResponse struct {
 	Name      string `json:"name"`
 }
 
+type importDocumentRequest struct {
+	Data []byte `json:"data"`
+}
+
 func NewClient(config Config) (*Client, error) {
 	if config.ServerURL == "" {
 		config.ServerURL = "http://localhost:8000"
@@ -412,4 +416,68 @@ func (c *Client) CreateSnapshot(ctx context.Context, docID string, version int, 
 		Version:   int(snapshotResp.Version),
 		Timestamp: timestamp,
 	}, nil
+}
+
+func (c *Client) CopyDocument(ctx context.Context, docID string) error {
+	url := fmt.Sprintf("%s/api/document/%s/copy", c.config.ServerURL, docID)
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to copy document: %w", err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Warnf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("server returned non-200 status: %d %s", resp.StatusCode, body)
+	}
+
+	return nil
+}
+
+func (c *Client) ImportDocument(ctx context.Context, docID string, data []byte) error {
+	url := fmt.Sprintf("%s/api/document/%s/import", c.config.ServerURL, docID)
+
+	importReq := importDocumentRequest{
+		Data: data,
+	}
+
+	reqBody, err := json.Marshal(importReq)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, io.NopCloser(bytes.NewReader(reqBody)))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to import document: %w", err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Warnf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("server returned non-200 status: %d %s", resp.StatusCode, body)
+	}
+
+	return nil
 }

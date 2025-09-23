@@ -5,6 +5,7 @@ scalar URL
 scalar Lang
 scalar FileSize
 scalar JSON
+scalar Bytes
 
 # Meta Type
 
