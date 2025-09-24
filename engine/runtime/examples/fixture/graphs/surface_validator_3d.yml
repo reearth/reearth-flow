@@ -236,7 +236,7 @@ nodes:
         - attribute: issue
           method: create
           value: |
-            "IntersectionBetweenInteriorandInterior"
+            "IntersectionBetweenInteriorAndInterior"
 
   ## Incorrect Interior Orientation
   - id: 6b5d8a3f-1c4e-4b7d-a9c2-5d6b8a3f1c4e
