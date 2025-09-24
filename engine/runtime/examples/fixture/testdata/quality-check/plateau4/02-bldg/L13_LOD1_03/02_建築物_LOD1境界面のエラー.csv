@@ -1,4 +1,3 @@
-"filename","feature_type","gml_id","issue","lod"
-"l13_fail_intersecting_interiors.gml","bldg:Building","bldg_145717e9-2260-4205-aed7-4df9fa8cc296","IntersectingRingsOnAnArea",1
-"l13_fail_intersecting_interiors.gml","bldg:Building","bldg_145717e9-2260-4205-aed7-4df9fa8cc296","IncorrectInteriorOrientation",1
-"l13_fail_intersecting_interiors.gml","bldg:Building","bldg_145717e9-2260-4205-aed7-4df9fa8cc296","IncorrectInteriorOrientation",1
+"gml_id","feature_type","filename","issue","lod"
+"bldg_145717e9-2260-4205-aed7-4df9fa8cc296","bldg:Building","l13_fail_intersecting_interiors.gml","IntersectingRingsOnAnArea",1
+"bldg_145717e9-2260-4205-aed7-4df9fa8cc296","bldg:Building","l13_fail_intersecting_interiors.gml","IntersectionBetweenInteriorandInterior",1

@@ -346,10 +346,11 @@ nodes:
     action: TwoDimensionForcer
 
   - id: bb2cc3dd-4ee5-4ff6-9aa7-1bb8cc9dd0ee
-    name: AreaOnAreaOverlayer
+    name: AreaOnAreaOverlayerLod0
     type: action
     action: AreaOnAreaOverlayer
     with:
+      accumulationMode: dropIncomingAttributes
       outputAttribute: overlap
       generateList: list
 
