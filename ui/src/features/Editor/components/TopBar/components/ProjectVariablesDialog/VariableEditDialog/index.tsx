@@ -42,6 +42,8 @@ const VariableEditDialog: React.FC<Props> = ({
     localVariable,
     hasChanges,
     showDialog,
+    assetUrl,
+    cmsItemAssetUrl,
     handleAssetDoubleClick,
     handleCmsItemValue,
     handleDialogOpen,
@@ -49,6 +51,7 @@ const VariableEditDialog: React.FC<Props> = ({
     handleFieldUpdate,
     handleSave,
     handleCancel,
+    clearUrls,
   } = useVariableEditDialog({
     variable,
     onClose,
@@ -88,7 +91,14 @@ const VariableEditDialog: React.FC<Props> = ({
     switch (originalType) {
       case "array":
         return (
-          <ArrayEditor variable={localVariable} onUpdate={handleFieldUpdate} />
+          <ArrayEditor
+            variable={localVariable}
+            assetUrl={assetUrl}
+            cmsItemAssetUrl={cmsItemAssetUrl}
+            onUpdate={handleFieldUpdate}
+            onDialogOpen={handleDialogOpen}
+            clearUrls={clearUrls}
+          />
         );
       // case "attribute_name":
       //   return (
@@ -122,7 +132,14 @@ const VariableEditDialog: React.FC<Props> = ({
         );
       case "choice":
         return (
-          <ChoiceEditor variable={localVariable} onUpdate={handleFieldUpdate} />
+          <ChoiceEditor
+            variable={localVariable}
+            onUpdate={handleFieldUpdate}
+            onDialogOpen={handleDialogOpen}
+            clearUrls={clearUrls}
+            assetUrl={assetUrl}
+            cmsItemAssetUrl={cmsItemAssetUrl}
+          />
         );
       case "color":
         return (

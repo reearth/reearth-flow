@@ -14,7 +14,13 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { PlusIcon, DotsSixIcon, TrashIcon } from "@phosphor-icons/react";
+import {
+  PlusIcon,
+  DotsSixIcon,
+  TrashIcon,
+  ArchiveIcon,
+  DatabaseIcon,
+} from "@phosphor-icons/react";
 import { useState, useEffect, useCallback } from "react";
 
 import {
@@ -30,16 +36,28 @@ import {
   SelectTrigger,
   SelectValue,
   Checkbox,
+  Button,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { AnyProjectVariable, ChoiceConfig } from "@flow/types";
 
 type Props = {
   variable: AnyProjectVariable;
+  assetUrl?: string | null;
+  cmsItemAssetUrl?: string | null;
   onUpdate: (variable: AnyProjectVariable) => void;
+  onDialogOpen?: (dialog: "assets" | "cms") => void;
+  clearUrls: () => void;
 };
 
-export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
+export const ChoiceEditor: React.FC<Props> = ({
+  variable,
+  assetUrl,
+  cmsItemAssetUrl,
+  onUpdate,
+  onDialogOpen,
+  clearUrls,
+}) => {
   const t = useT();
 
   // Get the current choice configuration from the config field
@@ -64,6 +82,20 @@ export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
   useEffect(() => {
     setChoiceConfig(getChoiceConfig());
   }, [getChoiceConfig]);
+
+  useEffect(() => {
+    if (assetUrl) {
+      setNewOptionText(assetUrl);
+      clearUrls();
+    }
+  }, [assetUrl, clearUrls]);
+
+  useEffect(() => {
+    if (cmsItemAssetUrl) {
+      setNewOptionText(cmsItemAssetUrl);
+      clearUrls();
+    }
+  }, [cmsItemAssetUrl, clearUrls]);
 
   const updateVariable = (
     config: ChoiceConfig,
@@ -279,6 +311,24 @@ export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
             placeholder={t("Enter new option")}
             className="flex-1"
           />
+          {onDialogOpen && (
+            <div className="flex gap-2">
+              <Button
+                onClick={() => onDialogOpen("assets")}
+                variant="outline"
+                size="sm">
+                <ArchiveIcon className="h-4 w-4" />
+                {t("Asset")}
+              </Button>
+              <Button
+                onClick={() => onDialogOpen("cms")}
+                variant="outline"
+                size="sm">
+                <DatabaseIcon className="h-4 w-4" />
+                {t("CMS")}
+              </Button>
+            </div>
+          )}
           <IconButton
             icon={<PlusIcon />}
             onClick={handleAddOption}

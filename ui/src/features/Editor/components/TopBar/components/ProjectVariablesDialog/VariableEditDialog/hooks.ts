@@ -13,6 +13,8 @@ export default ({
   onUpdate: (variable: ProjectVariable) => void;
 }) => {
   const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
+  const [assetUrl, setAssetUrl] = useState<string | null>(null);
+  const [cmsItemAssetUrl, setCmsItemAssetUrl] = useState<string | null>(null);
   const handleDialogOpen = (dialog: DialogOptions) => setShowDialog(dialog);
   const handleDialogClose = () => setShowDialog(undefined);
   const [localVariable, setLocalVariable] = useState<ProjectVariable | null>(
@@ -24,6 +26,7 @@ export default ({
       setLocalVariable({ ...localVariable, defaultValue: asset.url });
       setHasChanges(true);
     }
+    setAssetUrl(asset.url);
     handleDialogClose();
   };
 
@@ -32,6 +35,7 @@ export default ({
       setLocalVariable({ ...localVariable, defaultValue: cmsItemAssetUrl });
       setHasChanges(true);
     }
+    setCmsItemAssetUrl(cmsItemAssetUrl);
     handleDialogClose();
   };
 
@@ -62,10 +66,17 @@ export default ({
     onClose();
   }, [onClose]);
 
+  const clearUrls = () => {
+    setAssetUrl(null);
+    setCmsItemAssetUrl(null);
+  };
+
   return {
     localVariable,
     hasChanges,
     showDialog,
+    assetUrl,
+    cmsItemAssetUrl,
     handleAssetDoubleClick,
     handleCmsItemValue,
     handleFieldUpdate,
@@ -73,5 +84,6 @@ export default ({
     handleCancel,
     handleDialogOpen,
     handleDialogClose,
+    clearUrls,
   };
 };
