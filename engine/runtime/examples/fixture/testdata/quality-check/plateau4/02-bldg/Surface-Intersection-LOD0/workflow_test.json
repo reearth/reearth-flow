@@ -1,0 +1,10 @@
+{
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
+  "description": "Test surface intersection for LOD0 surfaces",
+  "expectedOutput": {
+    "expectedFile": "02_建築物_LOD0面の交差.csv"
+  },
+  "cityGmlPath": "udx/bldg/LOD0_surface_intersection.gml",
+  "codelists": "codelists",
+  "schemas": "schemas"
+}

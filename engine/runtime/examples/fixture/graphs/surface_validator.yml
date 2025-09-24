@@ -208,12 +208,13 @@ nodes:
       interpolationAngle: 22.5
 
   - id: 2c7f4a9e-8b1d-4f6c-a3e8-7f2c4a9e1b8d
-    name: AreaOnAreaOverlayer
+    name: AreaOnAreaOverlayerInteriorAndInterior
     type: action
     action: AreaOnAreaOverlayer
     with:
       groupBy:
         - surfaceId
+      accumulationMode: useAttributesFromOneFeature
       outputAttribute: overlap
 
   - id: 4e1b7c5a-6f9d-4c2e-b8a5-1c4e7b5a6f9d
@@ -225,6 +226,17 @@ nodes:
         - expr: |
             env.get("__value").overlap > 1
           outputPort: intersectionInterior
+
+  - id: 5a3b7e9c-2f4d-4a6e-b8c1-3e7a5b9c2f4d
+    name: AttributeManagerIntersectionInterior
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: issue
+          method: create
+          value: |
+            "IntersectionBetweenInteriorAndInterior"
 
   ## Incorrect Interior Orientation
   - id: 6b5d8a3f-1c4e-4b7d-a9c2-5d6b8a3f1c4e
@@ -453,8 +465,14 @@ edges:
     toPort: default
   - id: 8a3f6c9d-4e7b-4a8a-f2c5-3f8a6c9d4e7b
     from: 4e1b7c5a-6f9d-4c2e-b8a5-1c4e7b5a6f9d
-    to: 3c6f9a1e-8d4b-4f3c-a7e2-6f3c9a1e8d4b
+    to: 5a3b7e9c-2f4d-4a6e-b8c1-3e7a5b9c2f4d
     fromPort: intersectionInterior
+    toPort: default
+
+  - id: 9b4c8e2a-6f7d-4b9c-e1a4-2e8b4c9a6f7d
+    from: 5a3b7e9c-2f4d-4a6e-b8c1-3e7a5b9c2f4d
+    to: 3c6f9a1e-8d4b-4f3c-a7e2-6f3c9a1e8d4b
+    fromPort: default
     toPort: default
 
   ## Incorrect Interior Orientation
