@@ -6,6 +6,7 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gql"
+	"github.com/reearth/reearth-flow/api/internal/infrastructure/websocket"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -21,11 +22,12 @@ import (
 var skipPermissionCheck bool
 
 type ContainerConfig struct {
-	SignupSecret        string
-	AuthSrvUIDomain     string
-	Host                string
-	SharedPath          string
-	SkipPermissionCheck bool
+	SignupSecret             string
+	AuthSrvUIDomain          string
+	Host                     string
+	SharedPath               string
+	WebsocketThriftServerURL string
+	SkipPermissionCheck      bool
 }
 
 func NewContainer(r *repo.Container, g *gateway.Container,
@@ -47,6 +49,14 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		workspace = NewWorkspace(GQLClient.WorkspaceRepo)
 	}
 
+	clientConfig := websocket.Config{
+		ServerURL: config.WebsocketThriftServerURL,
+	}
+	client, err := websocket.NewClient(clientConfig)
+	if err != nil {
+		log.Fatalf("Failed to init websocket: %+v\n", err)
+	}
+
 	return interfaces.Container{
 		Asset:         NewAsset(r, g, permissionChecker),
 		CMS:           NewCMS(r, g, permissionChecker),
@@ -62,6 +72,7 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		Trigger:       NewTrigger(r, g, job, permissionChecker),
 		User:          user,
 		UserFacingLog: NewUserFacingLogInteractor(g.Redis, r.Job, permissionChecker),
+		Websocket:     client,
 	}
 }
 

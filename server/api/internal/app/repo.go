@@ -15,7 +15,6 @@ import (
 	mongorepo "github.com/reearth/reearth-flow/api/internal/infrastructure/mongo"
 	redisrepo "github.com/reearth/reearth-flow/api/internal/infrastructure/redis"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
-	"github.com/reearth/reearth-flow/api/internal/usecase/interactor"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmongo"
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
@@ -34,9 +33,6 @@ const (
 )
 
 func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*repo.Container, *gateway.Container, *accountrepo.Container, *accountgateway.Container) {
-	interactor.InitWebsocket(
-		conf.WebsocketThriftServerURL,
-	)
 
 	gateways := &gateway.Container{}
 	acGateways := &accountgateway.Container{}

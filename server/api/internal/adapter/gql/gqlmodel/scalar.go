@@ -1,6 +1,7 @@
 package gqlmodel
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -74,4 +75,25 @@ func UnmarshalMap(v interface{}) (map[string]string, error) {
 		return m, nil
 	}
 	return nil, fmt.Errorf("%T is not a map", v)
+}
+
+type Bytes []byte
+
+func MarshalBytes(b Bytes) graphql.Marshaler {
+	return graphql.WriterFunc(func(w io.Writer) {
+		encoded := base64.StdEncoding.EncodeToString(b)
+		_, _ = io.WriteString(w, strconv.Quote(encoded))
+	})
+}
+
+func UnmarshalBytes(v interface{}) (Bytes, error) {
+	str, ok := v.(string)
+	if !ok {
+		return nil, errors.New("Bytes must be a base64 encoded string")
+	}
+	decoded, err := base64.StdEncoding.DecodeString(str)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode base64: %w", err)
+	}
+	return Bytes(decoded), nil
 }
