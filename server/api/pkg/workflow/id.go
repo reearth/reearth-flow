@@ -2,18 +2,17 @@ package workflow
 
 import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/account/accountdomain"
 )
 
 type (
 	ID          = id.WorkflowID
 	ProjectID   = id.ProjectID
-	WorkspaceID = accountdomain.WorkspaceID
+	WorkspaceID = id.WorkspaceID
 )
 
 var (
 	NewProjectID   = id.NewProjectID
-	NewWorkspaceID = accountdomain.NewWorkspaceID
+	NewWorkspaceID = id.NewWorkspaceID
 )
 
 var (
@@ -25,13 +24,13 @@ var (
 var (
 	IDFrom          = id.WorkflowIDFrom
 	ProjectIDFrom   = id.ProjectIDFrom
-	WorkspaceIDFrom = accountdomain.WorkspaceIDFrom
+	WorkspaceIDFrom = id.WorkspaceIDFrom
 )
 
 var (
 	IDFromRef          = id.WorkflowIDFromRef
 	ProjectIDFromRef   = id.ProjectIDFromRef
-	WorkspaceIDFromRef = accountdomain.WorkspaceIDFromRef
+	WorkspaceIDFromRef = id.WorkspaceIDFromRef
 )
 
 var ErrInvalidID = id.ErrInvalidID

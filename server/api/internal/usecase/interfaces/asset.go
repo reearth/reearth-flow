@@ -7,7 +7,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/account/accountdomain"
 )
 
 type AssetFilterType string
@@ -19,7 +18,7 @@ const (
 )
 
 type CreateAssetParam struct {
-	WorkspaceID accountdomain.WorkspaceID
+	WorkspaceID id.WorkspaceID
 	File        *file.File
 	Name        *string
 }
@@ -33,7 +32,7 @@ var ErrCreateAssetFailed error = errors.New("failed to create asset")
 
 type Asset interface {
 	Fetch(context.Context, []id.AssetID) ([]*asset.Asset, error)
-	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *string, *asset.SortType, *PaginationParam) ([]*asset.Asset, *PageBasedInfo, error)
+	FindByWorkspace(context.Context, id.WorkspaceID, *string, *asset.SortType, *PaginationParam) ([]*asset.Asset, *PageBasedInfo, error)
 	Create(context.Context, CreateAssetParam) (*asset.Asset, error)
 	Update(context.Context, UpdateAssetParam) (*asset.Asset, error)
 	Delete(context.Context, id.AssetID) (id.AssetID, error)

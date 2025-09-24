@@ -17,6 +17,7 @@ import (
 	"golang.org/x/oauth2/clientcredentials"
 )
 
+// TODO: Remove this file once the migration is complete.
 type Auth0 struct {
 	base           string
 	client         *http.Client

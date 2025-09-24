@@ -15,8 +15,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
-	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 	"github.com/reearth/reearthx/usecasex"
 )
 
@@ -25,7 +23,6 @@ type Deployment struct {
 	projectRepo       repo.Project
 	workflowRepo      repo.Workflow
 	jobRepo           repo.Job
-	workspaceRepo     accountrepo.Workspace
 	transaction       usecasex.Transaction
 	batch             gateway.Batch
 	file              gateway.File
@@ -39,7 +36,6 @@ func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfac
 		projectRepo:       r.Project,
 		workflowRepo:      r.Workflow,
 		jobRepo:           r.Job,
-		workspaceRepo:     r.Workspace,
 		transaction:       r.Transaction,
 		batch:             gr.Batch,
 		file:              gr.File,
@@ -60,7 +56,7 @@ func (i *Deployment) Fetch(ctx context.Context, ids []id.DeploymentID) ([]*deplo
 	return i.deploymentRepo.FindByIDs(ctx, ids)
 }
 
-func (i *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *interfaces.PaginationParam) ([]*deployment.Deployment, *interfaces.PageBasedInfo, error) {
+func (i *Deployment) FindByWorkspace(ctx context.Context, id id.WorkspaceID, p *interfaces.PaginationParam) ([]*deployment.Deployment, *interfaces.PageBasedInfo, error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, nil, err
 	}
@@ -76,7 +72,7 @@ func (i *Deployment) FindByProject(ctx context.Context, id id.ProjectID) (*deplo
 	return i.deploymentRepo.FindByProject(ctx, id)
 }
 
-func (i *Deployment) FindByVersion(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID, version string) (*deployment.Deployment, error) {
+func (i *Deployment) FindByVersion(ctx context.Context, wsID id.WorkspaceID, projectID *id.ProjectID, version string) (*deployment.Deployment, error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, err
 	}
@@ -84,7 +80,7 @@ func (i *Deployment) FindByVersion(ctx context.Context, wsID accountdomain.Works
 	return i.deploymentRepo.FindByVersion(ctx, wsID, projectID, version)
 }
 
-func (i *Deployment) FindHead(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID) (*deployment.Deployment, error) {
+func (i *Deployment) FindHead(ctx context.Context, wsID id.WorkspaceID, projectID *id.ProjectID) (*deployment.Deployment, error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, err
 	}
@@ -92,7 +88,7 @@ func (i *Deployment) FindHead(ctx context.Context, wsID accountdomain.WorkspaceI
 	return i.deploymentRepo.FindHead(ctx, wsID, projectID)
 }
 
-func (i *Deployment) FindVersions(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID) ([]*deployment.Deployment, error) {
+func (i *Deployment) FindVersions(ctx context.Context, wsID id.WorkspaceID, projectID *id.ProjectID) ([]*deployment.Deployment, error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, err
 	}

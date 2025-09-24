@@ -11,12 +11,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/project"
-	"github.com/reearth/reearthx/account/accountdomain/user"
-	"github.com/reearth/reearthx/account/accountdomain/workspace"
-	"github.com/reearth/reearthx/account/accountusecase"
-	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
-	"github.com/reearth/reearthx/account/accountusecase/accountinteractor"
-	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 )
 
 var skipPermissionCheck bool
@@ -31,23 +25,12 @@ type ContainerConfig struct {
 }
 
 func NewContainer(r *repo.Container, g *gateway.Container,
-	ar *accountrepo.Container, ag *accountgateway.Container,
 	permissionChecker gateway.PermissionChecker,
 	GQLClient *gql.Client,
 	job interfaces.Job,
 	config ContainerConfig,
 ) interfaces.Container {
 	setSkipPermissionCheck(config.SkipPermissionCheck)
-
-	var user interfaces.User
-	if GQLClient != nil && GQLClient.UserRepo != nil {
-		user = NewUser(GQLClient.UserRepo)
-	}
-
-	var workspace interfaces.Workspace
-	if GQLClient != nil && GQLClient.WorkspaceRepo != nil {
-		workspace = NewWorkspace(GQLClient.WorkspaceRepo)
-	}
 
 	clientConfig := websocket.Config{
 		ServerURL: config.WebsocketThriftServerURL,
@@ -66,11 +49,11 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		Log:           NewLogInteractor(g.Redis, r.Job, permissionChecker),
 		NodeExecution: NewNodeExecution(r.NodeExecution, g.Redis, permissionChecker),
 		Parameter:     NewParameter(r, permissionChecker),
-		Project:       NewProject(r, g, job, permissionChecker),
+		Project:       NewProject(r, g, job, permissionChecker, GQLClient.WorkspaceRepo),
 		ProjectAccess: NewProjectAccess(r, g, config, permissionChecker),
-		Workspace:     workspace,
+		Workspace:     NewWorkspace(GQLClient.WorkspaceRepo),
 		Trigger:       NewTrigger(r, g, job, permissionChecker),
-		User:          user,
+		User:          NewUser(GQLClient.UserRepo),
 		UserFacingLog: NewUserFacingLogInteractor(g.Redis, r.Job, permissionChecker),
 		Websocket:     client,
 	}
@@ -92,12 +75,6 @@ func (d ProjectDeleter) Delete(ctx context.Context, prj *project.Project, force 
 	}
 
 	return nil
-}
-
-func workspaceMemberCountEnforcer(_ *repo.Container) accountinteractor.WorkspaceMemberCountEnforcer {
-	return func(ctx context.Context, ws *workspace.Workspace, _ user.List, op *accountusecase.Operator) error {
-		return nil
-	}
 }
 
 func setSkipPermissionCheck(isSkipPermissionCheck bool) {
