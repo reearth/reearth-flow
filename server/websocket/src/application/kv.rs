@@ -398,28 +398,27 @@ where
         }
     }
 
-    async fn load_doc_v2<K: AsRef<[u8]> + ?Sized + Sync>(&self, name: &K) -> Result<Doc, Error> {
+    async fn load_doc_v2<K: AsRef<[u8]> + ?Sized + Sync>(
+        &self,
+        name: &K,
+        txn: &mut TransactionMut,
+    ) -> Result<(), Error> {
         let doc_key = format!("doc_v2:{}", hex::encode(name.as_ref()));
         let doc_key_bytes = doc_key.as_bytes();
 
-        match self.get(doc_key_bytes).await? {
-            Some(data) => {
-                let doc = Doc::new();
-                let mut txn = doc.transact_mut();
-
-                let decompressed_data = decompress_brotli(data.as_ref())?;
-                if let Ok(update) = Update::decode_v2(&decompressed_data) {
-                    txn.apply_update(update)?;
-                }
-                drop(txn);
-                Ok(doc)
+        if let Some(data) = self.get(doc_key_bytes).await? {
+            if data.as_ref().is_empty() {
+                return Err(anyhow::anyhow!(
+                    "Document data is empty for key: {}",
+                    doc_key
+                ));
             }
-
-            None => Err(anyhow::anyhow!(
-                "Document not found: {}",
-                hex::encode(name.as_ref())
-            )),
+            let decompressed_data = decompress_brotli(data.as_ref())?;
+            if let Ok(update) = Update::decode_v2(&decompressed_data) {
+                txn.apply_update(update)?;
+            }
         }
+        Ok(())
     }
 
     async fn flush_doc_v2<K: AsRef<[u8]> + ?Sized + Sync>(
@@ -435,6 +434,30 @@ where
         let compressed_data = compress_brotli(&state, 4, 22)?;
 
         self.upsert(doc_key_bytes, &compressed_data).await?;
+        Ok(())
+    }
+
+    async fn copy_document<K: AsRef<[u8]> + ?Sized + Sync>(&self, name: &K) -> Result<(), Error> {
+        let doc = Doc::new();
+        let mut txn = doc.transact_mut();
+
+        self.load_doc_v2(name, &mut txn).await?;
+        self.flush_doc_v2(name, &doc.transact()).await?;
+        Ok(())
+    }
+
+    async fn import_document<K: AsRef<[u8]> + ?Sized + Sync>(
+        &self,
+        name: &K,
+        data: &[u8],
+    ) -> Result<(), Error> {
+        let doc = Doc::new();
+        let mut txn = doc.transact_mut();
+        let update = Update::decode_v2(data)?;
+
+        txn.apply_update(update)?;
+        drop(txn);
+        self.flush_doc_v2(name, &doc.transact()).await?;
         Ok(())
     }
 }
