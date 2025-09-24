@@ -271,7 +271,7 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AddMemberToWorkspace      func(childComplexity int, input gqlmodel.AddMemberToWorkspaceInput) int
 		CancelJob                 func(childComplexity int, input gqlmodel.CancelJobInput) int
-		CopyProject               func(childComplexity int, projectID gqlmodel.ID) int
+		CopyProject               func(childComplexity int, projectID gqlmodel.ID, source gqlmodel.ID) int
 		CreateAsset               func(childComplexity int, input gqlmodel.CreateAssetInput) int
 		CreateDeployment          func(childComplexity int, input gqlmodel.CreateDeploymentInput) int
 		CreateProject             func(childComplexity int, input gqlmodel.CreateProjectInput) int
@@ -568,7 +568,7 @@ type MutationResolver interface {
 	SaveSnapshot(ctx context.Context, projectID gqlmodel.ID) (bool, error)
 	PreviewSnapshot(ctx context.Context, projectID gqlmodel.ID, version int, name *string) (*gqlmodel.PreviewSnapshot, error)
 	RollbackProject(ctx context.Context, projectID gqlmodel.ID, version int) (*gqlmodel.ProjectDocument, error)
-	CopyProject(ctx context.Context, projectID gqlmodel.ID) (bool, error)
+	CopyProject(ctx context.Context, projectID gqlmodel.ID, source gqlmodel.ID) (bool, error)
 	ImportProject(ctx context.Context, projectID gqlmodel.ID, data gqlmodel.Bytes) (bool, error)
 	CancelJob(ctx context.Context, input gqlmodel.CancelJobInput) (*gqlmodel.CancelJobPayload, error)
 	DeclareParameter(ctx context.Context, projectID gqlmodel.ID, input gqlmodel.DeclareParameterInput) (*gqlmodel.Parameter, error)
@@ -1575,7 +1575,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CopyProject(childComplexity, args["projectId"].(gqlmodel.ID)), true
+		return e.complexity.Mutation.CopyProject(childComplexity, args["projectId"].(gqlmodel.ID), args["source"].(gqlmodel.ID)), true
 
 	case "Mutation.createAsset":
 		if e.complexity.Mutation.CreateAsset == nil {
@@ -3714,7 +3714,7 @@ extend type Mutation {
   saveSnapshot(projectId: ID!): Boolean!
   previewSnapshot(projectId: ID!, version: Int!, name: String): PreviewSnapshot
   rollbackProject(projectId: ID!, version: Int!): ProjectDocument
-  copyProject(projectId: ID!): Boolean!
+  copyProject(projectId: ID!, source: ID!): Boolean!
   importProject(projectId: ID!, data: Bytes!): Boolean!
 }
 
@@ -4444,6 +4444,11 @@ func (ec *executionContext) field_Mutation_copyProject_args(ctx context.Context,
 		return nil, err
 	}
 	args["projectId"] = arg0
+	arg1, err := ec.field_Mutation_copyProject_argsSource(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["source"] = arg1
 	return args, nil
 }
 func (ec *executionContext) field_Mutation_copyProject_argsProjectID(
@@ -4457,6 +4462,24 @@ func (ec *executionContext) field_Mutation_copyProject_argsProjectID(
 
 	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
 	if tmp, ok := rawArgs["projectId"]; ok {
+		return ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+	}
+
+	var zeroVal gqlmodel.ID
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_copyProject_argsSource(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (gqlmodel.ID, error) {
+	if _, ok := rawArgs["source"]; !ok {
+		var zeroVal gqlmodel.ID
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("source"))
+	if tmp, ok := rawArgs["source"]; ok {
 		return ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
 	}
 
@@ -13733,7 +13756,7 @@ func (ec *executionContext) _Mutation_copyProject(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CopyProject(rctx, fc.Args["projectId"].(gqlmodel.ID))
+		return ec.resolvers.Mutation().CopyProject(rctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["source"].(gqlmodel.ID))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

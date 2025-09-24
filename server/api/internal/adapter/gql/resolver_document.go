@@ -92,8 +92,8 @@ func (r *mutationResolver) PreviewSnapshot(ctx context.Context, projectID gqlmod
 	}, nil
 }
 
-func (r *mutationResolver) CopyProject(ctx context.Context, projectId gqlmodel.ID) (bool, error) {
-	err := usecases(ctx).Websocket.CopyDocument(ctx, string(projectId))
+func (r *mutationResolver) CopyProject(ctx context.Context, projectId gqlmodel.ID, source gqlmodel.ID) (bool, error) {
+	err := usecases(ctx).Websocket.CopyDocument(ctx, string(projectId), string(source))
 	if err != nil {
 		return false, err
 	}

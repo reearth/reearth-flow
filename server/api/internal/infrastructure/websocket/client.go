@@ -385,8 +385,8 @@ func (c *Client) CreateSnapshot(ctx context.Context, docID string, version int, 
 	}, nil
 }
 
-func (c *Client) CopyDocument(ctx context.Context, docID string) error {
-	url := fmt.Sprintf("%s/api/document/%s/copy", c.config.ServerURL, docID)
+func (c *Client) CopyDocument(ctx context.Context, docID string, source string) error {
+	url := fmt.Sprintf("%s/api/document/%s/%s/copy", c.config.ServerURL, docID, source)
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, nil)
 	if err != nil {

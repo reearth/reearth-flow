@@ -43,8 +43,8 @@ func (i *Websocket) CreateSnapshot(ctx context.Context, docID string, version in
 	return i.client.CreateSnapshot(ctx, docID, version, name)
 }
 
-func (i *Websocket) CopyProject(ctx context.Context, id string) error {
-	return i.client.CopyDocument(ctx, id)
+func (i *Websocket) CopyProject(ctx context.Context, id string, source string) error {
+	return i.client.CopyDocument(ctx, id, source)
 }
 
 func (i *Websocket) ImportProject(ctx context.Context, id string, data []byte) error {
