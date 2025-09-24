@@ -32,7 +32,7 @@ pub fn document_routes() -> Router<Arc<AppState>> {
         )
         .route("/document/snapshot", post(DocumentHandler::create_snapshot))
         .route(
-            "/document/{doc_id}/copy",
+            "/document/{doc_id}/{source}/copy",
             post(DocumentHandler::copy_document),
         )
         .route(

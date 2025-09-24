@@ -437,11 +437,15 @@ where
         Ok(())
     }
 
-    async fn copy_document<K: AsRef<[u8]> + ?Sized + Sync>(&self, name: &K) -> Result<(), Error> {
+    async fn copy_document<K: AsRef<[u8]> + ?Sized + Sync>(
+        &self,
+        name: &K,
+        source: &str,
+    ) -> Result<(), Error> {
         let doc = Doc::new();
         let mut txn = doc.transact_mut();
 
-        self.load_doc_v2(name, &mut txn).await?;
+        self.load_doc_v2(source, &mut txn).await?;
         self.flush_doc_v2(name, &doc.transact()).await?;
         Ok(())
     }
