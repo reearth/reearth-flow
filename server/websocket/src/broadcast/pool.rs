@@ -133,9 +133,14 @@ impl BroadcastPool {
         Ok(group)
     }
 
+    pub fn get_existing_group(&self, doc_id: &str) -> Option<Arc<BroadcastGroup>> {
+        self.groups.get(doc_id).map(|group| group.clone())
+    }
+
     pub async fn cleanup_group(&self, doc_id: &str) {
-        if let Some((_, _group)) = self.groups.remove(doc_id) {
-            info!("Cleaned up BroadcastGroup for doc_id: {}", doc_id);
+        if let Some((_, group)) = self.groups.remove(doc_id) {
+            let _ = group.shutdown().await;
+            info!("Shutdown BroadcastGroup for doc_id: {}", doc_id);
         }
     }
 
