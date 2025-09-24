@@ -13,6 +13,24 @@ Perform Area Overlay Analysis
   "description": "Configure how area overlay analysis is performed",
   "type": "object",
   "properties": {
+    "accumulationMode": {
+      "title": "Accumulation Mode",
+      "description": "Controls how attributes from input features are handled in output features",
+      "default": "useAttributesFromOneFeature",
+      "allOf": [
+        {
+          "$ref": "#/definitions/AccumulationMode"
+        }
+      ]
+    },
+    "generateList": {
+      "title": "Generate List",
+      "description": "Name of the list attribute to store source feature attributes",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "groupBy": {
       "title": "Group By Attributes",
       "description": "Optional attributes to group features by during overlay analysis",
@@ -23,9 +41,24 @@ Perform Area Overlay Analysis
       "items": {
         "$ref": "#/definitions/Attribute"
       }
+    },
+    "outputAttribute": {
+      "title": "Output Attribute",
+      "description": "Name of the attribute to store overlap count",
+      "type": [
+        "string",
+        "null"
+      ]
     }
   },
   "definitions": {
+    "AccumulationMode": {
+      "type": "string",
+      "enum": [
+        "useAttributesFromOneFeature",
+        "dropIncomingAttributes"
+      ]
+    },
     "Attribute": {
       "type": "string"
     }
@@ -3585,6 +3618,68 @@ Explodes array attributes into separate features, creating one feature per array
           "$ref": "#/definitions/Attribute"
         }
       ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Feature
+
+## ListIndexer
+### Type
+* processor
+### Description
+Copies attributes from a specific list element to become the main attributes of a feature
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ListIndexer Parameters",
+  "description": "Configuration for copying attributes from a specific list element to main feature attributes.",
+  "type": "object",
+  "required": [
+    "listAttribute",
+    "listIndexToCopy"
+  ],
+  "properties": {
+    "copiedAttributePrefix": {
+      "description": "Optional prefix to add to copied attribute names",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "copiedAttributeSuffix": {
+      "description": "Optional suffix to add to copied attribute names",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "listAttribute": {
+      "description": "List attribute to read from",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "listIndexToCopy": {
+      "description": "Index of the list element to copy (0-based)",
+      "type": "integer",
+      "format": "uint",
+      "minimum": 0.0
     }
   },
   "definitions": {
