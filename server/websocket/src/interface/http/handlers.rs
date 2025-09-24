@@ -372,11 +372,11 @@ impl DocumentHandler {
     }
 
     pub async fn copy_document(
-        Path(doc_id): Path<String>,
+        Path((doc_id, source)): Path<(String, String)>,
         State(state): State<Arc<AppState>>,
     ) -> Response {
         let storage = state.pool.get_store();
-        match storage.copy_document(&doc_id).await {
+        match storage.copy_document(&doc_id, &source).await {
             Ok(_) => StatusCode::OK.into_response(),
             Err(err) => {
                 error!("Failed to copy document {}: {}", doc_id, err);

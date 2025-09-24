@@ -15,8 +15,6 @@ use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
 
 use super::types::BroadcastConfig;
 
-const DEFAULT_DOC_ID: &str = "01jpjfpw0qtw17kbrcdbgefakg";
-
 #[derive(Debug, Clone)]
 pub struct BroadcastGroupManager {
     store: Arc<GcsStore>,
@@ -36,13 +34,7 @@ impl BroadcastGroupManager {
     async fn create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
         let doc = Doc::new();
         let mut txn = doc.transact_mut();
-        if let Ok(()) = self.store.load_doc_v2(doc_id, &mut txn).await {
-        } else {
-            let loaded = self.store.load_doc(doc_id, &mut txn).await.unwrap_or(false);
-            if !loaded {
-                let _ = self.store.load_doc(DEFAULT_DOC_ID, &mut txn).await;
-            }
-        };
+        self.store.load_doc_v2(doc_id, &mut txn).await?;
         drop(txn);
 
         let awareness: AwarenessRef = Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)));
