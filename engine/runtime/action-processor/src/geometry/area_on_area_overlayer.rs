@@ -85,6 +85,7 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
             group_by: param.group_by,
             output_attribute: param.output_attribute,
             generate_list: param.generate_list,
+            accumulation_mode: param.accumulation_mode,
             buffer: HashMap::new(),
         };
 
@@ -100,12 +101,19 @@ struct AreaOnAreaOverlayerParam {
     /// # Group By Attributes
     /// Optional attributes to group features by during overlay analysis
     group_by: Option<Vec<Attribute>>,
-    /// # Output Attribute
-    /// Name of the attribute to store overlap count
-    output_attribute: Option<String>,
+
+    /// # Accumulation Mode
+    /// Controls how attributes from input features are handled in output features
+    #[serde(default)]
+    accumulation_mode: AccumulationMode,
+
     /// # Generate List
     /// Name of the list attribute to store source feature attributes
     generate_list: Option<String>,
+
+    /// # Output Attribute
+    /// Name of the attribute to store overlap count
+    output_attribute: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -113,7 +121,16 @@ struct AreaOnAreaOverlayer {
     group_by: Option<Vec<Attribute>>,
     output_attribute: Option<String>,
     generate_list: Option<String>,
+    accumulation_mode: AccumulationMode,
     buffer: HashMap<AttributeValue, Vec<Feature>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum AccumulationMode {
+    #[default]
+    UseAttributesFromOneFeature,
+    DropIncomingAttributes,
 }
 
 impl Processor for AreaOnAreaOverlayer {
@@ -317,6 +334,7 @@ impl AreaOnAreaOverlayer {
             &self.group_by,
             &self.output_attribute,
             &self.generate_list,
+            &self.accumulation_mode,
         )
     }
 }
@@ -402,9 +420,10 @@ impl OverlayedFeatures {
     fn from_midpolygons(
         midpolygons: Vec<MiddlePolygon>,
         base_attributes: Vec<IndexMap<Attribute, AttributeValue>>,
-        group_by: &Option<Vec<Attribute>>,
+        _group_by: &Option<Vec<Attribute>>,
         output_attribute: &Option<String>,
         generate_list: &Option<String>,
+        accumulation_mode: &AccumulationMode,
     ) -> Self {
         let mut area = Vec::new();
         let mut remnant = Vec::new();
@@ -413,17 +432,16 @@ impl OverlayedFeatures {
                 MiddlePolygonType::None => {}
                 MiddlePolygonType::Area(parents) => {
                     let mut feature = Feature::new();
-                    let last_feature = &base_attributes[*parents.last().unwrap()];
-                    if let Some(group_by) = group_by {
-                        feature.attributes = group_by
-                            .iter()
-                            .filter_map(|attr| {
-                                let value = last_feature.get(attr).cloned()?;
-                                Some((attr.clone(), value))
-                            })
-                            .collect::<IndexMap<_, _>>();
-                    } else {
-                        feature.attributes = IndexMap::new();
+
+                    // Handle attributes based on accumulation mode
+                    match accumulation_mode {
+                        AccumulationMode::DropIncomingAttributes => {
+                            feature.attributes = IndexMap::new();
+                        }
+                        AccumulationMode::UseAttributesFromOneFeature => {
+                            let first_feature = &base_attributes[parents[0]];
+                            feature.attributes = first_feature.clone();
+                        }
                     }
 
                     // Add overlap count attribute if specified
@@ -460,7 +478,16 @@ impl OverlayedFeatures {
                 }
                 MiddlePolygonType::Remnant(parent) => {
                     let mut feature = Feature::new();
-                    feature.attributes = base_attributes[parent].clone();
+
+                    // Handle attributes based on accumulation mode
+                    match accumulation_mode {
+                        AccumulationMode::DropIncomingAttributes => {
+                            feature.attributes = IndexMap::new();
+                        }
+                        AccumulationMode::UseAttributesFromOneFeature => {
+                            feature.attributes = base_attributes[parent].clone();
+                        }
+                    }
 
                     // Add overlap count attribute if specified (remnants have overlap count of 1)
                     if let Some(attr_name) = output_attribute {
