@@ -2,75 +2,31 @@ package gql
 
 import (
 	"context"
-	"log"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqldataloader"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/account/accountusecase/accountinterfaces"
 	"github.com/reearth/reearthx/util"
 )
 
-// TODO: After migration, remove accountinterfaces.Workspace and rename tempNewUsecase to usecase.
 type WorkspaceLoader struct {
-	usecase        accountinterfaces.Workspace
-	tempNewUsecase interfaces.Workspace
+	usecase interfaces.Workspace
 }
 
-func NewWorkspaceLoader(usecase accountinterfaces.Workspace, tempNewUsecase interfaces.Workspace) *WorkspaceLoader {
+func NewWorkspaceLoader(usecase interfaces.Workspace) *WorkspaceLoader {
 	return &WorkspaceLoader{
-		usecase:        usecase,
-		tempNewUsecase: tempNewUsecase,
+		usecase: usecase,
 	}
 }
 
-// TODO: After migration, remove this logic and use the new usecase directly.
 func (c *WorkspaceLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmodel.Workspace, []error) {
-	if c.tempNewUsecase != nil {
-		workspaces := c.fetchWithTempNewUsecase(ctx, ids)
-		if len(workspaces) > 0 {
-			log.Printf("DEBUG:[WorkspaceLoader.Fetch] Fetched %d workspaces with tempNewUsecase", len(workspaces))
-			return workspaces, nil
-		}
-	}
-	log.Printf("WARNING:[WorkspaceLoader.Fetch] Fallback to traditional usecase for %d IDs", len(ids))
-	return c.fetchWithTraditionalUsecase(ctx, ids)
-}
-
-func (c *WorkspaceLoader) fetchWithTempNewUsecase(ctx context.Context, ids []gqlmodel.ID) []*gqlmodel.Workspace {
 	wids, err := util.TryMap(ids, gqlmodel.ToID[id.Workspace])
-	if err != nil {
-		log.Printf("WARNING:[WorkspaceLoader.fetchWithTempNewUsecase] Failed to convert IDs: %v", err)
-		return nil
-	}
-
-	res, err := c.tempNewUsecase.FindByIDs(ctx, wids)
-	if err != nil {
-		log.Printf("WARNING:[WorkspaceLoader.fetchWithTempNewUsecase] Failed to find workspaces: %v", err)
-		return nil
-	}
-
-	if len(res) == 0 {
-		log.Printf("DEBUG:[WorkspaceLoader.fetchWithTempNewUsecase] No workspaces found for IDs: %v", ids)
-		return nil
-	}
-
-	workspaces := make([]*gqlmodel.Workspace, 0, len(res))
-	for _, t := range res {
-		workspaces = append(workspaces, gqlmodel.ToWorkspaceFromFlow(t))
-	}
-	return workspaces
-}
-
-func (c *WorkspaceLoader) fetchWithTraditionalUsecase(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmodel.Workspace, []error) {
-	uids, err := util.TryMap(ids, gqlmodel.ToID[accountdomain.Workspace])
 	if err != nil {
 		return nil, []error{err}
 	}
 
-	res, err := c.usecase.Fetch(ctx, uids, getAcOperator(ctx))
+	res, err := c.usecase.FindByIDs(ctx, wids)
 	if err != nil {
 		return nil, []error{err}
 	}
@@ -82,51 +38,13 @@ func (c *WorkspaceLoader) fetchWithTraditionalUsecase(ctx context.Context, ids [
 	return workspaces, nil
 }
 
-// TODO: After migration, remove this logic and use the new usecase directly.
 func (c *WorkspaceLoader) FindByUser(ctx context.Context, uid gqlmodel.ID) ([]*gqlmodel.Workspace, error) {
-	if c.tempNewUsecase != nil {
-		workspaces := c.findByUserWithTempNewUsecase(ctx, uid)
-		if len(workspaces) > 0 {
-			log.Printf("DEBUG:[WorkspaceLoader.FindByUser] Fetched %d workspaces with tempNewUsecase", len(workspaces))
-			return workspaces, nil
-		}
-	}
-	log.Printf("WARNING:[WorkspaceLoader.FindByUser] Fallback to traditional usecase for %s", uid)
-	return c.findByUserWithTraditionalUsecase(ctx, uid)
-}
-
-func (c *WorkspaceLoader) findByUserWithTempNewUsecase(ctx context.Context, uid gqlmodel.ID) []*gqlmodel.Workspace {
-	tid, err := gqlmodel.ToID[id.User](uid)
-	if err != nil {
-		log.Printf("WARNING:[WorkspaceLoader.findByUserWithTempNewUsecase] Failed to convert ID: %v", err)
-		return nil
-	}
-
-	res, err := c.tempNewUsecase.FindByUser(ctx, tid)
-	if err != nil {
-		log.Printf("WARNING:[WorkspaceLoader.findByUserWithTempNewUsecase] Failed to find workspaces: %v", err)
-		return nil
-	}
-
-	if len(res) == 0 {
-		log.Printf("DEBUG:[WorkspaceLoader.findByUserWithTempNewUsecase] No workspaces found for ID: %s", tid)
-		return nil
-	}
-
-	workspaces := make([]*gqlmodel.Workspace, 0, len(res))
-	for _, t := range res {
-		workspaces = append(workspaces, gqlmodel.ToWorkspaceFromFlow(t))
-	}
-	return workspaces
-}
-
-func (c *WorkspaceLoader) findByUserWithTraditionalUsecase(ctx context.Context, uid gqlmodel.ID) ([]*gqlmodel.Workspace, error) {
-	userid, err := gqlmodel.ToID[accountdomain.User](uid)
+	userid, err := gqlmodel.ToID[id.User](uid)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := c.usecase.FindByUser(ctx, userid, getAcOperator(ctx))
+	res, err := c.usecase.FindByUser(ctx, userid)
 	if err != nil {
 		return nil, err
 	}

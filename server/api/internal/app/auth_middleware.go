@@ -72,6 +72,10 @@ func jwtContextMiddleware() echo.MiddlewareFunc {
 func tempNewAuthMiddleware(gqlClient *gql.Client, skipOps map[string]struct{}) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if c.Path() == "/api/signup" {
+				return next(c)
+			}
+
 			if _, skip := skipOps[adapter.GQLOperationName(c.Request().Context())]; skip {
 				return next(c)
 			}
@@ -90,7 +94,7 @@ func tempNewAuthMiddleware(gqlClient *gql.Client, skipOps map[string]struct{}) e
 				return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized: user not found")
 			}
 
-			ctx = adapter.AttachFlowUser(ctx, u)
+			ctx = adapter.AttachUser(ctx, u)
 			c.SetRequest(c.Request().WithContext(ctx))
 			return next(c)
 		}
@@ -107,7 +111,15 @@ func conditionalGraphQLAuthMiddleware(
 		return func(c echo.Context) error {
 			middlewares := defaultMWs
 
-			if c.Path() == "/api/graphql" && c.Request().Method == http.MethodPost {
+			if c.Path() == "/api/signup" && c.Request().Method == http.MethodPost {
+				middlewares = tempNewAuthMWs
+			} else if c.Path() == "/api/signup/verify" && c.Request().Method == http.MethodPost {
+				middlewares = tempNewAuthMWs
+			} else if c.Path() == "/api/signup/verify/:code" && c.Request().Method == http.MethodPost {
+				middlewares = tempNewAuthMWs
+			} else if c.Path() == "/api/password-reset" && c.Request().Method == http.MethodPost {
+				middlewares = tempNewAuthMWs
+			} else if c.Path() == "/api/graphql" && c.Request().Method == http.MethodPost {
 				var body struct {
 					OperationName string `json:"operationName"`
 				}
@@ -118,10 +130,8 @@ func conditionalGraphQLAuthMiddleware(
 				}
 
 				switch body.OperationName {
-				case "GetMe":
+				case "GetMe", "GetWorkspaceById", "GetWorkspaces", "SearchUser", "UpdateMe", "CreateWorkspace", "UpdateWorkspace", "DeleteWorkspace", "AddMemberToWorkspace", "UpdateMemberOfWorkspace", "RemoveMemberFromWorkspace", "Signup", "RemoveMyAuth", "DeleteMe":
 					middlewares = tempNewAuthMWs
-				case "GetWorkspaceById", "GetWorkspaces", "SearchUser", "UpdateMe", "CreateWorkspace", "UpdateWorkspace", "DeleteWorkspace", "AddMemberToWorkspace", "UpdateMemberOfWorkspace", "RemoveMemberFromWorkspace", "Signup", "RemoveMyAuth":
-					middlewares = append(defaultMWs, tempNewAuthMWs...)
 				}
 			}
 

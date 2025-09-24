@@ -92,7 +92,7 @@ func TestLogInteractor_GetLogs(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachUser(ctx, mockUser)
+	ctx = adapter.AttachReearthxUser(ctx, mockUser)
 
 	nodeID := log.NodeID(id.NewNodeID())
 	jobID := id.NewJobID()
@@ -156,7 +156,7 @@ func TestLogInteractor_SubscribeInitialLogs(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachUser(ctx, mockUser)
+	ctx = adapter.AttachReearthxUser(ctx, mockUser)
 
 	ch, err := li.Subscribe(ctx, jobID)
 	assert.NoError(t, err)
@@ -191,7 +191,7 @@ func TestLogInteractor_Unsubscribe(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachUser(ctx, mockUser)
+	ctx = adapter.AttachReearthxUser(ctx, mockUser)
 
 	ch, err := liInterface.Subscribe(ctx, jobID)
 	if err != nil {
@@ -247,7 +247,7 @@ func TestLogInteractor_StopsMonitoringWhenJobCompleted(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachUser(ctx, mockUser)
+	ctx = adapter.AttachReearthxUser(ctx, mockUser)
 
 	t.Run("monitoring stops when job is completed", func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(ctx, 2*time.Second)

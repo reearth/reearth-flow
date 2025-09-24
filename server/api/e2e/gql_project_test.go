@@ -18,7 +18,7 @@ func TestProjectWorkflows(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser, true, nil)
 
 	projectId := testCreateProject(t, e)
 
@@ -229,7 +229,7 @@ func TestListProjects(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser, true, nil)
 
 	// Create test projects
 	projectIDs := make([]string, 3)
