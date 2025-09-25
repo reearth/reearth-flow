@@ -14,6 +14,22 @@ use std::sync::Arc;
 use tempfile::TempDir;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ExpectedFiles {
+    Single(String),
+    Multiple(Vec<String>),
+}
+
+impl ExpectedFiles {
+    fn as_vec(&self) -> Vec<String> {
+        match self {
+            ExpectedFiles::Single(file) => vec![file.clone()],
+            ExpectedFiles::Multiple(files) => files.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkflowTestProfile {
     /// Path to the workflow file (relative to fixture/workflow/)
@@ -54,9 +70,10 @@ pub struct WorkflowTestProfile {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TestOutput {
-    /// Path to expected output file (relative to test folder) - treated as answer data for the file with same name in output
+    /// Path(s) to expected output file(s) (relative to test folder) - treated as answer data for the file with same name in output
+    /// Can be either a single file (String) or multiple files (Vec<String>)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub expected_file: Option<String>,
+    pub expected_file: Option<ExpectedFiles>,
 
     /// Inline expected data for small outputs
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -268,15 +285,18 @@ impl TestContext {
 
     pub fn verify_output(&self) -> Result<()> {
         if let Some(output) = &self.profile.expected_output {
-            // Check if expected file exists, fail test if not
-            if let Some(expected_file_name) = &output.expected_file {
-                let expected_file = self.test_dir.join(expected_file_name);
-                if !expected_file.exists() {
-                    anyhow::bail!("Expected output file does not exist: {:?}", expected_file);
-                }
+            // Check if expected file(s) exist, fail test if not
+            if let Some(expected_files) = &output.expected_file {
+                let files = expected_files.as_vec();
+                for expected_file_name in &files {
+                    let expected_file = self.test_dir.join(expected_file_name);
+                    if !expected_file.exists() {
+                        anyhow::bail!("Expected output file does not exist: {:?}", expected_file);
+                    }
 
-                // Validate file format and route to appropriate verification method
-                self.verify_file_based_on_extension(output, expected_file_name)?;
+                    // Validate file format and route to appropriate verification method
+                    self.verify_file_based_on_extension(output, expected_file_name)?;
+                }
             }
         }
         Ok(())

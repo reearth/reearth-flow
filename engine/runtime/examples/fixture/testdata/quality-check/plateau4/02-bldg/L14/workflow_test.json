@@ -1,0 +1,13 @@
+{
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
+  "description": "Test quality check L14",
+  "expectedOutput": {
+    "expectedFile": [
+      "02_建築物_立体のエラー.csv",
+      "02_建築物_非水密体.csv"
+    ]
+  },
+  "cityGmlPath": "udx/bldg/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas"
+}
