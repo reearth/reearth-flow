@@ -460,10 +460,10 @@ nodes:
             env.get("__value").meshcode
         - attribute: meshcount
           expr: |
-            "dummy: meshcount"
+            env.get("__value")._mesh_count
         - attribute: mesh2area
           expr: |
-            "dummy: mesh2area"
+            env.get("__value")._meshcode_to_area
 
   - id: 4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f9a
     name: FeatureWriterIncorrectMeshCode
