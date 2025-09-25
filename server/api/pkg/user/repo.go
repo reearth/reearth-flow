@@ -16,4 +16,8 @@ type Repo interface {
 	SignupOIDC(ctx context.Context, attrs SignupOIDCAttrs) (*User, error)
 	RemoveMyAuth(ctx context.Context, authProvider string) (*User, error)
 	DeleteMe(ctx context.Context, uid id.UserID) error
+	CreateVerification(ctx context.Context, email string) error
+	VerifyUser(ctx context.Context, code string) (*User, error)
+	StartPasswordReset(ctx context.Context, email string) error
+	PasswordReset(ctx context.Context, password string, token string) error
 }

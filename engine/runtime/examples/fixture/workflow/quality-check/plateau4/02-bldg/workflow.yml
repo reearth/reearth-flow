@@ -10,8 +10,7 @@ with:
   outputPath:
 graphs:
   - !include ../../../../graphs/lod_splitter_with_dm.yml
-  - !include ../../../../graphs/surface_validator_2d.yml
-  - !include ../../../../graphs/surface_validator_3d.yml
+  - !include ../../../../graphs/surface_validator.yml
   - !include format_checks.yml
   - !include ref_and_type_checks.yml
   - !include surface_validation_01.yml

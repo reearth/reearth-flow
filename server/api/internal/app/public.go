@@ -23,7 +23,7 @@ func Signup() echo.HandlerFunc {
 		}
 
 		uc := adapter.Usecases(c.Request().Context())
-		controller := http1.NewUserController(uc.User, uc.ReearthxUser)
+		controller := http1.NewUserController(uc.User)
 
 		output, err := controller.Signup(c.Request().Context(), inp)
 		if err != nil {
@@ -42,7 +42,7 @@ func PasswordReset() echo.HandlerFunc {
 		}
 
 		uc := adapter.Usecases(c.Request().Context())
-		controller := http1.NewUserController(uc.User, uc.ReearthxUser)
+		controller := http1.NewUserController(uc.User)
 
 		isStartingNewRequest := len(inp.Email) > 0 && len(inp.Token) == 0 && len(inp.Password) == 0
 		isSettingNewPassword := len(inp.Email) > 0 && len(inp.Token) > 0 && len(inp.Password) > 0
@@ -74,7 +74,7 @@ func StartSignupVerify() echo.HandlerFunc {
 		}
 
 		uc := adapter.Usecases(c.Request().Context())
-		controller := http1.NewUserController(uc.User, uc.ReearthxUser)
+		controller := http1.NewUserController(uc.User)
 
 		if err := controller.CreateVerification(c.Request().Context(), inp); err != nil {
 			return err
@@ -92,7 +92,7 @@ func SignupVerify() echo.HandlerFunc {
 		}
 
 		uc := adapter.Usecases(c.Request().Context())
-		controller := http1.NewUserController(uc.User, uc.ReearthxUser)
+		controller := http1.NewUserController(uc.User)
 
 		output, err := controller.VerifyUser(c.Request().Context(), code)
 		if err != nil {

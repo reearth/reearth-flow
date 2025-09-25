@@ -7,15 +7,16 @@ use crate::{AwarenessRef, Subscription};
 use anyhow::Result;
 use bytes::Bytes;
 use futures_util::{SinkExt, StreamExt};
-use tokio::task::JoinHandle;
 use tracing::{debug, error, info, warn};
 use yrs::types::ToJson;
 
+use crate::domain::value_objects::sub::ShutdownHandle;
 use serde_json;
 use std::sync::Arc;
 use tokio::select;
 use tokio::sync::broadcast::{channel, Sender};
 use tokio::sync::Mutex;
+
 use yrs::encoding::write::Write;
 use yrs::sync::protocol::{MSG_SYNC, MSG_SYNC_UPDATE};
 use yrs::sync::{DefaultProtocol, Error, Message, Protocol, SyncMessage};
@@ -35,14 +36,7 @@ pub struct BroadcastGroup {
     redis_store: Arc<RedisStore>,
     doc_name: String,
     last_read_id: Arc<Mutex<String>>,
-    awareness_updater: Option<JoinHandle<()>>,
-    awareness_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
-    redis_subscriber_task: Option<JoinHandle<()>>,
-    redis_subscriber_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
-    heartbeat_task: Option<JoinHandle<()>>,
-    heartbeat_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
-    sync_task: Option<JoinHandle<()>>,
-    sync_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
+    shutdown_handle: Arc<Mutex<Option<ShutdownHandle>>>,
     connections_count: Count,
 }
 
@@ -298,14 +292,16 @@ impl BroadcastGroup {
             redis_store,
             doc_name,
             last_read_id,
-            awareness_updater: Some(awareness_updater),
-            awareness_shutdown_tx: Some(awareness_shutdown_tx),
-            redis_subscriber_task: Some(redis_subscriber_task),
-            redis_subscriber_shutdown_tx: Some(redis_subscriber_shutdown_tx),
-            heartbeat_task: Some(heartbeat_task),
-            heartbeat_shutdown_tx: Some(heartbeat_shutdown_tx),
-            sync_task: Some(sync_task),
-            sync_shutdown_tx: Some(sync_shutdown_tx),
+            shutdown_handle: Arc::new(Mutex::new(Some(ShutdownHandle {
+                awareness_updater,
+                awareness_shutdown_tx,
+                redis_subscriber_task,
+                redis_subscriber_shutdown_tx,
+                heartbeat_task,
+                heartbeat_shutdown_tx,
+                sync_task,
+                sync_shutdown_tx,
+            }))),
             connections_count: Count::new(),
         })
     }
@@ -560,6 +556,11 @@ impl BroadcastGroup {
     }
 
     pub async fn shutdown(&self) -> Result<()> {
+        if let Ok(mut guard) = self.shutdown_handle.try_lock() {
+            if let Some(handle) = guard.take() {
+                handle.shutdown_sync();
+            }
+        }
         let client_id = {
             let awareness_read = self.awareness_ref.read().await;
             awareness_read.client_id()
@@ -572,6 +573,10 @@ impl BroadcastGroup {
             .redis_store
             .get_active_instances(&self.doc_name, 60)
             .await?;
+        info!(
+            "Active instances count for doc '{}': {}",
+            self.doc_name, conn_count
+        );
         if conn_count <= 0 {
             let lock_id = format!("gcs:lock:{}", self.doc_name);
             let instance_id = format!("instance-{}", self.awareness_ref.read().await.client_id());
@@ -668,32 +673,9 @@ impl BroadcastGroup {
 impl Drop for BroadcastGroup {
     fn drop(&mut self) {
         info!("Dropping BroadcastGroup");
-        if let Some(tx) = self.awareness_shutdown_tx.take() {
-            if tx.send(()).is_err() {
-                if let Some(task) = self.awareness_updater.take() {
-                    task.abort();
-                }
-            }
-        }
-        if let Some(tx) = self.heartbeat_shutdown_tx.take() {
-            if tx.send(()).is_err() {
-                if let Some(task) = self.heartbeat_task.take() {
-                    task.abort();
-                }
-            }
-        }
-        if let Some(tx) = self.redis_subscriber_shutdown_tx.take() {
-            if tx.send(()).is_err() {
-                if let Some(task) = self.redis_subscriber_task.take() {
-                    task.abort();
-                }
-            }
-        }
-        if let Some(tx) = self.sync_shutdown_tx.take() {
-            if tx.send(()).is_err() {
-                if let Some(task) = self.sync_task.take() {
-                    task.abort();
-                }
+        if let Ok(mut guard) = self.shutdown_handle.try_lock() {
+            if let Some(handle) = guard.take() {
+                handle.shutdown_sync();
             }
         }
     }

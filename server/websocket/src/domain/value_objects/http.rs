@@ -73,3 +73,8 @@ pub struct HistoryMetadataResponse {
     pub version: u64,
     pub timestamp: String,
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct ImportDocumentRequest {
+    pub data: Vec<u8>,
+}

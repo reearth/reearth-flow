@@ -34,6 +34,8 @@ extend type Mutation {
   saveSnapshot(projectId: ID!): Boolean!
   previewSnapshot(projectId: ID!, version: Int!, name: String): PreviewSnapshot
   rollbackProject(projectId: ID!, version: Int!): ProjectDocument
+  copyProject(projectId: ID!, source: ID!): Boolean!
+  importProject(projectId: ID!, data: Bytes!): Boolean!
 }
 
 # Query

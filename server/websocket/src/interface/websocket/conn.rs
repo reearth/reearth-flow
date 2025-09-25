@@ -90,11 +90,6 @@ impl<Sink, Stream> Drop for Connection<Sink, Stream> {
                     error!("Failed to cleanup awareness: {}", e);
                 }
             });
-            tokio::spawn(async move {
-                if let Err(e) = group.shutdown().await {
-                    error!("Failed to shutdown group: {}", e);
-                }
-            });
         }
     }
 }

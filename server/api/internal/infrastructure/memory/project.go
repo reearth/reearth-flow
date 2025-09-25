@@ -9,7 +9,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/project"
-	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/rerror"
 )
 
@@ -32,7 +31,7 @@ func (r *Project) Filtered(f repo.WorkspaceFilter) repo.Project {
 	}
 }
 
-func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*project.Project, *interfaces.PageBasedInfo, error) {
+func (r *Project) FindByWorkspace(ctx context.Context, id id.WorkspaceID, pagination *interfaces.PaginationParam) ([]*project.Project, *interfaces.PageBasedInfo, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -115,7 +114,7 @@ func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 	return result, interfaces.NewPageBasedInfo(total, 1, int(total)), nil
 }
 
-func (r *Project) FindIDsByWorkspace(ctx context.Context, id accountdomain.WorkspaceID) (res []project.ID, _ error) {
+func (r *Project) FindIDsByWorkspace(ctx context.Context, id id.WorkspaceID) (res []project.ID, _ error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -156,7 +155,7 @@ func (r *Project) FindByID(ctx context.Context, id id.ProjectID) (*project.Proje
 	return nil, rerror.ErrNotFound
 }
 
-func (r *Project) CountByWorkspace(_ context.Context, ws accountdomain.WorkspaceID) (n int, _ error) {
+func (r *Project) CountByWorkspace(_ context.Context, ws id.WorkspaceID) (n int, _ error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -168,7 +167,7 @@ func (r *Project) CountByWorkspace(_ context.Context, ws accountdomain.Workspace
 	return
 }
 
-func (r *Project) CountPublicByWorkspace(_ context.Context, ws accountdomain.WorkspaceID) (n int, _ error) {
+func (r *Project) CountPublicByWorkspace(_ context.Context, ws id.WorkspaceID) (n int, _ error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 

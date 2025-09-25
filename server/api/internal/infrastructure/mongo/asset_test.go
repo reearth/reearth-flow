@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/reearth/reearth-flow/api/pkg/asset"
-	"github.com/reearth/reearthx/account/accountdomain"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/mongox/mongotest"
 	"github.com/stretchr/testify/assert"
@@ -28,8 +28,8 @@ func TestFindByID(t *testing.T) {
 				Asset: asset.New().
 					NewID().
 					CreatedAt(time.Now()).
-					Workspace(accountdomain.NewWorkspaceID()).
-					CreatedByUser(accountdomain.NewUserID()).
+					Workspace(id.NewWorkspaceID()).
+					CreatedByUser(id.NewUserID()).
 					FileName("file.json").
 					Name("name").
 					Size(10).
