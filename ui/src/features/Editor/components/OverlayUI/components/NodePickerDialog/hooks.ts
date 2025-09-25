@@ -109,9 +109,14 @@ export default ({
           break;
         }
         case "arrowup": {
-          const newIndex =
-            selectedIndex === 0 ? selectedIndex : selectedIndex - 1;
-          setSelectedIndex(newIndex);
+          let newIndex;
+          if (selectedIndex === -1) {
+            newIndex = actionsList.length - 1;
+          } else if (selectedIndex === 0) {
+            newIndex = selectedIndex;
+          } else {
+            newIndex = selectedIndex - 1;
+          }
           if (actionsList && newIndex >= 0 && actionsList[newIndex]) {
             setSelected(actionsList[newIndex].name);
           }
