@@ -36,6 +36,10 @@ export default () => {
         description: t("Toggle Fullscreen Mode"),
       },
       {
+        keyBinding: EditorKeyBindings["writerDialog"],
+        description: t("Open the Writer Dialog"),
+      },
+      {
         keyBinding: EditorKeyBindings["readerDialog"],
         description: t("Open the Reader Dialog"),
       },
@@ -44,8 +48,8 @@ export default () => {
         description: t("Open the Transformer Dialog"),
       },
       {
-        keyBinding: EditorKeyBindings["writerDialog"],
-        description: t("Open the Writer Dialog"),
+        keyBinding: EditorKeyBindings["groupToSubWorkFlow"],
+        description: t("Group Selected Nodes into a Sub-Workflow"),
       },
     ],
   };
