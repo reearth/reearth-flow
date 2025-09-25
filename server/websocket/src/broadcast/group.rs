@@ -36,14 +36,14 @@ pub struct BroadcastGroup {
     doc_name: String,
     instance_id: String,
     last_read_id: Arc<Mutex<String>>,
-    awareness_updater: Option<JoinHandle<()>>,
-    awareness_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
-    redis_subscriber_task: Option<JoinHandle<()>>,
-    redis_subscriber_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
-    heartbeat_task: Option<JoinHandle<()>>,
-    heartbeat_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
-    sync_task: Option<JoinHandle<()>>,
-    sync_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
+    awareness_updater: Mutex<Option<JoinHandle<()>>>,
+    awareness_shutdown_tx: Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
+    redis_subscriber_task: Mutex<Option<JoinHandle<()>>>,
+    redis_subscriber_shutdown_tx: Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
+    heartbeat_task: Mutex<Option<JoinHandle<()>>>,
+    heartbeat_shutdown_tx: Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
+    sync_task: Mutex<Option<JoinHandle<()>>>,
+    sync_shutdown_tx: Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
     connections_count: Arc<Mutex<usize>>,
 }
 
@@ -301,14 +301,14 @@ impl BroadcastGroup {
             doc_name,
             instance_id,
             last_read_id,
-            awareness_updater: Some(awareness_updater),
-            awareness_shutdown_tx: Some(awareness_shutdown_tx),
-            redis_subscriber_task: Some(redis_subscriber_task),
-            redis_subscriber_shutdown_tx: Some(redis_subscriber_shutdown_tx),
-            heartbeat_task: Some(heartbeat_task),
-            heartbeat_shutdown_tx: Some(heartbeat_shutdown_tx),
-            sync_task: Some(sync_task),
-            sync_shutdown_tx: Some(sync_shutdown_tx),
+            awareness_updater: Mutex::new(Some(awareness_updater)),
+            awareness_shutdown_tx: Mutex::new(Some(awareness_shutdown_tx)),
+            redis_subscriber_task: Mutex::new(Some(redis_subscriber_task)),
+            redis_subscriber_shutdown_tx: Mutex::new(Some(redis_subscriber_shutdown_tx)),
+            heartbeat_task: Mutex::new(Some(heartbeat_task)),
+            heartbeat_shutdown_tx: Mutex::new(Some(heartbeat_shutdown_tx)),
+            sync_task: Mutex::new(Some(sync_task)),
+            sync_shutdown_tx: Mutex::new(Some(sync_shutdown_tx)),
             connections_count: Arc::new(Mutex::new(0)),
         })
     }
@@ -566,6 +566,20 @@ impl BroadcastGroup {
     }
 
     pub async fn shutdown(&self) -> Result<()> {
+        info!("Shutting down BroadcastGroup");
+        if let Some(task) = self.awareness_updater.lock().await.take() {
+            task.abort();
+        }
+        if let Some(task) = self.heartbeat_task.lock().await.take() {
+            task.abort();
+        }
+        if let Some(task) = self.redis_subscriber_task.lock().await.take() {
+            task.abort();
+        }
+        if let Some(task) = self.sync_task.lock().await.take() {
+            task.abort();
+        }
+
         let client_id = {
             let awareness_read = self.awareness_ref.read().await;
             awareness_read.client_id()
@@ -671,36 +685,34 @@ impl BroadcastGroup {
     }
 }
 
+impl BroadcastGroup {
+    fn shutdown_task_pair(
+        shutdown_tx: &Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
+        task: &Mutex<Option<JoinHandle<()>>>,
+    ) {
+        if let Ok(mut tx_guard) = shutdown_tx.try_lock() {
+            if let Some(tx) = tx_guard.take() {
+                if tx.send(()).is_err() {
+                    if let Ok(mut task_guard) = task.try_lock() {
+                        if let Some(task) = task_guard.take() {
+                            task.abort();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 impl Drop for BroadcastGroup {
     fn drop(&mut self) {
         info!("Dropping BroadcastGroup");
-        if let Some(tx) = self.awareness_shutdown_tx.take() {
-            if tx.send(()).is_err() {
-                if let Some(task) = self.awareness_updater.take() {
-                    task.abort();
-                }
-            }
-        }
-        if let Some(tx) = self.heartbeat_shutdown_tx.take() {
-            if tx.send(()).is_err() {
-                if let Some(task) = self.heartbeat_task.take() {
-                    task.abort();
-                }
-            }
-        }
-        if let Some(tx) = self.redis_subscriber_shutdown_tx.take() {
-            if tx.send(()).is_err() {
-                if let Some(task) = self.redis_subscriber_task.take() {
-                    task.abort();
-                }
-            }
-        }
-        if let Some(tx) = self.sync_shutdown_tx.take() {
-            if tx.send(()).is_err() {
-                if let Some(task) = self.sync_task.take() {
-                    task.abort();
-                }
-            }
-        }
+        Self::shutdown_task_pair(&self.awareness_shutdown_tx, &self.awareness_updater);
+        Self::shutdown_task_pair(&self.heartbeat_shutdown_tx, &self.heartbeat_task);
+        Self::shutdown_task_pair(
+            &self.redis_subscriber_shutdown_tx,
+            &self.redis_subscriber_task,
+        );
+        Self::shutdown_task_pair(&self.sync_shutdown_tx, &self.sync_task);
     }
 }

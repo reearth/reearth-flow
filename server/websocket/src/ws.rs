@@ -225,8 +225,12 @@ async fn handle_socket(
 
     if active_connections == 0 {
         tokio::spawn(async move {
+            if let Ok(group) = pool.get_group(&doc_id).await {
+                if let Err(e) = group.shutdown().await {
+                    error!("Failed to shutdown group for '{}': {}", doc_id, e);
+                }
+            }
             pool.cleanup_group(&doc_id).await;
-            tracing::info!("Cleaned up BroadcastGroup for doc_id: {}", doc_id);
         });
     }
 }
