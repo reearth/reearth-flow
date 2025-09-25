@@ -123,7 +123,7 @@ impl Processor for SolidBoundaryValidator {
             }
             GeometryValue::CityGmlGeometry(gml_geom) => {
                 if gml_geom.gml_geometries.len() > 1 {
-                    return Err(Box::new(GeometryProcessorError::SoilidBoundaryValidatorFactory(
+                    return Err(Box::new(GeometryProcessorError::SolidBoundaryValidatorFactory(
                         "Multiple geometries detected, but only one solid can be validated at a time.".to_string(),
                     )));
                 }

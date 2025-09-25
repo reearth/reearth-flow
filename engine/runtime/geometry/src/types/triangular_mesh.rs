@@ -202,9 +202,6 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
             let v1 = p0 - p1;
             let v2 = p2 - p1;
             let mut angle = v1.angle(&v2);
-            if !v1.dot(&v2).is_sign_positive() {
-                angle = pi - angle;
-            }
             if !normal.dot(&v1.cross(&v2)).is_sign_positive() {
                 angle = tau - angle;
             }
@@ -414,7 +411,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_trianglate_face() {
+    fn test_triangulate_face() {
         // Simple square face
         let face = vec![
             Coordinate3D::new__(0_f64, 0_f64, 0_f64),
