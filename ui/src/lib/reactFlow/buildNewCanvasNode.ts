@@ -1,5 +1,7 @@
 import { XYPosition } from "@xyflow/react";
+import { JSONSchema7Definition } from "json-schema";
 
+import { patchAnyOfAndOneOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
 import { config } from "@flow/config";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import { nodeTypes, type Action, type Node, type NodeType } from "@flow/types";
@@ -83,6 +85,28 @@ const createActionNode = async (
   const action = await fetcher<Action>(`${api}/actions/${name}`);
   if (!action) return null;
 
+  const patchedParams = patchAnyOfAndOneOfType(
+    action.parameter as JSONSchema7Definition,
+  );
+
+  const defaultParams: Record<string, any> = {};
+  if (
+    patchedParams &&
+    typeof patchedParams === "object" &&
+    "properties" in patchedParams
+  ) {
+    const properties = patchedParams.properties as Record<string, any>;
+    for (const [key, propertySchema] of Object.entries(properties)) {
+      if (
+        propertySchema &&
+        typeof propertySchema === "object" &&
+        "default" in propertySchema
+      ) {
+        defaultParams[key] = propertySchema.default;
+      }
+    }
+  }
+
   return {
     ...createBaseNode({ position, type: action.type }),
     // Needs measured, but at time of creation we don't know size yet.
@@ -95,6 +119,7 @@ const createActionNode = async (
       officialName: action.name,
       inputs: [...action.inputPorts],
       outputs: [...action.outputPorts],
+      params: Object.keys(defaultParams).length > 0 ? defaultParams : undefined,
     },
   };
 };
