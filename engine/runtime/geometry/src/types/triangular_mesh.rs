@@ -4,7 +4,7 @@ use crate::types::{coordinate::Coordinate3D, coordnum::CoordNum, line::Line3D};
 use num_traits::Float;
 use std::collections::HashMap;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TriangularMesh<T: Float + CoordNum = f64> {
     // Vertices of the solid boundary. No duplicate vertices.
     vertices: Vec<Coordinate3D<T>>,
@@ -33,21 +33,26 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
         &self.vertices
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.vertices.is_empty()
+            && self.triangles.is_empty()
+            && self.edges_with_multiplicity.is_empty()
+    }
+
     /// Create a triangular mesh from a list of faces by triangulating each face.
     pub fn from_faces(faces: &[LineString3D<T>]) -> Self {
-        let mut out = Self {
-            vertices: Vec::new(),
-            edges_with_multiplicity: Vec::new(),
-            triangles: Vec::new(),
-        };
-        out.vertices = Vec::new();
+        let mut out = Self::default();
         let mut vertex_map: HashMap<String, usize> = HashMap::new();
         let mut edges: Vec<[usize; 2]> = Vec::new();
-        out.triangles = Vec::new();
 
         for face in faces {
             // Triangulate the face
-            let face_triangles = Self::triangulate_face(face.clone());
+            let face_triangles = if let Ok(triangles) = Self::triangulate_face(face.clone()) {
+                triangles
+            } else {
+                // If triangulation fails, then return empty mesh
+                return Self::default();
+            };
 
             for triangle in face_triangles {
                 let mut tri_indices = [0usize; 3];
@@ -82,6 +87,9 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
             }
         }
         edges.sort_unstable();
+        if edges.is_empty() {
+            return out;
+        }
         out.edges_with_multiplicity = vec![(edges[0], 1)];
         out.edges_with_multiplicity.reserve(edges.len());
 
@@ -101,11 +109,11 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
     /// - The face is planar
     /// - The face contour is closed (i.e. the first point is the same as the last point)
     /// - The face does not intersect itself
-    fn triangulate_face(face: LineString3D<T>) -> Vec<[Coordinate3D<T>; 3]> {
+    fn triangulate_face(face: LineString3D<T>) -> Result<Vec<[Coordinate3D<T>; 3]>, ()> {
         let mut face = face.0;
         // face at least must be triangle
         if face.len() < 4 {
-            return vec![];
+            return Err(());
         }
 
         let tau = T::from(std::f64::consts::TAU).unwrap();
@@ -154,7 +162,7 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
             angles = angles.iter().map(|&a| -a).collect();
         } else if (angle_sum.abs() - tau).abs() >= epsilon {
             // something is wrong with the assumption
-            return vec![];
+            return Err(());
         } // otherwise the sum is TAU and we are good to go
 
         // Triangulate the face by the following process:
@@ -204,7 +212,7 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
             angles[new_prev_idx] = angle;
         }
 
-        triangles
+        Ok(triangles)
     }
 
     pub fn edges_violating_manifold_condition(&self) -> Vec<Line3D<T>> {
@@ -228,6 +236,9 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
     /// - The solid boundary is connected
     /// - 'edges_with_multiplicity' is sorted by the edge's vertex indices, and each of its edges is sorted by the vertex indices.
     pub fn is_orientable(&self) -> bool {
+        if self.triangles.is_empty() {
+            return true;
+        }
         // Build adjacency information
         let mut edge_to_triangles: Vec<[usize; 2]> =
             vec![[usize::MAX; 2]; self.edges_with_multiplicity.len()];
@@ -320,6 +331,9 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
 
     pub fn is_connected(&self) -> bool {
         let num_vertices = self.vertices.len();
+        if num_vertices == 0 {
+            return true;
+        }
         // Check if the solid boundary is connected
         let mut visited = vec![false; num_vertices];
         let mut stack = vec![0];
@@ -412,7 +426,7 @@ mod tests {
 
         let face = LineString3D::new(face);
 
-        let triangles = TriangularMesh::triangulate_face(face);
+        let triangles = TriangularMesh::triangulate_face(face).unwrap();
         assert_eq!(triangles.len(), 2);
         assert_eq!(
             triangles[0],
@@ -446,7 +460,7 @@ mod tests {
             Coordinate3D::new__(0.0, 0.0, 0.0),
         ];
         let face = LineString3D::new(face);
-        let triangles = TriangularMesh::triangulate_face(face);
+        let triangles = TriangularMesh::triangulate_face(face).unwrap();
         assert_eq!(triangles.len(), 8);
     }
 

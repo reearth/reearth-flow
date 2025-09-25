@@ -154,6 +154,11 @@ impl Processor for SolidBoundaryValidator {
 
         // Extract vertices, edges, and triangles from the solid
         let mesh = TriangularMesh::from_faces(&faces);
+        if mesh.is_empty() {
+            // If triangulation fails, send to rejected port
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+            return Ok(());
+        }
 
         // Check manifold condition
         let result = if let Some(result) = {
@@ -233,6 +238,9 @@ impl SolidBoundaryValidator {
         faces: &[LineString3D<f64>],
         vertices: &[Coordinate3D<f64>],
     ) -> Option<ValidationResult> {
+        if faces.is_empty() {
+            return None;
+        }
         let mut directed_edges = Vec::new();
         let faces = &faces
             .iter()
