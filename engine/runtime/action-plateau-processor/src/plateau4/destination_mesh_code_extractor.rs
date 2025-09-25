@@ -20,8 +20,8 @@ use reearth_flow_types::jpmesh::{JPMeshCode, JPMeshType};
 use reearth_flow_types::{Attribute, AttributeValue, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_json::Number;
 use serde_json::Value;
-use serde_json::{json, Number};
 
 #[derive(Debug, Clone, Default)]
 pub struct DestinationMeshCodeExtractorFactory;
@@ -162,12 +162,15 @@ impl Processor for DestinationMeshCodeExtractor {
                 new_feature.attributes.insert(
                     Attribute::new("__area"),
                     AttributeValue::Number(
-                        Number::from_f64(dbg!(mesh_result.max_area)).unwrap_or(Number::from(0)),
+                        Number::from_f64(mesh_result.max_area).unwrap_or(Number::from(0)),
                     ),
                 );
                 new_feature.attributes.insert(
                     Attribute::new("_meshcode_to_area"),
-                    AttributeValue::String(mesh_result.meshcode_to_area_json),
+                    AttributeValue::String(
+                        serde_json::to_string(&mesh_result.meshcode_to_area)
+                            .unwrap_or(String::new()),
+                    ),
                 );
 
                 fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
@@ -198,7 +201,13 @@ struct MeshCalculationResult {
     /// Maximum area found in the selected mesh (rounded to 2 decimal places)
     max_area: f64,
     /// JSON string mapping mesh codes to their intersection areas
-    meshcode_to_area_json: String,
+    meshcode_to_area: Vec<MeshCodeToArea>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct MeshCodeToArea {
+    mesh_code: u64,
+    area: f64,
 }
 
 impl DestinationMeshCodeExtractor {
@@ -250,11 +259,10 @@ impl DestinationMeshCodeExtractor {
                 intersecting_mesh_count += 1;
                 let mesh_number = mesh_code.to_number();
 
-                // Store mesh code and area mapping
-                mesh_area_mapping.push(json!({
-                    "meshcode": mesh_number.to_string(),
-                    "area": rounded_area
-                }));
+                mesh_area_mapping.push(MeshCodeToArea {
+                    mesh_code: mesh_number,
+                    area: rounded_area,
+                });
 
                 // Select mesh with maximum area, or smaller mesh number if areas are equal
                 if rounded_area > max_area
@@ -267,15 +275,11 @@ impl DestinationMeshCodeExtractor {
             }
         }
 
-        // Convert mesh-area mapping to JSON string
-        let meshcode_to_area_json =
-            serde_json::to_string(&mesh_area_mapping).unwrap_or_else(|_| "[]".to_string());
-
         selected_mesh.map(|mesh| MeshCalculationResult {
             selected_mesh: mesh,
             mesh_count: intersecting_mesh_count,
             max_area,
-            meshcode_to_area_json,
+            meshcode_to_area: mesh_area_mapping,
         })
     }
 
@@ -449,10 +453,8 @@ mod tests {
         use reearth_flow_geometry::types::{coordinate::Coordinate2D, polygon::Polygon2D};
         use reearth_flow_types::jpmesh::JPMeshType;
 
-        let extractor = DestinationMeshCodeExtractor {
-            mesh_type: JPMeshType::Mesh1km,
-            meshcode_attr: "_meshcode".to_string(),
-        };
+        // Value actually obtained from FME
+        const EXPECTED_AREA: f64 = 9.14;
 
         // Real coordinates from GML posList data
         // Note: GML coordinates are in lat,lon order, but we need lon,lat for Coordinate2D
@@ -468,16 +470,20 @@ mod tests {
             vec![],
         );
 
+        let extractor = DestinationMeshCodeExtractor {
+            mesh_type: JPMeshType::Mesh1km,
+            meshcode_attr: "_meshcode".to_string(),
+        };
+
         // Transform to fixed EPSG:6675
         let polygon_jpr = extractor
             .transform_polygon_to_fixed_epsg6675(&polygon_wgs84)
             .expect("Polygon transformation failed");
         let area_jpr = polygon_jpr.unsigned_area2d();
-        // Round to 4 decimal places for comparison
-        let rounded_area = (area_jpr * 10000.0).round() / 10000.0;
+        let rounded_area = (area_jpr * 100.0).round() / 100.0;
 
         assert!(
-            (rounded_area - 9.1410).abs() < 0.01,
+            (rounded_area - EXPECTED_AREA).abs() < 0.0001,
             "Calculated area {rounded_area} should be close to expected area 9.1410"
         );
     }
