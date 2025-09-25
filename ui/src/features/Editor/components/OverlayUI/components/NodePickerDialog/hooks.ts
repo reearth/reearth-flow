@@ -112,19 +112,23 @@ export default ({
           const newIndex =
             selectedIndex === 0 ? selectedIndex : selectedIndex - 1;
           setSelectedIndex(newIndex);
-          if (actionsList && actionsList[newIndex]) {
+          if (actionsList && newIndex >= 0 && actionsList[newIndex]) {
             setSelected(actionsList[newIndex].name);
           }
           break;
         }
         case "arrowdown": {
-          const newIndex =
-            selectedIndex === (actionsList?.length || 1) - 1
-              ? selectedIndex
-              : selectedIndex + 1;
-          setSelectedIndex(newIndex);
-          if (actionsList && actionsList[newIndex]) {
-            setSelected(actionsList[newIndex].name);
+          let newIndex = selectedIndex;
+          if (actionsList && actionsList.length > 0) {
+            if (selectedIndex === -1) {
+              newIndex = 0;
+            } else if (selectedIndex < actionsList.length - 1) {
+              newIndex = selectedIndex + 1;
+            }
+            setSelectedIndex(newIndex);
+            if (actionsList[newIndex]) {
+              setSelected(actionsList[newIndex].name);
+            }
           }
           break;
         }
