@@ -1,22 +1,22 @@
 #![allow(dead_code)]
-use crate::application::kv::DocOps;
-use crate::infrastructure::gcs::GcsStore;
-use crate::infrastructure::redis::RedisStore;
+use crate::storage::gcs::GcsStore;
+use crate::storage::kv::DocOps;
+use crate::storage::redis::RedisStore;
 use crate::{AwarenessRef, Subscription};
 
 use anyhow::Result;
 use bytes::Bytes;
 use futures_util::{SinkExt, StreamExt};
+use rand;
+use tokio::task::JoinHandle;
 use tracing::{debug, error, info, warn};
 use yrs::types::ToJson;
 
-use crate::domain::value_objects::sub::ShutdownHandle;
 use serde_json;
 use std::sync::Arc;
 use tokio::select;
 use tokio::sync::broadcast::{channel, Sender};
 use tokio::sync::Mutex;
-
 use yrs::encoding::write::Write;
 use yrs::sync::protocol::{MSG_SYNC, MSG_SYNC_UPDATE};
 use yrs::sync::{DefaultProtocol, Error, Message, Protocol, SyncMessage};
@@ -25,7 +25,6 @@ use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
 use yrs::{Doc, ReadTxn, Transact, Update};
 
 use super::types::BroadcastConfig;
-use crate::domain::value_objects::count::Count;
 
 pub struct BroadcastGroup {
     awareness_ref: AwarenessRef,
@@ -35,9 +34,17 @@ pub struct BroadcastGroup {
     storage: Arc<GcsStore>,
     redis_store: Arc<RedisStore>,
     doc_name: String,
+    instance_id: String,
     last_read_id: Arc<Mutex<String>>,
-    shutdown_handle: Arc<Mutex<Option<ShutdownHandle>>>,
-    connections_count: Count,
+    awareness_updater: Mutex<Option<JoinHandle<()>>>,
+    awareness_shutdown_tx: Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
+    redis_subscriber_task: Mutex<Option<JoinHandle<()>>>,
+    redis_subscriber_shutdown_tx: Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
+    heartbeat_task: Mutex<Option<JoinHandle<()>>>,
+    heartbeat_shutdown_tx: Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
+    sync_task: Mutex<Option<JoinHandle<()>>>,
+    sync_shutdown_tx: Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
+    connections_count: Arc<Mutex<usize>>,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -100,6 +107,7 @@ impl BroadcastGroup {
         });
         drop(lock);
 
+        let instance_id = format!("instance-{}", rand::random::<u64>());
         let redis_store_for_awareness = redis_store.clone();
         let doc_name_for_awareness = config.doc_name.clone().unwrap_or_default();
         let mut conn = redis_store_for_awareness
@@ -291,31 +299,33 @@ impl BroadcastGroup {
             storage,
             redis_store,
             doc_name,
+            instance_id,
             last_read_id,
-            shutdown_handle: Arc::new(Mutex::new(Some(ShutdownHandle {
-                awareness_updater,
-                awareness_shutdown_tx,
-                redis_subscriber_task,
-                redis_subscriber_shutdown_tx,
-                heartbeat_task,
-                heartbeat_shutdown_tx,
-                sync_task,
-                sync_shutdown_tx,
-            }))),
-            connections_count: Count::new(),
+            awareness_updater: Mutex::new(Some(awareness_updater)),
+            awareness_shutdown_tx: Mutex::new(Some(awareness_shutdown_tx)),
+            redis_subscriber_task: Mutex::new(Some(redis_subscriber_task)),
+            redis_subscriber_shutdown_tx: Mutex::new(Some(redis_subscriber_shutdown_tx)),
+            heartbeat_task: Mutex::new(Some(heartbeat_task)),
+            heartbeat_shutdown_tx: Mutex::new(Some(heartbeat_shutdown_tx)),
+            sync_task: Mutex::new(Some(sync_task)),
+            sync_shutdown_tx: Mutex::new(Some(sync_shutdown_tx)),
+            connections_count: Arc::new(Mutex::new(0)),
         })
     }
 
     pub async fn increment_connections_count(&self) {
-        self.connections_count.increment();
+        let mut connections_count = self.connections_count.lock().await;
+        *connections_count += 1;
     }
 
     pub async fn decrement_connections_count(&self) {
-        self.connections_count.decrement();
+        let mut connections_count = self.connections_count.lock().await;
+        *connections_count -= 1;
     }
 
     pub async fn get_connections_count(&self) -> usize {
-        self.connections_count.get()
+        let connections_count = self.connections_count.lock().await;
+        *connections_count
     }
 
     pub fn awareness(&self) -> &AwarenessRef {
@@ -556,11 +566,20 @@ impl BroadcastGroup {
     }
 
     pub async fn shutdown(&self) -> Result<()> {
-        if let Ok(mut guard) = self.shutdown_handle.try_lock() {
-            if let Some(handle) = guard.take() {
-                handle.shutdown_sync();
-            }
+        info!("Shutting down BroadcastGroup");
+        if let Some(task) = self.awareness_updater.lock().await.take() {
+            task.abort();
         }
+        if let Some(task) = self.heartbeat_task.lock().await.take() {
+            task.abort();
+        }
+        if let Some(task) = self.redis_subscriber_task.lock().await.take() {
+            task.abort();
+        }
+        if let Some(task) = self.sync_task.lock().await.take() {
+            task.abort();
+        }
+
         let client_id = {
             let awareness_read = self.awareness_ref.read().await;
             awareness_read.client_id()
@@ -573,13 +592,9 @@ impl BroadcastGroup {
             .redis_store
             .get_active_instances(&self.doc_name, 60)
             .await?;
-        info!(
-            "Active instances count for doc '{}': {}",
-            self.doc_name, conn_count
-        );
         if conn_count <= 0 {
             let lock_id = format!("gcs:lock:{}", self.doc_name);
-            let instance_id = format!("instance-{}", self.awareness_ref.read().await.client_id());
+            let instance_id = format!("instance-{}", rand::random::<u64>());
 
             let lock_acquired = self
                 .redis_store
@@ -662,7 +677,7 @@ impl BroadcastGroup {
                 warn!("Failed to release GCS lock: {}", e);
             }
             self.redis_store
-                .safe_delete_stream(&self.doc_name, &instance_id)
+                .safe_delete_stream(&self.doc_name, &self.instance_id)
                 .await?;
         }
 
@@ -670,13 +685,34 @@ impl BroadcastGroup {
     }
 }
 
+impl BroadcastGroup {
+    fn shutdown_task_pair(
+        shutdown_tx: &Mutex<Option<tokio::sync::oneshot::Sender<()>>>,
+        task: &Mutex<Option<JoinHandle<()>>>,
+    ) {
+        if let Ok(mut tx_guard) = shutdown_tx.try_lock() {
+            if let Some(tx) = tx_guard.take() {
+                if tx.send(()).is_err() {
+                    if let Ok(mut task_guard) = task.try_lock() {
+                        if let Some(task) = task_guard.take() {
+                            task.abort();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 impl Drop for BroadcastGroup {
     fn drop(&mut self) {
         info!("Dropping BroadcastGroup");
-        if let Ok(mut guard) = self.shutdown_handle.try_lock() {
-            if let Some(handle) = guard.take() {
-                handle.shutdown_sync();
-            }
-        }
+        Self::shutdown_task_pair(&self.awareness_shutdown_tx, &self.awareness_updater);
+        Self::shutdown_task_pair(&self.heartbeat_shutdown_tx, &self.heartbeat_task);
+        Self::shutdown_task_pair(
+            &self.redis_subscriber_shutdown_tx,
+            &self.redis_subscriber_task,
+        );
+        Self::shutdown_task_pair(&self.sync_shutdown_tx, &self.sync_task);
     }
 }

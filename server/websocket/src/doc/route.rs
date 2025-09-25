@@ -4,7 +4,7 @@ use axum::{
 };
 use std::sync::Arc;
 
-use crate::interface::http::handlers::DocumentHandler;
+use crate::doc::handler::DocumentHandler;
 use crate::AppState;
 
 pub fn document_routes() -> Router<Arc<AppState>> {
@@ -31,12 +31,4 @@ pub fn document_routes() -> Router<Arc<AppState>> {
             post(DocumentHandler::flush_to_gcs),
         )
         .route("/document/snapshot", post(DocumentHandler::create_snapshot))
-        .route(
-            "/document/{doc_id}/{source}/copy",
-            post(DocumentHandler::copy_document),
-        )
-        .route(
-            "/document/{doc_id}/import",
-            post(DocumentHandler::import_document),
-        )
 }

@@ -3,8 +3,8 @@ use std::sync::Arc;
 use tracing::error;
 use uuid::Uuid;
 use websocket::{
-    conf::Config, infrastructure::gcs::GcsStore, infrastructure::redis::RedisStore,
-    pool::BroadcastPool, server::start_server, AppState,
+    conf::Config, pool::BroadcastPool, server::start_server, storage::gcs::GcsStore,
+    storage::redis::RedisStore, AppState,
 };
 
 #[cfg(feature = "auth")]
@@ -53,8 +53,8 @@ async fn main() {
         }
     };
 
-    let pool = Arc::new(match &redis_store {
-        Some(rs) => BroadcastPool::new(Arc::clone(&store), Arc::clone(rs)),
+    let pool = Arc::new(match redis_store {
+        Some(rs) => BroadcastPool::new(store, rs),
         None => {
             error!("Cannot proceed without Redis store");
             std::process::exit(1);
@@ -87,9 +87,7 @@ async fn main() {
         }
     });
 
-    let server_result = start_server(state, &config.ws_port, &config).await;
-
-    if let Err(e) = server_result {
+    if let Err(e) = start_server(state, &config.ws_port, &config).await {
         error!("Server error: {}", e);
         std::process::exit(1);
     }
