@@ -1,6 +1,8 @@
 import { useReactFlow, XYPosition } from "@xyflow/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 
+import { NODE_DIALOG_NAVIGATION_KEYS } from "@flow/global-constants";
 import { useDoubleClick } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
 import i18n from "@flow/lib/i18n/i18n";
@@ -22,7 +24,10 @@ export default ({
   onNodesAdd: (nodes: Node[]) => void;
   onClose: () => void;
 }) => {
-  const [searchTerm, setSearchTerm] = useState<string>("");
+  const lastSearchTerm = useRef("");
+
+  const [searchTerm, setSearchTerm] = useState("");
+
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   // const { handleNodeDropInBatch } = useBatch();
@@ -34,23 +39,35 @@ export default ({
     type: openedActionType?.nodeType,
   });
 
-  const [selectedIndex, _setSelectedIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
   const [selected, setSelected] = useState<string | undefined>();
 
   useEffect(() => {
     if (actions?.length) {
       const actionsList = actions.byType[openedActionType.nodeType];
       setSelected(actionsList?.[selectedIndex]?.name ?? "");
-
-      const selectedItem = itemRefs.current[selectedIndex];
-      if (selectedItem && containerRef.current) {
-        selectedItem.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-        });
-      }
     }
   }, [selectedIndex, actions, openedActionType?.nodeType]);
+
+  useEffect(() => {
+    if (searchTerm === lastSearchTerm.current) return;
+    lastSearchTerm.current = searchTerm;
+    setSelectedIndex(-1);
+    setSelected(undefined);
+  }, [searchTerm, lastSearchTerm]);
+
+  useEffect(() => {
+    const selectedItem = itemRefs.current[selectedIndex];
+    if (selectedItem && containerRef.current) {
+      requestAnimationFrame(() => {
+        selectedItem.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "nearest",
+        });
+      });
+    }
+  }, [selectedIndex]);
 
   const [handleSingleClick, handleDoubleClick] = useDoubleClick(
     (name?: string) => {
@@ -79,7 +96,44 @@ export default ({
     },
   );
 
-  const actionsList = actions?.byType[openedActionType?.nodeType] || [];
+  const actionsList = useMemo(() => {
+    return actions?.byType[openedActionType?.nodeType] || [];
+  }, [actions, openedActionType?.nodeType]);
+
+  console.log("selected", selected, "SELECTEDINDEX", selectedIndex);
+
+  useHotkeys(
+    NODE_DIALOG_NAVIGATION_KEYS,
+    (_event, handler) => {
+      switch (handler.keys?.join("")) {
+        case "enter": {
+          handleDoubleClick(selected);
+          break;
+        }
+        case "arrowup": {
+          const newIndex =
+            selectedIndex === 0 ? selectedIndex : selectedIndex - 1;
+          setSelectedIndex(newIndex);
+          if (actionsList && actionsList[newIndex]) {
+            setSelected(actionsList[newIndex].name);
+          }
+          break;
+        }
+        case "arrowdown": {
+          const newIndex =
+            selectedIndex === (actionsList?.length || 1) - 1
+              ? selectedIndex
+              : selectedIndex + 1;
+          setSelectedIndex(newIndex);
+          if (actionsList && actionsList[newIndex]) {
+            setSelected(actionsList[newIndex].name);
+          }
+          break;
+        }
+      }
+    },
+    { preventDefault: true },
+  );
 
   return {
     actionsList,
