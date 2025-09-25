@@ -84,18 +84,12 @@ export const ChoiceEditor: React.FC<Props> = ({
   }, [getChoiceConfig]);
 
   useEffect(() => {
-    if (assetUrl) {
-      setNewOptionText(assetUrl);
+    const url = assetUrl || cmsItemAssetUrl;
+    if (url) {
+      setNewOptionText(url);
       clearUrls();
     }
-  }, [assetUrl, clearUrls]);
-
-  useEffect(() => {
-    if (cmsItemAssetUrl) {
-      setNewOptionText(cmsItemAssetUrl);
-      clearUrls();
-    }
-  }, [cmsItemAssetUrl, clearUrls]);
+  }, [assetUrl, cmsItemAssetUrl, clearUrls]);
 
   const updateVariable = (
     config: ChoiceConfig,

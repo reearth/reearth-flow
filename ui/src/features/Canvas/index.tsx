@@ -54,7 +54,7 @@ type Props = {
   onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: () => void;
   onPaneMouseMove?: (event: MouseEvent<Element, globalThis.MouseEvent>) => void;
-  onSpotlightUserDeselect?: () => void;
+  onPaneClick?: () => void;
 };
 
 const Canvas: React.FC<Props> = ({
@@ -77,7 +77,7 @@ const Canvas: React.FC<Props> = ({
   onCut,
   onPaste,
   onPaneMouseMove,
-  onSpotlightUserDeselect,
+  onPaneClick,
 }) => {
   const {
     handleNodesDelete,
@@ -146,7 +146,7 @@ const Canvas: React.FC<Props> = ({
       onReconnect={handleReconnect}
       onBeforeDelete={onBeforeDelete}
       onPaneMouseMove={onPaneMouseMove}
-      onPaneClick={onSpotlightUserDeselect}>
+      onPaneClick={onPaneClick}>
       <Background
         className="bg-background"
         variant={BackgroundVariant["Dots"]}

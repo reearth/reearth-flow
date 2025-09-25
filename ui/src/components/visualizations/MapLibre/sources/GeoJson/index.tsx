@@ -169,7 +169,7 @@ const GeoJsonDataSource: React.FC<Props> = ({
     }),
     [selectedFeatureId],
   );
-
+  // TODO: Readd clustering support at a later date or remove entirely if deemed unnecessary
   // const clusterLayer: LayerProps = useMemo(
   //   () => ({
   //     id: "clusters",

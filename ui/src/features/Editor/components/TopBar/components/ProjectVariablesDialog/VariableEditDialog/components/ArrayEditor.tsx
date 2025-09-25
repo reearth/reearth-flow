@@ -93,18 +93,12 @@ export const ArrayEditor: React.FC<Props> = ({
   }, [getArrayConfig, variable.defaultValue]);
 
   useEffect(() => {
-    if (assetUrl) {
-      setNewItemText(assetUrl);
+    const url = assetUrl || cmsItemAssetUrl;
+    if (url) {
+      setNewItemText(url);
       clearUrls();
     }
-  }, [assetUrl, clearUrls]);
-
-  useEffect(() => {
-    if (cmsItemAssetUrl) {
-      setNewItemText(cmsItemAssetUrl);
-      clearUrls();
-    }
-  }, [cmsItemAssetUrl, clearUrls]);
+  }, [assetUrl, cmsItemAssetUrl, clearUrls]);
 
   const updateVariable = (config: ArrayConfig, items?: any[]) => {
     setArrayConfig(config);
