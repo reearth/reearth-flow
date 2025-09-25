@@ -792,71 +792,60 @@ edges:
     fromPort: default
     toPort: default
 
-  # LodSplitterWithDM to SolidBoundaryValidator
   - id: 1edf5ec7-a567-4ef6-9c70-92497d359ddf
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
     fromPort: lod1
     to: ecaceb7b-ff98-4744-acf7-17e80829d6f3
     toPort: default
 
-  # SolidBoundaryValidator to FeatureFilterInvalidSolidBoundary
   - id: bf5d73d5-a6c6-4a06-bd22-52a02fdbd96f
     from: ecaceb7b-ff98-4744-acf7-17e80829d6f3
     to: d0132191-a81f-4647-896d-5db49e3fb734
     fromPort: failed
     toPort: default
 
-  # FeatureFilterInvalidSolidBoundary to AttributeManagerSolidBoundaryInvalidNotClosed
   - id: 337a1460-27bf-4df9-8d8b-08c5c84509d1
     from: d0132191-a81f-4647-896d-5db49e3fb734
     to: e57bec12-7e6e-4edf-8ce2-14fbd12a7f92
     fromPort: notClosed
     toPort: default
 
-  # AttributeManagerSolidBoundaryInvalidNotClosed to FeatureWriterL14-BoundaryNotClosed
   - id: 7a034ade-628d-4a74-ba34-069d744c15f4
     from: e57bec12-7e6e-4edf-8ce2-14fbd12a7f92
     to: 89712e8f-e0ac-4bb3-a92f-c5ff06fe4c96
     fromPort: default
     toPort: default
 
-  # FeatureFilterInvalidSolidBoundary to AttributeManagerSolidBoundaryInvalidOtherIssues
   - id: 9c6792d9-f844-42dd-aca4-eeb34f691c0e
     from: d0132191-a81f-4647-896d-5db49e3fb734
     to: 64ff1eee-0d1a-42a1-b32d-fde94ffac693
     fromPort: unfiltered
     toPort: default
 
-  # AttributeManagerSolidBoundaryInvalidOtherIssues to FeatureWriterL14-BoundaryOtherIssues
   - id: 819866a6-4e4d-44c5-a2df-2cb6b1645a0c
     from: 64ff1eee-0d1a-42a1-b32d-fde94ffac693
     to: 527087b4-0411-49bd-ae5f-c1c7f9a5ccb8
     fromPort: default
     toPort: default
 
-
-  # AttributeManagerSolidBoundaryInvalidNotClosed to SolidBoundaryNotClosedIssueCounter
   - id: 4de69165-d302-4392-9899-af387553f5a8
     from: e57bec12-7e6e-4edf-8ce2-14fbd12a7f92
     to: 6e8e985a-8ae5-46cd-8521-74f0f74a7ec2
     fromPort: default
     toPort: default
 
-  # SolidBoundaryNotClosedIssueCounter to SolidBoundaryNotClosedIssueCountOutputRouter
   - id: 1478ecb6-8c64-4b25-80f1-eb158be5a9c5
     from: 6e8e985a-8ae5-46cd-8521-74f0f74a7ec2
     to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
     fromPort: default
     toPort: default
 
-  # AttributeManagerSolidBoundaryInvalidOtherIssues to SolidBoundaryOtherIssueCounter
   - id: 24fe89e5-ee96-422a-9047-edd122c64c79
     from: 64ff1eee-0d1a-42a1-b32d-fde94ffac693
     to: 016a8afe-3aa7-4047-8c8c-9f6f8464b03c
     fromPort: default
     toPort: default
 
-  # SolidBoundaryOtherIssueCounter to SolidBoundaryOtherIssueCountOutputRouter
   - id: 01cef8a5-e953-4895-ad8e-93edbf2e65ae
     from: 016a8afe-3aa7-4047-8c8c-9f6f8464b03c
     to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
