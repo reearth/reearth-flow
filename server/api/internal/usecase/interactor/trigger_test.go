@@ -12,8 +12,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
-	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/account/accountdomain/user"
+	"github.com/reearth/reearth-flow/api/pkg/user"
 	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/mongox/mongotest"
@@ -29,11 +28,11 @@ func TestTrigger_Create(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachReearthxUser(ctx, mockUser)
+	ctx = adapter.AttachUser(ctx, mockUser)
 
 	c := mongotest.Connect(t)(t)
 
-	wid := accountdomain.NewWorkspaceID()
+	wid := id.NewWorkspaceID()
 	did := id.NewDeploymentID()
 
 	_, _ = c.Collection("deployment").InsertOne(ctx, bson.M{
@@ -101,12 +100,12 @@ func TestTrigger_Update(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachReearthxUser(ctx, mockUser)
+	ctx = adapter.AttachUser(ctx, mockUser)
 
 	c := mongotest.Connect(t)(t)
 
 	tid := id.NewTriggerID()
-	wid := accountdomain.NewWorkspaceID()
+	wid := id.NewWorkspaceID()
 	did := id.NewDeploymentID()
 	newDid := id.NewDeploymentID()
 
@@ -200,13 +199,13 @@ func TestTrigger_Fetch(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachReearthxUser(ctx, mockUser)
+	ctx = adapter.AttachUser(ctx, mockUser)
 
 	c := mongotest.Connect(t)(t)
 
 	tid1 := id.NewTriggerID()
 	tid2 := id.NewTriggerID()
-	wid := accountdomain.NewWorkspaceID()
+	wid := id.NewWorkspaceID()
 	did := id.NewDeploymentID()
 
 	_, _ = c.Collection("trigger").InsertMany(ctx, []any{
@@ -257,12 +256,12 @@ func TestTrigger_Delete(t *testing.T) {
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachReearthxUser(ctx, mockUser)
+	ctx = adapter.AttachUser(ctx, mockUser)
 
 	c := mongotest.Connect(t)(t)
 
 	tid := id.NewTriggerID()
-	wid := accountdomain.NewWorkspaceID()
+	wid := id.NewWorkspaceID()
 	did := id.NewDeploymentID()
 
 	_, _ = c.Collection("trigger").InsertOne(ctx, bson.M{

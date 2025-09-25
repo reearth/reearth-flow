@@ -53,8 +53,8 @@ async fn main() {
         }
     };
 
-    let pool = Arc::new(match redis_store {
-        Some(rs) => BroadcastPool::new(store, rs),
+    let pool = Arc::new(match &redis_store {
+        Some(rs) => BroadcastPool::new(Arc::clone(&store), Arc::clone(rs)),
         None => {
             error!("Cannot proceed without Redis store");
             std::process::exit(1);
@@ -87,7 +87,9 @@ async fn main() {
         }
     });
 
-    if let Err(e) = start_server(state, &config.ws_port, &config).await {
+    let server_result = start_server(state, &config.ws_port, &config).await;
+
+    if let Err(e) = server_result {
         error!("Server error: {}", e);
         std::process::exit(1);
     }

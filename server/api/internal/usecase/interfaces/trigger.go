@@ -7,11 +7,10 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
-	"github.com/reearth/reearthx/account/accountdomain"
 )
 
 type CreateTriggerParam struct {
-	WorkspaceID  accountdomain.WorkspaceID
+	WorkspaceID  id.WorkspaceID
 	DeploymentID id.DeploymentID
 	Description  string
 	EventSource  trigger.EventSourceType
@@ -51,7 +50,7 @@ type Trigger interface {
 	ExecuteTimeDrivenTrigger(context.Context, ExecuteTimeDrivenTriggerParam) (*job.Job, error)
 	Fetch(context.Context, []id.TriggerID) ([]*trigger.Trigger, error)
 	FindByID(context.Context, id.TriggerID) (*trigger.Trigger, error)
-	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *PaginationParam) ([]*trigger.Trigger, *PageBasedInfo, error)
+	FindByWorkspace(context.Context, id.WorkspaceID, *PaginationParam) ([]*trigger.Trigger, *PageBasedInfo, error)
 	Create(context.Context, CreateTriggerParam) (*trigger.Trigger, error)
 	Update(context.Context, UpdateTriggerParam) (*trigger.Trigger, error)
 	Delete(context.Context, id.TriggerID) error

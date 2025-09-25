@@ -83,8 +83,9 @@ func (b *Builder) Project(v id.ProjectID) *Builder {
 	return b
 }
 
-func (b *Builder) Workspace(v accountdomain.WorkspaceID) *Builder {
-	b.rxBuilder = b.rxBuilder.Workspace(v)
+func (b *Builder) Workspace(v id.WorkspaceID) *Builder {
+	// TODO: after migration, remove this cast
+	b.rxBuilder = b.rxBuilder.Workspace(accountdomain.WorkspaceID(v))
 	// If no project is set yet, use a dummy project ID for workspace-based assets
 	// This is required because reearthx requires a valid project ID
 	if b.projectID == nil {
@@ -99,8 +100,9 @@ func (b *Builder) CreatedAt(v time.Time) *Builder {
 	return b
 }
 
-func (b *Builder) CreatedByUser(v accountdomain.UserID) *Builder {
-	b.rxBuilder = b.rxBuilder.CreatedByUser(v)
+func (b *Builder) CreatedByUser(v id.UserID) *Builder {
+	// TODO: after migration, remove this cast
+	b.rxBuilder = b.rxBuilder.CreatedByUser(accountdomain.UserID(v))
 	return b
 }
 

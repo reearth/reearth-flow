@@ -9,7 +9,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/project"
-	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/mongox/mongotest"
 	"github.com/reearth/reearthx/rerror"
@@ -23,8 +22,8 @@ func TestProject_FindByIDs(t *testing.T) {
 	ctx := context.Background()
 	pid := id.NewProjectID()
 	pid2 := id.NewProjectID()
-	wid := accountdomain.NewWorkspaceID()
-	wid2 := accountdomain.NewWorkspaceID()
+	wid := id.NewWorkspaceID()
+	wid2 := id.NewWorkspaceID()
 	_, _ = c.Collection("project").InsertMany(ctx, []any{
 		bson.M{"id": pid.String(), "workspaceid": wid.String()},
 		bson.M{"id": pid2.String(), "workspaceid": wid2.String()},
@@ -37,7 +36,7 @@ func TestProject_FindByIDs(t *testing.T) {
 	assert.Equal(t, pid, got[0].ID())
 
 	r2 := r.Filtered(repo.WorkspaceFilter{
-		Readable: accountdomain.WorkspaceIDList{wid2},
+		Readable: id.WorkspaceIDList{wid2},
 	})
 	got, err = r2.FindByIDs(ctx, id.ProjectIDList{pid, pid2})
 	assert.NoError(t, err)
@@ -49,8 +48,8 @@ func TestProject_FindByIDs(t *testing.T) {
 func TestProject_CountByWorkspace(t *testing.T) {
 	c := mongotest.Connect(t)(t)
 	ctx := context.Background()
-	wid := accountdomain.NewWorkspaceID()
-	wid2 := accountdomain.NewWorkspaceID()
+	wid := id.NewWorkspaceID()
+	wid2 := id.NewWorkspaceID()
 	_, _ = c.Collection("project").InsertMany(ctx, []any{
 		bson.M{"id": "a", "workspaceid": wid.String(), "publishmentstatus": "public"},
 		bson.M{"id": "b", "workspaceid": wid.String(), "publishmentstatus": "limited"},
@@ -64,7 +63,7 @@ func TestProject_CountByWorkspace(t *testing.T) {
 	assert.NoError(t, err)
 
 	r2 := r.Filtered(repo.WorkspaceFilter{
-		Readable: accountdomain.WorkspaceIDList{wid2},
+		Readable: id.WorkspaceIDList{wid2},
 	})
 	got, err = r2.CountByWorkspace(ctx, wid)
 	assert.Equal(t, repo.ErrOperationDenied, err)
@@ -74,8 +73,8 @@ func TestProject_CountByWorkspace(t *testing.T) {
 func TestProject_CountPublicByWorkspace(t *testing.T) {
 	c := mongotest.Connect(t)(t)
 	ctx := context.Background()
-	wid := accountdomain.NewWorkspaceID()
-	wid2 := accountdomain.NewWorkspaceID()
+	wid := id.NewWorkspaceID()
+	wid2 := id.NewWorkspaceID()
 	_, _ = c.Collection("project").InsertMany(ctx, []any{
 		bson.M{"id": "a", "workspaceid": wid.String(), "publishmentstatus": "public"},
 		bson.M{"id": "b", "workspaceid": wid.String(), "publishmentstatus": "limited"},
@@ -89,7 +88,7 @@ func TestProject_CountPublicByWorkspace(t *testing.T) {
 	assert.NoError(t, err)
 
 	r2 := r.Filtered(repo.WorkspaceFilter{
-		Readable: accountdomain.WorkspaceIDList{wid2},
+		Readable: id.WorkspaceIDList{wid2},
 	})
 	got, err = r2.CountPublicByWorkspace(ctx, wid)
 	assert.Equal(t, repo.ErrOperationDenied, err)
@@ -101,7 +100,7 @@ func TestProject_FindByPublicName(t *testing.T) {
 	defer util.MockNow(now)()
 	c := mongotest.Connect(t)(t)
 	ctx := context.Background()
-	wid := accountdomain.NewWorkspaceID()
+	wid := id.NewWorkspaceID()
 	prj1 := project.New().NewID().Workspace(wid).UpdatedAt(now).MustBuild()
 	prj2 := project.New().NewID().Workspace(wid).UpdatedAt(now).MustBuild()
 	prj3 := project.New().NewID().Workspace(wid).UpdatedAt(now).MustBuild()

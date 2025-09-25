@@ -12,8 +12,8 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/log"
+	"github.com/reearth/reearth-flow/api/pkg/user"
 	"github.com/reearth/reearth-flow/api/pkg/userfacinglog"
-	"github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/appx"
 	"github.com/stretchr/testify/assert"
 )
@@ -58,7 +58,7 @@ func TestUserFacingLogInteractor_GetUserFacingLogs(t *testing.T) {
 
 	// Setup auth info
 	u := user.New().NewID().Email("test@example.com").Name("test").MustBuild()
-	ctx = adapter.AttachReearthxUser(ctx, u)
+	ctx = adapter.AttachUser(ctx, u)
 	ctx = adapter.AttachAuthInfo(ctx, &appx.AuthInfo{})
 
 	metadata := json.RawMessage(`{"key": "value"}`)
@@ -120,7 +120,7 @@ func TestUserFacingLogInteractor_Subscribe(t *testing.T) {
 
 	// Setup auth info
 	u := user.New().NewID().Email("test@example.com").Name("test").MustBuild()
-	ctx = adapter.AttachReearthxUser(ctx, u)
+	ctx = adapter.AttachUser(ctx, u)
 	ctx = adapter.AttachAuthInfo(ctx, &appx.AuthInfo{})
 
 	t.Run("subscribe successfully", func(t *testing.T) {
@@ -163,7 +163,7 @@ func TestUserFacingLogInteractor_Unsubscribe(t *testing.T) {
 
 	// Setup auth info
 	u := user.New().NewID().Email("test@example.com").Name("test").MustBuild()
-	ctx = adapter.AttachReearthxUser(ctx, u)
+	ctx = adapter.AttachUser(ctx, u)
 	ctx = adapter.AttachAuthInfo(ctx, &appx.AuthInfo{})
 
 	redisMock := &mockUserFacingLogGateway{

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/reearth/reearthx/account/accountdomain"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -58,7 +58,7 @@ func TestBuilder_BasicAuthPassword(t *testing.T) {
 
 func TestBuilder_Workspace(t *testing.T) {
 	tb := New().NewID()
-	res := tb.Workspace(accountdomain.NewWorkspaceID()).MustBuild()
+	res := tb.Workspace(id.NewWorkspaceID()).MustBuild()
 	assert.NotNil(t, res.Workspace())
 }
 
@@ -72,7 +72,7 @@ func TestBuilder_UpdatedAt(t *testing.T) {
 func TestBuilder_Build(t *testing.T) {
 	d := time.Date(1900, 1, 1, 00, 0o0, 0, 1, time.UTC)
 	pid := NewID()
-	tid := accountdomain.NewWorkspaceID()
+	tid := id.NewWorkspaceID()
 
 	type args struct {
 		name, description string
@@ -148,7 +148,7 @@ func TestBuilder_Build(t *testing.T) {
 func TestBuilder_MustBuild(t *testing.T) {
 	d := time.Date(1900, 1, 1, 00, 00, 0, 1, time.UTC)
 	pid := NewID()
-	tid := accountdomain.NewWorkspaceID()
+	tid := id.NewWorkspaceID()
 
 	type args struct {
 		name, description string

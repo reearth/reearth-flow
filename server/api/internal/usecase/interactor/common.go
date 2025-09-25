@@ -6,30 +6,25 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gql"
+	"github.com/reearth/reearth-flow/api/internal/infrastructure/websocket"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/project"
-	"github.com/reearth/reearthx/account/accountdomain/user"
-	"github.com/reearth/reearthx/account/accountdomain/workspace"
-	"github.com/reearth/reearthx/account/accountusecase"
-	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
-	"github.com/reearth/reearthx/account/accountusecase/accountinteractor"
-	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 )
 
 var skipPermissionCheck bool
 
 type ContainerConfig struct {
-	SignupSecret        string
-	AuthSrvUIDomain     string
-	Host                string
-	SharedPath          string
-	SkipPermissionCheck bool
+	SignupSecret             string
+	AuthSrvUIDomain          string
+	Host                     string
+	SharedPath               string
+	WebsocketThriftServerURL string
+	SkipPermissionCheck      bool
 }
 
 func NewContainer(r *repo.Container, g *gateway.Container,
-	ar *accountrepo.Container, ag *accountgateway.Container,
 	permissionChecker gateway.PermissionChecker,
 	GQLClient *gql.Client,
 	job interfaces.Job,
@@ -37,14 +32,12 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 ) interfaces.Container {
 	setSkipPermissionCheck(config.SkipPermissionCheck)
 
-	var user interfaces.User
-	if GQLClient != nil && GQLClient.UserRepo != nil {
-		user = NewUser(GQLClient.UserRepo)
+	clientConfig := websocket.Config{
+		ServerURL: config.WebsocketThriftServerURL,
 	}
-
-	var workspace interfaces.Workspace
-	if GQLClient != nil && GQLClient.WorkspaceRepo != nil {
-		workspace = NewWorkspace(GQLClient.WorkspaceRepo)
+	client, err := websocket.NewClient(clientConfig)
+	if err != nil {
+		log.Fatalf("Failed to init websocket: %+v\n", err)
 	}
 
 	return interfaces.Container{
@@ -56,12 +49,13 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		Log:           NewLogInteractor(g.Redis, r.Job, permissionChecker),
 		NodeExecution: NewNodeExecution(r.NodeExecution, g.Redis, permissionChecker),
 		Parameter:     NewParameter(r, permissionChecker),
-		Project:       NewProject(r, g, job, permissionChecker),
+		Project:       NewProject(r, g, job, permissionChecker, GQLClient.WorkspaceRepo),
 		ProjectAccess: NewProjectAccess(r, g, config, permissionChecker),
-		Workspace:     workspace,
+		Workspace:     NewWorkspace(GQLClient.WorkspaceRepo),
 		Trigger:       NewTrigger(r, g, job, permissionChecker),
-		User:          user,
+		User:          NewUser(GQLClient.UserRepo),
 		UserFacingLog: NewUserFacingLogInteractor(g.Redis, r.Job, permissionChecker),
+		Websocket:     client,
 	}
 }
 
@@ -81,12 +75,6 @@ func (d ProjectDeleter) Delete(ctx context.Context, prj *project.Project, force 
 	}
 
 	return nil
-}
-
-func workspaceMemberCountEnforcer(_ *repo.Container) accountinteractor.WorkspaceMemberCountEnforcer {
-	return func(ctx context.Context, ws *workspace.Workspace, _ user.List, op *accountusecase.Operator) error {
-		return nil
-	}
 }
 
 func setSkipPermissionCheck(isSkipPermissionCheck bool) {

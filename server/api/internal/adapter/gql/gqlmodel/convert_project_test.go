@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/reearth/reearth-flow/api/pkg/project"
-	"github.com/reearth/reearthx/account/accountdomain/workspace"
+	"github.com/reearth/reearth-flow/api/pkg/workspace"
 	"github.com/stretchr/testify/assert"
 )
 

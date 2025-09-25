@@ -12,8 +12,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
-	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/usecasex"
 )
@@ -22,7 +20,6 @@ type Trigger struct {
 	triggerRepo       repo.Trigger
 	deploymentRepo    repo.Deployment
 	jobRepo           repo.Job
-	workspaceRepo     accountrepo.Workspace
 	transaction       usecasex.Transaction
 	batch             gateway.Batch
 	file              gateway.File
@@ -36,7 +33,6 @@ func NewTrigger(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 		triggerRepo:       r.Trigger,
 		deploymentRepo:    r.Deployment,
 		jobRepo:           r.Job,
-		workspaceRepo:     r.Workspace,
 		transaction:       r.Transaction,
 		batch:             gr.Batch,
 		file:              gr.File,
@@ -58,7 +54,7 @@ func (i *Trigger) Fetch(ctx context.Context, ids []id.TriggerID) ([]*trigger.Tri
 	return i.triggerRepo.FindByIDs(ctx, ids)
 }
 
-func (i *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *interfaces.PaginationParam) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
+func (i *Trigger) FindByWorkspace(ctx context.Context, id id.WorkspaceID, p *interfaces.PaginationParam) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, nil, err
 	}
