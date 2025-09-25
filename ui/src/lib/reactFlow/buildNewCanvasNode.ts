@@ -95,7 +95,7 @@ const createActionNode = async (
     typeof patchedParams === "object" &&
     "properties" in patchedParams
   ) {
-    const properties = patchedParams.properties as Record<string, any>;
+    const properties = patchedParams.properties as Record<string, unknown>;
     for (const [key, propertySchema] of Object.entries(properties)) {
       if (
         propertySchema &&
@@ -119,7 +119,7 @@ const createActionNode = async (
       officialName: action.name,
       inputs: [...action.inputPorts],
       outputs: [...action.outputPorts],
-      params: Object.keys(defaultParams).length > 0 ? defaultParams : undefined,
+      params: defaultParams,
     },
   };
 };
