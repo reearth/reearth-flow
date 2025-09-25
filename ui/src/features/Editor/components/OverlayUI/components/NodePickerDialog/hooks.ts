@@ -100,8 +100,6 @@ export default ({
     return actions?.byType[openedActionType?.nodeType] || [];
   }, [actions, openedActionType?.nodeType]);
 
-  console.log("selected", selected, "SELECTEDINDEX", selectedIndex);
-
   useHotkeys(
     NODE_DIALOG_NAVIGATION_KEYS,
     (_event, handler) => {
