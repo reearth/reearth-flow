@@ -1,7 +1,15 @@
-use crate::infrastructure::gcs::UpdateInfo;
+use crate::storage::gcs::UpdateInfo;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use yrs::updates::encoder::Encode;
+
+#[derive(Debug, Clone)]
+pub struct Document {
+    pub id: String,
+    pub updates: Vec<u8>,
+    pub version: u64,
+    pub timestamp: chrono::DateTime<Utc>,
+}
 
 #[derive(Debug, Clone)]
 pub struct HistoryItem {
@@ -72,9 +80,4 @@ pub struct HistoryResponse {
 pub struct HistoryMetadataResponse {
     pub version: u64,
     pub timestamp: String,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct ImportDocumentRequest {
-    pub data: Vec<u8>,
 }

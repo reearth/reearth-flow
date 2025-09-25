@@ -1,4 +1,4 @@
-use crate::Connection;
+use crate::conn::Connection;
 use axum::extract::ws::{Message, WebSocket};
 use axum::{
     extract::{Path, State, WebSocketUpgrade},
@@ -21,6 +21,9 @@ use yrs::sync::Error;
 
 #[cfg(feature = "auth")]
 use crate::AuthQuery;
+
+#[repr(transparent)]
+pub struct WarpConn(Connection<WarpSink, WarpStream>);
 
 #[derive(Debug)]
 pub struct WarpSink(SplitSink<WebSocket, Message>);
@@ -195,7 +198,7 @@ async fn handle_socket(
     let stream = WarpStream::with_pong_sender(receiver, pong_tx);
     bcast.increment_connections_count().await;
 
-    let conn = Connection::new(bcast.clone(), sink, stream, user_token).await;
+    let conn = crate::conn::Connection::new(bcast.clone(), sink, stream, user_token).await;
 
     let connection_result = tokio::select! {
         result = conn => result,
@@ -222,8 +225,12 @@ async fn handle_socket(
 
     if active_connections == 0 {
         tokio::spawn(async move {
+            if let Ok(group) = pool.get_group(&doc_id).await {
+                if let Err(e) = group.shutdown().await {
+                    error!("Failed to shutdown group for '{}': {}", doc_id, e);
+                }
+            }
             pool.cleanup_group(&doc_id).await;
-            tracing::info!("Cleaned up BroadcastGroup for doc_id: {}", doc_id);
         });
     }
 }

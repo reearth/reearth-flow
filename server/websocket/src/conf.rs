@@ -1,10 +1,3 @@
-#[cfg(feature = "auth")]
-use crate::domain::value_objects::conf::DEFAULT_AUTH_URL;
-use crate::domain::value_objects::conf::{
-    DEFAULT_APP_ENV, DEFAULT_GCS_BUCKET, DEFAULT_ORIGINS, DEFAULT_REDIS_STREAM_MAX_LENGTH,
-    DEFAULT_REDIS_STREAM_MAX_MESSAGE_AGE, DEFAULT_REDIS_STREAM_TRIM_INTERVAL, DEFAULT_REDIS_TTL,
-    DEFAULT_REDIS_URL, DEFAULT_WS_PORT,
-};
 use dotenv;
 use serde::Deserialize;
 use std::env;
@@ -12,7 +5,22 @@ use std::path::Path;
 use thiserror::Error;
 use tracing::{info, warn};
 
-use crate::{infrastructure::gcs::GcsConfig, RedisConfig};
+use crate::{storage::gcs::GcsConfig, storage::redis::RedisConfig};
+
+const DEFAULT_REDIS_URL: &str = "redis://127.0.0.1:6379";
+const DEFAULT_REDIS_TTL: u64 = 43200;
+const DEFAULT_GCS_BUCKET: &str = "yrs-dev";
+#[cfg(feature = "auth")]
+const DEFAULT_AUTH_URL: &str = "http://localhost:8080";
+const DEFAULT_APP_ENV: &str = "development";
+const DEFAULT_ORIGINS: &[&str] = &[
+    "http://localhost:3000",
+    "https://api.flow.test.reearth.dev",
+    "https://api.flow.reearth.dev",
+    "http://localhost:8000",
+    "http://localhost:8080",
+];
+const DEFAULT_WS_PORT: &str = "8000";
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
@@ -66,9 +74,12 @@ impl Config {
         if let Ok(endpoint) = env::var("REEARTH_FLOW_GCS_ENDPOINT") {
             builder = builder.gcs_endpoint(Some(endpoint));
         }
+
         #[cfg(feature = "auth")]
-        if let Ok(url) = env::var("REEARTH_FLOW_THRIFT_AUTH_URL") {
-            builder = builder.auth_url(url);
+        {
+            if let Ok(url) = env::var("REEARTH_FLOW_THRIFT_AUTH_URL") {
+                builder = builder.auth_url(url);
+            }
         }
 
         if let Ok(env_val) = env::var("REEARTH_FLOW_APP_ENV") {
@@ -90,22 +101,6 @@ impl Config {
             builder = builder.grpc_port(grpc_port);
         }
 
-        if let Ok(interval) = env::var("REEARTH_FLOW_REDIS_STREAM_TRIM_INTERVAL") {
-            if let Ok(interval_secs) = interval.parse::<u64>() {
-                builder = builder.redis_stream_trim_interval(interval_secs);
-            }
-        }
-        if let Ok(max_age) = env::var("REEARTH_FLOW_REDIS_STREAM_MAX_MESSAGE_AGE") {
-            if let Ok(max_age_ms) = max_age.parse::<u64>() {
-                builder = builder.redis_stream_max_message_age(max_age_ms);
-            }
-        }
-        if let Ok(max_length) = env::var("REEARTH_FLOW_REDIS_STREAM_MAX_LENGTH") {
-            if let Ok(max_len) = max_length.parse::<u64>() {
-                builder = builder.redis_stream_max_length(max_len);
-            }
-        }
-
         let config = builder.build();
 
         info!("Final configuration:");
@@ -124,9 +119,6 @@ impl Config {
 pub struct ConfigBuilder {
     redis_url: Option<String>,
     redis_ttl: Option<u64>,
-    redis_stream_trim_interval: Option<u64>,
-    redis_stream_max_message_age: Option<u64>,
-    redis_stream_max_length: Option<u64>,
     gcs_bucket: Option<String>,
     gcs_endpoint: Option<String>,
     #[cfg(feature = "auth")]
@@ -147,21 +139,6 @@ impl ConfigBuilder {
 
     pub fn redis_ttl(mut self, ttl: u64) -> Self {
         self.redis_ttl = Some(ttl);
-        self
-    }
-
-    pub fn redis_stream_trim_interval(mut self, interval: u64) -> Self {
-        self.redis_stream_trim_interval = Some(interval);
-        self
-    }
-
-    pub fn redis_stream_max_message_age(mut self, max_age: u64) -> Self {
-        self.redis_stream_max_message_age = Some(max_age);
-        self
-    }
-
-    pub fn redis_stream_max_length(mut self, max_length: u64) -> Self {
-        self.redis_stream_max_length = Some(max_length);
         self
     }
 
@@ -214,15 +191,6 @@ impl ConfigBuilder {
                     .redis_url
                     .unwrap_or_else(|| DEFAULT_REDIS_URL.to_string()),
                 ttl: self.redis_ttl.unwrap_or(DEFAULT_REDIS_TTL),
-                stream_trim_interval: self
-                    .redis_stream_trim_interval
-                    .unwrap_or(DEFAULT_REDIS_STREAM_TRIM_INTERVAL),
-                stream_max_message_age: self
-                    .redis_stream_max_message_age
-                    .unwrap_or(DEFAULT_REDIS_STREAM_MAX_MESSAGE_AGE),
-                stream_max_length: self
-                    .redis_stream_max_length
-                    .unwrap_or(DEFAULT_REDIS_STREAM_MAX_LENGTH),
             },
             gcs: GcsConfig {
                 bucket_name: self
