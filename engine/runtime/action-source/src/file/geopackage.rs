@@ -191,11 +191,12 @@ async fn process_geopackage(
             all_features.extend(read_features(&adapter, params).await?);
         }
         GeoPackageReadMode::Tiles => {
-            all_features.extend(read_tiles(&adapter, params).await?);
+            // Temporarily disabled tile processing - only read features instead
+            all_features.extend(read_features(&adapter, params).await?);
         }
         GeoPackageReadMode::All => {
+            // Temporarily disabled tile processing - only read features
             all_features.extend(read_features(&adapter, params).await?);
-            all_features.extend(read_tiles(&adapter, params).await?);
         }
         GeoPackageReadMode::MetadataOnly => {
             all_features.extend(read_metadata(&adapter, params).await?);
@@ -1111,6 +1112,7 @@ fn read_coordinates(
     Ok(coords)
 }
 
+#[allow(dead_code)]
 async fn read_tiles(
     adapter: &SqlAdapter,
     params: &GeoPackageReaderParam,
@@ -1130,6 +1132,7 @@ async fn read_tiles(
     Ok(all_features)
 }
 
+#[allow(dead_code)]
 async fn get_tile_layers(adapter: &SqlAdapter) -> Result<Vec<String>, SourceError> {
     let query = "SELECT table_name FROM gpkg_contents WHERE data_type = 'tiles'";
     let rows = adapter
@@ -1145,6 +1148,7 @@ async fn get_tile_layers(adapter: &SqlAdapter) -> Result<Vec<String>, SourceErro
     Ok(layers)
 }
 
+#[allow(dead_code)]
 async fn read_layer_tiles(
     adapter: &SqlAdapter,
     layer_name: &str,
@@ -1214,6 +1218,7 @@ async fn read_layer_tiles(
     Ok(features)
 }
 
+#[allow(dead_code)]
 fn calculate_tile_bounds(zoom: i32, col: i32, row: i32) -> (f64, f64, f64, f64) {
     let n = 2_f64.powi(zoom);
     let lon_min = col as f64 / n * 360.0 - 180.0;
@@ -1232,6 +1237,7 @@ fn calculate_tile_bounds(zoom: i32, col: i32, row: i32) -> (f64, f64, f64, f64) 
     (lon_min, lat_min, lon_max, lat_max)
 }
 
+#[allow(dead_code)]
 fn create_tile_bounds_geometry(bounds: (f64, f64, f64, f64)) -> Geometry {
     let (lon_min, lat_min, lon_max, lat_max) = bounds;
 
