@@ -1,5 +1,5 @@
 import { useReactFlow, XYPosition } from "@xyflow/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useDoubleClick } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
@@ -22,7 +22,10 @@ export default ({
   onNodesAdd: (nodes: Node[]) => void;
   onClose: () => void;
 }) => {
-  const [searchTerm, setSearchTerm] = useState<string>("");
+  const lastSearchTerm = useRef("");
+
+  const [searchTerm, setSearchTerm] = useState("");
+
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   // const { handleNodeDropInBatch } = useBatch();
@@ -34,23 +37,35 @@ export default ({
     type: openedActionType?.nodeType,
   });
 
-  const [selectedIndex, _setSelectedIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
   const [selected, setSelected] = useState<string | undefined>();
 
   useEffect(() => {
     if (actions?.length) {
       const actionsList = actions.byType[openedActionType.nodeType];
       setSelected(actionsList?.[selectedIndex]?.name ?? "");
-
-      const selectedItem = itemRefs.current[selectedIndex];
-      if (selectedItem && containerRef.current) {
-        selectedItem.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-        });
-      }
     }
   }, [selectedIndex, actions, openedActionType?.nodeType]);
+
+  useEffect(() => {
+    if (searchTerm === lastSearchTerm.current) return;
+    lastSearchTerm.current = searchTerm;
+    setSelectedIndex(-1);
+    setSelected(undefined);
+  }, [searchTerm, lastSearchTerm]);
+
+  useEffect(() => {
+    const selectedItem = itemRefs.current[selectedIndex];
+    if (selectedItem && containerRef.current) {
+      requestAnimationFrame(() => {
+        selectedItem.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "nearest",
+        });
+      });
+    }
+  }, [selectedIndex]);
 
   const [handleSingleClick, handleDoubleClick] = useDoubleClick(
     (name?: string) => {
@@ -79,7 +94,53 @@ export default ({
     },
   );
 
-  const actionsList = actions?.byType[openedActionType?.nodeType] || [];
+  const actionsList = useMemo(() => {
+    return actions?.byType[openedActionType?.nodeType] || [];
+  }, [actions, openedActionType?.nodeType]);
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      switch (e.key) {
+        case "Enter":
+          e.preventDefault();
+          handleDoubleClick(selected);
+          break;
+        case "ArrowUp":
+          {
+            e.preventDefault();
+            const newUpIndex =
+              selectedIndex === 0 ? selectedIndex : selectedIndex - 1;
+            setSelectedIndex(newUpIndex);
+            if (actionsList && actionsList[newUpIndex]) {
+              setSelected(actionsList[newUpIndex].name);
+            }
+          }
+
+          break;
+        case "ArrowDown":
+          {
+            e.preventDefault();
+            const newDownIndex =
+              selectedIndex === (actionsList?.length || 1) - 1
+                ? selectedIndex
+                : selectedIndex + 1;
+            setSelectedIndex(newDownIndex);
+            if (actionsList && actionsList[newDownIndex]) {
+              setSelected(actionsList[newDownIndex].name);
+            }
+          }
+          break;
+      }
+    },
+    [handleDoubleClick, selected, actionsList, selectedIndex],
+  );
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [actions, selected, handleKeyDown]);
 
   return {
     actionsList,
