@@ -47,3 +47,11 @@ mutation RunProject($input: RunProjectInput!) {
     }
   }
 }
+
+mutation CopyProject($projectId: ID!, $source: ID!) {
+  copyProject(projectId: $projectId, source: $source)
+}
+
+mutation ImportProject($projectId: ID!, $data: Bytes!) {
+  importProject(projectId: $projectId, data: $data)
+}
