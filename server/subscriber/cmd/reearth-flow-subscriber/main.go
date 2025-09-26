@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/reearth/reearthx/mongox"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -102,7 +102,7 @@ func main() {
 
 	// Set up log subscriber if configured
 	if conf.LogSubscriptionID != "" {
-		logSub := pubsubClient.Subscription(conf.LogSubscriptionID)
+		logSub := pubsubClient.Subscriber(conf.LogSubscriptionID)
 		logSubAdapter := flow_pubsub.NewRealSubscription(logSub)
 		logSubscriberUC := interactor.NewLogSubscriberUseCase(logStorage)
 		logSubscriber := flow_pubsub.NewLogSubscriber(logSubAdapter, logSubscriberUC)
@@ -123,7 +123,7 @@ func main() {
 
 	// Set up node subscriber if configured
 	if conf.NodeSubscriptionID != "" && nodeStorage != nil {
-		nodeSub := pubsubClient.Subscription(conf.NodeSubscriptionID)
+		nodeSub := pubsubClient.Subscriber(conf.NodeSubscriptionID)
 		nodeSubAdapter := flow_pubsub.NewRealSubscription(nodeSub)
 		nodeSubscriberUC := interactor.NewNodeSubscriberUseCase(nodeStorage)
 		nodeSubscriber := flow_pubsub.NewNodeSubscriber(nodeSubAdapter, nodeSubscriberUC)
@@ -146,7 +146,7 @@ func main() {
 
 	// Set up user-facing log subscriber if configured
 	if conf.UserFacingLogSubscriptionID != "" {
-		userFacingLogSub := pubsubClient.Subscription(conf.UserFacingLogSubscriptionID)
+		userFacingLogSub := pubsubClient.Subscriber(conf.UserFacingLogSubscriptionID)
 		userFacingLogSubAdapter := flow_pubsub.NewRealSubscription(userFacingLogSub)
 		userFacingLogSubscriberUC := interactor.NewUserFacingLogSubscriberUseCase(userFacingLogStorage)
 		userFacingLogSubscriber := flow_pubsub.NewUserFacingLogSubscriber(userFacingLogSubAdapter, userFacingLogSubscriberUC)
