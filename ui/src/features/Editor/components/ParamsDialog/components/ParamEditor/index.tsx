@@ -90,12 +90,14 @@ const ParamEditor: React.FC<Props> = ({
 
     if (schemaObj.properties) {
       for (const [key, value] of Object.entries(schemaObj.properties)) {
-        if (
-          typeof value === "object" &&
-          value !== null &&
-          "description" in value
-        ) {
-          descriptions[key] = value.description;
+        if (typeof value === "object" && value !== null) {
+          let title = key;
+          if ("title" in value && typeof value.title === "string") {
+            title = value.title;
+          }
+          if ("description" in value) {
+            descriptions[title] = value.description;
+          }
         }
       }
     }
@@ -103,7 +105,11 @@ const ParamEditor: React.FC<Props> = ({
     return descriptions;
   }, []);
 
+  console.log("Original Schema:", originalSchema);
+
   const paramDescriptions = extractDescriptions(originalSchema);
+
+  console.log("Param Descriptions:", paramDescriptions);
 
   const [updatedCustomization, setUpdatedCustomization] = useState(
     nodeMeta.customizations,
