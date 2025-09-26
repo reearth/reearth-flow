@@ -168,15 +168,15 @@ const Toolbox: React.FC<Props> = ({
   };
 
   return (
-    <div className="self-start rounded-md border border-primary bg-secondary/70 p-2 shadow-md shadow-secondary backdrop-blur-xs">
-      <div className="flex flex-col flex-wrap gap-2 rounded-md transition-all">
+    <div className="self-start rounded-xl border border-primary bg-secondary/70 px-2 py-1 shadow-md shadow-secondary backdrop-blur-xs">
+      <div className="flex flex-wrap gap-2 rounded-md transition-all">
         {availableTools.map((tool, idx) =>
           tool.id === "break" ? (
             <div key={tool.id + idx} className="mx-1 box-border border-t" />
           ) : (
-            <div key={tool.id} className="rounded-md bg-secondary">
+            <div key={tool.id} className="self-center rounded-md bg-secondary">
               <IconButton
-                className={`dndnode-${tool.id} cursor-grab backdrop-blur-xs  ${
+                className={`dndnode-${tool.id} h-8 w-14 cursor-grab backdrop-blur-xs ${
                   tool.id === "reader"
                     ? "bg-node-reader/40 hover:bg-node-reader/80"
                     : tool.id === "writer"
@@ -199,14 +199,14 @@ const Toolbox: React.FC<Props> = ({
             </div>
           ),
         )}
-        <div className="mx-1 box-border border-t" />
+        <div className="my-1 border-r" />
         {availableActions.map((action, idx) =>
           action.id === "break" ? (
-            <div key={action.id + idx} className="mx-1 box-border border-t" />
+            <div key={action.id + idx} className="my-1 border-r" />
           ) : (
             <IconButton
               key={action.id}
-              className="gap-0 rounded-[4px] hover:bg-primary/60"
+              className="h-8 w-14 gap-0 rounded-[4px] hover:bg-primary/60"
               tooltipPosition="right"
               tooltipText={action.name}
               tooltipOffset={4}

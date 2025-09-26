@@ -57,27 +57,30 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         {canvas}
         <div
           id="top-middle"
-          className="pointer-events-none absolute inset-x-0 top-4 flex shrink-0 justify-center *:pointer-events-auto">
+          className="pointer-events-none absolute inset-x-0 top-2 flex shrink-0 justify-center *:pointer-events-auto">
+          <Toolbox
+            canUndo={canUndo}
+            canRedo={canRedo}
+            isMainWorkflow={isMainWorkflow}
+            onLayoutChange={handleLayoutOptionsToggle}
+            onRedo={onWorkflowRedo}
+            onUndo={onWorkflowUndo}
+          />
           <JobStatus />
         </div>
         <div
           id="left-top"
-          className="pointer-events-none absolute top-4 bottom-1 left-4 flex shrink-0 flex-col gap-4 *:pointer-events-auto">
-          <div className="self-start">
-            <Toolbox
-              canUndo={canUndo}
-              canRedo={canRedo}
-              isMainWorkflow={isMainWorkflow}
-              onLayoutChange={handleLayoutOptionsToggle}
-              onRedo={onWorkflowRedo}
-              onUndo={onWorkflowUndo}
-            />
-          </div>
+          className="pointer-events-none absolute top-2 bottom-1 left-2 flex shrink-0 flex-col gap-4 *:pointer-events-auto">
+          <div className="self-start" />
         </div>
         <div id="right-top" className="absolute top-4 right-4" />
         <div id="left-bottom" className="absolute bottom-4 left-4">
           <DebugPanel />
         </div>
+        <div
+          id="bottom-middle"
+          className="pointer-events-none absolute inset-x-0 bottom-4 flex shrink-0 justify-center *:pointer-events-auto"
+        />
         <div
           id="right-bottom"
           className="pointer-events-none absolute right-4 bottom-4 flex flex-row-reverse items-end gap-4">
