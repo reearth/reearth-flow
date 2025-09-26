@@ -37,12 +37,6 @@ export const EDITOR_HOT_KEYS = [
   "ctrl+s", // save win
 ];
 
-export const NODE_DIALOG_NAVIGATION_KEYS = [
-  "enter", // select
-  "arrowup", // up
-  "arrowdown", // down
-];
-
 export const CURSOR_COLORS = [
   "#5b61d4", // Indigo - muted professional
   "#7c3acd", // Purple - softer tone

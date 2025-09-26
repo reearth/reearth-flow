@@ -1,8 +1,6 @@
 import { useReactFlow, XYPosition } from "@xyflow/react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useHotkeys } from "react-hotkeys-hook";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { NODE_DIALOG_NAVIGATION_KEYS } from "@flow/global-constants";
 import { useDoubleClick } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
 import i18n from "@flow/lib/i18n/i18n";
@@ -100,47 +98,49 @@ export default ({
     return actions?.byType[openedActionType?.nodeType] || [];
   }, [actions, openedActionType?.nodeType]);
 
-  useHotkeys(
-    NODE_DIALOG_NAVIGATION_KEYS,
-    (_event, handler) => {
-      switch (handler.keys?.join("")) {
-        case "enter": {
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      switch (e.key) {
+        case "Enter":
+          e.preventDefault();
           handleDoubleClick(selected);
           break;
-        }
-        case "arrowup": {
-          let newIndex;
-          if (selectedIndex === -1) {
-            newIndex = actionsList.length - 1;
-          } else if (selectedIndex === 0) {
-            newIndex = selectedIndex;
-          } else {
-            newIndex = selectedIndex - 1;
-          }
-          if (actionsList && newIndex >= 0 && actionsList[newIndex]) {
-            setSelected(actionsList[newIndex].name);
-          }
-          break;
-        }
-        case "arrowdown": {
-          let newIndex = selectedIndex;
-          if (actionsList && actionsList.length > 0) {
-            if (selectedIndex === -1) {
-              newIndex = 0;
-            } else if (selectedIndex < actionsList.length - 1) {
-              newIndex = selectedIndex + 1;
+        case "ArrowUp":
+          {
+            e.preventDefault();
+            const newUpIndex =
+              selectedIndex === 0 ? selectedIndex : selectedIndex - 1;
+            setSelectedIndex(newUpIndex);
+            if (actionsList && actionsList[newUpIndex]) {
+              setSelected(actionsList[newUpIndex].name);
             }
-            setSelectedIndex(newIndex);
-            if (actionsList[newIndex]) {
-              setSelected(actionsList[newIndex].name);
+          }
+
+          break;
+        case "ArrowDown":
+          {
+            e.preventDefault();
+            const newDownIndex =
+              selectedIndex === (actionsList?.length || 1) - 1
+                ? selectedIndex
+                : selectedIndex + 1;
+            setSelectedIndex(newDownIndex);
+            if (actionsList && actionsList[newDownIndex]) {
+              setSelected(actionsList[newDownIndex].name);
             }
           }
           break;
-        }
       }
     },
-    { preventDefault: true },
+    [handleDoubleClick, selected, actionsList, selectedIndex],
   );
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [actions, selected, handleKeyDown]);
 
   return {
     actionsList,
