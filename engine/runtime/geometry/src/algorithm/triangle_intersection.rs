@@ -1,20 +1,33 @@
-use num_traits::Float;
-
 use crate::algorithm::segment_triangle_intersection::segment_intersects_triangle;
-use crate::types::coordnum::CoordNum;
 use crate::types::{coordinate::Coordinate3D, line::Line3D};
+use crate::utils::circumcenter;
 
-pub fn triangles_intersect<T: Float + CoordNum>(
-    t: &[Coordinate3D<T>; 3],
-    s: &[Coordinate3D<T>; 3],
-) -> bool {
-    let epsilon = T::from(1e-10).unwrap();
+pub fn triangles_intersect(t: &[Coordinate3D<f64>; 3], s: &[Coordinate3D<f64>; 3]) -> bool {
+    let epsilon = 1e-10;
+
+    // filter out the obvious non-intersecting cases first
+    {
+        let Some((ct, rt)) = circumcenter(t[0], t[1], t[2]) else {
+            return false;
+        };
+
+        let Some((cs, rs)) = circumcenter(s[0], s[1], s[2]) else {
+            return false;
+        };
+
+        let d = (ct - cs).norm();
+        if d > rt + rs {
+            return false;
+        }
+    }
+
+    let (t, s) = normalize_triangle_pair(t, s);
 
     // Check if any edge of triangle t intersects triangle s
     for i in 0..3 {
         let j = (i + 1) % 3;
         let line = Line3D::new_(t[i], t[j]);
-        if segment_intersects_triangle(&line, s, epsilon) {
+        if segment_intersects_triangle(&line, &s, epsilon) {
             return true;
         }
     }
@@ -23,12 +36,29 @@ pub fn triangles_intersect<T: Float + CoordNum>(
     for i in 0..3 {
         let j = (i + 1) % 3;
         let line = Line3D::new_(s[i], s[j]);
-        if segment_intersects_triangle(&line, t, epsilon) {
+        if segment_intersects_triangle(&line, &t, epsilon) {
             return true;
         }
     }
 
     false
+}
+
+fn normalize_triangle_pair(
+    t1: &[Coordinate3D<f64>; 3],
+    t2: &[Coordinate3D<f64>; 3],
+) -> ([Coordinate3D<f64>; 3], [Coordinate3D<f64>; 3]) {
+    let avg = (t1[0] + t1[1] + t1[2] + t2[0] + t2[1] + t2[2]) / 6.0;
+
+    let t1 = [t1[0] - avg, t1[1] - avg, t1[2] - avg];
+    let t2 = [t2[0] - avg, t2[1] - avg, t2[2] - avg];
+
+    let norm_avg =
+        (t1[0].norm() + t1[1].norm() + t1[2].norm() + t2[0].norm() + t2[1].norm() + t2[2].norm())
+            / 6.0;
+    let t1 = [t1[0] / norm_avg, t1[1] / norm_avg, t1[2] / norm_avg];
+    let t2 = [t2[0] / norm_avg, t2[1] / norm_avg, t2[2] / norm_avg];
+    (t1, t2)
 }
 
 #[cfg(test)]

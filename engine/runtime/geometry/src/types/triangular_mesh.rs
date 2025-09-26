@@ -357,9 +357,11 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
         }
         visited.iter().all(|&v| v)
     }
+}
 
+impl TriangularMesh<f64> {
     #[allow(clippy::type_complexity)]
-    pub fn self_intersection(&self) -> Vec<([Coordinate3D<T>; 3], [Coordinate3D<T>; 3])> {
+    pub fn self_intersection(&self) -> Vec<([Coordinate3D<f64>; 3], [Coordinate3D<f64>; 3])> {
         let mut intersection = Vec::new();
         for i in 0..self.triangles.len() {
             let tri1 = &self.triangles[i];
@@ -377,8 +379,8 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
                 let w1 = self.vertices[tri2[1]];
                 let w2 = self.vertices[tri2[2]];
 
-                let t: [Coordinate3D<T>; 3] = [v0, v1, v2];
-                let s: [Coordinate3D<T>; 3] = [w0, w1, w2];
+                let t: [Coordinate3D<f64>; 3] = [v0, v1, v2];
+                let s: [Coordinate3D<f64>; 3] = [w0, w1, w2];
 
                 if triangles_intersect(&t, &s) {
                     intersection.push((i, j));

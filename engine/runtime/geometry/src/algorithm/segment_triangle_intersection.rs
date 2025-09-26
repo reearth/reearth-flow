@@ -6,10 +6,10 @@ use crate::types::{
     line::Line3D,
 };
 
-pub fn segment_intersects_triangle<T: Float + CoordNum>(
-    line: &Line3D<T>,
-    triangle: &[Coordinate3D<T>; 3],
-    epsilon: T,
+pub fn segment_intersects_triangle(
+    line: &Line3D<f64>,
+    triangle: &[Coordinate3D<f64>; 3],
+    epsilon: f64,
 ) -> bool {
     let p0 = line.start;
     let p1 = line.end;
@@ -26,10 +26,12 @@ pub fn segment_intersects_triangle<T: Float + CoordNum>(
     let h = ray_direction.cross(&edge2);
     let a = edge1.dot(&h);
 
+    let unit_ray = ray_direction.normalize();
+    let normal = edge1.cross(&edge2).normalize();
+
     // Ray is parallel to triangle - check for coplanar case
-    if a.abs() < epsilon {
+    if unit_ray.dot(&normal) < epsilon {
         // Check if segment is coplanar with triangle
-        let normal = edge1.cross(&edge2);
         let d = -normal.dot(&v0);
         let dist0 = normal.dot(&p0) + d;
         let dist1 = normal.dot(&p1) + d;
@@ -41,18 +43,18 @@ pub fn segment_intersects_triangle<T: Float + CoordNum>(
         return false;
     }
 
-    let f = T::one() / a;
+    let f = 1.0 / a;
     let s = p0 - v0;
     let u = f * s.dot(&h);
 
-    if !(T::zero()..=T::one()).contains(&u) {
+    if !(0.0..=1.0).contains(&u) {
         return false;
     }
 
     let q = s.cross(&edge1);
     let v = f * ray_direction.dot(&q);
 
-    if v < T::zero() || u + v > T::one() {
+    if v < 0.0 || u + v > 1.0 {
         return false;
     }
 
@@ -61,13 +63,13 @@ pub fn segment_intersects_triangle<T: Float + CoordNum>(
 
     // Check if intersection is within the line segment
     // Use strict inequality to exclude edges
-    t_param > epsilon && t_param < T::one() - epsilon
+    t_param > epsilon && t_param < 1.0 - epsilon
 }
 
-fn segment_intersects_triangle_2d<T: Float + CoordNum>(
-    p0: Coordinate3D<T>,
-    p1: Coordinate3D<T>,
-    triangle: [Coordinate3D<T>; 3],
+fn segment_intersects_triangle_2d(
+    p0: Coordinate3D<f64>,
+    p1: Coordinate3D<f64>,
+    triangle: [Coordinate3D<f64>; 3],
 ) -> bool {
     // Project to 2D plane and check intersection
     // Find dominant axis to project out
@@ -135,19 +137,19 @@ fn point_in_triangle_2d<T: Float + CoordNum>(
     !(has_neg && has_pos)
 }
 
-fn segments_intersect_2d<T: Float + CoordNum>(
-    p0: Coordinate2D<T>,
-    p1: Coordinate2D<T>,
-    q0: Coordinate2D<T>,
-    q1: Coordinate2D<T>,
+fn segments_intersect_2d(
+    p0: Coordinate2D<f64>,
+    p1: Coordinate2D<f64>,
+    q0: Coordinate2D<f64>,
+    q1: Coordinate2D<f64>,
 ) -> bool {
-    let epsilon = T::from(1e-10).unwrap();
+    let epsilon = 1e-10;
     let d1 = (q1.x - q0.x) * (p0.y - q0.y) - (q1.y - q0.y) * (p0.x - q0.x);
     let d2 = (q1.x - q0.x) * (p1.y - q0.y) - (q1.y - q0.y) * (p1.x - q0.x);
     let d3 = (p1.x - p0.x) * (q0.y - p0.y) - (p1.y - p0.y) * (q0.x - p0.x);
     let d4 = (p1.x - p0.x) * (q1.y - p0.y) - (p1.y - p0.y) * (q1.x - p0.x);
 
-    if d1 * d2 < T::zero() && d3 * d4 < T::zero() {
+    if d1 * d2 < -epsilon && d3 * d4 < -epsilon {
         return true;
     }
 
