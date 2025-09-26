@@ -17,7 +17,6 @@ import {
   DialogHeader,
   DialogTitle,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
@@ -40,12 +39,12 @@ type Props = {
   dataURLs?: { key: string; name: string }[];
   showTempPossibleIssuesDialog: boolean;
   selectedFeature: any;
-  enableClustering?: boolean;
+  // enableClustering?: boolean;
   mapRef: React.RefObject<maplibregl.Map | null>;
   cesiumViewerRef: React.RefObject<any>;
   onShowTempPossibleIssuesDialogClose: () => void;
   onSelectedFeature: (value: any) => void;
-  onEnableClusteringChange: (value: boolean) => void;
+  // onEnableClusteringChange: (value: boolean) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
   detectedGeometryType: string | null;
   isComplete?: boolean;
@@ -57,13 +56,11 @@ const DebugPreview: React.FC<Props> = ({
   dataURLs,
   onConvertedSelectedFeature,
   showTempPossibleIssuesDialog,
-  enableClustering,
   mapRef,
   cesiumViewerRef,
   selectedFeature,
   onShowTempPossibleIssuesDialogClose,
   onSelectedFeature,
-  onEnableClusteringChange,
   onFlyToSelectedFeature,
   detectedGeometryType,
   isComplete,
@@ -212,13 +209,15 @@ const DebugPreview: React.FC<Props> = ({
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuCheckboxItem
-                    checked={enableClustering}
-                    onCheckedChange={(checked) =>
-                      onEnableClusteringChange(!!checked)
-                    }>
-                    {t("Enable Clustering")}
-                  </DropdownMenuCheckboxItem>
+                  {/* {fileType === "geojson" && (
+                    <DropdownMenuCheckboxItem
+                      checked={enableClustering}
+                      onCheckedChange={(checked) =>
+                        onEnableClusteringChange(!!checked)
+                      }>
+                      {t("Enable Clustering")}
+                    </DropdownMenuCheckboxItem>
+                  )} */}
                   <DropdownMenuItem onClick={() => handleMapLoad(true)}>
                     <TargetIcon />
                     {t("Center Data")}
@@ -231,7 +230,7 @@ const DebugPreview: React.FC<Props> = ({
             <TwoDViewer
               fileContent={processedOutputData}
               fileType={fileType}
-              enableClustering={enableClustering}
+              enableClustering={false}
               convertedSelectedFeature={convertedSelectedFeature}
               mapRef={mapRef}
               onMapLoad={handleMapLoad}

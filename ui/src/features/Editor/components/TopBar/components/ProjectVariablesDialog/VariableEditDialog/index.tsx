@@ -8,6 +8,8 @@ import {
   DialogTitle,
 } from "@flow/components";
 import { Button } from "@flow/components/buttons/BaseButton";
+import AssetsDialog from "@flow/features/AssetsDialog";
+import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
 import { useT } from "@flow/lib/i18n";
 import { ProjectVariable, VarType } from "@flow/types";
 
@@ -39,9 +41,17 @@ const VariableEditDialog: React.FC<Props> = ({
   const {
     localVariable,
     hasChanges,
+    showDialog,
+    assetUrl,
+    cmsItemAssetUrl,
+    handleAssetDoubleClick,
+    handleCmsItemValue,
+    handleDialogOpen,
+    handleDialogClose,
     handleFieldUpdate,
     handleSave,
     handleCancel,
+    clearUrls,
   } = useVariableEditDialog({
     variable,
     onClose,
@@ -81,7 +91,14 @@ const VariableEditDialog: React.FC<Props> = ({
     switch (originalType) {
       case "array":
         return (
-          <ArrayEditor variable={localVariable} onUpdate={handleFieldUpdate} />
+          <ArrayEditor
+            variable={localVariable}
+            assetUrl={assetUrl}
+            cmsItemAssetUrl={cmsItemAssetUrl}
+            onUpdate={handleFieldUpdate}
+            onDialogOpen={handleDialogOpen}
+            clearUrls={clearUrls}
+          />
         );
       // case "attribute_name":
       //   return (
@@ -95,6 +112,7 @@ const VariableEditDialog: React.FC<Props> = ({
           <DefaultEditor
             variable={localVariable}
             onUpdate={handleFieldUpdate}
+            onDialogOpen={handleDialogOpen}
           />
         );
       case "number":
@@ -114,7 +132,14 @@ const VariableEditDialog: React.FC<Props> = ({
         );
       case "choice":
         return (
-          <ChoiceEditor variable={localVariable} onUpdate={handleFieldUpdate} />
+          <ChoiceEditor
+            variable={localVariable}
+            onUpdate={handleFieldUpdate}
+            onDialogOpen={handleDialogOpen}
+            clearUrls={clearUrls}
+            assetUrl={assetUrl}
+            cmsItemAssetUrl={cmsItemAssetUrl}
+          />
         );
       case "color":
         return (
@@ -125,6 +150,7 @@ const VariableEditDialog: React.FC<Props> = ({
           <DefaultEditor
             variable={localVariable}
             onUpdate={handleFieldUpdate}
+            onDialogOpen={handleDialogOpen}
           />
         );
     }
@@ -141,9 +167,7 @@ const VariableEditDialog: React.FC<Props> = ({
             </div>
           </DialogTitle>
         </DialogHeader>
-
         <div className="flex-1 overflow-y-auto p-4">{renderEditor()}</div>
-
         <DialogFooter className="flex justify-end gap-2">
           <Button variant="outline" onClick={handleCancel}>
             {t("Cancel")}
@@ -153,6 +177,18 @@ const VariableEditDialog: React.FC<Props> = ({
           </Button>
         </DialogFooter>
       </DialogContent>
+      {showDialog === "assets" && (
+        <AssetsDialog
+          onDialogClose={handleDialogClose}
+          onAssetDoubleClick={handleAssetDoubleClick}
+        />
+      )}
+      {showDialog === "cms" && (
+        <CmsIntegrationDialog
+          onDialogClose={handleDialogClose}
+          onCmsItemValue={handleCmsItemValue}
+        />
+      )}
     </Dialog>
   );
 };
