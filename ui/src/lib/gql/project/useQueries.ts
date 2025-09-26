@@ -147,7 +147,15 @@ export const useQueries = () => {
   });
 
   const copyProjectMutation = useMutation({
-    mutationFn: async ({ projectId, source, workspaceId }: { projectId: string; source: string; workspaceId: string }) => {
+    mutationFn: async ({
+      projectId,
+      source,
+      workspaceId,
+    }: {
+      projectId: string;
+      source: string;
+      workspaceId: string;
+    }) => {
       const data = await graphQLContext?.CopyProject({ projectId, source });
       return {
         success: data?.copyProject,
@@ -161,8 +169,19 @@ export const useQueries = () => {
   });
 
   const importProjectMutation = useMutation({
-    mutationFn: async ({ projectId, data: projectData, workspaceId }: { projectId: string; data: Uint8Array; workspaceId: string }) => {
-      const data = await graphQLContext?.ImportProject({ projectId, data: projectData });
+    mutationFn: async ({
+      projectId,
+      data: projectData,
+      workspaceId,
+    }: {
+      projectId: string;
+      data: Uint8Array;
+      workspaceId: string;
+    }) => {
+      const data = await graphQLContext?.ImportProject({
+        projectId,
+        data: projectData,
+      });
       return {
         success: data?.importProject,
         workspaceId,
