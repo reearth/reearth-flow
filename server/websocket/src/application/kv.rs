@@ -45,7 +45,6 @@ use anyhow;
 use async_trait::async_trait;
 use hex;
 use std::convert::TryInto;
-use tracing::info;
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, Transaction, TransactionMut, Update};
