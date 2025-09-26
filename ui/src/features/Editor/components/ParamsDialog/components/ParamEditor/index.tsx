@@ -110,6 +110,7 @@ const ParamEditor: React.FC<Props> = ({
   const [updatedCustomization, setUpdatedCustomization] = useState(
     nodeMeta.customizations,
   );
+
   const [isParamsValid, setIsParamsValid] = useState(true);
   const [isCustomizationsValid, setIsCustomizationsValid] = useState(true);
 
@@ -142,6 +143,15 @@ const ParamEditor: React.FC<Props> = ({
     }
     onUpdate(nodeId, nodeParams, updatedCustomization);
   };
+
+  console.log(
+    "nodeMeta.customizations",
+    createdAction?.customizations?.properties,
+  );
+
+  const customizationDescriptions = extractDescriptions(
+    createdAction?.customizations,
+  );
 
   return (
     <div className="flex h-[60vh] flex-col gap-4">
@@ -251,13 +261,34 @@ const ParamEditor: React.FC<Props> = ({
                 </div>
               )}
             </div>
-            <Button
-              className="shrink-0 self-end"
-              size="lg"
-              onClick={handleUpdate}
-              disabled={readonly || !isCurrentTabValid}>
-              {t("Update")}
-            </Button>
+            <div className="flex items-center justify-between gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="cursor-pointer p-1">
+                    <QuestionIcon className="h-5 w-5" weight="thin" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" align="start" className="bg-primary">
+                  <div className="max-w-[300px] text-xs text-muted-foreground">
+                    {Object.entries(customizationDescriptions).map(
+                      ([key, value], index) => (
+                        <div key={index} className="mb-2">
+                          <span className="font-medium">{key}:</span>{" "}
+                          {String(value)}
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+              <Button
+                className="shrink-0 self-end"
+                size="lg"
+                onClick={handleUpdate}
+                disabled={readonly || !isCurrentTabValid}>
+                {t("Update")}
+              </Button>
+            </div>
           </div>
         </TabsContent>
         <TabsContent className="w-full px-6 py-4" value="details">
