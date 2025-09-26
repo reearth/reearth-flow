@@ -105,11 +105,7 @@ const ParamEditor: React.FC<Props> = ({
     return descriptions;
   }, []);
 
-  console.log("Original Schema:", originalSchema);
-
   const paramDescriptions = extractDescriptions(originalSchema);
-
-  console.log("Param Descriptions:", paramDescriptions);
 
   const [updatedCustomization, setUpdatedCustomization] = useState(
     nodeMeta.customizations,
