@@ -187,7 +187,7 @@ const Toolbox: React.FC<Props> = ({
                           ? "bg-primary/40 hover:bg-primary/80"
                           : "bg-node-transformer/40 hover:bg-node-transformer/80"
                 }`}
-                tooltipPosition="right"
+                tooltipPosition="bottom"
                 tooltipOffset={4}
                 showArrow
                 tooltipText={tool.name}
