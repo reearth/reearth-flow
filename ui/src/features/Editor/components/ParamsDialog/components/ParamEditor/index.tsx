@@ -1,7 +1,12 @@
-import { InfoIcon, NutIcon, PuzzlePieceIcon } from "@phosphor-icons/react";
+import {
+  InfoIcon,
+  NutIcon,
+  PuzzlePieceIcon,
+  QuestionIcon,
+} from "@phosphor-icons/react";
 import { RJSFSchema } from "@rjsf/utils";
 import { JSONSchema7Definition } from "json-schema";
-import { memo, useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 
 import {
   SchemaForm,
@@ -11,6 +16,9 @@ import {
   TabsTrigger,
   TabsList,
   FlowLogo,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { patchAnyOfAndOneOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
@@ -75,6 +83,27 @@ const ParamEditor: React.FC<Props> = ({
 
   // Generate UI schema from original schema (before patching) to preserve Expr detection
   const originalSchema = createdAction?.parameter;
+
+  const extractDescriptions = useCallback((schemaObj: any) => {
+    if (!schemaObj || typeof schemaObj !== "object") return {};
+    const descriptions: Record<string, unknown> = {};
+
+    if (schemaObj.properties) {
+      for (const [key, value] of Object.entries(schemaObj.properties)) {
+        if (
+          typeof value === "object" &&
+          value !== null &&
+          "description" in value
+        ) {
+          descriptions[key] = value.description;
+        }
+      }
+    }
+
+    return descriptions;
+  }, []);
+
+  const paramDescriptions = extractDescriptions(originalSchema);
 
   const [updatedCustomization, setUpdatedCustomization] = useState(
     nodeMeta.customizations,
@@ -165,13 +194,34 @@ const ParamEditor: React.FC<Props> = ({
                 />
               )}
             </div>
-            <Button
-              className="shrink-0 self-end"
-              size="lg"
-              onClick={handleUpdate}
-              disabled={readonly || !isCurrentTabValid}>
-              {t("Update")}
-            </Button>
+            <div className="flex items-center justify-between gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="cursor-pointer p-1">
+                    <QuestionIcon className="h-5 w-5" weight="thin" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" align="start" className="bg-primary">
+                  <div className="max-w-[300px] text-xs text-muted-foreground">
+                    {Object.entries(paramDescriptions).map(
+                      ([key, value], index) => (
+                        <div key={index} className="mb-2">
+                          <span className="font-medium">{key}:</span>{" "}
+                          {String(value)}
+                        </div>
+                      ),
+                    )}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+              <Button
+                className="shrink-0 self-end"
+                size="lg"
+                onClick={handleUpdate}
+                disabled={readonly || !isCurrentTabValid}>
+                {t("Update")}
+              </Button>
+            </div>
           </div>
         </TabsContent>
         <TabsContent className="px-6 py-4" value="customizations" asChild>

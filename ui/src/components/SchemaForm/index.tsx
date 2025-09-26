@@ -35,11 +35,6 @@ const buildExprUiSchema = (
   if (!schemaObj || typeof schemaObj !== "object") return {};
   const uiSchema: any = {};
 
-  // Add description to UI schema if available
-  if (schemaObj.description) {
-    uiSchema["ui:description"] = schemaObj.description;
-  }
-
   // Determine if this is a Python script field or regular Rhai expression
 
   const isExprType =
@@ -95,9 +90,6 @@ const buildExprUiSchema = (
 
     return {
       "ui:exprType": isPythonScript ? "python" : "rhai",
-      ...(schemaObj.description
-        ? { "ui:description": schemaObj.description }
-        : {}),
     };
   }
 
@@ -105,9 +97,6 @@ const buildExprUiSchema = (
   if (hasExprDefinitions) {
     return {
       ...exprFieldUiSchema,
-      ...(schemaObj.description
-        ? { "ui:description": schemaObj.description }
-        : {}),
     };
   }
 
