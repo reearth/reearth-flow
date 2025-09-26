@@ -1,9 +1,9 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use nusamai_projection::jprect::JPRZone;
 use reearth_flow_geometry::algorithm::transverse_mercator_proj::TransverseMercatorProjection;
 use reearth_flow_geometry::algorithm::{
-    area2d::Area2D, bool_ops::BooleanOps, bounding_rect::BoundingRect, centroid::Centroid,
+    area2d::Area2D, bool_ops::BooleanOps, bounding_rect::BoundingRect,
 };
 use reearth_flow_geometry::types::{
     coordinate::Coordinate2D, geometry::Geometry2D, polygon::Polygon2D, rect::Rect2D,
@@ -17,7 +17,7 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::jpmesh::{JPMeshCode, JPMeshType};
-use reearth_flow_types::{Attribute, AttributeValue, GeometryValue};
+use reearth_flow_types::{Attribute, AttributeValue, Expr, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
@@ -53,7 +53,7 @@ impl ProcessorFactory for DestinationMeshCodeExtractorFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -77,9 +77,34 @@ impl ProcessorFactory for DestinationMeshCodeExtractorFactory {
             _ => return Err("Invalid mesh_type. Must be 1-6".into()),
         };
 
+        // Evaluate EPSG code expression at build time
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let scope = expr_engine.new_scope();
+        let epsg_code: u16 = expr_engine
+            .eval_scope::<rhai::Dynamic>(params.epsg_code.as_ref(), &scope)
+            .map_err(|e| format!("Failed to evaluate epsg_code expression: {e}"))?
+            .try_cast::<i64>()
+            .and_then(|code| {
+                if code >= 0 && code <= u16::MAX as i64 {
+                    Some(code as u16)
+                } else {
+                    None
+                }
+            })
+            .or_else(|| {
+                // Try parsing as string
+                expr_engine
+                    .eval_scope::<String>(params.epsg_code.as_ref(), &scope)
+                    .ok()?
+                    .parse::<u16>()
+                    .ok()
+            })
+            .ok_or_else(|| "EPSG code must be a valid u16 integer".to_string())?;
+
         Ok(Box::new(DestinationMeshCodeExtractor {
             mesh_type,
             meshcode_attr: params.meshcode_attr,
+            epsg_code,
         }))
     }
 }
@@ -98,6 +123,11 @@ pub struct DestinationMeshCodeExtractorParam {
     /// Output attribute name for the mesh code
     #[serde(default = "default_meshcode_attr")]
     pub meshcode_attr: String,
+
+    /// # EPSG Code
+    /// Japanese Plane Rectangular Coordinate System EPSG code for area calculation
+    #[serde(default = "default_epsg_code")]
+    pub epsg_code: Expr,
 }
 
 impl Default for DestinationMeshCodeExtractorParam {
@@ -105,6 +135,7 @@ impl Default for DestinationMeshCodeExtractorParam {
         Self {
             mesh_type: default_mesh_type(),
             meshcode_attr: default_meshcode_attr(),
+            epsg_code: default_epsg_code(),
         }
     }
 }
@@ -117,10 +148,15 @@ fn default_meshcode_attr() -> String {
     "_meshcode".to_string()
 }
 
+fn default_epsg_code() -> Expr {
+    Expr::new("6691".to_string()) // JGD2011 / UTM Zone 54N - PLATEAU standard coordinate system
+}
+
 #[derive(Debug, Clone)]
 pub struct DestinationMeshCodeExtractor {
     mesh_type: JPMeshType,
     meshcode_attr: String,
+    epsg_code: u16,
 }
 
 impl Processor for DestinationMeshCodeExtractor {
@@ -220,8 +256,8 @@ impl DestinationMeshCodeExtractor {
         // Convert geometry to polygon for area calculation
         let polygon_wgs84 = self.geometry_to_polygon(geometry)?;
 
-        // Transform polygon to fixed EPSG:6675 for accurate area calculation
-        let polygon_jpr = self.transform_polygon_to_fixed_epsg6675(&polygon_wgs84)?;
+        // Transform polygon to configured EPSG code for accurate area calculation
+        let polygon_jpr = self.transform_polygon_to_epsg(&polygon_wgs84)?;
 
         // Get bounding box of the feature (in WGS84 for mesh lookup)
         let bounds = geometry.bounding_rect()?;
@@ -240,12 +276,11 @@ impl DestinationMeshCodeExtractor {
             let mesh_bounds_wgs84 = mesh_code.bounds();
             let mesh_polygon_wgs84 = self.rect_to_polygon(&mesh_bounds_wgs84);
 
-            // Transform mesh polygon to fixed EPSG:6675
-            let mesh_polygon_jpr =
-                match self.transform_polygon_to_fixed_epsg6675(&mesh_polygon_wgs84) {
-                    Some(polygon) => polygon,
-                    None => continue, // Skip this mesh if transformation fails
-                };
+            // Transform mesh polygon to configured EPSG code
+            let mesh_polygon_jpr = match self.transform_polygon_to_epsg(&mesh_polygon_wgs84) {
+                Some(polygon) => polygon,
+                None => continue, // Skip this mesh if transformation fails
+            };
 
             // Calculate intersection area in meters
             let intersection = polygon_jpr.intersection(&mesh_polygon_jpr);
@@ -283,43 +318,31 @@ impl DestinationMeshCodeExtractor {
         })
     }
 
-    /// Transform coordinates to Japanese Plane Rectangular Coordinate System Zone 7 (JGD2011, EPSG:6675)
-    /// Zone 7 covers: Ishikawa-ken, Toyama-ken, Gifu-ken, Aichi-ken
-    /// FIXED: Always uses EPSG:6675 regardless of input coordinate system
+    /// Transform coordinates to Japanese Plane Rectangular Coordinate System
     /// Returns coordinates in meters suitable for accurate area calculation
     /// Uses Flow's TransverseMercatorProjection for accurate results
-    fn transform_to_fixed_epsg6675(
-        &self,
-        mut coord: Coordinate2D<f64>,
-    ) -> Option<Coordinate2D<f64>> {
-        // Fixed EPSG:6675 (JGD2011 / Japan Plane Rectangular CS VII)
-        let projection = JPRZone::from_epsg(6675)?.projection();
+    fn transform_to_epsg(&self, mut coord: Coordinate2D<f64>) -> Option<Coordinate2D<f64>> {
+        let projection = JPRZone::from_epsg(self.epsg_code)?.projection();
 
         // Use Flow's TransverseMercatorProjection trait
         // This will treat input coordinates as geographic (lat/lon in degrees)
-        // and transform them to EPSG:6675 projected coordinates (meters)
+        // and transform them to the configured projected coordinates (meters)
         coord.project_forward(&projection, false).ok()?;
 
         Some(coord)
     }
 
-    /// Transform a polygon to fixed EPSG:6675 (Japanese Plane Rectangular Coordinate System Zone 7)
-    /// FIXED: Always transforms to EPSG:6675 regardless of input coordinate system
-    fn transform_polygon_to_fixed_epsg6675(
-        &self,
-        polygon: &Polygon2D<f64>,
-    ) -> Option<Polygon2D<f64>> {
-        // Transform exterior ring using fixed EPSG:6675
+    /// Transform a polygon to the configured Japanese Plane Rectangular Coordinate System
+    /// Uses the EPSG code specified in the parameters
+    fn transform_polygon_to_epsg(&self, polygon: &Polygon2D<f64>) -> Option<Polygon2D<f64>> {
         let exterior_coords: Result<Vec<Coordinate2D<f64>>, ()> = polygon
             .exterior()
             .0
             .iter()
-            .map(|coord| self.transform_to_fixed_epsg6675(*coord).ok_or(()))
+            .map(|coord| self.transform_to_epsg(*coord).ok_or(()))
             .collect();
-
         let exterior_coords = exterior_coords.ok()?;
 
-        // Transform interior rings
         let interior_rings: Result<
             Vec<reearth_flow_geometry::types::line_string::LineString2D<f64>>,
             (),
@@ -330,12 +353,11 @@ impl DestinationMeshCodeExtractor {
                 let interior_coords: Result<Vec<Coordinate2D<f64>>, ()> = interior
                     .0
                     .iter()
-                    .map(|coord| self.transform_to_fixed_epsg6675(*coord).ok_or(()))
+                    .map(|coord| self.transform_to_epsg(*coord).ok_or(()))
                     .collect();
                 interior_coords.map(|coords| coords.into())
             })
             .collect();
-
         let interior_rings = interior_rings.ok()?;
 
         Some(Polygon2D::new(exterior_coords.into(), interior_rings))
@@ -363,50 +385,15 @@ impl DestinationMeshCodeExtractor {
                 if self.is_closed_linestring(ls) {
                     Some(Polygon2D::new(ls.clone(), vec![]))
                 } else {
-                    // For non-closed LineString, create a small buffer around the centroid
-                    if let Some(centroid) = geometry.centroid() {
-                        let coord = centroid.0;
-                        let epsilon = 0.0001; // Small buffer
-                        Some(Polygon2D::new(
-                            vec![
-                                Coordinate2D::new_(coord.x - epsilon, coord.y - epsilon),
-                                Coordinate2D::new_(coord.x + epsilon, coord.y - epsilon),
-                                Coordinate2D::new_(coord.x + epsilon, coord.y + epsilon),
-                                Coordinate2D::new_(coord.x - epsilon, coord.y + epsilon),
-                                Coordinate2D::new_(coord.x - epsilon, coord.y - epsilon),
-                            ]
-                            .into(),
-                            vec![],
-                        ))
-                    } else {
-                        None
-                    }
-                }
-            }
-            // For other non-area geometries, create a small buffer around the centroid
-            _ => {
-                if let Some(centroid) = geometry.centroid() {
-                    let coord = centroid.0;
-                    let epsilon = 0.0001; // Small buffer
-                    Some(Polygon2D::new(
-                        vec![
-                            Coordinate2D::new_(coord.x - epsilon, coord.y - epsilon),
-                            Coordinate2D::new_(coord.x + epsilon, coord.y - epsilon),
-                            Coordinate2D::new_(coord.x + epsilon, coord.y + epsilon),
-                            Coordinate2D::new_(coord.x - epsilon, coord.y + epsilon),
-                            Coordinate2D::new_(coord.x - epsilon, coord.y - epsilon),
-                        ]
-                        .into(),
-                        vec![],
-                    ))
-                } else {
                     None
                 }
             }
+            // Other non-area geometries are invalid for mesh code extraction
+            _ => None,
         }
     }
 
-    /// Check if a LineString is closed (first and last points are the same)
+    /// Check if a LineString is closed
     fn is_closed_linestring(
         &self,
         linestring: &reearth_flow_geometry::types::line_string::LineString2D<f64>,
@@ -436,7 +423,7 @@ impl DestinationMeshCodeExtractor {
                 Coordinate2D::new_(max.x, min.y),
                 max,
                 Coordinate2D::new_(min.x, max.y),
-                min, // Close the polygon
+                min,
             ]
             .into(),
             vec![],
@@ -473,11 +460,12 @@ mod tests {
         let extractor = DestinationMeshCodeExtractor {
             mesh_type: JPMeshType::Mesh1km,
             meshcode_attr: "_meshcode".to_string(),
+            epsg_code: 6675, // EPSG:6675 for test
         };
 
-        // Transform to fixed EPSG:6675
+        // Transform to EPSG:6675 (default)
         let polygon_jpr = extractor
-            .transform_polygon_to_fixed_epsg6675(&polygon_wgs84)
+            .transform_polygon_to_epsg(&polygon_wgs84)
             .expect("Polygon transformation failed");
         let area_jpr = polygon_jpr.unsigned_area2d();
         let rounded_area = (area_jpr * 100.0).round() / 100.0;
