@@ -112,6 +112,10 @@ impl BroadcastPool {
         self.manager.store.clone()
     }
 
+    pub fn get_redis_store(&self) -> Arc<RedisStore> {
+        self.manager.redis_store.clone()
+    }
+
     pub async fn get_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
         if let Some(group) = self.groups.get(doc_id) {
             info!("Reusing existing BroadcastGroup for doc_id: {}", doc_id);

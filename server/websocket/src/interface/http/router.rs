@@ -4,7 +4,7 @@ use axum::{
 };
 use std::sync::Arc;
 
-use crate::interface::http::handlers::DocumentHandler;
+use crate::interface::http::handlers::document_handler::DocumentHandler;
 use crate::AppState;
 
 pub fn document_routes() -> Router<Arc<AppState>> {

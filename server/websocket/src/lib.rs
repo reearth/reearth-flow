@@ -69,7 +69,7 @@ pub use domain::value_objects::redis::{
 };
 pub use group::BroadcastGroup;
 pub use infrastructure::gcs::GcsStore;
-pub use interface::http::handlers::DocumentHandler;
+pub use interface::http::handlers::document_handler::DocumentHandler;
 pub use interface::http::router::document_routes;
 pub use interface::websocket::conn::Connection;
 pub use pool::BroadcastPool;

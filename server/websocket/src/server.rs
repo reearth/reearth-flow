@@ -87,10 +87,15 @@ pub async fn start_server(state: Arc<AppState>, port: &str, config: &crate::Conf
         .route("/{doc_id}", get(ws_handler))
         .with_state(server_state);
 
+    let health_service = create_health_service(&state);
+    let health_handler = Arc::new(HealthHandler::new(health_service));
+
     let app = Router::new()
         .merge(ws_router)
         .nest("/api", document_routes())
+        .route("/health", get(health_check_handler))
         .with_state(state)
+        .layer(axum::extract::Extension(health_handler))
         .layer(
             ServiceBuilder::new()
                 .layer({
@@ -117,11 +122,28 @@ pub async fn start_server(state: Arc<AppState>, port: &str, config: &crate::Conf
         "HTTP API endpoints available at http://{}/api/document/...",
         addr
     );
+    info!("Health check endpoint available at http://{}/health", addr);
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
 
     Ok(())
+}
+
+use crate::application::services::health_service::HealthService;
+use crate::infrastructure::health::{GcsHealthCheckerImpl, RedisHealthCheckerImpl};
+use crate::interface::http::handlers::health_handler::{health_check_handler, HealthHandler};
+
+fn create_health_service(state: &AppState) -> Arc<HealthService> {
+    let mut health_service = HealthService::new("websocket");
+
+    let redis_checker = RedisHealthCheckerImpl::new(state.pool.get_redis_store());
+    health_service.add_checker(Arc::new(redis_checker));
+
+    let gcs_checker = GcsHealthCheckerImpl::new(state.pool.get_store());
+    health_service.add_checker(Arc::new(gcs_checker));
+
+    Arc::new(health_service)
 }
 
 #[cfg(feature = "auth")]
