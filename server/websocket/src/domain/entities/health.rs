@@ -109,11 +109,9 @@ mod tests {
         let mut system = SystemHealth::new("websocket");
         assert!(system.is_healthy());
 
-        // Add healthy component
         system.add_component("redis", ComponentHealth::healthy("Redis OK"));
         assert!(system.is_healthy());
 
-        // Add unhealthy component
         system.add_component("gcs", ComponentHealth::unhealthy("GCS failed"));
         assert!(!system.is_healthy());
     }
