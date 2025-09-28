@@ -19,7 +19,10 @@ impl HealthChecker for RedisHealthCheckerImpl {
     async fn check_health(&self) -> Result<ComponentHealth, HealthCheckError> {
         match self.ping().await {
             Ok(_) => Ok(ComponentHealth::healthy("Redis connection is working")),
-            Err(e) => Ok(ComponentHealth::unhealthy(format!("Redis check failed: {}", e))),
+            Err(e) => Ok(ComponentHealth::unhealthy(format!(
+                "Redis check failed: {}",
+                e
+            ))),
         }
     }
 
@@ -32,13 +35,17 @@ impl HealthChecker for RedisHealthCheckerImpl {
 impl RedisHealthChecker for RedisHealthCheckerImpl {
     async fn ping(&self) -> Result<(), HealthCheckError> {
         match self.redis_store.get_pool().get().await {
-            Ok(mut conn) => {
-                match redis::cmd("PING").query_async::<String>(&mut *conn).await {
-                    Ok(_) => Ok(()),
-                    Err(e) => Err(HealthCheckError::Connection(format!("Redis PING failed: {}", e))),
-                }
-            }
-            Err(e) => Err(HealthCheckError::Connection(format!("Failed to get Redis connection: {}", e))),
+            Ok(mut conn) => match redis::cmd("PING").query_async::<String>(&mut *conn).await {
+                Ok(_) => Ok(()),
+                Err(e) => Err(HealthCheckError::Connection(format!(
+                    "Redis PING failed: {}",
+                    e
+                ))),
+            },
+            Err(e) => Err(HealthCheckError::Connection(format!(
+                "Failed to get Redis connection: {}",
+                e
+            ))),
         }
     }
 }
