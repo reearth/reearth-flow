@@ -4785,6 +4785,24 @@
       ]
     },
     {
+      "name": "SolidBoundaryValidator",
+      "type": "processor",
+      "description": "Validates the Solid Boundary Geometry",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "success",
+        "failed",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "SqlReader",
       "type": "source",
       "description": "SQLデータベースから地物を読み取る",

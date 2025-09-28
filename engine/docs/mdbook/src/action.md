@@ -4750,6 +4750,22 @@ Writes geographic features to ESRI Shapefile format with optional grouping
 ### Category
 * File
 
+## SolidBoundaryValidator
+### Type
+* processor
+### Description
+Validates the Solid Boundary Geometry
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* success
+* failed
+* rejected
+### Category
+* Geometry
+
 ## SqlReader
 ### Type
 * source
