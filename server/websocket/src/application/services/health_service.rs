@@ -45,8 +45,7 @@ impl HealthService {
                     system_health.add_component(
                         component_name,
                         crate::domain::entity::health::ComponentHealth::unhealthy(format!(
-                            "Health check failed: {}",
-                            e
+                            "Health check failed: {e}",
                         )),
                     );
                 }

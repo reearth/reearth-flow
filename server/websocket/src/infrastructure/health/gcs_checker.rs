@@ -19,10 +19,9 @@ impl HealthChecker for GcsHealthCheckerImpl {
     async fn check_health(&self) -> Result<ComponentHealth, HealthCheckError> {
         match self.list_objects().await {
             Ok(_) => Ok(ComponentHealth::healthy("GCS connection is working")),
-            Err(e) => Ok(ComponentHealth::unhealthy(format!(
-                "GCS check failed: {}",
-                e
-            ))),
+            Err(e) => Ok(ComponentHealth::unhealthy(
+                format!("GCS check failed: {e}",),
+            )),
         }
     }
 
@@ -43,8 +42,7 @@ impl GcsHealthChecker for GcsHealthCheckerImpl {
         match self.gcs_store.client.list_objects(&request).await {
             Ok(_) => Ok(()),
             Err(e) => Err(HealthCheckError::Connection(format!(
-                "GCS connection failed: {}",
-                e
+                "GCS connection failed: {e}",
             ))),
         }
     }
