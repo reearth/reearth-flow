@@ -522,6 +522,39 @@ where
     Some(LineString::from(rotated_coords))
 }
 
+/// Returns the circumcenter and the circumradius if the triangle is non-degenerate.
+pub fn circumcenter(
+    a: Coordinate<f64>,
+    b: Coordinate<f64>,
+    c: Coordinate<f64>,
+) -> Option<(Coordinate<f64>, f64)> {
+    // Work in the triangle's plane basis: x = A + α(B−A) + β(C−A),
+    // with constraints x·(B−A) = |B−A|²/2 and x·(C−A) = |C−A|²/2.
+    let ab = b - a;
+    let ac = c - a;
+
+    let g11 = ab.dot(&ab);
+    let g12 = ab.dot(&ac);
+    let g22 = ac.dot(&ac);
+
+    // det = |ab×ac|² (Gram determinant). Near-zero => collinear/degenerate.
+    let det = g11 * g22 - g12 * g12;
+    let eps = 1e-10 * (g11 + g22).max(1.0);
+    if det.abs() < eps {
+        return None;
+    }
+
+    let rhs1 = 0.5 * g11;
+    let rhs2 = 0.5 * g22;
+
+    let alpha = (rhs1 * g22 - rhs2 * g12) / det;
+    let beta = (g11 * rhs2 - g12 * rhs1) / det;
+
+    let center = a + ab * alpha + ac * beta;
+    let radius = (center - a).norm();
+    Some((center, radius))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

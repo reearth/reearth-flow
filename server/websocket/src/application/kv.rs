@@ -437,7 +437,7 @@ where
         Ok(())
     }
 
-    async fn copy_document<K: AsRef<[u8]> + ?Sized + Sync>(
+    async fn copy_document<K: AsRef<[u8]> + ?Sized + Sync + std::fmt::Display>(
         &self,
         name: &K,
         source: &str,
@@ -446,7 +446,10 @@ where
         let mut txn = doc.transact_mut();
 
         self.load_doc_v2(source, &mut txn).await?;
-        self.flush_doc_v2(name, &doc.transact()).await?;
+        drop(txn);
+        let txn = doc.transact();
+        self.flush_doc_v2(name, &txn).await?;
+        drop(txn);
         Ok(())
     }
 
@@ -461,7 +464,9 @@ where
 
         txn.apply_update(update)?;
         drop(txn);
-        self.flush_doc_v2(name, &doc.transact()).await?;
+        let txn = doc.transact();
+        self.flush_doc_v2(name, &txn).await?;
+        drop(txn);
         Ok(())
     }
 }

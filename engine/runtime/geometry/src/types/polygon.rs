@@ -1,4 +1,5 @@
 use std::hash::{Hash, Hasher};
+use std::ops::Mul;
 
 use approx::{AbsDiffEq, RelativeEq};
 use flatgeom::{
@@ -7,7 +8,7 @@ use flatgeom::{
 };
 use geo_types::Polygon as GeoPolygon;
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
-use num_traits::Zero;
+use num_traits::{Float, NumCast, Zero};
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
@@ -110,12 +111,6 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
         self.interiors.push(new_interior);
     }
 
-    pub fn exteriors_push(&mut self, new_exterior: impl Into<LineString<T, Z>>) {
-        let mut new_exterior = new_exterior.into();
-        new_exterior.close();
-        self.exterior = new_exterior;
-    }
-
     pub fn area(&self) -> f64 {
         let mut area = 0.0;
         area += self.exterior().ring_area();
@@ -123,11 +118,6 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
             area -= interior.ring_area();
         }
         area
-    }
-
-    pub fn add_ring(&mut self, linestring: LineString<T, Z>) {
-        self.exteriors_push(linestring.clone());
-        self.interiors_push(linestring.clone());
     }
 
     /// Extrudes the polygon along the Z-axis by a specified distance.
@@ -249,6 +239,82 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
             Coordinate::new__(min_x, min_y, min_z),
             Coordinate::new__(max_x, max_y, max_z),
         ))
+    }
+}
+
+impl<T: CoordNum + Float + From<Z>, Z: CoordNum + Float + Mul<T, Output = Z>> Polygon<T, Z> {
+    // Merges all the rings (exterior and interiors) into a single closed LineString.
+    pub fn into_merged_contour(self) -> LineString<T, Z> {
+        let mut exterior = self.exterior;
+        for interior in self.interiors {
+            exterior = Self::into_merged_contour_single_interior(exterior, interior);
+        }
+        exterior
+    }
+
+    fn into_merged_contour_single_interior(
+        mut exterior: LineString<T, Z>,
+        mut interior: LineString<T, Z>,
+    ) -> LineString<T, Z> {
+        if interior.is_empty() {
+            return exterior;
+        }
+
+        if interior.len() < 4 {
+            // interior ring must be at least triangle
+            return exterior;
+        }
+
+        let epsilon = <T as NumCast>::from(1e-5).unwrap_or_default();
+
+        let (mut x, mut y) = (usize::MAX, usize::MAX);
+        'outer: for (i, v) in exterior.iter().enumerate() {
+            'inner: for (j, w) in interior.iter().enumerate() {
+                // check if the line segment vw intersects with any edge of the exterior ring and the interior ring
+                let e1 = Line::<T, Z>::new_(*v, *w);
+                for e2 in exterior
+                    .iter()
+                    .copied()
+                    .zip(exterior.iter().copied().skip(1))
+                {
+                    if e2.0 == *v || e2.1 == *v {
+                        continue;
+                    }
+                    let e2 = Line::new_(e2.0, e2.1);
+                    if e1.distance(&e2) < epsilon {
+                        continue 'inner;
+                    }
+                }
+                for e2 in interior
+                    .iter()
+                    .copied()
+                    .zip(interior.iter().copied().skip(1))
+                {
+                    if e2.0 == *w || e2.1 == *w {
+                        continue;
+                    }
+                    let e2 = Line::new_(e2.0, e2.1);
+                    if e1.distance(&e2) < epsilon {
+                        continue 'inner;
+                    }
+                }
+                x = i;
+                y = j;
+                break 'outer;
+            }
+        }
+
+        exterior.0.pop();
+        exterior.0.rotate_left(x);
+        exterior.0.push(exterior.0[0]);
+        interior.0.pop();
+        interior.0.rotate_left(y);
+        interior.0.push(interior.0[0]);
+
+        exterior.0.extend(interior.0);
+        exterior.0.push(exterior.0[0]);
+
+        exterior
     }
 }
 
@@ -694,5 +760,46 @@ impl<T: CoordNum> From<GeoPolygon<T>> for Polygon2D<T> {
             .map(|interior| interior.clone().into())
             .collect();
         Polygon2D::new(exterior, interiors)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::line_string::LineString3D;
+
+    #[test]
+    fn test_into_merged_contour() {
+        let exterior = LineString3D::new(vec![
+            Coordinate::new__(0_f64, 0_f64, 0_f64),
+            Coordinate::new__(4.0, 0.0, 0.0),
+            Coordinate::new__(4.0, 4.0, 0.0),
+            Coordinate::new__(0.0, 4.0, 0.0),
+            Coordinate::new__(0.0, 0.0, 0.0),
+        ]);
+        let interior = LineString3D::new(vec![
+            Coordinate::new__(1.0, 1.0, 0.0),
+            Coordinate::new__(1.0, 2.0, 0.0),
+            Coordinate::new__(2.0, 2.0, 0.0),
+            Coordinate::new__(2.0, 1.0, 0.0),
+            Coordinate::new__(1.0, 1.0, 0.0),
+        ]);
+        let polygon = Polygon3D::new(exterior, vec![interior]);
+        let merged = polygon.into_merged_contour();
+        let expected_coords = vec![
+            Coordinate::new__(0.0, 0.0, 0.0),
+            Coordinate::new__(4.0, 0.0, 0.0),
+            Coordinate::new__(4.0, 4.0, 0.0),
+            Coordinate::new__(0.0, 4.0, 0.0),
+            Coordinate::new__(0.0, 0.0, 0.0),
+            Coordinate::new__(1.0, 1.0, 0.0),
+            Coordinate::new__(1.0, 2.0, 0.0),
+            Coordinate::new__(2.0, 2.0, 0.0),
+            Coordinate::new__(2.0, 1.0, 0.0),
+            Coordinate::new__(1.0, 1.0, 0.0),
+            Coordinate::new__(0.0, 0.0, 0.0),
+        ];
+        let expected = LineString3D::new(expected_coords);
+        assert_eq!(merged, expected);
     }
 }
