@@ -1,5 +1,5 @@
 import { useReactFlow, XYPosition } from "@xyflow/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useDoubleClick } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
@@ -22,8 +22,6 @@ export default ({
   onNodesAdd: (nodes: Node[]) => void;
   onClose: () => void;
 }) => {
-  const lastSearchTerm = useRef("");
-
   const [searchTerm, setSearchTerm] = useState("");
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,12 +45,11 @@ export default ({
     }
   }, [selectedIndex, actions, openedActionType?.nodeType]);
 
-  useEffect(() => {
-    if (searchTerm === lastSearchTerm.current) return;
-    lastSearchTerm.current = searchTerm;
+  const handleSearchTerm = (newSearchTerm: string) => {
+    setSearchTerm(newSearchTerm);
     setSelectedIndex(-1);
     setSelected(undefined);
-  }, [searchTerm, lastSearchTerm]);
+  };
 
   useEffect(() => {
     const selectedItem = itemRefs.current[selectedIndex];
@@ -94,12 +91,13 @@ export default ({
     },
   );
 
-  const actionsList = useMemo(() => {
-    return actions?.byType[openedActionType?.nodeType] || [];
-  }, [actions, openedActionType?.nodeType]);
+  const actionsList = actions?.byType[openedActionType?.nodeType] || [];
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const currentActionsList =
+        actions?.byType[openedActionType?.nodeType] || [];
+
       switch (e.key) {
         case "Enter":
           e.preventDefault();
@@ -111,43 +109,47 @@ export default ({
             const newUpIndex =
               selectedIndex === 0 ? selectedIndex : selectedIndex - 1;
             setSelectedIndex(newUpIndex);
-            if (actionsList && actionsList[newUpIndex]) {
-              setSelected(actionsList[newUpIndex].name);
+            if (currentActionsList && currentActionsList[newUpIndex]) {
+              setSelected(currentActionsList[newUpIndex].name);
             }
           }
-
           break;
         case "ArrowDown":
           {
             e.preventDefault();
             const newDownIndex =
-              selectedIndex === (actionsList?.length || 1) - 1
+              selectedIndex === (currentActionsList?.length || 1) - 1
                 ? selectedIndex
                 : selectedIndex + 1;
             setSelectedIndex(newDownIndex);
-            if (actionsList && actionsList[newDownIndex]) {
-              setSelected(actionsList[newDownIndex].name);
+            if (currentActionsList && currentActionsList[newDownIndex]) {
+              setSelected(currentActionsList[newDownIndex].name);
             }
           }
           break;
       }
-    },
-    [handleDoubleClick, selected, actionsList, selectedIndex],
-  );
+    };
 
-  useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [actions, selected, handleKeyDown]);
+  }, [
+    actions,
+    openedActionType?.nodeType,
+    selectedIndex,
+    selected,
+    handleDoubleClick,
+    setSelectedIndex,
+    setSelected,
+  ]);
 
   return {
     actionsList,
     containerRef,
     itemRefs,
     selected,
-    setSearchTerm,
+    handleSearchTerm,
     handleSingleClick,
     handleDoubleClick,
   };
