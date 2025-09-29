@@ -1,6 +1,5 @@
+import { CheckCircleIcon } from "@phosphor-icons/react";
 import {
-  CaretSortIcon,
-  ClockIcon,
   CrossCircledIcon,
   InfoCircledIcon,
   UpdateIcon,
@@ -90,16 +89,8 @@ const LogsTable = ({
     }
   };
 
-  const handleTimeStampColumnVisibility = () => {
-    const column = table.getColumn("timestamp");
-
-    column?.toggleVisibility(!column.getIsVisible());
-    return;
-  };
-
   const handleResetTable = () => {
     setColumnFilters([]);
-    table.getColumn("timestamp")?.toggleVisibility(true);
   };
 
   const getStatusValue = useMemo(() => {
@@ -114,9 +105,10 @@ const LogsTable = ({
   return (
     <div className="flex size-full flex-col rounded">
       <div className="flex w-full shrink-0 items-center justify-between px-2 pb-2">
-        <div className="mr-4 flex-1">
+        <div className="mr-4">
           {showFiltering && (
             <Input
+              className="w-[25vw]"
               placeholder={t("Search") + "..."}
               value={globalFilter ?? ""}
               onChange={(e) => setGlobalFilter(String(e.target.value))}
@@ -129,7 +121,7 @@ const LogsTable = ({
             variant={getStatusValue === "ERROR" ? "default" : "outline"}
             tooltipText={t("Error")}
             onClick={() => handleStatusChange(UserFacingLogLevel.Error)}
-            icon={<CrossCircledIcon />}
+            icon={<CrossCircledIcon className="text-destructive" />}
           />
           <IconButton
             size="icon"
@@ -140,18 +132,11 @@ const LogsTable = ({
           />
           <IconButton
             size="icon"
-            variant={
-              table.getColumn("timestamp")?.getIsVisible()
-                ? "default"
-                : "outline"
-            }
-            tooltipText={t("Include Time Stamp")}
-            onClick={handleTimeStampColumnVisibility}
-            icon={<ClockIcon />}
+            variant={getStatusValue === "SUCCESS" ? "default" : "outline"}
+            tooltipText={t("Success")}
+            onClick={() => handleStatusChange(UserFacingLogLevel.Success)}
+            icon={<CheckCircleIcon className="text-success" />}
           />
-          <Button variant="ghost" size="icon">
-            <CaretSortIcon />
-          </Button>
           <IconButton
             size="icon"
             variant="ghost"
