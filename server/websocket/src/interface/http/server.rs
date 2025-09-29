@@ -17,9 +17,13 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing::info;
 
+use crate::conf::Config;
+use crate::interface::ws;
+use crate::AppState;
 #[cfg(feature = "auth")]
 use crate::AuthQuery;
-use crate::{interface::http::router::document_routes, AppState};
+
+use super::router::document_routes;
 use anyhow::Result;
 #[cfg(feature = "auth")]
 use axum::extract::Query;
@@ -73,7 +77,7 @@ pub async fn ensure_bucket(client: &Client, bucket_name: &str) -> Result<()> {
     }
 }
 
-pub async fn start_server(state: Arc<AppState>, port: &str, config: &crate::Config) -> Result<()> {
+pub async fn start_server(state: Arc<AppState>, port: &str, config: &Config) -> Result<()> {
     let addr = format!("0.0.0.0:{port}");
     let listener = TcpListener::bind(&addr).await?;
 
@@ -153,7 +157,7 @@ async fn ws_handler(
     Query(query): Query<AuthQuery>,
     State(state): State<ServerState>,
 ) -> Response<Body> {
-    crate::ws::ws_handler(ws, Path(doc_id), Query(query), State(state.app_state)).await
+    ws::ws_handler(ws, Path(doc_id), Query(query), State(state.app_state)).await
 }
 
 #[cfg(not(feature = "auth"))]
@@ -162,5 +166,5 @@ async fn ws_handler(
     Path(doc_id): Path<String>,
     State(state): State<ServerState>,
 ) -> Response<Body> {
-    crate::ws::ws_handler(ws, Path(doc_id), State(state.app_state)).await
+    ws::ws_handler(ws, Path(doc_id), State(state.app_state)).await
 }

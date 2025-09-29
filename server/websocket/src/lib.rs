@@ -10,16 +10,15 @@ pub mod domain;
 pub mod infrastructure;
 pub mod interface;
 pub mod tools;
-pub mod ws;
 pub use infrastructure::redis::RedisStore;
 
 pub type AwarenessRef = Arc<RwLock<yrs::sync::Awareness>>;
 
-pub mod server;
-
 pub use infrastructure::websocket::BroadcastPool;
 pub type WebsocketService =
     application::services::websocket_service::WebsocketService<BroadcastPool>;
+
+pub use interface::http::server::{ensure_bucket, start_server};
 
 #[cfg(feature = "auth")]
 #[derive(Debug, serde::Deserialize)]
@@ -79,4 +78,3 @@ pub use infrastructure::websocket::{
 };
 pub use interface::http::handlers::document_handler::DocumentHandler;
 pub use interface::http::router::document_routes;
-pub use server::{ensure_bucket, start_server};
