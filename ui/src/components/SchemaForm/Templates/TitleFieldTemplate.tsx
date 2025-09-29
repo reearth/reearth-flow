@@ -28,7 +28,8 @@ const TitleFieldTemplate = <
   required,
   schema,
 }: TitleFieldProps<T, S, F>) => {
-  const isRootTitle = schema.title?.includes("Parameters"); // If the parameters title is present it must be the root title
+  // If the schema has a $schema property, it means it's the root title
+  const isRootTitle = schema.$schema && schema.title === title;
   const descriptions = extractDescriptions(schema);
   const hasDescriptions = Object.keys(descriptions).length > 0;
 
