@@ -47,16 +47,15 @@ type Props = {
   cmsItemAssetUrl?: string | null;
   onUpdate: (variable: AnyProjectVariable) => void;
   onDialogOpen?: (dialog: "assets" | "cms") => void;
-  clearUrls: () => void;
+  clearUrl: () => void;
 };
 
 export const ChoiceEditor: React.FC<Props> = ({
   variable,
   assetUrl,
-  cmsItemAssetUrl,
   onUpdate,
   onDialogOpen,
-  clearUrls,
+  clearUrl,
 }) => {
   const t = useT();
 
@@ -84,12 +83,11 @@ export const ChoiceEditor: React.FC<Props> = ({
   }, [getChoiceConfig]);
 
   useEffect(() => {
-    const url = assetUrl || cmsItemAssetUrl;
-    if (url) {
-      setNewOptionText(url);
-      clearUrls();
+    if (assetUrl) {
+      setNewOptionText(assetUrl);
+      clearUrl();
     }
-  }, [assetUrl, cmsItemAssetUrl, clearUrls]);
+  }, [assetUrl, clearUrl]);
 
   const updateVariable = (
     config: ChoiceConfig,

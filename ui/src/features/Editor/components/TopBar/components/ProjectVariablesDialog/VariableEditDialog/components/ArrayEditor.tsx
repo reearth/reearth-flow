@@ -41,20 +41,18 @@ import { AnyProjectVariable, ArrayConfig } from "@flow/types";
 
 type Props = {
   variable: AnyProjectVariable;
-  assetUrl: string | null;
-  cmsItemAssetUrl?: string | null;
+  assetUrl?: string | null;
   onUpdate: (variable: AnyProjectVariable) => void;
   onDialogOpen: (dialog: "assets" | "cms") => void;
-  clearUrls: () => void;
+  clearUrl: () => void;
 };
 
 export const ArrayEditor: React.FC<Props> = ({
   variable,
   assetUrl,
-  cmsItemAssetUrl,
   onUpdate,
   onDialogOpen,
-  clearUrls,
+  clearUrl,
 }) => {
   const t = useT();
   // Get the current array configuration from the config field
@@ -93,12 +91,11 @@ export const ArrayEditor: React.FC<Props> = ({
   }, [getArrayConfig, variable.defaultValue]);
 
   useEffect(() => {
-    const url = assetUrl || cmsItemAssetUrl;
-    if (url) {
-      setNewItemText(url);
-      clearUrls();
+    if (assetUrl) {
+      setNewItemText(assetUrl);
+      clearUrl();
     }
-  }, [assetUrl, cmsItemAssetUrl, clearUrls]);
+  }, [assetUrl, clearUrl]);
 
   const updateVariable = (config: ArrayConfig, items?: any[]) => {
     setArrayConfig(config);
