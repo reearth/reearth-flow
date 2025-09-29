@@ -84,7 +84,10 @@ describe("createSubGraphs", () => {
     ]);
 
     expect(convertNodes).toHaveBeenCalledWith(mockNodes);
-    expect(convertEdges).toHaveBeenCalledWith(mockEdges, new Set(["node1", "node2"]));
+    expect(convertEdges).toHaveBeenCalledWith(
+      mockEdges,
+      new Set(["node1", "node2"]),
+    );
   });
 
   test("should correctly create sub-graphs for multiple workflows", () => {
@@ -175,8 +178,16 @@ describe("createSubGraphs", () => {
     expect(convertEdges).toHaveBeenCalledTimes(2);
 
     // Check that convertEdges was called with the correct enabled node IDs
-    expect(convertEdges).toHaveBeenNthCalledWith(1, mockWorkflows[0].edges, new Set(["1"]));
-    expect(convertEdges).toHaveBeenNthCalledWith(2, mockWorkflows[1].edges, new Set(["2"]));
+    expect(convertEdges).toHaveBeenNthCalledWith(
+      1,
+      mockWorkflows[0].edges,
+      new Set(["1"]),
+    );
+    expect(convertEdges).toHaveBeenNthCalledWith(
+      2,
+      mockWorkflows[1].edges,
+      new Set(["2"]),
+    );
   });
 
   it('should use "undefined-graph" as name when workflow name is not provided', () => {
