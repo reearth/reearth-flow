@@ -15,7 +15,7 @@ use tracing::{debug, error, info, warn};
 use yrs::sync::Error as YSyncError;
 
 use crate::application::services::broadcast_pool::BroadcastPool;
-use crate::domain::value_objects::sub::Subscription;
+use crate::infrastructure::websocket::types::Subscription;
 use crate::infrastructure::websocket::BroadcastGroup;
 
 const CONNECTION_TIMEOUT: Duration = Duration::from_secs(86_400);

@@ -8,23 +8,27 @@ use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
 use crate::application::kv::DocOps;
-use crate::application::services::broadcast_pool::BroadcastPool;
 use crate::domain::entity::doc::Document;
 use crate::domain::repository::document::DocumentRepository;
 use crate::domain::value_objects::http::HistoryItem;
 use crate::infrastructure::gcs::{GcsStore, UpdateInfo};
+use crate::infrastructure::websocket::CollaborativeStorage;
 
 pub struct DocumentRepositoryImpl {
-    pool: Arc<BroadcastPool>,
+    store: Arc<GcsStore>,
+    collaborative_storage: Arc<CollaborativeStorage>,
 }
 
 impl DocumentRepositoryImpl {
-    pub fn new(pool: Arc<BroadcastPool>) -> Self {
-        Self { pool }
+    pub fn new(store: Arc<GcsStore>, collaborative_storage: Arc<CollaborativeStorage>) -> Self {
+        Self {
+            store,
+            collaborative_storage,
+        }
     }
 
     fn store(&self) -> Arc<GcsStore> {
-        self.pool.get_store()
+        Arc::clone(&self.store)
     }
 
     fn to_document(doc_id: &str, doc: Doc, version: u64, timestamp: DateTime<Utc>) -> Document {
@@ -166,11 +170,11 @@ impl DocumentRepository for DocumentRepositoryImpl {
     }
 
     async fn flush_to_gcs(&self, doc_id: &str) -> Result<()> {
-        self.pool.flush_to_gcs(doc_id).await
+        self.collaborative_storage.flush_to_gcs(doc_id).await
     }
 
     async fn save_snapshot(&self, doc_id: &str) -> Result<()> {
-        self.pool.save_snapshot(doc_id).await
+        self.collaborative_storage.save_snapshot(doc_id).await
     }
 
     async fn copy_document(&self, doc_id: &str, source: &str) -> Result<()> {

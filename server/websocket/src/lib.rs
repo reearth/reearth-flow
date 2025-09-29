@@ -59,8 +59,7 @@ pub use domain::value_objects::conf::{
     DEFAULT_APP_ENV, DEFAULT_GCS_BUCKET, DEFAULT_ORIGINS, DEFAULT_REDIS_TTL, DEFAULT_REDIS_URL,
     DEFAULT_WS_PORT,
 };
-pub use domain::value_objects::http::*;
-pub use domain::value_objects::sub::Subscription;
+pub use domain::value_objects::http::HistoryItem;
 
 pub use application::services::broadcast_pool::BroadcastPool;
 pub use application::services::document_service::{DocumentService, DocumentServiceError};
@@ -72,7 +71,9 @@ pub use domain::value_objects::redis::{
     RedisStreamResults, StreamMessages, MESSAGE_TYPE_AWARENESS, MESSAGE_TYPE_SYNC, OID_LOCK_KEY,
 };
 pub use infrastructure::gcs::GcsStore;
-pub use infrastructure::websocket::BroadcastGroup;
+pub use infrastructure::websocket::{
+    BroadcastGroup, CollaborativeStorage, ConnectionCounter, ShutdownHandle, Subscription,
+};
 pub use interface::http::handlers::document_handler::DocumentHandler;
 pub use interface::http::router::document_routes;
 pub use server::{ensure_bucket, start_server};

@@ -1,5 +1,6 @@
-use tokio::select;
-use tokio::task::JoinHandle;
+use std::sync::{Arc, Mutex};
+
+use tokio::{select, task::JoinHandle};
 use yrs::sync::protocol::Error;
 
 pub struct Subscription {
@@ -39,5 +40,38 @@ impl ShutdownHandle {
         self.redis_subscriber_task.abort();
         self.heartbeat_task.abort();
         self.sync_task.abort();
+    }
+}
+
+pub struct ConnectionCounter {
+    count: Arc<Mutex<usize>>,
+}
+
+impl ConnectionCounter {
+    pub fn new() -> Self {
+        Self {
+            count: Arc::new(Mutex::new(0)),
+        }
+    }
+
+    pub fn increment(&self) {
+        let mut count = self.count.lock().unwrap();
+        *count += 1;
+    }
+
+    pub fn decrement(&self) {
+        let mut count = self.count.lock().unwrap();
+        *count = count.saturating_sub(1);
+    }
+
+    pub fn get(&self) -> usize {
+        let count = self.count.lock().unwrap();
+        *count
+    }
+}
+
+impl Default for ConnectionCounter {
+    fn default() -> Self {
+        Self::new()
     }
 }

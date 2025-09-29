@@ -8,7 +8,7 @@ use std::sync::Arc;
 use tracing::{error, warn};
 
 use crate::{
-    domain::value_objects::http::{
+    interface::http::dto::{
         CreateSnapshotRequest, DocumentResponse, HistoryMetadataResponse, HistoryResponse,
         ImportDocumentRequest, RollbackRequest, SnapshotResponse,
     },

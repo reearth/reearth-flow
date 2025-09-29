@@ -2,7 +2,8 @@
 use crate::application::kv::DocOps;
 use crate::infrastructure::gcs::GcsStore;
 use crate::infrastructure::redis::RedisStore;
-use crate::{AwarenessRef, Subscription};
+use crate::infrastructure::websocket::types::{ConnectionCounter, ShutdownHandle, Subscription};
+use crate::AwarenessRef;
 
 use anyhow::Result;
 use bytes::Bytes;
@@ -10,7 +11,6 @@ use futures_util::{SinkExt, StreamExt};
 use tracing::{debug, error, info, warn};
 use yrs::types::ToJson;
 
-use crate::domain::value_objects::sub::ShutdownHandle;
 use serde_json;
 use std::sync::Arc;
 use tokio::select;
@@ -25,7 +25,6 @@ use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
 use yrs::{Doc, ReadTxn, Transact, Update};
 
 use crate::domain::value_objects::broadcast::BroadcastConfig;
-use crate::domain::value_objects::count::Count;
 
 pub struct BroadcastGroup {
     awareness_ref: AwarenessRef,
@@ -37,7 +36,7 @@ pub struct BroadcastGroup {
     doc_name: String,
     last_read_id: Arc<Mutex<String>>,
     shutdown_handle: Arc<Mutex<Option<ShutdownHandle>>>,
-    connections_count: Count,
+    connections_count: ConnectionCounter,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -302,7 +301,7 @@ impl BroadcastGroup {
                 sync_task,
                 sync_shutdown_tx,
             }))),
-            connections_count: Count::new(),
+            connections_count: ConnectionCounter::new(),
         })
     }
 

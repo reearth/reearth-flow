@@ -6,7 +6,7 @@ use websocket::{
     conf::Config, domain::repository::document::DocumentRepository, infrastructure::gcs::GcsStore,
     infrastructure::redis::RedisStore,
     infrastructure::repository::document::DocumentRepositoryImpl, server::start_server, AppState,
-    BroadcastPool, DocumentService, WebsocketService,
+    BroadcastPool, CollaborativeStorage, DocumentService, WebsocketService,
 };
 
 #[cfg(feature = "auth")]
@@ -55,19 +55,28 @@ async fn main() {
         }
     };
 
-    let pool = Arc::new(match &redis_store {
-        Some(rs) => BroadcastPool::new(Arc::clone(&store), Arc::clone(rs)),
+    let (pool, collaborative_storage) = match &redis_store {
+        Some(rs) => {
+            let storage = Arc::new(CollaborativeStorage::new(
+                Arc::clone(&store),
+                Arc::clone(rs),
+            ));
+            let pool = Arc::new(BroadcastPool::new(Arc::clone(&store), Arc::clone(rs)));
+            (pool, storage)
+        }
         None => {
             error!("Cannot proceed without Redis store");
             std::process::exit(1);
         }
-    });
+    };
 
     let instance_id = Uuid::new_v4().to_string();
     tracing::info!("Generated instance ID: {}", instance_id);
 
-    let document_repository: Arc<dyn DocumentRepository> =
-        Arc::new(DocumentRepositoryImpl::new(Arc::clone(&pool)));
+    let document_repository: Arc<dyn DocumentRepository> = Arc::new(DocumentRepositoryImpl::new(
+        Arc::clone(&store),
+        Arc::clone(&collaborative_storage),
+    ));
     let document_service = Arc::new(DocumentService::new(Arc::clone(&document_repository)));
     let websocket_service = Arc::new(WebsocketService::new(Arc::clone(&pool)));
 
