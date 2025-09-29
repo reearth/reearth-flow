@@ -1,5 +1,5 @@
 import { useNodes } from "@xyflow/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import { config } from "@flow/config";
 import { useIndexedDB } from "@flow/lib/indexedDB";
@@ -99,7 +99,7 @@ export default ({
   ]);
 
   const handleIntermediateDataSet = useCallback(
-    async (autoSelect = false) => {
+    async (autoSelect?: boolean) => {
       if ((!selected && !autoSelect) || !intermediateDataUrl) return;
 
       const newDebugRunState: DebugRunState = {
@@ -174,6 +174,14 @@ export default ({
     ],
   );
 
+  const handleDoubleClick = useCallback(
+    (e?: MouseEvent) => {
+      e?.preventDefault();
+      handleIntermediateDataSet();
+    },
+    [handleIntermediateDataSet],
+  );
+
   // Auto-select intermediate data for writer target nodes
   useEffect(() => {
     const hasNeverBeenTouched =
@@ -211,6 +219,6 @@ export default ({
     tempWorkflowHasPossibleIssuesFlag,
     intermediateDataIsSet,
     hasIntermediateData,
-    handleIntermediateDataSet,
+    handleDoubleClick,
   };
 };
