@@ -103,11 +103,8 @@ const StartButton: React.FC<{
   return (
     <IconButton
       className={`min-w-[36px] transition-all ${
-        debugRunStarted ||
-        jobStatus === "completed" ||
-        jobStatus === "failed" ||
-        jobStatus === "cancelled"
-          ? "h-8 w-full rounded-lg bg-primary/50 px-4"
+        debugRunStarted || jobStatus
+          ? `h-8 w-full rounded-lg bg-primary/50 px-4 ${jobStatus === "running" || jobStatus === "queued" ? "cursor-pointer" : ""}`
           : "w-[36px]"
       }`}
       tooltipText={jobStatus ?? t("Start debug run of workflow")}
@@ -115,10 +112,7 @@ const StartButton: React.FC<{
       delayDuration={200}
       icon={
         <div>
-          {debugRunStarted ||
-          jobStatus === "completed" ||
-          jobStatus === "failed" ||
-          jobStatus === "cancelled" ? (
+          {debugRunStarted || jobStatus ? (
             <div className="mr-1 flex items-center gap-2">
               <div
                 className={`${
