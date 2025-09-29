@@ -9,7 +9,7 @@ export const createSubGraphs = (workflows: Workflow[]) => {
 
     // Get IDs of enabled nodes to filter edges
     const enabledNodeIds = new Set(convertedNodes.map((node) => node.id));
-    const convertedEdges = convertEdges(swf.edges, enabledNodeIds);
+    const convertedEdges = convertEdges(enabledNodeIds, swf.edges);
 
     const subGraph: EngineReadyGraph = {
       id: swf.id,

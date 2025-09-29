@@ -1,12 +1,8 @@
 import { JobStatus } from "@flow/types";
 
-export const getNodeColors = (
-  type: string,
-  disabled?: boolean,
-  status?: JobStatus,
-) => {
+export const getNodeColors = (type?: string, status?: JobStatus) => {
   const baseColors = nodeColors[type as keyof typeof nodeColors];
-  if (disabled) {
+  if (!type) {
     return [
       nodeColors.disabled.background,
       nodeColors.disabled.border,
@@ -49,7 +45,7 @@ const nodeColors = {
     selectedBackground: "bg-node-transformer-selected",
   },
   subworkflow: {
-    background: "bg-node-subworkflow",
+    background: "bg-node-subworkflow/60",
     border: "border-node-subworkflow",
     selected: "border-node-subworkflow-selected",
     selectedBackground: "bg-node-subworkflow-selected",

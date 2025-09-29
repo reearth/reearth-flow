@@ -1,7 +1,7 @@
 import { DEFAULT_EDGE_PORT } from "@flow/global-constants";
 import type { Edge, EngineReadyEdge } from "@flow/types";
 
-export const convertEdges = (edges?: Edge[], enabledNodeIds?: Set<string>) => {
+export const convertEdges = (enabledNodeIds: Set<string>, edges?: Edge[]) => {
   if (!edges) return [];
 
   // Filter out edges that connect to disabled nodes to ensure the workflow engine only processes valid connections

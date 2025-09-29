@@ -40,9 +40,9 @@ export default ({
     }
     return defaultOutputs;
   }, [data.params?.conditions, defaultOutputs]);
-
+  const nodeType = data.isDisabled ? "disabled" : type;
   const [borderColor, backgroundColor, selectedColor, selectedBackgroundColor] =
-    getNodeColors(type, data.isDisabled);
+    getNodeColors(nodeType);
 
   const handleCollapsedToggle = useCallback(
     (collapsed: boolean) => {
