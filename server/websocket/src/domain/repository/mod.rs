@@ -1,3 +1,3 @@
-pub mod doc;
+pub mod document;
 pub mod health;
 pub mod kv;

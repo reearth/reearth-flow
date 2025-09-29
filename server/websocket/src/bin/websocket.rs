@@ -3,8 +3,10 @@ use std::sync::Arc;
 use tracing::error;
 use uuid::Uuid;
 use websocket::{
-    conf::Config, infrastructure::gcs::GcsStore, infrastructure::redis::RedisStore,
-    server::start_server, AppState, BroadcastPool, DocumentService,
+    conf::Config, domain::repository::document::DocumentRepository, infrastructure::gcs::GcsStore,
+    infrastructure::redis::RedisStore,
+    infrastructure::repository::document::DocumentRepositoryImpl, server::start_server, AppState,
+    BroadcastPool, DocumentService,
 };
 
 #[cfg(feature = "auth")]
@@ -64,7 +66,9 @@ async fn main() {
     let instance_id = Uuid::new_v4().to_string();
     tracing::info!("Generated instance ID: {}", instance_id);
 
-    let document_service = Arc::new(DocumentService::new(Arc::clone(&pool)));
+    let document_repository: Arc<dyn DocumentRepository> =
+        Arc::new(DocumentRepositoryImpl::new(Arc::clone(&pool)));
+    let document_service = Arc::new(DocumentService::new(Arc::clone(&document_repository)));
 
     let state = Arc::new({
         #[cfg(feature = "auth")]
