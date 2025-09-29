@@ -190,15 +190,15 @@ const DebugPreview: React.FC<Props> = ({
         <div className="h-full">
           {/* 2D Viewer Header with actions */}
           <div className="py-1">
-            <div className="flex w-full justify-between rounded-md bg-muted/30 p-1">
+            <div className="flex w-full justify-between p-1">
               <div className="flex items-center gap-1 px-2">
                 <MapPinAreaIcon size={16} />
                 <p className="text-sm font-medium select-none">
                   {t("2D Viewer")}
                 </p>
                 {detectedGeometryType && (
-                  <span className="rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
-                    {detectedGeometryType}
+                  <span className="rounded px-2 text-xs text-muted-foreground">
+                    - {detectedGeometryType} -
                   </span>
                 )}
               </div>

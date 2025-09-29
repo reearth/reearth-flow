@@ -111,7 +111,7 @@ const TableViewer: React.FC<Props> = memo(
                   ` / ${totalFeatures.toLocaleString()} ${t("total")}`}
               </span>
               {detectedGeometryType && (
-                <span className="rounded bg-muted px-2 text-xs">
+                <span className="rounded px-2 text-xs">
                   {detectedGeometryType}
                 </span>
               )}
