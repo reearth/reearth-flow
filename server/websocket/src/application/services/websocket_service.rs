@@ -55,7 +55,7 @@ impl WebsocketService {
             .await
             .map_err(|err| WebsocketServiceError::BroadcastGroup {
                 doc_id: doc_id.to_string(),
-                source: err.into(),
+                source: err,
             })
     }
 

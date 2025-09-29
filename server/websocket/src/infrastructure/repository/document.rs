@@ -117,7 +117,7 @@ impl DocumentRepository for DocumentRepositoryImpl {
                         )))
                     }
                     Ok(false) => Ok(None),
-                    Err(err) => Err(err.into()),
+                    Err(err) => Err(err),
                 }
             }
         }
