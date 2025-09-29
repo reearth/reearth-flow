@@ -43,7 +43,6 @@ const DebugPanel: React.FC = () => {
     fullscreenDebug,
     expanded,
     minimized,
-    showTempPossibleIssuesDialog,
     selectedDataURL,
     dataURLs,
     outputDataForDownload,
@@ -57,7 +56,6 @@ const DebugPanel: React.FC = () => {
     handleExpand,
     handleMinimize,
     handleTabChange,
-    handleShowTempPossibleIssuesDialogClose,
     handleSelectedDataChange,
     handleRowSingleClick,
     handleRowDoubleClick,
@@ -229,15 +227,11 @@ const DebugPanel: React.FC = () => {
                   dataURLs={dataURLs}
                   fileType={fileType}
                   selectedOutputData={selectedOutputData}
-                  showTempPossibleIssuesDialog={showTempPossibleIssuesDialog}
                   selectedFeature={selectedFeature}
                   enableClustering={enableClustering}
                   mapRef={mapRef}
                   cesiumViewerRef={cesiumViewerRef}
                   onConvertedSelectedFeature={setConvertedSelectedFeature}
-                  onShowTempPossibleIssuesDialogClose={
-                    handleShowTempPossibleIssuesDialogClose
-                  }
                   onSelectedFeature={setSelectedFeature}
                   onEnableClusteringChange={setEnableClustering}
                   onFlyToSelectedFeature={handleFlyToSelectedFeature}

@@ -3,19 +3,10 @@ import {
   GlobeIcon,
   MapPinAreaIcon,
   TargetIcon,
-  WarningIcon,
 } from "@phosphor-icons/react";
 import { memo, useCallback, useMemo } from "react";
 
 import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogContentSection,
-  DialogContentWrapper,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -38,12 +29,10 @@ type Props = {
   debugJobState?: JobState;
   onConvertedSelectedFeature: (value: any) => void;
   dataURLs?: { key: string; name: string }[];
-  showTempPossibleIssuesDialog: boolean;
   selectedFeature: any;
   enableClustering?: boolean;
   mapRef: React.RefObject<maplibregl.Map | null>;
   cesiumViewerRef: React.RefObject<any>;
-  onShowTempPossibleIssuesDialogClose: () => void;
   onSelectedFeature: (value: any) => void;
   onEnableClusteringChange: (value: boolean) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
@@ -56,12 +45,10 @@ const DebugPreview: React.FC<Props> = ({
   selectedOutputData,
   dataURLs,
   onConvertedSelectedFeature,
-  showTempPossibleIssuesDialog,
   enableClustering,
   mapRef,
   cesiumViewerRef,
   selectedFeature,
-  onShowTempPossibleIssuesDialogClose,
   onSelectedFeature,
   onEnableClusteringChange,
   onFlyToSelectedFeature,
@@ -277,39 +264,6 @@ const DebugPreview: React.FC<Props> = ({
         </div>
       )}
     </div>
-  ) : showTempPossibleIssuesDialog ? (
-    <Dialog open={showTempPossibleIssuesDialog}>
-      <DialogContent size="sm" hideCloseButton>
-        <DialogHeader className="text-warning">
-          <DialogTitle className="flex justify-center gap-1">
-            <WarningIcon weight="light" />
-            {t("Warning")}
-          </DialogTitle>
-        </DialogHeader>
-        <DialogContentWrapper>
-          <DialogContentSection>
-            <p className="text-sm font-light">
-              {t("Your workflow completed without any output data.")}
-            </p>
-          </DialogContentSection>
-          <DialogContentSection>
-            <p className="text-sm font-light">
-              {t(
-                "Please review the logs to see if there were any errors during the workflow process.",
-              )}
-            </p>
-          </DialogContentSection>
-        </DialogContentWrapper>
-        <DialogFooter>
-          <Button
-            className="self-end"
-            size="sm"
-            onClick={onShowTempPossibleIssuesDialogClose}>
-            {t("OK")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   ) : null;
 };
 

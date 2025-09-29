@@ -49,11 +49,6 @@ export default ({
     [debugJobState?.status],
   );
 
-  const tempWorkflowHasPossibleIssuesFlag = useMemo(
-    () => debugJobState?.tempWorkflowHasPossibleIssuesFlag,
-    [debugJobState?.tempWorkflowHasPossibleIssuesFlag],
-  );
-
   const [hasIntermediateData, setHasIntermediateData] = useState(false);
 
   const intermediateDataIsSet = useMemo(
@@ -216,7 +211,6 @@ export default ({
   return {
     // sourceNodeStatus,
     jobStatus,
-    tempWorkflowHasPossibleIssuesFlag,
     intermediateDataIsSet,
     hasIntermediateData,
     handleDoubleClick,
