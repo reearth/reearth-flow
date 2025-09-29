@@ -460,7 +460,7 @@ where
     ) -> Result<(), Error> {
         let doc = Doc::new();
         let mut txn = doc.transact_mut();
-        let update = Update::decode_v2(data)?;
+        let update = Update::decode_v1(data)?;
 
         txn.apply_update(update)?;
         drop(txn);
