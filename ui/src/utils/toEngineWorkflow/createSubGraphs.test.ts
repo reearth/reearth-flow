@@ -1,4 +1,4 @@
-import { describe, expect, vi } from "vitest";
+import { describe, expect, vi, beforeEach, test, it } from "vitest";
 
 import type {
   Workflow,
@@ -84,7 +84,7 @@ describe("createSubGraphs", () => {
     ]);
 
     expect(convertNodes).toHaveBeenCalledWith(mockNodes);
-    expect(convertEdges).toHaveBeenCalledWith(mockEdges);
+    expect(convertEdges).toHaveBeenCalledWith(mockEdges, new Set(["node1", "node2"]));
   });
 
   test("should correctly create sub-graphs for multiple workflows", () => {
@@ -173,6 +173,10 @@ describe("createSubGraphs", () => {
 
     expect(convertNodes).toHaveBeenCalledTimes(2);
     expect(convertEdges).toHaveBeenCalledTimes(2);
+
+    // Check that convertEdges was called with the correct enabled node IDs
+    expect(convertEdges).toHaveBeenNthCalledWith(1, mockWorkflows[0].edges, new Set(["1"]));
+    expect(convertEdges).toHaveBeenNthCalledWith(2, mockWorkflows[1].edges, new Set(["2"]));
   });
 
   it('should use "undefined-graph" as name when workflow name is not provided', () => {
@@ -195,5 +199,8 @@ describe("createSubGraphs", () => {
         edges: [],
       },
     ]);
+
+    expect(convertNodes).toHaveBeenCalledWith([]);
+    expect(convertEdges).toHaveBeenCalledWith([], new Set([]));
   });
 });
