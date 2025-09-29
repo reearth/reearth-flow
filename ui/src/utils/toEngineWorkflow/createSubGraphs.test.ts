@@ -85,8 +85,8 @@ describe("createSubGraphs", () => {
 
     expect(convertNodes).toHaveBeenCalledWith(mockNodes);
     expect(convertEdges).toHaveBeenCalledWith(
-      mockEdges,
       new Set(["node1", "node2"]),
+      mockEdges,
     );
   });
 
@@ -129,14 +129,15 @@ describe("createSubGraphs", () => {
         }),
       ),
     );
-    (convertEdges as any).mockImplementation((edges: Edge[]) =>
-      edges.map((edge) => ({
-        id: edge.id,
-        from: edge.source,
-        to: edge.target,
-        fromPort: "default",
-        toPort: "default",
-      })),
+    (convertEdges as any).mockImplementation(
+      (_enabledNodeIds: Set<string>, edges: Edge[]) =>
+        edges.map((edge) => ({
+          id: edge.id,
+          from: edge.source,
+          to: edge.target,
+          fromPort: "default",
+          toPort: "default",
+        })),
     );
 
     const result = createSubGraphs(mockWorkflows);
@@ -180,13 +181,13 @@ describe("createSubGraphs", () => {
     // Check that convertEdges was called with the correct enabled node IDs
     expect(convertEdges).toHaveBeenNthCalledWith(
       1,
-      mockWorkflows[0].edges,
       new Set(["1"]),
+      mockWorkflows[0].edges,
     );
     expect(convertEdges).toHaveBeenNthCalledWith(
       2,
-      mockWorkflows[1].edges,
       new Set(["2"]),
+      mockWorkflows[1].edges,
     );
   });
 
@@ -212,6 +213,6 @@ describe("createSubGraphs", () => {
     ]);
 
     expect(convertNodes).toHaveBeenCalledWith([]);
-    expect(convertEdges).toHaveBeenCalledWith([], new Set([]));
+    expect(convertEdges).toHaveBeenCalledWith(new Set([]), []);
   });
 });

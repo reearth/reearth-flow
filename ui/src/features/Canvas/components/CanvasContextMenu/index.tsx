@@ -24,6 +24,7 @@ import { Node, NodeChange } from "@flow/types";
 type Props = {
   contextMenu: ContextMenuMeta;
   data?: Node | Node[];
+  allNodes: Node[];
   selectedEdgeIds?: string[];
   onNodesChange?: (changes: NodeChange[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
@@ -40,6 +41,7 @@ type Props = {
 const CanvasContextMenu: React.FC<Props> = ({
   contextMenu,
   data,
+  allNodes,
   onWorkflowOpen,
   onNodeSettings,
   selectedEdgeIds,
@@ -55,8 +57,19 @@ const CanvasContextMenu: React.FC<Props> = ({
   const t = useT();
   const { value } = useIndexedDB("general");
 
-  const nodes = Array.isArray(data) ? data : undefined;
-  const node = Array.isArray(data) ? undefined : data;
+  const freshData = useMemo(() => {
+    if (!data) return undefined;
+
+    if (Array.isArray(data)) {
+      const nodeIds = data.map((n) => n.id);
+      return allNodes.filter((n) => nodeIds.includes(n.id));
+    } else {
+      return allNodes.find((n) => n.id === data.id);
+    }
+  }, [data, allNodes]);
+
+  const nodes = Array.isArray(freshData) ? freshData : undefined;
+  const node = Array.isArray(freshData) ? undefined : freshData;
 
   const handleNodeSettingsOpen = useCallback(
     (node: Node) => {
