@@ -1,0 +1,25 @@
+{
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
+  "description": "Test quality check L14",
+  "expectedOutput": {
+    "expectedFile": [
+      "02_建築物_立体のエラー.csv",
+      "02_建築物_非水密体.csv"
+    ]
+  },
+  "cityGmlPath": "udx/bldg/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "intermediateAssertions": [
+    {
+      "edgeId": "e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f.1478ecb6-8c64-4b25-80f1-eb158be5a9c5",
+      "expectedFile": "not_closed_issue_count_test_filtered.jsonl",
+      "jsonFilter": "{attributes}"
+    },
+    {
+      "edgeId": "e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f.01cef8a5-e953-4895-ad8e-93edbf2e65ae",
+      "expectedFile": "solid_other_issue_count_test_filtered.jsonl",
+      "jsonFilter": "{attributes}"
+    }
+  ]
+}

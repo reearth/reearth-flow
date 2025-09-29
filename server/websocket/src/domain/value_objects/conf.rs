@@ -1,6 +1,6 @@
 pub const DEFAULT_REDIS_URL: &str = "redis://127.0.0.1:6379";
 pub const DEFAULT_REDIS_TTL: u64 = 43200;
-pub const DEFAULT_REDIS_STREAM_TRIM_INTERVAL: u64 = 60; // 10 minutes
+pub const DEFAULT_REDIS_STREAM_TRIM_INTERVAL: u64 = 60;
 pub const DEFAULT_REDIS_STREAM_MAX_MESSAGE_AGE: u64 = 3600000; // 1 hour in milliseconds
 pub const DEFAULT_REDIS_STREAM_MAX_LENGTH: u64 = 100;
 pub const DEFAULT_GCS_BUCKET: &str = "yrs-dev";

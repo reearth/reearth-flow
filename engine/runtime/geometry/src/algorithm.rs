@@ -32,8 +32,10 @@ pub mod normal_3d;
 pub mod relate;
 pub mod remove_repeated_points;
 pub mod rotate;
+pub mod segment_triangle_intersection;
 pub mod sweep;
 pub mod transverse_mercator_proj;
+pub mod triangle_intersection;
 pub mod utils;
 pub mod winding_order;
 
