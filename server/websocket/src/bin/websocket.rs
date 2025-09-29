@@ -4,7 +4,7 @@ use tracing::error;
 use uuid::Uuid;
 use websocket::{
     conf::Config, infrastructure::gcs::GcsStore, infrastructure::redis::RedisStore,
-    server::start_server, AppState, BroadcastPool,
+    server::start_server, AppState, BroadcastPool, DocumentService,
 };
 
 #[cfg(feature = "auth")]
@@ -64,6 +64,8 @@ async fn main() {
     let instance_id = Uuid::new_v4().to_string();
     tracing::info!("Generated instance ID: {}", instance_id);
 
+    let document_service = Arc::new(DocumentService::new(Arc::clone(&pool)));
+
     let state = Arc::new({
         #[cfg(feature = "auth")]
         {
@@ -77,13 +79,18 @@ async fn main() {
             tracing::info!("Auth service initialized");
             AppState {
                 pool,
+                document_service: Arc::clone(&document_service),
                 auth,
                 instance_id,
             }
         }
         #[cfg(not(feature = "auth"))]
         {
-            AppState { pool, instance_id }
+            AppState {
+                pool,
+                document_service,
+                instance_id,
+            }
         }
     });
 

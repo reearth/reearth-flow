@@ -36,6 +36,7 @@ pub struct RollbackQuery {
 #[derive(Clone, Debug)]
 pub struct AppState {
     pub pool: Arc<BroadcastPool>,
+    pub document_service: Arc<DocumentService>,
     pub auth: Arc<AuthService>,
     pub instance_id: String,
 }
@@ -44,6 +45,7 @@ pub struct AppState {
 #[derive(Clone, Debug)]
 pub struct AppState {
     pub pool: Arc<BroadcastPool>,
+    pub document_service: Arc<DocumentService>,
     pub instance_id: String,
 }
 
@@ -59,6 +61,7 @@ pub use domain::value_objects::http::*;
 pub use domain::value_objects::sub::Subscription;
 
 pub use application::services::broadcast_pool::BroadcastPool;
+pub use application::services::document_service::{DocumentService, DocumentServiceError};
 pub use domain::entity::broadcast::BroadcastGroup;
 #[cfg(feature = "auth")]
 pub use domain::value_objects::conf::DEFAULT_AUTH_URL;
