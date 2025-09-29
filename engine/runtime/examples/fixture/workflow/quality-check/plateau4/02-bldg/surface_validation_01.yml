@@ -449,7 +449,7 @@ nodes:
             env.get("__value").gmlFilename
         - attribute: feature_type
           expr: |
-           env.get("__value").featureType
+            env.get("__value").featureType
         - attribute: lod
           expr: |
             env.get("__value").lod
