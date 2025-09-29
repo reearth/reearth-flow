@@ -64,7 +64,7 @@ export const convertNodes = (nodes?: Node[]) => {
       return n;
     })
     .filter(isDefined);
-  console.log("convertedNodes", convertedNodes);
+
   return convertedNodes;
 };
 
