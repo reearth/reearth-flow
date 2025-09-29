@@ -107,7 +107,7 @@ const StartButton: React.FC<{
         jobStatus === "completed" ||
         jobStatus === "failed" ||
         jobStatus === "cancelled"
-          ? "w-full rounded-xl bg-primary/80 px-4"
+          ? "w-full rounded-lg bg-primary/50 px-4"
           : "w-[36px]"
       }`}
       tooltipText={t("Start debug run of workflow")}
