@@ -1,6 +1,8 @@
 import {
   ClipboardIcon,
   CopyIcon,
+  EyeIcon,
+  EyeSlashIcon,
   GearFineIcon,
   GraphIcon,
   ScissorsIcon,
@@ -31,6 +33,7 @@ type Props = {
   onCopy?: (node?: Node) => void;
   onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: (menuPosition?: XYPosition) => void;
+  onNodeDisable?: (nodeId: string, disabled: boolean) => void;
   onClose: () => void;
 };
 
@@ -46,6 +49,7 @@ const CanvasContextMenu: React.FC<Props> = ({
   onCopy,
   onCut,
   onPaste,
+  onNodeDisable,
   onClose,
 }) => {
   const t = useT();
@@ -53,7 +57,7 @@ const CanvasContextMenu: React.FC<Props> = ({
 
   const nodes = Array.isArray(data) ? data : undefined;
   const node = Array.isArray(data) ? undefined : data;
-
+  console.log("nODE", node);
   const handleNodeSettingsOpen = useCallback(
     (node: Node) => {
       onNodeSettings?.(undefined, node.id);
@@ -88,6 +92,18 @@ const CanvasContextMenu: React.FC<Props> = ({
       }
     },
     [selectedEdgeIds, onBeforeDelete, onNodesChange, onEdgesChange],
+  );
+
+  const handleNodeToDisable = useCallback(
+    async (node?: Node) => {
+      if (!node) return;
+      if (node.data?.isDisabled) {
+        onNodeDisable?.(node.id, false);
+      } else {
+        onNodeDisable?.(node.id, true);
+      }
+    },
+    [onNodeDisable],
   );
   const menuItems = useMemo(() => {
     const wrapWithClose = (callback: () => void) => () => {
@@ -149,6 +165,24 @@ const CanvasContextMenu: React.FC<Props> = ({
             {
               type: "action" as const,
               props: {
+                label: node.data?.isDisabled
+                  ? t("Enable Node")
+                  : t("Disable Node"),
+                icon: node.data?.isDisabled ? (
+                  <EyeIcon weight="light" />
+                ) : (
+                  <EyeSlashIcon weight="light" />
+                ),
+                onCallback: wrapWithClose(() => handleNodeToDisable?.(node)),
+              },
+            },
+          ]
+        : []),
+      ...(node
+        ? [
+            {
+              type: "action" as const,
+              props: {
                 label: t("Node Settings"),
                 icon: <GearFineIcon weight="light" />,
                 onCallback: wrapWithClose(() => handleNodeSettingsOpen(node)),
@@ -197,6 +231,7 @@ const CanvasContextMenu: React.FC<Props> = ({
     handleNodeDelete,
     handleNodeSettingsOpen,
     handleSubworkflowOpen,
+    handleNodeToDisable,
   ]);
 
   return <ContextMenu items={menuItems} contextMenuMeta={contextMenu} />;

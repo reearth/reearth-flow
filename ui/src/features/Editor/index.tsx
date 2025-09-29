@@ -84,6 +84,7 @@ export default function Editor({
     handlePaneMouseMove,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
+    handleNodeDisable,
   } = useHooks({
     yDoc,
     yWorkflows,
@@ -165,6 +166,7 @@ export default function Editor({
               onCut={handleCut}
               onPaste={handlePaste}
               onPaneMouseMove={handlePaneMouseMove}
+              onNodeDisable={handleNodeDisable}
             />
           </OverlayUI>
 
