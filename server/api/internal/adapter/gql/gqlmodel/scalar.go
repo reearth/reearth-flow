@@ -96,10 +96,16 @@ func UnmarshalBytes(v interface{}) (Bytes, error) {
 	if arr, ok := v.([]interface{}); ok {
 		bytes := make([]byte, len(arr))
 		for i, item := range arr {
-			if num, ok := item.(float64); ok {
-				bytes[i] = byte(num)
+			if num, ok := item.(json.Number); ok {
+				if val, err := num.Int64(); err == nil {
+					bytes[i] = byte(val)
+				} else if val, err := num.Float64(); err == nil {
+					bytes[i] = byte(val)
+				} else {
+					return nil, fmt.Errorf("array element at index %d is not a valid number: %v", i, num)
+				}
 			} else {
-				return nil, fmt.Errorf("array element at index %d is not a number", i)
+				return nil, fmt.Errorf("array element at index %d is not a number, type=%T, value=%v", i, item, item)
 			}
 		}
 		return Bytes(bytes), nil
