@@ -17,6 +17,10 @@ pub type AwarenessRef = Arc<RwLock<yrs::sync::Awareness>>;
 
 pub mod server;
 
+pub use infrastructure::websocket::BroadcastPool;
+pub type WebsocketService =
+    application::services::websocket_service::WebsocketService<BroadcastPool>;
+
 #[cfg(feature = "auth")]
 #[derive(Debug, serde::Deserialize)]
 pub struct AuthQuery {
@@ -61,9 +65,8 @@ pub use domain::value_objects::conf::{
 };
 pub use domain::value_objects::http::HistoryItem;
 
-pub use application::services::broadcast_pool::BroadcastPool;
 pub use application::services::document_service::{DocumentService, DocumentServiceError};
-pub use application::services::websocket_service::{WebsocketService, WebsocketServiceError};
+pub use application::services::websocket_service::WebsocketServiceError;
 #[cfg(feature = "auth")]
 pub use domain::value_objects::conf::DEFAULT_AUTH_URL;
 pub use domain::value_objects::redis::{

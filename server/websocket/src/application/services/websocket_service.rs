@@ -14,9 +14,8 @@ use tokio::time;
 use tracing::{debug, error, info, warn};
 use yrs::sync::Error as YSyncError;
 
-use crate::application::services::broadcast_pool::BroadcastPool;
+use crate::application::services::broadcast_pool::{BroadcastGroupHandle, BroadcastGroupProvider};
 use crate::infrastructure::websocket::types::Subscription;
-use crate::infrastructure::websocket::BroadcastGroup;
 
 const CONNECTION_TIMEOUT: Duration = Duration::from_secs(86_400);
 
@@ -37,19 +36,22 @@ pub enum WebsocketServiceError {
 }
 
 #[derive(Clone, Debug)]
-pub struct WebsocketService {
-    pool: Arc<BroadcastPool>,
+pub struct WebsocketService<P>
+where
+    P: BroadcastGroupProvider + 'static,
+{
+    pool: Arc<P>,
 }
 
-impl WebsocketService {
-    pub fn new(pool: Arc<BroadcastPool>) -> Self {
+impl<P> WebsocketService<P>
+where
+    P: BroadcastGroupProvider + 'static,
+{
+    pub fn new(pool: Arc<P>) -> Self {
         Self { pool }
     }
 
-    pub async fn get_group(
-        &self,
-        doc_id: &str,
-    ) -> Result<Arc<BroadcastGroup>, WebsocketServiceError> {
+    pub async fn get_group(&self, doc_id: &str) -> Result<Arc<P::Group>, WebsocketServiceError> {
         self.pool
             .get_group(doc_id)
             .await
@@ -61,7 +63,7 @@ impl WebsocketService {
 
     pub async fn handle_connection<Sink, Stream, E>(
         &self,
-        group: Arc<BroadcastGroup>,
+        group: Arc<P::Group>,
         sink: Sink,
         stream: Stream,
         doc_id: &str,
@@ -120,31 +122,35 @@ impl WebsocketService {
 
 type CompletionFuture = Pin<Box<dyn Future<Output = Result<(), YSyncError>> + Send>>;
 
-struct BroadcastConnection<Sink, Stream> {
+struct BroadcastConnection<G, Sink, Stream>
+where
+    G: BroadcastGroupHandle + ?Sized + 'static,
+{
     broadcast_sub: Option<Subscription>,
     completion_future: Option<CompletionFuture>,
     _user_token: Option<String>,
-    broadcast_group: Option<Arc<BroadcastGroup>>,
+    broadcast_group: Option<Arc<G>>,
     sink: PhantomData<Sink>,
     stream: PhantomData<Stream>,
 }
 
-impl<Sink, Stream, E> BroadcastConnection<Sink, Stream>
+impl<G, Sink, Stream, E> BroadcastConnection<G, Sink, Stream>
 where
+    G: BroadcastGroupHandle + ?Sized + 'static,
     Sink: SinkExt<Bytes, Error = E> + Send + Sync + Unpin + 'static,
     Stream: StreamExt<Item = Result<Bytes, E>> + Send + Sync + Unpin + 'static,
     E: std::error::Error + Into<YSyncError> + Send + Sync + 'static,
 {
     async fn new(
-        broadcast_group: Arc<BroadcastGroup>,
+        broadcast_group: Arc<G>,
         sink: Sink,
         stream: Stream,
         user_token: Option<String>,
     ) -> Self {
         let sink = Arc::new(Mutex::new(sink));
-        let group_clone = broadcast_group.clone();
+        let group_clone = Arc::clone(&broadcast_group);
 
-        let broadcast_sub = broadcast_group.subscribe(sink.clone(), stream).await;
+        let broadcast_sub = broadcast_group.subscribe(Arc::clone(&sink), stream).await;
 
         BroadcastConnection {
             broadcast_sub: Some(broadcast_sub),
@@ -157,8 +163,9 @@ where
     }
 }
 
-impl<Sink, Stream, E> Future for BroadcastConnection<Sink, Stream>
+impl<G, Sink, Stream, E> Future for BroadcastConnection<G, Sink, Stream>
 where
+    G: BroadcastGroupHandle + ?Sized + 'static,
     Sink: SinkExt<Bytes, Error = E> + Send + Sync + Unpin + 'static,
     Stream: StreamExt<Item = Result<Bytes, E>> + Send + Sync + Unpin + 'static,
     E: std::error::Error + Into<YSyncError> + Send + Sync + 'static,
@@ -189,10 +196,13 @@ where
     }
 }
 
-impl<Sink, Stream> Drop for BroadcastConnection<Sink, Stream> {
+impl<G, Sink, Stream> Drop for BroadcastConnection<G, Sink, Stream>
+where
+    G: BroadcastGroupHandle + ?Sized + 'static,
+{
     fn drop(&mut self) {
         if let Some(group) = self.broadcast_group.take() {
-            let group_clone = group.clone();
+            let group_clone = Arc::clone(&group);
             tokio::spawn(async move {
                 if let Err(e) = group_clone.cleanup_client_awareness().await {
                     error!("Failed to cleanup awareness: {}", e);
