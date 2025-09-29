@@ -60,7 +60,7 @@ const SharedCanvasTopBar: React.FC<Props> = ({
   const navigate = useNavigate();
 
   return (
-    <div className="flex h-[44px] w-[100vw] shrink-0 justify-between bg-secondary">
+    <div className="flex h-[42px] w-[100vw] shrink-0 justify-between bg-secondary">
       <div className="flex items-center gap-4 border-b pr-2 pl-4">
         <div onClick={() => navigate({ to: "/" })}>
           <FlowLogo className="size-7 cursor-pointer transition-all" />
