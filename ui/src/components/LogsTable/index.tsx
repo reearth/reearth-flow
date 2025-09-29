@@ -206,7 +206,7 @@ const LogsTable = ({
               {table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className={` ${row.original.level === "ERROR" ? "text-destructive" : ""}`}
+                  className={` ${row.original.level === "ERROR" ? "text-destructive" : row.original.level === "SUCCESS" ? "text-success/80" : ""}`}
                   data-state={row.getIsSelected() && "selected"}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
