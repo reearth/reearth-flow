@@ -128,7 +128,7 @@ const Toolbox: React.FC<Props> = ({
       <div className="rounded bg-secondary">
         <div
           className={`
-          flex size-9 justify-center rounded align-middle
+          flex h-8 w-18 justify-center rounded align-middle
           ${
             nodeType === "reader"
               ? "bg-node-reader/60"
@@ -168,7 +168,7 @@ const Toolbox: React.FC<Props> = ({
   };
 
   return (
-    <div className="self-start rounded-xl border border-primary bg-secondary/70 px-2 py-1 shadow-md shadow-secondary backdrop-blur-xs">
+    <div className="self-start rounded-xl border border-primary bg-secondary/70 p-1 shadow-md shadow-secondary backdrop-blur-xs">
       <div className="flex flex-wrap gap-2 rounded-md transition-all">
         {availableTools.map((tool, idx) =>
           tool.id === "break" ? (
@@ -176,7 +176,7 @@ const Toolbox: React.FC<Props> = ({
           ) : (
             <div key={tool.id} className="self-center rounded-md bg-secondary">
               <IconButton
-                className={`dndnode-${tool.id} h-8 w-14 cursor-grab backdrop-blur-xs ${
+                className={`dndnode-${tool.id} h-8 w-18 cursor-grab backdrop-blur-xs ${
                   tool.id === "reader"
                     ? "bg-node-reader/40 hover:bg-node-reader/80"
                     : tool.id === "writer"
@@ -206,8 +206,8 @@ const Toolbox: React.FC<Props> = ({
           ) : (
             <IconButton
               key={action.id}
-              className="h-8 w-14 gap-0 rounded-[4px] hover:bg-primary/60"
-              tooltipPosition="right"
+              className="h-8 w-10 gap-0 rounded-[4px] hover:bg-primary/60"
+              tooltipPosition="bottom"
               tooltipText={action.name}
               tooltipOffset={4}
               showArrow

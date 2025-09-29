@@ -8,7 +8,6 @@ import {
   Toolbox,
   NodePickerDialog,
   LayoutOptionsDialog,
-  JobStatus,
   DebugPanel,
 } from "./components";
 
@@ -66,7 +65,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             onRedo={onWorkflowRedo}
             onUndo={onWorkflowUndo}
           />
-          <JobStatus />
         </div>
         <div
           id="left-top"
@@ -74,7 +72,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           <div className="self-start" />
         </div>
         <div id="right-top" className="absolute top-2 right-2" />
-        <div id="left-bottom" className="absolute bottom-2 left-2">
+        <div id="left-bottom" className="absolute bottom-2 left-2 z-1">
           <DebugPanel />
         </div>
         <div

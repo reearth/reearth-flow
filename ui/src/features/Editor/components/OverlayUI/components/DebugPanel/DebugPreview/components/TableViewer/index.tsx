@@ -101,7 +101,7 @@ const TableViewer: React.FC<Props> = memo(
           </div>
 
           {/* Status Display */}
-          <div className="mt-1 flex items-center justify-between rounded-md bg-muted/50 px-3 py-1 text-xs text-muted-foreground">
+          <div className="mt-1 flex items-center justify-between rounded-md px-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-4">
               <span>
                 {t("Rows")}:{" "}
