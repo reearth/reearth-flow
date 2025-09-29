@@ -1,22 +1,13 @@
 package e2e
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
 	"sync/atomic"
 	"testing"
-
-	"github.com/gavv/httpexpect/v2"
-	"github.com/reearth/reearth-flow/api/internal/app/config"
-	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
-	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
-	usermockrepo "github.com/reearth/reearth-flow/api/pkg/user/mockrepo"
-	pkgworkspace "github.com/reearth/reearth-flow/api/pkg/workspace"
-	workspacemockrepo "github.com/reearth/reearth-flow/api/pkg/workspace/mockrepo"
-	"github.com/stretchr/testify/assert"
-	"go.uber.org/mock/gomock"
 )
 
 type capturedImport struct {
@@ -27,8 +18,6 @@ type capturedImport struct {
 type importRequest struct {
 	Data []int `json:"data"`
 }
-
-var _ *httpexpect.Expect
 
 func startMockWS(t *testing.T) (*httptest.Server, *atomic.Pointer[capturedImport]) {
 	t.Helper()
@@ -53,52 +42,22 @@ func startMockWS(t *testing.T) (*httptest.Server, *atomic.Pointer[capturedImport
 	return srv, cap
 }
 
-func TestImportProject_SendsNumberArrayToWebsocket(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	operatorID := pkguser.NewID()
-	operator := factory.NewUser(func(b *pkguser.Builder) {
-		b.ID(operatorID)
-		b.Name("operator")
-		b.Email("operator@e2e.com")
-	})
-	wid := pkgworkspace.NewID()
-	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) { b.ID(wid) })
-
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
-	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
-	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
-	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil).AnyTimes()
-	mock := &TestMocks{UserRepo: mockUserRepo, WorkspaceRepo: mockWorkspaceRepo}
-
+func TestImportDocument_DirectToWebsocket_WithNumberArray(t *testing.T) {
 	ws, cap := startMockWS(t)
 	defer ws.Close()
 
-	e, _ := StartGQLServer(t, &config.Config{
-		Origins:                  []string{"https://example.com"},
-		AuthSrv:                  config.AuthSrvConfig{Disabled: true},
-		WebsocketThriftServerURL: ws.URL,
-	}, true, true, mock)
+	docID := "e2e-doc-id"
+	payload := importRequest{Data: []int{1, 2, 3, 255}}
+	body, _ := json.Marshal(payload)
 
-	projectID := testCreateProject(t, e, operatorID.String(), wid.String())
-
-	mutation := `mutation ImportProject($projectId: ID!, $data: Bytes!) {\n  importProject(projectId: $projectId, data: $data)\n}`
-	variables := map[string]any{
-		"projectId": projectID,
-		"data":      []int{1, 2, 3, 255},
+	resp, err := http.Post(ws.URL+"/api/document/"+docID+"/import", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("post to mock websocket failed: %v", err)
 	}
-	req := GraphQLRequest{Query: mutation, Variables: variables}
-
-	res := e.POST("/api/graphql").
-		WithHeader("Origin", "https://example.com").
-		WithHeader("authorization", "Bearer test").
-		WithHeader("X-Reearth-Debug-User", operatorID.String()).
-		WithHeader("Content-Type", "application/json").
-		WithJSON(req).
-		Expect().Status(http.StatusOK).JSON()
-
-	res.Object().Value("data").Object().Value("importProject").Boolean().IsTrue()
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected status: %d", resp.StatusCode)
+	}
 
 	ci := cap.Load()
 	if ci == nil {
@@ -108,5 +67,12 @@ func TestImportProject_SendsNumberArrayToWebsocket(t *testing.T) {
 	if err := json.Unmarshal(ci.Body, &got); err != nil {
 		t.Fatalf("mock body unmarshal failed: %v body=%s", err, string(ci.Body))
 	}
-	assert.Equal(t, []int{1, 2, 3, 255}, got.Data)
+	if len(got.Data) != len(payload.Data) {
+		t.Fatalf("length mismatch: got %d want %d", len(got.Data), len(payload.Data))
+	}
+	for i := range payload.Data {
+		if got.Data[i] != payload.Data[i] {
+			t.Fatalf("byte %d mismatch: got %d want %d", i, got.Data[i], payload.Data[i])
+		}
+	}
 }
