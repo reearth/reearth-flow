@@ -5,15 +5,12 @@ use tokio::sync::RwLock;
 pub mod auth;
 
 pub mod application;
-mod broadcast;
 pub mod conf;
 pub mod domain;
 pub mod infrastructure;
 pub mod interface;
 pub mod tools;
 pub mod ws;
-pub use broadcast::group;
-pub use broadcast::pool;
 pub use infrastructure::redis::RedisStore;
 
 pub type AwarenessRef = Arc<RwLock<yrs::sync::Awareness>>;
@@ -61,16 +58,16 @@ pub use domain::value_objects::conf::{
 pub use domain::value_objects::http::*;
 pub use domain::value_objects::sub::Subscription;
 
+pub use application::services::broadcast_pool::BroadcastPool;
+pub use domain::entity::broadcast::BroadcastGroup;
 #[cfg(feature = "auth")]
 pub use domain::value_objects::conf::DEFAULT_AUTH_URL;
 pub use domain::value_objects::redis::{
     RedisConfig, RedisField, RedisFields, RedisPool, RedisStreamMessage, RedisStreamResult,
     RedisStreamResults, StreamMessages, MESSAGE_TYPE_AWARENESS, MESSAGE_TYPE_SYNC, OID_LOCK_KEY,
 };
-pub use group::BroadcastGroup;
 pub use infrastructure::gcs::GcsStore;
 pub use interface::http::handlers::document_handler::DocumentHandler;
 pub use interface::http::router::document_routes;
 pub use interface::websocket::conn::Connection;
-pub use pool::BroadcastPool;
 pub use server::{ensure_bucket, start_server};

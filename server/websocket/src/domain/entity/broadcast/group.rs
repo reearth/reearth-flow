@@ -24,7 +24,7 @@ use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
 use yrs::{Doc, ReadTxn, Transact, Update};
 
-use super::types::BroadcastConfig;
+use crate::domain::value_objects::broadcast::BroadcastConfig;
 use crate::domain::value_objects::count::Count;
 
 pub struct BroadcastGroup {

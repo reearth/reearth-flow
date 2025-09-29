@@ -4,7 +4,7 @@ use tracing::error;
 use uuid::Uuid;
 use websocket::{
     conf::Config, infrastructure::gcs::GcsStore, infrastructure::redis::RedisStore,
-    pool::BroadcastPool, server::start_server, AppState,
+    server::start_server, AppState, BroadcastPool,
 };
 
 #[cfg(feature = "auth")]

@@ -11,7 +11,7 @@ use tracing::{debug, error};
 use yrs::sync::Error;
 
 use crate::domain::value_objects::sub::Subscription;
-use crate::group::BroadcastGroup;
+use crate::BroadcastGroup;
 
 type CompletionFuture = Pin<Box<dyn Future<Output = Result<(), Error>> + Send>>;
 

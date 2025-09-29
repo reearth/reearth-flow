@@ -1,7 +1,7 @@
 use crate::application::kv::DocOps;
-use crate::broadcast::pool::BroadcastPool;
 use crate::infrastructure::gcs::GcsStore;
 use crate::infrastructure::redis::RedisStore;
+use crate::BroadcastPool;
 use anyhow::Result;
 use std::sync::Arc;
 use tokio::time::{interval, Duration};

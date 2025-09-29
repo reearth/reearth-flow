@@ -1,8 +1,8 @@
 use crate::application::kv::DocOps;
-use crate::broadcast::group::BroadcastGroup;
 use crate::infrastructure::gcs::GcsStore;
 use crate::infrastructure::redis::RedisStore;
 use crate::AwarenessRef;
+use crate::BroadcastGroup;
 use anyhow::Result;
 use bytes;
 use dashmap::DashMap;
@@ -13,7 +13,7 @@ use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
 
-use super::types::BroadcastConfig;
+use crate::domain::value_objects::broadcast::BroadcastConfig;
 
 #[derive(Debug, Clone)]
 pub struct BroadcastGroupManager {
