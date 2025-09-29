@@ -1,7 +1,5 @@
-use crate::infrastructure::gcs::UpdateInfo;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
-use yrs::updates::encoder::Encode;
 
 #[derive(Debug, Clone)]
 pub struct HistoryItem {
@@ -10,13 +8,12 @@ pub struct HistoryItem {
     pub timestamp: chrono::DateTime<Utc>,
 }
 
-impl From<UpdateInfo> for HistoryItem {
-    fn from(info: UpdateInfo) -> Self {
-        HistoryItem {
-            version: info.clock as u64,
-            updates: info.update.encode_v1(),
-            timestamp: chrono::DateTime::from_timestamp(info.timestamp.unix_timestamp(), 0)
-                .unwrap_or(Utc::now()),
+impl HistoryItem {
+    pub fn new(version: u64, updates: Vec<u8>, timestamp: chrono::DateTime<Utc>) -> Self {
+        Self {
+            version,
+            updates,
+            timestamp,
         }
     }
 }

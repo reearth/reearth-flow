@@ -4,6 +4,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use time::OffsetDateTime;
+use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
 use crate::application::kv::DocOps;
@@ -46,7 +47,15 @@ impl DocumentRepositoryImpl {
     }
 
     fn updates_to_history_items(updates: Vec<UpdateInfo>) -> Vec<HistoryItem> {
-        updates.into_iter().map(HistoryItem::from).collect()
+        updates
+            .into_iter()
+            .map(|info| {
+                let timestamp =
+                    chrono::DateTime::from_timestamp(info.timestamp.unix_timestamp(), 0)
+                        .unwrap_or_else(Utc::now);
+                HistoryItem::new(info.clock as u64, info.update.encode_v1(), timestamp)
+            })
+            .collect()
     }
 
     fn metadata_list_to_history(metadata: Vec<(u32, OffsetDateTime)>) -> Vec<(u32, DateTime<Utc>)> {
@@ -142,7 +151,11 @@ impl DocumentRepository for DocumentRepositoryImpl {
     ) -> Result<Option<HistoryItem>> {
         let store = self.store();
         let result = store.get_updates_by_version(doc_id, version as u32).await?;
-        Ok(result.map(HistoryItem::from))
+        Ok(result.map(|info| {
+            let timestamp = chrono::DateTime::from_timestamp(info.timestamp.unix_timestamp(), 0)
+                .unwrap_or_else(Utc::now);
+            HistoryItem::new(info.clock as u64, info.update.encode_v1(), timestamp)
+        }))
     }
 
     async fn rollback(&self, doc_id: &str, version: u64) -> Result<Document> {

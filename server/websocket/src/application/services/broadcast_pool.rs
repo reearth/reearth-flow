@@ -1,8 +1,8 @@
 use crate::application::kv::DocOps;
 use crate::infrastructure::gcs::GcsStore;
 use crate::infrastructure::redis::RedisStore;
+use crate::infrastructure::websocket::BroadcastGroup;
 use crate::AwarenessRef;
-use crate::BroadcastGroup;
 use anyhow::Result;
 use bytes;
 use dashmap::DashMap;

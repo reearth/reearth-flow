@@ -65,7 +65,6 @@ pub use domain::value_objects::sub::Subscription;
 pub use application::services::broadcast_pool::BroadcastPool;
 pub use application::services::document_service::{DocumentService, DocumentServiceError};
 pub use application::services::websocket_service::{WebsocketService, WebsocketServiceError};
-pub use domain::entity::broadcast::BroadcastGroup;
 #[cfg(feature = "auth")]
 pub use domain::value_objects::conf::DEFAULT_AUTH_URL;
 pub use domain::value_objects::redis::{
@@ -73,6 +72,7 @@ pub use domain::value_objects::redis::{
     RedisStreamResults, StreamMessages, MESSAGE_TYPE_AWARENESS, MESSAGE_TYPE_SYNC, OID_LOCK_KEY,
 };
 pub use infrastructure::gcs::GcsStore;
+pub use infrastructure::websocket::BroadcastGroup;
 pub use interface::http::handlers::document_handler::DocumentHandler;
 pub use interface::http::router::document_routes;
 pub use server::{ensure_bucket, start_server};
