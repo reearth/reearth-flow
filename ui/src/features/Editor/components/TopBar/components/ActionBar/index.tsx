@@ -86,7 +86,8 @@ const ActionBar: React.FC<Props> = ({
               />
             </PopoverTrigger>
             <PopoverContent
-              sideOffset={16}
+              sideOffset={8}
+              collisionPadding={5}
               className="bg-primary/50 backdrop-blur">
               {showDialog === "share" && (
                 <SharePopover onProjectShare={onProjectShare} />

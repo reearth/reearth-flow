@@ -36,7 +36,7 @@ const DebugActionBar: React.FC<Props> = ({
   return (
     <>
       <div className="flex rounded-md bg-secondary">
-        <div className="flex gap-2 align-middle">
+        <div className="flex items-center gap-2 align-middle">
           <StartButton
             debugRunStarted={debugRunStarted}
             onDebugRunStart={handleDebugRunStart}
@@ -107,14 +107,12 @@ const StartButton: React.FC<{
         jobStatus === "completed" ||
         jobStatus === "failed" ||
         jobStatus === "cancelled"
-          ? "w-full rounded-lg bg-primary/50 px-4"
+          ? "h-8 w-full rounded-lg bg-primary/50 px-4"
           : "w-[36px]"
       }`}
-      tooltipText={t("Start debug run of workflow")}
+      tooltipText={jobStatus ?? t("Start debug run of workflow")}
       tooltipOffset={tooltipOffset}
-      disabled={
-        debugRunStarted || jobStatus === "running" || jobStatus === "queued"
-      }
+      delayDuration={200}
       icon={
         <div>
           {debugRunStarted ||
@@ -137,14 +135,18 @@ const StartButton: React.FC<{
                             : "bg-secondary"
                 } size-3 rounded-full`}
               />
-              <p className="text-xs font-thin">{jobStatus ?? t("idle")}</p>
+              <PlayIcon weight="thin" size={18} />
             </div>
           ) : (
             <PlayIcon weight="thin" size={18} />
           )}
         </div>
       }
-      onClick={onDebugRunStart}
+      onClick={
+        debugRunStarted || jobStatus === "running" || jobStatus === "queued"
+          ? undefined
+          : onDebugRunStart
+      }
     />
   );
 };
