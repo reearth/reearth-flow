@@ -54,7 +54,7 @@ type Props = {
   onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: () => void;
   onPaneMouseMove?: (event: MouseEvent<Element, globalThis.MouseEvent>) => void;
-  onNodeDisable?: (nodeId: string, disabled: boolean) => void;
+  onNodeDisable?: (node?: Node) => void;
 };
 
 const Canvas: React.FC<Props> = ({
@@ -106,6 +106,7 @@ const Canvas: React.FC<Props> = ({
     onCopy,
     onCut,
     onPaste,
+    onNodeDisable,
   });
 
   return (

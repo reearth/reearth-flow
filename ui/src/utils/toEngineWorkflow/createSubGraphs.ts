@@ -6,7 +6,10 @@ import { convertNodes } from "./convertNodes";
 export const createSubGraphs = (workflows: Workflow[]) => {
   const subGraphs = workflows.map((swf) => {
     const convertedNodes = convertNodes(swf.nodes);
-    const convertedEdges = convertEdges(swf.edges);
+
+    // Get IDs of enabled nodes to filter edges
+    const enabledNodeIds = new Set(convertedNodes.map((node) => node.id));
+    const convertedEdges = convertEdges(swf.edges, enabledNodeIds);
 
     const subGraph: EngineReadyGraph = {
       id: swf.id,

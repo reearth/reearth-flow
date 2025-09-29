@@ -357,16 +357,26 @@ export default ({
   });
 
   const handleNodeDisable = useCallback(
-    (nodeId: string, disabled: boolean) => {
+    (node?: Node) => {
       undoTrackerActionWrapper?.(() => {
-        const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
-        const yNode = yNodes?.get(nodeId);
-        if (!yNode) return;
-        const yData = yNode?.get("data") as Y.Map<YNodeValue>;
-        yData?.set("isDisabled", disabled);
+        const selected = node ? [node] : nodes.filter((n) => n.selected);
+
+        if (selected.length === 0) return;
+
+        const anyEnabled = selected.some((n) => !n.data?.isDisabled);
+
+        selected.forEach((n) => {
+          const yNodes = currentYWorkflow?.get("nodes") as
+            | YNodesMap
+            | undefined;
+          const yNode = yNodes?.get(n.id);
+          if (!yNode) return;
+          const yData = yNode?.get("data") as Y.Map<YNodeValue>;
+          yData?.set("isDisabled", anyEnabled);
+        });
       });
     },
-    [currentYWorkflow, undoTrackerActionWrapper],
+    [currentYWorkflow, nodes, undoTrackerActionWrapper],
   );
 
   return {

@@ -33,7 +33,7 @@ type Props = {
   onCopy?: (node?: Node) => void;
   onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: (menuPosition?: XYPosition) => void;
-  onNodeDisable?: (nodeId: string, disabled: boolean) => void;
+  onNodeDisable?: (node?: Node) => void;
   onClose: () => void;
 };
 
@@ -94,17 +94,6 @@ const CanvasContextMenu: React.FC<Props> = ({
     [selectedEdgeIds, onBeforeDelete, onNodesChange, onEdgesChange],
   );
 
-  const handleNodeToDisable = useCallback(
-    async (node?: Node) => {
-      if (!node) return;
-      if (node.data?.isDisabled) {
-        onNodeDisable?.(node.id, false);
-      } else {
-        onNodeDisable?.(node.id, true);
-      }
-    },
-    [onNodeDisable],
-  );
   const menuItems = useMemo(() => {
     const wrapWithClose = (callback: () => void) => () => {
       callback();
@@ -160,24 +149,34 @@ const CanvasContextMenu: React.FC<Props> = ({
             },
           ]
         : []),
-      ...(node
-        ? [
-            {
-              type: "action" as const,
-              props: {
-                label: node.data?.isDisabled
-                  ? t("Enable Node")
-                  : t("Disable Node"),
-                icon: node.data?.isDisabled ? (
-                  <EyeIcon weight="light" />
-                ) : (
-                  <EyeSlashIcon weight="light" />
-                ),
-                onCallback: wrapWithClose(() => handleNodeToDisable?.(node)),
-              },
-            },
-          ]
-        : []),
+      {
+        type: "action",
+        props: {
+          label: (() => {
+            const selectedNodes = node
+              ? [node]
+              : nodes?.filter((n) => n.selected) || [];
+            const anyEnabled = selectedNodes.some((n) => !n.data?.isDisabled);
+            return anyEnabled ? t("Disable Node") : t("Enable Node");
+          })(),
+          icon: (() => {
+            const selectedNodes = node
+              ? [node]
+              : nodes?.filter((n) => n.selected) || [];
+            const anyEnabled = selectedNodes.some((n) => !n.data?.isDisabled);
+            return anyEnabled ? (
+              <EyeSlashIcon weight="light" />
+            ) : (
+              <EyeIcon weight="light" />
+            );
+          })(),
+          shortcut: (
+            <ContextMenuShortcut keyBinding={{ key: "e", commandKey: true }} />
+          ),
+          disabled: (!nodes && !node) || !onNodeDisable,
+          onCallback: wrapWithClose(() => onNodeDisable?.(node) ?? (() => {})),
+        },
+      },
       ...(node
         ? [
             {
@@ -226,12 +225,12 @@ const CanvasContextMenu: React.FC<Props> = ({
     onClose,
     onNodesChange,
     onEdgesChange,
+    onNodeDisable,
     contextMenu.mousePosition,
     value,
     handleNodeDelete,
     handleNodeSettingsOpen,
     handleSubworkflowOpen,
-    handleNodeToDisable,
   ]);
 
   return <ContextMenu items={menuItems} contextMenuMeta={contextMenu} />;
