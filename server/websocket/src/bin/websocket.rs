@@ -6,7 +6,7 @@ use websocket::{
     conf::Config, domain::repository::document::DocumentRepository, infrastructure::gcs::GcsStore,
     infrastructure::redis::RedisStore,
     infrastructure::repository::document::DocumentRepositoryImpl, server::start_server, AppState,
-    BroadcastPool, DocumentService,
+    BroadcastPool, DocumentService, WebsocketService,
 };
 
 #[cfg(feature = "auth")]
@@ -69,6 +69,7 @@ async fn main() {
     let document_repository: Arc<dyn DocumentRepository> =
         Arc::new(DocumentRepositoryImpl::new(Arc::clone(&pool)));
     let document_service = Arc::new(DocumentService::new(Arc::clone(&document_repository)));
+    let websocket_service = Arc::new(WebsocketService::new(Arc::clone(&pool)));
 
     let state = Arc::new({
         #[cfg(feature = "auth")]
@@ -84,6 +85,7 @@ async fn main() {
             AppState {
                 pool,
                 document_service: Arc::clone(&document_service),
+                websocket_service: Arc::clone(&websocket_service),
                 auth,
                 instance_id,
             }
@@ -93,6 +95,7 @@ async fn main() {
             AppState {
                 pool,
                 document_service,
+                websocket_service,
                 instance_id,
             }
         }

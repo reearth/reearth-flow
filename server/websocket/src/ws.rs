@@ -1,4 +1,3 @@
-use crate::Connection;
 use axum::extract::ws::{Message, WebSocket};
 use axum::{
     extract::{Path, State, WebSocketUpgrade},
@@ -9,7 +8,7 @@ use bytes::Bytes;
 #[cfg(feature = "auth")]
 use axum::extract::Query;
 
-use crate::AppState;
+use crate::{AppState, WebsocketServiceError};
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{Stream, StreamExt};
 use std::pin::Pin;
@@ -165,10 +164,12 @@ pub async fn ws_handler(
         }
     }
 
-    let bcast = match state.pool.get_group(&doc_id).await {
+    let websocket_service = state.websocket_service.clone();
+
+    let group = match websocket_service.get_group(&doc_id).await {
         Ok(group) => group,
-        Err(e) => {
-            error!("Failed to get or create group for {}: {}", doc_id, e);
+        Err(err) => {
+            error!("Failed to get or create group for {}: {}", doc_id, err);
             return Response::builder()
                 .status(500)
                 .body(axum::body::Body::empty())
@@ -176,56 +177,39 @@ pub async fn ws_handler(
         }
     };
 
-    let pool = state.pool.clone();
-    ws.on_upgrade(move |socket| handle_socket(socket, bcast, doc_id, user_token, pool))
-}
+    let user_token_clone = user_token.clone();
 
-async fn handle_socket(
-    socket: axum::extract::ws::WebSocket,
-    bcast: Arc<super::BroadcastGroup>,
-    doc_id: String,
-    user_token: Option<String>,
-    pool: Arc<super::BroadcastPool>,
-) {
-    let (sender, receiver) = socket.split();
+    ws.on_upgrade(move |socket| {
+        let websocket_service = websocket_service.clone();
+        let group = group.clone();
+        let doc_id = doc_id.clone();
+        let user_token = user_token_clone.clone();
 
-    let (pong_tx, _pong_rx) = mpsc::channel::<Message>(64);
+        async move {
+            let (sender, receiver) = socket.split();
+            let (pong_tx, _pong_rx) = mpsc::channel::<Message>(64);
 
-    let sink = WarpSink(sender);
-    let stream = WarpStream::with_pong_sender(receiver, pong_tx);
-    bcast.increment_connections_count().await;
+            let sink = WarpSink::from(sender);
+            let stream = WarpStream::with_pong_sender(receiver, pong_tx);
 
-    let conn = Connection::new(bcast.clone(), sink, stream, user_token).await;
-
-    let connection_result = tokio::select! {
-        result = conn => result,
-        _ = tokio::time::sleep(tokio::time::Duration::from_secs(86400)) => {
-            warn!("Connection timeout for document '{}' - possible stale connection", doc_id);
-            Err(yrs::sync::Error::Other("Connection timeout".into()))
+            if let Err(err) = websocket_service
+                .handle_connection(group, sink, stream, &doc_id, user_token)
+                .await
+            {
+                match err {
+                    WebsocketServiceError::BroadcastGroup { source, .. } => {
+                        error!(
+                            "Broadcast group error during connection for '{}': {}",
+                            doc_id, source
+                        );
+                    }
+                    WebsocketServiceError::Connection { source, .. } => {
+                        error!("WebSocket connection error for '{}': {}", doc_id, source);
+                    }
+                }
+            }
         }
-    };
-
-    if let Err(e) = connection_result {
-        error!(
-            "WebSocket connection error for document '{}': {}",
-            doc_id, e
-        );
-    }
-    bcast.decrement_connections_count().await;
-
-    let active_connections = bcast.get_connections_count().await;
-    tracing::info!(
-        "Active connections for document '{}': {}",
-        doc_id,
-        active_connections
-    );
-
-    if active_connections == 0 {
-        tokio::spawn(async move {
-            pool.cleanup_group(&doc_id).await;
-            tracing::info!("Cleaned up BroadcastGroup for doc_id: {}", doc_id);
-        });
-    }
+    })
 }
 
 fn normalize_doc_id(doc_id: &str) -> String {
