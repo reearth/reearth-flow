@@ -928,7 +928,7 @@ edges:
     fromPort: default
     toPort: default
 
-  # MeshCodeTester (failed port) -> AttributeMapperIncorrectMeshCode -> FeatureWriterIncorrectMeshCode -> OutputRouter
+  # MeshCodeTester (failed port)
   - id: 5e6f7a8b-9c0d-4e1f-2a3b-4c5d6e7f8a9b
     from: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e
     to: 3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e8f
