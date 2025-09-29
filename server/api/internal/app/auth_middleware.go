@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/gorilla/websocket"
 	echo "github.com/labstack/echo/v4"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gql"
@@ -75,6 +76,11 @@ func jwtContextMiddleware() echo.MiddlewareFunc {
 func authMiddleware(gqlClient *gql.Client, skipOps map[string]struct{}) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if websocket.IsWebSocketUpgrade(c.Request()) {
+				log.Debugfc(c.Request().Context(), "authMiddleware: skip FindMe on WS upgrade (path=%s)", c.Path())
+				return next(c)
+			}
+
 			if c.Path() == "/api/signup" {
 				return next(c)
 			}
@@ -90,14 +96,14 @@ func authMiddleware(gqlClient *gql.Client, skipOps map[string]struct{}) echo.Mid
 			// This will eliminate the overhead of making an API call to fetch user data for each request.
 			u, err := gqlClient.UserRepo.FindMe(ctx)
 			if err != nil {
-				log.Errorc(ctx, err, "failed to fetch user")
-				return echo.NewHTTPError(http.StatusInternalServerError, "server error: failed to fetch user")
-			}
-			if u == nil {
-				return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized: user not found")
+				log.Debugc(ctx, err, "authMiddleware: FindMe failed; continue as anonymous")
+			} else if u == nil {
+				log.Debugfc(ctx, "authMiddleware: no user found; continue as anonymous")
+			} else {
+				ctx = adapter.AttachUser(ctx, u)
+				log.Debugfc(ctx, "authMiddleware: user attached: id=%s", u.ID())
 			}
 
-			ctx = adapter.AttachUser(ctx, u)
 			c.SetRequest(c.Request().WithContext(ctx))
 			return next(c)
 		}

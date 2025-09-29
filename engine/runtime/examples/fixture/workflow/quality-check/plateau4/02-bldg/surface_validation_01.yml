@@ -332,7 +332,7 @@ nodes:
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_LOD2以上境界面のエラー.csv")
 
-  # GeometryCoercer ~ Surface Intersection (LOD0)
+  # Surface Intersection (LOD0) and DestinationMeshCodeExtractor
   - id: aa1bb2cc-3dd4-4ee5-9ff6-0aa7bb8cc9dd
     name: GeometryCoercerLod0SurfaceIntersection
     type: action
@@ -345,6 +345,7 @@ nodes:
     type: action
     action: TwoDimensionForcer
 
+  # Surface Intersection (LOD0)
   - id: bb2cc3dd-4ee5-4ff6-9aa7-1bb8cc9dd0ee
     name: AreaOnAreaOverlayerLod0
     type: action
@@ -416,6 +417,63 @@ nodes:
       format: csv
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_LOD0面の交差.csv")
+
+  # PLATEAU4.DestinationMeshCodeExtractor
+  - id: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
+    name: DestinationMeshCodeExtractor
+    type: action
+    action: DestinationMeshCodeExtractor
+    with:
+      meshType: 3
+      epsgCode: env.get("prcs") ?? "6675"
+      meshcodeAttr: "meshcode"
+
+  - id: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e
+    name: MeshCodeTester
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr: |
+            !env.get("__value").gmlFilename.starts_with(env.get("__value").meshcode)
+          outputPort: failed
+
+  - id: 3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e8f
+    name: AttributeMapperIncorrectMeshCode
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: filename
+          expr: |
+            env.get("__value").gmlFilename
+        - attribute: feature_type
+          expr: |
+            env.get("__value").featureType
+        - attribute: lod
+          expr: |
+            env.get("__value").lod
+        - attribute: gml_id
+          expr: |
+            env.get("__value").gmlId
+        - attribute: meshcode
+          expr: |
+            env.get("__value").meshcode
+        - attribute: meshcount
+          expr: |
+            env.get("__value")._mesh_count
+        - attribute: mesh2area
+          expr: |
+            env.get("__value")._meshcode_to_area
+
+  - id: 4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f9a
+    name: FeatureWriterIncorrectMeshCode
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_図郭不正.csv")
 
   # Output
   - id: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
@@ -786,6 +844,24 @@ edges:
     fromPort: default
     toPort: default
 
+  - id: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1cc
+    from: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1aa
+    to: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
+    fromPort: default
+    toPort: default
+
+  - id: 3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e7f
+    from: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
+    to: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e
+    fromPort: default
+    toPort: default
+
+  - id: 4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f8a
+    from: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e
+    to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
+    fromPort: default
+    toPort: default
+
   - id: dd0ee1ff-2aa3-4bb4-9cc5-8dd6ee7ff8aa
     from: aa7bb8cc-9dd0-4ee1-9ff2-5aa3bb4cc5dd
     to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
@@ -848,6 +924,25 @@ edges:
 
   - id: 01cef8a5-e953-4895-ad8e-93edbf2e65ae
     from: 016a8afe-3aa7-4047-8c8c-9f6f8464b03c
+    to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
+    fromPort: default
+    toPort: default
+
+  # MeshCodeTester (failed port)
+  - id: 5e6f7a8b-9c0d-4e1f-2a3b-4c5d6e7f8a9b
+    from: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e
+    to: 3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e8f
+    fromPort: failed
+    toPort: default
+
+  - id: 6f7a8b9c-0d1e-4f2a-3b4c-5d6e7f8a9b0c
+    from: 3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e8f
+    to: 4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f9a
+    fromPort: default
+    toPort: default
+
+  - id: 7a8b9c0d-1e2f-403b-4c5d-6e7f8a9b0c1d
+    from: 4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f9a
     to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
     fromPort: default
     toPort: default
