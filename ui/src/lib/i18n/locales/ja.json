@@ -52,6 +52,8 @@
   "Cut": "切り取り",
   "Paste": "貼り付け",
   "Open Subworkflow": "サブワークフローを開く",
+  "Enable Node": "ノードを有効化",
+  "Disable Node": "ノードを無効化",
   "Node Settings": "ノード設定",
   "Delete Node": "ノードを削除",
   "Delete Selection": "選択を削除",

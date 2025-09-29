@@ -38,8 +38,10 @@ const convertEscapeSequences = (obj: any): any => {
 
 export const convertNodes = (nodes?: Node[]) => {
   if (!nodes) return [];
+
   const convertedNodes: EngineReadyNode[] = nodes
     .filter(isDeployable)
+    .filter(isEnabled)
     ?.map(({ id, type, data }) => {
       if (!id || !type || !data.officialName) return undefined;
 
@@ -62,8 +64,11 @@ export const convertNodes = (nodes?: Node[]) => {
       return n;
     })
     .filter(isDefined);
+  console.log("convertedNodes", convertedNodes);
   return convertedNodes;
 };
 
 const isDeployable = (node: Node) =>
   node && deployableNodeTypes.includes(node.type);
+
+const isEnabled = (node: Node) => !node.data.isDisabled;
