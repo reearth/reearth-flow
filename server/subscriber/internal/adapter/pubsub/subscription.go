@@ -3,7 +3,7 @@ package pubsub
 import (
 	"context"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 )
 
 type Subscription interface {
@@ -11,10 +11,10 @@ type Subscription interface {
 }
 
 type realSubscription struct {
-	sub *pubsub.Subscription
+	sub *pubsub.Subscriber
 }
 
-func NewRealSubscription(sub *pubsub.Subscription) Subscription {
+func NewRealSubscription(sub *pubsub.Subscriber) Subscription {
 	return &realSubscription{sub: sub}
 }
 
