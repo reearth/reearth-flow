@@ -2,10 +2,11 @@ use crate::algorithm::triangle_intersection::triangles_intersect;
 use crate::types::line_string::LineString3D;
 use crate::types::{coordinate::Coordinate3D, coordnum::CoordNum, line::Line3D};
 use num_traits::Float;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct TriangularMesh<T: Float + CoordNum = f64> {
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Default)]
+pub struct TriangularMesh<T: CoordNum> {
     // Vertices of the solid boundary. No duplicate vertices.
     vertices: Vec<Coordinate3D<T>>,
     // Edges of the solid boundary with their multiplicity (i.e. how many faces share the edge).

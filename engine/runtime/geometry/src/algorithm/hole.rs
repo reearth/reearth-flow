@@ -1,7 +1,5 @@
 use crate::types::{
-    coordinate::Coordinate, coordnum::CoordNum, face::Face, geometry::Geometry, line::Line,
-    line_string::LineString, multi_line_string::MultiLineString, multi_point::MultiPoint,
-    multi_polygon::MultiPolygon, point::Point, polygon::Polygon, rect::Rect, solid::Solid,
+    coordinate::Coordinate, coordnum::CoordNum, csg::CSG, face::Face, geometry::Geometry, line::Line, line_string::LineString, multi_line_string::MultiLineString, multi_point::MultiPoint, multi_polygon::MultiPolygon, point::Point, polygon::Polygon, rect::Rect, solid::Solid
 };
 
 pub trait HoleCounter<T: CoordNum, Z: CoordNum> {
@@ -11,6 +9,8 @@ pub trait HoleCounter<T: CoordNum, Z: CoordNum> {
 }
 
 impl<T: CoordNum, Z: CoordNum> HoleCounter<T, Z> for Coordinate<T, Z> {}
+
+impl<T: CoordNum, Z: CoordNum> HoleCounter<T, Z> for CSG<T, Z> {}
 
 impl<T: CoordNum, Z: CoordNum> HoleCounter<T, Z> for Point<T, Z> {}
 
@@ -47,6 +47,7 @@ impl<T: CoordNum, Z: CoordNum> HoleCounter<T, Z> for Rect<T, Z> {
 impl<T: CoordNum, Z: CoordNum> HoleCounter<T, Z> for Geometry<T, Z> {
     fn hole_count(&self) -> usize {
         match self {
+            Geometry::CSG(c) => c.hole_count(),
             Geometry::Point(p) => p.hole_count(),
             Geometry::Line(l) => l.hole_count(),
             Geometry::LineString(ls) => ls.hole_count(),

@@ -4,6 +4,7 @@ pub(crate) mod bufferer;
 pub(crate) mod center_point_replacer;
 pub(crate) mod clipper;
 pub(crate) mod closed_curve_filter;
+pub(crate) mod csg;
 pub(crate) mod coercer;
 pub(crate) mod convex_hull_accumulator;
 pub(crate) mod dimension_filter;
