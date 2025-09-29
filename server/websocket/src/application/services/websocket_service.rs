@@ -14,7 +14,7 @@ use tokio::time;
 use tracing::{debug, error, info, warn};
 use yrs::sync::Error as YSyncError;
 
-use crate::application::services::broadcast_pool::{BroadcastGroupHandle, BroadcastGroupProvider};
+use crate::domain::repository::broadcast_pool::{BroadcastGroupHandle, BroadcastGroupProvider};
 use crate::infrastructure::websocket::types::Subscription;
 
 const CONNECTION_TIMEOUT: Duration = Duration::from_secs(86_400);

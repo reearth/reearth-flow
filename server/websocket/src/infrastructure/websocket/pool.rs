@@ -11,7 +11,7 @@ use yrs::updates::decoder::Decode;
 use yrs::{Doc, Transact, Update};
 
 use crate::application::kv::DocOps;
-use crate::application::services::broadcast_pool::{BroadcastGroupHandle, BroadcastGroupProvider};
+use crate::domain::repository::broadcast_pool::{BroadcastGroupHandle, BroadcastGroupProvider};
 use crate::domain::value_objects::broadcast::BroadcastConfig;
 use crate::infrastructure::gcs::GcsStore;
 use crate::infrastructure::redis::RedisStore;
