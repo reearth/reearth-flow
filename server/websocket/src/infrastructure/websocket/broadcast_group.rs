@@ -317,6 +317,10 @@ impl BroadcastGroup {
         self.connections_count.get()
     }
 
+    pub async fn get_client_id(&self) -> String {
+        self.awareness_ref.read().await.client_id().to_string()
+    }
+
     pub fn awareness(&self) -> &AwarenessRef {
         &self.awareness_ref
     }
@@ -325,8 +329,8 @@ impl BroadcastGroup {
         &self.redis_store
     }
 
-    pub fn get_doc_name(&self) -> String {
-        self.doc_name.clone()
+    pub fn get_doc_name(&self) -> &str {
+        &self.doc_name
     }
 
     pub fn get_last_read_id(&self) -> &Arc<Mutex<String>> {

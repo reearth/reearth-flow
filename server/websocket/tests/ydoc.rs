@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use async_trait::async_trait;
-    use websocket::domain::repository::kv::{KVEntry, KVStore};
+    use websocket::domain::repositories::kv::{KVEntry, KVStore};
     use websocket::domain::value_objects::keys::{
         key_doc, key_oid, key_state_vector, key_update, OID,
     };

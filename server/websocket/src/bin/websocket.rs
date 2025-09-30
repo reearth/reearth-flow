@@ -1,5 +1,5 @@
 use tracing::error;
-use websocket::interface::app;
+use websocket::presentation::app;
 
 #[tokio::main]
 async fn main() {

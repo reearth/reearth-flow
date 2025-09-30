@@ -1,5 +1,5 @@
 use crate::application::usecases::health_check_usecase::HealthCheckUseCase;
-use crate::domain::entity::health::HealthStatus;
+use crate::domain::entities::health::HealthStatus;
 use axum::{http::StatusCode, response::Json};
 use serde_json::Value;
 use std::sync::Arc;
@@ -49,8 +49,8 @@ pub async fn health_check_handler(
 mod tests {
     use super::*;
     use crate::application::usecases::health_check_usecase::HealthCheckUseCase;
-    use crate::domain::entity::health::ComponentHealth;
-    use crate::domain::repository::health::{HealthCheckError, HealthChecker};
+    use crate::domain::entities::health::ComponentHealth;
+    use crate::domain::repositories::health::{HealthCheckError, HealthChecker};
     use async_trait::async_trait;
 
     struct MockHealthyChecker;

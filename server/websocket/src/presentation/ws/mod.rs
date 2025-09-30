@@ -8,6 +8,7 @@ use bytes::Bytes;
 #[cfg(feature = "auth")]
 use axum::extract::Query;
 
+use crate::shared::utils::normalize_id;
 use crate::{AppState, WebsocketUseCaseError};
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{Stream, StreamExt};
@@ -132,7 +133,7 @@ pub async fn ws_handler(
     #[cfg(feature = "auth")] Query(query): Query<AuthQuery>,
     State(state): State<Arc<AppState>>,
 ) -> Response {
-    let doc_id = normalize_doc_id(&doc_id);
+    let doc_id = normalize_id(&doc_id);
 
     #[cfg(feature = "auth")]
     let user_token = Some(query.token.clone());
@@ -210,8 +211,4 @@ pub async fn ws_handler(
             }
         }
     })
-}
-
-fn normalize_doc_id(doc_id: &str) -> String {
-    doc_id.strip_suffix(":main").unwrap_or(doc_id).to_string()
 }

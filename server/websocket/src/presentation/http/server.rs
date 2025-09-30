@@ -18,7 +18,7 @@ use tokio::net::TcpListener;
 use tracing::info;
 
 use crate::conf::Config;
-use crate::interface::ws;
+use crate::presentation::ws;
 use crate::AppState;
 #[cfg(feature = "auth")]
 use crate::AuthQuery;
@@ -136,7 +136,7 @@ pub async fn start_server(state: Arc<AppState>, port: &str, config: &Config) -> 
 
 use crate::application::usecases::health_check_usecase::HealthCheckUseCase;
 use crate::infrastructure::health::{GcsHealthCheckerImpl, RedisHealthCheckerImpl};
-use crate::interface::http::handlers::health_handler::{health_check_handler, HealthHandler};
+use crate::presentation::http::handlers::health_handler::{health_check_handler, HealthHandler};
 
 fn create_health_usecase(state: &AppState) -> Arc<HealthCheckUseCase> {
     let mut health_usecase = HealthCheckUseCase::new("websocket");

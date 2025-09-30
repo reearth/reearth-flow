@@ -13,6 +13,8 @@ pub trait BroadcastGroupHandle: Send + Sync {
     async fn increment_connections_count(&self);
     async fn decrement_connections_count(&self);
     async fn get_connections_count(&self) -> usize;
+    async fn get_client_id(&self) -> String;
+    fn get_doc_name(&self) -> &str;
     async fn cleanup_client_awareness(&self) -> AnyResult<()>;
 
     async fn subscribe<Sink, Stream, E>(

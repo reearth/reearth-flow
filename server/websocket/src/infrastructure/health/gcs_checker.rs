@@ -1,5 +1,5 @@
-use crate::domain::entity::health::ComponentHealth;
-use crate::domain::repository::health::{GcsHealthChecker, HealthCheckError, HealthChecker};
+use crate::domain::entities::health::ComponentHealth;
+use crate::domain::repositories::health::{GcsHealthChecker, HealthCheckError, HealthChecker};
 use crate::infrastructure::gcs::GcsStore;
 use async_trait::async_trait;
 use std::sync::Arc;

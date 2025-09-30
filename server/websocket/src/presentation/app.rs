@@ -5,12 +5,12 @@ use tracing::{error, info};
 use uuid::Uuid;
 
 use crate::application::usecases::document_usecase::DocumentUseCase;
-use crate::domain::repository::document::DocumentRepository;
+use crate::domain::repositories::document::DocumentRepository;
 use crate::infrastructure::gcs::GcsStore;
 use crate::infrastructure::redis::RedisStore;
 use crate::infrastructure::repository::document::DocumentRepositoryImpl;
 use crate::infrastructure::websocket::{BroadcastPool, CollaborativeStorage};
-use crate::interface::http;
+use crate::presentation::http;
 use crate::{conf::Config, AppState, WebsocketUseCase};
 
 #[cfg(feature = "auth")]

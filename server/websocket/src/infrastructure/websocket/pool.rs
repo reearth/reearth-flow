@@ -11,7 +11,7 @@ use yrs::updates::decoder::Decode;
 use yrs::{Doc, Transact, Update};
 
 use crate::application::kv::DocOps;
-use crate::domain::repository::broadcast_pool::{BroadcastGroupHandle, BroadcastGroupProvider};
+use crate::domain::repositories::broadcast_pool::{BroadcastGroupHandle, BroadcastGroupProvider};
 use crate::domain::value_objects::broadcast::BroadcastConfig;
 use crate::infrastructure::gcs::GcsStore;
 use crate::infrastructure::redis::RedisStore;
@@ -183,6 +183,14 @@ impl BroadcastGroupHandle for BroadcastGroup {
 
     async fn get_connections_count(&self) -> usize {
         BroadcastGroup::get_connections_count(self).await
+    }
+
+    async fn get_client_id(&self) -> String {
+        BroadcastGroup::get_client_id(self).await
+    }
+
+    fn get_doc_name(&self) -> &str {
+        BroadcastGroup::get_doc_name(self)
     }
 
     async fn cleanup_client_awareness(&self) -> Result<()> {

@@ -14,7 +14,9 @@ use tokio::time;
 use tracing::{debug, error, info, warn};
 use yrs::sync::Error as YSyncError;
 
-use crate::domain::repository::broadcast_pool::{BroadcastGroupHandle, BroadcastGroupProvider};
+use crate::domain::aggregates::WebsocketSession;
+use crate::domain::entities::ws::{ClientId, ConnectionInfo, SessionId};
+use crate::domain::repositories::broadcast_pool::{BroadcastGroupHandle, BroadcastGroupProvider};
 use crate::domain::services::websocket::Subscription;
 
 const CONNECTION_TIMEOUT: Duration = Duration::from_secs(86_400);
@@ -76,8 +78,43 @@ where
     {
         group.increment_connections_count().await;
 
-        let connection = BroadcastConnection::new(group.clone(), sink, stream, user_token).await;
         let doc_id_owned = doc_id.to_string();
+        let client_id = ClientId::new(group.get_client_id().await)
+        .map_err(|err| WebsocketUseCaseError::Connection {
+            doc_id: doc_id_owned.clone(),
+            source: YSyncError::Other(err.to_string().into()),
+        })?;
+        let session_id = SessionId::new(format!("{}-{}", client_id.value(), group.get_doc_name()))
+            .map_err(|err| WebsocketUseCaseError::Connection {
+                doc_id: doc_id_owned.clone(),
+                source: YSyncError::Other(err.to_string().into()),
+            })?;
+
+        let connection_info = ConnectionInfo::new(
+            doc_id_owned.clone(),
+            client_id.clone(),
+            session_id.clone(),
+            user_token.clone(),
+        )
+        .map_err(|err| WebsocketUseCaseError::Connection {
+            doc_id: doc_id_owned.clone(),
+            source: YSyncError::Other(err.to_string().into()),
+        })?;
+
+        let mut session = WebsocketSession::new(doc_id_owned.clone()).map_err(|err| {
+            WebsocketUseCaseError::Connection {
+                doc_id: doc_id_owned.clone(),
+                source: YSyncError::Other(err.to_string().into()),
+            }
+        })?;
+        session.connect(connection_info.clone()).map_err(|err| {
+            WebsocketUseCaseError::Connection {
+                doc_id: doc_id_owned.clone(),
+                source: YSyncError::Other(err.to_string().into()),
+            }
+        })?;
+
+        let connection = BroadcastConnection::new(group.clone(), sink, stream, user_token).await;
 
         let connection_result = tokio::select! {
             result = connection => result,
@@ -88,6 +125,12 @@ where
         };
 
         group.decrement_connections_count().await;
+        if let Err(err) = session.disconnect(session_id.value()) {
+            warn!(
+                "Failed to update session for doc '{}': {}",
+                doc_id_owned, err
+            );
+        }
 
         let active_connections = group.get_connections_count().await;
         info!(

@@ -1,5 +1,5 @@
-use crate::domain::entity::health::ComponentHealth;
-use crate::domain::repository::health::{HealthCheckError, HealthChecker, RedisHealthChecker};
+use crate::domain::entities::health::ComponentHealth;
+use crate::domain::repositories::health::{HealthCheckError, HealthChecker, RedisHealthChecker};
 use crate::infrastructure::redis::RedisStore;
 use async_trait::async_trait;
 use std::sync::Arc;

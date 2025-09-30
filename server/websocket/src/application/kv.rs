@@ -49,8 +49,8 @@ use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, Transaction, TransactionMut, Update};
 
-use crate::domain::repository::kv::KVEntry;
-use crate::domain::repository::kv::KVStore;
+use crate::domain::repositories::kv::KVEntry;
+use crate::domain::repositories::kv::KVStore;
 type Error = anyhow::Error;
 /// Trait used to automatically implement core operations over the Yrs document.
 

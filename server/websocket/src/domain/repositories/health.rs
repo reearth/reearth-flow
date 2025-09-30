@@ -1,4 +1,4 @@
-use crate::domain::entity::health::ComponentHealth;
+use crate::domain::entities::health::ComponentHealth;
 use async_trait::async_trait;
 
 #[derive(Debug, thiserror::Error)]

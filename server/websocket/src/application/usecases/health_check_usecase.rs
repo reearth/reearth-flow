@@ -1,5 +1,5 @@
-use crate::domain::entity::health::SystemHealth;
-use crate::domain::repository::health::HealthChecker;
+use crate::domain::entities::health::SystemHealth;
+use crate::domain::repositories::health::HealthChecker;
 use std::sync::Arc;
 use tracing::{debug, warn};
 
@@ -44,7 +44,7 @@ impl HealthCheckUseCase {
                     warn!("Component {} health check failed: {}", component_name, e);
                     system_health.add_component(
                         component_name,
-                        crate::domain::entity::health::ComponentHealth::unhealthy(format!(
+                        crate::domain::entities::health::ComponentHealth::unhealthy(format!(
                             "Health check failed: {e}",
                         )),
                     );
@@ -63,8 +63,8 @@ impl HealthCheckUseCase {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::entity::health::ComponentHealth;
-    use crate::domain::repository::health::{HealthCheckError, HealthChecker};
+    use crate::domain::entities::health::ComponentHealth;
+    use crate::domain::repositories::health::{HealthCheckError, HealthChecker};
     use async_trait::async_trait;
 
     struct MockHealthyChecker;

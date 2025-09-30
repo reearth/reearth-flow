@@ -8,7 +8,8 @@ pub mod application;
 pub mod conf;
 pub mod domain;
 pub mod infrastructure;
-pub mod interface;
+pub mod presentation;
+pub mod shared;
 pub mod tools;
 pub use infrastructure::redis::RedisStore;
 
@@ -18,7 +19,7 @@ pub use infrastructure::websocket::BroadcastPool;
 pub type WebsocketUseCase =
     application::usecases::websocket_usecase::WebsocketUseCase<BroadcastPool>;
 
-pub use interface::http::server::{ensure_bucket, start_server};
+pub use presentation::http::server::{ensure_bucket, start_server};
 
 #[cfg(feature = "auth")]
 #[derive(Debug, serde::Deserialize)]
@@ -75,5 +76,5 @@ pub use domain::value_objects::redis::{
 };
 pub use infrastructure::gcs::GcsStore;
 pub use infrastructure::websocket::{BroadcastGroup, CollaborativeStorage};
-pub use interface::http::handlers::document_handler::DocumentHandler;
-pub use interface::http::router::document_routes;
+pub use presentation::http::handlers::document_handler::DocumentHandler;
+pub use presentation::http::router::document_routes;
