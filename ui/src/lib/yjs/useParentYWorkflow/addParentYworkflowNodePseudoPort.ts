@@ -73,7 +73,7 @@ export function addParentYWorkflowNodePseudoPort(
       }
 
       parentWorkflowInfo.parentYNodes.set(
-        parentWorkflowInfo?.subworkflowNode.id,
+        parentWorkflowInfo.subworkflowNode.id,
         yNodeConstructor(updatedSubworkflowNode),
       );
     }
