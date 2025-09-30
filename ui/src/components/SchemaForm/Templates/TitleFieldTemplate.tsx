@@ -24,7 +24,7 @@ const TitleFieldTemplate = <
   const isRootTitle = schema.title === title; // Might be better way since this also includes titles in more complex schemas
   return (
     <Label id={id}>
-      <div className="my-4 mb-1 flex flex-row items-center gap-1">
+      <div className="my-4 mb-1 flex shrink-0 flex-row items-center gap-1">
         <p className={`${isRootTitle ? "font-bold" : "font-normal"}`}>
           {title}
         </p>
