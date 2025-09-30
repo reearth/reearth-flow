@@ -58,6 +58,7 @@ const CollaborationActionBar: React.FC<Props> = ({
                 style={{ backgroundColor: self?.color || undefined }}>
                 <span className="text-xs font-medium">
                   {self.userName.charAt(0).toUpperCase()}
+                  {self.userName.charAt(1)}
                 </span>
               </div>
             </div>
@@ -72,6 +73,7 @@ const CollaborationActionBar: React.FC<Props> = ({
                         style={{ backgroundColor: value.color || undefined }}>
                         <span className="text-xs font-medium">
                           {value.userName.charAt(0).toUpperCase()}
+                          {value.userName.charAt(1)}
                         </span>
                       </div>
                     </div>
@@ -88,7 +90,7 @@ const CollaborationActionBar: React.FC<Props> = ({
         </ButtonWithTooltip>
       </PopoverTrigger>
       <PopoverContent
-        sideOffset={16}
+        sideOffset={8}
         className="w-60 bg-primary/50 backdrop-blur">
         {showDialog === "collaboration" && (
           <CollaborationPopover

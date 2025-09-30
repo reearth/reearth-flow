@@ -3,19 +3,10 @@ import {
   GlobeIcon,
   MapPinAreaIcon,
   TargetIcon,
-  WarningIcon,
 } from "@phosphor-icons/react";
 import { memo, useCallback, useMemo } from "react";
 
 import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogContentSection,
-  DialogContentWrapper,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -37,12 +28,10 @@ type Props = {
   debugJobState?: JobState;
   onConvertedSelectedFeature: (value: any) => void;
   dataURLs?: { key: string; name: string }[];
-  showTempPossibleIssuesDialog: boolean;
   selectedFeature: any;
   // enableClustering?: boolean;
   mapRef: React.RefObject<maplibregl.Map | null>;
   cesiumViewerRef: React.RefObject<any>;
-  onShowTempPossibleIssuesDialogClose: () => void;
   onSelectedFeature: (value: any) => void;
   // onEnableClusteringChange: (value: boolean) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
@@ -55,11 +44,9 @@ const DebugPreview: React.FC<Props> = ({
   selectedOutputData,
   dataURLs,
   onConvertedSelectedFeature,
-  showTempPossibleIssuesDialog,
   mapRef,
   cesiumViewerRef,
   selectedFeature,
-  onShowTempPossibleIssuesDialogClose,
   onSelectedFeature,
   onFlyToSelectedFeature,
   detectedGeometryType,
@@ -187,15 +174,15 @@ const DebugPreview: React.FC<Props> = ({
         <div className="h-full">
           {/* 2D Viewer Header with actions */}
           <div className="py-1">
-            <div className="flex w-full justify-between rounded-md bg-muted/30 p-1">
+            <div className="flex w-full justify-between p-1">
               <div className="flex items-center gap-1 px-2">
                 <MapPinAreaIcon size={16} />
                 <p className="text-sm font-medium select-none">
                   {t("2D Viewer")}
                 </p>
                 {detectedGeometryType && (
-                  <span className="rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
-                    {detectedGeometryType}
+                  <span className="rounded px-2 text-xs text-muted-foreground">
+                    - {detectedGeometryType} -
                   </span>
                 )}
               </div>
@@ -276,39 +263,6 @@ const DebugPreview: React.FC<Props> = ({
         </div>
       )}
     </div>
-  ) : showTempPossibleIssuesDialog ? (
-    <Dialog open={showTempPossibleIssuesDialog}>
-      <DialogContent size="sm" hideCloseButton>
-        <DialogHeader className="text-warning">
-          <DialogTitle className="flex justify-center gap-1">
-            <WarningIcon weight="light" />
-            {t("Warning")}
-          </DialogTitle>
-        </DialogHeader>
-        <DialogContentWrapper>
-          <DialogContentSection>
-            <p className="text-sm font-light">
-              {t("Your workflow completed without any output data.")}
-            </p>
-          </DialogContentSection>
-          <DialogContentSection>
-            <p className="text-sm font-light">
-              {t(
-                "Please review the logs to see if there were any errors during the workflow process.",
-              )}
-            </p>
-          </DialogContentSection>
-        </DialogContentWrapper>
-        <DialogFooter>
-          <Button
-            className="self-end"
-            size="sm"
-            onClick={onShowTempPossibleIssuesDialogClose}>
-            {t("OK")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   ) : null;
 };
 

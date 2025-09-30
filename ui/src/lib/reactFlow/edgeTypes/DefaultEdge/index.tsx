@@ -40,8 +40,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
     jobStatus,
     intermediateDataIsSet,
     hasIntermediateData,
-    tempWorkflowHasPossibleIssuesFlag,
-    handleIntermediateDataSet,
+    handleDoubleClick,
   } = useHooks({
     id,
     source,
@@ -70,63 +69,57 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
               pointerEvents: "all",
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             }}
-            onDoubleClick={() => handleIntermediateDataSet()}
+            onDoubleClick={handleDoubleClick}
           />
         )}
       </EdgeLabelRenderer>
-      {tempWorkflowHasPossibleIssuesFlag ? (
-        <path d={edgePath} fill="none" className="stroke-warning" />
-      ) : (
+      {jobStatus === "completed" && (
+        <path
+          className="stroke-success"
+          d={edgePath}
+          strokeWidth="1"
+          fill="none"
+          markerEnd="url(#arrow)"
+        />
+      )}
+      {jobStatus === "queued" && (
+        <path d={edgePath} stroke="#27272A" fill="none" className="pulse" />
+      )}
+      {jobStatus === "running" && (
         <>
-          {jobStatus === "completed" && (
-            <path
-              d={edgePath}
-              stroke="#00a340"
-              strokeWidth="1"
-              fill="none"
-              markerEnd="url(#arrow)"
+          <path
+            d={edgePath}
+            stroke="#27272A"
+            strokeDasharray="10,10"
+            fill="none">
+            <animate
+              attributeName="stroke-dashoffset"
+              from="40"
+              to="0"
+              dur="3s"
+              repeatCount="indefinite"
             />
-          )}
-          {jobStatus === "queued" && (
-            <path d={edgePath} stroke="#27272A" fill="none" className="pulse" />
-          )}
-          {jobStatus === "running" && (
-            <>
-              <path
-                d={edgePath}
-                stroke="#27272A"
-                strokeDasharray="10,10"
-                fill="none">
-                <animate
-                  attributeName="stroke-dashoffset"
-                  from="40"
-                  to="0"
-                  dur="3s"
-                  repeatCount="indefinite"
-                />
-              </path>
-              <g>
-                <circle className="opacity-25" r="6" fill="#ffffff">
-                  <animateMotion
-                    dur="6s"
-                    repeatCount="indefinite"
-                    path={edgePath}
-                  />
-                </circle>
-                <circle
-                  className="opacity-75"
-                  style={{ filter: `drop-shadow(3px 3px 5px #471a27)` }}
-                  r="3"
-                  fill="#bbffff">
-                  <animateMotion
-                    dur="6s"
-                    repeatCount="indefinite"
-                    path={edgePath}
-                  />
-                </circle>
-              </g>
-            </>
-          )}
+          </path>
+          <g>
+            <circle className="opacity-25" r="6" fill="#ffffff">
+              <animateMotion
+                dur="6s"
+                repeatCount="indefinite"
+                path={edgePath}
+              />
+            </circle>
+            <circle
+              className="opacity-75"
+              style={{ filter: `drop-shadow(3px 3px 5px #471a27)` }}
+              r="3"
+              fill="#bbffff">
+              <animateMotion
+                dur="6s"
+                repeatCount="indefinite"
+                path={edgePath}
+              />
+            </circle>
+          </g>
         </>
       )}
       {/* {sourceNodeStatus === "failed" && (
