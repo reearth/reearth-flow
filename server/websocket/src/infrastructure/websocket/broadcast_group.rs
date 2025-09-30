@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use crate::application::usecases::kv::DocOps;
-use crate::domain::services::websocket::{ConnectionCounter, ShutdownHandle, Subscription};
+use crate::domain::value_objects::websocket::{ConnectionCounter, ShutdownHandle, Subscription};
 use crate::infrastructure::gcs::GcsStore;
 use crate::infrastructure::redis::RedisStore;
 use crate::AwarenessRef;

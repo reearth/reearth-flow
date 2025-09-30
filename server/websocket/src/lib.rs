@@ -59,7 +59,7 @@ pub use domain::value_objects::http::HistoryItem;
 
 pub use application::usecases::document::{DocumentUseCase, DocumentUseCaseError};
 pub use application::usecases::websocket::WebsocketUseCaseError;
-pub use domain::services::websocket::{ConnectionCounter, ShutdownHandle, Subscription};
+pub use domain::value_objects::websocket::{ConnectionCounter, ShutdownHandle, Subscription};
 #[cfg(feature = "auth")]
 pub use domain::value_objects::conf::DEFAULT_AUTH_URL;
 pub use domain::value_objects::redis::{

@@ -17,7 +17,7 @@ use yrs::sync::Error as YSyncError;
 use crate::domain::aggregates::WebsocketSession;
 use crate::domain::entities::ws::{ClientId, ConnectionInfo, SessionId};
 use crate::domain::repositories::broadcast_pool::{BroadcastGroupHandle, BroadcastGroupProvider};
-use crate::domain::services::websocket::Subscription;
+use crate::domain::value_objects::websocket::Subscription;
 
 const CONNECTION_TIMEOUT: Duration = Duration::from_secs(86_400);
 
