@@ -22,7 +22,8 @@ export default ({
   onNodesAdd: (nodes: Node[]) => void;
   onClose: () => void;
 }) => {
-  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState("");
+
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   // const { handleNodeDropInBatch } = useBatch();
@@ -34,23 +35,34 @@ export default ({
     type: openedActionType?.nodeType,
   });
 
-  const [selectedIndex, _setSelectedIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
   const [selected, setSelected] = useState<string | undefined>();
 
   useEffect(() => {
     if (actions?.length) {
       const actionsList = actions.byType[openedActionType.nodeType];
       setSelected(actionsList?.[selectedIndex]?.name ?? "");
-
-      const selectedItem = itemRefs.current[selectedIndex];
-      if (selectedItem && containerRef.current) {
-        selectedItem.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-        });
-      }
     }
   }, [selectedIndex, actions, openedActionType?.nodeType]);
+
+  const handleSearchTerm = (newSearchTerm: string) => {
+    setSearchTerm(newSearchTerm);
+    setSelectedIndex(-1);
+    setSelected(undefined);
+  };
+
+  useEffect(() => {
+    const selectedItem = itemRefs.current[selectedIndex];
+    if (selectedItem && containerRef.current) {
+      requestAnimationFrame(() => {
+        selectedItem.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "nearest",
+        });
+      });
+    }
+  }, [selectedIndex]);
 
   const [handleSingleClick, handleDoubleClick] = useDoubleClick(
     (name?: string) => {
@@ -81,12 +93,63 @@ export default ({
 
   const actionsList = actions?.byType[openedActionType?.nodeType] || [];
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const currentActionsList =
+        actions?.byType[openedActionType?.nodeType] || [];
+
+      switch (e.key) {
+        case "Enter":
+          e.preventDefault();
+          handleDoubleClick(selected);
+          break;
+        case "ArrowUp":
+          {
+            e.preventDefault();
+            const newUpIndex =
+              selectedIndex === 0 ? selectedIndex : selectedIndex - 1;
+            setSelectedIndex(newUpIndex);
+            if (currentActionsList && currentActionsList[newUpIndex]) {
+              setSelected(currentActionsList[newUpIndex].name);
+            }
+          }
+          break;
+        case "ArrowDown":
+          {
+            e.preventDefault();
+            const newDownIndex =
+              selectedIndex === (currentActionsList?.length || 1) - 1
+                ? selectedIndex
+                : selectedIndex + 1;
+            setSelectedIndex(newDownIndex);
+            if (currentActionsList && currentActionsList[newDownIndex]) {
+              setSelected(currentActionsList[newDownIndex].name);
+            }
+          }
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [
+    actions,
+    openedActionType?.nodeType,
+    selectedIndex,
+    selected,
+    handleDoubleClick,
+    setSelectedIndex,
+    setSelected,
+  ]);
+
   return {
     actionsList,
     containerRef,
     itemRefs,
     selected,
-    setSearchTerm,
+    handleSearchTerm,
     handleSingleClick,
     handleDoubleClick,
   };

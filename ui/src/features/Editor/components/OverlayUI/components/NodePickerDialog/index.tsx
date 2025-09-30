@@ -34,7 +34,7 @@ const NodePickerDialog: React.FC<Props> = ({
     containerRef,
     itemRefs,
     selected,
-    setSearchTerm,
+    handleSearchTerm,
     handleSingleClick,
     handleDoubleClick,
   } = useHooks({ openedActionType, isMainWorkflow, onNodesAdd, onClose });
@@ -47,7 +47,7 @@ const NodePickerDialog: React.FC<Props> = ({
           className="mx-auto w-full rounded-none border-x-0 border-t-0 border-zinc-700 bg-secondary focus-visible:ring-0"
           placeholder={t("Search")}
           autoFocus
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => handleSearchTerm(e.target.value)}
         />
         <div ref={containerRef} className="max-h-[50vh] overflow-scroll">
           {actionsList.map((action, idx) => (
