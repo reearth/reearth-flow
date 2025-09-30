@@ -33,22 +33,71 @@ const buildExprUiSchema = (
   path = "",
 ): any => {
   if (!schemaObj || typeof schemaObj !== "object") return {};
-
   const uiSchema: any = {};
 
   // Determine if this is a Python script field or regular Rhai expression
+
   const isExprType =
     schemaObj.$ref === "#/definitions/Expr" ||
     schemaObj.allOf?.some((item: any) => item.$ref === "#/definitions/Expr");
 
-  if (isExprType) {
+  // Check if this schema references any definition that contains expressions
+  let referencesExprDefinition = false;
+  if (schemaObj.$ref) {
+    const refName = schemaObj.$ref.replace("#/definitions/", "");
+    const referencedDef = schemaObj.definitions?.[refName];
+    if (referencedDef?.properties) {
+      referencesExprDefinition = Object.values(referencedDef.properties).some(
+        (prop: any) =>
+          prop?.$ref === "#/definitions/Expr" ||
+          prop?.allOf?.some((item: any) => item.$ref === "#/definitions/Expr"),
+      );
+    }
+  }
+
+  // Handle schemas that define ANY type with expression fields - apply UI schema dynamically
+  let hasExprDefinitions = false;
+  const exprFieldUiSchema: any = {};
+  if (schemaObj.definitions) {
+    Object.entries(schemaObj.definitions).forEach(
+      ([_defName, def]: [string, any]) => {
+        if (def?.properties) {
+          Object.entries(def.properties).forEach(
+            ([propName, prop]: [string, any]) => {
+              const propHasExpr =
+                prop?.$ref === "#/definitions/Expr" ||
+                prop?.allOf?.some(
+                  (item: any) => item.$ref === "#/definitions/Expr",
+                );
+
+              if (propHasExpr) {
+                hasExprDefinitions = true;
+                exprFieldUiSchema[propName] = { "ui:exprType": "rhai" };
+              }
+            },
+          );
+        }
+      },
+    );
+  }
+
+  if (isExprType || referencesExprDefinition) {
     const fieldName = path.split(".").pop() || "";
 
     // Only treat as Python script if it's specifically PythonScriptProcessor and the field is 'script'
     const isPythonScript =
       actionName === "PythonScriptProcessor" && fieldName === "script";
 
-    return { "ui:exprType": isPythonScript ? "python" : "rhai" };
+    return {
+      "ui:exprType": isPythonScript ? "python" : "rhai",
+    };
+  }
+
+  // Return dynamic UI schema for expression fields found in definitions
+  if (hasExprDefinitions) {
+    return {
+      ...exprFieldUiSchema,
+    };
   }
 
   // Recursively check properties
@@ -148,11 +197,14 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
   }, [schema, defaultFormData, onValidationChange, t]);
 
   // Generate UI schema to mark Expr fields from original schema (before patching)
+
   const exprUiSchema = originalSchema
     ? buildExprUiSchema(originalSchema, actionName)
     : {};
+
   const finalUiSchema = {
     ...exprUiSchema,
+
     "ui:submitButtonOptions": { norender: true },
   };
 
@@ -165,7 +217,12 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
         formData={defaultFormData}
         validator={validator}
         uiSchema={finalUiSchema}
-        formContext={{ onEditorOpen, onPythonEditorOpen }}
+        formContext={{
+          onEditorOpen,
+          onPythonEditorOpen,
+          originalSchema,
+          actionName,
+        }}
         onChange={handleChange}
         onError={handleError}
       />

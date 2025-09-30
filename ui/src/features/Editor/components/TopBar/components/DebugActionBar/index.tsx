@@ -1,8 +1,11 @@
 import { BroomIcon, PlayIcon, StopIcon } from "@phosphor-icons/react";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 
 import { IconButton } from "@flow/components";
+import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
+import { useIndexedDB } from "@flow/lib/indexedDB";
+import { useCurrentProject } from "@flow/stores";
 
 import { DebugStopDialog } from "./components";
 import useHooks from "./hooks";
@@ -33,20 +36,13 @@ const DebugActionBar: React.FC<Props> = ({
   return (
     <>
       <div className="flex rounded-md bg-secondary">
-        <div className="flex gap-2 align-middle">
-          <IconButton
-            className="rounded rounded-l-[4px]"
-            tooltipText={t("Start debug run of workflow")}
-            tooltipOffset={tooltipOffset}
-            disabled={
-              debugRunStarted ||
-              jobStatus === "running" ||
-              jobStatus === "queued"
-            }
-            icon={<PlayIcon weight="thin" size={18} />}
-            onClick={handleDebugRunStart}
+        <div className="flex items-center gap-2 align-middle">
+          <StartButton
+            debugRunStarted={debugRunStarted}
+            onDebugRunStart={handleDebugRunStart}
           />
           <IconButton
+            className="shrink-0"
             tooltipText={t("Stop debug run of workflow")}
             tooltipOffset={tooltipOffset}
             disabled={
@@ -56,6 +52,7 @@ const DebugActionBar: React.FC<Props> = ({
             onClick={handleShowDebugStopDialog}
           />
           <IconButton
+            className="shrink-0"
             tooltipText={t("Clear debug run and results")}
             tooltipOffset={tooltipOffset}
             disabled={
@@ -80,3 +77,70 @@ const DebugActionBar: React.FC<Props> = ({
 };
 
 export default memo(DebugActionBar);
+
+const StartButton: React.FC<{
+  debugRunStarted: boolean;
+  onDebugRunStart: () => Promise<void>;
+}> = ({ debugRunStarted, onDebugRunStart }) => {
+  const t = useT();
+  const [currentProject] = useCurrentProject();
+
+  const { value: debugRunState } = useIndexedDB("debugRun");
+
+  const debugJobId = useMemo(
+    () =>
+      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id)
+        ?.jobId,
+    [debugRunState, currentProject],
+  );
+
+  const { data: jobStatus } = useSubscription(
+    "GetSubscribedJobStatus",
+    debugJobId,
+    !debugJobId,
+  );
+
+  return (
+    <IconButton
+      className={`min-w-[36px] transition-all ${
+        debugRunStarted || jobStatus
+          ? `h-8 w-full rounded-lg bg-primary/50 px-4 ${jobStatus === "running" || jobStatus === "queued" ? "cursor-pointer" : ""}`
+          : "w-[36px]"
+      }`}
+      tooltipText={jobStatus ?? t("Start debug run of workflow")}
+      tooltipOffset={tooltipOffset}
+      delayDuration={200}
+      icon={
+        <div>
+          {debugRunStarted || jobStatus ? (
+            <div className="mr-1 flex items-center gap-2">
+              <div
+                className={`${
+                  jobStatus === "completed"
+                    ? "bg-success"
+                    : jobStatus === "running"
+                      ? "active-node-status"
+                      : jobStatus === "cancelled"
+                        ? "bg-warning"
+                        : jobStatus === "failed"
+                          ? "bg-destructive"
+                          : jobStatus === "queued"
+                            ? "queued-node-status"
+                            : "bg-secondary"
+                } size-3 rounded-full`}
+              />
+              <PlayIcon weight="thin" size={18} />
+            </div>
+          ) : (
+            <PlayIcon weight="thin" size={18} />
+          )}
+        </div>
+      }
+      onClick={
+        debugRunStarted || jobStatus === "running" || jobStatus === "queued"
+          ? undefined
+          : onDebugRunStart
+      }
+    />
+  );
+};

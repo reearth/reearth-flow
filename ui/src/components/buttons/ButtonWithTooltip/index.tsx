@@ -7,6 +7,7 @@ export type ButtonWithTooltipProps = {
   tooltipPosition?: "top" | "right" | "bottom" | "left";
   tooltipOffset?: number;
   showArrow?: boolean;
+  delayDuration?: number;
 } & ButtonProps;
 
 const ButtonWithTooltip: React.FC<ButtonWithTooltipProps> = ({
@@ -15,9 +16,10 @@ const ButtonWithTooltip: React.FC<ButtonWithTooltipProps> = ({
   tooltipOffset,
   children,
   showArrow,
+  delayDuration = 700,
   ...props
 }) => (
-  <Tooltip delayDuration={700}>
+  <Tooltip delayDuration={delayDuration}>
     <TooltipTrigger asChild>
       <Button {...props}>{children}</Button>
     </TooltipTrigger>

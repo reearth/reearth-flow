@@ -14,7 +14,13 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { PlusIcon, DotsSixIcon, TrashIcon } from "@phosphor-icons/react";
+import {
+  PlusIcon,
+  DotsSixIcon,
+  TrashIcon,
+  ArchiveIcon,
+  DatabaseIcon,
+} from "@phosphor-icons/react";
 import { useState, useEffect, useCallback } from "react";
 
 import {
@@ -28,18 +34,27 @@ import {
   SelectTrigger,
   SelectValue,
   Checkbox,
+  Button,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { AnyProjectVariable, ArrayConfig } from "@flow/types";
 
 type Props = {
   variable: AnyProjectVariable;
+  assetUrl?: string | null;
   onUpdate: (variable: AnyProjectVariable) => void;
+  onDialogOpen: (dialog: "assets" | "cms") => void;
+  clearUrl: () => void;
 };
 
-export const ArrayEditor: React.FC<Props> = ({ variable, onUpdate }) => {
+export const ArrayEditor: React.FC<Props> = ({
+  variable,
+  assetUrl,
+  onUpdate,
+  onDialogOpen,
+  clearUrl,
+}) => {
   const t = useT();
-
   // Get the current array configuration from the config field
   const getArrayConfig = useCallback((): ArrayConfig => {
     if (variable.type === "array" && variable.config) {
@@ -74,6 +89,13 @@ export const ArrayEditor: React.FC<Props> = ({ variable, onUpdate }) => {
     setArrayConfig(newConfig);
     setArrayItems(newItems);
   }, [getArrayConfig, variable.defaultValue]);
+
+  useEffect(() => {
+    if (assetUrl) {
+      setNewItemText(assetUrl);
+      clearUrl();
+    }
+  }, [assetUrl, clearUrl]);
 
   const updateVariable = (config: ArrayConfig, items?: any[]) => {
     setArrayConfig(config);
@@ -327,6 +349,24 @@ export const ArrayEditor: React.FC<Props> = ({ variable, onUpdate }) => {
               )}
               className="flex-1"
             />
+          )}
+          {arrayConfig.itemType === "string" && (
+            <div className="flex gap-2">
+              <Button
+                onClick={() => onDialogOpen("assets")}
+                variant="outline"
+                size="sm">
+                <ArchiveIcon className="h-4 w-4" />
+                {t("Asset")}
+              </Button>
+              <Button
+                onClick={() => onDialogOpen("cms")}
+                variant="outline"
+                size="sm">
+                <DatabaseIcon className="h-4 w-4" />
+                {t("CMS")}
+              </Button>
+            </div>
           )}
           <IconButton
             icon={<PlusIcon />}
