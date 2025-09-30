@@ -357,7 +357,7 @@ export const ArrayEditor: React.FC<Props> = ({
                 variant="outline"
                 size="sm">
                 <FileIcon className="h-4 w-4" />
-                {t("Worksapce Assets")}
+                {t("Workspace Assets")}
               </Button>
               <Button
                 onClick={() => onDialogOpen("cms")}

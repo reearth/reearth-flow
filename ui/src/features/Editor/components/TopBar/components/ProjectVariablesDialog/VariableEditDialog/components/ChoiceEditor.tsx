@@ -310,7 +310,7 @@ export const ChoiceEditor: React.FC<Props> = ({
                 variant="outline"
                 size="sm">
                 <FileIcon className="h-4 w-4" />
-                {t("Asset")}
+                {t("Workspace Assets")}
               </Button>
               <Button
                 onClick={() => onDialogOpen("cms")}
