@@ -27,6 +27,7 @@ function findParentWorkflowWithSubworkflowNode(
   return { subworkflowNode, parentYNodes };
 }
 
+// Add a pseudoInput or pseudoOutput to the parent subworkflow node if the new node is an InputRouter or OutputRouter and the parent subworkflow node doesn't already have one.
 export function addParentYWorkflowNodePseudoPort(
   newNode: Node,
   rawWorkflows: Workflow[],
@@ -35,7 +36,7 @@ export function addParentYWorkflowNodePseudoPort(
 ) {
   const isInputRouter = newNode.data.officialName === "InputRouter";
   const isOutputRouter = newNode.data.officialName === "OutputRouter";
-  let hasNoPseudoInputsOrOutputs = false;
+  let shouldCreatePseudoPort = false;
   const parentWorkflowInfo = findParentWorkflowWithSubworkflowNode(
     currentWorkflowId,
     rawWorkflows,
@@ -44,7 +45,7 @@ export function addParentYWorkflowNodePseudoPort(
 
   if (isInputRouter || isOutputRouter) {
     if (parentWorkflowInfo?.subworkflowNode) {
-      hasNoPseudoInputsOrOutputs =
+      shouldCreatePseudoPort =
         (isInputRouter &&
           !parentWorkflowInfo.subworkflowNode.data.pseudoInputs?.length) ||
         (isOutputRouter &&
@@ -52,7 +53,7 @@ export function addParentYWorkflowNodePseudoPort(
     }
   }
 
-  if (hasNoPseudoInputsOrOutputs) {
+  if (shouldCreatePseudoPort) {
     newNode.data.params = {
       ...newNode.data.params,
       routingPort: DEFAULT_ROUTING_PORT,
@@ -64,7 +65,7 @@ export function addParentYWorkflowNodePseudoPort(
         portName: DEFAULT_ROUTING_PORT,
       };
 
-      const updatedSubworkflowNode = { ...parentWorkflowInfo?.subworkflowNode };
+      const updatedSubworkflowNode = { ...parentWorkflowInfo.subworkflowNode };
 
       if (isInputRouter) {
         updatedSubworkflowNode.data.pseudoInputs = [newPseudoPort];
