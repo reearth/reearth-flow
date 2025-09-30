@@ -32,25 +32,24 @@ export function addParentYWorkflowNodePseudoPort(
   newNode: Node,
   rawWorkflows: Workflow[],
   yWorkflows: Y.Map<YWorkflow>,
-  currentWorkflowId: string,
+  currentYWorkflow?: YWorkflow,
 ) {
   const isInputRouter = newNode.data.officialName === "InputRouter";
   const isOutputRouter = newNode.data.officialName === "OutputRouter";
   let shouldCreatePseudoPort = false;
+  const currentWorkflowId = currentYWorkflow?.get("id")?.toJSON() as string;
   const parentWorkflowInfo = findParentWorkflowWithSubworkflowNode(
     currentWorkflowId,
     rawWorkflows,
     yWorkflows,
   );
 
-  if (isInputRouter || isOutputRouter) {
-    if (parentWorkflowInfo?.subworkflowNode) {
-      shouldCreatePseudoPort =
-        (isInputRouter &&
-          !parentWorkflowInfo.subworkflowNode.data.pseudoInputs?.length) ||
-        (isOutputRouter &&
-          !parentWorkflowInfo.subworkflowNode.data.pseudoOutputs?.length);
-    }
+  if (parentWorkflowInfo?.subworkflowNode) {
+    shouldCreatePseudoPort =
+      (isInputRouter &&
+        !parentWorkflowInfo.subworkflowNode.data.pseudoInputs?.length) ||
+      (isOutputRouter &&
+        !parentWorkflowInfo.subworkflowNode.data.pseudoOutputs?.length);
   }
 
   if (shouldCreatePseudoPort) {

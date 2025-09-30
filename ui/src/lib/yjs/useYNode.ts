@@ -39,15 +39,18 @@ export default ({
               return [...snids, newNode.id];
             });
           }
-          const currentWorkflowId = currentYWorkflow
-            ?.get("id")
-            ?.toJSON() as string;
-          addParentYWorkflowNodePseudoPort(
-            newNode,
-            rawWorkflows,
-            yWorkflows,
-            currentWorkflowId,
-          );
+
+          const isInputRouter = newNode.data.officialName === "InputRouter";
+          const isOutputRouter = newNode.data.officialName === "OutputRouter";
+          if (isInputRouter || isOutputRouter) {
+            addParentYWorkflowNodePseudoPort(
+              newNode,
+              rawWorkflows,
+              yWorkflows,
+              currentYWorkflow,
+            );
+          }
+
           yNodes.set(newNode.id, yNodeConstructor(newNode));
         });
       });
