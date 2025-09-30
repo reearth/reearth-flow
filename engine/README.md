@@ -38,36 +38,27 @@ C:\> vcpkg install libxml2:x64-windows
 C:\> vcpkg integrate install
 ```
 
-### Python 3.11 and py2wasm (Optional)
+### Python (Optional)
 
-This project requires `Python 3.11` and `py2wasm` for compiling Python scripts into WebAssembly (.wasm) files. If you want to use processors whose category is `WASM`, follow the steps below to install Python 3.11 and py2wasm on your operating system.
+Python is required if you want to use Python-based actions in your workflows. Install Python on your operating system:
 
 #### Linux/Debian
 
 ```
 $ sudo apt update
-$ sudo apt install python3.11 python3.11-distutils python3-pip
-$ python -m pip install --upgrade pip
-$ pip install py2wasm
+$ sudo apt install python3 python3-pip
 ```
 
 #### MacOS
 
 ```
-$ brew install python@3.11
-$ python -m pip install --upgrade pip
-$ pip install py2wasm
+$ brew install python3
 ```
 
 #### Windows
 
-1. Download and install Python 3.11 from Python.org.
-2. Ensure “Add Python to PATH” is selected during installation.
-
-```
-$ python -m pip install --upgrade pip
-$ pip install py2wasm
-```
+1. Download and install Python from [Python.org](https://www.python.org/downloads/).
+2. Ensure "Add Python to PATH" is selected during installation.
 
 ## Input Variables
 
