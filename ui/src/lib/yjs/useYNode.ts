@@ -39,11 +39,14 @@ export default ({
               return [...snids, newNode.id];
             });
           }
+          const currentWorkflowId = currentYWorkflow
+            ?.get("id")
+            ?.toJSON() as string;
           addParentYWorkflowNodePseudoPort(
             newNode,
             rawWorkflows,
             yWorkflows,
-            currentYWorkflow,
+            currentWorkflowId,
           );
           yNodes.set(newNode.id, yNodeConstructor(newNode));
         });

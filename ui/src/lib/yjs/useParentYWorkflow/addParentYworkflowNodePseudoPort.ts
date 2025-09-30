@@ -6,21 +6,29 @@ import type { Node, Workflow } from "@flow/types";
 import { yNodeConstructor } from "../conversions";
 import { YNodesMap, YWorkflow } from "../types";
 
+function findParentWorkflow(
+  currentWorkflowId: string,
+  rawWorkflows: Workflow[],
+) {
+  const parentWorkflow = rawWorkflows.find((w) => {
+    const nodes = w.nodes as Node[];
+    return nodes.some((n) => n.data.subworkflowId === currentWorkflowId);
+  });
+
+  return parentWorkflow;
+}
+
 export function addParentYWorkflowNodePseudoPort(
   newNode: Node,
   rawWorkflows: Workflow[],
   yWorkflows: Y.Map<YWorkflow>,
-  currentYWorkflow?: YWorkflow,
+  currentWorkflowId: string,
 ) {
   const isInputRouter = newNode.data.officialName === "InputRouter";
   const isOutputRouter = newNode.data.officialName === "OutputRouter";
-  let shouldInitialize = false;
+  let hasNoPseudoInputsOrOutputs = false;
   if (isInputRouter || isOutputRouter) {
-    const currentWorkflowId = currentYWorkflow?.get("id")?.toJSON() as string;
-    const parentWorkflow = rawWorkflows.find((w) => {
-      const nodes = w.nodes as Node[];
-      return nodes.some((n) => n.data.subworkflowId === currentWorkflowId);
-    });
+    const parentWorkflow = findParentWorkflow(currentWorkflowId, rawWorkflows);
 
     if (parentWorkflow) {
       const parentYWorkflow = yWorkflows.get(parentWorkflow.id);
@@ -32,7 +40,7 @@ export function addParentYWorkflowNodePseudoPort(
         );
 
         if (subworkflowNode) {
-          shouldInitialize =
+          hasNoPseudoInputsOrOutputs =
             (isInputRouter && !subworkflowNode.data.pseudoInputs?.length) ||
             (isOutputRouter && !subworkflowNode.data.pseudoOutputs?.length);
         }
@@ -40,19 +48,15 @@ export function addParentYWorkflowNodePseudoPort(
     }
   }
 
-  if (shouldInitialize) {
+  if (hasNoPseudoInputsOrOutputs) {
     newNode.data.params = {
       ...newNode.data.params,
       routingPort: DEFAULT_ROUTING_PORT,
     };
   }
 
-  if (shouldInitialize && (isInputRouter || isOutputRouter)) {
-    const currentWorkflowId = currentYWorkflow?.get("id")?.toJSON() as string;
-    const parentWorkflow = rawWorkflows.find((w) => {
-      const nodes = w.nodes as Node[];
-      return nodes.some((n) => n.data.subworkflowId === currentWorkflowId);
-    });
+  if (hasNoPseudoInputsOrOutputs) {
+    const parentWorkflow = findParentWorkflow(currentWorkflowId, rawWorkflows);
 
     if (parentWorkflow) {
       const parentYWorkflow = yWorkflows.get(parentWorkflow.id);
