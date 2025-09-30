@@ -1,12 +1,12 @@
 import { Dispatch, SetStateAction, useCallback, useRef } from "react";
 import * as Y from "yjs";
 
+import { DEFAULT_ROUTING_PORT } from "@flow/global-constants";
 import type { Node, NodeChange, Workflow } from "@flow/types";
 
 import { yNodeConstructor } from "./conversions";
 import type { YNodesMap, YNodeValue, YWorkflow } from "./types";
 import { updateParentYWorkflow } from "./useParentYWorkflow";
-import { addParentYWorkflowNodePseudoPort } from "./useParentYWorkflow/addParentYworkflowNodePseudoPort";
 import { removeParentYWorkflowNodePseudoPort } from "./useParentYWorkflow/removeParentYWorkflowNodePseudoPort";
 
 export default ({
@@ -40,18 +40,90 @@ export default ({
             });
           }
 
-          const isInputRouter = newNode.data.officialName === "InputRouter";
-          const isOutputRouter = newNode.data.officialName === "OutputRouter";
-          if (isInputRouter || isOutputRouter) {
-            addParentYWorkflowNodePseudoPort(
-              newNode,
-              rawWorkflows,
-              yWorkflows,
-              currentYWorkflow,
-            );
+          // For routers without routingPort, generate unique port name
+          const isRouterInput = newNode.data.outputs?.length;
+          const isRouterOutput = newNode.data.inputs?.length;
+
+          if (
+            (isRouterInput || isRouterOutput) &&
+            !newNode.data.params?.routingPort
+          ) {
+            const currentWorkflowId = currentYWorkflow
+              ?.get("id")
+              ?.toJSON() as string;
+            const parentWorkflow = rawWorkflows.find((w) => {
+              const nodes = w.nodes as Node[];
+              return nodes.some(
+                (n) => n.data.subworkflowId === currentWorkflowId,
+              );
+            });
+
+            let uniquePortName = DEFAULT_ROUTING_PORT;
+
+            if (parentWorkflow) {
+              const parentYWorkflow = yWorkflows.get(parentWorkflow.id);
+              if (parentYWorkflow) {
+                const parentYNodes = parentYWorkflow.get("nodes") as YNodesMap;
+                const parentNodes = Object.values(
+                  parentYNodes.toJSON(),
+                ) as Node[];
+                const subworkflowNode = parentNodes.find(
+                  (n) => n.data.subworkflowId === currentWorkflowId,
+                );
+
+                if (subworkflowNode) {
+                  const existingPorts = isRouterInput
+                    ? subworkflowNode.data.pseudoInputs || []
+                    : subworkflowNode.data.pseudoOutputs || [];
+
+                  const existingPortNames = new Set(
+                    existingPorts.map((p) => p.portName),
+                  );
+
+                  let counter = 1;
+                  while (existingPortNames.has(uniquePortName)) {
+                    uniquePortName = `${DEFAULT_ROUTING_PORT}-${counter}`;
+                    counter++;
+                  }
+                }
+              }
+            }
+
+            newNode.data.params = {
+              ...newNode.data.params,
+              routingPort: uniquePortName,
+            };
           }
 
           yNodes.set(newNode.id, yNodeConstructor(newNode));
+
+          // Update parent pseudoports if this is a router with routingPort
+          if (
+            (isRouterInput || isRouterOutput) &&
+            newNode.data.params?.routingPort
+          ) {
+            const currentWorkflowId = currentYWorkflow
+              ?.get("id")
+              ?.toJSON() as string;
+            const parentWorkflow = rawWorkflows.find((w) => {
+              const nodes = w.nodes as Node[];
+              return nodes.some(
+                (n) => n.data.subworkflowId === currentWorkflowId,
+              );
+            });
+
+            if (parentWorkflow) {
+              const parentYWorkflow = yWorkflows.get(parentWorkflow.id);
+              if (parentYWorkflow) {
+                updateParentYWorkflow(
+                  currentWorkflowId,
+                  parentYWorkflow,
+                  newNode,
+                  newNode.data.params,
+                );
+              }
+            }
+          }
         });
       });
     },
