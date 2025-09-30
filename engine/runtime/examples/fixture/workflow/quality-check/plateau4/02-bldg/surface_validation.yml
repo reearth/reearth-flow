@@ -667,7 +667,6 @@ nodes:
     with:
       routingPort: solidBoundaryNotClosedIssueCount
 
-
   - id: 016a8afe-3aa7-4047-8c8c-9f6f8464b03c
     name: SolidBoundaryOtherIssueCounter
     type: action
