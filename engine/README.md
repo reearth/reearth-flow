@@ -46,7 +46,7 @@ Python is required if you want to use Python-based actions in your workflows. In
 
 ```
 $ sudo apt update
-$ sudo apt install python3 python3-pip
+$ sudo apt install python3 python3-pip python3-distutils
 ```
 
 #### MacOS
