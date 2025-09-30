@@ -16,7 +16,7 @@ const Breadcrumb: React.FC = () => {
 
   return (
     <div
-      className="flex cursor-default items-center gap-1 select-none"
+      className="flex flex-1 cursor-default items-center gap-1 select-none"
       onMouseLeave={() => setIsHovered(undefined)}>
       {/* <div className="flex items-center gap-2">
         <UsersThreeIcon weight="thin" size={18} />
@@ -27,13 +27,17 @@ const Breadcrumb: React.FC = () => {
         </p>
       </div>
       <CaretRightIcon /> */}
-      <div className="flex items-center gap-2">
-        {/* <SquaresFourIcon weight="thin" size={18} /> */}
+      <div className="flex items-center">
         <p
-          className={`max-w-[500px] min-w-[100px] truncate text-center text-sm transition-all delay-0 duration-500 dark:font-light ${isHovered?.includes("project") ? "max-w-[50vw] delay-500 select-text" : undefined}`}
+          className={`min-w-[100px] truncate text-center text-sm font-bold transition-all duration-500 ${
+            isHovered?.includes("project")
+              ? "max-w-[50vw] delay-500 select-text"
+              : "max-w-[250px] delay-0"
+          }`}
           onMouseEnter={() => setIsHovered((h) => [...(h ?? []), "project"])}>
           {currentProject?.name}
         </p>
+        {/* <CaretRightIcon /> */}
       </div>
     </div>
   );

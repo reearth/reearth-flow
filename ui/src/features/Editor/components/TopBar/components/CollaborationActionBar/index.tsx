@@ -46,15 +46,15 @@ const CollaborationActionBar: React.FC<Props> = ({
       }}>
       <PopoverTrigger asChild>
         <ButtonWithTooltip
-          className="p-1"
-          variant={"ghost"}
+          className="h-7 max-w-14"
+          variant="ghost"
           tooltipText={t("Collaborators")}
           tooltipOffset={tooltipOffset}
           onClick={() => onDialogOpen("collaboration")}>
-          <div className="flex items-center -space-x-2">
-            <div key={self?.clientId} className="relative">
+          <div className="flex items-center -space-x-4">
+            <div key={self?.clientId}>
               <div
-                className="flex h-6 w-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
+                className="flex size-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
                 style={{ backgroundColor: self?.color || undefined }}>
                 <span className="text-xs font-medium">
                   {self.userName.charAt(0).toUpperCase()}
@@ -67,10 +67,12 @@ const CollaborationActionBar: React.FC<Props> = ({
                 .slice(0, 2)
                 .map(([_key, value]) => {
                   return (
-                    <div key={value.clientId} className="relative">
+                    <div key={value.clientId}>
                       <div
-                        className="flex h-6 w-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
-                        style={{ backgroundColor: value.color || undefined }}>
+                        className="flex size-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
+                        style={{
+                          backgroundColor: value.color || undefined,
+                        }}>
                         <span className="text-xs font-medium">
                           {value.userName.charAt(0).toUpperCase()}
                           {value.userName.charAt(1)}

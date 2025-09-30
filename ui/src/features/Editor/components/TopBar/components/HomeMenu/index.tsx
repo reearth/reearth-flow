@@ -45,7 +45,7 @@ type Props = {
 
 const HomeMenu: React.FC<Props> = ({
   // className,
-  dropdownPosition = "right",
+  dropdownPosition = "bottom",
   dropdownAlign,
   dropdownAlignOffset,
   dropdownPositionOffset,

@@ -1,7 +1,17 @@
 import { type XYPosition } from "@xyflow/react";
 import { memo, useCallback, useState } from "react";
+import { Doc } from "yjs";
 
-import type { ActionNodeType, Algorithm, Direction, Node } from "@flow/types";
+import type {
+  ActionNodeType,
+  Algorithm,
+  AwarenessUser,
+  Direction,
+  Node,
+  Project,
+} from "@flow/types";
+
+import { ActionBar, DebugActionBar } from "../TopBar/components";
 
 import {
   CanvasActionBar,
@@ -9,6 +19,7 @@ import {
   NodePickerDialog,
   LayoutOptionsDialog,
   DebugPanel,
+  Homebar,
 } from "./components";
 
 type OverlayUIProps = {
@@ -19,6 +30,13 @@ type OverlayUIProps = {
   canUndo: boolean;
   canRedo: boolean;
   isMainWorkflow: boolean;
+  project?: Project;
+  yDoc: Doc | null;
+  openWorkflows: {
+    id: string;
+    name: string;
+  }[];
+  currentWorkflowId: string;
   onNodesAdd: (nodes: Node[]) => void;
   onNodePickerClose: () => void;
   onWorkflowUndo: () => void;
@@ -28,6 +46,24 @@ type OverlayUIProps = {
     direction: Direction,
     spacing: number,
   ) => void;
+  self: AwarenessUser;
+  users: Record<string, AwarenessUser>;
+  spotlightUserClientId: number | null;
+  allowedToDeploy: boolean;
+  isSaving: boolean;
+  onWorkflowClose: (workflowId: string) => void;
+  onWorkflowChange: (workflowId?: string) => void;
+  onWorkflowDeployment: (
+    description: string,
+    deploymentId?: string,
+  ) => Promise<void>;
+  onProjectExport: () => void;
+  onProjectShare: (share: boolean) => void;
+  onDebugRunStart: () => Promise<void>;
+  onDebugRunStop: () => Promise<void>;
+  onProjectSnapshotSave: () => Promise<void>;
+  onSpotlightUserSelect: (clientId: number) => void;
+  onSpotlightUserDeselect: () => void;
   children?: React.ReactNode;
 };
 
@@ -36,11 +72,30 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   canUndo,
   canRedo,
   isMainWorkflow,
+  yDoc,
+  project,
+  allowedToDeploy,
+  isSaving,
+  self,
+  users,
+  spotlightUserClientId,
+  openWorkflows,
+  currentWorkflowId,
   onNodesAdd,
   onNodePickerClose,
   onWorkflowUndo,
   onWorkflowRedo,
+  onWorkflowChange,
+  onWorkflowClose,
   onLayoutChange,
+  onWorkflowDeployment,
+  onProjectExport,
+  onProjectShare,
+  onDebugRunStart,
+  onDebugRunStop,
+  onProjectSnapshotSave,
+  onSpotlightUserSelect,
+  onSpotlightUserDeselect,
   children: canvas,
 }) => {
   const [showLayoutOptions, setShowLayoutOptions] = useState(false);
@@ -68,10 +123,39 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         </div>
         <div
           id="left-top"
-          className="pointer-events-none absolute top-2 bottom-1 left-2 flex shrink-0 flex-col gap-4 *:pointer-events-auto">
-          <div className="self-start" />
+          className="pointer-events-none absolute top-2 left-2 *:pointer-events-auto">
+          <Homebar
+            self={self}
+            users={users}
+            spotlightUserClientId={spotlightUserClientId}
+            currentWorkflowId={currentWorkflowId}
+            openWorkflows={openWorkflows}
+            onWorkflowChange={onWorkflowChange}
+            onWorkflowClose={onWorkflowClose}
+            onSpotlightUserSelect={onSpotlightUserSelect}
+            onSpotlightUserDeselect={onSpotlightUserDeselect}
+          />
         </div>
-        <div id="right-top" className="absolute top-2 right-2" />
+        <div id="right-top" className="absolute top-2 right-2 h-[42px]">
+          <div
+            className={`flex h-full items-center justify-center gap-2 self-center rounded-xl border border-primary bg-secondary/70 p-1 shadow-md shadow-secondary backdrop-blur-xs select-none ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
+            <DebugActionBar
+              onDebugRunStart={onDebugRunStart}
+              onDebugRunStop={onDebugRunStop}
+            />
+            <div className="h-4/5 border-r" />
+            <ActionBar
+              project={project}
+              yDoc={yDoc}
+              allowedToDeploy={allowedToDeploy}
+              isSaving={isSaving}
+              onProjectShare={onProjectShare}
+              onProjectExport={onProjectExport}
+              onWorkflowDeployment={onWorkflowDeployment}
+              onProjectSnapshotSave={onProjectSnapshotSave}
+            />
+          </div>
+        </div>
         <div id="left-bottom" className="absolute bottom-2 left-2 z-1">
           <DebugPanel />
         </div>
