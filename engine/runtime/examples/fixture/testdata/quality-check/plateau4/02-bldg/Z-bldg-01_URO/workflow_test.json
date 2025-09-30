@@ -1,0 +1,18 @@
+{
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
+  "description": "Test PLATEAU4 URO building ID format check",
+  "expectedOutput": {
+    "expectedFile": "02_建築物_建物ID書式不正.csv"
+  },
+  "cityGmlPath": "udx/bldg/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "intermediateAssertions": [
+    {
+      "edgeId": "7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b.66f6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b",
+      "expectedFile": "error_count_test_filtered.jsonl",
+      "jsonFilter": "{attributes}"
+    }
+  ],
+  "skip": false
+}

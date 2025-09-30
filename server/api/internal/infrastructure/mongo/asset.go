@@ -10,7 +10,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/rerror"
 	"go.mongodb.org/mongo-driver/bson"
@@ -63,7 +62,7 @@ func (r *Asset) FindByIDs(ctx context.Context, ids id.AssetIDList) ([]*asset.Ass
 	return filterAssets(ids, res), nil
 }
 
-func (r *Asset) FindByWorkspace(ctx context.Context, wid accountdomain.WorkspaceID, uFilter repo.AssetFilter) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
+func (r *Asset) FindByWorkspace(ctx context.Context, wid id.WorkspaceID, uFilter repo.AssetFilter) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
 	var filter any = bson.M{
 		"workspace": wid.String(),
 	}
@@ -77,7 +76,7 @@ func (r *Asset) FindByWorkspace(ctx context.Context, wid accountdomain.Workspace
 	return r.paginate(ctx, filter, uFilter.Sort, uFilter.Pagination)
 }
 
-func (r *Asset) TotalSizeByWorkspace(ctx context.Context, wid accountdomain.WorkspaceID) (uint64, error) {
+func (r *Asset) TotalSizeByWorkspace(ctx context.Context, wid id.WorkspaceID) (uint64, error) {
 	c, err := r.client.Client().Aggregate(ctx, []bson.M{
 		{"$match": bson.M{"workspace": wid.String()}},
 		{"$group": bson.M{"_id": nil, "size": bson.M{"$sum": "$size"}}},

@@ -2,7 +2,6 @@ package trigger
 
 import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/account/accountdomain"
 )
 
 type (
@@ -10,7 +9,7 @@ type (
 	DeploymentID = id.DeploymentID
 	ProjectID    = id.ProjectID
 	WorkflowID   = id.WorkflowID
-	WorkspaceID  = accountdomain.WorkspaceID
+	WorkspaceID  = id.WorkspaceID
 )
 
 var NewID = id.NewTriggerID

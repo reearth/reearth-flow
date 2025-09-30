@@ -2,9 +2,7 @@
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "description": "Test PLATEAU4 T-bldg-02",
   "expectedOutput": {
-    "expectedFile": "02_bldg_t_bldg_02エラー.tsv",
-    "comparison": "exact",
-    "except": "\"GmlFilePath\""
+    "expectedFile": "02_建築物_T-bldg-02エラー.csv"
   },
   "cityGmlPath": "udx/bldg/input.gml",
   "codelists": "codelists",
@@ -13,7 +11,6 @@
     {
       "edgeId": "7a561c34-2e94-4883-91e4-4026b09c2f8a.66b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d",
       "expectedFile": "error_count_test_filtered.jsonl",
-      "comparison": "jsonEquals",
       "jsonFilter": "{attributes}"
     }
   ],

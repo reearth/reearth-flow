@@ -2,8 +2,6 @@ package interfaces
 
 import (
 	"errors"
-
-	"github.com/reearth/reearthx/account/accountusecase/accountinterfaces"
 )
 
 type ListOperation string
@@ -22,20 +20,19 @@ var (
 )
 
 type Container struct {
-	Asset            Asset
-	CMS              CMS
-	Deployment       Deployment
-	EdgeExecution    EdgeExecution
-	Job              Job
-	Log              Log
-	NodeExecution    NodeExecution
-	Parameter        Parameter
-	Project          Project
-	ProjectAccess    ProjectAccess
-	Trigger          Trigger
-	User             accountinterfaces.User
-	UserFacingLog    UserFacingLog
-	TempNewUser      User // TODO: After migration, remove User and rename TempNewUser to User.
-	Workspace        accountinterfaces.Workspace
-	TempNewWorkspace Workspace // TODO: After migration, remove Workspace and rename TempNewWorkspace to Workspace.
+	Asset         Asset
+	CMS           CMS
+	Deployment    Deployment
+	EdgeExecution EdgeExecution
+	Job           Job
+	Log           Log
+	NodeExecution NodeExecution
+	Parameter     Parameter
+	Project       Project
+	ProjectAccess ProjectAccess
+	Trigger       Trigger
+	UserFacingLog UserFacingLog
+	User          User
+	Workspace     Workspace
+	Websocket     WebsocketClient
 }

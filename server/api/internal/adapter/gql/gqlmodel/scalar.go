@@ -75,3 +75,41 @@ func UnmarshalMap(v interface{}) (map[string]string, error) {
 	}
 	return nil, fmt.Errorf("%T is not a map", v)
 }
+
+type Bytes []byte
+
+func MarshalBytes(b Bytes) graphql.Marshaler {
+	return graphql.WriterFunc(func(w io.Writer) {
+		nums := make([]int, len(b))
+		for i, v := range b {
+			nums[i] = int(v)
+		}
+		_ = json.NewEncoder(w).Encode(nums)
+	})
+}
+
+func UnmarshalBytes(v interface{}) (Bytes, error) {
+	if bytes, ok := v.([]byte); ok {
+		return Bytes(bytes), nil
+	}
+
+	if arr, ok := v.([]interface{}); ok {
+		bytes := make([]byte, len(arr))
+		for i, item := range arr {
+			if num, ok := item.(json.Number); ok {
+				if val, err := num.Int64(); err == nil {
+					bytes[i] = byte(val)
+				} else if val, err := num.Float64(); err == nil {
+					bytes[i] = byte(val)
+				} else {
+					return nil, fmt.Errorf("array element at index %d is not a valid number: %v", i, num)
+				}
+			} else {
+				return nil, fmt.Errorf("array element at index %d is not a number, type=%T, value=%v", i, item, item)
+			}
+		}
+		return Bytes(bytes), nil
+	}
+
+	return nil, errors.New("Bytes must be a byte array or number array (Uint8Array)")
+}

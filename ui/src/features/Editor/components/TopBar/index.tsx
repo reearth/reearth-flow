@@ -1,4 +1,4 @@
-import { ChalkboardTeacherIcon } from "@phosphor-icons/react";
+import { ChalkboardTeacherIcon, FileIcon } from "@phosphor-icons/react";
 import { memo } from "react";
 import { Doc } from "yjs";
 
@@ -85,31 +85,32 @@ const TopBar: React.FC<Props> = ({
   const [currentProject] = useCurrentProject();
 
   return (
-    <div className="flex h-[50px] w-[100vw] shrink-0 justify-between bg-secondary">
+    <div className="flex h-[42px] w-[100vw] shrink-0 justify-between bg-secondary">
       <div
         className={`flex items-center gap-1 border-b pr-2 pl-1 ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
         <HomeMenu
           dropdownPosition="bottom"
           dropdownAlign="end"
-          dropdownAlignOffset={-170}
+          dropdownAlignOffset={-180}
         />
         <div className="pr-2">
           <Breadcrumb />
         </div>
-        <div className="flex items-center gap-2 rounded-md">
+        <div className="flex items-center gap-2">
           <IconButton
-            className="h-8"
+            className="h-7"
             variant="outline"
             tooltipText={t("Project Variables")}
             icon={<ChalkboardTeacherIcon weight="thin" size={18} />}
             onClick={() => handleDialogOpen("projectVariables")}
           />
-          {/* <IconButton
+          <IconButton
+            className="h-7"
             variant="outline"
-            tooltipText={t("Assets")}
-            icon={<HardDriveIcon weight="thin" size={18} />}
+            tooltipText={t("Workspace Assets")}
+            icon={<FileIcon weight="thin" size={18} />}
             onClick={() => handleDialogOpen("assets")}
-          /> */}
+          />
         </div>
       </div>
       <div className="flex h-full flex-1 gap-2 overflow-hidden">
@@ -152,9 +153,6 @@ const TopBar: React.FC<Props> = ({
           onProjectSnapshotSave={onProjectSnapshotSave}
         />
       </div>
-      {showDialog === "assets" && (
-        <AssetsDialog onDialogClose={handleDialogClose} />
-      )}
       {showDialog === "projectVariables" && (
         <ProjectVariableDialog
           currentProjectVariables={currentProjectVariables}
@@ -166,6 +164,9 @@ const TopBar: React.FC<Props> = ({
           onDeleteBatch={handleProjectVariablesBatchDelete}
           onBatchUpdate={handleProjectVariablesBatchUpdate}
         />
+      )}
+      {showDialog === "assets" && (
+        <AssetsDialog onDialogClose={handleDialogClose} />
       )}
     </div>
   );

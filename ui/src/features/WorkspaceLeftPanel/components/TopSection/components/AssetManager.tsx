@@ -1,4 +1,4 @@
-import { HardDriveIcon } from "@phosphor-icons/react";
+import { FileIcon } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 
 import { useT } from "@flow/lib/i18n";
@@ -23,8 +23,8 @@ const AssetManager: React.FC<Props> = ({ selected }) => {
       <div
         className={`-mx-2 flex flex-1 cursor-pointer items-center gap-2 rounded px-2 py-1 ${selected && "bg-accent"} hover:bg-accent`}
         onClick={handleNavigation}>
-        <HardDriveIcon weight="light" />
-        <p className="text-sm dark:font-extralight">{t("Assets")}</p>
+        <FileIcon weight="light" />
+        <p className="text-sm dark:font-extralight">{t("Workspace Assets")}</p>
       </div>
     </div>
   );

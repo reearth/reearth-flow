@@ -7,6 +7,7 @@ import (
 type Type string
 
 const (
+	TypeArray              Type = "ARRAY"
 	TypeChoice             Type = "CHOICE"
 	TypeColor              Type = "COLOR"
 	TypeDatetime           Type = "DATETIME"

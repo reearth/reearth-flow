@@ -13,15 +13,13 @@ Each testdata is a folder consisting of a test profile named `workflow_test.json
 - **workflowPath**: Path to the workflow YAML file (relative to fixture directory)
 - **description**: Human-readable description of the test
 - **expectedOutput**: Main output validation configuration
-  - **expectedFile**: Expected output file (relative to testdata root)
-  - **comparison**: Comparison method (`exact`, `jsonEquals`)
-  - **except**: Fields to exclude from comparison (for TSV: column names, for JSON: field exclusion)
+  - **expectedFile**: Expected output file (relative to testdata root). The file format is automatically detected based on the file extension.
+  - **except**: Fields to exclude from comparison (for TSV/CSV: column names)
 - **cityGmlPath**: Path to input CityGML file
 - **codelists/schemas**: codelists and schemas paths
 - **intermediateAssertions**: Validate intermediate data at specific workflow edges
   - **edgeId**: Workflow edge identifier to capture data from
-  - **expectedFile**: Expected intermediate data file (relative to testdata root)
-  - **comparison**: Comparison method
+  - **expectedFile**: Expected intermediate data file (relative to testdata root). The file format is automatically detected.
   - **jsonFilter**: Optional JSON filtering (see JSON Filtering section)
 - **skip**: Skip this test (useful for debugging)
 
@@ -91,8 +89,7 @@ T-BLDG-02/
   "description": "Test PLATEAU4 T-bldg-02 validation with geometry type errors",
   "expectedOutput": {
     "expectedFile": "02_bldg_t_bldg_02エラー.tsv",
-    "comparison": "exact",
-    "except": "\"gmlPath\""
+    "except": "gmlPath"
   },
   "cityGmlPath": "udx/bldg/input.gml",
   "codelists": "codelists",
@@ -101,7 +98,6 @@ T-BLDG-02/
     {
       "edgeId": "7a561c34-2e94-4883-91e4-4026b09c2f8a.66b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d",
       "expectedFile": "error_count_test_filtered.jsonl",
-      "comparison": "jsonEquals",
       "jsonFilter": "{attributes}"
     }
   ],
@@ -118,17 +114,27 @@ T-BLDG-02/
 }
 ```
 
+## Supported File Formats
+
+The test system automatically detects file formats based on file extensions:
+- **JSON** (`.json`): Parsed and compared as JSON objects
+- **JSONL** (`.jsonl`): Each line parsed as a separate JSON object
+- **CSV** (`.csv`): Compared with column order independence
+- **TSV** (`.tsv`): Compared with column order independence
+
+**Note**: Files with unsupported extensions will result in an error message indicating that only json, jsonl, csv, and tsv files are supported.
+
 ## Field Exclusion
 
-### TSV Files
+### TSV/CSV Files
 Use the `except` field to exclude columns:
 ```json
-"except": "\"GmlFilePath\""           // Single column
-"except": ["\"Col1\"", "\"Col2\""]   // Multiple columns
+"except": "GmlFilePath"           // Single column
+"except": ["Col1", "Col2"]   // Multiple columns
 ```
 
-### JSON Files  
-Use `jsonFilter` instead of field exclusion for cleaner tests:
+### JSON/JSONL Files
+Use `jsonFilter` for focused testing:
 ```json
 "jsonFilter": "{attributes}"         // Focus on specific fields
 ```
@@ -143,3 +149,26 @@ Use `jsonFilter` instead of field exclusion for cleaner tests:
 6. Run tests to verify everything works correctly
 
 The test system automatically discovers new test cases on the next build.
+
+---
+
+# テストデータについて / About Test Data
+
+このディレクトリには、テスト用のサンプルファイルが含まれています。一部のテストデータにG空間情報センターで公開されているPLATEAUコンテンツを使用しています。
+
+This directory contains sample files for testing. Some test data uses PLATEAU content published on G-spatial Information Center.
+
+## データ出典 / Data Attribution
+
+出典：国土交通省 PLATEAUウェブサイト (https://www.mlit.go.jp/plateau/)
+Source: Ministry of Land, Infrastructure, Transport and Tourism PLATEAU Website (https://www.mlit.go.jp/plateau/)
+
+PLATEAU 3D都市モデル - G空間情報センター公開コンテンツの一部 (https://www.geospatial.jp/ckan/dataset/plateau)
+PLATEAU 3D City Models - Part of content published on G-spatial Information Center (https://www.geospatial.jp/ckan/dataset/plateau)
+
+## ライセンス / License
+
+使用しているPLATEAUデータのライセンスについては、以下をご確認ください:
+For licensing information of the PLATEAU data used, please refer to:
+
+https://www.mlit.go.jp/plateau/site-policy/

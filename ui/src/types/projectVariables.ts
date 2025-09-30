@@ -1,6 +1,7 @@
 import { ApiResponse } from "./api";
 
 export const VARIABLE_TYPE_OPTIONS = [
+  "array",
   "text",
   "number",
   "yes_no",
@@ -96,28 +97,37 @@ export type FileConfig = {
   accept?: string;
 };
 
+export type ArrayConfig = {
+  itemType?: "string" | "number" | "boolean";
+  minItems?: number;
+  maxItems?: number;
+  allowDuplicates?: boolean;
+};
+
 // Conditional config type based on VarType
-export type ProjectVariableConfig<T extends VarType> = T extends "choice"
-  ? ChoiceConfig
-  : T extends "coordinate_system"
-    ? CoordinateConfig
-    : T extends "color"
-      ? ColorConfig
-      : T extends "database_connection"
-        ? DatabaseConnectionConfig
-        : T extends "geometry"
-          ? GeometryConfig
-          : T extends "number"
-            ? NumberConfig
-            : T extends "text"
-              ? TextConfig
-              : T extends "datetime"
-                ? DateTimeConfig
-                : T extends "web_connection"
-                  ? WebConnectionConfig
-                  : T extends "file_folder"
-                    ? FileConfig
-                    : undefined;
+export type ProjectVariableConfig<T extends VarType> = T extends "array"
+  ? ArrayConfig
+  : T extends "choice"
+    ? ChoiceConfig
+    : T extends "coordinate_system"
+      ? CoordinateConfig
+      : T extends "color"
+        ? ColorConfig
+        : T extends "database_connection"
+          ? DatabaseConnectionConfig
+          : T extends "geometry"
+            ? GeometryConfig
+            : T extends "number"
+              ? NumberConfig
+              : T extends "text"
+                ? TextConfig
+                : T extends "datetime"
+                  ? DateTimeConfig
+                  : T extends "web_connection"
+                    ? WebConnectionConfig
+                    : T extends "file_folder"
+                      ? FileConfig
+                      : undefined;
 
 export type ProjectVariable<T extends VarType = VarType> = {
   id: string;

@@ -12,7 +12,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/account/accountdomain"
 )
 
 type Asset struct {
@@ -41,7 +40,7 @@ func (i *Asset) Fetch(ctx context.Context, assets []id.AssetID) ([]*asset.Asset,
 	return i.repos.Asset.FindByIDs(ctx, assets)
 }
 
-func (i *Asset) FindByWorkspace(ctx context.Context, wid accountdomain.WorkspaceID, keyword *string, sort *asset.SortType, p *interfaces.PaginationParam) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
+func (i *Asset) FindByWorkspace(ctx context.Context, wid id.WorkspaceID, keyword *string, sort *asset.SortType, p *interfaces.PaginationParam) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, nil, err
 	}

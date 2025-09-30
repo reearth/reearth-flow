@@ -5,13 +5,13 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
-	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
-	"github.com/reearth/reearthx/account/accountdomain/user"
+	"github.com/reearth/reearth-flow/api/pkg/user"
+	reearthxuser "github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/appx"
 	"golang.org/x/text/language"
 )
 
-type flowUserKey struct{}
+type userKey struct{}
 type jwtTokenKey struct{}
 type gqlOperationNameKey struct{}
 
@@ -35,14 +35,13 @@ type AuthInfo struct {
 	EmailVerified *bool
 }
 
-func AttachUser(ctx context.Context, u *user.User) context.Context {
+// TODO: After migration, remove this function
+func AttachReearthxUser(ctx context.Context, u *reearthxuser.User) context.Context {
 	return context.WithValue(ctx, contextUser, u)
 }
 
-// TODO: Keep using AttachUser during the migration period.
-// After migration, unify it so that AttachUser returns a FlowUser (from flow/pkg).
-func AttachFlowUser(ctx context.Context, u *pkguser.User) context.Context {
-	return context.WithValue(ctx, flowUserKey{}, u)
+func AttachUser(ctx context.Context, u *user.User) context.Context {
+	return context.WithValue(ctx, userKey{}, u)
 }
 
 func AttachOperator(ctx context.Context, o *usecase.Operator) context.Context {
@@ -66,19 +65,18 @@ func AttachGQLOperationName(ctx context.Context, op string) context.Context {
 	return context.WithValue(ctx, gqlOperationNameKey{}, op)
 }
 
-func User(ctx context.Context) *user.User {
+// TODO: After migration, remove this function
+func ReearthxUser(ctx context.Context) *reearthxuser.User {
 	if v := ctx.Value(contextUser); v != nil {
-		if u, ok := v.(*user.User); ok {
+		if u, ok := v.(*reearthxuser.User); ok {
 			return u
 		}
 	}
 	return nil
 }
 
-// TODO: Keep using User during the migration period.
-// After migration, unify it so that User returns a FlowUser (from flow/pkg).
-func FlowUser(ctx context.Context) *pkguser.User {
-	u, _ := ctx.Value(flowUserKey{}).(*pkguser.User)
+func User(ctx context.Context) *user.User {
+	u, _ := ctx.Value(userKey{}).(*user.User)
 	return u
 }
 
@@ -87,7 +85,7 @@ func Lang(ctx context.Context, lang *language.Tag) string {
 		return lang.String()
 	}
 
-	u := User(ctx)
+	u := ReearthxUser(ctx)
 	if u == nil {
 		return defaultLang.String()
 	}

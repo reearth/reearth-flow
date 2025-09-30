@@ -1,5 +1,4 @@
-import { useReactFlow, useViewport } from "@xyflow/react";
-import { throttle } from "lodash-es";
+import { useReactFlow } from "@xyflow/react";
 import {
   MouseEvent,
   useCallback,
@@ -10,7 +9,6 @@ import {
 } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useY } from "react-yjs";
-import { useUsers, useSelf } from "y-presence";
 import type { Awareness } from "y-protocols/awareness";
 import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 
@@ -20,17 +18,15 @@ import {
 } from "@flow/global-constants";
 import { useProjectExport, useProjectSave } from "@flow/hooks";
 import { useSharedProject } from "@flow/lib/gql";
-import { useYjsStore } from "@flow/lib/yjs";
+import {
+  useAwarenessCursor,
+  useSpotlightUser,
+  useYjsStore,
+} from "@flow/lib/yjs";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { useCurrentProject } from "@flow/stores";
-import type {
-  Algorithm,
-  AwarenessUser,
-  Direction,
-  Edge,
-  Node,
-} from "@flow/types";
+import type { Algorithm, Direction, Edge, Node } from "@flow/types";
 
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
 import useDebugRun from "./useDebugRun";
@@ -53,20 +49,7 @@ export default ({
     originPrepend?: string,
   ) => void;
 }) => {
-  const { fitView, screenToFlowPosition, setViewport } = useReactFlow();
-  const { x, y, zoom } = useViewport();
-
-  const latestViewportRef = useRef<{ x: number; y: number; zoom: number }>({
-    x,
-    y,
-    zoom,
-  });
-
-  latestViewportRef.current = { x, y, zoom };
-
-  const [spotlightUserClientId, setSpotlightUserClientId] = useState<
-    number | null
-  >(null);
+  const { fitView } = useReactFlow();
 
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(
     DEFAULT_ENTRY_GRAPH_ID,
@@ -113,26 +96,6 @@ export default ({
   const { shareProject, unshareProject } = useSharedProject();
 
   const [currentProject] = useCurrentProject();
-  const rawSelf = useSelf(yAwareness);
-  const rawUsers = useUsers(yAwareness);
-
-  const self: AwarenessUser = {
-    clientId: rawSelf?.clientID,
-    userName: rawSelf?.userName || "Unknown user",
-    color: rawSelf?.color || "#ffffff",
-    cursor: rawSelf?.cursor || { x: 0, y: 0 },
-  };
-  const users = Array.from(
-    rawUsers.entries() as IterableIterator<[number, AwarenessUser]>,
-  )
-    .filter(([key]) => key !== yAwareness?.clientID)
-    .reduce<Record<string, AwarenessUser>>((acc, [key, value]) => {
-      if (!value.userName) {
-        value.userName = "Unknown user";
-      }
-      acc[key.toString()] = value;
-      return acc;
-    }, {});
 
   const { handleProjectSnapshotSave, isSaving } = useProjectSave({
     projectId: currentProject?.id,
@@ -177,18 +140,27 @@ export default ({
   // Non-persistant state needs to be managed here
   const edges = useMemo(
     () =>
-      Object.values(rawEdges).map((edge) => ({
-        ...edge,
-        selected:
-          selectedEdgeIds.includes(edge.id) && !edge.selected
-            ? true
-            : (edge.selected ?? false),
-      })),
-    [rawEdges, selectedEdgeIds],
+      Object.values(rawEdges).map((edge) => {
+        const sourceNode = nodes.find((n) => n.id === edge.source);
+        const targetNode = nodes.find((n) => n.id === edge.target);
+        const sourceIsCollapsed = sourceNode?.data?.isCollapsed;
+        const targetIsCollapsed = targetNode?.data?.isCollapsed;
+
+        return {
+          ...edge,
+          selected:
+            selectedEdgeIds.includes(edge.id) && !edge.selected
+              ? true
+              : (edge.selected ?? false),
+          reconnectable: !(sourceIsCollapsed || targetIsCollapsed),
+        };
+      }),
+    [rawEdges, selectedEdgeIds, nodes],
   );
 
   const {
     openWorkflows,
+    openWorkflowIds,
     isMainWorkflow,
     handleWorkflowOpen,
     handleWorkflowClose,
@@ -369,67 +341,27 @@ export default ({
     }
   };
 
-  const throttledMouseMove = useMemo(
-    () =>
-      throttle(
-        (
-          event: MouseEvent,
-          awareness: Awareness,
-          positionFn: typeof screenToFlowPosition,
-        ) => {
-          const flowPosition = positionFn(
-            {
-              x: event.clientX,
-              y: event.clientY,
-            },
-            { snapToGrid: false },
-          );
+  const { self, users, handlePaneMouseMove } = useAwarenessCursor({
+    yAwareness,
+  });
 
-          awareness.setLocalStateField("cursor", flowPosition);
-          awareness.setLocalStateField("viewport", latestViewportRef.current);
-        },
-        32,
-        { leading: true, trailing: true },
-      ),
-    [],
-  );
-
-  const handlePaneMouseMove = useCallback(
-    (event: MouseEvent) => {
-      if (yAwareness) {
-        throttledMouseMove(event, yAwareness, screenToFlowPosition);
-      }
-    },
-    [yAwareness, screenToFlowPosition, throttledMouseMove],
-  );
-  const spotlightUser = spotlightUserClientId
-    ? users[spotlightUserClientId]
-    : null;
-
-  const spotlightUserViewport = spotlightUser?.viewport;
-
-  const handleSpotlightUserSelect = useCallback((clientId: number) => {
-    setSpotlightUserClientId(clientId);
-  }, []);
-
-  const handleSpotlightUserDeselect = useCallback(() => {
-    setSpotlightUserClientId(null);
-  }, []);
-
-  useEffect(() => {
-    if (!spotlightUserViewport) return;
-    setViewport(
-      {
-        x: spotlightUserViewport.x,
-        y: spotlightUserViewport.y,
-        zoom: spotlightUserViewport.zoom,
-      },
-      { duration: 100 },
-    );
-  }, [spotlightUserViewport, setViewport]);
+  const {
+    spotlightUser,
+    spotlightUserClientId,
+    handleSpotlightUserSelect,
+    handleSpotlightUserDeselect,
+  } = useSpotlightUser({
+    yAwareness,
+    users,
+    currentWorkflowId,
+    openWorkflowIds,
+    handleWorkflowOpen,
+    handleWorkflowClose,
+  });
 
   return {
     currentWorkflowId,
+    currentYWorkflow,
     openWorkflows,
     currentProject,
     self,

@@ -37,9 +37,27 @@ func (i *User) UpdateMe(ctx context.Context, p interfaces.UpdateMeParam) (*user.
 	return i.userRepo.UpdateMe(ctx, attrs)
 }
 
+func (i *User) Signup(ctx context.Context, p interfaces.SignupParam) (*user.User, error) {
+	attrs := user.SignupAttrs{
+		ID:          p.UserID,
+		WorkspaceID: p.WorkspaceID,
+		Name:        p.Name,
+		Email:       p.Email,
+		Password:    p.Password,
+		Secret:      p.Secret,
+		Lang:        p.Lang,
+		Theme:       p.Theme,
+		MockAuth:    p.MockAuth,
+	}
+	return i.userRepo.Signup(ctx, attrs)
+}
+
 func (i *User) SignupOIDC(ctx context.Context, p interfaces.SignupOIDCParam) (*user.User, error) {
 	attrs := user.SignupOIDCAttrs{
 		UserID:      p.UserID,
+		Name:        p.Name,
+		Email:       p.Email,
+		Sub:         p.Sub,
 		Lang:        p.Lang,
 		WorkspaceID: p.WorkspaceID,
 		Secret:      p.Secret,
@@ -49,4 +67,24 @@ func (i *User) SignupOIDC(ctx context.Context, p interfaces.SignupOIDCParam) (*u
 
 func (i *User) RemoveMyAuth(ctx context.Context, authProvider string) (*user.User, error) {
 	return i.userRepo.RemoveMyAuth(ctx, authProvider)
+}
+
+func (i *User) DeleteMe(ctx context.Context, uid id.UserID) error {
+	return i.userRepo.DeleteMe(ctx, uid)
+}
+
+func (i *User) CreateVerification(ctx context.Context, email string) error {
+	return i.userRepo.CreateVerification(ctx, email)
+}
+
+func (i *User) VerifyUser(ctx context.Context, code string) (*user.User, error) {
+	return i.userRepo.VerifyUser(ctx, code)
+}
+
+func (i *User) StartPasswordReset(ctx context.Context, email string) error {
+	return i.userRepo.StartPasswordReset(ctx, email)
+}
+
+func (i *User) PasswordReset(ctx context.Context, password string, token string) error {
+	return i.userRepo.PasswordReset(ctx, password, token)
 }

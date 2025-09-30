@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"mime/multipart"
@@ -11,35 +10,34 @@ import (
 	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/app/config"
+	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
+	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
+	usermockrepo "github.com/reearth/reearth-flow/api/pkg/user/mockrepo"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 func TestDeploymentsPagination(t *testing.T) {
-	e, repos := StartGQLServer(t, &config.Config{
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operator := factory.NewUser(func(b *pkguser.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
+	mock := &TestMocks{
+		UserRepo: mockUserRepo,
+	}
+
+	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, true, mock)
 
 	// Log workspace and user info
 	t.Log("Workspace ID:", wId1.String())
 	t.Log("User ID:", uId1.String())
-
-	// Check workspace permissions
-	workspace, err := repos.Workspace.FindByID(context.Background(), wId1)
-	assert.NoError(t, err)
-	t.Logf("Workspace members: %+v", workspace.Members())
-
-	// Check user info
-	user, err := repos.User.FindByID(context.Background(), uId1)
-	assert.NoError(t, err)
-	t.Logf("User: %+v", user)
-
-	// Check user's workspaces
-	workspaces, err := repos.Workspace.FindByUser(context.Background(), uId1)
-	assert.NoError(t, err)
-	t.Logf("User's workspaces: %+v", workspaces)
 
 	// Create multiple deployments for testing
 	deploymentIDs := make([]string, 5)

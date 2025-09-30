@@ -1,6 +1,6 @@
 [package]
 name = "workflow-tests"
-version = "0.1.5"
+version = "0.1.14"
 edition = "2021"
 
 [dependencies]
@@ -25,6 +25,7 @@ uuid.workspace = true
 yaml-include = "0.7"
 tempfile.workspace = true
 jsonpath_lib.workspace = true
+csv.workspace = true
 
 [build-dependencies]
 serde.workspace = true

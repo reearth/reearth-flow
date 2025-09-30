@@ -36,6 +36,7 @@ type Props = {
   selectedEdgeIds?: string[];
   yDoc?: Doc | null;
   users?: Record<string, AwarenessUser>;
+  currentWorkflowId?: string;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onWorkflowOpen?: (workflowId: string) => void;
   onWorkflowAddFromSelection?: (nodes: Node[], edges: Edge[]) => Promise<void>;
@@ -54,6 +55,7 @@ type Props = {
   onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: () => void;
   onPaneMouseMove?: (event: MouseEvent<Element, globalThis.MouseEvent>) => void;
+  onPaneClick?: () => void;
 };
 
 const Canvas: React.FC<Props> = ({
@@ -62,6 +64,7 @@ const Canvas: React.FC<Props> = ({
   edges,
   selectedEdgeIds,
   users,
+  currentWorkflowId,
   onWorkflowAdd,
   onWorkflowOpen,
   onWorkflowAddFromSelection,
@@ -76,6 +79,7 @@ const Canvas: React.FC<Props> = ({
   onCut,
   onPaste,
   onPaneMouseMove,
+  onPaneClick,
 }) => {
   const {
     handleNodesDelete,
@@ -143,14 +147,17 @@ const Canvas: React.FC<Props> = ({
       onConnect={handleConnect}
       onReconnect={handleReconnect}
       onBeforeDelete={onBeforeDelete}
-      onPaneMouseMove={onPaneMouseMove}>
+      onPaneMouseMove={onPaneMouseMove}
+      onPaneClick={onPaneClick}>
       <Background
         className="bg-background"
         variant={BackgroundVariant["Dots"]}
         gap={gridSize}
         color="rgba(63, 63, 70, 1)"
       />
-      {!readonly && users && <MultiCursor users={users} />}
+      {!readonly && users && currentWorkflowId && (
+        <MultiCursor users={users} currentWorkflowId={currentWorkflowId} />
+      )}
       {contextMenu && (
         <CanvasContextMenu
           data={contextMenu.data}

@@ -16,7 +16,8 @@ use super::{
     jp_standard_grid_accumulator::JPStandardGridAccumulatorFactory,
     line_on_line_overlayer::LineOnLineOverlayerFactory, offsetter::OffsetterFactory,
     orientation_extractor::OrientationExtractorFactory, planarity_filter::PlanarityFilterFactory,
-    refiner::RefinerFactory, replacer::GeometryReplacerFactory, splitter::GeometrySplitterFactory,
+    refiner::RefinerFactory, replacer::GeometryReplacerFactory,
+    solid_boundary_validator::SolidBoundaryValidatorFactory, splitter::GeometrySplitterFactory,
     surface_footprint_replacer::SurfaceFootprintReplacerFactory,
     three_dimension_box_replacer::ThreeDimensionBoxReplacerFactory,
     three_dimension_planarity_rotator::ThreeDimensionPlanarityRotatorFactory,
@@ -64,6 +65,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<JPStandardGridAccumulatorFactory>::default(),
         Box::<SurfaceFootprintReplacerFactory>::default(),
         Box::<GeometryPartExtractorFactory>::default(),
+        Box::<SolidBoundaryValidatorFactory>::default(),
     ];
     factories
         .into_iter()

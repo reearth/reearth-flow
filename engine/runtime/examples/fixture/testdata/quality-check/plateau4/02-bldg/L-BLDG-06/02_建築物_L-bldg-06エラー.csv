@@ -1,0 +1,4 @@
+"Index","Building gml:id","Attribute","Unmatched Xlink Tag","Unmatched Xlink ID","Filename"
+1,"bldg_aee112f2-fa38-482c-8b53-0ea7b1d7c656","参照元 xlink:href","lod2Solid","UUID_e7f6f6f1-b1aa-45fc-b78e-16f531b191dd","input.gml"
+1,"bldg_5cece7d5-cce7-4afd-b04f-d20583bac4ed","参照元 xlink:href","lod2Solid","UUID_a6eac916-f451-435b-9fc4-df39651c64de","input.gml"
+1,"bldg_aee112f2-fa38-482c-8b53-0ea7b1d7c656","参照先 gml:id","gml:Polygon","UUID_e7f6f6f2-b1aa-45fc-b78e-16f531b191dd","input.gml"

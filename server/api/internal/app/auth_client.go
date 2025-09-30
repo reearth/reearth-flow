@@ -17,6 +17,7 @@ import (
 	"github.com/reearth/reearthx/rerror"
 )
 
+// TODO: Remove this file once the migration is complete.
 const (
 	debugUserHeader = "X-Reearth-Debug-User"
 )
@@ -78,7 +79,7 @@ func getUser(ctx context.Context, c echo.Context, multiUser accountinterfaces.Us
 }
 
 func attachUserToContext(ctx context.Context, u *user.User, _ *ServerConfig) context.Context {
-	ctx = adapter.AttachUser(ctx, u)
+	ctx = adapter.AttachReearthxUser(ctx, u)
 	log.Debugfc(ctx, "auth: user: id=%s name=%s email=%s", u.ID(), u.Name(), u.Email())
 	return ctx
 }

@@ -42,6 +42,34 @@ func (m *MockUserRepo) EXPECT() *MockUserRepoMockRecorder {
 	return m.recorder
 }
 
+// CreateVerification mocks base method.
+func (m *MockUserRepo) CreateVerification(ctx context.Context, email string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateVerification", ctx, email)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateVerification indicates an expected call of CreateVerification.
+func (mr *MockUserRepoMockRecorder) CreateVerification(ctx, email any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateVerification", reflect.TypeOf((*MockUserRepo)(nil).CreateVerification), ctx, email)
+}
+
+// DeleteMe mocks base method.
+func (m *MockUserRepo) DeleteMe(ctx context.Context, uid id.UserID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteMe", ctx, uid)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteMe indicates an expected call of DeleteMe.
+func (mr *MockUserRepoMockRecorder) DeleteMe(ctx, uid any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMe", reflect.TypeOf((*MockUserRepo)(nil).DeleteMe), ctx, uid)
+}
+
 // FindByIDs mocks base method.
 func (m *MockUserRepo) FindByIDs(ctx context.Context, ids id.UserIDList) (user.List, error) {
 	m.ctrl.T.Helper()
@@ -72,6 +100,20 @@ func (mr *MockUserRepoMockRecorder) FindMe(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindMe", reflect.TypeOf((*MockUserRepo)(nil).FindMe), ctx)
 }
 
+// PasswordReset mocks base method.
+func (m *MockUserRepo) PasswordReset(ctx context.Context, password, token string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PasswordReset", ctx, password, token)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// PasswordReset indicates an expected call of PasswordReset.
+func (mr *MockUserRepoMockRecorder) PasswordReset(ctx, password, token any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PasswordReset", reflect.TypeOf((*MockUserRepo)(nil).PasswordReset), ctx, password, token)
+}
+
 // RemoveMyAuth mocks base method.
 func (m *MockUserRepo) RemoveMyAuth(ctx context.Context, authProvider string) (*user.User, error) {
 	m.ctrl.T.Helper()
@@ -87,6 +129,21 @@ func (mr *MockUserRepoMockRecorder) RemoveMyAuth(ctx, authProvider any) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveMyAuth", reflect.TypeOf((*MockUserRepo)(nil).RemoveMyAuth), ctx, authProvider)
 }
 
+// Signup mocks base method.
+func (m *MockUserRepo) Signup(ctx context.Context, attrs user.SignupAttrs) (*user.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Signup", ctx, attrs)
+	ret0, _ := ret[0].(*user.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Signup indicates an expected call of Signup.
+func (mr *MockUserRepoMockRecorder) Signup(ctx, attrs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Signup", reflect.TypeOf((*MockUserRepo)(nil).Signup), ctx, attrs)
+}
+
 // SignupOIDC mocks base method.
 func (m *MockUserRepo) SignupOIDC(ctx context.Context, attrs user.SignupOIDCAttrs) (*user.User, error) {
 	m.ctrl.T.Helper()
@@ -100,6 +157,20 @@ func (m *MockUserRepo) SignupOIDC(ctx context.Context, attrs user.SignupOIDCAttr
 func (mr *MockUserRepoMockRecorder) SignupOIDC(ctx, attrs any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SignupOIDC", reflect.TypeOf((*MockUserRepo)(nil).SignupOIDC), ctx, attrs)
+}
+
+// StartPasswordReset mocks base method.
+func (m *MockUserRepo) StartPasswordReset(ctx context.Context, email string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StartPasswordReset", ctx, email)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// StartPasswordReset indicates an expected call of StartPasswordReset.
+func (mr *MockUserRepoMockRecorder) StartPasswordReset(ctx, email any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartPasswordReset", reflect.TypeOf((*MockUserRepo)(nil).StartPasswordReset), ctx, email)
 }
 
 // UpdateMe mocks base method.
@@ -130,4 +201,19 @@ func (m *MockUserRepo) UserByNameOrEmail(ctx context.Context, nameOrEmail string
 func (mr *MockUserRepoMockRecorder) UserByNameOrEmail(ctx, nameOrEmail any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UserByNameOrEmail", reflect.TypeOf((*MockUserRepo)(nil).UserByNameOrEmail), ctx, nameOrEmail)
+}
+
+// VerifyUser mocks base method.
+func (m *MockUserRepo) VerifyUser(ctx context.Context, code string) (*user.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "VerifyUser", ctx, code)
+	ret0, _ := ret[0].(*user.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// VerifyUser indicates an expected call of VerifyUser.
+func (mr *MockUserRepoMockRecorder) VerifyUser(ctx, code any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyUser", reflect.TypeOf((*MockUserRepo)(nil).VerifyUser), ctx, code)
 }

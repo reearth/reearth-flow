@@ -198,12 +198,12 @@ function VirtualizedTable<TData, TValue>({
 
       <div
         ref={parentRef}
-        className="h-full overflow-auto rounded-md border"
+        className="h-full overflow-auto rounded-md bg-primary/40"
         style={{ contain: "paint", willChange: "transform" }}>
         <div
           className="w-full caption-bottom overflow-auto text-xs"
           style={{
-            height: `${virtualizer.getTotalSize()}px`,
+            height: `${virtualizer.getTotalSize() + 32}px`,
           }}>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

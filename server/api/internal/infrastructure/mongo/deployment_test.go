@@ -9,7 +9,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/mongox/mongotest"
 	"github.com/stretchr/testify/assert"
@@ -22,8 +21,8 @@ func TestDeployment_FindByIDs(t *testing.T) {
 
 	did1 := id.NewDeploymentID()
 	did2 := id.NewDeploymentID()
-	wid := accountdomain.NewWorkspaceID()
-	wid2 := accountdomain.NewWorkspaceID()
+	wid := id.NewWorkspaceID()
+	wid2 := id.NewWorkspaceID()
 
 	_, _ = c.Collection("deployment").InsertMany(ctx, []any{
 		bson.M{"id": did1.String(), "workspaceid": wid.String()},
@@ -38,7 +37,7 @@ func TestDeployment_FindByIDs(t *testing.T) {
 	assert.Equal(t, did1, got[0].ID())
 
 	r2 := r.Filtered(repo.WorkspaceFilter{
-		Readable: accountdomain.WorkspaceIDList{wid2},
+		Readable: id.WorkspaceIDList{wid2},
 	})
 	got, err = r2.FindByIDs(ctx, id.DeploymentIDList{did1, did2})
 	assert.NoError(t, err)
@@ -51,8 +50,8 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 	c := mongotest.Connect(t)(t)
 	ctx := context.Background()
 
-	wid := accountdomain.NewWorkspaceID()
-	wid2 := accountdomain.NewWorkspaceID()
+	wid := id.NewWorkspaceID()
+	wid2 := id.NewWorkspaceID()
 
 	_, _ = c.Collection("deployment").InsertMany(ctx, []any{
 		bson.M{"id": "d1", "workspaceid": wid.String(), "version": "v1", "updatedat": time.Now().Add(-2 * time.Hour)},
@@ -125,7 +124,7 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 
 	// Test with workspace filter
 	r2 := r.Filtered(repo.WorkspaceFilter{
-		Readable: accountdomain.WorkspaceIDList{wid2},
+		Readable: id.WorkspaceIDList{wid2},
 	})
 	got, pageInfo, err = r2.FindByWorkspace(ctx, wid, nil)
 	assert.NoError(t, err)
@@ -140,8 +139,8 @@ func TestDeployment_FindByVersion(t *testing.T) {
 	c := mongotest.Connect(t)(t)
 	ctx := context.Background()
 
-	wid := accountdomain.NewWorkspaceID()
-	wid2 := accountdomain.NewWorkspaceID()
+	wid := id.NewWorkspaceID()
+	wid2 := id.NewWorkspaceID()
 
 	_, _ = c.Collection("deployment").InsertMany(ctx, []any{
 		bson.M{"id": "d1", "workspaceid": wid.String(), "version": "v1"},
@@ -163,8 +162,8 @@ func TestDeployment_FindHead(t *testing.T) {
 	c := mongotest.Connect(t)(t)
 	ctx := context.Background()
 
-	wid := accountdomain.NewWorkspaceID()
-	wid2 := accountdomain.NewWorkspaceID()
+	wid := id.NewWorkspaceID()
+	wid2 := id.NewWorkspaceID()
 
 	_, _ = c.Collection("deployment").InsertMany(ctx, []any{
 		bson.M{"id": "d1", "workspaceid": wid.String(), "ishead": true},
@@ -186,7 +185,7 @@ func TestDeployment_Save(t *testing.T) {
 	c := mongotest.Connect(t)(t)
 	ctx := context.Background()
 
-	wid := accountdomain.NewWorkspaceID()
+	wid := id.NewWorkspaceID()
 	did := id.NewDeploymentID()
 
 	dep := deployment.New().

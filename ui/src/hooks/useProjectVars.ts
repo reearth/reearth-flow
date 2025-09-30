@@ -11,6 +11,8 @@ export default () => {
       switch (type) {
         case "attribute_name":
           return t("Attribute Name");
+        case "array":
+          return t("Array");
         case "choice":
           return t("Choice");
         case "color":

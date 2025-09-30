@@ -271,6 +271,7 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AddMemberToWorkspace      func(childComplexity int, input gqlmodel.AddMemberToWorkspaceInput) int
 		CancelJob                 func(childComplexity int, input gqlmodel.CancelJobInput) int
+		CopyProject               func(childComplexity int, projectID gqlmodel.ID, source gqlmodel.ID) int
 		CreateAsset               func(childComplexity int, input gqlmodel.CreateAssetInput) int
 		CreateDeployment          func(childComplexity int, input gqlmodel.CreateDeploymentInput) int
 		CreateProject             func(childComplexity int, input gqlmodel.CreateProjectInput) int
@@ -284,6 +285,7 @@ type ComplexityRoot struct {
 		DeleteTrigger             func(childComplexity int, triggerID gqlmodel.ID) int
 		DeleteWorkspace           func(childComplexity int, input gqlmodel.DeleteWorkspaceInput) int
 		ExecuteDeployment         func(childComplexity int, input gqlmodel.ExecuteDeploymentInput) int
+		ImportProject             func(childComplexity int, projectID gqlmodel.ID, data gqlmodel.Bytes) int
 		PreviewSnapshot           func(childComplexity int, projectID gqlmodel.ID, version int, name *string) int
 		RemoveMemberFromWorkspace func(childComplexity int, input gqlmodel.RemoveMemberFromWorkspaceInput) int
 		RemoveMyAuth              func(childComplexity int, input gqlmodel.RemoveMyAuthInput) int
@@ -566,6 +568,8 @@ type MutationResolver interface {
 	SaveSnapshot(ctx context.Context, projectID gqlmodel.ID) (bool, error)
 	PreviewSnapshot(ctx context.Context, projectID gqlmodel.ID, version int, name *string) (*gqlmodel.PreviewSnapshot, error)
 	RollbackProject(ctx context.Context, projectID gqlmodel.ID, version int) (*gqlmodel.ProjectDocument, error)
+	CopyProject(ctx context.Context, projectID gqlmodel.ID, source gqlmodel.ID) (bool, error)
+	ImportProject(ctx context.Context, projectID gqlmodel.ID, data gqlmodel.Bytes) (bool, error)
 	CancelJob(ctx context.Context, input gqlmodel.CancelJobInput) (*gqlmodel.CancelJobPayload, error)
 	DeclareParameter(ctx context.Context, projectID gqlmodel.ID, input gqlmodel.DeclareParameterInput) (*gqlmodel.Parameter, error)
 	UpdateParameter(ctx context.Context, paramID gqlmodel.ID, input gqlmodel.UpdateParameterInput) (*gqlmodel.Parameter, error)
@@ -1561,6 +1565,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.CancelJob(childComplexity, args["input"].(gqlmodel.CancelJobInput)), true
 
+	case "Mutation.copyProject":
+		if e.complexity.Mutation.CopyProject == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_copyProject_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CopyProject(childComplexity, args["projectId"].(gqlmodel.ID), args["source"].(gqlmodel.ID)), true
+
 	case "Mutation.createAsset":
 		if e.complexity.Mutation.CreateAsset == nil {
 			break
@@ -1716,6 +1732,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.ExecuteDeployment(childComplexity, args["input"].(gqlmodel.ExecuteDeploymentInput)), true
+
+	case "Mutation.importProject":
+		if e.complexity.Mutation.ImportProject == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_importProject_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ImportProject(childComplexity, args["projectId"].(gqlmodel.ID), args["data"].(gqlmodel.Bytes)), true
 
 	case "Mutation.previewSnapshot":
 		if e.complexity.Mutation.PreviewSnapshot == nil {
@@ -3282,6 +3310,7 @@ scalar URL
 scalar Lang
 scalar FileSize
 scalar JSON
+scalar Bytes
 
 # Meta Type
 
@@ -3685,6 +3714,8 @@ extend type Mutation {
   saveSnapshot(projectId: ID!): Boolean!
   previewSnapshot(projectId: ID!, version: Int!, name: String): PreviewSnapshot
   rollbackProject(projectId: ID!, version: Int!): ProjectDocument
+  copyProject(projectId: ID!, source: ID!): Boolean!
+  importProject(projectId: ID!, data: Bytes!): Boolean!
 }
 
 # Query
@@ -3815,6 +3846,7 @@ extend type Query {
 }
 
 enum ParameterType {
+  ARRAY
   TEXT
   NUMBER
   CHOICE
@@ -4404,6 +4436,57 @@ func (ec *executionContext) field_Mutation_cancelJob_argsInput(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_copyProject_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_copyProject_argsProjectID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["projectId"] = arg0
+	arg1, err := ec.field_Mutation_copyProject_argsSource(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["source"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_copyProject_argsProjectID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (gqlmodel.ID, error) {
+	if _, ok := rawArgs["projectId"]; !ok {
+		var zeroVal gqlmodel.ID
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+	if tmp, ok := rawArgs["projectId"]; ok {
+		return ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+	}
+
+	var zeroVal gqlmodel.ID
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_copyProject_argsSource(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (gqlmodel.ID, error) {
+	if _, ok := rawArgs["source"]; !ok {
+		var zeroVal gqlmodel.ID
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("source"))
+	if tmp, ok := rawArgs["source"]; ok {
+		return ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+	}
+
+	var zeroVal gqlmodel.ID
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_createAsset_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -4788,6 +4871,57 @@ func (ec *executionContext) field_Mutation_executeDeployment_argsInput(
 	}
 
 	var zeroVal gqlmodel.ExecuteDeploymentInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_importProject_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_importProject_argsProjectID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["projectId"] = arg0
+	arg1, err := ec.field_Mutation_importProject_argsData(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["data"] = arg1
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_importProject_argsProjectID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (gqlmodel.ID, error) {
+	if _, ok := rawArgs["projectId"]; !ok {
+		var zeroVal gqlmodel.ID
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+	if tmp, ok := rawArgs["projectId"]; ok {
+		return ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+	}
+
+	var zeroVal gqlmodel.ID
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_importProject_argsData(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (gqlmodel.Bytes, error) {
+	if _, ok := rawArgs["data"]; !ok {
+		var zeroVal gqlmodel.Bytes
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("data"))
+	if tmp, ok := rawArgs["data"]; ok {
+		return ec.unmarshalNBytes2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐBytes(ctx, tmp)
+	}
+
+	var zeroVal gqlmodel.Bytes
 	return zeroVal, nil
 }
 
@@ -13602,6 +13736,116 @@ func (ec *executionContext) fieldContext_Mutation_rollbackProject(ctx context.Co
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_rollbackProject_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_copyProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_copyProject(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CopyProject(rctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["source"].(gqlmodel.ID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_copyProject(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_copyProject_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_importProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_importProject(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ImportProject(rctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["data"].(gqlmodel.Bytes))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_importProject(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_importProject_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -28009,6 +28253,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_rollbackProject(ctx, field)
 			})
+		case "copyProject":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_copyProject(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "importProject":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_importProject(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "cancelJob":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_cancelJob(ctx, field)
@@ -30959,6 +31217,28 @@ func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (
 func (ec *executionContext) marshalNBoolean2bool(ctx context.Context, sel ast.SelectionSet, v bool) graphql.Marshaler {
 	_ = sel
 	res := graphql.MarshalBoolean(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNBytes2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐBytes(ctx context.Context, v any) (gqlmodel.Bytes, error) {
+	res, err := gqlmodel.UnmarshalBytes(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBytes2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐBytes(ctx context.Context, sel ast.SelectionSet, v gqlmodel.Bytes) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	_ = sel
+	res := gqlmodel.MarshalBytes(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")

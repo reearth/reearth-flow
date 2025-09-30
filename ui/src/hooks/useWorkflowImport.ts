@@ -64,7 +64,7 @@ export default () => {
 
       const { project } = await createProject({
         workspaceId: currentWorkspace.id,
-        name: resultsObject.name + t(" (import)"),
+        name: resultsObject.name + " " + t("(import)"),
         description: resultsObject.description,
       });
 

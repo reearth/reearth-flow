@@ -14,6 +14,10 @@ import { VarType, ProjectVariableConfig } from "@flow/types";
 
 export function getDefaultValueForProjectVar(type: VarType): any {
   switch (type) {
+    case "array":
+      // Default array as an empty array
+      return [];
+
     case "attribute_name":
       // Default should be empty for user input
       return "";
@@ -97,6 +101,14 @@ export function getDefaultConfigForProjectVar<T extends VarType>(
   type: T,
 ): ProjectVariableConfig<T> {
   switch (type) {
+    case "array":
+      return {
+        itemType: "string",
+        minItems: 0,
+        maxItems: 10,
+        allowDuplicates: true,
+      } as ProjectVariableConfig<T>;
+
     case "choice":
       return {
         choices: ["Option 1", "Option 2", "Option 3"],

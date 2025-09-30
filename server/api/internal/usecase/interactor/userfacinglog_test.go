@@ -12,8 +12,8 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/log"
+	"github.com/reearth/reearth-flow/api/pkg/user"
 	"github.com/reearth/reearth-flow/api/pkg/userfacinglog"
-	"github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/appx"
 	"github.com/stretchr/testify/assert"
 )

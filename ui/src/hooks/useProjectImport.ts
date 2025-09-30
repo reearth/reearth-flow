@@ -1,20 +1,14 @@
 import { useCallback, useState } from "react";
-import { WebsocketProvider } from "y-websocket";
-import * as Y from "yjs";
 
-import { config } from "@flow/config";
-import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
-import { YWorkflow } from "@flow/lib/yjs/types";
 import type { Workspace } from "@flow/types";
 
 export default () => {
+  const [isProjectImporting, setIsProjectImporting] = useState<boolean>(false);
   const t = useT();
 
-  const [isProjectImporting, setIsProjectImporting] = useState<boolean>(false);
-
-  const { createProject } = useProject();
+  const { createProject, importProject } = useProject();
 
   const handleProjectImport = useCallback(
     async ({
@@ -22,7 +16,6 @@ export default () => {
       projectDescription,
       workspace,
       yDocBinary,
-      accessToken,
     }: {
       projectName: string;
       projectDescription: string;
@@ -39,42 +32,19 @@ export default () => {
           description: projectDescription,
         });
 
-        if (!project) return console.error("Failed to create project");
-
-        const yDoc = new Y.Doc();
-        const { websocket } = config();
-
-        if (websocket) {
-          const yWebSocketProvider = new WebsocketProvider(
-            websocket,
-            `${project.id}:${DEFAULT_ENTRY_GRAPH_ID}`,
-            yDoc,
-            { params: { token: accessToken } },
-          );
-
-          await new Promise<void>((resolve) => {
-            yWebSocketProvider.once("sync", () => {
-              yDoc.transact(() => {
-                Y.applyUpdate(yDoc, yDocBinary);
-              });
-
-              const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
-              if (!yWorkflows.get(DEFAULT_ENTRY_GRAPH_ID)) {
-                console.warn("Imported project has no workflows");
-              }
-
-              setIsProjectImporting(false);
-              resolve();
-            });
-          });
-          yWebSocketProvider?.destroy();
+        if (!project) {
+          console.error("Failed to create project");
+          return;
         }
+
+        await importProject(project.id, yDocBinary, workspace.id);
       } catch (error) {
         console.error("Failed to import project:", error);
+      } finally {
         setIsProjectImporting(false);
       }
     },
-    [createProject, t],
+    [createProject, importProject, t],
   );
 
   return {

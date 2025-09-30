@@ -16,6 +16,7 @@ export type Scalars = {
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
   Any: { input: any; output: any; }
+  Bytes: { input: any; output: any; }
   DateTime: { input: any; output: any; }
   FileSize: { input: any; output: any; }
   JSON: { input: any; output: any; }
@@ -423,6 +424,7 @@ export type Mutation = {
   __typename?: 'Mutation';
   addMemberToWorkspace?: Maybe<AddMemberToWorkspacePayload>;
   cancelJob: CancelJobPayload;
+  copyProject: Scalars['Boolean']['output'];
   createAsset?: Maybe<CreateAssetPayload>;
   createDeployment?: Maybe<DeploymentPayload>;
   createProject?: Maybe<ProjectPayload>;
@@ -436,6 +438,7 @@ export type Mutation = {
   deleteTrigger: Scalars['Boolean']['output'];
   deleteWorkspace?: Maybe<DeleteWorkspacePayload>;
   executeDeployment?: Maybe<JobPayload>;
+  importProject: Scalars['Boolean']['output'];
   previewSnapshot?: Maybe<PreviewSnapshot>;
   removeMemberFromWorkspace?: Maybe<RemoveMemberFromWorkspacePayload>;
   removeMyAuth?: Maybe<UpdateMePayload>;
@@ -467,6 +470,12 @@ export type MutationAddMemberToWorkspaceArgs = {
 
 export type MutationCancelJobArgs = {
   input: CancelJobInput;
+};
+
+
+export type MutationCopyProjectArgs = {
+  projectId: Scalars['ID']['input'];
+  source: Scalars['ID']['input'];
 };
 
 
@@ -533,6 +542,12 @@ export type MutationDeleteWorkspaceArgs = {
 
 export type MutationExecuteDeploymentArgs = {
   input: ExecuteDeploymentInput;
+};
+
+
+export type MutationImportProjectArgs = {
+  data: Scalars['Bytes']['input'];
+  projectId: Scalars['ID']['input'];
 };
 
 
@@ -725,6 +740,7 @@ export type ParameterBatchInput = {
 };
 
 export enum ParameterType {
+  Array = 'ARRAY',
   Choice = 'CHOICE',
   Color = 'COLOR',
   Datetime = 'DATETIME',
@@ -1546,7 +1562,17 @@ export type GetProjectByIdQueryVariables = Exact<{
 }>;
 
 
-export type GetProjectByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Deployment' } | { __typename: 'Job' } | { __typename: 'NodeExecution' } | { __typename: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } | { __typename: 'ProjectDocument' } | { __typename: 'Trigger' } | { __typename: 'User' } | { __typename: 'Workspace' } | null };
+export type GetProjectByIdQuery = { __typename?: 'Query', node?:
+    | { __typename: 'Asset' }
+    | { __typename: 'Deployment' }
+    | { __typename: 'Job' }
+    | { __typename: 'NodeExecution' }
+    | { __typename: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null }
+    | { __typename: 'ProjectDocument' }
+    | { __typename: 'Trigger' }
+    | { __typename: 'User' }
+    | { __typename: 'Workspace' }
+   | null };
 
 export type UpdateProjectMutationVariables = Exact<{
   input: UpdateProjectInput;
@@ -1568,6 +1594,22 @@ export type RunProjectMutationVariables = Exact<{
 
 
 export type RunProjectMutation = { __typename?: 'Mutation', runProject?: { __typename?: 'RunProjectPayload', job: { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, debug?: boolean | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null } } | null };
+
+export type CopyProjectMutationVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+  source: Scalars['ID']['input'];
+}>;
+
+
+export type CopyProjectMutation = { __typename?: 'Mutation', copyProject: boolean };
+
+export type ImportProjectMutationVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+  data: Scalars['Bytes']['input'];
+}>;
+
+
+export type ImportProjectMutation = { __typename?: 'Mutation', importProject: boolean };
 
 export type GetProjectParametersQueryVariables = Exact<{
   projectId: Scalars['ID']['input'];
@@ -1733,7 +1775,17 @@ export type GetWorkspaceByIdQueryVariables = Exact<{
 }>;
 
 
-export type GetWorkspaceByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Deployment' } | { __typename: 'Job' } | { __typename: 'NodeExecution' } | { __typename: 'Project' } | { __typename: 'ProjectDocument' } | { __typename: 'Trigger' } | { __typename: 'User' } | { __typename: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> } | null };
+export type GetWorkspaceByIdQuery = { __typename?: 'Query', node?:
+    | { __typename: 'Asset' }
+    | { __typename: 'Deployment' }
+    | { __typename: 'Job' }
+    | { __typename: 'NodeExecution' }
+    | { __typename: 'Project' }
+    | { __typename: 'ProjectDocument' }
+    | { __typename: 'Trigger' }
+    | { __typename: 'User' }
+    | { __typename: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> }
+   | null };
 
 export type UpdateWorkspaceMutationVariables = Exact<{
   input: UpdateWorkspaceInput;
@@ -2280,6 +2332,16 @@ export const RunProjectDocument = gql`
   }
 }
     ${JobFragmentDoc}`;
+export const CopyProjectDocument = gql`
+    mutation CopyProject($projectId: ID!, $source: ID!) {
+  copyProject(projectId: $projectId, source: $source)
+}
+    `;
+export const ImportProjectDocument = gql`
+    mutation ImportProject($projectId: ID!, $data: Bytes!) {
+  importProject(projectId: $projectId, data: $data)
+}
+    `;
 export const GetProjectParametersDocument = gql`
     query GetProjectParameters($projectId: ID!) {
   parameters(projectId: $projectId) {
@@ -2625,6 +2687,12 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     RunProject(variables: RunProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<RunProjectMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<RunProjectMutation>({ document: RunProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'RunProject', 'mutation', variables);
+    },
+    CopyProject(variables: CopyProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CopyProjectMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<CopyProjectMutation>({ document: CopyProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CopyProject', 'mutation', variables);
+    },
+    ImportProject(variables: ImportProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<ImportProjectMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<ImportProjectMutation>({ document: ImportProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'ImportProject', 'mutation', variables);
     },
     GetProjectParameters(variables: GetProjectParametersQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetProjectParametersQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetProjectParametersQuery>({ document: GetProjectParametersDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetProjectParameters', 'query', variables);
