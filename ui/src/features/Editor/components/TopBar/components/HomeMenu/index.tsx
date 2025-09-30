@@ -4,8 +4,8 @@ import {
   BroadcastIcon,
   CaretDownIcon,
   CopyrightIcon,
+  FileIcon,
   GavelIcon,
-  HardDriveIcon,
   KeyboardIcon,
   RocketIcon,
   SignOutIcon,
@@ -98,16 +98,16 @@ const HomeMenu: React.FC<Props> = ({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <div className="group flex cursor-pointer items-center gap-2 self-center rounded-md p-2 hover:bg-primary">
+          <div className="group flex cursor-pointer items-center gap-2 self-center rounded-md p-1 hover:bg-primary">
             <FlowLogo className="size-7 transition-all group-hover:text-[#46ce7c]" />
-            <CaretDownIcon />
+            <CaretDownIcon weight="thin" />
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           className="min-w-[175px] bg-primary/50 backdrop-blur"
           side={dropdownPosition}
           align={dropdownAlign}
-          sideOffset={dropdownPositionOffset ?? 5}
+          sideOffset={dropdownPositionOffset ?? 8}
           alignOffset={dropdownAlignOffset ?? 0}>
           <DropdownMenuLabel>{t("Dashboard")}</DropdownMenuLabel>
           {/* <DropdownMenuSeparator /> */}
@@ -141,8 +141,8 @@ const HomeMenu: React.FC<Props> = ({
           <DropdownMenuItem
             className="gap-3"
             onClick={handleNavigationToDashboard("assets")}>
-            <HardDriveIcon weight="light" />
-            <p>{t("Assets")}</p>
+            <FileIcon weight="light" />
+            <p>{t("Workspace Assets")}</p>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem

@@ -57,6 +57,8 @@ export default ({
         jobStatus === "cancelled")
     ) {
       setDebugRunStarted(false);
+    } else if (!debugRunStarted && jobStatus === "running") {
+      setDebugRunStarted(true);
     }
   }, [debugJob, jobStatus, debugRunStarted]);
 

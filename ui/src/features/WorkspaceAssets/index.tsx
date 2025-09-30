@@ -1,7 +1,7 @@
 import {
+  FileArrowUpIcon,
   ListIcon,
   SquaresFourIcon,
-  UploadSimpleIcon,
 } from "@phosphor-icons/react";
 
 import {
@@ -66,13 +66,13 @@ const AssetsManager: React.FC = () => {
   return (
     <div className="flex h-full flex-1 flex-col px-6 pt-4 pb-2">
       <div className="flex h-[50px] flex-shrink-0 items-center justify-between gap-2 border-b pb-4">
-        <p className="text-lg dark:font-extralight">{t("Assets")}</p>
+        <p className="text-lg dark:font-extralight">{t("Workspace Assets")}</p>
         <Button
           className="flex gap-2"
           variant="default"
           onClick={handleAssetUploadClick}>
-          <UploadSimpleIcon weight="thin" />
-          <p className="text-xs dark:font-light">{t("Upload Asset")}</p>
+          <FileArrowUpIcon weight="thin" />
+          <p className="text-xs dark:font-light">{t("Upload")}</p>
         </Button>
       </div>
       <div className="mt-4 flex min-h-0 w-full flex-1 flex-col gap-4">
