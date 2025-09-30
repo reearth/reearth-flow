@@ -1,4 +1,4 @@
-use websocket::tools::{compress_brotli, decompress_brotli};
+use websocket::shared::utils::{compress_brotli, decompress_brotli};
 
 #[test]
 fn test_compress_decompress_brotli() {

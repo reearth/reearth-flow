@@ -40,7 +40,7 @@ use crate::domain::value_objects::keys::{
     key_oid, key_state_vector, key_update, Key, KEYSPACE_DOC, KEYSPACE_OID, OID, V1,
 };
 use crate::infrastructure::redis::RedisStore;
-use crate::tools::{compress_brotli, decompress_brotli, first_zero_bit};
+use crate::shared::utils::{compress_brotli, decompress_brotli, first_zero_bit};
 use anyhow;
 use async_trait::async_trait;
 use hex;

@@ -134,7 +134,7 @@ pub async fn start_server(state: Arc<AppState>, port: &str, config: &Config) -> 
     Ok(())
 }
 
-use crate::application::usecases::health_check_usecase::HealthCheckUseCase;
+use crate::application::usecases::health_check::HealthCheckUseCase;
 use crate::infrastructure::health::{GcsHealthCheckerImpl, RedisHealthCheckerImpl};
 use crate::presentation::http::handlers::health_handler::{health_check_handler, HealthHandler};
 

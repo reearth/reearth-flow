@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use tracing::{error, info};
 use uuid::Uuid;
 
-use crate::application::usecases::document_usecase::DocumentUseCase;
+use crate::application::usecases::document::DocumentUseCase;
 use crate::domain::repositories::document::DocumentRepository;
 use crate::infrastructure::gcs::GcsStore;
 use crate::infrastructure::redis::RedisStore;

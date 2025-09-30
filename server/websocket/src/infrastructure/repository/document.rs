@@ -7,7 +7,7 @@ use time::OffsetDateTime;
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
-use crate::application::kv::DocOps;
+use crate::application::usecases::kv::DocOps;
 use crate::domain::entities::doc::Document;
 use crate::domain::repositories::document::DocumentRepository;
 use crate::domain::value_objects::http::HistoryItem;

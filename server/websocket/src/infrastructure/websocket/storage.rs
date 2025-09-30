@@ -7,7 +7,7 @@ use tracing::{info, warn};
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
 
-use crate::application::kv::DocOps;
+use crate::application::usecases::kv::DocOps;
 use crate::infrastructure::gcs::GcsStore;
 use crate::infrastructure::redis::RedisStore;
 

@@ -10,7 +10,7 @@ mod tests {
 
     use std::collections::BTreeMap;
     use std::sync::{Arc, Mutex};
-    use websocket::application::kv::*;
+    use websocket::application::usecases::kv::*;
 
     struct MockEntry {
         key: Vec<u8>,

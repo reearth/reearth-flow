@@ -10,14 +10,12 @@ pub mod domain;
 pub mod infrastructure;
 pub mod presentation;
 pub mod shared;
-pub mod tools;
 pub use infrastructure::redis::RedisStore;
 
 pub type AwarenessRef = Arc<RwLock<yrs::sync::Awareness>>;
 
 pub use infrastructure::websocket::BroadcastPool;
-pub type WebsocketUseCase =
-    application::usecases::websocket_usecase::WebsocketUseCase<BroadcastPool>;
+pub type WebsocketUseCase = application::usecases::websocket::WebsocketUseCase<BroadcastPool>;
 
 pub use presentation::http::server::{ensure_bucket, start_server};
 
@@ -65,8 +63,8 @@ pub use domain::value_objects::conf::{
 };
 pub use domain::value_objects::http::HistoryItem;
 
-pub use application::usecases::document_usecase::{DocumentUseCase, DocumentUseCaseError};
-pub use application::usecases::websocket_usecase::WebsocketUseCaseError;
+pub use application::usecases::document::{DocumentUseCase, DocumentUseCaseError};
+pub use application::usecases::websocket::WebsocketUseCaseError;
 pub use domain::services::websocket::{ConnectionCounter, ShutdownHandle, Subscription};
 #[cfg(feature = "auth")]
 pub use domain::value_objects::conf::DEFAULT_AUTH_URL;

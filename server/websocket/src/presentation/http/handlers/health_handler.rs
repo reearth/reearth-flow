@@ -1,4 +1,4 @@
-use crate::application::usecases::health_check_usecase::HealthCheckUseCase;
+use crate::application::usecases::health_check::HealthCheckUseCase;
 use crate::domain::entities::health::HealthStatus;
 use axum::{http::StatusCode, response::Json};
 use serde_json::Value;
@@ -48,7 +48,7 @@ pub async fn health_check_handler(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::application::usecases::health_check_usecase::HealthCheckUseCase;
+    use crate::application::usecases::health_check::HealthCheckUseCase;
     use crate::domain::entities::health::ComponentHealth;
     use crate::domain::repositories::health::{HealthCheckError, HealthChecker};
     use async_trait::async_trait;

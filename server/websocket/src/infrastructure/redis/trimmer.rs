@@ -1,4 +1,4 @@
-use crate::application::kv::DocOps;
+use crate::application::usecases::kv::DocOps;
 use crate::infrastructure::gcs::GcsStore;
 use crate::infrastructure::redis::RedisStore;
 use crate::BroadcastPool;

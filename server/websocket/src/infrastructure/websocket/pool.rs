@@ -10,7 +10,7 @@ use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, Transact, Update};
 
-use crate::application::kv::DocOps;
+use crate::application::usecases::kv::DocOps;
 use crate::domain::repositories::broadcast_pool::{BroadcastGroupHandle, BroadcastGroupProvider};
 use crate::domain::value_objects::broadcast::BroadcastConfig;
 use crate::infrastructure::gcs::GcsStore;
