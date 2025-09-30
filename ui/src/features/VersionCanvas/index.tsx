@@ -38,7 +38,7 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
   return (
     <div className="flex h-full flex-col">
       <EditorProvider value={editorContext}>
-        <div className="h-[44px] w-full bg-secondary">
+        <div className="h-[42px] w-full bg-secondary">
           <WorkflowTabs
             openWorkflows={openWorkflows}
             currentWorkflowId={currentWorkflowId}

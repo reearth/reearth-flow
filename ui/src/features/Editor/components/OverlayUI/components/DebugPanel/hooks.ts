@@ -19,7 +19,7 @@ export default () => {
   const [fullscreenDebug, setFullscreenDebug] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [minimized, setMinimized] = useState(false);
-  const [enableClustering, setEnableClustering] = useState<boolean>(true);
+  // const [enableClustering, setEnableClustering] = useState<boolean>(true);
   const [selectedFeature, setSelectedFeature] = useState<any>(null);
   const [convertedSelectedFeature, setConvertedSelectedFeature] =
     useState(null);
@@ -28,7 +28,7 @@ export default () => {
 
   const [currentProject] = useCurrentProject();
 
-  const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
+  const { value: debugRunState } = useIndexedDB("debugRun");
 
   const debugJobState = useMemo(
     () =>
@@ -42,86 +42,11 @@ export default () => {
     [debugRunState, currentProject],
   );
 
-  const [showTempPossibleIssuesDialog, setShowTempPossibleIssuesDialog] =
-    useState(false);
-
   const { useGetJob } = useJob();
 
-  const { job: debugJob, refetch } = useGetJob(debugJobState?.jobId ?? "");
+  const { job: debugJob } = useGetJob(debugJobState?.jobId ?? "");
 
   const outputURLs = useMemo(() => debugJob?.outputURLs, [debugJob]);
-
-  const handleShowTempPossibleIssuesDialogClose = useCallback(() => {
-    updateValue((prevState) => {
-      const newJobs = prevState.jobs.map((pj) => {
-        if (
-          debugJob?.id === pj.jobId &&
-          !pj.tempWorkflowHasPossibleIssuesFlag
-        ) {
-          return {
-            ...pj,
-            tempWorkflowHasPossibleIssuesFlag: false,
-          };
-        } else {
-          return pj;
-        }
-      });
-      return {
-        jobs: newJobs,
-      };
-    });
-    setShowTempPossibleIssuesDialog(false);
-  }, [debugJob?.id, updateValue]);
-
-  useEffect(() => {
-    if (debugJobState?.tempWorkflowHasPossibleIssuesFlag) return;
-    if (
-      !outputURLs &&
-      (debugJobState?.status === "completed" ||
-        debugJobState?.status === "failed" ||
-        debugJobState?.status === "cancelled")
-    ) {
-      (async () => {
-        try {
-          const { data: job } = await refetch();
-
-          if (
-            !job?.outputURLs &&
-            debugJobState?.tempWorkflowHasPossibleIssuesFlag === undefined
-          ) {
-            updateValue((prevState) => {
-              const newJobs = prevState.jobs.map((pj) => {
-                if (
-                  job?.id === pj.jobId &&
-                  !pj.tempWorkflowHasPossibleIssuesFlag
-                ) {
-                  const tempFlag = !job.outputURLs?.length;
-                  setShowTempPossibleIssuesDialog(tempFlag);
-                  return {
-                    ...pj,
-                    tempWorkflowHasPossibleIssuesFlag: tempFlag, // No logsURL + a completed/failed/cancelled status means potential issues. @KaWaite
-                  };
-                } else {
-                  return pj;
-                }
-              });
-              return {
-                jobs: newJobs,
-              };
-            });
-          }
-        } catch (error) {
-          console.error("Error during refetch:", error);
-        }
-      })();
-    }
-  }, [
-    debugJobState?.status,
-    debugJobState?.tempWorkflowHasPossibleIssuesFlag,
-    outputURLs,
-    refetch,
-    updateValue,
-  ]);
 
   const intermediateDataURLs = useMemo(
     () => debugJobState?.selectedIntermediateData?.map((sid) => sid.url),
@@ -480,24 +405,19 @@ export default () => {
 
   const handleRowSingleClick = useCallback(
     (value: any) => {
-      setEnableClustering(false);
+      // setEnableClustering(false);
       setSelectedFeature(value);
     },
-    [setSelectedFeature, setEnableClustering],
+    [setSelectedFeature],
   );
 
   const handleRowDoubleClick = useCallback(
     (value: any) => {
-      setEnableClustering(false);
+      // setEnableClustering(false);
       setSelectedFeature(value);
       handleFlyToSelectedFeature(convertedSelectedFeature);
     },
-    [
-      convertedSelectedFeature,
-      handleFlyToSelectedFeature,
-      setSelectedFeature,
-      setEnableClustering,
-    ],
+    [convertedSelectedFeature, handleFlyToSelectedFeature, setSelectedFeature],
   );
 
   return {
@@ -509,21 +429,19 @@ export default () => {
     fullscreenDebug,
     expanded,
     minimized,
-    showTempPossibleIssuesDialog,
     selectedDataURL,
     dataURLs,
     outputDataForDownload,
     selectedOutputData,
-    enableClustering,
+    // enableClustering,
     selectedFeature,
     setSelectedFeature,
     setConvertedSelectedFeature,
-    setEnableClustering,
+    // setEnableClustering,
     handleFullscreenExpand,
     handleExpand,
     handleMinimize,
     handleTabChange,
-    handleShowTempPossibleIssuesDialogClose,
     handleSelectedDataChange,
     handleRowSingleClick,
     handleRowDoubleClick,

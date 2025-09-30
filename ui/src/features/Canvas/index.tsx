@@ -55,6 +55,7 @@ type Props = {
   onPaste?: () => void;
   onPaneMouseMove?: (event: MouseEvent<Element, globalThis.MouseEvent>) => void;
   onNodeDisable?: (node?: Node) => void;
+  onPaneClick?: () => void;
 };
 
 const Canvas: React.FC<Props> = ({
@@ -78,6 +79,7 @@ const Canvas: React.FC<Props> = ({
   onPaste,
   onPaneMouseMove,
   onNodeDisable,
+  onPaneClick,
 }) => {
   const {
     handleNodesDelete,
@@ -146,7 +148,8 @@ const Canvas: React.FC<Props> = ({
       onConnect={handleConnect}
       onReconnect={handleReconnect}
       onBeforeDelete={onBeforeDelete}
-      onPaneMouseMove={onPaneMouseMove}>
+      onPaneMouseMove={onPaneMouseMove}
+      onPaneClick={onPaneClick}>
       <Background
         className="bg-background"
         variant={BackgroundVariant["Dots"]}

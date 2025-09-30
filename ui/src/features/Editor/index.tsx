@@ -167,6 +167,7 @@ export default function Editor({
               onPaste={handlePaste}
               onPaneMouseMove={handlePaneMouseMove}
               onNodeDisable={handleNodeDisable}
+              onPaneClick={handleSpotlightUserDeselect}
             />
           </OverlayUI>
 

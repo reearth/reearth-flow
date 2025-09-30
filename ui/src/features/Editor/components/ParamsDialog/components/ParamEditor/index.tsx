@@ -1,4 +1,9 @@
-import { InfoIcon, NutIcon, PuzzlePieceIcon } from "@phosphor-icons/react";
+import {
+  InfoIcon,
+  NutIcon,
+  PuzzlePieceIcon,
+  QuestionIcon,
+} from "@phosphor-icons/react";
 import { RJSFSchema } from "@rjsf/utils";
 import { JSONSchema7Definition } from "json-schema";
 import { memo, useMemo, useState } from "react";
@@ -11,6 +16,9 @@ import {
   TabsTrigger,
   TabsList,
   FlowLogo,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { patchAnyOfAndOneOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
@@ -20,6 +28,7 @@ import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
 import type { NodeData, NodeParams } from "@flow/types";
 
+import { extractDescriptions } from "../../utils/extractDescriptions";
 import { FieldContext } from "../../utils/fieldUtils";
 
 type Props = {
@@ -79,6 +88,7 @@ const ParamEditor: React.FC<Props> = ({
   const [updatedCustomization, setUpdatedCustomization] = useState(
     nodeMeta.customizations,
   );
+
   const [isParamsValid, setIsParamsValid] = useState(true);
   const [isCustomizationsValid, setIsCustomizationsValid] = useState(true);
 
@@ -111,6 +121,10 @@ const ParamEditor: React.FC<Props> = ({
     }
     onUpdate(nodeId, nodeParams, updatedCustomization);
   };
+
+  const customizationDescriptions = extractDescriptions(
+    createdAction?.customizations,
+  );
 
   return (
     <div className="flex h-[60vh] flex-col gap-4">
@@ -186,9 +200,34 @@ const ParamEditor: React.FC<Props> = ({
               )}
               {createdAction && (
                 <div className="space-y-4">
-                  <h4 className="border-b text-sm font-medium">
-                    {t("Customization Options")}
-                  </h4>
+                  <div className="my-1 mb-1 flex items-center justify-between gap-1">
+                    <p className="text-sm font-bold">
+                      {t("Customization Options")}
+                    </p>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="cursor-pointer p-1">
+                          <QuestionIcon className="h-5 w-5" weight="thin" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        side="top"
+                        align="end"
+                        className="bg-primary">
+                        <div className="max-w-[300px] text-xs text-muted-foreground">
+                          {Object.entries(customizationDescriptions).map(
+                            ([key, value], index) => (
+                              <div key={index}>
+                                <span className="font-medium">{key}:</span>{" "}
+                                {String(value)}
+                              </div>
+                            ),
+                          )}
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <div className="border-b" />
                   <SchemaForm
                     readonly={readonly}
                     schema={createdAction?.customizations}
@@ -199,13 +238,15 @@ const ParamEditor: React.FC<Props> = ({
                 </div>
               )}
             </div>
-            <Button
-              className="shrink-0 self-end"
-              size="lg"
-              onClick={handleUpdate}
-              disabled={readonly || !isCurrentTabValid}>
-              {t("Update")}
-            </Button>
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                className="shrink-0 self-end"
+                size="lg"
+                onClick={handleUpdate}
+                disabled={readonly || !isCurrentTabValid}>
+                {t("Update")}
+              </Button>
+            </div>
           </div>
         </TabsContent>
         <TabsContent className="w-full px-6 py-4" value="details">

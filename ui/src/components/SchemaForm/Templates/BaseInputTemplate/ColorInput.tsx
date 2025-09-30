@@ -64,32 +64,30 @@ const ColorInput = <
   }, [onChange]);
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <Input
-          id={id}
-          name={id}
-          type="color"
-          placeholder={placeholder}
-          autoFocus={autofocus}
-          required={required}
-          disabled={readonly || disabled}
-          value={value || defaultValue.current}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          onFocus={handleFocus}
-          aria-required={required}
-          aria-invalid={rawErrors.length > 0}
-          aria-describedby={rawErrors.length > 0 ? `${id}-error` : undefined}
-          className={`${rawErrors.length > 0 ? "border-destructive" : ""} h-7 w-12 p-0`}
-        />
-        <ActionArea
-          value={value}
-          defaultValue={defaultValue}
-          onEditorOpen={onEditorOpen}
-          onReset={handleReset}
-        />
-      </div>
+    <div className="flex w-full items-center justify-between gap-2">
+      <Input
+        id={id}
+        name={id}
+        type="color"
+        placeholder={placeholder}
+        autoFocus={autofocus}
+        required={required}
+        disabled={readonly || disabled}
+        value={value || defaultValue.current}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        onFocus={handleFocus}
+        aria-required={required}
+        aria-invalid={rawErrors.length > 0}
+        aria-describedby={rawErrors.length > 0 ? `${id}-error` : undefined}
+        className={`${rawErrors.length > 0 ? "border-destructive" : ""} h-7 w-20 p-0`}
+      />
+      <ActionArea
+        value={value}
+        defaultValue={defaultValue}
+        onEditorOpen={onEditorOpen}
+        onReset={handleReset}
+      />
     </div>
   );
 };
