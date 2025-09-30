@@ -12,7 +12,7 @@ use crate::{
         CreateSnapshotRequest, DocumentResponse, HistoryMetadataResponse, HistoryResponse,
         ImportDocumentRequest, RollbackRequest, SnapshotResponse,
     },
-    AppState, DocumentServiceError,
+    AppState, DocumentUseCaseError,
 };
 
 pub struct DocumentHandler;
@@ -29,7 +29,7 @@ impl DocumentHandler {
         } = request;
 
         match state
-            .document_service
+            .document_usecase
             .create_snapshot(&doc_id, version)
             .await
         {
@@ -49,7 +49,7 @@ impl DocumentHandler {
         Path(doc_id): Path<String>,
         State(state): State<Arc<AppState>>,
     ) -> Response {
-        match state.document_service.get_latest_document(&doc_id).await {
+        match state.document_usecase.get_latest_document(&doc_id).await {
             Ok(document) => Json(DocumentResponse {
                 id: document.id,
                 updates: document.updates,
@@ -65,7 +65,7 @@ impl DocumentHandler {
         Path(doc_id): Path<String>,
         State(state): State<Arc<AppState>>,
     ) -> Response {
-        match state.document_service.get_history(&doc_id).await {
+        match state.document_usecase.get_history(&doc_id).await {
             Ok(history) => {
                 let response: Vec<HistoryResponse> = history
                     .into_iter()
@@ -88,7 +88,7 @@ impl DocumentHandler {
         Json(request): Json<RollbackRequest>,
     ) -> Response {
         match state
-            .document_service
+            .document_usecase
             .rollback(&doc_id, request.version)
             .await
         {
@@ -107,7 +107,7 @@ impl DocumentHandler {
         Path(doc_id): Path<String>,
         State(state): State<Arc<AppState>>,
     ) -> Response {
-        match state.document_service.get_history_metadata(&doc_id).await {
+        match state.document_usecase.get_history_metadata(&doc_id).await {
             Ok(metadata) => {
                 let response: Vec<HistoryMetadataResponse> = metadata
                     .into_iter()
@@ -128,7 +128,7 @@ impl DocumentHandler {
         State(state): State<Arc<AppState>>,
     ) -> Response {
         match state
-            .document_service
+            .document_usecase
             .get_history_by_version(&doc_id, version)
             .await
         {
@@ -152,7 +152,7 @@ impl DocumentHandler {
         Path(doc_id): Path<String>,
         State(state): State<Arc<AppState>>,
     ) -> Response {
-        match state.document_service.save_snapshot(&doc_id).await {
+        match state.document_usecase.save_snapshot(&doc_id).await {
             Ok(_) => StatusCode::OK.into_response(),
             Err(err) => handle_service_error(&format!("flush_to_gcs [{}]", doc_id), err),
         }
@@ -162,7 +162,7 @@ impl DocumentHandler {
         Path((doc_id, source)): Path<(String, String)>,
         State(state): State<Arc<AppState>>,
     ) -> Response {
-        match state.document_service.copy_document(&doc_id, &source).await {
+        match state.document_usecase.copy_document(&doc_id, &source).await {
             Ok(_) => StatusCode::OK.into_response(),
             Err(err) => {
                 handle_service_error(&format!("copy_document [{} <- {}]", doc_id, source), err)
@@ -176,7 +176,7 @@ impl DocumentHandler {
         Json(request): Json<ImportDocumentRequest>,
     ) -> Response {
         match state
-            .document_service
+            .document_usecase
             .import_document(&doc_id, &request.data)
             .await
         {
@@ -186,17 +186,17 @@ impl DocumentHandler {
     }
 }
 
-fn handle_service_error(context: &str, err: DocumentServiceError) -> Response {
+fn handle_service_error(context: &str, err: DocumentUseCaseError) -> Response {
     match err {
-        DocumentServiceError::NotFound { .. } => {
+        DocumentUseCaseError::NotFound { .. } => {
             warn!("{}: {}", context, err);
             (StatusCode::NOT_FOUND, format!("Error: {err}")).into_response()
         }
-        DocumentServiceError::InvalidRequest { .. } => {
+        DocumentUseCaseError::InvalidRequest { .. } => {
             warn!("{}: {}", context, err);
             (StatusCode::BAD_REQUEST, format!("Error: {err}")).into_response()
         }
-        DocumentServiceError::Unexpected { message, source } => {
+        DocumentUseCaseError::Unexpected { message, source } => {
             error!("{}: {}; source: {:?}", context, message, source);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,

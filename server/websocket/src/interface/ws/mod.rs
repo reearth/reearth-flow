@@ -8,7 +8,7 @@ use bytes::Bytes;
 #[cfg(feature = "auth")]
 use axum::extract::Query;
 
-use crate::{AppState, WebsocketServiceError};
+use crate::{AppState, WebsocketUseCaseError};
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{Stream, StreamExt};
 use std::pin::Pin;
@@ -164,9 +164,9 @@ pub async fn ws_handler(
         }
     }
 
-    let websocket_service = state.websocket_service.clone();
+    let websocket_usecase = state.websocket_usecase.clone();
 
-    let group = match websocket_service.get_group(&doc_id).await {
+    let group = match websocket_usecase.get_group(&doc_id).await {
         Ok(group) => group,
         Err(err) => {
             error!("Failed to get or create group for {}: {}", doc_id, err);
@@ -180,7 +180,7 @@ pub async fn ws_handler(
     let user_token_clone = user_token.clone();
 
     ws.on_upgrade(move |socket| {
-        let websocket_service = websocket_service.clone();
+        let websocket_usecase = websocket_usecase.clone();
         let group = group.clone();
         let doc_id = doc_id.clone();
         let user_token = user_token_clone.clone();
@@ -192,18 +192,18 @@ pub async fn ws_handler(
             let sink = WarpSink::from(sender);
             let stream = WarpStream::with_pong_sender(receiver, pong_tx);
 
-            if let Err(err) = websocket_service
+            if let Err(err) = websocket_usecase
                 .handle_connection(group, sink, stream, &doc_id, user_token)
                 .await
             {
                 match err {
-                    WebsocketServiceError::BroadcastGroup { source, .. } => {
+                    WebsocketUseCaseError::BroadcastGroup { source, .. } => {
                         error!(
                             "Broadcast group error during connection for '{}': {}",
                             doc_id, source
                         );
                     }
-                    WebsocketServiceError::Connection { source, .. } => {
+                    WebsocketUseCaseError::Connection { source, .. } => {
                         error!("WebSocket connection error for '{}': {}", doc_id, source);
                     }
                 }

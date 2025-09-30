@@ -1,4 +1,4 @@
-use crate::application::services::health_service::HealthService;
+use crate::application::usecases::health_check_usecase::HealthCheckUseCase;
 use crate::domain::entity::health::HealthStatus;
 use axum::{http::StatusCode, response::Json};
 use serde_json::Value;
@@ -6,18 +6,18 @@ use std::sync::Arc;
 use tracing::{debug, info};
 
 pub struct HealthHandler {
-    health_service: Arc<HealthService>,
+    health_usecase: Arc<HealthCheckUseCase>,
 }
 
 impl HealthHandler {
-    pub fn new(health_service: Arc<HealthService>) -> Self {
-        Self { health_service }
+    pub fn new(health_usecase: Arc<HealthCheckUseCase>) -> Self {
+        Self { health_usecase }
     }
 
     pub async fn check_health(&self) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
         debug!("Health check endpoint called");
 
-        let system_health = self.health_service.check_system_health().await;
+        let system_health = self.health_usecase.check_system_health().await;
         let json_response = serde_json::to_value(&system_health).map_err(|e| {
             let error_response = serde_json::json!({
                 "error": "Failed to serialize health response",
@@ -48,7 +48,7 @@ pub async fn health_check_handler(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::application::services::health_service::HealthService;
+    use crate::application::usecases::health_check_usecase::HealthCheckUseCase;
     use crate::domain::entity::health::ComponentHealth;
     use crate::domain::repository::health::{HealthCheckError, HealthChecker};
     use async_trait::async_trait;
@@ -68,9 +68,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_health_handler_healthy() {
-        let mut service = HealthService::new("test");
-        service.add_checker(Arc::new(MockHealthyChecker));
-        let handler = HealthHandler::new(Arc::new(service));
+        let mut usecase = HealthCheckUseCase::new("test");
+        usecase.add_checker(Arc::new(MockHealthyChecker));
+        let handler = HealthHandler::new(Arc::new(usecase));
 
         let result = handler.check_health().await;
         assert!(result.is_ok());

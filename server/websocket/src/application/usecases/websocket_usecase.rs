@@ -15,12 +15,12 @@ use tracing::{debug, error, info, warn};
 use yrs::sync::Error as YSyncError;
 
 use crate::domain::repository::broadcast_pool::{BroadcastGroupHandle, BroadcastGroupProvider};
-use crate::infrastructure::websocket::types::Subscription;
+use crate::domain::services::websocket::Subscription;
 
 const CONNECTION_TIMEOUT: Duration = Duration::from_secs(86_400);
 
 #[derive(Debug, Error)]
-pub enum WebsocketServiceError {
+pub enum WebsocketUseCaseError {
     #[error("failed to access broadcast group for '{doc_id}'")]
     BroadcastGroup {
         doc_id: String,
@@ -36,14 +36,14 @@ pub enum WebsocketServiceError {
 }
 
 #[derive(Clone, Debug)]
-pub struct WebsocketService<P>
+pub struct WebsocketUseCase<P>
 where
     P: BroadcastGroupProvider + 'static,
 {
     pool: Arc<P>,
 }
 
-impl<P> WebsocketService<P>
+impl<P> WebsocketUseCase<P>
 where
     P: BroadcastGroupProvider + 'static,
 {
@@ -51,11 +51,11 @@ where
         Self { pool }
     }
 
-    pub async fn get_group(&self, doc_id: &str) -> Result<Arc<P::Group>, WebsocketServiceError> {
+    pub async fn get_group(&self, doc_id: &str) -> Result<Arc<P::Group>, WebsocketUseCaseError> {
         self.pool
             .get_group(doc_id)
             .await
-            .map_err(|err| WebsocketServiceError::BroadcastGroup {
+            .map_err(|err| WebsocketUseCaseError::BroadcastGroup {
                 doc_id: doc_id.to_string(),
                 source: err,
             })
@@ -68,7 +68,7 @@ where
         stream: Stream,
         doc_id: &str,
         user_token: Option<String>,
-    ) -> Result<(), WebsocketServiceError>
+    ) -> Result<(), WebsocketUseCaseError>
     where
         Sink: SinkExt<Bytes, Error = E> + Send + Sync + Unpin + 'static,
         Stream: StreamExt<Item = Result<Bytes, E>> + Send + Sync + Unpin + 'static,
@@ -111,7 +111,7 @@ where
                     "WebSocket connection error for document '{}': {}",
                     doc_id_owned, err
                 );
-                Err(WebsocketServiceError::Connection {
+                Err(WebsocketUseCaseError::Connection {
                     doc_id: doc_id_owned,
                     source: err,
                 })

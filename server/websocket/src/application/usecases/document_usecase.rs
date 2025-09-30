@@ -10,7 +10,7 @@ use crate::domain::repository::document::DocumentRepository;
 use crate::domain::value_objects::http::HistoryItem;
 
 #[derive(Debug, Error)]
-pub enum DocumentServiceError {
+pub enum DocumentUseCaseError {
     #[error("document not found: {document_id}")]
     NotFound { document_id: String },
     #[error("invalid request: {message}")]
@@ -23,11 +23,11 @@ pub enum DocumentServiceError {
     },
 }
 
-pub struct DocumentService {
+pub struct DocumentUseCase {
     repository: Arc<dyn DocumentRepository>,
 }
 
-impl DocumentService {
+impl DocumentUseCase {
     pub fn new(repository: Arc<dyn DocumentRepository>) -> Self {
         Self { repository }
     }
@@ -36,13 +36,13 @@ impl DocumentService {
         &self,
         doc_id: &str,
         version: u64,
-    ) -> Result<Document, DocumentServiceError> {
+    ) -> Result<Document, DocumentUseCaseError> {
         match self.repository.create_snapshot(doc_id, version).await {
             Ok(Some(document)) => Ok(document),
-            Ok(None) => Err(DocumentServiceError::NotFound {
+            Ok(None) => Err(DocumentUseCaseError::NotFound {
                 document_id: doc_id.to_string(),
             }),
-            Err(err) => Err(DocumentServiceError::Unexpected {
+            Err(err) => Err(DocumentUseCaseError::Unexpected {
                 message: format!(
                     "failed to create snapshot for document '{}' at version {}",
                     doc_id, version
@@ -55,7 +55,7 @@ impl DocumentService {
     pub async fn get_latest_document(
         &self,
         doc_id: &str,
-    ) -> Result<Document, DocumentServiceError> {
+    ) -> Result<Document, DocumentUseCaseError> {
         if let Err(err) = self.repository.flush_to_gcs(doc_id).await {
             error!(
                 "failed to flush websocket changes for '{}' before fetching latest: {}",
@@ -65,10 +65,10 @@ impl DocumentService {
 
         match self.repository.fetch_latest(doc_id).await {
             Ok(Some(document)) => Ok(document),
-            Ok(None) => Err(DocumentServiceError::NotFound {
+            Ok(None) => Err(DocumentUseCaseError::NotFound {
                 document_id: doc_id.to_string(),
             }),
-            Err(err) => Err(DocumentServiceError::Unexpected {
+            Err(err) => Err(DocumentUseCaseError::Unexpected {
                 message: format!("failed to load latest document '{}'", doc_id),
                 source: err,
             }),
@@ -78,9 +78,9 @@ impl DocumentService {
     pub async fn get_history(
         &self,
         doc_id: &str,
-    ) -> Result<Vec<HistoryItem>, DocumentServiceError> {
+    ) -> Result<Vec<HistoryItem>, DocumentUseCaseError> {
         self.repository.fetch_history(doc_id).await.map_err(|err| {
-            DocumentServiceError::Unexpected {
+            DocumentUseCaseError::Unexpected {
                 message: format!("failed to load history for document '{}'", doc_id),
                 source: err,
             }
@@ -91,20 +91,20 @@ impl DocumentService {
         &self,
         doc_id: &str,
         version: u64,
-    ) -> Result<Document, DocumentServiceError> {
+    ) -> Result<Document, DocumentUseCaseError> {
         self.repository
             .rollback(doc_id, version)
             .await
             .map_err(|err| {
                 let message = err.to_string();
                 if message.contains("not found") {
-                    DocumentServiceError::NotFound {
+                    DocumentUseCaseError::NotFound {
                         document_id: doc_id.to_string(),
                     }
                 } else if message.contains("version") {
-                    DocumentServiceError::InvalidRequest { message }
+                    DocumentUseCaseError::InvalidRequest { message }
                 } else {
-                    DocumentServiceError::Unexpected {
+                    DocumentUseCaseError::Unexpected {
                         message: format!(
                             "failed to rollback document '{}' to version {}",
                             doc_id, version
@@ -118,11 +118,11 @@ impl DocumentService {
     pub async fn get_history_metadata(
         &self,
         doc_id: &str,
-    ) -> Result<Vec<(u32, DateTime<Utc>)>, DocumentServiceError> {
+    ) -> Result<Vec<(u32, DateTime<Utc>)>, DocumentUseCaseError> {
         self.repository
             .fetch_history_metadata(doc_id)
             .await
-            .map_err(|err| DocumentServiceError::Unexpected {
+            .map_err(|err| DocumentUseCaseError::Unexpected {
                 message: format!("failed to load history metadata for '{}'", doc_id),
                 source: err,
             })
@@ -132,13 +132,13 @@ impl DocumentService {
         &self,
         doc_id: &str,
         version: u64,
-    ) -> Result<HistoryItem, DocumentServiceError> {
+    ) -> Result<HistoryItem, DocumentUseCaseError> {
         match self.repository.fetch_history_version(doc_id, version).await {
             Ok(Some(item)) => Ok(item),
-            Ok(None) => Err(DocumentServiceError::NotFound {
+            Ok(None) => Err(DocumentUseCaseError::NotFound {
                 document_id: format!("{}@{}", doc_id, version),
             }),
-            Err(err) => Err(DocumentServiceError::Unexpected {
+            Err(err) => Err(DocumentUseCaseError::Unexpected {
                 message: format!(
                     "failed to load history version {} for document '{}'",
                     version, doc_id
@@ -148,19 +148,19 @@ impl DocumentService {
         }
     }
 
-    pub async fn flush_to_gcs(&self, doc_id: &str) -> Result<(), DocumentServiceError> {
+    pub async fn flush_to_gcs(&self, doc_id: &str) -> Result<(), DocumentUseCaseError> {
         self.repository
             .flush_to_gcs(doc_id)
             .await
-            .map_err(|err| DocumentServiceError::Unexpected {
+            .map_err(|err| DocumentUseCaseError::Unexpected {
                 message: format!("failed to flush updates for document '{}'", doc_id),
                 source: err,
             })
     }
 
-    pub async fn save_snapshot(&self, doc_id: &str) -> Result<(), DocumentServiceError> {
+    pub async fn save_snapshot(&self, doc_id: &str) -> Result<(), DocumentUseCaseError> {
         self.repository.save_snapshot(doc_id).await.map_err(|err| {
-            DocumentServiceError::Unexpected {
+            DocumentUseCaseError::Unexpected {
                 message: format!("failed to save snapshot for document '{}'", doc_id),
                 source: err,
             }
@@ -171,11 +171,11 @@ impl DocumentService {
         &self,
         doc_id: &str,
         source: &str,
-    ) -> Result<(), DocumentServiceError> {
+    ) -> Result<(), DocumentUseCaseError> {
         self.repository
             .copy_document(doc_id, source)
             .await
-            .map_err(|err| DocumentServiceError::Unexpected {
+            .map_err(|err| DocumentUseCaseError::Unexpected {
                 message: format!("failed to copy document '{}'", doc_id),
                 source: err,
             })
@@ -185,18 +185,18 @@ impl DocumentService {
         &self,
         doc_id: &str,
         data: &[u8],
-    ) -> Result<(), DocumentServiceError> {
+    ) -> Result<(), DocumentUseCaseError> {
         self.repository
             .import_document(doc_id, data)
             .await
-            .map_err(|err| DocumentServiceError::Unexpected {
+            .map_err(|err| DocumentUseCaseError::Unexpected {
                 message: format!("failed to import document '{}'", doc_id),
                 source: err,
             })
     }
 }
 
-impl Clone for DocumentService {
+impl Clone for DocumentUseCase {
     fn clone(&self) -> Self {
         Self {
             repository: Arc::clone(&self.repository),
@@ -204,8 +204,8 @@ impl Clone for DocumentService {
     }
 }
 
-impl fmt::Debug for DocumentService {
+impl fmt::Debug for DocumentUseCase {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("DocumentService").finish_non_exhaustive()
+        f.debug_struct("DocumentUseCase").finish_non_exhaustive()
     }
 }

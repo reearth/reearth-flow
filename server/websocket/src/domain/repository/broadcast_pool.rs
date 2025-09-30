@@ -6,7 +6,7 @@ use bytes::Bytes;
 use futures_util::{SinkExt, StreamExt};
 use tokio::sync::Mutex;
 
-use crate::infrastructure::websocket::types::Subscription;
+use crate::domain::services::websocket::Subscription;
 
 #[async_trait]
 pub trait BroadcastGroupHandle: Send + Sync {

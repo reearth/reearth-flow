@@ -15,8 +15,8 @@ pub use infrastructure::redis::RedisStore;
 pub type AwarenessRef = Arc<RwLock<yrs::sync::Awareness>>;
 
 pub use infrastructure::websocket::BroadcastPool;
-pub type WebsocketService =
-    application::services::websocket_service::WebsocketService<BroadcastPool>;
+pub type WebsocketUseCase =
+    application::usecases::websocket_usecase::WebsocketUseCase<BroadcastPool>;
 
 pub use interface::http::server::{ensure_bucket, start_server};
 
@@ -39,8 +39,8 @@ pub struct RollbackQuery {
 #[derive(Clone, Debug)]
 pub struct AppState {
     pub pool: Arc<BroadcastPool>,
-    pub document_service: Arc<DocumentService>,
-    pub websocket_service: Arc<WebsocketService>,
+    pub document_usecase: Arc<DocumentUseCase>,
+    pub websocket_usecase: Arc<WebsocketUseCase>,
     pub auth: Arc<AuthService>,
     pub instance_id: String,
 }
@@ -49,8 +49,8 @@ pub struct AppState {
 #[derive(Clone, Debug)]
 pub struct AppState {
     pub pool: Arc<BroadcastPool>,
-    pub document_service: Arc<DocumentService>,
-    pub websocket_service: Arc<WebsocketService>,
+    pub document_usecase: Arc<DocumentUseCase>,
+    pub websocket_usecase: Arc<WebsocketUseCase>,
     pub instance_id: String,
 }
 
@@ -64,8 +64,9 @@ pub use domain::value_objects::conf::{
 };
 pub use domain::value_objects::http::HistoryItem;
 
-pub use application::services::document_service::{DocumentService, DocumentServiceError};
-pub use application::services::websocket_service::WebsocketServiceError;
+pub use application::usecases::document_usecase::{DocumentUseCase, DocumentUseCaseError};
+pub use application::usecases::websocket_usecase::WebsocketUseCaseError;
+pub use domain::services::websocket::{ConnectionCounter, ShutdownHandle, Subscription};
 #[cfg(feature = "auth")]
 pub use domain::value_objects::conf::DEFAULT_AUTH_URL;
 pub use domain::value_objects::redis::{
@@ -73,8 +74,6 @@ pub use domain::value_objects::redis::{
     RedisStreamResults, StreamMessages, MESSAGE_TYPE_AWARENESS, MESSAGE_TYPE_SYNC, OID_LOCK_KEY,
 };
 pub use infrastructure::gcs::GcsStore;
-pub use infrastructure::websocket::{
-    BroadcastGroup, CollaborativeStorage, ConnectionCounter, ShutdownHandle, Subscription,
-};
+pub use infrastructure::websocket::{BroadcastGroup, CollaborativeStorage};
 pub use interface::http::handlers::document_handler::DocumentHandler;
 pub use interface::http::router::document_routes;

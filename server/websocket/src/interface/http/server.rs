@@ -91,8 +91,8 @@ pub async fn start_server(state: Arc<AppState>, port: &str, config: &Config) -> 
         .route("/{doc_id}", get(ws_handler))
         .with_state(server_state);
 
-    let health_service = create_health_service(&state);
-    let health_handler = Arc::new(HealthHandler::new(health_service));
+    let health_usecase = create_health_usecase(&state);
+    let health_handler = Arc::new(HealthHandler::new(health_usecase));
 
     let app = Router::new()
         .merge(ws_router)
@@ -134,20 +134,20 @@ pub async fn start_server(state: Arc<AppState>, port: &str, config: &Config) -> 
     Ok(())
 }
 
-use crate::application::services::health_service::HealthService;
+use crate::application::usecases::health_check_usecase::HealthCheckUseCase;
 use crate::infrastructure::health::{GcsHealthCheckerImpl, RedisHealthCheckerImpl};
 use crate::interface::http::handlers::health_handler::{health_check_handler, HealthHandler};
 
-fn create_health_service(state: &AppState) -> Arc<HealthService> {
-    let mut health_service = HealthService::new("websocket");
+fn create_health_usecase(state: &AppState) -> Arc<HealthCheckUseCase> {
+    let mut health_usecase = HealthCheckUseCase::new("websocket");
 
     let redis_checker = RedisHealthCheckerImpl::new(state.pool.get_redis_store());
-    health_service.add_checker(Arc::new(redis_checker));
+    health_usecase.add_checker(Arc::new(redis_checker));
 
     let gcs_checker = GcsHealthCheckerImpl::new(state.pool.get_store());
-    health_service.add_checker(Arc::new(gcs_checker));
+    health_usecase.add_checker(Arc::new(gcs_checker));
 
-    Arc::new(health_service)
+    Arc::new(health_usecase)
 }
 
 #[cfg(feature = "auth")]

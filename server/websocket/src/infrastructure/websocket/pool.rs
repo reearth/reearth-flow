@@ -193,7 +193,7 @@ impl BroadcastGroupHandle for BroadcastGroup {
         self: Arc<Self>,
         sink: Arc<Mutex<Sink>>,
         stream: Stream,
-    ) -> crate::infrastructure::websocket::types::Subscription
+    ) -> crate::domain::services::websocket::Subscription
     where
         Sink: futures_util::Sink<Bytes, Error = E> + Send + Sync + Unpin + 'static,
         Stream: futures_util::Stream<Item = std::result::Result<Bytes, E>>

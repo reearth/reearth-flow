@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 use crate::application::kv::DocOps;
+use crate::domain::services::websocket::{ConnectionCounter, ShutdownHandle, Subscription};
 use crate::infrastructure::gcs::GcsStore;
 use crate::infrastructure::redis::RedisStore;
-use crate::infrastructure::websocket::types::{ConnectionCounter, ShutdownHandle, Subscription};
 use crate::AwarenessRef;
 
 use anyhow::Result;

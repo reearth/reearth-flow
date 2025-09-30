@@ -3,12 +3,12 @@ use crate::domain::repository::health::HealthChecker;
 use std::sync::Arc;
 use tracing::{debug, warn};
 
-pub struct HealthService {
+pub struct HealthCheckUseCase {
     checkers: Vec<Arc<dyn HealthChecker>>,
     service_name: String,
 }
 
-impl HealthService {
+impl HealthCheckUseCase {
     pub fn new(service_name: impl Into<String>) -> Self {
         Self {
             checkers: Vec::new(),
@@ -94,21 +94,21 @@ mod tests {
 
     #[tokio::test]
     async fn test_health_service_all_healthy() {
-        let mut service = HealthService::new("test-service");
-        service.add_checker(Arc::new(MockHealthyChecker));
+        let mut usecase = HealthCheckUseCase::new("test-service");
+        usecase.add_checker(Arc::new(MockHealthyChecker));
 
-        let health = service.check_system_health().await;
+        let health = usecase.check_system_health().await;
         assert!(health.is_healthy());
         assert_eq!(health.components.len(), 1);
     }
 
     #[tokio::test]
     async fn test_health_service_mixed_health() {
-        let mut service = HealthService::new("test-service");
-        service.add_checker(Arc::new(MockHealthyChecker));
-        service.add_checker(Arc::new(MockUnhealthyChecker));
+        let mut usecase = HealthCheckUseCase::new("test-service");
+        usecase.add_checker(Arc::new(MockHealthyChecker));
+        usecase.add_checker(Arc::new(MockUnhealthyChecker));
 
-        let health = service.check_system_health().await;
+        let health = usecase.check_system_health().await;
         assert!(!health.is_healthy());
         assert_eq!(health.components.len(), 2);
     }

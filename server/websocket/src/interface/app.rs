@@ -4,14 +4,14 @@ use anyhow::{Context, Result};
 use tracing::{error, info};
 use uuid::Uuid;
 
-use crate::application::services::document_service::DocumentService;
+use crate::application::usecases::document_usecase::DocumentUseCase;
 use crate::domain::repository::document::DocumentRepository;
 use crate::infrastructure::gcs::GcsStore;
 use crate::infrastructure::redis::RedisStore;
 use crate::infrastructure::repository::document::DocumentRepositoryImpl;
 use crate::infrastructure::websocket::{BroadcastPool, CollaborativeStorage};
 use crate::interface::http;
-use crate::{conf::Config, AppState, WebsocketService};
+use crate::{conf::Config, AppState, WebsocketUseCase};
 
 #[cfg(feature = "auth")]
 use crate::auth::AuthService;
@@ -53,8 +53,8 @@ pub async fn build_with_config(config: Config) -> Result<ApplicationContext> {
         Arc::clone(&gcs_store),
         Arc::clone(&collaborative_storage),
     ));
-    let document_service = Arc::new(DocumentService::new(document_repository));
-    let websocket_service = Arc::new(WebsocketService::new(Arc::clone(&pool)));
+    let document_usecase = Arc::new(DocumentUseCase::new(document_repository));
+    let websocket_usecase = Arc::new(WebsocketUseCase::new(Arc::clone(&pool)));
 
     let instance_id = Uuid::new_v4().to_string();
     info!("Generated instance ID: {}", instance_id);
@@ -68,8 +68,8 @@ pub async fn build_with_config(config: Config) -> Result<ApplicationContext> {
             info!("Auth service initialized");
             AppState {
                 pool,
-                document_service: Arc::clone(&document_service),
-                websocket_service: Arc::clone(&websocket_service),
+                document_usecase: Arc::clone(&document_usecase),
+                websocket_usecase: Arc::clone(&websocket_usecase),
                 auth: Arc::new(auth),
                 instance_id,
             }
@@ -78,8 +78,8 @@ pub async fn build_with_config(config: Config) -> Result<ApplicationContext> {
         {
             AppState {
                 pool,
-                document_service,
-                websocket_service,
+                document_usecase,
+                websocket_usecase,
                 instance_id,
             }
         }
