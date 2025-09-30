@@ -47,11 +47,9 @@ const DebugPanel: React.FC = () => {
     dataURLs,
     outputDataForDownload,
     selectedOutputData,
-    enableClustering,
     selectedFeature,
     setSelectedFeature,
     setConvertedSelectedFeature,
-    setEnableClustering,
     handleFullscreenExpand,
     handleExpand,
     handleMinimize,
@@ -228,12 +226,10 @@ const DebugPanel: React.FC = () => {
                   fileType={fileType}
                   selectedOutputData={selectedOutputData}
                   selectedFeature={selectedFeature}
-                  enableClustering={enableClustering}
                   mapRef={mapRef}
                   cesiumViewerRef={cesiumViewerRef}
                   onConvertedSelectedFeature={setConvertedSelectedFeature}
                   onSelectedFeature={setSelectedFeature}
-                  onEnableClusteringChange={setEnableClustering}
                   onFlyToSelectedFeature={handleFlyToSelectedFeature}
                   // Data detection props
                   detectedGeometryType={detectedGeometryType}

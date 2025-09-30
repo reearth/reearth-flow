@@ -5,7 +5,7 @@ export const DEFAULT_NODE_SIZE = { width: 150, height: 25 };
 export const ALLOWED_WORKFLOW_FILE_EXTENSIONS = ".json, .yaml, .yml";
 export const ALLOWED_PROJECT_IMPORT_EXTENSIONS = ".zip";
 export const ALLOWED_ASSET_IMPORT_EXTENSIONS =
-  ".csv, .geojson, .gml, .json, .tsv, .py, .zip, .obj, .mtl, .jpg, .jpeg, .png, .tif, .tiff, .glb, .gltf, .gpkg";
+  ".csv, .czml, .geojson, .glb, .gltf, .gml, .gpkg, .jpg, .jpeg, .json, .mtl, .obj, .png, .py, .tif, .tiff, .tsv, .zip";
 export const CLIPBOARD_EXPIRATION_TIME = 1000 * 60 * 5;
 export const GENERAL_HOT_KEYS = ["ctrl+slash", "meta+slash"];
 export const GLOBAL_HOT_KEYS = [
