@@ -4,8 +4,8 @@ import {
   BroadcastIcon,
   CaretDownIcon,
   CopyrightIcon,
+  FileIcon,
   GavelIcon,
-  HardDriveIcon,
   KeyboardIcon,
   RocketIcon,
   SignOutIcon,
@@ -141,8 +141,8 @@ const HomeMenu: React.FC<Props> = ({
           <DropdownMenuItem
             className="gap-3"
             onClick={handleNavigationToDashboard("assets")}>
-            <HardDriveIcon weight="light" />
-            <p>{t("Assets")}</p>
+            <FileIcon weight="light" />
+            <p>{t("Workspace Assets")}</p>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
