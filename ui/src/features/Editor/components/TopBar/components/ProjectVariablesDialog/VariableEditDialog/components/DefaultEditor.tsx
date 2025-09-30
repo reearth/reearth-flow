@@ -1,6 +1,6 @@
-import { ArchiveIcon, DatabaseIcon } from "@phosphor-icons/react";
+import { FileIcon } from "@phosphor-icons/react";
 
-import { Button, Input, Label } from "@flow/components";
+import { Button, CmsLogo, Input, Label } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { ProjectVariable } from "@flow/types";
 
@@ -36,15 +36,15 @@ export const DefaultEditor: React.FC<Props> = ({
               onClick={() => onDialogOpen("assets")}
               variant="outline"
               size="sm">
-              <ArchiveIcon className="h-4 w-4" />
-              {t("Asset")}
+              <FileIcon className="h-4 w-4" />
+              {t("Workspace Assets")}
             </Button>
             <Button
               onClick={() => onDialogOpen("cms")}
               variant="outline"
               size="sm">
-              <DatabaseIcon className="h-4 w-4" />
-              {t("CMS")}
+              <CmsLogo className="h-4 w-4 text-white" />
+              {t("CMS Integration")}
             </Button>
           </div>
         </div>

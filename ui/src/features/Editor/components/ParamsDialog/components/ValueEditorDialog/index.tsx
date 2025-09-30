@@ -2,14 +2,13 @@ import {
   PencilLineIcon,
   CaretLeftIcon,
   CircleIcon,
-  ArchiveIcon,
-  DatabaseIcon,
   CaretDownIcon,
   CaretUpIcon,
   WrenchIcon,
   CodeIcon,
   CornersInIcon,
   CornersOutIcon,
+  FileIcon,
 } from "@phosphor-icons/react";
 import { QuestionIcon } from "@phosphor-icons/react/dist/ssr";
 import { useCallback, useState, useRef } from "react";
@@ -33,6 +32,7 @@ import {
   CollapsibleTrigger,
   DialogFooter,
   IconButton,
+  CmsLogo,
 } from "@flow/components";
 import AssetsDialog from "@flow/features/AssetsDialog";
 import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
@@ -235,15 +235,15 @@ const ValueEditorDialog: React.FC<Props> = ({
                     variant="outline"
                     size="sm"
                     onClick={() => handleDialogOpen("assets")}>
-                    <ArchiveIcon className="h-4 w-4" />
-                    {t("Asset")}
+                    <FileIcon className="h-4 w-4" />
+                    {t("Workspace Assets")}
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleDialogOpen("cms")}>
-                    <DatabaseIcon className="h-4 w-4" />
-                    {t("CMS")}
+                    <CmsLogo className="h-4 w-4 text-white" />
+                    {t("CMS Integration")}
                   </Button>
                   {projectVariables && projectVariables.length > 0 && (
                     <DropdownMenu>

@@ -18,8 +18,7 @@ import {
   PlusIcon,
   DotsSixIcon,
   TrashIcon,
-  ArchiveIcon,
-  DatabaseIcon,
+  FileIcon,
 } from "@phosphor-icons/react";
 import { useState, useEffect, useCallback } from "react";
 
@@ -37,6 +36,7 @@ import {
   SelectValue,
   Checkbox,
   Button,
+  CmsLogo,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { AnyProjectVariable, ChoiceConfig } from "@flow/types";
@@ -309,15 +309,15 @@ export const ChoiceEditor: React.FC<Props> = ({
                 onClick={() => onDialogOpen("assets")}
                 variant="outline"
                 size="sm">
-                <ArchiveIcon className="h-4 w-4" />
+                <FileIcon className="h-4 w-4" />
                 {t("Asset")}
               </Button>
               <Button
                 onClick={() => onDialogOpen("cms")}
                 variant="outline"
                 size="sm">
-                <DatabaseIcon className="h-4 w-4" />
-                {t("CMS")}
+                <CmsLogo className="h-4 w-4 text-white" />
+                {t("CMS Integration")}
               </Button>
             </div>
           )}

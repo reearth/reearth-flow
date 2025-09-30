@@ -1,4 +1,4 @@
-import { ArchiveIcon, ChalkboardTeacherIcon } from "@phosphor-icons/react";
+import { ChalkboardTeacherIcon, FileIcon } from "@phosphor-icons/react";
 import { memo } from "react";
 import { Doc } from "yjs";
 
@@ -105,10 +105,10 @@ const TopBar: React.FC<Props> = ({
             onClick={() => handleDialogOpen("projectVariables")}
           />
           <IconButton
-            className="h-8"
+            className="h-7"
             variant="outline"
-            tooltipText={t("Assets")}
-            icon={<ArchiveIcon weight="thin" size={18} />}
+            tooltipText={t("Workspace Assets")}
+            icon={<FileIcon weight="thin" size={18} />}
             onClick={() => handleDialogOpen("assets")}
           />
         </div>
