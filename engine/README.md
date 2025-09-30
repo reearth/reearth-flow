@@ -40,7 +40,7 @@ C:\> vcpkg integrate install
 
 ### Python (Optional)
 
-Python is required if you want to use Python-based actions in your workflows. Install Python on your operating system:
+Python (version 3.11 or higher) is required if you want to use Python-based actions in your workflows. Install Python on your operating system:
 
 #### Linux/Debian
 
