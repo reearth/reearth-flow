@@ -20,6 +20,8 @@ use tracing::{debug, error, warn};
 use yrs::sync::Error;
 
 #[cfg(feature = "auth")]
+use crate::domain::{repositories::auth::AuthError, value_objects::auth::AuthToken};
+#[cfg(feature = "auth")]
 use crate::AuthQuery;
 
 #[derive(Debug)]
@@ -143,20 +145,31 @@ pub async fn ws_handler(
 
     #[cfg(feature = "auth")]
     {
-        let authorized = state.auth.verify_token(&query.token).await;
+        let token = match AuthToken::new(query.token.clone()) {
+            Ok(token) => token,
+            Err(_) => {
+                error!("Token verification failed: invalid token");
+                return Response::builder()
+                    .status(400)
+                    .body(axum::body::Body::empty())
+                    .unwrap();
+            }
+        };
+
+        let authorized = state.auth_usecase.execute(&token).await;
         match authorized {
-            Ok(true) => {
+            Ok(()) => {
                 debug!("Token verified successfully");
             }
-            Ok(false) => {
-                error!("Token verification failed");
+            Err(AuthError::Unauthorized) => {
+                error!("Token verification failed: unauthorized");
                 return Response::builder()
                     .status(401)
                     .body(axum::body::Body::empty())
                     .unwrap();
             }
-            Err(e) => {
-                error!("Token verification error: {}", e);
+            Err(err) => {
+                error!("Token verification error: {}", err);
                 return Response::builder()
                     .status(500)
                     .body(axum::body::Body::empty())

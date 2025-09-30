@@ -14,7 +14,7 @@ use crate::presentation::http;
 use crate::{conf::Config, AppState, WebsocketUseCase};
 
 #[cfg(feature = "auth")]
-use crate::auth::AuthService;
+use crate::application::usecases::auth::VerifyTokenUseCase;
 
 pub struct ApplicationContext {
     pub config: Config,
@@ -62,15 +62,17 @@ pub async fn build_with_config(config: Config) -> Result<ApplicationContext> {
     let state = Arc::new({
         #[cfg(feature = "auth")]
         {
-            let auth = AuthService::new(config.auth.clone())
-                .await
-                .context("failed to initialize auth service")?;
+            let auth_service =
+                crate::infrastructure::auth::create_auth_service(config.auth.clone())
+                    .await
+                    .context("failed to initialize auth service")?;
             info!("Auth service initialized");
+            let auth_usecase = Arc::new(VerifyTokenUseCase::new(Arc::clone(&auth_service)));
             AppState {
                 pool,
                 document_usecase: Arc::clone(&document_usecase),
                 websocket_usecase: Arc::clone(&websocket_usecase),
-                auth: Arc::new(auth),
+                auth_usecase,
                 instance_id,
             }
         }

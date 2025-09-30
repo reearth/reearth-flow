@@ -1,9 +1,6 @@
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-#[cfg(feature = "auth")]
-pub mod auth;
-
 pub mod application;
 pub mod conf;
 pub mod domain;
@@ -40,7 +37,7 @@ pub struct AppState {
     pub pool: Arc<BroadcastPool>,
     pub document_usecase: Arc<DocumentUseCase>,
     pub websocket_usecase: Arc<WebsocketUseCase>,
-    pub auth: Arc<AuthService>,
+    pub auth_usecase: Arc<application::usecases::auth::VerifyTokenUseCase>,
     pub instance_id: String,
 }
 
@@ -52,9 +49,6 @@ pub struct AppState {
     pub websocket_usecase: Arc<WebsocketUseCase>,
     pub instance_id: String,
 }
-
-#[cfg(feature = "auth")]
-pub use auth::AuthService;
 
 pub use conf::Config;
 pub use domain::value_objects::conf::{

@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod gcs;
 pub mod health;
 pub mod redis;

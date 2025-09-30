@@ -79,10 +79,11 @@ where
         group.increment_connections_count().await;
 
         let doc_id_owned = doc_id.to_string();
-        let client_id = ClientId::new(group.get_client_id().await)
-        .map_err(|err| WebsocketUseCaseError::Connection {
-            doc_id: doc_id_owned.clone(),
-            source: YSyncError::Other(err.to_string().into()),
+        let client_id = ClientId::new(group.get_client_id().await).map_err(|err| {
+            WebsocketUseCaseError::Connection {
+                doc_id: doc_id_owned.clone(),
+                source: YSyncError::Other(err.to_string().into()),
+            }
         })?;
         let session_id = SessionId::new(format!("{}-{}", client_id.value(), group.get_doc_name()))
             .map_err(|err| WebsocketUseCaseError::Connection {
