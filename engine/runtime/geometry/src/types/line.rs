@@ -1,9 +1,10 @@
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
+use std::ops::Mul;
 
 use approx::{AbsDiffEq, RelativeEq};
 use geo_types::Line as GeoLine;
-use num_traits::Zero;
+use num_traits::{NumCast, Zero};
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
@@ -85,6 +86,109 @@ impl<T: CoordNum, Z: CoordNum> Line<T, Z> {
 
     pub fn points(&self) -> (Point<T, Z>, Point<T, Z>) {
         (self.start_point(), self.end_point())
+    }
+}
+
+impl<T: CoordFloat + From<Z>, Z: CoordFloat + Mul<T, Output = Z>> Line<T, Z> {
+    /// Smallest distance between segments `self` and `other`.
+    pub fn distance(&self, other: &Self) -> T {
+        #[inline]
+        fn clamp<T: PartialOrd>(x: T, lo: T, hi: T) -> T {
+            if x < lo {
+                lo
+            } else if x > hi {
+                hi
+            } else {
+                x
+            }
+        }
+
+        let epsilon = <T as NumCast>::from(1e-5).unwrap_or_default();
+
+        let u = self.end - self.start;
+        let v = other.end - other.start;
+        let w0 = self.start - other.start;
+
+        let a = u.dot(&u);
+        let b = u.dot(&v);
+        let c = v.dot(&v);
+        let d = u.dot(&w0);
+        let e = v.dot(&w0);
+        let dnm = a * c - b * b;
+
+        // Degenerate cases (point vs point/segment)
+        if a <= epsilon && c <= epsilon {
+            return (self.start - other.start).norm();
+        }
+        if a <= epsilon {
+            let t = clamp(e / c, T::zero(), T::one());
+            return (self.start - (other.start + v * t)).norm();
+        }
+        if c <= epsilon {
+            let s = clamp(-d / a, T::zero(), T::one());
+            return (self.start + u * s - other.start).norm();
+        }
+
+        // General case
+        let mut s_n = b * e - c * d;
+        let mut t_n = a * e - b * d;
+        let mut s_d = dnm;
+        let mut t_d = dnm;
+
+        // Nearly parallel
+        if dnm <= epsilon {
+            s_n = T::zero();
+            s_d = T::one();
+            t_n = e;
+            t_d = c;
+        }
+
+        // Clamp s to [0,1] with coupling to t
+        if s_n < T::zero() {
+            s_n = T::zero();
+            t_n = e;
+            t_d = c;
+        } else if s_n > s_d {
+            s_n = s_d;
+            t_n = e + b;
+            t_d = c;
+        }
+
+        // Clamp t to [0,1], possibly re-clamping s
+        if t_n < T::zero() {
+            t_n = T::zero();
+            s_n = -d;
+            s_d = a;
+            if s_n < T::zero() {
+                s_n = T::zero();
+            } else if s_n > s_d {
+                s_n = s_d;
+            }
+        } else if t_n > t_d {
+            t_n = t_d;
+            s_n = -d + b;
+            s_d = a;
+            if s_n < T::zero() {
+                s_n = T::zero();
+            } else if s_n > s_d {
+                s_n = s_d;
+            }
+        }
+
+        let s = if s_d.abs() > epsilon {
+            s_n / s_d
+        } else {
+            T::zero()
+        };
+        let t = if t_d.abs() > epsilon {
+            t_n / t_d
+        } else {
+            T::zero()
+        };
+
+        let cp = self.start + u * s;
+        let cq = other.start + v * t;
+        (cp - cq).norm()
     }
 }
 
@@ -319,5 +423,23 @@ impl Line3D<f64> {
     pub fn transform_offset(&mut self, x: f64, y: f64, z: f64) {
         self.start.transform_offset(x, y, z);
         self.end.transform_offset(x, y, z);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_line_distance() {
+        let line1 = Line3D::new_((0.0, 0.0, 0.0), (1.0, 0.0, 0.0));
+        let line2 = Line3D::new_((0.0, 1.0, 0.0), (1.0, 1.0, 0.0));
+        assert!((line1.distance(&line2) - 1_f64).abs() < 1e-6);
+
+        let line3 = Line3D::new_((2.0, 1.0, 0.0), (2.0, 2.0, 0.0));
+        assert!((line1.distance(&line3) - (2_f64).sqrt()).abs() < 1e-6);
+
+        let line4 = Line3D::new_((2.0, 0.0, 0.0), (3.0, 0.0, 0.0));
+        assert!((line1.distance(&line4) - 1_f64).abs() < 1e-6);
     }
 }

@@ -415,8 +415,13 @@ func (c *Client) CopyDocument(ctx context.Context, docID string, source string) 
 func (c *Client) ImportDocument(ctx context.Context, docID string, data []byte) error {
 	url := fmt.Sprintf("%s/api/document/%s/import", c.config.ServerURL, docID)
 
+	ints := make([]int, len(data))
+	for i, v := range data {
+		ints[i] = int(v)
+	}
+
 	importReq := importDocumentRequest{
-		Data: data,
+		Data: ints,
 	}
 
 	reqBody, err := json.Marshal(importReq)

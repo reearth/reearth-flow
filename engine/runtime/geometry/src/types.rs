@@ -16,4 +16,5 @@ pub mod rect;
 pub mod solid;
 pub mod traits;
 pub mod triangle;
+pub mod triangular_mesh;
 pub mod validation;

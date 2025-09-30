@@ -178,9 +178,10 @@ export const useQueries = () => {
       data: Uint8Array;
       workspaceId: string;
     }) => {
+      const dataArray = Array.from(projectData);
       const data = await graphQLContext?.ImportProject({
         projectId,
-        data: projectData,
+        data: dataArray,
       });
       return {
         success: data?.importProject,
