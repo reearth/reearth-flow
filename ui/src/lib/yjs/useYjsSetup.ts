@@ -23,7 +23,10 @@ export default ({
 }) => {
   const { getAccessToken } = useAuth();
 
-  const undoManagersRef = useRef<Map<string, Y.UndoManager>>(new Map());
+  const localUndoManagersRef = useRef<Map<string, Y.UndoManager>>(new Map());
+  const globalWorkflowsUndoManagersRef = useRef<Map<string, Y.UndoManager>>(
+    new Map(),
+  );
 
   const [yDocState, setYDocState] = useState<Y.Doc | null>(null);
   const [isSynced, setIsSynced] = useState(false);
@@ -160,16 +163,17 @@ export default ({
       yWorkflows: Y.Map<YWorkflow>,
       observedMapsRef: WeakSet<any>,
     ) => {
-      const currentManagers = undoManagersRef.current;
+      const currentLocalManagers = localUndoManagersRef.current;
       const newManagers = new Map<string, Y.UndoManager>();
 
       yWorkflows.forEach((workflow, workflowId) => {
-        let manager = currentManagers.get(workflowId);
+        let manager = currentLocalManagers.get(workflowId);
 
         if (!manager) {
           // Create separate undo manager for each workflow
+          // Track origins with workflow ID prepended (e.g., "workflowId-clientId")
           manager = new Y.UndoManager([workflow], {
-            trackedOrigins: new Set([currentUserClientId]), // Only track local changes
+            trackedOrigins: new Set([`${workflowId}-${currentUserClientId}`]),
             captureTimeout: 200, // default is 500. 200ms is a good balance between performance and user experience
           });
 
@@ -180,14 +184,40 @@ export default ({
         newManagers.set(workflowId, manager);
       });
 
-      // Cleanup managers for workflows that are deleted
-      currentManagers.forEach((manager, workflowId) => {
+      // Create workflow-specific global UndoManagers for yWorkflows operations
+      const currentGlobalManagers = globalWorkflowsUndoManagersRef.current;
+      const newGlobalManagers = new Map<string, Y.UndoManager>();
+
+      yWorkflows.forEach((_, workflowId) => {
+        let globalManager = currentGlobalManagers.get(workflowId);
+
+        if (!globalManager) {
+          // Track only yWorkflows operations from this specific workflow's context
+          globalManager = new Y.UndoManager([yWorkflows], {
+            trackedOrigins: new Set([`${workflowId}-${currentUserClientId}`]),
+            captureTimeout: 200, // default is 500. 200ms is a good balance between performance and user experience
+          });
+        }
+
+        newGlobalManagers.set(workflowId, globalManager);
+      });
+
+      // Cleanup local managers for workflows that are deleted
+      currentLocalManagers.forEach((manager, workflowId) => {
         if (!newManagers.has(workflowId)) {
           manager.destroy();
         }
       });
 
-      undoManagersRef.current = newManagers;
+      // Cleanup global managers for deleted workflows
+      currentGlobalManagers.forEach((manager, workflowId) => {
+        if (!newGlobalManagers.has(workflowId)) {
+          manager.destroy();
+        }
+      });
+
+      localUndoManagersRef.current = newManagers;
+      globalWorkflowsUndoManagersRef.current = newGlobalManagers;
     },
     [recursivelyTrackSharedType],
   );
@@ -210,14 +240,25 @@ export default ({
     return () => {
       yWorkflows.unobserve(workflowsObserver);
       // Clean up UndoManagers on component unmount
-      undoManagersRef.current.forEach((manager) => manager.destroy());
-      undoManagersRef.current = new Map();
+      globalWorkflowsUndoManagersRef.current.forEach((manager) =>
+        manager.destroy(),
+      );
+      globalWorkflowsUndoManagersRef.current = new Map();
+      localUndoManagersRef.current.forEach((manager) => manager.destroy());
+      localUndoManagersRef.current = new Map();
     };
   }, [yWorkflows, currentUserClientId, handleWorkflowsChange]);
 
-  const getUndoManager = useCallback(
+  const getLocalUndoManager = useCallback(
     (workflowId: string): Y.UndoManager | null => {
-      return undoManagersRef.current.get(workflowId) ?? null;
+      return localUndoManagersRef.current.get(workflowId) ?? null;
+    },
+    [],
+  );
+
+  const getGlobalWorkflowsUndoManager = useCallback(
+    (workflowId: string): Y.UndoManager | null => {
+      return globalWorkflowsUndoManagersRef.current.get(workflowId) ?? null;
     },
     [],
   );
@@ -225,7 +266,8 @@ export default ({
   return {
     yWorkflows,
     isSynced,
-    getUndoManager,
+    getLocalUndoManager,
+    getGlobalWorkflowsUndoManager,
     undoTrackerActionWrapper,
     yDocState,
     yAwareness,

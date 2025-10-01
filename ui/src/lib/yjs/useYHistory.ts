@@ -5,61 +5,87 @@ import { UndoManager } from "yjs";
 
 export default ({
   undoManager,
+  globalWorkflowsUndoManager,
   // undoTrackerActionWrapper,
 }: {
   undoManager: UndoManager | null;
+  globalWorkflowsUndoManager: UndoManager | null;
   undoTrackerActionWrapper: (
     callback: () => void,
     originPrepend?: string,
   ) => void;
 }) => {
   const canUndo = useMemo(() => {
-    const stackLength = undoManager?.undoStack?.length ?? 0;
-    return stackLength > 0;
-  }, [undoManager?.undoStack?.length]);
+    const workflowStackLength = undoManager?.undoStack?.length ?? 0;
+    const globalStackLength = globalWorkflowsUndoManager?.undoStack?.length ?? 0;
+    return workflowStackLength > 0 || globalStackLength > 0;
+  }, [undoManager?.undoStack?.length, globalWorkflowsUndoManager?.undoStack?.length]);
 
   const canRedo = useMemo(() => {
-    const stackLength = undoManager?.redoStack?.length ?? 0;
-    return stackLength > 0;
-  }, [undoManager?.redoStack?.length]);
+    const workflowStackLength = undoManager?.redoStack?.length ?? 0;
+    const globalStackLength = globalWorkflowsUndoManager?.redoStack?.length ?? 0;
+    return workflowStackLength > 0 || globalStackLength > 0;
+  }, [undoManager?.redoStack?.length, globalWorkflowsUndoManager?.redoStack?.length]);
 
   const handleYWorkflowUndo = useCallback(() => {
-    const stackLength = undoManager?.undoStack?.length ?? 0;
-    if (stackLength > 0) {
+    const workflowStackLength = undoManager?.undoStack?.length ?? 0;
+    const globalStackLength = globalWorkflowsUndoManager?.undoStack?.length ?? 0;
+
+    if (workflowStackLength > 0 || globalStackLength > 0) {
       try {
-        // undoTrackerActionWrapper(() => {
-        undoManager?.undo();
-        // }, historyClientPrepend);
+        // Undo both workflow-specific changes and global workflow map changes
+        if (workflowStackLength > 0) {
+          undoManager?.undo();
+        }
+        if (globalStackLength > 0) {
+          globalWorkflowsUndoManager?.undo();
+        }
       } catch (e) {
         console.error("Undo operation failed: ", e);
 
-        undoManager?.undoStack.splice(undoManager?.undoStack.length - 1, 1);
+        if (workflowStackLength > 0) {
+          undoManager?.undoStack.splice(undoManager?.undoStack.length - 1, 1);
+        }
+        if (globalStackLength > 0) {
+          globalWorkflowsUndoManager?.undoStack.splice(globalWorkflowsUndoManager?.undoStack.length - 1, 1);
+        }
 
-        if (undoManager?.undoStack.length) {
+        if ((undoManager?.undoStack.length ?? 0) > 0 || (globalWorkflowsUndoManager?.undoStack.length ?? 0) > 0) {
           setTimeout(handleYWorkflowUndo, 0);
         }
       }
     }
-  }, [undoManager]);
+  }, [undoManager, globalWorkflowsUndoManager]);
 
   const handleYWorkflowRedo = useCallback(() => {
-    const stackLength = undoManager?.redoStack?.length ?? 0;
-    if (stackLength > 0) {
+    const workflowStackLength = undoManager?.redoStack?.length ?? 0;
+    const globalStackLength = globalWorkflowsUndoManager?.redoStack?.length ?? 0;
+
+    if (workflowStackLength > 0 || globalStackLength > 0) {
       try {
-        // undoTrackerActionWrapper(() => {
-        undoManager?.redo();
-        // }, historyClientPrepend);
+        // Redo both workflow-specific changes and global workflow map changes
+        if (globalStackLength > 0) {
+          globalWorkflowsUndoManager?.redo();
+        }
+        if (workflowStackLength > 0) {
+          undoManager?.redo();
+        }
       } catch (e) {
         console.error("Redo operation failed: ", e);
 
-        undoManager?.redoStack.splice(undoManager?.redoStack.length - 1, 1);
+        if (workflowStackLength > 0) {
+          undoManager?.redoStack.splice(undoManager?.redoStack.length - 1, 1);
+        }
+        if (globalStackLength > 0) {
+          globalWorkflowsUndoManager?.redoStack.splice(globalWorkflowsUndoManager?.redoStack.length - 1, 1);
+        }
 
-        if (undoManager?.redoStack.length) {
+        if ((undoManager?.redoStack.length ?? 0) > 0 || (globalWorkflowsUndoManager?.redoStack.length ?? 0) > 0) {
           setTimeout(handleYWorkflowRedo, 0);
         }
       }
     }
-  }, [undoManager]);
+  }, [undoManager, globalWorkflowsUndoManager]);
 
   return {
     canUndo,

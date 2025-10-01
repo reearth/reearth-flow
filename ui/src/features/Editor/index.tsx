@@ -16,7 +16,8 @@ import useHooks from "./hooks";
 
 type Props = {
   yWorkflows: YMap<YWorkflow>;
-  getUndoManager: (workflowId: string) => YUndoManager | null;
+  getLocalUndoManager: (workflowId: string) => YUndoManager | null;
+  getGlobalWorkflowsUndoManager: (workflowId: string) => YUndoManager | null;
   undoTrackerActionWrapper: (
     callback: () => void,
     originPrepend?: string,
@@ -27,7 +28,8 @@ type Props = {
 
 export default function Editor({
   yWorkflows,
-  getUndoManager,
+  getLocalUndoManager,
+  getGlobalWorkflowsUndoManager,
   undoTrackerActionWrapper,
   yDoc,
   yAwareness,
@@ -88,7 +90,8 @@ export default function Editor({
     yDoc,
     yWorkflows,
     yAwareness,
-    getUndoManager,
+    getLocalUndoManager,
+    getGlobalWorkflowsUndoManager,
     undoTrackerActionWrapper,
   });
 

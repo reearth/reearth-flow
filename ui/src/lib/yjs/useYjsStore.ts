@@ -13,6 +13,7 @@ export default ({
   currentWorkflowId,
   yWorkflows,
   undoManager,
+  globalWorkflowsUndoManager,
   setSelectedNodeIds,
   setSelectedEdgeIds,
   undoTrackerActionWrapper,
@@ -20,6 +21,7 @@ export default ({
   currentWorkflowId: string;
   yWorkflows: Y.Map<YWorkflow>;
   undoManager: Y.UndoManager | null;
+  globalWorkflowsUndoManager: Y.UndoManager | null;
   setSelectedNodeIds: Dispatch<SetStateAction<string[]>>;
   setSelectedEdgeIds: Dispatch<SetStateAction<string[]>>;
   undoTrackerActionWrapper: (
@@ -31,6 +33,17 @@ export default ({
     rebuildWorkflow(yw),
   );
 
+  // Wrap undoTrackerActionWrapper to automatically prepend current workflow ID
+  const workflowScopedUndoWrapper = (
+    callback: () => void,
+    additionalPrefix?: string,
+  ) => {
+    const prefix = additionalPrefix
+      ? `${currentWorkflowId}-${additionalPrefix}`
+      : currentWorkflowId;
+    undoTrackerActionWrapper(callback, prefix);
+  };
+
   const {
     currentYWorkflow,
     handleYWorkflowAdd,
@@ -41,7 +54,7 @@ export default ({
   } = useYWorkflow({
     yWorkflows,
     currentWorkflowId,
-    undoTrackerActionWrapper,
+    undoTrackerActionWrapper: workflowScopedUndoWrapper,
   });
 
   const { handleYNodesAdd, handleYNodesChange, handleYNodeDataUpdate } =
@@ -50,23 +63,23 @@ export default ({
       rawWorkflows,
       yWorkflows,
       setSelectedNodeIds,
-      undoTrackerActionWrapper,
+      undoTrackerActionWrapper: workflowScopedUndoWrapper,
       handleYWorkflowRemove,
     });
 
   const { handleYEdgesAdd, handleYEdgesChange } = useYEdge({
     currentYWorkflow,
     setSelectedEdgeIds,
-    undoTrackerActionWrapper,
+    undoTrackerActionWrapper: workflowScopedUndoWrapper,
   });
 
   const { canRedo, canUndo, handleYWorkflowRedo, handleYWorkflowUndo } =
-    useYHistory({ undoManager, undoTrackerActionWrapper });
+    useYHistory({ undoManager, globalWorkflowsUndoManager, undoTrackerActionWrapper });
 
   const { handleYLayoutChange } = useYLayout({
     yWorkflows,
     rawWorkflows,
-    undoTrackerActionWrapper,
+    undoTrackerActionWrapper: workflowScopedUndoWrapper,
   });
 
   return {
