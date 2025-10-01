@@ -14,8 +14,8 @@ use tokio::time;
 use tracing::{debug, error, info, warn};
 use yrs::sync::Error as YSyncError;
 
-use crate::domain::aggregates::WebsocketSession;
 use crate::domain::entities::ws::{ClientId, ConnectionInfo, SessionId};
+use crate::domain::entities::WebsocketSession;
 use crate::domain::repositories::broadcast_pool::{BroadcastGroupHandle, BroadcastGroupProvider};
 use crate::domain::value_objects::websocket::Subscription;
 

@@ -30,7 +30,6 @@ pub struct RollbackQuery {
     #[serde(default)]
     pub token: String,
 }
-
 #[cfg(feature = "auth")]
 #[derive(Clone, Debug)]
 pub struct AppState {
@@ -70,3 +69,4 @@ pub use infrastructure::gcs::GcsStore;
 pub use infrastructure::websocket::{BroadcastGroup, CollaborativeStorage};
 pub use presentation::http::handlers::document_handler::DocumentHandler;
 pub use presentation::http::router::document_routes;
+
