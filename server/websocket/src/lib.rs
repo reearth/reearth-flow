@@ -59,13 +59,13 @@ pub use domain::value_objects::http::HistoryItem;
 
 pub use application::usecases::document::{DocumentUseCase, DocumentUseCaseError};
 pub use application::usecases::websocket::WebsocketUseCaseError;
-pub use domain::value_objects::websocket::{ConnectionCounter, ShutdownHandle, Subscription};
 #[cfg(feature = "auth")]
 pub use domain::value_objects::conf::DEFAULT_AUTH_URL;
 pub use domain::value_objects::redis::{
     RedisConfig, RedisField, RedisFields, RedisPool, RedisStreamMessage, RedisStreamResult,
     RedisStreamResults, StreamMessages, MESSAGE_TYPE_AWARENESS, MESSAGE_TYPE_SYNC, OID_LOCK_KEY,
 };
+pub use domain::value_objects::websocket::{ConnectionCounter, ShutdownHandle, Subscription};
 pub use infrastructure::gcs::GcsStore;
 pub use infrastructure::websocket::{BroadcastGroup, CollaborativeStorage};
 pub use presentation::http::handlers::document_handler::DocumentHandler;
