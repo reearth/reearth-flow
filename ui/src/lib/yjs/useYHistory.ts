@@ -17,19 +17,28 @@ export default ({
 }) => {
   const canUndo = useMemo(() => {
     const workflowStackLength = undoManager?.undoStack?.length ?? 0;
-    const globalStackLength = globalWorkflowsUndoManager?.undoStack?.length ?? 0;
+    const globalStackLength =
+      globalWorkflowsUndoManager?.undoStack?.length ?? 0;
     return workflowStackLength > 0 || globalStackLength > 0;
-  }, [undoManager?.undoStack?.length, globalWorkflowsUndoManager?.undoStack?.length]);
+  }, [
+    undoManager?.undoStack?.length,
+    globalWorkflowsUndoManager?.undoStack?.length,
+  ]);
 
   const canRedo = useMemo(() => {
     const workflowStackLength = undoManager?.redoStack?.length ?? 0;
-    const globalStackLength = globalWorkflowsUndoManager?.redoStack?.length ?? 0;
+    const globalStackLength =
+      globalWorkflowsUndoManager?.redoStack?.length ?? 0;
     return workflowStackLength > 0 || globalStackLength > 0;
-  }, [undoManager?.redoStack?.length, globalWorkflowsUndoManager?.redoStack?.length]);
+  }, [
+    undoManager?.redoStack?.length,
+    globalWorkflowsUndoManager?.redoStack?.length,
+  ]);
 
   const handleYWorkflowUndo = useCallback(() => {
     const workflowStackLength = undoManager?.undoStack?.length ?? 0;
-    const globalStackLength = globalWorkflowsUndoManager?.undoStack?.length ?? 0;
+    const globalStackLength =
+      globalWorkflowsUndoManager?.undoStack?.length ?? 0;
 
     if (workflowStackLength > 0 || globalStackLength > 0) {
       try {
@@ -47,10 +56,16 @@ export default ({
           undoManager?.undoStack.splice(undoManager?.undoStack.length - 1, 1);
         }
         if (globalStackLength > 0) {
-          globalWorkflowsUndoManager?.undoStack.splice(globalWorkflowsUndoManager?.undoStack.length - 1, 1);
+          globalWorkflowsUndoManager?.undoStack.splice(
+            globalWorkflowsUndoManager?.undoStack.length - 1,
+            1,
+          );
         }
 
-        if ((undoManager?.undoStack.length ?? 0) > 0 || (globalWorkflowsUndoManager?.undoStack.length ?? 0) > 0) {
+        if (
+          (undoManager?.undoStack.length ?? 0) > 0 ||
+          (globalWorkflowsUndoManager?.undoStack.length ?? 0) > 0
+        ) {
           setTimeout(handleYWorkflowUndo, 0);
         }
       }
@@ -59,7 +74,8 @@ export default ({
 
   const handleYWorkflowRedo = useCallback(() => {
     const workflowStackLength = undoManager?.redoStack?.length ?? 0;
-    const globalStackLength = globalWorkflowsUndoManager?.redoStack?.length ?? 0;
+    const globalStackLength =
+      globalWorkflowsUndoManager?.redoStack?.length ?? 0;
 
     if (workflowStackLength > 0 || globalStackLength > 0) {
       try {
@@ -77,10 +93,16 @@ export default ({
           undoManager?.redoStack.splice(undoManager?.redoStack.length - 1, 1);
         }
         if (globalStackLength > 0) {
-          globalWorkflowsUndoManager?.redoStack.splice(globalWorkflowsUndoManager?.redoStack.length - 1, 1);
+          globalWorkflowsUndoManager?.redoStack.splice(
+            globalWorkflowsUndoManager?.redoStack.length - 1,
+            1,
+          );
         }
 
-        if ((undoManager?.redoStack.length ?? 0) > 0 || (globalWorkflowsUndoManager?.redoStack.length ?? 0) > 0) {
+        if (
+          (undoManager?.redoStack.length ?? 0) > 0 ||
+          (globalWorkflowsUndoManager?.redoStack.length ?? 0) > 0
+        ) {
           setTimeout(handleYWorkflowRedo, 0);
         }
       }
