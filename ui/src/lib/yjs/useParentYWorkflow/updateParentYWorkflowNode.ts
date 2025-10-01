@@ -48,7 +48,9 @@ function updatePseudoPorts(
   if (!routerType) return;
 
   const prevPseudoPorts = subworkflowParentNode.data[routerType];
+
   if (!prevPseudoPorts) return;
+
   const updatedPseudoPorts = getUpdatedPseudoPortsParam(
     prevPseudoPorts,
     newPseudoPort,
