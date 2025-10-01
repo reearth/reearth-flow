@@ -4,6 +4,7 @@ use once_cell::sync::Lazy;
 use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::{
+    building_part_connectivity::BuildingPartConnectivityCheckerFactory,
     counter::FeatureCounterFactory,
     duplicate_filter::FeatureDuplicateFilterFactory,
     file_path_extractor::FeatureFilePathExtractorFactory,
@@ -22,6 +23,7 @@ use super::{
 
 pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn ProcessorFactory>> = vec![
+        Box::<BuildingPartConnectivityCheckerFactory>::default(),
         Box::<FeatureMergerFactory>::default(),
         Box::<FeatureSorterFactory>::default(),
         Box::<FeatureFilterFactory>::default(),

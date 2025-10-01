@@ -41,89 +41,17 @@ nodes:
 
   # ========== L-bldg-02 Error Check: LOD2~4 BuildingPart Connectivity ==========
 
-  # Step 0-1: Sort features for stable processing
-  - id: a0b1c2d3-4e5f-6a7b-8c9d-0e1f2a3b4c5d
-    name: SorterBeforeExtraction
-    type: action
-    action: FeatureSorter
-    with:
-      attributes:
-        - gmlId
-        - featureId
-      order: ascending
-
-  # Step 0-2: Extract geometry parts (Solid/MultiSurface -> Faces)
-  # DUMMY: GeometryPartExtractorが必要（または既存のGeometry処理で代替）
-  - id: b0c1d2e3-4f5a-6b7c-8d9e-0f1a2b3c4d5e
-    name: GeometryPartExtractor_Dummy
-    type: action
-    action: NoopProcessor
-    with:
-      comment: |
-        TODO: GeometryPartExtractorまたは代替実装が必要
-        機能: Solid/MultiSurfaceを個別の面(Face)に分解
-        FME: GeometryPartExtractor + GQuery (IFMEFace抽出)
-
-  # Step 1: Aggregate BuildingParts by Building ID (gml_parent_id)
-  # リスト属性として gml_id と geometry を保存
-  - id: b1a2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
-    name: AggregateBuildingParts
-    type: action
-    action: AttributeAggregator
-    with:
-      aggregateAttributes:
-        - newAttribute: _group_key
-          attribute: gmlId
-        - newAttribute: _lod
-          attribute: lod
-        - newAttribute: _file_index
-          attribute: fileIndex
-      calculationAttribute: _num_parts
-      calculationValue: 1
-      method: count
-
-  # Step 2: GeometryMatcher (DUMMY - 新規実装が必要)
-  # 境界面共有を検出し _match_id を付与
-  - id: c2b3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
-    name: GeometryMatcher_Dummy
-    type: action
-    action: NoopProcessor
-    with:
-      comment: |
-        TODO: 新規実装が必要
-        機能: 同一Building配下のBuildingPart間で3D境界面共有を検出
-        出力: _match_id属性を付与
-
-  # Step 3: BuildingPartConnectivityChecker (DUMMY - 新規実装が必要)
-  # 接続グラフを構築し _status を判定
+  # Step 1: BuildingPartConnectivityChecker
+  # 3D境界面共有を検出 + Union-Findで接続グラフを構築し _status を判定
   - id: d3c4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
-    name: BuildingPartConnectivityChecker_Dummy
+    name: BuildingPartConnectivityChecker
     type: action
-    action: NoopProcessor
+    action: BuildingPartConnectivityChecker
     with:
-      comment: |
-        TODO: 新規実装が必要
-        機能: Union-Findで接続グラフ構築、status判定
-        出力: _status (full/partial/alone), _connected_id
-
-  # Step 4: Re-aggregate by connected group
-  - id: e4d5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a
-    name: AggregateByConnectedGroup
-    type: action
-    action: AttributeAggregator
-    with:
-      aggregateAttributes:
-        - newAttribute: _group_key2
-          attribute: gmlId
-        - newAttribute: _conn_id
-          attribute: _connected_id
-        - newAttribute: _lod2
-          attribute: lod
-        - newAttribute: _file_index2
-          attribute: fileIndex
-      calculationAttribute: _group_count
-      calculationValue: 1
-      method: count
+      buildingIdAttribute: gmlId
+      partIdAttribute: featureId
+      lodAttribute: lod
+      fileIndexAttribute: fileIndex
 
   # Step 5: Filter errors (_status != "full")
   - id: f5e6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
@@ -228,54 +156,6 @@ edges:
 
   # ========== L-bldg-02 Flow: LOD2~4 ==========
 
-  # LOD2 -> Sorter
-  - id: e1f2a3b4-5c6d-7e8f-9a0b-1c2d3e4f5a6b
-    from: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
-    to: a0b1c2d3-4e5f-6a7b-8c9d-0e1f2a3b4c5d
-    fromPort: lod2
-    toPort: default
-
-  # LOD3 -> Sorter
-  - id: f2a3b4c5-6d7e-8f9a-0b1c-2d3e4f5a6b7c
-    from: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
-    to: a0b1c2d3-4e5f-6a7b-8c9d-0e1f2a3b4c5d
-    fromPort: lod3
-    toPort: default
-
-  # LOD4 -> Sorter
-  - id: a3b4c5d6-7e8f-9a0b-1c2d-3e4f5a6b7c8d
-    from: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
-    to: a0b1c2d3-4e5f-6a7b-8c9d-0e1f2a3b4c5d
-    fromPort: lod4
-    toPort: default
-
-  # Sorter -> GeometryPartExtractor
-  - id: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
-    from: a0b1c2d3-4e5f-6a7b-8c9d-0e1f2a3b4c5d
-    to: b0c1d2e3-4f5a-6b7c-8d9e-0f1a2b3c4d5e
-    fromPort: default
-    toPort: default
-
-  # GeometryPartExtractor -> Aggregator
-  - id: b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
-    from: b0c1d2e3-4f5a-6b7c-8d9e-0f1a2b3c4d5e
-    to: b1a2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
-    fromPort: default
-    toPort: default
-
-  # Aggregator -> GeometryMatcher
-  - id: b4c5d6e7-8f9a-0b1c-2d3e-4f5a6b7c8d9e
-    from: b1a2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
-    to: c2b3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
-    fromPort: default
-    toPort: default
-
-  # GeometryMatcher -> ConnectivityChecker
-  - id: c5d6e7f8-9a0b-1c2d-3e4f-5a6b7c8d9e0f
-    from: c2b3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
-    to: d3c4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
-    fromPort: default
-    toPort: default
 
   # ConnectivityChecker -> Filter (Re-aggregateをスキップ)
   - id: d6e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
@@ -323,5 +203,33 @@ edges:
   - id: d2e3f4a5-6b7c-8d9e-0f1a-2b3c4d5e6f7a
     from: d9c0e1f2-3a4b-5c6d-7e8f-9a0b1c2d3e4f
     to: 3f4e5d6c-7b8a-9c0d-1e2f-3a4b5c6d7e8f
+    fromPort: default
+    toPort: default
+
+  # LOD2 -> ConnectivityChecker
+  - id: e1f2a3b4-5c6d-7e8f-9a0b-1c2d3e4f5a6b
+    from: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
+    to: d3c4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
+    fromPort: lod2
+    toPort: default
+
+  # LOD3 -> ConnectivityChecker
+  - id: f2a3b4c5-6d7e-8f9a-0b1c-2d3e4f5a6b7c
+    from: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
+    to: d3c4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
+    fromPort: lod3
+    toPort: default
+
+  # LOD4 -> ConnectivityChecker
+  - id: a3b4c5d6-7e8f-9a0b-1c2d-3e4f5a6b7c8d
+    from: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
+    to: d3c4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
+    fromPort: lod4
+    toPort: default
+
+  # ConnectivityChecker -> Filter
+  - id: d6e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
+    from: d3c4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
+    to: f5e6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
     fromPort: default
     toPort: default
