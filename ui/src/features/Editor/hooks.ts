@@ -37,13 +37,13 @@ export default ({
   yDoc,
   yWorkflows,
   yAwareness,
-  undoManager,
+  getUndoManager,
   undoTrackerActionWrapper,
 }: {
   yDoc: Doc | null;
   yWorkflows: YMap<YWorkflow>;
   yAwareness: Awareness;
-  undoManager: YUndoManager | null;
+  getUndoManager: (workflowId: string) => YUndoManager | null;
   undoTrackerActionWrapper: (
     callback: () => void,
     originPrepend?: string,
@@ -85,7 +85,7 @@ export default ({
   } = useYjsStore({
     currentWorkflowId,
     yWorkflows,
-    undoManager,
+    undoManager: getUndoManager(currentWorkflowId),
     setSelectedNodeIds,
     setSelectedEdgeIds,
     undoTrackerActionWrapper,
