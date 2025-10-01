@@ -131,7 +131,7 @@ graphs:
           outputAttribute: featureIndex
 
       - id: 2b8c4e7a-9f1d-4a3b-c6e8-5d2a7b9c1e4f
-        name: FeatureFilter
+        name: FeatureFilterBuildingPart
         type: action
         action: FeatureFilter
         with:
@@ -139,7 +139,7 @@ graphs:
             - expr: "true"
               outputPort: default
             - expr: |
-                env.get("__value").gmlName == "bldg:BuildingPart"
+                env.get("__value").featureType == "bldg:BuildingPart"
               outputPort: buildingPart
 
       - id: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b
