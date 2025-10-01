@@ -8,9 +8,8 @@ use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
 use crate::application::usecases::kv::DocOps;
-use crate::domain::entities::doc::Document;
+use crate::domain::entities::doc::{Document, HistoryItem};
 use crate::domain::repositories::document::DocumentRepository;
-use crate::domain::value_objects::http::HistoryItem;
 use crate::infrastructure::gcs::{GcsStore, UpdateInfo};
 use crate::infrastructure::websocket::CollaborativeStorage;
 
@@ -36,7 +35,8 @@ impl DocumentRepositoryImpl {
         let state = read_txn.encode_state_as_update_v1(&StateVector::default());
         drop(read_txn);
 
-        Document::new(doc_id.to_string(), state, version, timestamp)
+        Document::from_raw(doc_id.to_string(), state, version, timestamp)
+            .expect("valid document data")
     }
 
     fn metadata_to_timestamp(metadata: Option<(u32, OffsetDateTime)>) -> (u64, DateTime<Utc>) {
@@ -57,7 +57,7 @@ impl DocumentRepositoryImpl {
                 let timestamp =
                     chrono::DateTime::from_timestamp(info.timestamp.unix_timestamp(), 0)
                         .unwrap_or_else(Utc::now);
-                HistoryItem::new(info.clock as u64, info.update.encode_v1(), timestamp)
+                HistoryItem::from_raw(info.clock as u64, info.update.encode_v1(), timestamp)
             })
             .collect()
     }
@@ -100,12 +100,10 @@ impl DocumentRepository for DocumentRepositoryImpl {
                 let metadata = store.get_latest_update_metadata(doc_id).await?;
                 let (version, timestamp) = Self::metadata_to_timestamp(metadata);
 
-                Ok(Some(Document::new(
-                    doc_id.to_string(),
-                    state,
-                    version,
-                    timestamp,
-                )))
+                Ok(Some(
+                    Document::from_raw(doc_id.to_string(), state, version, timestamp)
+                        .expect("valid document data"),
+                ))
             }
             Err(_) => {
                 drop(txn);
@@ -122,12 +120,10 @@ impl DocumentRepository for DocumentRepositoryImpl {
                         let metadata = store.get_latest_update_metadata(doc_id).await?;
                         let (version, timestamp) = Self::metadata_to_timestamp(metadata);
 
-                        Ok(Some(Document::new(
-                            doc_id.to_string(),
-                            state,
-                            version,
-                            timestamp,
-                        )))
+                        Ok(Some(
+                            Document::from_raw(doc_id.to_string(), state, version, timestamp)
+                                .expect("valid document data"),
+                        ))
                     }
                     Ok(false) => Ok(None),
                     Err(err) => Err(err),
@@ -158,7 +154,7 @@ impl DocumentRepository for DocumentRepositoryImpl {
         Ok(result.map(|info| {
             let timestamp = chrono::DateTime::from_timestamp(info.timestamp.unix_timestamp(), 0)
                 .unwrap_or_else(Utc::now);
-            HistoryItem::new(info.clock as u64, info.update.encode_v1(), timestamp)
+            HistoryItem::from_raw(info.clock as u64, info.update.encode_v1(), timestamp)
         }))
     }
 

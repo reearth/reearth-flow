@@ -2,8 +2,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 
-use crate::domain::entities::doc::Document;
-use crate::domain::value_objects::http::HistoryItem;
+use crate::domain::entities::doc::{Document, HistoryItem};
 
 #[async_trait]
 pub trait DocumentRepository: Send + Sync {

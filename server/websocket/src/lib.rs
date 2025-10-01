@@ -50,11 +50,11 @@ pub struct AppState {
 }
 
 pub use conf::Config;
+pub use domain::entities::doc::HistoryItem;
 pub use domain::value_objects::conf::{
     DEFAULT_APP_ENV, DEFAULT_GCS_BUCKET, DEFAULT_ORIGINS, DEFAULT_REDIS_TTL, DEFAULT_REDIS_URL,
     DEFAULT_WS_PORT,
 };
-pub use domain::value_objects::http::HistoryItem;
 
 pub use application::usecases::document::{DocumentUseCase, DocumentUseCaseError};
 pub use application::usecases::websocket::WebsocketUseCaseError;
@@ -69,4 +69,3 @@ pub use infrastructure::gcs::GcsStore;
 pub use infrastructure::websocket::{BroadcastGroup, CollaborativeStorage};
 pub use presentation::http::handlers::document_handler::DocumentHandler;
 pub use presentation::http::router::document_routes;
-

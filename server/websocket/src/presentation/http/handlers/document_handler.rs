@@ -34,9 +34,9 @@ impl DocumentHandler {
             .await
         {
             Ok(document) => Json(SnapshotResponse {
-                id: document.id,
+                id: document.id.value().to_string(),
                 updates: document.updates,
-                version: document.version,
+                version: document.version.value(),
                 timestamp: document.timestamp.to_rfc3339(),
                 name,
             })
@@ -51,9 +51,9 @@ impl DocumentHandler {
     ) -> Response {
         match state.document_usecase.get_latest_document(&doc_id).await {
             Ok(document) => Json(DocumentResponse {
-                id: document.id,
+                id: document.id.value().to_string(),
                 updates: document.updates,
-                version: document.version,
+                version: document.version.value(),
                 timestamp: document.timestamp.to_rfc3339(),
             })
             .into_response(),
@@ -71,7 +71,7 @@ impl DocumentHandler {
                     .into_iter()
                     .map(|item| HistoryResponse {
                         updates: item.updates,
-                        version: item.version,
+                        version: item.version.value(),
                         timestamp: item.timestamp.to_rfc3339(),
                     })
                     .collect();
@@ -93,9 +93,9 @@ impl DocumentHandler {
             .await
         {
             Ok(document) => Json(DocumentResponse {
-                id: document.id,
+                id: document.id.value().to_string(),
                 updates: document.updates,
-                version: document.version,
+                version: document.version.value(),
                 timestamp: document.timestamp.to_rfc3339(),
             })
             .into_response(),
@@ -135,7 +135,7 @@ impl DocumentHandler {
             Ok(item) => {
                 let response = HistoryResponse {
                     updates: item.updates,
-                    version: item.version,
+                    version: item.version.value(),
                     timestamp: item.timestamp.to_rfc3339(),
                 };
 

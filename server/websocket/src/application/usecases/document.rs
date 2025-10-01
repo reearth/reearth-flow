@@ -5,9 +5,8 @@ use chrono::{DateTime, Utc};
 use thiserror::Error;
 use tracing::error;
 
-use crate::domain::entities::doc::Document;
+use crate::domain::entities::doc::{Document, HistoryItem};
 use crate::domain::repositories::document::DocumentRepository;
-use crate::domain::value_objects::http::HistoryItem;
 
 #[derive(Debug, Error)]
 pub enum DocumentUseCaseError {
