@@ -215,9 +215,12 @@ export default ({
     };
   }, [yWorkflows, currentUserClientId, handleWorkflowsChange]);
 
-  const getUndoManager = (workflowId: string): Y.UndoManager | null => {
-    return undoManagersRef.current.get(workflowId) ?? null;
-  };
+  const getUndoManager = useCallback(
+    (workflowId: string): Y.UndoManager | null => {
+      return undoManagersRef.current.get(workflowId) ?? null;
+    },
+    [],
+  );
 
   return {
     yWorkflows,
