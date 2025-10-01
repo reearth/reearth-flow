@@ -6,7 +6,7 @@ use bytes::Bytes;
 use dashmap::DashMap;
 use tokio::sync::Mutex;
 use tracing::{info, warn};
-use yrs::sync::Awareness;
+use yrs::sync::{Awareness, DefaultProtocol};
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, Transact, Update};
 
@@ -174,27 +174,30 @@ impl BroadcastGroupProvider for BroadcastPool {
 #[async_trait]
 impl BroadcastGroupHandle for BroadcastGroup {
     async fn increment_connections_count(&self) {
-        BroadcastGroup::increment_connections_count(self).await;
+        self.connections_count.increment();
     }
 
     async fn decrement_connections_count(&self) {
-        BroadcastGroup::decrement_connections_count(self).await;
+        self.connections_count.decrement();
     }
 
     async fn get_connections_count(&self) -> usize {
-        BroadcastGroup::get_connections_count(self).await
+        self.connections_count.get()
     }
 
     async fn get_client_id(&self) -> String {
-        BroadcastGroup::get_client_id(self).await
+        self.awareness_ref.read().await.client_id().to_string()
     }
 
     fn get_doc_name(&self) -> &str {
-        BroadcastGroup::get_doc_name(self)
+        &self.doc_name
     }
 
     async fn cleanup_client_awareness(&self) -> Result<()> {
-        BroadcastGroup::cleanup_client_awareness(self).await
+        let awareness = self.awareness().clone();
+        let awareness_read = awareness.read().await;
+        awareness_read.clean_local_state();
+        Ok(())
     }
 
     async fn subscribe<Sink, Stream, E>(
@@ -211,6 +214,6 @@ impl BroadcastGroupHandle for BroadcastGroup {
             + 'static,
         E: std::error::Error + Send + Sync + 'static,
     {
-        BroadcastGroup::subscribe(self, sink, stream).await
+        self.listen(sink, stream, DefaultProtocol).await
     }
 }

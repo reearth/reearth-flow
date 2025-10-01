@@ -19,7 +19,7 @@ use tokio::sync::Mutex;
 
 use yrs::encoding::write::Write;
 use yrs::sync::protocol::{MSG_SYNC, MSG_SYNC_UPDATE};
-use yrs::sync::{DefaultProtocol, Error, Message, Protocol, SyncMessage};
+use yrs::sync::{Error, Message, Protocol, SyncMessage};
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
 use yrs::{Doc, ReadTxn, Transact, Update};
@@ -27,16 +27,16 @@ use yrs::{Doc, ReadTxn, Transact, Update};
 use crate::domain::value_objects::broadcast::BroadcastConfig;
 
 pub struct BroadcastGroup {
-    awareness_ref: AwarenessRef,
+    pub(crate) awareness_ref: AwarenessRef,
     sender: Sender<Bytes>,
     doc_sub: yrs::Subscription,
     awareness_sub: yrs::Subscription,
     storage: Arc<GcsStore>,
     redis_store: Arc<RedisStore>,
-    doc_name: String,
+    pub(crate) doc_name: String,
     last_read_id: Arc<Mutex<String>>,
     shutdown_handle: Arc<Mutex<Option<ShutdownHandle>>>,
-    connections_count: ConnectionCounter,
+    pub(crate) connections_count: ConnectionCounter,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -305,22 +305,6 @@ impl BroadcastGroup {
         })
     }
 
-    pub async fn increment_connections_count(&self) {
-        self.connections_count.increment();
-    }
-
-    pub async fn decrement_connections_count(&self) {
-        self.connections_count.decrement();
-    }
-
-    pub async fn get_connections_count(&self) -> usize {
-        self.connections_count.get()
-    }
-
-    pub async fn get_client_id(&self) -> String {
-        self.awareness_ref.read().await.client_id().to_string()
-    }
-
     pub fn awareness(&self) -> &AwarenessRef {
         &self.awareness_ref
     }
@@ -329,30 +313,12 @@ impl BroadcastGroup {
         &self.redis_store
     }
 
-    pub fn get_doc_name(&self) -> &str {
-        &self.doc_name
-    }
-
     pub fn get_last_read_id(&self) -> &Arc<Mutex<String>> {
         &self.last_read_id
     }
 
     pub fn get_active_connections(&self) -> usize {
         self.sender.receiver_count()
-    }
-
-    pub async fn subscribe<Sink, Stream, E>(
-        self: Arc<Self>,
-        sink: Arc<Mutex<Sink>>,
-        stream: Stream,
-    ) -> Subscription
-    where
-        Sink: SinkExt<Bytes> + Send + Sync + Unpin + 'static,
-        Stream: StreamExt<Item = Result<Bytes, E>> + Send + Sync + Unpin + 'static,
-        <Sink as futures_util::Sink<Bytes>>::Error: std::error::Error + Send + Sync,
-        E: std::error::Error + Send + Sync + 'static,
-    {
-        self.listen(sink, stream, DefaultProtocol).await
     }
 
     pub async fn listen<Sink, Stream, E, P>(
@@ -549,13 +515,6 @@ impl BroadcastGroup {
                 false
             }
         }
-    }
-
-    pub async fn cleanup_client_awareness(&self) -> Result<()> {
-        let awareness = self.awareness().clone();
-        let awareness_read = awareness.read().await;
-        awareness_read.clean_local_state();
-        Ok(())
     }
 
     pub async fn shutdown(&self) -> Result<()> {
