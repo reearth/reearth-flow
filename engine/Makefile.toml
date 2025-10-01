@@ -38,8 +38,7 @@ cargo test --workspace --all-targets --all-features --exclude plateau-gis-qualit
 [tasks.test-wf]
 script = ['''
 #!/usr/bin/env bash -eux
-cd runtime/examples/fixture/tests
-cargo test ${@:-}
+cargo test -p workflow-tests ${@:-}
 ''']
 
 [tasks.test-all]
