@@ -1,0 +1,10 @@
+{
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
+  "description": "",
+  "expectedOutput": {
+    "expectedFile": "02_建築物_LOD0-1のBuildingPart.csv"
+  },
+  "cityGmlPath": "udx/bldg/test_buildingpart.gml",
+  "codelists": "codelists",
+  "schemas": "schemas"
+}

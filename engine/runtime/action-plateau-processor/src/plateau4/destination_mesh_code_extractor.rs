@@ -28,7 +28,7 @@ pub struct DestinationMeshCodeExtractorFactory;
 
 impl ProcessorFactory for DestinationMeshCodeExtractorFactory {
     fn name(&self) -> &str {
-        "DestinationMeshCodeExtractor"
+        "PLATEAU4.DestinationMeshCodeExtractor"
     }
 
     fn description(&self) -> &str {

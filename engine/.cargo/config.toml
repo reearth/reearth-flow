@@ -1,0 +1,3 @@
+[env]
+# Since running the workflow tests (runtime/examples/fixture/tests) with too many threads can cause resource shortages and lead to test failures
+RUST_TEST_THREADS = "10"
