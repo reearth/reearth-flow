@@ -1,4 +1,3 @@
-pub(crate) mod building_part_connectivity;
 pub(crate) mod counter;
 pub(crate) mod duplicate_filter;
 pub(crate) mod errors;

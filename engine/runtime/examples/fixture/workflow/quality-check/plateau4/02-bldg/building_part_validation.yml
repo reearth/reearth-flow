@@ -44,9 +44,9 @@ nodes:
   # Step 1: BuildingPartConnectivityChecker
   # 3D境界面共有を検出 + Union-Findで接続グラフを構築し _status を判定
   - id: d3c4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
-    name: BuildingPartConnectivityChecker
+    name: PLATEAU4.BuildingPartConnectivityChecker
     type: action
-    action: BuildingPartConnectivityChecker
+    action: PLATEAU4.BuildingPartConnectivityChecker
     with:
       buildingIdAttribute: gmlId
       partIdAttribute: featureId

@@ -14,14 +14,14 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::errors::FeatureProcessorError;
+use super::errors::PlateauProcessorError;
 
 #[derive(Debug, Clone, Default)]
 pub struct BuildingPartConnectivityCheckerFactory;
 
 impl ProcessorFactory for BuildingPartConnectivityCheckerFactory {
     fn name(&self) -> &str {
-        "BuildingPartConnectivityChecker"
+        "PLATEAU4.BuildingPartConnectivityChecker"
     }
 
     fn description(&self) -> &str {
@@ -53,12 +53,12 @@ impl ProcessorFactory for BuildingPartConnectivityCheckerFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: BuildingPartConnectivityCheckerParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                FeatureProcessorError::BuildingPartConnectivityCheckerFactory(format!(
+                PlateauProcessorError::BuildingPartConnectivityChecker(format!(
                     "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                FeatureProcessorError::BuildingPartConnectivityCheckerFactory(format!(
+                PlateauProcessorError::BuildingPartConnectivityChecker(format!(
                     "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
@@ -236,7 +236,7 @@ impl Processor for BuildingPartConnectivityChecker {
             .get(&self.params.building_id_attribute)
             .and_then(|v| v.as_string())
             .ok_or_else(|| {
-                FeatureProcessorError::BuildingPartConnectivityChecker(format!(
+                PlateauProcessorError::BuildingPartConnectivityChecker(format!(
                     "Building ID attribute not found: {}",
                     self.params.building_id_attribute
                 ))
@@ -246,7 +246,7 @@ impl Processor for BuildingPartConnectivityChecker {
         let lod = feature
             .get(&self.params.lod_attribute)
             .ok_or_else(|| {
-                FeatureProcessorError::BuildingPartConnectivityChecker(format!(
+                PlateauProcessorError::BuildingPartConnectivityChecker(format!(
                     "LOD attribute not found: {}",
                     self.params.lod_attribute
                 ))
@@ -256,7 +256,7 @@ impl Processor for BuildingPartConnectivityChecker {
         let file_index = feature
             .get(&self.params.file_index_attribute)
             .ok_or_else(|| {
-                FeatureProcessorError::BuildingPartConnectivityChecker(format!(
+                PlateauProcessorError::BuildingPartConnectivityChecker(format!(
                     "File index attribute not found: {}",
                     self.params.file_index_attribute
                 ))
@@ -267,7 +267,7 @@ impl Processor for BuildingPartConnectivityChecker {
             .get(&self.params.part_id_attribute)
             .and_then(|v| v.as_string())
             .ok_or_else(|| {
-                FeatureProcessorError::BuildingPartConnectivityChecker(format!(
+                PlateauProcessorError::BuildingPartConnectivityChecker(format!(
                     "Part ID attribute not found: {}",
                     self.params.part_id_attribute
                 ))
