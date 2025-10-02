@@ -39,6 +39,8 @@ pub(super) enum PlateauProcessorError {
     BuildingUsageAttributeValidatorFactory(String),
     #[error("BuildingPartConnectivityChecker error: {0}")]
     BuildingPartConnectivityChecker(String),
+    #[error("BuildingPartConnectivityChecker Factory error: {0}")]
+    BuildingPartConnectivityCheckerFactory(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;
