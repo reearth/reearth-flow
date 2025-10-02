@@ -1338,59 +1338,6 @@ Export Features as CZML for Cesium Visualization
 ### Category
 * File
 
-## DestinationMeshCodeExtractor
-### Type
-* processor
-### Description
-Extract Japanese standard regional mesh code for PLATEAU destination files and add as attribute
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "PLATEAU Destination MeshCode Extractor Parameters",
-  "description": "Configure mesh code extraction for Japanese standard regional mesh",
-  "type": "object",
-  "properties": {
-    "epsgCode": {
-      "title": "EPSG Code",
-      "description": "Japanese Plane Rectangular Coordinate System EPSG code for area calculation",
-      "default": "6691",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Expr"
-        }
-      ]
-    },
-    "meshType": {
-      "title": "Mesh Type",
-      "description": "Japanese standard mesh type: 1=80km, 2=10km, 3=1km, 4=500m, 5=250m, 6=125m",
-      "default": 3,
-      "type": "integer",
-      "format": "uint8",
-      "minimum": 0.0
-    },
-    "meshcodeAttr": {
-      "title": "Mesh Code Attribute Name",
-      "description": "Output attribute name for the mesh code",
-      "default": "_meshcode",
-      "type": "string"
-    }
-  },
-  "definitions": {
-    "Expr": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* default
-* rejected
-### Category
-* PLATEAU
-
 ## DimensionFilter
 ### Type
 * processor
@@ -4283,6 +4230,75 @@ Checks BuildingInstallation's geometry type
 ### Category
 * PLATEAU
 
+## PLATEAU4.BuildingPartConnectivityChecker
+### Type
+* processor
+### Description
+Check connectivity between BuildingParts within the same Building using 3D boundary surface matching
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BuildingPartConnectivityChecker Parameters",
+  "description": "Configure how to check connectivity between BuildingParts",
+  "type": "object",
+  "properties": {
+    "buildingIdAttribute": {
+      "title": "Building ID Attribute",
+      "description": "Attribute containing the parent Building ID (default: \"gmlId\")",
+      "default": "gmlId",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "fileIndexAttribute": {
+      "title": "File Index Attribute",
+      "description": "Attribute containing the file index (default: \"fileIndex\")",
+      "default": "fileIndex",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "lodAttribute": {
+      "title": "LOD Attribute",
+      "description": "Attribute containing the Level of Detail (default: \"lod\")",
+      "default": "lod",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "partIdAttribute": {
+      "title": "Part ID Attribute",
+      "description": "Attribute containing the BuildingPart ID (default: \"featureId\")",
+      "default": "featureId",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Feature
+* PLATEAU
+
 ## PLATEAU4.BuildingUsageAttributeValidator
 ### Type
 * processor
@@ -4358,6 +4374,59 @@ Extracts city code information from PLATEAU4 codelists for local public authorit
 * default
 ### Output Ports
 * default
+### Category
+* PLATEAU
+
+## PLATEAU4.DestinationMeshCodeExtractor
+### Type
+* processor
+### Description
+Extract Japanese standard regional mesh code for PLATEAU destination files and add as attribute
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PLATEAU Destination MeshCode Extractor Parameters",
+  "description": "Configure mesh code extraction for Japanese standard regional mesh",
+  "type": "object",
+  "properties": {
+    "epsgCode": {
+      "title": "EPSG Code",
+      "description": "Japanese Plane Rectangular Coordinate System EPSG code for area calculation",
+      "default": "6691",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "meshType": {
+      "title": "Mesh Type",
+      "description": "Japanese standard mesh type: 1=80km, 2=10km, 3=1km, 4=500m, 5=250m, 6=125m",
+      "default": 3,
+      "type": "integer",
+      "format": "uint8",
+      "minimum": 0.0
+    },
+    "meshcodeAttr": {
+      "title": "Mesh Code Attribute Name",
+      "description": "Output attribute name for the mesh code",
+      "default": "_meshcode",
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
 ### Category
 * PLATEAU
 

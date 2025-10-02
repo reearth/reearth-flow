@@ -183,7 +183,7 @@ impl Processor for UDXFolderExtractor {
     }
 
     fn name(&self) -> &str {
-        "PLATEAU4.UDXFolderExtractor"
+        "UDXFolderExtractor"
     }
 }
 
