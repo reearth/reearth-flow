@@ -26,6 +26,7 @@ import { WorkflowsDropdown } from "./components";
 import useHooks from "./hooks";
 
 type Props = {
+  isMainWorkflow: boolean;
   self: AwarenessUser;
   users: Record<string, AwarenessUser>;
   spotlightUserClientId: number | null;
@@ -41,6 +42,7 @@ type Props = {
 };
 
 const Homebar: React.FC<Props> = ({
+  isMainWorkflow,
   self,
   users,
   spotlightUserClientId,
@@ -67,7 +69,8 @@ const Homebar: React.FC<Props> = ({
   } = useHooks();
 
   return (
-    <div className="rounded-xl border border-primary bg-secondary/70 px-2 py-1 shadow-md shadow-secondary backdrop-blur-xs">
+    <div
+      className={`rounded-xl border bg-secondary/70 px-2 py-1 shadow-md shadow-secondary backdrop-blur-xs ${isMainWorkflow ? "border-primary" : "border-node-subworkflow"}`}>
       <div className="flex h-[42px] min-w-[250px] items-center gap-4 self-start">
         <HomeMenu
           dropdownPosition="bottom"

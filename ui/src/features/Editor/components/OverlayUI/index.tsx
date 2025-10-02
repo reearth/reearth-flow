@@ -106,7 +106,8 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
 
   return (
     <>
-      <div className="relative flex flex-1 flex-col">
+      <div
+        className={`relative flex flex-1 flex-col border ${isMainWorkflow ? "border-transparent" : "border-node-subworkflow"}`}>
         {/* {devMode && <DevTools />} */}
         {canvas}
         <div
@@ -125,6 +126,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           id="left-top"
           className="pointer-events-none absolute top-2 left-2 *:pointer-events-auto">
           <Homebar
+            isMainWorkflow={isMainWorkflow}
             self={self}
             users={users}
             spotlightUserClientId={spotlightUserClientId}
@@ -137,24 +139,26 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           />
         </div>
         <div id="right-top" className="absolute top-2 right-2 h-[42px]">
-          <div
-            className={`flex h-full items-center justify-center gap-2 self-center rounded-xl border border-primary bg-secondary/70 p-1 shadow-md shadow-secondary backdrop-blur-xs select-none ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
-            <DebugActionBar
-              onDebugRunStart={onDebugRunStart}
-              onDebugRunStop={onDebugRunStop}
-            />
-            <div className="h-4/5 border-r" />
-            <ActionBar
-              project={project}
-              yDoc={yDoc}
-              allowedToDeploy={allowedToDeploy}
-              isSaving={isSaving}
-              onProjectShare={onProjectShare}
-              onProjectExport={onProjectExport}
-              onWorkflowDeployment={onWorkflowDeployment}
-              onProjectSnapshotSave={onProjectSnapshotSave}
-            />
-          </div>
+          {isMainWorkflow && (
+            <div
+              className={`flex h-full items-center justify-center gap-2 self-center rounded-xl border border-primary bg-secondary/70 p-1 shadow-md shadow-secondary backdrop-blur-xs select-none ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
+              <DebugActionBar
+                onDebugRunStart={onDebugRunStart}
+                onDebugRunStop={onDebugRunStop}
+              />
+              <div className="h-4/5 border-r" />
+              <ActionBar
+                project={project}
+                yDoc={yDoc}
+                allowedToDeploy={allowedToDeploy}
+                isSaving={isSaving}
+                onProjectShare={onProjectShare}
+                onProjectExport={onProjectExport}
+                onWorkflowDeployment={onWorkflowDeployment}
+                onProjectSnapshotSave={onProjectSnapshotSave}
+              />
+            </div>
+          )}
         </div>
         <div id="left-bottom" className="absolute bottom-2 left-2 z-1">
           <DebugPanel />
