@@ -309,7 +309,7 @@ impl Processor for BuildingPartConnectivityChecker {
 
 impl BuildingPartConnectivityChecker {
     fn flush_buffer(&self, ctx: Context, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
-        let buffer = self.buffer.lock();
+        let mut buffer = self.buffer.lock();
         for parts in buffer.values() {
             if parts.is_empty() {
                 continue;
@@ -344,6 +344,8 @@ impl BuildingPartConnectivityChecker {
                 }
             }
         }
+        // Clear buffer to free memory
+        buffer.clear();
         Ok(())
     }
 }
