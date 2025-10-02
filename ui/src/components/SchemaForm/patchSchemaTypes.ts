@@ -96,7 +96,6 @@ const consolidateOneOfToEnum = (
       }
       // Force enum to ensure RJSF uses a select dropdown
       (newSchema as JSONSchema7 & { enum: any[] }).enum = oneOfValues.values;
-      delete newSchema.oneOf;
     }
   }
 
