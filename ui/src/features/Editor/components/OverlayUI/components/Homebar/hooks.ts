@@ -7,15 +7,7 @@ import {
   AnyProjectVariable,
 } from "@flow/types";
 
-export type DialogOptions =
-  | "deploy"
-  | "share"
-  | "version"
-  | "assets"
-  | "debugStop"
-  | "projectVariables"
-  | "collaboration"
-  | undefined;
+import { DialogOptions } from "../../types";
 
 export default () => {
   const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);

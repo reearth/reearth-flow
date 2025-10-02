@@ -9,7 +9,7 @@ import {
 import { useT } from "@flow/lib/i18n";
 import type { AwarenessUser } from "@flow/types";
 
-import type { DialogOptions } from "../../hooks";
+import { DialogOptions } from "../../../../types";
 
 import { CollaborationPopover } from "./components";
 

@@ -11,9 +11,9 @@ import type {
   Project,
 } from "@flow/types";
 
-import { ActionBar, DebugActionBar } from "../TopBar/components";
-
 import {
+  ActionBar,
+  DebugActionBar,
   CanvasActionBar,
   Toolbox,
   NodePickerDialog,

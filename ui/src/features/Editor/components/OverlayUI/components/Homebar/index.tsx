@@ -20,9 +20,8 @@ import {
   CollaborationActionBar,
   HomeMenu,
   ProjectVariableDialog,
-} from "../../../TopBar/components";
-
-import { WorkflowsDropdown } from "./components";
+  WorkflowsDropdown,
+} from "./components";
 import useHooks from "./hooks";
 
 type Props = {
