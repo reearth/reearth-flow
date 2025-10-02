@@ -16,7 +16,7 @@ const Breadcrumb: React.FC = () => {
 
   return (
     <div
-      className="flex flex-1 cursor-default items-center gap-1 select-none"
+      className="flex flex-1 cursor-default items-center justify-center gap-1 select-none"
       onMouseLeave={() => setIsHovered(undefined)}>
       {/* <div className="flex items-center gap-2">
         <UsersThreeIcon weight="thin" size={18} />

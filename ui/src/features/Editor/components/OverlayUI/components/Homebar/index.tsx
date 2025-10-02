@@ -68,22 +68,32 @@ const Homebar: React.FC<Props> = ({
 
   return (
     <div className="rounded-xl border border-primary bg-secondary/70 px-2 py-1 shadow-md shadow-secondary backdrop-blur-xs">
-      <div className="flex h-[42px] min-w-[250px] items-center gap-1 self-start">
+      <div className="flex h-[42px] min-w-[250px] items-center gap-4 self-start">
         <HomeMenu
           dropdownPosition="bottom"
           dropdownAlign="end"
           dropdownAlignOffset={-180}
         />
-        <div className="pr-2">
+        <div className="flex-1">
           <Breadcrumb />
         </div>
+        <CollaborationActionBar
+          self={self}
+          users={users}
+          showDialog={showDialog}
+          spotlightUserClientId={spotlightUserClientId}
+          onDialogOpen={handleDialogOpen}
+          onDialogClose={handleDialogClose}
+          onSpotlightUserSelect={onSpotlightUserSelect}
+          onSpotlightUserDeselect={onSpotlightUserDeselect}
+        />
       </div>
-      <div className="flex h-[30px] items-center justify-between gap-2">
+      <div className="flex h-[30px] items-center gap-1">
         <DropdownMenu>
           <DropdownMenuTrigger
             asChild
-            className="h-full cursor-pointer rounded hover:bg-primary">
-            <GearFineIcon weight="thin" size={18} />
+            className="h-6 w-8 shrink-0 cursor-pointer rounded p-0.5 hover:bg-primary">
+            <GearFineIcon weight="thin" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
             side="bottom"
@@ -106,16 +116,6 @@ const Homebar: React.FC<Props> = ({
           currentWorkflowId={currentWorkflowId}
           onWorkflowChange={onWorkflowChange}
           onWorkflowClose={onWorkflowClose}
-        />
-        <CollaborationActionBar
-          self={self}
-          users={users}
-          showDialog={showDialog}
-          spotlightUserClientId={spotlightUserClientId}
-          onDialogOpen={handleDialogOpen}
-          onDialogClose={handleDialogClose}
-          onSpotlightUserSelect={onSpotlightUserSelect}
-          onSpotlightUserDeselect={onSpotlightUserDeselect}
         />
       </div>
       {showDialog === "projectVariables" && (

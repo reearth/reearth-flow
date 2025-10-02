@@ -52,11 +52,15 @@ const WorkflowsDropdown: React.FC<Props> = ({
     <DropdownMenu>
       <DropdownMenuTrigger asChild disabled={noOpenSubworkflows}>
         <div
-          className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary/70 px-2 py-0.5 ${noOpenSubworkflows ? "" : "hover:bg-primary"}`}>
-          <p className="text-sm font-extralight italic">
+          className={`flex max-w-[300px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary/70 px-2 py-0.5 ${noOpenSubworkflows ? "" : "hover:bg-primary"}`}>
+          <p className="truncate text-sm font-extralight italic">
             {currentWorkflow?.name || "-"}
           </p>
-          {!noOpenSubworkflows && <CaretDownIcon size={12} />}
+          {!noOpenSubworkflows && (
+            <div>
+              <CaretDownIcon size={12} />
+            </div>
+          )}
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -68,9 +72,9 @@ const WorkflowsDropdown: React.FC<Props> = ({
             key={wf.id}
             className="group relative h-6 justify-between p-1"
             onClick={() => onWorkflowChange(wf.id)}>
-            <div className="flex items-center gap-2">
+            <div className="flex max-w-[500px] items-center gap-2">
               <GraphIcon />
-              <p>{wf.name}</p>
+              <p className="truncate">{wf.name}</p>
             </div>
             {!isMainWorkflow(wf.id) && (
               <div

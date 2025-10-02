@@ -98,9 +98,9 @@ const HomeMenu: React.FC<Props> = ({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <div className="group flex cursor-pointer items-center gap-2 self-center rounded-md p-1 hover:bg-primary">
+          <div className="group flex cursor-pointer items-center gap-1 self-center rounded-md p-1 hover:bg-primary">
             <FlowLogo className="size-7 transition-all group-hover:text-[#46ce7c]" />
-            <CaretDownIcon weight="thin" />
+            <CaretDownIcon weight="thin" size={12} />
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent

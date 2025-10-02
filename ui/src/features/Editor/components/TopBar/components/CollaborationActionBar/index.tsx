@@ -46,7 +46,7 @@ const CollaborationActionBar: React.FC<Props> = ({
       }}>
       <PopoverTrigger asChild>
         <ButtonWithTooltip
-          className="h-7 max-w-14"
+          className="h-7 max-w-12"
           variant="ghost"
           tooltipText={t("Collaborators")}
           tooltipOffset={tooltipOffset}
@@ -82,7 +82,7 @@ const CollaborationActionBar: React.FC<Props> = ({
                   );
                 })}
             {users && Object.entries(users).length > 2 && (
-              <div className="z-10 flex h-6 w-6 items-center justify-center rounded-full bg-secondary ring-2 ring-secondary/20">
+              <div className="z-10 flex h-6 w-6 items-center justify-center rounded-full bg-secondary/90 ring-2 ring-secondary/20">
                 <span className="text-[10px] font-medium">
                   + {Object.entries(users).length - 2}
                 </span>
