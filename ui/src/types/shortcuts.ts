@@ -24,6 +24,7 @@ export type CanvasKeys =
   | "x" // cut
   | "v" // paste
   | "z" // w CMD = undo, w CMD + SHIFT = redo
+  | "e" // disable/enable node
   | "+" // zoom in
   | "=" // zoom in (alternative - depends on keyboard layout)
   | "-" // zoom out
@@ -40,6 +41,7 @@ type PossibleActions =
   | "paste"
   | "undo"
   | "redo"
+  | "disableNode"
   | "fullscreen"
   | "shortcutsDialog"
   | "save"
@@ -96,6 +98,7 @@ export const CanvasKeyBindings: Partial<
   paste: { key: "v", commandKey: true },
   undo: { key: "z", commandKey: true },
   redo: { key: "z", commandKey: true, shiftKey: true },
+  disableNode: { key: "e", commandKey: true },
   zoomIn: { key: "+" },
   zoomOut: { key: "-" },
   fitView: { key: "0", commandKey: true },

@@ -29,6 +29,7 @@ type Props = {
   onCopy?: (node?: Node) => void;
   onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: () => void;
+  onNodeDisable?: (node?: Node) => void;
 };
 
 export const defaultEdgeOptions: DefaultEdgeOptions = {
@@ -61,6 +62,7 @@ export default ({
   onCopy,
   onCut,
   onPaste,
+  onNodeDisable,
 }: Props) => {
   const {
     handleNodesChange,
@@ -179,6 +181,9 @@ export default ({
         break;
       case "v":
         if (hasModifier) onPaste?.();
+        break;
+      case "e":
+        if (hasModifier) onNodeDisable?.();
         break;
     }
   });

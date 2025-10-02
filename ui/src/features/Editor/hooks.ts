@@ -11,6 +11,7 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { useY } from "react-yjs";
 import type { Awareness } from "y-protocols/awareness";
 import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
+import * as Y from "yjs";
 
 import {
   DEFAULT_ENTRY_GRAPH_ID,
@@ -23,7 +24,7 @@ import {
   useSpotlightUser,
   useYjsStore,
 } from "@flow/lib/yjs";
-import type { YWorkflow } from "@flow/lib/yjs/types";
+import type { YNodesMap, YNodeValue, YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { useCurrentProject } from "@flow/stores";
 import type { Algorithm, Direction, Edge, Node } from "@flow/types";
@@ -355,6 +356,29 @@ export default ({
     handleWorkflowClose,
   });
 
+  const handleNodeDisable = useCallback(
+    (node?: Node) => {
+      undoTrackerActionWrapper?.(() => {
+        const selected = node ? [node] : nodes.filter((n) => n.selected);
+
+        if (selected.length === 0) return;
+
+        const anyEnabled = selected.some((n) => !n.data?.isDisabled);
+
+        selected.forEach((n) => {
+          const yNodes = currentYWorkflow?.get("nodes") as
+            | YNodesMap
+            | undefined;
+          const yNode = yNodes?.get(n.id);
+          if (!yNode) return;
+          const yData = yNode?.get("data") as Y.Map<YNodeValue>;
+          yData?.set("isDisabled", anyEnabled);
+        });
+      });
+    },
+    [currentYWorkflow, nodes, undoTrackerActionWrapper],
+  );
+
   return {
     currentWorkflowId,
     currentYWorkflow,
@@ -409,5 +433,6 @@ export default ({
     handlePaneMouseMove,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
+    handleNodeDisable,
   };
 };

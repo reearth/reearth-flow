@@ -16,7 +16,6 @@ const SubworkflowNode: React.FC<Props> = ({ data, ...props }) => {
   );
   return (
     <GeneralNode
-      className="bg-node-subworkflow/60"
       {...props}
       data={{ ...data, inputs: uiInputs, outputs: uiOutputs }}
     />

@@ -1,7 +1,15 @@
 import { JobStatus } from "@flow/types";
 
-export const getNodeColors = (type: string, status?: JobStatus) => {
+export const getNodeColors = (type?: string, status?: JobStatus) => {
   const baseColors = nodeColors[type as keyof typeof nodeColors];
+  if (!type) {
+    return [
+      nodeColors.disabled.background,
+      nodeColors.disabled.border,
+      nodeColors.disabled.selected,
+      nodeColors.disabled.selectedBackground,
+    ];
+  }
   if (status) {
     return [
       nodeStatusColors[status],
@@ -11,6 +19,7 @@ export const getNodeColors = (type: string, status?: JobStatus) => {
   }
   return [
     baseColors.border,
+    baseColors.background,
     baseColors.selected,
     baseColors.selectedBackground,
   ];
@@ -18,26 +27,37 @@ export const getNodeColors = (type: string, status?: JobStatus) => {
 
 const nodeColors = {
   reader: {
+    background: "bg-node-reader",
     border: "border-node-reader",
     selected: "border-node-reader-selected",
     selectedBackground: "bg-node-reader-selected",
   },
   writer: {
+    background: "bg-node-writer",
     border: "border-node-writer",
     selected: "border-node-writer-selected",
     selectedBackground: "bg-node-writer-selected",
   },
   transformer: {
+    background: "bg-node-transformer",
     border: "border-node-transformer",
     selected: "border-node-transformer-selected",
     selectedBackground: "bg-node-transformer-selected",
   },
   subworkflow: {
+    background: "bg-node-subworkflow/60",
     border: "border-node-subworkflow",
     selected: "border-node-subworkflow-selected",
     selectedBackground: "bg-node-subworkflow-selected",
   },
+  disabled: {
+    background: "bg-node-zinc-600",
+    border: "border-primary/20",
+    selected: "border-zinc-600",
+    selectedBackground: "bg-zinc-600",
+  },
   default: {
+    background: "bg-node-zinc-600",
     border: "border-primary/20",
     selected: "border-zinc-600",
     selectedBackground: "bg-zinc-600",

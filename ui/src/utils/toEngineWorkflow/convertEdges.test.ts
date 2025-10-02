@@ -6,16 +6,19 @@ import { convertEdges } from "./convertEdges";
 
 describe("convertEdges", () => {
   it("should return an empty array when input is undefined", () => {
-    expect(convertEdges(undefined)).toEqual([]);
+    const enabledNodeIds = new Set(["A", "B"]);
+    expect(convertEdges(enabledNodeIds, undefined)).toEqual([]);
   });
 
   it("should return an empty array when input is an empty array", () => {
-    expect(convertEdges([])).toEqual([]);
+    const enabledNodeIds = new Set(["A", "B"]);
+    expect(convertEdges(enabledNodeIds, [])).toEqual([]);
   });
 
   it("should correctly convert a single edge", () => {
     const input: Edge[] = [{ id: "1", source: "A", target: "B" }];
-    const result = convertEdges(input);
+    const enabledNodeIds = new Set(["A", "B"]);
+    const result = convertEdges(enabledNodeIds, input);
 
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
@@ -39,7 +42,8 @@ describe("convertEdges", () => {
         targetHandle: "input",
       },
     ];
-    const result = convertEdges(input);
+    const enabledNodeIds = new Set(["A", "B", "C"]);
+    const result = convertEdges(enabledNodeIds, input);
 
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({
@@ -60,7 +64,8 @@ describe("convertEdges", () => {
 
   it("should use default ports when sourceHandle and targetHandle are not provided", () => {
     const input: Edge[] = [{ id: "1", source: "A", target: "B" }];
-    const result = convertEdges(input);
+    const enabledNodeIds = new Set(["A", "B"]);
+    const result = convertEdges(enabledNodeIds, input);
 
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
@@ -81,7 +86,8 @@ describe("convertEdges", () => {
         targetHandle: "input1",
       },
     ];
-    const result = convertEdges(input);
+    const enabledNodeIds = new Set(["A", "B"]);
+    const result = convertEdges(enabledNodeIds, input);
 
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
@@ -105,7 +111,8 @@ describe("convertEdges", () => {
       { id: "3", source: "C", target: "D", sourceHandle: "output" },
       { id: "4", source: "D", target: "E", targetHandle: "input" },
     ];
-    const result = convertEdges(input);
+    const enabledNodeIds = new Set(["A", "B", "C", "D", "E"]);
+    const result = convertEdges(enabledNodeIds, input);
 
     expect(result).toHaveLength(4);
     expect(result[0]).toMatchObject({

@@ -54,6 +54,7 @@ type Props = {
   onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: () => void;
   onPaneMouseMove?: (event: MouseEvent<Element, globalThis.MouseEvent>) => void;
+  onNodeDisable?: (node?: Node) => void;
   onPaneClick?: () => void;
 };
 
@@ -77,6 +78,7 @@ const Canvas: React.FC<Props> = ({
   onCut,
   onPaste,
   onPaneMouseMove,
+  onNodeDisable,
   onPaneClick,
 }) => {
   const {
@@ -106,6 +108,7 @@ const Canvas: React.FC<Props> = ({
     onCopy,
     onCut,
     onPaste,
+    onNodeDisable,
   });
 
   return (
@@ -159,6 +162,7 @@ const Canvas: React.FC<Props> = ({
       {contextMenu && (
         <CanvasContextMenu
           data={contextMenu.data}
+          allNodes={nodes}
           selectedEdgeIds={selectedEdgeIds}
           contextMenu={contextMenu}
           onBeforeDelete={onBeforeDelete}
@@ -170,6 +174,7 @@ const Canvas: React.FC<Props> = ({
           onCut={onCut}
           onPaste={onPaste}
           onClose={handleCloseContextmenu}
+          onNodeDisable={onNodeDisable}
         />
       )}
     </ReactFlow>
