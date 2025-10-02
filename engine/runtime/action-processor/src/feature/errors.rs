@@ -53,6 +53,10 @@ pub(super) enum FeatureProcessorError {
     FeatureWriterFactory(String),
     #[error("FeatureWriter error: {0}")]
     FeatureWriter(String),
+    #[error("BuildingPartConnectivityCheckerFactory error: {0}")]
+    BuildingPartConnectivityCheckerFactory(String),
+    #[error("BuildingPartConnectivityChecker error: {0}")]
+    BuildingPartConnectivityChecker(String),
 }
 
 pub(super) type Result<T, E = FeatureProcessorError> = std::result::Result<T, E>;

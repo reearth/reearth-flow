@@ -1,0 +1,4 @@
+"BuildingPart.gml_id","Building.gml_id","connected_id","connected_parts","Index","Filename","lod","status"
+"bldg_part_partial_B","bldg_test_partial_001",0,2,1,"test_buildingpart_partial.gml",2,"partial"
+"bldg_part_partial_A","bldg_test_partial_001",0,2,1,"test_buildingpart_partial.gml",2,"partial"
+"bldg_part_partial_C","bldg_test_partial_001",1,1,1,"test_buildingpart_partial.gml",2,"alone"

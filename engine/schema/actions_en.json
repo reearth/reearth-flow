@@ -4312,6 +4312,75 @@
       ]
     },
     {
+      "name": "PLATEAU4.BuildingPartConnectivityChecker",
+      "type": "processor",
+      "description": "Check connectivity between BuildingParts within the same Building using 3D boundary surface matching",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "BuildingPartConnectivityChecker Parameters",
+        "description": "Configure how to check connectivity between BuildingParts",
+        "type": "object",
+        "properties": {
+          "buildingIdAttribute": {
+            "title": "Building ID Attribute",
+            "description": "Attribute containing the parent Building ID (default: \"gmlId\")",
+            "default": "gmlId",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "fileIndexAttribute": {
+            "title": "File Index Attribute",
+            "description": "Attribute containing the file index (default: \"fileIndex\")",
+            "default": "fileIndex",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "lodAttribute": {
+            "title": "LOD Attribute",
+            "description": "Attribute containing the Level of Detail (default: \"lod\")",
+            "default": "lod",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "partIdAttribute": {
+            "title": "Part ID Attribute",
+            "description": "Attribute containing the BuildingPart ID (default: \"featureId\")",
+            "default": "featureId",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature",
+        "PLATEAU"
+      ]
+    },
+    {
       "name": "PLATEAU4.BuildingUsageAttributeValidator",
       "type": "processor",
       "description": "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.",
