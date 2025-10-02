@@ -215,5 +215,16 @@ export const patchAnyOfAndOneOfType = (
   // Apply consolidateOneOfToEnum to the root schema and all nested properties
   newSchema = consolidateOneOfToEnum(newSchema) as JSONSchema7;
 
+  // Also patch all schemas in definitions, if present
+  if (newSchema.definitions) {
+    for (const [defKey, defSchema] of Object.entries(newSchema.definitions)) {
+      let patchedDef = simplifyAnyOf(defSchema);
+      patchedDef = simplifyAnyOfInsideOneOf(patchedDef);
+      patchedDef = simplifyAllOf(patchedDef, newSchema.definitions);
+      patchedDef = consolidateOneOfToEnum(patchedDef);
+      newSchema.definitions[defKey] = patchedDef;
+    }
+  }
+
   return newSchema;
 };
