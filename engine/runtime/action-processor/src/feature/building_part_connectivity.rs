@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use reearth_flow_geometry::algorithm::relate::Relate;
+use parking_lot::Mutex;
 use reearth_flow_geometry::types::geometry::Geometry3D;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -68,7 +68,7 @@ impl ProcessorFactory for BuildingPartConnectivityCheckerFactory {
 
         Ok(Box::new(BuildingPartConnectivityChecker {
             params,
-            buffer: HashMap::new(),
+            buffer: Mutex::new(HashMap::new()),
         }))
     }
 }
@@ -126,10 +126,19 @@ impl Default for BuildingPartConnectivityCheckerParam {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct BuildingPartConnectivityChecker {
     params: BuildingPartConnectivityCheckerParam,
-    buffer: HashMap<GroupKey, Vec<BuildingPartInfo>>,
+    buffer: Mutex<HashMap<GroupKey, Vec<BuildingPartInfo>>>,
+}
+
+impl Clone for BuildingPartConnectivityChecker {
+    fn clone(&self) -> Self {
+        Self {
+            params: self.params.clone(),
+            buffer: Mutex::new(self.buffer.lock().clone()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -236,13 +245,23 @@ impl Processor for BuildingPartConnectivityChecker {
 
         let lod = feature
             .get(&self.params.lod_attribute)
-            .map(|v| v.to_string())
-            .unwrap_or_else(|| "unknown".to_string());
+            .ok_or_else(|| {
+                FeatureProcessorError::BuildingPartConnectivityChecker(format!(
+                    "LOD attribute not found: {}",
+                    self.params.lod_attribute
+                ))
+            })?
+            .to_string();
 
         let file_index = feature
             .get(&self.params.file_index_attribute)
-            .map(|v| v.to_string())
-            .unwrap_or_else(|| "0".to_string());
+            .ok_or_else(|| {
+                FeatureProcessorError::BuildingPartConnectivityChecker(format!(
+                    "File index attribute not found: {}",
+                    self.params.file_index_attribute
+                ))
+            })?
+            .to_string();
 
         let part_id = feature
             .get(&self.params.part_id_attribute)
@@ -257,10 +276,7 @@ impl Processor for BuildingPartConnectivityChecker {
 
         let geometry = feature.geometry.clone();
         if matches!(geometry.value, reearth_flow_types::GeometryValue::None) {
-            return Err(FeatureProcessorError::BuildingPartConnectivityChecker(
-                "Feature has no geometry".to_string(),
-            )
-            .into());
+            return Ok(());
         }
 
         let group_key = GroupKey {
@@ -270,7 +286,8 @@ impl Processor for BuildingPartConnectivityChecker {
         };
 
         // Buffer BuildingParts by group
-        let parts = self.buffer.entry(group_key.clone()).or_default();
+        let mut buffer = self.buffer.lock();
+        let parts = buffer.entry(group_key.clone()).or_default();
         parts.push(BuildingPartInfo {
             part_id,
             geometry,
@@ -292,7 +309,8 @@ impl Processor for BuildingPartConnectivityChecker {
 
 impl BuildingPartConnectivityChecker {
     fn flush_buffer(&self, ctx: Context, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
-        for parts in self.buffer.values() {
+        let buffer = self.buffer.lock();
+        for parts in buffer.values() {
             if parts.is_empty() {
                 continue;
             }
@@ -345,7 +363,8 @@ fn check_connectivity(
     // Check boundary surface sharing between all pairs
     for i in 0..parts.len() {
         for j in (i + 1)..parts.len() {
-            if shares_boundary_surface(&parts[i].geometry, &parts[j].geometry)? {
+            let shares = shares_boundary_surface(&parts[i].geometry, &parts[j].geometry)?;
+            if shares {
                 uf.union(&parts[i].part_id, &parts[j].part_id);
             }
         }
@@ -366,11 +385,17 @@ fn check_connectivity(
         let connected_parts = component_parts.len();
 
         for part_id in component_parts {
-            let status = if sorted_components.len() == 1 && connected_parts == total_parts {
+            // Single BuildingPart is always "alone" (error condition)
+            let status = if total_parts == 1 {
+                "alone".to_string()
+            } else if sorted_components.len() == 1 && connected_parts == total_parts {
+                // All BuildingParts are connected (valid)
                 "full".to_string()
             } else if connected_parts == 1 {
+                // Isolated BuildingPart (error)
                 "alone".to_string()
             } else {
+                // Multiple disconnected groups (error)
                 "partial".to_string()
             };
 
@@ -379,6 +404,97 @@ fn check_connectivity(
     }
 
     Ok(results)
+}
+
+/// Check if two polygons share the same boundary (same coordinates, possibly in reverse order)
+fn polygons_share_boundary(
+    poly_a: &reearth_flow_geometry::types::polygon::Polygon3D<f64>,
+    poly_b: &reearth_flow_geometry::types::polygon::Polygon3D<f64>,
+) -> bool {
+    use reearth_flow_geometry::types::coordinate::Coordinate;
+
+    let exterior_a = poly_a.exterior();
+    let exterior_b = poly_b.exterior();
+
+    let coords_a: Vec<&Coordinate<f64>> = exterior_a.0.iter().collect();
+    let coords_b: Vec<&Coordinate<f64>> = exterior_b.0.iter().collect();
+
+    // Skip if different number of points
+    if coords_a.len() != coords_b.len() || coords_a.is_empty() {
+        return false;
+    }
+
+    const EPSILON: f64 = 1e-9;
+
+    fn coords_equal(a: &Coordinate<f64>, b: &Coordinate<f64>) -> bool {
+        (a.x - b.x).abs() < EPSILON && (a.y - b.y).abs() < EPSILON && (a.z - b.z).abs() < EPSILON
+    }
+
+    // Polygon rings can start at any vertex and can be in forward or reverse direction
+    // Check all possible rotations in both directions
+
+    // Remove duplicate last point for comparison (GML polygons repeat first point as last)
+    let n = coords_a.len() - 1;
+
+    // Check forward direction (same orientation)
+    for offset in 0..n {
+        let matches = (0..n).all(|i| {
+            let a_idx = i;
+            let b_idx = (i + offset) % n;
+            coords_equal(coords_a[a_idx], coords_b[b_idx])
+        });
+        if matches {
+            return true;
+        }
+    }
+
+    // Check reverse direction (opposite orientation - shared face)
+    for offset in 0..n {
+        let matches = (0..n).all(|i| {
+            let a_idx = i;
+            let b_idx = (n - 1 - i + offset) % n;
+            coords_equal(coords_a[a_idx], coords_b[b_idx])
+        });
+        if matches {
+            return true;
+        }
+    }
+
+    false
+}
+
+/// Check if two CityGmlGeometry share boundary surfaces
+fn shares_citygml_boundary_surface(
+    citygml_a: &reearth_flow_types::CityGmlGeometry,
+    citygml_b: &reearth_flow_types::CityGmlGeometry,
+) -> Result<bool, BoxedError> {
+    use reearth_flow_geometry::types::multi_polygon::MultiPolygon;
+
+    // Convert CityGmlGeometry to Geometry3D::MultiPolygon
+    // Collect all polygons from all gml_geometries
+    let mut all_polygons_a = Vec::new();
+    for gml_geom in &citygml_a.gml_geometries {
+        all_polygons_a.extend(gml_geom.polygons.iter().cloned());
+    }
+
+    let mut all_polygons_b = Vec::new();
+    for gml_geom in &citygml_b.gml_geometries {
+        all_polygons_b.extend(gml_geom.polygons.iter().cloned());
+    }
+
+    let mp_a = MultiPolygon(all_polygons_a);
+    let mp_b = MultiPolygon(all_polygons_b);
+
+    // Compare all polygon pairs
+    for poly_a in mp_a.0.iter() {
+        for poly_b in mp_b.0.iter() {
+            if polygons_share_boundary(poly_a, poly_b) {
+                return Ok(true);
+            }
+        }
+    }
+
+    Ok(false)
 }
 
 /// Check if two Solid geometries share boundary surfaces (faces)
@@ -393,11 +509,10 @@ fn shares_solid_boundary_surface(
     let faces_a = solid_a.all_faces();
     let faces_b = solid_b.all_faces();
 
-    // Check if any pair of faces share a boundary
+    // Check if any pair of faces share a boundary (same coordinates, possibly in reverse order)
     for face_a in &faces_a {
         for face_b in &faces_b {
             // Convert Face to Polygon for comparison
-            // Face is Vec<Coordinate>, Polygon needs LineString as exterior
             let coords_a: Vec<_> = face_a.0.iter().map(|c| (c.x, c.y, c.z)).collect();
             let coords_b: Vec<_> = face_b.0.iter().map(|c| (c.x, c.y, c.z)).collect();
 
@@ -411,18 +526,7 @@ fn shares_solid_boundary_surface(
             let poly_a = Polygon::new(line_a, vec![]);
             let poly_b = Polygon::new(line_b, vec![]);
 
-            // Use Relate to check if polygons share boundaries
-            let matrix = poly_a.relate(&poly_b);
-
-            // Check if boundaries intersect
-            // Pattern: Boundaries share a 1D or 2D intersection
-            let shares = matrix
-                .matches("F***1****")
-                .or_else(|_| matrix.matches("F***2****"))
-                .or_else(|_| matrix.matches("F***T****"))
-                .unwrap_or(false);
-
-            if shares {
+            if polygons_share_boundary(&poly_a, &poly_b) {
                 return Ok(true);
             }
         }
@@ -438,43 +542,38 @@ fn shares_boundary_surface(
 ) -> Result<bool, BoxedError> {
     use reearth_flow_types::GeometryValue;
 
+    // Handle CityGmlGeometry by converting to FlowGeometry3D
+    match (&geom_a.value, &geom_b.value) {
+        (GeometryValue::CityGmlGeometry(citygml_a), GeometryValue::CityGmlGeometry(citygml_b)) => {
+            return shares_citygml_boundary_surface(citygml_a, citygml_b);
+        }
+        (GeometryValue::None, _) | (_, GeometryValue::None) => return Ok(false),
+        (GeometryValue::FlowGeometry2D(_), _) | (_, GeometryValue::FlowGeometry2D(_)) => {
+            return Ok(false)
+        }
+        (GeometryValue::CityGmlGeometry(_), _) | (_, GeometryValue::CityGmlGeometry(_)) => {
+            return Ok(false);
+        }
+        (GeometryValue::FlowGeometry3D(_), GeometryValue::FlowGeometry3D(_)) => {
+            // Continue to handle FlowGeometry3D
+        }
+    }
+
     let geom3d_a = match &geom_a.value {
-        GeometryValue::None => return Ok(false),
-        GeometryValue::FlowGeometry2D(_) => return Ok(false),
         GeometryValue::FlowGeometry3D(g) => g,
-        GeometryValue::CityGmlGeometry(_) => return Ok(false),
+        _ => unreachable!(),
     };
 
     let geom3d_b = match &geom_b.value {
-        GeometryValue::None => return Ok(false),
-        GeometryValue::FlowGeometry2D(_) => return Ok(false),
         GeometryValue::FlowGeometry3D(g) => g,
-        GeometryValue::CityGmlGeometry(_) => return Ok(false),
+        _ => unreachable!(),
     };
 
-    // Use Relate to compute intersection matrix
-    let matrix = match (geom3d_a, geom3d_b) {
-        (Geometry3D::Point(a), Geometry3D::Point(b)) => a.relate(b),
-        (Geometry3D::MultiPoint(a), Geometry3D::MultiPoint(b)) => a.relate(b),
-        (Geometry3D::LineString(a), Geometry3D::LineString(b)) => a.relate(b),
-        (Geometry3D::MultiLineString(a), Geometry3D::MultiLineString(b)) => a.relate(b),
-        (Geometry3D::Polygon(a), Geometry3D::Polygon(b)) => a.relate(b),
-        (Geometry3D::MultiPolygon(a), Geometry3D::MultiPolygon(b)) => a.relate(b),
-        (Geometry3D::Triangle(a), Geometry3D::Triangle(b)) => a.relate(b),
+    // Handle FlowGeometry3D types
+    match (geom3d_a, geom3d_b) {
         // Solid: Check if any faces share boundaries
-        (Geometry3D::Solid(a), Geometry3D::Solid(b)) => {
-            return shares_solid_boundary_surface(a, b);
-        }
-        // Mixed types - try converting or return false
-        _ => return Ok(false),
-    };
-
-    // Check if boundaries intersect in 2D (surfaces in 3D space)
-    // Pattern: Interior(A) ∩ Interior(B) = ∅ AND Boundary(A) ∩ Boundary(B) = 2-dimensional surface
-    // IntersectionMatrix format: [II IB IE / BI BB BE / EI EB EE]
-    // For 3D boundary surface sharing: F***2**** (Interior doesn't overlap, Boundaries share 2D surface)
-    Ok(matrix
-        .matches("F***2****")
-        .or_else(|_| matrix.matches("F***T****"))
-        .unwrap_or(false))
+        (Geometry3D::Solid(a), Geometry3D::Solid(b)) => shares_solid_boundary_surface(a, b),
+        // For other geometry types, not implemented yet
+        _ => Ok(false),
+    }
 }

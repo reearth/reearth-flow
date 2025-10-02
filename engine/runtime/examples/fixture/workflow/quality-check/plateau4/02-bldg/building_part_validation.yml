@@ -53,7 +53,7 @@ nodes:
       lodAttribute: lod
       fileIndexAttribute: fileIndex
 
-  # Step 5: Filter errors (_status != "full")
+  # Filter errors (_status != "full")
   - id: f5e6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
     name: FilterNonFullStatus
     type: action
@@ -64,13 +64,13 @@ nodes:
             env.get("__value")._status != "full"
           outputPort: filtered
 
-  # Step 6: Deduplicate Building IDs
+  # Deduplicate Building IDs
   - id: a6f7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
     name: DeduplicateBuildingIds
     type: action
     action: FeatureDuplicateFilter
 
-  # Step 7: Count errors by file
+  # Count errors by file
   - id: b7a8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d
     name: CountLbldg02Errors
     type: action
@@ -81,7 +81,7 @@ nodes:
         - newAttribute: L-bldg-02 Errors
           expr: "count()"
 
-  # Step 8: Prepare output attributes
+  # Prepare output attributes
   - id: c8b9d0e1-2f3a-4b5c-6d7e-8f9a0b1c2d3e
     name: AttributeMapperLbldg02Output
     type: action
@@ -102,8 +102,9 @@ nodes:
           expr: env.get("__value")._status
         - attribute: connected_id
           expr: env.get("__value")._connected_id
+        - attribute: connected_parts
+          expr: env.get("__value")._connected_parts
 
-  # Step 9: Write L-bldg-02 errors to CSV
   - id: d9c0e1f2-3a4b-5c6d-7e8f-9a0b1c2d3e4f
     name: CsvWriterLbldg02Errors
     type: action
@@ -112,8 +113,6 @@ nodes:
       format: csv
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_L-bldg-02エラー.csv")
-
-  # ========== Existing LOD0/1 Output ==========
 
   - id: 3f4e5d6c-7b8a-9c0d-1e2f-3a4b5c6d7e8f
     name: OutputRouter
@@ -128,108 +127,68 @@ edges:
     to: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
     fromPort: default
     toPort: default
-
-  # LOD0/1 output (existing)
   - id: f8a9b0c1-2d3e-4f5a-9b6c-7d8e9f0a1b2c
     from: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
     to: 7b9c8d4e-6f5a-4c8b-9d3e-2a5f7b8c9d4e
     fromPort: lod0
     toPort: default
-
   - id: a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d
     from: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
     to: 7b9c8d4e-6f5a-4c8b-9d3e-2a5f7b8c9d4e
     fromPort: lod1
     toPort: default
-
   - id: 5c6d7e8f-9a0b-1c2d-3e4f-5a6b7c8d9e0f
     from: 7b9c8d4e-6f5a-4c8b-9d3e-2a5f7b8c9d4e
     to: 9e8f7a6b-5c4d-3e2f-1a0b-9c8d7e6f5a4b
     fromPort: default
     toPort: default
-
   - id: 7e8f9a0b-1c2d-3e4f-5a6b-7c8d9e0f1a2b
     from: 9e8f7a6b-5c4d-3e2f-1a0b-9c8d7e6f5a4b
     to: 3f4e5d6c-7b8a-9c0d-1e2f-3a4b5c6d7e8f
     fromPort: default
     toPort: default
-
-  # ========== L-bldg-02 Flow: LOD2~4 ==========
-
-
-  # ConnectivityChecker -> Filter (Re-aggregateをスキップ)
   - id: d6e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
     from: d3c4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     to: f5e6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
     fromPort: default
     toPort: default
-
-  # Re-aggregate -> Filter (unused)
-  # - id: e7f8a9b0-1c2d-3e4f-5a6b-7c8d9e0f1a2b
-  #   from: e4d5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a
-  #   to: f5e6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
-  #   fromPort: default
-  #   toPort: default
-
-  # Filter -> Deduplicate
   - id: f8a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
     from: f5e6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
     to: a6f7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
     fromPort: filtered
     toPort: default
-
-  # Deduplicate -> Statistics
   - id: a9b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
     from: a6f7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
     to: b7a8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d
     fromPort: default
     toPort: default
-
-  # Statistics -> AttributeMapper
   - id: b0c1d2e3-4f5a-6b7c-8d9e-0f1a2b3c4d5e
     from: b7a8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d
     to: c8b9d0e1-2f3a-4b5c-6d7e-8f9a0b1c2d3e
     fromPort: complete
     toPort: default
-
-  # AttributeMapper -> CSV Writer
   - id: c1d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
     from: c8b9d0e1-2f3a-4b5c-6d7e-8f9a0b1c2d3e
     to: d9c0e1f2-3a4b-5c6d-7e8f-9a0b1c2d3e4f
     fromPort: default
     toPort: default
-
-  # CSV Writer -> OutputRouter
   - id: d2e3f4a5-6b7c-8d9e-0f1a-2b3c4d5e6f7a
     from: d9c0e1f2-3a4b-5c6d-7e8f-9a0b1c2d3e4f
     to: 3f4e5d6c-7b8a-9c0d-1e2f-3a4b5c6d7e8f
     fromPort: default
     toPort: default
-
-  # LOD2 -> ConnectivityChecker
   - id: e1f2a3b4-5c6d-7e8f-9a0b-1c2d3e4f5a6b
     from: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
     to: d3c4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     fromPort: lod2
     toPort: default
-
-  # LOD3 -> ConnectivityChecker
   - id: f2a3b4c5-6d7e-8f9a-0b1c-2d3e4f5a6b7c
     from: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
     to: d3c4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     fromPort: lod3
     toPort: default
-
-  # LOD4 -> ConnectivityChecker
   - id: a3b4c5d6-7e8f-9a0b-1c2d-3e4f5a6b7c8d
     from: a5aefda5-b66f-4d20-b8b8-5b1aa322ec8e
     to: d3c4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     fromPort: lod4
-    toPort: default
-
-  # ConnectivityChecker -> Filter
-  - id: d6e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
-    from: d3c4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
-    to: f5e6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
-    fromPort: default
     toPort: default
