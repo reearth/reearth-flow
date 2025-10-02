@@ -109,7 +109,7 @@ export default function Editor({
       undoTrackerActionWrapper,
     ],
   );
-
+  console.log("CANREDO", canRedo);
   return (
     <div className="flex h-screen flex-col">
       <EditorProvider value={editorContext}>

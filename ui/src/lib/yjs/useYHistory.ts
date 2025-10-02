@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { UndoManager } from "yjs";
 
 // const historyClientPrepend = "undo-redo-operation";
@@ -15,25 +15,55 @@ export default ({
     originPrepend?: string,
   ) => void;
 }) => {
-  const canUndo = useMemo(() => {
-    const workflowStackLength = undoManager?.undoStack?.length ?? 0;
-    const globalStackLength =
-      globalWorkflowsUndoManager?.undoStack?.length ?? 0;
-    return workflowStackLength > 0 || globalStackLength > 0;
-  }, [
-    undoManager?.undoStack?.length,
-    globalWorkflowsUndoManager?.undoStack?.length,
-  ]);
+  const [canUndo, setCanUndo] = useState<boolean>(false);
+  const [canRedo, setCanRedo] = useState<boolean>(false);
 
-  const canRedo = useMemo(() => {
-    const workflowStackLength = undoManager?.redoStack?.length ?? 0;
-    const globalStackLength =
-      globalWorkflowsUndoManager?.redoStack?.length ?? 0;
-    return workflowStackLength > 0 || globalStackLength > 0;
-  }, [
-    undoManager?.redoStack?.length,
-    globalWorkflowsUndoManager?.redoStack?.length,
-  ]);
+  useEffect(() => {
+    const updateCanUndo = () => {
+      const workflowStackLength = undoManager?.undoStack?.length ?? 0;
+      const globalStackLength =
+        globalWorkflowsUndoManager?.undoStack?.length ?? 0;
+      setCanUndo(workflowStackLength > 0 || globalStackLength > 0);
+    };
+
+    const updateCanRedo = () => {
+      const workflowStackLength = undoManager?.redoStack?.length ?? 0;
+      const globalStackLength =
+        globalWorkflowsUndoManager?.redoStack?.length ?? 0;
+      setCanRedo(workflowStackLength > 0 || globalStackLength > 0);
+    };
+
+    const updateStacks = () => {
+      updateCanUndo();
+      updateCanRedo();
+    };
+
+    // Initial update
+    updateStacks();
+
+    // Listen to stack changes
+    if (undoManager) {
+      undoManager.on("stack-item-added", updateStacks);
+      undoManager.on("stack-item-popped", updateStacks);
+    }
+
+    if (globalWorkflowsUndoManager) {
+      globalWorkflowsUndoManager.on("stack-item-added", updateStacks);
+      globalWorkflowsUndoManager.on("stack-item-popped", updateStacks);
+    }
+
+    return () => {
+      if (undoManager) {
+        undoManager.off("stack-item-added", updateStacks);
+        undoManager.off("stack-item-popped", updateStacks);
+      }
+
+      if (globalWorkflowsUndoManager) {
+        globalWorkflowsUndoManager.off("stack-item-added", updateStacks);
+        globalWorkflowsUndoManager.off("stack-item-popped", updateStacks);
+      }
+    };
+  }, [undoManager, globalWorkflowsUndoManager]);
 
   const handleYWorkflowUndo = useCallback(() => {
     const workflowStackLength = undoManager?.undoStack?.length ?? 0;
