@@ -6,16 +6,17 @@ use reearth_flow_runtime::node::{NodeKind, SourceFactory};
 use crate::{
     feature_creator::FeatureCreatorFactory,
     file::{
-        csv::CsvReaderFactory, czml::CzmlReaderFactory, geojson::GeoJsonReaderFactory,
-        geopackage::GeoPackageReaderFactory, obj::ObjReaderFactory,
-        path_extractor::FilePathExtractorFactory, reader::FileReaderFactory,
-        shapefile::ShapefileReaderFactory,
+        citygml::CityGmlReaderFactory, csv::CsvReaderFactory, czml::CzmlReaderFactory,
+        geojson::GeoJsonReaderFactory, geopackage::GeoPackageReaderFactory,
+        json::JsonReaderFactory, obj::ObjReaderFactory, path_extractor::FilePathExtractorFactory,
+        reader::FileReaderFactory, shapefile::ShapefileReaderFactory,
     },
     sql::SqlReaderFactory,
 };
 
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn SourceFactory>> = vec![
+        Box::<CityGmlReaderFactory>::default(),
         Box::<FileReaderFactory>::default(),
         Box::<FilePathExtractorFactory>::default(),
         Box::<FeatureCreatorFactory>::default(),
@@ -24,6 +25,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<CzmlReaderFactory>::default(),
         Box::<GeoJsonReaderFactory>::default(),
         Box::<GeoPackageReaderFactory>::default(),
+        Box::<JsonReaderFactory>::default(),
         Box::<ObjReaderFactory>::default(),
         Box::<ShapefileReaderFactory>::default(),
     ];

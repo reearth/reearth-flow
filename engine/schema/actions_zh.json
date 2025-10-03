@@ -1060,6 +1060,62 @@
       ]
     },
     {
+      "name": "CityGmlReader",
+      "type": "source",
+      "description": "Reads 3D city models from CityGML files.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CityGmlReader Parameters",
+        "description": "Configuration for reading CityGML files as 3D city models.",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "File Path",
+            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "flatten": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "File"
+      ]
+    },
+    {
       "name": "Clipper",
       "type": "processor",
       "description": "使用裁剪实体来分割候选实体，使内部或外部部分分别输出",
@@ -3555,6 +3611,56 @@
       ],
       "categories": [
         "Geometry"
+      ]
+    },
+    {
+      "name": "JsonReader",
+      "type": "source",
+      "description": "Reads features from JSON files, supporting both single objects and arrays of objects.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "JsonReader Parameters",
+        "description": "Configuration for reading JSON files as features.",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "File Path",
+            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "File"
       ]
     },
     {
