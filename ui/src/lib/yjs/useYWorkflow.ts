@@ -15,6 +15,7 @@ import { generateUUID, isDefined } from "@flow/utils";
 
 import {
   rebuildWorkflow,
+  yEdgeConstructor,
   yNodeConstructor,
   yWorkflowConstructor,
 } from "./conversions";
@@ -49,7 +50,6 @@ export default ({
       workflowId: string,
       workflowName: string,
       position: XYPosition,
-
       routers: { inputRouter: Action; outputRouter: Action },
       initialNodes?: Node[],
       initialEdges?: Edge[],
@@ -87,9 +87,7 @@ export default ({
       };
 
       const workflowNodes = [
-        newInputNode,
-        ...(initialNodes ?? []),
-        newOutputNode,
+        ...(initialNodes ?? [newInputNode, newOutputNode]),
       ];
       const newYWorkflow = yWorkflowConstructor(
         workflowId,
@@ -162,7 +160,6 @@ export default ({
     async (nodes: Node[], edges: Edge[]) => {
       try {
         const routers = await fetchRouterConfigs();
-
         undoTrackerActionWrapper(() => {
           const nodesByParentId = new Map<string, Node[]>();
           nodes.forEach((node) => {
@@ -215,16 +212,119 @@ export default ({
               allIncludedNodeIds.has(e.target),
           );
 
+          const boundaryEdges = edges.filter((edge) => {
+            const sourceSelected = allIncludedNodeIds.has(edge.source);
+            const targetSelected = allIncludedNodeIds.has(edge.target);
+            return sourceSelected !== targetSelected;
+          });
+
           const workflowId = generateUUID();
           const workflowName = t("Subworkflow");
+
+          const additionalRouterNodes: Node[] = [];
+          const additionalInternalEdges: Edge[] = [];
+          const externalEdges: Edge[] = [];
+          const pseudoInputs: { nodeId: string; portName: string }[] = [];
+          const pseudoOutputs: { nodeId: string; portName: string }[] = [];
+
+          let inputCounter = 1;
+          let outputCounter = 1;
+          boundaryEdges.forEach((edge, index) => {
+            const sourceSelected = allIncludedNodeIds.has(edge.source);
+            const targetSelected = allIncludedNodeIds.has(edge.target);
+
+            if (!sourceSelected && targetSelected) {
+              const inputRouterId = generateUUID();
+              const portName = `${DEFAULT_ROUTING_PORT}-${inputCounter}`;
+              inputCounter++;
+
+              const inputRouter: Node = {
+                id: inputRouterId,
+                type: routers.inputRouter.type as NodeType,
+                position: { x: 200 + index * 50, y: 150 },
+                data: {
+                  officialName: routers.inputRouter.name,
+                  outputs: routers.inputRouter.outputPorts,
+                  params: { routingPort: portName },
+                },
+              };
+              additionalRouterNodes.push(inputRouter);
+
+              const internalEdge: Edge = {
+                ...edge,
+                id: generateUUID(),
+                source: inputRouterId,
+              };
+              additionalInternalEdges.push(internalEdge);
+
+              pseudoInputs.push({
+                nodeId: inputRouterId,
+                portName: portName,
+              });
+
+              const externalEdge: Edge = {
+                ...edge,
+                id: edge.id,
+                target: workflowId,
+                targetHandle: portName,
+              };
+              externalEdges.push(externalEdge);
+            } else if (sourceSelected && !targetSelected) {
+              const outputRouterId = generateUUID();
+              const portName = `${DEFAULT_ROUTING_PORT}-${outputCounter}`;
+              outputCounter++;
+
+              const outputRouter: Node = {
+                id: outputRouterId,
+                type: routers.outputRouter.type as NodeType,
+                position: { x: 800 + index * 50, y: 150 },
+                data: {
+                  officialName: routers.outputRouter.name,
+                  inputs: routers.outputRouter.inputPorts,
+                  params: { routingPort: portName },
+                },
+              };
+              additionalRouterNodes.push(outputRouter);
+
+              const internalEdge: Edge = {
+                ...edge,
+                id: generateUUID(),
+                target: outputRouterId,
+              };
+              additionalInternalEdges.push(internalEdge);
+
+              pseudoOutputs.push({
+                nodeId: outputRouterId,
+                portName: portName,
+              });
+
+              const externalEdge: Edge = {
+                ...edge,
+                id: edge.id,
+                source: workflowId,
+                sourceHandle: portName,
+              };
+              externalEdges.push(externalEdge);
+            }
+          });
+
+          const allSubworkflowNodes = [
+            ...adjustedNodes,
+            ...additionalRouterNodes,
+          ];
+
+          const allSubworkflowEdges = [
+            ...internalEdges,
+            ...additionalInternalEdges,
+          ];
 
           const { newYWorkflow, newSubworkflowNode } = createYWorkflow(
             workflowId,
             workflowName,
             position,
             routers,
-            adjustedNodes,
-            internalEdges,
+            allSubworkflowNodes,
+            allSubworkflowEdges,
           );
 
           const parentWorkflow = currentYWorkflow;
@@ -239,16 +339,57 @@ export default ({
             parentWorkflowNodesMap?.delete(nodeId);
           });
 
-          edges.forEach((edge) => {
-            if (
-              allIncludedNodeIds.has(edge.source) ||
-              allIncludedNodeIds.has(edge.target)
-            ) {
-              parentWorkflowEdgesMap?.delete(edge.id);
-            }
+          boundaryEdges.forEach((edge) => {
+            parentWorkflowEdgesMap?.delete(edge.id);
+          });
+
+          externalEdges.forEach((edge) => {
+            const yEdge = yEdgeConstructor(edge);
+            parentWorkflowEdgesMap?.set(edge.id, yEdge);
           });
 
           parentWorkflowNodesMap?.set(workflowId, newSubworkflowNode);
+
+          if (pseudoInputs.length > 0 || pseudoOutputs.length > 0) {
+            const subworkflowNodeInParent =
+              parentWorkflowNodesMap?.get(workflowId);
+
+            if (subworkflowNodeInParent) {
+              const nodeData = subworkflowNodeInParent.get(
+                "data",
+              ) as Y.Map<any>;
+              const existingPseudoInputs = nodeData?.get(
+                "pseudoInputs",
+              ) as Y.Array<any>;
+              const existingPseudoOutputs = nodeData?.get(
+                "pseudoOutputs",
+              ) as Y.Array<any>;
+
+              if (existingPseudoInputs) {
+                existingPseudoInputs.delete(0, existingPseudoInputs.length);
+              }
+              if (existingPseudoOutputs) {
+                existingPseudoOutputs.delete(0, existingPseudoOutputs.length);
+              }
+
+              pseudoInputs.forEach((pseudoInput) => {
+                const yPseudoInput = new Y.Map();
+                yPseudoInput.set("nodeId", new Y.Text(pseudoInput.nodeId));
+                yPseudoInput.set("portName", new Y.Text(pseudoInput.portName));
+                existingPseudoInputs?.push([yPseudoInput]);
+              });
+
+              pseudoOutputs.forEach((pseudoOutput) => {
+                const yPseudoOutput = new Y.Map();
+                yPseudoOutput.set("nodeId", new Y.Text(pseudoOutput.nodeId));
+                yPseudoOutput.set(
+                  "portName",
+                  new Y.Text(pseudoOutput.portName),
+                );
+                existingPseudoOutputs?.push([yPseudoOutput]);
+              });
+            }
+          }
 
           yWorkflows.set(workflowId, newYWorkflow);
         });
