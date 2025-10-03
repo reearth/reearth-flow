@@ -54,8 +54,8 @@ type Props = {
   onCopy?: (node?: Node) => void;
   onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: () => void;
-  onPaneMouseMove?: (event: MouseEvent<Element, globalThis.MouseEvent>) => void;
-  onPaneClick?: () => void;
+  onPaneMouseMove?: (e: MouseEvent) => void;
+  onPaneClick?: (e: MouseEvent) => void;
 };
 
 const Canvas: React.FC<Props> = ({

@@ -422,7 +422,7 @@ nodes:
   - id: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
     name: DestinationMeshCodeExtractor
     type: action
-    action: DestinationMeshCodeExtractor
+    action: PLATEAU4.DestinationMeshCodeExtractor
     with:
       meshType: 3
       epsgCode: env.get("prcs") ?? "6675"
@@ -666,7 +666,6 @@ nodes:
     action: OutputRouter
     with:
       routingPort: solidBoundaryNotClosedIssueCount
-
 
   - id: 016a8afe-3aa7-4047-8c8c-9f6f8464b03c
     name: SolidBoundaryOtherIssueCounter

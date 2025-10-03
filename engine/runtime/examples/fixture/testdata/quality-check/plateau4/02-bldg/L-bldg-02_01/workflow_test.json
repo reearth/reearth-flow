@@ -1,0 +1,10 @@
+{
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
+  "description": "Test L-bldg-02 error detection: BuildingPart connectivity check with single isolated BuildingPart (status='alone')",
+  "expectedOutput": {
+    "expectedFile": "02_建築物_L-bldg-02エラー.csv"
+  },
+  "cityGmlPath": "udx/bldg/test_buildingpart.gml",
+  "codelists": "codelists",
+  "schemas": "schemas"
+}
