@@ -303,7 +303,7 @@ fn write_json(
     Ok(())
 }
 
-fn write_csv(
+pub(super) fn write_csv(
     output: &Uri,
     features: &[Feature],
     delimiter: Delimiter,

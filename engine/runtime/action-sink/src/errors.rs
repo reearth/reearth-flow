@@ -4,6 +4,10 @@ use thiserror::Error;
 pub enum SinkError {
     #[error("Build factory error: {0}")]
     BuildFactory(String),
+    #[error("Csv Writer error: {0}")]
+    CsvWriter(String),
+    #[error("Csv Writer Factory error: {0}")]
+    CsvWriterFactory(String),
     #[error("File Writer error: {0}")]
     FileWriter(String),
     #[error("Xml Writer error: {0}")]
