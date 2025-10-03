@@ -38,22 +38,22 @@ export const EDITOR_HOT_KEYS = [
 ];
 
 export const CURSOR_COLORS = [
-  "#5b61d460", // Indigo - muted professional
-  "#7c3acd60", // Purple - softer tone
-  "#0ea5be60", // Cyan - more subdued
-  "#05966960", // Emerald - darker variant
-  "#d9770660", // Amber - less bright
-  "#dc262660", // Red - deeper tone
-  "#64748b60", // Slate - neutral
-  "#65a30d60", // Lime - toned down
-  "#c2410c60", // Orange - muted warm
-  "#be185d60", // Pink - deeper rose
-  "#0f766e60", // Teal - darker blue-green
-  "#7c2d1260", // Brown - earthy tone
-  "#16653460", // Green - forest shade
-  "#991b1b60", // Dark red - professional
-  "#07598560", // Sky blue - muted variant
-  "#581c8760", // Purple - deep violet
-  "#36531460", // Olive - natural tone
-  "#92400e60", // Burnt orange - warm earth
+  "#5b61d4", // Indigo - muted professional
+  "#7c3acd", // Purple - softer tone
+  "#0ea5be", // Cyan - more subdued
+  "#059669", // Emerald - darker variant
+  "#d97706", // Amber - less bright
+  "#dc2626", // Red - deeper tone
+  "#64748b", // Slate - neutral
+  "#65a30d", // Lime - toned down
+  "#c2410c", // Orange - muted warm
+  "#be185d", // Pink - deeper rose
+  "#0f766e", // Teal - darker blue-green
+  "#7c2d12", // Brown - earthy tone
+  "#166534", // Green - forest shade
+  "#991b1b", // Dark red - professional
+  "#075985", // Sky blue - muted variant
+  "#581c87", // Purple - deep violet
+  "#365314", // Olive - natural tone
+  "#92400e", // Burnt orange - warm earth
 ];

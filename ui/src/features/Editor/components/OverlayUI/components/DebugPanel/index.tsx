@@ -6,7 +6,6 @@ import {
   CornersOutIcon,
   EyeIcon,
   MinusIcon,
-  TerminalIcon,
 } from "@phosphor-icons/react";
 import { memo, useEffect, useRef, useState } from "react";
 
@@ -123,10 +122,10 @@ const DebugPanel: React.FC = () => {
             <div className="ml-2 h-full w-1 border-l" />
             <OutputDataDownload outputData={outputDataForDownload} />
           </div>
-          <div className="absolute left-1/2 mr-[120px] flex h-full translate-x-1/2 items-center justify-center gap-2">
+          {/* <div className="absolute left-1/2 mr-[120px] flex h-full translate-x-1/2 items-center justify-center gap-2">
             <TerminalIcon />
             <p className="text-sm font-thin select-none">{t("Debug Run")}</p>
-          </div>
+          </div> */}
           <div className="flex items-center">
             {!fullscreenDebug && (
               <IconButton

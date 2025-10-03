@@ -35,36 +35,34 @@ const DebugActionBar: React.FC<Props> = ({
 
   return (
     <>
-      <div className="flex rounded-md bg-secondary">
-        <div className="flex items-center gap-2 align-middle">
-          <StartButton
-            debugRunStarted={debugRunStarted}
-            onDebugRunStart={handleDebugRunStart}
-          />
-          <IconButton
-            className="shrink-0"
-            tooltipText={t("Stop debug run of workflow")}
-            tooltipOffset={tooltipOffset}
-            disabled={
-              !jobStatus || (jobStatus !== "running" && jobStatus !== "queued")
-            }
-            icon={<StopIcon weight="thin" size={18} />}
-            onClick={handleShowDebugStopDialog}
-          />
-          <IconButton
-            className="shrink-0"
-            tooltipText={t("Clear debug run and results")}
-            tooltipOffset={tooltipOffset}
-            disabled={
-              !debugJob ||
-              !jobStatus ||
-              jobStatus === "running" ||
-              jobStatus === "queued"
-            }
-            icon={<BroomIcon weight="thin" size={18} />}
-            onClick={handleDebugRunReset}
-          />
-        </div>
+      <div className="flex items-center gap-2 align-middle">
+        <StartButton
+          debugRunStarted={debugRunStarted}
+          onDebugRunStart={handleDebugRunStart}
+        />
+        <IconButton
+          className="shrink-0"
+          tooltipText={t("Stop debug run of workflow")}
+          tooltipOffset={tooltipOffset}
+          disabled={
+            !jobStatus || (jobStatus !== "running" && jobStatus !== "queued")
+          }
+          icon={<StopIcon weight="thin" size={18} />}
+          onClick={handleShowDebugStopDialog}
+        />
+        <IconButton
+          className="shrink-0"
+          tooltipText={t("Clear debug run and results")}
+          tooltipOffset={tooltipOffset}
+          disabled={
+            !debugJob ||
+            !jobStatus ||
+            jobStatus === "running" ||
+            jobStatus === "queued"
+          }
+          icon={<BroomIcon weight="thin" size={18} />}
+          onClick={handleDebugRunReset}
+        />
       </div>
       {showDialog === "debugStop" && (
         <DebugStopDialog

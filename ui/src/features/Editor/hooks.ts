@@ -355,6 +355,14 @@ export default ({
     handleWorkflowClose,
   });
 
+  const handlePaneClick = useCallback(
+    (e: MouseEvent) => {
+      e.preventDefault();
+      handleSpotlightUserDeselect();
+    },
+    [handleSpotlightUserDeselect],
+  );
+
   return {
     currentWorkflowId,
     currentYWorkflow,
@@ -409,5 +417,6 @@ export default ({
     handlePaneMouseMove,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
+    handlePaneClick,
   };
 };
