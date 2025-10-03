@@ -12,7 +12,7 @@ use serde_json::Value;
 use tokio::sync::mpsc::Sender;
 
 use super::reader::citygml;
-use super::reader::runner::get_content;
+use super::reader::runner::{get_content, get_input_path};
 use crate::{errors::SourceError, file::reader::runner::FileReaderCommonParam};
 
 #[derive(Debug, Clone, Default)]
@@ -102,16 +102,11 @@ impl Source for CityGmlReader {
         sender: Sender<(Port, IngestionMessage)>,
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        let input_path = self
-            .params
-            .common_property
-            .dataset
-            .as_ref()
-            .and_then(|_| None); // Placeholder, see below
+        let input_path = get_input_path(&ctx, &self.params.common_property)?;
         let content = get_content(&ctx, &self.params.common_property, storage_resolver).await?;
         citygml::read_citygml(
             &content,
-            input_path, // You may want to resolve the actual input_path if needed
+            input_path,
             &self.params.property,
             sender,
         )
