@@ -100,7 +100,8 @@ const EditorComponent = () => {
   const {
     yWorkflows,
     isSynced,
-    undoManager,
+    getLocalUndoManager,
+    getGlobalWorkflowsUndoManager,
     undoTrackerActionWrapper,
     yDocState,
     yAwareness,
@@ -118,7 +119,8 @@ const EditorComponent = () => {
   ) : (
     <Editor
       yWorkflows={yWorkflows}
-      undoManager={undoManager}
+      getLocalUndoManager={getLocalUndoManager}
+      getGlobalWorkflowsUndoManager={getGlobalWorkflowsUndoManager}
       yDoc={yDocState}
       yAwareness={yAwareness}
       undoTrackerActionWrapper={undoTrackerActionWrapper}

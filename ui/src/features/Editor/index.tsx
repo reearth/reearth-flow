@@ -16,7 +16,8 @@ import useHooks from "./hooks";
 
 type Props = {
   yWorkflows: YMap<YWorkflow>;
-  undoManager: YUndoManager | null;
+  getLocalUndoManager: (workflowId: string) => YUndoManager | null;
+  getGlobalWorkflowsUndoManager: (workflowId: string) => YUndoManager | null;
   undoTrackerActionWrapper: (
     callback: () => void,
     originPrepend?: string,
@@ -27,7 +28,8 @@ type Props = {
 
 export default function Editor({
   yWorkflows,
-  undoManager,
+  getLocalUndoManager,
+  getGlobalWorkflowsUndoManager,
   undoTrackerActionWrapper,
   yDoc,
   yAwareness,
@@ -88,7 +90,8 @@ export default function Editor({
     yDoc,
     yWorkflows,
     yAwareness,
-    undoManager,
+    getLocalUndoManager,
+    getGlobalWorkflowsUndoManager,
     undoTrackerActionWrapper,
   });
 
@@ -106,7 +109,7 @@ export default function Editor({
       undoTrackerActionWrapper,
     ],
   );
-
+  console.log("CANREDO", canRedo);
   return (
     <div className="flex h-screen flex-col">
       <EditorProvider value={editorContext}>

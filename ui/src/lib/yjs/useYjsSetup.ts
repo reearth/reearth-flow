@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Awareness } from "y-protocols/awareness";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
@@ -23,7 +23,10 @@ export default ({
 }) => {
   const { getAccessToken } = useAuth();
 
-  const [undoManager, setUndoManager] = useState<Y.UndoManager | null>(null);
+  const localUndoManagersRef = useRef<Map<string, Y.UndoManager>>(new Map());
+  const globalWorkflowsUndoManagersRef = useRef<Map<string, Y.UndoManager>>(
+    new Map(),
+  );
 
   const [yDocState, setYDocState] = useState<Y.Doc | null>(null);
   const [isSynced, setIsSynced] = useState(false);
@@ -120,57 +123,151 @@ export default ({
     yDocState?.transact(callback, origin);
   };
 
-  useEffect(() => {
-    if (yWorkflows) {
-      const manager = new Y.UndoManager(yWorkflows, {
-        trackedOrigins: new Set([currentUserClientId]), // Only track local changes
-        captureTimeout: 200, // default is 500. 200ms is a good balance between performance and user experience
+  const recursivelyTrackSharedType = useCallback(
+    (
+      observedMapsRef: WeakSet<Y.Map<unknown>>,
+      manager: Y.UndoManager,
+      sharedType?: Y.Map<any>,
+    ): void => {
+      if (!sharedType) return;
+      if (observedMapsRef.has(sharedType)) return;
+      observedMapsRef.add(sharedType);
+
+      manager.addToScope([sharedType]);
+
+      if (sharedType instanceof Y.Map) {
+        sharedType.forEach((value: any) => {
+          if (value instanceof Y.Map) {
+            recursivelyTrackSharedType(observedMapsRef, manager, value);
+          }
+        });
+
+        sharedType.observe((event: Y.YMapEvent<any>) => {
+          event.changes.keys.forEach((change: any, key: string) => {
+            if (change.action === "add" || change.action === "update") {
+              const newValue: any = sharedType.get(key);
+              if (newValue instanceof Y.Map) {
+                recursivelyTrackSharedType(observedMapsRef, manager, newValue);
+              }
+            }
+          });
+        });
+      }
+    },
+    [],
+  );
+
+  const handleWorkflowsChange = useCallback(
+    (
+      currentUserClientId: number,
+      yWorkflows: Y.Map<YWorkflow>,
+      observedMapsRef: WeakSet<any>,
+    ) => {
+      const currentLocalManagers = localUndoManagersRef.current;
+      const newManagers = new Map<string, Y.UndoManager>();
+
+      yWorkflows.forEach((workflow, workflowId) => {
+        let manager = currentLocalManagers.get(workflowId);
+
+        if (!manager) {
+          // Create separate undo manager for each workflow
+          // Track origins with workflow ID prepended (e.g., "workflowId-clientId")
+          manager = new Y.UndoManager([workflow], {
+            trackedOrigins: new Set([`${workflowId}-${currentUserClientId}`]),
+            captureTimeout: 200, // default is 500. 200ms is a good balance between performance and user experience
+          });
+
+          // Recursively track all nested shared types
+          recursivelyTrackSharedType(observedMapsRef, manager, workflow);
+        }
+
+        newManagers.set(workflowId, manager);
       });
-      setUndoManager(manager);
 
-      return () => {
-        manager.destroy(); // Clean up UndoManager on component unmount
-        setUndoManager(null);
-      };
-    }
-  }, [yWorkflows, currentUserClientId]);
+      // Create workflow-specific global UndoManagers for yWorkflows operations
+      const currentGlobalManagers = globalWorkflowsUndoManagersRef.current;
+      const newGlobalManagers = new Map<string, Y.UndoManager>();
 
-  const observedMapsRef = useRef(new WeakSet());
+      yWorkflows.forEach((_, workflowId) => {
+        let globalManager = currentGlobalManagers.get(workflowId);
 
-  function recursivelyTrackSharedType(sharedType?: Y.Map<any>): void {
-    if (!sharedType) return;
-    if (observedMapsRef.current.has(sharedType)) return;
-    observedMapsRef.current.add(sharedType);
+        if (!globalManager) {
+          // Track only yWorkflows operations from this specific workflow's context
+          globalManager = new Y.UndoManager([yWorkflows], {
+            trackedOrigins: new Set([`${workflowId}-${currentUserClientId}`]),
+            captureTimeout: 200, // default is 500. 200ms is a good balance between performance and user experience
+          });
+        }
 
-    undoManager?.addToScope([sharedType]);
+        newGlobalManagers.set(workflowId, globalManager);
+      });
 
-    if (sharedType instanceof Y.Map) {
-      sharedType.forEach((value: any) => {
-        if (value instanceof Y.Map) {
-          recursivelyTrackSharedType(value);
+      // Cleanup local managers for workflows that are deleted
+      currentLocalManagers.forEach((manager, workflowId) => {
+        if (!newManagers.has(workflowId)) {
+          manager.destroy();
         }
       });
 
-      sharedType.observe((event: Y.YMapEvent<any>) => {
-        event.changes.keys.forEach((change: any, key: string) => {
-          if (change.action === "add" || change.action === "update") {
-            const newValue: any = sharedType.get(key);
-            if (newValue instanceof Y.Map) {
-              recursivelyTrackSharedType(newValue);
-            }
-          }
-        });
+      // Cleanup global managers for deleted workflows
+      currentGlobalManagers.forEach((manager, workflowId) => {
+        if (!newGlobalManagers.has(workflowId)) {
+          manager.destroy();
+        }
       });
-    }
-  }
 
-  // Start the recursive tracking
-  recursivelyTrackSharedType(yWorkflows);
+      localUndoManagersRef.current = newManagers;
+      globalWorkflowsUndoManagersRef.current = newGlobalManagers;
+    },
+    [recursivelyTrackSharedType],
+  );
+
+  useEffect(() => {
+    if (!yWorkflows || !currentUserClientId) return;
+
+    const observedMapsRef = new WeakSet();
+
+    // Initial setup
+    handleWorkflowsChange(currentUserClientId, yWorkflows, observedMapsRef);
+
+    // Observe workflows map for additions/removals
+    const workflowsObserver = () => {
+      handleWorkflowsChange(currentUserClientId, yWorkflows, observedMapsRef);
+    };
+
+    yWorkflows.observe(workflowsObserver);
+
+    return () => {
+      yWorkflows.unobserve(workflowsObserver);
+      // Clean up UndoManagers on component unmount
+      globalWorkflowsUndoManagersRef.current.forEach((manager) =>
+        manager.destroy(),
+      );
+      globalWorkflowsUndoManagersRef.current = new Map();
+      localUndoManagersRef.current.forEach((manager) => manager.destroy());
+      localUndoManagersRef.current = new Map();
+    };
+  }, [yWorkflows, currentUserClientId, handleWorkflowsChange]);
+
+  const getLocalUndoManager = useCallback(
+    (workflowId: string): Y.UndoManager | null => {
+      return localUndoManagersRef.current.get(workflowId) ?? null;
+    },
+    [],
+  );
+
+  const getGlobalWorkflowsUndoManager = useCallback(
+    (workflowId: string): Y.UndoManager | null => {
+      return globalWorkflowsUndoManagersRef.current.get(workflowId) ?? null;
+    },
+    [],
+  );
 
   return {
     yWorkflows,
     isSynced,
-    undoManager,
+    getLocalUndoManager,
+    getGlobalWorkflowsUndoManager,
     undoTrackerActionWrapper,
     yDocState,
     yAwareness,
