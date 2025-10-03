@@ -3,8 +3,7 @@ package repo
 import (
 	"errors"
 
-	"github.com/reearth/reearth-flow/api/pkg/workspace"
-	"github.com/reearth/reearthx/account/accountdomain"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 	"github.com/reearth/reearthx/authserver"
 	"github.com/reearth/reearthx/usecasex"
@@ -13,34 +12,34 @@ import (
 var ErrOperationDenied = errors.New("operation denied")
 
 type Container struct {
-	Asset            Asset
-	AuthRequest      authserver.RequestRepo
-	Config           Config
-	Deployment       Deployment
-	EdgeExecution    EdgeExecution
-	Job              Job
-	Lock             Lock
-	NodeExecution    NodeExecution
-	Parameter        Parameter
-	Permittable      accountrepo.Permittable // TODO: Delete this once the permission check migration is complete.
-	Project          Project
-	ProjectAccess    ProjectAccess
-	Role             accountrepo.Role // TODO: Delete this once the permission check migration is complete.
-	Transaction      usecasex.Transaction
-	Trigger          Trigger
-	User             accountrepo.User
-	Workflow         Workflow
-	Workspace        accountrepo.Workspace
-	TempNewWorkspace workspace.Repo // TODO: After migration, delete Workspace and rename TempNewWorkspace to Workspace.
+	Asset         Asset
+	AuthRequest   authserver.RequestRepo
+	Config        Config
+	Deployment    Deployment
+	EdgeExecution EdgeExecution
+	Job           Job
+	Lock          Lock
+	NodeExecution NodeExecution
+	Parameter     Parameter
+	Permittable   accountrepo.Permittable // TODO: Delete this once the permission check migration is complete.
+	Project       Project
+	ProjectAccess ProjectAccess
+	Role          accountrepo.Role // TODO: Delete this once the permission check migration is complete.
+	Transaction   usecasex.Transaction
+	Trigger       Trigger
+	User          accountrepo.User // TODO: Remove this once the replace user management is complete.
+	Workflow      Workflow
+	Workspace     accountrepo.Workspace // TODO: Remove this once the replace user management is complete.
 }
 
+// TODO: Remove this once the replace user management is complete.
 func (c *Container) AccountRepos() *accountrepo.Container {
 	return &accountrepo.Container{
 		Workspace:   c.Workspace,
 		User:        c.User,
 		Transaction: c.Transaction,
-		Role:        c.Role,        // TODO: Delete this once the permission check migration is complete.
-		Permittable: c.Permittable, // TODO: Delete this once the permission check migration is complete.
+		Role:        c.Role,
+		Permittable: c.Permittable,
 	}
 }
 
@@ -69,8 +68,8 @@ func (c *Container) Filtered(workspace WorkspaceFilter) *Container {
 }
 
 type WorkspaceFilter struct {
-	Readable accountdomain.WorkspaceIDList
-	Writable accountdomain.WorkspaceIDList
+	Readable id.WorkspaceIDList
+	Writable id.WorkspaceIDList
 }
 
 func (f WorkspaceFilter) Clone() WorkspaceFilter {
@@ -81,7 +80,7 @@ func (f WorkspaceFilter) Clone() WorkspaceFilter {
 }
 
 func (f WorkspaceFilter) Merge(g WorkspaceFilter) WorkspaceFilter {
-	var r, w accountdomain.WorkspaceIDList
+	var r, w id.WorkspaceIDList
 	if f.Readable != nil || g.Readable != nil {
 		if f.Readable == nil {
 			r = g.Readable.Clone()
@@ -104,10 +103,10 @@ func (f WorkspaceFilter) Merge(g WorkspaceFilter) WorkspaceFilter {
 	}
 }
 
-func (f WorkspaceFilter) CanRead(id accountdomain.WorkspaceID) bool {
+func (f WorkspaceFilter) CanRead(id id.WorkspaceID) bool {
 	return f.Readable == nil || f.Readable.Has(id)
 }
 
-func (f WorkspaceFilter) CanWrite(id accountdomain.WorkspaceID) bool {
+func (f WorkspaceFilter) CanWrite(id id.WorkspaceID) bool {
 	return f.Writable == nil || f.Writable.Has(id)
 }

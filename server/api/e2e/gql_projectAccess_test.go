@@ -7,6 +7,12 @@ import (
 
 	"github.com/gavv/httpexpect/v2"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
+	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
+	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
+	usermockrepo "github.com/reearth/reearth-flow/api/pkg/user/mockrepo"
+	pkgworkspace "github.com/reearth/reearth-flow/api/pkg/workspace"
+	workspacemockrepo "github.com/reearth/reearth-flow/api/pkg/workspace/mockrepo"
+	"go.uber.org/mock/gomock"
 )
 
 func fetchSharedProject(e *httpexpect.Expect, token string) (GraphQLRequest, *httpexpect.Value) {
@@ -94,6 +100,30 @@ func unshareProject(e *httpexpect.Expect, projectID string) (GraphQLRequest, *ht
 }
 
 func TestProjectShareFlow(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operatorID := pkguser.NewID()
+	operator := factory.NewUser(func(b *pkguser.Builder) {
+		b.ID(operatorID)
+		b.Name("operator")
+		b.Email("operator@e2e.com")
+	})
+
+	wid := pkgworkspace.NewID()
+	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {
+		b.ID(wid)
+	})
+
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
+	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil)
+	mock := &TestMocks{
+		UserRepo:      mockUserRepo,
+		WorkspaceRepo: mockWorkspaceRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
@@ -101,10 +131,10 @@ func TestProjectShareFlow(t *testing.T) {
 		},
 		Host:       "https://example.com",
 		SharedPath: "shared",
-	}, true, baseSeederUser, true)
+	}, true, true, mock)
 
 	// create a project
-	pId := testCreateProject(t, e)
+	pId := testCreateProject(t, e, operatorID.String(), wid.String())
 
 	// 1. Share the project (success)
 	_, res1 := shareProject(e, pId)

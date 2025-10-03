@@ -1,0 +1,4 @@
+"mesh2area","lod","feature_type","meshcode","filename","meshcount","gml_id"
+"[{""mesh_code"":54377095,""area"":2066.47},{""mesh_code"":54377096,""area"":2066.47},{""mesh_code"":55370005,""area"":4132.72},{""mesh_code"":55370006,""area"":4132.72}]",0,"bldg:Building",55370005,"equal_area_cross_mesh.gml",4,"bldg_equal_area_cross_mesh"
+"[{""mesh_code"":54377095,""area"":3174.0},{""mesh_code"":54377096,""area"":3174.0}]",0,"bldg:Building",54377095,"equal_area_cross_mesh.gml",2,"bldg_circular_equal_area"
+"[{""mesh_code"":54377096,""area"":1239.88},{""mesh_code"":55370006,""area"":1239.8}]",0,"bldg:Building",54377096,"equal_area_cross_mesh.gml",2,"bldg_lat_boundary_equal"

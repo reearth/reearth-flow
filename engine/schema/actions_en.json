@@ -10,6 +10,24 @@
         "description": "Configure how area overlay analysis is performed",
         "type": "object",
         "properties": {
+          "accumulationMode": {
+            "title": "Accumulation Mode",
+            "description": "Controls how attributes from input features are handled in output features",
+            "default": "useAttributesFromOneFeature",
+            "allOf": [
+              {
+                "$ref": "#/definitions/AccumulationMode"
+              }
+            ]
+          },
+          "generateList": {
+            "title": "Generate List",
+            "description": "Name of the list attribute to store source feature attributes",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "groupBy": {
             "title": "Group By Attributes",
             "description": "Optional attributes to group features by during overlay analysis",
@@ -20,9 +38,24 @@
             "items": {
               "$ref": "#/definitions/Attribute"
             }
+          },
+          "outputAttribute": {
+            "title": "Output Attribute",
+            "description": "Name of the attribute to store overlap count",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "definitions": {
+          "AccumulationMode": {
+            "type": "string",
+            "enum": [
+              "useAttributesFromOneFeature",
+              "dropIncomingAttributes"
+            ]
+          },
           "Attribute": {
             "type": "string"
           }
@@ -3610,6 +3643,68 @@
       ]
     },
     {
+      "name": "ListIndexer",
+      "type": "processor",
+      "description": "Copies attributes from a specific list element to become the main attributes of a feature",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ListIndexer Parameters",
+        "description": "Configuration for copying attributes from a specific list element to main feature attributes.",
+        "type": "object",
+        "required": [
+          "listAttribute",
+          "listIndexToCopy"
+        ],
+        "properties": {
+          "copiedAttributePrefix": {
+            "description": "Optional prefix to add to copied attribute names",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "copiedAttributeSuffix": {
+            "description": "Optional suffix to add to copied attribute names",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "listAttribute": {
+            "description": "List attribute to read from",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "listIndexToCopy": {
+            "description": "Index of the list element to copy (0-based)",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0.0
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
       "name": "MVTWriter",
       "type": "sink",
       "description": "Writes features to a file",
@@ -4164,6 +4259,75 @@
       ]
     },
     {
+      "name": "PLATEAU4.BuildingPartConnectivityChecker",
+      "type": "processor",
+      "description": "Check connectivity between BuildingParts within the same Building using 3D boundary surface matching",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "BuildingPartConnectivityChecker Parameters",
+        "description": "Configure how to check connectivity between BuildingParts",
+        "type": "object",
+        "properties": {
+          "buildingIdAttribute": {
+            "title": "Building ID Attribute",
+            "description": "Attribute containing the parent Building ID (default: \"gmlId\")",
+            "default": "gmlId",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "fileIndexAttribute": {
+            "title": "File Index Attribute",
+            "description": "Attribute containing the file index (default: \"fileIndex\")",
+            "default": "fileIndex",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "lodAttribute": {
+            "title": "LOD Attribute",
+            "description": "Attribute containing the Level of Detail (default: \"lod\")",
+            "default": "lod",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "partIdAttribute": {
+            "title": "Part ID Attribute",
+            "description": "Attribute containing the BuildingPart ID (default: \"featureId\")",
+            "default": "featureId",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature",
+        "PLATEAU"
+      ]
+    },
+    {
       "name": "PLATEAU4.BuildingUsageAttributeValidator",
       "type": "processor",
       "description": "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.",
@@ -4242,6 +4406,59 @@
       ]
     },
     {
+      "name": "PLATEAU4.DestinationMeshCodeExtractor",
+      "type": "processor",
+      "description": "Extract Japanese standard regional mesh code for PLATEAU destination files and add as attribute",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "PLATEAU Destination MeshCode Extractor Parameters",
+        "description": "Configure mesh code extraction for Japanese standard regional mesh",
+        "type": "object",
+        "properties": {
+          "epsgCode": {
+            "title": "EPSG Code",
+            "description": "Japanese Plane Rectangular Coordinate System EPSG code for area calculation",
+            "default": "6691",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          },
+          "meshType": {
+            "title": "Mesh Type",
+            "description": "Japanese standard mesh type: 1=80km, 2=10km, 3=1km, 4=500m, 5=250m, 6=125m",
+            "default": 3,
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          },
+          "meshcodeAttr": {
+            "title": "Mesh Code Attribute Name",
+            "description": "Output attribute name for the mesh code",
+            "default": "_meshcode",
+            "type": "string"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
       "name": "PLATEAU4.DomainOfDefinitionValidator",
       "type": "processor",
       "description": "Validates domain of definition for PLATEAU4",
@@ -4254,26 +4471,6 @@
         "default",
         "rejected",
         "duplicateGmlIdStats"
-      ],
-      "categories": [
-        "PLATEAU"
-      ]
-    },
-    {
-      "name": "PLATEAU4.InstanceHistogramCreator",
-      "type": "processor",
-      "description": "Creates instance histogram for PLATEAU4 building features",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "InstanceHistogramCreatorParam",
-        "type": "object"
-      },
-      "builtin": false,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "default"
       ],
       "categories": [
         "PLATEAU"
@@ -4707,6 +4904,24 @@
       "outputPorts": [],
       "categories": [
         "File"
+      ]
+    },
+    {
+      "name": "SolidBoundaryValidator",
+      "type": "processor",
+      "description": "Validates the Solid Boundary Geometry",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "success",
+        "failed",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
       ]
     },
     {

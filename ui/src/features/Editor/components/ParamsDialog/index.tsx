@@ -11,7 +11,11 @@ import {
 import { useT } from "@flow/lib/i18n";
 import type { Node } from "@flow/types";
 
-import { ParamEditor, ValueEditorDialog } from "./components";
+import {
+  ParamEditor,
+  ValueEditorDialog,
+  PythonEditorDialog,
+} from "./components";
 import { FieldContext, setValueAtPath } from "./utils/fieldUtils";
 
 type Props = {
@@ -36,6 +40,7 @@ const ParamsDialog: React.FC<Props> = ({
   const t = useT();
 
   const [openValueEditor, setOpenValueEditor] = useState(false);
+  const [openPythonEditor, setOpenPythonEditor] = useState(false);
   const [currentFieldContext, setCurrentFieldContext] = useState<
     FieldContext | undefined
   >(undefined);
@@ -120,6 +125,10 @@ const ParamsDialog: React.FC<Props> = ({
                 setCurrentFieldContext(fieldContext);
                 setOpenValueEditor(true);
               }}
+              onPythonEditorOpen={(fieldContext) => {
+                setCurrentFieldContext(fieldContext);
+                setOpenPythonEditor(true);
+              }}
             />
           )}
         </DialogContent>
@@ -130,6 +139,17 @@ const ParamsDialog: React.FC<Props> = ({
           fieldContext={currentFieldContext}
           onClose={() => {
             setOpenValueEditor(false);
+            setCurrentFieldContext(undefined);
+          }}
+          onValueSubmit={handleValueChange}
+        />
+      )}
+      {currentFieldContext && (
+        <PythonEditorDialog
+          open={openPythonEditor}
+          fieldContext={currentFieldContext}
+          onClose={() => {
+            setOpenPythonEditor(false);
             setCurrentFieldContext(undefined);
           }}
           onValueSubmit={handleValueChange}

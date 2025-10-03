@@ -13,8 +13,9 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/file"
-	"github.com/reearth/reearthx/account/accountdomain/user"
-	"github.com/reearth/reearthx/account/accountdomain/workspace"
+	"github.com/reearth/reearth-flow/api/pkg/user"
+	"github.com/reearth/reearth-flow/api/pkg/workspace"
+	reearthxworkspace "github.com/reearth/reearthx/account/accountdomain/workspace"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmemory"
 	"github.com/reearth/reearthx/appx"
 	"github.com/spf13/afero"
@@ -33,7 +34,7 @@ func TestAsset_Create(t *testing.T) {
 
 	// aid := asset.NewID() - removed as the ID is generated in the interactor
 
-	ws := workspace.New().NewID().MustBuild()
+	ws := reearthxworkspace.New().NewID().MustBuild()
 
 	mfs := afero.NewMemMapFs()
 	f, _ := fs.NewFile(mfs, "", "")
@@ -56,7 +57,7 @@ func TestAsset_Create(t *testing.T) {
 	buf := bytes.NewBufferString("Hello")
 	buflen := int64(buf.Len())
 	res, err := uc.Create(ctx, interfaces.CreateAssetParam{
-		WorkspaceID: ws.ID(),
+		WorkspaceID: workspace.ID(ws.ID()),
 		File: &file.File{
 			Content:     io.NopCloser(buf),
 			Path:        "hoge.txt",
@@ -67,7 +68,7 @@ func TestAsset_Create(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, res)
 	assert.NotEmpty(t, res.ID())
-	assert.Equal(t, ws.ID(), res.Workspace())
+	assert.Equal(t, workspace.ID(ws.ID()), res.Workspace())
 	assert.Equal(t, "hoge.txt", res.Name())
 	assert.Equal(t, uint64(buflen), res.Size())
 	assert.Equal(t, "", res.ContentType())

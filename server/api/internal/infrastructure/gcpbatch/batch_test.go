@@ -9,7 +9,6 @@ import (
 	"github.com/googleapis/gax-go/v2"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -80,7 +79,7 @@ func TestBatchRepo_SubmitJob(t *testing.T) {
 
 	mockClient.On("CreateJob", ctx, mock.AnythingOfType("*batchpb.CreateJobRequest")).Return(&batchpb.Job{Name: expectedJobName}, nil)
 
-	jobName, err := batchRepo.SubmitJob(ctx, jobID, workflowURL, metadataURL, variables, projectID, accountdomain.WorkspaceID(workspaceID))
+	jobName, err := batchRepo.SubmitJob(ctx, jobID, workflowURL, metadataURL, variables, projectID, id.WorkspaceID(workspaceID))
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedJobName, jobName)

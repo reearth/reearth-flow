@@ -10,7 +10,7 @@ use tokio::sync::Mutex;
 use tracing::{debug, error};
 use yrs::sync::Error;
 
-use crate::broadcast::sub::Subscription;
+use crate::domain::value_objects::sub::Subscription;
 use crate::group::BroadcastGroup;
 
 type CompletionFuture = Pin<Box<dyn Future<Output = Result<(), Error>> + Send>>;
@@ -88,11 +88,6 @@ impl<Sink, Stream> Drop for Connection<Sink, Stream> {
             tokio::spawn(async move {
                 if let Err(e) = group_clone.cleanup_client_awareness().await {
                     error!("Failed to cleanup awareness: {}", e);
-                }
-            });
-            tokio::spawn(async move {
-                if let Err(e) = group.shutdown().await {
-                    error!("Failed to shutdown group: {}", e);
                 }
             });
         }

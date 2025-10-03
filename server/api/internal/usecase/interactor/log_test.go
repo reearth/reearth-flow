@@ -13,9 +13,8 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/log"
+	"github.com/reearth/reearth-flow/api/pkg/user"
 	"github.com/reearth/reearth-flow/api/pkg/userfacinglog"
-	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/appx"
 	"github.com/stretchr/testify/assert"
 )
@@ -56,7 +55,7 @@ func (m *mockJobRepo) FindByIDs(ctx context.Context, jobIDs id.JobIDList) ([]*jo
 	panic("unimplemented")
 }
 
-func (m *mockJobRepo) FindByWorkspace(ctx context.Context, workspaceID accountdomain.WorkspaceID, p *interfaces.PaginationParam) ([]*job.Job, *interfaces.PageBasedInfo, error) {
+func (m *mockJobRepo) FindByWorkspace(ctx context.Context, workspaceID id.WorkspaceID, p *interfaces.PaginationParam) ([]*job.Job, *interfaces.PageBasedInfo, error) {
 	panic("unimplemented")
 }
 
@@ -216,7 +215,7 @@ func TestLogInteractor_StopsMonitoringWhenJobCompleted(t *testing.T) {
 	completedJob, err := job.New().
 		NewID().
 		Deployment(id.NewDeploymentID()).
-		Workspace(accountdomain.WorkspaceID(id.NewWorkspaceID())).
+		Workspace(id.WorkspaceID(id.NewWorkspaceID())).
 		Status(job.StatusCompleted).
 		StartedAt(time.Now()).
 		Build()

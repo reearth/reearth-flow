@@ -10,16 +10,32 @@ import (
 	"testing"
 
 	"github.com/reearth/reearth-flow/api/internal/app/config"
+	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
+	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
+	usermockrepo "github.com/reearth/reearth-flow/api/pkg/user/mockrepo"
+	pkgworkspace "github.com/reearth/reearth-flow/api/pkg/workspace"
+	workspacemockrepo "github.com/reearth/reearth-flow/api/pkg/workspace/mockrepo"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 func TestQueryAssets(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operator := factory.NewUser(func(b *pkguser.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil)
+	mock := &TestMocks{
+		UserRepo: mockUserRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, true, mock)
 
 	// Query assets for the workspace
 	query := fmt.Sprintf(`query { assets(workspaceId: "%s", pagination: {page: 1, pageSize: 10}) { nodes { id fileName size contentType } totalCount } }`, wId1)
@@ -40,12 +56,22 @@ func TestQueryAssets(t *testing.T) {
 }
 
 func TestCreateAsset(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operator := factory.NewUser(func(b *pkguser.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil)
+	mock := &TestMocks{
+		UserRepo: mockUserRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, true, mock)
 
 	// Create multipart form with file upload
 	body := &bytes.Buffer{}
@@ -92,12 +118,22 @@ func TestCreateAsset(t *testing.T) {
 }
 
 func TestDeleteAsset(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operator := factory.NewUser(func(b *pkguser.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).Times(3)
+	mock := &TestMocks{
+		UserRepo: mockUserRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, true, mock)
 
 	// Create an asset first
 	body := &bytes.Buffer{}
@@ -168,12 +204,22 @@ func TestDeleteAsset(t *testing.T) {
 }
 
 func TestAssetSorting(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operator := factory.NewUser(func(b *pkguser.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).Times(4)
+	mock := &TestMocks{
+		UserRepo: mockUserRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, true, mock)
 
 	// Create multiple assets
 	fileNames := []string{"b.png", "a.png", "c.png"}
@@ -230,12 +276,22 @@ func TestAssetSorting(t *testing.T) {
 }
 
 func TestAssetKeywordSearch(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operator := factory.NewUser(func(b *pkguser.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).Times(4)
+	mock := &TestMocks{
+		UserRepo: mockUserRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, true, mock)
 
 	// Create assets with different names
 	fileNames := []string{"document.pdf", "image.png", "data.csv"}
@@ -290,12 +346,29 @@ func TestAssetKeywordSearch(t *testing.T) {
 }
 
 func TestWorkspaceAssetsQuery(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operator := factory.NewUser(func(b *pkguser.Builder) {})
+	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
+
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).Times(1)
+	mockWorkspaceRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(pkgworkspace.List{w}, nil)
+
+	mock := &TestMocks{
+		UserRepo:      mockUserRepo,
+		WorkspaceRepo: mockWorkspaceRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, true, mock)
 
 	// Query workspace with assets field - should return empty
 	query := fmt.Sprintf(`query { node(id: "%s", type: WORKSPACE) { ... on Workspace { id assets(pagination: {page: 1, pageSize: 10}) { nodes { id } totalCount } } } }`, wId1)

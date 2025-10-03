@@ -22,9 +22,6 @@ use yrs::sync::Error;
 #[cfg(feature = "auth")]
 use crate::AuthQuery;
 
-#[repr(transparent)]
-pub struct WarpConn(Connection<WarpSink, WarpStream>);
-
 #[derive(Debug)]
 pub struct WarpSink(SplitSink<WebSocket, Message>);
 

@@ -9,12 +9,13 @@ use std::sync::Arc;
 use tracing::error;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
+use crate::application::kv::DocOps;
+use crate::domain::entity::doc::Document;
+use crate::domain::value_objects::http::HistoryItem;
 use crate::domain::value_objects::http::{
     CreateSnapshotRequest, DocumentResponse, HistoryMetadataResponse, HistoryResponse,
-    RollbackRequest, SnapshotResponse,
+    ImportDocumentRequest, RollbackRequest, SnapshotResponse,
 };
-use crate::domain::value_objects::http::{Document, HistoryItem};
-use crate::storage::kv::DocOps;
 use crate::AppState;
 
 pub struct DocumentHandler;
@@ -85,13 +86,14 @@ impl DocumentHandler {
         }
 
         let storage = state.pool.get_store();
+        let doc = Doc::new();
+        let mut txn = doc.transact_mut();
 
         let result = async {
-            match storage.load_doc_v2(&doc_id).await {
-                Ok(doc) => {
-                    let read_txn = doc.transact();
-                    let state = read_txn.encode_diff_v1(&StateVector::default());
-                    drop(read_txn);
+            match storage.load_doc_v2(&doc_id, &mut txn).await {
+                Ok(()) => {
+                    let state = txn.encode_diff_v1(&StateVector::default());
+                    drop(txn);
 
                     let metadata = storage.get_latest_update_metadata(&doc_id).await?;
 
@@ -364,6 +366,35 @@ impl DocumentHandler {
             Ok(_) => StatusCode::OK.into_response(),
             Err(err) => {
                 error!("Failed to flush document {} to GCS: {}", doc_id, err);
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+        }
+    }
+
+    pub async fn copy_document(
+        Path((doc_id, source)): Path<(String, String)>,
+        State(state): State<Arc<AppState>>,
+    ) -> Response {
+        let storage = state.pool.get_store();
+        match storage.copy_document(&doc_id, &source).await {
+            Ok(_) => StatusCode::OK.into_response(),
+            Err(err) => {
+                error!("Failed to copy document {}: {}", doc_id, err);
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+        }
+    }
+
+    pub async fn import_document(
+        Path(doc_id): Path<String>,
+        State(state): State<Arc<AppState>>,
+        Json(request): Json<ImportDocumentRequest>,
+    ) -> Response {
+        let storage = state.pool.get_store();
+        match storage.import_document(&doc_id, &request.data).await {
+            Ok(_) => StatusCode::OK.into_response(),
+            Err(err) => {
+                error!("Failed to import document {}: {}", doc_id, err);
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()
             }
         }

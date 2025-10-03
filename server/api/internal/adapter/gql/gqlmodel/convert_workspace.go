@@ -1,34 +1,10 @@
 package gqlmodel
 
 import (
-	pkgworkspace "github.com/reearth/reearth-flow/api/pkg/workspace"
-	"github.com/reearth/reearthx/account/accountdomain/workspace"
+	"github.com/reearth/reearth-flow/api/pkg/workspace"
 )
 
 func ToWorkspace(t *workspace.Workspace) *Workspace {
-	if t == nil {
-		return nil
-	}
-
-	memberMap := t.Members().Users()
-	members := make([]*WorkspaceMember, 0, len(memberMap))
-	for u, r := range memberMap {
-		members = append(members, &WorkspaceMember{
-			UserID: IDFrom(u),
-			Role:   ToRole(r.Role),
-		})
-	}
-
-	return &Workspace{
-		ID:       IDFrom(t.ID()),
-		Name:     t.Name(),
-		Personal: t.IsPersonal(),
-		Members:  members,
-	}
-}
-
-// TODO: After migration, delete ToWorkspace and rename ToWorkspaceFromFlow to ToWorkspace.
-func ToWorkspaceFromFlow(t *pkgworkspace.Workspace) *Workspace {
 	if t == nil {
 		return nil
 	}
@@ -37,7 +13,7 @@ func ToWorkspaceFromFlow(t *pkgworkspace.Workspace) *Workspace {
 
 	for _, member := range t.Members() {
 		switch m := member.(type) {
-		case pkgworkspace.UserMember:
+		case workspace.UserMember:
 			workspaceMember := &WorkspaceMember{
 				UserID: IDFrom(m.UserID),
 				Role:   Role(m.Role),
@@ -51,7 +27,7 @@ func ToWorkspaceFromFlow(t *pkgworkspace.Workspace) *Workspace {
 				}
 			}
 			members = append(members, workspaceMember)
-		case pkgworkspace.IntegrationMember:
+		case workspace.IntegrationMember:
 			// For IntegrationMember, the current WorkspaceMember structure does not support it.
 			continue
 		}
@@ -63,20 +39,6 @@ func ToWorkspaceFromFlow(t *pkgworkspace.Workspace) *Workspace {
 		Personal: t.Personal(),
 		Members:  members,
 	}
-}
-
-func ToRole(r workspace.Role) Role {
-	switch r {
-	case workspace.RoleReader:
-		return RoleReader
-	case workspace.RoleWriter:
-		return RoleWriter
-	case workspace.RoleMaintainer:
-		return RoleMaintainer
-	case workspace.RoleOwner:
-		return RoleOwner
-	}
-	return Role("")
 }
 
 func FromRole(r Role) workspace.Role {
@@ -91,19 +53,4 @@ func FromRole(r Role) workspace.Role {
 		return workspace.RoleOwner
 	}
 	return workspace.Role("")
-}
-
-// TODO: After migration, delete FromRole and rename FromRoleToFlow to FromRole.
-func FromRoleToFlow(r Role) pkgworkspace.Role {
-	switch r {
-	case RoleReader:
-		return pkgworkspace.RoleReader
-	case RoleWriter:
-		return pkgworkspace.RoleWriter
-	case RoleMaintainer:
-		return pkgworkspace.RoleMaintainer
-	case RoleOwner:
-		return pkgworkspace.RoleOwner
-	}
-	return pkgworkspace.Role("")
 }

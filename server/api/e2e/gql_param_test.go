@@ -7,8 +7,14 @@ import (
 
 	"github.com/gavv/httpexpect/v2"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
+	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
+	usermockrepo "github.com/reearth/reearth-flow/api/pkg/user/mockrepo"
+	pkgworkspace "github.com/reearth/reearth-flow/api/pkg/workspace"
+	workspacemockrepo "github.com/reearth/reearth-flow/api/pkg/workspace/mockrepo"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 func createTestProject(t *testing.T, e *httpexpect.Expect) string {
@@ -69,12 +75,26 @@ func createTestProject(t *testing.T, e *httpexpect.Expect) string {
 }
 
 func TestDeclareParameter(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operator := factory.NewUser(func(b *pkguser.Builder) {})
+	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
+	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil)
+	mock := &TestMocks{
+		UserRepo:      mockUserRepo,
+		WorkspaceRepo: mockWorkspaceRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, true, mock)
 
 	// Create a test project first
 	projectID := createTestProject(t, e)
@@ -216,12 +236,26 @@ func TestDeclareParameter(t *testing.T) {
 }
 
 func TestUpdateParameter(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operator := factory.NewUser(func(b *pkguser.Builder) {})
+	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
+	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil)
+	mock := &TestMocks{
+		UserRepo:      mockUserRepo,
+		WorkspaceRepo: mockWorkspaceRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, true, mock)
 
 	// Create a test project first
 	projectID := createTestProject(t, e)
@@ -318,12 +352,26 @@ func TestUpdateParameter(t *testing.T) {
 }
 
 func TestUpdateParameterOrder(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operator := factory.NewUser(func(b *pkguser.Builder) {})
+	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
+	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil)
+	mock := &TestMocks{
+		UserRepo:      mockUserRepo,
+		WorkspaceRepo: mockWorkspaceRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, true, mock)
 
 	// Create a test project first
 	projectID := createTestProject(t, e)
@@ -419,12 +467,26 @@ func TestUpdateParameterOrder(t *testing.T) {
 }
 
 func TestRemoveParameter(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operator := factory.NewUser(func(b *pkguser.Builder) {})
+	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
+	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil)
+	mock := &TestMocks{
+		UserRepo:      mockUserRepo,
+		WorkspaceRepo: mockWorkspaceRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, true, mock)
 
 	// Create a test project first
 	projectID := createTestProject(t, e)
@@ -501,12 +563,26 @@ func TestRemoveParameter(t *testing.T) {
 }
 
 func TestParametersQuery(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operator := factory.NewUser(func(b *pkguser.Builder) {})
+	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
+	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil)
+	mock := &TestMocks{
+		UserRepo:      mockUserRepo,
+		WorkspaceRepo: mockWorkspaceRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, true, mock)
 
 	// Create a test project first
 	projectID := createTestProject(t, e)

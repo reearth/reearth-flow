@@ -19,6 +19,7 @@ import { AnyProjectVariable, VarType } from "@flow/types";
 import type { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
 
 import { getDefaultValue, inferProjectVariableType } from "./inferVariableType";
+import SimpleArrayInput from "./SimpleArrayInput";
 import VariableTypeSelector from "./VariableTypeSelector";
 
 type VariableMapping = {
@@ -214,9 +215,20 @@ export default function WorkflowImportVariablesMappingDialog({
                   <Label htmlFor={`default-${index}`}>
                     {t("Default Value")}
                   </Label>
-                  {mapping.type === "text" &&
-                  typeof mapping.defaultValue === "string" &&
-                  mapping.defaultValue.length > 50 ? (
+                  {mapping.type === "array" ? (
+                    <SimpleArrayInput
+                      value={
+                        Array.isArray(mapping.defaultValue)
+                          ? mapping.defaultValue
+                          : []
+                      }
+                      onChange={(newValue) =>
+                        handleDefaultValueChange(index, newValue)
+                      }
+                    />
+                  ) : mapping.type === "text" &&
+                    typeof mapping.defaultValue === "string" &&
+                    mapping.defaultValue.length > 50 ? (
                     <TextArea
                       id={`default-${index}`}
                       value={mapping.defaultValue}

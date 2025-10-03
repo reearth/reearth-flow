@@ -140,14 +140,22 @@ export default ({
   // Non-persistant state needs to be managed here
   const edges = useMemo(
     () =>
-      Object.values(rawEdges).map((edge) => ({
-        ...edge,
-        selected:
-          selectedEdgeIds.includes(edge.id) && !edge.selected
-            ? true
-            : (edge.selected ?? false),
-      })),
-    [rawEdges, selectedEdgeIds],
+      Object.values(rawEdges).map((edge) => {
+        const sourceNode = nodes.find((n) => n.id === edge.source);
+        const targetNode = nodes.find((n) => n.id === edge.target);
+        const sourceIsCollapsed = sourceNode?.data?.isCollapsed;
+        const targetIsCollapsed = targetNode?.data?.isCollapsed;
+
+        return {
+          ...edge,
+          selected:
+            selectedEdgeIds.includes(edge.id) && !edge.selected
+              ? true
+              : (edge.selected ?? false),
+          reconnectable: !(sourceIsCollapsed || targetIsCollapsed),
+        };
+      }),
+    [rawEdges, selectedEdgeIds, nodes],
   );
 
   const {
@@ -351,8 +359,17 @@ export default ({
     handleWorkflowClose,
   });
 
+  const handlePaneClick = useCallback(
+    (e: MouseEvent) => {
+      e.preventDefault();
+      handleSpotlightUserDeselect();
+    },
+    [handleSpotlightUserDeselect],
+  );
+
   return {
     currentWorkflowId,
+    currentYWorkflow,
     openWorkflows,
     currentProject,
     self,
@@ -405,5 +422,6 @@ export default ({
     handlePaneMouseMove,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
+    handlePaneClick,
   };
 };

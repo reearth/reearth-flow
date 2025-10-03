@@ -84,8 +84,8 @@ func ConvertFromReearthx(rxAsset *reearthxasset.Asset) *AssetWrapper {
 
 func ConvertToReearthx(
 	projectID id.ProjectID,
-	workspaceID accountdomain.WorkspaceID,
-	userID *accountdomain.UserID,
+	workspaceID id.WorkspaceID,
+	userID *id.UserID,
 	integrationID *id.IntegrationID,
 	fileName string,
 	size uint64,
@@ -98,7 +98,7 @@ func ConvertToReearthx(
 ) (*reearthxasset.Asset, error) {
 	builder := reearthxasset.New().
 		NewID().
-		Workspace(workspaceID).
+		Workspace(accountdomain.WorkspaceID(workspaceID)). // TODO: after migration, remove this cast
 		FileName(fileName).
 		Name(fileName).
 		Size(size).
@@ -109,7 +109,7 @@ func ConvertToReearthx(
 		Public(public)
 
 	if userID != nil {
-		builder = builder.CreatedByUser(*userID)
+		builder = builder.CreatedByUser(accountdomain.UserID(*userID)) // TODO: after migration, remove this cast
 	}
 
 	if integrationID != nil {
@@ -146,16 +146,23 @@ func (w *AssetWrapper) Project() id.ProjectID {
 	return flowProject
 }
 
-func (w *AssetWrapper) Workspace() accountdomain.WorkspaceID {
-	return w.asset.Workspace()
+func (w *AssetWrapper) Workspace() id.WorkspaceID {
+	// TODO: after migration, remove this cast
+	return id.WorkspaceID(w.asset.Workspace())
 }
 
 func (w *AssetWrapper) CreatedAt() time.Time {
 	return w.asset.CreatedAt()
 }
 
-func (w *AssetWrapper) User() *accountdomain.UserID {
-	return w.asset.User()
+func (w *AssetWrapper) User() *id.UserID {
+	a := w.asset.User()
+	if a == nil {
+		return nil
+	}
+	// TODO: after migration, remove this cast
+	uid := id.UserID(*a)
+	return &uid
 }
 
 func (w *AssetWrapper) Integration() *id.IntegrationID {

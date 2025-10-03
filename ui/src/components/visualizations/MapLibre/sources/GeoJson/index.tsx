@@ -19,7 +19,7 @@ const GeoJsonDataSource: React.FC<Props> = ({
   fileType,
   fileContent,
   mapRef,
-  enableClustering,
+  enableClustering = false,
   selectedFeatureId,
 }) => {
   const requestAnimationFrameRef = useRef<number | null>(null);
@@ -130,7 +130,11 @@ const GeoJsonDataSource: React.FC<Props> = ({
           ? ["case", ["==", ["get", "_originalId"], selectedFeatureId], 4, 2]
           : 2,
       },
-      filter: ["==", ["geometry-type"], "LineString"],
+      filter: [
+        "any",
+        ["==", ["geometry-type"], "LineString"],
+        ["==", ["geometry-type"], "MultiLineString"],
+      ],
     }),
     [selectedFeatureId],
   );
@@ -157,44 +161,48 @@ const GeoJsonDataSource: React.FC<Props> = ({
             ]
           : 0.8,
       },
-      filter: ["==", ["geometry-type"], "Polygon"],
+      filter: [
+        "any",
+        ["==", ["geometry-type"], "Polygon"],
+        ["==", ["geometry-type"], "MultiPolygon"],
+      ],
     }),
     [selectedFeatureId],
   );
+  // TODO: Readd clustering support at a later date or remove entirely if deemed unnecessary
+  // const clusterLayer: LayerProps = useMemo(
+  //   () => ({
+  //     id: "clusters",
+  //     type: "circle",
+  //     filter: ["has", "point_count"],
+  //     paint: {
+  //       "circle-color": [
+  //         "step",
+  //         ["get", "point_count"],
+  //         "#51bbd6",
+  //         100,
+  //         "#f1f075",
+  //         750,
+  //         "#f28cb1",
+  //       ],
+  //       "circle-radius": ["step", ["get", "point_count"], 20, 100, 30, 750, 40],
+  //     },
+  //   }),
+  //   [],
+  // );
 
-  const clusterLayer: LayerProps = useMemo(
-    () => ({
-      id: "clusters",
-      type: "circle",
-      filter: ["has", "point_count"],
-      paint: {
-        "circle-color": [
-          "step",
-          ["get", "point_count"],
-          "#51bbd6",
-          100,
-          "#f1f075",
-          750,
-          "#f28cb1",
-        ],
-        "circle-radius": ["step", ["get", "point_count"], 20, 100, 30, 750, 40],
-      },
-    }),
-    [],
-  );
-
-  const clusterCountLayer: LayerProps = useMemo(
-    () => ({
-      id: "cluster-count",
-      type: "symbol",
-      filter: ["has", "point_count"],
-      layout: {
-        "text-field": "{point_count_abbreviated}",
-        "text-size": 12,
-      },
-    }),
-    [],
-  );
+  // const clusterCountLayer: LayerProps = useMemo(
+  //   () => ({
+  //     id: "cluster-count",
+  //     type: "symbol",
+  //     filter: ["has", "point_count"],
+  //     layout: {
+  //       "text-field": "{point_count_abbreviated}",
+  //       "text-size": 12,
+  //     },
+  //   }),
+  //   [],
+  // );
 
   useEffect(() => {
     const map = mapRef.current;
@@ -232,27 +240,40 @@ const GeoJsonDataSource: React.FC<Props> = ({
   );
 
   const hasLineStringFeatures = useMemo(
-    () => fileContent?.features?.some((f) => f.geometry.type === "LineString"),
+    () =>
+      fileContent?.features?.some(
+        (f) =>
+          f.geometry.type === "LineString" ||
+          f.geometry.type === "MultiLineString",
+      ),
     [fileContent?.features],
   );
 
   const hasPolygonFeatures = useMemo(
-    () => fileContent?.features?.some((f) => f.geometry.type === "Polygon"),
+    () =>
+      fileContent?.features?.some(
+        (f) =>
+          f.geometry.type === "Polygon" || f.geometry.type === "MultiPolygon",
+      ),
     [fileContent?.features],
   );
-
+  // const hasClustering =
+  //   enableClustering &&
+  //   hasPointFeatures &&
+  //   !hasPolygonFeatures &&
+  //   !hasLineStringFeatures;
   return (
     <Source
       id={SOURCE_ID}
       type={fileType}
       data={fileContent}
-      cluster={enableClustering && hasPointFeatures}
+      cluster={enableClustering}
       promoteId="_originalId">
       {hasPointFeatures && <Layer {...pointLayer} />}
       {hasLineStringFeatures && <Layer {...lineStringLayer} />}
       {hasPolygonFeatures && <Layer {...polygonLayer} />}
-      <Layer {...clusterLayer} />
-      <Layer {...clusterCountLayer} />
+      {/* <Layer {...clusterLayer} />
+      <Layer {...clusterCountLayer} /> */}
     </Source>
   );
 };

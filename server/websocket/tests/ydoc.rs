@@ -1,13 +1,16 @@
 #[cfg(test)]
 mod tests {
     use async_trait::async_trait;
-    use websocket::storage::kv::keys::{key_doc, key_oid, key_state_vector, key_update, OID};
+    use websocket::domain::repository::kv::{KVEntry, KVStore};
+    use websocket::domain::value_objects::keys::{
+        key_doc, key_oid, key_state_vector, key_update, OID,
+    };
     use yrs::updates::encoder::Encode;
     use yrs::{Doc, GetString, ReadTxn, StateVector, Text, Transact};
 
     use std::collections::BTreeMap;
     use std::sync::{Arc, Mutex};
-    use websocket::storage::kv::*;
+    use websocket::application::kv::*;
 
     struct MockEntry {
         key: Vec<u8>,
@@ -164,7 +167,7 @@ mod tests {
         name: &[u8],
         txn: &impl ReadTxn,
         _redis: &MockRedisStore,
-    ) -> Result<(), error::Error> {
+    ) -> Result<(), anyhow::Error> {
         let doc_state = txn.encode_diff_v1(&StateVector::default());
         let state_vector = txn.state_vector().encode_v1();
 
@@ -208,7 +211,7 @@ mod tests {
         name: &[u8],
         update: &[u8],
         _redis: &MockRedisStore,
-    ) -> Result<u32, error::Error> {
+    ) -> Result<u32, anyhow::Error> {
         if let Some(oid) = get_oid(store, name).await? {
             let last_clock = {
                 let end = key_update(oid, u32::MAX)?;
@@ -313,7 +316,10 @@ mod tests {
         let txn = doc.transact();
         store.flush_doc_v2(doc_name, &txn).await.unwrap();
 
-        let loaded_doc = store.load_doc_v2(doc_name).await.unwrap();
+        let loaded_doc = Doc::new();
+        let mut txn = loaded_doc.transact_mut();
+        store.load_doc_v2(doc_name, &mut txn).await.unwrap();
+        drop(txn);
 
         let loaded_text = loaded_doc.get_or_insert_text("test");
         let txn = loaded_doc.transact();

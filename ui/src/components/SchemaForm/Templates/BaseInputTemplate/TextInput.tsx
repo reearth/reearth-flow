@@ -17,6 +17,7 @@ const TextInput = <
 >(
   props: BaseInputTemplateProps<T, S, F> & {
     onEditorOpen?: () => void;
+    onPythonEditorOpen?: () => void;
   },
 ) => {
   const {
@@ -31,6 +32,7 @@ const TextInput = <
     onBlur,
     onFocus,
     onEditorOpen,
+    onPythonEditorOpen,
     options,
     schema,
     rawErrors = [],
@@ -86,6 +88,7 @@ const TextInput = <
         value={value}
         defaultValue={defaultValue}
         onEditorOpen={onEditorOpen}
+        onPythonEditorOpen={onPythonEditorOpen}
         onReset={handleReset}
       />
     </div>

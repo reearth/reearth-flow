@@ -8,6 +8,13 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+enum ExpectedFiles {
+    Single(String),
+    Multiple(Vec<String>),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct WorkflowTestProfile {
     workflow_path: String,
@@ -32,7 +39,7 @@ struct WorkflowTestProfile {
 #[serde(rename_all = "camelCase")]
 struct TestOutput {
     #[serde(skip_serializing_if = "Option::is_none")]
-    expected_file: Option<String>,
+    expected_file: Option<ExpectedFiles>,
     #[serde(skip_serializing_if = "Option::is_none")]
     expected_inline: Option<serde_json::Value>,
     #[serde(default)]
@@ -158,11 +165,6 @@ fn generate_test_code(test_cases: &[TestCase], testdata_dir: &Path) -> Result<To
                     PathBuf::from(#fixture_dir_str),
                     profile,
                 )?;
-
-                // Test description: #_description
-
-                // Setup environment
-                ctx.setup_environment()?;
 
                 // Load and run workflow
                 let workflow = ctx.load_workflow()?;

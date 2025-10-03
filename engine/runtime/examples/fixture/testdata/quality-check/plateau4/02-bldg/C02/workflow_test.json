@@ -2,11 +2,10 @@
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "description": "Test PLATEAU4 C02 quality check",
   "expectedOutput": {
-    "expectedFile": "02_bldg_地物インスタンス数.tsv",
-    "comparison": "exact",
-    "except": "\"GmlFilePath\""
+    "expectedFile": "02_建築物_地物インスタンス数.csv",
+    "except": "GmlFilePath"
   },
-  "cityGmlPath": "udx/bldg/c2.gml",
+  "cityGmlPath": "udx/bldg/input.gml",
   "codelists": "codelists",
   "schemas": "schemas",
   "skip": false

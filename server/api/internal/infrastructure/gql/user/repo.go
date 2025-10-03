@@ -95,11 +95,64 @@ func (r *userRepo) UpdateMe(ctx context.Context, a user.UpdateAttrs) (*user.User
 	return util.ToMe(m.UpdateMe.Me)
 }
 
+func (r *userRepo) Signup(ctx context.Context, a user.SignupAttrs) (*user.User, error) {
+	in := SignupInput{}
+	if a.ID != nil {
+		s := graphql.ID(a.ID.String())
+		in.ID = &s
+	}
+	if a.WorkspaceID != nil {
+		s := graphql.ID(a.WorkspaceID.String())
+		in.WorkspaceID = &s
+	}
+	in.Name = graphql.String(a.Name)
+	in.Email = graphql.String(a.Email)
+	in.Password = graphql.String(a.Password)
+	if a.Secret != nil {
+		s := graphql.String(*a.Secret)
+		in.Secret = &s
+	}
+	if a.Lang != nil {
+		langCode := graphql.String(a.Lang.String())
+		in.Lang = &langCode
+	}
+	if a.Theme != nil {
+		theme := graphql.String(string(*a.Theme))
+		in.Theme = &theme
+	}
+	if a.MockAuth {
+		mockAuth := graphql.Boolean(a.MockAuth)
+		in.MockAuth = &mockAuth
+	}
+
+	var m signupMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return nil, err
+	}
+
+	return util.ToUser(m.Signup.User)
+}
+
 func (r *userRepo) SignupOIDC(ctx context.Context, a user.SignupOIDCAttrs) (*user.User, error) {
 	in := SignupOIDCInput{}
 	if a.UserID != nil {
 		s := graphql.ID(a.UserID.String())
 		in.ID = &s
+	}
+	if a.Name != nil {
+		s := graphql.String(*a.Name)
+		in.Name = &s
+	}
+	if a.Email != nil {
+		s := graphql.String(*a.Email)
+		in.Email = &s
+	}
+	if a.Sub != nil {
+		s := graphql.String(*a.Sub)
+		in.Sub = &s
 	}
 	if a.Lang != nil {
 		langCode := graphql.String(a.Lang.String())
@@ -143,4 +196,105 @@ func (r *userRepo) RemoveMyAuth(ctx context.Context, authProvider string) (*user
 	}
 
 	return util.ToMe(m.RemoveMyAuth.Me)
+}
+
+func (r *userRepo) DeleteMe(ctx context.Context, uid id.UserID) error {
+	in := DeleteMeInput{
+		ID: graphql.ID(uid.String()),
+	}
+
+	var m deleteMeMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *userRepo) CreateVerification(ctx context.Context, email string) error {
+	if email == "" {
+		return nil
+	}
+
+	in := CreateVerificationInput{
+		Email: graphql.String(string(email)),
+	}
+
+	var m createVerificationMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *userRepo) VerifyUser(ctx context.Context, code string) (*user.User, error) {
+	if code == "" {
+		return nil, nil
+	}
+
+	in := VerifyUserInput{
+		Code: graphql.String(string(code)),
+	}
+
+	var m verifyUserMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return nil, err
+	}
+
+	return util.ToUser(m.VerifyUser.User)
+}
+
+func (r *userRepo) StartPasswordReset(ctx context.Context, email string) error {
+	if email == "" {
+		return nil
+	}
+
+	in := StartPasswordResetInput{
+		Email: graphql.String(string(email)),
+	}
+
+	var m startPasswordResetMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *userRepo) PasswordReset(ctx context.Context, password string, token string) error {
+	if password == "" || token == "" {
+		return nil
+	}
+
+	in := PasswordResetInput{
+		Password: graphql.String(string(password)),
+		Token:    graphql.String(string(token)),
+	}
+
+	var m passwordResetMutation
+	vars := map[string]interface{}{
+		"input": in,
+	}
+
+	if err := r.client.Mutate(ctx, &m, vars); err != nil {
+		return err
+	}
+
+	return nil
 }

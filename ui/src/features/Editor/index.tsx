@@ -5,12 +5,7 @@ import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 import Canvas from "@flow/features/Canvas";
 import { YWorkflow } from "@flow/lib/yjs/types";
 
-import {
-  TopBar,
-  OverlayUI,
-  ParamsDialog,
-  NodeDeletionDialog,
-} from "./components";
+import { OverlayUI, ParamsDialog, NodeDeletionDialog } from "./components";
 import { EditorContextType, EditorProvider } from "./editorContext";
 import useHooks from "./hooks";
 
@@ -34,6 +29,7 @@ export default function Editor({
 }: Props) {
   const {
     currentWorkflowId,
+    currentYWorkflow,
     openWorkflows,
     currentProject,
     self,
@@ -84,6 +80,7 @@ export default function Editor({
     handlePaneMouseMove,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
+    handlePaneClick,
   } = useHooks({
     yDoc,
     yWorkflows,
@@ -96,47 +93,51 @@ export default function Editor({
     (): EditorContextType => ({
       onNodesChange: handleNodesChange,
       onNodeSettings: handleNodeSettings,
+      currentYWorkflow,
+      undoTrackerActionWrapper,
     }),
-    [handleNodesChange, handleNodeSettings],
+    [
+      handleNodesChange,
+      handleNodeSettings,
+      currentYWorkflow,
+      undoTrackerActionWrapper,
+    ],
   );
 
   return (
     <div className="flex h-screen flex-col">
       <EditorProvider value={editorContext}>
-        <TopBar
-          currentWorkflowId={currentWorkflowId}
-          project={currentProject}
-          yDoc={yDoc}
-          openWorkflows={openWorkflows}
-          allowedToDeploy={allowedToDeploy}
-          isSaving={isSaving}
-          self={self}
-          users={users}
-          spotlightUserClientId={spotlightUserClientId}
-          onProjectShare={handleProjectShare}
-          onProjectExport={handleCurrentProjectExport}
-          onWorkflowDeployment={handleWorkflowDeployment}
-          onWorkflowClose={handleWorkflowClose}
-          onWorkflowChange={handleWorkflowChange}
-          onDebugRunStart={handleDebugRunStart}
-          onDebugRunStop={handleDebugRunStop}
-          onProjectSnapshotSave={handleProjectSnapshotSave}
-          onSpotlightUserSelect={handleSpotlightUserSelect}
-          onSpotlightUserDeselect={handleSpotlightUserDeselect}
-        />
-
         <div
           className={`flex flex-1 flex-col ${spotlightUser ? "border" : ""}`}
           style={{ borderColor: spotlightUser?.color || "" }}>
           <OverlayUI
             nodePickerOpen={nodePickerOpen}
+            project={currentProject}
+            yDoc={yDoc}
+            self={self}
+            users={users}
+            spotlightUserClientId={spotlightUserClientId}
+            isSaving={isSaving}
+            allowedToDeploy={allowedToDeploy}
             canUndo={canUndo}
             canRedo={canRedo}
             isMainWorkflow={isMainWorkflow}
+            openWorkflows={openWorkflows}
+            currentWorkflowId={currentWorkflowId}
+            onWorkflowChange={handleWorkflowChange}
+            onWorkflowClose={handleWorkflowClose}
             onNodesAdd={handleNodesAdd}
             onNodePickerClose={handleNodePickerClose}
-            onWorkflowUndo={handleWorkflowUndo}
             onWorkflowRedo={handleWorkflowRedo}
+            onWorkflowUndo={handleWorkflowUndo}
+            onProjectShare={handleProjectShare}
+            onProjectExport={handleCurrentProjectExport}
+            onWorkflowDeployment={handleWorkflowDeployment}
+            onDebugRunStart={handleDebugRunStart}
+            onDebugRunStop={handleDebugRunStop}
+            onProjectSnapshotSave={handleProjectSnapshotSave}
+            onSpotlightUserSelect={handleSpotlightUserSelect}
+            onSpotlightUserDeselect={handleSpotlightUserDeselect}
             onLayoutChange={handleLayoutChange}>
             <Canvas
               nodes={nodes}
@@ -159,6 +160,7 @@ export default function Editor({
               onCut={handleCut}
               onPaste={handlePaste}
               onPaneMouseMove={handlePaneMouseMove}
+              onPaneClick={handlePaneClick}
             />
           </OverlayUI>
 

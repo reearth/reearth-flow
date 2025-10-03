@@ -6,11 +6,10 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/account/accountdomain"
 )
 
 func (r *mutationResolver) CreateProject(ctx context.Context, input gqlmodel.CreateProjectInput) (*gqlmodel.ProjectPayload, error) {
-	tid, err := gqlmodel.ToID[accountdomain.Workspace](input.WorkspaceID)
+	tid, err := gqlmodel.ToID[id.Workspace](input.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +68,7 @@ func (r *mutationResolver) RunProject(ctx context.Context, input gqlmodel.RunPro
 		return nil, err
 	}
 
-	_, err = gqlmodel.ToID[accountdomain.Workspace](input.WorkspaceID)
+	_, err = gqlmodel.ToID[id.Workspace](input.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}

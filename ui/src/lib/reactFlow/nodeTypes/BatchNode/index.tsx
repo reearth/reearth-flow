@@ -35,7 +35,7 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
       )}
 
       <div
-        className={`relative z-0 h-full rounded-b-md border-x border-b bg-orange-400/20 p-2 ${selected ? "border-orange-400/50" : "border-transparent"}`}
+        className={`relative z-0 h-full rounded-b-lg border-x border-b bg-orange-400/20 p-2 shadow-md shadow-secondary backdrop-blur-xs ${selected ? "border-orange-400/50" : "border-transparent"}`}
         ref={(element) => {
           if (element) {
             element.style.setProperty(
@@ -46,7 +46,7 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
           }
         }}>
         <div
-          className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-md border-x border-t bg-secondary p-1 px-2 ${selected ? "border-orange-400/50" : "border-transparent"}`}
+          className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-lg border-x border-t bg-secondary p-1 ${selected ? "border-orange-400/50" : "border-transparent"}`}
           ref={(element) => {
             if (element)
               element.style.setProperty(
@@ -55,7 +55,7 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
                 "important",
               );
           }}>
-          <div className="rounded-sm bg-primary p-1">
+          <div className="rounded-lg bg-primary p-1">
             <RectangleDashedIcon
               className="w-[15px] fill-orange-400/80"
               weight="bold"

@@ -35,7 +35,7 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 const DialogContent = forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
-    size?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl";
+    size?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "full";
     position?: "center" | "off-center" | "top";
     overlayBgClass?: string;
     hideCloseButton?: boolean;
@@ -83,6 +83,9 @@ const DialogContent = forwardRef<
               : position === "center"
                 ? "top-[50%] translate-y-[-50%]"
                 : undefined,
+          size === "full"
+            ? "top-0 right-0 bottom-0 left-0 max-w-full translate-0"
+            : undefined,
           className,
         )}
         onOpenAutoFocus={(e) =>

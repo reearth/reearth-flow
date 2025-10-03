@@ -6,24 +6,28 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/gorilla/websocket"
 	echo "github.com/labstack/echo/v4"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gql"
 	"github.com/reearth/reearthx/log"
 )
 
-type tempNewAuthMiddlewares []echo.MiddlewareFunc
+type authMiddlewares []echo.MiddlewareFunc
 
-type tempNewAuthMiddlewaresParam struct {
-	GQLClient *gql.Client
-	SkipOps   map[string]struct{}
+type authMiddlewaresParam struct {
+	Cfg     *ServerConfig
+	SkipOps map[string]struct{}
 }
 
-func newTempNewAuthMiddlewares(param *tempNewAuthMiddlewaresParam) tempNewAuthMiddlewares {
+func newAuthMiddlewares(param *authMiddlewaresParam) authMiddlewares {
 	return []echo.MiddlewareFunc{
 		gqlOpNameMiddleware(),
 		jwtContextMiddleware(),
-		tempNewAuthMiddleware(param.GQLClient, param.SkipOps),
+		authMiddleware(param.Cfg.AccountGQLClient, param.SkipOps),
+		// TODO: Currently, the following middleware is necessary because permission checks such as filterByWorkspaces are performed in mongo.repo.
+		// It will be removed when centralized permission checks by the account server are implemented.
+		attachOpMiddleware(param.Cfg),
 	}
 }
 
@@ -69,9 +73,18 @@ func jwtContextMiddleware() echo.MiddlewareFunc {
 	}
 }
 
-func tempNewAuthMiddleware(gqlClient *gql.Client, skipOps map[string]struct{}) echo.MiddlewareFunc {
+func authMiddleware(gqlClient *gql.Client, skipOps map[string]struct{}) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			if websocket.IsWebSocketUpgrade(c.Request()) {
+				log.Debugfc(c.Request().Context(), "authMiddleware: skip FindMe on WS upgrade (path=%s)", c.Path())
+				return next(c)
+			}
+
+			if c.Path() == "/api/signup" {
+				return next(c)
+			}
+
 			if _, skip := skipOps[adapter.GQLOperationName(c.Request().Context())]; skip {
 				return next(c)
 			}
@@ -83,53 +96,16 @@ func tempNewAuthMiddleware(gqlClient *gql.Client, skipOps map[string]struct{}) e
 			// This will eliminate the overhead of making an API call to fetch user data for each request.
 			u, err := gqlClient.UserRepo.FindMe(ctx)
 			if err != nil {
-				log.Errorc(ctx, err, "failed to fetch user")
-				return echo.NewHTTPError(http.StatusInternalServerError, "server error: failed to fetch user")
-			}
-			if u == nil {
-				return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized: user not found")
+				log.Debugc(ctx, err, "authMiddleware: FindMe failed; continue as anonymous")
+			} else if u == nil {
+				log.Debugfc(ctx, "authMiddleware: no user found; continue as anonymous")
+			} else {
+				ctx = adapter.AttachUser(ctx, u)
+				log.Debugfc(ctx, "authMiddleware: user attached: id=%s", u.ID())
 			}
 
-			ctx = adapter.AttachFlowUser(ctx, u)
 			c.SetRequest(c.Request().WithContext(ctx))
 			return next(c)
-		}
-	}
-}
-
-// TODO: This function is in the process of migrating the task "Replace user management in API with reearth accounts".
-// Once completed, only `tempNewAuthMWs` will be used, making this function unnecessary.
-func conditionalGraphQLAuthMiddleware(
-	defaultMWs []echo.MiddlewareFunc,
-	tempNewAuthMWs []echo.MiddlewareFunc,
-) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			middlewares := defaultMWs
-
-			if c.Path() == "/api/graphql" && c.Request().Method == http.MethodPost {
-				var body struct {
-					OperationName string `json:"operationName"`
-				}
-				data, err := io.ReadAll(c.Request().Body)
-				if err == nil {
-					_ = json.Unmarshal(data, &body)
-					c.Request().Body = io.NopCloser(bytes.NewBuffer(data))
-				}
-
-				switch body.OperationName {
-				case "GetMe":
-					middlewares = tempNewAuthMWs
-				case "GetWorkspaceById", "GetWorkspaces", "SearchUser", "UpdateMe", "CreateWorkspace", "UpdateWorkspace", "DeleteWorkspace", "AddMemberToWorkspace", "UpdateMemberOfWorkspace", "RemoveMemberFromWorkspace", "Signup", "RemoveMyAuth":
-					middlewares = append(defaultMWs, tempNewAuthMWs...)
-				}
-			}
-
-			composed := next
-			for i := len(middlewares) - 1; i >= 0; i-- {
-				composed = middlewares[i](composed)
-			}
-			return composed(c)
 		}
 	}
 }

@@ -4,5 +4,7 @@ export { default as NodePickerDialog } from "./NodePickerDialog";
 export { default as LayoutOptionsDialog } from "./LayoutOptionsDialog";
 export { default as DebugLogs } from "./DebugPanel/DebugLogs";
 export { default as DebugPreview } from "./DebugPanel/DebugPreview";
-export { default as JobStatus } from "./JobStatus";
 export { default as DebugPanel } from "./DebugPanel";
+export { default as Homebar } from "./Homebar";
+export { default as ActionBar } from "./ActionBar";
+export { default as DebugActionBar } from "./DebugActionBar";

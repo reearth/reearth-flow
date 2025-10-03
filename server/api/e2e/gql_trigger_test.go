@@ -9,16 +9,30 @@ import (
 
 	"github.com/gavv/httpexpect/v2"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
+	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
+	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
+	usermockrepo "github.com/reearth/reearth-flow/api/pkg/user/mockrepo"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
 func TestCreateTimeDrivenTrigger(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operator := factory.NewUser(func(b *pkguser.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
+	mock := &TestMocks{
+		UserRepo: mockUserRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, true, mock)
 
 	deploymentId := createTestDeployment(t, e)
 	assert.NotEmpty(t, deploymentId)
@@ -189,12 +203,22 @@ func createTimeDrivenTrigger(t *testing.T, e *httpexpect.Expect, deploymentId st
 }
 
 func TestUpdateTrigger(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operator := factory.NewUser(func(b *pkguser.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
+	mock := &TestMocks{
+		UserRepo: mockUserRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, true, mock)
 
 	deploymentId := createTestDeployment(t, e)
 	query := `mutation($input: CreateTriggerInput!) {
@@ -299,12 +323,22 @@ func TestUpdateTrigger(t *testing.T) {
 }
 
 func TestCreateAPIDrivenTrigger(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operator := factory.NewUser(func(b *pkguser.Builder) {})
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
+	mock := &TestMocks{
+		UserRepo: mockUserRepo,
+	}
+
 	e, _ := StartGQLServer(t, &config.Config{
 		Origins: []string{"https://example.com"},
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, true, mock)
 
 	deploymentId := createTestDeployment(t, e)
 	assert.NotEmpty(t, deploymentId)

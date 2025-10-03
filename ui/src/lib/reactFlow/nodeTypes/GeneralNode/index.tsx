@@ -23,6 +23,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
   data,
   type,
   selected,
+  id,
 }) => {
   const {
     officialName,
@@ -33,14 +34,15 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
     borderColor,
     selectedColor,
     selectedBackgroundColor,
-  } = useHooks({ data, type });
+    handleCollapsedToggle,
+  } = useHooks({ data, type, nodeId: id });
 
   return (
     <div
-      className={`max-w-[200px] min-w-[150px] rounded-md border bg-secondary ${selected ? selectedColor : borderColor}`}>
-      <div className="relative m-1 flex h-[25px] items-center gap-1 rounded-sm">
+      className={`max-w-[200px] min-w-[150px] rounded-lg border bg-secondary p-1 shadow-md shadow-secondary backdrop-blur-xs ${selected ? selectedColor : borderColor}`}>
+      <div className="relative flex h-[25px] items-center gap-1 rounded-sm">
         <div
-          className={`flex justify-center self-center rounded-sm border p-1 align-middle ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className}`}>
+          className={`flex justify-center self-center rounded-lg border p-1 align-middle ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className}`}>
           {type === "reader" ? (
             <DatabaseIcon className={typeIconClasses} />
           ) : type === "writer" ? (
@@ -58,7 +60,13 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
         </div>
         {/* <CaretRight weight="fill" /> */}
       </div>
-      <Handles nodeType={type} inputs={inputs} outputs={outputs} />
+      <Handles
+        nodeType={type}
+        inputs={inputs}
+        outputs={outputs}
+        isCollapsed={data.isCollapsed}
+        onCollapsedToggle={handleCollapsedToggle}
+      />
     </div>
   );
 };

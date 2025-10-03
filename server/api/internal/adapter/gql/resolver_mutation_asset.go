@@ -6,11 +6,10 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/account/accountdomain"
 )
 
 func (r *mutationResolver) CreateAsset(ctx context.Context, input gqlmodel.CreateAssetInput) (*gqlmodel.CreateAssetPayload, error) {
-	wid, err := gqlmodel.ToID[accountdomain.Workspace](input.WorkspaceID)
+	wid, err := gqlmodel.ToID[id.Workspace](input.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}

@@ -1,7 +1,7 @@
 /* eslint-disable */
 import { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core';
 export type Maybe<T> = T | null;
-export type InputMaybe<T> = Maybe<T>;
+export type InputMaybe<T> = T | null | undefined;
 export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
 export type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]?: Maybe<T[SubKey]> };
 export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]: Maybe<T[SubKey]> };
@@ -15,6 +15,7 @@ export type Scalars = {
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
   Any: { input: any; output: any; }
+  Bytes: { input: any; output: any; }
   DateTime: { input: any; output: any; }
   FileSize: { input: any; output: any; }
   JSON: { input: any; output: any; }
@@ -422,6 +423,7 @@ export type Mutation = {
   __typename?: 'Mutation';
   addMemberToWorkspace?: Maybe<AddMemberToWorkspacePayload>;
   cancelJob: CancelJobPayload;
+  copyProject: Scalars['Boolean']['output'];
   createAsset?: Maybe<CreateAssetPayload>;
   createDeployment?: Maybe<DeploymentPayload>;
   createProject?: Maybe<ProjectPayload>;
@@ -435,6 +437,7 @@ export type Mutation = {
   deleteTrigger: Scalars['Boolean']['output'];
   deleteWorkspace?: Maybe<DeleteWorkspacePayload>;
   executeDeployment?: Maybe<JobPayload>;
+  importProject: Scalars['Boolean']['output'];
   previewSnapshot?: Maybe<PreviewSnapshot>;
   removeMemberFromWorkspace?: Maybe<RemoveMemberFromWorkspacePayload>;
   removeMyAuth?: Maybe<UpdateMePayload>;
@@ -466,6 +469,12 @@ export type MutationAddMemberToWorkspaceArgs = {
 
 export type MutationCancelJobArgs = {
   input: CancelJobInput;
+};
+
+
+export type MutationCopyProjectArgs = {
+  projectId: Scalars['ID']['input'];
+  source: Scalars['ID']['input'];
 };
 
 
@@ -532,6 +541,12 @@ export type MutationDeleteWorkspaceArgs = {
 
 export type MutationExecuteDeploymentArgs = {
   input: ExecuteDeploymentInput;
+};
+
+
+export type MutationImportProjectArgs = {
+  data: Scalars['Bytes']['input'];
+  projectId: Scalars['ID']['input'];
 };
 
 
@@ -724,6 +739,7 @@ export type ParameterBatchInput = {
 };
 
 export enum ParameterType {
+  Array = 'ARRAY',
   Choice = 'CHOICE',
   Color = 'COLOR',
   Datetime = 'DATETIME',
@@ -1608,10 +1624,20 @@ export type GetProjectByIdQueryVariables = Exact<{
 }>;
 
 
-export type GetProjectByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Deployment' } | { __typename: 'Job' } | { __typename: 'NodeExecution' } | (
-    { __typename: 'Project' }
-    & { ' $fragmentRefs'?: { 'ProjectFragment': ProjectFragment } }
-  ) | { __typename: 'ProjectDocument' } | { __typename: 'Trigger' } | { __typename: 'User' } | { __typename: 'Workspace' } | null };
+export type GetProjectByIdQuery = { __typename?: 'Query', node?:
+    | { __typename: 'Asset' }
+    | { __typename: 'Deployment' }
+    | { __typename: 'Job' }
+    | { __typename: 'NodeExecution' }
+    | (
+      { __typename: 'Project' }
+      & { ' $fragmentRefs'?: { 'ProjectFragment': ProjectFragment } }
+    )
+    | { __typename: 'ProjectDocument' }
+    | { __typename: 'Trigger' }
+    | { __typename: 'User' }
+    | { __typename: 'Workspace' }
+   | null };
 
 export type UpdateProjectMutationVariables = Exact<{
   input: UpdateProjectInput;
@@ -1639,6 +1665,22 @@ export type RunProjectMutation = { __typename?: 'Mutation', runProject?: { __typ
       { __typename?: 'Job' }
       & { ' $fragmentRefs'?: { 'JobFragment': JobFragment } }
     ) } | null };
+
+export type CopyProjectMutationVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+  source: Scalars['ID']['input'];
+}>;
+
+
+export type CopyProjectMutation = { __typename?: 'Mutation', copyProject: boolean };
+
+export type ImportProjectMutationVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+  data: Scalars['Bytes']['input'];
+}>;
+
+
+export type ImportProjectMutation = { __typename?: 'Mutation', importProject: boolean };
 
 export type GetProjectParametersQueryVariables = Exact<{
   projectId: Scalars['ID']['input'];
@@ -1837,10 +1879,20 @@ export type GetWorkspaceByIdQueryVariables = Exact<{
 }>;
 
 
-export type GetWorkspaceByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Deployment' } | { __typename: 'Job' } | { __typename: 'NodeExecution' } | { __typename: 'Project' } | { __typename: 'ProjectDocument' } | { __typename: 'Trigger' } | { __typename: 'User' } | (
-    { __typename: 'Workspace' }
-    & { ' $fragmentRefs'?: { 'WorkspaceFragment': WorkspaceFragment } }
-  ) | null };
+export type GetWorkspaceByIdQuery = { __typename?: 'Query', node?:
+    | { __typename: 'Asset' }
+    | { __typename: 'Deployment' }
+    | { __typename: 'Job' }
+    | { __typename: 'NodeExecution' }
+    | { __typename: 'Project' }
+    | { __typename: 'ProjectDocument' }
+    | { __typename: 'Trigger' }
+    | { __typename: 'User' }
+    | (
+      { __typename: 'Workspace' }
+      & { ' $fragmentRefs'?: { 'WorkspaceFragment': WorkspaceFragment } }
+    )
+   | null };
 
 export type UpdateWorkspaceMutationVariables = Exact<{
   input: UpdateWorkspaceInput;
@@ -1937,6 +1989,8 @@ export const GetProjectByIdDocument = {"kind":"Document","definitions":[{"kind":
 export const UpdateProjectDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateProject"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateProjectInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateProject"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"project"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Project"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Deployment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Deployment"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"projectId"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"workflowUrl"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"project"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Project"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Project"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"sharedToken"}},{"kind":"Field","name":{"kind":"Name","value":"deployment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Deployment"}}]}}]}}]} as unknown as DocumentNode<UpdateProjectMutation, UpdateProjectMutationVariables>;
 export const DeleteProjectDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteProject"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DeleteProjectInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteProject"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"projectId"}}]}}]}}]} as unknown as DocumentNode<DeleteProjectMutation, DeleteProjectMutationVariables>;
 export const RunProjectDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RunProject"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"RunProjectInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"runProject"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"job"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Job"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Job"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Job"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"workspaceId"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"startedAt"}},{"kind":"Field","name":{"kind":"Name","value":"completedAt"}},{"kind":"Field","name":{"kind":"Name","value":"logsURL"}},{"kind":"Field","name":{"kind":"Name","value":"outputURLs"}},{"kind":"Field","name":{"kind":"Name","value":"debug"}},{"kind":"Field","name":{"kind":"Name","value":"deployment"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"description"}}]}}]}}]} as unknown as DocumentNode<RunProjectMutation, RunProjectMutationVariables>;
+export const CopyProjectDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CopyProject"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"source"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"copyProject"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"projectId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}}},{"kind":"Argument","name":{"kind":"Name","value":"source"},"value":{"kind":"Variable","name":{"kind":"Name","value":"source"}}}]}]}}]} as unknown as DocumentNode<CopyProjectMutation, CopyProjectMutationVariables>;
+export const ImportProjectDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ImportProject"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"data"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Bytes"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"importProject"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"projectId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}}},{"kind":"Argument","name":{"kind":"Name","value":"data"},"value":{"kind":"Variable","name":{"kind":"Name","value":"data"}}}]}]}}]} as unknown as DocumentNode<ImportProjectMutation, ImportProjectMutationVariables>;
 export const GetProjectParametersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetProjectParameters"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"parameters"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"projectId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Parameter"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Parameter"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Parameter"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"projectId"}},{"kind":"Field","name":{"kind":"Name","value":"index"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"defaultValue"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"required"}},{"kind":"Field","name":{"kind":"Name","value":"public"}},{"kind":"Field","name":{"kind":"Name","value":"config"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]} as unknown as DocumentNode<GetProjectParametersQuery, GetProjectParametersQueryVariables>;
 export const CreateProjectVariableDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateProjectVariable"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DeclareParameterInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"declareParameter"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"projectId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"projectId"}}},{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Parameter"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Parameter"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Parameter"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"projectId"}},{"kind":"Field","name":{"kind":"Name","value":"index"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"defaultValue"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"required"}},{"kind":"Field","name":{"kind":"Name","value":"public"}},{"kind":"Field","name":{"kind":"Name","value":"config"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]} as unknown as DocumentNode<CreateProjectVariableMutation, CreateProjectVariableMutationVariables>;
 export const UpdateProjectVariableDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateProjectVariable"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"paramId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateParameterInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateParameter"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"paramId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"paramId"}}},{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Parameter"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Parameter"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Parameter"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"projectId"}},{"kind":"Field","name":{"kind":"Name","value":"index"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"defaultValue"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"required"}},{"kind":"Field","name":{"kind":"Name","value":"public"}},{"kind":"Field","name":{"kind":"Name","value":"config"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]} as unknown as DocumentNode<UpdateProjectVariableMutation, UpdateProjectVariableMutationVariables>;

@@ -61,8 +61,8 @@ export class RhaiValidator {
         continue;
       }
 
-      // Parentheses and square brackets only (curly braces handled by multi-line validator)
-      if (char === "(" || char === "[") {
+      // Parentheses only (square brackets and curly braces handled by multi-line validator)
+      if (char === "(") {
         this.validateSingleLineBracketMatching(line, i, lineIndex, char);
       }
 
@@ -285,9 +285,9 @@ export class RhaiValidator {
     lineIndex: number,
     openBracket: string,
   ): void {
-    // Only handle parentheses and square brackets on single lines
-    // Curly braces are handled by validateMultiLineBracketMatching
-    const closeBracket = { "(": ")", "[": "]" }[openBracket];
+    // Only handle parentheses on single lines
+    // Square brackets and curly braces are handled by validateMultiLineBracketMatching
+    const closeBracket = { "(": ")" }[openBracket];
     if (!closeBracket) return;
 
     let depth = 1;
