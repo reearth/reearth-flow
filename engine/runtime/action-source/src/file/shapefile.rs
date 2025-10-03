@@ -11,6 +11,7 @@ use reearth_flow_geometry::types::{
     line_string::{LineString2D, LineString3D},
     multi_line_string::{MultiLineString2D, MultiLineString3D},
     multi_point::{MultiPoint2D, MultiPoint3D},
+    multi_polygon::{MultiPolygon2D, MultiPolygon3D},
     point::{Point2D, Point3D},
     polygon::{Polygon2D, Polygon3D},
 };
@@ -283,6 +284,164 @@ fn read_shapefile_from_zip(
     Ok(shapes_and_records)
 }
 
+fn convert_polygon_to_geometry(
+    polygon: shapefile::Polygon,
+) -> Result<GeometryValue, crate::errors::SourceError> {
+    use shapefile::PolygonRing;
+
+    if polygon.rings().is_empty() {
+        return Err(crate::errors::SourceError::ShapefileReader(
+            "Polygon has no rings".to_string(),
+        ));
+    }
+
+    let mut polygons_2d: Vec<Polygon2D<f64>> = Vec::new();
+    let mut current_exterior_2d: Option<LineString2D<f64>> = None;
+    let mut current_holes_2d: Vec<LineString2D<f64>> = Vec::new();
+
+    for ring in polygon.rings() {
+        match ring {
+            PolygonRing::Outer(points) => {
+                if let Some(exterior) = current_exterior_2d.take() {
+                    polygons_2d.push(Polygon2D::new(exterior, current_holes_2d.clone()));
+                    current_holes_2d.clear();
+                }
+                let coords: Vec<_> = points.iter().map(|p| Point2D::from([p.x, p.y]).0).collect();
+                current_exterior_2d = Some(LineString2D::new(coords));
+            }
+            PolygonRing::Inner(points) => {
+                let coords: Vec<_> = points.iter().map(|p| Point2D::from([p.x, p.y]).0).collect();
+                current_holes_2d.push(LineString2D::new(coords));
+            }
+        }
+    }
+
+    if let Some(exterior) = current_exterior_2d {
+        polygons_2d.push(Polygon2D::new(exterior, current_holes_2d));
+    }
+
+    if polygons_2d.is_empty() {
+        return Err(crate::errors::SourceError::ShapefileReader(
+            "Polygon has no outer rings".to_string(),
+        ));
+    }
+
+    if polygons_2d.len() == 1 {
+        Ok(GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
+            polygons_2d.into_iter().next().unwrap(),
+        )))
+    } else {
+        Ok(GeometryValue::FlowGeometry2D(Geometry2D::MultiPolygon(
+            MultiPolygon2D::new(polygons_2d),
+        )))
+    }
+}
+
+fn convert_polygonz_to_geometry(
+    polygon: shapefile::PolygonZ,
+    force_2d: bool,
+) -> Result<GeometryValue, crate::errors::SourceError> {
+    use shapefile::PolygonRing;
+
+    if polygon.rings().is_empty() {
+        return Err(crate::errors::SourceError::ShapefileReader(
+            "Polygon has no rings".to_string(),
+        ));
+    }
+
+    if force_2d {
+        let mut polygons_2d: Vec<Polygon2D<f64>> = Vec::new();
+        let mut current_exterior_2d: Option<LineString2D<f64>> = None;
+        let mut current_holes_2d: Vec<LineString2D<f64>> = Vec::new();
+
+        for ring in polygon.rings() {
+            match ring {
+                PolygonRing::Outer(points) => {
+                    if let Some(exterior) = current_exterior_2d.take() {
+                        polygons_2d.push(Polygon2D::new(exterior, current_holes_2d.clone()));
+                        current_holes_2d.clear();
+                    }
+                    let coords: Vec<_> =
+                        points.iter().map(|p| Point2D::from([p.x, p.y]).0).collect();
+                    current_exterior_2d = Some(LineString2D::new(coords));
+                }
+                PolygonRing::Inner(points) => {
+                    let coords: Vec<_> =
+                        points.iter().map(|p| Point2D::from([p.x, p.y]).0).collect();
+                    current_holes_2d.push(LineString2D::new(coords));
+                }
+            }
+        }
+
+        if let Some(exterior) = current_exterior_2d {
+            polygons_2d.push(Polygon2D::new(exterior, current_holes_2d));
+        }
+
+        if polygons_2d.is_empty() {
+            return Err(crate::errors::SourceError::ShapefileReader(
+                "Polygon has no outer rings".to_string(),
+            ));
+        }
+
+        if polygons_2d.len() == 1 {
+            Ok(GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
+                polygons_2d.into_iter().next().unwrap(),
+            )))
+        } else {
+            Ok(GeometryValue::FlowGeometry2D(Geometry2D::MultiPolygon(
+                MultiPolygon2D::new(polygons_2d),
+            )))
+        }
+    } else {
+        let mut polygons_3d: Vec<Polygon3D<f64>> = Vec::new();
+        let mut current_exterior_3d: Option<LineString3D<f64>> = None;
+        let mut current_holes_3d: Vec<LineString3D<f64>> = Vec::new();
+
+        for ring in polygon.rings() {
+            match ring {
+                PolygonRing::Outer(points) => {
+                    if let Some(exterior) = current_exterior_3d.take() {
+                        polygons_3d.push(Polygon3D::new(exterior, current_holes_3d.clone()));
+                        current_holes_3d.clear();
+                    }
+                    let coords: Vec<_> = points
+                        .iter()
+                        .map(|p| Point3D::from([p.x, p.y, p.z]).0)
+                        .collect();
+                    current_exterior_3d = Some(LineString3D::new(coords));
+                }
+                PolygonRing::Inner(points) => {
+                    let coords: Vec<_> = points
+                        .iter()
+                        .map(|p| Point3D::from([p.x, p.y, p.z]).0)
+                        .collect();
+                    current_holes_3d.push(LineString3D::new(coords));
+                }
+            }
+        }
+
+        if let Some(exterior) = current_exterior_3d {
+            polygons_3d.push(Polygon3D::new(exterior, current_holes_3d));
+        }
+
+        if polygons_3d.is_empty() {
+            return Err(crate::errors::SourceError::ShapefileReader(
+                "Polygon has no outer rings".to_string(),
+            ));
+        }
+
+        if polygons_3d.len() == 1 {
+            Ok(GeometryValue::FlowGeometry3D(Geometry3D::Polygon(
+                polygons_3d.into_iter().next().unwrap(),
+            )))
+        } else {
+            Ok(GeometryValue::FlowGeometry3D(Geometry3D::MultiPolygon(
+                MultiPolygon3D::new(polygons_3d),
+            )))
+        }
+    }
+}
+
 fn convert_shape_to_geometry(
     shape: shapefile::Shape,
     force_2d: bool,
@@ -398,112 +557,8 @@ fn convert_shape_to_geometry(
                 }
             }
         }
-        Shape::Polygon(polygon) => {
-            if force_2d {
-                let rings: Vec<LineString2D<f64>> = polygon
-                    .rings()
-                    .iter()
-                    .map(|ring| {
-                        let coords: Vec<_> = ring
-                            .points()
-                            .iter()
-                            .map(|p| Point2D::from([p.x, p.y]).0)
-                            .collect();
-                        LineString2D::new(coords)
-                    })
-                    .collect();
-
-                if !rings.is_empty() {
-                    let exterior = rings[0].clone();
-                    let holes = rings[1..].to_vec();
-                    GeometryValue::FlowGeometry2D(Geometry2D::Polygon(Polygon2D::new(
-                        exterior, holes,
-                    )))
-                } else {
-                    return Err(crate::errors::SourceError::ShapefileReader(
-                        "Polygon has no rings".to_string(),
-                    ));
-                }
-            } else {
-                let rings: Vec<LineString3D<f64>> = polygon
-                    .rings()
-                    .iter()
-                    .map(|ring| {
-                        let coords: Vec<_> = ring
-                            .points()
-                            .iter()
-                            .map(|p| Point3D::from([p.x, p.y, 0.0]).0)
-                            .collect();
-                        LineString3D::new(coords)
-                    })
-                    .collect();
-
-                if !rings.is_empty() {
-                    let exterior = rings[0].clone();
-                    let holes = rings[1..].to_vec();
-                    GeometryValue::FlowGeometry3D(Geometry3D::Polygon(Polygon3D::new(
-                        exterior, holes,
-                    )))
-                } else {
-                    return Err(crate::errors::SourceError::ShapefileReader(
-                        "Polygon has no rings".to_string(),
-                    ));
-                }
-            }
-        }
-        Shape::PolygonZ(polygon) => {
-            if force_2d {
-                let rings: Vec<LineString2D<f64>> = polygon
-                    .rings()
-                    .iter()
-                    .map(|ring| {
-                        let coords: Vec<_> = ring
-                            .points()
-                            .iter()
-                            .map(|p| Point2D::from([p.x, p.y]).0)
-                            .collect();
-                        LineString2D::new(coords)
-                    })
-                    .collect();
-
-                if !rings.is_empty() {
-                    let exterior = rings[0].clone();
-                    let holes = rings[1..].to_vec();
-                    GeometryValue::FlowGeometry2D(Geometry2D::Polygon(Polygon2D::new(
-                        exterior, holes,
-                    )))
-                } else {
-                    return Err(crate::errors::SourceError::ShapefileReader(
-                        "Polygon has no rings".to_string(),
-                    ));
-                }
-            } else {
-                let rings: Vec<LineString3D<f64>> = polygon
-                    .rings()
-                    .iter()
-                    .map(|ring| {
-                        let coords: Vec<_> = ring
-                            .points()
-                            .iter()
-                            .map(|p| Point3D::from([p.x, p.y, p.z]).0)
-                            .collect();
-                        LineString3D::new(coords)
-                    })
-                    .collect();
-
-                if !rings.is_empty() {
-                    let exterior = rings[0].clone();
-                    let holes = rings[1..].to_vec();
-                    GeometryValue::FlowGeometry3D(Geometry3D::Polygon(Polygon3D::new(
-                        exterior, holes,
-                    )))
-                } else {
-                    return Err(crate::errors::SourceError::ShapefileReader(
-                        "Polygon has no rings".to_string(),
-                    ));
-                }
-            }
-        }
+        Shape::Polygon(polygon) => convert_polygon_to_geometry(polygon)?,
+        Shape::PolygonZ(polygon) => convert_polygonz_to_geometry(polygon, force_2d)?,
         Shape::Multipoint(multipoint) => {
             if force_2d {
                 let points: Vec<Point2D<f64>> = multipoint
