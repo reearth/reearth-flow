@@ -104,13 +104,8 @@ impl Source for CityGmlReader {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let input_path = get_input_path(&ctx, &self.params.common_property)?;
         let content = get_content(&ctx, &self.params.common_property, storage_resolver).await?;
-        citygml::read_citygml(
-            &content,
-            input_path,
-            &self.params.property,
-            sender,
-        )
-        .await
-        .map_err(Into::<BoxedError>::into)
+        citygml::read_citygml(&content, input_path, &self.params.property, sender)
+            .await
+            .map_err(Into::<BoxedError>::into)
     }
 }
