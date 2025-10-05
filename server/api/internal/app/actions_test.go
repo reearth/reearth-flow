@@ -1,45 +1,69 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 )
 
 func resetTestData() {
-	actionsData = ActionsData{}
-	actionsDataMap = make(map[string]ActionsData)
+	actionsDataStore = newActionCache(nil, "")
 }
 
 func TestLoadActionsData(t *testing.T) {
+	responses := map[string]string{
+		"actions.json":    `{"actions":[{"name":"default","type":"processor","description":"","parameter":{},"builtin":false,"inputPorts":[],"outputPorts":[],"categories":["Default"]}]}`,
+		"actions_en.json": `{"actions":[{"name":"english","type":"processor","description":"","parameter":{},"builtin":false,"inputPorts":[],"outputPorts":[],"categories":["EN"]}]}`,
+		"actions_ja.json": `{"actions":[{"name":"japanese","type":"processor","description":"","parameter":{},"builtin":false,"inputPorts":[],"outputPorts":[],"categories":["JA"]}]}`,
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if resp, ok := responses[r.URL.Path[1:]]; ok {
+			_, _ = w.Write([]byte(resp))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+
+	actionsDataStore = newActionCache(server.Client(), server.URL)
+
 	tests := []struct {
 		name    string
 		lang    string
 		wantErr bool
 	}{
 		{"Default language", "", false},
-		{"En1ish", "en", false},
+		{"English", "en", false},
 		{"Japanese", "ja", false},
 		{"Invalid language", "invalid", true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resetTestData()
-			err := loadActionsData(tt.lang)
+			actionsDataStore.reset()
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+
+			data, err := loadActionsData(ctx, tt.lang)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				assert.NotEmpty(t, actionsData.Actions)
+				assert.NotEmpty(t, data.Actions)
 
-				// Verify cache
-				assert.NotNil(t, actionsDataMap[tt.lang])
-				assert.Equal(t, actionsData, actionsDataMap[tt.lang])
+				cached, ok := actionsDataStore.get(tt.lang)
+				if tt.lang == "" {
+					cached, ok = actionsDataStore.get("")
+				}
+				assert.True(t, ok)
+				assert.Equal(t, data, cached)
 			}
 		})
 	}
@@ -47,6 +71,12 @@ func TestLoadActionsData(t *testing.T) {
 
 func TestListActions(t *testing.T) {
 	e := echo.New()
+	baseData := ActionsData{Actions: []Action{{
+		Name:        "TestAction",
+		Type:        ActionTypeProcessor,
+		Description: "Test action",
+		Categories:  []string{"Test"},
+	}}}
 	tests := []struct {
 		name     string
 		query    string
@@ -61,7 +91,12 @@ func TestListActions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resetTestData()
+			actionsDataStore = newActionCache(nil, "")
+			if tt.lang == "" {
+				actionsDataStore.set("", baseData)
+			} else if supportedLangs[tt.lang] {
+				actionsDataStore.set(tt.lang, baseData)
+			}
 			req := httptest.NewRequest(http.MethodGet, "/actions?lang="+tt.lang+tt.query, nil)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
@@ -109,9 +144,8 @@ func TestGetSegregatedActions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resetTestData()
-			actionsData = ActionsData{Actions: testActions}
-			actionsDataMap[tt.lang] = actionsData
+			actionsDataStore = newActionCache(nil, "")
+			actionsDataStore.set(tt.lang, ActionsData{Actions: testActions})
 
 			e := echo.New()
 			req := httptest.NewRequest(http.MethodGet, "/actions/segregated?lang="+tt.lang, nil)
@@ -156,9 +190,8 @@ func TestGetActionDetails(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resetTestData()
-			actionsData = ActionsData{Actions: []Action{testAction}}
-			actionsDataMap[tt.lang] = actionsData
+			actionsDataStore = newActionCache(nil, "")
+			actionsDataStore.set(tt.lang, ActionsData{Actions: []Action{testAction}})
 
 			e := echo.New()
 			req := httptest.NewRequest(http.MethodGet, "/?lang="+tt.lang, nil)
@@ -184,6 +217,8 @@ func TestGetActionDetails(t *testing.T) {
 
 func TestGetActionDetailsNotFound(t *testing.T) {
 	e := echo.New()
+	actionsDataStore = newActionCache(nil, "")
+	actionsDataStore.set("", ActionsData{})
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)

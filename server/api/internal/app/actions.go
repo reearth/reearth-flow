@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/labstack/echo/v4"
 )
@@ -78,11 +80,125 @@ type SegregatedActions struct {
 	ByType     map[string][]ActionSummary `json:"byType"`
 }
 
+const defaultActionsBaseURL = "https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/"
+
+type actionCache struct {
+	mu      sync.RWMutex
+	data    map[string]ActionsData
+	client  *http.Client
+	baseURL string
+}
+
+func newActionCache(client *http.Client, baseURL string) *actionCache {
+	if client == nil {
+		client = &http.Client{Timeout: 10 * time.Second}
+	}
+	if baseURL == "" {
+		baseURL = defaultActionsBaseURL
+	}
+	baseURL = strings.TrimRight(baseURL, "/") + "/"
+
+	return &actionCache{
+		data:    make(map[string]ActionsData),
+		client:  client,
+		baseURL: baseURL,
+	}
+}
+
+func (c *actionCache) load(ctx context.Context, lang string) (ActionsData, error) {
+	if lang != "" && !supportedLangs[lang] {
+		return ActionsData{}, fmt.Errorf("unsupported language: %s", lang)
+	}
+
+	cacheKey := lang
+
+	c.mu.RLock()
+	if data, exists := c.data[cacheKey]; exists {
+		c.mu.RUnlock()
+		return data, nil
+	}
+	c.mu.RUnlock()
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if data, exists := c.data[cacheKey]; exists {
+		return data, nil
+	}
+
+	data, err := c.fetch(ctx, lang)
+	if err != nil {
+		return ActionsData{}, err
+	}
+
+	c.data[cacheKey] = data
+	return data, nil
+}
+
+func (c *actionCache) fetch(ctx context.Context, lang string) (ActionsData, error) {
+	filename := "actions.json"
+	if lang != "" {
+		filename = fmt.Sprintf("actions_%s.json", lang)
+	}
+
+	url := c.baseURL + filename
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return ActionsData{}, err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return ActionsData{}, err
+	}
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			fmt.Println("Error closing response body:", cerr)
+		}
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		return ActionsData{}, fmt.Errorf("failed to load actions: status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ActionsData{}, err
+	}
+
+	var newData ActionsData
+	if err := json.Unmarshal(body, &newData); err != nil {
+		return ActionsData{}, err
+	}
+
+	if err := newData.Validate(); err != nil {
+		return ActionsData{}, err
+	}
+
+	return newData, nil
+}
+
+func (c *actionCache) set(lang string, data ActionsData) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.data[lang] = data
+}
+
+func (c *actionCache) reset() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.data = make(map[string]ActionsData)
+}
+
+func (c *actionCache) get(lang string) (ActionsData, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	data, ok := c.data[lang]
+	return data, ok
+}
+
 var (
-	actionsData    ActionsData
-	actionsDataMap = make(map[string]ActionsData)
-	mutex          sync.RWMutex
-	supportedLangs = map[string]bool{
+	actionsDataStore = newActionCache(nil, "")
+	supportedLangs   = map[string]bool{
 		"en": true,
 		"es": true,
 		"fr": true,
@@ -91,67 +207,8 @@ var (
 	}
 )
 
-func loadActionsData(lang string) error {
-	if lang != "" && !supportedLangs[lang] {
-		return fmt.Errorf("unsupported language: %s", lang)
-	}
-
-	cacheKey := lang
-
-	// Try to get from cache first using read lock
-	mutex.RLock()
-	if data, exists := actionsDataMap[cacheKey]; exists {
-		actionsData = data
-		mutex.RUnlock()
-		return nil
-	}
-	mutex.RUnlock()
-
-	// If not in cache, acquire write lock
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	// Double-check after acquiring write lock
-	if data, exists := actionsDataMap[cacheKey]; exists {
-		actionsData = data
-		return nil
-	}
-
-	baseURL := "https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/"
-	filename := "actions.json"
-	if lang != "" {
-		filename = fmt.Sprintf("actions_%s.json", lang)
-	}
-
-	resp, err := http.Get(baseURL + filename)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			fmt.Println("Error closing response body:", err)
-		}
-	}()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	var newData ActionsData
-	if err := json.Unmarshal(body, &newData); err != nil {
-		return err
-	}
-
-	if err := newData.Validate(); err != nil {
-		return err
-	}
-
-	// Store in cache and set current actionsData
-	actionsDataMap[cacheKey] = newData
-	actionsData = newData
-
-	return nil
+func loadActionsData(ctx context.Context, lang string) (ActionsData, error) {
+	return actionsDataStore.load(ctx, lang)
 }
 
 func listActions(c echo.Context) error {
@@ -160,13 +217,14 @@ func listActions(c echo.Context) error {
 	actionType := c.QueryParam("type")
 	lang := c.QueryParam("lang")
 
-	if err := loadActionsData(lang); err != nil {
+	data, err := loadActionsData(c.Request().Context(), lang)
+	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	var summaries []ActionSummary
 
-	for _, action := range actionsData.Actions {
+	for _, action := range data.Actions {
 		if matchesSearch(action, query, category, actionType) {
 			summaries = append(summaries, ActionSummary{
 				Name:        action.Name,
@@ -184,7 +242,8 @@ func getSegregatedActions(c echo.Context) error {
 	query := c.QueryParam("q")
 	lang := c.QueryParam("lang")
 
-	if err := loadActionsData(lang); err != nil {
+	data, err := loadActionsData(c.Request().Context(), lang)
+	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
@@ -193,7 +252,7 @@ func getSegregatedActions(c echo.Context) error {
 		ByType:     make(map[string][]ActionSummary),
 	}
 
-	for _, action := range actionsData.Actions {
+	for _, action := range data.Actions {
 		if matchesSearch(action, query, "", "") {
 			summary := ActionSummary{
 				Name:        action.Name,
@@ -281,11 +340,12 @@ func getActionDetails(c echo.Context) error {
 	id := c.Param("id")
 	lang := c.QueryParam("lang")
 
-	if err := loadActionsData(lang); err != nil {
+	data, err := loadActionsData(c.Request().Context(), lang)
+	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	for _, action := range actionsData.Actions {
+	for _, action := range data.Actions {
 		if action.Name == id {
 			return c.JSON(http.StatusOK, action)
 		}
