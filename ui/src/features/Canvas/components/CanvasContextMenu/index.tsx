@@ -34,7 +34,7 @@ type Props = {
   onCopy?: (node?: Node) => void;
   onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: (menuPosition?: XYPosition) => void;
-  onNodeDisable?: (node?: Node) => void;
+  onNodesDisable?: (nodes?: Node[]) => void;
   onClose: () => void;
 };
 
@@ -51,7 +51,7 @@ const CanvasContextMenu: React.FC<Props> = ({
   onCopy,
   onCut,
   onPaste,
-  onNodeDisable,
+  onNodesDisable,
   onClose,
 }) => {
   const t = useT();
@@ -186,8 +186,10 @@ const CanvasContextMenu: React.FC<Props> = ({
           shortcut: (
             <ContextMenuShortcut keyBinding={{ key: "e", commandKey: true }} />
           ),
-          disabled: (!nodes && !node) || !onNodeDisable,
-          onCallback: wrapWithClose(() => onNodeDisable?.(node) ?? (() => {})),
+          disabled: (!nodes && !node) || !onNodesDisable,
+          onCallback: wrapWithClose(
+            () => onNodesDisable?.(node ? [node] : undefined) ?? (() => {}),
+          ),
         },
       },
       ...(node
@@ -238,7 +240,7 @@ const CanvasContextMenu: React.FC<Props> = ({
     onClose,
     onNodesChange,
     onEdgesChange,
-    onNodeDisable,
+    onNodesDisable,
     contextMenu.mousePosition,
     value,
     handleNodeDelete,

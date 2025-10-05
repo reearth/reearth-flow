@@ -11,7 +11,6 @@ import { useHotkeys } from "react-hotkeys-hook";
 import { useY } from "react-yjs";
 import type { Awareness } from "y-protocols/awareness";
 import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
-import * as Y from "yjs";
 
 import {
   DEFAULT_ENTRY_GRAPH_ID,
@@ -24,7 +23,7 @@ import {
   useSpotlightUser,
   useYjsStore,
 } from "@flow/lib/yjs";
-import type { YNodesMap, YNodeValue, YWorkflow } from "@flow/lib/yjs/types";
+import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { useCurrentProject } from "@flow/stores";
 import type { Algorithm, Direction, Edge, Node } from "@flow/types";
@@ -76,7 +75,7 @@ export default ({
     handleYWorkflowUpdate,
     handleYNodesAdd,
     handleYNodesChange,
-    handleYNodeDataUpdate,
+    handleYNodesDataUpdate,
     handleYEdgesAdd,
     handleYEdgesChange,
     handleYWorkflowUndo,
@@ -351,27 +350,17 @@ export default ({
     handleWorkflowClose,
   });
 
-  const handleNodeDisable = useCallback(
-    (node?: Node) => {
-      undoTrackerActionWrapper?.(() => {
-        const selected = node ? [node] : nodes.filter((n) => n.selected);
+  const handleNodesDisable = useCallback(
+    (ns?: Node[]) => {
+      const nodesToUpdate =
+        ns?.map((n) => ({ nodeId: n.id, isDisabled: !n.data?.isDisabled })) ||
+        nodes
+          .filter((n) => n.selected)
+          .map((n) => ({ nodeId: n.id, isDisabled: !n.data?.isDisabled }));
 
-        if (selected.length === 0) return;
-
-        const anyEnabled = selected.some((n) => !n.data?.isDisabled);
-
-        selected.forEach((n) => {
-          const yNodes = currentYWorkflow?.get("nodes") as
-            | YNodesMap
-            | undefined;
-          const yNode = yNodes?.get(n.id);
-          if (!yNode) return;
-          const yData = yNode?.get("data") as Y.Map<YNodeValue>;
-          yData?.set("isDisabled", anyEnabled);
-        });
-      });
+      handleYNodesDataUpdate(nodesToUpdate);
     },
-    [currentYWorkflow, nodes, undoTrackerActionWrapper],
+    [nodes, handleYNodesDataUpdate],
   );
 
   const handlePaneClick = useCallback(
@@ -415,9 +404,9 @@ export default ({
     handleWorkflowClose,
     handleNodesAdd: handleYNodesAdd,
     handleNodesChange: handleYNodesChange,
-    handleNodeDataUpdate: handleYNodeDataUpdate,
+    handleNodesDisable,
+    handleNodesDataUpdate: handleYNodesDataUpdate,
     handleNodeSettings,
-    handleNodeDisable,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleOpenNode,
