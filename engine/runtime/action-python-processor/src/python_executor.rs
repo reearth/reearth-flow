@@ -92,6 +92,14 @@ impl ProcessorFactory for PythonScriptProcessorFactory {
             .into());
         }
 
+        if params.script.is_some() && params.python_file.is_some() {
+            return Err(PythonProcessorError::FactoryError(
+                "Cannot provide both 'script' and 'pythonFile' parameters. Use only one."
+                    .to_string(),
+            )
+            .into());
+        }
+
         let processor = PythonScriptProcessor {
             script: params.script,
             python_file: params.python_file,
@@ -609,6 +617,49 @@ mod tests {
         assert!(result.is_err());
         let error_msg = result.unwrap_err().to_string();
         assert!(error_msg.contains("Missing required parameter"));
+    }
+
+    #[test]
+    fn test_factory_build_missing_script_and_file() {
+        let factory = PythonScriptProcessorFactory;
+        let ctx = create_test_context();
+
+        let with = HashMap::new();
+
+        let result = factory.build(
+            ctx,
+            EventHub::new(10),
+            "test_action".to_string(),
+            Some(with),
+        );
+
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("Either 'script' (inline) or 'pythonFile'"));
+    }
+
+    #[test]
+    fn test_factory_build_both_script_and_file() {
+        let factory = PythonScriptProcessorFactory;
+        let ctx = create_test_context();
+
+        let mut with = HashMap::new();
+        with.insert(
+            "script".to_string(),
+            json!("properties['result'] = 'success'"),
+        );
+        with.insert("pythonFile".to_string(), json!("file:///path/to/script.py"));
+
+        let result = factory.build(
+            ctx,
+            EventHub::new(10),
+            "test_action".to_string(),
+            Some(with),
+        );
+
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("Cannot provide both 'script' and 'pythonFile'"));
     }
 
     #[test]
