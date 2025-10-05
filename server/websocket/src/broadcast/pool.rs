@@ -162,8 +162,7 @@ impl BroadcastPool {
             } else {
                 info!(
                     "Skipping cleanup for doc_id: {} ({} active connections)",
-                    doc_id,
-                    active_connections
+                    doc_id, active_connections
                 );
             }
         } else {
