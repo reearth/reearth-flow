@@ -379,6 +379,14 @@ export default ({
     [currentYWorkflow, nodes, undoTrackerActionWrapper],
   );
 
+  const handlePaneClick = useCallback(
+    (e: MouseEvent) => {
+      e.preventDefault();
+      handleSpotlightUserDeselect();
+    },
+    [handleSpotlightUserDeselect],
+  );
+
   return {
     currentWorkflowId,
     currentYWorkflow,
@@ -434,5 +442,6 @@ export default ({
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
     handleNodeDisable,
+    handlePaneClick,
   };
 };
