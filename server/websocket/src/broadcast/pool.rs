@@ -5,9 +5,10 @@ use crate::infrastructure::redis::RedisStore;
 use crate::AwarenessRef;
 use anyhow::Result;
 use bytes;
-use dashmap::DashMap;
+use dashmap::{mapref::entry::Entry, DashMap};
 use rand;
 use std::sync::Arc;
+use tokio::sync::Mutex;
 use tracing::{info, warn};
 use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
@@ -97,6 +98,7 @@ impl BroadcastGroupManager {
 pub struct BroadcastPool {
     manager: BroadcastGroupManager,
     groups: Arc<DashMap<String, Arc<BroadcastGroup>>>,
+    locks: Arc<DashMap<String, Arc<Mutex<()>>>>,
 }
 
 impl BroadcastPool {
@@ -105,6 +107,7 @@ impl BroadcastPool {
         Self {
             manager,
             groups: Arc::new(DashMap::new()),
+            locks: Arc::new(DashMap::new()),
         }
     }
 
@@ -112,10 +115,24 @@ impl BroadcastPool {
         self.manager.store.clone()
     }
 
+    fn get_or_create_lock(&self, doc_id: &str) -> Arc<Mutex<()>> {
+        match self.locks.entry(doc_id.to_string()) {
+            Entry::Occupied(entry) => entry.get().clone(),
+            Entry::Vacant(entry) => {
+                let lock = Arc::new(Mutex::new(()));
+                entry.insert(lock.clone());
+                lock
+            }
+        }
+    }
+
     pub async fn get_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
-        if let Some(group) = self.groups.get(doc_id) {
+        let lock = self.get_or_create_lock(doc_id);
+        let _guard = lock.lock_owned().await;
+
+        if let Some(group) = self.groups.get(doc_id).map(|entry| entry.clone()) {
             info!("Reusing existing BroadcastGroup for doc_id: {}", doc_id);
-            return Ok(group.clone());
+            return Ok(group);
         }
 
         info!("Creating new BroadcastGroup for doc_id: {}", doc_id);
@@ -130,9 +147,33 @@ impl BroadcastPool {
     }
 
     pub async fn cleanup_group(&self, doc_id: &str) {
-        if let Some((_, group)) = self.groups.remove(doc_id) {
-            let _ = group.shutdown().await;
-            info!("Shutdown BroadcastGroup for doc_id: {}", doc_id);
+        let lock = self.get_or_create_lock(doc_id);
+        let guard = lock.lock_owned().await;
+        let mut should_remove_lock = false;
+
+        if let Some(group) = self.groups.get(doc_id).map(|entry| entry.clone()) {
+            let active_connections = group.get_connections_count().await;
+            if active_connections == 0 {
+                if let Some((_, group)) = self.groups.remove(doc_id) {
+                    let _ = group.shutdown().await;
+                    info!("Shutdown BroadcastGroup for doc_id: {}", doc_id);
+                }
+                should_remove_lock = true;
+            } else {
+                info!(
+                    "Skipping cleanup for doc_id: {} ({} active connections)",
+                    doc_id,
+                    active_connections
+                );
+            }
+        } else {
+            should_remove_lock = true;
+        }
+
+        drop(guard);
+
+        if should_remove_lock {
+            self.locks.remove(doc_id);
         }
     }
 
