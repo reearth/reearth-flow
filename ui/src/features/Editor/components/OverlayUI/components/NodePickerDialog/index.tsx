@@ -1,6 +1,16 @@
 import { Fragment, memo } from "react";
 
-import { Dialog, DialogContent, DialogTitle, Input } from "@flow/components";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@flow/components";
 import ActionItem from "@flow/components/ActionItem";
 import { useT } from "@flow/lib/i18n";
 import type { ActionNodeType, Node } from "@flow/types";
@@ -34,21 +44,41 @@ const NodePickerDialog: React.FC<Props> = ({
     containerRef,
     itemRefs,
     selected,
+    actionTypes,
+    currentActionByType,
     handleSearchTerm,
     handleSingleClick,
     handleDoubleClick,
+    handleActionByTypeChange,
   } = useHooks({ openedActionType, isMainWorkflow, onNodesAdd, onClose });
-
   return (
     <Dialog open={!!openedActionType} onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogTitle>{t("Choose action")}</DialogTitle>
-        <Input
-          className="mx-auto w-full rounded-none border-x-0 border-t-0 border-zinc-700 bg-secondary focus-visible:ring-0"
-          placeholder={t("Search")}
-          autoFocus
-          onChange={(e) => handleSearchTerm(e.target.value)}
-        />
+        <div className="flex items-center gap-2 py-3">
+          <Input
+            className="mx-auto w-full rounded-none border-x-0 border-t-0 border-zinc-700 bg-secondary focus-visible:ring-0"
+            placeholder={t("Search")}
+            autoFocus
+            onChange={(e) => handleSearchTerm(e.target.value)}
+          />
+          <Select
+            value={currentActionByType}
+            onValueChange={handleActionByTypeChange}
+            z-index={1000}>
+            <SelectTrigger className="h-[36px] w-[150px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {actionTypes.map((actionType) => (
+                <SelectItem key={actionType.value} value={actionType.value}>
+                  {actionType.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         <div ref={containerRef} className="max-h-[50vh] overflow-scroll">
           {actionsList.map((action, idx) => (
             <Fragment key={action.name}>

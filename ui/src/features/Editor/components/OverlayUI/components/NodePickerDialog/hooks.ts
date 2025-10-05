@@ -1,5 +1,5 @@
 import { useReactFlow, XYPosition } from "@xyflow/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useDoubleClick } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
@@ -23,6 +23,14 @@ export default ({
   onClose: () => void;
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentActionByType, setCurrentActionByType] =
+    useState<ActionNodeType>(openedActionType.nodeType);
+
+  const actionTypes: { value: ActionNodeType; label: string }[] = [
+    { value: "reader", label: "Reader" },
+    { value: "transformer", label: "Transformer" },
+    { value: "writer", label: "Writer" },
+  ];
 
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -32,7 +40,7 @@ export default ({
   const { actions } = useGetActionsSegregated({
     isMainWorkflow,
     searchTerm,
-    type: openedActionType?.nodeType,
+    type: currentActionByType,
   });
 
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -40,10 +48,11 @@ export default ({
 
   useEffect(() => {
     if (actions?.length) {
-      const actionsList = actions.byType[openedActionType.nodeType];
+      const actionsList = actions.byType[currentActionByType];
+
       setSelected(actionsList?.[selectedIndex]?.name ?? "");
     }
-  }, [selectedIndex, actions, openedActionType?.nodeType]);
+  }, [selectedIndex, actions, currentActionByType]);
 
   const handleSearchTerm = (newSearchTerm: string) => {
     setSearchTerm(newSearchTerm);
@@ -91,12 +100,21 @@ export default ({
     },
   );
 
-  const actionsList = actions?.byType[openedActionType?.nodeType] || [];
+  const actionsList = actions?.byType[currentActionByType] || [];
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const currentActionsList =
-        actions?.byType[openedActionType?.nodeType] || [];
+      // Prevent hotkeys from triggering when Select dropdown is open
+      const target = e.target as HTMLElement;
+      if (
+        target.closest('[role="combobox"]') ||
+        target.closest('[role="listbox"]') ||
+        target.closest('[role="option"]')
+      ) {
+        return;
+      }
+
+      const currentActionsList = actions?.byType[currentActionByType] || [];
 
       switch (e.key) {
         case "Enter":
@@ -136,7 +154,7 @@ export default ({
     };
   }, [
     actions,
-    openedActionType?.nodeType,
+    currentActionByType,
     selectedIndex,
     selected,
     handleDoubleClick,
@@ -144,13 +162,23 @@ export default ({
     setSelected,
   ]);
 
+  const handleActionByTypeChange = useCallback(
+    (actionByType: ActionNodeType) => {
+      setCurrentActionByType(actionByType);
+    },
+    [],
+  );
+
   return {
     actionsList,
     containerRef,
     itemRefs,
     selected,
+    currentActionByType,
+    actionTypes,
     handleSearchTerm,
     handleSingleClick,
     handleDoubleClick,
+    handleActionByTypeChange,
   };
 };
