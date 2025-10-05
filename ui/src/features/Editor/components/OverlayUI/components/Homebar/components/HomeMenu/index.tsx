@@ -58,11 +58,8 @@ const HomeMenu: React.FC<Props> = ({
   const { logout: handleLogout } = useAuth();
 
   const handleNavigationToDashboard = useCallback(
-    (page: "projects" | "deployments" | "triggers" | "jobs" | "assets") =>
-      () => {
-        console.log("page", page);
-        navigate({ to: `/workspaces/${workspaceId}/${page}` });
-      },
+    (page: "projects" | "deployments" | "triggers" | "jobs" | "assets") => () =>
+      navigate({ to: `/workspaces/${workspaceId}/${page}` }),
     [workspaceId, navigate],
   );
 
