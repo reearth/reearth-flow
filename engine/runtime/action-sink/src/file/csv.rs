@@ -8,7 +8,7 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{AttributeValue, Expr, Feature};
+use reearth_flow_types::{Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -75,7 +75,7 @@ impl SinkFactory for CsvWriterFactory {
 #[derive(Debug, Clone)]
 pub(super) struct CsvWriter {
     pub(super) params: CsvWriterParam,
-    pub(super) buffer: HashMap<AttributeValue, Vec<Feature>>,
+    pub(super) buffer: HashMap<Uri, Vec<Feature>>,
 }
 
 /// # CsvWriter Parameters
@@ -122,21 +122,16 @@ impl Sink for CsvWriter {
         let path = scope
             .eval::<String>(output.as_ref())
             .unwrap_or_else(|_| output.as_ref().to_string());
-        let uri = Uri::from_str(&path)?.into_string();
-        let key = AttributeValue::String(uri);
-        self.buffer.entry(key).or_default().push(ctx.feature);
+        let uri = Uri::from_str(&path)?;
+        self.buffer.entry(uri).or_default().push(ctx.feature);
         Ok(())
     }
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let delimiter = self.params.format.delimiter();
-        for (output, features) in &self.buffer {
-            let output = output.as_string().ok_or(SinkError::CsvWriter(
-                "Output path must be a string".to_string(),
-            ))?;
-            let output = Uri::from_str(&output)?;
-            write_csv(&output, features, delimiter.clone(), &storage_resolver)?;
+        for (uri, features) in &self.buffer {
+            write_csv(&uri, features, delimiter.clone(), &storage_resolver)?;
         }
         Ok(())
     }
