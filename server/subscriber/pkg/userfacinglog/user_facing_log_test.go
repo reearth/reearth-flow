@@ -91,7 +91,7 @@ func TestNewUserFacingLogEvent(t *testing.T) {
 					t.Errorf("Level = %v, want %v", event.Level, tt.level)
 				}
 				if event.Message != tt.message {
-					t.Errorf("DisplayMessage = %v, want %v", event.Message, tt.message)
+					t.Errorf("Message = %v, want %v", event.Message, tt.message)
 				}
 			}
 		})
