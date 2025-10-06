@@ -76,19 +76,13 @@ export default ({
       setOpenWorkflowIds((ids) => {
         const index = ids.findIndex((id) => id === workflowId);
         const filteredIds = ids.filter((id) => id !== workflowId);
-        const currentWorkflowIndex = openWorkflowIds.findIndex(
-          (wid) => wid === currentWorkflowId,
-        );
-        if (
-          workflowId !== DEFAULT_ENTRY_GRAPH_ID &&
-          index === currentWorkflowIndex
-        ) {
+        if (workflowId !== DEFAULT_ENTRY_GRAPH_ID) {
           handleCurrentWorkflowIdChange(ids[index - 1]);
         }
         return filteredIds;
       });
     },
-    [openWorkflowIds, currentWorkflowId, handleCurrentWorkflowIdChange],
+    [handleCurrentWorkflowIdChange],
   );
 
   return {

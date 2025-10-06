@@ -182,7 +182,7 @@ const DebugPreview: React.FC<Props> = ({
                 </p>
                 {detectedGeometryType && (
                   <span className="rounded px-2 text-xs text-muted-foreground">
-                    - {detectedGeometryType} -
+                    {detectedGeometryType}
                   </span>
                 )}
               </div>
@@ -230,13 +230,13 @@ const DebugPreview: React.FC<Props> = ({
         <div className="h-full">
           {/* 3D Viewer Header */}
           <div className="py-1">
-            <div className="flex items-center gap-1 rounded-md bg-muted/30 px-3 py-2">
+            <div className="flex items-center gap-1 rounded-md px-3 py-2">
               <GlobeIcon size={16} />
               <p className="text-sm font-medium select-none">
                 {t("3D Viewer")}
               </p>
               {detectedGeometryType && (
-                <span className="rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
+                <span className="rounded px-2 py-1 text-xs text-muted-foreground">
                   {detectedGeometryType}
                 </span>
               )}

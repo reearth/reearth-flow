@@ -1058,6 +1058,63 @@ Export Features as Cesium 3D Tiles for Web Visualization
 ### Category
 * File
 
+## CityGmlReader
+### Type
+* source
+### Description
+Reads 3D city models from CityGML files.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CityGmlReader Parameters",
+  "description": "Configuration for reading CityGML files as 3D city models.",
+  "type": "object",
+  "properties": {
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "flatten": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+### Output Ports
+* default
+### Category
+* File
+
 ## Clipper
 ### Type
 * processor
@@ -3548,6 +3605,57 @@ Divides geometries into Japanese standard mesh grid (1km) and adds mesh codes to
 * rejected
 ### Category
 * Geometry
+
+## JsonReader
+### Type
+* source
+### Description
+Reads features from JSON files, supporting both single objects and arrays of objects.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "JsonReader Parameters",
+  "description": "Configuration for reading JSON files as features.",
+  "type": "object",
+  "properties": {
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+### Output Ports
+* default
+### Category
+* File
 
 ## LineOnLineOverlayer
 ### Type

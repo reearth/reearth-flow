@@ -128,7 +128,7 @@ impl Source for FileReader {
     }
 }
 
-fn get_input_path(
+pub(crate) fn get_input_path(
     ctx: &NodeContext,
     common_property: &FileReaderCommonParam,
 ) -> Result<Option<Uri>, SourceError> {
