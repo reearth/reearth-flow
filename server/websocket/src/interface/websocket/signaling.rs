@@ -105,14 +105,14 @@ pub async fn handle_signaling_connection(
                         return Ok(());
                     },
                     Some(Err(e)) => {
-                        warn!("❌ WebSocket error: {:?}", e);
+                        warn!(" WebSocket error: {:?}", e);
                         ws.close().await?;
                         return Ok(());
                     },
                     Some(Ok(msg)) => {
                         trace!("📨 Received message: {:?}", msg);
                         if let Err(e) = process_msg(msg, &ws, &mut state, &mut topics).await {
-                            warn!("❌ Error processing message, closing connection: {:?}", e);
+                            warn!("Error processing message, closing connection: {:?}", e);
                             ws.close().await?;
                             return Ok(());
                         }
