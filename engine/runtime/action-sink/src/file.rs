@@ -4,6 +4,7 @@ pub(super) mod czml;
 pub(super) mod excel;
 pub(super) mod geojson;
 pub(super) mod gltf;
+pub(super) mod json;
 pub(super) mod mvt;
 pub(super) mod obj;
 pub(super) mod shapefile;

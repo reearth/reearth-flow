@@ -80,9 +80,9 @@ impl SinkFactory for FileWriterSinkFactory {
             FileWriterParam::Csv { .. } => FileWriterCompiledParam::Csv { common_params },
             FileWriterParam::Tsv { .. } => FileWriterCompiledParam::Tsv { common_params },
             FileWriterParam::Xml { .. } => FileWriterCompiledParam::Xml { common_params },
-            FileWriterParam::Json { json_params, .. } => FileWriterCompiledParam::Json {
+            FileWriterParam::Json { converter, .. } => FileWriterCompiledParam::Json {
                 common_params,
-                json_params,
+                converter,
             },
             FileWriterParam::Excel { sheet_name, .. } => FileWriterCompiledParam::Excel {
                 common_params,
@@ -140,8 +140,7 @@ pub enum FileWriterParam {
     Json {
         #[serde(flatten)]
         common_params: FileWriterCommonParam,
-        #[serde(flatten)]
-        json_params: JsonWriterParam,
+        converter: Option<Expr>,
     },
     Excel {
         #[serde(flatten)]
@@ -175,7 +174,7 @@ pub enum FileWriterCompiledParam {
     },
     Json {
         common_params: FileWriterCommonCompiledParam,
-        json_params: JsonWriterParam,
+        converter: Option<Expr>,
     },
     Excel {
         common_params: FileWriterCommonCompiledParam,
@@ -217,13 +216,9 @@ impl Sink for FileWriter {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         for (output, features) in &self.buffer {
             match &self.params {
-                FileWriterCompiledParam::Json { json_params, .. } => write_json(
-                    output,
-                    json_params,
-                    features,
-                    &expr_engine,
-                    &storage_resolver,
-                ),
+                FileWriterCompiledParam::Json { converter, .. } => {
+                    write_json(output, converter, features, &expr_engine, &storage_resolver)
+                }
                 FileWriterCompiledParam::Csv { .. } => {
                     write_csv(output, features, Delimiter::Comma, &storage_resolver)
                 }
@@ -242,20 +237,14 @@ impl Sink for FileWriter {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct JsonWriterParam {
-    pub(super) converter: Option<Expr>,
-}
-
-fn write_json(
+pub(super) fn write_json(
     output: &Uri,
-    params: &JsonWriterParam,
+    converter: &Option<Expr>,
     features: &[Feature],
     expr_engine: &Arc<Engine>,
     storage_resolver: &Arc<StorageResolver>,
 ) -> Result<(), crate::errors::SinkError> {
-    let json_value: serde_json::Value = if let Some(converter) = &params.converter {
+    let json_value: serde_json::Value = if let Some(converter) = converter.as_ref() {
         let scope = expr_engine.new_scope();
         let value: serde_json::Value = serde_json::Value::Array(
             features

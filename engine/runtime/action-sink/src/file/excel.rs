@@ -114,7 +114,12 @@ impl Sink for ExcelWriter {
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         for (uri, features) in &self.buffer {
-            write_excel(uri, self.params.sheet_name.clone(), features, &storage_resolver)?;
+            write_excel(
+                uri,
+                self.params.sheet_name.clone(),
+                features,
+                &storage_resolver,
+            )?;
         }
         Ok(())
     }
