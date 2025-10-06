@@ -69,7 +69,6 @@ const VariableEditDialog: React.FC<Props> = ({
       [t("Coordinate System")]: "coordinate_system",
       [t("Database Connection")]: "database_connection",
       [t("Date and Time")]: "datetime",
-      [t("File or Folder")]: "file_folder",
       [t("Geometry")]: "geometry",
       [t("Message")]: "message",
       [t("Number")]: "number",
