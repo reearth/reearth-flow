@@ -19,6 +19,7 @@ type Props = {
   onNodesAdd?: (newNode: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onNodeSettings?: (e: MouseEvent | undefined, nodeId: string) => void;
+  onNodesDisable?: (nodes?: Node[]) => void;
   onEdgesAdd?: (newEdges: Edge[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onNodePickerOpen?: (
@@ -61,6 +62,7 @@ export default ({
   onCopy,
   onCut,
   onPaste,
+  onNodesDisable,
 }: Props) => {
   const {
     handleNodesChange,
@@ -179,6 +181,9 @@ export default ({
         break;
       case "v":
         if (hasModifier) onPaste?.();
+        break;
+      case "e":
+        if (hasModifier) onNodesDisable?.();
         break;
     }
   });
