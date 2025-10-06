@@ -56,9 +56,8 @@ export default ({
   const [selected, setSelected] = useState<string | undefined>();
 
   useEffect(() => {
-    if (segregatedActions?.length && currentActionByType !== "all") {
+    if (currentActionByType !== "all" && segregatedActions) {
       const actionsList = segregatedActions.byType[currentActionByType];
-
       setSelected(actionsList?.[selectedIndex]?.name ?? "");
     } else {
       setSelected(actions?.[selectedIndex]?.name ?? "");
@@ -183,6 +182,9 @@ export default ({
   const handleActionByTypeChange = useCallback(
     (actionByType: ActionTypeFiltering) => {
       setCurrentActionByType(actionByType);
+      setSelectedIndex(-1);
+      setSelected(undefined);
+      containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
     },
     [],
   );
