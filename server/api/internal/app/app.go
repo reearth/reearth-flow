@@ -121,9 +121,9 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	return e
 }
 
-func initActionsData(_ context.Context) error {
+func initActionsData(ctx context.Context) error {
 	for lang := range supportedLangs {
-		if err := loadActionsData(lang); err != nil {
+		if _, err := loadActionsData(ctx, lang); err != nil {
 			log.Errorf("Failed to load actions data for language %s: %v", lang, err)
 		}
 	}
