@@ -34,6 +34,7 @@ bytes.workspace = true
 csv.workspace = true
 futures.workspace = true
 geojson.workspace = true
+gltf.workspace = true
 indexmap.workspace = true
 once_cell.workspace = true
 petgraph.workspace = true
