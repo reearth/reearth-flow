@@ -34,6 +34,10 @@ pub enum SinkError {
     ShapefileWriter(String),
     #[error("Shapefile I/O error: {0}")]
     ShapefileWriterIo(#[from] std::io::Error),
+    #[error("Obj Writer Factory error: {0}")]
+    ObjWriterFactory(String),
+    #[error("Obj Writer error: {0}")]
+    ObjWriter(String),
     #[error("ZipFile Writer Factory error: {0}")]
     ZipFileWriterFactory(String),
     #[error("ZipFile Writer error: {0}")]
@@ -59,6 +63,10 @@ impl SinkError {
 
     pub fn czml_writer<T: ToString>(message: T) -> Self {
         Self::CzmlWriter(message.to_string())
+    }
+
+    pub fn obj_writer<T: ToString>(message: T) -> Self {
+        Self::ObjWriter(message.to_string())
     }
 }
 
