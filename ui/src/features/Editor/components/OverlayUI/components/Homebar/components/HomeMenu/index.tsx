@@ -31,6 +31,7 @@ import { config } from "@flow/config";
 import { AccountUpdateDialog } from "@flow/features/common/UserMenu/AccountUpdateDialog";
 import KeyboardShortcutDialog from "@flow/features/KeyboardShortcutDialog";
 import { GENERAL_HOT_KEYS } from "@flow/global-constants";
+import { useDoubleClick } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { useT } from "@flow/lib/i18n";
 import { openLinkInNewTab } from "@flow/utils";
@@ -57,15 +58,14 @@ const HomeMenu: React.FC<Props> = ({
   const { logout: handleLogout } = useAuth();
 
   const handleNavigationToDashboard = useCallback(
-    (page: "projects" | "deployments" | "triggers" | "jobs" | "assets") =>
-      () => {
-        navigate({ to: `/workspaces/${workspaceId}/${page}` });
-      },
+    (page: "projects" | "deployments" | "triggers" | "jobs" | "assets") => () =>
+      navigate({ to: `/workspaces/${workspaceId}/${page}` }),
     [workspaceId, navigate],
   );
 
   const [openAccountUpdateDialog, setOpenAccountUpdateDialog] = useState(false);
   const [openShortcutDialog, setOpenShortcutDialog] = useState(false);
+  const [openDialog, setOpenDialog] = useState(false);
 
   const { tosUrl, documentationUrl } = config();
 
@@ -94,10 +94,14 @@ const HomeMenu: React.FC<Props> = ({
 
   useHotkeys(GENERAL_HOT_KEYS, () => setOpenShortcutDialog(true));
 
+  const [, handleDoubleClick] = useDoubleClick(() => {
+    setOpenDialog((o) => !o);
+  }, handleNavigationToDashboard("projects"));
+
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+      <DropdownMenu open={openDialog} onOpenChange={setOpenDialog}>
+        <DropdownMenuTrigger asChild onDoubleClick={handleDoubleClick}>
           <div className="group flex cursor-pointer items-center gap-1 self-center rounded-md p-1 hover:bg-primary">
             <FlowLogo className="size-7 transition-all group-hover:text-[#46ce7c]" />
             <CaretDownIcon weight="thin" size={12} />
