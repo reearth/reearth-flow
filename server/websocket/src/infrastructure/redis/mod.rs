@@ -84,6 +84,44 @@ impl RedisStore {
         Ok(())
     }
 
+    pub async fn publish_multiple_updates(
+        &self,
+        conn: &mut redis::aio::MultiplexedConnection,
+        stream_key: &str,
+        updates: &[&[u8]],
+        instance_id: &u64,
+    ) -> Result<()> {
+        if updates.is_empty() {
+            return Ok(());
+        }
+
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+
+        let mut pipe = redis::pipe();
+
+        for update in updates {
+            pipe.cmd("XADD")
+                .arg(stream_key)
+                .arg("*")
+                .arg("type")
+                .arg(MESSAGE_TYPE_SYNC)
+                .arg("data")
+                .arg(*update)
+                .arg("clientId")
+                .arg(instance_id)
+                .arg("timestamp")
+                .arg(timestamp)
+                .ignore();
+        }
+
+        let _: () = pipe.query_async(conn).await?;
+
+        Ok(())
+    }
+
     pub async fn publish_update_with_ttl(
         &self,
         stream_key: &str,
@@ -840,6 +878,44 @@ impl RedisStore {
             .arg(timestamp)
             .invoke_async(&mut *conn)
             .await?;
+
+        Ok(())
+    }
+
+    pub async fn publish_multiple_awareness(
+        &self,
+        conn: &mut redis::aio::MultiplexedConnection,
+        stream_key: &str,
+        awareness_updates: &[&[u8]],
+        instance_id: &u64,
+    ) -> Result<()> {
+        if awareness_updates.is_empty() {
+            return Ok(());
+        }
+
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+
+        let mut pipe = redis::pipe();
+
+        for awareness_data in awareness_updates {
+            pipe.cmd("XADD")
+                .arg(stream_key)
+                .arg("*")
+                .arg("type")
+                .arg(MESSAGE_TYPE_AWARENESS)
+                .arg("data")
+                .arg(*awareness_data)
+                .arg("clientId")
+                .arg(instance_id)
+                .arg("timestamp")
+                .arg(timestamp)
+                .ignore();
+        }
+
+        let _: () = pipe.query_async(conn).await?;
 
         Ok(())
     }

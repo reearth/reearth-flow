@@ -7,7 +7,7 @@ use axum::{
 use chrono::Utc;
 use std::sync::Arc;
 use tracing::error;
-use yrs::{ReadTxn, StateVector, Transact};
+use yrs::{Doc, ReadTxn, StateVector, Transact};
 
 use crate::application::kv::DocOps;
 use crate::domain::entity::doc::Document;
@@ -66,6 +66,104 @@ impl DocumentHandler {
             .into_response(),
             Err(err) => {
                 error!("Failed to create snapshot for document {}: {}", doc_id, err);
+                let status_code = if err.to_string().contains("not found") {
+                    StatusCode::NOT_FOUND
+                } else {
+                    StatusCode::INTERNAL_SERVER_ERROR
+                };
+
+                (status_code, format!("Error: {err}")).into_response()
+            }
+        }
+    }
+
+    pub async fn get_latest(
+        Path(doc_id): Path<String>,
+        State(state): State<Arc<AppState>>,
+    ) -> Response {
+        if let Err(e) = state.pool.flush_to_gcs(&doc_id).await {
+            error!("Failed to flush websocket changes for '{}': {}", doc_id, e);
+        }
+
+        let storage = state.pool.get_store();
+        let doc = Doc::new();
+        let mut txn = doc.transact_mut();
+
+        let result = async {
+            match storage.load_doc_v2(&doc_id, &mut txn).await {
+                Ok(()) => {
+                    let state = txn.encode_diff_v1(&StateVector::default());
+                    drop(txn);
+
+                    let metadata = storage.get_latest_update_metadata(&doc_id).await?;
+
+                    let latest_clock = metadata.map(|(clock, _)| clock).unwrap_or(0);
+                    let timestamp = if let Some((_, ts)) = metadata {
+                        chrono::DateTime::from_timestamp(ts.unix_timestamp(), 0)
+                            .unwrap_or(Utc::now())
+                    } else {
+                        Utc::now()
+                    };
+
+                    let document = Document {
+                        id: doc_id.clone(),
+                        version: latest_clock as u64,
+                        timestamp,
+                        updates: state,
+                    };
+
+                    Ok::<_, anyhow::Error>(document)
+                }
+                Err(_) => {
+                    let doc = Doc::new();
+                    let mut txn = doc.transact_mut();
+                    let load_result = storage.load_doc(&doc_id, &mut txn).await;
+
+                    match load_result {
+                        Ok(true) => {
+                            drop(txn);
+                            let read_txn = doc.transact();
+                            let state = read_txn.encode_diff_v1(&StateVector::default());
+                            drop(read_txn);
+
+                            let metadata = storage.get_latest_update_metadata(&doc_id).await?;
+
+                            let latest_clock = metadata.map(|(clock, _)| clock).unwrap_or(0);
+                            let timestamp = if let Some((_, ts)) = metadata {
+                                chrono::DateTime::from_timestamp(ts.unix_timestamp(), 0)
+                                    .unwrap_or(Utc::now())
+                            } else {
+                                Utc::now()
+                            };
+
+                            let document = Document {
+                                id: doc_id.clone(),
+                                version: latest_clock as u64,
+                                timestamp,
+                                updates: state,
+                            };
+
+                            Ok::<_, anyhow::Error>(document)
+                        }
+                        Ok(false) => Err(anyhow::anyhow!("Document not found: {}", doc_id)),
+                        Err(e) => Err(anyhow::anyhow!("Failed to load document: {}", e)),
+                    }
+                }
+            }
+        }
+        .await;
+
+        match result {
+            Ok(doc) => Json(DocumentResponse {
+                id: doc.id,
+                updates: doc.updates,
+                version: doc.version,
+                timestamp: doc.timestamp.to_rfc3339(),
+            })
+            .into_response(),
+            Err(err) => {
+                error!("Failed to get document {}: {}", doc_id, err);
+
                 let status_code = if err.to_string().contains("not found") {
                     StatusCode::NOT_FOUND
                 } else {
