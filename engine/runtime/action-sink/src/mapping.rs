@@ -7,9 +7,10 @@ use crate::{
     echo::EchoSinkFactory,
     file::{
         cesium3dtiles::sink::Cesium3DTilesSinkFactory, csv::CsvWriterFactory,
-        czml::CzmlWriterFactory, geojson::GeoJsonWriterFactory, gltf::GltfWriterSinkFactory,
-        mvt::sink::MVTSinkFactory, obj::ObjWriterFactory, shapefile::ShapefileWriterFactory,
-        writer::FileWriterSinkFactory, zip::ZipFileWriterFactory,
+        czml::CzmlWriterFactory, excel::ExcelWriterFactory, geojson::GeoJsonWriterFactory,
+        gltf::GltfWriterSinkFactory, mvt::sink::MVTSinkFactory, obj::ObjWriterFactory,
+        shapefile::ShapefileWriterFactory, writer::FileWriterSinkFactory, xml::XmlWriterFactory,
+        zip::ZipFileWriterFactory,
     },
     noop::NoopSinkFactory,
 };
@@ -20,6 +21,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<Cesium3DTilesSinkFactory>::default(),
         Box::<CsvWriterFactory>::default(),
         Box::<EchoSinkFactory>::default(),
+        Box::<ExcelWriterFactory>::default(),
         Box::<NoopSinkFactory>::default(),
         Box::<GeoJsonWriterFactory>::default(),
         Box::<MVTSinkFactory>::default(),
@@ -27,6 +29,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<CzmlWriterFactory>::default(),
         Box::<ObjWriterFactory>::default(),
         Box::<ShapefileWriterFactory>::default(),
+        Box::<XmlWriterFactory>::default(),
         Box::<ZipFileWriterFactory>::default(),
     ];
     factories

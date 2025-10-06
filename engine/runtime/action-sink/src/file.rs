@@ -1,7 +1,7 @@
 pub(super) mod cesium3dtiles;
 pub(super) mod csv;
 pub(super) mod czml;
-mod excel;
+pub(super) mod excel;
 pub(super) mod geojson;
 pub(super) mod gltf;
 pub(super) mod mvt;

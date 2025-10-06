@@ -15,7 +15,6 @@ use rhai::{Dynamic, AST};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::file::excel::ExcelWriterParam;
 use reearth_flow_common::uri::Uri;
 use serde_json::Value;
 
@@ -85,9 +84,9 @@ impl SinkFactory for FileWriterSinkFactory {
                 common_params,
                 json_params,
             },
-            FileWriterParam::Excel { excel_params, .. } => FileWriterCompiledParam::Excel {
+            FileWriterParam::Excel { sheet_name, .. } => FileWriterCompiledParam::Excel {
                 common_params,
-                excel_params,
+                sheet_name,
             },
         };
         let sink = FileWriter {
@@ -147,8 +146,7 @@ pub enum FileWriterParam {
     Excel {
         #[serde(flatten)]
         common_params: FileWriterCommonParam,
-        #[serde(flatten)]
-        excel_params: ExcelWriterParam,
+        sheet_name: Option<String>,
     },
 }
 
@@ -181,7 +179,7 @@ pub enum FileWriterCompiledParam {
     },
     Excel {
         common_params: FileWriterCommonCompiledParam,
-        excel_params: ExcelWriterParam,
+        sheet_name: Option<String>,
     },
 }
 
@@ -235,8 +233,8 @@ impl Sink for FileWriter {
                 FileWriterCompiledParam::Xml { .. } => {
                     super::xml::write_xml(output, features, &storage_resolver)
                 }
-                FileWriterCompiledParam::Excel { excel_params, .. } => {
-                    write_excel(output, excel_params, features, &storage_resolver)
+                FileWriterCompiledParam::Excel { sheet_name, .. } => {
+                    write_excel(output, sheet_name.clone(), features, &storage_resolver)
                 }
             }?;
         }
