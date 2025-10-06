@@ -6,16 +6,6 @@ export function inferProjectVariableType(value: any, name: string): VarType {
   // Handle null values by inferring from name patterns
   if (value === null || value === undefined) {
     if (
-      normalizedName.includes("path") ||
-      normalizedName.includes("file") ||
-      normalizedName.includes("folder")
-    ) {
-      return "file_folder";
-    }
-    if (normalizedName.includes("output") || normalizedName.includes("dir")) {
-      return "file_folder";
-    }
-    if (
       normalizedName.includes("password") ||
       normalizedName.includes("secret")
     ) {
@@ -54,13 +44,13 @@ export function inferProjectVariableType(value: any, name: string): VarType {
 
   if (typeof value === "string") {
     // String pattern matching
-    if (
-      normalizedName.includes("path") ||
-      normalizedName.includes("file") ||
-      normalizedName.includes("folder")
-    ) {
-      return "file_folder";
-    }
+    // if (
+    //   normalizedName.includes("path") ||
+    //   normalizedName.includes("file") ||
+    //   normalizedName.includes("folder")
+    // ) {
+    //   return "file_folder";
+    // }
     if (
       normalizedName.includes("password") ||
       normalizedName.includes("secret")
@@ -102,7 +92,6 @@ export function getDefaultValue(value: any, type: VarType): any {
       case "choice":
         return "";
       case "text":
-      case "file_folder":
       case "password":
       case "datetime":
       case "color":

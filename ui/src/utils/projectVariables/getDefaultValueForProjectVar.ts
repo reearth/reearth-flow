@@ -48,10 +48,6 @@ export function getDefaultValueForProjectVar(type: VarType): any {
       // Return ISO string for datetime
       return new Date().toISOString();
 
-    case "file_folder":
-      // Default file/folder path can be an empty string or a predefined path if needed.
-      return "";
-
     // case "geometry":
     //   // A basic geometry object, here represented as a Point at coordinates [0, 0]
     //   const defaultGeometry: Geometry = {
@@ -175,13 +171,13 @@ export function getDefaultConfigForProjectVar<T extends VarType>(
         timeout: 30000,
       } as ProjectVariableConfig<T>;
 
-    case "file_folder":
-      return {
-        allowedExtensions: undefined,
-        maxSize: undefined,
-        allowMultiple: false,
-        accept: undefined,
-      } as ProjectVariableConfig<T>;
+    // case "file_folder":
+    //   return {
+    //     allowedExtensions: undefined,
+    //     maxSize: undefined,
+    //     allowMultiple: false,
+    //     accept: undefined,
+    //   } as ProjectVariableConfig<T>;
 
     // Types that don't have config
     case "attribute_name":
