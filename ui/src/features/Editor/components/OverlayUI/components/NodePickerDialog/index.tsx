@@ -65,7 +65,7 @@ const NodePickerDialog: React.FC<Props> = ({
           <Select
             value={currentActionByType}
             onValueChange={handleActionByTypeChange}>
-            <SelectTrigger className="h-[32px] w-[150px]">
+            <SelectTrigger className="h-[32px] min-w-[150px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
