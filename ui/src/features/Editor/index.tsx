@@ -59,7 +59,7 @@ export default function Editor({
     handleNodesChange,
     handleBeforeDeleteNodes,
     handleDeleteDialogClose,
-    handleNodeDataUpdate,
+    handleNodesDataUpdate,
     handleNodeSettings,
     handleOpenNode,
     handleNodePickerOpen,
@@ -79,6 +79,7 @@ export default function Editor({
     handlePaneMouseMove,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
+    handleNodesDisable,
     handlePaneClick,
   } = useHooks({
     yDoc,
@@ -158,6 +159,7 @@ export default function Editor({
               onCut={handleCut}
               onPaste={handlePaste}
               onPaneMouseMove={handlePaneMouseMove}
+              onNodesDisable={handleNodesDisable}
               onPaneClick={handlePaneClick}
             />
           </OverlayUI>
@@ -166,7 +168,7 @@ export default function Editor({
             <ParamsDialog
               openNode={openNode}
               onOpenNode={handleOpenNode}
-              onDataSubmit={handleNodeDataUpdate}
+              onDataSubmit={handleNodesDataUpdate}
               onWorkflowRename={handleWorkflowRename}
             />
           )}
