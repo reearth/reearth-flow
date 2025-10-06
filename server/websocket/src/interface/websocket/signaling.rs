@@ -73,7 +73,6 @@ impl PartialEq<Self> for WsSinkKey {
 
 impl Eq for WsSinkKey {}
 
-/// Handle incoming signaling connection
 pub async fn handle_signaling_connection(
     socket: WebSocket,
     service: SignalingService,
