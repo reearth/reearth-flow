@@ -131,7 +131,7 @@ impl Sink for CsvWriter {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let delimiter = self.params.format.delimiter();
         for (uri, features) in &self.buffer {
-            write_csv(&uri, features, delimiter.clone(), &storage_resolver)?;
+            write_csv(uri, features, delimiter.clone(), &storage_resolver)?;
         }
         Ok(())
     }
