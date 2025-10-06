@@ -131,7 +131,7 @@ impl Sink for CsvWriter {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let delimiter = self.params.format.delimiter();
         for (output, features) in &self.buffer {
-            let output = output.as_string().ok_or(SinkError::FileWriter(
+            let output = output.as_string().ok_or(SinkError::CsvWriter(
                 "Output path must be a string".to_string(),
             ))?;
             let output = Uri::from_str(&output)?;
