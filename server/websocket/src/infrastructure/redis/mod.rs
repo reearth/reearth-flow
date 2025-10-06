@@ -84,6 +84,46 @@ impl RedisStore {
         Ok(())
     }
 
+    pub async fn publish_multiple_updates(
+        &self,
+        conn: &mut redis::aio::MultiplexedConnection,
+        stream_key: &str,
+        updates: &[&[u8]],
+        instance_id: &u64,
+    ) -> Result<()> {
+        if updates.is_empty() {
+            return Ok(());
+        }
+
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+
+        // Use Redis pipeline to send all XADD commands at once
+        let mut pipe = redis::pipe();
+
+        for update in updates {
+            pipe.cmd("XADD")
+                .arg(stream_key)
+                .arg("*")
+                .arg("type")
+                .arg(MESSAGE_TYPE_SYNC)
+                .arg("data")
+                .arg(*update)
+                .arg("clientId")
+                .arg(instance_id)
+                .arg("timestamp")
+                .arg(timestamp)
+                .ignore(); // Ignore individual command results
+        }
+
+        // Execute the entire pipeline in one network round trip
+        let _: () = pipe.query_async(conn).await?;
+
+        Ok(())
+    }
+
     pub async fn publish_update_with_ttl(
         &self,
         stream_key: &str,
