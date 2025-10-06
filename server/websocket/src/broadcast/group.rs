@@ -27,75 +27,6 @@ use yrs::{Doc, ReadTxn, Transact, Update};
 use super::types::BroadcastConfig;
 use crate::domain::value_objects::count::Count;
 
-async fn flush_pending_updates(
-    redis_store: &RedisStore,
-    conn: &mut redis::aio::MultiplexedConnection,
-    receiver: &mut tokio::sync::mpsc::Receiver<Vec<u8>>,
-    stream_key: &str,
-    instance_id: &u64,
-) {
-    let mut updates = Vec::new();
-
-    while let Ok(update) = receiver.try_recv() {
-        updates.push(update);
-        if updates.len() >= 100 {
-            break;
-        }
-    }
-
-    if !updates.is_empty() {
-        let refs: Vec<&[u8]> = updates.iter().map(|u| u.as_slice()).collect();
-        if let Err(e) = redis_store
-            .publish_multiple_updates(conn, stream_key, &refs, instance_id)
-            .await
-        {
-            warn!(
-                "Failed to batch write {} updates to Redis: {}",
-                updates.len(),
-                e
-            );
-        } else {
-            debug!("Successfully batched {} updates to Redis", updates.len());
-        }
-    }
-}
-
-async fn flush_pending_awareness(
-    redis_store: &RedisStore,
-    conn: &mut redis::aio::MultiplexedConnection,
-    receiver: &mut tokio::sync::mpsc::Receiver<Vec<u8>>,
-    stream_key: &str,
-    instance_id: &u64,
-) {
-    let mut updates = Vec::new();
-
-    while let Ok(update) = receiver.try_recv() {
-        updates.push(update);
-        if updates.len() >= 50 {
-            break;
-        }
-    }
-
-    if !updates.is_empty() {
-        let refs: Vec<&[u8]> = updates.iter().map(|u| u.as_slice()).collect();
-        if let Err(e) = redis_store
-            .publish_multiple_awareness(conn, stream_key, &refs, instance_id)
-            .await
-        {
-            warn!(
-                "Failed to batch write {} awareness updates to Redis: {}",
-                updates.len(),
-                e
-            );
-        } else {
-            debug!(
-                "Successfully batched {} awareness updates to Redis",
-                updates.len()
-            );
-        }
-    }
-}
-
 pub struct BroadcastGroup {
     awareness_ref: AwarenessRef,
     sender: Sender<Bytes>,
@@ -752,6 +683,75 @@ impl Drop for BroadcastGroup {
             if let Some(handle) = guard.take() {
                 handle.shutdown_sync();
             }
+        }
+    }
+}
+
+async fn flush_pending_updates(
+    redis_store: &RedisStore,
+    conn: &mut redis::aio::MultiplexedConnection,
+    receiver: &mut tokio::sync::mpsc::Receiver<Vec<u8>>,
+    stream_key: &str,
+    instance_id: &u64,
+) {
+    let mut updates = Vec::new();
+
+    while let Ok(update) = receiver.try_recv() {
+        updates.push(update);
+        if updates.len() >= 100 {
+            break;
+        }
+    }
+
+    if !updates.is_empty() {
+        let refs: Vec<&[u8]> = updates.iter().map(|u| u.as_slice()).collect();
+        if let Err(e) = redis_store
+            .publish_multiple_updates(conn, stream_key, &refs, instance_id)
+            .await
+        {
+            warn!(
+                "Failed to batch write {} updates to Redis: {}",
+                updates.len(),
+                e
+            );
+        } else {
+            debug!("Successfully batched {} updates to Redis", updates.len());
+        }
+    }
+}
+
+async fn flush_pending_awareness(
+    redis_store: &RedisStore,
+    conn: &mut redis::aio::MultiplexedConnection,
+    receiver: &mut tokio::sync::mpsc::Receiver<Vec<u8>>,
+    stream_key: &str,
+    instance_id: &u64,
+) {
+    let mut updates = Vec::new();
+
+    while let Ok(update) = receiver.try_recv() {
+        updates.push(update);
+        if updates.len() >= 50 {
+            break;
+        }
+    }
+
+    if !updates.is_empty() {
+        let refs: Vec<&[u8]> = updates.iter().map(|u| u.as_slice()).collect();
+        if let Err(e) = redis_store
+            .publish_multiple_awareness(conn, stream_key, &refs, instance_id)
+            .await
+        {
+            warn!(
+                "Failed to batch write {} awareness updates to Redis: {}",
+                updates.len(),
+                e
+            );
+        } else {
+            debug!(
+                "Successfully batched {} awareness updates to Redis",
+                updates.len()
+            );
         }
     }
 }

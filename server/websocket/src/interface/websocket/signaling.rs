@@ -15,7 +15,7 @@ use tracing::{info, trace, warn};
 const PING_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Debug, Clone)]
-pub struct SignalingService(Arc<RwLock<HashMap<Arc<str>, HashSet<WsSink>>>>);
+pub struct SignalingService(Arc<RwLock<HashMap<Arc<str>, HashSet<WsSinkKey>>>>);
 
 impl SignalingService {
     pub fn new() -> Self {
@@ -48,20 +48,30 @@ impl WsSink {
     }
 }
 
-impl Hash for WsSink {
+#[allow(clippy::mutable_key_type)]
+#[derive(Debug, Clone)]
+struct WsSinkKey(WsSink);
+
+impl From<WsSink> for WsSinkKey {
+    fn from(ws: WsSink) -> Self {
+        WsSinkKey(ws)
+    }
+}
+
+impl Hash for WsSinkKey {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        let ptr = Arc::as_ptr(&self.0) as usize;
+        let ptr = Arc::as_ptr(&self.0 .0) as usize;
         ptr.hash(state);
     }
 }
 
-impl PartialEq<Self> for WsSink {
+impl PartialEq<Self> for WsSinkKey {
     fn eq(&self, other: &Self) -> bool {
-        Arc::ptr_eq(&self.0, &other.0)
+        Arc::ptr_eq(&self.0 .0, &other.0 .0)
     }
 }
 
-impl Eq for WsSink {}
+impl Eq for WsSinkKey {}
 
 /// Handle incoming signaling connection
 pub async fn handle_signaling_connection(
@@ -114,14 +124,14 @@ pub async fn handle_signaling_connection(
     }
 }
 
-const PING_MSG: &str = r#"{"type":"ping"}"#;
 const PONG_MSG: &str = r#"{"type":"pong"}"#;
 
+#[allow(clippy::mutable_key_type)]
 async fn process_msg(
     msg: Message,
     ws: &WsSink,
     state: &mut ConnState,
-    topics: &mut Arc<RwLock<HashMap<Arc<str>, HashSet<WsSink>>>>,
+    topics: &mut Arc<RwLock<HashMap<Arc<str>, HashSet<WsSinkKey>>>>,
 ) -> Result<(), axum::Error> {
     if let Message::Text(text) = msg {
         let json = text.to_string();
@@ -141,7 +151,7 @@ async fn process_msg(
                             if let Some((key, _)) = topics_guard.get_key_value(topic) {
                                 state.subscribed_topics.insert(key.clone());
                                 let subs = topics_guard.get_mut(topic).unwrap();
-                                subs.insert(ws.clone());
+                                subs.insert(ws.clone().into());
                                 info!(
                                     "✅ Added to existing room '{}', total clients: {}",
                                     topic,
@@ -151,7 +161,7 @@ async fn process_msg(
                                 let topic: Arc<str> = topic.into();
                                 state.subscribed_topics.insert(topic.clone());
                                 let mut subs = HashSet::new();
-                                subs.insert(ws.clone());
+                                subs.insert(ws.clone().into());
                                 topics_guard.insert(topic.clone(), subs);
                                 info!("🆕 Created new room '{}'", topic);
                             };
@@ -166,7 +176,7 @@ async fn process_msg(
                         for topic in topic_names {
                             if let Some(subs) = topics_guard.get_mut(topic) {
                                 trace!("unsubscribing client from '{topic}'");
-                                subs.remove(ws);
+                                subs.remove(&ws.clone().into());
                             }
                         }
                     }
@@ -185,8 +195,10 @@ async fn process_msg(
                             );
 
                             for receiver in receivers.iter() {
-                                if let Err(e) =
-                                    receiver.try_send(Message::Text(json.clone().into())).await
+                                if let Err(e) = receiver
+                                    .0
+                                    .try_send(Message::Text(json.clone().into()))
+                                    .await
                                 {
                                     info!(
                                         "failed to publish message {} on '{}': {:?}",
@@ -220,7 +232,7 @@ async fn process_msg(
         let mut topics_guard = topics.write().await;
         for topic in state.subscribed_topics.drain() {
             if let Some(subs) = topics_guard.get_mut(&topic) {
-                subs.remove(ws);
+                subs.remove(&ws.clone().into());
                 if subs.is_empty() {
                     topics_guard.remove(&topic);
                 }
