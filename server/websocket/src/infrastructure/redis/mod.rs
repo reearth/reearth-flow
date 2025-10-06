@@ -884,6 +884,46 @@ impl RedisStore {
         Ok(())
     }
 
+    pub async fn publish_multiple_awareness(
+        &self,
+        conn: &mut redis::aio::MultiplexedConnection,
+        stream_key: &str,
+        awareness_updates: &[&[u8]],
+        instance_id: &u64,
+    ) -> Result<()> {
+        if awareness_updates.is_empty() {
+            return Ok(());
+        }
+
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+
+        // Use Redis pipeline to send all XADD commands at once
+        let mut pipe = redis::pipe();
+
+        for awareness_data in awareness_updates {
+            pipe.cmd("XADD")
+                .arg(stream_key)
+                .arg("*")
+                .arg("type")
+                .arg(MESSAGE_TYPE_AWARENESS)
+                .arg("data")
+                .arg(*awareness_data)
+                .arg("clientId")
+                .arg(instance_id)
+                .arg("timestamp")
+                .arg(timestamp)
+                .ignore(); // Ignore individual command results
+        }
+
+        // Execute the entire pipeline in one network round trip
+        let _: () = pipe.query_async(conn).await?;
+
+        Ok(())
+    }
+
     pub async fn trim_stream_by_length(&self, doc_id: &str, max_length: u64) -> Result<u64> {
         let stream_key = format!("yjs:stream:{doc_id}");
         let mut conn = self.pool.get().await?;

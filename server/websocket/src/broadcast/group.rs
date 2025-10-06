@@ -63,6 +63,45 @@ async fn flush_pending_updates(
     }
 }
 
+/// Flushes pending awareness updates from channel to Redis in a batch
+async fn flush_pending_awareness(
+    redis_store: &RedisStore,
+    conn: &mut redis::aio::MultiplexedConnection,
+    receiver: &mut tokio::sync::mpsc::Receiver<Vec<u8>>,
+    stream_key: &str,
+    instance_id: &u64,
+) {
+    // Non-blocking collection of all pending awareness updates
+    let mut updates = Vec::new();
+
+    while let Ok(update) = receiver.try_recv() {
+        updates.push(update);
+        if updates.len() >= 50 {
+            break; // Smaller batch for awareness (more frequent)
+        }
+    }
+
+    // Batch write to Redis if we have updates
+    if !updates.is_empty() {
+        let refs: Vec<&[u8]> = updates.iter().map(|u| u.as_slice()).collect();
+        if let Err(e) = redis_store
+            .publish_multiple_awareness(conn, stream_key, &refs, instance_id)
+            .await
+        {
+            warn!(
+                "Failed to batch write {} awareness updates to Redis: {}",
+                updates.len(),
+                e
+            );
+        } else {
+            debug!(
+                "Successfully batched {} awareness updates to Redis",
+                updates.len()
+            );
+        }
+    }
+}
+
 pub struct BroadcastGroup {
     awareness_ref: AwarenessRef,
     sender: Sender<Bytes>,
@@ -76,6 +115,8 @@ pub struct BroadcastGroup {
     connections_count: Count,
     redis_write_tx: tokio::sync::mpsc::Sender<Vec<u8>>,
     redis_write_rx: Arc<Mutex<tokio::sync::mpsc::Receiver<Vec<u8>>>>,
+    redis_awareness_tx: tokio::sync::mpsc::Sender<Vec<u8>>,
+    redis_awareness_rx: Arc<Mutex<tokio::sync::mpsc::Receiver<Vec<u8>>>>,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -138,11 +179,10 @@ impl BroadcastGroup {
         });
         drop(lock);
 
-        let redis_store_for_awareness = redis_store.clone();
-        let doc_name_for_awareness = config.doc_name.clone().unwrap_or_default();
-        let mut conn = redis_store_for_awareness
-            .create_dedicated_connection()
-            .await?;
+        // Create channel for awareness updates
+        let (redis_awareness_tx, redis_awareness_rx) = tokio::sync::mpsc::channel::<Vec<u8>>(512);
+        let redis_awareness_rx = Arc::new(Mutex::new(redis_awareness_rx));
+        let redis_awareness_tx_clone = redis_awareness_tx.clone();
 
         let awareness_updater = tokio::task::spawn(async move {
             loop {
@@ -154,28 +194,19 @@ impl BroadcastGroup {
                         if let Some(changed_clients) = client_update {
                             if let Some(awareness) = awareness_c.upgrade() {
                                 let awareness = awareness.read().await;
-                                let client_id = awareness.client_id();
                                 if let Ok(update) = awareness.update_with_clients(changed_clients.clone()) {
+                                    // Immediately broadcast to local clients (fast!)
                                     let msg_bytes = Bytes::from(Message::Awareness(update.clone()).encode_v1());
                                     if let Err(e) = sink.send(msg_bytes) {
                                         error!("couldn't broadcast awareness update {}", e);
                                         return;
                                     }
 
+                                    // Non-blocking: send to channel for batched Redis write
                                     let update_bytes = update.encode_v1();
-                                    let stream_key = format!("yjs:stream:{doc_name_for_awareness}");
-                                        if let Err(e) = redis_store_for_awareness
-                                            .publish_awareness(
-                                                &mut conn,
-                                                &stream_key,
-                                                &update_bytes,
-                                                &client_id,
-                                            )
-                                            .await
-                                        {
-                                            warn!("Failed to store awareness update in Redis: {}", e);
-                                        }
-
+                                    if let Err(e) = redis_awareness_tx_clone.try_send(update_bytes) {
+                                        warn!("Awareness Redis write channel full or closed: {}", e);
+                                    }
                                 }
                             }
                         }
@@ -346,6 +377,8 @@ impl BroadcastGroup {
             connections_count: Count::new(),
             redis_write_tx,
             redis_write_rx,
+            redis_awareness_tx,
+            redis_awareness_rx,
         })
     }
 
@@ -427,6 +460,7 @@ impl BroadcastGroup {
             let awareness = self.awareness().clone();
             let redis_write_tx = self.redis_write_tx.clone();
             let redis_write_rx = self.redis_write_rx.clone();
+            let redis_awareness_rx = self.redis_awareness_rx.clone();
             let redis_store = self.redis_store.clone();
             let doc_name = self.doc_name.clone();
             let stream_key = format!("yjs:stream:{doc_name}");
@@ -475,17 +509,29 @@ impl BroadcastGroup {
                         _ => {}
                     }
 
-                    // Batch flush pending updates to Redis after handling message
-                    // let mut rx = redis_write_rx.lock().await;
-                    // flush_pending_updates(
-                    //     &redis_store,
-                    //     &mut conn,
-                    //     &mut rx,
-                    //     &stream_key,
-                    //     &client_id,
-                    // )
-                    // .await;
-                    // drop(rx);
+                    // Batch flush pending sync updates to Redis after handling message
+                    let mut rx = redis_write_rx.lock().await;
+                    flush_pending_updates(
+                        &redis_store,
+                        &mut conn,
+                        &mut rx,
+                        &stream_key,
+                        &client_id,
+                    )
+                    .await;
+                    drop(rx);
+
+                    // Batch flush pending awareness updates to Redis
+                    let mut awareness_rx = redis_awareness_rx.lock().await;
+                    flush_pending_awareness(
+                        &redis_store,
+                        &mut conn,
+                        &mut awareness_rx,
+                        &stream_key,
+                        &client_id,
+                    )
+                    .await;
+                    drop(awareness_rx);
                 }
                 Ok(())
             })
