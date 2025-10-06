@@ -220,8 +220,62 @@ async fn read_gltf(
         }
     } else {
         for scene in gltf.scenes() {
-            for node in scene.nodes() {
-                process_node(&node, &gltf, &buffer_data, params, &sender).await?;
+            let mut node_queue: Vec<gltf::Node> = scene.nodes().collect();
+
+            while let Some(node) = node_queue.pop() {
+                if let Some(mesh) = node.mesh() {
+                    let primitives: Vec<_> = mesh.primitives().collect();
+
+                    if !primitives.is_empty() {
+                        let geometry =
+                            create_geometry_from_primitives(&primitives, &buffer_data, params)?;
+                        let mut attributes = IndexMap::new();
+
+                        attributes.insert(
+                            Attribute::new("source"),
+                            AttributeValue::String("glTF".to_string()),
+                        );
+
+                        if let Some(mesh_name) = mesh.name() {
+                            attributes.insert(
+                                Attribute::new("mesh"),
+                                AttributeValue::String(mesh_name.to_string()),
+                            );
+                        }
+
+                        if params.include_nodes {
+                            if let Some(node_name) = node.name() {
+                                attributes.insert(
+                                    Attribute::new("node"),
+                                    AttributeValue::String(node_name.to_string()),
+                                );
+                            }
+                        }
+
+                        attributes.insert(
+                            Attribute::new("primitiveCount"),
+                            AttributeValue::Number(serde_json::Number::from(primitives.len())),
+                        );
+
+                        let feature = Feature {
+                            geometry,
+                            attributes,
+                            ..Default::default()
+                        };
+
+                        sender
+                            .send((
+                                DEFAULT_PORT.clone(),
+                                IngestionMessage::OperationEvent { feature },
+                            ))
+                            .await
+                            .map_err(|e| {
+                                SourceError::GltfReader(format!("Failed to send feature: {e}"))
+                            })?;
+                    }
+                }
+
+                node_queue.extend(node.children());
             }
         }
     }
@@ -236,90 +290,29 @@ fn collect_primitives<'a>(
     mesh_names: &mut Vec<String>,
     node_names: &mut Vec<String>,
 ) {
-    if let Some(node_name) = node.name() {
-        if !node_names.contains(&node_name.to_string()) {
-            node_names.push(node_name.to_string());
-        }
-    }
+    let mut node_stack = vec![node.clone()];
 
-    if let Some(mesh) = node.mesh() {
-        if let Some(mesh_name) = mesh.name() {
-            if !mesh_names.contains(&mesh_name.to_string()) {
-                mesh_names.push(mesh_name.to_string());
+    while let Some(current_node) = node_stack.pop() {
+        if let Some(node_name) = current_node.name() {
+            if !node_names.contains(&node_name.to_string()) {
+                node_names.push(node_name.to_string());
             }
         }
 
-        for primitive in mesh.primitives() {
-            primitives.push(primitive);
-        }
-    }
-
-    for child in node.children() {
-        collect_primitives(&child, _gltf, primitives, mesh_names, node_names);
-    }
-}
-
-async fn process_node<'a>(
-    node: &gltf::Node<'a>,
-    _gltf: &gltf::Gltf,
-    buffer_data: &[Vec<u8>],
-    params: &GltfReaderParam,
-    sender: &Sender<(Port, IngestionMessage)>,
-) -> Result<(), SourceError> {
-    if let Some(mesh) = node.mesh() {
-        let primitives: Vec<_> = mesh.primitives().collect();
-
-        if !primitives.is_empty() {
-            let geometry = create_geometry_from_primitives(&primitives, buffer_data, params)?;
-            let mut attributes = IndexMap::new();
-
-            attributes.insert(
-                Attribute::new("source"),
-                AttributeValue::String("glTF".to_string()),
-            );
-
+        if let Some(mesh) = current_node.mesh() {
             if let Some(mesh_name) = mesh.name() {
-                attributes.insert(
-                    Attribute::new("mesh"),
-                    AttributeValue::String(mesh_name.to_string()),
-                );
-            }
-
-            if params.include_nodes {
-                if let Some(node_name) = node.name() {
-                    attributes.insert(
-                        Attribute::new("node"),
-                        AttributeValue::String(node_name.to_string()),
-                    );
+                if !mesh_names.contains(&mesh_name.to_string()) {
+                    mesh_names.push(mesh_name.to_string());
                 }
             }
 
-            attributes.insert(
-                Attribute::new("primitiveCount"),
-                AttributeValue::Number(serde_json::Number::from(primitives.len())),
-            );
-
-            let feature = Feature {
-                geometry,
-                attributes,
-                ..Default::default()
-            };
-
-            sender
-                .send((
-                    DEFAULT_PORT.clone(),
-                    IngestionMessage::OperationEvent { feature },
-                ))
-                .await
-                .map_err(|e| SourceError::GltfReader(format!("Failed to send feature: {e}")))?;
+            for primitive in mesh.primitives() {
+                primitives.push(primitive);
+            }
         }
-    }
 
-    for child in node.children() {
-        Box::pin(process_node(&child, _gltf, buffer_data, params, sender)).await?;
+        node_stack.extend(current_node.children());
     }
-
-    Ok(())
 }
 
 async fn load_buffers(
