@@ -3,11 +3,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useDoubleClick } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
+import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
 import { buildNewCanvasNode } from "@flow/lib/reactFlow";
 import { ActionNodeType, Node } from "@flow/types";
 import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
 
+type ActionTypeFiltering = "all" | ActionNodeType;
 export default ({
   openedActionType,
   isMainWorkflow,
@@ -22,37 +24,46 @@ export default ({
   onNodesAdd: (nodes: Node[]) => void;
   onClose: () => void;
 }) => {
+  const t = useT();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentActionByType, setCurrentActionByType] =
-    useState<ActionNodeType>(openedActionType.nodeType);
+    useState<ActionTypeFiltering>(openedActionType.nodeType);
 
-  const actionTypes: { value: ActionNodeType; label: string }[] = [
-    { value: "reader", label: "Reader" },
-    { value: "transformer", label: "Transformer" },
-    { value: "writer", label: "Writer" },
+  const actionTypes: { value: ActionTypeFiltering; label: string }[] = [
+    { value: "all", label: t("All Actions") },
+    { value: "reader", label: t("Readers") },
+    { value: "transformer", label: t("Transformers") },
+    { value: "writer", label: t("Writers") },
   ];
 
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   // const { handleNodeDropInBatch } = useBatch();
   const { screenToFlowPosition } = useReactFlow();
-  const { useGetActionsSegregated } = useAction(i18n.language);
-  const { actions } = useGetActionsSegregated({
+  const { useGetActionsSegregated, useGetActions } = useAction(i18n.language);
+  const { actions: segregatedActions } = useGetActionsSegregated({
     isMainWorkflow,
     searchTerm,
     type: currentActionByType,
+  });
+
+  const { actions } = useGetActions({
+    isMainWorkflow,
+    searchTerm,
   });
 
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [selected, setSelected] = useState<string | undefined>();
 
   useEffect(() => {
-    if (actions?.length) {
-      const actionsList = actions.byType[currentActionByType];
+    if (segregatedActions?.length && currentActionByType !== "all") {
+      const actionsList = segregatedActions.byType[currentActionByType];
 
       setSelected(actionsList?.[selectedIndex]?.name ?? "");
+    } else {
+      setSelected(actions?.[selectedIndex]?.name ?? "");
     }
-  }, [selectedIndex, actions, currentActionByType]);
+  }, [selectedIndex, segregatedActions, actions, currentActionByType]);
 
   const handleSearchTerm = (newSearchTerm: string) => {
     setSearchTerm(newSearchTerm);
@@ -100,7 +111,10 @@ export default ({
     },
   );
 
-  const actionsList = actions?.byType[currentActionByType] || [];
+  const actionsList =
+    currentActionByType !== "all"
+      ? segregatedActions?.byType[currentActionByType]
+      : actions || [];
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -114,7 +128,10 @@ export default ({
         return;
       }
 
-      const currentActionsList = actions?.byType[currentActionByType] || [];
+      const currentActionsList =
+        currentActionByType !== "all"
+          ? segregatedActions?.byType[currentActionByType]
+          : actions || [];
 
       switch (e.key) {
         case "Enter":
@@ -154,6 +171,7 @@ export default ({
     };
   }, [
     actions,
+    segregatedActions,
     currentActionByType,
     selectedIndex,
     selected,
@@ -163,7 +181,7 @@ export default ({
   ]);
 
   const handleActionByTypeChange = useCallback(
-    (actionByType: ActionNodeType) => {
+    (actionByType: ActionTypeFiltering) => {
       setCurrentActionByType(actionByType);
     },
     [],

@@ -55,9 +55,9 @@ const NodePickerDialog: React.FC<Props> = ({
     <Dialog open={!!openedActionType} onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogTitle>{t("Choose action")}</DialogTitle>
-        <div className="flex items-center gap-2 py-3">
+        <div className="flex items-center gap-2 p-2">
           <Input
-            className="mx-auto w-full rounded-none border-x-0 border-t-0 border-zinc-700 bg-secondary focus-visible:ring-0"
+            className="mx-auto w-full focus-visible:ring-0"
             placeholder={t("Search")}
             autoFocus
             onChange={(e) => handleSearchTerm(e.target.value)}
@@ -66,7 +66,7 @@ const NodePickerDialog: React.FC<Props> = ({
             value={currentActionByType}
             onValueChange={handleActionByTypeChange}
             z-index={1000}>
-            <SelectTrigger className="h-[36px] w-[150px]">
+            <SelectTrigger className="h-[32px] w-[150px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -80,7 +80,7 @@ const NodePickerDialog: React.FC<Props> = ({
         </div>
 
         <div ref={containerRef} className="max-h-[50vh] overflow-scroll">
-          {actionsList.map((action, idx) => (
+          {actionsList?.map((action, idx) => (
             <Fragment key={action.name}>
               <ActionItem
                 ref={(el) => {
