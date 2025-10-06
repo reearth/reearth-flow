@@ -485,6 +485,15 @@ type RemoveParametersInput struct {
 	ParamIds []ID `json:"paramIds"`
 }
 
+type ResetWorkerConfigInput struct {
+	WorkspaceID ID       `json:"workspaceId"`
+	Fields      []string `json:"fields"`
+}
+
+type ResetWorkerConfigPayload struct {
+	WorkerConfig *WorkerConfig `json:"workerConfig"`
+}
+
 type RunProjectInput struct {
 	ProjectID   ID             `json:"projectId"`
 	WorkspaceID ID             `json:"workspaceId"`
@@ -627,6 +636,23 @@ type UpdateTriggerInput struct {
 	APIDriverInput  *APIDriverInput  `json:"apiDriverInput,omitempty"`
 }
 
+type UpdateWorkerConfigInput struct {
+	WorkspaceID           ID      `json:"workspaceId"`
+	BootDiskSizeGb        *int    `json:"bootDiskSizeGB,omitempty"`
+	BootDiskType          *string `json:"bootDiskType,omitempty"`
+	ChannelBufferSize     *int    `json:"channelBufferSize,omitempty"`
+	ComputeCPUMilli       *int    `json:"computeCpuMilli,omitempty"`
+	ComputeMemoryMib      *int    `json:"computeMemoryMib,omitempty"`
+	FeatureFlushThreshold *int    `json:"featureFlushThreshold,omitempty"`
+	ImageURL              *string `json:"imageURL,omitempty"`
+	MachineType           *string `json:"machineType,omitempty"`
+	MaxConcurrency        *int    `json:"maxConcurrency,omitempty"`
+}
+
+type UpdateWorkerConfigPayload struct {
+	WorkerConfig *WorkerConfig `json:"workerConfig"`
+}
+
 type UpdateWorkspaceInput struct {
 	WorkspaceID ID     `json:"workspaceId"`
 	Name        string `json:"name"`
@@ -664,6 +690,25 @@ type UserMetadata struct {
 	Theme       Theme        `json:"theme"`
 	Lang        language.Tag `json:"lang"`
 }
+
+type WorkerConfig struct {
+	ID                    ID        `json:"id"`
+	WorkspaceID           ID        `json:"workspaceId"`
+	BootDiskSizeGb        *int      `json:"bootDiskSizeGB,omitempty"`
+	BootDiskType          *string   `json:"bootDiskType,omitempty"`
+	ChannelBufferSize     *int      `json:"channelBufferSize,omitempty"`
+	ComputeCPUMilli       *int      `json:"computeCpuMilli,omitempty"`
+	ComputeMemoryMib      *int      `json:"computeMemoryMib,omitempty"`
+	FeatureFlushThreshold *int      `json:"featureFlushThreshold,omitempty"`
+	ImageURL              *string   `json:"imageURL,omitempty"`
+	MachineType           *string   `json:"machineType,omitempty"`
+	MaxConcurrency        *int      `json:"maxConcurrency,omitempty"`
+	CreatedAt             time.Time `json:"createdAt"`
+	UpdatedAt             time.Time `json:"updatedAt"`
+}
+
+func (WorkerConfig) IsNode()        {}
+func (this WorkerConfig) GetID() ID { return this.ID }
 
 type Workspace struct {
 	Assets   *AssetConnection   `json:"assets"`

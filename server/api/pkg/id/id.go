@@ -16,6 +16,7 @@ type (
 	Trigger       struct{}
 	User          struct{}
 	Workflow      struct{}
+	WorkerConfig  struct{}
 	Workspace     struct{}
 )
 
@@ -32,6 +33,7 @@ func (Thread) Type() string        { return "thread" }
 func (Trigger) Type() string       { return "trigger" }
 func (User) Type() string          { return "user" }
 func (Workflow) Type() string      { return "workflow" }
+func (WorkerConfig) Type() string  { return "workerConfig" }
 func (Workspace) Type() string     { return "workspace" }
 
 type (
@@ -48,6 +50,7 @@ type (
 	TriggerID       = idx.ID[Trigger]
 	UserID          = idx.ID[User]
 	WorkflowID      = idx.ID[Workflow]
+	WorkerConfigID  = idx.ID[WorkerConfig]
 	WorkspaceID     = idx.ID[Workspace]
 )
 
@@ -65,6 +68,7 @@ var (
 	NewTriggerID       = idx.New[Trigger]
 	NewUserID          = idx.New[User]
 	NewWorkflowID      = idx.New[Workflow]
+	NewWorkerConfigID  = idx.New[WorkerConfig]
 	NewWorkspaceID     = idx.New[Workspace]
 )
 
@@ -82,6 +86,7 @@ var (
 	MustTriggerID       = idx.Must[Trigger]
 	MustUserID          = idx.Must[User]
 	MustWorkflowID      = idx.Must[Workflow]
+	MustWorkerConfigID  = idx.Must[WorkerConfig]
 	MustWorkspaceID     = idx.Must[Workspace]
 )
 
@@ -99,6 +104,7 @@ var (
 	TriggerIDFrom       = idx.From[Trigger]
 	UserIDFrom          = idx.From[User]
 	WorkflowIDFrom      = idx.From[Workflow]
+	WorkerConfigIDFrom  = idx.From[WorkerConfig]
 	WorkspaceIDFrom     = idx.From[Workspace]
 )
 
@@ -116,6 +122,7 @@ var (
 	TriggerIDFromRef       = idx.FromRef[Trigger]
 	UserIDFromRef          = idx.FromRef[User]
 	WorkflowIDFromRef      = idx.FromRef[Workflow]
+	WorkerConfigIDFromRef  = idx.FromRef[WorkerConfig]
 	WorkspaceIDFromRef     = idx.FromRef[Workspace]
 )
 

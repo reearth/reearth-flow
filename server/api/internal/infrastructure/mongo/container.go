@@ -43,6 +43,7 @@ func New(ctx context.Context, db *mongo.Database, account *accountrepo.Container
 		Lock:          lock,
 		Transaction:   client.Transaction(),
 		Trigger:       NewTrigger(client),
+		WorkerConfig:  NewWorkerConfig(client),
 		Workflow:      NewWorkflow(client),
 		Workspace:     account.Workspace,
 		User:          account.User,
@@ -78,6 +79,7 @@ func Init(r *repo.Container) error {
 		func() error { return r.ProjectAccess.(*ProjectAccess).Init(ctx) },
 		func() error { return r.Role.(*accountmongo.Role).Init() }, // TODO: Delete this once the permission check migration is complete.
 		func() error { return r.Trigger.(*Trigger).Init(ctx) },
+		func() error { return r.WorkerConfig.(*WorkerConfig).Init(ctx) },
 		func() error { return r.Workflow.(*Workflow).Init(ctx) },
 	)
 }

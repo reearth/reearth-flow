@@ -90,6 +90,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 		SharedPath:               cfg.Config.SharedPath,
 		WebsocketThriftServerURL: cfg.Config.WebsocketThriftServerURL,
 		SkipPermissionCheck:      cfg.Config.SkipPermissionCheck,
+		WorkerConfig:             cfg.Config,
 	}))
 
 	// apis

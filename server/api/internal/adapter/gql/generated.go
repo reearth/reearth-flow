@@ -291,6 +291,7 @@ type ComplexityRoot struct {
 		RemoveMyAuth              func(childComplexity int, input gqlmodel.RemoveMyAuthInput) int
 		RemoveParameter           func(childComplexity int, input gqlmodel.RemoveParameterInput) int
 		RemoveParameters          func(childComplexity int, input gqlmodel.RemoveParametersInput) int
+		ResetWorkerConfig         func(childComplexity int, input gqlmodel.ResetWorkerConfigInput) int
 		RollbackProject           func(childComplexity int, projectID gqlmodel.ID, version int) int
 		RunProject                func(childComplexity int, input gqlmodel.RunProjectInput) int
 		SaveSnapshot              func(childComplexity int, projectID gqlmodel.ID) int
@@ -306,6 +307,7 @@ type ComplexityRoot struct {
 		UpdateParameters          func(childComplexity int, input gqlmodel.ParameterBatchInput) int
 		UpdateProject             func(childComplexity int, input gqlmodel.UpdateProjectInput) int
 		UpdateTrigger             func(childComplexity int, input gqlmodel.UpdateTriggerInput) int
+		UpdateWorkerConfig        func(childComplexity int, input gqlmodel.UpdateWorkerConfigInput) int
 		UpdateWorkspace           func(childComplexity int, input gqlmodel.UpdateWorkspaceInput) int
 	}
 
@@ -427,10 +429,16 @@ type ComplexityRoot struct {
 		SearchUser            func(childComplexity int, nameOrEmail string) int
 		SharedProject         func(childComplexity int, token string) int
 		Triggers              func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
+		WorkerConfig          func(childComplexity int, workspaceID gqlmodel.ID) int
+		WorkerConfigDefaults  func(childComplexity int) int
 	}
 
 	RemoveMemberFromWorkspacePayload struct {
 		Workspace func(childComplexity int) int
+	}
+
+	ResetWorkerConfigPayload struct {
+		WorkerConfig func(childComplexity int) int
 	}
 
 	RunProjectPayload struct {
@@ -494,6 +502,10 @@ type ComplexityRoot struct {
 		Workspace func(childComplexity int) int
 	}
 
+	UpdateWorkerConfigPayload struct {
+		WorkerConfig func(childComplexity int) int
+	}
+
 	UpdateWorkspacePayload struct {
 		Workspace func(childComplexity int) int
 	}
@@ -522,6 +534,22 @@ type ComplexityRoot struct {
 		PhotoURL    func(childComplexity int) int
 		Theme       func(childComplexity int) int
 		Website     func(childComplexity int) int
+	}
+
+	WorkerConfig struct {
+		BootDiskSizeGb        func(childComplexity int) int
+		BootDiskType          func(childComplexity int) int
+		ChannelBufferSize     func(childComplexity int) int
+		ComputeCPUMilli       func(childComplexity int) int
+		ComputeMemoryMib      func(childComplexity int) int
+		CreatedAt             func(childComplexity int) int
+		FeatureFlushThreshold func(childComplexity int) int
+		ID                    func(childComplexity int) int
+		ImageURL              func(childComplexity int) int
+		MachineType           func(childComplexity int) int
+		MaxConcurrency        func(childComplexity int) int
+		UpdatedAt             func(childComplexity int) int
+		WorkspaceID           func(childComplexity int) int
 	}
 
 	Workspace struct {
@@ -590,6 +618,8 @@ type MutationResolver interface {
 	UpdateMe(ctx context.Context, input gqlmodel.UpdateMeInput) (*gqlmodel.UpdateMePayload, error)
 	RemoveMyAuth(ctx context.Context, input gqlmodel.RemoveMyAuthInput) (*gqlmodel.UpdateMePayload, error)
 	DeleteMe(ctx context.Context, input gqlmodel.DeleteMeInput) (*gqlmodel.DeleteMePayload, error)
+	UpdateWorkerConfig(ctx context.Context, input gqlmodel.UpdateWorkerConfigInput) (*gqlmodel.UpdateWorkerConfigPayload, error)
+	ResetWorkerConfig(ctx context.Context, input gqlmodel.ResetWorkerConfigInput) (*gqlmodel.ResetWorkerConfigPayload, error)
 	CreateWorkspace(ctx context.Context, input gqlmodel.CreateWorkspaceInput) (*gqlmodel.CreateWorkspacePayload, error)
 	DeleteWorkspace(ctx context.Context, input gqlmodel.DeleteWorkspaceInput) (*gqlmodel.DeleteWorkspacePayload, error)
 	UpdateWorkspace(ctx context.Context, input gqlmodel.UpdateWorkspaceInput) (*gqlmodel.UpdateWorkspacePayload, error)
@@ -636,6 +666,8 @@ type QueryResolver interface {
 	Triggers(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.TriggerConnection, error)
 	Me(ctx context.Context) (*gqlmodel.Me, error)
 	SearchUser(ctx context.Context, nameOrEmail string) (*gqlmodel.User, error)
+	WorkerConfig(ctx context.Context, workspaceID gqlmodel.ID) (*gqlmodel.WorkerConfig, error)
+	WorkerConfigDefaults(ctx context.Context) (*gqlmodel.WorkerConfig, error)
 }
 type SubscriptionResolver interface {
 	JobStatus(ctx context.Context, jobID gqlmodel.ID) (<-chan gqlmodel.JobStatus, error)
@@ -1805,6 +1837,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.RemoveParameters(childComplexity, args["input"].(gqlmodel.RemoveParametersInput)), true
 
+	case "Mutation.resetWorkerConfig":
+		if e.complexity.Mutation.ResetWorkerConfig == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_resetWorkerConfig_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ResetWorkerConfig(childComplexity, args["input"].(gqlmodel.ResetWorkerConfigInput)), true
+
 	case "Mutation.rollbackProject":
 		if e.complexity.Mutation.RollbackProject == nil {
 			break
@@ -1984,6 +2028,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateTrigger(childComplexity, args["input"].(gqlmodel.UpdateTriggerInput)), true
+
+	case "Mutation.updateWorkerConfig":
+		if e.complexity.Mutation.UpdateWorkerConfig == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateWorkerConfig_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateWorkerConfig(childComplexity, args["input"].(gqlmodel.UpdateWorkerConfigInput)), true
 
 	case "Mutation.updateWorkspace":
 		if e.complexity.Mutation.UpdateWorkspace == nil {
@@ -2720,12 +2776,38 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.Triggers(childComplexity, args["workspaceId"].(gqlmodel.ID), args["pagination"].(gqlmodel.PageBasedPagination)), true
 
+	case "Query.workerConfig":
+		if e.complexity.Query.WorkerConfig == nil {
+			break
+		}
+
+		args, err := ec.field_Query_workerConfig_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.WorkerConfig(childComplexity, args["workspaceId"].(gqlmodel.ID)), true
+
+	case "Query.workerConfigDefaults":
+		if e.complexity.Query.WorkerConfigDefaults == nil {
+			break
+		}
+
+		return e.complexity.Query.WorkerConfigDefaults(childComplexity), true
+
 	case "RemoveMemberFromWorkspacePayload.workspace":
 		if e.complexity.RemoveMemberFromWorkspacePayload.Workspace == nil {
 			break
 		}
 
 		return e.complexity.RemoveMemberFromWorkspacePayload.Workspace(childComplexity), true
+
+	case "ResetWorkerConfigPayload.workerConfig":
+		if e.complexity.ResetWorkerConfigPayload.WorkerConfig == nil {
+			break
+		}
+
+		return e.complexity.ResetWorkerConfigPayload.WorkerConfig(childComplexity), true
 
 	case "RunProjectPayload.job":
 		if e.complexity.RunProjectPayload.Job == nil {
@@ -2943,6 +3025,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UpdateMemberOfWorkspacePayload.Workspace(childComplexity), true
 
+	case "UpdateWorkerConfigPayload.workerConfig":
+		if e.complexity.UpdateWorkerConfigPayload.WorkerConfig == nil {
+			break
+		}
+
+		return e.complexity.UpdateWorkerConfigPayload.WorkerConfig(childComplexity), true
+
 	case "UpdateWorkspacePayload.workspace":
 		if e.complexity.UpdateWorkspacePayload.Workspace == nil {
 			break
@@ -3069,6 +3158,97 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UserMetadata.Website(childComplexity), true
 
+	case "WorkerConfig.bootDiskSizeGB":
+		if e.complexity.WorkerConfig.BootDiskSizeGb == nil {
+			break
+		}
+
+		return e.complexity.WorkerConfig.BootDiskSizeGb(childComplexity), true
+
+	case "WorkerConfig.bootDiskType":
+		if e.complexity.WorkerConfig.BootDiskType == nil {
+			break
+		}
+
+		return e.complexity.WorkerConfig.BootDiskType(childComplexity), true
+
+	case "WorkerConfig.channelBufferSize":
+		if e.complexity.WorkerConfig.ChannelBufferSize == nil {
+			break
+		}
+
+		return e.complexity.WorkerConfig.ChannelBufferSize(childComplexity), true
+
+	case "WorkerConfig.computeCpuMilli":
+		if e.complexity.WorkerConfig.ComputeCPUMilli == nil {
+			break
+		}
+
+		return e.complexity.WorkerConfig.ComputeCPUMilli(childComplexity), true
+
+	case "WorkerConfig.computeMemoryMib":
+		if e.complexity.WorkerConfig.ComputeMemoryMib == nil {
+			break
+		}
+
+		return e.complexity.WorkerConfig.ComputeMemoryMib(childComplexity), true
+
+	case "WorkerConfig.createdAt":
+		if e.complexity.WorkerConfig.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.WorkerConfig.CreatedAt(childComplexity), true
+
+	case "WorkerConfig.featureFlushThreshold":
+		if e.complexity.WorkerConfig.FeatureFlushThreshold == nil {
+			break
+		}
+
+		return e.complexity.WorkerConfig.FeatureFlushThreshold(childComplexity), true
+
+	case "WorkerConfig.id":
+		if e.complexity.WorkerConfig.ID == nil {
+			break
+		}
+
+		return e.complexity.WorkerConfig.ID(childComplexity), true
+
+	case "WorkerConfig.imageURL":
+		if e.complexity.WorkerConfig.ImageURL == nil {
+			break
+		}
+
+		return e.complexity.WorkerConfig.ImageURL(childComplexity), true
+
+	case "WorkerConfig.machineType":
+		if e.complexity.WorkerConfig.MachineType == nil {
+			break
+		}
+
+		return e.complexity.WorkerConfig.MachineType(childComplexity), true
+
+	case "WorkerConfig.maxConcurrency":
+		if e.complexity.WorkerConfig.MaxConcurrency == nil {
+			break
+		}
+
+		return e.complexity.WorkerConfig.MaxConcurrency(childComplexity), true
+
+	case "WorkerConfig.updatedAt":
+		if e.complexity.WorkerConfig.UpdatedAt == nil {
+			break
+		}
+
+		return e.complexity.WorkerConfig.UpdatedAt(childComplexity), true
+
+	case "WorkerConfig.workspaceId":
+		if e.complexity.WorkerConfig.WorkspaceID == nil {
+			break
+		}
+
+		return e.complexity.WorkerConfig.WorkspaceID(childComplexity), true
+
 	case "Workspace.assets":
 		if e.complexity.Workspace.Assets == nil {
 			break
@@ -3175,6 +3355,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRemoveMyAuthInput,
 		ec.unmarshalInputRemoveParameterInput,
 		ec.unmarshalInputRemoveParametersInput,
+		ec.unmarshalInputResetWorkerConfigInput,
 		ec.unmarshalInputRunProjectInput,
 		ec.unmarshalInputShareProjectInput,
 		ec.unmarshalInputSignupInput,
@@ -3188,6 +3369,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateParameterOrderInput,
 		ec.unmarshalInputUpdateProjectInput,
 		ec.unmarshalInputUpdateTriggerInput,
+		ec.unmarshalInputUpdateWorkerConfigInput,
 		ec.unmarshalInputUpdateWorkspaceInput,
 	)
 	first := true
@@ -4247,6 +4429,74 @@ extend type Subscription {
   userFacingLogs(jobId: ID!): UserFacingLog
 }
 `, BuiltIn: false},
+	{Name: "../../../gql/workerconfig.graphql", Input: `# Worker Configuration
+# Allows workspace administrators to configure worker compute resources
+
+type WorkerConfig implements Node {
+  id: ID!
+  workspaceId: ID!
+  bootDiskSizeGB: Int
+  bootDiskType: String
+  channelBufferSize: Int
+  computeCpuMilli: Int
+  computeMemoryMib: Int
+  featureFlushThreshold: Int
+  imageURL: String
+  machineType: String
+  maxConcurrency: Int
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+# Input for updating worker configuration
+input UpdateWorkerConfigInput {
+  workspaceId: ID!
+  bootDiskSizeGB: Int
+  bootDiskType: String
+  channelBufferSize: Int
+  computeCpuMilli: Int
+  computeMemoryMib: Int
+  featureFlushThreshold: Int
+  imageURL: String
+  machineType: String
+  maxConcurrency: Int
+}
+
+# Input for resetting specific fields to defaults
+input ResetWorkerConfigInput {
+  workspaceId: ID!
+  fields: [String!]!
+}
+
+# Payload
+
+type UpdateWorkerConfigPayload {
+  workerConfig: WorkerConfig!
+}
+
+type ResetWorkerConfigPayload {
+  workerConfig: WorkerConfig!
+}
+
+# Query and Mutation
+
+extend type Query {
+  # Get worker configuration for a workspace (returns null if using defaults)
+  workerConfig(workspaceId: ID!): WorkerConfig
+  
+  # Get global default configuration
+  workerConfigDefaults: WorkerConfig!
+}
+
+extend type Mutation {
+  # Update worker configuration for a workspace (requires OWNER or MAINTAINER role)
+  updateWorkerConfig(input: UpdateWorkerConfigInput!): UpdateWorkerConfigPayload!
+  
+  # Reset specific fields or all fields to global defaults
+  resetWorkerConfig(input: ResetWorkerConfigInput!): ResetWorkerConfigPayload!
+}
+
+`, BuiltIn: false},
 	{Name: "../../../gql/workspace.graphql", Input: `type Workspace implements Node {
   assets(pagination: Pagination): AssetConnection!
   id: ID!
@@ -5111,6 +5361,34 @@ func (ec *executionContext) field_Mutation_removeParameters_argsInput(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_resetWorkerConfig_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_resetWorkerConfig_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_resetWorkerConfig_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (gqlmodel.ResetWorkerConfigInput, error) {
+	if _, ok := rawArgs["input"]; !ok {
+		var zeroVal gqlmodel.ResetWorkerConfigInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNResetWorkerConfigInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐResetWorkerConfigInput(ctx, tmp)
+	}
+
+	var zeroVal gqlmodel.ResetWorkerConfigInput
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_rollbackProject_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -5597,6 +5875,34 @@ func (ec *executionContext) field_Mutation_updateTrigger_argsInput(
 	}
 
 	var zeroVal gqlmodel.UpdateTriggerInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_updateWorkerConfig_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_updateWorkerConfig_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_updateWorkerConfig_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (gqlmodel.UpdateWorkerConfigInput, error) {
+	if _, ok := rawArgs["input"]; !ok {
+		var zeroVal gqlmodel.UpdateWorkerConfigInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNUpdateWorkerConfigInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateWorkerConfigInput(ctx, tmp)
+	}
+
+	var zeroVal gqlmodel.UpdateWorkerConfigInput
 	return zeroVal, nil
 }
 
@@ -7007,6 +7313,34 @@ func (ec *executionContext) field_Query_triggers_argsPagination(
 	}
 
 	var zeroVal gqlmodel.PageBasedPagination
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_workerConfig_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_workerConfig_argsWorkspaceID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["workspaceId"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_workerConfig_argsWorkspaceID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (gqlmodel.ID, error) {
+	if _, ok := rawArgs["workspaceId"]; !ok {
+		var zeroVal gqlmodel.ID
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceId"))
+	if tmp, ok := rawArgs["workspaceId"]; ok {
+		return ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+	}
+
+	var zeroVal gqlmodel.ID
 	return zeroVal, nil
 }
 
@@ -15116,6 +15450,124 @@ func (ec *executionContext) fieldContext_Mutation_deleteMe(ctx context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_updateWorkerConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateWorkerConfig(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateWorkerConfig(rctx, fc.Args["input"].(gqlmodel.UpdateWorkerConfigInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.UpdateWorkerConfigPayload)
+	fc.Result = res
+	return ec.marshalNUpdateWorkerConfigPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateWorkerConfigPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateWorkerConfig(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "workerConfig":
+				return ec.fieldContext_UpdateWorkerConfigPayload_workerConfig(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UpdateWorkerConfigPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateWorkerConfig_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_resetWorkerConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_resetWorkerConfig(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ResetWorkerConfig(rctx, fc.Args["input"].(gqlmodel.ResetWorkerConfigInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.ResetWorkerConfigPayload)
+	fc.Result = res
+	return ec.marshalNResetWorkerConfigPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐResetWorkerConfigPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_resetWorkerConfig(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "workerConfig":
+				return ec.fieldContext_ResetWorkerConfigPayload_workerConfig(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ResetWorkerConfigPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_resetWorkerConfig_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_createWorkspace(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_createWorkspace(ctx, field)
 	if err != nil {
@@ -19877,6 +20329,158 @@ func (ec *executionContext) fieldContext_Query_searchUser(ctx context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_workerConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_workerConfig(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().WorkerConfig(rctx, fc.Args["workspaceId"].(gqlmodel.ID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.WorkerConfig)
+	fc.Result = res
+	return ec.marshalOWorkerConfig2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐWorkerConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_workerConfig(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_WorkerConfig_id(ctx, field)
+			case "workspaceId":
+				return ec.fieldContext_WorkerConfig_workspaceId(ctx, field)
+			case "bootDiskSizeGB":
+				return ec.fieldContext_WorkerConfig_bootDiskSizeGB(ctx, field)
+			case "bootDiskType":
+				return ec.fieldContext_WorkerConfig_bootDiskType(ctx, field)
+			case "channelBufferSize":
+				return ec.fieldContext_WorkerConfig_channelBufferSize(ctx, field)
+			case "computeCpuMilli":
+				return ec.fieldContext_WorkerConfig_computeCpuMilli(ctx, field)
+			case "computeMemoryMib":
+				return ec.fieldContext_WorkerConfig_computeMemoryMib(ctx, field)
+			case "featureFlushThreshold":
+				return ec.fieldContext_WorkerConfig_featureFlushThreshold(ctx, field)
+			case "imageURL":
+				return ec.fieldContext_WorkerConfig_imageURL(ctx, field)
+			case "machineType":
+				return ec.fieldContext_WorkerConfig_machineType(ctx, field)
+			case "maxConcurrency":
+				return ec.fieldContext_WorkerConfig_maxConcurrency(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_WorkerConfig_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_WorkerConfig_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WorkerConfig", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_workerConfig_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_workerConfigDefaults(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_workerConfigDefaults(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().WorkerConfigDefaults(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.WorkerConfig)
+	fc.Result = res
+	return ec.marshalNWorkerConfig2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐWorkerConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_workerConfigDefaults(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_WorkerConfig_id(ctx, field)
+			case "workspaceId":
+				return ec.fieldContext_WorkerConfig_workspaceId(ctx, field)
+			case "bootDiskSizeGB":
+				return ec.fieldContext_WorkerConfig_bootDiskSizeGB(ctx, field)
+			case "bootDiskType":
+				return ec.fieldContext_WorkerConfig_bootDiskType(ctx, field)
+			case "channelBufferSize":
+				return ec.fieldContext_WorkerConfig_channelBufferSize(ctx, field)
+			case "computeCpuMilli":
+				return ec.fieldContext_WorkerConfig_computeCpuMilli(ctx, field)
+			case "computeMemoryMib":
+				return ec.fieldContext_WorkerConfig_computeMemoryMib(ctx, field)
+			case "featureFlushThreshold":
+				return ec.fieldContext_WorkerConfig_featureFlushThreshold(ctx, field)
+			case "imageURL":
+				return ec.fieldContext_WorkerConfig_imageURL(ctx, field)
+			case "machineType":
+				return ec.fieldContext_WorkerConfig_machineType(ctx, field)
+			case "maxConcurrency":
+				return ec.fieldContext_WorkerConfig_maxConcurrency(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_WorkerConfig_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_WorkerConfig_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WorkerConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query___type(ctx, field)
 	if err != nil {
@@ -20061,6 +20665,78 @@ func (ec *executionContext) fieldContext_RemoveMemberFromWorkspacePayload_worksp
 				return ec.fieldContext_Workspace_projects(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Workspace", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ResetWorkerConfigPayload_workerConfig(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ResetWorkerConfigPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ResetWorkerConfigPayload_workerConfig(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WorkerConfig, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.WorkerConfig)
+	fc.Result = res
+	return ec.marshalNWorkerConfig2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐWorkerConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ResetWorkerConfigPayload_workerConfig(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ResetWorkerConfigPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_WorkerConfig_id(ctx, field)
+			case "workspaceId":
+				return ec.fieldContext_WorkerConfig_workspaceId(ctx, field)
+			case "bootDiskSizeGB":
+				return ec.fieldContext_WorkerConfig_bootDiskSizeGB(ctx, field)
+			case "bootDiskType":
+				return ec.fieldContext_WorkerConfig_bootDiskType(ctx, field)
+			case "channelBufferSize":
+				return ec.fieldContext_WorkerConfig_channelBufferSize(ctx, field)
+			case "computeCpuMilli":
+				return ec.fieldContext_WorkerConfig_computeCpuMilli(ctx, field)
+			case "computeMemoryMib":
+				return ec.fieldContext_WorkerConfig_computeMemoryMib(ctx, field)
+			case "featureFlushThreshold":
+				return ec.fieldContext_WorkerConfig_featureFlushThreshold(ctx, field)
+			case "imageURL":
+				return ec.fieldContext_WorkerConfig_imageURL(ctx, field)
+			case "machineType":
+				return ec.fieldContext_WorkerConfig_machineType(ctx, field)
+			case "maxConcurrency":
+				return ec.fieldContext_WorkerConfig_maxConcurrency(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_WorkerConfig_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_WorkerConfig_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WorkerConfig", field.Name)
 		},
 	}
 	return fc, nil
@@ -21616,6 +22292,78 @@ func (ec *executionContext) fieldContext_UpdateMemberOfWorkspacePayload_workspac
 	return fc, nil
 }
 
+func (ec *executionContext) _UpdateWorkerConfigPayload_workerConfig(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.UpdateWorkerConfigPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UpdateWorkerConfigPayload_workerConfig(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WorkerConfig, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.WorkerConfig)
+	fc.Result = res
+	return ec.marshalNWorkerConfig2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐWorkerConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UpdateWorkerConfigPayload_workerConfig(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UpdateWorkerConfigPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_WorkerConfig_id(ctx, field)
+			case "workspaceId":
+				return ec.fieldContext_WorkerConfig_workspaceId(ctx, field)
+			case "bootDiskSizeGB":
+				return ec.fieldContext_WorkerConfig_bootDiskSizeGB(ctx, field)
+			case "bootDiskType":
+				return ec.fieldContext_WorkerConfig_bootDiskType(ctx, field)
+			case "channelBufferSize":
+				return ec.fieldContext_WorkerConfig_channelBufferSize(ctx, field)
+			case "computeCpuMilli":
+				return ec.fieldContext_WorkerConfig_computeCpuMilli(ctx, field)
+			case "computeMemoryMib":
+				return ec.fieldContext_WorkerConfig_computeMemoryMib(ctx, field)
+			case "featureFlushThreshold":
+				return ec.fieldContext_WorkerConfig_featureFlushThreshold(ctx, field)
+			case "imageURL":
+				return ec.fieldContext_WorkerConfig_imageURL(ctx, field)
+			case "machineType":
+				return ec.fieldContext_WorkerConfig_machineType(ctx, field)
+			case "maxConcurrency":
+				return ec.fieldContext_WorkerConfig_maxConcurrency(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_WorkerConfig_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_WorkerConfig_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WorkerConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UpdateWorkspacePayload_workspace(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.UpdateWorkspacePayload) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UpdateWorkspacePayload_workspace(ctx, field)
 	if err != nil {
@@ -22408,6 +23156,551 @@ func (ec *executionContext) fieldContext_UserMetadata_lang(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Lang does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorkerConfig_id(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.WorkerConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorkerConfig_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.ID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorkerConfig_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorkerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorkerConfig_workspaceId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.WorkerConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorkerConfig_workspaceId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WorkspaceID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.ID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorkerConfig_workspaceId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorkerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorkerConfig_bootDiskSizeGB(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.WorkerConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorkerConfig_bootDiskSizeGB(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BootDiskSizeGb, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorkerConfig_bootDiskSizeGB(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorkerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorkerConfig_bootDiskType(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.WorkerConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorkerConfig_bootDiskType(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BootDiskType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorkerConfig_bootDiskType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorkerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorkerConfig_channelBufferSize(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.WorkerConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorkerConfig_channelBufferSize(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ChannelBufferSize, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorkerConfig_channelBufferSize(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorkerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorkerConfig_computeCpuMilli(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.WorkerConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorkerConfig_computeCpuMilli(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ComputeCPUMilli, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorkerConfig_computeCpuMilli(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorkerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorkerConfig_computeMemoryMib(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.WorkerConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorkerConfig_computeMemoryMib(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ComputeMemoryMib, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorkerConfig_computeMemoryMib(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorkerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorkerConfig_featureFlushThreshold(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.WorkerConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorkerConfig_featureFlushThreshold(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FeatureFlushThreshold, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorkerConfig_featureFlushThreshold(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorkerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorkerConfig_imageURL(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.WorkerConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorkerConfig_imageURL(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ImageURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorkerConfig_imageURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorkerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorkerConfig_machineType(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.WorkerConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorkerConfig_machineType(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MachineType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorkerConfig_machineType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorkerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorkerConfig_maxConcurrency(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.WorkerConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorkerConfig_maxConcurrency(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxConcurrency, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorkerConfig_maxConcurrency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorkerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorkerConfig_createdAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.WorkerConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorkerConfig_createdAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CreatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNDateTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorkerConfig_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorkerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorkerConfig_updatedAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.WorkerConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorkerConfig_updatedAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UpdatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNDateTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorkerConfig_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorkerConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
 		},
 	}
 	return fc, nil
@@ -25770,6 +27063,40 @@ func (ec *executionContext) unmarshalInputRemoveParametersInput(ctx context.Cont
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputResetWorkerConfigInput(ctx context.Context, obj any) (gqlmodel.ResetWorkerConfigInput, error) {
+	var it gqlmodel.ResetWorkerConfigInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"workspaceId", "fields"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "workspaceId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceId"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WorkspaceID = data
+		case "fields":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fields"))
+			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Fields = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputRunProjectInput(ctx context.Context, obj any) (gqlmodel.RunProjectInput, error) {
 	var it gqlmodel.RunProjectInput
 	asMap := map[string]any{}
@@ -26331,6 +27658,96 @@ func (ec *executionContext) unmarshalInputUpdateTriggerInput(ctx context.Context
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateWorkerConfigInput(ctx context.Context, obj any) (gqlmodel.UpdateWorkerConfigInput, error) {
+	var it gqlmodel.UpdateWorkerConfigInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"workspaceId", "bootDiskSizeGB", "bootDiskType", "channelBufferSize", "computeCpuMilli", "computeMemoryMib", "featureFlushThreshold", "imageURL", "machineType", "maxConcurrency"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "workspaceId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceId"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WorkspaceID = data
+		case "bootDiskSizeGB":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bootDiskSizeGB"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BootDiskSizeGb = data
+		case "bootDiskType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bootDiskType"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BootDiskType = data
+		case "channelBufferSize":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelBufferSize"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelBufferSize = data
+		case "computeCpuMilli":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("computeCpuMilli"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ComputeCPUMilli = data
+		case "computeMemoryMib":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("computeMemoryMib"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ComputeMemoryMib = data
+		case "featureFlushThreshold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("featureFlushThreshold"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FeatureFlushThreshold = data
+		case "imageURL":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("imageURL"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ImageURL = data
+		case "machineType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("machineType"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MachineType = data
+		case "maxConcurrency":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxConcurrency"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaxConcurrency = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateWorkspaceInput(ctx context.Context, obj any) (gqlmodel.UpdateWorkspaceInput, error) {
 	var it gqlmodel.UpdateWorkspaceInput
 	asMap := map[string]any{}
@@ -26380,6 +27797,13 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._Workspace(ctx, sel, obj)
+	case gqlmodel.WorkerConfig:
+		return ec._WorkerConfig(ctx, sel, &obj)
+	case *gqlmodel.WorkerConfig:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._WorkerConfig(ctx, sel, obj)
 	case gqlmodel.User:
 		return ec._User(ctx, sel, &obj)
 	case *gqlmodel.User:
@@ -28377,6 +29801,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deleteMe(ctx, field)
 			})
+		case "updateWorkerConfig":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateWorkerConfig(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "resetWorkerConfig":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_resetWorkerConfig(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createWorkspace":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createWorkspace(ctx, field)
@@ -29771,6 +31209,47 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "workerConfig":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_workerConfig(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "workerConfigDefaults":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_workerConfigDefaults(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "__type":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Query___type(ctx, field)
@@ -29815,6 +31294,45 @@ func (ec *executionContext) _RemoveMemberFromWorkspacePayload(ctx context.Contex
 			out.Values[i] = graphql.MarshalString("RemoveMemberFromWorkspacePayload")
 		case "workspace":
 			out.Values[i] = ec._RemoveMemberFromWorkspacePayload_workspace(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var resetWorkerConfigPayloadImplementors = []string{"ResetWorkerConfigPayload"}
+
+func (ec *executionContext) _ResetWorkerConfigPayload(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.ResetWorkerConfigPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, resetWorkerConfigPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ResetWorkerConfigPayload")
+		case "workerConfig":
+			out.Values[i] = ec._ResetWorkerConfigPayload_workerConfig(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -30377,6 +31895,45 @@ func (ec *executionContext) _UpdateMemberOfWorkspacePayload(ctx context.Context,
 	return out
 }
 
+var updateWorkerConfigPayloadImplementors = []string{"UpdateWorkerConfigPayload"}
+
+func (ec *executionContext) _UpdateWorkerConfigPayload(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.UpdateWorkerConfigPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, updateWorkerConfigPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UpdateWorkerConfigPayload")
+		case "workerConfig":
+			out.Values[i] = ec._UpdateWorkerConfigPayload_workerConfig(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var updateWorkspacePayloadImplementors = []string{"UpdateWorkspacePayload"}
 
 func (ec *executionContext) _UpdateWorkspacePayload(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.UpdateWorkspacePayload) graphql.Marshaler {
@@ -30556,6 +32113,78 @@ func (ec *executionContext) _UserMetadata(ctx context.Context, sel ast.Selection
 			}
 		case "lang":
 			out.Values[i] = ec._UserMetadata_lang(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var workerConfigImplementors = []string{"WorkerConfig", "Node"}
+
+func (ec *executionContext) _WorkerConfig(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.WorkerConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, workerConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WorkerConfig")
+		case "id":
+			out.Values[i] = ec._WorkerConfig_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "workspaceId":
+			out.Values[i] = ec._WorkerConfig_workspaceId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bootDiskSizeGB":
+			out.Values[i] = ec._WorkerConfig_bootDiskSizeGB(ctx, field, obj)
+		case "bootDiskType":
+			out.Values[i] = ec._WorkerConfig_bootDiskType(ctx, field, obj)
+		case "channelBufferSize":
+			out.Values[i] = ec._WorkerConfig_channelBufferSize(ctx, field, obj)
+		case "computeCpuMilli":
+			out.Values[i] = ec._WorkerConfig_computeCpuMilli(ctx, field, obj)
+		case "computeMemoryMib":
+			out.Values[i] = ec._WorkerConfig_computeMemoryMib(ctx, field, obj)
+		case "featureFlushThreshold":
+			out.Values[i] = ec._WorkerConfig_featureFlushThreshold(ctx, field, obj)
+		case "imageURL":
+			out.Values[i] = ec._WorkerConfig_imageURL(ctx, field, obj)
+		case "machineType":
+			out.Values[i] = ec._WorkerConfig_machineType(ctx, field, obj)
+		case "maxConcurrency":
+			out.Values[i] = ec._WorkerConfig_maxConcurrency(ctx, field, obj)
+		case "createdAt":
+			out.Values[i] = ec._WorkerConfig_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updatedAt":
+			out.Values[i] = ec._WorkerConfig_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -32383,6 +34012,25 @@ func (ec *executionContext) unmarshalNRemoveParametersInput2githubᚗcomᚋreear
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNResetWorkerConfigInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐResetWorkerConfigInput(ctx context.Context, v any) (gqlmodel.ResetWorkerConfigInput, error) {
+	res, err := ec.unmarshalInputResetWorkerConfigInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNResetWorkerConfigPayload2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐResetWorkerConfigPayload(ctx context.Context, sel ast.SelectionSet, v gqlmodel.ResetWorkerConfigPayload) graphql.Marshaler {
+	return ec._ResetWorkerConfigPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNResetWorkerConfigPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐResetWorkerConfigPayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.ResetWorkerConfigPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ResetWorkerConfigPayload(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNRole2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRole(ctx context.Context, v any) (gqlmodel.Role, error) {
 	var res gqlmodel.Role
 	err := res.UnmarshalGQL(v)
@@ -32604,6 +34252,25 @@ func (ec *executionContext) unmarshalNUpdateTriggerInput2githubᚗcomᚋreearth�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNUpdateWorkerConfigInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateWorkerConfigInput(ctx context.Context, v any) (gqlmodel.UpdateWorkerConfigInput, error) {
+	res, err := ec.unmarshalInputUpdateWorkerConfigInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNUpdateWorkerConfigPayload2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateWorkerConfigPayload(ctx context.Context, sel ast.SelectionSet, v gqlmodel.UpdateWorkerConfigPayload) graphql.Marshaler {
+	return ec._UpdateWorkerConfigPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNUpdateWorkerConfigPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateWorkerConfigPayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.UpdateWorkerConfigPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._UpdateWorkerConfigPayload(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNUpdateWorkspaceInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateWorkspaceInput(ctx context.Context, v any) (gqlmodel.UpdateWorkspaceInput, error) {
 	res, err := ec.unmarshalInputUpdateWorkspaceInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -32653,6 +34320,20 @@ func (ec *executionContext) marshalNUserMetadata2ᚖgithubᚗcomᚋreearthᚋree
 		return graphql.Null
 	}
 	return ec._UserMetadata(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNWorkerConfig2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐWorkerConfig(ctx context.Context, sel ast.SelectionSet, v gqlmodel.WorkerConfig) graphql.Marshaler {
+	return ec._WorkerConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNWorkerConfig2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐWorkerConfig(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.WorkerConfig) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._WorkerConfig(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNWorkspace2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐWorkspaceᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.Workspace) graphql.Marshaler {
@@ -33712,6 +35393,13 @@ func (ec *executionContext) marshalOUserFacingLog2ᚖgithubᚗcomᚋreearthᚋre
 		return graphql.Null
 	}
 	return ec._UserFacingLog(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOWorkerConfig2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐWorkerConfig(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.WorkerConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._WorkerConfig(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOWorkspace2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐWorkspace(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.Workspace) graphql.Marshaler {

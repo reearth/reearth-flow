@@ -22,6 +22,7 @@ type ContainerConfig struct {
 	SharedPath               string
 	WebsocketThriftServerURL string
 	SkipPermissionCheck      bool
+	WorkerConfig             interface{}
 }
 
 func NewContainer(r *repo.Container, g *gateway.Container,
@@ -45,8 +46,10 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		CMS:           NewCMS(r, g, permissionChecker),
 		Job:           job,
 		Deployment:    NewDeployment(r, g, job, permissionChecker),
+		Edge:          NewEdge(r, permissionChecker),
 		EdgeExecution: NewEdgeExecution(r, g, permissionChecker),
 		Log:           NewLogInteractor(g.Redis, r.Job, permissionChecker),
+		Node:          NewNode(r, permissionChecker),
 		NodeExecution: NewNodeExecution(r.NodeExecution, g.Redis, permissionChecker),
 		Parameter:     NewParameter(r, permissionChecker),
 		Project:       NewProject(r, g, job, permissionChecker, GQLClient.WorkspaceRepo),
@@ -55,6 +58,7 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		Trigger:       NewTrigger(r, g, job, permissionChecker),
 		User:          NewUser(GQLClient.UserRepo),
 		UserFacingLog: NewUserFacingLogInteractor(g.Redis, r.Job, permissionChecker),
+		WorkerConfig:  NewWorkerConfig(r, permissionChecker, config.WorkerConfig),
 		Websocket:     client,
 	}
 }

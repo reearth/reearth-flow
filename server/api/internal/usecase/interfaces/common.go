@@ -23,9 +23,11 @@ type Container struct {
 	Asset         Asset
 	CMS           CMS
 	Deployment    Deployment
+	Edge          Edge
 	EdgeExecution EdgeExecution
 	Job           Job
 	Log           Log
+	Node          Node
 	NodeExecution NodeExecution
 	Parameter     Parameter
 	Project       Project
@@ -33,6 +35,7 @@ type Container struct {
 	Trigger       Trigger
 	UserFacingLog UserFacingLog
 	User          User
+	WorkerConfig  WorkerConfig
 	Workspace     Workspace
 	Websocket     WebsocketClient
 }
