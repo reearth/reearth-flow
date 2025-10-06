@@ -4831,10 +4831,19 @@ Execute Python Scripts with Geospatial Data Processing
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "PythonScriptProcessorParam",
   "type": "object",
-  "required": [
-    "script"
-  ],
   "properties": {
+    "pythonFile": {
+      "title": "Python File",
+      "description": "Path to a Python script file (supports file://, http://, https://, gs://, etc.)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "pythonPath": {
       "type": [
         "string",
@@ -4842,7 +4851,16 @@ Execute Python Scripts with Geospatial Data Processing
       ]
     },
     "script": {
-      "$ref": "#/definitions/Expr"
+      "title": "Inline Script",
+      "description": "Python script code to execute inline",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "timeoutSeconds": {
       "type": [
