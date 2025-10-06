@@ -44,13 +44,7 @@ export function inferProjectVariableType(value: any, name: string): VarType {
 
   if (typeof value === "string") {
     // String pattern matching
-    // if (
-    //   normalizedName.includes("path") ||
-    //   normalizedName.includes("file") ||
-    //   normalizedName.includes("folder")
-    // ) {
-    //   return "file_folder";
-    // }
+
     if (
       normalizedName.includes("password") ||
       normalizedName.includes("secret")

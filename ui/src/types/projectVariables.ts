@@ -124,9 +124,7 @@ export type ProjectVariableConfig<T extends VarType> = T extends "array"
                   ? DateTimeConfig
                   : T extends "web_connection"
                     ? WebConnectionConfig
-                    : // : T extends "file_folder"
-                      //   ? FileConfig
-                      undefined;
+                    : undefined;
 
 export type ProjectVariable<T extends VarType = VarType> = {
   id: string;
