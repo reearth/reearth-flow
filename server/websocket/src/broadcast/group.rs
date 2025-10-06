@@ -27,7 +27,6 @@ use yrs::{Doc, ReadTxn, Transact, Update};
 use super::types::BroadcastConfig;
 use crate::domain::value_objects::count::Count;
 
-/// Flushes pending updates from channel to Redis in a batch
 async fn flush_pending_updates(
     redis_store: &RedisStore,
     conn: &mut redis::aio::MultiplexedConnection,
@@ -35,17 +34,15 @@ async fn flush_pending_updates(
     stream_key: &str,
     instance_id: &u64,
 ) {
-    // Non-blocking collection of all pending updates
     let mut updates = Vec::new();
 
     while let Ok(update) = receiver.try_recv() {
         updates.push(update);
         if updates.len() >= 100 {
-            break; // Limit batch size to prevent blocking too long
+            break;
         }
     }
 
-    // Batch write to Redis if we have updates
     if !updates.is_empty() {
         let refs: Vec<&[u8]> = updates.iter().map(|u| u.as_slice()).collect();
         if let Err(e) = redis_store
@@ -63,7 +60,6 @@ async fn flush_pending_updates(
     }
 }
 
-/// Flushes pending awareness updates from channel to Redis in a batch
 async fn flush_pending_awareness(
     redis_store: &RedisStore,
     conn: &mut redis::aio::MultiplexedConnection,
@@ -71,17 +67,15 @@ async fn flush_pending_awareness(
     stream_key: &str,
     instance_id: &u64,
 ) {
-    // Non-blocking collection of all pending awareness updates
     let mut updates = Vec::new();
 
     while let Ok(update) = receiver.try_recv() {
         updates.push(update);
         if updates.len() >= 50 {
-            break; // Smaller batch for awareness (more frequent)
+            break;
         }
     }
 
-    // Batch write to Redis if we have updates
     if !updates.is_empty() {
         let refs: Vec<&[u8]> = updates.iter().map(|u| u.as_slice()).collect();
         if let Err(e) = redis_store
@@ -179,7 +173,6 @@ impl BroadcastGroup {
         });
         drop(lock);
 
-        // Create channel for awareness updates
         let (redis_awareness_tx, redis_awareness_rx) = tokio::sync::mpsc::channel::<Vec<u8>>(512);
         let redis_awareness_rx = Arc::new(Mutex::new(redis_awareness_rx));
         let redis_awareness_tx_clone = redis_awareness_tx.clone();
@@ -195,14 +188,12 @@ impl BroadcastGroup {
                             if let Some(awareness) = awareness_c.upgrade() {
                                 let awareness = awareness.read().await;
                                 if let Ok(update) = awareness.update_with_clients(changed_clients.clone()) {
-                                    // Immediately broadcast to local clients (fast!)
                                     let msg_bytes = Bytes::from(Message::Awareness(update.clone()).encode_v1());
                                     if let Err(e) = sink.send(msg_bytes) {
                                         error!("couldn't broadcast awareness update {}", e);
                                         return;
                                     }
 
-                                    // Non-blocking: send to channel for batched Redis write
                                     let update_bytes = update.encode_v1();
                                     if let Err(e) = redis_awareness_tx_clone.try_send(update_bytes) {
                                         warn!("Awareness Redis write channel full or closed: {}", e);
@@ -351,7 +342,6 @@ impl BroadcastGroup {
             }
         });
 
-        // Create Redis write channel for batched writes
         let (redis_write_tx, redis_write_rx) = tokio::sync::mpsc::channel::<Vec<u8>>(1024);
         let redis_write_rx = Arc::new(Mutex::new(redis_write_rx));
 
@@ -509,7 +499,6 @@ impl BroadcastGroup {
                         _ => {}
                     }
 
-                    // Batch flush pending sync updates to Redis after handling message
                     let mut rx = redis_write_rx.lock().await;
                     flush_pending_updates(
                         &redis_store,
@@ -521,7 +510,6 @@ impl BroadcastGroup {
                     .await;
                     drop(rx);
 
-                    // Batch flush pending awareness updates to Redis
                     let mut awareness_rx = redis_awareness_rx.lock().await;
                     flush_pending_awareness(
                         &redis_store,
@@ -557,14 +545,12 @@ impl BroadcastGroup {
                     _ => Vec::new(),
                 };
 
-                // Non-blocking: send to channel instead of waiting for Redis
                 if !update_bytes.is_empty() {
                     if let Err(e) = redis_write_tx.try_send(update_bytes.clone()) {
                         warn!("Redis write channel full or closed: {}", e);
                     }
                 }
 
-                // Immediately process local update and broadcast (don't wait for Redis)
                 match msg {
                     SyncMessage::SyncStep1(state_vector) => {
                         let awareness = awareness.read().await;

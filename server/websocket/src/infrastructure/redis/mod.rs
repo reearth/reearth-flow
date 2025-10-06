@@ -100,7 +100,6 @@ impl RedisStore {
             .unwrap()
             .as_millis();
 
-        // Use Redis pipeline to send all XADD commands at once
         let mut pipe = redis::pipe();
 
         for update in updates {
@@ -115,10 +114,9 @@ impl RedisStore {
                 .arg(instance_id)
                 .arg("timestamp")
                 .arg(timestamp)
-                .ignore(); // Ignore individual command results
+                .ignore();
         }
 
-        // Execute the entire pipeline in one network round trip
         let _: () = pipe.query_async(conn).await?;
 
         Ok(())
@@ -900,7 +898,6 @@ impl RedisStore {
             .unwrap()
             .as_millis();
 
-        // Use Redis pipeline to send all XADD commands at once
         let mut pipe = redis::pipe();
 
         for awareness_data in awareness_updates {
@@ -915,10 +912,9 @@ impl RedisStore {
                 .arg(instance_id)
                 .arg("timestamp")
                 .arg(timestamp)
-                .ignore(); // Ignore individual command results
+                .ignore();
         }
 
-        // Execute the entire pipeline in one network round trip
         let _: () = pipe.query_async(conn).await?;
 
         Ok(())

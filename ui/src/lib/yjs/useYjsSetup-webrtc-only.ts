@@ -38,20 +38,17 @@ export default ({
       const roomName = `${projectId}:${workflowId}`;
       console.log("🏠 Room name:", roomName);
 
-      // Use public signaling servers (proven to work)
       const signalingUrls = [
         "wss://signaling.yjs.dev",
         "wss://y-webrtc-signaling-eu.herokuapp.com",
       ];
       
-      // Optionally try local server too
       if (websocket) {
         signalingUrls.push(websocket.replace(/\/ws\/?$/, "") + "/signaling");
       }
 
       console.log("📡 Signaling URLs:", signalingUrls);
 
-      // Create WebRTC provider (like yrs-warp example)
       yWebRTCProvider = new WebrtcProvider(roomName, yDoc, { 
         signaling: signalingUrls 
       });
@@ -73,14 +70,12 @@ export default ({
 
         setYAwareness(yWebRTCProvider.awareness);
 
-        // Monitor awareness changes
         yWebRTCProvider.awareness.on("change", () => {
           const states = yWebRTCProvider?.awareness?.getStates();
           console.log("👤 Awareness updated, clients:", states?.size);
         });
       }
 
-      // Initialize workflow
       const metadata = yDoc.getMap("metadata");
       if (!metadata.get("initialized")) {
         yDoc.transact(() => {
@@ -96,10 +91,8 @@ export default ({
         });
       }
 
-      // Mark as synced immediately
       setIsSynced(true);
 
-      // Monitor WebRTC peers
       const checkPeers = setInterval(() => {
         const peers = yWebRTCProvider?.room?.webrtcConns?.size || 0;
         console.log("👥 WebRTC peers:", peers);
@@ -108,7 +101,6 @@ export default ({
         }
       }, 5000);
 
-      // Cleanup on unmount
       return () => {
         clearInterval(checkPeers);
         setIsSynced(false);

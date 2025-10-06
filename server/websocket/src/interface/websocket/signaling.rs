@@ -14,7 +14,6 @@ use tracing::{info, trace, warn};
 
 const PING_TIMEOUT: Duration = Duration::from_secs(30);
 
-/// Signaling service for y-webrtc protocol (based on yrs-warp)
 #[derive(Debug, Clone)]
 pub struct SignalingService(Arc<RwLock<HashMap<Arc<str>, HashSet<WsSink>>>>);
 
