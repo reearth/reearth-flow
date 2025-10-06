@@ -30,7 +30,7 @@ func TestRedisStorage_SaveUserFacingLogToRedis(t *testing.T) {
 	}
 
 	expectedKey := "userfacinglog:wf-123:job-456:2025-01-11T09:12:54.487779Z"
-	expectedVal := `{"workflowId":"wf-123","jobId":"job-456","timestamp":"2025-01-11T09:12:54.487779Z","level":"info","nodeName":"test-node","nodeId":"node-123","displayMessage":"Test user-facing log message"}`
+	expectedVal := `{"workflowId":"wf-123","jobId":"job-456","timestamp":"2025-01-11T09:12:54.487779Z","level":"INFO","nodeName":"test-node","nodeId":"node-123","displayMessage":"Test user-facing log message"}`
 
 	mClient.
 		On("Set", ctx, expectedKey, expectedVal, 12*time.Hour).
