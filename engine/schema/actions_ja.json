@@ -1305,16 +1305,6 @@
               }
             ]
           },
-          "groupBy": {
-            "description": "Optional attributes to group features by, creating separate files for each group",
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "string"
-            }
-          },
           "output": {
             "description": "Output path or expression for the CSV/TSV file to create",
             "allOf": [

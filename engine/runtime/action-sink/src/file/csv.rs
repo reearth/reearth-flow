@@ -86,8 +86,6 @@ pub(super) struct CsvWriter {
 pub(super) struct CsvWriterParam {
     /// Output path or expression for the CSV/TSV file to create
     pub(super) output: Expr,
-    /// Optional attributes to group features by, creating separate files for each group
-    pub(super) group_by: Option<Vec<String>>,
     /// File format: csv (comma) or tsv (tab)
     format: CsvFormat,
 }
@@ -117,22 +115,7 @@ impl Sink for CsvWriter {
         "CsvWriter"
     }
 
-    fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        let feature = &ctx.feature;
-        let key = if let Some(group_by) = &self.params.group_by {
-            if group_by.is_empty() {
-                AttributeValue::Null
-            } else {
-                let key = group_by
-                    .iter()
-                    .map(|k| feature.get(k).cloned().unwrap_or(AttributeValue::Null))
-                    .collect::<Vec<_>>();
-                AttributeValue::Array(key)
-            }
-        } else {
-            AttributeValue::Null
-        };
-        self.buffer.entry(key).or_default().push(feature.clone());
+    fn process(&mut self, _ctx: ExecutorContext) -> Result<(), BoxedError> {
         Ok(())
     }
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
@@ -145,22 +128,8 @@ impl Sink for CsvWriter {
             .unwrap_or_else(|_| output.as_ref().to_string());
         let output = Uri::from_str(path.as_str())?;
         let delimiter = self.params.format.delimiter();
-        for (key, features) in self.buffer.iter() {
-            let file_path = if *key == AttributeValue::Null {
-                output.clone()
-            } else {
-                // Use .csv or .tsv extension based on format
-                let ext = match self.params.format {
-                    CsvFormat::Csv => "csv",
-                    CsvFormat::Tsv => "tsv",
-                };
-                output.join(format!(
-                    "{}.{}",
-                    reearth_flow_common::str::to_hash(key.to_string().as_str()),
-                    ext
-                ))?
-            };
-            write_csv(&file_path, features, delimiter.clone(), &storage_resolver)?;
+        for features in self.buffer.values() {
+            write_csv(&output, features, delimiter.clone(), &storage_resolver)?;
         }
         Ok(())
     }
