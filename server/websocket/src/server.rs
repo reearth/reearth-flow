@@ -128,7 +128,10 @@ pub async fn start_server(state: Arc<AppState>, port: &str, config: &crate::Conf
         );
 
     info!("WebSocket endpoint available at ws://{}/[doc_id]", addr);
-    info!("WebRTC Signaling endpoint available at ws://{}/signaling", addr);
+    info!(
+        "WebRTC Signaling endpoint available at ws://{}/signaling",
+        addr
+    );
     info!(
         "HTTP API endpoints available at http://{}/api/document/...",
         addr
@@ -164,5 +167,9 @@ async fn signaling_handler(
     State(state): State<ServerState>,
 ) -> Response<Body> {
     let signaling = state.signaling.clone();
-    ws.on_upgrade(move |socket| handle_signaling_connection(socket, signaling))
+    ws.on_upgrade(move |socket| async move {
+        if let Err(e) = handle_signaling_connection(socket, signaling).await {
+            tracing::warn!("Signaling connection error: {:?}", e);
+        }
+    })
 }

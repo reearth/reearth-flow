@@ -68,6 +68,10 @@ bytes = "1.10.1"
 criterion = { version = "0.5.1", features = ["async"] }
 url = "2.5"
 
+[[bin]]
+name = "signaling-only"
+path = "src/bin/signaling-only.rs"
+
 [[bench]]
 name = "server_bench"
 harness = false

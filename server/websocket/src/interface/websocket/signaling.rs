@@ -1,52 +1,26 @@
 use axum::extract::ws::{Message, WebSocket};
-use dashmap::DashMap;
+use bytes::Bytes;
+use futures_util::stream::SplitSink;
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
+use std::hash::{Hash, Hasher};
 use std::sync::Arc;
-use tokio::sync::broadcast;
-use tracing::{debug, error, warn};
+use std::time::Duration;
+use tokio::select;
+use tokio::sync::{Mutex, RwLock};
+use tokio::time::interval;
+use tracing::{info, trace, warn};
 
-/// WebRTC signaling message types
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type")]
-#[serde(rename_all = "lowercase")]
-enum SignalingMessage {
-    Subscribe { topics: Vec<String> },
-    Unsubscribe { topics: Vec<String> },
-    Publish { topic: String, #[serde(flatten)] data: serde_json::Value },
-    Ping,
-}
+const PING_TIMEOUT: Duration = Duration::from_secs(30);
 
-/// Signaling service manages rooms and peer connections
-#[derive(Clone)]
-pub struct SignalingService {
-    rooms: Arc<DashMap<String, broadcast::Sender<String>>>,
-}
+/// Signaling service for y-webrtc protocol (based on yrs-warp)
+#[derive(Debug, Clone)]
+pub struct SignalingService(Arc<RwLock<HashMap<Arc<str>, HashSet<WsSink>>>>);
 
 impl SignalingService {
     pub fn new() -> Self {
-        Self {
-            rooms: Arc::new(DashMap::new()),
-        }
-    }
-
-    fn get_or_create_room(&self, room: &str) -> broadcast::Sender<String> {
-        self.rooms
-            .entry(room.to_string())
-            .or_insert_with(|| {
-                let (tx, _) = broadcast::channel(1024);
-                debug!("Created new signaling room: {}", room);
-                tx
-            })
-            .clone()
-    }
-
-    fn cleanup_room(&self, room: &str) {
-        if let Some((_, sender)) = self.rooms.remove(room) {
-            if sender.receiver_count() == 0 {
-                debug!("Cleaned up empty signaling room: {}", room);
-            }
-        }
+        SignalingService(Arc::new(RwLock::new(Default::default())))
     }
 }
 
@@ -56,108 +30,242 @@ impl Default for SignalingService {
     }
 }
 
-/// Handle a single WebSocket connection for WebRTC signaling
-pub async fn handle_signaling_connection(socket: WebSocket, service: SignalingService) {
-    let (mut sender, mut receiver) = socket.split();
-    
-    // Track subscribed rooms for this connection
-    let mut subscriptions: Vec<(String, broadcast::Receiver<String>)> = Vec::new();
+#[derive(Debug, Clone)]
+struct WsSink(Arc<Mutex<SplitSink<WebSocket, Message>>>);
+
+impl WsSink {
+    fn new(sink: SplitSink<WebSocket, Message>) -> Self {
+        WsSink(Arc::new(Mutex::new(sink)))
+    }
+
+    async fn try_send(&self, msg: Message) -> Result<(), axum::Error> {
+        let mut sink = self.0.lock().await;
+        sink.send(msg).await
+    }
+
+    async fn close(&self) -> Result<(), axum::Error> {
+        let mut sink = self.0.lock().await;
+        sink.close().await
+    }
+}
+
+impl Hash for WsSink {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let ptr = Arc::as_ptr(&self.0) as usize;
+        ptr.hash(state);
+    }
+}
+
+impl PartialEq<Self> for WsSink {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl Eq for WsSink {}
+
+/// Handle incoming signaling connection
+pub async fn handle_signaling_connection(
+    socket: WebSocket,
+    service: SignalingService,
+) -> Result<(), axum::Error> {
+    let mut topics = service.0;
+    let (sink, mut stream) = socket.split();
+    let ws = WsSink::new(sink);
+    let mut ping_interval = interval(PING_TIMEOUT);
+    let mut state = ConnState::default();
 
     loop {
-        tokio::select! {
-            // Handle incoming messages from the client
-            msg = receiver.next() => {
-                match msg {
-                    Some(Ok(Message::Text(text))) => {
-                        match serde_json::from_str::<SignalingMessage>(&text) {
-                            Ok(SignalingMessage::Subscribe { topics }) => {
-                                debug!("Client subscribing to topics: {:?}", topics);
-                                for topic in topics {
-                                    let room_sender = service.get_or_create_room(&topic);
-                                    let room_receiver = room_sender.subscribe();
-                                    subscriptions.push((topic.clone(), room_receiver));
-                                }
-                            }
-                            Ok(SignalingMessage::Unsubscribe { topics }) => {
-                                debug!("Client unsubscribing from topics: {:?}", topics);
-                                subscriptions.retain(|(topic, _)| !topics.contains(topic));
-                                for topic in &topics {
-                                    service.cleanup_room(topic);
-                                }
-                            }
-                            Ok(SignalingMessage::Publish { topic, data }) => {
-                                if let Some(room) = service.rooms.get(&topic) {
-                                    // Forward the message to all peers in the room
-                                    let mut msg = serde_json::json!({
-                                        "type": "publish",
-                                        "topic": topic,
-                                    });
-                                    
-                                    // Merge the data fields into the message
-                                    if let (Some(msg_obj), Some(data_obj)) = (msg.as_object_mut(), data.as_object()) {
-                                        for (key, value) in data_obj {
-                                            msg_obj.insert(key.clone(), value.clone());
-                                        }
-                                    }
-                                    
-                                    if let Ok(msg_str) = serde_json::to_string(&msg) {
-                                        let _ = room.send(msg_str);
-                                    }
-                                }
-                            }
-                            Ok(SignalingMessage::Ping) => {
-                                // Respond to ping with pong
-                                let pong = serde_json::json!({"type": "pong"});
-                                if let Ok(pong_str) = serde_json::to_string(&pong) {
-                                    let msg = Message::Text(pong_str.into());
-                                    if sender.send(msg).await.is_err() {
-                                        break;
-                                    }
-                                }
-                            }
-                            Err(e) => {
-                                warn!("Failed to parse signaling message: {}", e);
-                            }
-                        }
+        select! {
+            _ = ping_interval.tick() => {
+                if !state.pong_received {
+                    ws.close().await?;
+                    return Ok(());
+                } else {
+                    state.pong_received = false;
+                    if ws.try_send(Message::Ping(Bytes::from_static(b""))).await.is_err() {
+                        ws.close().await?;
+                        return Ok(());
                     }
-                    Some(Ok(Message::Close(_))) | None => {
-                        debug!("Client disconnected from signaling server");
-                        break;
-                    }
+                }
+            },
+            res = stream.next() => {
+                match res {
+                    None => {
+                        info!("Stream ended, closing connection");
+                        ws.close().await?;
+                        return Ok(());
+                    },
                     Some(Err(e)) => {
-                        error!("WebSocket error: {}", e);
-                        break;
-                    }
-                    _ => {}
-                }
-            }
-            
-            // Handle broadcast messages from rooms
-            result = async {
-                for (_, receiver) in &mut subscriptions {
-                    if let Ok(msg) = receiver.try_recv() {
-                        return Some(msg);
-                    }
-                }
-                // Small delay to prevent busy loop
-                tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-                None::<String>
-            } => {
-                if let Some(msg) = result {
-                    let ws_msg = Message::Text(msg.into());
-                    if sender.send(ws_msg).await.is_err() {
-                        break;
+                        warn!("❌ WebSocket error: {:?}", e);
+                        ws.close().await?;
+                        return Ok(());
+                    },
+                    Some(Ok(msg)) => {
+                        trace!("📨 Received message: {:?}", msg);
+                        if let Err(e) = process_msg(msg, &ws, &mut state, &mut topics).await {
+                            warn!("❌ Error processing message, closing connection: {:?}", e);
+                            ws.close().await?;
+                            return Ok(());
+                        }
                     }
                 }
             }
         }
     }
-
-    // Cleanup: unsubscribe from all rooms
-    for (topic, _) in subscriptions {
-        service.cleanup_room(&topic);
-    }
-    
-    debug!("Signaling connection closed");
 }
 
+const PING_MSG: &str = r#"{"type":"ping"}"#;
+const PONG_MSG: &str = r#"{"type":"pong"}"#;
+
+async fn process_msg(
+    msg: Message,
+    ws: &WsSink,
+    state: &mut ConnState,
+    topics: &mut Arc<RwLock<HashMap<Arc<str>, HashSet<WsSink>>>>,
+) -> Result<(), axum::Error> {
+    if let Message::Text(text) = msg {
+        let json = text.to_string();
+        if let Ok(signal) = serde_json::from_str::<Signal>(&json) {
+            match signal {
+                Signal::Subscribe {
+                    topics: topic_names,
+                } => {
+                    if !topic_names.is_empty() {
+                        info!(
+                            "📥 Client subscribing to {} topics: {:?}",
+                            topic_names.len(),
+                            topic_names
+                        );
+                        let mut topics_guard = topics.write().await;
+                        for topic in topic_names {
+                            if let Some((key, _)) = topics_guard.get_key_value(topic) {
+                                state.subscribed_topics.insert(key.clone());
+                                let subs = topics_guard.get_mut(topic).unwrap();
+                                subs.insert(ws.clone());
+                                info!(
+                                    "✅ Added to existing room '{}', total clients: {}",
+                                    topic,
+                                    subs.len()
+                                );
+                            } else {
+                                let topic: Arc<str> = topic.into();
+                                state.subscribed_topics.insert(topic.clone());
+                                let mut subs = HashSet::new();
+                                subs.insert(ws.clone());
+                                topics_guard.insert(topic.clone(), subs);
+                                info!("🆕 Created new room '{}'", topic);
+                            };
+                        }
+                    }
+                }
+                Signal::Unsubscribe {
+                    topics: topic_names,
+                } => {
+                    if !topic_names.is_empty() {
+                        let mut topics_guard = topics.write().await;
+                        for topic in topic_names {
+                            if let Some(subs) = topics_guard.get_mut(topic) {
+                                trace!("unsubscribing client from '{topic}'");
+                                subs.remove(ws);
+                            }
+                        }
+                    }
+                }
+                Signal::Publish { topic } => {
+                    let mut failed = Vec::new();
+                    {
+                        let topics_guard = topics.read().await;
+                        if let Some(receivers) = topics_guard.get(topic) {
+                            let client_count = receivers.len();
+                            trace!(
+                                "publishing on {} clients at '{}': {}",
+                                client_count,
+                                topic,
+                                json
+                            );
+
+                            for receiver in receivers.iter() {
+                                if let Err(e) =
+                                    receiver.try_send(Message::Text(json.clone().into())).await
+                                {
+                                    info!(
+                                        "failed to publish message {} on '{}': {:?}",
+                                        json, topic, e
+                                    );
+                                    failed.push(receiver.clone());
+                                }
+                            }
+                        }
+                    }
+                    if !failed.is_empty() {
+                        let mut topics_guard = topics.write().await;
+                        if let Some(receivers) = topics_guard.get_mut(topic) {
+                            for f in failed {
+                                receivers.remove(&f);
+                            }
+                        }
+                    }
+                }
+                Signal::Ping => {
+                    trace!("Received ping, sending pong");
+                    ws.try_send(Message::Text(PONG_MSG.into())).await?;
+                }
+                Signal::Pong => {
+                    trace!("Received pong, updating state");
+                    state.pong_received = true;
+                }
+            }
+        }
+    } else if let Message::Close(_) = msg {
+        let mut topics_guard = topics.write().await;
+        for topic in state.subscribed_topics.drain() {
+            if let Some(subs) = topics_guard.get_mut(&topic) {
+                subs.remove(ws);
+                if subs.is_empty() {
+                    topics_guard.remove(&topic);
+                }
+            }
+        }
+        state.closed = true;
+    } else if let Message::Ping(_) = msg {
+        trace!("Received WebSocket ping, sending pong");
+        ws.try_send(Message::Pong(Bytes::from_static(b""))).await?;
+    } else if let Message::Pong(_) = msg {
+        trace!("Received WebSocket pong");
+        state.pong_received = true;
+    }
+    Ok(())
+}
+
+#[derive(Debug)]
+struct ConnState {
+    closed: bool,
+    pong_received: bool,
+    subscribed_topics: HashSet<Arc<str>>,
+}
+
+impl Default for ConnState {
+    fn default() -> Self {
+        ConnState {
+            closed: false,
+            pong_received: true,
+            subscribed_topics: HashSet::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type")]
+enum Signal<'a> {
+    #[serde(rename = "publish")]
+    Publish { topic: &'a str },
+    #[serde(rename = "subscribe")]
+    Subscribe { topics: Vec<&'a str> },
+    #[serde(rename = "unsubscribe")]
+    Unsubscribe { topics: Vec<&'a str> },
+    #[serde(rename = "ping")]
+    Ping,
+    #[serde(rename = "pong")]
+    Pong,
+}
