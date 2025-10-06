@@ -33,6 +33,7 @@ export type Job = {
   completedAt: string;
   outputURLs?: string[];
   logsURL?: string;
+  userFacingLogsURL?: string;
 };
 
 export type CancelJob = {

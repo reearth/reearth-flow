@@ -129,6 +129,7 @@ export const toJob = (job: JobFragment): Job => ({
   completedAt: job.completedAt,
   logsURL: job.logsURL ?? undefined,
   outputURLs: job.outputURLs ?? undefined,
+  userFacingLogsURL: job.userFacingLogsURL ?? undefined,
 });
 
 export const toUserFacingLog = (log: UserFacingLogFragment): UserFacingLog => ({
