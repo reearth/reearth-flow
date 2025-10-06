@@ -122,7 +122,8 @@ impl Sink for CsvWriter {
         let path = scope
             .eval::<String>(output.as_ref())
             .unwrap_or_else(|_| output.as_ref().to_string());
-        let key = AttributeValue::String(path.clone());
+        let uri = Uri::from_str(&path)?.into_string();
+        let key = AttributeValue::String(uri);
         self.buffer.entry(key).or_default().push(ctx.feature);
         Ok(())
     }
