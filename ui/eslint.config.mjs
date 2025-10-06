@@ -73,6 +73,9 @@ const flowConfig = {
   rules: {
     "@typescript-eslint/no-explicit-any": "off", // Eventually we want to turn this back on, but for now its just a headache @KaWaite
   },
+  settings: {
+    "import/core-modules": ["y-webrtc"], // Allow y-webrtc as external dependency
+  },
 };
 
 /** @type { import("eslint").Linter.Config[] } */

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Awareness } from "y-protocols/awareness";
+import { WebrtcProvider } from "y-webrtc";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
@@ -16,10 +17,12 @@ export default ({
   workflowId,
   projectId,
   isProtected,
+  enableWebRTC,
 }: {
   workflowId?: string;
   projectId?: string;
   isProtected?: boolean;
+  enableWebRTC?: boolean;
 }) => {
   const { getAccessToken } = useAuth();
 
@@ -33,63 +36,99 @@ export default ({
 
   useEffect(() => {
     const yDoc = new Y.Doc();
-    const { websocket } = config();
+    const cfg = config();
+    const { websocket, enableWebRTC: configWebRTC } = cfg;
+    // Use parameter if provided, otherwise fall back to config, default to true
+    const shouldEnableWebRTC = enableWebRTC ?? configWebRTC ?? true;
     let yWebSocketProvider: WebsocketProvider | null = null;
+    let yWebRTCProvider: WebrtcProvider | null = null;
 
-    if (workflowId && websocket && projectId) {
+    if (workflowId && projectId) {
       (async () => {
-        const params: Record<string, string> = {};
-        if (isProtected) {
-          const token = await getAccessToken();
-          params.token = token;
-        }
-
         const roomName = `${projectId}:${workflowId}`;
 
-        yWebSocketProvider = new WebsocketProvider(websocket, roomName, yDoc, {
-          params,
-        });
+        // Initialize WebSocket Provider for backup and persistence
+        if (websocket) {
+          const params: Record<string, string> = {};
+          if (isProtected) {
+            const token = await getAccessToken();
+            params.token = token;
+          }
 
-        if (
-          yWebSocketProvider.awareness &&
-          !yWebSocketProvider.awareness.getLocalState()?.color
-        ) {
-          const color =
-            CURSOR_COLORS[Math.floor(Math.random() * CURSOR_COLORS.length)];
-          yWebSocketProvider.awareness.setLocalStateField("color", color);
-          yWebSocketProvider.awareness.setLocalStateField(
-            "clientId",
-            yWebSocketProvider.awareness.clientID,
-          );
-          yWebSocketProvider.awareness.setLocalStateField(
-            "userName",
-            me?.name || "Unknown user",
-          );
+          yWebSocketProvider = new WebsocketProvider(websocket, roomName, yDoc, {
+            params,
+          });
+
+          if (
+            yWebSocketProvider.awareness &&
+            !yWebSocketProvider.awareness.getLocalState()?.color
+          ) {
+            const color =
+              CURSOR_COLORS[Math.floor(Math.random() * CURSOR_COLORS.length)];
+            yWebSocketProvider.awareness.setLocalStateField("color", color);
+            yWebSocketProvider.awareness.setLocalStateField(
+              "clientId",
+              yWebSocketProvider.awareness.clientID,
+            );
+            yWebSocketProvider.awareness.setLocalStateField(
+              "userName",
+              me?.name || "Unknown user",
+            );
+          }
+
+          setYAwareness(yWebSocketProvider.awareness);
+
+          yWebSocketProvider.once("sync", () => {
+            const metadata = yDoc.getMap("metadata");
+            if (!metadata.get("initialized")) {
+              // Within a transaction, set the flag and perform initialization.
+              yDoc.transact(() => {
+                const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
+                // This check is only necessary to avoid duplicate workflows on older projects.
+                if (yWorkflows.get(DEFAULT_ENTRY_GRAPH_ID)) return;
+                // Only one client should set this flag.
+                if (!metadata.get("initialized")) {
+                  const yWorkflow = yWorkflowConstructor(
+                    DEFAULT_ENTRY_GRAPH_ID,
+                    "Main Workflow",
+                  );
+                  yWorkflows.set(DEFAULT_ENTRY_GRAPH_ID, yWorkflow);
+                  metadata.set("initialized", true);
+                }
+              });
+            }
+            setIsSynced(true); // Mark as synced
+          });
         }
 
-        setYAwareness(yWebSocketProvider.awareness);
+        // Initialize WebRTC Provider for P2P sync
+        if (shouldEnableWebRTC && websocket) {
+          // Use the same WebSocket server for signaling
+          // Replace /ws/ path with /signaling for the signaling endpoint
+          const signalingUrl = websocket.replace(/\/ws\/?$/, "") + "/signaling";
 
-        yWebSocketProvider.once("sync", () => {
-          const metadata = yDoc.getMap("metadata");
-          if (!metadata.get("initialized")) {
-            // Within a transaction, set the flag and perform initialization.
-            yDoc.transact(() => {
-              const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
-              // This check is only necessary to avoid duplicate workflows on older projects.
-              if (yWorkflows.get(DEFAULT_ENTRY_GRAPH_ID)) return;
-              // Only one client should set this flag.
-              if (!metadata.get("initialized")) {
-                const yWorkflow = yWorkflowConstructor(
-                  DEFAULT_ENTRY_GRAPH_ID,
-                  "Main Workflow",
-                );
-                yWorkflows.set(DEFAULT_ENTRY_GRAPH_ID, yWorkflow);
-                metadata.set("initialized", true);
-              }
-            });
+          yWebRTCProvider = new WebrtcProvider(roomName, yDoc, {
+            signaling: [signalingUrl],
+            // Reuse awareness from WebSocket if available
+            awareness: yWebSocketProvider?.awareness,
+          });
+
+          // If no WebSocket provider, set awareness from WebRTC
+          if (!yWebSocketProvider && yWebRTCProvider.awareness) {
+            const color =
+              CURSOR_COLORS[Math.floor(Math.random() * CURSOR_COLORS.length)];
+            yWebRTCProvider.awareness.setLocalStateField("color", color);
+            yWebRTCProvider.awareness.setLocalStateField(
+              "clientId",
+              yWebRTCProvider.awareness.clientID,
+            );
+            yWebRTCProvider.awareness.setLocalStateField(
+              "userName",
+              me?.name || "Unknown user",
+            );
+            setYAwareness(yWebRTCProvider.awareness);
           }
-          setIsSynced(true); // Mark as synced
-        });
+        }
       })();
     }
 
@@ -99,12 +138,14 @@ export default ({
       setIsSynced(false);
       // Clear awareness state before destroying
       if (yWebSocketProvider?.awareness) {
-        yWebSocketProvider?.awareness.setLocalState(null);
+        yWebSocketProvider.awareness.setLocalState(null);
       }
+      // Destroy both providers
+      yWebRTCProvider?.destroy();
       yWebSocketProvider?.destroy();
       setYAwareness(null);
     };
-  }, [projectId, workflowId, isProtected, me, getAccessToken]);
+  }, [projectId, workflowId, isProtected, enableWebRTC, me?.name, getAccessToken]);
 
   const currentUserClientId = yDocState?.clientID;
 
