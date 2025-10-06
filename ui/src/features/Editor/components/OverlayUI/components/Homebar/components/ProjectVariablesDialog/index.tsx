@@ -70,7 +70,6 @@ const allVarTypes: VarType[] = [
   "number",
   "array",
   "choice",
-  "file_folder",
   "yes_no",
   "datetime",
   "color",

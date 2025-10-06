@@ -34,20 +34,9 @@ export default () => {
     [],
   );
 
-  const [rightPanelContent, setRightPanelContent] = useState<
-    "version-history" | undefined
-  >(undefined);
-
-  const handleRightPanelOpen = useCallback(
-    (content?: "version-history") => setRightPanelContent(content),
-    [],
-  );
-
   return {
     nodePickerOpen,
-    rightPanelContent,
     handleNodePickerOpen,
     handleNodePickerClose,
-    handleRightPanelOpen,
   };
 };
