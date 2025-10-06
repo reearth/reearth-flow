@@ -19,7 +19,13 @@ use tracing::info;
 
 #[cfg(feature = "auth")]
 use crate::AuthQuery;
-use crate::{interface::http::router::document_routes, AppState};
+use crate::{
+    interface::{
+        http::router::document_routes,
+        websocket::signaling::{handle_signaling_connection, SignalingService},
+    },
+    AppState,
+};
 use anyhow::Result;
 #[cfg(feature = "auth")]
 use axum::extract::Query;
@@ -27,6 +33,7 @@ use axum::extract::Query;
 #[derive(Clone)]
 struct ServerState {
     app_state: Arc<AppState>,
+    signaling: SignalingService,
 }
 
 async fn shutdown_signal() {
@@ -79,16 +86,24 @@ pub async fn start_server(state: Arc<AppState>, port: &str, config: &crate::Conf
 
     info!("Starting server on {}", addr);
 
+    let signaling = SignalingService::new();
+
     let server_state = ServerState {
         app_state: state.clone(),
+        signaling: signaling.clone(),
     };
 
     let ws_router = Router::new()
         .route("/{doc_id}", get(ws_handler))
-        .with_state(server_state);
+        .with_state(server_state.clone());
+
+    let signaling_router = Router::new()
+        .route("/signaling", get(signaling_handler))
+        .with_state(server_state.clone());
 
     let app = Router::new()
         .merge(ws_router)
+        .merge(signaling_router)
         .nest("/api", document_routes())
         .with_state(state)
         .layer(
@@ -113,6 +128,7 @@ pub async fn start_server(state: Arc<AppState>, port: &str, config: &crate::Conf
         );
 
     info!("WebSocket endpoint available at ws://{}/[doc_id]", addr);
+    info!("WebRTC Signaling endpoint available at ws://{}/signaling", addr);
     info!(
         "HTTP API endpoints available at http://{}/api/document/...",
         addr
@@ -141,4 +157,12 @@ async fn ws_handler(
     State(state): State<ServerState>,
 ) -> Response<Body> {
     crate::ws::ws_handler(ws, Path(doc_id), State(state.app_state)).await
+}
+
+async fn signaling_handler(
+    ws: WebSocketUpgrade,
+    State(state): State<ServerState>,
+) -> Response<Body> {
+    let signaling = state.signaling.clone();
+    ws.on_upgrade(move |socket| handle_signaling_connection(socket, signaling))
 }
