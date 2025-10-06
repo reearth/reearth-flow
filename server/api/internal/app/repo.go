@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"strconv"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
@@ -37,12 +38,14 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 	gateways := &gateway.Container{}
 	acGateways := &accountgateway.Container{}
 
-	// Mongo
 	client, err := mongo.Connect(
 		ctx,
 		options.Client().
 			ApplyURI(conf.DB).
-			SetMonitor(otelmongo.NewMonitor()),
+			SetMonitor(otelmongo.NewMonitor()).
+			SetMaxPoolSize(100).
+			SetMinPoolSize(10).
+			SetMaxConnIdleTime(30*time.Minute),
 	)
 	if err != nil {
 		log.Fatalf("mongo error: %+v\n", err)
@@ -55,13 +58,26 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 		accountRepoCompat = true
 	}
 
+	userClients := make(map[string]*mongo.Client)
 	accountUsers := make([]accountrepo.User, 0, len(conf.DB_Users))
+
 	for _, u := range conf.DB_Users {
-		c, err := mongo.Connect(ctx, options.Client().ApplyURI(u.URI).SetMonitor(otelmongo.NewMonitor()))
-		if err != nil {
-			log.Fatalf("mongo error: %+v\n", err)
+		userClient, exists := userClients[u.URI]
+		if !exists {
+			c, err := mongo.Connect(ctx, options.Client().
+				ApplyURI(u.URI).
+				SetMonitor(otelmongo.NewMonitor()).
+				SetMaxPoolSize(50).
+				SetMinPoolSize(5).
+				SetMaxConnIdleTime(15*time.Minute),
+			)
+			if err != nil {
+				log.Fatalf("mongo error for user %s: %+v\n", u.Name, err)
+			}
+			userClients[u.URI] = c
+			userClient = c
 		}
-		accountUsers = append(accountUsers, accountmongo.NewUserWithHost(mongox.NewClient(accountDatabase, c), u.Name))
+		accountUsers = append(accountUsers, accountmongo.NewUserWithHost(mongox.NewClient(accountDatabase, userClient), u.Name))
 	}
 
 	txAvailable := mongox.IsTransactionAvailable(conf.DB)
