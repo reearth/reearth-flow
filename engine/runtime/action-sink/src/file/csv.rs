@@ -115,20 +115,26 @@ impl Sink for CsvWriter {
         "CsvWriter"
     }
 
-    fn process(&mut self, _ctx: ExecutorContext) -> Result<(), BoxedError> {
-        Ok(())
-    }
-    fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let storage_resolver = Arc::clone(&ctx.storage_resolver);
+    fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let expr_engine = Arc::clone(&ctx.expr_engine);
-        let output = self.params.output.clone();
         let scope = expr_engine.new_scope();
+        let output = &self.params.output;
         let path = scope
             .eval::<String>(output.as_ref())
             .unwrap_or_else(|_| output.as_ref().to_string());
-        let output = Uri::from_str(path.as_str())?;
+        let key = AttributeValue::String(path.clone());
+        self.buffer.entry(key).or_default().push(ctx.feature);
+        Ok(())
+    }
+
+    fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
+        let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let delimiter = self.params.format.delimiter();
-        for features in self.buffer.values() {
+        for (output, features) in &self.buffer {
+            let output = output.as_string().ok_or(SinkError::FileWriter(
+                "Output path must be a string".to_string(),
+            ))?;
+            let output = Uri::from_str(&output)?;
             write_csv(&output, features, delimiter.clone(), &storage_resolver)?;
         }
         Ok(())
