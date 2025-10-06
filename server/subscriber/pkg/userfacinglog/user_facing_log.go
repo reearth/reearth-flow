@@ -8,9 +8,9 @@ import (
 type UserFacingLogLevel string
 
 const (
-	UserFacingLogLevelInfo    UserFacingLogLevel = "info"
-	UserFacingLogLevelSuccess UserFacingLogLevel = "success"
-	UserFacingLogLevelError   UserFacingLogLevel = "error"
+	UserFacingLogLevelInfo    UserFacingLogLevel = "INFO"
+	UserFacingLogLevelSuccess UserFacingLogLevel = "SUCCESS"
+	UserFacingLogLevelError   UserFacingLogLevel = "ERROR"
 )
 
 type UserFacingLogEvent struct {
