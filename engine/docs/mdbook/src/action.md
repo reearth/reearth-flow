@@ -1280,6 +1280,73 @@ Read Features from CSV or TSV File
 ### Category
 * File
 
+## CsvWriter
+### Type
+* sink
+### Description
+Writes features to CSV or TSV files.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CsvWriter Parameters",
+  "description": "Configuration for writing features to CSV/TSV files.",
+  "type": "object",
+  "required": [
+    "format",
+    "output"
+  ],
+  "properties": {
+    "format": {
+      "description": "File format: csv (comma) or tsv (tab)",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CsvFormat"
+        }
+      ]
+    },
+    "output": {
+      "description": "Output path or expression for the CSV/TSV file to create",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "CsvFormat": {
+      "oneOf": [
+        {
+          "title": "CSV (Comma-Separated Values)",
+          "description": "File with comma-separated values",
+          "type": "string",
+          "enum": [
+            "csv"
+          ]
+        },
+        {
+          "title": "TSV (Tab-Separated Values)",
+          "description": "File with tab-separated values",
+          "type": "string",
+          "enum": [
+            "tsv"
+          ]
+        }
+      ]
+    },
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
+
 ## CzmlReader
 ### Type
 * source
@@ -4764,10 +4831,19 @@ Execute Python Scripts with Geospatial Data Processing
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "PythonScriptProcessorParam",
   "type": "object",
-  "required": [
-    "script"
-  ],
   "properties": {
+    "pythonFile": {
+      "title": "Python File",
+      "description": "Path to a Python script file (supports file://, http://, https://, gs://, etc.)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "pythonPath": {
       "type": [
         "string",
@@ -4775,7 +4851,16 @@ Execute Python Scripts with Geospatial Data Processing
       ]
     },
     "script": {
-      "$ref": "#/definitions/Expr"
+      "title": "Inline Script",
+      "description": "Python script code to execute inline",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "timeoutSeconds": {
       "type": [
