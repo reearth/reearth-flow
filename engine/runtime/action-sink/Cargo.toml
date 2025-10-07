@@ -44,7 +44,9 @@ crossbeam-utils.workspace = true
 csv.workspace = true
 earcut.workspace = true
 flate2.workspace = true
+geo-types.workspace = true
 geojson.workspace = true
+geozero = { version = "0.14", features = ["with-wkb", "with-geo"] }
 glam.workspace = true
 hashbrown.workspace = true
 image.workspace = true
@@ -63,6 +65,7 @@ schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 shapefile.workspace = true
+sqlx.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
 tinymvt.workspace = true
