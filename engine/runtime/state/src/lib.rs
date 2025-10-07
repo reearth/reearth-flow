@@ -12,7 +12,7 @@ use reearth_flow_storage::storage::Storage;
 
 const CHUNK_SIZE: usize = 1000;
 
-const ZSTD_LEVEL: i32 = 3;
+const ZSTD_LEVEL: i32 = 1;
 
 #[derive(Debug, Clone)]
 pub struct State {
