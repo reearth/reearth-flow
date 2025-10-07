@@ -4046,6 +4046,73 @@ Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, t
 * File
 * 3D
 
+## ObjWriter
+### Type
+* sink
+### Description
+Writes 3D features to Wavefront OBJ format with optional material (MTL) files
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OBJ Writer Parameters",
+  "description": "Configure output settings for writing 3D features to Wavefront OBJ format",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "output": {
+      "title": "Output Path",
+      "description": "Expression for the output file path where the OBJ file will be written",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "writeMaterials": {
+      "title": "Write Materials",
+      "description": "Enable writing of material (MTL) file alongside the OBJ file",
+      "default": null,
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "writeNormals": {
+      "title": "Write Normals",
+      "description": "Include vertex normal vectors in the output",
+      "default": null,
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "writeTexcoords": {
+      "title": "Write Texture Coordinates",
+      "description": "Include texture coordinate (UV) data in the output (currently not supported - geometry types don't include UV data)",
+      "default": null,
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
+* 3D
+
 ## Offsetter
 ### Type
 * processor
