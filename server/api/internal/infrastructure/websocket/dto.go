@@ -33,5 +33,5 @@ type snapshotResponse struct {
 }
 
 type importDocumentRequest struct {
-	Data []byte `json:"data"`
+	Data []int `json:"data"`
 }

@@ -16,6 +16,9 @@ export default (
       customName: {
         type: "string",
         title: t("Custom Name"),
+        description: t(
+          "The custom name that is shown on the node. If not set, the official name will be used.",
+        ),
         format: "text",
         default: nodeMeta.officialName,
       },
@@ -26,18 +29,25 @@ export default (
     ...baseCustomizationSchema,
     properties: {
       ...baseCustomizationSchema.properties,
-      content: { type: "string", format: "textarea", title: t("Content") },
+      content: {
+        type: "string",
+        format: "textarea",
+        title: t("Content"),
+        description: t("The content shown on the note node"),
+      },
       backgroundColor: {
         type: "string",
         format: "color",
         default: "#212121",
         title: t("Background Color"),
+        description: t("The background color shown on the note node"),
       },
       textColor: {
         type: "string",
         format: "color",
         default: "#fafafa",
         title: t("Text Color"),
+        description: t("The text color shown on the note node"),
       },
     },
   };
@@ -51,11 +61,13 @@ export default (
         format: "color",
         default: "#323236",
         title: t("Background Color"),
+        description: t("The background color shown on the batch node"),
       },
       textColor: {
         type: "string",
         format: "color",
         title: t("Text Color"),
+        description: t("The text color shown on the batch node"),
         default: "#fafafa",
       },
     },

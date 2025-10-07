@@ -28,20 +28,20 @@ func TestRedisLog_GetUserFacingLogs(t *testing.T) {
 
 		// Setup test data - using map for JSON marshaling since UserFacingLogEntry is not exported
 		entry1 := map[string]interface{}{
-			"workflowId":     workflowID.String(),
-			"jobId":          jobID.String(),
-			"timestamp":      now.Add(-30 * time.Minute),
-			"level":          "info",
-			"displayMessage": "Processing started",
-			"metadata":       json.RawMessage(`{"step": 1}`),
+			"workflowId": workflowID.String(),
+			"jobId":      jobID.String(),
+			"timestamp":  now.Add(-30 * time.Minute),
+			"level":      "info",
+			"message":    "Processing started",
+			"metadata":   json.RawMessage(`{"step": 1}`),
 		}
 		entry2 := map[string]interface{}{
-			"workflowId":     workflowID.String(),
-			"jobId":          jobID.String(),
-			"timestamp":      now.Add(-15 * time.Minute),
-			"level":          "success",
-			"displayMessage": "Data loaded successfully",
-			"metadata":       json.RawMessage(`{"records": 1000}`),
+			"workflowId": workflowID.String(),
+			"jobId":      jobID.String(),
+			"timestamp":  now.Add(-15 * time.Minute),
+			"level":      "success",
+			"message":    "Data loaded successfully",
+			"metadata":   json.RawMessage(`{"records": 1000}`),
 		}
 
 		data1, _ := json.Marshal(entry1)
@@ -122,18 +122,18 @@ func TestRedisLog_GetUserFacingLogs(t *testing.T) {
 
 		// Setup test data - one old log and one recent log
 		oldEntry := map[string]interface{}{
-			"workflowId":     workflowID.String(),
-			"jobId":          jobID.String(),
-			"timestamp":      now.Add(-60 * time.Minute), // Old - should be excluded
-			"level":          "info",
-			"displayMessage": "Old log",
+			"workflowId": workflowID.String(),
+			"jobId":      jobID.String(),
+			"timestamp":  now.Add(-60 * time.Minute), // Old - should be excluded
+			"level":      "info",
+			"message":    "Old log",
 		}
 		recentEntry := map[string]interface{}{
-			"workflowId":     workflowID.String(),
-			"jobId":          jobID.String(),
-			"timestamp":      now.Add(-10 * time.Minute), // Recent - should be included
-			"level":          "info",
-			"displayMessage": "Recent log",
+			"workflowId": workflowID.String(),
+			"jobId":      jobID.String(),
+			"timestamp":  now.Add(-10 * time.Minute), // Recent - should be included
+			"level":      "info",
+			"message":    "Recent log",
 		}
 
 		oldData, _ := json.Marshal(oldEntry)

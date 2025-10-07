@@ -48,12 +48,14 @@ type Props = {
     nodeType?: ActionNodeType,
     isMainWorkflow?: boolean,
   ) => void;
+  onNodesDisable?: (ns?: Node[] | undefined) => void;
   onEdgesAdd?: (newEdges: Edge[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onCopy?: (node?: Node) => void;
   onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: () => void;
-  onPaneMouseMove?: (event: MouseEvent<Element, globalThis.MouseEvent>) => void;
+  onPaneMouseMove?: (e: MouseEvent) => void;
+  onPaneClick?: (e: MouseEvent) => void;
 };
 
 const Canvas: React.FC<Props> = ({
@@ -76,6 +78,8 @@ const Canvas: React.FC<Props> = ({
   onCut,
   onPaste,
   onPaneMouseMove,
+  onNodesDisable,
+  onPaneClick,
 }) => {
   const {
     handleNodesDelete,
@@ -104,6 +108,7 @@ const Canvas: React.FC<Props> = ({
     onCopy,
     onCut,
     onPaste,
+    onNodesDisable,
   });
 
   return (
@@ -143,7 +148,8 @@ const Canvas: React.FC<Props> = ({
       onConnect={handleConnect}
       onReconnect={handleReconnect}
       onBeforeDelete={onBeforeDelete}
-      onPaneMouseMove={onPaneMouseMove}>
+      onPaneMouseMove={onPaneMouseMove}
+      onPaneClick={onPaneClick}>
       <Background
         className="bg-background"
         variant={BackgroundVariant["Dots"]}
@@ -156,6 +162,7 @@ const Canvas: React.FC<Props> = ({
       {contextMenu && (
         <CanvasContextMenu
           data={contextMenu.data}
+          allNodes={nodes}
           selectedEdgeIds={selectedEdgeIds}
           contextMenu={contextMenu}
           onBeforeDelete={onBeforeDelete}
@@ -167,6 +174,7 @@ const Canvas: React.FC<Props> = ({
           onCut={onCut}
           onPaste={onPaste}
           onClose={handleCloseContextmenu}
+          onNodesDisable={onNodesDisable}
         />
       )}
     </ReactFlow>

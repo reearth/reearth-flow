@@ -20,6 +20,8 @@ pub enum SourceError {
     CzmlReader(String),
     #[error("GeoPackageReader error: {0}")]
     GeoPackageReader(String),
+    #[error("GltfReader error: {0}")]
+    GltfReader(String),
     #[error("File Path Extractor Factory error: {0}")]
     FilePathExtractorFactory(String),
     #[error("File Path Extractor error: {0}")]

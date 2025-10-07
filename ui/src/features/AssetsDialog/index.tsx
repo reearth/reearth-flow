@@ -1,8 +1,4 @@
-import {
-  HardDriveIcon,
-  ListIcon,
-  UploadSimpleIcon,
-} from "@phosphor-icons/react";
+import { FileArrowUpIcon, FileIcon, ListIcon } from "@phosphor-icons/react";
 import { SquaresFourIcon } from "@phosphor-icons/react/dist/ssr";
 
 import {
@@ -84,8 +80,8 @@ const AssetsDialog: React.FC<Props> = ({
     <Dialog open onOpenChange={onDialogClose}>
       <DialogContent className="max-h-[800px] w-full max-w-4xl overflow-hidden">
         <DialogTitle className="flex items-center gap-2">
-          <HardDriveIcon />
-          {t("Assets")}
+          <FileIcon />
+          {t("Workspace Assets")}
         </DialogTitle>
         <DialogContentWrapper>
           <div className="flex items-center justify-between">
@@ -132,12 +128,12 @@ const AssetsDialog: React.FC<Props> = ({
             </div>
 
             <Button variant="default" onClick={handleAssetUploadClick}>
-              <UploadSimpleIcon weight="thin" />
-              <p className="text-xs dark:font-light">{t("Upload Asset")}</p>
+              <FileArrowUpIcon weight="thin" />
+              <p className="text-xs dark:font-light">{t("Upload")}</p>
             </Button>
           </div>
 
-          <DialogContentSection className="flex min-h-[350px] flex-col overflow-hidden">
+          <DialogContentSection className="flex h-[500px] flex-col overflow-hidden">
             {layoutView === "list" ? (
               <AssetsListView
                 assets={assets}

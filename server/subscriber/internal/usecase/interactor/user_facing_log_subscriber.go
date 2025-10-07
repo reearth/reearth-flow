@@ -3,6 +3,7 @@ package interactor
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/reearth/reearth-flow/subscriber/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/subscriber/pkg/userfacinglog"
@@ -31,6 +32,8 @@ func (u *userFacingLogSubscriberUseCase) ProcessUserFacingLogEvent(ctx context.C
 	if event.WorkflowID == "" || event.JobID == "" {
 		return fmt.Errorf("invalid event: missing workflow ID or job ID")
 	}
+
+	event.Level = userfacinglog.UserFacingLogLevel(strings.ToUpper(string(event.Level)))
 
 	if err := u.storage.SaveToRedis(ctx, event); err != nil {
 		return fmt.Errorf("failed to write user facing log to Redis: %w", err)

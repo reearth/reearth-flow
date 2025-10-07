@@ -1,6 +1,4 @@
-import { LayoutIcon } from "@phosphor-icons/react";
-
-import { Button } from "@flow/components";
+import { Button, CmsLogo } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import type { CmsProject, CmsModel, CmsItem } from "@flow/types/cmsIntegration";
 
@@ -27,7 +25,7 @@ const CmsBreadcrumb: React.FC<Props> = ({
 
   return (
     <div className="flex min-w-0 items-center font-normal">
-      <LayoutIcon size={24} className="mr-2 shrink-0" />
+      <CmsLogo className="h-4 w-4 text-white" />
       <span className="shrink-0 px-4 py-2 pr-1 pl-1">
         {t("CMS Integration")}
       </span>

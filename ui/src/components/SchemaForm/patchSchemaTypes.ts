@@ -99,6 +99,33 @@ const consolidateOneOfToEnum = (
     }
   }
 
+  // Recursively handle nested schemas
+  if (newSchema.properties) {
+    newSchema.properties = Object.fromEntries(
+      Object.entries(newSchema.properties).map(([key, value]) => [
+        key,
+        consolidateOneOfToEnum(value),
+      ]),
+    );
+  }
+
+  if (newSchema.items) {
+    if (Array.isArray(newSchema.items)) {
+      newSchema.items = newSchema.items.map(consolidateOneOfToEnum);
+    } else {
+      newSchema.items = consolidateOneOfToEnum(newSchema.items);
+    }
+  }
+
+  if (newSchema.definitions) {
+    newSchema.definitions = Object.fromEntries(
+      Object.entries(newSchema.definitions).map(([k, v]) => [
+        k,
+        consolidateOneOfToEnum(v),
+      ]),
+    );
+  }
+
   return newSchema;
 };
 
@@ -193,14 +220,8 @@ export const patchAnyOfAndOneOfType = (
   // Simplify `allOf` with single `$ref` (handles Rust schemars enum defaults)
   newSchema = simplifyAllOf(newSchema, newSchema.definitions) as JSONSchema7;
 
-  if (newSchema.definitions) {
-    newSchema.definitions = Object.fromEntries(
-      Object.entries(newSchema.definitions).map(([k, v]) => [
-        k,
-        consolidateOneOfToEnum(v),
-      ]),
-    );
-  }
+  // Apply consolidateOneOfToEnum to the root schema and all nested properties
+  newSchema = consolidateOneOfToEnum(newSchema) as JSONSchema7;
 
   return newSchema;
 };
