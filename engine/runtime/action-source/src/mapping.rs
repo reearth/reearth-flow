@@ -8,8 +8,9 @@ use crate::{
     file::{
         citygml::CityGmlReaderFactory, csv::CsvReaderFactory, czml::CzmlReaderFactory,
         geojson::GeoJsonReaderFactory, geopackage::GeoPackageReaderFactory,
-        json::JsonReaderFactory, obj::ObjReaderFactory, path_extractor::FilePathExtractorFactory,
-        reader::FileReaderFactory, shapefile::ShapefileReaderFactory,
+        gltf::GltfReaderFactory, json::JsonReaderFactory, obj::ObjReaderFactory,
+        path_extractor::FilePathExtractorFactory, reader::FileReaderFactory,
+        shapefile::ShapefileReaderFactory,
     },
     sql::SqlReaderFactory,
 };
@@ -25,6 +26,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<CzmlReaderFactory>::default(),
         Box::<GeoJsonReaderFactory>::default(),
         Box::<GeoPackageReaderFactory>::default(),
+        Box::<GltfReaderFactory>::default(),
         Box::<JsonReaderFactory>::default(),
         Box::<ObjReaderFactory>::default(),
         Box::<ShapefileReaderFactory>::default(),

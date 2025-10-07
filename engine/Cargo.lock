@@ -5173,7 +5173,7 @@ checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 
 [[package]]
 name = "plateau-gis-quality-checker"
-version = "0.0.115"
+version = "0.0.116"
 dependencies = [
  "directories",
  "log",
@@ -6098,6 +6098,7 @@ dependencies = [
  "csv",
  "futures",
  "geojson",
+ "gltf",
  "indexmap 2.11.1",
  "nusamai-citygml",
  "nusamai-czml",
@@ -10085,7 +10086,7 @@ checksum = "5c573471f125075647d03df72e026074b7203790d41351cd6edc96f46bcccd36"
 
 [[package]]
 name = "workflow-tests"
-version = "0.1.18"
+version = "0.1.19"
 dependencies = [
  "anyhow",
  "csv",
