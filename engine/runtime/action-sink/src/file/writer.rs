@@ -15,13 +15,12 @@ use rhai::{Dynamic, AST};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::file::excel::ExcelWriterParam;
 use reearth_flow_common::uri::Uri;
 use serde_json::Value;
 
 use crate::errors::SinkError;
 
-use super::excel::write_excel;
+use super::excel::{write_excel, ExcelWriterParam};
 
 #[derive(Debug, Clone, Default)]
 pub struct FileWriterSinkFactory;
@@ -250,7 +249,7 @@ pub struct JsonWriterParam {
     pub(super) converter: Option<Expr>,
 }
 
-fn write_json(
+pub(super) fn write_json(
     output: &Uri,
     params: &JsonWriterParam,
     features: &[Feature],
