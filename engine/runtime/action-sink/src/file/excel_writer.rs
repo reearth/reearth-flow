@@ -12,23 +12,24 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::writer;
 use crate::errors::SinkError;
 
-#[derive(Debug, Clone, Default)]
-pub(crate) struct JsonWriterFactory;
+use super::excel::{write_excel, ExcelWriterParam as OldExcelWriterParam};
 
-impl SinkFactory for JsonWriterFactory {
+#[derive(Debug, Clone, Default)]
+pub(crate) struct ExcelWriterFactory;
+
+impl SinkFactory for ExcelWriterFactory {
     fn name(&self) -> &str {
-        "JsonWriter"
+        "ExcelWriter"
     }
 
     fn description(&self) -> &str {
-        "Writes features to JSON files."
+        "Writes features to Microsoft Excel format (.xlsx files)."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(JsonWriterParam))
+        Some(schemars::schema_for!(ExcelWriterParam))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -52,18 +53,20 @@ impl SinkFactory for JsonWriterFactory {
     ) -> Result<Box<dyn Sink>, BoxedError> {
         let params = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                SinkError::JsonWriterFactory(format!("Failed to serialize `with` parameter: {e}"))
+                SinkError::ExcelWriterFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                SinkError::JsonWriterFactory(format!("Failed to deserialize `with` parameter: {e}"))
+                SinkError::ExcelWriterFactory(format!(
+                    "Failed to deserialize `with` parameter: {e}"
+                ))
             })?
         } else {
-            return Err(SinkError::JsonWriterFactory(
+            return Err(SinkError::ExcelWriterFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
         };
-        let sink = JsonWriter {
+        let sink = ExcelWriter {
             params,
             buffer: Default::default(),
         };
@@ -72,26 +75,26 @@ impl SinkFactory for JsonWriterFactory {
 }
 
 #[derive(Debug, Clone)]
-pub(super) struct JsonWriter {
-    pub(super) params: JsonWriterParam,
+pub(super) struct ExcelWriter {
+    pub(super) params: ExcelWriterParam,
     pub(super) buffer: HashMap<Uri, Vec<Feature>>,
 }
 
-/// # JsonWriter Parameters
+/// # ExcelWriter Parameters
 ///
-/// Configuration for writing features to JSON files.
+/// Configuration for writing features to Microsoft Excel format.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct JsonWriterParam {
-    /// Output path or expression for the JSON file to create
+pub struct ExcelWriterParam {
+    /// Output path or expression for the Excel file to create
     pub(super) output: Expr,
-    /// Optional converter expression to transform features before writing
-    pub(super) converter: Option<Expr>,
+    /// Sheet name (defaults to "Sheet1")
+    pub(super) sheet_name: Option<String>,
 }
 
-impl Sink for JsonWriter {
+impl Sink for ExcelWriter {
     fn name(&self) -> &str {
-        "JsonWriter"
+        "ExcelWriter"
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
@@ -108,17 +111,11 @@ impl Sink for JsonWriter {
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        let writer_param = writer::JsonWriterParam {
-            converter: self.params.converter.clone(),
-        };
         for (uri, features) in &self.buffer {
-            writer::write_json(
-                uri,
-                &writer_param,
-                features,
-                &ctx.expr_engine,
-                &storage_resolver,
-            )?;
+            let old_params = OldExcelWriterParam {
+                sheet_name: self.params.sheet_name.clone(),
+            };
+            write_excel(uri, &old_params, features, &storage_resolver)?;
         }
         Ok(())
     }

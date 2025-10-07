@@ -7,7 +7,7 @@ use crate::{
     echo::EchoSinkFactory,
     file::{
         cesium3dtiles::sink::Cesium3DTilesSinkFactory, csv::CsvWriterFactory,
-        czml::CzmlWriterFactory, excel::ExcelWriterFactory, geojson::GeoJsonWriterFactory,
+        czml::CzmlWriterFactory, excel_writer::ExcelWriterFactory, geojson::GeoJsonWriterFactory,
         gltf::GltfWriterSinkFactory, json::JsonWriterFactory, mvt::sink::MVTSinkFactory,
         obj::ObjWriterFactory, shapefile::ShapefileWriterFactory, writer::FileWriterSinkFactory,
         xml::XmlWriterFactory, zip::ZipFileWriterFactory,

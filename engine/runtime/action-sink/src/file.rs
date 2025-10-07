@@ -2,6 +2,7 @@ pub(super) mod cesium3dtiles;
 pub(super) mod csv;
 pub(super) mod czml;
 pub(super) mod excel;
+pub(crate) mod excel_writer;
 pub(super) mod geojson;
 pub(super) mod gltf;
 pub(super) mod json;

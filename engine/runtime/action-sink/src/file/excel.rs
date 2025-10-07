@@ -1,86 +1,17 @@
-use std::collections::HashMap;
 use std::path::Path;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use indexmap::IndexMap;
-use reearth_flow_common::uri::Uri;
-use reearth_flow_runtime::errors::BoxedError;
-use reearth_flow_runtime::event::EventHub;
-use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use reearth_flow_types::Attribute;
 use rust_xlsxwriter::{Format, FormatAlign, FormatUnderline, Formula, Url, Workbook, Worksheet};
+
+use reearth_flow_storage::resolve::StorageResolver;
+
+use reearth_flow_common::uri::Uri;
+
+use reearth_flow_types::{AttributeValue, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-
-use crate::errors::SinkError;
-
-#[derive(Debug, Clone, Default)]
-pub(crate) struct ExcelWriterFactory;
-
-impl SinkFactory for ExcelWriterFactory {
-    fn name(&self) -> &str {
-        "ExcelWriter"
-    }
-
-    fn description(&self) -> &str {
-        "Writes features to Microsoft Excel format (.xlsx files)."
-    }
-
-    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(ExcelWriterParam))
-    }
-
-    fn categories(&self) -> &[&'static str] {
-        &["File"]
-    }
-
-    fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
-    }
-
-    fn prepare(&self) -> Result<(), BoxedError> {
-        Ok(())
-    }
-
-    fn build(
-        &self,
-        _ctx: NodeContext,
-        _event_hub: EventHub,
-        _action: String,
-        with: Option<HashMap<String, Value>>,
-    ) -> Result<Box<dyn Sink>, BoxedError> {
-        let params = if let Some(with) = with {
-            let value: Value = serde_json::to_value(with).map_err(|e| {
-                SinkError::ExcelWriterFactory(format!("Failed to serialize `with` parameter: {e}"))
-            })?;
-            serde_json::from_value(value).map_err(|e| {
-                SinkError::ExcelWriterFactory(format!(
-                    "Failed to deserialize `with` parameter: {e}"
-                ))
-            })?
-        } else {
-            return Err(SinkError::ExcelWriterFactory(
-                "Missing required parameter `with`".to_string(),
-            )
-            .into());
-        };
-        let sink = ExcelWriter {
-            params,
-            buffer: Default::default(),
-        };
-        Ok(Box::new(sink))
-    }
-}
-
-#[derive(Debug, Clone)]
-pub(super) struct ExcelWriter {
-    pub(super) params: ExcelWriterParam,
-    pub(super) buffer: HashMap<Uri, Vec<Feature>>,
-}
 
 /// # ExcelWriter Parameters
 ///
@@ -88,53 +19,22 @@ pub(super) struct ExcelWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ExcelWriterParam {
-    /// Output path or expression for the Excel file to create
-    pub(super) output: Expr,
-    /// Sheet name (defaults to "Sheet1")
     pub(super) sheet_name: Option<String>,
-}
-
-impl Sink for ExcelWriter {
-    fn name(&self) -> &str {
-        "ExcelWriter"
-    }
-
-    fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = expr_engine.new_scope();
-        let output = &self.params.output;
-        let path = scope
-            .eval::<String>(output.as_ref())
-            .unwrap_or_else(|_| output.as_ref().to_string());
-        let uri = Uri::from_str(&path)?;
-        self.buffer.entry(uri).or_default().push(ctx.feature);
-        Ok(())
-    }
-
-    fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let storage_resolver = Arc::clone(&ctx.storage_resolver);
-        for (uri, features) in &self.buffer {
-            write_excel(
-                uri,
-                self.params.sheet_name.clone(),
-                features,
-                &storage_resolver,
-            )?;
-        }
-        Ok(())
-    }
 }
 
 pub(super) fn write_excel(
     output: &Uri,
-    sheet_name: Option<String>,
+    params: &ExcelWriterParam,
     features: &[Feature],
     storage_resolver: &Arc<StorageResolver>,
 ) -> Result<(), crate::errors::SinkError> {
     let mut workbook = Workbook::new();
     let worksheet = workbook.add_worksheet();
 
-    let sheet_name = sheet_name.unwrap_or_else(|| "Sheet1".to_string());
+    let sheet_name = params
+        .sheet_name
+        .clone()
+        .unwrap_or_else(|| "Sheet1".to_string());
     worksheet
         .set_name(sheet_name)
         .map_err(crate::errors::SinkError::file_writer)?;

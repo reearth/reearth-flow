@@ -20,7 +20,7 @@ use serde_json::Value;
 
 use crate::errors::SinkError;
 
-use super::excel::write_excel;
+use super::excel::{write_excel, ExcelWriterParam};
 
 #[derive(Debug, Clone, Default)]
 pub struct FileWriterSinkFactory;
@@ -220,7 +220,7 @@ impl Sink for FileWriter {
             match &self.params {
                 FileWriterCompiledParam::Json { json_params, .. } => write_json(
                     output,
-                    &json_params.converter,
+                    json_params,
                     features,
                     &expr_engine,
                     &storage_resolver,
@@ -234,22 +234,13 @@ impl Sink for FileWriter {
                 FileWriterCompiledParam::Xml { .. } => {
                     super::xml::write_xml(output, features, &storage_resolver)
                 }
-                FileWriterCompiledParam::Excel { excel_params, .. } => write_excel(
-                    output,
-                    excel_params.sheet_name.clone(),
-                    features,
-                    &storage_resolver,
-                ),
+                FileWriterCompiledParam::Excel { excel_params, .. } => {
+                    write_excel(output, excel_params, features, &storage_resolver)
+                }
             }?;
         }
         Ok(())
     }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct ExcelWriterParam {
-    pub(super) sheet_name: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -260,12 +251,12 @@ pub struct JsonWriterParam {
 
 pub(super) fn write_json(
     output: &Uri,
-    converter: &Option<Expr>,
+    params: &JsonWriterParam,
     features: &[Feature],
     expr_engine: &Arc<Engine>,
     storage_resolver: &Arc<StorageResolver>,
 ) -> Result<(), crate::errors::SinkError> {
-    let json_value: serde_json::Value = if let Some(converter) = converter.as_ref() {
+    let json_value: serde_json::Value = if let Some(converter) = &params.converter {
         let scope = expr_engine.new_scope();
         let value: serde_json::Value = serde_json::Value::Array(
             features
