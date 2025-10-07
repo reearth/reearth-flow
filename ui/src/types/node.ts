@@ -25,6 +25,7 @@ export type NodeData = {
   params?: NodeParams;
   customizations?: NodeCustomizations;
   isCollapsed?: boolean;
+  isDisabled?: boolean;
   // subworkflow nodes
   subworkflowId?: string;
   pseudoInputs?: PseudoPort[];

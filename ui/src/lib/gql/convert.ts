@@ -323,8 +323,6 @@ export const toUserParamVarType = (type: ParameterType): VarType => {
       return "yes_no";
     case "DATETIME":
       return "datetime";
-    case "FILE_FOLDER":
-      return "file_folder";
     // case "GEOMETRY":
     //   return "geometry";
     // case "MESSAGE":
@@ -358,8 +356,6 @@ export const toGqlParameterType = (
       return ParameterType.Color;
     case "datetime":
       return ParameterType.Datetime;
-    case "file_folder":
-      return ParameterType.FileFolder;
     case "number":
       return ParameterType.Number;
     case "text":

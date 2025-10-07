@@ -8,7 +8,7 @@ use crate::{
     file::{
         cesium3dtiles::sink::Cesium3DTilesSinkFactory, csv::CsvWriterFactory,
         czml::CzmlWriterFactory, geojson::GeoJsonWriterFactory, gltf::GltfWriterSinkFactory,
-        mvt::sink::MVTSinkFactory, shapefile::ShapefileWriterFactory,
+        mvt::sink::MVTSinkFactory, obj::ObjWriterFactory, shapefile::ShapefileWriterFactory,
         writer::FileWriterSinkFactory, zip::ZipFileWriterFactory,
     },
     noop::NoopSinkFactory,
@@ -25,6 +25,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<MVTSinkFactory>::default(),
         Box::<GltfWriterSinkFactory>::default(),
         Box::<CzmlWriterFactory>::default(),
+        Box::<ObjWriterFactory>::default(),
         Box::<ShapefileWriterFactory>::default(),
         Box::<ZipFileWriterFactory>::default(),
     ];
