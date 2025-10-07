@@ -11,12 +11,10 @@ use crate::pubsub::{
 };
 
 #[derive(Serialize, Debug, Clone)]
+#[serde(rename_all = "UPPERCASE")]
 pub enum UserFacingLogLevel {
-    #[serde(rename = "INFO")]
     Info,
-    #[serde(rename = "SUCCESS")]
     Success,
-    #[serde(rename = "ERROR")]
     Error,
 }
 
