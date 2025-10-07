@@ -2956,7 +2956,7 @@ Write Features to Files in Various Formats
             }
           ]
         },
-        "sheet_name": {
+        "sheetName": {
           "type": [
             "string",
             "null"

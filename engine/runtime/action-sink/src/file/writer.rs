@@ -234,9 +234,12 @@ impl Sink for FileWriter {
                 FileWriterCompiledParam::Xml { .. } => {
                     super::xml::write_xml(output, features, &storage_resolver)
                 }
-                FileWriterCompiledParam::Excel { excel_params, .. } => {
-                    write_excel(output, excel_params.sheet_name.clone(), features, &storage_resolver)
-                }
+                FileWriterCompiledParam::Excel { excel_params, .. } => write_excel(
+                    output,
+                    excel_params.sheet_name.clone(),
+                    features,
+                    &storage_resolver,
+                ),
             }?;
         }
         Ok(())
