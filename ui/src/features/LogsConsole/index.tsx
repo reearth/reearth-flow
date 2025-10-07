@@ -64,18 +64,22 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
     try {
       const response = await fetch(debugJob.userFacingLogsURL);
       const textData = await response.text();
-
+      console.log("Fetched logs data:", debugJob.userFacingLogsURL);
       // Logs are JSONL there we have ensure they are parsed correctly and cleaned to be used
       const logsArray = parseJSONL(textData, {
         transform: (parsedLog) => {
           if (
-            typeof parsedLog.msg === "string" &&
-            parsedLog.msg.trim() !== ""
+            typeof parsedLog.message === "string" &&
+            parsedLog.message.trim() !== ""
           ) {
             try {
-              parsedLog.msg = JSON.parse(parsedLog.msg);
+              parsedLog.message = JSON.parse(parsedLog.message);
             } catch (innerError) {
-              console.error("Failed to clean msg:", parsedLog.msg, innerError);
+              console.error(
+                "Failed to clean msg:",
+                parsedLog.message,
+                innerError,
+              );
             }
           }
           return {
