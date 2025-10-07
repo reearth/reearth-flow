@@ -6098,6 +6098,7 @@ dependencies = [
  "csv",
  "futures",
  "geojson",
+ "gltf",
  "indexmap 2.11.1",
  "nusamai-citygml",
  "nusamai-czml",

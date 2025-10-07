@@ -2,9 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use bytes::Bytes;
-use quick_xml::events::{BytesDecl, BytesStart, Event};
-use quick_xml::writer::Writer;
+use reearth_flow_common::csv::Delimiter;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
@@ -15,23 +13,23 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use super::writer::write_csv;
 use crate::errors::SinkError;
-use reearth_flow_storage::resolve::StorageResolver;
 
 #[derive(Debug, Clone, Default)]
-pub(crate) struct XmlWriterFactory;
+pub(crate) struct CsvWriterFactory;
 
-impl SinkFactory for XmlWriterFactory {
+impl SinkFactory for CsvWriterFactory {
     fn name(&self) -> &str {
-        "XmlWriter"
+        "CsvWriter"
     }
 
     fn description(&self) -> &str {
-        "Writes features to XML files."
+        "Writes features to CSV or TSV files."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(XmlWriterParam))
+        Some(schemars::schema_for!(CsvWriterParam))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -55,18 +53,18 @@ impl SinkFactory for XmlWriterFactory {
     ) -> Result<Box<dyn Sink>, BoxedError> {
         let params = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                SinkError::XmlWriterFactory(format!("Failed to serialize `with` parameter: {e}"))
+                SinkError::CsvWriterFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                SinkError::XmlWriterFactory(format!("Failed to deserialize `with` parameter: {e}"))
+                SinkError::CsvWriterFactory(format!("Failed to deserialize `with` parameter: {e}"))
             })?
         } else {
-            return Err(SinkError::XmlWriterFactory(
+            return Err(SinkError::CsvWriterFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
         };
-        let sink = XmlWriter {
+        let sink = CsvWriter {
             params,
             buffer: Default::default(),
         };
@@ -75,24 +73,46 @@ impl SinkFactory for XmlWriterFactory {
 }
 
 #[derive(Debug, Clone)]
-pub(super) struct XmlWriter {
-    pub(super) params: XmlWriterParam,
+pub(super) struct CsvWriter {
+    pub(super) params: CsvWriterParam,
     pub(super) buffer: HashMap<Uri, Vec<Feature>>,
 }
 
-/// # XmlWriter Parameters
+/// # CsvWriter Parameters
 ///
-/// Configuration for writing features to XML files.
+/// Configuration for writing features to CSV/TSV files.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct XmlWriterParam {
-    /// Output path or expression for the XML file to create
+pub(super) struct CsvWriterParam {
+    /// Output path or expression for the CSV/TSV file to create
     pub(super) output: Expr,
+    /// File format: csv (comma) or tsv (tab)
+    format: CsvFormat,
 }
 
-impl Sink for XmlWriter {
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum CsvFormat {
+    /// # CSV (Comma-Separated Values)
+    /// File with comma-separated values
+    Csv,
+    /// # TSV (Tab-Separated Values)
+    /// File with tab-separated values
+    Tsv,
+}
+
+impl CsvFormat {
+    fn delimiter(&self) -> Delimiter {
+        match self {
+            CsvFormat::Csv => Delimiter::Comma,
+            CsvFormat::Tsv => Delimiter::Tab,
+        }
+    }
+}
+
+impl Sink for CsvWriter {
     fn name(&self) -> &str {
-        "XmlWriter"
+        "CsvWriter"
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
@@ -109,50 +129,10 @@ impl Sink for XmlWriter {
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
+        let delimiter = self.params.format.delimiter();
         for (uri, features) in &self.buffer {
-            write_xml(uri, features, &storage_resolver)?;
+            write_csv(uri, features, delimiter.clone(), &storage_resolver)?;
         }
         Ok(())
     }
-}
-
-pub(super) fn write_xml(
-    output: &Uri,
-    features: &[Feature],
-    storage_resolver: &Arc<StorageResolver>,
-) -> Result<(), crate::errors::SinkError> {
-    let attributes = features
-        .iter()
-        .map(|f| {
-            serde_json::Value::Object(
-                f.attributes
-                    .clone()
-                    .into_iter()
-                    .map(|(k, v)| (k.into_inner().to_string(), v.into()))
-                    .collect::<serde_json::Map<_, _>>(),
-            )
-        })
-        .collect::<Vec<serde_json::Value>>();
-
-    let mut writer = Writer::new(Vec::new());
-    writer.write_event(Event::Decl(BytesDecl::new("1.2", None, None)))?;
-    let start = BytesStart::new("features");
-    let end = start.to_end();
-    writer.write_event(Event::Start(start.clone()))?;
-    attributes
-        .iter()
-        .try_for_each(|attribute| writer.write_serializable("feature", attribute))
-        .map_err(|e| crate::errors::SinkError::XmlWriter(format!("{e:?}")))?;
-    writer.write_event(Event::End(end))?;
-
-    let result = writer.into_inner();
-    let xml = String::from_utf8(result)
-        .map_err(|e| crate::errors::SinkError::XmlWriter(format!("{e:?}")))?;
-    let storage = storage_resolver
-        .resolve(output)
-        .map_err(|e| crate::errors::SinkError::XmlWriter(format!("{e:?}")))?;
-    storage
-        .put_sync(output.path().as_path(), Bytes::from(xml))
-        .map_err(|e| crate::errors::SinkError::XmlWriter(format!("{e:?}")))?;
-    Ok(())
 }
