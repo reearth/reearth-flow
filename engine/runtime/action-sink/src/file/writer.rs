@@ -80,13 +80,13 @@ impl SinkFactory for FileWriterSinkFactory {
             FileWriterParam::Csv { .. } => FileWriterCompiledParam::Csv { common_params },
             FileWriterParam::Tsv { .. } => FileWriterCompiledParam::Tsv { common_params },
             FileWriterParam::Xml { .. } => FileWriterCompiledParam::Xml { common_params },
-            FileWriterParam::Json { converter, .. } => FileWriterCompiledParam::Json {
+            FileWriterParam::Json { json_params, .. } => FileWriterCompiledParam::Json {
                 common_params,
-                converter,
+                json_params,
             },
-            FileWriterParam::Excel { sheet_name, .. } => FileWriterCompiledParam::Excel {
+            FileWriterParam::Excel { excel_params, .. } => FileWriterCompiledParam::Excel {
                 common_params,
-                sheet_name,
+                excel_params,
             },
         };
         let sink = FileWriter {
@@ -140,12 +140,14 @@ pub enum FileWriterParam {
     Json {
         #[serde(flatten)]
         common_params: FileWriterCommonParam,
-        converter: Option<Expr>,
+        #[serde(flatten)]
+        json_params: JsonWriterParam,
     },
     Excel {
         #[serde(flatten)]
         common_params: FileWriterCommonParam,
-        sheet_name: Option<String>,
+        #[serde(flatten)]
+        excel_params: ExcelWriterParam,
     },
 }
 
@@ -174,11 +176,11 @@ pub enum FileWriterCompiledParam {
     },
     Json {
         common_params: FileWriterCommonCompiledParam,
-        converter: Option<Expr>,
+        json_params: JsonWriterParam,
     },
     Excel {
         common_params: FileWriterCommonCompiledParam,
-        sheet_name: Option<String>,
+        excel_params: ExcelWriterParam,
     },
 }
 
@@ -216,9 +218,13 @@ impl Sink for FileWriter {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         for (output, features) in &self.buffer {
             match &self.params {
-                FileWriterCompiledParam::Json { converter, .. } => {
-                    write_json(output, converter, features, &expr_engine, &storage_resolver)
-                }
+                FileWriterCompiledParam::Json { json_params, .. } => write_json(
+                    output,
+                    &json_params.converter,
+                    features,
+                    &expr_engine,
+                    &storage_resolver,
+                ),
                 FileWriterCompiledParam::Csv { .. } => {
                     write_csv(output, features, Delimiter::Comma, &storage_resolver)
                 }
@@ -228,13 +234,25 @@ impl Sink for FileWriter {
                 FileWriterCompiledParam::Xml { .. } => {
                     super::xml::write_xml(output, features, &storage_resolver)
                 }
-                FileWriterCompiledParam::Excel { sheet_name, .. } => {
-                    write_excel(output, sheet_name.clone(), features, &storage_resolver)
+                FileWriterCompiledParam::Excel { excel_params, .. } => {
+                    write_excel(output, excel_params.sheet_name.clone(), features, &storage_resolver)
                 }
             }?;
         }
         Ok(())
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ExcelWriterParam {
+    pub(super) sheet_name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonWriterParam {
+    pub(super) converter: Option<Expr>,
 }
 
 pub(super) fn write_json(

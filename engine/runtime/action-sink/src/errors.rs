@@ -18,10 +18,6 @@ pub enum SinkError {
     GeoJsonWriterFactory(String),
     #[error("GeoJson Writer error: {0}")]
     GeoJsonWriter(String),
-    #[error("Json Writer Factory error: {0}")]
-    JsonWriterFactory(String),
-    #[error("Json Writer error: {0}")]
-    JsonWriter(String),
     #[error("Mvt Writer Factory error: {0}")]
     MvtWriterFactory(String),
     #[error("Mvt Writer error: {0}")]
@@ -56,6 +52,10 @@ pub enum SinkError {
     ExcelWriterFactory(String),
     #[error("Excel Writer error: {0}")]
     ExcelWriter(String),
+    #[error("Json Writer Factory error: {0}")]
+    JsonWriterFactory(String),
+    #[error("Json Writer error: {0}")]
+    JsonWriter(String),
 }
 
 impl SinkError {
