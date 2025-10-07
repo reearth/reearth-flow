@@ -56,6 +56,10 @@ pub enum SinkError {
     JsonWriterFactory(String),
     #[error("Json Writer error: {0}")]
     JsonWriter(String),
+    #[error("GeoPackage Writer Factory error: {0}")]
+    GeoPackageWriterFactory(String),
+    #[error("GeoPackage Writer error: {0}")]
+    GeoPackageWriter(String),
 }
 
 impl SinkError {
@@ -81,6 +85,10 @@ impl SinkError {
 
     pub fn obj_writer<T: ToString>(message: T) -> Self {
         Self::ObjWriter(message.to_string())
+    }
+
+    pub fn geopackage_writer<T: ToString>(message: T) -> Self {
+        Self::GeoPackageWriter(message.to_string())
     }
 }
 

@@ -3201,6 +3201,122 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
 * File
 * Database
 
+## GeoPackageWriter
+### Type
+* sink
+### Description
+Writes geographic features to GeoPackage files with optional grouping
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GeoPackageWriter Parameters",
+  "description": "Configuration for writing features to GeoPackage files.",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "force2D": {
+      "title": "Force 2D",
+      "description": "Force 2D output by discarding Z coordinates from geometries",
+      "default": false,
+      "type": "boolean"
+    },
+    "groupBy": {
+      "title": "Group By",
+      "description": "Optional attributes to group features by, creating separate files for each group",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "layerName": {
+      "title": "Layer Name",
+      "description": "Name of the layer/table to create in the GeoPackage (default: \"features\")",
+      "default": "features",
+      "type": "string"
+    },
+    "output": {
+      "title": "Output",
+      "description": "Output path or expression for the GeoPackage file to create",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "overwrite": {
+      "title": "Overwrite",
+      "description": "Overwrite existing file if it exists (default: true)",
+      "default": true,
+      "type": "boolean"
+    },
+    "srid": {
+      "title": "SRID",
+      "description": "Spatial Reference System ID for geometries (default: 4326 for WGS84)",
+      "default": 4326,
+      "type": "integer",
+      "format": "int32"
+    },
+    "writeMode": {
+      "title": "Write Mode",
+      "description": "Controls how features are organized in the output",
+      "default": "singleLayer",
+      "allOf": [
+        {
+          "$ref": "#/definitions/GeoPackageWriteMode"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "Expr": {
+      "type": "string"
+    },
+    "GeoPackageWriteMode": {
+      "oneOf": [
+        {
+          "title": "Single Layer",
+          "description": "Write all features to a single layer",
+          "type": "string",
+          "enum": [
+            "singleLayer"
+          ]
+        },
+        {
+          "title": "Multiple Layers",
+          "description": "Create separate layers based on _geopackage_layer attribute",
+          "type": "string",
+          "enum": [
+            "multipleLayers"
+          ]
+        },
+        {
+          "title": "Separate Files",
+          "description": "Create separate files for each group (using groupBy parameter)",
+          "type": "string",
+          "enum": [
+            "separateFiles"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
+
 ## GeometryCoercer
 ### Type
 * processor
