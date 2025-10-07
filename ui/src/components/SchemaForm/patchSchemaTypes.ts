@@ -26,7 +26,10 @@ const simplifyAnyOf = (
     // If only one type remains, replace `anyOf` with that schema
     if (filteredSchemas.length === 1) {
       if (isJSONSchema(filteredSchemas[0])) {
+        const title = filteredSchemas[0].title || newSchema.title;
         newSchema = { ...filteredSchemas[0] };
+        // Preserve the title
+        if (title) newSchema.title = title;
       }
     } else {
       newSchema.anyOf = filteredSchemas;
