@@ -227,85 +227,148 @@ export default ({
           const pseudoInputs: { nodeId: string; portName: string }[] = [];
           const pseudoOutputs: { nodeId: string; portName: string }[] = [];
 
+          // Track routers by external connection (external node + handle) to avoid duplicates
+          const inputRoutersByExternalConnection = new Map<
+            string,
+            { routerId: string; portName: string; externalEdge: Edge }
+          >();
+          const outputRoutersByExternalConnection = new Map<
+            string,
+            { routerId: string; portName: string; externalEdge: Edge }
+          >();
+
           let inputCounter = 1;
           let outputCounter = 1;
-          boundaryEdges.forEach((edge, index) => {
+
+          boundaryEdges.forEach((edge) => {
             const sourceSelected = allIncludedNodeIds.has(edge.source);
             const targetSelected = allIncludedNodeIds.has(edge.target);
 
             if (!sourceSelected && targetSelected) {
-              const inputRouterId = generateUUID();
-              const portName = `${DEFAULT_ROUTING_PORT}-${inputCounter}`;
-              inputCounter++;
+              // Group by external source node + its source handle
+              const externalConnectionKey = `${edge.source}:${edge.sourceHandle ?? "default"}`;
 
-              const inputRouter: Node = {
-                id: inputRouterId,
-                type: routers.inputRouter.type as NodeType,
-                position: { x: 200 + index * 50, y: 150 },
-                data: {
-                  officialName: routers.inputRouter.name,
-                  outputs: routers.inputRouter.outputPorts,
-                  params: { routingPort: portName },
-                },
-              };
-              additionalRouterNodes.push(inputRouter);
+              let inputRouterInfo = inputRoutersByExternalConnection.get(
+                externalConnectionKey,
+              );
+
+              if (!inputRouterInfo) {
+                const inputRouterId = generateUUID();
+                const portName = `${DEFAULT_ROUTING_PORT}-${inputCounter}`;
+                inputCounter++;
+
+                const inputRouter: Node = {
+                  id: inputRouterId,
+                  type: routers.inputRouter.type as NodeType,
+                  position: {
+                    x: 200 + (inputCounter - 2) * 50,
+                    y: 150,
+                  },
+                  data: {
+                    officialName: routers.inputRouter.name,
+                    outputs: routers.inputRouter.outputPorts,
+                    params: { routingPort: portName },
+                  },
+                };
+                additionalRouterNodes.push(inputRouter);
+
+                const externalEdge: Edge = {
+                  ...edge,
+                  id: edge.id,
+                  target: workflowId,
+                  targetHandle: portName,
+                };
+
+                inputRouterInfo = {
+                  routerId: inputRouterId,
+                  portName,
+                  externalEdge,
+                };
+                inputRoutersByExternalConnection.set(
+                  externalConnectionKey,
+                  inputRouterInfo,
+                );
+
+                pseudoInputs.push({
+                  nodeId: inputRouterId,
+                  portName: portName,
+                });
+              }
 
               const internalEdge: Edge = {
-                ...edge,
                 id: generateUUID(),
-                source: inputRouterId,
+                source: inputRouterInfo.routerId,
+                target: edge.target,
+                targetHandle: edge.targetHandle,
               };
               additionalInternalEdges.push(internalEdge);
-
-              pseudoInputs.push({
-                nodeId: inputRouterId,
-                portName: portName,
-              });
-
-              const externalEdge: Edge = {
-                ...edge,
-                id: edge.id,
-                target: workflowId,
-                targetHandle: portName,
-              };
-              externalEdges.push(externalEdge);
             } else if (sourceSelected && !targetSelected) {
-              const outputRouterId = generateUUID();
-              const portName = `${DEFAULT_ROUTING_PORT}-${outputCounter}`;
-              outputCounter++;
+              // Group by external target node + its target handle
+              const externalConnectionKey = `${edge.target}:${edge.targetHandle ?? "default"}`;
 
-              const outputRouter: Node = {
-                id: outputRouterId,
-                type: routers.outputRouter.type as NodeType,
-                position: { x: 800 + index * 50, y: 150 },
-                data: {
-                  officialName: routers.outputRouter.name,
-                  inputs: routers.outputRouter.inputPorts,
-                  params: { routingPort: portName },
-                },
-              };
-              additionalRouterNodes.push(outputRouter);
+              let outputRouterInfo = outputRoutersByExternalConnection.get(
+                externalConnectionKey,
+              );
+
+              if (!outputRouterInfo) {
+                const outputRouterId = generateUUID();
+                const portName = `${DEFAULT_ROUTING_PORT}-${outputCounter}`;
+                outputCounter++;
+
+                const outputRouter: Node = {
+                  id: outputRouterId,
+                  type: routers.outputRouter.type as NodeType,
+                  position: {
+                    x: 800 + (outputCounter - 2) * 50,
+                    y: 150,
+                  },
+                  data: {
+                    officialName: routers.outputRouter.name,
+                    inputs: routers.outputRouter.inputPorts,
+                    params: { routingPort: portName },
+                  },
+                };
+                additionalRouterNodes.push(outputRouter);
+
+                const externalEdge: Edge = {
+                  ...edge,
+                  id: edge.id,
+                  source: workflowId,
+                  sourceHandle: portName,
+                };
+
+                outputRouterInfo = {
+                  routerId: outputRouterId,
+                  portName,
+                  externalEdge,
+                };
+                outputRoutersByExternalConnection.set(
+                  externalConnectionKey,
+                  outputRouterInfo,
+                );
+
+                pseudoOutputs.push({
+                  nodeId: outputRouterId,
+                  portName: portName,
+                });
+              }
 
               const internalEdge: Edge = {
-                ...edge,
                 id: generateUUID(),
-                target: outputRouterId,
+                source: edge.source,
+                target: outputRouterInfo.routerId,
+                sourceHandle: edge.sourceHandle,
               };
               additionalInternalEdges.push(internalEdge);
-
-              pseudoOutputs.push({
-                nodeId: outputRouterId,
-                portName: portName,
-              });
-
-              const externalEdge: Edge = {
-                ...edge,
-                id: edge.id,
-                source: workflowId,
-                sourceHandle: portName,
-              };
-              externalEdges.push(externalEdge);
             }
+          });
+
+          // Collect unique external edges (one per router)
+          inputRoutersByExternalConnection.forEach((info) => {
+            externalEdges.push(info.externalEdge);
+          });
+          outputRoutersByExternalConnection.forEach((info) => {
+            externalEdges.push(info.externalEdge);
           });
 
           const allSubworkflowNodes = [
@@ -364,7 +427,7 @@ export default ({
               const existingPseudoOutputs = nodeData?.get(
                 "pseudoOutputs",
               ) as Y.Array<any>;
-
+              // Clear existing pseudo inputs/outputs as it is easier to create them from scratch then attempt to connected to the exisiting ones
               if (existingPseudoInputs) {
                 existingPseudoInputs.delete(0, existingPseudoInputs.length);
               }
