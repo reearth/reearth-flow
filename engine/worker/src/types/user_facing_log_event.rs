@@ -11,10 +11,12 @@ use crate::pubsub::{
 };
 
 #[derive(Serialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
 pub enum UserFacingLogLevel {
+    #[serde(rename = "INFO")]
     Info,
+    #[serde(rename = "SUCCESS")]
     Success,
+    #[serde(rename = "ERROR")]
     Error,
 }
 
@@ -27,7 +29,7 @@ pub struct UserFacingLogEvent {
     pub level: UserFacingLogLevel,
     pub node_name: Option<String>,
     pub node_id: Option<String>,
-    pub display_message: String,
+    pub message: String,
 }
 
 // Cache the topic name to avoid repeated environment variable lookups
