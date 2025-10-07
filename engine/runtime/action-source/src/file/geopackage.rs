@@ -729,8 +729,7 @@ fn parse_polygon(
     for ring in rings {
         if is_outer_ring(&ring) {
             if let Some(exterior) = current_exterior.take() {
-                polygons_data.push((exterior, current_holes.clone()));
-                current_holes.clear();
+                polygons_data.push((exterior, std::mem::take(&mut current_holes)));
             }
             current_exterior = Some(ring);
         } else {
@@ -1037,8 +1036,7 @@ fn parse_multipolygon(
         for ring in rings {
             if is_outer_ring(&ring) {
                 if let Some(exterior) = current_exterior.take() {
-                    polygons.push((exterior, current_holes.clone()));
-                    current_holes.clear();
+                    polygons.push((exterior, std::mem::take(&mut current_holes)));
                 }
                 current_exterior = Some(ring);
             } else {
