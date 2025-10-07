@@ -27,6 +27,8 @@ export const CANVAS_HOT_KEYS = [
   "ctrl+x", // cut win
   "meta+v", // paste mac
   "ctrl+v", // paste win
+  "meta+e", // enable/disable node mac
+  "ctrl+e", // enable/disable node win
 ];
 export const EDITOR_HOT_KEYS = [
   "shift+meta+z", // redo mac

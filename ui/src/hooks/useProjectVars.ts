@@ -23,8 +23,6 @@ export default () => {
           return t("Database Connection");
         case "datetime":
           return t("Date and Time");
-        case "file_folder":
-          return t("File or Folder");
         case "geometry":
           return t("Geometry");
         case "message":

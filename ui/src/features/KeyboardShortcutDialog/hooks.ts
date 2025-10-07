@@ -78,6 +78,10 @@ export default () => {
         description: t("Redo the Last Action"),
       },
       {
+        keyBinding: CanvasKeyBindings["disableNode"],
+        description: t("Disable/Enable the Selected Node"),
+      },
+      {
         keyBinding: CanvasKeyBindings["zoomIn"],
         description: t("Zoom in on the Canvas"),
       },

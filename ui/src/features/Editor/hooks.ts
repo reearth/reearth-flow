@@ -75,7 +75,7 @@ export default ({
     handleYWorkflowUpdate,
     handleYNodesAdd,
     handleYNodesChange,
-    handleYNodeDataUpdate,
+    handleYNodesDataUpdate,
     handleYEdgesAdd,
     handleYEdgesChange,
     handleYWorkflowUndo,
@@ -211,13 +211,8 @@ export default ({
     handleEdgesChange: handleYEdgesChange,
   });
 
-  const {
-    nodePickerOpen,
-    rightPanelContent,
-    handleNodePickerOpen,
-    handleNodePickerClose,
-    handleRightPanelOpen,
-  } = useUIState();
+  const { nodePickerOpen, handleNodePickerOpen, handleNodePickerClose } =
+    useUIState();
 
   const { allowedToDeploy, handleWorkflowDeployment } = useDeployment({
     currentNodes: nodes,
@@ -359,6 +354,19 @@ export default ({
     handleWorkflowClose,
   });
 
+  const handleNodesDisable = useCallback(
+    (ns?: Node[]) => {
+      const nodesToUpdate =
+        ns?.map((n) => ({ nodeId: n.id, isDisabled: !n.data?.isDisabled })) ||
+        nodes
+          .filter((n) => n.selected)
+          .map((n) => ({ nodeId: n.id, isDisabled: !n.data?.isDisabled }));
+
+      handleYNodesDataUpdate(nodesToUpdate);
+    },
+    [nodes, handleYNodesDataUpdate],
+  );
+
   const handlePaneClick = useCallback(
     (e: MouseEvent) => {
       e.preventDefault();
@@ -380,7 +388,6 @@ export default ({
     openNode,
     nodePickerOpen,
     allowedToDeploy,
-    rightPanelContent,
     canUndo,
     canRedo,
     isMainWorkflow,
@@ -389,30 +396,30 @@ export default ({
     showBeforeDeleteDialog,
     spotlightUserClientId,
     spotlightUser,
-    handleRightPanelOpen,
-    handleWorkflowAdd: handleYWorkflowAdd,
     handleWorkflowDeployment,
     handleProjectShare,
     handleCurrentProjectExport,
-    handleWorkflowOpen,
-    handleWorkflowClose,
+    handleWorkflowAdd: handleYWorkflowAdd,
     handleWorkflowChange: handleCurrentWorkflowIdChange,
     handleWorkflowRedo: handleYWorkflowRedo,
     handleWorkflowUndo: handleYWorkflowUndo,
     handleWorkflowAddFromSelection: handleYWorkflowAddFromSelection,
     handleWorkflowRename,
-    handleLayoutChange,
+    handleWorkflowOpen,
+    handleWorkflowClose,
     handleNodesAdd: handleYNodesAdd,
     handleNodesChange: handleYNodesChange,
-    handleBeforeDeleteNodes,
-    handleDeleteDialogClose,
-    handleNodeDataUpdate: handleYNodeDataUpdate,
-    handleOpenNode,
+    handleNodesDisable,
+    handleNodesDataUpdate: handleYNodesDataUpdate,
     handleNodeSettings,
     handleNodePickerOpen,
     handleNodePickerClose,
+    handleOpenNode,
+    handleBeforeDeleteNodes,
     handleEdgesAdd: handleYEdgesAdd,
     handleEdgesChange: handleYEdgesChange,
+    handleLayoutChange,
+    handleDeleteDialogClose,
     handleDebugRunStart,
     handleDebugRunStop,
     handleCopy,
