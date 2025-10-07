@@ -427,7 +427,7 @@ export default ({
               const existingPseudoOutputs = nodeData?.get(
                 "pseudoOutputs",
               ) as Y.Array<any>;
-              // Clear existing pseudo inputs/outputs as it is easier to create them from scratch then attempt to connected to the exisiting ones
+              // Clear existing pseudo inputs/outputs as it is easier to create them from scratch than attempt to connect to the existing ones
               if (existingPseudoInputs) {
                 existingPseudoInputs.delete(0, existingPseudoInputs.length);
               }
