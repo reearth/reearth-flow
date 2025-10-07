@@ -18,6 +18,14 @@ use sqlx::ConnectOptions;
 
 use crate::errors::SinkError;
 
+const RESERVED_COLUMN_FID: &str = "fid";
+const RESERVED_COLUMN_GEOM: &str = "geom";
+
+const GEOPACKAGE_MAGIC_GP: u8 = 0x47;
+const GEOPACKAGE_MAGIC_P: u8 = 0x50;
+const GEOPACKAGE_VERSION: u8 = 0x00;
+const GEOPACKAGE_FLAGS_LITTLE_ENDIAN: u8 = 0x01;
+
 #[derive(Debug, Clone, Default)]
 pub(crate) struct GeoPackageWriterFactory;
 
@@ -435,6 +443,28 @@ fn calculate_bbox(features: &[Feature]) -> Option<(f64, f64, f64, f64)> {
     }
 }
 
+fn has_z_coordinates(value: &geojson::Value) -> bool {
+    match value {
+        geojson::Value::Point(coords) => coords.len() >= 3,
+        geojson::Value::MultiPoint(points) => points.iter().any(|coords| coords.len() >= 3),
+        geojson::Value::LineString(coords) => coords.iter().any(|coord| coord.len() >= 3),
+        geojson::Value::MultiLineString(lines) => lines
+            .iter()
+            .any(|line| line.iter().any(|coord| coord.len() >= 3)),
+        geojson::Value::Polygon(rings) => rings
+            .iter()
+            .any(|ring| ring.iter().any(|coord| coord.len() >= 3)),
+        geojson::Value::MultiPolygon(polygons) => polygons.iter().any(|polygon| {
+            polygon
+                .iter()
+                .any(|ring| ring.iter().any(|coord| coord.len() >= 3))
+        }),
+        geojson::Value::GeometryCollection(geometries) => {
+            geometries.iter().any(|geom| has_z_coordinates(&geom.value))
+        }
+    }
+}
+
 fn extract_bbox_from_geojson_value(value: &geojson::Value) -> Option<(f64, f64, f64, f64)> {
     match value {
         geojson::Value::Point(coords) => {
@@ -581,7 +611,8 @@ async fn create_feature_table(
     columns.push("geom BLOB".to_string());
 
     for col in schema {
-        if col.name.to_lowercase() == "fid" || col.name.to_lowercase() == "geom" {
+        let col_name_lower = col.name.to_lowercase();
+        if col_name_lower == RESERVED_COLUMN_FID || col_name_lower == RESERVED_COLUMN_GEOM {
             continue;
         }
         columns.push(format!("{} {}", col.name, col.sql_type));
@@ -686,8 +717,10 @@ async fn insert_features(
 
                 let coord_dims = if force_2d {
                     geozero::CoordDimensions::xy()
-                } else {
+                } else if has_z_coordinates(&geom.value) {
                     geozero::CoordDimensions::xyz()
+                } else {
+                    geozero::CoordDimensions::xy()
                 };
                 let wkb_bytes = geo_geom.to_wkb(coord_dims).map_err(|e| {
                     SinkError::GeoPackageWriter(format!("Failed to convert to WKB: {e}"))
@@ -746,7 +779,12 @@ async fn insert_features(
 }
 
 fn create_gpkg_wkb_header(srid: i32, wkb: &[u8]) -> Vec<u8> {
-    let mut result = vec![0x47, 0x50, 0x00, 0x01];
+    let mut result = vec![
+        GEOPACKAGE_MAGIC_GP,
+        GEOPACKAGE_MAGIC_P,
+        GEOPACKAGE_VERSION,
+        GEOPACKAGE_FLAGS_LITTLE_ENDIAN,
+    ];
 
     result.extend_from_slice(&srid.to_le_bytes());
     result.extend_from_slice(wkb);

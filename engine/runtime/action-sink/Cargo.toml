@@ -46,7 +46,7 @@ earcut.workspace = true
 flate2.workspace = true
 geo-types.workspace = true
 geojson.workspace = true
-geozero = { version = "0.14", features = ["with-wkb", "with-geo"] }
+geozero.workspace = true
 glam.workspace = true
 hashbrown.workspace = true
 image.workspace = true
