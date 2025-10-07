@@ -52,6 +52,7 @@
   "Cut": "Couper",
   "Paste": "Coller",
   "Open Subworkflow": "Ouvrir le sous-flux de travail",
+  "Group into Subworkflow": "Grouper dans le sous-flux de travail",
   "Disable Node": "Désactiver le nœud",
   "Enable Node": "Activer le nœud",
   "Node Settings": "Paramètres du nœud",

@@ -52,6 +52,7 @@
   "Cut": "剪切",
   "Paste": "粘贴",
   "Open Subworkflow": "打开子工作流",
+  "Group into Subworkflow": "分组到子工作流",
   "Disable Node": "禁用节点",
   "Enable Node": "启用节点",
   "Node Settings": "节点设置",

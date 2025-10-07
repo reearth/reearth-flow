@@ -52,6 +52,7 @@
   "Cut": "Cortar",
   "Paste": "Pegar",
   "Open Subworkflow": "Abrir subflujo de trabajo",
+  "Group into Subworkflow": "Agrupar en subflujo de trabajo",
   "Disable Node": "Deshabilitar nodo",
   "Enable Node": "Habilitar nodo",
   "Node Settings": "Configuración del nodo",
