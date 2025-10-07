@@ -1623,6 +1623,51 @@ Extract Z-Coordinate Elevation to Attribute
 ### Category
 * Geometry
 
+## ExcelWriter
+### Type
+* sink
+### Description
+Writes features to Microsoft Excel format (.xlsx files).
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExcelWriter Parameters",
+  "description": "Configuration for writing features to Microsoft Excel format.",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "output": {
+      "description": "Output path or expression for the Excel file to create",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "sheetName": {
+      "description": "Sheet name (defaults to \"Sheet1\")",
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
+
 ## Extruder
 ### Type
 * processor
@@ -3724,6 +3769,55 @@ Reads features from JSON files, supporting both single objects and arrays of obj
 ### Category
 * File
 
+## JsonWriter
+### Type
+* sink
+### Description
+Writes features to JSON files.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "JsonWriter Parameters",
+  "description": "Configuration for writing features to JSON files.",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "converter": {
+      "description": "Optional converter expression to transform features before writing",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "output": {
+      "description": "Output path or expression for the JSON file to create",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
+
 ## LineOnLineOverlayer
 ### Type
 * processor
@@ -5725,6 +5819,44 @@ Validates XML documents against XSD schemas with success/failure routing
 * failed
 ### Category
 * PLATEAU
+
+## XmlWriter
+### Type
+* sink
+### Description
+Writes features to XML files.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "XmlWriter Parameters",
+  "description": "Configuration for writing features to XML files.",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "output": {
+      "description": "Output path or expression for the XML file to create",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
 
 ## ZipFileWriter
 ### Type

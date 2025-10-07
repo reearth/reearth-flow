@@ -10,8 +10,6 @@ pub enum SinkError {
     CsvWriterFactory(String),
     #[error("File Writer error: {0}")]
     FileWriter(String),
-    #[error("Xml Writer error: {0}")]
-    XmlWriter(String),
     #[error("Cesium3DTiles Writer Factory error: {0}")]
     Cesium3DTilesWriterFactory(String),
     #[error("Cesium3DTiles Writer error: {0}")]
@@ -42,10 +40,22 @@ pub enum SinkError {
     ObjWriterFactory(String),
     #[error("Obj Writer error: {0}")]
     ObjWriter(String),
+    #[error("Xml Writer Factory error: {0}")]
+    XmlWriterFactory(String),
+    #[error("Xml Writer error: {0}")]
+    XmlWriter(String),
     #[error("ZipFile Writer Factory error: {0}")]
     ZipFileWriterFactory(String),
     #[error("ZipFile Writer error: {0}")]
     ZipFileWriter(String),
+    #[error("Excel Writer Factory error: {0}")]
+    ExcelWriterFactory(String),
+    #[error("Excel Writer error: {0}")]
+    ExcelWriter(String),
+    #[error("Json Writer Factory error: {0}")]
+    JsonWriterFactory(String),
+    #[error("Json Writer error: {0}")]
+    JsonWriter(String),
 }
 
 impl SinkError {

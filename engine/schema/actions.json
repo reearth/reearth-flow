@@ -1629,6 +1629,50 @@
       ]
     },
     {
+      "name": "ExcelWriter",
+      "type": "sink",
+      "description": "Writes features to Microsoft Excel format (.xlsx files).",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ExcelWriter Parameters",
+        "description": "Configuration for writing features to Microsoft Excel format.",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "output": {
+            "description": "Output path or expression for the Excel file to create",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          },
+          "sheetName": {
+            "description": "Sheet name (defaults to \"Sheet1\")",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
+      ]
+    },
+    {
       "name": "Extruder",
       "type": "processor",
       "description": "Extrude 2D Polygons into 3D Solids",
@@ -3730,6 +3774,54 @@
       ]
     },
     {
+      "name": "JsonWriter",
+      "type": "sink",
+      "description": "Writes features to JSON files.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "JsonWriter Parameters",
+        "description": "Configuration for writing features to JSON files.",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "converter": {
+            "description": "Optional converter expression to transform features before writing",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "output": {
+            "description": "Output path or expression for the JSON file to create",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
+      ]
+    },
+    {
       "name": "LineOnLineOverlayer",
       "type": "processor",
       "description": "Intersection points are turned into point features that can contain the merged list of attributes of the original intersected lines.",
@@ -5761,6 +5853,43 @@
       ],
       "categories": [
         "PLATEAU"
+      ]
+    },
+    {
+      "name": "XmlWriter",
+      "type": "sink",
+      "description": "Writes features to XML files.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "XmlWriter Parameters",
+        "description": "Configuration for writing features to XML files.",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "output": {
+            "description": "Output path or expression for the XML file to create",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
       ]
     },
     {
