@@ -3491,6 +3491,75 @@ Filter Features by Geometry Value Type
 ### Category
 * Geometry
 
+## GltfReader
+### Type
+* source
+### Description
+Reads 3D models from glTF 2.0 files, supporting meshes, nodes, scenes, and geometry primitives
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GltfReaderParam",
+  "type": "object",
+  "properties": {
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "includeNodes": {
+      "title": "Include Nodes",
+      "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes",
+      "default": true,
+      "type": "boolean"
+    },
+    "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "mergeMeshes": {
+      "title": "Merge Meshes",
+      "description": "If true, combines all meshes from the glTF file into a single output feature",
+      "default": false,
+      "type": "boolean"
+    },
+    "triangulate": {
+      "title": "Triangulate",
+      "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)",
+      "default": true,
+      "type": "boolean"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+### Output Ports
+* default
+### Category
+* File
+* 3D
+
 ## GltfWriter
 ### Type
 * sink
