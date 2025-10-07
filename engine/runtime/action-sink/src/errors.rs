@@ -44,9 +44,9 @@ pub enum SinkError {
     ObjWriterFactory(String),
     #[error("Obj Writer error: {0}")]
     ObjWriter(String),
-    #[error("Xml Writer error: {0}")]
-    XmlWriterFactory(String),
     #[error("Xml Writer Factory error: {0}")]
+    XmlWriterFactory(String),
+    #[error("Xml Writer error: {0}")]
     XmlWriter(String),
     #[error("ZipFile Writer Factory error: {0}")]
     ZipFileWriterFactory(String),
