@@ -114,6 +114,24 @@ nodes:
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_LOD0面の向きエラー.csv")
 
+  - id: 11a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+    name: Lod0IncorrectOrientationCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      aggregateName: gmlFilename
+      aggregateAttribute: gmlFilename
+      calculations:
+        - newAttribute: _num_lod0_incorrect_orientation
+          expr: "1"
+
+  - id: 22b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+    name: ErrorCount-Lod0IncorrectOrientation
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountLod0IncorrectOrientation
+
   - id: f8e2a4c6-5d9b-4f7e-8c3a-1e6d4b8f2c5a
     name: FeatureWriterLod0InvalidSurface
     type: action
@@ -122,6 +140,24 @@ nodes:
       format: csv
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_LOD0面のエラー.csv")
+
+  - id: 33c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
+    name: Lod0InvalidSurfaceCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      aggregateName: gmlFilename
+      aggregateAttribute: gmlFilename
+      calculations:
+        - newAttribute: _num_lod0_invalid_surface
+          expr: "1"
+
+  - id: 44d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
+    name: ErrorCount-Lod0InvalidSurface
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountLod0InvalidSurface
 
   # SurfaceValidator3D (LOD1)
   - id: 950407af-eec5-49ee-902c-2b41f31150d3
@@ -223,6 +259,24 @@ nodes:
       format: csv
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_LOD1境界面のエラー.csv")
+
+  - id: 55e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a
+    name: Lod1InvalidSurfaceCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      aggregateName: gmlFilename
+      aggregateAttribute: gmlFilename
+      calculations:
+        - newAttribute: _num_lod1_invalid_surface
+          expr: "1"
+
+  - id: 66f6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
+    name: ErrorCount-Lod1InvalidSurface
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountLod1InvalidSurface
 
   # SurfaceValidator3D (LOD2,3,4)
   # FIXME: replace this with GeometryFilter.
@@ -332,6 +386,24 @@ nodes:
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_LOD2以上境界面のエラー.csv")
 
+  - id: 77a7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
+    name: Lod2-4InvalidSurfaceCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      aggregateName: gmlFilename
+      aggregateAttribute: gmlFilename
+      calculations:
+        - newAttribute: _num_lod2_invalid_surface
+          expr: "1"
+
+  - id: 88b8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d
+    name: ErrorCount-Lod2-4InvalidSurface
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountLod2InvalidSurface
+
   # Surface Intersection (LOD0) and DestinationMeshCodeExtractor
   - id: aa1bb2cc-3dd4-4ee5-9ff6-0aa7bb8cc9dd
     name: GeometryCoercerLod0SurfaceIntersection
@@ -418,6 +490,24 @@ nodes:
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_LOD0面の交差.csv")
 
+  - id: 99a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
+    name: Lod0SurfaceIntersectionCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      aggregateName: gmlFilename
+      aggregateAttribute: filename_a
+      calculations:
+        - newAttribute: _num_lod0_surface_intersection
+          expr: "1"
+
+  - id: 00b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
+    name: ErrorCount-Lod0SurfaceIntersection
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountLod0SurfaceIntersection
+
   # PLATEAU4.DestinationMeshCodeExtractor
   - id: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
     name: DestinationMeshCodeExtractor
@@ -444,6 +534,9 @@ nodes:
     action: AttributeMapper
     with:
       mappers:
+        - attribute: gmlFilename
+          expr: |
+            env.get("__value").gmlFilename
         - attribute: filename
           expr: |
             env.get("__value").gmlFilename
@@ -466,6 +559,15 @@ nodes:
           expr: |
             env.get("__value")._meshcode_to_area
 
+  - id: 77e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
+    name: AttributeManagerIncorrectMeshCode
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: gmlFilename
+          method: remove
+
   - id: 4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f9a
     name: FeatureWriterIncorrectMeshCode
     type: action
@@ -474,6 +576,24 @@ nodes:
       format: csv
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_図郭不正.csv")
+
+  - id: 11c1d2e3-4f5a-6b7c-8d9e-0f1a2b3c4d5e
+    name: IncorrectMeshCodeCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      aggregateName: gmlFilename
+      aggregateAttribute: gmlFilename
+      calculations:
+        - newAttribute: _num_incorrect_meshcode
+          expr: "1"
+
+  - id: 22d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
+    name: ErrorCount-IncorrectMeshCode
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountIncorrectMeshcode
 
   # Output
   - id: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
@@ -574,7 +694,25 @@ nodes:
       format: csv
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_非水密体.csv")
-    
+
+  - id: 33e3f4a5-6b7c-8d9e-0f1a-2b3c4d5e6f7a
+    name: Lod1NotClosedSolidCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      aggregateName: gmlFilename
+      aggregateAttribute: gmlFilename
+      calculations:
+        - newAttribute: _num_lod1_not_closed_solid
+          expr: "1"
+
+  - id: 44f4a5b6-7c8d-9e0f-1a2b-3c4d5e6f7a8b
+    name: ErrorCount-Lod1NotClosedSolid
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountLod1NotClosedSolid
+
   - id: 64ff1eee-0d1a-42a1-b32d-fde94ffac693
     name: AttributeManagerSolidBoundaryInvalidOtherIssues
     type: action
@@ -649,15 +787,33 @@ nodes:
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_立体のエラー.csv")
 
+  - id: 55a5b6c7-8d9e-0f1a-2b3c-4d5e6f7a8b9c
+    name: Lod1SolidIssuesCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      aggregateName: gmlFilename
+      aggregateAttribute: gmlFilename
+      calculations:
+        - newAttribute: _num_lod1_solid_issues
+          expr: "1"
+
+  - id: 66b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d
+    name: ErrorCount-Lod1SolidIssues
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountLod1SolidIssues
+
   - id: 6e8e985a-8ae5-46cd-8521-74f0f74a7ec2
     name: SolidBoundaryNotClosedIssueCounter
     type: action
-    action: StatisticsCalculator 
+    action: StatisticsCalculator
     with:
-      aggregateAttribute: |
-        env.get("__value").filename
+      aggregateName: gmlFilename
+      aggregateAttribute: filename
       calculations:
-        - newAttribute: _lod1_not_closed_solid
+        - newAttribute: _num_lod1_not_closed_solid
           expr: "1"
 
   - id: bc5638de-624d-46a2-a40b-59dde392ff97
@@ -665,17 +821,17 @@ nodes:
     type: action
     action: OutputRouter
     with:
-      routingPort: solidBoundaryNotClosedIssueCount
+      routingPort: errorCountLod1NotClosedSolid
 
   - id: 016a8afe-3aa7-4047-8c8c-9f6f8464b03c
     name: SolidBoundaryOtherIssueCounter
     type: action
-    action: StatisticsCalculator 
+    action: StatisticsCalculator
     with:
-      aggregateAttribute: |
-        env.get("__value").filename
+      aggregateName: gmlFilename
+      aggregateAttribute: filename
       calculations:
-        - newAttribute: _lod1_solid_issues
+        - newAttribute: _num_lod1_solid_issues
           expr: "1"
 
   - id: 26ad749b-0ee1-4f6e-b8e0-8f3ff2fe4056
@@ -683,7 +839,7 @@ nodes:
     type: action
     action: OutputRouter
     with:
-      routingPort: solidBoundaryOtherIssueCount
+      routingPort: errorCountLod1SolidIssues
 
 edges:
   - id: 8c4d7e2a-5b6f-4918-a3e5-9d1c8b7a6e4f
@@ -712,13 +868,26 @@ edges:
 
   - id: 7c1e5b9d-3f8a-4e2c-9b6d-8a5c2e7f4b1c
     from: 3c8d9e7f-2a5b-4f1c-8e6a-9d3c5b8e1a4f
-    to: b1f5a9c3-7e2d-4a8c-9f6b-2d8e5c3a7b9f
+    to: 33c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
     fromPort: invalidSurface
     toPort: default
 
+  # LOD0 Invalid Surface: Counter → AttributeMapper → Writer
   - id: e3c7d1b5-9a4f-4e8b-8c2d-6f1a9e3b8c5d
+    from: 33c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
+    to: b1f5a9c3-7e2d-4a8c-9f6b-2d8e5c3a7b9f
+    fromPort: complete
+    toPort: default
+
+  - id: e3c7d1b5-9a4f-4e8b-8c2d-6f1a9e3b8c5e
     from: b1f5a9c3-7e2d-4a8c-9f6b-2d8e5c3a7b9f
     to: f8e2a4c6-5d9b-4f7e-8c3a-1e6d4b8f2c5a
+    fromPort: default
+    toPort: default
+
+  - id: e3c7d1b5-9a4f-4e8b-8c2d-6f1a9e3b8c5f
+    from: 33c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
+    to: 44d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     fromPort: default
     toPort: default
 
@@ -734,13 +903,26 @@ edges:
     fromPort: lod1
     toPort: default
 
+  # LOD1 Invalid Surface: Validator → Counter → AttributeMapper → Writer
   - id: 8f3b5d9e-7c2a-4e6f-9d3b-5a8c1e4f7b2d
     from: 950407af-eec5-49ee-902c-2b41f31150d3
-    to: c2e8f4a6-9b3d-4e7c-8a5f-1d9b6e4c7f2a
+    to: 55e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a
     fromPort: invalidSurface
     toPort: default
 
   - id: 2a6c8f4d-5e9b-4c7a-8f2d-9b5e3c6a8f1d
+    from: 55e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a
+    to: c2e8f4a6-9b3d-4e7c-8a5f-1d9b6e4c7f2a
+    fromPort: complete
+    toPort: default
+
+  - id: 2a6c8f4d-5e9b-4c7a-8f2d-9b5e3c6a8f1f
+    from: 55e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a
+    to: 66f6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
+    fromPort: default
+    toPort: default
+
+  - id: 2a6c8f4d-5e9b-4c7a-8f2d-9b5e3c6a8f1e
     from: c2e8f4a6-9b3d-4e7c-8a5f-1d9b6e4c7f2a
     to: d5a7b9f3-6e4c-4d8a-9f2b-3c7e8d5a6b9f
     fromPort: default
@@ -837,9 +1019,22 @@ edges:
     fromPort: default
     toPort: default
 
+  # LOD0 Surface Intersection: AttributeManager → Counter → Writer
   - id: cc9dd0ee-1ff2-4aa3-9bb4-7cc5dd6ee7ff
     from: ff6aa7bb-8cc9-4dd0-9ee1-4ff2aa3bb4cc
+    to: 99a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
+    fromPort: default
+    toPort: default
+
+  - id: cc9dd0ee-1ff2-4aa3-9bb4-7cc5dd6ee7fe
+    from: 99a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
     to: aa7bb8cc-9dd0-4ee1-9ff2-5aa3bb4cc5dd
+    fromPort: complete
+    toPort: default
+
+  - id: cc9dd0ee-1ff2-4aa3-9bb4-7cc5dd6ee7fd
+    from: 99a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
+    to: 00b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
     fromPort: default
     toPort: default
 
@@ -911,7 +1106,7 @@ edges:
 
   - id: 1478ecb6-8c64-4b25-80f1-eb158be5a9c5
     from: 6e8e985a-8ae5-46cd-8521-74f0f74a7ec2
-    to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
+    to: bc5638de-624d-46a2-a40b-59dde392ff97
     fromPort: default
     toPort: default
 
@@ -923,7 +1118,7 @@ edges:
 
   - id: 01cef8a5-e953-4895-ad8e-93edbf2e65ae
     from: 016a8afe-3aa7-4047-8c8c-9f6f8464b03c
-    to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
+    to: 26ad749b-0ee1-4f6e-b8e0-8f3ff2fe4056
     fromPort: default
     toPort: default
 
@@ -936,7 +1131,25 @@ edges:
 
   - id: 6f7a8b9c-0d1e-4f2a-3b4c-5d6e7f8a9b0c
     from: 3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e8f
+    to: 77e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
+    fromPort: default
+    toPort: default
+
+  - id: 66d6e7f8-9a0b-1c2d-3e4f-5a6b7c8d9e0f
+    from: 77e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
     to: 4d5e6f7a-8b9c-4d0e-1f2a-3b4c5d6e7f9a
+    fromPort: default
+    toPort: default
+
+  - id: 88f8a9b0-1c2d-3e4f-5a6b-7c8d9e0f1a2b
+    from: 3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e8f
+    to: 11c1d2e3-4f5a-6b7c-8d9e-0f1a2b3c4d5e
+    fromPort: default
+    toPort: default
+
+  - id: 99a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
+    from: 11c1d2e3-4f5a-6b7c-8d9e-0f1a2b3c4d5e
+    to: 22d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
     fromPort: default
     toPort: default
 
@@ -945,3 +1158,31 @@ edges:
     to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
     fromPort: default
     toPort: default
+
+# Export error count ports for aggregation in parent workflow
+ports:
+  outputs:
+    - id: errorCountLod0IncorrectOrientation
+      nodeId: 22b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+      port: default
+    - id: errorCountLod0InvalidSurface
+      nodeId: 44d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
+      port: default
+    - id: errorCountLod0SurfaceIntersection
+      nodeId: 00b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
+      port: default
+    - id: errorCountLod1InvalidSurface
+      nodeId: 66f6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
+      port: default
+    - id: errorCountLod1NotClosedSolid
+      nodeId: bc5638de-624d-46a2-a40b-59dde392ff97
+      port: default
+    - id: errorCountLod1SolidIssues
+      nodeId: 26ad749b-0ee1-4f6e-b8e0-8f3ff2fe4056
+      port: default
+    - id: errorCountLod2InvalidSurface
+      nodeId: 88b8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d
+      port: default
+    - id: errorCountIncorrectMeshcode
+      nodeId: 22d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
+      port: default
