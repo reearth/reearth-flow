@@ -310,8 +310,7 @@ fn process_polygon_rings_2d(
         match ring {
             PolygonRing::Outer(points) => {
                 if let Some(exterior) = current_exterior.take() {
-                    polygon_data.push((exterior, current_holes.clone()));
-                    current_holes.clear();
+                    polygon_data.push((exterior, std::mem::take(&mut current_holes)));
                 }
                 let coords = points
                     .iter()
@@ -361,8 +360,7 @@ fn process_polygonz_rings_2d(
         match ring {
             PolygonRing::Outer(points) => {
                 if let Some(exterior) = current_exterior.take() {
-                    polygon_data.push((exterior, current_holes.clone()));
-                    current_holes.clear();
+                    polygon_data.push((exterior, std::mem::take(&mut current_holes)));
                 }
                 let coords = points
                     .iter()
@@ -412,8 +410,7 @@ fn process_polygon_rings_3d(
         match ring {
             PolygonRing::Outer(points) => {
                 if let Some(exterior) = current_exterior.take() {
-                    polygon_data.push((exterior, current_holes.clone()));
-                    current_holes.clear();
+                    polygon_data.push((exterior, std::mem::take(&mut current_holes)));
                 }
                 let coords = points
                     .iter()
