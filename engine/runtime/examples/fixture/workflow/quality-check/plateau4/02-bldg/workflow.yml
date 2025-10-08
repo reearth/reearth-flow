@@ -259,7 +259,7 @@ graphs:
                 env.get("__value")._num_missing_building_id ?? 0
             - attribute: "L-bldg-02 エラー"
               expr: |
-                env.get("__value")["L-bldg-02 Errors"] ?? 0
+                env.get("__value")._num_lbldg02_error ?? 0
             - attribute: "L-bldg-04,05 エラー"
               expr: |
                 env.get("__value")._num_incorrect_usage_attribute ?? 0

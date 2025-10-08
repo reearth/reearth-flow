@@ -98,7 +98,7 @@ nodes:
       aggregateName: gmlFilename
       aggregateAttribute: gmlFilename
       calculations:
-        - newAttribute: L-bldg-02 Errors
+        - newAttribute: _num_lbldg02_error
           expr: "1"
 
   # Prepare output attributes
