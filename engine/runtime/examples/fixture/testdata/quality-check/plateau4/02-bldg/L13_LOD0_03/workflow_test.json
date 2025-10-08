@@ -4,6 +4,16 @@
   "expectedOutput": {
     "expectedFile": "02_建築物_LOD0面のエラー.csv"
   },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_bldg.json",
+      "includeFields": ["LOD0 面のエラー"]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "02_建築物_検査結果一覧.csv",
+      "includeColumns": ["LOD0 面のエラー"]
+    }
+  },
   "cityGmlPath": "udx/bldg/L13_LOD0_03.gml",
   "codelists": "codelists",
   "schemas": "schemas"
