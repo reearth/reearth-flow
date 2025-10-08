@@ -154,7 +154,7 @@ const ParamEditor: React.FC<Props> = ({
             <p>{t("Details")}</p>
           </TabsTrigger>
         </TabsList>
-        <div className="h-full self-center border-r border-primary" />
+        <div className="h-full self-center border-r dark:border-primary" />
         <TabsContent className="px-6 py-4" value="params" asChild>
           <div className="flex size-full min-h-0 flex-col justify-between gap-4">
             <div className="min-h-0 overflow-scroll rounded px-2 pt-1">
