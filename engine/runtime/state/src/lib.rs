@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::{
+    borrow::Cow,
     io::{Error, Result},
     path::{Path, PathBuf},
     sync::Arc,
@@ -122,10 +123,10 @@ impl State {
             .storage
             .get(self.id_to_location(id, self.json_ext()).as_path())
             .await?;
-        let byte = result.bytes().await?;
-        let data = self.decode(byte.as_ref())?;
-        let content = String::from_utf8(data).map_err(Error::other)?;
-        self.string_to_object(content.as_str())
+        let bytes = result.bytes().await?;
+        let data = self.decode(bytes.as_ref())?;
+        let s = std::str::from_utf8(&data).map_err(Error::other)?;
+        self.string_to_object::<T>(s)
     }
 
     pub async fn delete(&self, id: &str) -> Result<()> {
@@ -173,16 +174,16 @@ impl State {
             let compressed = zstd::stream::encode_all(bytes, ZSTD_LEVEL).map_err(Error::other)?;
             Ok(bytes::Bytes::from(compressed))
         } else {
-            Ok(bytes::Bytes::from(bytes.to_vec()))
+            Ok(bytes::Bytes::copy_from_slice(bytes))
         }
     }
 
-    fn decode(&self, bytes: &[u8]) -> Result<Vec<u8>> {
+    fn decode<'a>(&self, bytes: &'a [u8]) -> Result<Cow<'a, [u8]>> {
         if self.use_compression {
             let v = zstd::stream::decode_all(bytes).map_err(Error::other)?;
-            Ok(v)
+            Ok(Cow::Owned(v))
         } else {
-            Ok(bytes.to_vec())
+            Ok(Cow::Borrowed(bytes))
         }
     }
 }
