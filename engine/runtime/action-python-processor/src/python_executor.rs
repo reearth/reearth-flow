@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 use std::io::Write;
 use std::process::{Command, Stdio};
+use std::str::FromStr;
 
 use indexmap::IndexMap;
+use reearth_flow_common::uri::Uri;
 use reearth_flow_geometry::types::geometry::Geometry2D as FlowGeometry2D;
 use reearth_flow_geometry::types::point::Point2D;
 use reearth_flow_runtime::{
@@ -82,8 +84,25 @@ impl ProcessorFactory for PythonScriptProcessorFactory {
             .into());
         };
 
+        if params.script.is_none() && params.python_file.is_none() {
+            return Err(PythonProcessorError::FactoryError(
+                "Either 'script' (inline) or 'pythonFile' (file path) parameter must be provided"
+                    .to_string(),
+            )
+            .into());
+        }
+
+        if params.script.is_some() && params.python_file.is_some() {
+            return Err(PythonProcessorError::FactoryError(
+                "Cannot provide both 'script' and 'pythonFile' parameters. Use only one."
+                    .to_string(),
+            )
+            .into());
+        }
+
         let processor = PythonScriptProcessor {
-            script: params.script.to_string(),
+            script: params.script,
+            python_file: params.python_file,
             python_path: params.python_path.unwrap_or_else(|| "python3".to_string()),
             _timeout_seconds: params.timeout_seconds.unwrap_or(30),
             ctx,
@@ -95,7 +114,8 @@ impl ProcessorFactory for PythonScriptProcessorFactory {
 
 #[derive(Debug, Clone)]
 struct PythonScriptProcessor {
-    script: String,
+    script: Option<Expr>,
+    python_file: Option<Expr>,
     python_path: String,
     _timeout_seconds: u64,
     ctx: NodeContext,
@@ -104,7 +124,15 @@ struct PythonScriptProcessor {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct PythonScriptProcessorParam {
-    script: Expr,
+    /// # Inline Script
+    /// Python script code to execute inline
+    #[serde(skip_serializing_if = "Option::is_none")]
+    script: Option<Expr>,
+
+    /// # Python File
+    /// Path to a Python script file (supports file://, http://, https://, gs://, etc.)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    python_file: Option<Expr>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     python_path: Option<String>,
@@ -292,23 +320,38 @@ impl Processor for PythonScriptProcessor {
             PythonProcessorError::SerializationError(format!("Failed to serialize feature: {e}"))
         })?;
 
-        // Resolve the script using expression engine
         let expr_engine = &self.ctx.expr_engine;
         let scope = expr_engine.new_scope();
-        let script_expr = Expr::new(&self.script);
-        let resolved_script = expr_engine
-            .eval_scope::<String>(script_expr.as_ref(), &scope)
-            .unwrap_or_else(|_| self.script.clone());
 
-        // Check if script is a file path or inline code
-        let (_is_file, script_content) = if resolved_script.ends_with(".py") {
-            // It's likely a file path
-            match std::fs::read_to_string(&resolved_script) {
-                Ok(content) => (true, content),
-                Err(_) => (false, resolved_script), // Treat as inline script if file not found
-            }
+        let script_content = if let Some(inline_script) = &self.script {
+            expr_engine
+                .eval_scope::<String>(inline_script.as_ref(), &scope)
+                .unwrap_or_else(|_| inline_script.to_string())
+        } else if let Some(python_file_path) = &self.python_file {
+            let path_str = expr_engine
+                .eval_scope::<String>(python_file_path.as_ref(), &scope)
+                .unwrap_or_else(|_| python_file_path.to_string());
+
+            let uri = Uri::from_str(&path_str).map_err(|e| {
+                PythonProcessorError::ExecutionError(format!("Invalid file path: {e}"))
+            })?;
+
+            let storage = ctx.storage_resolver.resolve(&uri).map_err(|e| {
+                PythonProcessorError::ExecutionError(format!("Failed to resolve storage: {e}"))
+            })?;
+
+            let bytes = storage.get_sync(uri.path().as_path()).map_err(|e| {
+                PythonProcessorError::ExecutionError(format!("Failed to read script file: {e}"))
+            })?;
+
+            String::from_utf8(bytes.to_vec()).map_err(|e| {
+                PythonProcessorError::ExecutionError(format!("Script file is not valid UTF-8: {e}"))
+            })?
         } else {
-            (false, resolved_script)
+            return Err(PythonProcessorError::ExecutionError(
+                "No script or pythonFile provided".to_string(),
+            )
+            .into());
         };
 
         let python_wrapper = format!(
@@ -574,6 +617,49 @@ mod tests {
         assert!(result.is_err());
         let error_msg = result.unwrap_err().to_string();
         assert!(error_msg.contains("Missing required parameter"));
+    }
+
+    #[test]
+    fn test_factory_build_missing_script_and_file() {
+        let factory = PythonScriptProcessorFactory;
+        let ctx = create_test_context();
+
+        let with = HashMap::new();
+
+        let result = factory.build(
+            ctx,
+            EventHub::new(10),
+            "test_action".to_string(),
+            Some(with),
+        );
+
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("Either 'script' (inline) or 'pythonFile'"));
+    }
+
+    #[test]
+    fn test_factory_build_both_script_and_file() {
+        let factory = PythonScriptProcessorFactory;
+        let ctx = create_test_context();
+
+        let mut with = HashMap::new();
+        with.insert(
+            "script".to_string(),
+            json!("properties['result'] = 'success'"),
+        );
+        with.insert("pythonFile".to_string(), json!("file:///path/to/script.py"));
+
+        let result = factory.build(
+            ctx,
+            EventHub::new(10),
+            "test_action".to_string(),
+            Some(with),
+        );
+
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("Cannot provide both 'script' and 'pythonFile'"));
     }
 
     #[test]

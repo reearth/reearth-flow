@@ -65,11 +65,11 @@ const FieldTemplate = <
       <div className="my-1.5">
         {displayLabel ? (
           <div className="flex flex-1 items-center gap-6">
-            <div className="flex flex-row items-center gap-1">
+            <div className="flex flex-row gap-1">
               <p className="shrink-0 font-light">{label}</p>
               {required && <p className="h-2 font-thin text-destructive">*</p>}
             </div>
-            {children}
+            <div className="flex-1">{children}</div>
           </div>
         ) : (
           children

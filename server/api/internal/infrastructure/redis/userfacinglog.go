@@ -13,14 +13,14 @@ import (
 )
 
 type UserFacingLogEntry struct {
-	WorkflowID     string          `json:"workflowId"`
-	JobID          string          `json:"jobId"`
-	Timestamp      time.Time       `json:"timestamp"`
-	Level          string          `json:"level"`
-	NodeID         *string         `json:"nodeId,omitempty"`
-	NodeName       *string         `json:"nodeName,omitempty"`
-	DisplayMessage string          `json:"displayMessage"`
-	Metadata       json.RawMessage `json:"metadata,omitempty"`
+	WorkflowID string          `json:"workflowId"`
+	JobID      string          `json:"jobId"`
+	Timestamp  time.Time       `json:"timestamp"`
+	Level      string          `json:"level"`
+	NodeID     *string         `json:"nodeId,omitempty"`
+	NodeName   *string         `json:"nodeName,omitempty"`
+	Message    string          `json:"message"`
+	Metadata   json.RawMessage `json:"metadata,omitempty"`
 }
 
 func ToUserFacingLogEntry(l *userfacinglog.UserFacingLog) *UserFacingLogEntry {
@@ -29,13 +29,13 @@ func ToUserFacingLogEntry(l *userfacinglog.UserFacingLog) *UserFacingLogEntry {
 	}
 
 	return &UserFacingLogEntry{
-		JobID:          l.JobID().String(),
-		Timestamp:      l.Timestamp().UTC(),
-		Level:          string(l.Level()),
-		NodeID:         l.NodeID(),
-		NodeName:       l.NodeName(),
-		DisplayMessage: l.Message(),
-		Metadata:       l.Metadata(),
+		JobID:     l.JobID().String(),
+		Timestamp: l.Timestamp().UTC(),
+		Level:     string(l.Level()),
+		NodeID:    l.NodeID(),
+		NodeName:  l.NodeName(),
+		Message:   l.Message(),
+		Metadata:  l.Metadata(),
 	}
 }
 
@@ -63,7 +63,7 @@ func (e *UserFacingLogEntry) ToDomain() (*userfacinglog.UserFacingLog, error) {
 		level,
 		e.NodeID,
 		e.NodeName,
-		e.DisplayMessage, // Use DisplayMessage field
+		e.Message,
 		e.Metadata,
 	), nil
 }

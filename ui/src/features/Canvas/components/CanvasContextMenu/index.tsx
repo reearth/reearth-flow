@@ -1,6 +1,8 @@
 import {
   ClipboardIcon,
   CopyIcon,
+  EyeIcon,
+  EyeSlashIcon,
   GearFineIcon,
   GraphIcon,
   ScissorsIcon,
@@ -22,6 +24,7 @@ import { Node, NodeChange } from "@flow/types";
 type Props = {
   contextMenu: ContextMenuMeta;
   data?: Node | Node[];
+  allNodes: Node[];
   selectedEdgeIds?: string[];
   onNodesChange?: (changes: NodeChange[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
@@ -31,12 +34,14 @@ type Props = {
   onCopy?: (node?: Node) => void;
   onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: (menuPosition?: XYPosition) => void;
+  onNodesDisable?: (nodes?: Node[]) => void;
   onClose: () => void;
 };
 
 const CanvasContextMenu: React.FC<Props> = ({
   contextMenu,
   data,
+  allNodes,
   onWorkflowOpen,
   onNodeSettings,
   selectedEdgeIds,
@@ -46,13 +51,25 @@ const CanvasContextMenu: React.FC<Props> = ({
   onCopy,
   onCut,
   onPaste,
+  onNodesDisable,
   onClose,
 }) => {
   const t = useT();
   const { value } = useIndexedDB("general");
 
-  const nodes = Array.isArray(data) ? data : undefined;
-  const node = Array.isArray(data) ? undefined : data;
+  const freshData = useMemo(() => {
+    if (!data) return undefined;
+
+    if (Array.isArray(data)) {
+      const nodeIds = data.map((n) => n.id);
+      return allNodes.filter((n) => nodeIds.includes(n.id));
+    } else {
+      return allNodes.find((n) => n.id === data.id);
+    }
+  }, [data, allNodes]);
+
+  const nodes = Array.isArray(freshData) ? freshData : undefined;
+  const node = Array.isArray(freshData) ? undefined : freshData;
 
   const handleNodeSettingsOpen = useCallback(
     (node: Node) => {
@@ -89,6 +106,7 @@ const CanvasContextMenu: React.FC<Props> = ({
     },
     [selectedEdgeIds, onBeforeDelete, onNodesChange, onEdgesChange],
   );
+
   const menuItems = useMemo(() => {
     const wrapWithClose = (callback: () => void) => () => {
       callback();
@@ -144,6 +162,36 @@ const CanvasContextMenu: React.FC<Props> = ({
             },
           ]
         : []),
+      {
+        type: "action",
+        props: {
+          label: (() => {
+            const selectedNodes = node
+              ? [node]
+              : nodes?.filter((n) => n.selected) || [];
+            const anyEnabled = selectedNodes.some((n) => !n.data?.isDisabled);
+            return anyEnabled ? t("Disable Node") : t("Enable Node");
+          })(),
+          icon: (() => {
+            const selectedNodes = node
+              ? [node]
+              : nodes?.filter((n) => n.selected) || [];
+            const anyEnabled = selectedNodes.some((n) => !n.data?.isDisabled);
+            return anyEnabled ? (
+              <EyeSlashIcon weight="light" />
+            ) : (
+              <EyeIcon weight="light" />
+            );
+          })(),
+          shortcut: (
+            <ContextMenuShortcut keyBinding={{ key: "e", commandKey: true }} />
+          ),
+          disabled: (!nodes && !node) || !onNodesDisable,
+          onCallback: wrapWithClose(
+            () => onNodesDisable?.(node ? [node] : undefined) ?? (() => {}),
+          ),
+        },
+      },
       ...(node
         ? [
             {
@@ -192,6 +240,7 @@ const CanvasContextMenu: React.FC<Props> = ({
     onClose,
     onNodesChange,
     onEdgesChange,
+    onNodesDisable,
     contextMenu.mousePosition,
     value,
     handleNodeDelete,
