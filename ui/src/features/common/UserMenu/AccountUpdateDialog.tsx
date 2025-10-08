@@ -153,24 +153,26 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
               />
             </DialogContentSection>
           </DialogContentSection>
-          <DialogContentSection className="flex-1">
-            <Label htmlFor="theme">{t("Theme")}</Label>
-            <ThemeToggle />
-          </DialogContentSection>
-          <DialogContentSection className="flex-1">
-            <Label htmlFor="language-selector">{t("Select Language")}</Label>
-            <Select onValueChange={handleLanguageChange}>
-              <SelectTrigger>
-                <SelectValue placeholder={currentLanguageLabel} />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(localesWithLabel).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <DialogContentSection className="flex-row">
+            <DialogContentSection className="flex-1">
+              <Label htmlFor="theme">{t("Theme")}</Label>
+              <ThemeToggle />
+            </DialogContentSection>
+            <DialogContentSection className="flex-1">
+              <Label htmlFor="language-selector">{t("Select Language")}</Label>
+              <Select onValueChange={handleLanguageChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder={currentLanguageLabel} />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(localesWithLabel).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </DialogContentSection>
           </DialogContentSection>
         </DialogContentWrapper>
         <div
