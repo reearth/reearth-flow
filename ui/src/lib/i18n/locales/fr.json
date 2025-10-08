@@ -79,6 +79,7 @@
   "Email": "E-mail",
   "Password": "Mot de passe",
   "Confirm Password": "Confirmer le mot de passe",
+  "Theme": "Thème",
   "Failed to update the user": "Échec de la mise à jour de l'utilisateur",
   "Password and Confirm password are not the same": "Le mot de passe et la confirmation du mot de passe ne sont pas identiques",
   "Failed to update the password": "Échec de la mise à jour du mot de passe",

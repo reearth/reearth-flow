@@ -79,6 +79,7 @@
   "Email": "Correo electrónico",
   "Password": "Contraseña",
   "Confirm Password": "Confirmar contraseña",
+  "Theme": "Tema",
   "Failed to update the user": "Error al actualizar el usuario",
   "Password and Confirm password are not the same": "La contraseña y la confirmación de la contraseña no son iguales",
   "Failed to update the password": "Error al actualizar la contraseña",

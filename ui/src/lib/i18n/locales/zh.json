@@ -79,6 +79,7 @@
   "Email": "电子邮件",
   "Password": "密码",
   "Confirm Password": "确认密码",
+  "Theme": "主题",
   "Failed to update the user": "更新用户失败",
   "Password and Confirm password are not the same": "密码和确认密码不一致",
   "Failed to update the password": "更新密码失败",

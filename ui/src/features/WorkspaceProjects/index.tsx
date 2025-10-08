@@ -99,7 +99,7 @@ const ProjectsManager: React.FC = () => {
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center gap-1 rounded-md p-2 hover:bg-primary">
                 <ArrowSquareInIcon weight="thin" />
-                <p className="line-clamp-2 text-xs font-extralight">
+                <p className="line-clamp-2 text-xs dark:font-extralight">
                   {t("Import")}
                 </p>
                 <div className="shrink-0">

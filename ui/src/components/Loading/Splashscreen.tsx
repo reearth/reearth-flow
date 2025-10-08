@@ -28,7 +28,7 @@ const Loading: React.FC<{ show?: boolean; className?: string }> = ({
         <FlowLogo className="size-[65px]" />
         {/* <FlowLogo className="loading-pulse size-[85px]" /> */}
         <div className="flex flex-col items-center gap-4">
-          <p className="text-2xl font-thin">{brandName || "Flow"}</p>
+          <p className="text-2xl dark:font-thin">{brandName || "Flow"}</p>
           <LoadingDots />
         </div>
       </div>

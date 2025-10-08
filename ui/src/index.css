@@ -23,15 +23,17 @@
 @layer base {
   /* TODO: Fix light mode colors and enable light mode */
   :root {
-    --background: 229, 228, 228;
+    --background: 244, 247, 250;
     --foreground: 39, 39, 42;
     --card: 250, 250, 250;
     --card-foreground: 39, 39, 42;
     --popover: 250, 250, 250;
     --popover-foreground: 49, 49, 42;
-    --primary: 207, 207, 207;
+    --primary: 244, 247, 250;
+       /* --primary: 255, 255, 255; */
     --primary-foreground: 51, 51, 56;
-    --secondary: 216, 216, 217;
+    --secondary: 255, 255, 255;
+        /* --secondary: 244, 247, 250; */
     --secondary-foreground: 31, 31, 34;
     --muted: 161, 161, 170;
     --muted-foreground: 26, 26, 26;
@@ -92,7 +94,7 @@
   ::before,
   ::backdrop,
   ::file-selector-button {
-    border-color: #3f3f3f;
+    border-color: rgb(var(--border));
   }
 }
 

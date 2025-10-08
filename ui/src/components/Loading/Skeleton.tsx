@@ -20,7 +20,7 @@ const Loading: React.FC<{
               className="loading-pulse"
               style={{ height: "80px", width: "80px" }}
             />
-            <p className="font-thin">{t("Loading")}</p>
+            <p className="dark:font-thin">{t("Loading")}</p>
           </div>
         </div>
       </div>

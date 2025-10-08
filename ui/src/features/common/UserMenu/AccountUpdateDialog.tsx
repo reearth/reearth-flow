@@ -153,10 +153,10 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
               />
             </DialogContentSection>
           </DialogContentSection>
-          {/* <DialogContentSection className="flex-1">
+          <DialogContentSection className="flex-1">
             <Label htmlFor="theme">{t("Theme")}</Label>
             <ThemeToggle />
-          </DialogContentSection> */}
+          </DialogContentSection>
           <DialogContentSection className="flex-1">
             <Label htmlFor="language-selector">{t("Select Language")}</Label>
             <Select onValueChange={handleLanguageChange}>
@@ -171,10 +171,6 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
                 ))}
               </SelectContent>
             </Select>
-          </DialogContentSection>
-          <DialogContentSection className="flex-1">
-            <Label htmlFor="theme-selector">{t("Select Theme")}</Label>
-            <ThemeToggle />
           </DialogContentSection>
         </DialogContentWrapper>
         <div

@@ -46,7 +46,7 @@ const Handles: React.FC<Props> = ({
                       return (
                         <div
                           key={idx}
-                          className="size-1.5 rounded-full bg-gray-300 ring ring-secondary/20"
+                          className="size-1.5 rounded-full bg-zinc-400 ring ring-secondary/20 dark:bg-gray-300"
                         />
                       );
                     })}
@@ -73,7 +73,7 @@ const Handles: React.FC<Props> = ({
                 />
                 <div className="flex w-full translate-x-0.5 items-center">
                   <div>
-                    <div className="size-1.5 rounded-full bg-gray-300" />
+                    <div className="size-1.5 rounded-full bg-zinc-400 dark:bg-gray-300" />
                   </div>
                   <p className="w-[90%] pl-1 text-[10px] break-words italic dark:font-thin">
                     {input}
@@ -96,7 +96,7 @@ const Handles: React.FC<Props> = ({
                     return (
                       <div
                         key={idx}
-                        className="size-1.5 rounded-full bg-gray-300 ring ring-secondary/20"
+                        className="size-1.5 rounded-full bg-zinc-400 ring ring-secondary/20 dark:bg-gray-300"
                       />
                     );
                   })}
@@ -125,7 +125,7 @@ const Handles: React.FC<Props> = ({
                         />
                         <div className="flex w-full translate-x-0.5 items-center">
                           <div>
-                            <div className="size-1.5 rounded-full bg-gray-300" />
+                            <div className="size-1.5 rounded-full bg-zinc-400 dark:bg-gray-300" />
                           </div>
                           <p className="w-[90%] pl-1 text-[10px] break-words italic dark:font-thin">
                             {input}
@@ -151,7 +151,7 @@ const Handles: React.FC<Props> = ({
                         <p className="w-[90%] pr-1 text-end text-[10px] break-words italic dark:font-thin">
                           {output}
                         </p>
-                        <div className="size-1.5 rounded-full bg-gray-300" />
+                        <div className="size-1.5 rounded-full bg-zinc-400 dark:bg-gray-300" />
                       </div>
                     </div>
                   ))}
@@ -176,7 +176,7 @@ const Handles: React.FC<Props> = ({
                   <p className="w-[90%] pr-1 text-end text-[10px] break-words italic dark:font-thin">
                     {output}
                   </p>
-                  <div className="size-1.5 rounded-full bg-gray-300" />
+                  <div className="size-1.5 rounded-full bg-zinc-400 dark:bg-gray-300" />
                 </div>
               </div>
             ))}

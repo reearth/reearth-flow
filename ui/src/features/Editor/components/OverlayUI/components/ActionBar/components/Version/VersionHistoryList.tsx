@@ -62,7 +62,7 @@ const VersionHistoryList: React.FC<Props> = ({
                   </p>
                 </div>
               </div>
-              <div className="h-px bg-primary" />
+              <div className="h-px bg-border" />
             </div>
           ))}
         </div>
