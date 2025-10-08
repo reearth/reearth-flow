@@ -157,11 +157,6 @@ Validates JSON-based summary files containing aggregated error counts across the
 - **includeFields**: Array of field names to validate (optional)
   - If omitted, all fields in the expected file are compared
   - Useful for testing only specific error types
-- **strategy**: Extraction strategy for JSON comparison (default: `"array_by_name_field"`)
-  - `"array_by_name_field"`: Extract from array using name/count fields
-  - `"object_path"`: Use dot notation for nested objects
-- **nameField**: Field name used as key (default: `"name"`)
-- **valueField**: Field name used as value (default: `"count"`)
 
 #### File Error Summary (`fileErrorSummary`)
 Validates CSV-based summary files containing per-file error details.
