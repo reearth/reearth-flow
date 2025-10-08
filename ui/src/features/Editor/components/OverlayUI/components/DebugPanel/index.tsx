@@ -100,23 +100,19 @@ const DebugPanel: React.FC = () => {
           <div className="flex w-fit items-center">
             <TabsList className="gap-2">
               <TabsTrigger
-                className="group h-8 gap-1 border border-transparent bg-card font-thin data-[state=active]:border-logo/40"
+                className="group h-8 gap-1 border border-transparent bg-card font-light data-[state=active]:border-logo/40 dark:font-thin"
                 value="debug-logs"
                 onClick={handleTabChange}>
                 <CodeIcon className="group-data-[state=active]:fill-logo" />
-                <p className="text-sm font-thin select-none">
-                  {t("Workflow Logs")}
-                </p>
+                <p className="text-sm select-none">{t("Workflow Logs")}</p>
               </TabsTrigger>
               <TabsTrigger
-                className="group h-8 gap-1 border border-transparent bg-card font-thin data-[state=active]:border-logo/40"
+                className="group h-8 gap-1 border border-transparent bg-card font-light data-[state=active]:border-logo/40 dark:font-thin"
                 value="debug-viewer"
                 disabled={!dataURLs?.length}
                 onClick={handleTabChange}>
                 <EyeIcon className="group-data-[state=active]:fill-logo" />
-                <p className="text-sm font-thin select-none">
-                  {t("Data Preview")}
-                </p>
+                <p className="text-sm select-none">{t("Data Preview")}</p>
               </TabsTrigger>
             </TabsList>
             <div className="ml-2 h-full w-1 border-l" />

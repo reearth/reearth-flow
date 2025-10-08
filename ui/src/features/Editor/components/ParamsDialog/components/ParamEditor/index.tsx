@@ -269,7 +269,7 @@ const ParamEditor: React.FC<Props> = ({
                       <p className="mr-2 w-[150px] font-medium">
                         {t("Action Name")}:
                       </p>
-                      <p className="text-white">{nodeMeta.officialName}</p>
+                      <p className="text-sm">{nodeMeta.officialName}</p>
                     </div>
                     <div className="flex items-center text-sm">
                       <p className="mr-2 w-[150px] font-medium">

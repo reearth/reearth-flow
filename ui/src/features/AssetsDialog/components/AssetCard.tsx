@@ -58,7 +58,7 @@ const AssetCard: React.FC<Props> = ({
 
   return (
     <Card
-      className="group relative cursor-pointer border-transparent bg-secondary hover:border-border"
+      className="group relative cursor-pointer border-transparent bg-card hover:border-border"
       key={id}
       onDoubleClick={handleDoubleClick}>
       <CardContent className="flex items-start justify-center p-2">
