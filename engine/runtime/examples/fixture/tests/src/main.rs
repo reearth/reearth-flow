@@ -58,6 +58,10 @@ pub struct WorkflowTestProfile {
     #[serde(default)]
     pub intermediate_assertions: Vec<IntermediateAssertion>,
 
+    /// Summary output validation
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub summary_output: Option<SummaryOutput>,
+
     /// Whether to skip this test
     #[serde(default)]
     pub skip: bool,
@@ -147,6 +151,53 @@ pub struct IntermediateAssertion {
     /// Whether to check only a subset of features
     #[serde(default)]
     pub partial_match: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SummaryOutput {
+    /// Global error count summary (e.g., summary_bldg.json)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_count_summary: Option<ErrorCountSummaryValidation>,
+
+    /// Per-file error detail summary (e.g., 02_建築物_検査結果一覧.csv)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file_error_summary: Option<FileErrorSummaryValidation>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ErrorCountSummaryValidation {
+    /// Expected output file name (relative to test directory)
+    /// The actual output file will have the same name in the temp output directory
+    pub expected_file: String,
+
+    /// Fields to include in comparison (only these fields will be checked)
+    /// If omitted, all fields are compared
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_fields: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileErrorSummaryValidation {
+    /// Expected output file name (relative to test directory)
+    /// The actual output file will have the same name in the temp output directory
+    pub expected_file: String,
+
+    /// Columns to include in comparison (only these columns will be checked)
+    /// If omitted, all columns are compared
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_columns: Option<Vec<String>>,
+
+    /// Key columns used to identify rows (e.g., ["Filename", "Index"])
+    /// Default: ["Filename"]
+    #[serde(default = "default_key_columns")]
+    pub key_columns: Vec<String>,
+}
+
+fn default_key_columns() -> Vec<String> {
+    vec!["Filename".to_string()]
 }
 
 pub struct TestContext {
@@ -366,6 +417,224 @@ impl TestContext {
             )?;
         }
         Ok(())
+    }
+
+    pub fn verify_summary_output(&self) -> Result<()> {
+        if let Some(summary) = &self.profile.summary_output {
+            // Error count summary validation
+            if let Some(error_count) = &summary.error_count_summary {
+                self.verify_error_count_summary(error_count)?;
+            }
+
+            // File error summary validation
+            if let Some(file_error) = &summary.file_error_summary {
+                self.verify_file_error_summary(file_error)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn verify_error_count_summary(&self, config: &ErrorCountSummaryValidation) -> Result<()> {
+        // Load actual output
+        let actual_file = self.temp_dir.join(&config.expected_file);
+        if !actual_file.exists() {
+            anyhow::bail!("Error count summary file not found: {:?}", actual_file);
+        }
+        let actual_json: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&actual_file)?)?;
+
+        // Load expected output
+        let expected_file = self.test_dir.join(&config.expected_file);
+        if !expected_file.exists() {
+            anyhow::bail!(
+                "Expected error count summary file not found: {:?}",
+                expected_file
+            );
+        }
+        let expected_json: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&expected_file)?)?;
+
+        // Extract values from array format (name/count fields)
+        let actual_map = self.extract_from_array(&actual_json, "name", "count")?;
+        let expected_map = self.extract_from_array(&expected_json, "name", "count")?;
+
+        // Filter by include_fields if specified
+        let fields_to_check: Vec<String> = if let Some(include_fields) = &config.include_fields {
+            include_fields.clone()
+        } else {
+            // Check all fields from expected
+            expected_map.keys().cloned().collect()
+        };
+
+        // Compare
+        for field in &fields_to_check {
+            let expected_value = expected_map.get(field).ok_or_else(|| {
+                anyhow::anyhow!("Field '{}' not found in expected summary", field)
+            })?;
+            let actual_value = actual_map
+                .get(field)
+                .ok_or_else(|| anyhow::anyhow!("Field '{}' not found in actual summary", field))?;
+
+            if actual_value != expected_value {
+                anyhow::bail!(
+                    "Error count summary mismatch for '{}': expected {:?}, got {:?}",
+                    field,
+                    expected_value,
+                    actual_value
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    fn verify_file_error_summary(&self, config: &FileErrorSummaryValidation) -> Result<()> {
+        // Load actual CSV
+        let actual_file = self.temp_dir.join(&config.expected_file);
+        if !actual_file.exists() {
+            anyhow::bail!("File error summary not found: {:?}", actual_file);
+        }
+        let actual_content = fs::read_to_string(&actual_file)?;
+
+        // Load expected CSV
+        let expected_file = self.test_dir.join(&config.expected_file);
+        if !expected_file.exists() {
+            anyhow::bail!("Expected file error summary not found: {:?}", expected_file);
+        }
+        let expected_content = fs::read_to_string(&expected_file)?;
+
+        // Parse CSV
+        let mut actual_reader = ReaderBuilder::new()
+            .delimiter(b',')
+            .from_reader(Cursor::new(&actual_content));
+        let mut expected_reader = ReaderBuilder::new()
+            .delimiter(b',')
+            .from_reader(Cursor::new(&expected_content));
+
+        let actual_headers = actual_reader.headers()?.clone();
+        let expected_headers = expected_reader.headers()?.clone();
+
+        // Determine columns to check
+        let columns_to_check: Vec<String> = if let Some(include_cols) = &config.include_columns {
+            // Always include key columns + specified columns
+            let mut cols = config.key_columns.clone();
+            cols.extend(include_cols.clone());
+            cols.sort();
+            cols.dedup();
+            cols
+        } else {
+            // Check all columns
+            expected_headers.iter().map(|s| s.to_string()).collect()
+        };
+
+        // Verify columns exist
+        for col in &columns_to_check {
+            if !actual_headers.iter().any(|h| h == col) {
+                anyhow::bail!("Column '{}' not found in actual CSV", col);
+            }
+            if !expected_headers.iter().any(|h| h == col) {
+                anyhow::bail!("Column '{}' not found in expected CSV", col);
+            }
+        }
+
+        // Build row maps keyed by key_columns
+        let actual_rows = self.build_row_map(
+            &actual_reader.records().collect::<Result<Vec<_>, _>>()?,
+            &actual_headers,
+            &config.key_columns,
+        )?;
+        let expected_rows = self.build_row_map(
+            &expected_reader.records().collect::<Result<Vec<_>, _>>()?,
+            &expected_headers,
+            &config.key_columns,
+        )?;
+
+        // Compare rows
+        for (key, expected_row) in &expected_rows {
+            let actual_row = actual_rows
+                .get(key)
+                .ok_or_else(|| anyhow::anyhow!("Row with key {:?} not found in actual CSV", key))?;
+
+            // Compare specified columns
+            for col in &columns_to_check {
+                if config.key_columns.contains(col) {
+                    continue; // Already matched by key
+                }
+
+                let expected_val = expected_row
+                    .get(col)
+                    .ok_or_else(|| anyhow::anyhow!("Column '{}' not found in expected row", col))?;
+                let actual_val = actual_row
+                    .get(col)
+                    .ok_or_else(|| anyhow::anyhow!("Column '{}' not found in actual row", col))?;
+
+                if actual_val != expected_val {
+                    anyhow::bail!(
+                        "File error summary mismatch for row {:?}, column '{}': expected '{}', got '{}'",
+                        key,
+                        col,
+                        expected_val,
+                        actual_val
+                    );
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn extract_from_array(
+        &self,
+        json: &serde_json::Value,
+        name_field: &str,
+        value_field: &str,
+    ) -> Result<HashMap<String, serde_json::Value>> {
+        let array = json
+            .as_array()
+            .ok_or_else(|| anyhow::anyhow!("Expected JSON array"))?;
+
+        let mut result = HashMap::new();
+        for item in array {
+            if let Some(obj) = item.as_object() {
+                if let (Some(name), Some(value)) = (obj.get(name_field), obj.get(value_field)) {
+                    if let Some(name_str) = name.as_str() {
+                        result.insert(name_str.to_string(), value.clone());
+                    }
+                }
+            }
+        }
+        Ok(result)
+    }
+
+    fn build_row_map(
+        &self,
+        rows: &[StringRecord],
+        headers: &StringRecord,
+        key_columns: &[String],
+    ) -> Result<HashMap<Vec<String>, HashMap<String, String>>> {
+        let mut row_map = HashMap::new();
+
+        for row in rows {
+            // Build key from key_columns
+            let mut key = Vec::new();
+            for key_col in key_columns {
+                let col_idx = headers
+                    .iter()
+                    .position(|h| h == key_col)
+                    .ok_or_else(|| anyhow::anyhow!("Key column '{}' not found", key_col))?;
+                key.push(row.get(col_idx).unwrap_or("").to_string());
+            }
+
+            // Build column map for this row
+            let mut col_map = HashMap::new();
+            for (idx, header) in headers.iter().enumerate() {
+                col_map.insert(header.to_string(), row.get(idx).unwrap_or("").to_string());
+            }
+
+            row_map.insert(key, col_map);
+        }
+
+        Ok(row_map)
     }
 
     fn verify_csv_file(&self, output: &TestOutput, file_name: &str, delimiter: u8) -> Result<()> {
@@ -768,6 +1037,7 @@ mod tests {
             codelists: None,
             schemas: None,
             intermediate_assertions: vec![],
+            summary_output: None,
             skip: false,
             skip_reason: None,
         };
@@ -833,6 +1103,7 @@ mod tests {
             codelists: None,
             schemas: None,
             intermediate_assertions: vec![],
+            summary_output: None,
             skip: false,
             skip_reason: None,
         };
