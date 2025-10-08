@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
+    env,
     io::{Error, Result},
     path::{Path, PathBuf},
     sync::Arc,
@@ -24,21 +25,13 @@ pub struct State {
 
 impl State {
     pub fn new(root: &Uri, storage_resolver: &StorageResolver) -> Result<Self> {
-        Self::new_internal(root, storage_resolver, false)
-    }
-
-    pub fn new_with_compression(root: &Uri, storage_resolver: &StorageResolver) -> Result<Self> {
-        Self::new_internal(root, storage_resolver, true)
-    }
-
-    fn new_internal(
-        root: &Uri,
-        storage_resolver: &StorageResolver,
-        use_compression: bool,
-    ) -> Result<Self> {
         let storage = storage_resolver
             .resolve(root)
             .map_err(std::io::Error::other)?;
+        let use_compression = env::var("FLOW_RUNTIME_ZSTD_ENABLE")
+            .ok()
+            .map(|s| s.to_lowercase() == "true")
+            .unwrap_or(false);
         Ok(Self {
             storage,
             root: Path::new(
@@ -189,6 +182,19 @@ impl State {
 }
 
 #[cfg(test)]
+impl State {
+    pub(crate) fn new_for_test(
+        root: &Uri,
+        storage_resolver: &StorageResolver,
+        use_compression: bool,
+    ) -> std::io::Result<Self> {
+        let mut s = State::new(root, storage_resolver)?;
+        s.use_compression = use_compression;
+        Ok(s)
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use serde::{Deserialize, Serialize};
@@ -210,11 +216,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_write_and_read_zstd() {
+    async fn test_state_write_read_zstd_enabled() {
         let storage_resolver = Arc::new(StorageResolver::new());
 
         let state =
-            State::new_with_compression(&Uri::for_test("ram:///workflows"), &storage_resolver)
+            State::new_for_test(&Uri::for_test("ram:///workflows"), &storage_resolver, true)
                 .unwrap();
         let data = Data { x: 42 };
         state.save(&data, "test").await.unwrap();

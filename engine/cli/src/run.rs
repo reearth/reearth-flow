@@ -142,8 +142,7 @@ impl RunCliCommand {
         let state_uri = setup_job_directory("engine", "feature-store", job_id)
             .map_err(crate::errors::Error::init)?;
         let state = Arc::new(
-            State::new_with_compression(&state_uri, &storage_resolver)
-                .map_err(crate::errors::Error::init)?,
+            State::new(&state_uri, &storage_resolver).map_err(crate::errors::Error::init)?,
         );
 
         let logger_factory = Arc::new(LoggerFactory::new(
