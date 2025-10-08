@@ -1,0 +1,70 @@
+[
+  {
+    "name": "WallSurface",
+    "count": 2
+  },
+  {
+    "name": "BuildingFurniture",
+    "count": 2
+  },
+  {
+    "name": "Building",
+    "count": 16
+  },
+  {
+    "name": "OuterCeilingSurface",
+    "count": 1
+  },
+  {
+    "name": "BuildingInstallation",
+    "count": 1
+  },
+  {
+    "name": "ClosureSurface",
+    "count": 1
+  },
+  {
+    "name": "InteriorWallSurface",
+    "count": 2
+  },
+  {
+    "name": "RoofSurface",
+    "count": 1
+  },
+  {
+    "name": "Room",
+    "count": 7
+  },
+  {
+    "name": "OuterFloorSurface",
+    "count": 1
+  },
+  {
+    "name": "GroundSurface",
+    "count": 1
+  },
+  {
+    "name": "Window",
+    "count": 1
+  },
+  {
+    "name": "CeilingSurface",
+    "count": 1
+  },
+  {
+    "name": "BuildingPart",
+    "count": 1
+  },
+  {
+    "name": "FloorSurface",
+    "count": 1
+  },
+  {
+    "name": "Door",
+    "count": 1
+  },
+  {
+    "name": "IntBuildingInstallation",
+    "count": 1
+  }
+]

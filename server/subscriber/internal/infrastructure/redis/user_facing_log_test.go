@@ -20,17 +20,17 @@ func TestRedisStorage_SaveUserFacingLogToRedis(t *testing.T) {
 	nodeName := "test-node"
 	nodeID := "node-123"
 	event := &userfacinglog.UserFacingLogEvent{
-		WorkflowID:     "wf-123",
-		JobID:          "job-456",
-		Timestamp:      time.Date(2025, 1, 11, 9, 12, 54, 487779000, time.UTC),
-		Level:          userfacinglog.UserFacingLogLevelInfo,
-		NodeName:       &nodeName,
-		NodeID:         &nodeID,
-		DisplayMessage: "Test user-facing log message",
+		WorkflowID: "wf-123",
+		JobID:      "job-456",
+		Timestamp:  time.Date(2025, 1, 11, 9, 12, 54, 487779000, time.UTC),
+		Level:      userfacinglog.UserFacingLogLevelInfo,
+		NodeName:   &nodeName,
+		NodeID:     &nodeID,
+		Message:    "Test user-facing log message",
 	}
 
 	expectedKey := "userfacinglog:wf-123:job-456:2025-01-11T09:12:54.487779Z"
-	expectedVal := `{"workflowId":"wf-123","jobId":"job-456","timestamp":"2025-01-11T09:12:54.487779Z","level":"info","nodeName":"test-node","nodeId":"node-123","displayMessage":"Test user-facing log message"}`
+	expectedVal := `{"workflowId":"wf-123","jobId":"job-456","timestamp":"2025-01-11T09:12:54.487779Z","level":"INFO","nodeName":"test-node","nodeId":"node-123","message":"Test user-facing log message"}`
 
 	mClient.
 		On("Set", ctx, expectedKey, expectedVal, 12*time.Hour).
@@ -47,11 +47,11 @@ func TestRedisStorage_SaveUserFacingLogToRedis_Error(t *testing.T) {
 	rStorage := NewRedisStorage(mClient)
 
 	event := &userfacinglog.UserFacingLogEvent{
-		WorkflowID:     "wf-123",
-		JobID:          "job-456",
-		Timestamp:      time.Now(),
-		Level:          userfacinglog.UserFacingLogLevelError,
-		DisplayMessage: "Error message",
+		WorkflowID: "wf-123",
+		JobID:      "job-456",
+		Timestamp:  time.Now(),
+		Level:      userfacinglog.UserFacingLogLevelError,
+		Message:    "Error message",
 	}
 
 	mClient.

@@ -29,6 +29,8 @@ struct WorkflowTestProfile {
     schemas: Option<String>,
     #[serde(default)]
     intermediate_assertions: Vec<IntermediateAssertion>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    summary_output: Option<SummaryOutput>,
     #[serde(default)]
     skip: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -61,6 +63,37 @@ struct IntermediateAssertion {
     except: Option<serde_json::Value>,
     #[serde(default)]
     partial_match: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SummaryOutput {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error_count_summary: Option<ErrorCountSummaryValidation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    file_error_summary: Option<FileErrorSummaryValidation>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ErrorCountSummaryValidation {
+    expected_file: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    include_fields: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FileErrorSummaryValidation {
+    expected_file: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    include_columns: Option<Vec<String>>,
+    #[serde(default = "default_key_columns")]
+    key_columns: Vec<String>,
+}
+
+fn default_key_columns() -> Vec<String> {
+    vec!["Filename".to_string()]
 }
 
 struct TestCase {
@@ -176,6 +209,9 @@ fn generate_test_code(test_cases: &[TestCase], testdata_dir: &Path) -> Result<To
 
                 // Verify intermediate data
                 ctx.verify_intermediate_data()?;
+
+                // Verify summary output
+                ctx.verify_summary_output()?;
 
                 Ok(())
             }

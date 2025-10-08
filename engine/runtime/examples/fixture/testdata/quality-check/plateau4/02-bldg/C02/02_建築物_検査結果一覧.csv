@@ -1,0 +1,2 @@
+Index,Filename,WallSurface,BuildingFurniture,Building,OuterCeilingSurface,BuildingInstallation,ClosureSurface,InteriorWallSurface,RoofSurface,Room,OuterFloorSurface,GroundSurface,Window,CeilingSurface,BuildingPart,FloorSurface,Door,IntBuildingInstallation
+1,input.gml,2,2,16,1,1,1,2,1,7,1,1,1,1,1,1,1,1

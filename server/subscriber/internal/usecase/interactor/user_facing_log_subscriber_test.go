@@ -31,13 +31,13 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 		nodeName := "test-node"
 		nodeID := "node-123"
 		event := &userfacinglog.UserFacingLogEvent{
-			WorkflowID:     "wf-123",
-			JobID:          "job-123",
-			Timestamp:      time.Now(),
-			Level:          userfacinglog.UserFacingLogLevelInfo,
-			NodeName:       &nodeName,
-			NodeID:         &nodeID,
-			DisplayMessage: "Test user-facing message",
+			WorkflowID: "wf-123",
+			JobID:      "job-123",
+			Timestamp:  time.Now(),
+			Level:      userfacinglog.UserFacingLogLevelInfo,
+			NodeName:   &nodeName,
+			NodeID:     &nodeID,
+			Message:    "Test user-facing message",
 		}
 
 		mockStorage.
@@ -52,13 +52,13 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 
 	t.Run("Success: storing to Redis succeed without optional fields", func(t *testing.T) {
 		event := &userfacinglog.UserFacingLogEvent{
-			WorkflowID:     "wf-456",
-			JobID:          "job-456",
-			Timestamp:      time.Now(),
-			Level:          userfacinglog.UserFacingLogLevelSuccess,
-			NodeName:       nil,
-			NodeID:         nil,
-			DisplayMessage: "Operation completed successfully",
+			WorkflowID: "wf-456",
+			JobID:      "job-456",
+			Timestamp:  time.Now(),
+			Level:      userfacinglog.UserFacingLogLevelSuccess,
+			NodeName:   nil,
+			NodeID:     nil,
+			Message:    "Operation completed successfully",
 		}
 
 		mockStorage.
@@ -74,13 +74,13 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 	t.Run("Success: storing error level log", func(t *testing.T) {
 		nodeName := "error-node"
 		event := &userfacinglog.UserFacingLogEvent{
-			WorkflowID:     "wf-789",
-			JobID:          "job-789",
-			Timestamp:      time.Now(),
-			Level:          userfacinglog.UserFacingLogLevelError,
-			NodeName:       &nodeName,
-			NodeID:         nil,
-			DisplayMessage: "An error occurred during processing",
+			WorkflowID: "wf-789",
+			JobID:      "job-789",
+			Timestamp:  time.Now(),
+			Level:      userfacinglog.UserFacingLogLevelError,
+			NodeName:   &nodeName,
+			NodeID:     nil,
+			Message:    "An error occurred during processing",
 		}
 
 		mockStorage.
@@ -101,11 +101,11 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 
 	t.Run("Error: missing workflow ID", func(t *testing.T) {
 		event := &userfacinglog.UserFacingLogEvent{
-			WorkflowID:     "",
-			JobID:          "job-123",
-			Timestamp:      time.Now(),
-			Level:          userfacinglog.UserFacingLogLevelInfo,
-			DisplayMessage: "Test message",
+			WorkflowID: "",
+			JobID:      "job-123",
+			Timestamp:  time.Now(),
+			Level:      userfacinglog.UserFacingLogLevelInfo,
+			Message:    "Test message",
 		}
 
 		err := u.ProcessUserFacingLogEvent(ctx, event)
@@ -117,11 +117,11 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 
 	t.Run("Error: missing job ID", func(t *testing.T) {
 		event := &userfacinglog.UserFacingLogEvent{
-			WorkflowID:     "wf-123",
-			JobID:          "",
-			Timestamp:      time.Now(),
-			Level:          userfacinglog.UserFacingLogLevelInfo,
-			DisplayMessage: "Test message",
+			WorkflowID: "wf-123",
+			JobID:      "",
+			Timestamp:  time.Now(),
+			Level:      userfacinglog.UserFacingLogLevelInfo,
+			Message:    "Test message",
 		}
 
 		err := u.ProcessUserFacingLogEvent(ctx, event)
@@ -133,11 +133,11 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 
 	t.Run("Error: storing to Redis fails", func(t *testing.T) {
 		event := &userfacinglog.UserFacingLogEvent{
-			WorkflowID:     "wf-123",
-			JobID:          "job-123",
-			Timestamp:      time.Now(),
-			Level:          userfacinglog.UserFacingLogLevelInfo,
-			DisplayMessage: "Test message",
+			WorkflowID: "wf-123",
+			JobID:      "job-123",
+			Timestamp:  time.Now(),
+			Level:      userfacinglog.UserFacingLogLevelInfo,
+			Message:    "Test message",
 		}
 
 		mockStorage.
@@ -154,11 +154,11 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 
 	t.Run("Success: empty display message is allowed", func(t *testing.T) {
 		event := &userfacinglog.UserFacingLogEvent{
-			WorkflowID:     "wf-empty",
-			JobID:          "job-empty",
-			Timestamp:      time.Now(),
-			Level:          userfacinglog.UserFacingLogLevelInfo,
-			DisplayMessage: "",
+			WorkflowID: "wf-empty",
+			JobID:      "job-empty",
+			Timestamp:  time.Now(),
+			Level:      userfacinglog.UserFacingLogLevelInfo,
+			Message:    "",
 		}
 
 		mockStorage.

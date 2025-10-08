@@ -75,7 +75,7 @@ impl UserFacingLogHandler {
     }
 
     pub fn send_workflow_definition_error(&self, error: &dyn std::error::Error) {
-        let display_message = Self::format_workflow_definition_error(error);
+        let message = Self::format_workflow_definition_error(error);
 
         let event = UserFacingLogEvent {
             workflow_id: self.workflow_id,
@@ -84,7 +84,7 @@ impl UserFacingLogHandler {
             level: UserFacingLogLevel::Error,
             node_name: None,
             node_id: None,
-            display_message,
+            message,
         };
 
         self.publish_event(event);
@@ -166,7 +166,7 @@ impl UserFacingLogHandler {
                         level: UserFacingLogLevel::Info,
                         node_name: None,
                         node_id: None,
-                        display_message: format!("{workflow_name} Workflow - Started..."),
+                        message: format!("{workflow_name} Workflow - Started..."),
                     })
                 } else {
                     None
@@ -191,7 +191,7 @@ impl UserFacingLogHandler {
                     level: UserFacingLogLevel::Info,
                     node_name: Some(final_node_name.clone()),
                     node_id: final_node_id,
-                    display_message: format!("{final_node_name} - Running..."),
+                    message: format!("{final_node_name} - Running..."),
                 })
             }
 
@@ -219,7 +219,7 @@ impl UserFacingLogHandler {
                         level: UserFacingLogLevel::Success,
                         node_name: Some(final_node_name.clone()),
                         node_id: final_node_id,
-                        display_message: format!(
+                        message: format!(
                             "{final_node_name} - Finished in {:.2}s",
                             elapsed.as_secs_f64()
                         ),
@@ -263,7 +263,7 @@ impl UserFacingLogHandler {
                     level: UserFacingLogLevel::Error,
                     node_name: Some(final_node_name.clone()),
                     node_id: final_node_id,
-                    display_message: format!("{final_node_name} - Failed: {simple_error}"),
+                    message: format!("{final_node_name} - Failed: {simple_error}"),
                 });
 
                 // Check if all nodes are completed after processing this error event
@@ -288,7 +288,7 @@ impl UserFacingLogHandler {
                             level: UserFacingLogLevel::Success,
                             node_name: None,
                             node_id: None,
-                            display_message: "Workflow finished successfully.".to_string(),
+                            message: "Workflow finished successfully.".to_string(),
                         }
                     } else {
                         UserFacingLogEvent {
@@ -298,7 +298,7 @@ impl UserFacingLogHandler {
                             level: UserFacingLogLevel::Error,
                             node_name: None,
                             node_id: None,
-                            display_message: "Workflow execution failed.".to_string(),
+                            message: "Workflow execution failed.".to_string(),
                         }
                     };
 
@@ -343,7 +343,7 @@ impl UserFacingLogHandler {
                         level: UserFacingLogLevel::Error,
                         node_name: None,
                         node_id: None,
-                        display_message: error_message.clone(),
+                        message: error_message.clone(),
                     };
 
                     // For factory errors, return both messages combined
@@ -358,7 +358,7 @@ impl UserFacingLogHandler {
                             level: UserFacingLogLevel::Error,
                             node_name: None,
                             node_id: None,
-                            display_message: "Workflow execution failed.".to_string(),
+                            message: "Workflow execution failed.".to_string(),
                         };
                         Some(failed_event)
                     } else {

@@ -1623,6 +1623,51 @@ Extract Z-Coordinate Elevation to Attribute
 ### Category
 * Geometry
 
+## ExcelWriter
+### Type
+* sink
+### Description
+Writes features to Microsoft Excel format (.xlsx files).
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExcelWriter Parameters",
+  "description": "Configuration for writing features to Microsoft Excel format.",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "output": {
+      "description": "Output path or expression for the Excel file to create",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "sheetName": {
+      "description": "Sheet name (defaults to \"Sheet1\")",
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
+
 ## Extruder
 ### Type
 * processor
@@ -3491,6 +3536,75 @@ Filter Features by Geometry Value Type
 ### Category
 * Geometry
 
+## GltfReader
+### Type
+* source
+### Description
+Reads 3D models from glTF 2.0 files, supporting meshes, nodes, scenes, and geometry primitives
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GltfReaderParam",
+  "type": "object",
+  "properties": {
+    "dataset": {
+      "title": "File Path",
+      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "includeNodes": {
+      "title": "Include Nodes",
+      "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes",
+      "default": true,
+      "type": "boolean"
+    },
+    "inline": {
+      "title": "Inline Content",
+      "description": "Expression that returns the file content as text instead of reading from a file path",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "mergeMeshes": {
+      "title": "Merge Meshes",
+      "description": "If true, combines all meshes from the glTF file into a single output feature",
+      "default": false,
+      "type": "boolean"
+    },
+    "triangulate": {
+      "title": "Triangulate",
+      "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)",
+      "default": true,
+      "type": "boolean"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+### Output Ports
+* default
+### Category
+* File
+* 3D
+
 ## GltfWriter
 ### Type
 * sink
@@ -3721,6 +3835,55 @@ Reads features from JSON files, supporting both single objects and arrays of obj
 ### Input Ports
 ### Output Ports
 * default
+### Category
+* File
+
+## JsonWriter
+### Type
+* sink
+### Description
+Writes features to JSON files.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "JsonWriter Parameters",
+  "description": "Configuration for writing features to JSON files.",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "converter": {
+      "description": "Optional converter expression to transform features before writing",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "output": {
+      "description": "Output path or expression for the JSON file to create",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
 ### Category
 * File
 
@@ -4042,6 +4205,73 @@ Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, t
 ### Input Ports
 ### Output Ports
 * default
+### Category
+* File
+* 3D
+
+## ObjWriter
+### Type
+* sink
+### Description
+Writes 3D features to Wavefront OBJ format with optional material (MTL) files
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OBJ Writer Parameters",
+  "description": "Configure output settings for writing 3D features to Wavefront OBJ format",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "output": {
+      "title": "Output Path",
+      "description": "Expression for the output file path where the OBJ file will be written",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "writeMaterials": {
+      "title": "Write Materials",
+      "description": "Enable writing of material (MTL) file alongside the OBJ file",
+      "default": null,
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "writeNormals": {
+      "title": "Write Normals",
+      "description": "Include vertex normal vectors in the output",
+      "default": null,
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "writeTexcoords": {
+      "title": "Write Texture Coordinates",
+      "description": "Include texture coordinate (UV) data in the output (currently not supported - geometry types don't include UV data)",
+      "default": null,
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
 ### Category
 * File
 * 3D
@@ -5658,6 +5888,44 @@ Validates XML documents against XSD schemas with success/failure routing
 * failed
 ### Category
 * PLATEAU
+
+## XmlWriter
+### Type
+* sink
+### Description
+Writes features to XML files.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "XmlWriter Parameters",
+  "description": "Configuration for writing features to XML files.",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "output": {
+      "description": "Output path or expression for the XML file to create",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
 
 ## ZipFileWriter
 ### Type
