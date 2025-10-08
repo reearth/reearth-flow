@@ -770,23 +770,8 @@ impl<
         Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
     > Validator<T, Z> for Solid<T, Z>
 {
-    fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
-        let mut reason = Vec::new();
-        for (idx, face) in self.all_faces().iter().enumerate() {
-            if let Some(result) = face.validate(valid_type.clone()) {
-                for problem in result.0.iter() {
-                    reason.push(ValidationProblemAtPosition(
-                        problem.0.clone(),
-                        ValidationProblemPosition::Solid(GeometryPosition(idx as isize)),
-                    ));
-                }
-            }
-        }
-        if reason.is_empty() {
-            None
-        } else {
-            Some(ValidationProblemReport(reason))
-        }
+    fn validate(&self, _valid_type: ValidationType) -> Option<ValidationProblemReport> {
+        unimplemented!()
     }
 }
 

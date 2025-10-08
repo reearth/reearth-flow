@@ -378,7 +378,7 @@ impl Geometry3D<f64> {
 impl From<Geometry3D<f64>> for Geometry2D<f64> {
     fn from(geos: Geometry3D<f64>) -> Self {
         match geos {
-            Geometry3D::CSG(csg) => unreachable!(), // 2D CSG never exists
+            Geometry3D::CSG(_csg) => unreachable!(), // 2D CSG never exists
             Geometry3D::Point(p) => Geometry2D::Point(p.into()),
             Geometry3D::Line(l) => Geometry2D::Line(l.into()),
             Geometry3D::LineString(ls) => Geometry2D::LineString(ls.into()),

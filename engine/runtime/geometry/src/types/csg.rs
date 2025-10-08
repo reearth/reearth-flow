@@ -1,7 +1,7 @@
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
-use crate::types::{coordinate::Coordinate, coordnum::CoordNum, solid::{Solid, Solid3D}, triangular_mesh::TriangularMesh};
+use crate::{types::{coordinate::Coordinate, coordnum::CoordNum, solid::{Solid, Solid3D}}, utils::circumcenter};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -73,17 +73,48 @@ impl CSG<f64, f64> {
         self.right.transform_inplace(jgd2wgs);
     }
 
-    pub fn evaluate(self) -> Solid3D<f64> {
-        let right = self.right.evaluate();
-        let left = self.left.evaluate();
-        match self.operation {
-            CSGOperation::Union => left.union(&right),
-            CSGOperation::Intersection => left.intersection(&right),
-            CSGOperation::Difference => left.difference(&right),
-            _ => unreachable!(),
+    pub fn evaluate(self) -> Result<Solid3D<f64>, ()> {
+        let right = self.right.evaluate()?;
+        let left = self.left.evaluate()?;
+        let right = right.as_triangle_mesh();
+        let left = left.as_triangle_mesh();
+        let mut union = left.clone().union(right.clone())?;
+        let two_manifolds = union.into_2_manifolds_with_boundaries();
+        let mut result_faces = Vec::new();
+        for mut two_manifold in two_manifolds {
+            let t = two_manifold.first().ok_or(())?;
+            let t = [
+                union.get_vertices().get(t[0]).ok_or(())?,
+                union.get_vertices().get(t[1]).ok_or(())?,
+                union.get_vertices().get(t[2]).ok_or(())?,
+                ];
+                let center = circumcenter(*t[0], *t[1], *t[2]).unwrap().0;
+                match self.operation {
+                    CSGOperation::Union => {
+                    if !left.bounding_solid_contains(&center) && right.contains(&center) {
+                        result_faces.append(&mut two_manifold);
+                    } else if left.contains(&center) && !right.bounding_solid_contains(&center) {
+                        result_faces.append(&mut two_manifold);
+                    }
+                },
+                CSGOperation::Intersection => {
+                    if left.bounding_solid_contains(&center) && right.contains(&center) {
+                        result_faces.append(&mut two_manifold);
+                    } else if left.contains(&center) && right.bounding_solid_contains(&center) {
+                        result_faces.append(&mut two_manifold);
+                    }
+                },
+                CSGOperation::Difference => {
+                    if left.bounding_solid_contains(&center) && right.contains(&center) {
+                        result_faces.append(&mut two_manifold);
+                    }
+                },
+            }
         }
-    }
 
+        union.retain_faces(&result_faces);
+        Ok(Solid3D::new_with_triangular_mesh(union))
+    }
 }
 
 impl<T: CoordNum, Z: CoordNum> CSGChild<T, Z> {
@@ -126,13 +157,11 @@ impl CSGChild<f64, f64> {
             CSGChild::CSG(csg) => csg.transform_inplace(jgd2wgs),
         }
     }
-}
 
-
-/// takes in two solids and returns a triangular mesh representing the union of their surfaces.
-/// This is a crutial step in evaluating a CSG operation, as it is a union of intesrsection and union operations.
-fn surface_union(s1: &Solid3D<f64>, s2: &Solid3D<f64>) -> TriangularMesh<f64> {
-    let s1 = TriangularMesh::from_faces(s1.all_faces());
-    let s2 = TriangularMesh::from_faces(s2.all_faces());
-    s1.union(&s2)
+    fn evaluate(self) -> Result<Solid3D<f64>, ()> {
+        match self {
+            CSGChild::Solid(geom) => Ok(geom),
+            CSGChild::CSG(csg) => csg.evaluate(),
+        }
+    }
 }

@@ -123,13 +123,7 @@ where
     type Output = Option<Rect<T, Z>>;
 
     fn bounding_rect(&self) -> Self::Output {
-        let mut coords = self
-            .top
-            .iter()
-            .flat_map(|line| line.0.iter().cloned())
-            .collect::<Vec<_>>();
-        coords.extend(self.sides.iter().flat_map(|line| line.0.iter().cloned()));
-        coords.extend(self.bottom.iter().flat_map(|line| line.0.iter().cloned()));
+        let coords = self.get_all_vertex_coordinates();
         get_bounding_rect(coords)
     }
 }

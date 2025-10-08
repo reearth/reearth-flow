@@ -140,7 +140,11 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
             &self.interiors,
             &top_interiors,
         );
-        Solid::new(bottom_faces, top_faces, side_faces)
+        let all_faces = bottom_faces.into_iter()
+            .chain(top_faces.into_iter())
+            .chain(side_faces.into_iter())
+            .collect();
+        Solid::new_with_faces(all_faces)
     }
 
     pub fn validate_rings_length(&self) -> Validation {

@@ -9,6 +9,7 @@ use std::ops::{Index, IndexMut};
 use flatgeom::{LineString2 as NLineString2, LineString3 as NLineString3};
 use geo_types::LineString as GeoLineString;
 
+use crate::types::face::Face;
 use crate::utils::line_string_bounding_rect;
 
 use super::conversion::geojson::create_geo_line_string_2d;
@@ -40,6 +41,13 @@ impl From<LineString<f64, f64>> for LineString<f64, NoValue> {
             .map(|c| c.into())
             .collect::<Vec<Coordinate<f64, NoValue>>>();
         LineString(new_coords)
+    }
+}
+
+impl<T: CoordNum, Z: CoordNum> From<Face<T, Z>> for LineString<T, Z> {
+    #[inline]
+    fn from(face: Face<T, Z>) -> Self {
+        LineString(face.0)
     }
 }
 
