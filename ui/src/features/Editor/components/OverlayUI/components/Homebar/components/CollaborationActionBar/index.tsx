@@ -56,7 +56,7 @@ const CollaborationActionBar: React.FC<Props> = ({
               <div
                 className="flex size-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
                 style={{ backgroundColor: self?.color || undefined }}>
-                <span className="text-xs font-medium">
+                <span className="text-xs font-medium text-white">
                   {self.userName.charAt(0).toUpperCase()}
                   {self.userName.charAt(1)}
                 </span>
@@ -69,11 +69,11 @@ const CollaborationActionBar: React.FC<Props> = ({
                   return (
                     <div key={value.clientId}>
                       <div
-                        className="flex size-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
+                        className="flex size-6 items-center justify-center  rounded-full ring-2 ring-secondary/20"
                         style={{
                           backgroundColor: value.color || undefined,
                         }}>
-                        <span className="text-xs font-medium">
+                        <span className="text-xs font-medium text-white">
                           {value.userName.charAt(0).toUpperCase()}
                           {value.userName.charAt(1)}
                         </span>
@@ -83,7 +83,7 @@ const CollaborationActionBar: React.FC<Props> = ({
                 })}
             {users && Object.entries(users).length > 2 && (
               <div className="z-10 flex h-6 w-6 items-center justify-center rounded-full bg-secondary/90 ring-2 ring-secondary/20">
-                <span className="text-[10px] font-medium">
+                <span className="text-[10px] font-medium text-white">
                   + {Object.entries(users).length - 2}
                 </span>
               </div>

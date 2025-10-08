@@ -66,7 +66,7 @@ const WorkspaceMenu: React.FC = () => {
                   key={personalWorkspace.id}
                   className={`rounded-md px-3 py-1 text-sm ${currentWorkspace?.id === personalWorkspace.id ? "bg-accent" : ""}`}
                   onClick={() => handleWorkspaceChange(personalWorkspace)}>
-                  <p className="w-full truncate dark:font-extralight">
+                  <p className="w-full truncate font-light dark:font-extralight">
                     {personalWorkspace.name}
                   </p>
                 </DropdownMenuItem>
@@ -80,7 +80,7 @@ const WorkspaceMenu: React.FC = () => {
                     key={workspace.id}
                     className={`mx-1 rounded-md px-2 py-[2px] text-sm ${currentWorkspace?.id === workspace.id ? "bg-accent" : ""}`}
                     onClick={() => handleWorkspaceChange(workspace)}>
-                    <p className="w-full truncate dark:font-extralight">
+                    <p className="w-full truncate font-light dark:font-extralight">
                       {workspace.name}
                     </p>
                   </DropdownMenuItem>

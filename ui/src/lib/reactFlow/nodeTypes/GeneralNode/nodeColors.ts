@@ -45,7 +45,7 @@ const nodeColors = {
     selectedBackground: "bg-node-transformer-selected",
   },
   subworkflow: {
-    background: "bg-node-subworkflow/60",
+    background: "bg-node-subworkflow/95 dark:bg-node-subworkflow/60",
     border: "border-node-subworkflow",
     selected: "border-node-subworkflow-selected",
     selectedBackground: "bg-node-subworkflow-selected",
