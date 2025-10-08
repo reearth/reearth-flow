@@ -28,6 +28,7 @@ type Container struct {
 	Transaction   usecasex.Transaction
 	Trigger       Trigger
 	User          accountrepo.User // TODO: Remove this once the replace user management is complete.
+	WorkerConfig  WorkerConfig
 	Workflow      Workflow
 	Workspace     accountrepo.Workspace // TODO: Remove this once the replace user management is complete.
 }

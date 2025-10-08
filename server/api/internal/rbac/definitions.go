@@ -21,6 +21,7 @@ const (
 	ResourceProjectAccess = "projectAccess"
 	ResourceTrigger       = "trigger"
 	ResourceUser          = "user"
+	ResourceWorkerConfig  = "workerconfig"
 	ResourceWorkspace     = "workspace"
 )
 
@@ -136,6 +137,16 @@ func DefineResources(builder *generator.ResourceBuilder) []generator.ResourceDef
 			}),
 			generator.NewActionDefinition(ActionEdit, []string{
 				roleSelf,
+				roleMaintainer,
+			}),
+		}).
+		AddResource(ResourceWorkerConfig, []generator.ActionDefinition{
+			generator.NewActionDefinition(ActionRead, []string{
+				roleOwner,
+				roleMaintainer,
+			}),
+			generator.NewActionDefinition(ActionEdit, []string{
+				roleOwner,
 				roleMaintainer,
 			}),
 		}).

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
+	"github.com/reearth/reearth-flow/api/pkg/workerconfig"
 )
 
 type queryResolver struct{ *Resolver }
@@ -18,6 +19,29 @@ func (r *queryResolver) Me(ctx context.Context) (*gqlmodel.Me, error) {
 		return nil, nil
 	}
 	return gqlmodel.ToMe(u), nil
+}
+
+func (r *queryResolver) WorkerConfig(ctx context.Context, workspaceID gqlmodel.ID) (*gqlmodel.WorkerConfig, error) {
+	wsID, err := gqlmodel.ToID[workerconfig.WorkspaceID](workspaceID)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := usecases(ctx).WorkerConfig.FindByWorkspace(ctx, workerconfig.WorkspaceID(wsID))
+	if err != nil {
+		return nil, err
+	}
+
+	return gqlmodel.ToWorkerConfig(res), nil
+}
+
+func (r *queryResolver) WorkerConfigDefaults(ctx context.Context) (*gqlmodel.WorkerConfig, error) {
+	res, err := usecases(ctx).WorkerConfig.GetDefaults(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return gqlmodel.ToWorkerConfig(res), nil
 }
 
 func (r *queryResolver) Deployments(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error) {

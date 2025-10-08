@@ -1,0 +1,67 @@
+# Worker Configuration
+# Allows workspace administrators to configure worker compute resources
+
+type WorkerConfig implements Node {
+  id: ID!
+  workspaceId: ID!
+  bootDiskSizeGB: Int
+  bootDiskType: String
+  channelBufferSize: Int
+  computeCpuMilli: Int
+  computeMemoryMib: Int
+  featureFlushThreshold: Int
+  imageURL: String
+  machineType: String
+  maxConcurrency: Int
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+# Input for updating worker configuration
+input UpdateWorkerConfigInput {
+  workspaceId: ID!
+  bootDiskSizeGB: Int
+  bootDiskType: String
+  channelBufferSize: Int
+  computeCpuMilli: Int
+  computeMemoryMib: Int
+  featureFlushThreshold: Int
+  imageURL: String
+  machineType: String
+  maxConcurrency: Int
+}
+
+# Input for resetting specific fields to defaults
+input ResetWorkerConfigInput {
+  workspaceId: ID!
+  fields: [String!]!
+}
+
+# Payload
+
+type UpdateWorkerConfigPayload {
+  workerConfig: WorkerConfig!
+}
+
+type ResetWorkerConfigPayload {
+  workerConfig: WorkerConfig!
+}
+
+# Query and Mutation
+
+extend type Query {
+  # Get worker configuration for a workspace (returns null if using defaults)
+  workerConfig(workspaceId: ID!): WorkerConfig
+  
+  # Get global default configuration
+  workerConfigDefaults: WorkerConfig!
+}
+
+extend type Mutation {
+  # Update worker configuration for a workspace (requires OWNER or MAINTAINER role)
+  updateWorkerConfig(input: UpdateWorkerConfigInput!): UpdateWorkerConfigPayload!
+  
+  # Reset specific fields or all fields to global defaults
+  resetWorkerConfig(input: ResetWorkerConfigInput!): ResetWorkerConfigPayload!
+}
+
