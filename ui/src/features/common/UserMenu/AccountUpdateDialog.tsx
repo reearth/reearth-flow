@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@flow/components";
 // import { ThemeToggle } from "@flow/features/ThemeToggle";
+import { ThemeToggle } from "@flow/features/ThemeToggle";
 import { useUser } from "@flow/lib/gql";
 import { AvailableLanguage, localesWithLabel, useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
@@ -170,6 +171,10 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
                 ))}
               </SelectContent>
             </Select>
+          </DialogContentSection>
+          <DialogContentSection className="flex-1">
+            <Label htmlFor="theme-selector">{t("Select Theme")}</Label>
+            <ThemeToggle />
           </DialogContentSection>
         </DialogContentWrapper>
         <div
