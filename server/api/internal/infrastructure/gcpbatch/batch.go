@@ -164,6 +164,7 @@ func (b *BatchRepo) SubmitJob(
 					"FLOW_WORKER_USER_FACING_LOG_TOPIC":         b.config.PubSubUserFacingLogTopic,
 					"RUST_LOG":                                  "info",
 					"RUST_BACKTRACE":                            "1",
+					"FLOW_RUNTIME_ZSTD_ENABLE":                  "true",
 				}
 
 				// Only set runtime config if values are provided
