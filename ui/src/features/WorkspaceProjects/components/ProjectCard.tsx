@@ -83,7 +83,7 @@ const ProjectCard: React.FC<Props> = ({
 
   return (
     <Card
-      className="group relative cursor-pointer border-transparent bg-secondary hover:border-border"
+      className="group relative cursor-pointer border-transparent bg-card hover:border-border"
       key={id}
       onClick={() => onProjectSelect(project)}>
       <CardContent className="relative flex h-[120px] items-center justify-center p-0">
