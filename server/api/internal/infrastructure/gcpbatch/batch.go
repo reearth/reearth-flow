@@ -39,6 +39,7 @@ type BatchConfig struct {
 	SAEmail                         string
 	TaskCount                       int
 	ThreadPoolSize                  string
+	ZstdEnable                      string
 }
 
 type BatchClient interface {
@@ -164,7 +165,6 @@ func (b *BatchRepo) SubmitJob(
 					"FLOW_WORKER_USER_FACING_LOG_TOPIC":         b.config.PubSubUserFacingLogTopic,
 					"RUST_LOG":                                  "info",
 					"RUST_BACKTRACE":                            "1",
-					"FLOW_RUNTIME_ZSTD_ENABLE":                  "true",
 				}
 
 				// Only set runtime config if values are provided
@@ -179,6 +179,9 @@ func (b *BatchRepo) SubmitJob(
 				}
 				if b.config.FeatureFlushThreshold != "" {
 					vars["FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD"] = b.config.FeatureFlushThreshold
+				}
+				if b.config.ZstdEnable != "" {
+					vars["FLOW_RUNTIME_ZSTD_ENABLE"] = b.config.ZstdEnable
 				}
 
 				return vars
