@@ -208,7 +208,7 @@ $ cargo run --package reearth-flow-cli -- run --workflow ${workflow_path}
 #### Enable zstd compression for State I/O
 
 ```console
-$ export FLOW_RUNTIME_ENABLE_ZSTD=true
+$ export FLOW_RUNTIME_ZSTD_ENABLE=true
 $ cargo run --package reearth-flow-cli -- run --workflow ${workflow_path}
 ```
 
