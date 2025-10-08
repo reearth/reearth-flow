@@ -5,8 +5,8 @@ entryGraphId: 34bf873b-3364-46b0-8153-efeb9568bb3c
 with:
   cityGmlPath:
   cityCode:
-  codelistsPath:
-  schemasPath:
+  codelists:
+  schemas:
   targetPackages:
     - tran
     - rwy
@@ -28,7 +28,10 @@ graphs:
             [
               #{
                 cityGmlPath: env.get("cityGmlPath"),
-                cityCode: env.get("cityCode"),
+                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                codelists: env.get("codelists"),
+                schemas: env.get("schemas"),
               },
             ]
 
@@ -40,11 +43,20 @@ graphs:
       - id: ded2e272-e05c-4918-86b3-aa9f763da6e6
         name: FeatureReaderByCityGml
         type: action
-        action: FeatureReader
+        action: FeatureCityGmlReader
         with:
           format: citygml
           dataset: |
             env.get("__value")["path"]
+
+      - id: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
+        name: FeatureSorter
+        type: action
+        action: FeatureSorter
+        with:
+          attributes:
+            - path
+          order: ascending
 
       - id: dc498449-5478-4bff-abaa-59f2d160925f
         name: PLATEAU4.MaxLodExtractor
@@ -82,7 +94,7 @@ graphs:
           mappers:
           - attribute: code
             expr: |
-              env.get("__value").file[0..6]
+              env.get("__value").file.split("_")[0]
           - attribute: type
             expr: |
               env.get("__value")["type"].split(":")[0]
@@ -160,6 +172,11 @@ graphs:
         toPort: default
       - id: cf845867-6ffc-4b83-9fd5-e376a22470e2
         from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+        to: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
+        fromPort: default
+        toPort: default
+      - id: f7c94aaf-e43c-4779-893c-e5b23c0cf643
+        from: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
         to: dc498449-5478-4bff-abaa-59f2d160925f
         fromPort: default
         toPort: default
@@ -178,8 +195,8 @@ graphs:
         to: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
         fromPort: default
         toPort: default
-      - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
-        from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+      - id: 60ee038e-db4c-4c70-8c0a-a9cbfba726d0
+        from: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
         to: c32a279d-97be-4584-b282-4d65627b1132
         fromPort: default
         toPort: default
