@@ -94,7 +94,7 @@ type (
 		Worker_PubSubUserFacingLogTopic        string   `envconfig:"WORKER_PUBSUB_USER_FACING_LOG_TOPIC" default:"flow-user-facing-log" pp:",omitempty"`
 		Worker_TaskCount                       string   `envconfig:"WORKER_TASK_COUNT" default:"1" pp:",omitempty"`
 		Worker_ThreadPoolSize                  string   `envconfig:"WORKER_THREAD_POOL_SIZE" default:"30" pp:",omitempty"`
-		Worker_ZstdEnable                      string   `envconfig:"WORKER_ZSTD_ENABLE" default:"false" pp:",omitempty"`
+		Worker_ZstdEnable                      bool     `envconfig:"WORKER_ZSTD_ENABLE" default:"false" pp:",omitempty"`
 
 		// websocket
 		WebsocketThriftServerURL string `envconfig:"REEARTH_FLOW_WEBSOCKET_THRIFT_SERVER_URL" default:"http://localhost:8000" pp:",omitempty"`

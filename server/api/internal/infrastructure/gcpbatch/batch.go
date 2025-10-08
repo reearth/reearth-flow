@@ -39,7 +39,7 @@ type BatchConfig struct {
 	SAEmail                         string
 	TaskCount                       int
 	ThreadPoolSize                  string
-	ZstdEnable                      string
+	ZstdEnable                      bool
 }
 
 type BatchClient interface {
@@ -180,8 +180,8 @@ func (b *BatchRepo) SubmitJob(
 				if b.config.FeatureFlushThreshold != "" {
 					vars["FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD"] = b.config.FeatureFlushThreshold
 				}
-				if b.config.ZstdEnable != "" {
-					vars["FLOW_RUNTIME_ZSTD_ENABLE"] = b.config.ZstdEnable
+				if b.config.ZstdEnable {
+					vars["FLOW_RUNTIME_ZSTD_ENABLE"] = "true"
 				}
 
 				return vars
