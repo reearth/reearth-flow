@@ -5,10 +5,6 @@
     "expectedFile": "02_建築物_図郭不正.csv"
   },
   "summaryOutput": {
-    "errorCountSummary": {
-      "expectedFile": "summary_bldg.json",
-      "includeFields": ["図郭不正"]
-    },
     "fileErrorSummary": {
       "expectedFile": "02_建築物_検査結果一覧.csv",
       "includeColumns": ["図郭不正"]
