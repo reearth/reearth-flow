@@ -8,7 +8,7 @@ import {
   ScissorsIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import { EdgeChange, XYPosition } from "@xyflow/react";
+import { Edge, EdgeChange, XYPosition } from "@xyflow/react";
 import { useCallback, useMemo } from "react";
 
 import {
@@ -24,12 +24,14 @@ import { Node, NodeChange } from "@flow/types";
 type Props = {
   contextMenu: ContextMenuMeta;
   data?: Node | Node[];
+  edges: Edge[];
   allNodes: Node[];
   selectedEdgeIds?: string[];
   onNodesChange?: (changes: NodeChange[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onBeforeDelete?: (args: { nodes: Node[] }) => Promise<boolean>;
   onWorkflowOpen?: (workflowId: string) => void;
+  onWorkflowAddFromSelection?: (nodes: Node[], edges: Edge[]) => Promise<void>;
   onNodeSettings?: (e: React.MouseEvent | undefined, nodeId: string) => void;
   onCopy?: (node?: Node) => void;
   onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
@@ -41,8 +43,10 @@ type Props = {
 const CanvasContextMenu: React.FC<Props> = ({
   contextMenu,
   data,
+  edges,
   allNodes,
   onWorkflowOpen,
+  onWorkflowAddFromSelection,
   onNodeSettings,
   selectedEdgeIds,
   onNodesChange,
@@ -86,6 +90,10 @@ const CanvasContextMenu: React.FC<Props> = ({
     },
     [onWorkflowOpen],
   );
+
+  const handleWorkflowAddFromSelection = useCallback(() => {
+    onWorkflowAddFromSelection?.(allNodes, edges);
+  }, [onWorkflowAddFromSelection, allNodes, edges]);
 
   const handleNodeDelete = useCallback(
     async (node?: Node, nodes?: Node[]) => {
@@ -158,6 +166,21 @@ const CanvasContextMenu: React.FC<Props> = ({
                 label: t("Open Subworkflow"),
                 icon: <GraphIcon weight="light" />,
                 onCallback: wrapWithClose(() => handleSubworkflowOpen(node)),
+              },
+            },
+          ]
+        : []),
+      ...(nodes
+        ? [
+            {
+              type: "action" as const,
+              props: {
+                label: t("Group into Subworkflow"),
+                icon: <GraphIcon weight="light" />,
+                disabled: !onNodesChange || !onEdgesChange,
+                onCallback: wrapWithClose(() =>
+                  handleWorkflowAddFromSelection(),
+                ),
               },
             },
           ]
@@ -246,6 +269,7 @@ const CanvasContextMenu: React.FC<Props> = ({
     handleNodeDelete,
     handleNodeSettingsOpen,
     handleSubworkflowOpen,
+    handleWorkflowAddFromSelection,
   ]);
 
   return <ContextMenu items={menuItems} contextMenuMeta={contextMenu} />;

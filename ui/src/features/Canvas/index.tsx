@@ -39,6 +39,7 @@ type Props = {
   currentWorkflowId?: string;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onWorkflowOpen?: (workflowId: string) => void;
+  onWorkflowAddFromSelection?: (nodes: Node[], edges: Edge[]) => Promise<void>;
   onNodesAdd?: (newNode: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onBeforeDelete?: (args: { nodes: Node[] }) => Promise<boolean>;
@@ -67,6 +68,7 @@ const Canvas: React.FC<Props> = ({
   currentWorkflowId,
   onWorkflowAdd,
   onWorkflowOpen,
+  onWorkflowAddFromSelection,
   onNodesAdd,
   onNodesChange,
   onBeforeDelete,
@@ -162,6 +164,7 @@ const Canvas: React.FC<Props> = ({
       {contextMenu && (
         <CanvasContextMenu
           data={contextMenu.data}
+          edges={edges}
           allNodes={nodes}
           selectedEdgeIds={selectedEdgeIds}
           contextMenu={contextMenu}
@@ -169,6 +172,7 @@ const Canvas: React.FC<Props> = ({
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onWorkflowOpen={onWorkflowOpen}
+          onWorkflowAddFromSelection={onWorkflowAddFromSelection}
           onNodeSettings={onNodeSettings}
           onCopy={onCopy}
           onCut={onCut}
