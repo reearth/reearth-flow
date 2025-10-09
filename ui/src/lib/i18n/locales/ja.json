@@ -595,7 +595,6 @@
   "Light": "ライト",
   "Dark": "ダーク",
   "System": "システム",
-  "Toggle theme": "テーマを切り替え",
   "Create a deployment from file": "ファイルからデプロイメントを作成",
   "Workflow file: ": "ワークフローファイル: ",
   "There is a problem with file you tried to upload. Please verify its contents and try again.": "アップロードしようとしたファイルに問題があります。内容を確認してもう一度お試しください。",

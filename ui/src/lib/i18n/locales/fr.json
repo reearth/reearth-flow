@@ -595,7 +595,6 @@
   "Light": "Clair",
   "Dark": "Sombre",
   "System": "Système",
-  "Toggle theme": "Basculer le thème",
   "Create a deployment from file": "Créer un déploiement à partir d'un fichier",
   "Workflow file: ": "Fichier de flux de travail : ",
   "There is a problem with file you tried to upload. Please verify its contents and try again.": "Il y a un problème avec le fichier que vous avez essayé de télécharger. Veuillez vérifier son contenu et réessayer.",
