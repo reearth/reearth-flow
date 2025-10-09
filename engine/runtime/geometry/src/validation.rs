@@ -10,7 +10,19 @@ use crate::{
         GeoNum, Relate,
     },
     types::{
-        coordinate::Coordinate, csg::{CSGChild, CSG}, face::Face, geometry::Geometry, line::Line, line_string::LineString, multi_line_string::MultiLineString, multi_point::MultiPoint, multi_polygon::MultiPolygon, point::Point, polygon::Polygon, rect::Rect, solid::Solid
+        coordinate::Coordinate,
+        csg::{CSGChild, CSG},
+        face::Face,
+        geometry::Geometry,
+        line::Line,
+        line_string::LineString,
+        multi_line_string::MultiLineString,
+        multi_point::MultiPoint,
+        multi_polygon::MultiPolygon,
+        point::Point,
+        polygon::Polygon,
+        rect::Rect,
+        solid::Solid,
     },
     utils,
 };
@@ -299,7 +311,6 @@ impl<
             CSGChild::Solid(solid) => solid.validate(valid_type.clone()),
             CSGChild::CSG(csg) => csg.validate(valid_type.clone()),
         }
-
         .or_else(|| match self.right() {
             CSGChild::Solid(solid) => solid.validate(valid_type.clone()),
             CSGChild::CSG(csg) => csg.validate(valid_type),

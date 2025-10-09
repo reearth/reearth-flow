@@ -184,9 +184,7 @@ impl<T: CoordNum, Z: CoordNum> Geometry<T, Z> {
             Geometry::Triangle(triangle) => {
                 vec![triangle.0, triangle.1, triangle.2]
             }
-            Geometry::Solid(solid) => {
-                solid.get_all_vertex_coordinates()
-            }
+            Geometry::Solid(solid) => solid.get_all_vertex_coordinates(),
             Geometry::GeometryCollection(gc) => {
                 let mut coords = Vec::new();
                 for geom in gc {

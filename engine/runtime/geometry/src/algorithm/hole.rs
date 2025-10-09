@@ -1,5 +1,8 @@
 use crate::types::{
-    coordinate::Coordinate, coordnum::CoordNum, csg::CSG, face::Face, geometry::Geometry, line::Line, line_string::LineString, multi_line_string::MultiLineString, multi_point::MultiPoint, multi_polygon::MultiPolygon, point::Point, polygon::Polygon, rect::Rect, solid::Solid
+    coordinate::Coordinate, coordnum::CoordNum, csg::CSG, face::Face, geometry::Geometry,
+    line::Line, line_string::LineString, multi_line_string::MultiLineString,
+    multi_point::MultiPoint, multi_polygon::MultiPolygon, point::Point, polygon::Polygon,
+    rect::Rect, solid::Solid,
 };
 
 pub trait HoleCounter<T: CoordNum, Z: CoordNum> {

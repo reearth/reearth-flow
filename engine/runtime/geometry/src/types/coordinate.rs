@@ -356,12 +356,13 @@ impl<T: CoordNum + Float + From<Z>, Z: CoordNum> Coordinate<T, Z> {
 }
 
 impl<T: CoordNum + Float + From<Z>, Z: CoordNum> Coordinate<T, Z> {
+    /// Returns the smaller angle (in radians) between this vector and another.
     pub fn angle(&self, other: &Self) -> T {
-        let dot = self.dot(other);
         let norms = self.norm() * other.norm();
         if norms.is_zero() {
             T::zero()
         } else {
+            let dot = self.dot(other);
             let cos_theta = (dot / norms).clamp(-T::one(), T::one());
             let out = cos_theta.to_f64().unwrap().acos();
             <T as NumCast>::from(out).unwrap()

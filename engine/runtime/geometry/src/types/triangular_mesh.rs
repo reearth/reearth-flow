@@ -1,3 +1,4 @@
+use crate::algorithm::contains::Contains;
 use crate::algorithm::triangle_intersection::{triangles_intersect, triangles_intersection};
 use crate::types::coordinate::Coordinate;
 use crate::types::line_string::LineString3D;
@@ -7,7 +8,7 @@ use crate::types::{coordinate::Coordinate3D, coordnum::CoordNum, line::Line3D};
 use num_traits::Float;
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::vec;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Default)]
 pub struct TriangularMesh<T: CoordNum, Z: CoordNum = T> {
@@ -42,10 +43,16 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
 
     /// Create a triangular mesh from a list of faces by triangulating each face.
     pub fn from_faces(faces: &[LineString3D<T>]) -> Self {
+        let epsilon = T::from(1e-10).unwrap();
         let mut out = Self::default();
-        let mut vertex_map: HashMap<String, usize> = HashMap::new();
         let mut edges: Vec<[usize; 2]> = Vec::new();
-
+        let mut vertices = Vec::new();
+        for v in faces.iter().flat_map(|f| f.0.iter()) {
+            if !vertices.contains(v) {
+                vertices.push(*v);
+            }
+        }
+                
         for face in faces {
             // Triangulate the face
             let face_triangles = if let Ok(triangles) = Self::triangulate_face(face.clone()) {
@@ -57,18 +64,13 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
 
             for triangle in face_triangles {
                 let mut tri_indices = [0usize; 3];
-
-                for (i, vertex) in triangle.iter().enumerate() {
-                    // Create a key for the vertex
-                    let key = format!("{:.10?},{:.10?},{:.10?}", vertex.x, vertex.y, vertex.z);
-
+                for (i, &vertex) in triangle.iter().enumerate() {
                     // Get or insert vertex index
-                    let vertex_index = match vertex_map.get(&key) {
-                        Some(&idx) => idx,
+                    let vertex_index = match vertices.iter().position(|&v| (v-vertex).norm() < epsilon) {
+                        Some(idx) => idx,
                         None => {
                             let idx = out.vertices.len();
-                            out.vertices.push(*vertex);
-                            vertex_map.insert(key, idx);
+                            out.vertices.push(vertex);
                             idx
                         }
                     };
@@ -105,6 +107,8 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
 
         // Sort triangles for consistent representation
         out.triangles.sort_unstable();
+        out.triangles.dedup();
+        out.vertices = vertices;
         out
     }
 
@@ -124,9 +128,7 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
         let pi = T::from(std::f64::consts::PI).unwrap();
         let epsilon = T::from(1e-5).unwrap();
 
-        // remove the last point
-        face.pop();
-
+        
         // Compute the face normal. We assume the face is planar as this is not the validation process for the solid face.
         let normal = {
             let p0 = face[0];
@@ -136,10 +138,14 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
             let v2 = p2 - p0;
             v1.cross(&v2).normalize()
         };
-
+        
+        // remove the last point
+        face.pop();
+        
         // Compute the angle at each vertex
         // We assume that the first point is the same as the last point
         let mut angles = Vec::new();
+        let mut hair_count = 0;
         for i in 0..face.len() {
             let p0 = face[(i + face.len() - 1) % face.len()];
             let p1 = face[i];
@@ -148,12 +154,21 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
             let v2 = p2 - p1;
             let mut angle = v1.angle(&v2);
             // Take the sign of the orientation into account
-            if !normal.dot(&v1.cross(&v2)).is_sign_positive() {
-                angle = tau - angle;
-            }
+            angle = if v1.cross(&v2).norm() < epsilon {
+                if v1.dot(&v2) < T::zero() {
+                    T::zero()
+                } else {
+                    hair_count += 1;
+                    -pi
+                }
+            } else if !normal.dot(&v1.cross(&v2)).is_sign_positive() {
+                // General positive case
+                pi - angle
+            } else {
+                // General negative case
+                angle - pi
+            };
 
-            // Adjust angle to be in [-PI, PI] i.e. angle=0 when vectors are collinear and pointing in the opposite direction
-            angle = angle - pi;
             angles.push(angle);
         }
 
@@ -161,9 +176,9 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
         // If the sum is -TAU, flip the angles.
         // otherwise something about the assumption is wrong
         let angle_sum: T = angles.iter().copied().fold(T::zero(), |acc, x| acc + x);
-        if (angle_sum.abs() + tau).abs() < epsilon {
+        if (angle_sum + tau + T::from(hair_count).unwrap() * tau).abs() < epsilon {
             // if the sum is -TAU, flip the angles
-            angles = angles.iter().map(|&a| -a).collect();
+            angles = angles.iter().map(|&a| if a==-pi { a } else { -a }).collect();
         } else if (angle_sum.abs() - tau).abs() >= epsilon {
             // something is wrong with the assumption
             return Err(());
@@ -177,40 +192,54 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
         // 5. Repeat until the face boundary is empty.
         let mut triangles = Vec::new();
         while !face.is_empty() {
-            // Find the vertex with the positive angle
-            let positive_angle_idx = angles
+            // Find the vertex with the positive outer angle
+            // A polygon in an Euclidean space must have at least one convex vertex
+            let removed_vtx_idx = angles
                 .iter()
                 .enumerate()
-                .find_map(|(idx, &angle)| if angle > epsilon { Some(idx) } else { None })
-                .unwrap_or(0);
+                .filter(|&(_i, &a)| a > epsilon)
+                .map(|(i, _a)| i)
+                .find(|&i| {
+                    let t = Triangle::new(
+                        face[(i + face.len() - 1) % face.len()],
+                        face[i],
+                        face[(i + 1) % face.len()],
+                    );
+                    (i+2..).take(face.len()-3).all(|j: usize| {
+                        let j = face[j % face.len()];
+                        (t.0-j).norm() < epsilon 
+                            || (t.1-j).norm() < epsilon 
+                            || (t.2-j).norm() < epsilon 
+                            || !t.contains(&j) && !t.boundary_contains(&j)
+                    })
+                })
+                .unwrap();
 
             // Create a triangle with the two adjacent vertices
-            let prev_idx = (positive_angle_idx + face.len() - 1) % face.len();
-            let next_idx = (positive_angle_idx + 1) % face.len();
-            triangles.push([face[prev_idx], face[positive_angle_idx], face[next_idx]]);
+            let prev_idx = (removed_vtx_idx + face.len() - 1) % face.len();
+            let next_idx = (removed_vtx_idx + 1) % face.len();
+            triangles.push([face[prev_idx], face[removed_vtx_idx], face[next_idx]]);
+
+            // compute the angles of the triangle vertices at the previous and next vertices.
+            // Since `removed_vtx_idx` is a convex vertex, the angles at the previous and next vertices must be positive.
+            let vp = face[prev_idx] - face[removed_vtx_idx];
+            let vn = face[next_idx] - face[removed_vtx_idx];
+            let vpn = face[next_idx] - face[prev_idx];
+            let prev_angle = vp.angle(&vpn);
+            let next_angle = vn.angle(&vpn);
 
             // Remove the vertex from the face
-            face.remove(positive_angle_idx);
-            angles.remove(positive_angle_idx);
+            face.remove(removed_vtx_idx);
+            angles.remove(removed_vtx_idx);
 
             // Update the angles of the adjacent vertices
             if face.len() < 3 {
                 break;
             }
-            let new_prev_idx = (positive_angle_idx + face.len() - 1) % face.len();
-            let new_next_idx = positive_angle_idx % face.len();
-
-            let p0 = face[(new_prev_idx + face.len() - 1) % face.len()];
-            let p1 = face[new_prev_idx];
-            let p2 = face[new_next_idx];
-            let v1 = p0 - p1;
-            let v2 = p2 - p1;
-            let mut angle = v1.angle(&v2);
-            if !normal.dot(&v1.cross(&v2)).is_sign_positive() {
-                angle = tau - angle;
-            }
-            angle = angle - pi;
-            angles[new_prev_idx] = angle;
+            let new_prev_idx = (removed_vtx_idx + face.len() - 1) % face.len();
+            let new_next_idx = removed_vtx_idx % face.len();
+            angles[new_prev_idx] = angles[new_prev_idx] + prev_angle;
+            angles[new_next_idx] = angles[new_next_idx] + next_angle;
         }
 
         Ok(triangles)
@@ -376,9 +405,12 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
         // (face index, orientation difference)
         let face_adjacency: Vec<Vec<(usize, bool)>> = {
             let mut adjacency = vec![Vec::new(); self.triangles.len()];
-            let mut boundary_2 = self.triangles.iter()
+            let mut boundary_2 = self
+                .triangles
+                .iter()
                 .enumerate()
-                .flat_map(|(i, t)| [[t[0], t[1], i], [t[1], t[2], i], [t[0], t[2], i]]).collect::<Vec<_>>();
+                .flat_map(|(i, t)| [[t[0], t[1], i], [t[1], t[2], i], [t[0], t[2], i]])
+                .collect::<Vec<_>>();
             boundary_2.sort_unstable();
             for edge in boundary_2.windows(2) {
                 let e1 = edge[0];
@@ -429,34 +461,40 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
         solid_angle.abs() > T::from(std::f64::consts::TAU).unwrap()
     }
 
-
     /// returns true if the point is on the mesh surface or not.
     pub fn contains(&self, point: &Coordinate3D<T>) -> bool {
         let epsilon = T::from(1e-1).unwrap();
         let triangles = self.triangles.clone();
         // quick check with bounding box
-        let triangles = triangles.into_iter().filter_map(|triangle| {
-            let v0 = self.vertices[triangle[0]];
-            let v1 = self.vertices[triangle[1]];
-            let v2 = self.vertices[triangle[2]];
-            let bbox_min = Coordinate3D {
-                x: v0.x.min(v1.x).min(v2.x) - epsilon,
-                y: v0.y.min(v1.y).min(v2.y) - epsilon,
-                z: v0.z.min(v1.z).min(v2.z) - epsilon,
-            };
-            let bbox_max = Coordinate3D {
-                x: v0.x.max(v1.x).max(v2.x) + epsilon,
-                y: v0.y.max(v1.y).max(v2.y) + epsilon,
-                z: v0.z.max(v1.z).max(v2.z) + epsilon,
-            };
-            if point.x >= bbox_min.x && point.x <= bbox_max.x &&
-               point.y >= bbox_min.y && point.y <= bbox_max.y &&
-               point.z >= bbox_min.z && point.z <= bbox_max.z {
-                Some([v0, v1, v2])
-            } else {
-                None
-            }
-        }).collect::<Vec<_>>();
+        let triangles = triangles
+            .into_iter()
+            .filter_map(|triangle| {
+                let v0 = self.vertices[triangle[0]];
+                let v1 = self.vertices[triangle[1]];
+                let v2 = self.vertices[triangle[2]];
+                let bbox_min = Coordinate3D {
+                    x: v0.x.min(v1.x).min(v2.x) - epsilon,
+                    y: v0.y.min(v1.y).min(v2.y) - epsilon,
+                    z: v0.z.min(v1.z).min(v2.z) - epsilon,
+                };
+                let bbox_max = Coordinate3D {
+                    x: v0.x.max(v1.x).max(v2.x) + epsilon,
+                    y: v0.y.max(v1.y).max(v2.y) + epsilon,
+                    z: v0.z.max(v1.z).max(v2.z) + epsilon,
+                };
+                if point.x >= bbox_min.x
+                    && point.x <= bbox_max.x
+                    && point.y >= bbox_min.y
+                    && point.y <= bbox_max.y
+                    && point.z >= bbox_min.z
+                    && point.z <= bbox_max.z
+                {
+                    Some([v0, v1, v2])
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
 
         for triangle in triangles {
             let t = Triangle::new(triangle[0], triangle[1], triangle[2]);
@@ -467,7 +505,6 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
 
         false
     }
-
 
     fn solid_angle_of_triangle(
         a: Coordinate3D<T>,
@@ -494,9 +531,12 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
     pub fn into_2_manifolds_with_boundaries(&self) -> Vec<Vec<[usize; 3]>> {
         let face_adjacency: Vec<Vec<usize>> = {
             let mut adjacency = vec![Vec::new(); self.triangles.len()];
-            let mut boundary_2 = self.triangles.iter()
+            let mut boundary_2 = self
+                .triangles
+                .iter()
                 .enumerate()
-                .flat_map(|(i, t)| [[t[0], t[1], i], [t[1], t[2], i], [t[0], t[2], i]]).collect::<Vec<_>>();
+                .flat_map(|(i, t)| [[t[0], t[1], i], [t[1], t[2], i], [t[0], t[2], i]])
+                .collect::<Vec<_>>();
             boundary_2.sort_unstable();
             let boundary_2 = boundary_2.into_iter();
             // group faces by edges
@@ -543,12 +583,15 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
         components
     }
 
-
     /// Retains only the faces specified in `faces` and removes all other faces from the mesh.
     /// Also removes any vertices and edges that are no longer used by any face.
     pub fn retain_faces(&mut self, faces: &[[usize; 3]]) {
         assert!(self.triangles.is_sorted());
-        assert!(faces.iter().all(|f| self.triangles.binary_search(f).is_ok()));
+        assert!(faces
+            .iter()
+            .all(|f| self.triangles.binary_search(f).is_ok()),
+            "faces: {:0.2?} are not all in the mesh: {:0.2?}", faces, self.triangles
+        );
 
         let used_vertices: Vec<bool> = {
             let mut used = vec![false; self.vertices.len()];
@@ -579,7 +622,13 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
             .collect();
         self.triangles = faces
             .iter()
-            .map(|f| [vertex_mapping[f[0]], vertex_mapping[f[1]], vertex_mapping[f[2]]])
+            .map(|f| {
+                [
+                    vertex_mapping[f[0]],
+                    vertex_mapping[f[1]],
+                    vertex_mapping[f[2]],
+                ]
+            })
             .collect();
         self.edges_with_multiplicity = {
             let mut edges: Vec<[usize; 2]> = Vec::new();
@@ -615,7 +664,10 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
 
 impl<T: Float + CoordNum> From<Vec<Polygon3D<T>>> for TriangularMesh<T> {
     fn from(faces: Vec<Polygon3D<T>>) -> Self {
-        let faces = faces.into_iter().map(|p| p.into_merged_contour()).collect::<Vec<_>>();
+        let faces = faces
+            .into_iter()
+            .map(|p| p.into_merged_contour())
+            .collect::<Vec<_>>();
         Self::from_faces(&faces)
     }
 }
@@ -669,29 +721,41 @@ impl TriangularMesh<f64> {
     }
 
     pub(crate) fn transform_inplace(&mut self, jgd2wgs: &Jgd2011ToWgs84) {
-        self.vertices.iter_mut().for_each(|c| c.transform_inplace(jgd2wgs));
+        self.vertices
+            .iter_mut()
+            .for_each(|c| c.transform_inplace(jgd2wgs));
     }
 
     pub(crate) fn transform_offset(&mut self, x: f64, y: f64, z: f64) {
-        self.vertices.iter_mut().for_each(|c| c.transform_offset(x, y, z));
+        self.vertices
+            .iter_mut()
+            .for_each(|c| c.transform_offset(x, y, z));
     }
-
 
     /// takes in another triangular mesh and returns a new triangular mesh representing the union of the two meshes.
     /// When two meshes intersect, there will be new vertices and edges created at the intersection.
     /// When the two meshes intersect at a face (i.e. they have the identical face), then the face will be merged.
-    pub fn union(self, other: Self) -> Result<Self, ()> {
-        let Self{vertices: vertices1, triangles: triangles1, edges_with_multiplicity: edges1} = self;
-        let Self{vertices: vertices2, triangles: mut triangles2, edges_with_multiplicity: edges2} = other;
+    pub fn union(self, other: Self) -> Result<Self, String> {
+        let Self {
+            vertices: vertices1,
+            triangles: triangles1,
+            edges_with_multiplicity: edges1,
+        } = self;
+        let Self {
+            vertices: vertices2,
+            triangles: mut triangles2,
+            edges_with_multiplicity: edges2,
+        } = other;
 
         if !triangles1.is_sorted() || !triangles2.is_sorted() {
-            return Err(());
+            return Err("Triangles are not sorted")?;
         }
-        if !edges1.iter().all(|(e, _)| e.is_sorted()) || !edges2.iter().all(|(e, _)| e.is_sorted()) {
-            return Err(());
+        if !edges1.iter().all(|(e, _)| e.is_sorted()) || !edges2.iter().all(|(e, _)| e.is_sorted())
+        {
+            return Err("Edges are not sorted")?;
         }
         if !edges1.is_sorted() || !edges2.is_sorted() {
-            return Err(());
+            return Err("Edges are not sorted")?;
         }
 
         triangles2.iter_mut().for_each(|tri| {
@@ -701,47 +765,62 @@ impl TriangularMesh<f64> {
         });
 
         let num_orig_vertices = vertices1.len() + vertices2.len();
+        let num_orig_triangles = triangles1.len() + triangles2.len();
         let mut edges = {
-            let mut edges = edges1.into_iter().map(|(e, _)| e)
-                .chain(edges2.into_iter().map(|(e, _)| [e[0] + vertices1.len(), e[1] + vertices1.len()]))
+            let mut edges = edges1
+                .into_iter()
+                .map(|(e, _)| e)
+                .chain(
+                    edges2
+                    .into_iter()
+                    .map(|(e, _)| [e[0] + vertices1.len(), e[1] + vertices1.len()]),
+                )
                 .collect::<Vec<_>>();
             edges.sort_unstable();
             edges.dedup();
             edges
         };
-        let mut edges_cuts = vec![Vec::new(); edges.len()];
         let num_orig_edges = edges.len();
-        let mut vertices = vertices1.into_iter().chain(vertices2.into_iter()).collect::<Vec<_>>();
+        let mut edges_cuts = vec![Vec::new(); num_orig_edges];
+        let mut vertices = vertices1
+            .into_iter()
+            .chain(vertices2.into_iter())
+            .collect::<Vec<_>>();
+        let mut triangles = triangles1
+            .iter().copied()
+            .chain(triangles2.iter().copied())
+            .collect::<Vec<_>>();
+        triangles.sort_unstable();
 
-        println!("edges: {:?}", edges);
-
-        let mut intersections = vec![Vec::new(); triangles1.len() + triangles2.len()];
+        let mut intersections = vec![Vec::new(); num_orig_triangles];
         for (ti, t) in triangles1.iter().copied().enumerate() {
-            let tt = [
-                vertices[t[0]],
-                vertices[t[1]],
-                vertices[t[2]],
-            ];
+            let tt = [vertices[t[0]], vertices[t[1]], vertices[t[2]]];
             for (si, s) in triangles2.iter().copied().enumerate() {
-                let ss = [
-                    vertices[s[0]],
-                    vertices[s[1]],
-                    vertices[s[2]],
-                ];
-                let Some(intersection) = triangles_intersection(tt, ss).unwrap_or_else(|_| panic!("Error in triangle-triangle intersection"))  else {
+                let ss = [vertices[s[0]], vertices[s[1]], vertices[s[2]]];
+                let Some(intersection) = triangles_intersection(tt, ss)
+                    .map_err(|_| "Error in triangle-triangle intersection")?
+                else {
                     continue;
                 };
                 intersections[ti].push(intersection);
                 intersections[si + triangles1.len()].push(intersection);
-                let v1 = if let Some(idx) = vertices.iter().skip(num_orig_vertices).position(|&x| x == intersection[0]) {
+                let v1 = if let Some(idx) = vertices
+                    .iter()
+                    .skip(num_orig_vertices)
+                    .position(|&x| (x-intersection[0]).norm() < 1e-10)
+                {
                     idx + num_orig_vertices
                 } else {
                     vertices.push(intersection[0]);
                     // need to check if the intersection point is on the edge of the triangle.
                     // if it is, then we need to remove the edge and add two new edges.
-                    let mut divide_edge = |vv, ww, v, w| {
+                    let mut divide_edge = |vv, ww, v, w| -> Result<(), String> {
                         if Line3D::new_(vv, ww).contains(intersection[0]) {
-                            let e_idx = edges.binary_search(&[v, w]).map_err(|_| ()).unwrap_or_else(|_| panic!("Edge not found: edges: {:?}, v: {}, w: {}", edges, v, w));
+                            let e_idx = edges
+                                .binary_search(&[v, w])
+                                .map_err(|_| 
+                                    format!("Edge not found: edges: {:?}, v: {}, w: {}", edges, v, w)
+                                )?;
                             edges_cuts[e_idx].push(vertices.len() - 1);
                         };
                         Ok(())
@@ -754,13 +833,21 @@ impl TriangularMesh<f64> {
                     divide_edge(ss[0], ss[2], s[0], s[2])?;
                     vertices.len() - 1
                 };
-                let v2 = if let Some(idx) = vertices.iter().skip(num_orig_vertices).position(|&x| x == intersection[1]) {
+                let v2 = if let Some(idx) = vertices
+                    .iter()
+                    .skip(num_orig_vertices)
+                    .position(|&x| (x-intersection[1]).norm() < 1e-10)
+                {
                     idx + num_orig_vertices
                 } else {
                     vertices.push(intersection[1]);
-                    let mut divide_edge = |vv, ww, v, w| {
+                    let mut divide_edge = |vv, ww, v, w| -> Result<(), String> {
                         if Line3D::new_(vv, ww).contains(intersection[1]) {
-                            let e_idx = edges.binary_search(&[v, w]).map_err(|_| ()).unwrap_or_else(|_| panic!("Edge not found: edges: {:?}, v: {}, w: {}", edges, v, w));
+                            let e_idx = edges
+                                .binary_search(&[v, w])
+                                .map_err(|_|
+                                    format!("Edge not found: edges: {:?}, v: {}, w: {}", edges, v, w)
+                                )?;
                             edges_cuts[e_idx].push(vertices.len() - 1);
                         };
                         Ok(())
@@ -781,23 +868,23 @@ impl TriangularMesh<f64> {
             }
         }
         edges[num_orig_edges..].sort_unstable();
-        assert_eq!(edges.iter().zip(edges.iter().skip(1)).filter(|(a, b)| a == b).count(), 0);
-        assert!(
-            edges_cuts.iter().all(|cuts1| edges_cuts.iter().all(|cuts2| {
-                let len = cuts1.len() + cuts2.len();
-                let mut cuts1 = cuts1.clone();
-                cuts1.append(&mut cuts2.clone());
-                cuts1.sort_unstable();
-                cuts1.dedup();
-                cuts1.len() == len
-            }))
+        assert_eq!(
+            edges
+                .iter()
+                .zip(edges.iter().skip(1))
+                .filter(|(a, b)| a == b)
+                .count(),
+            0
         );
 
         // Reflect the edge cuts in the edges list.
         edges_cuts.resize(edges.len(), Vec::new());
-        let mut edges = edges.into_iter().zip(edges_cuts.into_iter())
+        let mut edges = edges
+            .into_iter()
+            .zip(edges_cuts.into_iter())
             .flat_map(|(edge, mut cuts)| {
-                cuts.sort_unstable();
+                // sort the cuts in order that cuts closer to edge[0] come first.
+                cuts.sort_by(|&v, &w| (vertices[v] - vertices[edge[0]]).norm().partial_cmp(&(vertices[w] - vertices[edge[0]]).norm()).unwrap());
                 cuts.dedup();
                 let mut result = Vec::new();
                 let mut last_v = edge[0];
@@ -809,172 +896,257 @@ impl TriangularMesh<f64> {
                 result.last_mut().unwrap().sort(); // Only the last one may be unsorted, so we sort it.
                 {
                     result.sort_unstable();
-                    assert!(result.iter().zip(result.iter().skip(1)).filter(|(a, b)| a == b).count() == 0);
+                    assert!(
+                        result
+                            .iter()
+                            .zip(result.iter().skip(1))
+                            .filter(|(a, b)| a == b)
+                            .count()
+                            == 0
+                    );
                 }
-                if result.contains(&[17,19]) {
-                    println!("[17,19] found in edge: result: {:?}", result);
-                    println!("cuts: {:?}", cuts);
-                }   
                 result
-            }).collect::<Vec<_>>();
+            })
+            .collect::<Vec<_>>();
         edges.sort_unstable();
-        assert_eq!(edges.iter().zip(edges.iter().skip(1)).filter(|(a, b)| a == b).count(), 0, "edges.len(): {}, edges: {:?}", edges.len(), edges);
-        assert!(edges.iter().all(|e| e[0] < e[1]));
 
-        // Now all the new vertices and edges are created. we create a map from vertex to its index for easy lookup.
-        let vertex_key = |v: &Coordinate3D<f64>| [v.x.to_bits(), v.y.to_bits(), v.z.to_bits()];
-        let vertex_map = {
-            let mut map = HashMap::new();
-            for (i, v) in vertices.iter().enumerate() {
-                let key = vertex_key(v);
-                map.insert(key, i);
-            }
-            map
-        };
         // Also create the vertex-adjacency list for easy traversal.
         let mut vertex_adj: Vec<Vec<usize>> = vec![Vec::new(); vertices.len()];
         for edge in &edges {
             vertex_adj[edge[0]].push(edge[1]);
             vertex_adj[edge[1]].push(edge[0]);
         }
+        assert!(vertex_adj.iter().enumerate().all(|(i, adj)| adj.iter().all(|&v| v != i)));
 
-        let intersections = intersections.into_iter().map(|intersection|
-            intersection.into_iter().map(|edge| {
-                let v1 = *vertex_map.get(&vertex_key(&edge[0])).unwrap();
-                let v2 = *vertex_map.get(&vertex_key(&edge[1])).unwrap();
-                if v1 < v2 {
-                    [v1, v2]
-                } else {
-                    [v2, v1]
-                }
-            }).collect::<Vec<_>>()
-        ).collect::<Vec<_>>();
+        let intersections = intersections
+            .into_iter()
+            .map(|intersection| {
+                intersection
+                    .into_iter()
+                    .map(|edge| {
+                        // TODO: Optimize these linear-time lookups. (No hash map, because they are floats.)
+                        let v1 = (0..vertices.len()).find(|&v| (vertices[v]-edge[0]).norm() < 1e-10).unwrap();
+                        let v2 = (0..vertices.len()).find(|&v| (vertices[v]-edge[1]).norm() < 1e-10).unwrap();
+                        if v1 < v2 {
+                            [v1, v2]
+                        } else {
+                            [v2, v1]
+                        }
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
 
         // For each triangle, create polygons by dividing the triangle along the intersection edges.
         let mut line_strings = Vec::new();
         for (t, mut intersection) in triangles1.into_iter().chain(triangles2).zip(intersections) {
-            let Some(last) = intersection.pop() else { 
-                // No intersection, just add the triangle as is.
-                let mut tri = t.to_vec();
-                tri.push(t[0]); // close the loop
-                line_strings.push((tri, t));
-                continue;
-            };
-            let mut line_str_coords = vec![last[1], last[0]];
-            // ToDo: This can be optimized.
-            let mut next_vertex = |line_str_coords: &Vec<usize>| {
-                let pos = intersection.iter().position(|e| 
-                    e.contains(line_str_coords.last().unwrap())
-                );
-                if let Some(pos) = pos {
-                    let e = intersection.remove(pos);
-                    if e[0] == *line_str_coords.last().unwrap() {
-                        Some(e[1])
-                    } else if e[1] == *line_str_coords.last().unwrap() {
-                        Some(e[0])
+            let mut line_strings_t = Vec::new();
+            while let Some(last) = intersection.pop() {
+                let mut line_str_coords = vec![last[1], last[0]];
+                // ToDo: This can be optimized.
+                let mut next_vertex = |line_str_coords: &Vec<usize>| {
+                    let last_vertex = *line_str_coords.last().unwrap();
+                    let t = Triangle::new(vertices[t[0]], vertices[t[1]], vertices[t[2]]);
+                    if t.boundary_contains(&vertices[last_vertex]) {
+                        return None;
+                    }
+                    let pos = intersection
+                        .iter()
+                        .position(|e| e.contains(&last_vertex));
+                    if let Some(pos) = pos {
+                        let e = intersection.remove(pos);
+                        if e[0] == *line_str_coords.last().unwrap() {
+                            Some(e[1])
+                        } else if e[1] == *line_str_coords.last().unwrap() {
+                            Some(e[0])
+                        } else {
+                            None
+                        }
                     } else {
                         None
                     }
-                } else {
-                    None
+                };
+                while let Some(vertex) = next_vertex(&line_str_coords) {
+                    line_str_coords.push(vertex);
                 }
-            };
-            while let Some(vertex) = next_vertex(&line_str_coords) {
-                line_str_coords.push(vertex);
-            }
-            line_str_coords.reverse();
-            while let Some(vertex) = next_vertex(&line_str_coords) {
-                line_str_coords.push(vertex);
-            }
+                line_str_coords.reverse();
+                while let Some(vertex) = next_vertex(&line_str_coords) {
+                    line_str_coords.push(vertex);
+                }
 
-            if line_str_coords.first() != line_str_coords.last() {
-
+                line_strings_t.push(line_str_coords);
             }
-            line_strings.push((line_str_coords, t));
+            line_strings.push((line_strings_t, t));
+            if line_strings.last().unwrap().0.is_empty() {
+                // No intersection
+                let ls = vec![t[0], t[1], t[2], t[0]];
+                line_strings.last_mut().unwrap().0 = vec![ls];
+            }
         }
 
         let mut polygons = Vec::new();
-        for (ls, t) in line_strings {
-            if ls.first().ok_or(())? == ls.last().ok_or(())? {
-                // This means that the line string is closed i.e. the intersection is closed inside the triangle.
-                let ls = ls.into_iter().map(|i| vertices[i]).collect::<Vec<_>>();
-                let polygon = Polygon3D::new(LineString3D::new(ls), Vec::new());
-                polygons.push(polygon);
-            } else {
-                // This means that the line string is open at the edge of the triangle.
-                // We need to close the string to create a polygon.
-                let mut right_polygon = ls.clone();
-                let mut left_polygon = ls;
+        let mut interior_boundary = Vec::new();
+        let mut polygon_added = vec![false; num_orig_triangles];
+        for (lss, t) in line_strings {
+            // This means that the line string is open at the edge of the triangle.
+            // We need to close the string to create a polygon.
 
-                let v1 = vertices[t[0]];
-                let v2 = vertices[t[1]];
-                let v3 = vertices[t[2]];
-                let n = (v2 - v1).cross(&(v3 - v1)).normalize();
-                let angle = |a: Coordinate3D<f64>, b: Coordinate3D<f64>, o: Coordinate3D<f64>| {
-                    let epsilon = 1e-10;
-                    let oa = (a - o).normalize();
-                    let ob = (b - o).normalize();
-                    let mut angle = oa.angle(&ob);
-                    if n.dot(&oa) > epsilon || n.dot(&ob) > epsilon {
-                        println!("Not on the plane: {}, {}", n.dot(&oa), n.dot(&ob));
-                        return None;
-                    }
-                    if !n.dot(&oa.cross(&ob)).is_sign_positive() {
-                        angle = std::f64::consts::TAU - angle;
-                    }
-                    println!("angle: {}", angle);
-                    Some(angle)
-                };
-                println!("\ncomputing right polygon");
-                while right_polygon.last().unwrap() != right_polygon.first().unwrap() {
-                    println!("right_polygon: {:?}", right_polygon);
+            let v1 = vertices[t[0]];
+            let v2 = vertices[t[1]];
+            let v3 = vertices[t[2]];
+            let n = (v2 - v1).cross(&(v3 - v1)).normalize();
+            // closure to compute the angle between two vectors.
+            // These two vectors are assumed to be in the plane defined by `n` and return `None` if not.
+            let angle = |a: Coordinate3D<f64>, b: Coordinate3D<f64>, o: Coordinate3D<f64>| {
+                let epsilon = 1e-10;
+                let oa = (a - o).normalize();
+                let ob = (b - o).normalize();
+                if n.dot(&oa).abs() > epsilon || n.dot(&ob).abs() > epsilon {
+                    return None;
+                }
+                let mut angle = oa.angle(&ob);
+                if !n.dot(&oa.cross(&ob)).is_sign_positive() {
+                    angle = std::f64::consts::TAU - angle;
+                }
+                Some(angle - std::f64::consts::PI)
+            };
+            let mut triangle_vertex_set = t.iter().copied().chain(lss.iter().flatten().copied()).collect::<Vec<_>>();
+            triangle_vertex_set.sort();
+
+            for ls in lss {
+                if ls.first().unwrap() == ls.last().unwrap() {
+                    // This means that the line string is closed i.e. the intersection geometry is closed inside the triangle.
+                    let ls = ls.into_iter().map(|i| vertices[i]).collect::<Vec<_>>();
+                    let polygon = Polygon3D::new(LineString3D::new(ls), Vec::new());
+                    polygon_added[triangles.binary_search(&t).unwrap()] = true;
+                    polygons.push(polygon);
+                    continue;
+                }
+                let mut right_polygon = ls.clone();
+                let mut left_polygon = ls.clone();
+
+                // The outer angle sum is used to determine when the polygon is closed.
+                // This should be initialized to the sum of angles of the current line string.
+                let mut angle_sum = right_polygon.iter().zip(right_polygon.iter().skip(1)).zip(right_polygon.iter().skip(2))
+                    .filter_map(|((a, b), c)| angle(vertices[*c], vertices[*a], vertices[*b]))
+                    .sum::<f64>();
+                while (angle_sum.abs() - std::f64::consts::TAU).abs() > 1e-5 {
                     let last_v = vertices[*right_polygon.last().unwrap()];
                     let second_last_v_idx = right_polygon[right_polygon.len() - 2];
                     let second_last_v = vertices[second_last_v_idx];
-                    println!("adj: {:?}", vertex_adj[*right_polygon.last().unwrap()]);
-                    let next = *vertex_adj[*right_polygon.last().unwrap()]
+                    let (next, angle) = vertex_adj[*right_polygon.last().unwrap()]
                         .iter()
-                        .filter(|&&v| v != second_last_v_idx)
-                        .min_by(|&&a, &&b| {
-                            let alpha = angle(vertices[a], second_last_v, last_v).unwrap_or(std::f64::INFINITY);
-                            let beta = angle(vertices[b], second_last_v, last_v).unwrap_or(std::f64::INFINITY);
-                            alpha.partial_cmp(&beta).unwrap()
-                        })
+                        .filter(|v| triangle_vertex_set.binary_search(v).is_ok())
+                        .filter_map(|v| {
+                            let angle = angle(vertices[*v], second_last_v, last_v);
+                            if let Some(angle) = angle {
+                                Some((*v, angle))
+                                } else {
+                                    None
+                                }
+                            })
+                        .map(|(v, angle)| if v == second_last_v_idx {(v, std::f64::consts::PI)} else {(v, angle)})
+                        .min_by(|&a, &b| a.1.partial_cmp(&b.1).unwrap())
                         .unwrap();
+                    angle_sum += angle;
                     right_polygon.push(next);
-                    assert!(right_polygon.len() < 10, "Infinite loop detected: right_polygon: {:?}", right_polygon);
                 }
-                println!("right_polygon: {:?}", right_polygon);
-                let right_polygon = right_polygon.into_iter().map(|i| vertices[i]).collect::<Vec<_>>();
-                let right_polygon = Polygon3D::new(LineString3D::new(right_polygon), Vec::new());
-                if !polygons.contains(&right_polygon) {
-                    polygons.push(right_polygon);
-                }
+                right_polygon.pop(); // remove the last vertex which is redundant.
 
-                println!("\ncomputing left polygon");
-                while left_polygon.last().unwrap() != left_polygon.first().unwrap() {
+                // TODO: the left polygon computation can be skipped if the right polygon already covers the entire triangle.
+                // Implement this optimization later.
+
+                let mut angle_sum = left_polygon.iter().zip(left_polygon.iter().skip(1)).zip(left_polygon.iter().skip(2))
+                    .filter_map(|((a, b), c)| angle(vertices[*c], vertices[*a], vertices[*b]))
+                    .sum::<f64>();
+                while (angle_sum.abs() - std::f64::consts::TAU).abs() > 1e-5 {
                     let last_v = vertices[*left_polygon.last().unwrap()];
                     let second_last_v_idx = left_polygon[left_polygon.len() - 2];
                     let second_last_v = vertices[second_last_v_idx];
-                    let next = *vertex_adj[*left_polygon.last().unwrap()]
+                    let (next, angle) = vertex_adj[*left_polygon.last().unwrap()]
                         .iter()
-                        .filter(|&&v| v != second_last_v_idx)
-                        .max_by(|&&a, &&b| {
-                            let alpha = angle(vertices[a], second_last_v, last_v).unwrap_or(std::f64::NEG_INFINITY);
-                            let beta = angle(vertices[b], second_last_v, last_v).unwrap_or(std::f64::NEG_INFINITY);
-                            alpha.partial_cmp(&beta).unwrap()
+                        .filter(|v| triangle_vertex_set.binary_search(v).is_ok())
+                        .filter_map(|v| {
+                            let angle = angle(vertices[*v], second_last_v, last_v);
+                            if let Some(angle) = angle {
+                                Some((*v, angle))
+                            } else {
+                                None
+                            }
                         })
+                        .map(|(v, angle)| if v == second_last_v_idx { (v, -std::f64::consts::PI) } else { (v, angle) })
+                        .max_by(|&a, &b| a.1.partial_cmp(&b.1).unwrap())
                         .unwrap();
+                    angle_sum += angle;
                     left_polygon.push(next);
-                    assert!(left_polygon.len() < 10, "Infinite loop detected: left_polygon: {:?}", left_polygon);
                 }
-                let left_polygon = left_polygon.into_iter().map(|i| vertices[i]).collect::<Vec<_>>();
-                let left_polygon = Polygon3D::new(LineString3D::new(left_polygon), Vec::new());
-                if !polygons.contains(&left_polygon) {
-                    polygons.push(left_polygon);
-                }
+                left_polygon.pop(); // remove the last vertex which is redundant.
 
+                // add the polygons.
+                let is_interior_boundary = {
+                    let mut r = right_polygon.clone();
+                    r.sort();
+                    let mut l = left_polygon.clone();
+                    l.sort();
+                    if r==l {
+                        t.iter().any(|v| !r.contains(v))
+                    } else {
+                        false
+                    }
+                };
+                if is_interior_boundary {
+                    // This means that the intersection geometry is not connected to triangle boundary.
+                    // In this case, we create a polygon with interior boundary later.
+                    interior_boundary.push(right_polygon.clone());
+                } else {
+                    let right_polygon = right_polygon
+                        .into_iter()
+                        .map(|i| vertices[i])
+                        .collect::<Vec<_>>();
+                    let right_polygon = Polygon3D::new(LineString3D::new(right_polygon), Vec::new());
+                    if !polygons.contains(&right_polygon) {
+                        polygons.push(right_polygon);
+                    }
+                    let left_polygon = left_polygon
+                        .into_iter()
+                        .map(|i| vertices[i])
+                        .collect::<Vec<_>>();
+                    let left_polygon = Polygon3D::new(LineString3D::new(left_polygon), Vec::new());
+                    if !polygons.contains(&left_polygon) {
+                        polygons.push(left_polygon);
+                    }
+                    polygon_added[triangles.binary_search(&t).unwrap()] = true;
+                }
             }
+        }
+
+        // There are triangles where no polygon is created for them.
+        // We need to add them as is.
+        for (added, t) in polygon_added.into_iter().zip(triangles) {
+            if added {
+                continue;
+            }
+            let tri = t
+                .iter()
+                .map(|&i| vertices[i])
+                .chain(std::iter::once(vertices[t[0]])) // close the loop
+                .collect::<Vec<_>>();
+            let polygon = Polygon3D::new(LineString3D::new(tri), Vec::new());
+            polygons.push(polygon);
+        }
+
+        // Now we need to add the interior boundaries to the polygons.
+        for boundary in interior_boundary {
+            let boudary = boundary
+                .into_iter()
+                .map(|i| vertices[i])
+                .collect::<Vec<_>>();
+            let boundary = LineString3D::new(boudary);
+            let poly = polygons
+                .iter_mut()
+                .find(|p| boundary.iter().all(|v| p.contains(v)))
+                .unwrap();
+            poly.interiors_push(boundary);
         }
 
         Ok(polygons.into())
@@ -982,7 +1154,7 @@ impl TriangularMesh<f64> {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
 
     #[test]
@@ -1016,6 +1188,29 @@ mod tests {
                 Coordinate3D::new__(1.0, 1.0, 0.0),
             ]
         );
+
+        // face whose boundary contains edges with multiplicity > 1.
+        let face = vec![
+            Coordinate3D::new__(2.0, 0.0, 0.0),
+            Coordinate3D::new__(1.0, 0.0, 0.0),
+            Coordinate3D::new__(2.0, 0.0, 0.0),
+            Coordinate3D::new__(2.0, -1.0, 0.0),
+            Coordinate3D::new__(0.0, 0.0, 0.0),
+            Coordinate3D::new__(2.0, 1.0, 0.0),
+            Coordinate3D::new__(2.0, 0.0, 0.0),
+        ];
+        let face = LineString3D::new(face);
+        let triangles = TriangularMesh::triangulate_face(face).unwrap();
+        assert_eq!(triangles.len(), 4);
+        for i in 1..4 {
+            for j in 0..i-1 {
+                assert!(!(
+                    triangles[j].contains(&triangles[i][0]) 
+                    && triangles[j].contains(&triangles[i][1])
+                    && triangles[j].contains(&triangles[i][2])
+                ));
+            }
+        }
 
         // face whose boundary is merged
         let face = vec![
@@ -1112,8 +1307,8 @@ mod tests {
         assert!(result.is_empty()); // Sharing a vertex is allowed
     }
 
-    fn get_cube() -> TriangularMesh<f64> {
-        TriangularMesh::from( vec![
+    pub fn get_cube() -> TriangularMesh<f64> {
+        TriangularMesh::from(vec![
             // Bottom face
             Polygon3D::new(
                 LineString3D::new(vec![
@@ -1222,11 +1417,7 @@ mod tests {
         assert_eq!(manifolds[0], cube.triangles);
 
         // Failure case. Three faces sharing a single edge.
-        let triangles = vec![
-            [0, 1, 2],
-            [0, 1, 3],
-            [0, 1, 4],
-        ];
+        let triangles = vec![[0, 1, 2], [0, 1, 3], [0, 1, 4]];
         let mesh: TriangularMesh<f64> = TriangularMesh {
             triangles,
             vertices: Vec::new(),
@@ -1265,14 +1456,12 @@ mod tests {
     #[test]
     fn test_retain_faces() {
         let cube = get_cube();
-        let faces_to_retain = vec![
-            [0, 1, 2],
-            [0, 1, 4]
-        ];
+        let faces_to_retain = vec![[0, 1, 3], [0, 1, 4]];
         let mut retained_cube = cube.clone();
         retained_cube.retain_faces(&faces_to_retain);
         assert_eq!(retained_cube.triangles.len(), 2);
-        assert_eq!(retained_cube.triangles, &[[0, 1, 2], [0, 1, 3]]); // Note: 4 becomes 3 after removing unused vertices
+        // Note: 4 -> 3 and 3 -> 2 after removing unused vertices
+        assert_eq!(retained_cube.triangles, &[[0, 1, 2], [0, 1, 3]]); 
         assert_eq!(retained_cube.vertices.len(), 4);
     }
 
@@ -1291,15 +1480,187 @@ mod tests {
     }
 
     #[test]
-    fn test_union_joint_case() {
+    fn test_union_joint_case_simplest1() {
+        // test with two triangles intersecting
+        let vertices1 = vec![
+            Coordinate::new__(0.0, 0.0, 0.0), 
+            Coordinate::new__(2.0, 1.0, 0.0), 
+            Coordinate::new__(2.0, -1.0, 0.0),
+        ];
+        let t1 = TriangularMesh {
+            vertices: vertices1,
+            triangles: vec![[0, 1, 2]],
+            edges_with_multiplicity: vec![([0, 1], 1), ([0, 2], 1), ([1, 2], 1)],
+        };
+
+        let vertices2 = vec![
+            Coordinate::new__(1.0, 0.0, 1.0),
+            Coordinate::new__(1.0, 0.0, -1.0),
+            Coordinate::new__(3.0, 0.0, 0.0),
+        ];
+
+        let t2 = TriangularMesh {
+            vertices: vertices2,
+            triangles: vec![[0, 1, 2]],
+            edges_with_multiplicity: vec![([0, 1], 1), ([0, 2], 1), ([1, 2], 1)],
+        };
+
+        let union = t1.union(t2).unwrap();
+        assert_eq!(union.vertices.len(), 8);
+        assert!(union.vertices.iter().any(|&v| (v - Coordinate::new__(1.0, 0.0, 0.0)).norm() < 1e-10));
+        assert!(union.vertices.iter().any(|&v| (v - Coordinate::new__(2.0, 0.0, 0.0)).norm() < 1e-10));
+        assert_eq!(union.triangles.len(), 8);
+    }
+
+    #[test]
+    fn test_union_joint_case_simplest2() {
+        // test with two triangles intersecting
+        let vertices1 = vec![
+            Coordinate::new__(-2.0, 0.0, 0.0), 
+            Coordinate::new__(2.0, 1.0, 0.0), 
+            Coordinate::new__(2.0, -1.0, 0.0),
+        ];
+        let t1 = TriangularMesh {
+            vertices: vertices1,
+            triangles: vec![[0, 1, 2]],
+            edges_with_multiplicity: vec![([0, 1], 1), ([0, 2], 1), ([1, 2], 1)],
+        };
+
+        let vertices2 = vec![
+            Coordinate::new__(2.0, 0.0, -1.0),
+            Coordinate::new__(-2.0, 0.0, -1.0),
+            Coordinate::new__(0.0, 0.0, 1.0),
+        ];
+
+        let t2 = TriangularMesh {
+            vertices: vertices2,
+            triangles: vec![[0, 1, 2]],
+            edges_with_multiplicity: vec![([0, 1], 1), ([0, 2], 1), ([1, 2], 1)],
+        };
+
+        let union = t1.union(t2).unwrap();
+        assert_eq!(union.vertices.len(), 8);
+        assert!(union.vertices.iter().any(|&v| (v - Coordinate::new__(1.0, 0.0, 0.0)).norm() < 1e-10));
+        assert!(union.vertices.iter().any(|&v| (v - Coordinate::new__(-1.0, 0.0, 0.0)).norm() < 1e-10));
+        assert_eq!(union.triangles.len(), 8);
+    }
+
+    #[test]
+    fn test_union_joint_case_simplest3() {
+        // test with two triangles intersecting
+        let vertices1 = vec![
+            Coordinate::new__(-1.0, 2.0, 0.0), 
+            Coordinate::new__(-1.0, -2.0, 0.0), 
+            Coordinate::new__(1.0, 0.0, 0.0),
+        ];
+        let t1 = TriangularMesh {
+            vertices: vertices1,
+            triangles: vec![[0, 1, 2]],
+            edges_with_multiplicity: vec![([0, 1], 1), ([0, 2], 1), ([1, 2], 1)],
+        };
+
+        let vertices2 = vec![
+            Coordinate::new__(0.0, 2.0, -1.0),
+            Coordinate::new__(0.0, -2.0, -1.0),
+            Coordinate::new__(0.0, 0.0, 1.0),
+        ];
+
+        let t2 = TriangularMesh {
+            vertices: vertices2,
+            triangles: vec![[0, 1, 2]],
+            edges_with_multiplicity: vec![([0, 1], 1), ([0, 2], 1), ([1, 2], 1)],
+        };
+
+        let union = t1.union(t2).unwrap();
+        assert_eq!(union.vertices.len(), 8);
+        assert!(union.vertices.iter().any(|&v| (v - Coordinate::new__(0.0, 1.0, 0.0)).norm() < 1e-10));
+        assert!(union.vertices.iter().any(|&v| (v - Coordinate::new__(0.0, -1.0, 0.0)).norm() < 1e-10));
+        assert_eq!(union.triangles.len(), 6);
+    }
+
+    #[test]
+    fn test_union_joint_case1() {
         let cube1 = get_cube();
         let cube2 = {
             let mut cube2 = get_cube();
-            cube2.transform_offset(0.5, 0.5, 0.5);
+            cube2.transform_offset(-0.8, -0.7, -0.6);
+            cube2
+        };
+
+        let union = cube1.union(cube2).unwrap();
+        assert_eq!(union.vertices.len(), 24);
+        // No triangles should be degenerate.
+        for t in union.triangles {
+            let a = union.vertices[t[0]];
+            let b = union.vertices[t[1]];
+            let c = union.vertices[t[2]];
+            assert!(
+                (b - a).cross(&(c - a)).norm() > 1e-10, 
+                "Degenerate triangle found: {:?}, vertices: {:.2?}, {:.2?}, {:.2?}", 
+                t, a, b, c
+            );
+        }
+    }
+
+    #[test]
+    fn test_union_joint_case2() {
+        let cube1 = get_cube();
+        let cube2 = {
+            let mut cube2 = get_cube();
+            cube2.transform_offset(-0.4, -0.4, -0.4);
+            cube2
+        };
+
+        let union = cube1.union(cube2).unwrap();
+        create_simple_obj(&union.vertices, &union.triangles);
+        assert_eq!(union.vertices.len(), 30);
+        // No triangles should be degenerate.
+        for t in union.triangles {
+            let a = union.vertices[t[0]];
+            let b = union.vertices[t[1]];
+            let c = union.vertices[t[2]];
+            assert!(
+                (b - a).cross(&(c - a)).norm() > 1e-10, 
+                "Degenerate triangle found: {:?}, vertices: {:.2?}, {:.2?}, {:.2?}", 
+                t, a, b, c
+            );
+        }
+    }
+
+    #[test]
+    fn test_union_joint_case3() {
+        let cube1 = get_cube();
+        let cube2 = {
+            let mut cube2 = get_cube();
+            cube2.transform_offset(-0.5, -0.5, -0.5);
             cube2
         };
 
         let union = cube1.union(cube2).unwrap();
         assert_eq!(union.vertices.len(), 22);
+        create_simple_obj(&union.vertices, &union.triangles);
+        // No triangles should be degenerate.
+        for t in union.triangles {
+            let a = union.vertices[t[0]];
+            let b = union.vertices[t[1]];
+            let c = union.vertices[t[2]];
+            assert!(
+                (b - a).cross(&(c - a)).norm() > 1e-10, 
+                "Degenerate triangle found: {:?}, vertices: {:.2?}, {:.2?}, {:.2?}", 
+                t, a, b, c
+            );
+        }
+    }
+
+    pub fn create_simple_obj(vertices: &[Coordinate3D<f64>], triangles: &[[usize; 3]]) {
+        use std::io::Write;
+        let filename = "union_output.obj";
+        let mut file = std::fs::File::create(filename).unwrap();
+        for v in vertices {
+            writeln!(file, "v {} {} {}", v.x, v.y, v.z).unwrap();
+        }
+        for t in triangles {
+            writeln!(file, "f {} {} {}", t[0] + 1, t[1] + 1, t[2] + 1).unwrap();
+        }
     }
 }

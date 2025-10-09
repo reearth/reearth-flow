@@ -1,8 +1,4 @@
-use crate::types::{
-    coordinate::Coordinate3D,
-    line::Line3D,
-};
-
+use crate::types::{coordinate::Coordinate3D, line::Line3D};
 
 /// returns the intersection point of a line segment and a triangle if they intersect, otherwise returns None.
 /// If the intersection geometry is a line segment (i.e., the segment lies on an edge of the triangle), it returns None.
@@ -29,7 +25,7 @@ pub fn segment_triangle_intersection(
     let normal = edge1.cross(&edge2).normalize();
 
     // If Ray is parallel to triangle, then no intersection as we consider only proper intersections.
-    if unit_ray.dot(&normal) < epsilon {
+    if unit_ray.dot(&normal).abs() < epsilon {
         return None;
     }
 
@@ -65,7 +61,7 @@ pub fn segment_triangle_intersection(
 mod tests {
     use super::*;
     #[test]
-    fn test_segment_triangle_intersection_direct_hit() {
+    fn test_segment_triangle_intersection_direct_hit1() {
         let triangle = [
             Coordinate3D::new__(0.0, 0.0, 0.0),
             Coordinate3D::new__(2.0, 0.0, 0.0),
@@ -77,7 +73,29 @@ mod tests {
         let p1 = Coordinate3D::new__(1.0, 0.5, 1.0);
         let line = Line3D::<f64>::new_(p0, p1);
 
-        assert_eq!(segment_triangle_intersection(&line, &triangle, 1e-10).unwrap(), Coordinate3D::new__(1.0, 0.5, 0.0));
+        assert_eq!(
+            segment_triangle_intersection(&line, &triangle, 1e-10).unwrap(),
+            Coordinate3D::new__(1.0, 0.5, 0.0)
+        );
+    }
+
+    #[test]
+    fn test_segment_triangle_intersection_direct_hit2() {
+        let t = [
+            Coordinate3D::new__(-2.0, 0.0, 0.0),
+            Coordinate3D::new__(2.0, 1.0, 0.0), 
+            Coordinate3D::new__(2.0, -1.0, 0.0),
+        ];
+
+        // Segment that passes through the triangle
+        let p0 = Coordinate3D::new__(-2.0, 0.0, -1.0);
+        let p1 = Coordinate3D::new__(0.0, 0.0, 1.0);
+        let line = Line3D::<f64>::new_(p0, p1);
+
+        assert_eq!(
+            segment_triangle_intersection(&line, &t, 1e-10).unwrap(),
+            Coordinate3D::new__(-1.0, 0.0, 0.0)
+        );
     }
 
     #[test]
@@ -128,6 +146,9 @@ mod tests {
 
         // This should return true as it passes through a vertex
         // Vertices are considered part of the triangle for robustness
-        assert_eq!(segment_triangle_intersection(&line, &triangle, 1e-10).unwrap(), Coordinate3D::new__(1.0, 0.0, 0.0));
+        assert_eq!(
+            segment_triangle_intersection(&line, &triangle, 1e-10).unwrap(),
+            Coordinate3D::new__(1.0, 0.0, 0.0)
+        );
     }
 }

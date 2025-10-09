@@ -140,7 +140,8 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
             &self.interiors,
             &top_interiors,
         );
-        let all_faces = bottom_faces.into_iter()
+        let all_faces = bottom_faces
+            .into_iter()
             .chain(top_faces.into_iter())
             .chain(side_faces.into_iter())
             .collect();
@@ -261,11 +262,6 @@ impl<T: CoordNum + Float + From<Z>, Z: CoordNum + Float + Mul<T, Output = Z>> Po
         mut interior: LineString<T, Z>,
     ) -> LineString<T, Z> {
         if interior.is_empty() {
-            return exterior;
-        }
-
-        if interior.len() < 4 {
-            // interior ring must be at least triangle
             return exterior;
         }
 
@@ -773,7 +769,7 @@ mod tests {
     use crate::types::line_string::LineString3D;
 
     #[test]
-    fn test_into_merged_contour() {
+    fn test_into_merged_contour1() {
         let exterior = LineString3D::new(vec![
             Coordinate::new__(0_f64, 0_f64, 0_f64),
             Coordinate::new__(4.0, 0.0, 0.0),
@@ -802,6 +798,36 @@ mod tests {
             Coordinate::new__(2.0, 1.0, 0.0),
             Coordinate::new__(1.0, 1.0, 0.0),
             Coordinate::new__(0.0, 0.0, 0.0),
+        ];
+        let expected = LineString3D::new(expected_coords);
+        assert_eq!(merged, expected);
+    }
+
+    #[test]
+    fn test_into_merged_contour2() {
+        let exterior = LineString3D::new(vec![
+            Coordinate::new__(-2.0, 0.0, 0.0),
+            Coordinate::new__(0.0, 3.0, 0.0),
+            Coordinate::new__(2.0, 0.0, 0.0),
+            Coordinate::new__(-2.0, 0.0, 0.0),
+        ]);
+        let interior = LineString3D::new(vec![
+            Coordinate::new__(0.0, 1.0, 0.0),
+            Coordinate::new__(0.0, 2.0, 0.0),
+            Coordinate::new__(0.0, 1.0, 0.0),
+        ]);
+        let polygon = Polygon3D::new(exterior, vec![interior]);
+        let merged = polygon.into_merged_contour();
+        assert_eq!(merged.len(), 8);
+        let expected_coords = vec![
+            Coordinate::new__(-2.0, 0.0, 0.0),
+            Coordinate::new__(0.0, 3.0, 0.0),
+            Coordinate::new__(2.0, 0.0, 0.0),
+            Coordinate::new__(-2.0, 0.0, 0.0),
+            Coordinate::new__(0.0, 1.0, 0.0),
+            Coordinate::new__(0.0, 2.0, 0.0),
+            Coordinate::new__(0.0, 1.0, 0.0),
+            Coordinate::new__(-2.0, 0.0, 0.0),
         ];
         let expected = LineString3D::new(expected_coords);
         assert_eq!(merged, expected);

@@ -486,14 +486,13 @@ mod tests {
         assert!((line1.distance(&line4) - 1_f64).abs() < 1e-6);
     }
 
-
     #[test]
     fn test_line_contains() {
         let line = Line3D::new_((0.0, 0.0, 0.0), (1.0, 1.0, 1.0));
         let points_contained = [
             Coordinate::new__(0.0, 0.0, 0.0),
             Coordinate::new__(1e-12, 0.0, 1e-12),
-            Coordinate::new__(0.5+1e-12, 0.5, 0.5),
+            Coordinate::new__(0.5 + 1e-12, 0.5, 0.5),
             Coordinate::new__(1.0, 1.0, 1.0),
         ];
         for p in &points_contained {

@@ -156,14 +156,13 @@ impl Triangle3D<f64> {
     }
 }
 
-
 impl<T> Triangle3D<T>
 where
     T: CoordNum + Float + Div,
 {
-    pub fn boundary_contains(&self, p: Coordinate3D<T>) -> bool {
+    pub fn boundary_contains(&self, p: &Coordinate3D<T>) -> bool {
         let lines = self.to_lines();
-        lines.iter().any(|line| line.contains(p))
+        lines.iter().any(|line| line.contains(*p))
     }
 
     pub fn contains(&self, p: &Coordinate3D<T>) -> bool {
@@ -190,7 +189,6 @@ where
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -203,7 +201,11 @@ mod tests {
             Coordinate3D::new__(1.0, 0.0, 0.0),
             Coordinate3D::new__(0.0, 1.0, 0.0),
         );
-        assert!((t.area() - 3.0.sqrt()/2.0).abs() < 1e-10, "area: {}", t.area());
+        assert!(
+            (t.area() - 3.0.sqrt() / 2.0).abs() < 1e-10,
+            "area: {}",
+            t.area()
+        );
     }
 
     #[test]
@@ -217,14 +219,27 @@ mod tests {
             // (point, inside, on_boundary)
             (Coordinate3D::new__(1.0, 0.0, 0.0), true, true),
             (Coordinate3D::new__(0.0, 0.5, 0.5), true, true),
-            (Coordinate3D::new__(1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0), true, false),
+            (
+                Coordinate3D::new__(1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0),
+                true,
+                false,
+            ),
             (Coordinate3D::new__(-0.1, 0.1, 0.1), false, false),
         ];
 
         for (p, inside, on_boundary) in points {
-            assert!(t.contains(&p) == inside, "point {:?} must {} be inside", p, if inside { "" } else { "not" });
-            assert!(t.boundary_contains(p) == on_boundary, "point {:?} must {} be on boundary", p, if on_boundary { "" } else { "not" });
+            assert!(
+                t.contains(&p) == inside,
+                "point {:?} must {} be inside",
+                p,
+                if inside { "" } else { "not" }
+            );
+            assert!(
+                t.boundary_contains(&p) == on_boundary,
+                "point {:?} must {} be on boundary",
+                p,
+                if on_boundary { "" } else { "not" }
+            );
         }
     }
 }
-

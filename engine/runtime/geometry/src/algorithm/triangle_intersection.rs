@@ -49,13 +49,16 @@ pub fn triangles_intersect(t: &[Coordinate3D<f64>; 3], s: &[Coordinate3D<f64>; 3
 /// returns the intersection geometry of two triangles if they intersect, otherwise returns None.
 /// Coplanar triangles are not considered intersecting in this implementation.
 /// Furthermore, if the intersection occurs at a single point, it is also considered as non-intersecting.
-pub fn triangles_intersection(mut t: [Coordinate3D<f64>; 3], mut s: [Coordinate3D<f64>; 3]) -> Result<Option<[Coordinate3D<f64>; 2]>, ()> {
+pub fn triangles_intersection(
+    mut t: [Coordinate3D<f64>; 3],
+    mut s: [Coordinate3D<f64>; 3],
+) -> Result<Option<[Coordinate3D<f64>; 2]>, ()> {
     let epsilon = 1e-10;
     {
         let Some((ct, rt)) = circumcenter(t[0], t[1], t[2]) else {
             return Err(());
         };
-
+        
         let Some((cs, rs)) = circumcenter(s[0], s[1], s[2]) else {
             return Err(());
         };
@@ -66,11 +69,19 @@ pub fn triangles_intersection(mut t: [Coordinate3D<f64>; 3], mut s: [Coordinate3
         }
     }
 
-    
+
     let (avg, norm_avg) = normalize_triangle_pair(&mut t, &mut s);
     // Check for coplanar case
-    if (t[1] - t[0]).cross(&(t[2] - t[0])).dot(&(s[0] - t[0])).abs() < epsilon
-        && (s[1] - s[0]).cross(&(s[2] - s[0])).dot(&(t[0] - s[0])).abs() < epsilon
+    if (t[1] - t[0])
+        .cross(&(t[2] - t[0]))
+        .dot(&(s[0] - t[0]))
+        .abs()
+        < epsilon
+        && (s[1] - s[0])
+            .cross(&(s[2] - s[0]))
+            .dot(&(t[0] - s[0]))
+            .abs()
+            < epsilon
     {
         // Coplanar triangles are not considered intersecting in this implementation.
         return Ok(None);
@@ -78,9 +89,9 @@ pub fn triangles_intersection(mut t: [Coordinate3D<f64>; 3], mut s: [Coordinate3
 
     let mut intersection_points = Vec::new();
     // Check if any edge of triangle t intersects any edges of triangle s
-    for [i,j] in [[0,1],[1,2],[0,2]] {
+    for [i, j] in [[0, 1], [1, 2], [0, 2]] {
         let l1 = Line3D::new_(t[i], t[j]);
-        for [k,l] in [[0,1],[1,2],[0,2]] {
+        for [k, l] in [[0, 1], [1, 2], [0, 2]] {
             let l2 = Line3D::new_(s[k], s[l]);
             if let Some(p) = &l1.intersection(&l2, Some(epsilon)) {
                 let intersection = (*p * norm_avg) + avg;
@@ -89,15 +100,16 @@ pub fn triangles_intersection(mut t: [Coordinate3D<f64>; 3], mut s: [Coordinate3
         }
     }
 
-    // Check if any edge of triangle s intersects triangle t
-    for [i,j] in [[0,1],[1,2],[0,2]] {
+    // Check if any edge of triangle t intersects triangle s
+    for [i, j] in [[0, 1], [1, 2], [0, 2]] {
         let l = Line3D::new_(t[i], t[j]);
         if let Some(p) = segment_triangle_intersection(&l, &s, epsilon) {
             let intersection = (p * norm_avg) + avg;
             intersection_points.push(intersection);
         }
     }
-    for [i,j] in [[0,1],[1,2],[0,2]] {
+    // Check if any edge of triangle s intersects triangle t
+    for [i, j] in [[0, 1], [1, 2], [0, 2]] {
         let l = Line3D::new_(s[i], s[j]);
         if let Some(p) = segment_triangle_intersection(&l, &t, epsilon) {
             let intersection = (p * norm_avg) + avg;
@@ -123,7 +135,6 @@ pub fn triangles_intersection(mut t: [Coordinate3D<f64>; 3], mut s: [Coordinate3
         Err(())
     }
 }
-
 
 /// Normalizes two triangles by translating them to the origin and scaling them to fit within a unit sphere.
 /// Returns the translation and the scaling factor used for normalization.
@@ -188,7 +199,27 @@ mod tests {
     }
 
     #[test]
-    fn test_triangles_intersect_perpendicular() {
+    fn test_triangles_intersect_perpendicular1() {
+        let t1 = [
+            Coordinate3D::new__(-2.0, 0.0, 0.0),
+            Coordinate3D::new__(2.0, 1.0, 0.0), 
+            Coordinate3D::new__(2.0, -1.0, 0.0),
+        ];
+
+        let t2 = [
+            Coordinate3D::new__(2.0, 0.0, -1.0),
+            Coordinate3D::new__(-2.0, 0.0, -1.0),
+            Coordinate3D::new__(0.0, 0.0, 1.0),
+        ];
+
+        assert!(triangles_intersect(&t1, &t2));
+        let intersection = triangles_intersection(t1, t2).unwrap().unwrap();
+        assert!((intersection[0] - Coordinate3D::new__(-1.0, 0.0, 0.0)).norm() < 1e-10);
+        assert!((intersection[1] - Coordinate3D::new__(1.0, 0.0, 0.0)).norm() < 1e-10);
+    }
+
+    #[test]
+    fn test_triangles_intersect_perpendicular2() {
         // Triangle in XY plane
         let t1 = [
             Coordinate3D::new__(0.0, 0.0, 0.0),
@@ -205,8 +236,8 @@ mod tests {
 
         assert!(triangles_intersect(&t1, &t2));
         let intersection = triangles_intersection(t1, t2).unwrap().unwrap();
-        assert_eq!(intersection[0], Coordinate3D::new__(1.0, 0.0, 0.0));
-        assert_eq!(intersection[1], Coordinate3D::new__(1.0, 1.0, 0.0));
+        assert!((intersection[0] - Coordinate3D::new__(1.0, 0.0, 0.0)).norm() < 1e-10);
+        assert!((intersection[1] - Coordinate3D::new__(1.0, 1.0, 0.0)).norm() < 1e-10);
     }
 
     #[test]

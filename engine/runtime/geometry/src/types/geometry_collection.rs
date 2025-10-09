@@ -171,8 +171,7 @@ impl<'a, T: CoordNum, Z: CoordNum> GeometryCollection<T, Z> {
     }
 }
 
-impl Elevation for GeometryCollection3D<f64>
-{
+impl Elevation for GeometryCollection3D<f64> {
     #[inline]
     fn is_elevation_zero(&self) -> bool {
         self.0.iter().all(|g| g.is_elevation_zero())
