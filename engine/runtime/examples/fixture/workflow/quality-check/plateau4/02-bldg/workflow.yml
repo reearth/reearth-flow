@@ -157,6 +157,308 @@ graphs:
         type: subGraph
         subGraphId: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
 
+      # ===== Error Summary Output (Phase 1-6) =====
+      # Phase 1: File info extraction
+      - id: b1c2d3e4-5f6a-7b8c-9d0e-1f2a3b4c5d6e
+        name: FileInfoExtractor
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: index
+              expr: |
+                env.get("__value").fileIndex
+            - attribute: filename
+              expr: |
+                env.get("__value").gmlFilename
+
+      # Phase 2: FeatureMerger for aggregating error counts
+      - id: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+        name: ErrorSummaryMerger
+        type: action
+        action: FeatureMerger
+        with:
+          requestorAttributeValue: |
+            env.get("__value").filename
+          supplierAttributeValue: |
+            env.get("__value").gmlFilename
+
+      # Phase 3: AttributeMapper for CSV formatting
+      - id: d3e4f5a6-7b8c-9d0e-1f2a-3b4c5d6e7f8a
+        name: SummaryAttributeMapper
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").index
+            - attribute: Filename
+              expr: |
+                env.get("__value").filename
+            # C02 Feature Instance Counts
+            - attribute: "WallSurface"
+              expr: |
+                env.get("__value").WallSurface ?? 0
+            - attribute: "BuildingFurniture"
+              expr: |
+                env.get("__value").BuildingFurniture ?? 0
+            - attribute: "Building"
+              expr: |
+                env.get("__value").Building ?? 0
+            - attribute: "OuterCeilingSurface"
+              expr: |
+                env.get("__value").OuterCeilingSurface ?? 0
+            - attribute: "BuildingInstallation"
+              expr: |
+                env.get("__value").BuildingInstallation ?? 0
+            - attribute: "ClosureSurface"
+              expr: |
+                env.get("__value").ClosureSurface ?? 0
+            - attribute: "InteriorWallSurface"
+              expr: |
+                env.get("__value").InteriorWallSurface ?? 0
+            - attribute: "RoofSurface"
+              expr: |
+                env.get("__value").RoofSurface ?? 0
+            - attribute: "Room"
+              expr: |
+                env.get("__value").Room ?? 0
+            - attribute: "OuterFloorSurface"
+              expr: |
+                env.get("__value").OuterFloorSurface ?? 0
+            - attribute: "GroundSurface"
+              expr: |
+                env.get("__value").GroundSurface ?? 0
+            - attribute: "Window"
+              expr: |
+                env.get("__value").Window ?? 0
+            - attribute: "CeilingSurface"
+              expr: |
+                env.get("__value").CeilingSurface ?? 0
+            - attribute: "BuildingPart"
+              expr: |
+                env.get("__value").BuildingPart ?? 0
+            - attribute: "FloorSurface"
+              expr: |
+                env.get("__value").FloorSurface ?? 0
+            - attribute: "Door"
+              expr: |
+                env.get("__value").Door ?? 0
+            - attribute: "IntBuildingInstallation"
+              expr: |
+                env.get("__value").IntBuildingInstallation ?? 0
+            - attribute: "市区町村コードエラー"
+              expr: |
+                env.get("__value")._num_incorrect_city_code ?? 0
+            - attribute: "C-bldg-01 エラー"
+              expr: |
+                env.get("__value")._num_duplicate_building_id ?? 0
+            - attribute: "不正な建物ID"
+              expr: |
+                env.get("__value")._num_missing_building_id ?? 0
+            - attribute: "L-bldg-02 エラー"
+              expr: |
+                env.get("__value")._num_lbldg02_error ?? 0
+            - attribute: "L-bldg-04,05 エラー"
+              expr: |
+                env.get("__value")._num_incorrect_usage_attribute ?? 0
+            - attribute: "L-bldg-06 エラー"
+              expr: |
+                env.get("__value")._num_lbldg06_error ?? 0
+            - attribute: "T-bldg-02エラー"
+              expr: |
+                env.get("__value")._num_invalid_bldginst_geom_type ?? 0
+            - attribute: "LOD0 面のエラー"
+              expr: |
+                env.get("__value")._num_lod0_invalid_surface ?? 0
+            - attribute: "LOD0 面の向きエラー"
+              expr: |
+                env.get("__value")._num_lod0_incorrect_orientation ?? 0
+            - attribute: "LOD0 面の交差"
+              expr: |
+                env.get("__value")._num_lod0_surface_intersection ?? 0
+            - attribute: "LOD1 境界面のエラー"
+              expr: |
+                env.get("__value")._num_lod1_invalid_surface ?? 0
+            - attribute: "LOD1 非水密立体"
+              expr: |
+                env.get("__value")._num_lod1_not_closed_solid ?? 0
+            - attribute: "LOD1 立体のエラー"
+              expr: |
+                env.get("__value")._num_lod1_solid_issues ?? 0
+            - attribute: "LOD2 境界面のエラー"
+              expr: |
+                env.get("__value")._num_lod2_invalid_surface ?? 0
+            - attribute: "LOD3 境界面のエラー"
+              expr: |
+                env.get("__value")._num_lod3_invalid_surface ?? 0
+            - attribute: "LOD4 境界面のエラー"
+              expr: |
+                env.get("__value")._num_lod4_invalid_surface ?? 0
+            - attribute: "LOD2 非水密立体"
+              expr: |
+                env.get("__value")._num_lod2_not_closed_solid ?? 0
+            - attribute: "LOD3 非水密立体"
+              expr: |
+                env.get("__value")._num_lod3_not_closed_solid ?? 0
+            - attribute: "LOD4 非水密立体"
+              expr: |
+                env.get("__value")._num_lod4_not_closed_solid ?? 0
+            - attribute: "LOD2 立体のエラー"
+              expr: |
+                env.get("__value")._num_lod2_solid_issues ?? 0
+            - attribute: "LOD3 立体のエラー"
+              expr: |
+                env.get("__value")._num_lod3_solid_issues ?? 0
+            - attribute: "LOD4 立体のエラー"
+              expr: |
+                env.get("__value")._num_lod4_solid_issues ?? 0
+            - attribute: "図郭不正"
+              expr: |
+                env.get("__value")._num_incorrect_meshcode ?? 0
+            - attribute: "LOD0-1のBuildingPart"
+              expr: |
+                env.get("__value")._num_lod0_1_buildingpart ?? 0
+
+      # Phase 4: CSV output
+      - id: e4f5a6b7-8c9d-0e1f-2a3b-4c5d6e7f8a9b
+        name: CSVSummaryWriter
+        type: action
+        action: FeatureWriter
+        with:
+          format: csv
+          output: |
+            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_検査結果一覧.csv")
+
+      # Phase 5: StatisticsCalculator for JSON aggregation
+      - id: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c
+        name: StatisticsCalculator
+        type: action
+        action: StatisticsCalculator
+        with:
+          calculations:
+            - newAttribute: "C-bldg-01 エラー"
+              expr: |
+                env.get("__value")["C-bldg-01 エラー"] ?? 0
+            - newAttribute: "不正な建物ID"
+              expr: |
+                env.get("__value")["不正な建物ID"] ?? 0
+            - newAttribute: "市区町村コードエラー"
+              expr: |
+                env.get("__value")["市区町村コードエラー"] ?? 0
+            - newAttribute: "L-bldg-02 エラー"
+              expr: |
+                env.get("__value")["L-bldg-02 エラー"] ?? 0
+            - newAttribute: "L-bldg-04,05 エラー"
+              expr: |
+                env.get("__value")["L-bldg-04,05 エラー"] ?? 0
+            - newAttribute: "L-bldg-06 エラー"
+              expr: |
+                env.get("__value")["L-bldg-06 エラー"] ?? 0
+
+            # LOD0
+            - newAttribute: "LOD0 面のエラー"
+              expr: |
+                env.get("__value")["LOD0 面のエラー"] ?? 0
+            - newAttribute: "LOD0 面の向きエラー"
+              expr: |
+                env.get("__value")["LOD0 面の向きエラー"] ?? 0
+            - newAttribute: "LOD0 面の交差"
+              expr: |
+                env.get("__value")["LOD0 面の交差"] ?? 0
+
+            # LOD1
+            - newAttribute: "LOD1 境界面のエラー"
+              expr: |
+                env.get("__value")["LOD1 境界面のエラー"] ?? 0
+            - newAttribute: "LOD1 非水密立体"
+              expr: |
+                env.get("__value")["LOD1 非水密立体"] ?? 0
+            - newAttribute: "LOD1 立体のエラー"
+              expr: |
+                env.get("__value")["LOD1 立体のエラー"] ?? 0
+            # TODO: unimplemented
+            - newAttribute: "LOD1 立体の交差"
+              expr: |
+                0
+
+            # LOD2
+            - newAttribute: "LOD2 境界面のエラー"
+              expr: |
+                env.get("__value")["LOD2 境界面のエラー"] ?? 0
+            - newAttribute: "LOD2 非水密立体"
+              expr: |
+                env.get("__value")["LOD2 非水密立体"] ?? 0
+            - newAttribute: "LOD2 立体のエラー"
+              expr: |
+                env.get("__value")["LOD2 立体のエラー"] ?? 0
+            # TODO: unimplemented
+            - newAttribute: "LOD2 立体の交差"
+              expr: |
+                0
+
+            # LOD3
+            - newAttribute: "LOD3 境界面のエラー"
+              expr: |
+                env.get("__value")["LOD3 境界面のエラー"] ?? 0
+            - newAttribute: "LOD3 非水密立体"
+              expr: |
+                env.get("__value")["LOD3 非水密立体"] ?? 0
+            - newAttribute: "LOD3 立体のエラー"
+              expr: |
+                env.get("__value")["LOD3 立体のエラー"] ?? 0
+            # TODO: unimplemented
+            - newAttribute: "LOD3 立体の交差"
+              expr: |
+                0
+
+            # LOD4
+            - newAttribute: "LOD4 境界面のエラー"
+              expr: |
+                env.get("__value")["LOD4 境界面のエラー"] ?? 0
+            - newAttribute: "LOD4 非水密立体"
+              expr: |
+                env.get("__value")["LOD4 非水密立体"] ?? 0
+            - newAttribute: "LOD4 立体のエラー"
+              expr: |
+                env.get("__value")["LOD4 立体のエラー"] ?? 0
+            # TODO: unimplemented
+            - newAttribute: "LOD4 立体の交差"
+              expr: |
+                0
+
+            - newAttribute: "T-bldg-02エラー"
+              expr: |
+                env.get("__value")["T-bldg-02エラー"] ?? 0
+            - newAttribute: "LOD0-1のBuildingPart"
+              expr: |
+                env.get("__value")["LOD0-1のBuildingPart"] ?? 0
+
+      # Phase 6: JSON output with converter (same as 01-common)
+      - id: a6b7c8d9-0e1f-2a3b-4c5d-6e7f8a9b0c1d
+        name: JSONSummaryWriter
+        type: action
+        action: FeatureWriter
+        with:
+          format: json
+          converter: |
+            if env.get("__features").is_empty() {
+              []
+            } else {
+              let result = [];
+              let feature = env.get("__features")[0];
+              for key in feature.keys() {
+                result.push(#{
+                  name: key,
+                  count: feature[key],
+                });
+              }
+              result
+            }
+          output: |
+            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_bldg.json")
+
     edges:
       - id: 8c9e2f4a-7b1d-4e5c-a3f2-9d8b6c4e1a7f
         from: 4d7b9e2a-5c8f-41d6-b9a3-7e1c5f8d2b9a
@@ -226,5 +528,199 @@ graphs:
       - id: 050b179b-e063-4541-b08f-31ea54ceec0f
         from: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
         to: 7a561c34-2e94-4883-91e4-4026b09c2f8a
+        fromPort: default
+        toPort: default
+
+      # ===== Error Summary Output Edges =====
+      # Phase 1: Extract file info from AttributeManager (after path/name rename)
+      - id: b7c8d9e0-1f2a-3b4c-5d6e-7f8a9b0c1d2e
+        from: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a  # AttributeManager
+        to: b1c2d3e4-5f6a-7b8c-9d0e-1f2a3b4c5d6e    # FileInfoExtractor
+        fromPort: default
+        toPort: default
+
+      # Phase 2: FeatureMerger - File info (requestor) + Error counts (supplier)
+      - id: c8d9e0f1-2a3b-4c5d-6e7f-8a9b0c1d2e3f
+        from: b1c2d3e4-5f6a-7b8c-9d0e-1f2a3b4c5d6e  # FileInfoExtractor
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (requestor)
+        fromPort: default
+        toPort: requestor
+
+      - id: aa9b0c1d-2e3f-4a5b-6c7d-8e9f0a1b2c3d
+        from: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b  # FormatChecker subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: featureInstanceCountC02
+        toPort: supplier
+
+      - id: d9e0f1a2-3b4c-5d6e-7f8a-9b0c1d2e3f4a
+        from: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b  # FormatChecker subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountCityCode
+        toPort: supplier
+
+      - id: e9f0a1b2-4c5d-6e7f-8a9b-0c1d2e3f4a5b
+        from: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f  # BuildingPartValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLbldg02
+        toPort: supplier
+
+      - id: a3b4c5d6-8e9f-0a1b-2c3d-4e5f6a7b8c9d
+        from: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f  # BuildingPartValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod01BuildingPart
+        toPort: supplier
+
+      - id: f0a1b2c3-5d6e-7f8a-9b0c-1d2e3f4a5b6c
+        from: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b  # FormatChecker subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountL0405Bldg
+        toPort: supplier
+
+      - id: a1b2c3d4-6e7f-8a9b-0c1d-2e3f4a5b6c7d
+        from: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b  # FormatChecker subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountCBldg01
+        toPort: supplier
+
+      - id: b2c3d4e5-7f8a-9b0c-1d2e-3f4a5b6c7d8e
+        from: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b  # FormatChecker subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountMissingBuildingId
+        toPort: supplier
+
+      - id: c3d4e5f6-8a9b-0c1d-2e3f-4a5b6c7d8e9f
+        from: 7a561c34-2e94-4883-91e4-4026b09c2f8a  # ReferenceAndTypeChecker subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountInvalidBldgInstGeomType
+        toPort: supplier
+
+      - id: d4e5f6a7-9b0c-1d2e-3f4a-5b6c7d8e9f0a
+        from: 7a561c34-2e94-4883-91e4-4026b09c2f8a  # ReferenceAndTypeChecker subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLbldg06
+        toPort: supplier
+
+      # Surface Validation error counts (8 types)
+      - id: e5f6a7b8-0c1d-2e3f-4a5b-6c7d8e9f0a1b
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod0IncorrectOrientation
+        toPort: supplier
+
+      - id: f6a7b8c9-1d2e-3f4a-5b6c-7d8e9f0a1b2c
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod0InvalidSurface
+        toPort: supplier
+
+      - id: a7b8c9d0-2e3f-4a5b-6c7d-8e9f0a1b2c3d
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod0SurfaceIntersection
+        toPort: supplier
+
+      - id: b8c9d0e1-3f4a-5b6c-7d8e-9f0a1b2c3d4e
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod1InvalidSurface
+        toPort: supplier
+
+      - id: c9d0e1f2-4a5b-6c7d-8e9f-0a1b2c3d4e5f
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod1NotClosedSolid
+        toPort: supplier
+
+      - id: d0e1f2a3-5b6c-7d8e-9f0a-1b2c3d4e5f6a
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod1SolidIssues
+        toPort: supplier
+
+      - id: e1f2a3b4-6c7d-8e9f-0a1b-2c3d4e5f6a7b
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod2InvalidSurface
+        toPort: supplier
+
+      - id: e2f3a4b5-7c8d-9e0f-1a2b-3c4d5e6f7a8b
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod3InvalidSurface
+        toPort: supplier
+
+      - id: e3f4a5b6-8c9d-0e1f-2a3b-4c5d6e7f8a9b
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod4InvalidSurface
+        toPort: supplier
+
+      - id: f3a4b5c6-8d9e-0f1a-2b3c-4d5e6f7a8b9c
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod2NotClosedSolid
+        toPort: supplier
+
+      - id: f4a5b6c7-9d0e-1f2a-3b4c-5d6e7f8a9b0c
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod3NotClosedSolid
+        toPort: supplier
+
+      - id: f5a6b7c8-0e1f-2a3b-4c5d-6e7f8a9b0c1d
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod4NotClosedSolid
+        toPort: supplier
+
+      - id: f6a7b8c9-1f2a-3b4c-5d6e-7f8a9b0c1d2e
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod2SolidIssues
+        toPort: supplier
+
+      - id: f7a8b9c0-2f3a-4b5c-6d7e-8f9a0b1c2d3e
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod3SolidIssues
+        toPort: supplier
+
+      - id: f8a9b0c1-3f4a-5b6c-7d8e-9f0a1b2c3d4e
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod4SolidIssues
+        toPort: supplier
+
+      - id: f2a3b4c5-7d8e-9f0a-1b2c-3d4e5f6a7b8c
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountIncorrectMeshcode
+        toPort: supplier
+
+      # Phase 3: Merged result to AttributeMapper
+      - id: e0f1a2b3-4c5d-6e7f-8a9b-0c1d2e3f4a5b
+        from: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f  # ErrorSummaryMerger
+        to: d3e4f5a6-7b8c-9d0e-1f2a-3b4c5d6e7f8a    # SummaryAttributeMapper
+        fromPort: merged
+        toPort: default
+
+      # Phase 4: CSV output
+      - id: f1a2b3c4-5d6e-7f8a-9b0c-1d2e3f4a5b6c
+        from: d3e4f5a6-7b8c-9d0e-1f2a-3b4c5d6e7f8a  # SummaryAttributeMapper
+        to: e4f5a6b7-8c9d-0e1f-2a3b-4c5d6e7f8a9b    # CSVSummaryWriter
+        fromPort: default
+        toPort: default
+
+      # Phase 5: StatisticsCalculator for JSON aggregation
+      - id: a2b3c4d5-6e7f-8a9b-0c1d-2e3f4a5b6c7d
+        from: d3e4f5a6-7b8c-9d0e-1f2a-3b4c5d6e7f8a  # SummaryAttributeMapper
+        to: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c    # StatisticsCalculator
+        fromPort: default
+        toPort: default
+
+      # Phase 6: JSON output
+      - id: b3c4d5e6-7f8a-9b0c-1d2e-3f4a5b6c7d8e
+        from: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c  # StatisticsCalculator
+        to: a6b7c8d9-0e1f-2a3b-4c5d-6e7f8a9b0c1d    # JSONSummaryWriter
         fromPort: default
         toPort: default
