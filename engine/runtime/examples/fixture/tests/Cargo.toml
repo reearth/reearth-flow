@@ -26,6 +26,8 @@ yaml-include = "0.7"
 tempfile.workspace = true
 jsonpath_lib.workspace = true
 csv.workspace = true
+zip = "2.1"
+glob = "0.3"
 
 [build-dependencies]
 serde.workspace = true

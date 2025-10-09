@@ -192,7 +192,7 @@ fn generate_test_code(test_cases: &[TestCase], testdata_dir: &Path) -> Result<To
                 let profile: WorkflowTestProfile = serde_json::from_str(&profile_str)?;
 
                 // Create test context
-                let ctx = TestContext::new(
+                let mut ctx = TestContext::new(
                     #test_name_str.to_string(),
                     PathBuf::from(#test_dir_str),
                     PathBuf::from(#fixture_dir_str),

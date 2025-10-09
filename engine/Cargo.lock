@@ -10091,6 +10091,7 @@ version = "0.1.23"
 dependencies = [
  "anyhow",
  "csv",
+ "glob",
  "jsonpath_lib",
  "pretty_assertions",
  "proc-macro2",
@@ -10114,6 +10115,7 @@ dependencies = [
  "uuid",
  "walkdir",
  "yaml-include",
+ "zip",
 ]
 
 [[package]]
