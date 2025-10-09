@@ -1,0 +1,10 @@
+{
+  "workflowPath": "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/workflow.yml",
+  "description": "Test PLATEAU4 transportation data conversion (tran, rwy, trk, squr, wwy) with MVT output",
+  "expectedOutput": {
+    "expectedFile": "maxLod.tsv"
+  },
+  "cityGmlPath": "udx/tran",
+  "codelists": "codelists",
+  "schemas": "schemas"
+}
