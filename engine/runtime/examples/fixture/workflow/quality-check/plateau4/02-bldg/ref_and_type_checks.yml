@@ -94,11 +94,11 @@ nodes:
   - id: adba8857-9de2-43bd-8cde-b83bc08a58f6
     name: FileWriterTsvL-bldg-06
     type: action
-    action: FileWriter
+    action: FeatureWriter
     with:
       format: csv
       output: |
-        file::join_path(env.get("outputPath"), "02_建築物_L-bldg-06エラー.csv")
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_L-bldg-06エラー.csv")
 
   - id: 77a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: Lbldg06ErrorCounter
@@ -159,11 +159,11 @@ nodes:
   - id: 2bae2659-e981-4eb1-8cbe-ce0352584a10
     name: FileWriterTsvT-bldg-02
     type: action
-    action: FileWriter
+    action: FeatureWriter
     with:
       format: csv
       output: |
-        file::join_path(env.get("outputPath"), "02_建築物_T-bldg-02エラー.csv")
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_T-bldg-02エラー.csv")
 
   - id: 35e0e6d2-44f4-4e75-abce-5280c2b80a5d
     name: StatisticsCalculatorT-bldg-02
@@ -204,6 +204,13 @@ nodes:
     action: OutputRouter
     with:
       routingPort: errorCountInvalidBldgInstGeomType
+
+  - id: aab0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
+    name: FileOutputRouter
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: fileOutput
 
 edges:
   - id: 93431d4e-fcd2-4308-af3c-9da9441ac911
@@ -314,6 +321,20 @@ edges:
     to: 88d2c3e4-5f6a-7b8c-9d0e-1f2a3b4c5d6e
     toPort: default
 
+  # === Beginning of FileOutput ===
+  - id: 0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+    from: adba8857-9de2-43bd-8cde-b83bc08a58f6  # FileWriterTsvL-bldg-06
+    fromPort: default
+    to: aab0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d  # FileOutputRouter
+    toPort: default
+
+  - id: 1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e
+    from: 2bae2659-e981-4eb1-8cbe-ce0352584a10  # FileWriterTsvT-bldg-02
+    fromPort: default
+    to: aab0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d  # FileOutputRouter
+    toPort: default
+  # === End of FileOutput ===
+
 # Export error count ports for aggregation in parent workflow
 ports:
   outputs:
@@ -322,4 +343,7 @@ ports:
       port: default
     - id: errorCountInvalidBldgInstGeomType
       nodeId: 88d2c3e4-5f6a-7b8c-9d0e-1f2a3b4c5d6e
+      port: default
+    - id: fileOutput
+      nodeId: aab0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
       port: default

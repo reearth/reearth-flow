@@ -206,6 +206,7 @@ pub struct TestContext {
     pub fixture_dir: PathBuf,
     pub profile: WorkflowTestProfile,
     pub temp_dir: PathBuf,
+    pub actual_output_dir: PathBuf,
     _temp_base: TempDir,
 }
 
@@ -232,6 +233,7 @@ impl TestContext {
             test_dir,
             fixture_dir,
             profile,
+            actual_output_dir: temp_dir.clone(),
             temp_dir,
             _temp_base: temp_base,
         })
@@ -334,7 +336,10 @@ impl TestContext {
         Ok(())
     }
 
-    pub fn verify_output(&self) -> Result<()> {
+    pub fn verify_output(&mut self) -> Result<()> {
+        // Ensure zip is extracted if it exists
+        self.ensure_extracted()?;
+
         if let Some(output) = &self.profile.expected_output {
             // Check if expected file(s) exist, fail test if not
             if let Some(expected_files) = &output.expected_file {
@@ -350,6 +355,47 @@ impl TestContext {
                 }
             }
         }
+        Ok(())
+    }
+
+    fn ensure_extracted(&mut self) -> Result<()> {
+        use zip::ZipArchive;
+
+        // Look for any _qc_result.zip file in temp_dir
+        let zip_pattern = format!("{}", self.temp_dir.join("*_qc_result.zip").display());
+        let zip_files: Vec<PathBuf> = glob::glob(&zip_pattern)
+            .ok()
+            .map(|paths| paths.filter_map(|p| p.ok()).collect())
+            .unwrap_or_default();
+
+        if let Some(zip_path) = zip_files.first() {
+            // Extract zip to a subdirectory
+            let extract_dir = self.temp_dir.join("extracted");
+            fs::create_dir_all(&extract_dir)?;
+
+            let zip_file = fs::File::open(zip_path)?;
+            let mut archive = ZipArchive::new(zip_file)?;
+
+            for i in 0..archive.len() {
+                let mut file = archive.by_index(i)?;
+                let outpath = extract_dir.join(file.name());
+
+                if file.is_dir() {
+                    fs::create_dir_all(&outpath)?;
+                } else {
+                    if let Some(p) = outpath.parent() {
+                        fs::create_dir_all(p)?;
+                    }
+                    let mut outfile = fs::File::create(&outpath)?;
+                    std::io::copy(&mut file, &mut outfile)?;
+                }
+            }
+
+            // Update actual_output_dir to the extracted directory
+            self.actual_output_dir = extract_dir;
+        }
+        // If no zip file exists, actual_output_dir remains as temp_dir
+
         Ok(())
     }
 
@@ -419,7 +465,10 @@ impl TestContext {
         Ok(())
     }
 
-    pub fn verify_summary_output(&self) -> Result<()> {
+    pub fn verify_summary_output(&mut self) -> Result<()> {
+        // Ensure zip is extracted if it exists
+        self.ensure_extracted()?;
+
         if let Some(summary) = &self.profile.summary_output {
             // Error count summary validation
             if let Some(error_count) = &summary.error_count_summary {
@@ -436,7 +485,7 @@ impl TestContext {
 
     fn verify_error_count_summary(&self, config: &ErrorCountSummaryValidation) -> Result<()> {
         // Load actual output
-        let actual_file = self.temp_dir.join(&config.expected_file);
+        let actual_file = self.actual_output_dir.join(&config.expected_file);
         if !actual_file.exists() {
             anyhow::bail!("Error count summary file not found: {:?}", actual_file);
         }
@@ -490,7 +539,7 @@ impl TestContext {
 
     fn verify_file_error_summary(&self, config: &FileErrorSummaryValidation) -> Result<()> {
         // Load actual CSV
-        let actual_file = self.temp_dir.join(&config.expected_file);
+        let actual_file = self.actual_output_dir.join(&config.expected_file);
         if !actual_file.exists() {
             anyhow::bail!("File error summary not found: {:?}", actual_file);
         }
@@ -639,7 +688,7 @@ impl TestContext {
 
     fn verify_csv_file(&self, output: &TestOutput, file_name: &str, delimiter: u8) -> Result<()> {
         let expected_file = self.test_dir.join(file_name);
-        let actual_file = self.temp_dir.join(file_name);
+        let actual_file = self.actual_output_dir.join(file_name);
 
         if !actual_file.exists() {
             anyhow::bail!("Output file not found at {:?}", actual_file);
@@ -654,7 +703,7 @@ impl TestContext {
 
     fn verify_json_file(&self, file_name: &str) -> Result<()> {
         let expected_file = self.test_dir.join(file_name);
-        let actual_file = self.temp_dir.join(file_name);
+        let actual_file = self.actual_output_dir.join(file_name);
 
         if !actual_file.exists() {
             anyhow::bail!("Output file not found at {:?}", actual_file);
@@ -674,7 +723,7 @@ impl TestContext {
 
     fn verify_jsonl_file(&self, file_name: &str) -> Result<()> {
         let expected_file = self.test_dir.join(file_name);
-        let actual_file = self.temp_dir.join(file_name);
+        let actual_file = self.actual_output_dir.join(file_name);
 
         if !actual_file.exists() {
             anyhow::bail!("Output file not found at {:?}", actual_file);

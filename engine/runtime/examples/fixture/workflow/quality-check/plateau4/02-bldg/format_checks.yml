@@ -182,11 +182,11 @@ nodes:
   - id: 7debf320-37c4-414e-acab-9f2fb41e2848
     name: FileTSVWriterC02
     type: action
-    action: FileWriter
+    action: FeatureWriter
     with:
       format: csv
       output: |
-        file::join_path(env.get("outputPath"), "02_建築物_地物インスタンス数.csv")
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_地物インスタンス数.csv")
   # === End of C02 ===
 
   - id: 80b7d9fd-6514-49d0-88e6-a87c3c1d36c9
@@ -262,11 +262,11 @@ nodes:
   - id: 72b70428-0bb9-401b-a295-881556adc526
     name: FileTSVWriterLBDLG04-05
     type: action
-    action: FileWriter
+    action: FeatureWriter
     with:
       format: csv
       output: |
-        file::join_path(env.get("outputPath"), "02_建築物_L-bldg-04,05エラー.csv")
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_L-bldg-04,05エラー.csv")
 
   - id: 5d8e7f4a-3b2c-4f1e-9a8d-6c5b4e3f2a1b
     name: AttributeManager-city-code-error-transform
@@ -323,11 +323,11 @@ nodes:
   - id: ab3505ad-4e89-4442-ab36-c52ac29c332e
     name: FileTSVWriterCityCodeError
     type: action
-    action: FileWriter
+    action: FeatureWriter
     with:
       format: csv
       output: |
-        file::join_path(env.get("outputPath"), "02_建築物_市区町村コードエラー.csv")
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_市区町村コードエラー.csv")
 
   - id: 33c1a2b3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: CityCodeErrorCounter
@@ -432,11 +432,11 @@ nodes:
   - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
     name: FileWriter-invalid-building-id-format
     type: action
-    action: FileWriter
+    action: FeatureWriter
     with:
       format: csv
       output: |
-        file::join_path(env.get("outputPath"), "02_建築物_建物ID書式不正.csv")
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_建物ID書式不正.csv")
 
   - id: 0b291ad6-cdfa-4371-bcbb-3422b2cd53cf
     name: AttributeAggregator-c-bldg-01
@@ -532,11 +532,11 @@ nodes:
   - id: bba483d0-9813-499e-a0f6-22874646450d
     name: FileWriterTsv-c-bldg-01
     type: action
-    action: FileWriter
+    action: FeatureWriter
     with:
       format: csv
       output: |
-        file::join_path(env.get("outputPath"), "02_建築物_C-bldg-01エラー.csv")
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_C-bldg-01エラー.csv")
 
   - id: 124b1896-04c2-41d9-9e76-0ce32b04089f
     name: C-BLDG-01ErrorCounter
@@ -580,6 +580,13 @@ nodes:
     action: OutputRouter
     with:
       routingPort: featureInstanceCountC02
+
+  - id: 9a0b1c2d-3e4f-5a6b-7c8d-9e0f1a2b3c4d
+    name: FileOutputRouter
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: fileOutput
 
 edges:
   # === Beginning of C02 ===
@@ -751,6 +758,38 @@ edges:
     toPort: default
   # === End of C-bldg-01 ===
 
+  # === Beginning of FileOutput ===
+  - id: 0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
+    from: 7debf320-37c4-414e-acab-9f2fb41e2848  # FileTSVWriterC02
+    fromPort: default
+    to: 9a0b1c2d-3e4f-5a6b-7c8d-9e0f1a2b3c4d  # FileOutputRouter
+    toPort: default
+
+  - id: 1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e
+    from: 72b70428-0bb9-401b-a295-881556adc526  # FileTSVWriterLBDLG04-05
+    fromPort: default
+    to: 9a0b1c2d-3e4f-5a6b-7c8d-9e0f1a2b3c4d  # FileOutputRouter
+    toPort: default
+
+  - id: 2c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    from: ab3505ad-4e89-4442-ab36-c52ac29c332e  # FileTSVWriterCityCodeError
+    fromPort: default
+    to: 9a0b1c2d-3e4f-5a6b-7c8d-9e0f1a2b3c4d  # FileOutputRouter
+    toPort: default
+
+  - id: 3d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
+    from: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f  # FileWriter-invalid-building-id-format
+    fromPort: default
+    to: 9a0b1c2d-3e4f-5a6b-7c8d-9e0f1a2b3c4d  # FileOutputRouter
+    toPort: default
+
+  - id: 4e5f6a7b-8c9d-0e1f-2a3b-4c5d6e7f8a9b
+    from: bba483d0-9813-499e-a0f6-22874646450d  # FileWriterTsv-c-bldg-01
+    fromPort: default
+    to: 9a0b1c2d-3e4f-5a6b-7c8d-9e0f1a2b3c4d  # FileOutputRouter
+    toPort: default
+  # === End of FileOutput ===
+
 # Export error count ports for aggregation in parent workflow
 ports:
   outputs:
@@ -768,4 +807,7 @@ ports:
       port: default
     - id: errorCountMissingBuildingId
       nodeId: 88b6f7a8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
+      port: default
+    - id: fileOutput
+      nodeId: 9a0b1c2d-3e4f-5a6b-7c8d-9e0f1a2b3c4d
       port: default
