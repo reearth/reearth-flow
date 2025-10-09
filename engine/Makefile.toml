@@ -41,11 +41,6 @@ script = ['''
 cargo test -p workflow-tests ${@:-}
 ''']
 
-[tasks.test-all]
-run_task = [
-    { name = ["test", "test-wf"] },
-]
-
 [tasks.doc]
 script = ['''
 #!/usr/bin/env bash -eux

@@ -1,13 +1,15 @@
 import { useReactFlow, XYPosition } from "@xyflow/react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useDoubleClick } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
+import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
 import { buildNewCanvasNode } from "@flow/lib/reactFlow";
 import { ActionNodeType, Node } from "@flow/types";
 import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
 
+type ActionTypeFiltering = "all" | ActionNodeType;
 export default ({
   openedActionType,
   isMainWorkflow,
@@ -22,28 +24,45 @@ export default ({
   onNodesAdd: (nodes: Node[]) => void;
   onClose: () => void;
 }) => {
+  const t = useT();
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentActionByType, setCurrentActionByType] =
+    useState<ActionTypeFiltering>(openedActionType.nodeType);
+
+  const actionTypes: { value: ActionTypeFiltering; label: string }[] = [
+    { value: "all", label: t("All Actions") },
+    { value: "reader", label: t("Readers") },
+    { value: "transformer", label: t("Transformers") },
+    { value: "writer", label: t("Writers") },
+  ];
 
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   // const { handleNodeDropInBatch } = useBatch();
   const { screenToFlowPosition } = useReactFlow();
-  const { useGetActionsSegregated } = useAction(i18n.language);
-  const { actions } = useGetActionsSegregated({
+  const { useGetActionsSegregated, useGetActions } = useAction(i18n.language);
+  const { actions: segregatedActions } = useGetActionsSegregated({
     isMainWorkflow,
     searchTerm,
-    type: openedActionType?.nodeType,
+    type: currentActionByType,
+  });
+
+  const { actions } = useGetActions({
+    isMainWorkflow,
+    searchTerm,
   });
 
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [selected, setSelected] = useState<string | undefined>();
 
   useEffect(() => {
-    if (actions?.length) {
-      const actionsList = actions.byType[openedActionType.nodeType];
+    if (currentActionByType !== "all" && segregatedActions) {
+      const actionsList = segregatedActions.byType[currentActionByType];
       setSelected(actionsList?.[selectedIndex]?.name ?? "");
+    } else {
+      setSelected(actions?.[selectedIndex]?.name ?? "");
     }
-  }, [selectedIndex, actions, openedActionType?.nodeType]);
+  }, [selectedIndex, segregatedActions, actions, currentActionByType]);
 
   const handleSearchTerm = (newSearchTerm: string) => {
     setSearchTerm(newSearchTerm);
@@ -91,12 +110,27 @@ export default ({
     },
   );
 
-  const actionsList = actions?.byType[openedActionType?.nodeType] || [];
+  const actionsList =
+    currentActionByType !== "all"
+      ? segregatedActions?.byType[currentActionByType]
+      : actions || [];
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Prevent hotkeys from triggering when Select dropdown is open
+      const target = e.target as HTMLElement;
+      if (
+        target.closest('[role="combobox"]') ||
+        target.closest('[role="listbox"]') ||
+        target.closest('[role="option"]')
+      ) {
+        return;
+      }
+
       const currentActionsList =
-        actions?.byType[openedActionType?.nodeType] || [];
+        currentActionByType !== "all"
+          ? segregatedActions?.byType[currentActionByType]
+          : actions || [];
 
       switch (e.key) {
         case "Enter":
@@ -136,7 +170,8 @@ export default ({
     };
   }, [
     actions,
-    openedActionType?.nodeType,
+    segregatedActions,
+    currentActionByType,
     selectedIndex,
     selected,
     handleDoubleClick,
@@ -144,13 +179,26 @@ export default ({
     setSelected,
   ]);
 
+  const handleActionByTypeChange = useCallback(
+    (actionByType: ActionTypeFiltering) => {
+      setCurrentActionByType(actionByType);
+      setSelectedIndex(-1);
+      setSelected(undefined);
+      containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    },
+    [],
+  );
+
   return {
     actionsList,
     containerRef,
     itemRefs,
     selected,
+    currentActionByType,
+    actionTypes,
     handleSearchTerm,
     handleSingleClick,
     handleDoubleClick,
+    handleActionByTypeChange,
   };
 };
