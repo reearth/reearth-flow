@@ -435,7 +435,7 @@ graphs:
               expr: |
                 env.get("__value")["LOD0-1のBuildingPart"] ?? 0
 
-      # Phase 6: JSON output with converter (same as 01-common)
+      # Phase 6: JSON output with converter
       - id: a6b7c8d9-0e1f-2a3b-4c5d-6e7f8a9b0c1d
         name: JSONSummaryWriter
         type: action
@@ -458,6 +458,15 @@ graphs:
             }
           output: |
             file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_bldg.json")
+
+      # ZipFileWriter - Bundle all output files
+      - id: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
+        name: ZipFileWriter
+        type: action
+        action: ZipFileWriter
+        with:
+          output: |
+            file::join_path(env.get("outputPath"), file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip")
 
     edges:
       - id: 8c9e2f4a-7b1d-4e5c-a3f2-9d8b6c4e1a7f
@@ -723,4 +732,47 @@ graphs:
         from: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c  # StatisticsCalculator
         to: a6b7c8d9-0e1f-2a3b-4c5d-6e7f8a9b0c1d    # JSONSummaryWriter
         fromPort: default
+        toPort: default
+
+      # ===== ZipFileWriter Connections - Bundle all output files =====
+      # Connect CSVSummaryWriter to ZipFileWriter
+      - id: c4d5e6f7-8a9b-0c1d-2e3f-4a5b6c7d8e9f
+        from: e4f5a6b7-8c9d-0e1f-2a3b-4c5d6e7f8a9b  # CSVSummaryWriter
+        to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a    # ZipFileWriter
+        fromPort: default
+        toPort: default
+
+      # Connect JSONSummaryWriter to ZipFileWriter
+      - id: d5e6f7a8-9b0c-1d2e-3f4a-5b6c7d8e9f0a
+        from: a6b7c8d9-0e1f-2a3b-4c5d-6e7f8a9b0c1d  # JSONSummaryWriter
+        to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a    # ZipFileWriter
+        fromPort: default
+        toPort: default
+
+      # Connect FormatChecker subgraph fileOutput to ZipFileWriter
+      - id: e6f7a8b9-0c1d-2e3f-4a5b-6c7d8e9f0a1b
+        from: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b  # FormatChecker subgraph
+        to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a    # ZipFileWriter
+        fromPort: fileOutput
+        toPort: default
+
+      # Connect ReferenceAndTypeChecker subgraph fileOutput to ZipFileWriter
+      - id: f7a8b9c0-1d2e-3f4a-5b6c-7d8e9f0a1b2c
+        from: 7a561c34-2e94-4883-91e4-4026b09c2f8a  # ReferenceAndTypeChecker subgraph
+        to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a    # ZipFileWriter
+        fromPort: fileOutput
+        toPort: default
+
+      # Connect SurfaceValidation subgraph fileOutput to ZipFileWriter
+      - id: a8b9c0d1-2e3f-4a5b-6c7d-8e9f0a1b2c3d
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a    # ZipFileWriter
+        fromPort: fileOutput
+        toPort: default
+
+      # Connect BuildingPartValidation subgraph fileOutput to ZipFileWriter
+      - id: b9c0d1e2-3f4a-5b6c-7d8e-9f0a1b2c3d4e
+        from: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f  # BuildingPartValidation subgraph
+        to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a    # ZipFileWriter
+        fromPort: fileOutput
         toPort: default
