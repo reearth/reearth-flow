@@ -30,6 +30,7 @@ func New(ctx context.Context, db *mongo.Database, account *accountrepo.Container
 	c := &repo.Container{
 		Asset:         NewAsset(client),
 		AuthRequest:   authserver.NewMongo(client.WithCollection("authRequest")),
+		BatchConfig:   NewBatchConfig(client),
 		Config:        NewConfig(db.Collection("config"), lock),
 		Deployment:    NewDeployment(client),
 		EdgeExecution: NewEdgeExecution(client),
@@ -68,6 +69,7 @@ func Init(r *repo.Container) error {
 	return util.Try(
 		func() error { return r.Asset.(*Asset).Init(ctx) },
 		func() error { return r.AuthRequest.(*authserver.Mongo).Init(ctx) },
+		func() error { return r.BatchConfig.(*BatchConfigRepo).Init(ctx) },
 		func() error { return r.Deployment.(*DeploymentAdapter).Deployment.Init(ctx) },
 		func() error { return r.EdgeExecution.(*EdgeExecution).Init(ctx) },
 		func() error { return r.Job.(*Job).Init(ctx) },
