@@ -146,7 +146,7 @@ nodes:
     type: action
     action: OutputRouter
     with:
-      routingPort: default
+      routingPort: fileOutput
 
 edges:
   - id: ed4f5a6b-7c8d-4e9f-8a1b-2c3d4e5f6a7b
@@ -249,4 +249,7 @@ ports:
       port: default
     - id: errorCountLod01BuildingPart
       nodeId: 88d8e9f0-1a2b-3c4d-5e6f-7a8b9c0d1e2f
+      port: default
+    - id: fileOutput
+      nodeId: 3f4e5d6c-7b8a-9c0d-1e2f-3a4b5c6d7e8f
       port: default

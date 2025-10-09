@@ -290,6 +290,30 @@ graphs:
             - attribute: "LOD2 境界面のエラー"
               expr: |
                 env.get("__value")._num_lod2_invalid_surface ?? 0
+            - attribute: "LOD3 境界面のエラー"
+              expr: |
+                env.get("__value")._num_lod3_invalid_surface ?? 0
+            - attribute: "LOD4 境界面のエラー"
+              expr: |
+                env.get("__value")._num_lod4_invalid_surface ?? 0
+            - attribute: "LOD2 非水密立体"
+              expr: |
+                env.get("__value")._num_lod2_not_closed_solid ?? 0
+            - attribute: "LOD3 非水密立体"
+              expr: |
+                env.get("__value")._num_lod3_not_closed_solid ?? 0
+            - attribute: "LOD4 非水密立体"
+              expr: |
+                env.get("__value")._num_lod4_not_closed_solid ?? 0
+            - attribute: "LOD2 立体のエラー"
+              expr: |
+                env.get("__value")._num_lod2_solid_issues ?? 0
+            - attribute: "LOD3 立体のエラー"
+              expr: |
+                env.get("__value")._num_lod3_solid_issues ?? 0
+            - attribute: "LOD4 立体のエラー"
+              expr: |
+                env.get("__value")._num_lod4_solid_issues ?? 0
             - attribute: "図郭不正"
               expr: |
                 env.get("__value")._num_incorrect_meshcode ?? 0
@@ -314,67 +338,15 @@ graphs:
         action: StatisticsCalculator
         with:
           calculations:
-            # C02 Feature Instance Counts
-            - newAttribute: "WallSurface"
-              expr: |
-                env.get("__value").WallSurface ?? 0
-            - newAttribute: "BuildingFurniture"
-              expr: |
-                env.get("__value").BuildingFurniture ?? 0
-            - newAttribute: "Building"
-              expr: |
-                env.get("__value").Building ?? 0
-            - newAttribute: "OuterCeilingSurface"
-              expr: |
-                env.get("__value").OuterCeilingSurface ?? 0
-            - newAttribute: "BuildingInstallation"
-              expr: |
-                env.get("__value").BuildingInstallation ?? 0
-            - newAttribute: "ClosureSurface"
-              expr: |
-                env.get("__value").ClosureSurface ?? 0
-            - newAttribute: "InteriorWallSurface"
-              expr: |
-                env.get("__value").InteriorWallSurface ?? 0
-            - newAttribute: "RoofSurface"
-              expr: |
-                env.get("__value").RoofSurface ?? 0
-            - newAttribute: "Room"
-              expr: |
-                env.get("__value").Room ?? 0
-            - newAttribute: "OuterFloorSurface"
-              expr: |
-                env.get("__value").OuterFloorSurface ?? 0
-            - newAttribute: "GroundSurface"
-              expr: |
-                env.get("__value").GroundSurface ?? 0
-            - newAttribute: "Window"
-              expr: |
-                env.get("__value").Window ?? 0
-            - newAttribute: "CeilingSurface"
-              expr: |
-                env.get("__value").CeilingSurface ?? 0
-            - newAttribute: "BuildingPart"
-              expr: |
-                env.get("__value").BuildingPart ?? 0
-            - newAttribute: "FloorSurface"
-              expr: |
-                env.get("__value").FloorSurface ?? 0
-            - newAttribute: "Door"
-              expr: |
-                env.get("__value").Door ?? 0
-            - newAttribute: "IntBuildingInstallation"
-              expr: |
-                env.get("__value").IntBuildingInstallation ?? 0
-            - newAttribute: "市区町村コードエラー"
-              expr: |
-                env.get("__value")["市区町村コードエラー"] ?? 0
             - newAttribute: "C-bldg-01 エラー"
               expr: |
                 env.get("__value")["C-bldg-01 エラー"] ?? 0
             - newAttribute: "不正な建物ID"
               expr: |
                 env.get("__value")["不正な建物ID"] ?? 0
+            - newAttribute: "市区町村コードエラー"
+              expr: |
+                env.get("__value")["市区町村コードエラー"] ?? 0
             - newAttribute: "L-bldg-02 エラー"
               expr: |
                 env.get("__value")["L-bldg-02 エラー"] ?? 0
@@ -384,9 +356,8 @@ graphs:
             - newAttribute: "L-bldg-06 エラー"
               expr: |
                 env.get("__value")["L-bldg-06 エラー"] ?? 0
-            - newAttribute: "T-bldg-02エラー"
-              expr: |
-                env.get("__value")["T-bldg-02エラー"] ?? 0
+
+            # LOD0
             - newAttribute: "LOD0 面のエラー"
               expr: |
                 env.get("__value")["LOD0 面のエラー"] ?? 0
@@ -396,6 +367,8 @@ graphs:
             - newAttribute: "LOD0 面の交差"
               expr: |
                 env.get("__value")["LOD0 面の交差"] ?? 0
+
+            # LOD1
             - newAttribute: "LOD1 境界面のエラー"
               expr: |
                 env.get("__value")["LOD1 境界面のエラー"] ?? 0
@@ -405,17 +378,64 @@ graphs:
             - newAttribute: "LOD1 立体のエラー"
               expr: |
                 env.get("__value")["LOD1 立体のエラー"] ?? 0
+            # TODO: unimplemented
+            - newAttribute: "LOD1 立体の交差"
+              expr: |
+                0
+
+            # LOD2
             - newAttribute: "LOD2 境界面のエラー"
               expr: |
                 env.get("__value")["LOD2 境界面のエラー"] ?? 0
-            - newAttribute: "図郭不正"
+            - newAttribute: "LOD2 非水密立体"
               expr: |
-                env.get("__value")["図郭不正"] ?? 0
+                env.get("__value")["LOD2 非水密立体"] ?? 0
+            - newAttribute: "LOD2 立体のエラー"
+              expr: |
+                env.get("__value")["LOD2 立体のエラー"] ?? 0
+            # TODO: unimplemented
+            - newAttribute: "LOD2 立体の交差"
+              expr: |
+                0
+
+            # LOD3
+            - newAttribute: "LOD3 境界面のエラー"
+              expr: |
+                env.get("__value")["LOD3 境界面のエラー"] ?? 0
+            - newAttribute: "LOD3 非水密立体"
+              expr: |
+                env.get("__value")["LOD3 非水密立体"] ?? 0
+            - newAttribute: "LOD3 立体のエラー"
+              expr: |
+                env.get("__value")["LOD3 立体のエラー"] ?? 0
+            # TODO: unimplemented
+            - newAttribute: "LOD3 立体の交差"
+              expr: |
+                0
+
+            # LOD4
+            - newAttribute: "LOD4 境界面のエラー"
+              expr: |
+                env.get("__value")["LOD4 境界面のエラー"] ?? 0
+            - newAttribute: "LOD4 非水密立体"
+              expr: |
+                env.get("__value")["LOD4 非水密立体"] ?? 0
+            - newAttribute: "LOD4 立体のエラー"
+              expr: |
+                env.get("__value")["LOD4 立体のエラー"] ?? 0
+            # TODO: unimplemented
+            - newAttribute: "LOD4 立体の交差"
+              expr: |
+                0
+
+            - newAttribute: "T-bldg-02エラー"
+              expr: |
+                env.get("__value")["T-bldg-02エラー"] ?? 0
             - newAttribute: "LOD0-1のBuildingPart"
               expr: |
                 env.get("__value")["LOD0-1のBuildingPart"] ?? 0
 
-      # Phase 6: JSON output with converter (same as 01-common)
+      # Phase 6: JSON output with converter
       - id: a6b7c8d9-0e1f-2a3b-4c5d-6e7f8a9b0c1d
         name: JSONSummaryWriter
         type: action
@@ -438,6 +458,15 @@ graphs:
             }
           output: |
             file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_bldg.json")
+
+      # ZipFileWriter - Bundle all output files
+      - id: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
+        name: ZipFileWriter
+        type: action
+        action: ZipFileWriter
+        with:
+          output: |
+            file::join_path(env.get("outputPath"), file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip")
 
     edges:
       - id: 8c9e2f4a-7b1d-4e5c-a3f2-9d8b6c4e1a7f
@@ -623,6 +652,54 @@ graphs:
         fromPort: errorCountLod2InvalidSurface
         toPort: supplier
 
+      - id: e2f3a4b5-7c8d-9e0f-1a2b-3c4d5e6f7a8b
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod3InvalidSurface
+        toPort: supplier
+
+      - id: e3f4a5b6-8c9d-0e1f-2a3b-4c5d6e7f8a9b
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod4InvalidSurface
+        toPort: supplier
+
+      - id: f3a4b5c6-8d9e-0f1a-2b3c-4d5e6f7a8b9c
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod2NotClosedSolid
+        toPort: supplier
+
+      - id: f4a5b6c7-9d0e-1f2a-3b4c-5d6e7f8a9b0c
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod3NotClosedSolid
+        toPort: supplier
+
+      - id: f5a6b7c8-0e1f-2a3b-4c5d-6e7f8a9b0c1d
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod4NotClosedSolid
+        toPort: supplier
+
+      - id: f6a7b8c9-1f2a-3b4c-5d6e-7f8a9b0c1d2e
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod2SolidIssues
+        toPort: supplier
+
+      - id: f7a8b9c0-2f3a-4b5c-6d7e-8f9a0b1c2d3e
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod3SolidIssues
+        toPort: supplier
+
+      - id: f8a9b0c1-3f4a-5b6c-7d8e-9f0a1b2c3d4e
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod4SolidIssues
+        toPort: supplier
+
       - id: f2a3b4c5-7d8e-9f0a-1b2c-3d4e5f6a7b8c
         from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
         to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
@@ -655,4 +732,47 @@ graphs:
         from: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c  # StatisticsCalculator
         to: a6b7c8d9-0e1f-2a3b-4c5d-6e7f8a9b0c1d    # JSONSummaryWriter
         fromPort: default
+        toPort: default
+
+      # ===== ZipFileWriter Connections - Bundle all output files =====
+      # Connect CSVSummaryWriter to ZipFileWriter
+      - id: c4d5e6f7-8a9b-0c1d-2e3f-4a5b6c7d8e9f
+        from: e4f5a6b7-8c9d-0e1f-2a3b-4c5d6e7f8a9b  # CSVSummaryWriter
+        to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a    # ZipFileWriter
+        fromPort: default
+        toPort: default
+
+      # Connect JSONSummaryWriter to ZipFileWriter
+      - id: d5e6f7a8-9b0c-1d2e-3f4a-5b6c7d8e9f0a
+        from: a6b7c8d9-0e1f-2a3b-4c5d-6e7f8a9b0c1d  # JSONSummaryWriter
+        to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a    # ZipFileWriter
+        fromPort: default
+        toPort: default
+
+      # Connect FormatChecker subgraph fileOutput to ZipFileWriter
+      - id: e6f7a8b9-0c1d-2e3f-4a5b-6c7d8e9f0a1b
+        from: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b  # FormatChecker subgraph
+        to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a    # ZipFileWriter
+        fromPort: fileOutput
+        toPort: default
+
+      # Connect ReferenceAndTypeChecker subgraph fileOutput to ZipFileWriter
+      - id: f7a8b9c0-1d2e-3f4a-5b6c-7d8e9f0a1b2c
+        from: 7a561c34-2e94-4883-91e4-4026b09c2f8a  # ReferenceAndTypeChecker subgraph
+        to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a    # ZipFileWriter
+        fromPort: fileOutput
+        toPort: default
+
+      # Connect SurfaceValidation subgraph fileOutput to ZipFileWriter
+      - id: a8b9c0d1-2e3f-4a5b-6c7d-8e9f0a1b2c3d
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a    # ZipFileWriter
+        fromPort: fileOutput
+        toPort: default
+
+      # Connect BuildingPartValidation subgraph fileOutput to ZipFileWriter
+      - id: b9c0d1e2-3f4a-5b6c-7d8e-9f0a1b2c3d4e
+        from: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f  # BuildingPartValidation subgraph
+        to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a    # ZipFileWriter
+        fromPort: fileOutput
         toPort: default
