@@ -5075,6 +5075,8 @@ Execute Python Scripts with Geospatial Data Processing
       ]
     },
     "pythonPath": {
+      "title": "Python Path",
+      "description": "Path to Python interpreter executable (default: python3)",
       "type": [
         "string",
         "null"
@@ -5093,6 +5095,8 @@ Execute Python Scripts with Geospatial Data Processing
       ]
     },
     "timeoutSeconds": {
+      "title": "Timeout Seconds",
+      "description": "Maximum execution time for the Python script in seconds (default: 30)",
       "type": [
         "integer",
         "null"
