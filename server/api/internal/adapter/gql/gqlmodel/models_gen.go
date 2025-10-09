@@ -57,6 +57,53 @@ type AssetConnection struct {
 	TotalCount int       `json:"totalCount"`
 }
 
+// BatchConfig represents workspace-specific batch worker configuration overrides.
+// If no custom configuration exists, environment defaults are used.
+type BatchConfig struct {
+	ID                           ID              `json:"id"`
+	WorkspaceID                  ID              `json:"workspaceId"`
+	CreatedAt                    time.Time       `json:"createdAt"`
+	UpdatedAt                    time.Time       `json:"updatedAt"`
+	CreatedBy                    string          `json:"createdBy"`
+	UpdatedBy                    string          `json:"updatedBy"`
+	ComputeCPUMilli              *int            `json:"computeCpuMilli,omitempty"`
+	ComputeMemoryMib             *int            `json:"computeMemoryMib,omitempty"`
+	BootDiskSizeGb               *int            `json:"bootDiskSizeGB,omitempty"`
+	MaxConcurrency               *int            `json:"maxConcurrency,omitempty"`
+	ThreadPoolSize               *int            `json:"threadPoolSize,omitempty"`
+	ChannelBufferSize            *int            `json:"channelBufferSize,omitempty"`
+	FeatureFlushThreshold        *int            `json:"featureFlushThreshold,omitempty"`
+	MachineType                  *string         `json:"machineType,omitempty"`
+	TaskCount                    *int            `json:"taskCount,omitempty"`
+	NodeStatusPropagationDelayMs *int            `json:"nodeStatusPropagationDelayMS,omitempty"`
+	BootDiskType                 *string         `json:"bootDiskType,omitempty"`
+	ImageURL                     *string         `json:"imageURL,omitempty"`
+	BinaryPath                   *string         `json:"binaryPath,omitempty"`
+	AllowedLocations             []string        `json:"allowedLocations,omitempty"`
+	ChangeHistory                []*ConfigChange `json:"changeHistory"`
+}
+
+// BatchConfigConstraints provides information about valid ranges and values for configuration
+type BatchConfigConstraints struct {
+	ComputeCPUMilliRange              *IntRange `json:"computeCpuMilliRange"`
+	ComputeMemoryMibRange             *IntRange `json:"computeMemoryMibRange"`
+	BootDiskSizeGBRange               *IntRange `json:"bootDiskSizeGBRange"`
+	MaxConcurrencyRange               *IntRange `json:"maxConcurrencyRange"`
+	ThreadPoolSizeRange               *IntRange `json:"threadPoolSizeRange"`
+	ChannelBufferSizeRange            *IntRange `json:"channelBufferSizeRange"`
+	FeatureFlushThresholdRange        *IntRange `json:"featureFlushThresholdRange"`
+	TaskCountRange                    *IntRange `json:"taskCountRange"`
+	NodeStatusPropagationDelayMSRange *IntRange `json:"nodeStatusPropagationDelayMSRange"`
+	AllowedMachineTypes               []string  `json:"allowedMachineTypes"`
+	AllowedBootDiskTypes              []string  `json:"allowedBootDiskTypes"`
+}
+
+// BatchConfigValidationError represents a validation error for configuration parameters
+type BatchConfigValidationError struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+}
+
 type CMSAsset struct {
 	ID                      ID        `json:"id"`
 	UUID                    string    `json:"uuid"`
@@ -144,6 +191,15 @@ type CancelJobInput struct {
 
 type CancelJobPayload struct {
 	Job *Job `json:"job,omitempty"`
+}
+
+// ConfigChange records a configuration change for audit purposes
+type ConfigChange struct {
+	Timestamp time.Time `json:"timestamp"`
+	ChangedBy string    `json:"changedBy"`
+	FieldName string    `json:"fieldName"`
+	OldValue  any       `json:"oldValue,omitempty"`
+	NewValue  any       `json:"newValue,omitempty"`
 }
 
 type CreateAssetInput struct {
@@ -264,6 +320,28 @@ type DeploymentPayload struct {
 	Deployment *Deployment `json:"deployment"`
 }
 
+// EffectiveBatchConfig shows the effective configuration for a workspace,
+// merging workspace-specific overrides with environment defaults
+type EffectiveBatchConfig struct {
+	WorkspaceID                  ID       `json:"workspaceId"`
+	ComputeCPUMilli              int      `json:"computeCpuMilli"`
+	ComputeMemoryMib             int      `json:"computeMemoryMib"`
+	BootDiskSizeGb               int      `json:"bootDiskSizeGB"`
+	MaxConcurrency               int      `json:"maxConcurrency"`
+	ThreadPoolSize               int      `json:"threadPoolSize"`
+	ChannelBufferSize            int      `json:"channelBufferSize"`
+	FeatureFlushThreshold        int      `json:"featureFlushThreshold"`
+	MachineType                  string   `json:"machineType"`
+	TaskCount                    int      `json:"taskCount"`
+	NodeStatusPropagationDelayMs int      `json:"nodeStatusPropagationDelayMS"`
+	BootDiskType                 string   `json:"bootDiskType"`
+	ImageURL                     string   `json:"imageURL"`
+	BinaryPath                   string   `json:"binaryPath"`
+	AllowedLocations             []string `json:"allowedLocations"`
+	HasCustomConfig              bool     `json:"hasCustomConfig"`
+	CustomConfigID               *ID      `json:"customConfigId,omitempty"`
+}
+
 type ExecuteDeploymentInput struct {
 	DeploymentID ID `json:"deploymentId"`
 }
@@ -277,6 +355,12 @@ type GetByVersionInput struct {
 type GetHeadInput struct {
 	WorkspaceID ID  `json:"workspaceId"`
 	ProjectID   *ID `json:"projectId,omitempty"`
+}
+
+// IntRange represents a valid integer range
+type IntRange struct {
+	Min int `json:"min"`
+	Max int `json:"max"`
 }
 
 type Job struct {
@@ -485,6 +569,11 @@ type RemoveParametersInput struct {
 	ParamIds []ID `json:"paramIds"`
 }
 
+// ResetBatchConfigInput removes all workspace-specific overrides
+type ResetBatchConfigInput struct {
+	WorkspaceID ID `json:"workspaceId"`
+}
+
 type RunProjectInput struct {
 	ProjectID   ID             `json:"projectId"`
 	WorkspaceID ID             `json:"workspaceId"`
@@ -565,6 +654,32 @@ type UpdateAssetInput struct {
 
 type UpdateAssetPayload struct {
 	Asset *Asset `json:"asset"`
+}
+
+// UpdateBatchConfigInput allows updating workspace-specific batch configuration.
+// Only non-null fields will be updated. Set to explicit null to remove override.
+type UpdateBatchConfigInput struct {
+	WorkspaceID                  ID       `json:"workspaceId"`
+	ComputeCPUMilli              *int     `json:"computeCpuMilli,omitempty"`
+	ComputeMemoryMib             *int     `json:"computeMemoryMib,omitempty"`
+	BootDiskSizeGb               *int     `json:"bootDiskSizeGB,omitempty"`
+	MaxConcurrency               *int     `json:"maxConcurrency,omitempty"`
+	ThreadPoolSize               *int     `json:"threadPoolSize,omitempty"`
+	ChannelBufferSize            *int     `json:"channelBufferSize,omitempty"`
+	FeatureFlushThreshold        *int     `json:"featureFlushThreshold,omitempty"`
+	MachineType                  *string  `json:"machineType,omitempty"`
+	TaskCount                    *int     `json:"taskCount,omitempty"`
+	NodeStatusPropagationDelayMs *int     `json:"nodeStatusPropagationDelayMS,omitempty"`
+	BootDiskType                 *string  `json:"bootDiskType,omitempty"`
+	ImageURL                     *string  `json:"imageURL,omitempty"`
+	BinaryPath                   *string  `json:"binaryPath,omitempty"`
+	AllowedLocations             []string `json:"allowedLocations,omitempty"`
+}
+
+// UpdateBatchConfigPayload is returned after updating configuration
+type UpdateBatchConfigPayload struct {
+	Config           *BatchConfig                  `json:"config"`
+	ValidationErrors []*BatchConfigValidationError `json:"validationErrors,omitempty"`
 }
 
 type UpdateDeploymentInput struct {
@@ -663,6 +778,31 @@ type UserMetadata struct {
 	PhotoURL    *string      `json:"photoURL,omitempty"`
 	Theme       Theme        `json:"theme"`
 	Lang        language.Tag `json:"lang"`
+}
+
+// ValidateBatchConfigInput validates configuration without saving
+type ValidateBatchConfigInput struct {
+	WorkspaceID                  ID       `json:"workspaceId"`
+	ComputeCPUMilli              *int     `json:"computeCpuMilli,omitempty"`
+	ComputeMemoryMib             *int     `json:"computeMemoryMib,omitempty"`
+	BootDiskSizeGb               *int     `json:"bootDiskSizeGB,omitempty"`
+	MaxConcurrency               *int     `json:"maxConcurrency,omitempty"`
+	ThreadPoolSize               *int     `json:"threadPoolSize,omitempty"`
+	ChannelBufferSize            *int     `json:"channelBufferSize,omitempty"`
+	FeatureFlushThreshold        *int     `json:"featureFlushThreshold,omitempty"`
+	MachineType                  *string  `json:"machineType,omitempty"`
+	TaskCount                    *int     `json:"taskCount,omitempty"`
+	NodeStatusPropagationDelayMs *int     `json:"nodeStatusPropagationDelayMS,omitempty"`
+	BootDiskType                 *string  `json:"bootDiskType,omitempty"`
+	ImageURL                     *string  `json:"imageURL,omitempty"`
+	BinaryPath                   *string  `json:"binaryPath,omitempty"`
+	AllowedLocations             []string `json:"allowedLocations,omitempty"`
+}
+
+// ValidateBatchConfigPayload is returned after validation
+type ValidateBatchConfigPayload struct {
+	Valid  bool                          `json:"valid"`
+	Errors []*BatchConfigValidationError `json:"errors"`
 }
 
 type Workspace struct {
