@@ -69,7 +69,7 @@ const Homebar: React.FC<Props> = ({
 
   return (
     <div
-      className={`rounded-xl border bg-secondary/70 px-2 py-1 shadow-md shadow-secondary backdrop-blur-xs ${isMainWorkflow ? "border-primary" : "border-node-subworkflow"}`}>
+      className={`rounded-xl border bg-secondary/70 px-2 py-1 shadow-md shadow-secondary backdrop-blur-xs ${isMainWorkflow ? "border-border dark:border-primary" : "border-node-subworkflow"}`}>
       <div className="flex h-[42px] min-w-[250px] items-center gap-4 self-start">
         <HomeMenu
           dropdownPosition="bottom"

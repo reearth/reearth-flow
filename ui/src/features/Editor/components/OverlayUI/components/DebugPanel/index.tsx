@@ -90,7 +90,7 @@ const DebugPanel: React.FC = () => {
     <div
       className={`${fullscreenDebug ? "fixed inset-0" : ""} z-30 flex items-end`}>
       <Tabs
-        className={`pointer-events-auto border border-primary bg-secondary/70 p-1 shadow-md shadow-secondary backdrop-blur transition-all ${minimized ? "h-[42px] w-[96vw] rounded-xl" : fullscreenDebug ? "h-[100vh] w-[100vw] rounded-none" : expanded ? "h-[65vh] w-[99vw] rounded-xl" : "h-[45vh] w-[96vw] rounded-xl"}`}
+        className={`pointer-events-auto border border-border bg-secondary/70 p-1 shadow-md shadow-secondary backdrop-blur transition-all dark:border-primary ${minimized ? "h-[42px] w-[96vw] rounded-xl" : fullscreenDebug ? "h-[100vh] w-[100vw] rounded-none" : expanded ? "h-[65vh] w-[99vw] rounded-xl" : "h-[45vh] w-[96vw] rounded-xl"}`}
         value={tabValue}
         defaultValue="debug-logs"
         onValueChange={setTabValue}>
