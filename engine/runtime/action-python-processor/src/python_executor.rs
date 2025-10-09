@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 use std::str::FromStr;
 use std::time::Duration;
@@ -475,7 +475,15 @@ print(json.dumps(output))
             stdin.write_all(input_json.as_bytes()).map_err(|e| {
                 PythonProcessorError::ExecutionError(format!("Failed to write to stdin: {e}"))
             })?;
+            drop(stdin); // Close stdin to signal EOF
         }
+
+        let mut stdout_handle = child.stdout.take().ok_or_else(|| {
+            PythonProcessorError::ExecutionError("Failed to capture stdout".to_string())
+        })?;
+        let mut stderr_handle = child.stderr.take().ok_or_else(|| {
+            PythonProcessorError::ExecutionError("Failed to capture stderr".to_string())
+        })?;
 
         let timeout_duration = Duration::from_secs(self.timeout_seconds);
         let status_code = match child.wait_timeout(timeout_duration).map_err(|e| {
@@ -485,6 +493,7 @@ print(json.dumps(output))
             None => {
                 // Timeout occurred, kill the process
                 let _ = child.kill();
+                let _ = child.wait(); // Clean up zombie process
                 return Err(PythonProcessorError::ExecutionError(format!(
                     "Python script execution timed out after {} seconds",
                     self.timeout_seconds
@@ -493,14 +502,16 @@ print(json.dumps(output))
             }
         };
 
-        let output = child.wait_with_output().map_err(|e| {
-            PythonProcessorError::ExecutionError(format!(
-                "Failed to read Python process output: {e}"
-            ))
+        let mut stdout = String::new();
+        let mut stderr = String::new();
+        stdout_handle.read_to_string(&mut stdout).map_err(|e| {
+            PythonProcessorError::ExecutionError(format!("Failed to read stdout: {e}"))
+        })?;
+        stderr_handle.read_to_string(&mut stderr).map_err(|e| {
+            PythonProcessorError::ExecutionError(format!("Failed to read stderr: {e}"))
         })?;
 
         if !status_code.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(PythonProcessorError::ExecutionError(format!(
                 "Python script failed with exit code {:?}: {stderr}",
                 status_code.code()
@@ -508,7 +519,6 @@ print(json.dumps(output))
             .into());
         }
 
-        let stdout = String::from_utf8_lossy(&output.stdout);
         let geojson_response: serde_json::Value =
             serde_json::from_str(stdout.trim()).map_err(|e| {
                 PythonProcessorError::SerializationError(format!(
