@@ -1,5 +1,5 @@
 use std::{
-    env, io, fs,
+    env, fs, io,
     path::{Path, PathBuf},
     str::FromStr,
 };
