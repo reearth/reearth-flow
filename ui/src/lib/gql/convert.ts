@@ -127,7 +127,6 @@ export const toJob = (job: JobFragment): Job => ({
   status: toJobStatus(job.status),
   startedAt: job.startedAt,
   completedAt: job.completedAt,
-  logsURL: job.logsURL ?? undefined,
   outputURLs: job.outputURLs ?? undefined,
   userFacingLogsURL: job.userFacingLogsURL ?? undefined,
 });
