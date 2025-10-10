@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { DialogOptions } from "../../types";
+import { DialogOptions } from "./types";
 
 export default () => {
   const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
