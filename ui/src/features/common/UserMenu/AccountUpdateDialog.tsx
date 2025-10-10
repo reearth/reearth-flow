@@ -1,3 +1,4 @@
+import { GearIcon, MoonIcon, SunIcon } from "@phosphor-icons/react";
 import { useState } from "react";
 
 import {
@@ -18,10 +19,10 @@ import {
   SelectValue,
 } from "@flow/components";
 // import { ThemeToggle } from "@flow/features/ThemeToggle";
-import { ThemeToggle } from "@flow/features/ThemeToggle";
 import { useUser } from "@flow/lib/gql";
 import { AvailableLanguage, localesWithLabel, useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
+import { useTheme } from "@flow/lib/theme";
 
 type Errors =
   | "failed"
@@ -49,6 +50,21 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
   // For some users me.lang maybe lang: "und". Therefore, we can default to i18n.language.
   const language = me?.lang && me.lang !== "und" ? me?.lang : i18n.language;
   const [selectedLang, setSelectedLang] = useState<string>(language);
+  const currentLanguageLabel =
+    localesWithLabel[i18n.language as AvailableLanguage] ||
+    t("Select Language");
+
+  const themes = [
+    { value: "light", label: t("Light"), icon: <SunIcon /> },
+    { value: "dark", label: t("Dark"), icon: <MoonIcon /> },
+    { value: "system", label: t("System"), icon: <GearIcon /> },
+  ];
+
+  const { theme, setTheme } = useTheme();
+  const currentTheme = themes.filter((t) => t.value === theme)[0];
+  const [selectedTheme, setSelectedTheme] = useState<
+    "light" | "dark" | "system"
+  >(theme);
 
   const handleUpdateMe = async () => {
     setLoading(true);
@@ -84,6 +100,10 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
       }
     }
 
+    if (selectedTheme) {
+      setTheme(selectedTheme);
+    }
+
     const input = { name, email };
     const { me: user } = await updateMe(input);
     if (!user) {
@@ -96,10 +116,10 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
   const handleLanguageChange = (lang: string) => {
     setSelectedLang(lang);
   };
-  const currentLanguageLabel =
-    localesWithLabel[i18n.language as AvailableLanguage] ||
-    t("Select Language");
 
+  const handleThemeChange = (theme: "light" | "dark" | "system") => {
+    setSelectedTheme(theme);
+  };
   return (
     <Dialog open={isOpen} onOpenChange={(o) => onOpenChange(o)}>
       <DialogContent size="md">
@@ -155,8 +175,24 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
           </DialogContentSection>
           <DialogContentSection className="flex-row">
             <DialogContentSection className="flex-1">
-              <Label htmlFor="theme">{t("Theme")}</Label>
-              <ThemeToggle />
+              <Label htmlFor="theme-selector">{t("Theme")}</Label>
+              <Select onValueChange={handleThemeChange}>
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={<CurrentTheme theme={currentTheme} />}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {themes.map((theme) => (
+                    <SelectItem key={theme.value} value={theme.value}>
+                      <div className="flex items-center justify-between gap-2">
+                        {theme.icon}
+                        {theme.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </DialogContentSection>
             <DialogContentSection className="flex-1">
               <Label htmlFor="language-selector">{t("Select Language")}</Label>
@@ -192,6 +228,19 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+};
+
+const CurrentTheme = ({
+  theme,
+}: {
+  theme: { icon: React.ReactNode; label: string };
+}) => {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      {theme.icon}
+      {theme.label}
+    </div>
   );
 };
 
