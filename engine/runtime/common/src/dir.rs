@@ -1,5 +1,5 @@
 use std::{
-    env, fs,
+    env, io, fs,
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -69,10 +69,24 @@ pub fn copy_files(dest: &Path, files: &[Uri]) -> crate::Result<()> {
     Ok(())
 }
 
+/// Moves a file like Unix `mv`: rename if possible, else copy + delete.
+pub fn move_file<P: AsRef<Path>>(src: P, dst: P) -> io::Result<()> {
+    match fs::rename(&src, &dst) {
+        Ok(_) => Ok(()),
+        Err(err) if err.kind() == io::ErrorKind::CrossesDevices => {
+            // Cross-device move: copy, then delete source
+            fs::copy(&src, &dst)?;
+            fs::remove_file(&src)?;
+            Ok(())
+        }
+        Err(err) => Err(err),
+    }
+}
+
 pub fn move_files(dest: &Path, files: &[Uri]) -> crate::Result<()> {
     for file in files {
         let file_path = dest.join(file.file_name().ok_or(Error::dir("Invalid file path"))?);
-        fs::rename(file.path(), file_path.clone()).map_err(Error::dir)?;
+        move_file(file.path(), file_path).map_err(Error::dir)?;
     }
     Ok(())
 }
