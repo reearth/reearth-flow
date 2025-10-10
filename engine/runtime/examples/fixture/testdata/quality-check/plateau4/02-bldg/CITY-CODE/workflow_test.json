@@ -4,6 +4,16 @@
   "expectedOutput": {
     "expectedFile": "02_建築物_市区町村コードエラー.csv"
   },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_bldg.json",
+      "includeFields": ["市区町村コードエラー"]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "02_建築物_検査結果一覧.csv",
+      "includeColumns": ["市区町村コードエラー"]
+    }
+  },
   "cityGmlPath": "udx/bldg/input.gml",
   "codelists": "codelists",
   "schemas": "schemas",
@@ -11,7 +21,8 @@
     {
       "edgeId": "7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b.22b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
       "expectedFile": "error_count_test_filtered.jsonl",
-      "jsonFilter": "{attributes}"
+      "jsonFilter": "{attributes}",
+      "except": "gmlFilename"
     }
   ],
   "skip": false

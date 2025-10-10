@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	batch "cloud.google.com/go/batch/apiv1"
@@ -39,6 +40,7 @@ type BatchConfig struct {
 	SAEmail                         string
 	TaskCount                       int
 	ThreadPoolSize                  string
+	ZstdEnable                      bool
 }
 
 type BatchClient interface {
@@ -178,6 +180,9 @@ func (b *BatchRepo) SubmitJob(
 				}
 				if b.config.FeatureFlushThreshold != "" {
 					vars["FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD"] = b.config.FeatureFlushThreshold
+				}
+				if b.config.ZstdEnable {
+					vars["FLOW_RUNTIME_ZSTD_ENABLE"] = strconv.FormatBool(b.config.ZstdEnable)
 				}
 
 				return vars

@@ -171,6 +171,7 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		SAEmail:                         conf.Worker_BatchSAEmail,
 		TaskCount:                       taskCount,
 		ThreadPoolSize:                  conf.Worker_ThreadPoolSize,
+		ZstdEnable:                      conf.Worker_ZstdEnable,
 	}
 
 	batchRepo, err = gcpbatch.NewBatch(ctx, config)
