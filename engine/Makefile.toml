@@ -144,15 +144,28 @@ done
 script = ['''
 #!/usr/bin/env bash -eux
 
-BASE_PATH=./runtime/examples/fixture/workflow/data-convert/plateau4/
-WORKFLOW_EXAMPLES=(
+BASEPATH_CONV=./runtime/examples/fixture/workflow/data-convert/plateau4/
+WORKFLOW_CONV=(
   "01-bldg"
 )
 
-for example in "${WORKFLOW_EXAMPLES[@]}"; do
-  (
-    cd $BASE_PATH;
-    yaml-include ${example}/workflow.yml > ${example}.yml
-  )
-done
+BASEPATH_QC=./runtime/examples/fixture/workflow/quality-check/plateau4/
+WORKFLOW_QC=(
+  "01-common"
+  "02-bldg"
+)
+
+process_workflows() {
+  local base_path="$1"
+  shift
+  for filename in "$@"; do
+    (
+      cd "$base_path"
+      yaml-include "${filename}/workflow.yml" > "${filename}.yml"
+    )
+  done
+}
+
+process_workflows "$BASEPATH_CONV" "${WORKFLOW_CONV[@]}"
+process_workflows "$BASEPATH_QC" "${WORKFLOW_QC[@]}"
 ''']
