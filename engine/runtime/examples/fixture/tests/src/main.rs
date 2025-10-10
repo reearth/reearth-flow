@@ -54,6 +54,10 @@ pub struct WorkflowTestProfile {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub schemas: Option<String>,
 
+    /// City code for PLATEAU data (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub city_code: Option<String>,
+
     /// Intermediate data assertions (edge_id -> expected file)
     #[serde(default)]
     pub intermediate_assertions: Vec<IntermediateAssertion>,
@@ -285,6 +289,10 @@ impl TestContext {
             let schemas_path = self.test_dir.join(schemas);
             let schemas_url = format!("file://{}", schemas_path.display());
             test_variables.insert("schemas".to_string(), schemas_url);
+        }
+
+        if let Some(city_code) = &self.profile.city_code {
+            test_variables.insert("cityCode".to_string(), city_code.clone());
         }
 
         test_variables.insert(
@@ -1085,6 +1093,7 @@ mod tests {
             city_gml_path: "dummy".to_string(),
             codelists: None,
             schemas: None,
+            city_code: None,
             intermediate_assertions: vec![],
             summary_output: None,
             skip: false,
@@ -1151,6 +1160,7 @@ mod tests {
             city_gml_path: "dummy".to_string(),
             codelists: None,
             schemas: None,
+            city_code: None,
             intermediate_assertions: vec![],
             summary_output: None,
             skip: false,

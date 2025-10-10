@@ -6,5 +6,6 @@
   },
   "cityGmlPath": "udx/tran",
   "codelists": "codelists",
-  "schemas": "schemas"
+  "schemas": "schemas",
+  "cityCode": "13382"
 }

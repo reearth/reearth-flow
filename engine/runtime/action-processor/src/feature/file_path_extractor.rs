@@ -146,6 +146,17 @@ impl Processor for FeatureFilePathExtractor {
             ))
         })?;
 
+        let extend_with_base_attributes = |mut feature: Feature| {
+            feature.extend(
+                base_attributes
+                    .iter()
+                    .filter(|(k, _)| !feature.contains_key(k))
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect::<HashMap<_, _>>(),
+            );
+            feature
+        };
+
         if self.is_extractable_archive(&source_dataset) {
             let mut root_output_path = project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())?;
             if let Some(prefix) = &self.params.dest_prefix {
@@ -177,14 +188,8 @@ impl Processor for FeatureFilePathExtractor {
                 Ok(Feature::from(attribute_value))
             })
             .collect::<super::errors::Result<Vec<_>>>()?;
-            for mut feature in features {
-                feature.extend(
-                    base_attributes
-                        .iter()
-                        .filter(|(k, _)| !feature.contains_key(k))
-                        .map(|(k, v)| (k.clone(), v.clone()))
-                        .collect::<HashMap<_, _>>(),
-                );
+            for feature in features {
+                let feature = extend_with_base_attributes(feature);
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
         } else if source_dataset.is_dir() {
@@ -194,16 +199,13 @@ impl Processor for FeatureFilePathExtractor {
             for entry in entries {
                 let attribute_value =
                     AttributeValue::try_from(FilePath::try_from(entry).unwrap_or_default())?;
-                fw.send(ctx.new_with_feature_and_port(
-                    Feature::from(attribute_value),
-                    DEFAULT_PORT.clone(),
-                ));
+                let feature = extend_with_base_attributes(Feature::from(attribute_value));
+                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
         } else {
             let attribute_value = AttributeValue::try_from(FilePath::try_from(source_dataset)?)?;
-            fw.send(
-                ctx.new_with_feature_and_port(Feature::from(attribute_value), DEFAULT_PORT.clone()),
-            );
+            let feature = extend_with_base_attributes(Feature::from(attribute_value));
+            fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         }
         Ok(())
     }
