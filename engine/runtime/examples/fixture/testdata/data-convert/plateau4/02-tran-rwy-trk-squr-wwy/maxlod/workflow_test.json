@@ -7,5 +7,5 @@
   "cityGmlPath": "udx/tran",
   "codelists": "codelists",
   "schemas": "schemas",
-  "cityCode": "13382"
+  "cityCode": "\"13382\""
 }
