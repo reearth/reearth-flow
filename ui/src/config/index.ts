@@ -15,6 +15,7 @@ export type Config = {
   brandName?: string;
   devMode?: boolean;
   mockEnabled?: boolean;
+  enableWebRTC?: boolean;
   tosUrl?: string;
   documentationUrl?: string;
   multiTenant?: Record<string, AuthInfo>;
@@ -42,6 +43,8 @@ export default async function loadConfig() {
     devMode: rawConfig.devMode === "true" || rawConfig.devMode === true,
     mockEnabled:
       rawConfig.mockEnabled === "true" || rawConfig.mockEnabled === true,
+    enableWebRTC:
+      rawConfig.enableWebRTC === "true" || rawConfig.enableWebRTC === true,
   };
 
   window.REEARTH_CONFIG = config;

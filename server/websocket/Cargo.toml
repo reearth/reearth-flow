@@ -9,6 +9,7 @@ keywords = ["crdt", "yrs", "warp"]
 homepage = "https://github.com/y-crdt/yrs-warp/"
 repository = "https://github.com/y-crdt/yrs-warp/"
 readme = "./README.md"
+default-run = "websocket"
 
 [lib]
 name = "websocket"
@@ -67,6 +68,14 @@ tokio = { version = "1", features = ["full"] }
 bytes = "1.10.1"
 criterion = { version = "0.5.1", features = ["async"] }
 url = "2.5"
+
+[[bin]]
+name = "websocket"
+path = "src/bin/websocket.rs"
+
+[[bin]]
+name = "signaling-only"
+path = "src/bin/signaling-only.rs"
 
 [[bench]]
 name = "server_bench"

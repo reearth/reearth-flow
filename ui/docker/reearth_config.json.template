@@ -8,6 +8,7 @@
   "brandName": "${FLOW_BRAND_NAME}",
   "devMode": "${FLOW_DEV_MODE}",
   "mockEnabled": "${FLOW_MOCK_SERVER_ENABLED}",
+  "enableWebRTC": "${FLOW_ENABLE_WEBRTC}",
   "documentationUrl": "${FLOW_DOCUMENTATION_URL}",
   "tosUrl": "${FLOW_TOS_URL}",
   "version": "${FLOW_VERSION}",

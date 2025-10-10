@@ -1,0 +1,8 @@
+{
+  "api": "http://localhost:8080",
+  "enableWebRTC": true,
+  "devMode": true,
+  "tosUrl": "https://reearth.io/docs/terms-of-service",
+  "documentationUrl": "https://docs.reearth.io/"
+}
+
