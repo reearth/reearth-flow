@@ -622,7 +622,7 @@ nodes:
     type: action
     action: OutputRouter
     with:
-      routingPort: default
+      routingPort: fileOutput
 
 
   # SolidBoundaryValidator
@@ -1335,6 +1335,20 @@ edges:
     fromPort: default
     toPort: default
 
+  # Connect FeatureWriterL14-BoundaryNotClosed to OutputRouter
+  - id: 8b9c0d1e-2f3a-4b5c-6d7e-8f9a0b1c2d3e
+    from: 89712e8f-e0ac-4bb3-a92f-c5ff06fe4c96
+    to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
+    fromPort: default
+    toPort: default
+
+  # Connect FeatureWriterL14-BoundaryOtherIssues to OutputRouter
+  - id: 9c0d1e2f-3a4b-5c6d-7e8f-9a0b1c2d3e4f
+    from: 527087b4-0411-49bd-ae5f-c1c7f9a5ccb8
+    to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
+    fromPort: default
+    toPort: default
+
 # Export error count ports for aggregation in parent workflow
 ports:
   outputs:
@@ -1385,4 +1399,7 @@ ports:
       port: default
     - id: errorCountLod4SolidIssues
       nodeId: ccf2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+      port: default
+    - id: fileOutput
+      nodeId: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
       port: default
