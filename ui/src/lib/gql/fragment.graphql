@@ -85,8 +85,8 @@ fragment Job on Job {
   status
   startedAt
   completedAt
-  logsURL
   outputURLs
+  userFacingLogsURL
   debug
   deployment {
     id
