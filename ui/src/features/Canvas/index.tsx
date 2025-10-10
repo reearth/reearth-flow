@@ -151,7 +151,7 @@ const Canvas: React.FC<Props> = ({
       onPaneMouseMove={onPaneMouseMove}
       onPaneClick={onPaneClick}>
       <Background
-        className="bg-neutral-100 dark:bg-background"
+        className="bg-canvas-background dark:bg-background"
         variant={BackgroundVariant["Dots"]}
         gap={gridSize}
         color="rgba(63, 63, 70, 1)"

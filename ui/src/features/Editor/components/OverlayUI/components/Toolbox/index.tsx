@@ -169,7 +169,7 @@ const Toolbox: React.FC<Props> = ({
 
   return (
     <div
-      className={`self-start rounded-xl border bg-secondary/70 p-1 shadow-md shadow-secondary backdrop-blur-xs ${isMainWorkflow ? "border-border dark:border-primary" : "border-node-subworkflow"}`}>
+      className={`self-start rounded-xl border bg-secondary/70 p-1 shadow-md shadow-[black]/20 backdrop-blur-xs dark:shadow-secondary ${isMainWorkflow ? "border-border dark:border-primary" : "border-node-subworkflow"}`}>
       <div className="flex flex-wrap gap-2 rounded-md transition-all">
         {availableTools.map((tool, idx) =>
           tool.id === "break" ? (

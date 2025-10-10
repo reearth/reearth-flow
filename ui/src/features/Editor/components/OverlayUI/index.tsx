@@ -141,7 +141,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         <div id="right-top" className="absolute top-2 right-2 h-[42px]">
           {isMainWorkflow && (
             <div
-              className={`flex h-full items-center justify-center gap-2 self-center rounded-xl border border-border bg-secondary/70 p-1 shadow-md shadow-secondary backdrop-blur-xs select-none dark:border-primary ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
+              className={`flex h-full items-center justify-center gap-2 self-center rounded-xl border border-border bg-secondary/70 p-1 shadow-md shadow-[black]/20 backdrop-blur-xs select-none dark:border-primary dark:shadow-secondary ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
               <DebugActionBar
                 onDebugRunStart={onDebugRunStart}
                 onDebugRunStop={onDebugRunStop}
