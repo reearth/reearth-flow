@@ -1,7 +1,8 @@
 use std::collections::HashMap;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 use std::str::FromStr;
+use std::time::Duration;
 
 use indexmap::IndexMap;
 use reearth_flow_common::uri::Uri;
@@ -21,6 +22,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tempfile::NamedTempFile;
 use thiserror::Error;
+use wait_timeout::ChildExt;
 
 #[derive(Debug, Error)]
 #[allow(clippy::enum_variant_names)]
@@ -104,7 +106,7 @@ impl ProcessorFactory for PythonScriptProcessorFactory {
             script: params.script,
             python_file: params.python_file,
             python_path: params.python_path.unwrap_or_else(|| "python3".to_string()),
-            _timeout_seconds: params.timeout_seconds.unwrap_or(30),
+            timeout_seconds: params.timeout_seconds.unwrap_or(30),
             ctx,
         };
 
@@ -117,7 +119,7 @@ struct PythonScriptProcessor {
     script: Option<Expr>,
     python_file: Option<Expr>,
     python_path: String,
-    _timeout_seconds: u64,
+    timeout_seconds: u64,
     ctx: NodeContext,
 }
 
@@ -127,17 +129,37 @@ struct PythonScriptProcessorParam {
     /// # Inline Script
     /// Python script code to execute inline
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(
+        title = "Inline Script",
+        description = "Python script code to execute inline"
+    )]
     script: Option<Expr>,
 
     /// # Python File
     /// Path to a Python script file (supports file://, http://, https://, gs://, etc.)
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(
+        title = "Python File",
+        description = "Path to a Python script file (supports file://, http://, https://, gs://, etc.)"
+    )]
     python_file: Option<Expr>,
 
+    /// # Python Path
+    /// Path to Python interpreter executable (e.g., python3, /usr/bin/python3.11)
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(
+        title = "Python Path",
+        description = "Path to Python interpreter executable (default: python3)"
+    )]
     python_path: Option<String>,
 
+    /// # Timeout Seconds
+    /// Maximum execution time for the Python script in seconds
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(
+        title = "Timeout Seconds",
+        description = "Maximum execution time for the Python script in seconds (default: 30)"
+    )]
     timeout_seconds: Option<u64>,
 }
 
@@ -453,27 +475,50 @@ print(json.dumps(output))
             stdin.write_all(input_json.as_bytes()).map_err(|e| {
                 PythonProcessorError::ExecutionError(format!("Failed to write to stdin: {e}"))
             })?;
+            drop(stdin); // Close stdin to signal EOF
         }
 
-        let output = match child.wait_with_output() {
-            Ok(output) => output,
-            Err(e) => {
+        let mut stdout_handle = child.stdout.take().ok_or_else(|| {
+            PythonProcessorError::ExecutionError("Failed to capture stdout".to_string())
+        })?;
+        let mut stderr_handle = child.stderr.take().ok_or_else(|| {
+            PythonProcessorError::ExecutionError("Failed to capture stderr".to_string())
+        })?;
+
+        let timeout_duration = Duration::from_secs(self.timeout_seconds);
+        let status_code = match child.wait_timeout(timeout_duration).map_err(|e| {
+            PythonProcessorError::ExecutionError(format!("Failed to wait for Python process: {e}"))
+        })? {
+            Some(status) => status,
+            None => {
+                // Timeout occurred, kill the process
+                let _ = child.kill();
+                let _ = child.wait(); // Clean up zombie process
                 return Err(PythonProcessorError::ExecutionError(format!(
-                    "Failed to execute Python script: {e}"
+                    "Python script execution timed out after {} seconds",
+                    self.timeout_seconds
                 ))
                 .into());
             }
         };
 
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
+        let mut stdout = String::new();
+        let mut stderr = String::new();
+        stdout_handle.read_to_string(&mut stdout).map_err(|e| {
+            PythonProcessorError::ExecutionError(format!("Failed to read stdout: {e}"))
+        })?;
+        stderr_handle.read_to_string(&mut stderr).map_err(|e| {
+            PythonProcessorError::ExecutionError(format!("Failed to read stderr: {e}"))
+        })?;
+
+        if !status_code.success() {
             return Err(PythonProcessorError::ExecutionError(format!(
-                "Python script failed: {stderr}"
+                "Python script failed with exit code {:?}: {stderr}",
+                status_code.code()
             ))
             .into());
         }
 
-        let stdout = String::from_utf8_lossy(&output.stdout);
         let geojson_response: serde_json::Value =
             serde_json::from_str(stdout.trim()).map_err(|e| {
                 PythonProcessorError::SerializationError(format!(
