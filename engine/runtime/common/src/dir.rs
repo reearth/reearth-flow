@@ -74,7 +74,7 @@ pub fn move_file<P: AsRef<Path>>(src: P, dst: P) -> io::Result<()> {
     match fs::rename(&src, &dst) {
         Ok(_) => Ok(()),
         Err(err) if err.kind() == io::ErrorKind::CrossesDevices => {
-            // Cross-device move: copy, then delete source
+            // Cross-device move: copy source to destination, then delete source
             fs::copy(&src, &dst)?;
             fs::remove_file(&src)?;
             Ok(())
@@ -86,6 +86,9 @@ pub fn move_file<P: AsRef<Path>>(src: P, dst: P) -> io::Result<()> {
 pub fn move_files(dest: &Path, files: &[Uri]) -> crate::Result<()> {
     for file in files {
         let file_path = dest.join(file.file_name().ok_or(Error::dir("Invalid file path"))?);
+        // Changed from fs::rename to move_file because tempfile::tempdir() creates directories
+        // in /tmp (tmpfs on Linux), causing fs::rename to fail with CrossesDevices error when
+        // moving to a different filesystem. move_file handles this by falling back to copy+delete.
         move_file(file.path(), file_path).map_err(Error::dir)?;
     }
     Ok(())
