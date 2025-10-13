@@ -266,6 +266,33 @@ fn feature_to_geojson(feature: &Feature) -> serde_json::Value {
     })
 }
 
+fn dedent(text: &str) -> String {
+    let lines: Vec<&str> = text.lines().collect();
+
+    if lines.is_empty() {
+        return String::new();
+    }
+
+    let min_indent = lines
+        .iter()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| line.len() - line.trim_start().len())
+        .min()
+        .unwrap_or(0);
+
+    lines
+        .iter()
+        .map(|line| {
+            if line.trim().is_empty() {
+                ""
+            } else {
+                &line[min_indent..]
+            }
+        })
+        .collect::<Vec<&str>>()
+        .join("\n")
+}
+
 fn geojson_to_geometry(geojson: &serde_json::Value) -> Result<Geometry, PythonProcessorError> {
     if geojson.is_null() {
         return Ok(Geometry::default());
@@ -354,6 +381,9 @@ impl Processor for PythonScriptProcessor {
             .into());
         };
 
+        // Apply dedent to remove common leading whitespace from user script
+        let dedented_script = dedent(&script_content);
+
         let python_wrapper = format!(
             r#"
 import sys
@@ -399,7 +429,7 @@ def create_polygon(coordinates):
     }}
 
 # User script starts here
-{script_content}
+{dedented_script}
 # User script ends here
 
 # Handle multiple output formats
@@ -774,5 +804,40 @@ mod tests {
         assert_eq!(factory.get_input_ports().len(), 1);
         assert_eq!(factory.get_output_ports().len(), 1);
         assert!(factory.parameter_schema().is_some());
+    }
+
+    #[test]
+    fn test_dedent_with_leading_spaces() {
+        let input = "            if True:\n                print('hello')";
+        let expected = "if True:\n    print('hello')";
+        assert_eq!(dedent(input), expected);
+    }
+
+    #[test]
+    fn test_dedent_with_no_indent() {
+        let input = "if True:\n    print('hello')";
+        let expected = "if True:\n    print('hello')";
+        assert_eq!(dedent(input), expected);
+    }
+
+    #[test]
+    fn test_dedent_with_mixed_indent() {
+        let input = "    line1\n        line2\n    line3";
+        let expected = "line1\n    line2\nline3";
+        assert_eq!(dedent(input), expected);
+    }
+
+    #[test]
+    fn test_dedent_with_empty_lines() {
+        let input = "    line1\n\n    line2";
+        let expected = "line1\n\nline2";
+        assert_eq!(dedent(input), expected);
+    }
+
+    #[test]
+    fn test_dedent_empty_string() {
+        let input = "";
+        let expected = "";
+        assert_eq!(dedent(input), expected);
     }
 }
