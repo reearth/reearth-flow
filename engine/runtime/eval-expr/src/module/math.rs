@@ -37,6 +37,28 @@ pub(crate) mod math_module {
         E
     }
 
+    /// Returns the mathematical constant τ (tau), equal to 2π.
+    ///
+    /// # Returns
+    /// The value of τ = 2π ≈ 6.28318530717958647692
+    ///
+    /// # Why use tau?
+    /// Some mathematicians argue that τ is more natural than π because:
+    /// - One full circle = τ radians (instead of 2π radians)
+    /// - C = τr (circumference) instead of C = 2πr
+    /// - Many formulas become simpler
+    ///
+    /// # Example
+    /// ```rhai
+    /// let tau_value = math::tau();
+    /// let full_circle = math::tau();  // One complete rotation in radians
+    /// let half_circle = math::tau() / 2.0;  // Same as π
+    /// let quarter_circle = math::tau() / 4.0;  // Same as π/2
+    /// ```
+    pub fn tau() -> f64 {
+        2.0 * PI
+    }
+
     // ============================================================================
     // Trigonometric Functions (Core)
     // ============================================================================
@@ -646,6 +668,33 @@ pub(crate) mod math_module {
     /// ```
     pub fn ln_1p(x: f64) -> f64 {
         x.ln_1p()
+    }
+
+    // ============================================================================
+    // Sign Manipulation
+    // ============================================================================
+
+    /// Returns a value with the magnitude of x and the sign of y.
+    ///
+    /// # Arguments
+    /// * `x` - Value providing the magnitude
+    /// * `y` - Value providing the sign
+    ///
+    /// # Returns
+    /// |x| with the sign of y
+    ///
+    /// # Example
+    /// ```rhai
+    /// let result1 = math::copysign(5.0, 1.0);   // Returns 5.0 (positive)
+    /// let result2 = math::copysign(5.0, -1.0);  // Returns -5.0 (negative)
+    /// let result3 = math::copysign(-5.0, 1.0);  // Returns 5.0 (positive)
+    /// let result4 = math::copysign(-5.0, -1.0); // Returns -5.0 (negative)
+    ///
+    /// // Useful for ensuring consistent sign in calculations
+    /// let adjusted = math::copysign(magnitude, reference_value);
+    /// ```
+    pub fn copysign(x: f64, y: f64) -> f64 {
+        x.copysign(y)
     }
 }
 
@@ -1274,5 +1323,118 @@ mod tests {
             (y - 11.275).abs() < 0.01,
             "Catenary curve calculation should be around 11.275"
         );
+    }
+
+    // ============================================================================
+    // Tier 3 Tests: Specialized Constants & Utilities
+    // ============================================================================
+
+    #[test]
+    fn test_tau() {
+        // tau = 2 * pi
+        assert_approx_eq(tau(), 2.0 * pi(), "tau should equal 2π");
+        assert_approx_eq(tau(), std::f64::consts::TAU, "tau should be ~6.283");
+
+        // One full circle in radians
+        assert_approx_eq(tau(), 2.0 * pi(), "Full circle = τ radians");
+
+        // Common fractions
+        assert_approx_eq(tau() / 2.0, pi(), "τ/2 = π");
+        assert_approx_eq(tau() / 4.0, pi() / 2.0, "τ/4 = π/2");
+        assert_approx_eq(tau() / 8.0, pi() / 4.0, "τ/8 = π/4");
+    }
+
+    #[test]
+    fn test_tau_circle_calculations() {
+        let radius = 5.0;
+
+        // Circumference using tau
+        let circumference_tau = tau() * radius;
+        let circumference_pi = 2.0 * pi() * radius;
+        assert_approx_eq(
+            circumference_tau,
+            circumference_pi,
+            "C = τr should equal C = 2πr",
+        );
+
+        // Full rotation
+        let full_rotation = tau();
+        let half_rotation = tau() / 2.0;
+        assert_approx_eq(half_rotation, pi(), "Half rotation = π");
+        assert_approx_eq(sin(full_rotation), sin(0.0), "sin(τ) = sin(0)");
+        assert_approx_eq(cos(full_rotation), cos(0.0), "cos(τ) = cos(0)");
+    }
+
+    #[test]
+    fn test_copysign() {
+        // Basic sign copying
+        assert_approx_eq(copysign(5.0, 1.0), 5.0, "copysign(5, +) = 5");
+        assert_approx_eq(copysign(5.0, -1.0), -5.0, "copysign(5, -) = -5");
+        assert_approx_eq(copysign(-5.0, 1.0), 5.0, "copysign(-5, +) = 5");
+        assert_approx_eq(copysign(-5.0, -1.0), -5.0, "copysign(-5, -) = -5");
+
+        // Zero cases
+        assert_approx_eq(copysign(0.0, 1.0), 0.0, "copysign(0, +) = 0");
+        assert_approx_eq(copysign(0.0, -1.0), -0.0, "copysign(0, -) = -0");
+
+        // Magnitude is preserved
+        let magnitude = 42.5;
+        assert_approx_eq(
+            abs(copysign(magnitude, -1.0)),
+            magnitude,
+            "Magnitude should be preserved",
+        );
+        assert_approx_eq(
+            abs(copysign(-magnitude, 1.0)),
+            magnitude,
+            "Magnitude should be preserved",
+        );
+    }
+
+    #[test]
+    fn test_copysign_with_special_values() {
+        // NaN propagation
+        assert!(
+            copysign(f64::NAN, 1.0).is_nan(),
+            "copysign(NaN, +) should be NaN"
+        );
+
+        // Infinity
+        assert!(
+            copysign(f64::INFINITY, 1.0).is_infinite(),
+            "copysign(∞, +) should be ∞"
+        );
+        assert!(
+            copysign(f64::INFINITY, -1.0).is_infinite(),
+            "copysign(∞, -) should be -∞"
+        );
+        assert!(
+            copysign(f64::INFINITY, -1.0) < 0.0,
+            "copysign(∞, -) should be negative"
+        );
+    }
+
+    #[test]
+    fn test_copysign_practical_use() {
+        // Ensure a value has the same sign as another
+        let reference = -10.0;
+        let values = [5.0, -5.0, 7.5, -7.5];
+
+        for val in values {
+            let adjusted = copysign(val, reference);
+            assert!(adjusted < 0.0, "All values should have negative sign");
+            assert_approx_eq(abs(adjusted), abs(val), "Magnitude should be unchanged");
+        }
+    }
+
+    #[test]
+    fn test_tier_3_constants_relationship() {
+        // Verify relationships between constants
+        assert_approx_eq(tau(), 2.0 * pi(), "τ = 2π");
+        assert_approx_eq(tau() / pi(), 2.0, "τ/π = 2");
+
+        // e and pi are independent
+        assert!(e() != pi(), "e ≠ π");
+        assert!(e() < pi(), "e < π");
     }
 }
