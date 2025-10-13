@@ -514,7 +514,11 @@ mod tests {
         assert_approx_eq(sqrt(1.0), 1.0, "sqrt(1) should be 1");
         assert_approx_eq(sqrt(4.0), 2.0, "sqrt(4) should be 2");
         assert_approx_eq(sqrt(16.0), 4.0, "sqrt(16) should be 4");
-        assert_approx_eq(sqrt(2.0), std::f64::consts::SQRT_2, "sqrt(2) should be ~1.414");
+        assert_approx_eq(
+            sqrt(2.0),
+            std::f64::consts::SQRT_2,
+            "sqrt(2) should be ~1.414",
+        );
     }
 
     #[test]
