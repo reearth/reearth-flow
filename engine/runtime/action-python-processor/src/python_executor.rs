@@ -273,6 +273,8 @@ fn dedent(text: &str) -> String {
         return String::new();
     }
 
+    let ends_with_newline = text.ends_with('\n');
+
     let min_indent = lines
         .iter()
         .filter(|line| !line.trim().is_empty())
@@ -280,7 +282,7 @@ fn dedent(text: &str) -> String {
         .min()
         .unwrap_or(0);
 
-    lines
+    let result = lines
         .iter()
         .map(|line| {
             if line.trim().is_empty() {
@@ -290,7 +292,13 @@ fn dedent(text: &str) -> String {
             }
         })
         .collect::<Vec<&str>>()
-        .join("\n")
+        .join("\n");
+
+    if ends_with_newline {
+        format!("{result}\n")
+    } else {
+        result
+    }
 }
 
 fn geojson_to_geometry(geojson: &serde_json::Value) -> Result<Geometry, PythonProcessorError> {
@@ -839,5 +847,58 @@ mod tests {
         let input = "";
         let expected = "";
         assert_eq!(dedent(input), expected);
+    }
+
+    #[test]
+    fn test_dedent_preserves_trailing_newline() {
+        let input = "    line1\n    line2\n";
+        let expected = "line1\nline2\n";
+        assert_eq!(dedent(input), expected);
+    }
+
+    #[test]
+    fn test_dedent_no_trailing_newline() {
+        let input = "    line1\n    line2";
+        let expected = "line1\nline2";
+        assert_eq!(dedent(input), expected);
+    }
+
+    #[test]
+    fn test_dedent_in_wrapper_context() {
+        // This test verifies the fix for the production bug where user scripts
+        // without preserved trailing newlines would concatenate with wrapper comments
+        let user_script =
+            "    if get_geometry_type(geometry) == \"MultiPoint\":\n        print(\"test\")\n";
+        let dedented = dedent(user_script);
+
+        // Simulate the wrapper insertion
+        let wrapper = format!("# User script starts here\n{dedented}# User script ends here");
+
+        // Verify the wrapper has proper line separation
+        assert!(wrapper.contains("print(\"test\")\n# User script ends here"));
+        assert!(!wrapper.contains("print(\"test\")# User script ends here")); // Bug case
+    }
+
+    #[test]
+    fn test_dedent_with_crlf_line_endings() {
+        // Verify CRLF (Windows) line endings are handled correctly
+        let input = "    line1\r\n    line2\r\n";
+        let result = dedent(input);
+
+        // Should preserve the trailing newline
+        assert!(result.ends_with('\n'));
+        // The dedented content should be correct
+        assert!(result.contains("line1"));
+        assert!(result.contains("line2"));
+    }
+
+    #[test]
+    fn test_dedent_crlf_no_trailing_newline() {
+        let input = "    line1\r\n    line2";
+        let result = dedent(input);
+
+        // Should NOT have trailing newline since original didn't have one
+        assert!(!result.ends_with('\n'));
+        assert!(!result.ends_with("\r\n"));
     }
 }
