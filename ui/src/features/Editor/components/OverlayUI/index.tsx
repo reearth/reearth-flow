@@ -20,8 +20,8 @@ import {
   LayoutOptionsDialog,
   DebugPanel,
   Homebar,
+  VersionDialog,
 } from "./components";
-import { VersionDialog } from "./components/Version/VersionDialog";
 import useHooks from "./hooks";
 
 type OverlayUIProps = {
