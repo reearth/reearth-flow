@@ -709,8 +709,9 @@ fn parse_polygon(
     }
 
     // WKB standard: first ring is always exterior, subsequent rings are holes
-    let exterior = rings.remove(0);
-    let holes = rings;
+    let mut rings_iter = rings.into_iter();
+    let exterior = rings_iter.next().unwrap();
+    let holes: Vec<CoordRing> = rings_iter.collect();
 
     if has_z && !force_2d {
         let exterior_3d: Vec<(f64, f64, f64)> = exterior
@@ -965,8 +966,9 @@ fn parse_multipolygon(
         }
 
         // WKB standard: first ring is always exterior, subsequent rings are holes
-        let exterior = rings.remove(0);
-        let holes = rings;
+        let mut rings_iter = rings.into_iter();
+        let exterior = rings_iter.next().unwrap();
+        let holes: Vec<CoordRing> = rings_iter.collect();
         polygons.push((exterior, holes));
     }
 
