@@ -325,8 +325,10 @@ mod tests {
         let json = r#"{"mappers": []}"#;
         let param: AttributeMapperParam = serde_json::from_str(json).unwrap();
 
-        assert!(!param.keep_existing_attributes,
-            "keep_existing_attributes should default to false for backward compatibility");
+        assert!(
+            !param.keep_existing_attributes,
+            "keep_existing_attributes should default to false for backward compatibility"
+        );
     }
 
     #[test]
