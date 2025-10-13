@@ -946,7 +946,11 @@ mod tests {
     fn test_sinh() {
         assert_approx_eq(sinh(0.0), 0.0, "sinh(0) should be 0");
         assert_approx_eq(sinh(1.0), 1.1752011936438014, "sinh(1) should be ~1.175");
-        assert_approx_eq(sinh(-1.0), -1.1752011936438014, "sinh(-1) should be ~-1.175");
+        assert_approx_eq(
+            sinh(-1.0),
+            -1.1752011936438014,
+            "sinh(-1) should be ~-1.175",
+        );
 
         // sinh is an odd function: sinh(-x) = -sinh(x)
         let x = 2.5;
@@ -972,15 +976,25 @@ mod tests {
     fn test_tanh() {
         assert_approx_eq(tanh(0.0), 0.0, "tanh(0) should be 0");
         assert_approx_eq(tanh(1.0), 0.7615941559557649, "tanh(1) should be ~0.762");
-        assert_approx_eq(tanh(-1.0), -0.7615941559557649, "tanh(-1) should be ~-0.762");
+        assert_approx_eq(
+            tanh(-1.0),
+            -0.7615941559557649,
+            "tanh(-1) should be ~-0.762",
+        );
 
         // tanh is an odd function: tanh(-x) = -tanh(x)
         let x = 2.5;
         assert_approx_eq(tanh(-x), -tanh(x), "tanh should be an odd function");
 
         // tanh(x) is always in (-1, 1)
-        assert!((-1.0..=1.0).contains(&tanh(5.0)), "tanh should be in (-1, 1)");
-        assert!((-1.0..=1.0).contains(&tanh(-5.0)), "tanh should be in (-1, 1)");
+        assert!(
+            (-1.0..=1.0).contains(&tanh(5.0)),
+            "tanh should be in (-1, 1)"
+        );
+        assert!(
+            (-1.0..=1.0).contains(&tanh(-5.0)),
+            "tanh should be in (-1, 1)"
+        );
     }
 
     #[test]
@@ -988,7 +1002,11 @@ mod tests {
         // cosh^2(x) - sinh^2(x) = 1
         let x = 2.0;
         let identity = pow(cosh(x), 2.0) - pow(sinh(x), 2.0);
-        assert_approx_eq(identity, 1.0, "Hyperbolic identity: cosh²(x) - sinh²(x) = 1");
+        assert_approx_eq(
+            identity,
+            1.0,
+            "Hyperbolic identity: cosh²(x) - sinh²(x) = 1",
+        );
     }
 
     // ============================================================================
@@ -999,7 +1017,11 @@ mod tests {
     fn test_asinh() {
         assert_approx_eq(asinh(0.0), 0.0, "asinh(0) should be 0");
         assert_approx_eq(asinh(1.0), 0.881373587019543, "asinh(1) should be ~0.881");
-        assert_approx_eq(asinh(-1.0), -0.881373587019543, "asinh(-1) should be ~-0.881");
+        assert_approx_eq(
+            asinh(-1.0),
+            -0.881373587019543,
+            "asinh(-1) should be ~-0.881",
+        );
 
         // asinh(sinh(x)) = x
         let x = 1.5;
@@ -1023,8 +1045,16 @@ mod tests {
     #[test]
     fn test_atanh() {
         assert_approx_eq(atanh(0.0), 0.0, "atanh(0) should be 0");
-        assert_approx_eq(atanh(0.5), 0.5493061443340548, "atanh(0.5) should be ~0.549");
-        assert_approx_eq(atanh(-0.5), -0.5493061443340548, "atanh(-0.5) should be ~-0.549");
+        assert_approx_eq(
+            atanh(0.5),
+            0.5493061443340548,
+            "atanh(0.5) should be ~0.549",
+        );
+        assert_approx_eq(
+            atanh(-0.5),
+            -0.5493061443340548,
+            "atanh(-0.5) should be ~-0.549",
+        );
 
         // atanh(tanh(x)) = x
         let x = 0.5;
@@ -1079,7 +1109,10 @@ mod tests {
 
         // Invalid base or value
         assert!(log(-1.0, 10.0).is_nan(), "log of negative should be NaN");
-        assert!(log(10.0, -1.0).is_nan(), "log with negative base should be NaN");
+        assert!(
+            log(10.0, -1.0).is_nan(),
+            "log with negative base should be NaN"
+        );
         // Note: log(x, 1) returns infinity in Rust, not NaN
         assert!(
             log(10.0, 1.0).is_infinite() || log(10.0, 1.0).is_nan(),
@@ -1117,11 +1150,7 @@ mod tests {
         let b = 3.0;
 
         // log(a * b) = log(a) + log(b)
-        assert_approx_eq(
-            ln(a * b),
-            ln(a) + ln(b),
-            "log(a*b) = log(a) + log(b)"
-        );
+        assert_approx_eq(ln(a * b), ln(a) + ln(b), "log(a*b) = log(a) + log(b)");
 
         // log(a / b) = log(a) - log(b)
         assert_approx_eq(ln(a / b), ln(a) - ln(b), "log(a/b) = log(a) - log(b)");
@@ -1155,7 +1184,11 @@ mod tests {
         assert_approx_eq(hypot(0.0, 0.0), 0.0, "hypot(0, 0) should be 0");
 
         // hypot is symmetric
-        assert_approx_eq(hypot(3.0, 4.0), hypot(4.0, 3.0), "hypot should be symmetric");
+        assert_approx_eq(
+            hypot(3.0, 4.0),
+            hypot(4.0, 3.0),
+            "hypot should be symmetric",
+        );
 
         // hypot(x, 0) = |x|
         assert_approx_eq(hypot(5.0, 0.0), abs(5.0), "hypot(x, 0) should be |x|");
@@ -1213,7 +1246,7 @@ mod tests {
         assert_approx_eq(
             final_population,
             164.87212707001282,
-            "Exponential growth calculation"
+            "Exponential growth calculation",
         );
     }
 
@@ -1224,11 +1257,7 @@ mod tests {
         let intensity2 = 1000.0;
 
         let magnitude_diff = log10(intensity2) - log10(intensity1);
-        assert_approx_eq(
-            magnitude_diff,
-            1.0,
-            "10x intensity = 1 unit on log scale"
-        );
+        assert_approx_eq(magnitude_diff, 1.0, "10x intensity = 1 unit on log scale");
     }
 
     #[test]
