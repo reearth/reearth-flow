@@ -285,10 +285,8 @@ fn dedent(text: &str) -> String {
         .map(|line| {
             if line.trim().is_empty() {
                 ""
-            } else if line.len() >= min_indent {
-                &line[min_indent..]
             } else {
-                line
+                &line[min_indent..]
             }
         })
         .collect::<Vec<&str>>()
