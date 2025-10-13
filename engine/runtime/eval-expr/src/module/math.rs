@@ -514,7 +514,7 @@ mod tests {
         assert_approx_eq(sqrt(1.0), 1.0, "sqrt(1) should be 1");
         assert_approx_eq(sqrt(4.0), 2.0, "sqrt(4) should be 2");
         assert_approx_eq(sqrt(16.0), 4.0, "sqrt(16) should be 4");
-        assert_approx_eq(sqrt(2.0), 1.4142135623730951, "sqrt(2) should be ~1.414");
+        assert_approx_eq(sqrt(2.0), std::f64::consts::SQRT_2, "sqrt(2) should be ~1.414");
     }
 
     #[test]
@@ -536,7 +536,7 @@ mod tests {
         assert_approx_eq(abs(0.0), 0.0, "abs(0) should be 0");
         assert_approx_eq(abs(5.0), 5.0, "abs(5) should be 5");
         assert_approx_eq(abs(-5.0), 5.0, "abs(-5) should be 5");
-        assert_approx_eq(abs(-3.14), 3.14, "abs(-3.14) should be 3.14");
+        assert_approx_eq(abs(-7.5), 7.5, "abs(-7.5) should be 7.5");
     }
 
     #[test]
@@ -622,7 +622,7 @@ mod tests {
                 * cos(to_radians(180.0 - alpha_slope));
 
         assert!(
-            result >= -1.0 && result <= 1.0,
+            (-1.0..=1.0).contains(&result),
             "Cosine should be in [-1, 1]"
         );
     }
