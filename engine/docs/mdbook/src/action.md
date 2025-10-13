@@ -584,6 +584,12 @@ Transform Feature Attributes Using Expressions and Mappings
     "mappers"
   ],
   "properties": {
+    "keepExistingAttributes": {
+      "title": "Keep Existing Attributes",
+      "description": "When true, preserves all existing feature attributes and adds/overwrites only the mapped attributes. When false (default), replaces all attributes with only the mapped ones.\n\nUse true for: Adding calculated fields, chaining multiple mappers, pipeline-style processing Use false for: Extracting specific fields for reports, creating clean output datasets",
+      "default": false,
+      "type": "boolean"
+    },
     "mappers": {
       "title": "Attribute Mappers",
       "description": "List of mapping rules to transform attributes using expressions or value copying",
