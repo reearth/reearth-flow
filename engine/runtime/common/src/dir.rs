@@ -70,6 +70,9 @@ pub fn copy_files(dest: &Path, files: &[Uri]) -> crate::Result<()> {
 }
 
 /// Moves a file like Unix `mv`: rename if possible, else copy + delete.
+/// Always use this function instead of fs::rename to move files.
+/// Example: tempfile::tempdir() creates a temporary directory in /tmp (tmpfs on Linux),
+/// which will cause fs::rename to fail with CrossesDevices error when moving files to hard disk.
 pub fn move_file<P: AsRef<Path>>(src: P, dst: P) -> io::Result<()> {
     match fs::rename(&src, &dst) {
         Ok(_) => Ok(()),
@@ -86,9 +89,7 @@ pub fn move_file<P: AsRef<Path>>(src: P, dst: P) -> io::Result<()> {
 pub fn move_files(dest: &Path, files: &[Uri]) -> crate::Result<()> {
     for file in files {
         let file_path = dest.join(file.file_name().ok_or(Error::dir("Invalid file path"))?);
-        // Changed from fs::rename to move_file because tempfile::tempdir() creates directories
-        // in /tmp (tmpfs on Linux), causing fs::rename to fail with CrossesDevices error when
-        // moving to a different filesystem. move_file handles this by falling back to copy+delete.
+        // changed from fs::rename to fix CrossesDevices error
         move_file(file.path(), file_path).map_err(Error::dir)?;
     }
     Ok(())
