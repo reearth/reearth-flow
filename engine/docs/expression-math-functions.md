@@ -18,6 +18,7 @@ The `math::` module provides comprehensive mathematical functions for use in act
 - [Power & Root Functions](#power--root-functions)
 - [Comparison & Selection](#comparison--selection)
 - [Rounding Functions](#rounding-functions)
+- [Sign Manipulation](#sign-manipulation)
 - [Real-World Examples](#real-world-examples)
 
 ---
@@ -47,6 +48,29 @@ Returns Euler's number (the base of natural logarithms).
 **Example:**
 ```rhai
 let natural_exp = math::pow(math::e(), 2.0);
+```
+
+---
+
+### `math::tau()` → f64
+
+Returns the mathematical constant τ (tau), equal to 2π.
+
+**Returns:** 6.28318530717958647692
+
+**Why use tau?** Some mathematicians argue that τ is more natural than π because:
+- One full circle = τ radians (instead of 2π radians)
+- C = τr (circumference formula) instead of C = 2πr
+- Many trigonometric formulas become simpler
+
+**Example:**
+```rhai
+let full_circle = math::tau();  // One complete rotation = τ radians
+let half_circle = math::tau() / 2.0;  // Same as π
+let quarter_circle = math::tau() / 4.0;  // Same as π/2
+
+// Circumference using tau
+let circumference = math::tau() * radius;  // Simpler than 2πr
 ```
 
 ---
@@ -772,6 +796,38 @@ let result5 = math::round(-3.4);  // Returns -3.0
 
 ---
 
+## Sign Manipulation
+
+### `math::copysign(x, y)` → f64
+
+Returns a value with the magnitude of x and the sign of y.
+
+**Parameters:**
+- `x` (f64): Value providing the magnitude
+- `y` (f64): Value providing the sign
+
+**Returns:** |x| with the sign of y
+
+**Example:**
+```rhai
+let result1 = math::copysign(5.0, 1.0);   // Returns 5.0 (positive)
+let result2 = math::copysign(5.0, -1.0);  // Returns -5.0 (negative)
+let result3 = math::copysign(-5.0, 1.0);  // Returns 5.0 (positive)
+let result4 = math::copysign(-5.0, -1.0); // Returns -5.0 (negative)
+
+// Useful for ensuring consistent signs in calculations
+let values = [5.0, -5.0, 10.0, -10.0];
+let reference_sign = -1.0;
+
+// Make all values have the same sign as reference
+for val in values {
+    let adjusted = math::copysign(val, reference_sign);
+    // All adjusted values will be negative
+}
+```
+
+---
+
 ## Real-World Examples
 
 ### Example 1: Solar Radiation Calculation
@@ -956,7 +1012,7 @@ mappers:
 
 | Category | Functions |
 |----------|-----------|
-| **Constants** | `pi()`, `e()` |
+| **Constants** | `pi()`, `e()`, `tau()` |
 | **Trigonometry** | `sin()`, `cos()`, `tan()` |
 | **Inverse Trig** | `asin()`, `acos()`, `atan()`, `atan2()` |
 | **Hyperbolic** | `sinh()`, `cosh()`, `tanh()` |
@@ -966,8 +1022,9 @@ mappers:
 | **Power & Roots** | `sqrt()`, `pow()`, `cbrt()`, `hypot()` |
 | **Comparison** | `abs()`, `max()`, `min()` |
 | **Rounding** | `floor()`, `ceil()`, `round()` |
+| **Sign Manipulation** | `copysign()` |
 
-**Total:** 38 mathematical functions (19 Tier 1 + 19 Tier 2)
+**Total:** 40 mathematical functions (19 Tier 1 + 19 Tier 2 + 2 Tier 3)
 
 ---
 
