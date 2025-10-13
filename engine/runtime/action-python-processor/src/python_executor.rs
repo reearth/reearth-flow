@@ -266,6 +266,52 @@ fn feature_to_geojson(feature: &Feature) -> serde_json::Value {
     })
 }
 
+fn dedent(text: &str) -> String {
+    let lines: Vec<&str> = text.lines().collect();
+
+    if lines.is_empty() {
+        return String::new();
+    }
+
+    let ends_with_newline = text.ends_with('\n');
+
+    // Calculate minimum indentation, ignoring blank lines and comment-only lines
+    // Comment-only lines shouldn't dictate indentation as they're often added at indent 0
+    let min_indent = lines
+        .iter()
+        .filter(|line| {
+            let trimmed = line.trim();
+            !trimmed.is_empty() && !trimmed.starts_with('#')
+        })
+        .map(|line| line.len() - line.trim_start().len())
+        .min()
+        .unwrap_or(0);
+
+    let result = lines
+        .iter()
+        .map(|line| {
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                ""
+            } else if trimmed.starts_with('#') {
+                // Preserve comment-only lines as-is
+                line
+            } else if line.len() >= min_indent {
+                &line[min_indent..]
+            } else {
+                line
+            }
+        })
+        .collect::<Vec<&str>>()
+        .join("\n");
+
+    if ends_with_newline {
+        format!("{result}\n")
+    } else {
+        result
+    }
+}
+
 fn geojson_to_geometry(geojson: &serde_json::Value) -> Result<Geometry, PythonProcessorError> {
     if geojson.is_null() {
         return Ok(Geometry::default());
@@ -354,6 +400,9 @@ impl Processor for PythonScriptProcessor {
             .into());
         };
 
+        // Apply dedent to remove common leading whitespace from user script
+        let dedented_script = dedent(&script_content);
+
         let python_wrapper = format!(
             r#"
 import sys
@@ -399,7 +448,7 @@ def create_polygon(coordinates):
     }}
 
 # User script starts here
-{script_content}
+{dedented_script}
 # User script ends here
 
 # Handle multiple output formats
@@ -774,5 +823,138 @@ mod tests {
         assert_eq!(factory.get_input_ports().len(), 1);
         assert_eq!(factory.get_output_ports().len(), 1);
         assert!(factory.parameter_schema().is_some());
+    }
+
+    #[test]
+    fn test_dedent_with_leading_spaces() {
+        let input = "            if True:\n                print('hello')";
+        let expected = "if True:\n    print('hello')";
+        assert_eq!(dedent(input), expected);
+    }
+
+    #[test]
+    fn test_dedent_with_no_indent() {
+        let input = "if True:\n    print('hello')";
+        let expected = "if True:\n    print('hello')";
+        assert_eq!(dedent(input), expected);
+    }
+
+    #[test]
+    fn test_dedent_with_mixed_indent() {
+        let input = "    line1\n        line2\n    line3";
+        let expected = "line1\n    line2\nline3";
+        assert_eq!(dedent(input), expected);
+    }
+
+    #[test]
+    fn test_dedent_with_empty_lines() {
+        let input = "    line1\n\n    line2";
+        let expected = "line1\n\nline2";
+        assert_eq!(dedent(input), expected);
+    }
+
+    #[test]
+    fn test_dedent_empty_string() {
+        let input = "";
+        let expected = "";
+        assert_eq!(dedent(input), expected);
+    }
+
+    #[test]
+    fn test_dedent_preserves_trailing_newline() {
+        let input = "    line1\n    line2\n";
+        let expected = "line1\nline2\n";
+        assert_eq!(dedent(input), expected);
+    }
+
+    #[test]
+    fn test_dedent_no_trailing_newline() {
+        let input = "    line1\n    line2";
+        let expected = "line1\nline2";
+        assert_eq!(dedent(input), expected);
+    }
+
+    #[test]
+    fn test_dedent_in_wrapper_context() {
+        // This test verifies the fix for the production bug where user scripts
+        // without preserved trailing newlines would concatenate with wrapper comments
+        let user_script =
+            "    if get_geometry_type(geometry) == \"MultiPoint\":\n        print(\"test\")\n";
+        let dedented = dedent(user_script);
+
+        // Simulate the wrapper insertion
+        let wrapper = format!("# User script starts here\n{dedented}# User script ends here");
+
+        // Verify the wrapper has proper line separation
+        assert!(wrapper.contains("print(\"test\")\n# User script ends here"));
+        assert!(!wrapper.contains("print(\"test\")# User script ends here")); // Bug case
+    }
+
+    #[test]
+    fn test_dedent_with_crlf_line_endings() {
+        // Verify CRLF (Windows) line endings are handled correctly
+        let input = "    line1\r\n    line2\r\n";
+        let result = dedent(input);
+
+        // Should preserve the trailing newline
+        assert!(result.ends_with('\n'));
+        // The dedented content should be correct
+        assert!(result.contains("line1"));
+        assert!(result.contains("line2"));
+    }
+
+    #[test]
+    fn test_dedent_crlf_no_trailing_newline() {
+        let input = "    line1\r\n    line2";
+        let result = dedent(input);
+
+        // Should NOT have trailing newline since original didn't have one
+        assert!(!result.ends_with('\n'));
+        assert!(!result.ends_with("\r\n"));
+    }
+
+    #[test]
+    fn test_dedent_ignores_comment_only_lines() {
+        // Production bug: comment at indent 0, code at indent 12
+        let input = "# Comment at indent 0\n            if True:\n                print('test')\n";
+        let result = dedent(input);
+
+        // Should dedent based on code lines (min indent 12), not comment (indent 0)
+        assert_eq!(
+            result,
+            "# Comment at indent 0\nif True:\n    print('test')\n"
+        );
+        assert!(!result.contains("            if"));
+    }
+
+    #[test]
+    fn test_dedent_with_actual_production_script() {
+        // Real production script from workflow 01k7fjkbx9ezhqrge9s891536x
+        let input = "# Split MultiPoint into individual station features with connections
+            if get_geometry_type(geometry) == \"MultiPoint\":
+                coords = get_coordinates(geometry)
+
+                # Station names corresponding to coordinates
+                station_names = [\"Tokyo Station\", \"Shimbashi\", \"Shinagawa\", \"Akihabara\"]
+";
+
+        let result = dedent(input);
+
+        // Comment should be preserved at indent 0
+        assert!(result.starts_with("# Split MultiPoint"));
+
+        // Code should be dedented to indent 0
+        assert!(result.contains("\nif get_geometry_type(geometry)"));
+        assert!(!result.contains("            if get_geometry_type"));
+
+        // Nested code should maintain relative indentation
+        assert!(result.contains("\n    coords = get_coordinates(geometry)"));
+
+        // Nested comments at indent 16 should also be preserved (they're comment-only lines)
+        // Note: We preserve ALL comment-only lines as-is, regardless of indentation
+        assert!(result.contains("# Station names"));
+
+        // Should preserve trailing newline
+        assert!(result.ends_with('\n'));
     }
 }
