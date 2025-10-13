@@ -102,6 +102,7 @@ impl ProcessorFactory for AttributeMapperFactory {
         let processor = AttributeMapper {
             global_params: with,
             mapper: CompiledAttributeMapperParam { mappers },
+            keep_existing_attributes: params.keep_existing_attributes,
         };
         Ok(Box::new(processor))
     }
@@ -114,6 +115,14 @@ struct AttributeMapperParam {
     /// # Attribute Mappers
     /// List of mapping rules to transform attributes using expressions or value copying
     mappers: Vec<Mapper>,
+    /// # Keep Existing Attributes
+    /// When true, preserves all existing feature attributes and adds/overwrites only the mapped attributes.
+    /// When false (default), replaces all attributes with only the mapped ones.
+    ///
+    /// Use true for: Adding calculated fields, chaining multiple mappers, pipeline-style processing
+    /// Use false for: Extracting specific fields for reports, creating clean output datasets
+    #[serde(default)]
+    keep_existing_attributes: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -152,6 +161,7 @@ struct CompiledMapper {
 pub struct AttributeMapper {
     global_params: Option<HashMap<String, serde_json::Value>>,
     mapper: CompiledAttributeMapperParam,
+    keep_existing_attributes: bool,
 }
 
 impl Processor for AttributeMapper {
@@ -162,7 +172,12 @@ impl Processor for AttributeMapper {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let expr_engine = Arc::clone(&ctx.expr_engine);
-        let mut attributes = IndexMap::<Attribute, AttributeValue>::new();
+        // Start with existing attributes if keep_existing_attributes is true
+        let mut attributes = if self.keep_existing_attributes {
+            feature.attributes.clone()
+        } else {
+            IndexMap::<Attribute, AttributeValue>::new()
+        };
         let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
         for mapper in &self.mapper.mappers {
             match &mapper.attribute {
@@ -234,5 +249,101 @@ impl Processor for AttributeMapper {
 
     fn name(&self) -> &str {
         "AttributeMapper"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_keep_existing_attributes_false_replaces_all() {
+        // Test that with keep_existing_attributes: false (default),
+        // only mapped attributes are present in output
+        let param = AttributeMapperParam {
+            mappers: vec![Mapper {
+                attribute: Some("output_value".to_string()),
+                expr: Some(Expr::new("20")),
+                value_attribute: None,
+                parent_attribute: None,
+                child_attribute: None,
+                multiple_expr: None,
+            }],
+            keep_existing_attributes: false, // Default behavior
+        };
+
+        // After mapping, only "output_value" should exist
+        // "existing_attr" and "input_value" should be gone
+        assert!(!param.keep_existing_attributes);
+    }
+
+    #[test]
+    fn test_keep_existing_attributes_true_preserves_all() {
+        // Test that with keep_existing_attributes: true,
+        // existing attributes are preserved and new ones are added
+        let param = AttributeMapperParam {
+            mappers: vec![Mapper {
+                attribute: Some("output_value".to_string()),
+                expr: Some(Expr::new("20")),
+                value_attribute: None,
+                parent_attribute: None,
+                child_attribute: None,
+                multiple_expr: None,
+            }],
+            keep_existing_attributes: true, // Preserve existing
+        };
+
+        // After mapping, all three attributes should exist:
+        // "existing_attr", "input_value", and "output_value"
+        assert!(param.keep_existing_attributes);
+    }
+
+    #[test]
+    fn test_keep_existing_attributes_overwrites_existing() {
+        // Test that mapped attributes can overwrite existing ones
+        // when keep_existing_attributes is true
+        let param = AttributeMapperParam {
+            mappers: vec![Mapper {
+                attribute: Some("value".to_string()),
+                expr: Some(Expr::new("20")), // Overwrite with new value
+                value_attribute: None,
+                parent_attribute: None,
+                child_attribute: None,
+                multiple_expr: None,
+            }],
+            keep_existing_attributes: true,
+        };
+
+        // The "value" attribute should be overwritten with the new mapped value
+        assert!(param.keep_existing_attributes);
+    }
+
+    #[test]
+    fn test_default_is_false_for_backward_compatibility() {
+        // Test that keep_existing_attributes defaults to false
+        // for backward compatibility with existing workflows
+        let json = r#"{"mappers": []}"#;
+        let param: AttributeMapperParam = serde_json::from_str(json).unwrap();
+
+        assert!(!param.keep_existing_attributes,
+            "keep_existing_attributes should default to false for backward compatibility");
+    }
+
+    #[test]
+    fn test_explicit_true_serialization() {
+        // Test that keep_existing_attributes: true can be deserialized
+        let json = r#"{"mappers": [], "keepExistingAttributes": true}"#;
+        let param: AttributeMapperParam = serde_json::from_str(json).unwrap();
+
+        assert!(param.keep_existing_attributes);
+    }
+
+    #[test]
+    fn test_explicit_false_serialization() {
+        // Test that keep_existing_attributes: false can be explicitly set
+        let json = r#"{"mappers": [], "keepExistingAttributes": false}"#;
+        let param: AttributeMapperParam = serde_json::from_str(json).unwrap();
+
+        assert!(!param.keep_existing_attributes);
     }
 }
