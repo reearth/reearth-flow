@@ -59,6 +59,7 @@ const SharedCanvasActions: React.FC<Props> = ({
         <DropdownMenuTrigger asChild>
           <IconButton
             className="w-[25px]"
+            variant="ghost"
             tooltipText={t("Additional actions")}
             tooltipOffset={6}
             icon={<DotsThreeVerticalIcon size={18} />}
@@ -70,6 +71,7 @@ const SharedCanvasActions: React.FC<Props> = ({
           sideOffset={10}
           alignOffset={2}>
           <DropdownMenuItem
+            disabled
             className="flex justify-between gap-4"
             onClick={handleSharedProjectExport}>
             <p>{t("Export Project")}</p>

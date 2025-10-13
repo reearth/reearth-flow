@@ -8,7 +8,7 @@ import BasicBoiler from "@flow/components/BasicBoiler";
 import ErrorPage from "@flow/components/errors/ErrorPage";
 import { ProjectCorruptionError } from "@flow/errors";
 import Editor from "@flow/features/Editor";
-import { VersionDialog } from "@flow/features/Editor/components/OverlayUI/components/ActionBar/components/Version/VersionDialog";
+import { VersionDialog } from "@flow/features/Editor/components/OverlayUI/components/Version/VersionDialog";
 import {
   ProjectIdWrapper,
   WorkspaceIdWrapper,
