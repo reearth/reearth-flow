@@ -38,11 +38,10 @@ const TitleFieldTemplate = <
   const descriptions = extractDescriptions(originalSchema);
   const hasDescriptions = Object.keys(descriptions).length > 0;
 
-  console.log({ descriptions, schema });
   return (
     <Label id={id}>
       <div className="my-4 mb-1 flex flex-row items-center justify-between">
-        <div className="flex flex-row items-center gap-1">
+        <div className="flex flex-row gap-1">
           <p className={`${isRootTitle ? "font-bold" : "font-normal"}`}>
             {title}
           </p>

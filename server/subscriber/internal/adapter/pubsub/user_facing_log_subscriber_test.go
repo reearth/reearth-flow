@@ -33,13 +33,13 @@ func TestUserFacingLogSubscriber_StartListening_Success(t *testing.T) {
 	nodeName := "test-node"
 	nodeID := "node-123"
 	testEvent := userfacinglog.UserFacingLogEvent{
-		WorkflowID:     "workflow-123",
-		JobID:          "job-abc",
-		Timestamp:      time.Now(),
-		Level:          userfacinglog.UserFacingLogLevelInfo,
-		NodeName:       &nodeName,
-		NodeID:         &nodeID,
-		DisplayMessage: "User-facing log message",
+		WorkflowID: "workflow-123",
+		JobID:      "job-abc",
+		Timestamp:  time.Now(),
+		Level:      userfacinglog.UserFacingLogLevelInfo,
+		NodeName:   &nodeName,
+		NodeID:     &nodeID,
+		Message:    "User-facing log message",
 	}
 	data, _ := json.Marshal(testEvent)
 	mMsg.data = data
@@ -74,11 +74,11 @@ func TestUserFacingLogSubscriber_StartListening_ProcessError(t *testing.T) {
 	mMsg := new(mockMessage)
 
 	testEvent := userfacinglog.UserFacingLogEvent{
-		WorkflowID:     "wf",
-		JobID:          "job",
-		Timestamp:      time.Now(),
-		Level:          userfacinglog.UserFacingLogLevelError,
-		DisplayMessage: "Error occurred",
+		WorkflowID: "wf",
+		JobID:      "job",
+		Timestamp:  time.Now(),
+		Level:      userfacinglog.UserFacingLogLevelError,
+		Message:    "Error occurred",
 	}
 	data, _ := json.Marshal(testEvent)
 	mMsg.data = data
@@ -144,11 +144,11 @@ func TestUserFacingLogSubscriber_StartListening_WithSuccessLevel(t *testing.T) {
 	mMsg := new(mockMessage)
 
 	testEvent := userfacinglog.UserFacingLogEvent{
-		WorkflowID:     "workflow-456",
-		JobID:          "job-def",
-		Timestamp:      time.Now(),
-		Level:          userfacinglog.UserFacingLogLevelSuccess,
-		DisplayMessage: "Operation completed successfully",
+		WorkflowID: "workflow-456",
+		JobID:      "job-def",
+		Timestamp:  time.Now(),
+		Level:      userfacinglog.UserFacingLogLevelSuccess,
+		Message:    "Operation completed successfully",
 	}
 	data, _ := json.Marshal(testEvent)
 	mMsg.data = data
@@ -183,11 +183,11 @@ func TestUserFacingLogSubscriber_StartListening_PanicRecovery(t *testing.T) {
 	mMsg := new(mockMessage)
 
 	testEvent := userfacinglog.UserFacingLogEvent{
-		WorkflowID:     "workflow-789",
-		JobID:          "job-ghi",
-		Timestamp:      time.Now(),
-		Level:          userfacinglog.UserFacingLogLevelInfo,
-		DisplayMessage: "Test message",
+		WorkflowID: "workflow-789",
+		JobID:      "job-ghi",
+		Timestamp:  time.Now(),
+		Level:      userfacinglog.UserFacingLogLevelInfo,
+		Message:    "Test message",
 	}
 	data, _ := json.Marshal(testEvent)
 	mMsg.data = data

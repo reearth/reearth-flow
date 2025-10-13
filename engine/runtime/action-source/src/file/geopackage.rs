@@ -663,6 +663,10 @@ fn parse_linestring(
     }
 }
 
+type CoordRing = Vec<(f64, f64, Option<f64>)>;
+
+type PolygonData = (CoordRing, Vec<CoordRing>);
+
 fn parse_polygon(
     cursor: &mut std::io::Cursor<&[u8]>,
     has_z: bool,
@@ -683,6 +687,12 @@ fn parse_polygon(
             .map_err(|e| SourceError::GeoPackageReader(format!("Failed to read ring count: {e}")))?
     };
 
+    if num_rings == 0 {
+        return Err(SourceError::GeoPackageReader(
+            "Polygon has no rings".to_string(),
+        ));
+    }
+
     let mut rings = Vec::new();
     for _ in 0..num_rings {
         let num_points = if byte_order == 0x01 {
@@ -698,18 +708,17 @@ fn parse_polygon(
         rings.push(coords);
     }
 
-    if rings.is_empty() {
-        return Err(SourceError::GeoPackageReader(
-            "Polygon has no rings".to_string(),
-        ));
-    }
+    // WKB standard: first ring is always exterior, subsequent rings are holes
+    let mut rings_iter = rings.into_iter();
+    let exterior = rings_iter.next().unwrap();
+    let holes: Vec<CoordRing> = rings_iter.collect();
 
     if has_z && !force_2d {
-        let exterior: Vec<(f64, f64, f64)> = rings[0]
+        let exterior_3d: Vec<(f64, f64, f64)> = exterior
             .iter()
             .map(|c| (c.0, c.1, c.2.unwrap_or(0.0)))
             .collect();
-        let holes: Vec<Vec<(f64, f64, f64)>> = rings[1..]
+        let holes_3d: Vec<Vec<(f64, f64, f64)>> = holes
             .iter()
             .map(|ring| {
                 ring.iter()
@@ -721,13 +730,13 @@ fn parse_polygon(
         Ok(Geometry {
             epsg,
             value: GeometryValue::FlowGeometry3D(Geometry3D::Polygon(Polygon3D::new(
-                LineString3D::from(exterior),
-                holes.into_iter().map(LineString3D::from).collect(),
+                LineString3D::from(exterior_3d),
+                holes_3d.into_iter().map(LineString3D::from).collect(),
             ))),
         })
     } else {
-        let exterior: Vec<(f64, f64)> = rings[0].iter().map(|c| (c.0, c.1)).collect();
-        let holes: Vec<Vec<(f64, f64)>> = rings[1..]
+        let exterior_2d: Vec<(f64, f64)> = exterior.iter().map(|c| (c.0, c.1)).collect();
+        let holes_2d: Vec<Vec<(f64, f64)>> = holes
             .iter()
             .map(|ring| ring.iter().map(|c| (c.0, c.1)).collect())
             .collect();
@@ -735,8 +744,8 @@ fn parse_polygon(
         Ok(Geometry {
             epsg,
             value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(Polygon2D::new(
-                LineString2D::from(exterior),
-                holes.into_iter().map(LineString2D::from).collect(),
+                LineString2D::from(exterior_2d),
+                holes_2d.into_iter().map(LineString2D::from).collect(),
             ))),
         })
     }
@@ -910,7 +919,7 @@ fn parse_multipolygon(
         })?
     };
 
-    let mut polygons = Vec::new();
+    let mut polygons: Vec<PolygonData> = Vec::new();
     for _ in 0..num_polygons {
         let inner_byte_order = cursor.read_u8().map_err(|e| {
             SourceError::GeoPackageReader(format!("Failed to read byte order: {e}"))
@@ -935,6 +944,12 @@ fn parse_multipolygon(
             })?
         };
 
+        if num_rings == 0 {
+            return Err(SourceError::GeoPackageReader(
+                "Polygon in MultiPolygon has no rings".to_string(),
+            ));
+        }
+
         let mut rings = Vec::new();
         for _ in 0..num_rings {
             let num_points = if inner_byte_order == 0x01 {
@@ -949,21 +964,23 @@ fn parse_multipolygon(
             let coords = read_coordinates(cursor, num_points, has_z, has_m, inner_byte_order)?;
             rings.push(coords);
         }
-        polygons.push(rings);
+
+        // WKB standard: first ring is always exterior, subsequent rings are holes
+        let mut rings_iter = rings.into_iter();
+        let exterior = rings_iter.next().unwrap();
+        let holes: Vec<CoordRing> = rings_iter.collect();
+        polygons.push((exterior, holes));
     }
 
     if has_z && !force_2d {
         let polygons_3d: Vec<Polygon3D<f64>> = polygons
             .into_iter()
-            .filter_map(|rings| {
-                if rings.is_empty() {
-                    return None;
-                }
-                let exterior: Vec<(f64, f64, f64)> = rings[0]
+            .map(|(exterior_coords, holes_coords)| {
+                let exterior: Vec<(f64, f64, f64)> = exterior_coords
                     .iter()
                     .map(|c| (c.0, c.1, c.2.unwrap_or(0.0)))
                     .collect();
-                let holes: Vec<Vec<(f64, f64, f64)>> = rings[1..]
+                let holes: Vec<Vec<(f64, f64, f64)>> = holes_coords
                     .iter()
                     .map(|ring| {
                         ring.iter()
@@ -972,10 +989,10 @@ fn parse_multipolygon(
                     })
                     .collect();
 
-                Some(Polygon3D::new(
+                Polygon3D::new(
                     LineString3D::from(exterior),
                     holes.into_iter().map(LineString3D::from).collect(),
-                ))
+                )
             })
             .collect();
         Ok(Geometry {
@@ -987,20 +1004,18 @@ fn parse_multipolygon(
     } else {
         let polygons_2d: Vec<Polygon2D<f64>> = polygons
             .into_iter()
-            .filter_map(|rings| {
-                if rings.is_empty() {
-                    return None;
-                }
-                let exterior: Vec<(f64, f64)> = rings[0].iter().map(|c| (c.0, c.1)).collect();
-                let holes: Vec<Vec<(f64, f64)>> = rings[1..]
+            .map(|(exterior_coords, holes_coords)| {
+                let exterior: Vec<(f64, f64)> =
+                    exterior_coords.iter().map(|c| (c.0, c.1)).collect();
+                let holes: Vec<Vec<(f64, f64)>> = holes_coords
                     .iter()
                     .map(|ring| ring.iter().map(|c| (c.0, c.1)).collect())
                     .collect();
 
-                Some(Polygon2D::new(
+                Polygon2D::new(
                     LineString2D::from(exterior),
                     holes.into_iter().map(LineString2D::from).collect(),
-                ))
+                )
             })
             .collect();
         Ok(Geometry {
