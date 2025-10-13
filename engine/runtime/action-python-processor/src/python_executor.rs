@@ -275,9 +275,14 @@ fn dedent(text: &str) -> String {
 
     let ends_with_newline = text.ends_with('\n');
 
+    // Calculate minimum indentation, ignoring blank lines and comment-only lines
+    // Comment-only lines shouldn't dictate indentation as they're often added at indent 0
     let min_indent = lines
         .iter()
-        .filter(|line| !line.trim().is_empty())
+        .filter(|line| {
+            let trimmed = line.trim();
+            !trimmed.is_empty() && !trimmed.starts_with('#')
+        })
         .map(|line| line.len() - line.trim_start().len())
         .min()
         .unwrap_or(0);
@@ -285,10 +290,16 @@ fn dedent(text: &str) -> String {
     let result = lines
         .iter()
         .map(|line| {
-            if line.trim().is_empty() {
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
                 ""
-            } else {
+            } else if trimmed.starts_with('#') {
+                // Preserve comment-only lines as-is
+                line
+            } else if line.len() >= min_indent {
                 &line[min_indent..]
+            } else {
+                line
             }
         })
         .collect::<Vec<&str>>()
@@ -900,5 +911,50 @@ mod tests {
         // Should NOT have trailing newline since original didn't have one
         assert!(!result.ends_with('\n'));
         assert!(!result.ends_with("\r\n"));
+    }
+
+    #[test]
+    fn test_dedent_ignores_comment_only_lines() {
+        // Production bug: comment at indent 0, code at indent 12
+        let input = "# Comment at indent 0\n            if True:\n                print('test')\n";
+        let result = dedent(input);
+
+        // Should dedent based on code lines (min indent 12), not comment (indent 0)
+        assert_eq!(
+            result,
+            "# Comment at indent 0\nif True:\n    print('test')\n"
+        );
+        assert!(!result.contains("            if"));
+    }
+
+    #[test]
+    fn test_dedent_with_actual_production_script() {
+        // Real production script from workflow 01k7fjkbx9ezhqrge9s891536x
+        let input = "# Split MultiPoint into individual station features with connections
+            if get_geometry_type(geometry) == \"MultiPoint\":
+                coords = get_coordinates(geometry)
+
+                # Station names corresponding to coordinates
+                station_names = [\"Tokyo Station\", \"Shimbashi\", \"Shinagawa\", \"Akihabara\"]
+";
+
+        let result = dedent(input);
+
+        // Comment should be preserved at indent 0
+        assert!(result.starts_with("# Split MultiPoint"));
+
+        // Code should be dedented to indent 0
+        assert!(result.contains("\nif get_geometry_type(geometry)"));
+        assert!(!result.contains("            if get_geometry_type"));
+
+        // Nested code should maintain relative indentation
+        assert!(result.contains("\n    coords = get_coordinates(geometry)"));
+
+        // Nested comments at indent 16 should also be preserved (they're comment-only lines)
+        // Note: We preserve ALL comment-only lines as-is, regardless of indentation
+        assert!(result.contains("# Station names"));
+
+        // Should preserve trailing newline
+        assert!(result.ends_with('\n'));
     }
 }
