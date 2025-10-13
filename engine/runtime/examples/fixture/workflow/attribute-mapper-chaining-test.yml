@@ -1,0 +1,92 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 12345678-1234-5678-1234-567812345678
+name: "AttributeMapper KeepExistingAttributes Test"
+entryGraphId: 87654321-8765-4321-8765-432187654321
+graphs:
+  - id: 87654321-8765-4321-8765-432187654321
+    name: ChainedMappersTest
+    nodes:
+      # Source: Create test feature with initial attributes
+      - id: aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+        name: CreateTestFeature
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                original_value: 10,
+                another_value: 20
+              }
+            ]
+
+      # Mapper 1: Add calculated field WITH keepExistingAttributes: true
+      - id: bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
+        name: AddCalculatedField1
+        type: action
+        action: AttributeMapper
+        with:
+          keepExistingAttributes: true
+          mappers:
+            - attribute: calculated_1
+              expr: |
+                env.get("__value").original_value * 2
+
+      # Mapper 2: Add another calculated field WITH keepExistingAttributes: true
+      - id: cccccccc-cccc-cccc-cccc-cccccccccccc
+        name: AddCalculatedField2
+        type: action
+        action: AttributeMapper
+        with:
+          keepExistingAttributes: true
+          mappers:
+            - attribute: calculated_2
+              expr: |
+                env.get("__value").calculated_1 + env.get("__value").another_value
+
+      # Mapper 3: Add final calculated field WITH keepExistingAttributes: true
+      - id: dddddddd-dddd-dddd-dddd-dddddddddddd
+        name: AddCalculatedField3
+        type: action
+        action: AttributeMapper
+        with:
+          keepExistingAttributes: true
+          mappers:
+            - attribute: final_result
+              expr: |
+                env.get("__value").calculated_2 * 3
+
+      # Sink: Write all attributes to CSV
+      - id: eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee
+        name: WriteResults
+        type: action
+        action: FileWriter
+        with:
+          format: csv
+          output: |
+            "attribute-mapper-chaining-test-result.csv"
+
+    edges:
+      - id: 11111111-1111-1111-1111-111111111111
+        from: aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+        to: bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
+        fromPort: default
+        toPort: default
+
+      - id: 22222222-2222-2222-2222-222222222222
+        from: bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
+        to: cccccccc-cccc-cccc-cccc-cccccccccccc
+        fromPort: default
+        toPort: default
+
+      - id: 33333333-3333-3333-3333-333333333333
+        from: cccccccc-cccc-cccc-cccc-cccccccccccc
+        to: dddddddd-dddd-dddd-dddd-dddddddddddd
+        fromPort: default
+        toPort: default
+
+      - id: 44444444-4444-4444-4444-444444444444
+        from: dddddddd-dddd-dddd-dddd-dddddddddddd
+        to: eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee
+        fromPort: default
+        toPort: default
