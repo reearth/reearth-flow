@@ -112,7 +112,9 @@ const MembersSettings: React.FC = () => {
   return (
     <>
       <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
-        <p className="text-lg dark:font-extralight">{t("Members Settings")}</p>
+        <p className="text-lg font-light dark:font-extralight">
+          {t("Members Settings")}
+        </p>
         {!currentWorkspace?.personal && (
           <Button
             className="flex gap-2"
