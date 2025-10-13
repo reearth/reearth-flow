@@ -1,22 +1,14 @@
 import { Cross2Icon } from "@radix-ui/react-icons";
-import { ReactFlowProvider } from "@xyflow/react";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 
-import {
-  Button,
-  LoadingSplashscreen,
-  LoadingSkeleton,
-  RenderFallback,
-} from "@flow/components";
-import VersionCanvas from "@flow/features/VersionCanvas";
+import { Button, LoadingSplashscreen, LoadingSkeleton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import type { YWorkflow } from "@flow/lib/yjs/types";
 import type { Project } from "@flow/types";
 
+import { VersionConfirmationDialog, VersionHistoryList } from "./components";
+import VersionEditorComponent from "./components/VersionEditorComponent";
 import useHooks from "./hooks";
-import { VersionConfirmationDialog } from "./VersionConfirmationDialog";
-import { VersionHistoryList } from "./VersionHistoryList";
 
 type Props = {
   project?: Project;
@@ -173,32 +165,4 @@ const VersionDialog: React.FC<Props> = ({
   );
 };
 
-const VersionEditorComponent: React.FC<{
-  yDoc: Y.Doc | null;
-  previewDocYWorkflows: Y.Map<YWorkflow> | null;
-  onWorkflowCorruption?: () => void;
-}> = ({ yDoc, previewDocYWorkflows, onWorkflowCorruption }) => {
-  const t = useT();
-  const yWorkflows = previewDocYWorkflows
-    ? previewDocYWorkflows
-    : yDoc
-      ? yDoc.getMap<YWorkflow>("workflows")
-      : null;
-
-  return (
-    <div className="h-full w-full">
-      {yWorkflows && (
-        <RenderFallback
-          onError={onWorkflowCorruption}
-          message={t("Selected version is corrupted or not available.")}
-          textSize="md">
-          <ReactFlowProvider>
-            <VersionCanvas yWorkflows={yWorkflows} />
-          </ReactFlowProvider>
-        </RenderFallback>
-      )}
-    </div>
-  );
-};
-
-export { VersionDialog };
+export default memo(VersionDialog);
