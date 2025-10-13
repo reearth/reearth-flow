@@ -21,6 +21,7 @@ var (
 
 type Container struct {
 	Asset         Asset
+	BatchConfig   BatchConfig
 	CMS           CMS
 	Deployment    Deployment
 	EdgeExecution EdgeExecution

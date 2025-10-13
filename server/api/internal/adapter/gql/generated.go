@@ -84,6 +84,49 @@ type ComplexityRoot struct {
 		TotalCount func(childComplexity int) int
 	}
 
+	BatchConfig struct {
+		AllowedLocations             func(childComplexity int) int
+		BinaryPath                   func(childComplexity int) int
+		BootDiskSizeGb               func(childComplexity int) int
+		BootDiskType                 func(childComplexity int) int
+		ChangeHistory                func(childComplexity int) int
+		ChannelBufferSize            func(childComplexity int) int
+		ComputeCPUMilli              func(childComplexity int) int
+		ComputeMemoryMib             func(childComplexity int) int
+		CreatedAt                    func(childComplexity int) int
+		CreatedBy                    func(childComplexity int) int
+		FeatureFlushThreshold        func(childComplexity int) int
+		ID                           func(childComplexity int) int
+		ImageURL                     func(childComplexity int) int
+		MachineType                  func(childComplexity int) int
+		MaxConcurrency               func(childComplexity int) int
+		NodeStatusPropagationDelayMs func(childComplexity int) int
+		TaskCount                    func(childComplexity int) int
+		ThreadPoolSize               func(childComplexity int) int
+		UpdatedAt                    func(childComplexity int) int
+		UpdatedBy                    func(childComplexity int) int
+		WorkspaceID                  func(childComplexity int) int
+	}
+
+	BatchConfigConstraints struct {
+		AllowedBootDiskTypes              func(childComplexity int) int
+		AllowedMachineTypes               func(childComplexity int) int
+		BootDiskSizeGBRange               func(childComplexity int) int
+		ChannelBufferSizeRange            func(childComplexity int) int
+		ComputeCPUMilliRange              func(childComplexity int) int
+		ComputeMemoryMibRange             func(childComplexity int) int
+		FeatureFlushThresholdRange        func(childComplexity int) int
+		MaxConcurrencyRange               func(childComplexity int) int
+		NodeStatusPropagationDelayMSRange func(childComplexity int) int
+		TaskCountRange                    func(childComplexity int) int
+		ThreadPoolSizeRange               func(childComplexity int) int
+	}
+
+	BatchConfigValidationError struct {
+		Field   func(childComplexity int) int
+		Message func(childComplexity int) int
+	}
+
 	CMSAsset struct {
 		ArchiveExtractionStatus func(childComplexity int) int
 		CreatedAt               func(childComplexity int) int
@@ -169,6 +212,14 @@ type ComplexityRoot struct {
 		Job func(childComplexity int) int
 	}
 
+	ConfigChange struct {
+		ChangedBy func(childComplexity int) int
+		FieldName func(childComplexity int) int
+		NewValue  func(childComplexity int) int
+		OldValue  func(childComplexity int) int
+		Timestamp func(childComplexity int) int
+	}
+
 	CreateAssetPayload struct {
 		Asset func(childComplexity int) int
 	}
@@ -220,6 +271,31 @@ type ComplexityRoot struct {
 
 	DeploymentPayload struct {
 		Deployment func(childComplexity int) int
+	}
+
+	EffectiveBatchConfig struct {
+		AllowedLocations             func(childComplexity int) int
+		BinaryPath                   func(childComplexity int) int
+		BootDiskSizeGb               func(childComplexity int) int
+		BootDiskType                 func(childComplexity int) int
+		ChannelBufferSize            func(childComplexity int) int
+		ComputeCPUMilli              func(childComplexity int) int
+		ComputeMemoryMib             func(childComplexity int) int
+		CustomConfigID               func(childComplexity int) int
+		FeatureFlushThreshold        func(childComplexity int) int
+		HasCustomConfig              func(childComplexity int) int
+		ImageURL                     func(childComplexity int) int
+		MachineType                  func(childComplexity int) int
+		MaxConcurrency               func(childComplexity int) int
+		NodeStatusPropagationDelayMs func(childComplexity int) int
+		TaskCount                    func(childComplexity int) int
+		ThreadPoolSize               func(childComplexity int) int
+		WorkspaceID                  func(childComplexity int) int
+	}
+
+	IntRange struct {
+		Max func(childComplexity int) int
+		Min func(childComplexity int) int
 	}
 
 	Job struct {
@@ -291,6 +367,7 @@ type ComplexityRoot struct {
 		RemoveMyAuth              func(childComplexity int, input gqlmodel.RemoveMyAuthInput) int
 		RemoveParameter           func(childComplexity int, input gqlmodel.RemoveParameterInput) int
 		RemoveParameters          func(childComplexity int, input gqlmodel.RemoveParametersInput) int
+		ResetBatchConfig          func(childComplexity int, input gqlmodel.ResetBatchConfigInput) int
 		RollbackProject           func(childComplexity int, projectID gqlmodel.ID, version int) int
 		RunProject                func(childComplexity int, input gqlmodel.RunProjectInput) int
 		SaveSnapshot              func(childComplexity int, projectID gqlmodel.ID) int
@@ -298,6 +375,7 @@ type ComplexityRoot struct {
 		Signup                    func(childComplexity int, input gqlmodel.SignupInput) int
 		UnshareProject            func(childComplexity int, input gqlmodel.UnshareProjectInput) int
 		UpdateAsset               func(childComplexity int, input gqlmodel.UpdateAssetInput) int
+		UpdateBatchConfig         func(childComplexity int, input gqlmodel.UpdateBatchConfigInput) int
 		UpdateDeployment          func(childComplexity int, input gqlmodel.UpdateDeploymentInput) int
 		UpdateMe                  func(childComplexity int, input gqlmodel.UpdateMeInput) int
 		UpdateMemberOfWorkspace   func(childComplexity int, input gqlmodel.UpdateMemberOfWorkspaceInput) int
@@ -307,6 +385,7 @@ type ComplexityRoot struct {
 		UpdateProject             func(childComplexity int, input gqlmodel.UpdateProjectInput) int
 		UpdateTrigger             func(childComplexity int, input gqlmodel.UpdateTriggerInput) int
 		UpdateWorkspace           func(childComplexity int, input gqlmodel.UpdateWorkspaceInput) int
+		ValidateBatchConfig       func(childComplexity int, input gqlmodel.ValidateBatchConfigInput) int
 	}
 
 	NodeExecution struct {
@@ -399,34 +478,37 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Assets                func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) int
-		CmsAsset              func(childComplexity int, assetID gqlmodel.ID) int
-		CmsAssets             func(childComplexity int, projectID gqlmodel.ID, page *int, pageSize *int) int
-		CmsItems              func(childComplexity int, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) int
-		CmsModel              func(childComplexity int, projectIDOrAlias gqlmodel.ID, modelIDOrAlias gqlmodel.ID) int
-		CmsModelExportURL     func(childComplexity int, projectID gqlmodel.ID, modelID gqlmodel.ID) int
-		CmsModels             func(childComplexity int, projectID gqlmodel.ID, page *int, pageSize *int) int
-		CmsProject            func(childComplexity int, projectIDOrAlias gqlmodel.ID) int
-		CmsProjects           func(childComplexity int, workspaceIds []gqlmodel.ID, publicOnly *bool, page *int, pageSize *int) int
-		DeploymentByVersion   func(childComplexity int, input gqlmodel.GetByVersionInput) int
-		DeploymentHead        func(childComplexity int, input gqlmodel.GetHeadInput) int
-		DeploymentVersions    func(childComplexity int, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) int
-		Deployments           func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
-		Job                   func(childComplexity int, id gqlmodel.ID) int
-		Jobs                  func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
-		LatestProjectSnapshot func(childComplexity int, projectID gqlmodel.ID) int
-		Me                    func(childComplexity int) int
-		Node                  func(childComplexity int, id gqlmodel.ID, typeArg gqlmodel.NodeType) int
-		NodeExecution         func(childComplexity int, jobID gqlmodel.ID, nodeID string) int
-		Nodes                 func(childComplexity int, id []gqlmodel.ID, typeArg gqlmodel.NodeType) int
-		Parameters            func(childComplexity int, projectID gqlmodel.ID) int
-		ProjectHistory        func(childComplexity int, projectID gqlmodel.ID) int
-		ProjectSharingInfo    func(childComplexity int, projectID gqlmodel.ID) int
-		ProjectSnapshot       func(childComplexity int, projectID gqlmodel.ID, version int) int
-		Projects              func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) int
-		SearchUser            func(childComplexity int, nameOrEmail string) int
-		SharedProject         func(childComplexity int, token string) int
-		Triggers              func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
+		Assets                 func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) int
+		BatchConfig            func(childComplexity int, workspaceID gqlmodel.ID) int
+		BatchConfigConstraints func(childComplexity int) int
+		CmsAsset               func(childComplexity int, assetID gqlmodel.ID) int
+		CmsAssets              func(childComplexity int, projectID gqlmodel.ID, page *int, pageSize *int) int
+		CmsItems               func(childComplexity int, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) int
+		CmsModel               func(childComplexity int, projectIDOrAlias gqlmodel.ID, modelIDOrAlias gqlmodel.ID) int
+		CmsModelExportURL      func(childComplexity int, projectID gqlmodel.ID, modelID gqlmodel.ID) int
+		CmsModels              func(childComplexity int, projectID gqlmodel.ID, page *int, pageSize *int) int
+		CmsProject             func(childComplexity int, projectIDOrAlias gqlmodel.ID) int
+		CmsProjects            func(childComplexity int, workspaceIds []gqlmodel.ID, publicOnly *bool, page *int, pageSize *int) int
+		DeploymentByVersion    func(childComplexity int, input gqlmodel.GetByVersionInput) int
+		DeploymentHead         func(childComplexity int, input gqlmodel.GetHeadInput) int
+		DeploymentVersions     func(childComplexity int, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) int
+		Deployments            func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
+		EffectiveBatchConfig   func(childComplexity int, workspaceID gqlmodel.ID) int
+		Job                    func(childComplexity int, id gqlmodel.ID) int
+		Jobs                   func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
+		LatestProjectSnapshot  func(childComplexity int, projectID gqlmodel.ID) int
+		Me                     func(childComplexity int) int
+		Node                   func(childComplexity int, id gqlmodel.ID, typeArg gqlmodel.NodeType) int
+		NodeExecution          func(childComplexity int, jobID gqlmodel.ID, nodeID string) int
+		Nodes                  func(childComplexity int, id []gqlmodel.ID, typeArg gqlmodel.NodeType) int
+		Parameters             func(childComplexity int, projectID gqlmodel.ID) int
+		ProjectHistory         func(childComplexity int, projectID gqlmodel.ID) int
+		ProjectSharingInfo     func(childComplexity int, projectID gqlmodel.ID) int
+		ProjectSnapshot        func(childComplexity int, projectID gqlmodel.ID, version int) int
+		Projects               func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) int
+		SearchUser             func(childComplexity int, nameOrEmail string) int
+		SharedProject          func(childComplexity int, token string) int
+		Triggers               func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
 	}
 
 	RemoveMemberFromWorkspacePayload struct {
@@ -486,6 +568,11 @@ type ComplexityRoot struct {
 		Asset func(childComplexity int) int
 	}
 
+	UpdateBatchConfigPayload struct {
+		Config           func(childComplexity int) int
+		ValidationErrors func(childComplexity int) int
+	}
+
 	UpdateMePayload struct {
 		Me func(childComplexity int) int
 	}
@@ -522,6 +609,11 @@ type ComplexityRoot struct {
 		PhotoURL    func(childComplexity int) int
 		Theme       func(childComplexity int) int
 		Website     func(childComplexity int) int
+	}
+
+	ValidateBatchConfigPayload struct {
+		Errors func(childComplexity int) int
+		Valid  func(childComplexity int) int
 	}
 
 	Workspace struct {
@@ -561,6 +653,9 @@ type MutationResolver interface {
 	CreateAsset(ctx context.Context, input gqlmodel.CreateAssetInput) (*gqlmodel.CreateAssetPayload, error)
 	UpdateAsset(ctx context.Context, input gqlmodel.UpdateAssetInput) (*gqlmodel.UpdateAssetPayload, error)
 	DeleteAsset(ctx context.Context, input gqlmodel.DeleteAssetInput) (*gqlmodel.DeleteAssetPayload, error)
+	UpdateBatchConfig(ctx context.Context, input gqlmodel.UpdateBatchConfigInput) (*gqlmodel.UpdateBatchConfigPayload, error)
+	ResetBatchConfig(ctx context.Context, input gqlmodel.ResetBatchConfigInput) (bool, error)
+	ValidateBatchConfig(ctx context.Context, input gqlmodel.ValidateBatchConfigInput) (*gqlmodel.ValidateBatchConfigPayload, error)
 	CreateDeployment(ctx context.Context, input gqlmodel.CreateDeploymentInput) (*gqlmodel.DeploymentPayload, error)
 	UpdateDeployment(ctx context.Context, input gqlmodel.UpdateDeploymentInput) (*gqlmodel.DeploymentPayload, error)
 	DeleteDeployment(ctx context.Context, input gqlmodel.DeleteDeploymentInput) (*gqlmodel.DeleteDeploymentPayload, error)
@@ -611,6 +706,9 @@ type QueryResolver interface {
 	Node(ctx context.Context, id gqlmodel.ID, typeArg gqlmodel.NodeType) (gqlmodel.Node, error)
 	Nodes(ctx context.Context, id []gqlmodel.ID, typeArg gqlmodel.NodeType) ([]gqlmodel.Node, error)
 	Assets(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) (*gqlmodel.AssetConnection, error)
+	BatchConfig(ctx context.Context, workspaceID gqlmodel.ID) (*gqlmodel.BatchConfig, error)
+	EffectiveBatchConfig(ctx context.Context, workspaceID gqlmodel.ID) (*gqlmodel.EffectiveBatchConfig, error)
+	BatchConfigConstraints(ctx context.Context) (*gqlmodel.BatchConfigConstraints, error)
 	CmsProject(ctx context.Context, projectIDOrAlias gqlmodel.ID) (*gqlmodel.CMSProject, error)
 	CmsProjects(ctx context.Context, workspaceIds []gqlmodel.ID, publicOnly *bool, page *int, pageSize *int) ([]*gqlmodel.CMSProject, error)
 	CmsAsset(ctx context.Context, assetID gqlmodel.ID) (*gqlmodel.CMSAsset, error)
@@ -793,6 +891,244 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AssetConnection.TotalCount(childComplexity), true
+
+	case "BatchConfig.allowedLocations":
+		if e.complexity.BatchConfig.AllowedLocations == nil {
+			break
+		}
+
+		return e.complexity.BatchConfig.AllowedLocations(childComplexity), true
+
+	case "BatchConfig.binaryPath":
+		if e.complexity.BatchConfig.BinaryPath == nil {
+			break
+		}
+
+		return e.complexity.BatchConfig.BinaryPath(childComplexity), true
+
+	case "BatchConfig.bootDiskSizeGB":
+		if e.complexity.BatchConfig.BootDiskSizeGb == nil {
+			break
+		}
+
+		return e.complexity.BatchConfig.BootDiskSizeGb(childComplexity), true
+
+	case "BatchConfig.bootDiskType":
+		if e.complexity.BatchConfig.BootDiskType == nil {
+			break
+		}
+
+		return e.complexity.BatchConfig.BootDiskType(childComplexity), true
+
+	case "BatchConfig.changeHistory":
+		if e.complexity.BatchConfig.ChangeHistory == nil {
+			break
+		}
+
+		return e.complexity.BatchConfig.ChangeHistory(childComplexity), true
+
+	case "BatchConfig.channelBufferSize":
+		if e.complexity.BatchConfig.ChannelBufferSize == nil {
+			break
+		}
+
+		return e.complexity.BatchConfig.ChannelBufferSize(childComplexity), true
+
+	case "BatchConfig.computeCpuMilli":
+		if e.complexity.BatchConfig.ComputeCPUMilli == nil {
+			break
+		}
+
+		return e.complexity.BatchConfig.ComputeCPUMilli(childComplexity), true
+
+	case "BatchConfig.computeMemoryMib":
+		if e.complexity.BatchConfig.ComputeMemoryMib == nil {
+			break
+		}
+
+		return e.complexity.BatchConfig.ComputeMemoryMib(childComplexity), true
+
+	case "BatchConfig.createdAt":
+		if e.complexity.BatchConfig.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.BatchConfig.CreatedAt(childComplexity), true
+
+	case "BatchConfig.createdBy":
+		if e.complexity.BatchConfig.CreatedBy == nil {
+			break
+		}
+
+		return e.complexity.BatchConfig.CreatedBy(childComplexity), true
+
+	case "BatchConfig.featureFlushThreshold":
+		if e.complexity.BatchConfig.FeatureFlushThreshold == nil {
+			break
+		}
+
+		return e.complexity.BatchConfig.FeatureFlushThreshold(childComplexity), true
+
+	case "BatchConfig.id":
+		if e.complexity.BatchConfig.ID == nil {
+			break
+		}
+
+		return e.complexity.BatchConfig.ID(childComplexity), true
+
+	case "BatchConfig.imageURL":
+		if e.complexity.BatchConfig.ImageURL == nil {
+			break
+		}
+
+		return e.complexity.BatchConfig.ImageURL(childComplexity), true
+
+	case "BatchConfig.machineType":
+		if e.complexity.BatchConfig.MachineType == nil {
+			break
+		}
+
+		return e.complexity.BatchConfig.MachineType(childComplexity), true
+
+	case "BatchConfig.maxConcurrency":
+		if e.complexity.BatchConfig.MaxConcurrency == nil {
+			break
+		}
+
+		return e.complexity.BatchConfig.MaxConcurrency(childComplexity), true
+
+	case "BatchConfig.nodeStatusPropagationDelayMS":
+		if e.complexity.BatchConfig.NodeStatusPropagationDelayMs == nil {
+			break
+		}
+
+		return e.complexity.BatchConfig.NodeStatusPropagationDelayMs(childComplexity), true
+
+	case "BatchConfig.taskCount":
+		if e.complexity.BatchConfig.TaskCount == nil {
+			break
+		}
+
+		return e.complexity.BatchConfig.TaskCount(childComplexity), true
+
+	case "BatchConfig.threadPoolSize":
+		if e.complexity.BatchConfig.ThreadPoolSize == nil {
+			break
+		}
+
+		return e.complexity.BatchConfig.ThreadPoolSize(childComplexity), true
+
+	case "BatchConfig.updatedAt":
+		if e.complexity.BatchConfig.UpdatedAt == nil {
+			break
+		}
+
+		return e.complexity.BatchConfig.UpdatedAt(childComplexity), true
+
+	case "BatchConfig.updatedBy":
+		if e.complexity.BatchConfig.UpdatedBy == nil {
+			break
+		}
+
+		return e.complexity.BatchConfig.UpdatedBy(childComplexity), true
+
+	case "BatchConfig.workspaceId":
+		if e.complexity.BatchConfig.WorkspaceID == nil {
+			break
+		}
+
+		return e.complexity.BatchConfig.WorkspaceID(childComplexity), true
+
+	case "BatchConfigConstraints.allowedBootDiskTypes":
+		if e.complexity.BatchConfigConstraints.AllowedBootDiskTypes == nil {
+			break
+		}
+
+		return e.complexity.BatchConfigConstraints.AllowedBootDiskTypes(childComplexity), true
+
+	case "BatchConfigConstraints.allowedMachineTypes":
+		if e.complexity.BatchConfigConstraints.AllowedMachineTypes == nil {
+			break
+		}
+
+		return e.complexity.BatchConfigConstraints.AllowedMachineTypes(childComplexity), true
+
+	case "BatchConfigConstraints.bootDiskSizeGBRange":
+		if e.complexity.BatchConfigConstraints.BootDiskSizeGBRange == nil {
+			break
+		}
+
+		return e.complexity.BatchConfigConstraints.BootDiskSizeGBRange(childComplexity), true
+
+	case "BatchConfigConstraints.channelBufferSizeRange":
+		if e.complexity.BatchConfigConstraints.ChannelBufferSizeRange == nil {
+			break
+		}
+
+		return e.complexity.BatchConfigConstraints.ChannelBufferSizeRange(childComplexity), true
+
+	case "BatchConfigConstraints.computeCpuMilliRange":
+		if e.complexity.BatchConfigConstraints.ComputeCPUMilliRange == nil {
+			break
+		}
+
+		return e.complexity.BatchConfigConstraints.ComputeCPUMilliRange(childComplexity), true
+
+	case "BatchConfigConstraints.computeMemoryMibRange":
+		if e.complexity.BatchConfigConstraints.ComputeMemoryMibRange == nil {
+			break
+		}
+
+		return e.complexity.BatchConfigConstraints.ComputeMemoryMibRange(childComplexity), true
+
+	case "BatchConfigConstraints.featureFlushThresholdRange":
+		if e.complexity.BatchConfigConstraints.FeatureFlushThresholdRange == nil {
+			break
+		}
+
+		return e.complexity.BatchConfigConstraints.FeatureFlushThresholdRange(childComplexity), true
+
+	case "BatchConfigConstraints.maxConcurrencyRange":
+		if e.complexity.BatchConfigConstraints.MaxConcurrencyRange == nil {
+			break
+		}
+
+		return e.complexity.BatchConfigConstraints.MaxConcurrencyRange(childComplexity), true
+
+	case "BatchConfigConstraints.nodeStatusPropagationDelayMSRange":
+		if e.complexity.BatchConfigConstraints.NodeStatusPropagationDelayMSRange == nil {
+			break
+		}
+
+		return e.complexity.BatchConfigConstraints.NodeStatusPropagationDelayMSRange(childComplexity), true
+
+	case "BatchConfigConstraints.taskCountRange":
+		if e.complexity.BatchConfigConstraints.TaskCountRange == nil {
+			break
+		}
+
+		return e.complexity.BatchConfigConstraints.TaskCountRange(childComplexity), true
+
+	case "BatchConfigConstraints.threadPoolSizeRange":
+		if e.complexity.BatchConfigConstraints.ThreadPoolSizeRange == nil {
+			break
+		}
+
+		return e.complexity.BatchConfigConstraints.ThreadPoolSizeRange(childComplexity), true
+
+	case "BatchConfigValidationError.field":
+		if e.complexity.BatchConfigValidationError.Field == nil {
+			break
+		}
+
+		return e.complexity.BatchConfigValidationError.Field(childComplexity), true
+
+	case "BatchConfigValidationError.message":
+		if e.complexity.BatchConfigValidationError.Message == nil {
+			break
+		}
+
+		return e.complexity.BatchConfigValidationError.Message(childComplexity), true
 
 	case "CMSAsset.archiveExtractionStatus":
 		if e.complexity.CMSAsset.ArchiveExtractionStatus == nil {
@@ -1158,6 +1494,41 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.CancelJobPayload.Job(childComplexity), true
 
+	case "ConfigChange.changedBy":
+		if e.complexity.ConfigChange.ChangedBy == nil {
+			break
+		}
+
+		return e.complexity.ConfigChange.ChangedBy(childComplexity), true
+
+	case "ConfigChange.fieldName":
+		if e.complexity.ConfigChange.FieldName == nil {
+			break
+		}
+
+		return e.complexity.ConfigChange.FieldName(childComplexity), true
+
+	case "ConfigChange.newValue":
+		if e.complexity.ConfigChange.NewValue == nil {
+			break
+		}
+
+		return e.complexity.ConfigChange.NewValue(childComplexity), true
+
+	case "ConfigChange.oldValue":
+		if e.complexity.ConfigChange.OldValue == nil {
+			break
+		}
+
+		return e.complexity.ConfigChange.OldValue(childComplexity), true
+
+	case "ConfigChange.timestamp":
+		if e.complexity.ConfigChange.Timestamp == nil {
+			break
+		}
+
+		return e.complexity.ConfigChange.Timestamp(childComplexity), true
+
 	case "CreateAssetPayload.asset":
 		if e.complexity.CreateAssetPayload.Asset == nil {
 			break
@@ -1318,6 +1689,139 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.DeploymentPayload.Deployment(childComplexity), true
+
+	case "EffectiveBatchConfig.allowedLocations":
+		if e.complexity.EffectiveBatchConfig.AllowedLocations == nil {
+			break
+		}
+
+		return e.complexity.EffectiveBatchConfig.AllowedLocations(childComplexity), true
+
+	case "EffectiveBatchConfig.binaryPath":
+		if e.complexity.EffectiveBatchConfig.BinaryPath == nil {
+			break
+		}
+
+		return e.complexity.EffectiveBatchConfig.BinaryPath(childComplexity), true
+
+	case "EffectiveBatchConfig.bootDiskSizeGB":
+		if e.complexity.EffectiveBatchConfig.BootDiskSizeGb == nil {
+			break
+		}
+
+		return e.complexity.EffectiveBatchConfig.BootDiskSizeGb(childComplexity), true
+
+	case "EffectiveBatchConfig.bootDiskType":
+		if e.complexity.EffectiveBatchConfig.BootDiskType == nil {
+			break
+		}
+
+		return e.complexity.EffectiveBatchConfig.BootDiskType(childComplexity), true
+
+	case "EffectiveBatchConfig.channelBufferSize":
+		if e.complexity.EffectiveBatchConfig.ChannelBufferSize == nil {
+			break
+		}
+
+		return e.complexity.EffectiveBatchConfig.ChannelBufferSize(childComplexity), true
+
+	case "EffectiveBatchConfig.computeCpuMilli":
+		if e.complexity.EffectiveBatchConfig.ComputeCPUMilli == nil {
+			break
+		}
+
+		return e.complexity.EffectiveBatchConfig.ComputeCPUMilli(childComplexity), true
+
+	case "EffectiveBatchConfig.computeMemoryMib":
+		if e.complexity.EffectiveBatchConfig.ComputeMemoryMib == nil {
+			break
+		}
+
+		return e.complexity.EffectiveBatchConfig.ComputeMemoryMib(childComplexity), true
+
+	case "EffectiveBatchConfig.customConfigId":
+		if e.complexity.EffectiveBatchConfig.CustomConfigID == nil {
+			break
+		}
+
+		return e.complexity.EffectiveBatchConfig.CustomConfigID(childComplexity), true
+
+	case "EffectiveBatchConfig.featureFlushThreshold":
+		if e.complexity.EffectiveBatchConfig.FeatureFlushThreshold == nil {
+			break
+		}
+
+		return e.complexity.EffectiveBatchConfig.FeatureFlushThreshold(childComplexity), true
+
+	case "EffectiveBatchConfig.hasCustomConfig":
+		if e.complexity.EffectiveBatchConfig.HasCustomConfig == nil {
+			break
+		}
+
+		return e.complexity.EffectiveBatchConfig.HasCustomConfig(childComplexity), true
+
+	case "EffectiveBatchConfig.imageURL":
+		if e.complexity.EffectiveBatchConfig.ImageURL == nil {
+			break
+		}
+
+		return e.complexity.EffectiveBatchConfig.ImageURL(childComplexity), true
+
+	case "EffectiveBatchConfig.machineType":
+		if e.complexity.EffectiveBatchConfig.MachineType == nil {
+			break
+		}
+
+		return e.complexity.EffectiveBatchConfig.MachineType(childComplexity), true
+
+	case "EffectiveBatchConfig.maxConcurrency":
+		if e.complexity.EffectiveBatchConfig.MaxConcurrency == nil {
+			break
+		}
+
+		return e.complexity.EffectiveBatchConfig.MaxConcurrency(childComplexity), true
+
+	case "EffectiveBatchConfig.nodeStatusPropagationDelayMS":
+		if e.complexity.EffectiveBatchConfig.NodeStatusPropagationDelayMs == nil {
+			break
+		}
+
+		return e.complexity.EffectiveBatchConfig.NodeStatusPropagationDelayMs(childComplexity), true
+
+	case "EffectiveBatchConfig.taskCount":
+		if e.complexity.EffectiveBatchConfig.TaskCount == nil {
+			break
+		}
+
+		return e.complexity.EffectiveBatchConfig.TaskCount(childComplexity), true
+
+	case "EffectiveBatchConfig.threadPoolSize":
+		if e.complexity.EffectiveBatchConfig.ThreadPoolSize == nil {
+			break
+		}
+
+		return e.complexity.EffectiveBatchConfig.ThreadPoolSize(childComplexity), true
+
+	case "EffectiveBatchConfig.workspaceId":
+		if e.complexity.EffectiveBatchConfig.WorkspaceID == nil {
+			break
+		}
+
+		return e.complexity.EffectiveBatchConfig.WorkspaceID(childComplexity), true
+
+	case "IntRange.max":
+		if e.complexity.IntRange.Max == nil {
+			break
+		}
+
+		return e.complexity.IntRange.Max(childComplexity), true
+
+	case "IntRange.min":
+		if e.complexity.IntRange.Min == nil {
+			break
+		}
+
+		return e.complexity.IntRange.Min(childComplexity), true
 
 	case "Job.completedAt":
 		if e.complexity.Job.CompletedAt == nil {
@@ -1805,6 +2309,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.RemoveParameters(childComplexity, args["input"].(gqlmodel.RemoveParametersInput)), true
 
+	case "Mutation.resetBatchConfig":
+		if e.complexity.Mutation.ResetBatchConfig == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_resetBatchConfig_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ResetBatchConfig(childComplexity, args["input"].(gqlmodel.ResetBatchConfigInput)), true
+
 	case "Mutation.rollbackProject":
 		if e.complexity.Mutation.RollbackProject == nil {
 			break
@@ -1888,6 +2404,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateAsset(childComplexity, args["input"].(gqlmodel.UpdateAssetInput)), true
+
+	case "Mutation.updateBatchConfig":
+		if e.complexity.Mutation.UpdateBatchConfig == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateBatchConfig_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateBatchConfig(childComplexity, args["input"].(gqlmodel.UpdateBatchConfigInput)), true
 
 	case "Mutation.updateDeployment":
 		if e.complexity.Mutation.UpdateDeployment == nil {
@@ -1996,6 +2524,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateWorkspace(childComplexity, args["input"].(gqlmodel.UpdateWorkspaceInput)), true
+
+	case "Mutation.validateBatchConfig":
+		if e.complexity.Mutation.ValidateBatchConfig == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_validateBatchConfig_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ValidateBatchConfig(childComplexity, args["input"].(gqlmodel.ValidateBatchConfigInput)), true
 
 	case "NodeExecution.completedAt":
 		if e.complexity.NodeExecution.CompletedAt == nil {
@@ -2401,6 +2941,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Query.Assets(childComplexity, args["workspaceId"].(gqlmodel.ID), args["keyword"].(*string), args["sort"].(*gqlmodel.AssetSortType), args["pagination"].(gqlmodel.PageBasedPagination)), true
 
+	case "Query.batchConfig":
+		if e.complexity.Query.BatchConfig == nil {
+			break
+		}
+
+		args, err := ec.field_Query_batchConfig_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.BatchConfig(childComplexity, args["workspaceId"].(gqlmodel.ID)), true
+
+	case "Query.batchConfigConstraints":
+		if e.complexity.Query.BatchConfigConstraints == nil {
+			break
+		}
+
+		return e.complexity.Query.BatchConfigConstraints(childComplexity), true
+
 	case "Query.cmsAsset":
 		if e.complexity.Query.CmsAsset == nil {
 			break
@@ -2544,6 +3103,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Deployments(childComplexity, args["workspaceId"].(gqlmodel.ID), args["pagination"].(gqlmodel.PageBasedPagination)), true
+
+	case "Query.effectiveBatchConfig":
+		if e.complexity.Query.EffectiveBatchConfig == nil {
+			break
+		}
+
+		args, err := ec.field_Query_effectiveBatchConfig_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.EffectiveBatchConfig(childComplexity, args["workspaceId"].(gqlmodel.ID)), true
 
 	case "Query.job":
 		if e.complexity.Query.Job == nil {
@@ -2929,6 +3500,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UpdateAssetPayload.Asset(childComplexity), true
 
+	case "UpdateBatchConfigPayload.config":
+		if e.complexity.UpdateBatchConfigPayload.Config == nil {
+			break
+		}
+
+		return e.complexity.UpdateBatchConfigPayload.Config(childComplexity), true
+
+	case "UpdateBatchConfigPayload.validationErrors":
+		if e.complexity.UpdateBatchConfigPayload.ValidationErrors == nil {
+			break
+		}
+
+		return e.complexity.UpdateBatchConfigPayload.ValidationErrors(childComplexity), true
+
 	case "UpdateMePayload.me":
 		if e.complexity.UpdateMePayload.Me == nil {
 			break
@@ -3069,6 +3654,20 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UserMetadata.Website(childComplexity), true
 
+	case "ValidateBatchConfigPayload.errors":
+		if e.complexity.ValidateBatchConfigPayload.Errors == nil {
+			break
+		}
+
+		return e.complexity.ValidateBatchConfigPayload.Errors(childComplexity), true
+
+	case "ValidateBatchConfigPayload.valid":
+		if e.complexity.ValidateBatchConfigPayload.Valid == nil {
+			break
+		}
+
+		return e.complexity.ValidateBatchConfigPayload.Valid(childComplexity), true
+
 	case "Workspace.assets":
 		if e.complexity.Workspace.Assets == nil {
 			break
@@ -3175,12 +3774,14 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRemoveMyAuthInput,
 		ec.unmarshalInputRemoveParameterInput,
 		ec.unmarshalInputRemoveParametersInput,
+		ec.unmarshalInputResetBatchConfigInput,
 		ec.unmarshalInputRunProjectInput,
 		ec.unmarshalInputShareProjectInput,
 		ec.unmarshalInputSignupInput,
 		ec.unmarshalInputTimeDriverInput,
 		ec.unmarshalInputUnshareProjectInput,
 		ec.unmarshalInputUpdateAssetInput,
+		ec.unmarshalInputUpdateBatchConfigInput,
 		ec.unmarshalInputUpdateDeploymentInput,
 		ec.unmarshalInputUpdateMeInput,
 		ec.unmarshalInputUpdateMemberOfWorkspaceInput,
@@ -3189,6 +3790,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateProjectInput,
 		ec.unmarshalInputUpdateTriggerInput,
 		ec.unmarshalInputUpdateWorkspaceInput,
+		ec.unmarshalInputValidateBatchConfigInput,
 	)
 	first := true
 
@@ -3455,6 +4057,240 @@ extend type Mutation {
   updateAsset(input: UpdateAssetInput!): UpdateAssetPayload
   deleteAsset(input: DeleteAssetInput!): DeleteAssetPayload
 }
+`, BuiltIn: false},
+	{Name: "../../../gql/batchconfig.graphql", Input: `# Batch Worker Configuration Management
+
+"""
+BatchConfig represents workspace-specific batch worker configuration overrides.
+If no custom configuration exists, environment defaults are used.
+"""
+type BatchConfig {
+  id: ID!
+  workspaceId: ID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  createdBy: String!
+  updatedBy: String!
+
+  # Tier A parameters (low risk, user/VIP accessible)
+  computeCpuMilli: Int
+  computeMemoryMib: Int
+  bootDiskSizeGB: Int
+  maxConcurrency: Int
+  threadPoolSize: Int
+  channelBufferSize: Int
+  featureFlushThreshold: Int
+
+  # Tier B parameters (medium risk, requires guardrails, admin/VIP)
+  machineType: String
+  taskCount: Int
+  nodeStatusPropagationDelayMS: Int
+
+  # Tier C parameters (high risk, admin-only)
+  bootDiskType: String
+  imageURL: String
+  binaryPath: String
+  allowedLocations: [String!]
+
+  # Audit trail
+  changeHistory: [ConfigChange!]!
+}
+
+"""
+ConfigChange records a configuration change for audit purposes
+"""
+type ConfigChange {
+  timestamp: DateTime!
+  changedBy: String!
+  fieldName: String!
+  oldValue: Any
+  newValue: Any
+}
+
+"""
+EffectiveBatchConfig shows the effective configuration for a workspace,
+merging workspace-specific overrides with environment defaults
+"""
+type EffectiveBatchConfig {
+  workspaceId: ID!
+  
+  # All configuration values (computed from overrides + defaults)
+  computeCpuMilli: Int!
+  computeMemoryMib: Int!
+  bootDiskSizeGB: Int!
+  maxConcurrency: Int!
+  threadPoolSize: Int!
+  channelBufferSize: Int!
+  featureFlushThreshold: Int!
+  machineType: String!
+  taskCount: Int!
+  nodeStatusPropagationDelayMS: Int!
+  bootDiskType: String!
+  imageURL: String!
+  binaryPath: String!
+  allowedLocations: [String!]!
+  
+  # Indicates which values are overridden vs defaults
+  hasCustomConfig: Boolean!
+  customConfigId: ID
+}
+
+"""
+BatchConfigValidationError represents a validation error for configuration parameters
+"""
+type BatchConfigValidationError {
+  field: String!
+  message: String!
+}
+
+"""
+BatchConfigConstraints provides information about valid ranges and values for configuration
+"""
+type BatchConfigConstraints {
+  # Tier A constraints
+  computeCpuMilliRange: IntRange!
+  computeMemoryMibRange: IntRange!
+  bootDiskSizeGBRange: IntRange!
+  maxConcurrencyRange: IntRange!
+  threadPoolSizeRange: IntRange!
+  channelBufferSizeRange: IntRange!
+  featureFlushThresholdRange: IntRange!
+  
+  # Tier B constraints
+  taskCountRange: IntRange!
+  nodeStatusPropagationDelayMSRange: IntRange!
+  allowedMachineTypes: [String!]!
+  
+  # Tier C constraints
+  allowedBootDiskTypes: [String!]!
+}
+
+"""
+IntRange represents a valid integer range
+"""
+type IntRange {
+  min: Int!
+  max: Int!
+}
+
+# Input Types
+
+"""
+UpdateBatchConfigInput allows updating workspace-specific batch configuration.
+Only non-null fields will be updated. Set to explicit null to remove override.
+"""
+input UpdateBatchConfigInput {
+  workspaceId: ID!
+  
+  # Tier A parameters (VIP/User accessible)
+  computeCpuMilli: Int
+  computeMemoryMib: Int
+  bootDiskSizeGB: Int
+  maxConcurrency: Int
+  threadPoolSize: Int
+  channelBufferSize: Int
+  featureFlushThreshold: Int
+  
+  # Tier B parameters (Admin/VIP with validation)
+  machineType: String
+  taskCount: Int
+  nodeStatusPropagationDelayMS: Int
+  
+  # Tier C parameters (Admin only - requires special permission)
+  bootDiskType: String
+  imageURL: String
+  binaryPath: String
+  allowedLocations: [String!]
+}
+
+"""
+ResetBatchConfigInput removes all workspace-specific overrides
+"""
+input ResetBatchConfigInput {
+  workspaceId: ID!
+}
+
+"""
+ValidateBatchConfigInput validates configuration without saving
+"""
+input ValidateBatchConfigInput {
+  workspaceId: ID!
+  computeCpuMilli: Int
+  computeMemoryMib: Int
+  bootDiskSizeGB: Int
+  maxConcurrency: Int
+  threadPoolSize: Int
+  channelBufferSize: Int
+  featureFlushThreshold: Int
+  machineType: String
+  taskCount: Int
+  nodeStatusPropagationDelayMS: Int
+  bootDiskType: String
+  imageURL: String
+  binaryPath: String
+  allowedLocations: [String!]
+}
+
+# Payload Types
+
+"""
+UpdateBatchConfigPayload is returned after updating configuration
+"""
+type UpdateBatchConfigPayload {
+  config: BatchConfig!
+  validationErrors: [BatchConfigValidationError!]
+}
+
+"""
+ValidateBatchConfigPayload is returned after validation
+"""
+type ValidateBatchConfigPayload {
+  valid: Boolean!
+  errors: [BatchConfigValidationError!]!
+}
+
+# Query and Mutation
+
+extend type Query {
+  """
+  Get the raw batch configuration for a workspace (overrides only)
+  Returns null if no custom configuration exists
+  """
+  batchConfig(workspaceId: ID!): BatchConfig
+  
+  """
+  Get the effective batch configuration for a workspace (merges overrides with defaults)
+  This always returns a value showing what will actually be used
+  """
+  effectiveBatchConfig(workspaceId: ID!): EffectiveBatchConfig!
+  
+  """
+  Get configuration constraints (valid ranges and allowed values)
+  """
+  batchConfigConstraints: BatchConfigConstraints!
+}
+
+extend type Mutation {
+  """
+  Update batch worker configuration for a workspace
+  Requires workspace admin or maintainer role
+  Tier C parameters require special admin permission
+  """
+  updateBatchConfig(input: UpdateBatchConfigInput!): UpdateBatchConfigPayload!
+  
+  """
+  Reset batch configuration to environment defaults
+  Removes all workspace-specific overrides
+  """
+  resetBatchConfig(input: ResetBatchConfigInput!): Boolean!
+  
+  """
+  Validate batch configuration without saving
+  Useful for client-side validation and dry-runs
+  """
+  validateBatchConfig(input: ValidateBatchConfigInput!): ValidateBatchConfigPayload!
+}
+
 `, BuiltIn: false},
 	{Name: "../../../gql/cms.graphql", Input: `# CMS types
 
@@ -5111,6 +5947,34 @@ func (ec *executionContext) field_Mutation_removeParameters_argsInput(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_resetBatchConfig_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_resetBatchConfig_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_resetBatchConfig_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (gqlmodel.ResetBatchConfigInput, error) {
+	if _, ok := rawArgs["input"]; !ok {
+		var zeroVal gqlmodel.ResetBatchConfigInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNResetBatchConfigInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐResetBatchConfigInput(ctx, tmp)
+	}
+
+	var zeroVal gqlmodel.ResetBatchConfigInput
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_rollbackProject_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -5327,6 +6191,34 @@ func (ec *executionContext) field_Mutation_updateAsset_argsInput(
 	}
 
 	var zeroVal gqlmodel.UpdateAssetInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_updateBatchConfig_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_updateBatchConfig_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_updateBatchConfig_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (gqlmodel.UpdateBatchConfigInput, error) {
+	if _, ok := rawArgs["input"]; !ok {
+		var zeroVal gqlmodel.UpdateBatchConfigInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNUpdateBatchConfigInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateBatchConfigInput(ctx, tmp)
+	}
+
+	var zeroVal gqlmodel.UpdateBatchConfigInput
 	return zeroVal, nil
 }
 
@@ -5628,6 +6520,34 @@ func (ec *executionContext) field_Mutation_updateWorkspace_argsInput(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_validateBatchConfig_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Mutation_validateBatchConfig_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_validateBatchConfig_argsInput(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (gqlmodel.ValidateBatchConfigInput, error) {
+	if _, ok := rawArgs["input"]; !ok {
+		var zeroVal gqlmodel.ValidateBatchConfigInput
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNValidateBatchConfigInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐValidateBatchConfigInput(ctx, tmp)
+	}
+
+	var zeroVal gqlmodel.ValidateBatchConfigInput
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -5750,6 +6670,34 @@ func (ec *executionContext) field_Query_assets_argsPagination(
 	}
 
 	var zeroVal gqlmodel.PageBasedPagination
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_batchConfig_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_batchConfig_argsWorkspaceID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["workspaceId"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_batchConfig_argsWorkspaceID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (gqlmodel.ID, error) {
+	if _, ok := rawArgs["workspaceId"]; !ok {
+		var zeroVal gqlmodel.ID
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceId"))
+	if tmp, ok := rawArgs["workspaceId"]; ok {
+		return ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+	}
+
+	var zeroVal gqlmodel.ID
 	return zeroVal, nil
 }
 
@@ -6431,6 +7379,34 @@ func (ec *executionContext) field_Query_deployments_argsPagination(
 	}
 
 	var zeroVal gqlmodel.PageBasedPagination
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_effectiveBatchConfig_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := ec.field_Query_effectiveBatchConfig_argsWorkspaceID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["workspaceId"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_effectiveBatchConfig_argsWorkspaceID(
+	ctx context.Context,
+	rawArgs map[string]any,
+) (gqlmodel.ID, error) {
+	if _, ok := rawArgs["workspaceId"]; !ok {
+		var zeroVal gqlmodel.ID
+		return zeroVal, nil
+	}
+
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceId"))
+	if tmp, ok := rawArgs["workspaceId"]; ok {
+		return ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+	}
+
+	var zeroVal gqlmodel.ID
 	return zeroVal, nil
 }
 
@@ -8145,6 +9121,1526 @@ func (ec *executionContext) fieldContext_AssetConnection_totalCount(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfig_id(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfig_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.ID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfig_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfig_workspaceId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfig_workspaceId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WorkspaceID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.ID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfig_workspaceId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfig_createdAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfig_createdAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CreatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNDateTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfig_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfig_updatedAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfig_updatedAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UpdatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNDateTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfig_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfig_createdBy(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfig_createdBy(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CreatedBy, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfig_createdBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfig_updatedBy(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfig_updatedBy(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.UpdatedBy, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfig_updatedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfig_computeCpuMilli(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfig_computeCpuMilli(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ComputeCPUMilli, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfig_computeCpuMilli(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfig_computeMemoryMib(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfig_computeMemoryMib(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ComputeMemoryMib, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfig_computeMemoryMib(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfig_bootDiskSizeGB(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfig_bootDiskSizeGB(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BootDiskSizeGb, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfig_bootDiskSizeGB(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfig_maxConcurrency(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfig_maxConcurrency(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxConcurrency, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfig_maxConcurrency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfig_threadPoolSize(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfig_threadPoolSize(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ThreadPoolSize, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfig_threadPoolSize(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfig_channelBufferSize(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfig_channelBufferSize(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ChannelBufferSize, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfig_channelBufferSize(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfig_featureFlushThreshold(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfig_featureFlushThreshold(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FeatureFlushThreshold, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfig_featureFlushThreshold(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfig_machineType(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfig_machineType(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MachineType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfig_machineType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfig_taskCount(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfig_taskCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfig_taskCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfig_nodeStatusPropagationDelayMS(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfig_nodeStatusPropagationDelayMS(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NodeStatusPropagationDelayMs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfig_nodeStatusPropagationDelayMS(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfig_bootDiskType(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfig_bootDiskType(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BootDiskType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfig_bootDiskType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfig_imageURL(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfig_imageURL(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ImageURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfig_imageURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfig_binaryPath(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfig_binaryPath(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BinaryPath, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfig_binaryPath(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfig_allowedLocations(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfig_allowedLocations(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AllowedLocations, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalOString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfig_allowedLocations(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfig_changeHistory(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfig_changeHistory(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ChangeHistory, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*gqlmodel.ConfigChange)
+	fc.Result = res
+	return ec.marshalNConfigChange2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐConfigChangeᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfig_changeHistory(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "timestamp":
+				return ec.fieldContext_ConfigChange_timestamp(ctx, field)
+			case "changedBy":
+				return ec.fieldContext_ConfigChange_changedBy(ctx, field)
+			case "fieldName":
+				return ec.fieldContext_ConfigChange_fieldName(ctx, field)
+			case "oldValue":
+				return ec.fieldContext_ConfigChange_oldValue(ctx, field)
+			case "newValue":
+				return ec.fieldContext_ConfigChange_newValue(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ConfigChange", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfigConstraints_computeCpuMilliRange(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfigConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfigConstraints_computeCpuMilliRange(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ComputeCPUMilliRange, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.IntRange)
+	fc.Result = res
+	return ec.marshalNIntRange2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntRange(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfigConstraints_computeCpuMilliRange(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfigConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "min":
+				return ec.fieldContext_IntRange_min(ctx, field)
+			case "max":
+				return ec.fieldContext_IntRange_max(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type IntRange", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfigConstraints_computeMemoryMibRange(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfigConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfigConstraints_computeMemoryMibRange(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ComputeMemoryMibRange, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.IntRange)
+	fc.Result = res
+	return ec.marshalNIntRange2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntRange(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfigConstraints_computeMemoryMibRange(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfigConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "min":
+				return ec.fieldContext_IntRange_min(ctx, field)
+			case "max":
+				return ec.fieldContext_IntRange_max(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type IntRange", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfigConstraints_bootDiskSizeGBRange(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfigConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfigConstraints_bootDiskSizeGBRange(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BootDiskSizeGBRange, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.IntRange)
+	fc.Result = res
+	return ec.marshalNIntRange2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntRange(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfigConstraints_bootDiskSizeGBRange(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfigConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "min":
+				return ec.fieldContext_IntRange_min(ctx, field)
+			case "max":
+				return ec.fieldContext_IntRange_max(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type IntRange", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfigConstraints_maxConcurrencyRange(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfigConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfigConstraints_maxConcurrencyRange(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxConcurrencyRange, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.IntRange)
+	fc.Result = res
+	return ec.marshalNIntRange2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntRange(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfigConstraints_maxConcurrencyRange(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfigConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "min":
+				return ec.fieldContext_IntRange_min(ctx, field)
+			case "max":
+				return ec.fieldContext_IntRange_max(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type IntRange", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfigConstraints_threadPoolSizeRange(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfigConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfigConstraints_threadPoolSizeRange(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ThreadPoolSizeRange, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.IntRange)
+	fc.Result = res
+	return ec.marshalNIntRange2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntRange(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfigConstraints_threadPoolSizeRange(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfigConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "min":
+				return ec.fieldContext_IntRange_min(ctx, field)
+			case "max":
+				return ec.fieldContext_IntRange_max(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type IntRange", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfigConstraints_channelBufferSizeRange(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfigConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfigConstraints_channelBufferSizeRange(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ChannelBufferSizeRange, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.IntRange)
+	fc.Result = res
+	return ec.marshalNIntRange2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntRange(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfigConstraints_channelBufferSizeRange(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfigConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "min":
+				return ec.fieldContext_IntRange_min(ctx, field)
+			case "max":
+				return ec.fieldContext_IntRange_max(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type IntRange", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfigConstraints_featureFlushThresholdRange(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfigConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfigConstraints_featureFlushThresholdRange(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FeatureFlushThresholdRange, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.IntRange)
+	fc.Result = res
+	return ec.marshalNIntRange2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntRange(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfigConstraints_featureFlushThresholdRange(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfigConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "min":
+				return ec.fieldContext_IntRange_min(ctx, field)
+			case "max":
+				return ec.fieldContext_IntRange_max(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type IntRange", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfigConstraints_taskCountRange(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfigConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfigConstraints_taskCountRange(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskCountRange, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.IntRange)
+	fc.Result = res
+	return ec.marshalNIntRange2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntRange(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfigConstraints_taskCountRange(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfigConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "min":
+				return ec.fieldContext_IntRange_min(ctx, field)
+			case "max":
+				return ec.fieldContext_IntRange_max(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type IntRange", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfigConstraints_nodeStatusPropagationDelayMSRange(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfigConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfigConstraints_nodeStatusPropagationDelayMSRange(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NodeStatusPropagationDelayMSRange, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.IntRange)
+	fc.Result = res
+	return ec.marshalNIntRange2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntRange(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfigConstraints_nodeStatusPropagationDelayMSRange(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfigConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "min":
+				return ec.fieldContext_IntRange_min(ctx, field)
+			case "max":
+				return ec.fieldContext_IntRange_max(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type IntRange", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfigConstraints_allowedMachineTypes(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfigConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfigConstraints_allowedMachineTypes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AllowedMachineTypes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfigConstraints_allowedMachineTypes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfigConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfigConstraints_allowedBootDiskTypes(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfigConstraints) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfigConstraints_allowedBootDiskTypes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AllowedBootDiskTypes, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfigConstraints_allowedBootDiskTypes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfigConstraints",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfigValidationError_field(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfigValidationError) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfigValidationError_field(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Field, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfigValidationError_field(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfigValidationError",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BatchConfigValidationError_message(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.BatchConfigValidationError) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_BatchConfigValidationError_message(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Message, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_BatchConfigValidationError_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BatchConfigValidationError",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -10531,6 +13027,220 @@ func (ec *executionContext) fieldContext_CancelJobPayload_job(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _ConfigChange_timestamp(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ConfigChange) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ConfigChange_timestamp(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Timestamp, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNDateTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ConfigChange_timestamp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ConfigChange",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ConfigChange_changedBy(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ConfigChange) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ConfigChange_changedBy(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ChangedBy, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ConfigChange_changedBy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ConfigChange",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ConfigChange_fieldName(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ConfigChange) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ConfigChange_fieldName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FieldName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ConfigChange_fieldName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ConfigChange",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ConfigChange_oldValue(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ConfigChange) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ConfigChange_oldValue(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OldValue, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(any)
+	fc.Result = res
+	return ec.marshalOAny2interface(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ConfigChange_oldValue(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ConfigChange",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Any does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ConfigChange_newValue(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ConfigChange) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ConfigChange_newValue(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NewValue, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(any)
+	fc.Result = res
+	return ec.marshalOAny2interface(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ConfigChange_newValue(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ConfigChange",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Any does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _CreateAssetPayload_asset(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CreateAssetPayload) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CreateAssetPayload_asset(ctx, field)
 	if err != nil {
@@ -11674,6 +14384,839 @@ func (ec *executionContext) fieldContext_DeploymentPayload_deployment(_ context.
 				return ec.fieldContext_Deployment_workspaceId(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Deployment", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EffectiveBatchConfig_workspaceId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EffectiveBatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EffectiveBatchConfig_workspaceId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WorkspaceID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.ID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EffectiveBatchConfig_workspaceId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EffectiveBatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EffectiveBatchConfig_computeCpuMilli(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EffectiveBatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EffectiveBatchConfig_computeCpuMilli(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ComputeCPUMilli, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EffectiveBatchConfig_computeCpuMilli(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EffectiveBatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EffectiveBatchConfig_computeMemoryMib(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EffectiveBatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EffectiveBatchConfig_computeMemoryMib(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ComputeMemoryMib, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EffectiveBatchConfig_computeMemoryMib(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EffectiveBatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EffectiveBatchConfig_bootDiskSizeGB(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EffectiveBatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EffectiveBatchConfig_bootDiskSizeGB(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BootDiskSizeGb, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EffectiveBatchConfig_bootDiskSizeGB(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EffectiveBatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EffectiveBatchConfig_maxConcurrency(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EffectiveBatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EffectiveBatchConfig_maxConcurrency(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxConcurrency, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EffectiveBatchConfig_maxConcurrency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EffectiveBatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EffectiveBatchConfig_threadPoolSize(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EffectiveBatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EffectiveBatchConfig_threadPoolSize(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ThreadPoolSize, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EffectiveBatchConfig_threadPoolSize(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EffectiveBatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EffectiveBatchConfig_channelBufferSize(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EffectiveBatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EffectiveBatchConfig_channelBufferSize(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ChannelBufferSize, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EffectiveBatchConfig_channelBufferSize(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EffectiveBatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EffectiveBatchConfig_featureFlushThreshold(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EffectiveBatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EffectiveBatchConfig_featureFlushThreshold(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.FeatureFlushThreshold, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EffectiveBatchConfig_featureFlushThreshold(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EffectiveBatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EffectiveBatchConfig_machineType(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EffectiveBatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EffectiveBatchConfig_machineType(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MachineType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EffectiveBatchConfig_machineType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EffectiveBatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EffectiveBatchConfig_taskCount(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EffectiveBatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EffectiveBatchConfig_taskCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TaskCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EffectiveBatchConfig_taskCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EffectiveBatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EffectiveBatchConfig_nodeStatusPropagationDelayMS(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EffectiveBatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EffectiveBatchConfig_nodeStatusPropagationDelayMS(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NodeStatusPropagationDelayMs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EffectiveBatchConfig_nodeStatusPropagationDelayMS(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EffectiveBatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EffectiveBatchConfig_bootDiskType(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EffectiveBatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EffectiveBatchConfig_bootDiskType(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BootDiskType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EffectiveBatchConfig_bootDiskType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EffectiveBatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EffectiveBatchConfig_imageURL(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EffectiveBatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EffectiveBatchConfig_imageURL(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ImageURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EffectiveBatchConfig_imageURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EffectiveBatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EffectiveBatchConfig_binaryPath(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EffectiveBatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EffectiveBatchConfig_binaryPath(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.BinaryPath, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EffectiveBatchConfig_binaryPath(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EffectiveBatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EffectiveBatchConfig_allowedLocations(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EffectiveBatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EffectiveBatchConfig_allowedLocations(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AllowedLocations, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EffectiveBatchConfig_allowedLocations(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EffectiveBatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EffectiveBatchConfig_hasCustomConfig(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EffectiveBatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EffectiveBatchConfig_hasCustomConfig(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HasCustomConfig, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EffectiveBatchConfig_hasCustomConfig(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EffectiveBatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EffectiveBatchConfig_customConfigId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EffectiveBatchConfig) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_EffectiveBatchConfig_customConfigId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CustomConfigID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.ID)
+	fc.Result = res
+	return ec.marshalOID2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_EffectiveBatchConfig_customConfigId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EffectiveBatchConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntRange_min(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntRange) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_IntRange_min(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Min, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_IntRange_min(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntRange",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntRange_max(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntRange) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_IntRange_max(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Max, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_IntRange_max(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntRange",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -13331,6 +16874,183 @@ func (ec *executionContext) fieldContext_Mutation_deleteAsset(ctx context.Contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_deleteAsset_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateBatchConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateBatchConfig(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateBatchConfig(rctx, fc.Args["input"].(gqlmodel.UpdateBatchConfigInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.UpdateBatchConfigPayload)
+	fc.Result = res
+	return ec.marshalNUpdateBatchConfigPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateBatchConfigPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateBatchConfig(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "config":
+				return ec.fieldContext_UpdateBatchConfigPayload_config(ctx, field)
+			case "validationErrors":
+				return ec.fieldContext_UpdateBatchConfigPayload_validationErrors(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UpdateBatchConfigPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateBatchConfig_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_resetBatchConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_resetBatchConfig(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ResetBatchConfig(rctx, fc.Args["input"].(gqlmodel.ResetBatchConfigInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_resetBatchConfig(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_resetBatchConfig_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_validateBatchConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_validateBatchConfig(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ValidateBatchConfig(rctx, fc.Args["input"].(gqlmodel.ValidateBatchConfigInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.ValidateBatchConfigPayload)
+	fc.Result = res
+	return ec.marshalNValidateBatchConfigPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐValidateBatchConfigPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_validateBatchConfig(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "valid":
+				return ec.fieldContext_ValidateBatchConfigPayload_valid(ctx, field)
+			case "errors":
+				return ec.fieldContext_ValidateBatchConfigPayload_errors(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ValidateBatchConfigPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_validateBatchConfig_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -18189,6 +21909,261 @@ func (ec *executionContext) fieldContext_Query_assets(ctx context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_batchConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_batchConfig(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().BatchConfig(rctx, fc.Args["workspaceId"].(gqlmodel.ID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.BatchConfig)
+	fc.Result = res
+	return ec.marshalOBatchConfig2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐBatchConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_batchConfig(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_BatchConfig_id(ctx, field)
+			case "workspaceId":
+				return ec.fieldContext_BatchConfig_workspaceId(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_BatchConfig_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_BatchConfig_updatedAt(ctx, field)
+			case "createdBy":
+				return ec.fieldContext_BatchConfig_createdBy(ctx, field)
+			case "updatedBy":
+				return ec.fieldContext_BatchConfig_updatedBy(ctx, field)
+			case "computeCpuMilli":
+				return ec.fieldContext_BatchConfig_computeCpuMilli(ctx, field)
+			case "computeMemoryMib":
+				return ec.fieldContext_BatchConfig_computeMemoryMib(ctx, field)
+			case "bootDiskSizeGB":
+				return ec.fieldContext_BatchConfig_bootDiskSizeGB(ctx, field)
+			case "maxConcurrency":
+				return ec.fieldContext_BatchConfig_maxConcurrency(ctx, field)
+			case "threadPoolSize":
+				return ec.fieldContext_BatchConfig_threadPoolSize(ctx, field)
+			case "channelBufferSize":
+				return ec.fieldContext_BatchConfig_channelBufferSize(ctx, field)
+			case "featureFlushThreshold":
+				return ec.fieldContext_BatchConfig_featureFlushThreshold(ctx, field)
+			case "machineType":
+				return ec.fieldContext_BatchConfig_machineType(ctx, field)
+			case "taskCount":
+				return ec.fieldContext_BatchConfig_taskCount(ctx, field)
+			case "nodeStatusPropagationDelayMS":
+				return ec.fieldContext_BatchConfig_nodeStatusPropagationDelayMS(ctx, field)
+			case "bootDiskType":
+				return ec.fieldContext_BatchConfig_bootDiskType(ctx, field)
+			case "imageURL":
+				return ec.fieldContext_BatchConfig_imageURL(ctx, field)
+			case "binaryPath":
+				return ec.fieldContext_BatchConfig_binaryPath(ctx, field)
+			case "allowedLocations":
+				return ec.fieldContext_BatchConfig_allowedLocations(ctx, field)
+			case "changeHistory":
+				return ec.fieldContext_BatchConfig_changeHistory(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BatchConfig", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_batchConfig_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_effectiveBatchConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_effectiveBatchConfig(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().EffectiveBatchConfig(rctx, fc.Args["workspaceId"].(gqlmodel.ID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.EffectiveBatchConfig)
+	fc.Result = res
+	return ec.marshalNEffectiveBatchConfig2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐEffectiveBatchConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_effectiveBatchConfig(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "workspaceId":
+				return ec.fieldContext_EffectiveBatchConfig_workspaceId(ctx, field)
+			case "computeCpuMilli":
+				return ec.fieldContext_EffectiveBatchConfig_computeCpuMilli(ctx, field)
+			case "computeMemoryMib":
+				return ec.fieldContext_EffectiveBatchConfig_computeMemoryMib(ctx, field)
+			case "bootDiskSizeGB":
+				return ec.fieldContext_EffectiveBatchConfig_bootDiskSizeGB(ctx, field)
+			case "maxConcurrency":
+				return ec.fieldContext_EffectiveBatchConfig_maxConcurrency(ctx, field)
+			case "threadPoolSize":
+				return ec.fieldContext_EffectiveBatchConfig_threadPoolSize(ctx, field)
+			case "channelBufferSize":
+				return ec.fieldContext_EffectiveBatchConfig_channelBufferSize(ctx, field)
+			case "featureFlushThreshold":
+				return ec.fieldContext_EffectiveBatchConfig_featureFlushThreshold(ctx, field)
+			case "machineType":
+				return ec.fieldContext_EffectiveBatchConfig_machineType(ctx, field)
+			case "taskCount":
+				return ec.fieldContext_EffectiveBatchConfig_taskCount(ctx, field)
+			case "nodeStatusPropagationDelayMS":
+				return ec.fieldContext_EffectiveBatchConfig_nodeStatusPropagationDelayMS(ctx, field)
+			case "bootDiskType":
+				return ec.fieldContext_EffectiveBatchConfig_bootDiskType(ctx, field)
+			case "imageURL":
+				return ec.fieldContext_EffectiveBatchConfig_imageURL(ctx, field)
+			case "binaryPath":
+				return ec.fieldContext_EffectiveBatchConfig_binaryPath(ctx, field)
+			case "allowedLocations":
+				return ec.fieldContext_EffectiveBatchConfig_allowedLocations(ctx, field)
+			case "hasCustomConfig":
+				return ec.fieldContext_EffectiveBatchConfig_hasCustomConfig(ctx, field)
+			case "customConfigId":
+				return ec.fieldContext_EffectiveBatchConfig_customConfigId(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type EffectiveBatchConfig", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_effectiveBatchConfig_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_batchConfigConstraints(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_batchConfigConstraints(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().BatchConfigConstraints(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.BatchConfigConstraints)
+	fc.Result = res
+	return ec.marshalNBatchConfigConstraints2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐBatchConfigConstraints(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_batchConfigConstraints(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "computeCpuMilliRange":
+				return ec.fieldContext_BatchConfigConstraints_computeCpuMilliRange(ctx, field)
+			case "computeMemoryMibRange":
+				return ec.fieldContext_BatchConfigConstraints_computeMemoryMibRange(ctx, field)
+			case "bootDiskSizeGBRange":
+				return ec.fieldContext_BatchConfigConstraints_bootDiskSizeGBRange(ctx, field)
+			case "maxConcurrencyRange":
+				return ec.fieldContext_BatchConfigConstraints_maxConcurrencyRange(ctx, field)
+			case "threadPoolSizeRange":
+				return ec.fieldContext_BatchConfigConstraints_threadPoolSizeRange(ctx, field)
+			case "channelBufferSizeRange":
+				return ec.fieldContext_BatchConfigConstraints_channelBufferSizeRange(ctx, field)
+			case "featureFlushThresholdRange":
+				return ec.fieldContext_BatchConfigConstraints_featureFlushThresholdRange(ctx, field)
+			case "taskCountRange":
+				return ec.fieldContext_BatchConfigConstraints_taskCountRange(ctx, field)
+			case "nodeStatusPropagationDelayMSRange":
+				return ec.fieldContext_BatchConfigConstraints_nodeStatusPropagationDelayMSRange(ctx, field)
+			case "allowedMachineTypes":
+				return ec.fieldContext_BatchConfigConstraints_allowedMachineTypes(ctx, field)
+			case "allowedBootDiskTypes":
+				return ec.fieldContext_BatchConfigConstraints_allowedBootDiskTypes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BatchConfigConstraints", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_cmsProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_cmsProject(ctx, field)
 	if err != nil {
@@ -21496,6 +25471,141 @@ func (ec *executionContext) fieldContext_UpdateAssetPayload_asset(_ context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _UpdateBatchConfigPayload_config(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.UpdateBatchConfigPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UpdateBatchConfigPayload_config(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Config, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.BatchConfig)
+	fc.Result = res
+	return ec.marshalNBatchConfig2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐBatchConfig(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UpdateBatchConfigPayload_config(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UpdateBatchConfigPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_BatchConfig_id(ctx, field)
+			case "workspaceId":
+				return ec.fieldContext_BatchConfig_workspaceId(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_BatchConfig_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_BatchConfig_updatedAt(ctx, field)
+			case "createdBy":
+				return ec.fieldContext_BatchConfig_createdBy(ctx, field)
+			case "updatedBy":
+				return ec.fieldContext_BatchConfig_updatedBy(ctx, field)
+			case "computeCpuMilli":
+				return ec.fieldContext_BatchConfig_computeCpuMilli(ctx, field)
+			case "computeMemoryMib":
+				return ec.fieldContext_BatchConfig_computeMemoryMib(ctx, field)
+			case "bootDiskSizeGB":
+				return ec.fieldContext_BatchConfig_bootDiskSizeGB(ctx, field)
+			case "maxConcurrency":
+				return ec.fieldContext_BatchConfig_maxConcurrency(ctx, field)
+			case "threadPoolSize":
+				return ec.fieldContext_BatchConfig_threadPoolSize(ctx, field)
+			case "channelBufferSize":
+				return ec.fieldContext_BatchConfig_channelBufferSize(ctx, field)
+			case "featureFlushThreshold":
+				return ec.fieldContext_BatchConfig_featureFlushThreshold(ctx, field)
+			case "machineType":
+				return ec.fieldContext_BatchConfig_machineType(ctx, field)
+			case "taskCount":
+				return ec.fieldContext_BatchConfig_taskCount(ctx, field)
+			case "nodeStatusPropagationDelayMS":
+				return ec.fieldContext_BatchConfig_nodeStatusPropagationDelayMS(ctx, field)
+			case "bootDiskType":
+				return ec.fieldContext_BatchConfig_bootDiskType(ctx, field)
+			case "imageURL":
+				return ec.fieldContext_BatchConfig_imageURL(ctx, field)
+			case "binaryPath":
+				return ec.fieldContext_BatchConfig_binaryPath(ctx, field)
+			case "allowedLocations":
+				return ec.fieldContext_BatchConfig_allowedLocations(ctx, field)
+			case "changeHistory":
+				return ec.fieldContext_BatchConfig_changeHistory(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BatchConfig", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UpdateBatchConfigPayload_validationErrors(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.UpdateBatchConfigPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UpdateBatchConfigPayload_validationErrors(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ValidationErrors, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*gqlmodel.BatchConfigValidationError)
+	fc.Result = res
+	return ec.marshalOBatchConfigValidationError2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐBatchConfigValidationErrorᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UpdateBatchConfigPayload_validationErrors(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UpdateBatchConfigPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "field":
+				return ec.fieldContext_BatchConfigValidationError_field(ctx, field)
+			case "message":
+				return ec.fieldContext_BatchConfigValidationError_message(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BatchConfigValidationError", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UpdateMePayload_me(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.UpdateMePayload) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UpdateMePayload_me(ctx, field)
 	if err != nil {
@@ -22408,6 +26518,100 @@ func (ec *executionContext) fieldContext_UserMetadata_lang(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Lang does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ValidateBatchConfigPayload_valid(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ValidateBatchConfigPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ValidateBatchConfigPayload_valid(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Valid, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ValidateBatchConfigPayload_valid(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ValidateBatchConfigPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ValidateBatchConfigPayload_errors(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ValidateBatchConfigPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ValidateBatchConfigPayload_errors(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (any, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Errors, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*gqlmodel.BatchConfigValidationError)
+	fc.Result = res
+	return ec.marshalNBatchConfigValidationError2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐBatchConfigValidationErrorᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ValidateBatchConfigPayload_errors(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ValidateBatchConfigPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "field":
+				return ec.fieldContext_BatchConfigValidationError_field(ctx, field)
+			case "message":
+				return ec.fieldContext_BatchConfigValidationError_message(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BatchConfigValidationError", field.Name)
 		},
 	}
 	return fc, nil
@@ -25770,6 +29974,33 @@ func (ec *executionContext) unmarshalInputRemoveParametersInput(ctx context.Cont
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputResetBatchConfigInput(ctx context.Context, obj any) (gqlmodel.ResetBatchConfigInput, error) {
+	var it gqlmodel.ResetBatchConfigInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"workspaceId"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "workspaceId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceId"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WorkspaceID = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputRunProjectInput(ctx context.Context, obj any) (gqlmodel.RunProjectInput, error) {
 	var it gqlmodel.RunProjectInput
 	asMap := map[string]any{}
@@ -25968,6 +30199,131 @@ func (ec *executionContext) unmarshalInputUpdateAssetInput(ctx context.Context, 
 				return it, err
 			}
 			it.Name = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateBatchConfigInput(ctx context.Context, obj any) (gqlmodel.UpdateBatchConfigInput, error) {
+	var it gqlmodel.UpdateBatchConfigInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"workspaceId", "computeCpuMilli", "computeMemoryMib", "bootDiskSizeGB", "maxConcurrency", "threadPoolSize", "channelBufferSize", "featureFlushThreshold", "machineType", "taskCount", "nodeStatusPropagationDelayMS", "bootDiskType", "imageURL", "binaryPath", "allowedLocations"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "workspaceId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceId"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WorkspaceID = data
+		case "computeCpuMilli":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("computeCpuMilli"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ComputeCPUMilli = data
+		case "computeMemoryMib":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("computeMemoryMib"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ComputeMemoryMib = data
+		case "bootDiskSizeGB":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bootDiskSizeGB"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BootDiskSizeGb = data
+		case "maxConcurrency":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxConcurrency"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaxConcurrency = data
+		case "threadPoolSize":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("threadPoolSize"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ThreadPoolSize = data
+		case "channelBufferSize":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelBufferSize"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelBufferSize = data
+		case "featureFlushThreshold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("featureFlushThreshold"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FeatureFlushThreshold = data
+		case "machineType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("machineType"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MachineType = data
+		case "taskCount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskCount"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TaskCount = data
+		case "nodeStatusPropagationDelayMS":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nodeStatusPropagationDelayMS"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NodeStatusPropagationDelayMs = data
+		case "bootDiskType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bootDiskType"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BootDiskType = data
+		case "imageURL":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("imageURL"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ImageURL = data
+		case "binaryPath":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("binaryPath"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BinaryPath = data
+		case "allowedLocations":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("allowedLocations"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AllowedLocations = data
 		}
 	}
 
@@ -26365,6 +30721,131 @@ func (ec *executionContext) unmarshalInputUpdateWorkspaceInput(ctx context.Conte
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputValidateBatchConfigInput(ctx context.Context, obj any) (gqlmodel.ValidateBatchConfigInput, error) {
+	var it gqlmodel.ValidateBatchConfigInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"workspaceId", "computeCpuMilli", "computeMemoryMib", "bootDiskSizeGB", "maxConcurrency", "threadPoolSize", "channelBufferSize", "featureFlushThreshold", "machineType", "taskCount", "nodeStatusPropagationDelayMS", "bootDiskType", "imageURL", "binaryPath", "allowedLocations"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "workspaceId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceId"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WorkspaceID = data
+		case "computeCpuMilli":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("computeCpuMilli"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ComputeCPUMilli = data
+		case "computeMemoryMib":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("computeMemoryMib"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ComputeMemoryMib = data
+		case "bootDiskSizeGB":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bootDiskSizeGB"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BootDiskSizeGb = data
+		case "maxConcurrency":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxConcurrency"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaxConcurrency = data
+		case "threadPoolSize":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("threadPoolSize"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ThreadPoolSize = data
+		case "channelBufferSize":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelBufferSize"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelBufferSize = data
+		case "featureFlushThreshold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("featureFlushThreshold"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FeatureFlushThreshold = data
+		case "machineType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("machineType"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MachineType = data
+		case "taskCount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taskCount"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TaskCount = data
+		case "nodeStatusPropagationDelayMS":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nodeStatusPropagationDelayMS"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NodeStatusPropagationDelayMs = data
+		case "bootDiskType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bootDiskType"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BootDiskType = data
+		case "imageURL":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("imageURL"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ImageURL = data
+		case "binaryPath":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("binaryPath"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BinaryPath = data
+		case "allowedLocations":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("allowedLocations"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AllowedLocations = data
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -26600,6 +31081,236 @@ func (ec *executionContext) _AssetConnection(ctx context.Context, sel ast.Select
 			}
 		case "totalCount":
 			out.Values[i] = ec._AssetConnection_totalCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var batchConfigImplementors = []string{"BatchConfig"}
+
+func (ec *executionContext) _BatchConfig(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.BatchConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, batchConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BatchConfig")
+		case "id":
+			out.Values[i] = ec._BatchConfig_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "workspaceId":
+			out.Values[i] = ec._BatchConfig_workspaceId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._BatchConfig_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updatedAt":
+			out.Values[i] = ec._BatchConfig_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdBy":
+			out.Values[i] = ec._BatchConfig_createdBy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updatedBy":
+			out.Values[i] = ec._BatchConfig_updatedBy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "computeCpuMilli":
+			out.Values[i] = ec._BatchConfig_computeCpuMilli(ctx, field, obj)
+		case "computeMemoryMib":
+			out.Values[i] = ec._BatchConfig_computeMemoryMib(ctx, field, obj)
+		case "bootDiskSizeGB":
+			out.Values[i] = ec._BatchConfig_bootDiskSizeGB(ctx, field, obj)
+		case "maxConcurrency":
+			out.Values[i] = ec._BatchConfig_maxConcurrency(ctx, field, obj)
+		case "threadPoolSize":
+			out.Values[i] = ec._BatchConfig_threadPoolSize(ctx, field, obj)
+		case "channelBufferSize":
+			out.Values[i] = ec._BatchConfig_channelBufferSize(ctx, field, obj)
+		case "featureFlushThreshold":
+			out.Values[i] = ec._BatchConfig_featureFlushThreshold(ctx, field, obj)
+		case "machineType":
+			out.Values[i] = ec._BatchConfig_machineType(ctx, field, obj)
+		case "taskCount":
+			out.Values[i] = ec._BatchConfig_taskCount(ctx, field, obj)
+		case "nodeStatusPropagationDelayMS":
+			out.Values[i] = ec._BatchConfig_nodeStatusPropagationDelayMS(ctx, field, obj)
+		case "bootDiskType":
+			out.Values[i] = ec._BatchConfig_bootDiskType(ctx, field, obj)
+		case "imageURL":
+			out.Values[i] = ec._BatchConfig_imageURL(ctx, field, obj)
+		case "binaryPath":
+			out.Values[i] = ec._BatchConfig_binaryPath(ctx, field, obj)
+		case "allowedLocations":
+			out.Values[i] = ec._BatchConfig_allowedLocations(ctx, field, obj)
+		case "changeHistory":
+			out.Values[i] = ec._BatchConfig_changeHistory(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var batchConfigConstraintsImplementors = []string{"BatchConfigConstraints"}
+
+func (ec *executionContext) _BatchConfigConstraints(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.BatchConfigConstraints) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, batchConfigConstraintsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BatchConfigConstraints")
+		case "computeCpuMilliRange":
+			out.Values[i] = ec._BatchConfigConstraints_computeCpuMilliRange(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "computeMemoryMibRange":
+			out.Values[i] = ec._BatchConfigConstraints_computeMemoryMibRange(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bootDiskSizeGBRange":
+			out.Values[i] = ec._BatchConfigConstraints_bootDiskSizeGBRange(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "maxConcurrencyRange":
+			out.Values[i] = ec._BatchConfigConstraints_maxConcurrencyRange(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "threadPoolSizeRange":
+			out.Values[i] = ec._BatchConfigConstraints_threadPoolSizeRange(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "channelBufferSizeRange":
+			out.Values[i] = ec._BatchConfigConstraints_channelBufferSizeRange(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "featureFlushThresholdRange":
+			out.Values[i] = ec._BatchConfigConstraints_featureFlushThresholdRange(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "taskCountRange":
+			out.Values[i] = ec._BatchConfigConstraints_taskCountRange(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "nodeStatusPropagationDelayMSRange":
+			out.Values[i] = ec._BatchConfigConstraints_nodeStatusPropagationDelayMSRange(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "allowedMachineTypes":
+			out.Values[i] = ec._BatchConfigConstraints_allowedMachineTypes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "allowedBootDiskTypes":
+			out.Values[i] = ec._BatchConfigConstraints_allowedBootDiskTypes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var batchConfigValidationErrorImplementors = []string{"BatchConfigValidationError"}
+
+func (ec *executionContext) _BatchConfigValidationError(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.BatchConfigValidationError) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, batchConfigValidationErrorImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BatchConfigValidationError")
+		case "field":
+			out.Values[i] = ec._BatchConfigValidationError_field(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "message":
+			out.Values[i] = ec._BatchConfigValidationError_message(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -27239,6 +31950,59 @@ func (ec *executionContext) _CancelJobPayload(ctx context.Context, sel ast.Selec
 	return out
 }
 
+var configChangeImplementors = []string{"ConfigChange"}
+
+func (ec *executionContext) _ConfigChange(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.ConfigChange) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, configChangeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ConfigChange")
+		case "timestamp":
+			out.Values[i] = ec._ConfigChange_timestamp(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "changedBy":
+			out.Values[i] = ec._ConfigChange_changedBy(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "fieldName":
+			out.Values[i] = ec._ConfigChange_fieldName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "oldValue":
+			out.Values[i] = ec._ConfigChange_oldValue(ctx, field, obj)
+		case "newValue":
+			out.Values[i] = ec._ConfigChange_newValue(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var createAssetPayloadImplementors = []string{"CreateAssetPayload"}
 
 func (ec *executionContext) _CreateAssetPayload(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.CreateAssetPayload) graphql.Marshaler {
@@ -27744,6 +32508,166 @@ func (ec *executionContext) _DeploymentPayload(ctx context.Context, sel ast.Sele
 	return out
 }
 
+var effectiveBatchConfigImplementors = []string{"EffectiveBatchConfig"}
+
+func (ec *executionContext) _EffectiveBatchConfig(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.EffectiveBatchConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, effectiveBatchConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("EffectiveBatchConfig")
+		case "workspaceId":
+			out.Values[i] = ec._EffectiveBatchConfig_workspaceId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "computeCpuMilli":
+			out.Values[i] = ec._EffectiveBatchConfig_computeCpuMilli(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "computeMemoryMib":
+			out.Values[i] = ec._EffectiveBatchConfig_computeMemoryMib(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bootDiskSizeGB":
+			out.Values[i] = ec._EffectiveBatchConfig_bootDiskSizeGB(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "maxConcurrency":
+			out.Values[i] = ec._EffectiveBatchConfig_maxConcurrency(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "threadPoolSize":
+			out.Values[i] = ec._EffectiveBatchConfig_threadPoolSize(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "channelBufferSize":
+			out.Values[i] = ec._EffectiveBatchConfig_channelBufferSize(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "featureFlushThreshold":
+			out.Values[i] = ec._EffectiveBatchConfig_featureFlushThreshold(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "machineType":
+			out.Values[i] = ec._EffectiveBatchConfig_machineType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "taskCount":
+			out.Values[i] = ec._EffectiveBatchConfig_taskCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "nodeStatusPropagationDelayMS":
+			out.Values[i] = ec._EffectiveBatchConfig_nodeStatusPropagationDelayMS(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bootDiskType":
+			out.Values[i] = ec._EffectiveBatchConfig_bootDiskType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "imageURL":
+			out.Values[i] = ec._EffectiveBatchConfig_imageURL(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "binaryPath":
+			out.Values[i] = ec._EffectiveBatchConfig_binaryPath(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "allowedLocations":
+			out.Values[i] = ec._EffectiveBatchConfig_allowedLocations(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "hasCustomConfig":
+			out.Values[i] = ec._EffectiveBatchConfig_hasCustomConfig(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "customConfigId":
+			out.Values[i] = ec._EffectiveBatchConfig_customConfigId(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var intRangeImplementors = []string{"IntRange"}
+
+func (ec *executionContext) _IntRange(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.IntRange) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, intRangeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("IntRange")
+		case "min":
+			out.Values[i] = ec._IntRange_min(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "max":
+			out.Values[i] = ec._IntRange_max(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var jobImplementors = []string{"Job", "Node"}
 
 func (ec *executionContext) _Job(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.Job) graphql.Marshaler {
@@ -28222,6 +33146,27 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deleteAsset(ctx, field)
 			})
+		case "updateBatchConfig":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateBatchConfig(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "resetBatchConfig":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_resetBatchConfig(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "validateBatchConfig":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_validateBatchConfig(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createDeployment":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createDeployment(ctx, field)
@@ -29239,6 +34184,69 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_assets(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "batchConfig":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_batchConfig(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "effectiveBatchConfig":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_effectiveBatchConfig(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "batchConfigConstraints":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_batchConfigConstraints(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -30299,6 +35307,47 @@ func (ec *executionContext) _UpdateAssetPayload(ctx context.Context, sel ast.Sel
 	return out
 }
 
+var updateBatchConfigPayloadImplementors = []string{"UpdateBatchConfigPayload"}
+
+func (ec *executionContext) _UpdateBatchConfigPayload(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.UpdateBatchConfigPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, updateBatchConfigPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UpdateBatchConfigPayload")
+		case "config":
+			out.Values[i] = ec._UpdateBatchConfigPayload_config(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "validationErrors":
+			out.Values[i] = ec._UpdateBatchConfigPayload_validationErrors(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var updateMePayloadImplementors = []string{"UpdateMePayload"}
 
 func (ec *executionContext) _UpdateMePayload(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.UpdateMePayload) graphql.Marshaler {
@@ -30556,6 +35605,50 @@ func (ec *executionContext) _UserMetadata(ctx context.Context, sel ast.Selection
 			}
 		case "lang":
 			out.Values[i] = ec._UserMetadata_lang(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var validateBatchConfigPayloadImplementors = []string{"ValidateBatchConfigPayload"}
+
+func (ec *executionContext) _ValidateBatchConfigPayload(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.ValidateBatchConfigPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, validateBatchConfigPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ValidateBatchConfigPayload")
+		case "valid":
+			out.Values[i] = ec._ValidateBatchConfigPayload_valid(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "errors":
+			out.Values[i] = ec._ValidateBatchConfigPayload_errors(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -31209,6 +36302,84 @@ func (ec *executionContext) marshalNAssetConnection2ᚖgithubᚗcomᚋreearthᚋ
 	return ec._AssetConnection(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNBatchConfig2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐBatchConfig(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.BatchConfig) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._BatchConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNBatchConfigConstraints2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐBatchConfigConstraints(ctx context.Context, sel ast.SelectionSet, v gqlmodel.BatchConfigConstraints) graphql.Marshaler {
+	return ec._BatchConfigConstraints(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNBatchConfigConstraints2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐBatchConfigConstraints(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.BatchConfigConstraints) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._BatchConfigConstraints(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNBatchConfigValidationError2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐBatchConfigValidationErrorᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.BatchConfigValidationError) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNBatchConfigValidationError2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐBatchConfigValidationError(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNBatchConfigValidationError2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐBatchConfigValidationError(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.BatchConfigValidationError) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._BatchConfigValidationError(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -31618,6 +36789,60 @@ func (ec *executionContext) marshalNCancelJobPayload2ᚖgithubᚗcomᚋreearth�
 	return ec._CancelJobPayload(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNConfigChange2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐConfigChangeᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.ConfigChange) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNConfigChange2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐConfigChange(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNConfigChange2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐConfigChange(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.ConfigChange) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ConfigChange(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNCreateAssetInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCreateAssetInput(ctx context.Context, v any) (gqlmodel.CreateAssetInput, error) {
 	res, err := ec.unmarshalInputCreateAssetInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -31804,6 +37029,20 @@ func (ec *executionContext) marshalNDeploymentConnection2ᚖgithubᚗcomᚋreear
 	return ec._DeploymentConnection(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNEffectiveBatchConfig2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐEffectiveBatchConfig(ctx context.Context, sel ast.SelectionSet, v gqlmodel.EffectiveBatchConfig) graphql.Marshaler {
+	return ec._EffectiveBatchConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNEffectiveBatchConfig2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐEffectiveBatchConfig(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.EffectiveBatchConfig) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._EffectiveBatchConfig(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNEventSourceType2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐEventSourceType(ctx context.Context, v any) (gqlmodel.EventSourceType, error) {
 	var res gqlmodel.EventSourceType
 	err := res.UnmarshalGQL(v)
@@ -31936,6 +37175,16 @@ func (ec *executionContext) marshalNInt2ᚕintᚄ(ctx context.Context, sel ast.S
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalNIntRange2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntRange(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.IntRange) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._IntRange(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx context.Context, v any) (gqlmodel.JSON, error) {
@@ -32383,6 +37632,11 @@ func (ec *executionContext) unmarshalNRemoveParametersInput2githubᚗcomᚋreear
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNResetBatchConfigInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐResetBatchConfigInput(ctx context.Context, v any) (gqlmodel.ResetBatchConfigInput, error) {
+	res, err := ec.unmarshalInputResetBatchConfigInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNRole2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRole(ctx context.Context, v any) (gqlmodel.Role, error) {
 	var res gqlmodel.Role
 	err := res.UnmarshalGQL(v)
@@ -32564,6 +37818,25 @@ func (ec *executionContext) unmarshalNUpdateAssetInput2githubᚗcomᚋreearthᚋ
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNUpdateBatchConfigInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateBatchConfigInput(ctx context.Context, v any) (gqlmodel.UpdateBatchConfigInput, error) {
+	res, err := ec.unmarshalInputUpdateBatchConfigInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNUpdateBatchConfigPayload2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateBatchConfigPayload(ctx context.Context, sel ast.SelectionSet, v gqlmodel.UpdateBatchConfigPayload) graphql.Marshaler {
+	return ec._UpdateBatchConfigPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNUpdateBatchConfigPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateBatchConfigPayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.UpdateBatchConfigPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._UpdateBatchConfigPayload(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNUpdateDeploymentInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateDeploymentInput(ctx context.Context, v any) (gqlmodel.UpdateDeploymentInput, error) {
 	res, err := ec.unmarshalInputUpdateDeploymentInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -32653,6 +37926,25 @@ func (ec *executionContext) marshalNUserMetadata2ᚖgithubᚗcomᚋreearthᚋree
 		return graphql.Null
 	}
 	return ec._UserMetadata(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNValidateBatchConfigInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐValidateBatchConfigInput(ctx context.Context, v any) (gqlmodel.ValidateBatchConfigInput, error) {
+	res, err := ec.unmarshalInputValidateBatchConfigInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNValidateBatchConfigPayload2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐValidateBatchConfigPayload(ctx context.Context, sel ast.SelectionSet, v gqlmodel.ValidateBatchConfigPayload) graphql.Marshaler {
+	return ec._ValidateBatchConfigPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNValidateBatchConfigPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐValidateBatchConfigPayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.ValidateBatchConfigPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ValidateBatchConfigPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNWorkspace2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐWorkspaceᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.Workspace) graphql.Marshaler {
@@ -33086,6 +38378,60 @@ func (ec *executionContext) marshalOAssetSortType2ᚖgithubᚗcomᚋreearthᚋre
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) marshalOBatchConfig2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐBatchConfig(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.BatchConfig) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._BatchConfig(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOBatchConfigValidationError2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐBatchConfigValidationErrorᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.BatchConfigValidationError) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNBatchConfigValidationError2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐBatchConfigValidationError(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v any) (bool, error) {

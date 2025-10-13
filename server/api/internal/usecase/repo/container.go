@@ -14,6 +14,7 @@ var ErrOperationDenied = errors.New("operation denied")
 type Container struct {
 	Asset         Asset
 	AuthRequest   authserver.RequestRepo
+	BatchConfig   BatchConfig
 	Config        Config
 	Deployment    Deployment
 	EdgeExecution EdgeExecution
@@ -50,6 +51,7 @@ func (c *Container) Filtered(workspace WorkspaceFilter) *Container {
 	return &Container{
 		Asset:         c.Asset.Filtered(workspace),
 		AuthRequest:   c.AuthRequest,
+		BatchConfig:   c.BatchConfig,
 		Config:        c.Config,
 		Deployment:    c.Deployment.Filtered(workspace),
 		EdgeExecution: c.EdgeExecution,

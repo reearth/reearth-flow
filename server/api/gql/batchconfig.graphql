@@ -1,0 +1,233 @@
+# Batch Worker Configuration Management
+
+"""
+BatchConfig represents workspace-specific batch worker configuration overrides.
+If no custom configuration exists, environment defaults are used.
+"""
+type BatchConfig {
+  id: ID!
+  workspaceId: ID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  createdBy: String!
+  updatedBy: String!
+
+  # Tier A parameters (low risk, user/VIP accessible)
+  computeCpuMilli: Int
+  computeMemoryMib: Int
+  bootDiskSizeGB: Int
+  maxConcurrency: Int
+  threadPoolSize: Int
+  channelBufferSize: Int
+  featureFlushThreshold: Int
+
+  # Tier B parameters (medium risk, requires guardrails, admin/VIP)
+  machineType: String
+  taskCount: Int
+  nodeStatusPropagationDelayMS: Int
+
+  # Tier C parameters (high risk, admin-only)
+  bootDiskType: String
+  imageURL: String
+  binaryPath: String
+  allowedLocations: [String!]
+
+  # Audit trail
+  changeHistory: [ConfigChange!]!
+}
+
+"""
+ConfigChange records a configuration change for audit purposes
+"""
+type ConfigChange {
+  timestamp: DateTime!
+  changedBy: String!
+  fieldName: String!
+  oldValue: Any
+  newValue: Any
+}
+
+"""
+EffectiveBatchConfig shows the effective configuration for a workspace,
+merging workspace-specific overrides with environment defaults
+"""
+type EffectiveBatchConfig {
+  workspaceId: ID!
+  
+  # All configuration values (computed from overrides + defaults)
+  computeCpuMilli: Int!
+  computeMemoryMib: Int!
+  bootDiskSizeGB: Int!
+  maxConcurrency: Int!
+  threadPoolSize: Int!
+  channelBufferSize: Int!
+  featureFlushThreshold: Int!
+  machineType: String!
+  taskCount: Int!
+  nodeStatusPropagationDelayMS: Int!
+  bootDiskType: String!
+  imageURL: String!
+  binaryPath: String!
+  allowedLocations: [String!]!
+  
+  # Indicates which values are overridden vs defaults
+  hasCustomConfig: Boolean!
+  customConfigId: ID
+}
+
+"""
+BatchConfigValidationError represents a validation error for configuration parameters
+"""
+type BatchConfigValidationError {
+  field: String!
+  message: String!
+}
+
+"""
+BatchConfigConstraints provides information about valid ranges and values for configuration
+"""
+type BatchConfigConstraints {
+  # Tier A constraints
+  computeCpuMilliRange: IntRange!
+  computeMemoryMibRange: IntRange!
+  bootDiskSizeGBRange: IntRange!
+  maxConcurrencyRange: IntRange!
+  threadPoolSizeRange: IntRange!
+  channelBufferSizeRange: IntRange!
+  featureFlushThresholdRange: IntRange!
+  
+  # Tier B constraints
+  taskCountRange: IntRange!
+  nodeStatusPropagationDelayMSRange: IntRange!
+  allowedMachineTypes: [String!]!
+  
+  # Tier C constraints
+  allowedBootDiskTypes: [String!]!
+}
+
+"""
+IntRange represents a valid integer range
+"""
+type IntRange {
+  min: Int!
+  max: Int!
+}
+
+# Input Types
+
+"""
+UpdateBatchConfigInput allows updating workspace-specific batch configuration.
+Only non-null fields will be updated. Set to explicit null to remove override.
+"""
+input UpdateBatchConfigInput {
+  workspaceId: ID!
+  
+  # Tier A parameters (VIP/User accessible)
+  computeCpuMilli: Int
+  computeMemoryMib: Int
+  bootDiskSizeGB: Int
+  maxConcurrency: Int
+  threadPoolSize: Int
+  channelBufferSize: Int
+  featureFlushThreshold: Int
+  
+  # Tier B parameters (Admin/VIP with validation)
+  machineType: String
+  taskCount: Int
+  nodeStatusPropagationDelayMS: Int
+  
+  # Tier C parameters (Admin only - requires special permission)
+  bootDiskType: String
+  imageURL: String
+  binaryPath: String
+  allowedLocations: [String!]
+}
+
+"""
+ResetBatchConfigInput removes all workspace-specific overrides
+"""
+input ResetBatchConfigInput {
+  workspaceId: ID!
+}
+
+"""
+ValidateBatchConfigInput validates configuration without saving
+"""
+input ValidateBatchConfigInput {
+  workspaceId: ID!
+  computeCpuMilli: Int
+  computeMemoryMib: Int
+  bootDiskSizeGB: Int
+  maxConcurrency: Int
+  threadPoolSize: Int
+  channelBufferSize: Int
+  featureFlushThreshold: Int
+  machineType: String
+  taskCount: Int
+  nodeStatusPropagationDelayMS: Int
+  bootDiskType: String
+  imageURL: String
+  binaryPath: String
+  allowedLocations: [String!]
+}
+
+# Payload Types
+
+"""
+UpdateBatchConfigPayload is returned after updating configuration
+"""
+type UpdateBatchConfigPayload {
+  config: BatchConfig!
+  validationErrors: [BatchConfigValidationError!]
+}
+
+"""
+ValidateBatchConfigPayload is returned after validation
+"""
+type ValidateBatchConfigPayload {
+  valid: Boolean!
+  errors: [BatchConfigValidationError!]!
+}
+
+# Query and Mutation
+
+extend type Query {
+  """
+  Get the raw batch configuration for a workspace (overrides only)
+  Returns null if no custom configuration exists
+  """
+  batchConfig(workspaceId: ID!): BatchConfig
+  
+  """
+  Get the effective batch configuration for a workspace (merges overrides with defaults)
+  This always returns a value showing what will actually be used
+  """
+  effectiveBatchConfig(workspaceId: ID!): EffectiveBatchConfig!
+  
+  """
+  Get configuration constraints (valid ranges and allowed values)
+  """
+  batchConfigConstraints: BatchConfigConstraints!
+}
+
+extend type Mutation {
+  """
+  Update batch worker configuration for a workspace
+  Requires workspace admin or maintainer role
+  Tier C parameters require special admin permission
+  """
+  updateBatchConfig(input: UpdateBatchConfigInput!): UpdateBatchConfigPayload!
+  
+  """
+  Reset batch configuration to environment defaults
+  Removes all workspace-specific overrides
+  """
+  resetBatchConfig(input: ResetBatchConfigInput!): Boolean!
+  
+  """
+  Validate batch configuration without saving
+  Useful for client-side validation and dry-runs
+  """
+  validateBatchConfig(input: ValidateBatchConfigInput!): ValidateBatchConfigPayload!
+}
+

@@ -42,6 +42,7 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 
 	return interfaces.Container{
 		Asset:         NewAsset(r, g, permissionChecker),
+		BatchConfig:   NewBatchConfig(r, nil), // config will be passed separately
 		CMS:           NewCMS(r, g, permissionChecker),
 		Job:           job,
 		Deployment:    NewDeployment(r, g, job, permissionChecker),
