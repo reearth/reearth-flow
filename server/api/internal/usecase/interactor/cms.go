@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -27,7 +28,15 @@ func NewCMS(r *repo.Container, gr *gateway.Container, permissionChecker gateway.
 	}
 }
 
+func (i *cmsInteractor) checkPermission(ctx context.Context, action string) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceCMS, action)
+}
+
 func (i *cmsInteractor) GetCMSProject(ctx context.Context, projectIDOrAlias string) (*cms.Project, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
@@ -43,6 +52,10 @@ func (i *cmsInteractor) GetCMSProject(ctx context.Context, projectIDOrAlias stri
 }
 
 func (i *cmsInteractor) ListCMSProjects(ctx context.Context, workspaceIDs []string, publicOnly bool, page, pageSize *int32) (*cms.ListProjectsOutput, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
@@ -65,6 +78,10 @@ func (i *cmsInteractor) ListCMSProjects(ctx context.Context, workspaceIDs []stri
 }
 
 func (i *cmsInteractor) GetCMSAsset(ctx context.Context, assetID string) (*cms.Asset, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
@@ -77,6 +94,10 @@ func (i *cmsInteractor) GetCMSAsset(ctx context.Context, assetID string) (*cms.A
 }
 
 func (i *cmsInteractor) ListCMSAssets(ctx context.Context, projectID string, page, pageSize *int32) (*cms.ListAssetsOutput, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
@@ -98,6 +119,10 @@ func (i *cmsInteractor) ListCMSAssets(ctx context.Context, projectID string, pag
 }
 
 func (i *cmsInteractor) GetCMSModel(ctx context.Context, projectIDOrAlias, modelIDOrAlias string) (*cms.Model, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
@@ -111,6 +136,10 @@ func (i *cmsInteractor) GetCMSModel(ctx context.Context, projectIDOrAlias, model
 }
 
 func (i *cmsInteractor) ListCMSModels(ctx context.Context, projectID string, page, pageSize *int32) (*cms.ListModelsOutput, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
@@ -132,6 +161,10 @@ func (i *cmsInteractor) ListCMSModels(ctx context.Context, projectID string, pag
 }
 
 func (i *cmsInteractor) ListCMSItems(ctx context.Context, projectID, modelID string, keyword *string, page, pageSize *int32) (*cms.ListItemsOutput, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
@@ -155,6 +188,10 @@ func (i *cmsInteractor) ListCMSItems(ctx context.Context, projectID, modelID str
 }
 
 func (i *cmsInteractor) GetCMSModelExportURL(ctx context.Context, projectID, modelID string) (string, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return "", err
+	}
+
 	if i.gateways.CMS == nil {
 		return "", fmt.Errorf("CMS gateway not configured")
 	}
