@@ -10,7 +10,6 @@ import (
 	echo "github.com/labstack/echo/v4"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gql"
-	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/log"
 )
 
@@ -22,18 +21,12 @@ type authMiddlewaresParam struct {
 }
 
 func newAuthMiddlewares(param *authMiddlewaresParam) authMiddlewares {
-	jwt, err := appx.AuthMiddleware(param.Cfg.Config.JWTProviders(), adapter.ContextAuthInfo, true)
-	if err != nil {
-		log.Debug("Failed to create jwt middleware: ", err)
-	}
-
 	return []echo.MiddlewareFunc{
 		gqlOpNameMiddleware(),
 		jwtContextMiddleware(),
 		authMiddleware(param.Cfg.AccountGQLClient, param.SkipOps),
 		// TODO: Currently, the following middleware is necessary because permission checks such as filterByWorkspaces are performed in mongo.repo.
 		// It will be removed when centralized permission checks by the account server are implemented.
-		echo.WrapMiddleware(jwt),
 		attachOpMiddleware(param.Cfg),
 	}
 }
