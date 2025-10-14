@@ -28,12 +28,8 @@ func NewCMS(r *repo.Container, gr *gateway.Container, permissionChecker gateway.
 	}
 }
 
-func (i *cmsInteractor) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceCMS, action)
-}
-
 func (i *cmsInteractor) GetCMSProject(ctx context.Context, projectIDOrAlias string) (*cms.Project, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceCMSProject, rbac.ActionAny); err != nil {
 		return nil, err
 	}
 
@@ -52,7 +48,7 @@ func (i *cmsInteractor) GetCMSProject(ctx context.Context, projectIDOrAlias stri
 }
 
 func (i *cmsInteractor) ListCMSProjects(ctx context.Context, workspaceIDs []string, publicOnly bool, page, pageSize *int32) (*cms.ListProjectsOutput, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceCMSProject, rbac.ActionAny); err != nil {
 		return nil, err
 	}
 
@@ -78,7 +74,7 @@ func (i *cmsInteractor) ListCMSProjects(ctx context.Context, workspaceIDs []stri
 }
 
 func (i *cmsInteractor) GetCMSAsset(ctx context.Context, assetID string) (*cms.Asset, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceCMSAsset, rbac.ActionAny); err != nil {
 		return nil, err
 	}
 
@@ -94,7 +90,7 @@ func (i *cmsInteractor) GetCMSAsset(ctx context.Context, assetID string) (*cms.A
 }
 
 func (i *cmsInteractor) ListCMSAssets(ctx context.Context, projectID string, page, pageSize *int32) (*cms.ListAssetsOutput, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceCMSAsset, rbac.ActionAny); err != nil {
 		return nil, err
 	}
 
@@ -119,7 +115,7 @@ func (i *cmsInteractor) ListCMSAssets(ctx context.Context, projectID string, pag
 }
 
 func (i *cmsInteractor) GetCMSModel(ctx context.Context, projectIDOrAlias, modelIDOrAlias string) (*cms.Model, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceCMSModel, rbac.ActionAny); err != nil {
 		return nil, err
 	}
 
@@ -136,7 +132,7 @@ func (i *cmsInteractor) GetCMSModel(ctx context.Context, projectIDOrAlias, model
 }
 
 func (i *cmsInteractor) ListCMSModels(ctx context.Context, projectID string, page, pageSize *int32) (*cms.ListModelsOutput, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceCMSModel, rbac.ActionAny); err != nil {
 		return nil, err
 	}
 
@@ -161,7 +157,7 @@ func (i *cmsInteractor) ListCMSModels(ctx context.Context, projectID string, pag
 }
 
 func (i *cmsInteractor) ListCMSItems(ctx context.Context, projectID, modelID string, keyword *string, page, pageSize *int32) (*cms.ListItemsOutput, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceCMSItem, rbac.ActionAny); err != nil {
 		return nil, err
 	}
 
@@ -188,7 +184,7 @@ func (i *cmsInteractor) ListCMSItems(ctx context.Context, projectID, modelID str
 }
 
 func (i *cmsInteractor) GetCMSModelExportURL(ctx context.Context, projectID, modelID string) (string, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceCMSModel, rbac.ActionAny); err != nil {
 		return "", err
 	}
 
