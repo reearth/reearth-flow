@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -29,16 +28,11 @@ func NewCMS(r *repo.Container, gr *gateway.Container, permissionChecker gateway.
 }
 
 func (i *cmsInteractor) GetCMSProject(ctx context.Context, projectIDOrAlias string) (*cms.Project, error) {
-	op := adapter.Operator(ctx)
-	if op == nil {
-		return nil, fmt.Errorf("operator not found")
-	}
-
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
 
-	log.Debugfc(ctx, "Fetching CMS project: %s for user: %s", projectIDOrAlias, op.AcOperator.User)
+	log.Debugfc(ctx, "Fetching CMS project: %s", projectIDOrAlias)
 
 	project, err := i.gateways.CMS.GetProject(ctx, projectIDOrAlias)
 	if err != nil {
@@ -49,11 +43,6 @@ func (i *cmsInteractor) GetCMSProject(ctx context.Context, projectIDOrAlias stri
 }
 
 func (i *cmsInteractor) ListCMSProjects(ctx context.Context, workspaceIDs []string, publicOnly bool, page, pageSize *int32) (*cms.ListProjectsOutput, error) {
-	op := adapter.Operator(ctx)
-	if op == nil {
-		return nil, fmt.Errorf("operator not found")
-	}
-
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
@@ -76,11 +65,6 @@ func (i *cmsInteractor) ListCMSProjects(ctx context.Context, workspaceIDs []stri
 }
 
 func (i *cmsInteractor) GetCMSAsset(ctx context.Context, assetID string) (*cms.Asset, error) {
-	op := adapter.Operator(ctx)
-	if op == nil {
-		return nil, fmt.Errorf("operator not found")
-	}
-
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
@@ -93,11 +77,6 @@ func (i *cmsInteractor) GetCMSAsset(ctx context.Context, assetID string) (*cms.A
 }
 
 func (i *cmsInteractor) ListCMSAssets(ctx context.Context, projectID string, page, pageSize *int32) (*cms.ListAssetsOutput, error) {
-	op := adapter.Operator(ctx)
-	if op == nil {
-		return nil, fmt.Errorf("operator not found")
-	}
-
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
@@ -119,11 +98,6 @@ func (i *cmsInteractor) ListCMSAssets(ctx context.Context, projectID string, pag
 }
 
 func (i *cmsInteractor) GetCMSModel(ctx context.Context, projectIDOrAlias, modelIDOrAlias string) (*cms.Model, error) {
-	op := adapter.Operator(ctx)
-	if op == nil {
-		return nil, fmt.Errorf("operator not found")
-	}
-
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
@@ -137,11 +111,6 @@ func (i *cmsInteractor) GetCMSModel(ctx context.Context, projectIDOrAlias, model
 }
 
 func (i *cmsInteractor) ListCMSModels(ctx context.Context, projectID string, page, pageSize *int32) (*cms.ListModelsOutput, error) {
-	op := adapter.Operator(ctx)
-	if op == nil {
-		return nil, fmt.Errorf("operator not found")
-	}
-
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
@@ -163,11 +132,6 @@ func (i *cmsInteractor) ListCMSModels(ctx context.Context, projectID string, pag
 }
 
 func (i *cmsInteractor) ListCMSItems(ctx context.Context, projectID, modelID string, keyword *string, page, pageSize *int32) (*cms.ListItemsOutput, error) {
-	op := adapter.Operator(ctx)
-	if op == nil {
-		return nil, fmt.Errorf("operator not found")
-	}
-
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
@@ -191,11 +155,6 @@ func (i *cmsInteractor) ListCMSItems(ctx context.Context, projectID, modelID str
 }
 
 func (i *cmsInteractor) GetCMSModelExportURL(ctx context.Context, projectID, modelID string) (string, error) {
-	op := adapter.Operator(ctx)
-	if op == nil {
-		return "", fmt.Errorf("operator not found")
-	}
-
 	if i.gateways.CMS == nil {
 		return "", fmt.Errorf("CMS gateway not configured")
 	}
