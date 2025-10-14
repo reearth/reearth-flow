@@ -1,4 +1,3 @@
-import * as React from "react";
 import { useMemo } from "react";
 
 import {
@@ -8,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@flow/components/Select";
+import { Slider } from "@flow/components/Slider";
 
 import type { TimelineProperty } from "../utils/timelineUtils";
 import { formatTimelineValue } from "../utils/timelineUtils";
@@ -27,13 +27,11 @@ const Timeline: React.FC<Props> = ({
   onPropertyChange,
   onValueChange,
 }) => {
-  // Get the current property data
   const property = useMemo(
     () => properties.find((p) => p.name === selectedProperty),
     [properties, selectedProperty],
   );
 
-  // Find current value index
   const currentIndex = useMemo(() => {
     if (!property || currentValue === null) return 0;
     return property.values.findIndex((v) => v === currentValue);
@@ -48,13 +46,13 @@ const Timeline: React.FC<Props> = ({
   };
 
   return (
-    <div className="absolute top-4 right-0.5 z-10 max-w-[500px] -translate-x-1/2 rounded-md bg-white p-4 shadow-lg">
+    <div className="absolute top-4 right-0.5 z-10 max-w-[500px] -translate-x-3 rounded-md bg-white/90 p-4 shadow-lg">
       <div className="mb-3 flex items-center justify-between">
         {properties.length > 1 && (
           <Select
             value={selectedProperty || undefined}
             onValueChange={onPropertyChange}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-40 bg-primary">
               <SelectValue placeholder="Select property" />
             </SelectTrigger>
             <SelectContent>
@@ -67,7 +65,6 @@ const Timeline: React.FC<Props> = ({
           </Select>
         )}
       </div>
-
       <div className="mb-2 text-center">
         <div className="text-2xl font-bold text-gray-800">
           {currentValue !== null ? formatTimelineValue(currentValue) : "-"}
@@ -76,18 +73,13 @@ const Timeline: React.FC<Props> = ({
           {currentIndex + 1} of {property.values.length}
         </div>
       </div>
-
       <div className="space-y-2">
-        <input
-          type="range"
-          min={0}
+        <Slider
+          defaultValue={[currentIndex]}
           max={property.values.length - 1}
-          value={currentIndex}
           step={1}
-          onChange={(e) => handleSliderChange(Number(e.target.value))}
-          className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200 accent-blue-600"
+          onValueChange={(values: number[]) => handleSliderChange(values[0])}
         />
-
         <div className="flex justify-between text-xs text-gray-500">
           <span>{formatTimelineValue(property.min)}</span>
           <span>{formatTimelineValue(property.max)}</span>
