@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -55,5 +54,5 @@ type Asset interface {
 	Create(context.Context, CreateAssetParam) (*asset.Asset, error)
 	Update(context.Context, UpdateAssetParam) (*asset.Asset, error)
 	Delete(context.Context, id.AssetID) (id.AssetID, error)
-	CreateUpload(context.Context, CreateAssetUploadParam, *usecase.Operator) (*AssetUpload, error)
+	CreateUpload(context.Context, CreateAssetUploadParam) (*AssetUpload, error)
 }

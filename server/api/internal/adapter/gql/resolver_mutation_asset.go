@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -72,7 +71,7 @@ func (r *mutationResolver) CreateAssetUpload(ctx context.Context, input gqlmodel
 		ContentLength:   int64(lo.FromPtr(input.ContentLength)),
 		ContentEncoding: lo.FromPtr(input.ContentEncoding),
 		Cursor:          lo.FromPtr(input.Cursor),
-	}, adapter.Operator(ctx))
+	})
 	if err != nil && errors.Is(err, rerror.ErrNotFound) {
 		return &gqlmodel.CreateAssetUploadPayload{}, nil
 	}
