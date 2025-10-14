@@ -34,9 +34,21 @@ function isTemporalValue(value: unknown): boolean {
       /^\d{4}-\d{2}-\d{2}$/, // YYYY-MM-DD
       /^\d{4}\/\d{2}\/\d{2}$/, // YYYY/MM/DD
       /^\d{2}\/\d{2}\/\d{4}$/, // MM/DD/YYYY
-      /^\d{4}-\d{2}-\d{2}T/, // ISO 8601
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/, // ISO 8601 with time: 2025-01-01T00:00:00
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z?/, // ISO 8601 with milliseconds: 2025-01-01T00:00:00.000Z
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}/, // ISO 8601 with timezone: 2025-01-01T00:00:00+00:00
     ];
-    return datePatterns.some((pattern) => pattern.test(value));
+
+    // First check with patterns for performance
+    if (datePatterns.some((pattern) => pattern.test(value))) {
+      return true;
+    }
+
+    // Fallback: try parsing as date if it looks date-like
+    if (value.includes("-") || value.includes("/") || value.includes("T")) {
+      const date = new Date(value);
+      return !isNaN(date.getTime());
+    }
   }
 
   return false;
