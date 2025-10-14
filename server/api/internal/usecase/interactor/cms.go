@@ -29,7 +29,7 @@ func NewCMS(r *repo.Container, gr *gateway.Container, permissionChecker gateway.
 }
 
 func (i *cmsInteractor) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceCMS, action)
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceCMSIntegration, action)
 }
 
 func (i *cmsInteractor) GetCMSProject(ctx context.Context, projectIDOrAlias string) (*cms.Project, error) {

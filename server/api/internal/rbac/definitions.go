@@ -10,19 +10,19 @@ const (
 )
 
 const (
-	ResourceAsset         = "asset"
-	ResourceCMS           = "cms"
-	ResourceDeployment    = "deployment"
-	ResourceEdge          = "edge"
-	ResourceJob           = "job"
-	ResourceLog           = "log"
-	ResourceNode          = "Node"
-	ResourceParameter     = "parameter"
-	ResourceProject       = "project"
-	ResourceProjectAccess = "projectAccess"
-	ResourceTrigger       = "trigger"
-	ResourceUser          = "user"
-	ResourceWorkspace     = "workspace"
+	ResourceAsset          = "asset"
+	ResourceCMSIntegration = "cms_integration"
+	ResourceDeployment     = "deployment"
+	ResourceEdge           = "edge"
+	ResourceJob            = "job"
+	ResourceLog            = "log"
+	ResourceNode           = "Node"
+	ResourceParameter      = "parameter"
+	ResourceProject        = "project"
+	ResourceProjectAccess  = "projectAccess"
+	ResourceTrigger        = "trigger"
+	ResourceUser           = "user"
+	ResourceWorkspace      = "workspace"
 )
 
 const (
@@ -53,7 +53,7 @@ func DefineResources(builder *generator.ResourceBuilder) []generator.ResourceDef
 				roleMaintainer,
 			}),
 		}).
-		AddResource(ResourceCMS, []generator.ActionDefinition{
+		AddResource(ResourceCMSIntegration, []generator.ActionDefinition{
 			generator.NewActionDefinition(ActionAny, []string{
 				roleMaintainer,
 			}),
