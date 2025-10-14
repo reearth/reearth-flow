@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -210,7 +209,7 @@ func (i *Asset) Delete(ctx context.Context, aid id.AssetID) (result id.AssetID, 
 	)
 }
 
-func (i *Asset) CreateUpload(ctx context.Context, inp interfaces.CreateAssetUploadParam, op *usecase.Operator) (*interfaces.AssetUpload, error) {
+func (i *Asset) CreateUpload(ctx context.Context, inp interfaces.CreateAssetUploadParam) (*interfaces.AssetUpload, error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, err
 	}
