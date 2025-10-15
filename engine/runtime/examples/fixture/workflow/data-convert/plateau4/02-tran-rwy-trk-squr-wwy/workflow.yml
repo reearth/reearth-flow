@@ -46,62 +46,6 @@ graphs:
           dataset: |
             env.get("__value")["path"]
 
-      - id: dc498449-5478-4bff-abaa-59f2d160925f
-        name: PLATEAU4.MaxLodExtractor
-        type: action
-        action: PLATEAU4.MaxLodExtractor
-        with:
-          cityGmlPathAttribute: path
-          maxLodAttribute: maxLod
-
-      - id: 1fb4ce1c-538a-436d-8dfa-79185e032de3
-        name: AttributeAggregatorByMaxLod
-        type: action
-        action: AttributeAggregator
-        with:
-          aggregateAttributes:
-          - newAttribute: file
-            attributeValue: |
-              file::extract_filename(env.get("__value")["path"])
-          - newAttribute: type
-            attributeValue: |
-              env.get("__feature_type")
-          - newAttribute: maxLod
-            attributeValue: |
-              env.get("__value").maxLod
-          calculation: |
-            1
-          calculationAttribute: count
-          method: count
-
-      - id: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
-        name: AttributeMapperByMaxLod
-        type: action
-        action: AttributeMapper
-        with:
-          mappers:
-          - attribute: code
-            expr: |
-              env.get("__value").file[0..6]
-          - attribute: type
-            expr: |
-              env.get("__value")["type"].split(":")[0]
-          - attribute: maxLod
-            expr: |
-              env.get("__value").maxLod
-          - attribute: file
-            expr: |
-              env.get("__value").file
-
-      - id: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
-        name: FileWriterTsvFilePath
-        type: action
-        action: FileWriter
-        with:
-          format: tsv
-          output: |
-            file::join_path(env.get("outputPath"), "maxLod.tsv")
-
       - id: c32a279d-97be-4584-b282-4d65627b1132
         name: FeatureLodFilter
         type: action
@@ -156,26 +100,6 @@ graphs:
       - id: 64196428-ea1b-4177-9d66-28331fad14f8
         from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
         to: ded2e272-e05c-4918-86b3-aa9f763da6e6
-        fromPort: default
-        toPort: default
-      - id: cf845867-6ffc-4b83-9fd5-e376a22470e2
-        from: ded2e272-e05c-4918-86b3-aa9f763da6e6
-        to: dc498449-5478-4bff-abaa-59f2d160925f
-        fromPort: default
-        toPort: default
-      - id: 046c94ea-9937-4439-b5f8-c8a616f6599d
-        from: dc498449-5478-4bff-abaa-59f2d160925f
-        to: 1fb4ce1c-538a-436d-8dfa-79185e032de3
-        fromPort: default
-        toPort: default
-      - id: 59c14dab-0e56-4f90-85e6-0c8cfa6d1d14
-        from: 1fb4ce1c-538a-436d-8dfa-79185e032de3
-        to: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
-        fromPort: default
-        toPort: default
-      - id: 993360df-5cfd-4525-9626-bfe13fa62117
-        from: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
-        to: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
         fromPort: default
         toPort: default
       - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
