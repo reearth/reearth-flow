@@ -16,7 +16,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
-	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/workspace"
 	"github.com/reearth/reearthx/rerror"
@@ -130,8 +129,6 @@ func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam) (re
 		return nil, interfaces.ErrFileNotIncluded
 	}
 
-	var file *file.File
-
 	a, err := Run1(
 		ctx, i.repos,
 		Usecase().Transaction(),
@@ -144,7 +141,7 @@ func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam) (re
 			if u.Expired(time.Now()) {
 				return nil, rerror.ErrInternalBy(fmt.Errorf("expired upload token: %s", uuid))
 			}
-			file, err = i.gateways.File.UploadedAsset(ctx, u)
+			file, err := i.gateways.File.UploadedAsset(ctx, u)
 			if err != nil {
 				return nil, err
 			}
