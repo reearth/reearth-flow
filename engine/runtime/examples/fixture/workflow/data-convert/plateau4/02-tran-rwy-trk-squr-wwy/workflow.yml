@@ -28,7 +28,7 @@ graphs:
             [
               #{
                 cityGmlPath: env.get("cityGmlPath"),
-                cityCode: env.get("cityCode"),
+                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
               },
             ]
 
@@ -40,7 +40,7 @@ graphs:
       - id: ded2e272-e05c-4918-86b3-aa9f763da6e6
         name: FeatureReaderByCityGml
         type: action
-        action: FeatureReader
+        action: FeatureCityGmlReader
         with:
           format: citygml
           dataset: |
@@ -145,7 +145,7 @@ graphs:
           minZoom: 8
           maxZoom: 16
           output: |
-            file::join_path(env.get("outputPath"), env.get("__value").feature_type.split(":")[0] + "_lod" + env.get("__value").lod)
+            file::join_path(env.get("outputPath"), env.get("__value").gml_id.split("_")[0] + "_lod" + env.get("__value").lod)
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
