@@ -99,7 +99,11 @@ func (f *fileRepo) UploadAsset(ctx context.Context, file *file.File) (*url.URL, 
 }
 
 func (f *fileRepo) UploadedAsset(ctx context.Context, u *asset.Upload) (*file.File, error) {
-	p := getGCSObjectPath(u.UUID(), u.FileName())
+	sn := sanitizePath(u.UUID() + path.Ext(u.FileName()))
+	if sn == "" {
+		return nil, gateway.ErrInvalidFile
+	}
+	p := path.Join(gcsAssetBasePath, sn)
 	bucket, err := f.bucket(ctx)
 	if err != nil {
 		return nil, err
@@ -490,10 +494,11 @@ func (f *fileRepo) IssueUploadAssetLink(ctx context.Context, param gateway.Issue
 		return nil, err
 	}
 
-	p := getGCSObjectPath(param.UUID, param.Filename)
-	if p == "" {
+	sn := sanitizePath(param.UUID + path.Ext(param.Filename))
+	if sn == "" {
 		return nil, gateway.ErrInvalidFile
 	}
+	p := path.Join(gcsAssetBasePath, sn)
 
 	bucket, err := f.bucket(ctx)
 	if err != nil {
@@ -531,11 +536,12 @@ func (f *fileRepo) IssueUploadAssetLink(ctx context.Context, param gateway.Issue
 	}, nil
 }
 
-func (f *fileRepo) GetPublicAssetURL(uuid string, filename string) (*url.URL, error) {
-	p := getGCSObjectPath(uuid, filename)
-	if p == "" {
+func (f *fileRepo) GetPublicAssetURL(uuid, filename string) (*url.URL, error) {
+	sn := sanitizePath(uuid + path.Ext(filename))
+	if sn == "" {
 		return nil, gateway.ErrInvalidFile
 	}
+	p := path.Join(gcsAssetBasePath, sn)
 	u := getGCSObjectURL(f.base, p)
 	if u == nil {
 		return nil, gateway.ErrInvalidFile
