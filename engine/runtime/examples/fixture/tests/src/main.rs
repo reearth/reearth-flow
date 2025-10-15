@@ -1095,9 +1095,7 @@ impl TestContext {
         }
 
         if !expect_exists && file_exists {
-            anyhow::bail!(
-                "qc_result_ok file should not exist but was found in output directory"
-            );
+            anyhow::bail!("qc_result_ok file should not exist but was found in output directory");
         }
 
         Ok(())
