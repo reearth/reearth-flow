@@ -33,13 +33,21 @@ export default ({
 
   const outputs: string[] = useMemo(() => {
     if (data.params?.conditions) {
+      const availableOutputs: string[] = [];
+
+      if (defaultOutputs) {
+        availableOutputs.push(...defaultOutputs);
+      }
+
       const i = data.params.conditions
         .map((condition: any) => condition.outputPort)
         .filter(isDefined);
-      return i.length ? i : defaultOutputs;
+
+      return i.length ? [...availableOutputs, ...i] : availableOutputs;
     }
-    return defaultOutputs;
+    return defaultOutputs || [];
   }, [data.params?.conditions, defaultOutputs]);
+
   const nodeType = data.isDisabled ? "disabled" : type;
   const [borderColor, backgroundColor, selectedColor, selectedBackgroundColor] =
     getNodeColors(nodeType);
