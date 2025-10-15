@@ -68,6 +68,13 @@ impl<T: CoordNum, Z: CoordNum> Solid<T, Z> {
             BoudarySurface::TriangularMesh(mesh) => mesh.get_vertices().to_vec(),
         }
     }
+
+    pub fn is_void(&self) -> bool {
+        match &self.boundary_surface {
+            BoudarySurface::Faces(faces) => faces.is_empty(),
+            BoudarySurface::TriangularMesh(mesh) => mesh.get_triangles().is_empty(),
+        }
+    }
 }
 
 impl Solid3D<f64> {
@@ -84,7 +91,7 @@ impl Solid3D<f64> {
         self.elevation() == 0.0
     }
 
-    pub fn as_triangle_mesh(self) -> TriangularMesh<f64> {
+    pub fn as_triangle_mesh(self) -> Result<TriangularMesh<f64>, String> {
         match self.boundary_surface {
             BoudarySurface::Faces(faces) => {
                 let faces = faces
@@ -93,7 +100,7 @@ impl Solid3D<f64> {
                     .collect::<Vec<LineString3D<f64>>>();
                 TriangularMesh::from_faces(&faces)
             }
-            BoudarySurface::TriangularMesh(mesh) => mesh,
+            BoudarySurface::TriangularMesh(mesh) => Ok(mesh),
         }
     }
 }

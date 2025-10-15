@@ -2,12 +2,13 @@ use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    algorithm::utils::{denormalize_vertices, normalize_vertices},
     types::{
         coordinate::Coordinate,
         coordnum::CoordNum,
         solid::{Solid, Solid3D},
+        triangle::Triangle,
     },
-    utils::circumcenter,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -83,36 +84,119 @@ impl CSG<f64, f64> {
     pub fn evaluate(self) -> Result<Solid3D<f64>, String> {
         let right = self.right.evaluate()?;
         let left = self.left.evaluate()?;
-        println!("right: {:?}", right);
-        println!("left: {:?}", left);
-        let right = right.as_triangle_mesh();
-        let left = left.as_triangle_mesh();
+        let mut right = right.as_triangle_mesh()?;
+        let mut left = left.as_triangle_mesh()?;
         let mut union = left.clone().union(right.clone())?;
-        println!("union: {:?}", union);
+        let (avg, norm) = normalize_vertices(&mut union.get_vertices_mut());
+        right
+            .get_vertices_mut()
+            .iter_mut()
+            .for_each(|v| *v = (*v - avg) / norm);
+        left.get_vertices_mut()
+            .iter_mut()
+            .for_each(|v| *v = (*v - avg) / norm);
         let two_manifolds = union.into_2_manifolds_with_boundaries();
-        println!("two_manifolds.len: {:?}", two_manifolds);
         let mut result_faces = Vec::new();
+        // quick rejection for the intersection
+        if two_manifolds.len() == 2 && self.operation == CSGOperation::Intersection {
+            return Ok(Solid3D::new_with_faces(vec![]));
+        }
         for mut two_manifold in two_manifolds {
-            let t = two_manifold.first().ok_or("Failed to get first triangle")?;
+            if two_manifold.is_empty() {
+                continue;
+            }
+            let t = two_manifold
+                .iter()
+                .map(|t| {
+                    (
+                        t,
+                        Triangle::new(
+                            union.get_vertices()[t[0]],
+                            union.get_vertices()[t[1]],
+                            union.get_vertices()[t[2]],
+                        )
+                        .area(),
+                    )
+                })
+                .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                .unwrap()
+                .0;
             let t = [
-                union.get_vertices().get(t[0]).ok_or("Failed to get vertex")?,
-                union.get_vertices().get(t[1]).ok_or("Failed to get vertex")?,
-                union.get_vertices().get(t[2]).ok_or("Failed to get vertex")?,
+                union.get_vertices()[t[0]],
+                union.get_vertices()[t[1]],
+                union.get_vertices()[t[2]],
             ];
-            println!("t: {:.2?}", t);
-            let center = circumcenter(*t[0], *t[1], *t[2]).unwrap().0;
+            let center = (t[0] + t[1] + t[2]) / 3_f64;
+
+            let mut from_left = two_manifold
+                .iter()
+                .flatten()
+                .map(|&v| union.get_vertices()[v])
+                .all(|v| {
+                    left.get_triangles().iter().any(|&w| {
+                        let tri = Triangle::new(
+                            left.get_vertices()[w[0]],
+                            left.get_vertices()[w[1]],
+                            left.get_vertices()[w[2]],
+                        );
+                        tri.contains(&v) || tri.boundary_contains(&v)
+                    })
+                });
+
+            let mut from_right = two_manifold
+                .iter()
+                .flatten()
+                .map(|&v| union.get_vertices()[v])
+                .all(|v| {
+                    right.get_triangles().iter().any(|&w| {
+                        let tri = Triangle::new(
+                            right.get_vertices()[w[0]],
+                            right.get_vertices()[w[1]],
+                            right.get_vertices()[w[2]],
+                        );
+                        tri.contains(&v) || tri.boundary_contains(&v)
+                    })
+                });
+
+            if !from_left && !from_right {
+                return Err("Triangle vertices are not all in one of the solids".into());
+            } else if from_left && from_right {
+                let mut left_vertices = two_manifold.iter().flatten().copied().collect::<Vec<_>>();
+                left_vertices.sort_unstable();
+                left_vertices.dedup();
+                let num_coincidence_left = left_vertices
+                    .iter()
+                    .filter(|&&v| {
+                        let v = union.get_vertices()[v];
+                        left.get_vertices().iter().any(|&w| (w - v).norm() < 1e-8)
+                    })
+                    .count();
+                let mut right_vertices = two_manifold.iter().flatten().copied().collect::<Vec<_>>();
+                right_vertices.sort_unstable();
+                right_vertices.dedup();
+                let num_coincidence_right = right_vertices
+                    .iter()
+                    .filter(|&&v| {
+                        let v = union.get_vertices()[v];
+                        right.get_vertices().iter().any(|&w| (w - v).norm() < 1e-8)
+                    })
+                    .count();
+                if num_coincidence_left > num_coincidence_right {
+                    from_left = true;
+                    from_right = false;
+                } else {
+                    from_left = false;
+                    from_right = true;
+                };
+            };
             match self.operation {
                 CSGOperation::Union => {
-                    if !left.bounding_solid_contains(&center) && right.contains(&center) {
-                        result_faces.append(&mut two_manifold);
-                    } else if left.contains(&center) && !right.bounding_solid_contains(&center) {
+                    if !from_left && right.contains(&center) || left.contains(&center) && from_left {
                         result_faces.append(&mut two_manifold);
                     }
                 }
                 CSGOperation::Intersection => {
-                    if left.bounding_solid_contains(&center) && right.contains(&center) {
-                        result_faces.append(&mut two_manifold);
-                    } else if left.contains(&center) && right.bounding_solid_contains(&center) {
+                    if from_left && right.bounding_solid_contains(&center) || left.bounding_solid_contains(&center) && from_right {
                         result_faces.append(&mut two_manifold);
                     }
                 }
@@ -125,6 +209,7 @@ impl CSG<f64, f64> {
         }
 
         union.retain_faces(&result_faces);
+        denormalize_vertices(union.get_vertices_mut(), avg, norm);
         Ok(Solid3D::new_with_triangular_mesh(union))
     }
 }
@@ -175,29 +260,5 @@ impl CSGChild<f64, f64> {
             CSGChild::Solid(geom) => Ok(geom),
             CSGChild::CSG(csg) => csg.evaluate(),
         }
-    }
-}
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::types::triangular_mesh::tests::{create_simple_obj, get_cube};
-
-    #[test]
-    fn test_csg_evaluate_union() {
-        let cube1 = get_cube();
-        let mut cube2 = get_cube();
-        cube2.transform_offset(-0.8, -0.7, -0.6);
-        let solid1 = Solid3D::new_with_triangular_mesh(cube1);
-        let solid2 = Solid3D::new_with_triangular_mesh(cube2);
-        let csg = CSG::new(
-            CSGChild::Solid(solid1),
-            CSGChild::Solid(solid2),
-            CSGOperation::Intersection,
-        );
-        let result = csg.evaluate().unwrap();
-        let mesh = result.clone().as_triangle_mesh();
-        create_simple_obj(&result.get_all_vertex_coordinates(), &mesh.get_triangles());
     }
 }

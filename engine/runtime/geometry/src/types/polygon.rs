@@ -1,6 +1,3 @@
-use std::hash::{Hash, Hasher};
-use std::ops::Mul;
-
 use approx::{AbsDiffEq, RelativeEq};
 use flatgeom::{
     LineString2 as NLineString2, LineString3 as NLineString3, Polygon2 as NPolygon2,
@@ -8,13 +5,16 @@ use flatgeom::{
 };
 use geo_types::Polygon as GeoPolygon;
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
-use num_traits::{Float, NumCast, Zero};
+use num_traits::Zero;
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
+use std::hash::{Hash, Hasher};
 
 use crate::algorithm::contains::Contains;
 use crate::algorithm::coords_iter::CoordsIter;
-use crate::algorithm::line_intersection::{line_intersection, LineIntersection};
+use crate::algorithm::line_intersection::{
+    line_intersection, line_intersection3d, LineIntersection,
+};
 use crate::algorithm::GeoFloat;
 
 use super::conversion::geojson::create_polygon_type;
@@ -142,8 +142,8 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
         );
         let all_faces = bottom_faces
             .into_iter()
-            .chain(top_faces.into_iter())
-            .chain(side_faces.into_iter())
+            .chain(top_faces)
+            .chain(side_faces)
             .collect();
         Solid::new_with_faces(all_faces)
     }
@@ -247,41 +247,41 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
     }
 }
 
-impl<T: CoordNum + Float + From<Z>, Z: CoordNum + Float + Mul<T, Output = Z>> Polygon<T, Z> {
+impl Polygon<f64> {
     // Merges all the rings (exterior and interiors) into a single closed LineString.
-    pub fn into_merged_contour(self) -> LineString<T, Z> {
+    pub fn into_merged_contour(self) -> Result<LineString<f64, f64>, String> {
         let mut exterior = self.exterior;
         for interior in self.interiors {
-            exterior = Self::into_merged_contour_single_interior(exterior, interior);
+            exterior = Self::into_merged_contour_single_interior(exterior, interior)?;
         }
-        exterior
+        Ok(exterior)
     }
 
     fn into_merged_contour_single_interior(
-        mut exterior: LineString<T, Z>,
-        mut interior: LineString<T, Z>,
-    ) -> LineString<T, Z> {
+        mut exterior: LineString<f64, f64>,
+        mut interior: LineString<f64, f64>,
+    ) -> Result<LineString<f64, f64>, String> {
         if interior.is_empty() {
-            return exterior;
+            return Ok(exterior);
         }
 
-        let epsilon = <T as NumCast>::from(1e-5).unwrap_or_default();
+        let epsilon = 1e-5;
 
         let (mut x, mut y) = (usize::MAX, usize::MAX);
-        'outer: for (i, v) in exterior.iter().enumerate() {
-            'inner: for (j, w) in interior.iter().enumerate() {
+        'outer: for (i, &v) in exterior.iter().enumerate() {
+            'inner: for (j, &w) in interior.iter().enumerate() {
                 // check if the line segment vw intersects with any edge of the exterior ring and the interior ring
-                let e1 = Line::<T, Z>::new_(*v, *w);
+                let e1 = Line::new_(v, w);
                 for e2 in exterior
                     .iter()
                     .copied()
                     .zip(exterior.iter().copied().skip(1))
                 {
-                    if e2.0 == *v || e2.1 == *v {
+                    if (e2.0 - v).norm() < epsilon || (e2.1 - v).norm() < epsilon {
                         continue;
                     }
                     let e2 = Line::new_(e2.0, e2.1);
-                    if e1.distance(&e2) < epsilon {
+                    if line_intersection3d(e1, e2).is_some() {
                         continue 'inner;
                     }
                 }
@@ -290,18 +290,54 @@ impl<T: CoordNum + Float + From<Z>, Z: CoordNum + Float + Mul<T, Output = Z>> Po
                     .copied()
                     .zip(interior.iter().copied().skip(1))
                 {
-                    if e2.0 == *w || e2.1 == *w {
+                    if (e2.0 - w).norm() < epsilon || (e2.1 - w).norm() < epsilon {
                         continue;
                     }
                     let e2 = Line::new_(e2.0, e2.1);
-                    if e1.distance(&e2) < epsilon {
+                    if line_intersection3d(e1, e2).is_some() {
                         continue 'inner;
                     }
+                }
+                // check if `i` is not a vertex of adjacency greater than 2
+                if exterior
+                    .iter()
+                    .skip(1)
+                    .filter(|&&k| (k - v).norm() < epsilon)
+                    .count()
+                    > 1
+                {
+                    continue 'inner;
                 }
                 x = i;
                 y = j;
                 break 'outer;
             }
+        }
+
+        // The orientation of the interior ring must be opposite to that of the exterior ring.
+        let are_orientations_opposite = {
+            let n = exterior
+                .0
+                .windows(3)
+                .map(|w| {
+                    let a = w[0] - w[1];
+                    let b = w[2] - w[1];
+                    a.cross(&b)
+                })
+                .max_by(|a, b| a.norm().partial_cmp(&b.norm()).unwrap())
+                .unwrap()
+                .normalize();
+            let inner = interior.exterior_angle_sum(Some(n));
+            let outer = exterior.exterior_angle_sum(Some(n));
+            if (inner.abs() - outer.abs()).abs() < epsilon {
+                (inner + outer).abs() < epsilon
+            } else {
+                return Err("Failed to determine the orientation of the rings. Possible cases are: 1. degenerate rings, 2. non-planar rings, 3. rings not closed.".to_string());
+            }
+        };
+
+        if !are_orientations_opposite {
+            interior.0.reverse();
         }
 
         exterior.0.pop();
@@ -314,7 +350,7 @@ impl<T: CoordNum + Float + From<Z>, Z: CoordNum + Float + Mul<T, Output = Z>> Po
         exterior.0.extend(interior.0);
         exterior.0.push(exterior.0[0]);
 
-        exterior
+        Ok(exterior)
     }
 }
 
@@ -767,6 +803,7 @@ impl<T: CoordNum> From<GeoPolygon<T>> for Polygon2D<T> {
 mod tests {
     use super::*;
     use crate::types::line_string::LineString3D;
+    use std::f64::consts::TAU;
 
     #[test]
     fn test_into_merged_contour1() {
@@ -785,7 +822,7 @@ mod tests {
             Coordinate::new__(1.0, 1.0, 0.0),
         ]);
         let polygon = Polygon3D::new(exterior, vec![interior]);
-        let merged = polygon.into_merged_contour();
+        let merged = polygon.into_merged_contour().unwrap();
         let expected_coords = vec![
             Coordinate::new__(0.0, 0.0, 0.0),
             Coordinate::new__(4.0, 0.0, 0.0),
@@ -801,6 +838,8 @@ mod tests {
         ];
         let expected = LineString3D::new(expected_coords);
         assert_eq!(merged, expected);
+        let exterior_angle_sum = merged.exterior_angle_sum(None);
+        assert!((exterior_angle_sum - TAU).abs() < 1e-5);
     }
 
     #[test]
@@ -817,7 +856,7 @@ mod tests {
             Coordinate::new__(0.0, 1.0, 0.0),
         ]);
         let polygon = Polygon3D::new(exterior, vec![interior]);
-        let merged = polygon.into_merged_contour();
+        let merged = polygon.into_merged_contour().unwrap();
         assert_eq!(merged.len(), 8);
         let expected_coords = vec![
             Coordinate::new__(-2.0, 0.0, 0.0),
@@ -831,5 +870,73 @@ mod tests {
         ];
         let expected = LineString3D::new(expected_coords);
         assert_eq!(merged, expected);
+        let exterior_angle_sum = merged.exterior_angle_sum(None);
+        assert!((exterior_angle_sum - TAU).abs() < 1e-5);
+    }
+
+    #[test]
+    fn test_into_merged_contour3() {
+        let exterior = LineString3D::new(vec![
+            Coordinate::new__(-1.2194539968515465, 0.16933105043042337, 0.0),
+            Coordinate::new__(-1.055857735333338, 0.4778411954004563, 0.0),
+            Coordinate::new__(-0.6853019923873935, 0.24672195911322675, 0.0),
+            Coordinate::new__(-0.5833398829901584, 0.43943710577733136, 0.0),
+            Coordinate::new__(0.09143713416665612, 0.01846906540020424, 0.0),
+            Coordinate::new__(0.03360770119237577, -0.09070861028635324, 0.0),
+            Coordinate::new__(-0.033488920040556945, -0.048611415950504736, 0.0),
+            Coordinate::new__(-0.09436194563997304, -0.1635788079200148, 0.0),
+            Coordinate::new__(-1.0344747782448054, 0.4224735580414215, 0.0),
+            Coordinate::new__(-1.2094860785722195, 0.09411205118207576, 0.0),
+            Coordinate::new__(-1.4199251562078496, 0.22535458947396547, 0.0),
+            Coordinate::new__(-1.8095119541428824, -0.50911502605386, 0.0),
+            Coordinate::new__(-1.6021226584354356, -0.6387069655611979, 0.0),
+            Coordinate::new__(-1.8349611545790832, -1.0778998728746179, 0.0),
+            Coordinate::new__(-1.4781306577310172, -1.2999381710149365, 0.0),
+            Coordinate::new__(-1.2612714401132272, -0.8905213629396685, 0.0),
+            Coordinate::new__(-0.4553518611871161, -1.3940324579852619, 0.0),
+            Coordinate::new__(-0.48654868467646323, -1.4535836170526768, 0.0),
+            Coordinate::new__(0.35977956630138175, -1.9818579435999786, 0.0),
+            Coordinate::new__(0.24412029417678788, -2.1993865707687323, 0.0),
+            Coordinate::new__(2.0069177989502758, -3.2988597200846757, 0.0),
+            Coordinate::new__(2.9961112587714194, -1.434570505224098, 0.0),
+            Coordinate::new__(2.5279636768865688, -1.1431932733038, 0.0),
+            Coordinate::new__(2.6177519190084935, -0.973637427949112, 0.0),
+            Coordinate::new__(1.8766429631621764, -0.5105684032750967, 0.0),
+            Coordinate::new__(1.7883776549743646, -0.6784695400510318, 0.0),
+            Coordinate::new__(1.3301400359839846, -0.39204397002019326, 0.0),
+            Coordinate::new__(0.8713081665710084, -1.2580207963071683, 0.0),
+            Coordinate::new__(0.7607521844701187, -1.1895108170904136, 0.0),
+            Coordinate::new__(0.9572256678649496, -0.06999017268013079, 0.0),
+            Coordinate::new__(0.848957065611682, -0.0031313800969762005, 0.0),
+            Coordinate::new__(1.2583308533118243, 0.7685561964332482, 0.0),
+            Coordinate::new__(1.073053192369885, 0.8841164426087409, 0.0),
+            Coordinate::new__(1.3020897669743488, 1.315864417446708, 0.0),
+            Coordinate::new__(1.0321781807408184, 1.4850789517386835, 0.0),
+            Coordinate::new__(1.0983773918902138, 1.6107982125647209, 0.0),
+            Coordinate::new__(0.7476455114122035, 1.829537078051839, 0.0),
+            Coordinate::new__(0.7141648859428431, 1.7666770671892256, 0.0),
+            Coordinate::new__(-0.2076513132318949, 2.3420011628583612, 0.0),
+            Coordinate::new__(-0.34765878002084466, 2.0765014300828795, 0.0),
+            Coordinate::new__(-0.5489486854778642, 2.2019661703255338, 0.0),
+            Coordinate::new__(-0.7954853956507596, 1.7371333518039644, 0.0),
+            Coordinate::new__(-0.7299133806140475, 1.695861478434628, 0.0),
+            Coordinate::new__(-0.81209244465817, 1.5411927534099812, 0.0),
+            Coordinate::new__(-0.863939717982187, 1.5733841404529636, 0.0),
+            Coordinate::new__(-1.0725030617437434, 1.1797282100502866, 0.0),
+            Coordinate::new__(-1.3228410916347892, 0.7074499089428343, 0.0),
+            Coordinate::new__(-1.5114766353620608, 0.35175035192546195, 0.0),
+            Coordinate::new__(-1.2194539968515465, 0.16933105043042337, 0.0),
+        ]);
+        let interior = LineString3D::new(vec![
+            Coordinate::new__(-0.2924963013937458, -1.1119771975084152, 0.0),
+            Coordinate::new__(0.11234391452351394, -0.39072103819093074, 0.0),
+            Coordinate::new__(0.4882480268812336, -0.6400230272020863, 0.0),
+            Coordinate::new__(0.36247518786088223, -1.5453647114996691, 0.0),
+            Coordinate::new__(-0.2924963013937458, -1.1119771975084152, 0.0),
+        ]);
+        let polygon = Polygon3D::new(exterior, vec![interior]);
+        let merged = polygon.into_merged_contour().unwrap();
+        let exterior_angle_sum = merged.exterior_angle_sum(None);
+        assert!((exterior_angle_sum - TAU).abs() < 1e-5);
     }
 }

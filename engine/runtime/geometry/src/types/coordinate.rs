@@ -15,6 +15,7 @@ use super::point::Point;
 use super::traits::Elevation;
 use crate::algorithm::GeoFloat;
 use crate::coord;
+use crate::utils::{are_points_coplanar, PointsCoplanar};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Debug, Hash, Default)]
 pub struct Coordinate<T: CoordNum = f64, Z: CoordNum = f64> {
@@ -526,4 +527,12 @@ impl<T: CoordNum> From<Coordinate2D<T>> for GeoCoord<T> {
             y: coord.y,
         }
     }
+}
+
+pub fn are_coplanar(points: &[Coordinate3D<f64>]) -> Option<PointsCoplanar> {
+    let points = points
+        .iter()
+        .map(|c| NaPoint3::new(c.x, c.y, c.z))
+        .collect();
+    are_points_coplanar(points, 1e-6)
 }

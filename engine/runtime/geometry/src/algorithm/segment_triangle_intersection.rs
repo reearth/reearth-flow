@@ -83,7 +83,7 @@ mod tests {
     fn test_segment_triangle_intersection_direct_hit2() {
         let t = [
             Coordinate3D::new__(-2.0, 0.0, 0.0),
-            Coordinate3D::new__(2.0, 1.0, 0.0), 
+            Coordinate3D::new__(2.0, 1.0, 0.0),
             Coordinate3D::new__(2.0, -1.0, 0.0),
         ];
 

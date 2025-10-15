@@ -12,7 +12,7 @@ use reearth_flow_runtime::{
 use reearth_flow_types::{Geometry, GeometryValue};
 use serde_json::Value;
 
-static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
+static NULL_PORT: Lazy<Port> = Lazy::new(|| Port::new("nullport"));
 
 #[derive(Debug, Clone, Default)]
 pub struct CSGEvaluatorFactory;
@@ -42,7 +42,7 @@ impl ProcessorFactory for CSGEvaluatorFactory {
     fn get_output_ports(&self) -> Vec<Port> {
         vec![
             DEFAULT_PORT.clone(),
-            FAILED_PORT.clone(),
+            NULL_PORT.clone(),
             REJECTED_PORT.clone(),
         ]
     }
@@ -92,16 +92,20 @@ impl Processor for CSGEvaluator {
         // Evaluate the CSG to get a solid
         match csg.evaluate() {
             Ok(solid) => {
-                // Update the feature with the evaluated solid geometry
-                feature.geometry = Geometry {
-                    epsg: feature.geometry.epsg,
-                    value: GeometryValue::FlowGeometry3D(FlowGeometry3D::Solid(solid)),
-                };
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                if solid.is_void() {
+                    fw.send(ctx.new_with_feature_and_port(feature, NULL_PORT.clone()));
+                } else {
+                    // Update the feature with the evaluated solid geometry
+                    feature.geometry = Geometry {
+                        epsg: feature.geometry.epsg,
+                        value: GeometryValue::FlowGeometry3D(FlowGeometry3D::Solid(solid)),
+                    };
+                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                }
             }
-            Err(_) => {
-                // Evaluation failed, send to failed port
-                fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
+            Err(_e) => {
+                // Evaluation failed, send to rejected
+                fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
             }
         }
 

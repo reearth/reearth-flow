@@ -3,12 +3,14 @@ use num_traits::Bounded;
 use num_traits::Zero;
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
+use std::f64::consts::PI;
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
 
 use flatgeom::{LineString2 as NLineString2, LineString3 as NLineString3};
 use geo_types::LineString as GeoLineString;
 
+use crate::types::coordinate::Coordinate3D;
 use crate::types::face::Face;
 use crate::utils::line_string_bounding_rect;
 
@@ -76,6 +78,44 @@ impl LineString3D<f64> {
         for coord in &mut self.0 {
             coord.transform_offset(x, y, z);
         }
+    }
+
+    /// Calculates the exterior angle sum of the LineString, assuming that the line is closed and that the line is planar.
+    /// The sign of the angle sum is determined by the normal vector `n`. If `n` is not provided, it is estimated from the cross products of the first segments.
+    pub fn exterior_angle_sum(&self, n: Option<Coordinate3D<f64>>) -> f64 {
+        assert!(
+            self.0.len() >= 3,
+            "LineString must have at least 3 vertices"
+        );
+        assert!(self.0.first() == self.0.last(), "LineString must be closed");
+        let n = n.unwrap_or(
+            self.0
+                .windows(3)
+                .map(|w| {
+                    let a = w[0] - w[1];
+                    let b = w[2] - w[1];
+                    a.cross(&b)
+                })
+                .max_by(|a, b| a.norm().partial_cmp(&b.norm()).unwrap())
+                .unwrap()
+                .normalize(),
+        );
+        let num_vertices = self.0.len() - 1;
+        (0..num_vertices)
+            .map(|i| {
+                let prev = (i + num_vertices - 1) % num_vertices;
+                let next = (i + 1) % num_vertices;
+                let a = self.0[prev] - self.0[i];
+                let b = self.0[next] - self.0[i];
+                let cross = a.cross(&b);
+                let angle = a.angle(&b);
+                if cross.dot(&n) > 0.0 {
+                    PI - angle
+                } else {
+                    angle - PI
+                }
+            })
+            .sum::<f64>()
     }
 }
 

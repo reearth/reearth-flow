@@ -214,7 +214,7 @@ where
 
     pub fn contains(&self, mut p: Coordinate<T, Z>) -> bool {
         let epsilon = <T as NumCast>::from(1e-5).unwrap_or_default();
-        let mut line = self.clone();
+        let mut line = *self;
         p = p - self.start;
         line.end = line.end - line.start;
         line.start = Coordinate::zero();
@@ -484,6 +484,10 @@ mod tests {
 
         let line4 = Line3D::new_((2.0, 0.0, 0.0), (3.0, 0.0, 0.0));
         assert!((line1.distance(&line4) - 1_f64).abs() < 1e-6);
+
+        let line5 = Line3D::new_((0.0, 0.0, 0.0), (1.0, 1.0, 1.0));
+        let line6 = Line3D::new_((1.0, 0.0, 0.0), (0.0, 1.0, 1.0));
+        assert!(line5.distance(&line6) < 1e-6);
     }
 
     #[test]

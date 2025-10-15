@@ -314,13 +314,16 @@ fn calculate_bounding_box(geometry: &Geometry) -> Result<BBox, BoxedError> {
                 .into())
             }
         }
-        GeometryValue::CityGmlGeometry(_) => {
-            // For CityGML geometries, we would need a different approach
-            // For now, we'll return an error
-            Err(PlateauProcessorError::SolidIntersectionTestPairCreator(
-                "CityGML geometry bounding box calculation not implemented".to_string(),
-            )
-            .into())
+        GeometryValue::CityGmlGeometry(cg) => {
+            let max_min = cg.max_min_vertice();
+            Ok(BBox {
+                min_x: max_min.min_lng,
+                max_x: max_min.max_lng,
+                min_y: max_min.min_lat,
+                max_y: max_min.max_lat,
+                min_z: max_min.min_height,
+                max_z: max_min.max_height,
+            })
         }
         GeometryValue::None => Err(PlateauProcessorError::SolidIntersectionTestPairCreator(
             "No geometry present".to_string(),

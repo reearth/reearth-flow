@@ -7,11 +7,11 @@ pub fn triangles_intersect(t: &[Coordinate3D<f64>; 3], s: &[Coordinate3D<f64>; 3
 
     // filter out the obvious non-intersecting cases first
     {
-        let Some((ct, rt)) = circumcenter(t[0], t[1], t[2]) else {
+        let Ok((ct, rt)) = circumcenter(t[0], t[1], t[2]) else {
             return false;
         };
 
-        let Some((cs, rs)) = circumcenter(s[0], s[1], s[2]) else {
+        let Ok((cs, rs)) = circumcenter(s[0], s[1], s[2]) else {
             return false;
         };
 
@@ -52,23 +52,39 @@ pub fn triangles_intersect(t: &[Coordinate3D<f64>; 3], s: &[Coordinate3D<f64>; 3
 pub fn triangles_intersection(
     mut t: [Coordinate3D<f64>; 3],
     mut s: [Coordinate3D<f64>; 3],
-) -> Result<Option<[Coordinate3D<f64>; 2]>, ()> {
+) -> Result<Option<[Coordinate3D<f64>; 2]>, String> {
     let epsilon = 1e-10;
     {
-        let Some((ct, rt)) = circumcenter(t[0], t[1], t[2]) else {
-            return Err(());
-        };
-        
-        let Some((cs, rs)) = circumcenter(s[0], s[1], s[2]) else {
-            return Err(());
-        };
-
-        let d = (ct - cs).norm();
-        if d > rt + rs {
+        let mut tmin = t[0];
+        let mut tmax = t[0];
+        for v in &t[1..] {
+            tmin.x = tmin.x.min(v.x);
+            tmin.y = tmin.y.min(v.y);
+            tmin.z = tmin.z.min(v.z);
+            tmax.x = tmax.x.max(v.x);
+            tmax.y = tmax.y.max(v.y);
+            tmax.z = tmax.z.max(v.z);
+        }
+        let mut smin = s[0];
+        let mut smax = s[0];
+        for v in &s[1..] {
+            smin.x = smin.x.min(v.x);
+            smin.y = smin.y.min(v.y);
+            smin.z = smin.z.min(v.z);
+            smax.x = smax.x.max(v.x);
+            smax.y = smax.y.max(v.y);
+            smax.z = smax.z.max(v.z);
+        }
+        if tmin.x > smax.x
+            || smin.x > tmax.x
+            || tmin.y > smax.y
+            || smin.y > tmax.y
+            || tmin.z > smax.z
+            || smin.z > tmax.z
+        {
             return Ok(None);
         }
     }
-
 
     let (avg, norm_avg) = normalize_triangle_pair(&mut t, &mut s);
     // Check for coplanar case
@@ -127,12 +143,30 @@ pub fn triangles_intersection(
         }
     }
 
+    // Denormalize the triangle vertices
+    for v in &mut t {
+        *v = (*v * norm_avg) + avg;
+    }
+    for v in &mut s {
+        *v = (*v * norm_avg) + avg;
+    }
+
     if intersection_points.len() < 2 {
         Ok(None)
     } else if intersection_points.len() == 2 {
+        if [[0, 1], [0, 2], [1, 2]].into_iter().any(|[i, j]| {
+            let line = Line3D::new_(t[i], t[j]);
+            let a = line.contains(intersection_points[0]) && line.contains(intersection_points[1]);
+            let line = Line3D::new_(s[i], s[j]);
+            let b = line.contains(intersection_points[0]) && line.contains(intersection_points[1]);
+            a || b
+        }) {
+            // Intersection at a single point or very close to it, consider as non-intersecting
+            return Ok(None);
+        }
         Ok(Some([intersection_points[0], intersection_points[1]]))
     } else {
-        Err(())
+        Err("Failed to find valid intersection points")?
     }
 }
 
@@ -202,7 +236,7 @@ mod tests {
     fn test_triangles_intersect_perpendicular1() {
         let t1 = [
             Coordinate3D::new__(-2.0, 0.0, 0.0),
-            Coordinate3D::new__(2.0, 1.0, 0.0), 
+            Coordinate3D::new__(2.0, 1.0, 0.0),
             Coordinate3D::new__(2.0, -1.0, 0.0),
         ];
 

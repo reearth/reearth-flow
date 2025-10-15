@@ -1,9 +1,11 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::types::{
     csg::{CSGChild, CSGOperation, CSG},
+    face::Face,
     geometry::Geometry3D as FlowGeometry3D,
+    solid::Solid3D,
 };
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -12,7 +14,8 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
+use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature, Geometry, GeometryValue};
+use rhai::Dynamic;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -60,7 +63,7 @@ impl ProcessorFactory for CSGBuilderFactory {
     }
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -83,10 +86,23 @@ impl ProcessorFactory for CSGBuilderFactory {
             .into());
         };
 
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let pair_id_attribute = if let Some(expr) = &param.pair_id_attribute {
+            Some(expr_engine.compile(expr.as_ref()).map_err(|e| {
+                GeometryProcessorError::CSGBuilderFactory(format!(
+                    "Failed to compile pair_id_attribute expression: {e:?}"
+                ))
+            })?)
+        } else {
+            None
+        };
+
         let processor = CSGBuilder {
-            pair_id_attribute: param.pair_id_attribute,
+            pair_id_attribute,
             left_buffer: HashMap::new(),
             right_buffer: HashMap::new(),
+            create_list: param.create_list,
+            list_attribute_name: param.list_attribute_name,
         };
         Ok(Box::new(processor))
     }
@@ -98,17 +114,27 @@ impl ProcessorFactory for CSGBuilderFactory {
 #[serde(rename_all = "camelCase")]
 struct CSGBuilderParam {
     /// # Pair ID Attribute
-    /// The name of the attribute that contains the pair ID used to match features from left and right ports
-    pair_id_attribute: Attribute,
+    /// Expression to evaluate the pair ID used to match features from left and right ports
+    pair_id_attribute: Option<Expr>,
+
+    /// # Create List
+    /// When enabled, creates a list of attribute values from both children (left and right)
+    create_list: Option<bool>,
+
+    /// # List Attribute Name
+    /// Name of the attribute to create the list from (required when create_list is true)
+    list_attribute_name: Option<String>,
 }
 
 /// # CSG Builder
 /// Builds a CSG tree from two solid geometries. To create a mesh from the CSG tree, use CSGEvaluator.
 #[derive(Debug, Clone)]
 pub struct CSGBuilder {
-    pair_id_attribute: Attribute,
+    pair_id_attribute: Option<rhai::AST>,
     left_buffer: HashMap<AttributeValue, Feature>,
     right_buffer: HashMap<AttributeValue, Feature>,
+    create_list: Option<bool>,
+    list_attribute_name: Option<String>,
 }
 
 impl Processor for CSGBuilder {
@@ -124,14 +150,29 @@ impl Processor for CSGBuilder {
         let feature = ctx.feature.clone();
         let port = ctx.port.clone();
 
-        // Get the pair ID from the feature
-        let pair_id = match feature.attributes.get(&self.pair_id_attribute) {
-            Some(id) => id.clone(),
-            None => {
-                // Feature doesn't have the pair ID attribute, send to rejected
-                fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
-                return Ok(());
+        // Get the pair ID from the feature by evaluating the expression
+        let pair_id = if let Some(expr) = &self.pair_id_attribute {
+            let expr_engine = Arc::clone(&ctx.expr_engine);
+            let scope = feature.new_scope(expr_engine.clone(), &None);
+            match scope.eval_ast::<Dynamic>(expr) {
+                Ok(value) => match value.try_into() {
+                    Ok(attr_value) => attr_value,
+                    Err(_) => {
+                        // Failed to convert to AttributeValue, send to rejected
+                        fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
+                        return Ok(());
+                    }
+                },
+                Err(_e) => {
+                    // Failed to evaluate expression, send to rejected
+                    fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
+                    return Ok(());
+                }
             }
+        } else {
+            // No expression configured, send to rejected
+            fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
+            return Ok(());
         };
 
         // Check which port the feature came from and process accordingly
@@ -163,7 +204,7 @@ impl Processor for CSGBuilder {
 
     fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         // Send all unpaired features to the rejected port
-        for (_, feature) in &self.left_buffer {
+        for feature in self.left_buffer.values() {
             let exec_ctx = ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
                 feature.clone(),
@@ -172,7 +213,7 @@ impl Processor for CSGBuilder {
             fw.send(exec_ctx);
         }
 
-        for (_, feature) in &self.right_buffer {
+        for feature in self.right_buffer.values() {
             let exec_ctx = ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
                 feature.clone(),
@@ -208,6 +249,15 @@ impl CSGBuilder {
                     return Ok(());
                 }
             },
+            GeometryValue::CityGmlGeometry(cg) => {
+                let faces: Vec<Face> = cg
+                    .gml_geometries
+                    .iter()
+                    .flat_map(|gml_geometry| gml_geometry.polygons.clone())
+                    .map(|polygon| polygon.exterior().clone().into())
+                    .collect::<Vec<_>>();
+                Solid3D::new_with_faces(faces)
+            }
             _ => {
                 // Not a 3D geometry, send both to rejected
                 fw.send(ctx.new_with_feature_and_port(left_feature, REJECTED_PORT.clone()));
@@ -226,6 +276,15 @@ impl CSGBuilder {
                     return Ok(());
                 }
             },
+            GeometryValue::CityGmlGeometry(cg) => {
+                let faces: Vec<Face> = cg
+                    .gml_geometries
+                    .iter()
+                    .flat_map(|gml_geometry| gml_geometry.polygons.clone())
+                    .map(|polygon| polygon.exterior().clone().into())
+                    .collect::<Vec<_>>();
+                Solid3D::new_with_faces(faces)
+            }
             _ => {
                 // Not a 3D geometry, send both to rejected
                 fw.send(ctx.new_with_feature_and_port(left_feature, REJECTED_PORT.clone()));
@@ -238,6 +297,38 @@ impl CSGBuilder {
         let left_csg_child = CSGChild::Solid(left_solid);
         let right_csg_child = CSGChild::Solid(right_solid);
 
+        // Create list attribute if enabled
+        let list_attribute = if self.create_list.unwrap_or(false) {
+            if let Some(ref attr_name) = self.list_attribute_name {
+                // Create a list containing the entire attributes object from both features
+                let mut attribute_objects = Vec::new();
+
+                // Convert left feature's entire attributes to AttributeValue::Map
+                let left_attrs: std::collections::HashMap<String, AttributeValue> = left_feature
+                    .attributes
+                    .iter()
+                    .map(|(k, v)| (k.to_string(), v.clone()))
+                    .collect();
+                attribute_objects.push(AttributeValue::Map(left_attrs));
+
+                // Convert right feature's entire attributes to AttributeValue::Map
+                let right_attrs: std::collections::HashMap<String, AttributeValue> = right_feature
+                    .attributes
+                    .iter()
+                    .map(|(k, v)| (k.to_string(), v.clone()))
+                    .collect();
+                attribute_objects.push(AttributeValue::Map(right_attrs));
+
+                // Create the attribute with the list of attribute objects
+                let attr_key = Attribute::new(attr_name.clone());
+                Some((attr_key, AttributeValue::Array(attribute_objects)))
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
         // Create and send intersection CSG
         let intersection_csg = CSG::new(
             left_csg_child.clone(),
@@ -249,6 +340,14 @@ impl CSGBuilder {
             epsg: left_feature.geometry.epsg,
             value: GeometryValue::FlowGeometry3D(FlowGeometry3D::CSG(Box::new(intersection_csg))),
         };
+
+        // Add list attribute if created
+        if let Some((attr_key, attr_value)) = &list_attribute {
+            intersection_feature
+                .attributes
+                .insert(attr_key.clone(), attr_value.clone());
+        }
+
         fw.send(ctx.new_with_feature_and_port(intersection_feature, INTERSECTION_PORT.clone()));
 
         // Create and send union CSG
@@ -262,6 +361,14 @@ impl CSGBuilder {
             epsg: left_feature.geometry.epsg,
             value: GeometryValue::FlowGeometry3D(FlowGeometry3D::CSG(Box::new(union_csg))),
         };
+
+        // Add list attribute if created
+        if let Some((attr_key, attr_value)) = &list_attribute {
+            union_feature
+                .attributes
+                .insert(attr_key.clone(), attr_value.clone());
+        }
+
         fw.send(ctx.new_with_feature_and_port(union_feature, UNION_PORT.clone()));
 
         // Create and send difference CSG (left - right)
@@ -271,6 +378,14 @@ impl CSGBuilder {
             epsg: left_feature.geometry.epsg,
             value: GeometryValue::FlowGeometry3D(FlowGeometry3D::CSG(Box::new(difference_csg))),
         };
+
+        // Add list attribute if created
+        if let Some((attr_key, attr_value)) = &list_attribute {
+            difference_feature
+                .attributes
+                .insert(attr_key.clone(), attr_value.clone());
+        }
+
         fw.send(ctx.new_with_feature_and_port(difference_feature, DIFFERENCE_PORT.clone()));
 
         Ok(())
