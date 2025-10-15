@@ -14,7 +14,9 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature, Geometry, GeometryValue};
+use reearth_flow_types::{
+    Attribute, AttributeValue, Expr, Feature, Geometry, GeometryType, GeometryValue,
+};
 use rhai::Dynamic;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -37,7 +39,7 @@ impl ProcessorFactory for CSGBuilderFactory {
     }
 
     fn description(&self) -> &str {
-        "Constructs a Constructive Solid Geometry (CSG) representation from a pair (Left, Right) of solid geometries. It detects union, intersection, difference (Left - Right). \
+        "Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, Right) of solid geometries. It detects union, intersection, difference (Left - Right). \
         It however does not compute the resulting geometry, but outputs the CSG tree structure. To evaluate the CSG tree into a solid geometry, use CSGEvaluator."
     }
 
@@ -253,9 +255,16 @@ impl CSGBuilder {
                 let faces: Vec<Face> = cg
                     .gml_geometries
                     .iter()
+                    .filter(|gml_geometry| gml_geometry.ty == GeometryType::Solid)
                     .flat_map(|gml_geometry| gml_geometry.polygons.clone())
                     .map(|polygon| polygon.exterior().clone().into())
                     .collect::<Vec<_>>();
+                if faces.is_empty() {
+                    // No solid faces found, send both to rejected
+                    fw.send(ctx.new_with_feature_and_port(left_feature, REJECTED_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(right_feature, REJECTED_PORT.clone()));
+                    return Ok(());
+                }
                 Solid3D::new_with_faces(faces)
             }
             _ => {
@@ -280,9 +289,16 @@ impl CSGBuilder {
                 let faces: Vec<Face> = cg
                     .gml_geometries
                     .iter()
+                    .filter(|gml_geometry| gml_geometry.ty == GeometryType::Solid)
                     .flat_map(|gml_geometry| gml_geometry.polygons.clone())
                     .map(|polygon| polygon.exterior().clone().into())
                     .collect::<Vec<_>>();
+                if faces.is_empty() {
+                    // No solid faces found, send both to rejected
+                    fw.send(ctx.new_with_feature_and_port(left_feature, REJECTED_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(right_feature, REJECTED_PORT.clone()));
+                    return Ok(());
+                }
                 Solid3D::new_with_faces(faces)
             }
             _ => {

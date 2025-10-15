@@ -954,7 +954,7 @@ nodes:
       mappers:
         - attribute: intersection_id
           expr: |
-            "lod" + env.get("__value").attrList[0].lod + "_" + env.get("__value").pair_id
+            "lod" + env.get("__value").attrList[0].lod + "_" + env.get("__value").attrList[0].pair_id
         - attribute: gmlFilenameA
           expr: |
             env.get("__value").attrList[0].gmlFilename
