@@ -194,7 +194,7 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
         let angle_sum: T = angles.iter().copied().fold(T::zero(), |acc, x| acc + x);
         if (angle_sum + tau).abs() < sum_epsilon {
             // Case of a degenerate face
-            return Err(format!("Face is likely degenerate: {:?}", face))?;
+            return Err(format!("Face is likely degenerate: {face:?}"))?;
         }
 
         // Triangulate the face by the following process:
@@ -590,7 +590,7 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
             let mut edge_to_faces: Vec<Vec<usize>> = Vec::new();
             let mut prev_edge = [usize::MAX; 2];
             for edge in boundary_2 {
-                if &prev_edge == &edge[0..2] {
+                if prev_edge == edge[0..2] {
                     edge_to_faces.last_mut().unwrap().push(edge[2]);
                 } else {
                     edge_to_faces.push(vec![edge[2]]);
@@ -845,7 +845,7 @@ impl TriangularMesh<f64> {
         let mut vertices = vertices1
             .clone() // TODO: remove clone
             .into_iter()
-            .chain(vertices2.clone().into_iter()) // TODO: remove clone
+            .chain(vertices2.clone()) // TODO: remove clone
             .collect::<Vec<_>>();
         let (avg, norm_avg) = normalize_vertices(&mut vertices);
         let triangles = triangles1
@@ -889,8 +889,8 @@ impl TriangularMesh<f64> {
                 count += 1;
                 let start = wdw[0];
                 let end = wdw[1];
-                for i in start + 1..end {
-                    map[i] = i - count;
+                for (i, v) in map.iter_mut().enumerate().take(end).skip(start + 1) {
+                    *v = i - count;
                 }
             }
             for (k, v) in vertex_map {
@@ -922,7 +922,7 @@ impl TriangularMesh<f64> {
             for (si, s) in triangles2.iter().copied().enumerate() {
                 let ss: [Coordinate; 3] = [vertices[s[0]], vertices[s[1]], vertices[s[2]]];
                 let Some(intersection) = triangles_intersection(tt, ss)
-                    .map_err(|e| format!("Error in triangle-triangle intersection: {}", e))?
+                    .map_err(|e| format!("Error in triangle-triangle intersection: {e}"))?
                 else {
                     continue;
                 };
@@ -1468,7 +1468,7 @@ pub mod tests {
         ];
         let face = LineString3D::new(face);
         let result = TriangularMesh::triangulate_face(face);
-        assert!(!result.is_err(), "Triangulation failed: {:?}", result.err());
+        assert!(result.is_ok(), "Triangulation failed: {:?}", result.err());
     }
 
     #[test]
@@ -1492,7 +1492,7 @@ pub mod tests {
         ];
         let face = LineString3D::new(face);
         let result = TriangularMesh::triangulate_face(face);
-        assert!(!result.is_err(), "Triangulation failed: {:?}", result.err());
+        assert!(result.is_ok(), "Triangulation failed: {:?}", result.err());
     }
 
     #[test]
@@ -1879,11 +1879,7 @@ pub mod tests {
             let c = union.vertices[t[2]];
             assert!(
                 (b - a).cross(&(c - a)).norm() > 1e-10,
-                "Degenerate triangle found: {:?}, vertices: {:.2?}, {:.2?}, {:.2?}",
-                t,
-                a,
-                b,
-                c
+                "Degenerate triangle found: {t:?}, vertices: {a:.2?}, {b:.2?}, {c:.2?}"
             );
         }
     }
@@ -1906,11 +1902,7 @@ pub mod tests {
             let c = union.vertices[t[2]];
             assert!(
                 (b - a).cross(&(c - a)).norm() > 1e-10,
-                "Degenerate triangle found: {:?}, vertices: {:.2?}, {:.2?}, {:.2?}",
-                t,
-                a,
-                b,
-                c
+                "Degenerate triangle found: {t:?}, vertices: {a:.2?}, {b:.2?}, {c:.2?}"
             );
         }
     }
@@ -1933,11 +1925,7 @@ pub mod tests {
             let c = union.vertices[t[2]];
             assert!(
                 (b - a).cross(&(c - a)).norm() > 1e-10,
-                "Degenerate triangle found: {:?}, vertices: {:.2?}, {:.2?}, {:.2?}",
-                t,
-                a,
-                b,
-                c
+                "Degenerate triangle found: {t:?}, vertices: {a:.2?}, {b:.2?}, {c:.2?}"
             );
         }
     }

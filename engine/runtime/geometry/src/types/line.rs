@@ -227,11 +227,7 @@ where
 
         let dot = line.end.dot(&p);
         let cross_norm = line.end.cross(&p).norm();
-        if cross_norm < epsilon && dot > -epsilon && p_norm < line_len + epsilon {
-            true
-        } else {
-            false
-        }
+        cross_norm < epsilon && dot > -epsilon && p_norm < line_len + epsilon
     }
 }
 
@@ -500,7 +496,7 @@ mod tests {
             Coordinate::new__(1.0, 1.0, 1.0),
         ];
         for p in &points_contained {
-            assert!(line.contains(*p), "Point {:?} should be contained", p);
+            assert!(line.contains(*p), "Point {p:?} should be contained");
         }
         let points_not_contained = [
             Coordinate::new__(1.0, 0.0, 0.0),
@@ -508,7 +504,7 @@ mod tests {
             Coordinate::new__(1.0, 1.1, 1.1),
         ];
         for p in &points_not_contained {
-            assert!(!line.contains(*p), "Point {:?} should not be contained", p);
+            assert!(!line.contains(*p), "Point {p:?} should not be contained");
         }
     }
 }

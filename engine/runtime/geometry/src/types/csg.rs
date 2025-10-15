@@ -87,7 +87,7 @@ impl CSG<f64, f64> {
         let mut right = right.as_triangle_mesh()?;
         let mut left = left.as_triangle_mesh()?;
         let mut union = left.clone().union(right.clone())?;
-        let (avg, norm) = normalize_vertices(&mut union.get_vertices_mut());
+        let (avg, norm) = normalize_vertices(union.get_vertices_mut());
         right
             .get_vertices_mut()
             .iter_mut()
