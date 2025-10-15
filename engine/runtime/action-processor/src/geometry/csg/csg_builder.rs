@@ -335,7 +335,7 @@ impl CSGBuilder {
             right_csg_child.clone(),
             CSGOperation::Intersection,
         );
-        let mut intersection_feature = left_feature.clone();
+        let mut intersection_feature = Feature::new();
         intersection_feature.geometry = Geometry {
             epsg: left_feature.geometry.epsg,
             value: GeometryValue::FlowGeometry3D(FlowGeometry3D::CSG(Box::new(intersection_csg))),
@@ -356,7 +356,7 @@ impl CSGBuilder {
             right_csg_child.clone(),
             CSGOperation::Union,
         );
-        let mut union_feature = left_feature.clone();
+        let mut union_feature = Feature::new();
         union_feature.geometry = Geometry {
             epsg: left_feature.geometry.epsg,
             value: GeometryValue::FlowGeometry3D(FlowGeometry3D::CSG(Box::new(union_csg))),
@@ -373,7 +373,7 @@ impl CSGBuilder {
 
         // Create and send difference CSG (left - right)
         let difference_csg = CSG::new(left_csg_child, right_csg_child, CSGOperation::Difference);
-        let mut difference_feature = left_feature.clone();
+        let mut difference_feature = Feature::new();
         difference_feature.geometry = Geometry {
             epsg: left_feature.geometry.epsg,
             value: GeometryValue::FlowGeometry3D(FlowGeometry3D::CSG(Box::new(difference_csg))),

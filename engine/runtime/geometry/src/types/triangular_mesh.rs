@@ -671,35 +671,7 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
             })
             .collect();
         self.triangles.sort_unstable();
-        self.edges_with_multiplicity = {
-            let mut edges: Vec<[usize; 2]> = Vec::new();
-            for triangle in &self.triangles {
-                for [i, j] in [[0, 1], [1, 2], [0, 2]] {
-                    let edge = if triangle[i] < triangle[j] {
-                        [triangle[i], triangle[j]]
-                    } else {
-                        [triangle[j], triangle[i]]
-                    };
-                    edges.push(edge);
-                }
-            }
-            edges.sort_unstable();
-            if edges.is_empty() {
-                return self.edges_with_multiplicity = Vec::new();
-            }
-            let mut edges_with_multiplicity = vec![(edges[0], 1)];
-            edges_with_multiplicity.reserve(edges.len());
-
-            for edge in edges.into_iter().skip(1) {
-                let (last_edge, count) = edges_with_multiplicity.last_mut().unwrap();
-                if *last_edge == edge {
-                    *count += 1;
-                } else {
-                    edges_with_multiplicity.push((edge, 1));
-                }
-            }
-            edges_with_multiplicity
-        }
+        self.edges_with_multiplicity = Self::compute_edges_with_multiplicity(&self.triangles);
     }
 }
 

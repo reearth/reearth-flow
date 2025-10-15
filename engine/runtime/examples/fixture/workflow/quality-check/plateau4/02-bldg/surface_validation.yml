@@ -1425,6 +1425,27 @@ edges:
     fromPort: lod1
     toPort: default
 
+  # LODSplitterWithDM lod2 port to PairCreator
+  - id: 93f81dc2-f008-5db1-93ed-7cf6679e7ae7
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    fromPort: lod2
+    toPort: default
+
+  # LODSplitterWithDM lod3 port to PairCreator
+  - id: a4f92ed3-f119-6ec2-a4fe-8df7789e8bf8
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    fromPort: lod3
+    toPort: default
+
+  # LODSplitterWithDM lod4 port to PairCreator
+  - id: b5fa3fe4-f22a-7fd3-b5ff-9ef889af9cf9
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    fromPort: lod4
+    toPort: default
+
   # PairCreator to CSGBuilder
   - id: dcaf752a-215c-45af-aa7e-891499cd9442
     from: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641

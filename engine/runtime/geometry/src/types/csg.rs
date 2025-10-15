@@ -191,12 +191,15 @@ impl CSG<f64, f64> {
             };
             match self.operation {
                 CSGOperation::Union => {
-                    if !from_left && right.contains(&center) || left.contains(&center) && from_left {
+                    if !from_left && right.contains(&center) || left.contains(&center) && from_left
+                    {
                         result_faces.append(&mut two_manifold);
                     }
                 }
                 CSGOperation::Intersection => {
-                    if from_left && right.bounding_solid_contains(&center) || left.bounding_solid_contains(&center) && from_right {
+                    if from_left && right.bounding_solid_contains(&center)
+                        || left.bounding_solid_contains(&center) && from_right
+                    {
                         result_faces.append(&mut two_manifold);
                     }
                 }
