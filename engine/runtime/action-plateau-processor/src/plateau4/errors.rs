@@ -43,6 +43,8 @@ pub(super) enum PlateauProcessorError {
     BuildingPartConnectivityCheckerFactory(String),
     #[error("SolidIntersectionTestPairCreator error: {0}")]
     SolidIntersectionTestPairCreator(String),
+    #[error("SolidIntersectionTestPairCreator Factory error: {0}")]
+    SolidIntersectionTestPairCreatorFactory(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;
