@@ -18,25 +18,7 @@ func (r *mutationResolver) CreateAsset(ctx context.Context, input gqlmodel.Creat
 		return nil, err
 	}
 
-	res, err := usecases(ctx).Asset.Create(ctx, interfaces.CreateAssetParam{
-		WorkspaceID: wid,
-		File:        gqlmodel.FromFile(&input.File),
-		Name:        input.Name,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return &gqlmodel.CreateAssetPayload{Asset: gqlmodel.ToAsset(res)}, nil
-}
-
-func (r *mutationResolver) CreateAssetFromUpload(ctx context.Context, input gqlmodel.CreateAssetFromUploadInput) (*gqlmodel.CreateAssetPayload, error) {
-	wid, err := gqlmodel.ToID[id.Workspace](input.WorkspaceID)
-	if err != nil {
-		return nil, err
-	}
-
-	params := interfaces.CreateAssetFromUploadParam{
+	params := interfaces.CreateAssetParam{
 		WorkspaceID: wid,
 		File:        gqlmodel.FromFile(input.File),
 		Name:        input.Name,
@@ -49,7 +31,7 @@ func (r *mutationResolver) CreateAssetFromUpload(ctx context.Context, input gqlm
 	}
 	params.Token = lo.FromPtr(input.Token)
 
-	res, err := usecases(ctx).Asset.CreateFromUpload(ctx, params)
+	res, err := usecases(ctx).Asset.Create(ctx, params)
 	if err != nil {
 		return nil, err
 	}

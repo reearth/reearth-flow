@@ -68,11 +68,7 @@ func (i *Asset) FindByWorkspace(ctx context.Context, wid id.WorkspaceID, keyword
 	)
 }
 
-func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam) (result *asset.Asset, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return nil, err
-	}
-
+func (i *Asset) createFromFile(ctx context.Context, inp interfaces.CreateAssetParam) (result *asset.Asset, err error) {
 	if inp.File == nil {
 		return nil, interfaces.ErrFileNotIncluded
 	}
@@ -117,13 +113,13 @@ func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam) (re
 	return a, nil
 }
 
-func (i *Asset) CreateFromUpload(ctx context.Context, inp interfaces.CreateAssetFromUploadParam) (result *asset.Asset, err error) {
+func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam) (result *asset.Asset, err error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, err
 	}
 
 	if inp.File != nil {
-		return i.Create(ctx, interfaces.CreateAssetParam{
+		return i.createFromFile(ctx, interfaces.CreateAssetParam{
 			WorkspaceID: inp.WorkspaceID,
 			File:        inp.File,
 			Name:        inp.Name,

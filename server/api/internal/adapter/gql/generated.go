@@ -281,7 +281,6 @@ type ComplexityRoot struct {
 		CancelJob                 func(childComplexity int, input gqlmodel.CancelJobInput) int
 		CopyProject               func(childComplexity int, projectID gqlmodel.ID, source gqlmodel.ID) int
 		CreateAsset               func(childComplexity int, input gqlmodel.CreateAssetInput) int
-		CreateAssetFromUpload     func(childComplexity int, input gqlmodel.CreateAssetFromUploadInput) int
 		CreateAssetUpload         func(childComplexity int, input gqlmodel.CreateAssetUploadInput) int
 		CreateDeployment          func(childComplexity int, input gqlmodel.CreateDeploymentInput) int
 		CreateProject             func(childComplexity int, input gqlmodel.CreateProjectInput) int
@@ -569,7 +568,6 @@ type MeResolver interface {
 }
 type MutationResolver interface {
 	CreateAsset(ctx context.Context, input gqlmodel.CreateAssetInput) (*gqlmodel.CreateAssetPayload, error)
-	CreateAssetFromUpload(ctx context.Context, input gqlmodel.CreateAssetFromUploadInput) (*gqlmodel.CreateAssetPayload, error)
 	UpdateAsset(ctx context.Context, input gqlmodel.UpdateAssetInput) (*gqlmodel.UpdateAssetPayload, error)
 	DeleteAsset(ctx context.Context, input gqlmodel.DeleteAssetInput) (*gqlmodel.DeleteAssetPayload, error)
 	CreateAssetUpload(ctx context.Context, input gqlmodel.CreateAssetUploadInput) (*gqlmodel.CreateAssetUploadPayload, error)
@@ -1540,17 +1538,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.CreateAsset(childComplexity, args["input"].(gqlmodel.CreateAssetInput)), true
-	case "Mutation.createAssetFromUpload":
-		if e.complexity.Mutation.CreateAssetFromUpload == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_createAssetFromUpload_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.CreateAssetFromUpload(childComplexity, args["input"].(gqlmodel.CreateAssetFromUploadInput)), true
 	case "Mutation.createAssetUpload":
 		if e.complexity.Mutation.CreateAssetUpload == nil {
 			break
@@ -2983,7 +2970,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputAPIDriverInput,
 		ec.unmarshalInputAddMemberToWorkspaceInput,
 		ec.unmarshalInputCancelJobInput,
-		ec.unmarshalInputCreateAssetFromUploadInput,
 		ec.unmarshalInputCreateAssetInput,
 		ec.unmarshalInputCreateAssetUploadInput,
 		ec.unmarshalInputCreateDeploymentInput,
@@ -3233,14 +3219,7 @@ enum ArchiveExtractionStatus {
 }
 
 # InputType
-
 input CreateAssetInput {
-  workspaceId: ID!
-  file: Upload!
-  name: String
-}
-
-input CreateAssetFromUploadInput {
   workspaceId: ID!
   file: Upload
   name: String
@@ -3309,7 +3288,6 @@ extend type Query {
 
 extend type Mutation {
   createAsset(input: CreateAssetInput!): CreateAssetPayload
-  createAssetFromUpload(input: CreateAssetFromUploadInput!): CreateAssetPayload
   updateAsset(input: UpdateAssetInput!): UpdateAssetPayload
   deleteAsset(input: DeleteAssetInput!): DeleteAssetPayload
   createAssetUpload(input: CreateAssetUploadInput!): CreateAssetUploadPayload
@@ -4257,17 +4235,6 @@ func (ec *executionContext) field_Mutation_copyProject_args(ctx context.Context,
 		return nil, err
 	}
 	args["source"] = arg1
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_createAssetFromUpload_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateAssetFromUploadInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCreateAssetFromUploadInput)
-	if err != nil {
-		return nil, err
-	}
-	args["input"] = arg0
 	return args, nil
 }
 
@@ -9534,51 +9501,6 @@ func (ec *executionContext) fieldContext_Mutation_createAsset(ctx context.Contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_createAsset_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_createAssetFromUpload(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_createAssetFromUpload,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Mutation().CreateAssetFromUpload(ctx, fc.Args["input"].(gqlmodel.CreateAssetFromUploadInput))
-		},
-		nil,
-		ec.marshalOCreateAssetPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCreateAssetPayload,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Mutation_createAssetFromUpload(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "asset":
-				return ec.fieldContext_CreateAssetPayload_asset(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type CreateAssetPayload", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_createAssetFromUpload_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -18336,8 +18258,8 @@ func (ec *executionContext) unmarshalInputCancelJobInput(ctx context.Context, ob
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputCreateAssetFromUploadInput(ctx context.Context, obj any) (gqlmodel.CreateAssetFromUploadInput, error) {
-	var it gqlmodel.CreateAssetFromUploadInput
+func (ec *executionContext) unmarshalInputCreateAssetInput(ctx context.Context, obj any) (gqlmodel.CreateAssetInput, error) {
+	var it gqlmodel.CreateAssetInput
 	asMap := map[string]any{}
 	for k, v := range obj.(map[string]any) {
 		asMap[k] = v
@@ -18385,47 +18307,6 @@ func (ec *executionContext) unmarshalInputCreateAssetFromUploadInput(ctx context
 				return it, err
 			}
 			it.Token = data
-		}
-	}
-
-	return it, nil
-}
-
-func (ec *executionContext) unmarshalInputCreateAssetInput(ctx context.Context, obj any) (gqlmodel.CreateAssetInput, error) {
-	var it gqlmodel.CreateAssetInput
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"workspaceId", "file", "name"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "workspaceId":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceId"))
-			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.WorkspaceID = data
-		case "file":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("file"))
-			data, err := ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.File = data
-		case "name":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Name = data
 		}
 	}
 
@@ -21804,10 +21685,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "createAsset":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createAsset(ctx, field)
-			})
-		case "createAssetFromUpload":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_createAssetFromUpload(ctx, field)
 			})
 		case "updateAsset":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
@@ -25215,11 +25092,6 @@ func (ec *executionContext) marshalNCancelJobPayload2ᚖgithubᚗcomᚋreearth�
 		return graphql.Null
 	}
 	return ec._CancelJobPayload(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNCreateAssetFromUploadInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCreateAssetFromUploadInput(ctx context.Context, v any) (gqlmodel.CreateAssetFromUploadInput, error) {
-	res, err := ec.unmarshalInputCreateAssetFromUploadInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNCreateAssetInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCreateAssetInput(ctx context.Context, v any) (gqlmodel.CreateAssetInput, error) {

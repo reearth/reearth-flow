@@ -29,14 +29,7 @@ enum ArchiveExtractionStatus {
 }
 
 # InputType
-
 input CreateAssetInput {
-  workspaceId: ID!
-  file: Upload!
-  name: String
-}
-
-input CreateAssetFromUploadInput {
   workspaceId: ID!
   file: Upload
   name: String
@@ -105,7 +98,6 @@ extend type Query {
 
 extend type Mutation {
   createAsset(input: CreateAssetInput!): CreateAssetPayload
-  createAssetFromUpload(input: CreateAssetFromUploadInput!): CreateAssetPayload
   updateAsset(input: UpdateAssetInput!): UpdateAssetPayload
   deleteAsset(input: DeleteAssetInput!): DeleteAssetPayload
   createAssetUpload(input: CreateAssetUploadInput!): CreateAssetUploadPayload

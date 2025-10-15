@@ -117,68 +117,6 @@ func TestCreateAsset(t *testing.T) {
 	asset.Value("url").String().NotEmpty()
 }
 
-func TestCreateAssetFromUpload(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	operator := factory.NewUser(func(b *pkguser.Builder) {})
-	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
-	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil)
-	mock := &TestMocks{
-		UserRepo: mockUserRepo,
-	}
-
-	e, _ := StartGQLServer(t, &config.Config{
-		Origins: []string{"https://example.com"},
-		AuthSrv: config.AuthSrvConfig{
-			Disabled: true,
-		},
-	}, true, true, mock)
-
-	// Create multipart form with file upload
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-
-	// Add operations field
-	operations := fmt.Sprintf(`{
-		"query": "mutation CreateAssetFromUpload($file: Upload!) { createAssetFromUpload(input: {workspaceId: \"%s\", file: $file, name: \"nice-name.png\"}) { asset { id fileName name size contentType url } } }",
-		"variables": { "file": null }
-	}`, wId1)
-	_ = writer.WriteField("operations", operations)
-
-	// Add map field
-	_ = writer.WriteField("map", `{ "0": ["variables.file"] }`)
-
-	// Add file field with proper content type
-	h := make(textproto.MIMEHeader)
-	h.Set("Content-Disposition", `form-data; name="0"; filename="test.png"`)
-	h.Set("Content-Type", "image/png")
-	fileWriter, err := writer.CreatePart(h)
-	assert.NoError(t, err)
-	_, err = fileWriter.Write([]byte("fake png content"))
-	assert.NoError(t, err)
-
-	err = writer.Close()
-	assert.NoError(t, err)
-
-	// Send request
-	o := e.POST("/api/graphql").
-		WithHeader("authorization", "Bearer test").
-		WithHeader("X-Reearth-Debug-User", uId1.String()).
-		WithHeader("Content-Type", writer.FormDataContentType()).
-		WithBytes(body.Bytes()).
-		Expect().
-		Status(http.StatusOK).
-		JSON().
-		Object()
-
-	asset := o.Value("data").Object().Value("createAssetFromUpload").Object().Value("asset").Object()
-	asset.Value("fileName").String().IsEqual("test.png")
-	asset.Value("size").Number().Gt(0)
-	asset.Value("contentType").String().IsEqual("image/png")
-	asset.Value("url").String().NotEmpty()
-}
-
 func TestDeleteAsset(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -451,7 +389,7 @@ func TestWorkspaceAssetsQuery(t *testing.T) {
 	o.Value("data").Object().Value("node").Object().Value("assets").Object().Value("nodes").Array().IsEmpty()
 }
 
-func TestCreateAssetUpload_Simple(t *testing.T) {
+func TestCreateAssetUpload(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
