@@ -293,6 +293,7 @@ pub fn linestring_has_self_intersection<T: GeoNum, Z: GeoNum>(geom: &LineString<
     false
 }
 
+#[derive(Debug)]
 pub struct PointsCoplanar {
     pub normal: Point3D<f64>,
     pub center: Point3D<f64>,
@@ -527,11 +528,12 @@ pub fn circumcenter(
     a: Coordinate<f64>,
     b: Coordinate<f64>,
     c: Coordinate<f64>,
-) -> Option<(Coordinate<f64>, f64)> {
+) -> Result<(Coordinate<f64>, f64), String> {
+    let t = [a, b, c];
     // Work in the triangle's plane basis: x = A + α(B−A) + β(C−A),
     // with constraints x·(B−A) = |B−A|²/2 and x·(C−A) = |C−A|²/2.
-    let ab = b - a;
-    let ac = c - a;
+    let ab = t[1] - t[0];
+    let ac = t[2] - t[0];
 
     let g11 = ab.dot(&ab);
     let g12 = ab.dot(&ac);
@@ -541,7 +543,7 @@ pub fn circumcenter(
     let det = g11 * g22 - g12 * g12;
     let eps = 1e-10 * (g11 + g22).max(1.0);
     if det.abs() < eps {
-        return None;
+        return Err(format!("Degenerate triangle: [{a:?}, {b:?}, {c:?}]"));
     }
 
     let rhs1 = 0.5 * g11;
@@ -552,7 +554,7 @@ pub fn circumcenter(
 
     let center = a + ab * alpha + ac * beta;
     let radius = (center - a).norm();
-    Some((center, radius))
+    Ok((center, radius))
 }
 
 #[cfg(test)]
@@ -639,5 +641,17 @@ mod tests {
             Coordinate::new__(1.0, 0.0, 0.0),
             Coordinate::new__(0.0, 0.0, 0.0),
         ])
+    }
+
+    #[test]
+    fn circum_center_test() {
+        let a = Coordinate::new__(0.0, 0.0, 0.0);
+        let b = Coordinate::new__(2.0, 0.0, 0.0);
+        let c = Coordinate::new__(1.0, 3_f64.sqrt(), 0.0);
+        let (center, radius) = circumcenter(a, b, c).unwrap();
+        assert!((center.x - 1.0).abs() < 1e-10);
+        assert!((center.y - 1.0 / 3_f64.sqrt()).abs() < 1e-10);
+        assert!((center.z - 0.0).abs() < 1e-10);
+        assert!((radius - 2.0 / (3_f64).sqrt()).abs() < 1e-10);
     }
 }

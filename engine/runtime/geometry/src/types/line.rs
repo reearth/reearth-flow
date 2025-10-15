@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
-use std::ops::Mul;
+use std::ops::{Div, Mul};
 
 use approx::{AbsDiffEq, RelativeEq};
 use geo_types::Line as GeoLine;
@@ -92,6 +92,11 @@ impl<T: CoordNum, Z: CoordNum> Line<T, Z> {
 impl<T: CoordFloat + From<Z>, Z: CoordFloat + Mul<T, Output = Z>> Line<T, Z> {
     /// Smallest distance between segments `self` and `other`.
     pub fn distance(&self, other: &Self) -> T {
+        let (p, q) = self.closest_points(other);
+        (p - q).norm()
+    }
+
+    pub fn closest_points(&self, other: &Self) -> (Coordinate<T, Z>, Coordinate<T, Z>) {
         #[inline]
         fn clamp<T: PartialOrd>(x: T, lo: T, hi: T) -> T {
             if x < lo {
@@ -118,15 +123,15 @@ impl<T: CoordFloat + From<Z>, Z: CoordFloat + Mul<T, Output = Z>> Line<T, Z> {
 
         // Degenerate cases (point vs point/segment)
         if a <= epsilon && c <= epsilon {
-            return (self.start - other.start).norm();
+            return (self.start, other.start);
         }
         if a <= epsilon {
             let t = clamp(e / c, T::zero(), T::one());
-            return (self.start - (other.start + v * t)).norm();
+            return (self.start, (other.start + v * t));
         }
         if c <= epsilon {
             let s = clamp(-d / a, T::zero(), T::one());
-            return (self.start + u * s - other.start).norm();
+            return (self.start + u * s, other.start);
         }
 
         // General case
@@ -188,7 +193,41 @@ impl<T: CoordFloat + From<Z>, Z: CoordFloat + Mul<T, Output = Z>> Line<T, Z> {
 
         let cp = self.start + u * s;
         let cq = other.start + v * t;
-        (cp - cq).norm()
+        (cp, cq)
+    }
+}
+
+impl<T, Z> Line<T, Z>
+where
+    T: CoordFloat + From<Z>,
+    Z: CoordFloat + Mul<T, Output = Z> + Div<T, Output = Z>,
+{
+    pub fn intersection(&self, other: &Self, epsilon: Option<T>) -> Option<Coordinate<T, Z>> {
+        let (cp, cq) = self.closest_points(other);
+        let d = (cp - cq).norm();
+        if d < epsilon.unwrap_or(<T as NumCast>::from(1e-5).unwrap_or_default()) {
+            Some((cp + cq) / <T as NumCast>::from(2.0).unwrap_or_default())
+        } else {
+            None
+        }
+    }
+
+    pub fn contains(&self, mut p: Coordinate<T, Z>) -> bool {
+        let epsilon = <T as NumCast>::from(1e-5).unwrap_or_default();
+        let mut line = *self;
+        p = p - self.start;
+        line.end = line.end - line.start;
+        line.start = Coordinate::zero();
+
+        let line_len = line.end.norm();
+        let p_norm = p.norm();
+        let norm = if line_len < p_norm { p_norm } else { line_len };
+        line.end = line.end / norm;
+        p = p / norm;
+
+        let dot = line.end.dot(&p);
+        let cross_norm = line.end.cross(&p).norm();
+        cross_norm < epsilon && dot > -epsilon && p_norm < line_len + epsilon
     }
 }
 
@@ -441,5 +480,31 @@ mod tests {
 
         let line4 = Line3D::new_((2.0, 0.0, 0.0), (3.0, 0.0, 0.0));
         assert!((line1.distance(&line4) - 1_f64).abs() < 1e-6);
+
+        let line5 = Line3D::new_((0.0, 0.0, 0.0), (1.0, 1.0, 1.0));
+        let line6 = Line3D::new_((1.0, 0.0, 0.0), (0.0, 1.0, 1.0));
+        assert!(line5.distance(&line6) < 1e-6);
+    }
+
+    #[test]
+    fn test_line_contains() {
+        let line = Line3D::new_((0.0, 0.0, 0.0), (1.0, 1.0, 1.0));
+        let points_contained = [
+            Coordinate::new__(0.0, 0.0, 0.0),
+            Coordinate::new__(1e-12, 0.0, 1e-12),
+            Coordinate::new__(0.5 + 1e-12, 0.5, 0.5),
+            Coordinate::new__(1.0, 1.0, 1.0),
+        ];
+        for p in &points_contained {
+            assert!(line.contains(*p), "Point {p:?} should be contained");
+        }
+        let points_not_contained = [
+            Coordinate::new__(1.0, 0.0, 0.0),
+            Coordinate::new__(0.5, 0.5, 0.6),
+            Coordinate::new__(1.0, 1.1, 1.1),
+        ];
+        for p in &points_not_contained {
+            assert!(!line.contains(*p), "Point {p:?} should not be contained");
+        }
     }
 }

@@ -10,9 +10,19 @@ use crate::{
         GeoNum, Relate,
     },
     types::{
-        coordinate::Coordinate, face::Face, geometry::Geometry, line::Line,
-        line_string::LineString, multi_line_string::MultiLineString, multi_point::MultiPoint,
-        multi_polygon::MultiPolygon, point::Point, polygon::Polygon, rect::Rect, solid::Solid,
+        coordinate::Coordinate,
+        csg::{CSGChild, CSG},
+        face::Face,
+        geometry::Geometry,
+        line::Line,
+        line_string::LineString,
+        multi_line_string::MultiLineString,
+        multi_point::MultiPoint,
+        multi_polygon::MultiPolygon,
+        point::Point,
+        polygon::Polygon,
+        rect::Rect,
+        solid::Solid,
     },
     utils,
 };
@@ -289,6 +299,23 @@ pub trait Validator<
 >
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport>;
+}
+
+impl<
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+    > Validator<T, Z> for CSG<T, Z>
+{
+    fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
+        match self.left() {
+            CSGChild::Solid(solid) => solid.validate(valid_type.clone()),
+            CSGChild::CSG(csg) => csg.validate(valid_type.clone()),
+        }
+        .or_else(|| match self.right() {
+            CSGChild::Solid(solid) => solid.validate(valid_type.clone()),
+            CSGChild::CSG(csg) => csg.validate(valid_type),
+        })
+    }
 }
 
 impl<
@@ -754,23 +781,8 @@ impl<
         Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
     > Validator<T, Z> for Solid<T, Z>
 {
-    fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
-        let mut reason = Vec::new();
-        for (idx, face) in self.all_faces().iter().enumerate() {
-            if let Some(result) = face.validate(valid_type.clone()) {
-                for problem in result.0.iter() {
-                    reason.push(ValidationProblemAtPosition(
-                        problem.0.clone(),
-                        ValidationProblemPosition::Solid(GeometryPosition(idx as isize)),
-                    ));
-                }
-            }
-        }
-        if reason.is_empty() {
-            None
-        } else {
-            Some(ValidationProblemReport(reason))
-        }
+    fn validate(&self, _valid_type: ValidationType) -> Option<ValidationProblemReport> {
+        unimplemented!()
     }
 }
 
@@ -805,6 +817,7 @@ impl<
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         match self {
+            Geometry::CSG(csg) => csg.validate(valid_type),
             Geometry::Point(p) => p.validate(valid_type),
             Geometry::Line(l) => l.validate(valid_type),
             Geometry::LineString(ls) => ls.validate(valid_type),

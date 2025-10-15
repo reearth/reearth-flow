@@ -14,6 +14,7 @@ use super::{
     max_lod_extractor::MaxLodExtractorFactory,
     missing_attribute_detector::MissingAttributeDetectorFactory,
     object_list_extractor::ObjectListExtractorFactory,
+    solid_intersection_test_pair_creator::SolidIntersectionTestPairCreatorFactory,
     udx_folder_extractor::UDXFolderExtractorFactory,
     unmatched_xlink_detector::UnmatchedXlinkDetectorFactory,
 };
@@ -32,6 +33,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<MissingAttributeDetectorFactory>::default(),
         Box::<DomainOfDefinitionValidatorFactory>::default(),
         Box::<UnmatchedXlinkDetectorFactory>::default(),
+        Box::<SolidIntersectionTestPairCreatorFactory>::default(),
     ];
     factories
         .into_iter()

@@ -2,6 +2,7 @@ use std::fmt::Display;
 use std::hash::Hash;
 
 use nusamai_projection::vshift::Jgd2011ToWgs84;
+use reearth_flow_geometry::types::coordinate::Coordinate3D;
 use reearth_flow_geometry::types::coordnum::CoordNum;
 use reearth_flow_geometry::types::line_string::LineString3D;
 use reearth_flow_geometry::types::traits::Elevation;
@@ -209,6 +210,25 @@ impl CityGmlGeometry {
         self.gml_geometries
             .iter_mut()
             .for_each(|feature| feature.transform_offset(x, y, z));
+    }
+
+    pub fn get_vertices(&self) -> Vec<Coordinate3D<f64>> {
+        let mut vertices = Vec::new();
+        for gml_geometry in &self.gml_geometries {
+            for polygon in &gml_geometry.polygons {
+                for line in &polygon.rings() {
+                    for point in line {
+                        vertices.push(*point);
+                    }
+                }
+            }
+            for line_string in &gml_geometry.line_strings {
+                for point in line_string {
+                    vertices.push(*point);
+                }
+            }
+        }
+        vertices
     }
 }
 

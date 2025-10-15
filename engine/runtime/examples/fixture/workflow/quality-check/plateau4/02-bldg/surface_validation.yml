@@ -924,6 +924,74 @@ nodes:
     with:
       routingPort: errorCountLod1SolidIssues
 
+  # Solid Intersection Test
+  - id: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    name: PLATEAU4.SolidIntersectionTestPairCreator
+    type: action
+    action: PLATEAU4.SolidIntersectionTestPairCreator
+
+  - id: dfd0a1f5-b49e-4eb0-b1f0-6375fac58a54
+    name: CSGBuilder
+    type: action
+    action: CSGBuilder
+    with:
+      pairIdAttribute: env.get("__value").pair_id
+      createList: true
+      listAttributeName: attrList
+
+  - id: 155cb125-9e89-4825-b505-4b2f2b6dbe0d
+    name: CSGEvaluator
+    type: action
+    action: CSGEvaluator
+    with:
+      operation: intersection
+
+  - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
+    name: AttributeMapperSolidIntersection
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: intersection_id
+          expr: |
+            "lod" + env.get("__value").attrList[0].lod + "_" + env.get("__value").attrList[0].pair_id
+        - attribute: gmlFilenameA
+          expr: |
+            env.get("__value").attrList[0].gmlFilename
+        - attribute: gmlFilenameB
+          expr: |
+            env.get("__value").attrList[1].gmlFilename
+        - attribute: featureTypeA
+          expr: |
+            env.get("__value").attrList[0].featureType
+        - attribute: featureTypeB
+          expr: |
+            env.get("__value").attrList[1].featureType
+        - attribute: lodA
+          expr: |
+            env.get("__value").attrList[0].lod
+        - attribute: lodB
+          expr: |
+            env.get("__value").attrList[1].lod
+        - attribute: gmlIdA
+          expr: |
+            env.get("__value").attrList[0].gmlId
+        - attribute: gmlIdB
+          expr: |
+            env.get("__value").attrList[1].gmlId
+        - attribute: issue
+          expr: |
+            "Solid Intersection"
+
+  - id: 99cbea75-f9dc-429c-9d42-0213a893090d
+    name: FeatureWriterLod1SolidIntersection
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_立体交差.csv")
+
 edges:
   - id: 8c4d7e2a-5b6f-4918-a3e5-9d1c8b7a6e4f
     from: 5d8f3c2e-9a4b-4e1c-8f7a-3c5d9e2b8a1f
@@ -1345,6 +1413,76 @@ edges:
   # Connect FeatureWriterL14-BoundaryOtherIssues to OutputRouter
   - id: 9c0d1e2f-3a4b-5c6d-7e8f-9a0b1c2d3e4f
     from: 527087b4-0411-49bd-ae5f-c1c7f9a5ccb8
+    to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
+    fromPort: default
+    toPort: default
+
+  # Solid Intersection Test - 
+  # LODSplitterWithDM lod1 port to PairCreator
+  - id: 82f70cb1-eff7-4c90-82dc-6bf5568d69d6
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    fromPort: lod1
+    toPort: default
+
+  # LODSplitterWithDM lod2 port to PairCreator
+  - id: 93f81dc2-f008-5db1-93ed-7cf6679e7ae7
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    fromPort: lod2
+    toPort: default
+
+  # LODSplitterWithDM lod3 port to PairCreator
+  - id: a4f92ed3-f119-6ec2-a4fe-8df7789e8bf8
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    fromPort: lod3
+    toPort: default
+
+  # LODSplitterWithDM lod4 port to PairCreator
+  - id: b5fa3fe4-f22a-7fd3-b5ff-9ef889af9cf9
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    fromPort: lod4
+    toPort: default
+
+  # PairCreator to CSGBuilder
+  - id: dcaf752a-215c-45af-aa7e-891499cd9442
+    from: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    to: dfd0a1f5-b49e-4eb0-b1f0-6375fac58a54
+    fromPort: A
+    toPort: left
+
+  - id: 540094e9-bf1e-441b-81a6-6dc100dcce64
+    from: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    to: dfd0a1f5-b49e-4eb0-b1f0-6375fac58a54
+    fromPort: B
+    toPort: right
+
+  # CSGBuilder to CSGEvaluator
+  - id: 4da64202-0338-46ad-845e-218ed18ccffe
+    from: dfd0a1f5-b49e-4eb0-b1f0-6375fac58a54
+    to: 155cb125-9e89-4825-b505-4b2f2b6dbe0d
+    fromPort: intersection
+    toPort: default
+
+  # CSGEvaluator to AttributeMapper
+  - id: 0b0a1fe2-a82c-47a6-8ad6-37d69a41f082
+    from: 155cb125-9e89-4825-b505-4b2f2b6dbe0d
+    to: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
+    fromPort: default
+    toPort: default
+
+  # AttributeMapper to FeatureWriter
+  - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e
+    from: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
+    to: 99cbea75-f9dc-429c-9d42-0213a893090d
+    fromPort: default
+    toPort: default
+
+  # FeatureWriter to OutputRouter
+  - id: bfc311f4-11fd-4193-b43a-491feb5cecfa
+    from: 99cbea75-f9dc-429c-9d42-0213a893090d
     to: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
     fromPort: default
     toPort: default

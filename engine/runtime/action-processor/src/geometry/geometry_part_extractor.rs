@@ -229,7 +229,7 @@ fn extract_surfaces_from_solid_2d(
     }
 
     // Extract all faces as surfaces
-    for face in faces {
+    for face in &faces {
         create_surface_feature_from_face_2d(face, feature, ctx, fw);
     }
     true
@@ -247,7 +247,7 @@ fn extract_surfaces_from_solid_3d(
     }
 
     // Extract all faces as surfaces
-    for face in faces {
+    for face in &faces {
         create_surface_feature_from_face_3d(face, feature, ctx, fw);
     }
     true
