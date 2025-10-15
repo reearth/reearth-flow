@@ -3219,11 +3219,11 @@ enum ArchiveExtractionStatus {
 }
 
 # InputType
+
 input CreateAssetInput {
   workspaceId: ID!
   file: Upload
   name: String
-  url: String
   token: String
 }
 
@@ -18265,7 +18265,7 @@ func (ec *executionContext) unmarshalInputCreateAssetInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceId", "file", "name", "url", "token"}
+	fieldsInOrder := [...]string{"workspaceId", "file", "name", "token"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -18293,13 +18293,6 @@ func (ec *executionContext) unmarshalInputCreateAssetInput(ctx context.Context, 
 				return it, err
 			}
 			it.Name = data
-		case "url":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("url"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.URL = data
 		case "token":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("token"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)

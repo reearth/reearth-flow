@@ -6,7 +6,6 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
-	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/samber/lo"
@@ -18,20 +17,12 @@ func (r *mutationResolver) CreateAsset(ctx context.Context, input gqlmodel.Creat
 		return nil, err
 	}
 
-	params := interfaces.CreateAssetParam{
+	res, err := usecases(ctx).Asset.Create(ctx, interfaces.CreateAssetParam{
 		WorkspaceID: wid,
 		File:        gqlmodel.FromFile(input.File),
 		Name:        input.Name,
-	}
-	if input.URL != nil {
-		params.File, err = file.FromURL(ctx, *input.URL)
-		if err != nil {
-			return nil, err
-		}
-	}
-	params.Token = lo.FromPtr(input.Token)
-
-	res, err := usecases(ctx).Asset.Create(ctx, params)
+		Token:       lo.FromPtr(input.Token),
+	})
 	if err != nil {
 		return nil, err
 	}

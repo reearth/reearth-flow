@@ -150,7 +150,6 @@ type CreateAssetInput struct {
 	WorkspaceID ID              `json:"workspaceId"`
 	File        *graphql.Upload `json:"file,omitempty"`
 	Name        *string         `json:"name,omitempty"`
-	URL         *string         `json:"url,omitempty"`
 	Token       *string         `json:"token,omitempty"`
 }
 

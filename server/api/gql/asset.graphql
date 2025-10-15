@@ -29,11 +29,11 @@ enum ArchiveExtractionStatus {
 }
 
 # InputType
+
 input CreateAssetInput {
   workspaceId: ID!
   file: Upload
   name: String
-  url: String
   token: String
 }
 
