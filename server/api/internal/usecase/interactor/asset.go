@@ -16,6 +16,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
+	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/workspace"
 	"github.com/reearth/reearthx/rerror"
@@ -110,6 +111,93 @@ func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam) (re
 	}
 
 	if err := i.repos.Asset.Save(ctx, a); err != nil {
+		return nil, err
+	}
+
+	return a, nil
+}
+
+func (i *Asset) CreateFromUpload(ctx context.Context, inp interfaces.CreateAssetFromUploadParam) (result *asset.Asset, err error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
+	if inp.File != nil {
+		return i.Create(ctx, interfaces.CreateAssetParam{
+			WorkspaceID: inp.WorkspaceID,
+			File:        inp.File,
+			Name:        inp.Name,
+		})
+	}
+
+	if inp.Token == "" {
+		return nil, interfaces.ErrFileNotIncluded
+	}
+
+	var file *file.File
+
+	a, err := Run1(
+		ctx, i.repos,
+		Usecase().Transaction(),
+		func(ctx context.Context) (*asset.Asset, error) {
+			uuid := inp.Token
+			u, err := i.repos.AssetUpload.FindByID(ctx, uuid)
+			if err != nil {
+				return nil, err
+			}
+			if u.Expired(time.Now()) {
+				return nil, rerror.ErrInternalBy(fmt.Errorf("expired upload token: %s", uuid))
+			}
+			file, err = i.gateways.File.UploadedAsset(ctx, u)
+			if err != nil {
+				return nil, err
+			}
+
+			publicURL, err := i.gateways.File.GetPublicAssetURL(uuid, u.FileName())
+			if err != nil {
+				return nil, err
+			}
+			var assetURL string
+			if publicURL != nil {
+				assetURL = publicURL.String()
+			}
+
+			// Use custom name if provided, otherwise use filename
+			name := path.Base(file.Path)
+			if inp.Name != nil && *inp.Name != "" {
+				name = *inp.Name
+			}
+
+			// Get user ID from context
+			user := adapter.User(ctx)
+			if user == nil {
+				return nil, interfaces.ErrOperationDenied
+			}
+
+			ab := asset.New().
+				NewID().
+				Workspace(inp.WorkspaceID).
+				CreatedByUser(user.ID()).
+				FileName(path.Base(file.Path)).
+				Name(name).
+				Size(uint64(file.Size)).
+				URL(assetURL).
+				ContentType(file.ContentType).
+				UUID(uuid)
+
+			a, err := ab.Build()
+			if err != nil {
+				return nil, err
+			}
+
+			if err := i.repos.Asset.Save(ctx, a); err != nil {
+				return nil, err
+			}
+
+			return a, nil
+		})
+
+	if err != nil {
 		return nil, err
 	}
 

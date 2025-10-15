@@ -23,6 +23,13 @@ type CreateAssetParam struct {
 	Name        *string
 }
 
+type CreateAssetFromUploadParam struct {
+	WorkspaceID id.WorkspaceID
+	File        *file.File
+	Name        *string
+	Token       string
+}
+
 type UpdateAssetParam struct {
 	AssetID id.AssetID
 	Name    *string
@@ -52,6 +59,7 @@ type Asset interface {
 	Fetch(context.Context, []id.AssetID) ([]*asset.Asset, error)
 	FindByWorkspace(context.Context, id.WorkspaceID, *string, *asset.SortType, *PaginationParam) ([]*asset.Asset, *PageBasedInfo, error)
 	Create(context.Context, CreateAssetParam) (*asset.Asset, error)
+	CreateFromUpload(context.Context, CreateAssetFromUploadParam) (*asset.Asset, error)
 	Update(context.Context, UpdateAssetParam) (*asset.Asset, error)
 	Delete(context.Context, id.AssetID) (id.AssetID, error)
 	CreateUpload(context.Context, CreateAssetUploadParam) (*AssetUpload, error)

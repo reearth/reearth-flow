@@ -36,6 +36,14 @@ input CreateAssetInput {
   name: String
 }
 
+input CreateAssetFromUploadInput {
+  workspaceId: ID!
+  file: Upload
+  name: String
+  url: String
+  token: String
+}
+
 input DeleteAssetInput {
   assetId: ID!
 }
@@ -97,6 +105,7 @@ extend type Query {
 
 extend type Mutation {
   createAsset(input: CreateAssetInput!): CreateAssetPayload
+  createAssetFromUpload(input: CreateAssetFromUploadInput!): CreateAssetPayload
   updateAsset(input: UpdateAssetInput!): UpdateAssetPayload
   deleteAsset(input: DeleteAssetInput!): DeleteAssetPayload
   createAssetUpload(input: CreateAssetUploadInput!): CreateAssetUploadPayload

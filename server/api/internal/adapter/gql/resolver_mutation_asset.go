@@ -6,6 +6,7 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
+	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/samber/lo"
@@ -22,6 +23,33 @@ func (r *mutationResolver) CreateAsset(ctx context.Context, input gqlmodel.Creat
 		File:        gqlmodel.FromFile(&input.File),
 		Name:        input.Name,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &gqlmodel.CreateAssetPayload{Asset: gqlmodel.ToAsset(res)}, nil
+}
+
+func (r *mutationResolver) CreateAssetFromUpload(ctx context.Context, input gqlmodel.CreateAssetFromUploadInput) (*gqlmodel.CreateAssetPayload, error) {
+	wid, err := gqlmodel.ToID[id.Workspace](input.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+
+	params := interfaces.CreateAssetFromUploadParam{
+		WorkspaceID: wid,
+		File:        gqlmodel.FromFile(input.File),
+		Name:        input.Name,
+	}
+	if input.URL != nil {
+		params.File, err = file.FromURL(ctx, *input.URL)
+		if err != nil {
+			return nil, err
+		}
+	}
+	params.Token = lo.FromPtr(input.Token)
+
+	res, err := usecases(ctx).Asset.CreateFromUpload(ctx, params)
 	if err != nil {
 		return nil, err
 	}

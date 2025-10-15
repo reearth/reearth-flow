@@ -15,6 +15,7 @@ import (
 
 	"github.com/kennygrant/sanitize"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
+	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/workflow"
@@ -220,6 +221,14 @@ func (f *fileRepo) CheckJobUserFacingLogExists(ctx context.Context, jobID string
 		return false, rerror.ErrInternalByWithContext(ctx, err)
 	}
 	return exists, nil
+}
+
+func (f *fileRepo) UploadedAsset(_ context.Context, _ *asset.Upload) (*file.File, error) {
+	return nil, gateway.ErrUnsupportedOperation
+}
+
+func (f *fileRepo) GetPublicAssetURL(uuid string, filename string) (*url.URL, error) {
+	return nil, gateway.ErrUnsupportedOperation
 }
 
 // helpers
