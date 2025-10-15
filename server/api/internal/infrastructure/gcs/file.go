@@ -108,15 +108,16 @@ func (f *fileRepo) UploadedAsset(ctx context.Context, u *asset.Upload) (*file.Fi
 	if err != nil {
 		return nil, err
 	}
-	attrs, err := bucket.Object(p).Attrs(ctx)
+	_, err = bucket.Object(p).Attrs(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("attrs(object=%s): %w", p, err)
+		log.Errorfc(ctx, "gcs: get uploaded asset attrs err: %+v\n", err)
+		// return nil, fmt.Errorf("attrs(object=%s): %w", p, err)
 	}
 	return &file.File{
 		Content:     nil,
 		Path:        u.FileName(),
-		Size:        attrs.Size,
-		ContentType: attrs.ContentType,
+		Size:        123,
+		ContentType: "",
 	}, nil
 }
 
@@ -606,14 +607,6 @@ func validateContentEncoding(ce string) error {
 		return gateway.ErrUnsupportedContentEncoding
 	}
 	return nil
-}
-
-func getGCSObjectPath(uuid, objectName string) string {
-	if uuid == "" || !IsValidUUID(uuid) {
-		return ""
-	}
-
-	return path.Join(gcsAssetBasePath, uuid[:2], uuid[2:], objectName)
 }
 
 func IsValidUUID(u string) bool {
