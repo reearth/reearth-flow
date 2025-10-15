@@ -23,10 +23,10 @@ export default ({
 
   const inputs: string[] = useMemo(() => {
     if (data.params?.conditions) {
-      const i = data.params.conditions
+      const conditionalInputs = data.params.conditions
         .map((condition: any) => condition.inputPort)
         .filter(isDefined);
-      return i.length ? i : defaultInputs;
+      return conditionalInputs.length ? conditionalInputs : defaultInputs;
     }
     return defaultInputs;
   }, [data.params?.conditions, defaultInputs]);
@@ -39,11 +39,13 @@ export default ({
         availableOutputs.push(...defaultOutputs);
       }
 
-      const i = data.params.conditions
+      const conditionalOutputs = data.params.conditions
         .map((condition: any) => condition.outputPort)
         .filter(isDefined);
 
-      return i.length ? [...availableOutputs, ...i] : availableOutputs;
+      return conditionalOutputs.length
+        ? [...availableOutputs, ...conditionalOutputs]
+        : availableOutputs;
     }
     return defaultOutputs || [];
   }, [data.params?.conditions, defaultOutputs]);
