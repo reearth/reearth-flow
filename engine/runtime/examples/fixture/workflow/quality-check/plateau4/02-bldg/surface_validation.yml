@@ -992,6 +992,55 @@ nodes:
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_立体交差.csv")
 
+  - id: 11d1e2f3-4a5b-6c7d-8e9f-0a1b2c3d4e5f
+    name: SolidIntersectionCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      aggregateName: gmlFilename
+      aggregateAttribute: gmlFilenameA
+      calculations:
+        - newAttribute: _num_lod1_solid_intersection
+          expr: |
+            if env.get("__value").lodA == "1" { 1 } else { 0 }
+        - newAttribute: _num_lod2_solid_intersection
+          expr: |
+            if env.get("__value").lodA == "2" { 1 } else { 0 }
+        - newAttribute: _num_lod3_solid_intersection
+          expr: |
+            if env.get("__value").lodA == "3" { 1 } else { 0 }
+        - newAttribute: _num_lod4_solid_intersection
+          expr: |
+            if env.get("__value").lodA == "4" { 1 } else { 0 }
+
+  - id: 22e2f3a4-5b6c-7d8e-9f0a-1b2c3d4e5f6a
+    name: ErrorCount-Lod1SolidIntersection
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountLod1SolidIntersection
+
+  - id: 33f3a4b5-6c7d-8e9f-0a1b-2c3d4e5f6a7b
+    name: ErrorCount-Lod2SolidIntersection
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountLod2SolidIntersection
+
+  - id: 44f4a5b6-7d8e-9f0a-1b2c-3d4e5f6a7b8c
+    name: ErrorCount-Lod3SolidIntersection
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountLod3SolidIntersection
+
+  - id: 55f5a6b7-8e9f-0a1b-2c3d-4e5f6a7b8c9d
+    name: ErrorCount-Lod4SolidIntersection
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: errorCountLod4SolidIntersection
+
 edges:
   - id: 8c4d7e2a-5b6f-4918-a3e5-9d1c8b7a6e4f
     from: 5d8f3c2e-9a4b-4e1c-8f7a-3c5d9e2b8a1f
@@ -1487,6 +1536,38 @@ edges:
     fromPort: default
     toPort: default
 
+  # Solid Intersection: AttributeMapper → Counter
+  - id: aaa1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+    from: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
+    to: 11d1e2f3-4a5b-6c7d-8e9f-0a1b2c3d4e5f
+    fromPort: default
+    toPort: default
+
+  # Solid Intersection: Counter → OutputRouters (LOD1-4)
+  - id: bbb2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+    from: 11d1e2f3-4a5b-6c7d-8e9f-0a1b2c3d4e5f
+    to: 22e2f3a4-5b6c-7d8e-9f0a-1b2c3d4e5f6a
+    fromPort: default
+    toPort: default
+
+  - id: ccc3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
+    from: 11d1e2f3-4a5b-6c7d-8e9f-0a1b2c3d4e5f
+    to: 33f3a4b5-6c7d-8e9f-0a1b-2c3d4e5f6a7b
+    fromPort: default
+    toPort: default
+
+  - id: ddd4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
+    from: 11d1e2f3-4a5b-6c7d-8e9f-0a1b2c3d4e5f
+    to: 44f4a5b6-7d8e-9f0a-1b2c-3d4e5f6a7b8c
+    fromPort: default
+    toPort: default
+
+  - id: eee5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a
+    from: 11d1e2f3-4a5b-6c7d-8e9f-0a1b2c3d4e5f
+    to: 55f5a6b7-8e9f-0a1b-2c3d-4e5f6a7b8c9d
+    fromPort: default
+    toPort: default
+
 # Export error count ports for aggregation in parent workflow
 ports:
   outputs:
@@ -1537,6 +1618,18 @@ ports:
       port: default
     - id: errorCountLod4SolidIssues
       nodeId: ccf2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+      port: default
+    - id: errorCountLod1SolidIntersection
+      nodeId: 22e2f3a4-5b6c-7d8e-9f0a-1b2c3d4e5f6a
+      port: default
+    - id: errorCountLod2SolidIntersection
+      nodeId: 33f3a4b5-6c7d-8e9f-0a1b-2c3d4e5f6a7b
+      port: default
+    - id: errorCountLod3SolidIntersection
+      nodeId: 44f4a5b6-7d8e-9f0a-1b2c-3d4e5f6a7b8c
+      port: default
+    - id: errorCountLod4SolidIntersection
+      nodeId: 55f5a6b7-8e9f-0a1b-2c3d-4e5f6a7b8c9d
       port: default
     - id: fileOutput
       nodeId: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
