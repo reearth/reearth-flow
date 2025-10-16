@@ -12,5 +12,6 @@
   },
   "cityGmlPath": "udx/bldg/54377084_bldg_6697_op.gml",
   "codelists": "codelists",
-  "schemas": "schemas"
+  "schemas": "schemas",
+  "expectResultOkFile": false
 }
