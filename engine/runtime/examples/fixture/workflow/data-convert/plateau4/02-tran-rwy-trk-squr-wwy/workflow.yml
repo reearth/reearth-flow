@@ -117,11 +117,6 @@ graphs:
         to: 2ccf7b99-4123-446e-8ff7-049be1c604c7
         fromPort: up_to_lod1
         toPort: default
-      - id: dde1d751-fe3e-4283-8742-ec4a61a41574
-        from: c32a279d-97be-4584-b282-4d65627b1132
-        to: 2ccf7b99-4123-446e-8ff7-049be1c604c7
-        fromPort: up_to_lod0
-        toPort: default
       - id: 7303c673-ccf3-4075-9eec-97176ced4b86
         from: c32a279d-97be-4584-b282-4d65627b1132
         to: 2ccf7b99-4123-446e-8ff7-049be1c604c7
