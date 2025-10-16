@@ -7,6 +7,7 @@ import {
   CreateAssetInput,
   UpdateAssetInput,
   DeleteAssetInput,
+  CreateAssetUploadInput,
 } from "../__gen__/graphql";
 
 import { useQueries } from "./useQueries";
@@ -17,6 +18,7 @@ export const useAsset = () => {
     createAssetMutation,
     updateAssetMutation,
     deleteAssetMutation,
+    createAssetUploadMutation,
   } = useQueries();
   const { toast } = useToast();
   const t = useT();
@@ -103,10 +105,28 @@ export const useAsset = () => {
     }
   };
 
+  const createAssetUpload = async (input: CreateAssetUploadInput) => {
+    const { mutateAsync, ...rest } = createAssetUploadMutation;
+
+    try {
+      const assetUpload = await mutateAsync({
+        filename: input.filename,
+        workspaceId: input.workspaceId,
+        // contentLength: input.contentLength,
+        // contentEncoding: input.contentEncoding,
+      });
+
+      return { assetUpload, ...rest };
+    } catch (_err) {
+      return { asset: undefined, ...rest };
+    }
+  };
+
   return {
     useGetAssets,
     createAsset,
     updateAsset,
     deleteAsset,
+    createAssetUpload,
   };
 };
