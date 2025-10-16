@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import {
   Select,
@@ -19,18 +19,21 @@ type Props = {
   properties: TimelineProperty[];
   selectedProperty: string | null;
   currentValue: string | number | null;
+  granularity: TimeGranularity;
   onPropertyChange: (propertyName: string) => void;
   onValueChange: (value: string | number) => void;
+  onGranularityChange: (granularity: TimeGranularity) => void;
 };
 
 const Timeline: React.FC<Props> = ({
   properties,
   selectedProperty,
   currentValue,
+  granularity,
   onPropertyChange,
   onValueChange,
+  onGranularityChange,
 }) => {
-  const [granularity, setGranularity] = useState<TimeGranularity>("day");
   const t = useT();
   const language = i18n.language;
 
@@ -126,7 +129,7 @@ const Timeline: React.FC<Props> = ({
           {/* Granularity selector */}
           <Select
             value={granularity}
-            onValueChange={(v) => setGranularity(v as TimeGranularity)}>
+            onValueChange={(v) => onGranularityChange(v as TimeGranularity)}>
             <SelectTrigger className="w-28 bg-primary">
               <SelectValue />
             </SelectTrigger>

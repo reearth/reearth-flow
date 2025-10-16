@@ -35,11 +35,13 @@ const MapLibre: React.FC<Props> = ({
   onSelectedFeature,
   onFlyToSelectedFeature,
 }) => {
-  // Timeline state
   const [selectedProperty, setSelectedProperty] = useState<string | null>(null);
   const [currentValue, setCurrentValue] = useState<string | number | null>(
     null,
   );
+  const [granularity, setGranularity] = useState<
+    "hour" | "day" | "month" | "year"
+  >("day");
 
   // Detect temporal properties in GeoJSON
   const temporalProperties = useMemo(() => {
@@ -61,8 +63,13 @@ const MapLibre: React.FC<Props> = ({
     if (!selectedProperty || currentValue === null || fileType !== "geojson") {
       return fileContent;
     }
-    return filterByTimelineValue(fileContent, selectedProperty, currentValue);
-  }, [fileContent, fileType, selectedProperty, currentValue]);
+    return filterByTimelineValue(
+      fileContent,
+      selectedProperty,
+      currentValue,
+      granularity,
+    );
+  }, [fileContent, fileType, selectedProperty, currentValue, granularity]);
 
   const handleMapClick = useCallback(
     (e: maplibregl.MapLayerMouseEvent) => {
@@ -116,8 +123,10 @@ const MapLibre: React.FC<Props> = ({
           properties={temporalProperties}
           selectedProperty={selectedProperty}
           currentValue={currentValue}
+          granularity={granularity}
           onPropertyChange={setSelectedProperty}
           onValueChange={setCurrentValue}
+          onGranularityChange={setGranularity}
         />
       )}
     </div>

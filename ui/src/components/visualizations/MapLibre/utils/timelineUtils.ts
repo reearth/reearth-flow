@@ -118,16 +118,18 @@ export function detectTemporalProperties(
 }
 
 /**
- * Filter GeoJSON features by temporal property and value
+ * Filter GeoJSON features by temporal property and value with granularity matching
  */
 export function filterByTimelineValue(
   geojson: GeoJSON.FeatureCollection | null,
   propertyName: string,
   value: string | number,
+  granularity: "hour" | "day" | "month" | "year" = "day",
 ): GeoJSON.FeatureCollection | null {
   if (!geojson) return null;
 
-  const targetValue = toComparableValue(value);
+  const targetDate = new Date(value);
+  if (isNaN(targetDate.getTime())) return geojson;
 
   return {
     ...geojson,
@@ -137,8 +139,32 @@ export function filterByTimelineValue(
       const featureValue = feature.properties[propertyName];
       if (!featureValue) return false;
 
-      const comparable = toComparableValue(featureValue);
-      return comparable <= targetValue; // Show features up to selected time
+      const featureDate = new Date(featureValue);
+      if (isNaN(featureDate.getTime())) return false;
+
+      // Match based on granularity
+      if (granularity === "year") {
+        return featureDate.getFullYear() === targetDate.getFullYear();
+      } else if (granularity === "month") {
+        return (
+          featureDate.getFullYear() === targetDate.getFullYear() &&
+          featureDate.getMonth() === targetDate.getMonth()
+        );
+      } else if (granularity === "day") {
+        return (
+          featureDate.getFullYear() === targetDate.getFullYear() &&
+          featureDate.getMonth() === targetDate.getMonth() &&
+          featureDate.getDate() === targetDate.getDate()
+        );
+      } else {
+        // hour
+        return (
+          featureDate.getFullYear() === targetDate.getFullYear() &&
+          featureDate.getMonth() === targetDate.getMonth() &&
+          featureDate.getDate() === targetDate.getDate() &&
+          featureDate.getHours() === targetDate.getHours()
+        );
+      }
     }),
   };
 }
