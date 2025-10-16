@@ -48,6 +48,7 @@ impl ProcessorFactory for FeatureLodFilterFactory {
 
     fn get_output_ports(&self) -> Vec<Port> {
         vec![
+            UP_TO_LOD0.clone(),
             UP_TO_LOD1.clone(),
             UP_TO_LOD2.clone(),
             UP_TO_LOD3.clone(),
