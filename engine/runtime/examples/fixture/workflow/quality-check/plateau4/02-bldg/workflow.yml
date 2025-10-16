@@ -320,6 +320,18 @@ graphs:
             - attribute: "LOD0-1のBuildingPart"
               expr: |
                 env.get("__value")._num_lod0_1_buildingpart ?? 0
+            - attribute: "LOD1 立体の交差"
+              expr: |
+                env.get("__value")._num_lod1_solid_intersection ?? 0
+            - attribute: "LOD2 立体の交差"
+              expr: |
+                env.get("__value")._num_lod2_solid_intersection ?? 0
+            - attribute: "LOD3 立体の交差"
+              expr: |
+                env.get("__value")._num_lod3_solid_intersection ?? 0
+            - attribute: "LOD4 立体の交差"
+              expr: |
+                env.get("__value")._num_lod4_solid_intersection ?? 0
 
       # Phase 4: CSV output
       - id: e4f5a6b7-8c9d-0e1f-2a3b-4c5d6e7f8a9b
@@ -378,10 +390,9 @@ graphs:
             - newAttribute: "LOD1 立体のエラー"
               expr: |
                 env.get("__value")["LOD1 立体のエラー"] ?? 0
-            # TODO: unimplemented
             - newAttribute: "LOD1 立体の交差"
               expr: |
-                0
+                env.get("__value")["LOD1 立体の交差"] ?? 0
 
             # LOD2
             - newAttribute: "LOD2 境界面のエラー"
@@ -393,10 +404,9 @@ graphs:
             - newAttribute: "LOD2 立体のエラー"
               expr: |
                 env.get("__value")["LOD2 立体のエラー"] ?? 0
-            # TODO: unimplemented
             - newAttribute: "LOD2 立体の交差"
               expr: |
-                0
+                env.get("__value")["LOD2 立体の交差"] ?? 0
 
             # LOD3
             - newAttribute: "LOD3 境界面のエラー"
@@ -408,10 +418,9 @@ graphs:
             - newAttribute: "LOD3 立体のエラー"
               expr: |
                 env.get("__value")["LOD3 立体のエラー"] ?? 0
-            # TODO: unimplemented
             - newAttribute: "LOD3 立体の交差"
               expr: |
-                0
+                env.get("__value")["LOD3 立体の交差"] ?? 0
 
             # LOD4
             - newAttribute: "LOD4 境界面のエラー"
@@ -423,10 +432,9 @@ graphs:
             - newAttribute: "LOD4 立体のエラー"
               expr: |
                 env.get("__value")["LOD4 立体のエラー"] ?? 0
-            # TODO: unimplemented
             - newAttribute: "LOD4 立体の交差"
               expr: |
-                0
+                env.get("__value")["LOD4 立体の交差"] ?? 0
 
             - newAttribute: "T-bldg-02エラー"
               expr: |
@@ -704,6 +712,30 @@ graphs:
         from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
         to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
         fromPort: errorCountIncorrectMeshcode
+        toPort: supplier
+
+      - id: a9b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod1SolidIntersection
+        toPort: supplier
+
+      - id: b0c1d2e3-4f5a-6b7c-8d9e-0f1a2b3c4d5e
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod2SolidIntersection
+        toPort: supplier
+
+      - id: c1d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod3SolidIntersection
+        toPort: supplier
+
+      - id: d2e3f4a5-6b7c-8d9e-0f1a-2b3c4d5e6f7a
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod4SolidIntersection
         toPort: supplier
 
       # Phase 3: Merged result to AttributeMapper
