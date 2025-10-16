@@ -108,16 +108,15 @@ func (f *fileRepo) UploadedAsset(ctx context.Context, u *asset.Upload) (*file.Fi
 	if err != nil {
 		return nil, err
 	}
-	_, err = bucket.Object(p).Attrs(ctx)
+	attrs, err := bucket.Object(p).Attrs(ctx)
 	if err != nil {
-		log.Errorfc(ctx, "gcs: get uploaded asset attrs err: %+v\n", err)
-		// return nil, fmt.Errorf("attrs(object=%s): %w", p, err)
+		return nil, fmt.Errorf("attrs(object=%s): %w", p, err)
 	}
 	return &file.File{
 		Content:     nil,
 		Path:        u.FileName(),
-		Size:        123,
-		ContentType: "",
+		Size:        attrs.Size,
+		ContentType: attrs.ContentType,
 	}, nil
 }
 
