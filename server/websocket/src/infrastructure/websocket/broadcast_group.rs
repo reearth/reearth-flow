@@ -578,12 +578,14 @@ impl BroadcastGroup {
                     let awareness_txn = awareness_doc.transact();
 
                     let update = awareness_txn.encode_diff_v1(&gcs_state);
+                    let awareness_state = awareness_txn.state_vector();
                     let update_bytes = Bytes::from(update);
 
                     if !(update_bytes.is_empty()
                         || (update_bytes.len() == 2
                             && update_bytes[0] == 0
-                            && update_bytes[1] == 0))
+                            && update_bytes[1] == 0)
+                        || awareness_state == gcs_state)
                     {
                         let update_future = self.storage.push_update(
                             &self.doc_name,
