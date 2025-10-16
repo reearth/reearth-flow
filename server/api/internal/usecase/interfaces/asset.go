@@ -28,6 +28,24 @@ type UpdateAssetParam struct {
 	Name    *string
 }
 
+type CreateAssetUploadParam struct {
+	WorkspaceID     id.WorkspaceID
+	Filename        string
+	ContentLength   int64
+	ContentType     string
+	ContentEncoding string
+	Cursor          string
+}
+
+type AssetUpload struct {
+	URL             string
+	UUID            string
+	ContentType     string
+	ContentLength   int64
+	ContentEncoding string
+	Next            string
+}
+
 var ErrCreateAssetFailed error = errors.New("failed to create asset")
 
 type Asset interface {
@@ -36,4 +54,5 @@ type Asset interface {
 	Create(context.Context, CreateAssetParam) (*asset.Asset, error)
 	Update(context.Context, UpdateAssetParam) (*asset.Asset, error)
 	Delete(context.Context, id.AssetID) (id.AssetID, error)
+	CreateUpload(context.Context, CreateAssetUploadParam) (*AssetUpload, error)
 }

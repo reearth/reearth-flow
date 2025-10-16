@@ -45,6 +45,14 @@ input UpdateAssetInput {
   name: String
 }
 
+input CreateAssetUploadInput {
+  workspaceId: ID!
+  filename: String
+  contentLength: Int
+  contentEncoding: String
+  cursor: String
+}
+
 # Payload
 
 type CreateAssetPayload {
@@ -57,6 +65,15 @@ type DeleteAssetPayload {
 
 type UpdateAssetPayload {
   asset: Asset!
+}
+
+type CreateAssetUploadPayload {
+  token: String!
+  url: String!
+  contentType: String
+  contentLength: Int!
+  contentEncoding: String
+  next: String
 }
 
 # Connection
@@ -82,4 +99,5 @@ extend type Mutation {
   createAsset(input: CreateAssetInput!): CreateAssetPayload
   updateAsset(input: UpdateAssetInput!): UpdateAssetPayload
   deleteAsset(input: DeleteAssetInput!): DeleteAssetPayload
+  createAssetUpload(input: CreateAssetUploadInput!): CreateAssetUploadPayload
 }

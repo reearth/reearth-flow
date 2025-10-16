@@ -314,3 +314,7 @@ func (f *fileRepo) validateURL(u *url.URL, base *url.URL) bool {
 		u.Host == base.Host &&
 		path.Dir(u.Path) == basePath
 }
+
+func (f *fileRepo) IssueUploadAssetLink(_ context.Context, _ gateway.IssueUploadAssetParam) (*gateway.UploadAssetLink, error) {
+	return nil, gateway.ErrUnsupportedOperation
+}
