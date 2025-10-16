@@ -162,9 +162,6 @@ const Timeline: React.FC<Props> = ({
         <div className="text-2xl font-bold text-gray-800">
           {currentValue !== null ? formatGranularValue(currentValue) : "-"}
         </div>
-        <div className="text-xs text-gray-500">
-          {currentIndex + 1} of {groupedValues.length} {granularity}s
-        </div>
       </div>
 
       <div className="space-y-2">
