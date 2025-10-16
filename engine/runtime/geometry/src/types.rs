@@ -1,6 +1,7 @@
 pub mod conversion;
 pub mod coordinate;
 pub mod coordnum;
+pub mod csg;
 pub mod face;
 pub mod geometry;
 pub mod geometry_collection;

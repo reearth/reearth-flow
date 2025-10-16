@@ -962,6 +962,82 @@ Rename Feature Attributes in Bulk
 ### Category
 * Attribute
 
+## CSGBuilder
+### Type
+* processor
+### Description
+Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, Right) of solid geometries. It detects union, intersection, difference (Left - Right). It however does not compute the resulting geometry, but outputs the CSG tree structure. To evaluate the CSG tree into a solid geometry, use CSGEvaluator.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CSG Builder Parameters",
+  "description": "Configure how the CSG builder pairs features from left and right ports",
+  "type": "object",
+  "properties": {
+    "createList": {
+      "title": "Create List",
+      "description": "When enabled, creates a list of attribute values from both children (left and right)",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "listAttributeName": {
+      "title": "List Attribute Name",
+      "description": "Name of the attribute to create the list from (required when create_list is true)",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "pairIdAttribute": {
+      "title": "Pair ID Attribute",
+      "description": "Expression to evaluate the pair ID used to match features from left and right ports",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* left
+* right
+### Output Ports
+* intersection
+* union
+* difference
+* rejected
+### Category
+* Geometry
+
+## CSGEvaluator
+### Type
+* processor
+### Description
+Evaluates a Constructive Solid Geometry (CSG) tree to produce a solid geometry. Takes a CSG representation and computes the resulting mesh from the boolean operations.
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+* nullport
+* rejected
+### Category
+* Geometry
+
 ## CenterPointReplacer
 ### Type
 * processor
@@ -4958,6 +5034,37 @@ Extract object list
 * default
 ### Output Ports
 * default
+### Category
+* PLATEAU
+
+## PLATEAU4.SolidIntersectionTestPairCreator
+### Type
+* processor
+### Description
+Creates pairs of features that can possibly intersect based on bounding box overlap
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SolidIntersectionTestPairCreatorParam",
+  "type": "object",
+  "properties": {
+    "boundingBoxAttribute": {
+      "default": "bounding_box",
+      "type": "string"
+    },
+    "pairIdAttribute": {
+      "default": "pair_id",
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* A
+* B
 ### Category
 * PLATEAU
 

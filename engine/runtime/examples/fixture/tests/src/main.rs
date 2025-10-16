@@ -62,6 +62,13 @@ pub struct WorkflowTestProfile {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary_output: Option<SummaryOutput>,
 
+    /// Whether qc_result_ok file should exist (same level as zip)
+    /// - Some(true): file must exist
+    /// - Some(false): file must NOT exist
+    /// - None: do not check (default)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expect_result_ok_file: Option<bool>,
+
     /// Whether to skip this test
     #[serde(default)]
     pub skip: bool,
@@ -1060,6 +1067,39 @@ impl TestContext {
             }
         }
     }
+
+    pub fn verify_result_ok_file(&self) -> Result<()> {
+        // If no check is defined, skip verification
+        let Some(expect_exists) = self.profile.expect_result_ok_file else {
+            return Ok(());
+        };
+
+        // Look for files ending with "qc_result_ok" in temp_dir (same level as zip)
+        let mut file_exists = false;
+        for entry in fs::read_dir(&self.temp_dir)? {
+            let entry = entry?;
+            if entry.file_type()?.is_file() {
+                if let Some(filename) = entry.file_name().to_str() {
+                    if filename.ends_with("qc_result_ok") {
+                        file_exists = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if expect_exists && !file_exists {
+            anyhow::bail!(
+                "Expected qc_result_ok file (suffix match) was not found in output directory"
+            );
+        }
+
+        if !expect_exists && file_exists {
+            anyhow::bail!("qc_result_ok file should not exist but was found in output directory");
+        }
+
+        Ok(())
+    }
 }
 
 // Include the generated tests
@@ -1087,6 +1127,7 @@ mod tests {
             schemas: None,
             intermediate_assertions: vec![],
             summary_output: None,
+            expect_result_ok_file: None,
             skip: false,
             skip_reason: None,
         };
@@ -1153,6 +1194,7 @@ mod tests {
             schemas: None,
             intermediate_assertions: vec![],
             summary_output: None,
+            expect_result_ok_file: None,
             skip: false,
             skip_reason: None,
         };

@@ -28,4 +28,4 @@ const VersionConfirmationDialog: React.FC<Props> = ({
   );
 };
 
-export { VersionConfirmationDialog };
+export default VersionConfirmationDialog;
