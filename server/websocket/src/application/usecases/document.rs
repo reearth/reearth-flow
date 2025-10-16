@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
 use thiserror::Error;
-use tracing::error;
 
 use crate::domain::entities::doc::{Document, HistoryItem};
 use crate::domain::repositories::document::DocumentRepository;
@@ -46,29 +45,6 @@ impl DocumentUseCase {
                     "failed to create snapshot for document '{}' at version {}",
                     doc_id, version
                 ),
-                source: err,
-            }),
-        }
-    }
-
-    pub async fn get_latest_document(
-        &self,
-        doc_id: &str,
-    ) -> Result<Document, DocumentUseCaseError> {
-        if let Err(err) = self.repository.flush_to_gcs(doc_id).await {
-            error!(
-                "failed to flush websocket changes for '{}' before fetching latest: {}",
-                doc_id, err
-            );
-        }
-
-        match self.repository.fetch_latest(doc_id).await {
-            Ok(Some(document)) => Ok(document),
-            Ok(None) => Err(DocumentUseCaseError::NotFound {
-                document_id: doc_id.to_string(),
-            }),
-            Err(err) => Err(DocumentUseCaseError::Unexpected {
-                message: format!("failed to load latest document '{}'", doc_id),
                 source: err,
             }),
         }

@@ -45,22 +45,6 @@ impl DocumentHandler {
         }
     }
 
-    pub async fn get_latest(
-        Path(doc_id): Path<String>,
-        State(state): State<Arc<AppState>>,
-    ) -> Response {
-        match state.document_usecase.get_latest_document(&doc_id).await {
-            Ok(document) => Json(DocumentResponse {
-                id: document.id.value().to_string(),
-                updates: document.updates,
-                version: document.version.value(),
-                timestamp: document.timestamp.to_rfc3339(),
-            })
-            .into_response(),
-            Err(err) => handle_service_error(&format!("get_latest [{}]", doc_id), err),
-        }
-    }
-
     pub async fn get_history(
         Path(doc_id): Path<String>,
         State(state): State<Arc<AppState>>,
