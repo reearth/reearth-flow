@@ -189,12 +189,12 @@ impl Processor for StatisticsCalculator {
         for (attr, value) in features {
             let mut feature = Feature::new();
             if let Some(aggregate_name) = self.aggregate_name.as_ref() {
-                feature.insert(aggregate_name, AttributeValue::String(attr));
+                feature.insert(aggregate_name, AttributeValue::String(attr.clone()));
             }
-            for (new_attribute, count) in value {
+            for (new_attribute, count) in &value {
                 feature.insert(
                     new_attribute.clone(),
-                    AttributeValue::Number(serde_json::Number::from(count)),
+                    AttributeValue::Number(serde_json::Number::from(*count)),
                 );
             }
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(

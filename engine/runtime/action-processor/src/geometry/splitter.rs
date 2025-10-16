@@ -81,13 +81,14 @@ impl Processor for GeometrySplitter {
                         Attribute::new("geometryName"),
                         AttributeValue::String(feature_geometry.name().to_string()),
                     );
-                    feature.insert(
-                        Attribute::new("lod"),
-                        feature_geometry
-                            .lod
-                            .map(|lod| AttributeValue::String(lod.to_string()))
-                            .unwrap_or(AttributeValue::Null),
-                    );
+                    // Only set lod if feature_geometry has a lod value
+                    // If feature_geometry.lod is None, preserve existing lod attribute from reader.rs
+                    if let Some(lod) = feature_geometry.lod {
+                        feature.insert(
+                            Attribute::new("lod"),
+                            AttributeValue::String(lod.to_string()),
+                        );
+                    }
                     let feature_id = feature_geometry.feature_id.clone();
                     let parent_id = if let Some(feature_id) = feature_id {
                         if let Some(AttributeValue::String(gml_id)) = feature.get(&"gmlId") {
@@ -127,14 +128,20 @@ impl Processor for GeometrySplitter {
                             .map(|feature_id| AttributeValue::String(feature_id.to_string()))
                             .unwrap_or(AttributeValue::Null),
                     );
-                    feature.insert(
-                        Attribute::new("featureType"),
-                        feature_geometry
-                            .feature_type
-                            .as_ref()
-                            .map(|feature_type| AttributeValue::String(feature_type.to_string()))
-                            .unwrap_or(AttributeValue::Null),
-                    );
+                    // Only set featureType from geometry if it's not already set
+                    // (reader.rs may have already set it to the child typename for flatten=true)
+                    if !feature.contains_key(&"featureType") {
+                        feature.insert(
+                            Attribute::new("featureType"),
+                            feature_geometry
+                                .feature_type
+                                .as_ref()
+                                .map(|feature_type| {
+                                    AttributeValue::String(feature_type.to_string())
+                                })
+                                .unwrap_or(AttributeValue::Null),
+                        );
+                    }
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                     return Ok(());
                 }
@@ -148,13 +155,14 @@ impl Processor for GeometrySplitter {
                         Attribute::new("geometryName"),
                         AttributeValue::String(geometry_feature.name().to_string()),
                     );
-                    attributes.insert(
-                        Attribute::new("lod"),
-                        geometry_feature
-                            .lod
-                            .map(|lod| AttributeValue::String(lod.to_string()))
-                            .unwrap_or(AttributeValue::Null),
-                    );
+                    // Only set lod if geometry_feature has a lod value
+                    // If geometry_feature.lod is None, preserve existing lod attribute from reader.rs
+                    if let Some(lod) = geometry_feature.lod {
+                        attributes.insert(
+                            Attribute::new("lod"),
+                            AttributeValue::String(lod.to_string()),
+                        );
+                    }
                     attributes.insert(
                         Attribute::new("featureId"),
                         geometry_feature
@@ -163,14 +171,20 @@ impl Processor for GeometrySplitter {
                             .map(|feature_id| AttributeValue::String(feature_id.to_string()))
                             .unwrap_or(AttributeValue::Null),
                     );
-                    attributes.insert(
-                        Attribute::new("featureType"),
-                        geometry_feature
-                            .feature_type
-                            .as_ref()
-                            .map(|feature_type| AttributeValue::String(feature_type.to_string()))
-                            .unwrap_or(AttributeValue::Null),
-                    );
+                    // Only set featureType from geometry if it's not already set
+                    // (reader.rs may have already set it to the child typename for flatten=true)
+                    if !attributes.contains_key(&Attribute::new("featureType")) {
+                        attributes.insert(
+                            Attribute::new("featureType"),
+                            geometry_feature
+                                .feature_type
+                                .as_ref()
+                                .map(|feature_type| {
+                                    AttributeValue::String(feature_type.to_string())
+                                })
+                                .unwrap_or(AttributeValue::Null),
+                        );
+                    }
 
                     let parent_id = if let Some(feature_id) = &geometry_feature.feature_id {
                         if let Some(AttributeValue::String(gml_id)) = feature.get(&"gmlId") {
