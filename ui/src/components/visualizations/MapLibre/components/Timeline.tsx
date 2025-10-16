@@ -8,6 +8,8 @@ import {
   SelectValue,
 } from "@flow/components/Select";
 import { Slider } from "@flow/components/Slider";
+import { useT } from "@flow/lib/i18n";
+import i18n from "@flow/lib/i18n/i18n";
 
 import type { TimelineProperty } from "../utils/timelineUtils";
 
@@ -29,24 +31,64 @@ const Timeline: React.FC<Props> = ({
   onValueChange,
 }) => {
   const [granularity, setGranularity] = useState<TimeGranularity>("day");
+  const t = useT();
+  const language = i18n.language;
 
   const property = useMemo(
     () => properties.find((p) => p.name === selectedProperty),
     [properties, selectedProperty],
   );
 
-  // Keep all values for smooth sliding, granularity only affects display
+  // Group values by selected granularity
+  const groupedValues = useMemo(() => {
+    if (!property) return [];
+
+    const groups = new Map<string, string | number>();
+
+    property.values.forEach((value) => {
+      const date = new Date(value);
+
+      if (!isNaN(date.getTime())) {
+        let groupKey: string;
+
+        if (granularity === "year") {
+          groupKey = date.getFullYear().toString();
+        } else if (granularity === "month") {
+          // Group by year-month
+          groupKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+        } else if (granularity === "day") {
+          // Group by year-month-day
+          groupKey = date.toISOString().split("T")[0];
+        } else {
+          // hour - Group by year-month-day-hour
+          groupKey = `${date.toISOString().split("T")[0]}T${String(date.getHours()).padStart(2, "0")}`;
+        }
+
+        // Store the most recent value for each group
+        groups.set(groupKey, value);
+      } else {
+        // Not a date, use as-is (likely a year number)
+        groups.set(String(value), value);
+      }
+    });
+
+    return Array.from(groups.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([, value]) => value);
+  }, [property, granularity]);
+
+  // Find current value index in grouped values
   const currentIndex = useMemo(() => {
-    if (!property || currentValue === null) return 0;
-    const index = property.values.findIndex((v) => v === currentValue);
-    return index >= 0 ? index : property.values.length - 1;
-  }, [property, currentValue]);
+    if (!groupedValues.length || currentValue === null) return 0;
+    const index = groupedValues.findIndex((v) => v === currentValue);
+    return index >= 0 ? index : groupedValues.length - 1;
+  }, [groupedValues, currentValue]);
 
   if (properties.length === 0 || !property) return null;
 
   const handleSliderChange = (index: number) => {
-    if (property) {
-      onValueChange(property.values[index]);
+    if (groupedValues.length > 0) {
+      onValueChange(groupedValues[index]);
     }
   };
 
@@ -55,14 +97,14 @@ const Timeline: React.FC<Props> = ({
 
     if (!isNaN(date.getTime())) {
       if (granularity === "year") {
-        return date.getFullYear().toString();
+        return date.toLocaleDateString(language, { year: "numeric" });
       } else if (granularity === "month") {
-        return date.toLocaleDateString(undefined, {
+        return date.toLocaleDateString(language, {
           year: "numeric",
           month: "short",
         });
       } else if (granularity === "hour") {
-        return date.toLocaleString(undefined, {
+        return date.toLocaleString(language, {
           year: "numeric",
           month: "short",
           day: "numeric",
@@ -70,8 +112,7 @@ const Timeline: React.FC<Props> = ({
           minute: "2-digit",
         });
       } else {
-        // day
-        return date.toLocaleDateString();
+        return date.toLocaleDateString(language);
       }
     }
 
@@ -90,10 +131,10 @@ const Timeline: React.FC<Props> = ({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="hour">Hour</SelectItem>
-              <SelectItem value="day">Day</SelectItem>
-              <SelectItem value="month">Month</SelectItem>
-              <SelectItem value="year">Year</SelectItem>
+              <SelectItem value="hour">{t("Hour")}</SelectItem>
+              <SelectItem value="day">{t("Day")}</SelectItem>
+              <SelectItem value="month">{t("Month")}</SelectItem>
+              <SelectItem value="year">{t("Year")}</SelectItem>
             </SelectContent>
           </Select>
 
@@ -122,27 +163,18 @@ const Timeline: React.FC<Props> = ({
           {currentValue !== null ? formatGranularValue(currentValue) : "-"}
         </div>
         <div className="text-xs text-gray-500">
-          {currentIndex + 1} of {property.values.length} ({granularity} view)
+          {currentIndex + 1} of {groupedValues.length} {granularity}s
         </div>
       </div>
 
       <div className="space-y-2">
         <Slider
+          key={`${granularity}-${selectedProperty}`}
           value={[currentIndex]}
-          max={Math.max(0, property.values.length - 1)}
+          max={Math.max(0, groupedValues.length - 1)}
           step={1}
           onValueChange={(values: number[]) => handleSliderChange(values[0])}
         />
-        <div className="flex justify-between text-xs text-gray-500">
-          <span>
-            {property.values.length > 0 ? formatGranularValue(property.values[0]) : "-"}
-          </span>
-          <span>
-            {property.values.length > 0
-              ? formatGranularValue(property.values[property.values.length - 1])
-              : "-"}
-          </span>
-        </div>
       </div>
     </div>
   );
