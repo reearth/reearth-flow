@@ -21,6 +21,7 @@ type CreateAssetParam struct {
 	WorkspaceID id.WorkspaceID
 	File        *file.File
 	Name        *string
+	Token       string
 }
 
 type UpdateAssetParam struct {

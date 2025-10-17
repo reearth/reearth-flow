@@ -147,9 +147,10 @@ type CancelJobPayload struct {
 }
 
 type CreateAssetInput struct {
-	WorkspaceID ID             `json:"workspaceId"`
-	File        graphql.Upload `json:"file"`
-	Name        *string        `json:"name,omitempty"`
+	WorkspaceID ID              `json:"workspaceId"`
+	File        *graphql.Upload `json:"file,omitempty"`
+	Name        *string         `json:"name,omitempty"`
+	Token       *string         `json:"token,omitempty"`
 }
 
 type CreateAssetPayload struct {

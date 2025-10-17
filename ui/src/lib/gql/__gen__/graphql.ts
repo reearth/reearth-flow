@@ -203,14 +203,33 @@ export type CancelJobPayload = {
 };
 
 export type CreateAssetInput = {
-  file: Scalars['Upload']['input'];
+  file?: InputMaybe<Scalars['Upload']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
+  token?: InputMaybe<Scalars['String']['input']>;
   workspaceId: Scalars['ID']['input'];
 };
 
 export type CreateAssetPayload = {
   __typename?: 'CreateAssetPayload';
   asset: Asset;
+};
+
+export type CreateAssetUploadInput = {
+  contentEncoding?: InputMaybe<Scalars['String']['input']>;
+  contentLength?: InputMaybe<Scalars['Int']['input']>;
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  filename?: InputMaybe<Scalars['String']['input']>;
+  workspaceId: Scalars['ID']['input'];
+};
+
+export type CreateAssetUploadPayload = {
+  __typename?: 'CreateAssetUploadPayload';
+  contentEncoding?: Maybe<Scalars['String']['output']>;
+  contentLength: Scalars['Int']['output'];
+  contentType?: Maybe<Scalars['String']['output']>;
+  next?: Maybe<Scalars['String']['output']>;
+  token: Scalars['String']['output'];
+  url: Scalars['String']['output'];
 };
 
 export type CreateDeploymentInput = {
@@ -425,6 +444,7 @@ export type Mutation = {
   cancelJob: CancelJobPayload;
   copyProject: Scalars['Boolean']['output'];
   createAsset?: Maybe<CreateAssetPayload>;
+  createAssetUpload?: Maybe<CreateAssetUploadPayload>;
   createDeployment?: Maybe<DeploymentPayload>;
   createProject?: Maybe<ProjectPayload>;
   createTrigger: Trigger;
@@ -480,6 +500,11 @@ export type MutationCopyProjectArgs = {
 
 export type MutationCreateAssetArgs = {
   input: CreateAssetInput;
+};
+
+
+export type MutationCreateAssetUploadArgs = {
+  input: CreateAssetUploadInput;
 };
 
 
