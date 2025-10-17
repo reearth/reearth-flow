@@ -16,10 +16,12 @@ export default ({
   workflowId,
   projectId,
   isProtected,
+  isSharedCanvas,
 }: {
   workflowId?: string;
   projectId?: string;
   isProtected?: boolean;
+  isSharedCanvas?: boolean;
 }) => {
   const { getAccessToken } = useAuth();
 
@@ -52,6 +54,7 @@ export default ({
 
         if (
           yWebSocketProvider.awareness &&
+          !isSharedCanvas &&
           !yWebSocketProvider.awareness.getLocalState()?.color
         ) {
           const color =
@@ -104,7 +107,7 @@ export default ({
       yWebSocketProvider?.destroy();
       setYAwareness(null);
     };
-  }, [projectId, workflowId, isProtected, me, getAccessToken]);
+  }, [projectId, workflowId, isProtected, isSharedCanvas, me, getAccessToken]);
 
   const currentUserClientId = yDocState?.clientID;
 
