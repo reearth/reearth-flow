@@ -118,14 +118,18 @@ export const useQueries = () => {
       enabled: !!modelId,
     });
 
-  const useGetCmsModelExportUrlQuery = (projectId: string, modelId: string, exportType: CmsExportType) =>
+  const useGetCmsModelExportUrlQuery = (
+    projectId: string,
+    modelId: string,
+    exportType: CmsExportType,
+  ) =>
     useQuery({
       queryKey: [CmsQueryKeys.GetCmsModelExportUrl, modelId],
       queryFn: async () => {
         const data = await graphQLContext?.GetCmsModelExportUrl({
           projectId,
           modelId,
-          exportType
+          exportType,
         });
         if (!data) return;
 

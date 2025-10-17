@@ -73,8 +73,16 @@ export const useCms = () => {
     };
   };
 
-  const useGetCmsModelExportUrl = (projectId: string, modelId: string, exportType: CmsExportType) => {
-    const { data, ...rest } = useGetCmsModelExportUrlQuery(projectId, modelId, exportType);
+  const useGetCmsModelExportUrl = (
+    projectId: string,
+    modelId: string,
+    exportType: CmsExportType,
+  ) => {
+    const { data, ...rest } = useGetCmsModelExportUrlQuery(
+      projectId,
+      modelId,
+      exportType,
+    );
     return {
       page: data,
       ...rest,
