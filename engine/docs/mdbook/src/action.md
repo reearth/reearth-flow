@@ -4223,7 +4223,8 @@ Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, t
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ObjReaderParam",
+  "title": "ObjReader Parameters",
+  "description": "Configuration for reading Wavefront OBJ 3D model files with support for vertices, faces, normals, texture coordinates, and material definitions.",
   "type": "object",
   "properties": {
     "dataset": {
@@ -4239,10 +4240,14 @@ Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, t
       ]
     },
     "includeNormals": {
+      "title": "Include Normals",
+      "description": "Include vertex normal data in the output geometry",
       "default": true,
       "type": "boolean"
     },
     "includeTexcoords": {
+      "title": "Include Texture Coordinates",
+      "description": "Include texture coordinate (UV) data in the output geometry",
       "default": true,
       "type": "boolean"
     },
@@ -4258,15 +4263,30 @@ Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, t
         }
       ]
     },
+    "materialFile": {
+      "title": "Material File",
+      "description": "External MTL file path to use instead of mtllib directives in the OBJ file. When specified, this overrides any material library references in the OBJ file.",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "mergeGroups": {
+      "title": "Merge Groups",
+      "description": "Merge all groups and objects into a single feature instead of creating separate features per group/object",
       "default": false,
       "type": "boolean"
     },
     "parseMaterials": {
+      "title": "Parse Materials",
+      "description": "Enable parsing of material definitions from MTL files referenced in the OBJ file",
       "default": true,
       "type": "boolean"
     },
     "triangulate": {
+      "title": "Triangulate",
+      "description": "Convert polygons with more than 3 vertices into triangles using fan triangulation",
       "default": false,
       "type": "boolean"
     }

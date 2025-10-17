@@ -87,24 +87,43 @@ pub(super) struct ObjReader {
     params: ObjReaderParam,
 }
 
+/// # ObjReader Parameters
+///
+/// Configuration for reading Wavefront OBJ 3D model files with support for
+/// vertices, faces, normals, texture coordinates, and material definitions.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct ObjReaderParam {
     #[serde(flatten)]
     pub(super) common: FileReaderCommonParam,
 
+    /// # Parse Materials
+    /// Enable parsing of material definitions from MTL files referenced in the OBJ file
     #[serde(default = "default_true")]
     pub(super) parse_materials: bool,
 
+    /// # Material File
+    /// External MTL file path to use instead of mtllib directives in the OBJ file. When specified, this overrides any material library references in the OBJ file.
+    #[serde(default)]
+    pub(super) material_file: Option<String>,
+
+    /// # Triangulate
+    /// Convert polygons with more than 3 vertices into triangles using fan triangulation
     #[serde(default)]
     pub(super) triangulate: bool,
 
+    /// # Merge Groups
+    /// Merge all groups and objects into a single feature instead of creating separate features per group/object
     #[serde(default)]
     pub(super) merge_groups: bool,
 
+    /// # Include Normals
+    /// Include vertex normal data in the output geometry
     #[serde(default = "default_true")]
     pub(super) include_normals: bool,
 
+    /// # Include Texture Coordinates
+    /// Include texture coordinate (UV) data in the output geometry
     #[serde(default = "default_true")]
     pub(super) include_texcoords: bool,
 }
@@ -295,18 +314,39 @@ async fn read_obj(
         Uri::from_str("file://./unknown.obj").unwrap()
     };
 
-    let materials = if params.parse_materials && !obj_data.material_libs.is_empty() {
+    let materials = if params.parse_materials {
         let mut all_materials = HashMap::new();
-        for mtl_lib in &obj_data.material_libs {
+
+        if let Some(external_mtl) = &params.material_file {
             let mtl_uri =
-                resolve_material_path(ctx, storage_resolver.clone(), &obj_uri, mtl_lib).await?;
+                resolve_material_path(ctx, storage_resolver.clone(), &obj_uri, external_mtl)
+                    .await?;
             if let Some(mtl_uri) = mtl_uri {
                 match parse_mtl(ctx, storage_resolver.clone(), &mtl_uri).await {
                     Ok(mats) => {
                         all_materials.extend(mats);
                     }
                     Err(e) => {
-                        tracing::warn!("Failed to parse material file {}: {}", mtl_lib, e);
+                        tracing::warn!(
+                            "Failed to parse external material file {}: {}",
+                            external_mtl,
+                            e
+                        );
+                    }
+                }
+            }
+        } else if !obj_data.material_libs.is_empty() {
+            for mtl_lib in &obj_data.material_libs {
+                let mtl_uri =
+                    resolve_material_path(ctx, storage_resolver.clone(), &obj_uri, mtl_lib).await?;
+                if let Some(mtl_uri) = mtl_uri {
+                    match parse_mtl(ctx, storage_resolver.clone(), &mtl_uri).await {
+                        Ok(mats) => {
+                            all_materials.extend(mats);
+                        }
+                        Err(e) => {
+                            tracing::warn!("Failed to parse material file {}: {}", mtl_lib, e);
+                        }
                     }
                 }
             }
@@ -975,6 +1015,7 @@ f 1 2 3 4
                 inline: None,
             },
             parse_materials: false,
+            material_file: None,
             triangulate: true,
             merge_groups: false,
             include_normals: true,
@@ -1016,6 +1057,7 @@ f -4 -3 -2 -1
                 inline: None,
             },
             parse_materials: false,
+            material_file: None,
             triangulate: false,
             merge_groups: false,
             include_normals: true,
