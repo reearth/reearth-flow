@@ -2,12 +2,10 @@ package gql
 
 import (
 	"context"
-	"errors"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearthx/rerror"
 	"github.com/samber/lo"
 )
 
@@ -73,9 +71,6 @@ func (r *mutationResolver) CreateAssetUpload(ctx context.Context, input gqlmodel
 		ContentEncoding: lo.FromPtr(input.ContentEncoding),
 		Cursor:          lo.FromPtr(input.Cursor),
 	})
-	if err != nil && errors.Is(err, rerror.ErrNotFound) {
-		return &gqlmodel.CreateAssetUploadPayload{}, nil
-	}
 	if err != nil {
 		return nil, err
 	}

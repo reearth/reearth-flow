@@ -524,6 +524,7 @@ func (f *fileRepo) IssueUploadAssetLink(ctx context.Context, param gateway.Issue
 	}
 	uploadURL, err := bucket.SignedURL(p, opt)
 	if err != nil {
+		log.Errorfc(ctx, "gcs: SignedURL failed (path=%s, bucket=%s): %v", p, f.bucketName, err)
 		return nil, gateway.ErrUnsupportedOperation
 	}
 

@@ -2,7 +2,6 @@ package interactor
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/url"
 	"path"
@@ -352,9 +351,6 @@ func (i *Asset) CreateUpload(ctx context.Context, inp interfaces.CreateAssetUplo
 
 	param.Workspace = ws.ID().String()
 	uploadLink, err := i.gateways.File.IssueUploadAssetLink(ctx, *param)
-	if errors.Is(err, gateway.ErrUnsupportedOperation) {
-		return nil, rerror.ErrNotFound
-	}
 	if err != nil {
 		return nil, err
 	}
