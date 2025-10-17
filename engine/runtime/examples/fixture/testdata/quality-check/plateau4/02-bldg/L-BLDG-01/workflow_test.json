@@ -17,5 +17,6 @@
   "cityGmlPath": "udx/bldg/input.gml",
   "codelists": "codelists",
   "schemas": "schemas",
+  "expectResultOkFile": false,
   "skip": false
 }

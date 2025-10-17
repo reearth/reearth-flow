@@ -16,5 +16,6 @@
   },
   "cityGmlPath": "udx/bldg/l13_fail_interior_exterior_crossing.gml",
   "codelists": "codelists",
-  "schemas": "schemas"
+  "schemas": "schemas",
+  "expectResultOkFile": false
 }
