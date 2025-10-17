@@ -114,10 +114,68 @@ export const useAsset = () => {
         workspaceId: input.workspaceId,
         // contentLength: input.contentLength,
         // contentEncoding: input.contentEncoding,
+        // cursor: input.cursor,
       });
 
       return { assetUpload, ...rest };
     } catch (_err) {
+      return { assetUpload: undefined, ...rest };
+    }
+  };
+
+  const createAssetWithDirectUpload = async (input: {
+    workspaceId: string;
+    file: File;
+  }): Promise<CreateAsset> => {
+    const { workspaceId, file } = input;
+    try {
+      const { assetUpload } = await createAssetUpload({
+        workspaceId,
+        filename: file.name,
+        // contentLength: file.size,
+        // contentEncoding: undefined,
+      });
+
+      if (!assetUpload?.url || !assetUpload?.token) {
+        throw new Error("Failed to get upload URL");
+      }
+
+      const uploadResponse = await fetch(assetUpload.url, {
+        method: "PUT",
+        body: file,
+        headers: {
+          "Content-Type": assetUpload.contentType || file.type,
+          ...(assetUpload.contentEncoding && {
+            "Content-Encoding": assetUpload.contentEncoding,
+          }),
+        },
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Upload failed: ${uploadResponse.statusText}`);
+      }
+
+      const { mutateAsync } = createAssetMutation;
+      const asset: Asset | undefined = await mutateAsync({
+        workspaceId,
+        file: assetUpload.token as any,
+      });
+
+      toast({
+        title: t("Asset Created"),
+        description: t("Asset has been successfully created."),
+      });
+
+      const { mutateAsync: _, ...rest } = createAssetMutation;
+      return { asset, ...rest };
+    } catch (err) {
+      console.error("Direct upload failed:", err);
+      toast({
+        title: t("Asset Could Not Be Created"),
+        description: t("There was an error when creating the asset."),
+        variant: "destructive",
+      });
+      const { mutateAsync: _, ...rest } = createAssetMutation;
       return { asset: undefined, ...rest };
     }
   };
@@ -125,8 +183,9 @@ export const useAsset = () => {
   return {
     useGetAssets,
     createAsset,
+    createAssetUpload,
+    createAssetWithDirectUpload,
     updateAsset,
     deleteAsset,
-    createAssetUpload,
   };
 };

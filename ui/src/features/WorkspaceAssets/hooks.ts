@@ -12,7 +12,12 @@ export default ({ workspaceId }: { workspaceId: string }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const t = useT();
   const { toast } = useToast();
-  const { useGetAssets, createAsset, updateAsset, deleteAsset } = useAsset();
+  const {
+    useGetAssets,
+    updateAsset,
+    deleteAsset,
+    createAssetWithDirectUpload,
+  } = useAsset();
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [currentOrderBy, setCurrentOrderBy] = useState<AssetOrderBy>(
     AssetOrderBy.CreatedAt,
@@ -95,7 +100,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
       if (!workspaceId) return console.error("Missing current workspace");
 
       try {
-        await createAsset({
+        await createAssetWithDirectUpload({
           workspaceId,
           file,
         });
@@ -103,7 +108,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
         console.error("Failed to upload file:", error);
       }
     },
-    [createAsset, workspaceId],
+    [createAssetWithDirectUpload, workspaceId],
   );
 
   const handleAssetUpdate = useCallback(
