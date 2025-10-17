@@ -79,6 +79,16 @@ graphs:
             - attribute: lod
               valueAttribute: maxLod
 
+      - id: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
+        name: FeatureSorter
+        type: action
+        action: FeatureSorter
+        with:
+          attributes:
+            - feature_type
+            - lod
+          order: ascending
+
       - id: 7a17c4f9-dd4d-44b0-936c-50c394272016
         name: MVTWriter
         type: action
@@ -129,6 +139,11 @@ graphs:
         toPort: default
       - id: bef08313-519f-48b5-b74c-6744bbc6bee2
         from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        to: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
+        fromPort: default
+        toPort: default
+      - id: 3c7d9e2f-4a5b-6c8d-9e0f-1a2b3c4d5e6f
+        from: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
         to: 7a17c4f9-dd4d-44b0-936c-50c394272016
         fromPort: default
         toPort: default
