@@ -93,24 +93,41 @@ impl Storage {
                 path: format!("{location:?}").into(),
             },
         })?;
-        let meta = self
-            .inner
-            .stat(p)
-            .await
-            .map_err(|err| format_object_store_error(err, p))?;
 
-        let meta = ObjectMeta {
-            location: object_store::path::Path::parse(p)?,
-            last_modified: meta.last_modified().unwrap_or_default(),
-            size: meta.content_length() as u64,
-            e_tag: meta.etag().map(|x| x.to_string()),
-            version: None,
-        };
+        let meta_result = self.inner.stat(p).await;
+        let is_http_backend = self.base_uri.protocol() == reearth_flow_common::uri::Protocol::Http
+            || self.base_uri.protocol() == reearth_flow_common::uri::Protocol::Https;
+
         let r = self
             .inner
             .read(p)
             .await
             .map_err(|err| format_object_store_error(err, p))?;
+
+        let meta = if let Ok(stat_meta) = meta_result {
+            ObjectMeta {
+                location: object_store::path::Path::parse(p)?,
+                last_modified: stat_meta.last_modified().unwrap_or_default(),
+                size: stat_meta.content_length(),
+                e_tag: stat_meta.etag().map(|x| x.to_string()),
+                version: None,
+            }
+        } else if is_http_backend {
+            let size = r.len() as u64;
+            ObjectMeta {
+                location: object_store::path::Path::parse(p)?,
+                last_modified: Default::default(),
+                size,
+                e_tag: None,
+                version: None,
+            }
+        } else {
+            return Err(meta_result
+                .err()
+                .map(|err| format_object_store_error(err, p))
+                .unwrap());
+        };
+
         Ok(GetResult {
             payload: GetResultPayload::Stream(Box::pin(OpendalReader { inner: r })),
             range: (0..meta.size),
