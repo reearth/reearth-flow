@@ -10,7 +10,153 @@ with:
     - bldg
   workerArtifactPath:
 graphs:
-  - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
+  - id: c6863b71-953b-4d15-af56-396fc93fc617
+    name: FolderAndfilePathReader
+    nodes:
+      - id: 35038d96-5e81-4a21-a0e0-72f67eb71db5
+        name: InputRouter
+        type: action
+        action: InputRouter
+        with:
+          routingPort: default
+
+      - id: c7315341-26b3-4405-9d02-039d721cd225
+        name: DirectoryDecompressor
+        type: action
+        action: DirectoryDecompressor
+        with:
+          archiveAttributes:
+            - codelists
+            - schemas
+
+      - id: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
+        name: FeatureFilePathExtractor
+        type: action
+        action: FeatureFilePathExtractor
+        with:
+          destPrefix: "udx"
+          sourceDataset: |
+            env.get("__value").cityGmlPath
+          extractArchive: true
+
+      - id: 9d04983e-e84e-4622-b0c6-827d7afad720
+        name: FeatureFilter
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").extension == "gml"
+              outputPort: default
+
+      - id: 712e4c72-950d-466d-9598-19f299668e7e
+        name: PLATEAU4.UDXFolderExtractor
+        type: action
+        action: PLATEAU4.UDXFolderExtractor
+        with:
+          cityGmlPath: |
+            env.get("__value")["path"]
+          codelistsPath: "codelists"
+          schemasPath: "schemas"
+
+      - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+        name: FeatureFilterByPackage
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+              outputPort: default
+
+      - id: f3465c78-59fa-4307-bc02-67c46c2ddd98
+        name: FeatureCounterByUdxDirs
+        type: action
+        action: FeatureCounter
+        with:
+          countStart: 1
+          groupBy:
+            - udxDirs
+          outputAttribute: fileIndex
+
+      - id: e8f2a4c3-6d91-4b2a-9f3e-1a7c8b5d4e2f
+        name: PreCityCodeAttributeManager
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: cityCode
+              method: convert
+              value: |
+                env.get("__value").cityCode ?? env.get("cityCode") ?? "30406"
+            - attribute: baseCityCode
+              method: create
+              value: |
+                env.get("__value").cityCode ?? env.get("cityCode") ?? "30406"
+            - attribute: city_code
+              method: create
+              value: |
+                env.get("__value").cityCode ?? env.get("cityCode") ?? "30406"
+            - attribute: cityNameEn
+              method: create
+              value: "susami-cho"
+
+      - id: 7bad5b43-6e59-4f6b-95c4-b3043d2b950d
+        name: CityCodeExtractor
+        type: action
+        action: PLATEAU4.CityCodeExtractor
+        with:
+          codelistsPathAttribute: dirCodelists
+          cityCodeAttribute: cityCode
+
+      - id: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
+        name: OutputRouter
+        type: action
+        action: OutputRouter
+        with:
+          routingPort: default
+
+    edges:
+      - id: 5d700a9c-1537-442e-bfb2-0728a9e1ec9c
+        from: 35038d96-5e81-4a21-a0e0-72f67eb71db5
+        to: c7315341-26b3-4405-9d02-039d721cd225
+        fromPort: default
+        toPort: default
+      - id: 749d8e90-dbc3-4fc9-bfee-046344f5f5b9
+        from: c7315341-26b3-4405-9d02-039d721cd225
+        to: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
+        fromPort: default
+        toPort: default
+      - id: 1379a497-9e4e-40fb-8361-d2eeeb491762
+        from: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
+        to: 9d04983e-e84e-4622-b0c6-827d7afad720
+        fromPort: default
+        toPort: default
+      - id: 2379a497-9e4e-40fb-8361-d2eeeb491763
+        from: 9d04983e-e84e-4622-b0c6-827d7afad720
+        to: 712e4c72-950d-466d-9598-19f299668e7e
+        fromPort: default
+        toPort: default
+      - id: 2379a497-9e4e-40fb-8361-d2eeeb491764
+        from: 712e4c72-950d-466d-9598-19f299668e7e
+        to: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+        fromPort: default
+        toPort: default
+      - id: 2379a497-9e4e-40fb-8361-d2eeeb491766
+        from: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+        to: f3465c78-59fa-4307-bc02-67c46c2ddd98
+        fromPort: default
+        toPort: default
+      - id: 0f43aebf-caf7-4f07-be97-f23b9c2c585f
+        from: f3465c78-59fa-4307-bc02-67c46c2ddd98
+        to: e8f2a4c3-6d91-4b2a-9f3e-1a7c8b5d4e2f
+        fromPort: default
+        toPort: default
+      - id: 9a3d5f8c-2e1b-4a7d-8c6f-3b9e4d7c2a1f
+        from: e8f2a4c3-6d91-4b2a-9f3e-1a7c8b5d4e2f
+        to: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
+        fromPort: default
+        toPort: default
   - id: 34bf873b-3364-46b0-8153-efeb9568bb3c
     name: entry_point
     nodes:
@@ -55,7 +201,17 @@ graphs:
               value: |
                 let attributes = env.get("__value").cityGmlAttributes;
                 let buildingIdAttributes = attributes["uro:BuildingIDAttribute"] ?? {};
-                buildingIdAttributes["uro:city_code"] ?? env.get("__value").cityCode
+                let gmlCityCode = buildingIdAttributes["uro:city_code"];
+                if gmlCityCode != () && gmlCityCode != "" {
+                  gmlCityCode
+                } else {
+                  let featureCityCode = env.get("__value").cityCode;
+                  if featureCityCode != () && featureCityCode != "" {
+                    featureCityCode
+                  } else {
+                    env.get("cityCode") ?? "30406"
+                  }
+                }
 
             - attribute: cityName
               method: create
@@ -106,6 +262,10 @@ graphs:
               method: create
               value: |
                 env.get("__lod")
+            - attribute: _lod_type
+              method: create
+              value: |
+                env.get("__lod_type") ?? "undefined"
             - attribute: feature_type
               method: create
               value: |
@@ -412,7 +572,7 @@ graphs:
             }
           compressOutput: |
             if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod1.zip")
+              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_bldg_3dtiles_lod1.zip")
             } else {
               file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod1.zip")
             }
@@ -433,7 +593,7 @@ graphs:
             }
           compressOutput: |
             if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod2.zip")
+              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_bldg_3dtiles_lod2.zip")
             } else {
               file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod2.zip")
             }
@@ -454,7 +614,7 @@ graphs:
             }
           compressOutput: |
             if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod2_no_texture.zip")
+              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_bldg_3dtiles_lod2_no_texture.zip")
             } else {
               file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod2_no_texture.zip")
             }
@@ -475,7 +635,7 @@ graphs:
             }
           compressOutput: |
             if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod3.zip")
+              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_bldg_3dtiles_lod3.zip")
             } else {
               file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod3.zip")
             }
@@ -496,7 +656,7 @@ graphs:
             }
           compressOutput: |
             if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod3_no_texture.zip")
+              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_bldg_3dtiles_lod3_no_texture.zip")
             } else {
               file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod3_no_texture.zip")
             }
@@ -517,7 +677,7 @@ graphs:
             }
           compressOutput: |
             if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod4.zip")
+              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_bldg_3dtiles_lod4.zip")
             } else {
               file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod4.zip")
             }
@@ -538,7 +698,7 @@ graphs:
             }
           compressOutput: |
             if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod4_no_texture.zip")
+              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_bldg_3dtiles_lod4_no_texture.zip")
             } else {
               file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod4_no_texture.zip")
             }

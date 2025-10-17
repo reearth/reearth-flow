@@ -81,9 +81,19 @@ pub(super) static FLATTEN_ATTRIBUTES: Lazy<HashMap<String, Vec<AttributePath>>> 
                     "json_path": "uro:BuildingIDAttribute uro:prefecture"
                 },
                 {
+                    "attribute": "uro:prefecture_code",
+                    "data_type": "string",
+                    "json_path": "uro:BuildingIDAttribute uro:prefecture_code"
+                },
+                {
                     "attribute": "uro:city",
                     "data_type": "string",
                     "json_path": "uro:BuildingIDAttribute uro:city"
+                },
+                {
+                    "attribute": "uro:city_code",
+                    "data_type": "string",
+                    "json_path": "uro:BuildingIDAttribute uro:city_code"
                 },
                 {
                     "attribute": "uro:BuildingDetailAttribute_uro:serialNumberOfBuildingCertification",
@@ -114,6 +124,11 @@ pub(super) static FLATTEN_ATTRIBUTES: Lazy<HashMap<String, Vec<AttributePath>>> 
                     "attribute": "uro:BuildingDetailAttribute_uro:buildingStructureType",
                     "data_type": "string",
                     "json_path": "uro:BuildingDetailAttribute uro:buildingStructureType"
+                },
+                {
+                    "attribute": "uro:BuildingDetailAttribute_uro:buildingStructureType_code",
+                    "data_type": "string",
+                    "json_path": "uro:BuildingDetailAttribute uro:buildingStructureType_code"
                 },
                 {
                     "attribute": "uro:BuildingDetailAttribute_uro:fireproofStructureType",
@@ -256,6 +271,16 @@ pub(super) static FLATTEN_ATTRIBUTES: Lazy<HashMap<String, Vec<AttributePath>>> 
                     "json_path": "uro:RealEstateIDAttribute uro:matchingScore"
                 },
                 {
+                    "attribute": "uro:geometrySrcDescLod0",
+                    "data_type": "string",
+                    "json_path": "uro:buildingDataQualityAttribute uro:geometrySrcDescLod0"
+                },
+                {
+                    "attribute": "uro:geometrySrcDescLod0_code",
+                    "data_type": "string",
+                    "json_path": "uro:buildingDataQualityAttribute uro:geometrySrcDescLod0_code"
+                },
+                {
                     "attribute": "uro:geometrySrcDescLod1",
                     "data_type": "string",
                     "json_path": "uro:buildingDataQualityAttribute uro:geometrySrcDescLod1"
@@ -269,6 +294,11 @@ pub(super) static FLATTEN_ATTRIBUTES: Lazy<HashMap<String, Vec<AttributePath>>> 
                     "attribute": "uro:lod1HeightType",
                     "data_type": "string",
                     "json_path": "uro:buildingDataQualityAttribute uro:lod1HeightType"
+                },
+                {
+                    "attribute": "uro:lod1HeightType_code",
+                    "data_type": "string",
+                    "json_path": "uro:buildingDataQualityAttribute uro:lod1HeightType_code"
                 }
             ]
         }
