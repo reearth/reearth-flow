@@ -39,9 +39,10 @@ const MapLibre: React.FC<Props> = ({
   const [currentValue, setCurrentValue] = useState<string | number | null>(
     null,
   );
-  const [granularity, setGranularity] = useState<
-    "hour" | "day" | "month" | "year"
-  >("day");
+  const [granularity, setGranularity] = useState<"day" | "month" | "year">(
+    "day",
+  );
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Detect temporal properties in GeoJSON
   const temporalProperties = useMemo(() => {
@@ -60,7 +61,12 @@ const MapLibre: React.FC<Props> = ({
 
   // Filter data based on timeline
   const filteredContent = useMemo(() => {
-    if (!selectedProperty || currentValue === null || fileType !== "geojson") {
+    if (
+      !selectedProperty ||
+      currentValue === null ||
+      fileType !== "geojson" ||
+      !isExpanded
+    ) {
       return fileContent;
     }
     return filterByTimelineValue(
@@ -69,7 +75,14 @@ const MapLibre: React.FC<Props> = ({
       currentValue,
       granularity,
     );
-  }, [fileContent, fileType, selectedProperty, currentValue, granularity]);
+  }, [
+    fileContent,
+    fileType,
+    selectedProperty,
+    currentValue,
+    granularity,
+    isExpanded,
+  ]);
 
   const handleMapClick = useCallback(
     (e: maplibregl.MapLayerMouseEvent) => {
@@ -124,6 +137,8 @@ const MapLibre: React.FC<Props> = ({
           selectedProperty={selectedProperty}
           currentValue={currentValue}
           granularity={granularity}
+          isExpanded={isExpanded}
+          onExpand={setIsExpanded}
           onPropertyChange={setSelectedProperty}
           onValueChange={setCurrentValue}
           onGranularityChange={setGranularity}

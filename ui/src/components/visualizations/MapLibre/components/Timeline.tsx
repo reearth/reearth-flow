@@ -1,3 +1,4 @@
+import { ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons";
 import { useMemo } from "react";
 
 import {
@@ -13,13 +14,15 @@ import i18n from "@flow/lib/i18n/i18n";
 
 import type { TimelineProperty } from "../utils/timelineUtils";
 
-type TimeGranularity = "hour" | "day" | "month" | "year";
+type TimeGranularity = "day" | "month" | "year";
 
 type Props = {
   properties: TimelineProperty[];
   selectedProperty: string | null;
   currentValue: string | number | null;
   granularity: TimeGranularity;
+  isExpanded: boolean;
+  onExpand: (isExpanded: boolean) => void;
   onPropertyChange: (propertyName: string) => void;
   onValueChange: (value: string | number) => void;
   onGranularityChange: (granularity: TimeGranularity) => void;
@@ -30,6 +33,8 @@ const Timeline: React.FC<Props> = ({
   selectedProperty,
   currentValue,
   granularity,
+  isExpanded,
+  onExpand,
   onPropertyChange,
   onValueChange,
   onGranularityChange,
@@ -59,12 +64,8 @@ const Timeline: React.FC<Props> = ({
         } else if (granularity === "month") {
           // Group by year-month
           groupKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-        } else if (granularity === "day") {
-          // Group by year-month-day
-          groupKey = date.toISOString().split("T")[0];
         } else {
-          // hour - Group by year-month-day-hour
-          groupKey = `${date.toISOString().split("T")[0]}T${String(date.getHours()).padStart(2, "0")}`;
+          groupKey = date.toISOString().split("T")[0];
         }
 
         // Store the most recent value for each group
@@ -106,14 +107,6 @@ const Timeline: React.FC<Props> = ({
           year: "numeric",
           month: "short",
         });
-      } else if (granularity === "hour") {
-        return date.toLocaleString(language, {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        });
       } else {
         return date.toLocaleDateString(language);
       }
@@ -123,58 +116,84 @@ const Timeline: React.FC<Props> = ({
   };
 
   return (
-    <div className="absolute top-4 right-0.5 z-10 max-w-[500px] -translate-x-3 rounded-md bg-white/90 p-4 shadow-lg">
-      <div className="mb-3 flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-2">
-          {/* Granularity selector */}
-          <Select
-            value={granularity}
-            onValueChange={(v) => onGranularityChange(v as TimeGranularity)}>
-            <SelectTrigger className="w-28 bg-primary">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="hour">{t("Hour")}</SelectItem>
-              <SelectItem value="day">{t("Day")}</SelectItem>
-              <SelectItem value="month">{t("Month")}</SelectItem>
-              <SelectItem value="year">{t("Year")}</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Property selector (if multiple properties) */}
-          {properties.length > 1 && (
+    <div
+      className={`absolute right-0 bottom-0 left-0 z-10 transition-transform duration-300 ${
+        isExpanded ? "translate-y-0" : "translate-y-full"
+      }`}>
+      <div
+        onClick={() => onExpand(!isExpanded)}
+        className="absolute -top-8 left-1/2 -translate-x-1/2 cursor-pointer rounded-t-md bg-white/90 px-2 py-1 shadow-lg transition-all hover:bg-white">
+        {isExpanded ? (
+          <ChevronDownIcon className="size-5 text-gray-700" />
+        ) : (
+          <ChevronUpIcon className="size-5 text-gray-700" />
+        )}
+      </div>
+      <div className="border-t-2 border-gray-200 bg-white/95 px-6 py-4 shadow-2xl backdrop-blur-sm">
+        <div className="mx-auto max-w-4xl">
+          <div className="mb-4 flex items-center justify-between gap-4">
             <Select
-              value={selectedProperty || undefined}
-              onValueChange={onPropertyChange}>
-              <SelectTrigger className="w-40 bg-primary">
-                <SelectValue placeholder="Select property" />
+              value={granularity}
+              onValueChange={(v) => onGranularityChange(v as TimeGranularity)}>
+              <SelectTrigger className="w-32 bg-primary">
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {properties.map((prop) => (
-                  <SelectItem key={prop.name} value={prop.name}>
-                    {prop.name}
-                  </SelectItem>
-                ))}
+                <SelectItem value="day">{t("Day")}</SelectItem>
+                <SelectItem value="month">{t("Month")}</SelectItem>
+                <SelectItem value="year">{t("Year")}</SelectItem>
               </SelectContent>
             </Select>
-          )}
+            <div className="flex-1 text-center">
+              <div className="text-xl font-bold text-gray-800">
+                {currentValue !== null
+                  ? formatGranularValue(currentValue)
+                  : "-"}
+              </div>
+            </div>
+            {properties.length > 1 ? (
+              <Select
+                value={selectedProperty || undefined}
+                onValueChange={onPropertyChange}>
+                <SelectTrigger className="w-40 bg-primary">
+                  <SelectValue placeholder={t("Select Property")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {properties.map((prop) => (
+                    <SelectItem key={prop.name} value={prop.name}>
+                      {prop.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <div className="w-32" />
+            )}
+          </div>
+          <div className="space-y-2">
+            <Slider
+              key={`${granularity}-${selectedProperty}`}
+              value={[currentIndex]}
+              max={Math.max(0, groupedValues.length - 1)}
+              step={1}
+              onValueChange={(values: number[]) =>
+                handleSliderChange(values[0])
+              }
+            />
+            <div className="flex justify-between text-xs text-gray-500">
+              <span>
+                {groupedValues.length > 0
+                  ? formatGranularValue(groupedValues[0])
+                  : "-"}
+              </span>
+              <span>
+                {groupedValues.length > 0
+                  ? formatGranularValue(groupedValues[groupedValues.length - 1])
+                  : "-"}
+              </span>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <div className="mb-2 text-center">
-        <div className="text-2xl font-bold text-gray-800">
-          {currentValue !== null ? formatGranularValue(currentValue) : "-"}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Slider
-          key={`${granularity}-${selectedProperty}`}
-          value={[currentIndex]}
-          max={Math.max(0, groupedValues.length - 1)}
-          step={1}
-          onValueChange={(values: number[]) => handleSliderChange(values[0])}
-        />
       </div>
     </div>
   );
