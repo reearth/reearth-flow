@@ -99,6 +99,11 @@ export type CmsAssetsConnection = {
   totalCount: Scalars['Int']['output'];
 };
 
+export enum CmsExportType {
+  Geojson = 'GEOJSON',
+  Json = 'JSON'
+}
+
 export type CmsItem = {
   __typename?: 'CMSItem';
   createdAt: Scalars['DateTime']['output'];
@@ -149,6 +154,8 @@ export type CmsProject = {
   license?: Maybe<Scalars['String']['output']>;
   name: Scalars['String']['output'];
   readme?: Maybe<Scalars['String']['output']>;
+  starCount: Scalars['Int']['output'];
+  topics: Array<Scalars['String']['output']>;
   updatedAt: Scalars['DateTime']['output'];
   visibility: CmsVisibility;
   workspaceId: Scalars['ID']['output'];
@@ -921,6 +928,7 @@ export type QueryCmsModelArgs = {
 
 
 export type QueryCmsModelExportUrlArgs = {
+  exportType?: InputMaybe<CmsExportType>;
   modelId: Scalars['ID']['input'];
   projectId: Scalars['ID']['input'];
 };
@@ -939,6 +947,7 @@ export type QueryCmsProjectArgs = {
 
 
 export type QueryCmsProjectsArgs = {
+  keyword?: InputMaybe<Scalars['String']['input']>;
   page?: InputMaybe<Scalars['Int']['input']>;
   pageSize?: InputMaybe<Scalars['Int']['input']>;
   publicOnly?: InputMaybe<Scalars['Boolean']['input']>;
@@ -1370,17 +1379,18 @@ export type GetCmsProjectByIdOrAliasQueryVariables = Exact<{
 }>;
 
 
-export type GetCmsProjectByIdOrAliasQuery = { __typename?: 'Query', cmsProject?: { __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, createdAt: any, updatedAt: any } | null };
+export type GetCmsProjectByIdOrAliasQuery = { __typename?: 'Query', cmsProject?: { __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, topics: Array<string>, starCount: number, createdAt: any, updatedAt: any } | null };
 
 export type GetCmsProjectsQueryVariables = Exact<{
   workspaceIds: Array<Scalars['ID']['input']> | Scalars['ID']['input'];
+  keyword?: InputMaybe<Scalars['String']['input']>;
   publicOnly?: InputMaybe<Scalars['Boolean']['input']>;
   page?: InputMaybe<Scalars['Int']['input']>;
   pageSize?: InputMaybe<Scalars['Int']['input']>;
 }>;
 
 
-export type GetCmsProjectsQuery = { __typename?: 'Query', cmsProjects: Array<{ __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, createdAt: any, updatedAt: any }> };
+export type GetCmsProjectsQuery = { __typename?: 'Query', cmsProjects: Array<{ __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, topics: Array<string>, starCount: number, createdAt: any, updatedAt: any }> };
 
 export type GetCmsModelsQueryVariables = Exact<{
   projectId: Scalars['ID']['input'];
@@ -1412,6 +1422,7 @@ export type GetCmsAssetQuery = { __typename?: 'Query', cmsAsset?: { __typename?:
 export type GetCmsModelExportUrlQueryVariables = Exact<{
   projectId: Scalars['ID']['input'];
   modelId: Scalars['ID']['input'];
+  exportType: CmsExportType;
 }>;
 
 
@@ -1529,7 +1540,7 @@ export type ProjectSnapshotFragment = { __typename?: 'ProjectSnapshot', timestam
 
 export type UserFacingLogFragment = { __typename?: 'UserFacingLog', jobId: string, timestamp: any, nodeId?: string | null, nodeName?: string | null, level: UserFacingLogLevel, message: string };
 
-export type CmsProjectFragment = { __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, createdAt: any, updatedAt: any };
+export type CmsProjectFragment = { __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, topics: Array<string>, starCount: number, createdAt: any, updatedAt: any };
 
 export type CmsModelFragment = { __typename?: 'CMSModel', id: string, projectId: string, name: string, description: string, editorUrl: string, key: string, publicApiEp: string, createdAt: any, updatedAt: any, schema: { __typename?: 'CMSSchema', schemaId: string, fields: Array<{ __typename?: 'CMSSchemaField', fieldId: string, key: string, type: CmsSchemaFieldType, name: string, description?: string | null }> } };
 
@@ -2008,6 +2019,8 @@ export const CmsProjectFragmentDoc = gql`
   readme
   workspaceId
   visibility
+  topics
+  starCount
   createdAt
   updatedAt
 }
@@ -2105,9 +2118,10 @@ export const GetCmsProjectByIdOrAliasDocument = gql`
 }
     ${CmsProjectFragmentDoc}`;
 export const GetCmsProjectsDocument = gql`
-    query GetCmsProjects($workspaceIds: [ID!]!, $publicOnly: Boolean, $page: Int, $pageSize: Int) {
+    query GetCmsProjects($workspaceIds: [ID!]!, $keyword: String, $publicOnly: Boolean, $page: Int, $pageSize: Int) {
   cmsProjects(
     workspaceIds: $workspaceIds
+    keyword: $keyword
     publicOnly: $publicOnly
     page: $page
     pageSize: $pageSize
@@ -2150,8 +2164,12 @@ export const GetCmsAssetDocument = gql`
 }
     ${CmsAssetFragmentDoc}`;
 export const GetCmsModelExportUrlDocument = gql`
-    query GetCmsModelExportUrl($projectId: ID!, $modelId: ID!) {
-  cmsModelExportUrl(projectId: $projectId, modelId: $modelId)
+    query GetCmsModelExportUrl($projectId: ID!, $modelId: ID!, $exportType: CMSExportType!) {
+  cmsModelExportUrl(
+    projectId: $projectId
+    modelId: $modelId
+    exportType: $exportType
+  )
 }
     `;
 export const CreateDeploymentDocument = gql`
