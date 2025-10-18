@@ -1,10 +1,11 @@
 import { useQuery, useQueryClient, QueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 import { intermediateDataTransform } from "@flow/utils/jsonl/transformIntermediateData";
 import { streamJsonl } from "@flow/utils/streaming";
 import type { StreamingProgress } from "@flow/utils/streaming";
+
+export type SupportedDataTypes = "geojson" | "jsonl";
 
 type GeometryType =
   | "FlowGeometry2D"
@@ -204,6 +205,7 @@ export const useStreamingDebugRunQuery = (
           if (streamData.length < displayLimit) {
             const remainingToAdd = displayLimit - streamData.length;
             const dataToAdd = result.data.slice(0, remainingToAdd);
+            console.log("dataToAdd", dataToAdd)
             const transformedData = dataToAdd.map((feature) => {
               try {
                 return intermediateDataTransform(feature);

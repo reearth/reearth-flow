@@ -14,9 +14,9 @@ import {
   IconButton,
   LoadingSkeleton,
 } from "@flow/components";
+import type { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useT } from "@flow/lib/i18n";
-import { JobState } from "@flow/stores";
-import type { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
+import type { JobState } from "@flow/stores";
 
 import ThreeDViewer from "./components/ThreeDViewer";
 import TwoDViewer from "./components/TwoDViewer";
