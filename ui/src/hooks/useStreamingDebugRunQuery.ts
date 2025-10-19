@@ -14,6 +14,8 @@ type GeometryType =
   | "Unknown"
   | null;
 
+type VisualizerType = "2d-map" | "3d-map" | "3d-model" | null;
+
 type UseStreamingDebugRunQueryOptions = {
   enabled?: boolean;
   batchSize?: number;
@@ -43,23 +45,35 @@ function detectGeometryType(feature: any): GeometryType {
   return "Unknown";
 }
 
-function analyzeDataType(features: any[]): GeometryType {
-  if (features.length === 0) return null;
+function analyzeDataType(features: any[]): {
+  geometryType: GeometryType;
+  visualizerType: VisualizerType;
+} {
+  if (features.length === 0) return { geometryType: null, visualizerType: null };
 
   // Check first few features to determine predominant type
   const sampleSize = Math.min(10, features.length);
   const typeCounts: Record<string, number> = {};
+  let hasObjGltfSource = false;
 
   for (let i = 0; i < sampleSize; i++) {
-    const type = detectGeometryType(features[i]);
+    const feature = features[i];
+    const type = detectGeometryType(feature);
+    const source = feature?.attributes?.source;
+
     if (type && type !== "Unknown") {
       typeCounts[type] = (typeCounts[type] || 0) + 1;
+    }
+
+    // Check for OBJ/glTF source
+    if (source === "OBJ" || source === "glTF") {
+      hasObjGltfSource = true;
     }
   }
 
   // Return most common type, or null if no geometry types found
   const entries = Object.entries(typeCounts);
-  if (entries.length === 0) return null;
+  if (entries.length === 0) return { geometryType: null, visualizerType: null };
 
   const predominantType = entries.reduce((a, b) =>
     typeCounts[a[0]] > typeCounts[b[0]] ? a : b,
@@ -71,10 +85,21 @@ function analyzeDataType(features: any[]): GeometryType {
     0,
   );
   if (totalGeometryFeatures < sampleSize / 2) {
-    return null; // Less than half have recognizable geometry
+    return { geometryType: null, visualizerType: null }; // Less than half have recognizable geometry
   }
 
-  return predominantType;
+  // Determine visualizer based on geometry type + source
+  let visualizerType: VisualizerType = null;
+
+  if (predominantType === "FlowGeometry2D") {
+    visualizerType = "2d-map";
+  } else if (predominantType === "CityGmlGeometry") {
+    visualizerType = "3d-map";
+  } else if (predominantType === "FlowGeometry3D") {
+    visualizerType = hasObjGltfSource ? "3d-model" : "3d-map";
+  }
+
+  return { geometryType: predominantType, visualizerType };
 }
 
 // Smart cache management to prevent memory issues with multiple files
@@ -139,6 +164,7 @@ export const useStreamingDebugRunQuery = (
   const [streamingState, setStreamingState] = useState<{
     data: any[];
     detectedGeometryType: GeometryType;
+    visualizerType: VisualizerType;
     totalFeatures: number;
     isStreaming: boolean;
     isComplete: boolean;
@@ -148,6 +174,7 @@ export const useStreamingDebugRunQuery = (
   }>({
     data: [],
     detectedGeometryType: null,
+    visualizerType: null,
     totalFeatures: 0,
     isStreaming: false,
     isComplete: false,
@@ -163,6 +190,7 @@ export const useStreamingDebugRunQuery = (
       if (!dataUrl) return null;
 
       let detectedGeometryType: GeometryType = null;
+      let detectedVisualizerType: VisualizerType = null;
       const streamData: any[] = [];
       let totalFeatures = 0;
       let isComplete = false;
@@ -195,9 +223,11 @@ export const useStreamingDebugRunQuery = (
         for await (const result of streamGenerator) {
           totalFeatures = result.progress.featuresProcessed;
 
-          // Detect geometry type from first batch
+          // Detect geometry type and visualizer from first batch
           if (!detectedGeometryType && result.data.length > 0) {
-            detectedGeometryType = analyzeDataType(result.data);
+            const analysis = analyzeDataType(result.data);
+            detectedGeometryType = analysis.geometryType;
+            detectedVisualizerType = analysis.visualizerType;
           }
 
           // Only store data up to display limit, but always update progress
@@ -227,6 +257,7 @@ export const useStreamingDebugRunQuery = (
             ...prev,
             data: shouldUpdateData ? [...streamData] : prev.data, // Only update data if we added new items
             detectedGeometryType,
+            visualizerType: detectedVisualizerType,
             totalFeatures, // Always update total count
             progress: result.progress, // Always update progress
             hasMore: totalFeatures > displayLimit,
@@ -245,6 +276,7 @@ export const useStreamingDebugRunQuery = (
           data: streamData,
           fileContent: streamData,
           detectedGeometryType,
+          visualizerType: detectedVisualizerType,
           totalFeatures,
           isComplete,
           isStreaming: false,
@@ -290,6 +322,7 @@ export const useStreamingDebugRunQuery = (
         setStreamingState({
           data: cachedData.data || cachedData.fileContent || [],
           detectedGeometryType: cachedData.detectedGeometryType,
+          visualizerType: cachedData.visualizerType || null,
           totalFeatures: cachedData.totalFeatures || 0,
           isStreaming: false,
           isComplete: true,
@@ -305,6 +338,7 @@ export const useStreamingDebugRunQuery = (
         setStreamingState({
           data: [],
           detectedGeometryType: null,
+          visualizerType: null,
           totalFeatures: 0,
           isStreaming: false,
           isComplete: false,
