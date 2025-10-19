@@ -41,8 +41,8 @@ export default ({
           }
 
           // For routers without routingPort, generate unique port name
-          const isRouterInput = newNode.data.outputs?.length;
-          const isRouterOutput = newNode.data.inputs?.length;
+          const isRouterInput = newNode.data.officialName === "InputRouter";
+          const isRouterOutput = newNode.data.officialName === "OutputRouter";
 
           if (
             (isRouterInput || isRouterOutput) &&
