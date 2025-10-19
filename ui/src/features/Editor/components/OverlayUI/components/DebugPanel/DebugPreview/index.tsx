@@ -4,7 +4,7 @@ import {
   MapPinAreaIcon,
   TargetIcon,
 } from "@phosphor-icons/react";
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo, useRef } from "react";
 
 import {
   DropdownMenu,
@@ -14,7 +14,9 @@ import {
   IconButton,
   LoadingSkeleton,
 } from "@flow/components";
-import ThreeJSViewer from "@flow/components/visualizations/ThreeJS";
+import ThreeJSViewer, {
+  type ThreeJSViewerRef,
+} from "@flow/components/visualizations/ThreeJS";
 import type { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useT } from "@flow/lib/i18n";
 import type { JobState } from "@flow/stores";
@@ -56,6 +58,11 @@ const DebugPreview: React.FC<Props> = ({
   isComplete,
 }) => {
   const t = useT();
+  const threeJSViewerRef = useRef<ThreeJSViewerRef>(null);
+
+  const handleResetClick = useCallback(() => {
+    threeJSViewerRef.current?.resetCamera();
+  }, []);
 
   // Determine if we should show the viewer based on data availability
   const shouldShowViewer = () => {
@@ -238,22 +245,43 @@ const DebugPreview: React.FC<Props> = ({
         </div>
       ) : visualizerType === "3d-model" ? (
         <div className="h-full">
-          {/* 3D Model Viewer Header */}
+          {/* 3D Model Viewer Header with actions */}
           <div className="py-1">
-            <div className="flex items-center gap-1 rounded-md px-3 py-2">
-              <GlobeIcon size={16} />
-              <p className="text-sm font-medium select-none">
-                {t("3D Model Viewer")}
-              </p>
-              {detectedGeometryType && (
-                <span className="rounded px-2 py-1 text-xs text-muted-foreground">
-                  {detectedGeometryType}
-                </span>
-              )}
+            <div className="flex w-full justify-between p-1">
+              <div className="flex items-center gap-1 px-2">
+                <GlobeIcon size={16} />
+                <p className="text-sm font-medium select-none">
+                  {t("3D Model Viewer")}
+                </p>
+                {detectedGeometryType && (
+                  <span className="rounded px-2 text-xs text-muted-foreground">
+                    {detectedGeometryType}
+                  </span>
+                )}
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton
+                    className="w-[25px]"
+                    tooltipText={t("Additional actions")}
+                    tooltipOffset={12}
+                    icon={<DotsThreeVerticalIcon size={18} />}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleResetClick}>
+                    <TargetIcon />
+                    {t("Reset Camera")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
           <div className="h-[calc(100%-55px)]">
-            <ThreeJSViewer fileContent={selectedOutputData} />
+            <ThreeJSViewer
+              ref={threeJSViewerRef}
+              fileContent={selectedOutputData}
+            />
           </div>
         </div>
       ) : (

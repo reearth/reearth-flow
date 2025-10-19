@@ -4,17 +4,48 @@ import { useThree } from "@react-three/fiber";
 
 type Props = {
   features: any[];
+  resetTrigger?: number;
 };
 
-// Helper to build BufferGeometry from polygon data
+// Extract material color from feature properties
+function extractMaterialColor(feature: any): THREE.Color {
+  const props = feature?.properties;
+
+  // Try to get material properties from OBJ data
+  const materialProps = props?.materialProperties;
+  if (materialProps && typeof materialProps === "object") {
+    // Get the first material (features usually have one material)
+    const materialNames = props?.materials;
+    const firstMaterial = Array.isArray(materialNames) ? materialNames[0] : null;
+
+    if (firstMaterial && materialProps[firstMaterial]) {
+      const material = materialProps[firstMaterial];
+
+      // Use diffuse color (most common for surface color)
+      if (material.diffuse && Array.isArray(material.diffuse)) {
+        const [r, g, b] = material.diffuse;
+        return new THREE.Color(r, g, b);
+      }
+    }
+  }
+
+  // Default neutral gray
+  return new THREE.Color(0x9ca3af);
+}
+
+// Helper to build BufferGeometry from polygon data with vertex colors
 function buildGeometryFromPolygons(features: any[]): THREE.BufferGeometry {
   const vertices: number[] = [];
+  const colors: number[] = [];
   const indices: number[] = [];
   let vertexOffset = 0;
 
   features.forEach((feature) => {
     const geometry = feature?.geometry;
     if (!geometry) return;
+
+    // Extract material color for this feature
+    const color = extractMaterialColor(feature);
 
     // Handle GeoJSON Polygon
     if (geometry.type === "Polygon" && geometry.coordinates) {
@@ -30,6 +61,7 @@ function buildGeometryFromPolygons(features: any[]): THREE.BufferGeometry {
 
       points.forEach((coord: number[]) => {
         vertices.push(coord[0], coord[1], coord[2] || 0);
+        colors.push(color.r, color.g, color.b);
         vertexOffset++;
       });
 
@@ -53,6 +85,7 @@ function buildGeometryFromPolygons(features: any[]): THREE.BufferGeometry {
 
         points.forEach((coord: number[]) => {
           vertices.push(coord[0], coord[1], coord[2] || 0);
+          colors.push(color.r, color.g, color.b);
           vertexOffset++;
         });
 
@@ -68,16 +101,19 @@ function buildGeometryFromPolygons(features: any[]): THREE.BufferGeometry {
     "position",
     new THREE.Float32BufferAttribute(vertices, 3)
   );
+  bufferGeometry.setAttribute(
+    "color",
+    new THREE.Float32BufferAttribute(colors, 3)
+  );
   bufferGeometry.setIndex(indices);
   bufferGeometry.computeVertexNormals();
 
   return bufferGeometry;
 }
 
-const ModelGeometry: React.FC<Props> = ({ features }) => {
+const ModelGeometry: React.FC<Props> = ({ features, resetTrigger }) => {
   const meshRef = useRef<THREE.Mesh>(null);
-  const { camera } = useThree();
-  const hasFramed = useRef(false);
+  const { camera, controls } = useThree();
 
   // Build geometry from features
   const geometry = useMemo(() => {
@@ -85,9 +121,9 @@ const ModelGeometry: React.FC<Props> = ({ features }) => {
     return buildGeometryFromPolygons(features);
   }, [features]);
 
-  // Auto-frame the model on load
+  // Auto-frame the model on load or reset
   useEffect(() => {
-    if (geometry && meshRef.current && !hasFramed.current) {
+    if (geometry && meshRef.current && controls) {
       // Compute bounding box
       geometry.computeBoundingBox();
       const box = geometry.boundingBox;
@@ -111,10 +147,17 @@ const ModelGeometry: React.FC<Props> = ({ features }) => {
         camera.lookAt(center);
         camera.updateProjectionMatrix();
 
-        hasFramed.current = true;
+        // Update OrbitControls target to center of model
+        // @ts-expect-error - OrbitControls has target property
+        if (controls.target) {
+          // @ts-expect-error - OrbitControls has target property
+          controls.target.copy(center);
+          // @ts-expect-error - OrbitControls has update method
+          controls.update();
+        }
       }
     }
-  }, [geometry, camera]);
+  }, [geometry, camera, controls, resetTrigger]);
 
   // Cleanup geometry on unmount
   useEffect(() => {
@@ -130,7 +173,7 @@ const ModelGeometry: React.FC<Props> = ({ features }) => {
   return (
     <mesh ref={meshRef} geometry={geometry}>
       <meshStandardMaterial
-        color="#9ca3af"
+        vertexColors
         side={THREE.DoubleSide}
         flatShading={false}
         metalness={0.1}
