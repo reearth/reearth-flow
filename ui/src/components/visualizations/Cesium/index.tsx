@@ -3,7 +3,7 @@ import { SceneMode } from "cesium";
 import { useEffect, useState } from "react";
 import { Viewer, ViewerProps } from "resium";
 
-import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
+import { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 
 import CityGmlData from "./CityGmlData";
 import GeoJsonData from "./GeoJson";
