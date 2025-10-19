@@ -52,7 +52,11 @@ export default ({
           params,
         });
 
-        if (yWebSocketProvider.awareness && !isSharedCanvas) {
+        if (
+          yWebSocketProvider.awareness &&
+          !isSharedCanvas &&
+          !yWebSocketProvider.awareness.getLocalState()?.color
+        ) {
           const color =
             CURSOR_COLORS[Math.floor(Math.random() * CURSOR_COLORS.length)];
           yWebSocketProvider.awareness.setLocalStateField("color", color);
