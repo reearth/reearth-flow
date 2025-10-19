@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	batch "cloud.google.com/go/batch/apiv1"
@@ -39,6 +40,7 @@ type BatchConfig struct {
 	SAEmail                         string
 	TaskCount                       int
 	ThreadPoolSize                  string
+	CompressIntermediateData        bool
 }
 
 type BatchClient interface {
@@ -178,6 +180,9 @@ func (b *BatchRepo) SubmitJob(
 				}
 				if b.config.FeatureFlushThreshold != "" {
 					vars["FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD"] = b.config.FeatureFlushThreshold
+				}
+				if b.config.CompressIntermediateData {
+					vars["FLOW_RUNTIME_COMPRESS_INTERMEDIATE_DATA"] = strconv.FormatBool(b.config.CompressIntermediateData)
 				}
 
 				return vars

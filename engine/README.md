@@ -150,6 +150,7 @@ export FLOW_VAR_targetPackages='["bldg", "fld"]'
 | FLOW_RUNTIME_SLOW_ACTION_THRESHOLD            | Threshold for writing slow action logs(ms)                         | 300     |
 | FLOW_RUNTIME_WORKING_DIRECTORY                | working directory                                                  | macOS: `$HOME/Library/Caches/<project_path>`, Linux: `$HOME/.cache/<project_path>`, Windows: `%LOCALAPPDATA%\<project_path>` |
 | FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS | Delay (ms) to ensure node status events propagate                  | 500     |
+| FLOW_RUNTIME_COMPRESS_INTERMEDIATE_DATA       | Enable zstd compression for Intermediate Data I/O.                 | false   |
 
 ## Intermediate Data & Cache
 
@@ -201,6 +202,13 @@ ls <cache_directory>/projects/<project>/jobs/<job_id>/
 ### Run workflow
 
 ```console
+$ cargo run --package reearth-flow-cli -- run --workflow ${workflow_path}
+```
+
+#### Enable zstd compression for State I/O
+
+```console
+$ export FLOW_RUNTIME_COMPRESS_INTERMEDIATE_DATA=true
 $ cargo run --package reearth-flow-cli -- run --workflow ${workflow_path}
 ```
 

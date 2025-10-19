@@ -4,6 +4,16 @@
   "expectedOutput": {
     "expectedFile": "02_建築物_C-bldg-01エラー.csv"
   },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_bldg.json",
+      "includeFields": ["C-bldg-01 エラー"]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "02_建築物_検査結果一覧.csv",
+      "includeColumns": ["C-bldg-01 エラー"]
+    }
+  },
   "cityGmlPath": "udx/bldg/input.gml",
   "codelists": "codelists",
   "schemas": "schemas",
@@ -11,8 +21,10 @@
     {
       "edgeId": "7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b.ccc937ca-4311-4c80-a30b-e8939d70c23c",
       "expectedFile": "error_count_test_filtered.jsonl",
-      "jsonFilter": "{attributes}"
+      "jsonFilter": "{attributes}",
+      "except": "gmlFilename"
     }
   ],
+  "expectResultOkFile": false,
   "skip": false
 }

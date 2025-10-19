@@ -6,6 +6,7 @@ pub(crate) mod clipper;
 pub(crate) mod closed_curve_filter;
 pub(crate) mod coercer;
 pub(crate) mod convex_hull_accumulator;
+pub(crate) mod csg;
 pub(crate) mod dimension_filter;
 pub(crate) mod dissolver;
 pub(crate) mod elevation_extractor;

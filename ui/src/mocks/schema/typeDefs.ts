@@ -198,7 +198,6 @@ export const typeDefs = `
     deploymentId: ID!
     debug: Boolean
     id: ID!
-    logsURL: String
     workerLogsURL: String
     outputURLs: [String!]
     startedAt: DateTime!

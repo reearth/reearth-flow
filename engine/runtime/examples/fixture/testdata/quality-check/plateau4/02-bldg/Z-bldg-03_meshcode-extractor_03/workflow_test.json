@@ -6,5 +6,12 @@
   },
   "cityGmlPath": "udx/bldg/equal_area_cross_mesh.gml",
   "codelists": "codelists",
-  "schemas": "schemas"
+  "schemas": "schemas",
+  "summaryOutput": {
+    "fileErrorSummary": {
+      "expectedFile": "02_建築物_検査結果一覧.csv",
+      "includeColumns": ["図郭不正"]
+    }
+  },
+  "expectResultOkFile": false
 }

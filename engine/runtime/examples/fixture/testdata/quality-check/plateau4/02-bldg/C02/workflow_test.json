@@ -5,8 +5,15 @@
     "expectedFile": "02_建築物_地物インスタンス数.csv",
     "except": "GmlFilePath"
   },
+  "summaryOutput": {
+    "fileErrorSummary": {
+      "expectedFile": "02_建築物_検査結果一覧.csv",
+      "includeColumns": ["WallSurface", "BuildingFurniture", "Building", "OuterCeilingSurface", "BuildingInstallation", "ClosureSurface", "InteriorWallSurface", "RoofSurface", "Room", "OuterFloorSurface", "GroundSurface", "Window", "CeilingSurface", "BuildingPart", "FloorSurface", "Door", "IntBuildingInstallation"]
+    }
+  },
   "cityGmlPath": "udx/bldg/input.gml",
   "codelists": "codelists",
   "schemas": "schemas",
+  "expectResultOkFile": false,
   "skip": false
 }

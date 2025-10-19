@@ -4,7 +4,18 @@
   "expectedOutput": {
     "expectedFile": "02_建築物_LOD1境界面のエラー.csv"
   },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_bldg.json",
+      "includeFields": ["LOD1 境界面のエラー"]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "02_建築物_検査結果一覧.csv",
+      "includeColumns": ["LOD1 境界面のエラー"]
+    }
+  },
   "cityGmlPath": "udx/bldg/l13_fail_interior_exterior_crossing.gml",
   "codelists": "codelists",
-  "schemas": "schemas"
+  "schemas": "schemas",
+  "expectResultOkFile": false
 }

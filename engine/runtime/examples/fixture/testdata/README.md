@@ -21,6 +21,14 @@ Each testdata is a folder consisting of a test profile named `workflow_test.json
   - **edgeId**: Workflow edge identifier to capture data from
   - **expectedFile**: Expected intermediate data file (relative to testdata root). The file format is automatically detected.
   - **jsonFilter**: Optional JSON filtering (see JSON Filtering section)
+- **summaryOutput**: Validate aggregated summary outputs (see Summary Output Validation section)
+  - **errorCountSummary**: Validate JSON-based error count summary files
+  - **fileErrorSummary**: Validate CSV-based per-file error summary files
+- **expectResultOkFile**: Control validation of `qc_result_ok` file generation (optional)
+  - If omitted or `null`: Skip validation (no check performed)
+  - Set to `true`: Verify that the workflow generates a result OK marker file
+  - Set to `false`: Verify that the workflow does NOT generate a result OK marker file
+  - Used primarily for testing no-error scenarios (`true`) or error detection scenarios (`false`)
 - **skip**: Skip this test (useful for debugging)
 
 ## JSON Filtering System
@@ -138,6 +146,91 @@ Use `jsonFilter` for focused testing:
 ```json
 "jsonFilter": "{attributes}"         // Focus on specific fields
 ```
+
+## Summary Output Validation
+
+The test system supports validation of aggregated summary outputs, such as error count summaries and per-file error details. This is useful for testing workflows that produce summary reports alongside detailed error outputs.
+
+### Configuration Options
+
+#### Error Count Summary (`errorCountSummary`)
+Validates JSON-based summary files containing aggregated error counts across the entire workflow execution.
+
+- **expectedFile**: Name of the expected summary file (e.g., `summary_bldg.json`)
+  - The actual output file must have the same name in the workflow output directory
+  - The expected file is placed in the testdata directory
+- **includeFields**: Array of field names to validate (optional)
+  - If omitted, all fields in the expected file are compared
+  - Useful for testing only specific error types
+
+#### File Error Summary (`fileErrorSummary`)
+Validates CSV-based summary files containing per-file error details.
+
+- **expectedFile**: Name of the expected summary file (e.g., `02_建築物_検査結果一覧.csv`)
+  - The actual output file must have the same name in the workflow output directory
+  - The expected file is placed in the testdata directory
+- **includeColumns**: Array of column names to validate (optional)
+  - If omitted, all columns are compared
+  - Key columns (e.g., `Filename`) are automatically included
+- **keyColumns**: Columns used to identify rows (default: `["Filename"]`)
+  - Used to match rows between actual and expected files
+
+### Example Configuration
+
+```json
+{
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
+  "description": "Test PLATEAU4 city code validation with summary output",
+  "expectedOutput": {
+    "expectedFile": "02_建築物_市区町村コードエラー.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_bldg.json",
+      "includeFields": [
+        "市区町村コードエラー"
+      ]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "02_建築物_検査結果一覧.csv",
+      "includeColumns": [
+        "市区町村コードエラー"
+      ]
+    }
+  },
+  "cityGmlPath": "udx/bldg/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas"
+}
+```
+
+### Expected Summary Files
+
+#### JSON Error Count Summary (`summary_bldg.json`)
+```json
+[
+  {
+    "name": "市区町村コードエラー",
+    "count": 2
+  },
+  {
+    "name": "C-bldg-01 エラー",
+    "count": 0
+  }
+]
+```
+
+#### CSV File Error Summary (`02_建築物_検査結果一覧.csv`)
+```csv
+Index,Filename,市区町村コードエラー,C-bldg-01 エラー,不正な建物ID
+1,input.gml,2,0,0
+```
+
+### Use Cases
+
+1. **Selective Field Testing**: Test only specific error types by using `includeFields` or `includeColumns`
+2. **Multi-File Workflows**: Validate aggregated error counts across multiple input files
+3. **Summary Reports**: Ensure summary reports are generated correctly alongside detailed outputs
 
 ## Adding New Tests
 

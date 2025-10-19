@@ -1,10 +1,21 @@
 {
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
-  "description": "",
+  "description": "Test LOD0-1 BuildingPart detection",
   "expectedOutput": {
     "expectedFile": "02_建築物_LOD0-1のBuildingPart.csv"
   },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_bldg.json",
+      "includeFields": ["LOD0-1のBuildingPart"]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "02_建築物_検査結果一覧.csv",
+      "includeColumns": ["LOD0-1のBuildingPart"]
+    }
+  },
   "cityGmlPath": "udx/bldg/test_buildingpart.gml",
   "codelists": "codelists",
-  "schemas": "schemas"
+  "schemas": "schemas",
+  "expectResultOkFile": false
 }
