@@ -16,7 +16,9 @@ function extractMaterialColor(feature: any): THREE.Color {
   if (materialProps && typeof materialProps === "object") {
     // Get the first material (features usually have one material)
     const materialNames = props?.materials;
-    const firstMaterial = Array.isArray(materialNames) ? materialNames[0] : null;
+    const firstMaterial = Array.isArray(materialNames)
+      ? materialNames[0]
+      : null;
 
     if (firstMaterial && materialProps[firstMaterial]) {
       const material = materialProps[firstMaterial];
@@ -99,11 +101,11 @@ function buildGeometryFromPolygons(features: any[]): THREE.BufferGeometry {
   const bufferGeometry = new THREE.BufferGeometry();
   bufferGeometry.setAttribute(
     "position",
-    new THREE.Float32BufferAttribute(vertices, 3)
+    new THREE.Float32BufferAttribute(vertices, 3),
   );
   bufferGeometry.setAttribute(
     "color",
-    new THREE.Float32BufferAttribute(colors, 3)
+    new THREE.Float32BufferAttribute(colors, 3),
   );
   bufferGeometry.setIndex(indices);
   bufferGeometry.computeVertexNormals();
@@ -142,7 +144,7 @@ const ModelGeometry: React.FC<Props> = ({ features, resetTrigger }) => {
         camera.position.set(
           center.x + distance,
           center.y + distance,
-          center.z + distance
+          center.z + distance,
         );
         camera.lookAt(center);
         camera.updateProjectionMatrix();

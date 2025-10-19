@@ -49,7 +49,8 @@ function analyzeDataType(features: any[]): {
   geometryType: GeometryType;
   visualizerType: VisualizerType;
 } {
-  if (features.length === 0) return { geometryType: null, visualizerType: null };
+  if (features.length === 0)
+    return { geometryType: null, visualizerType: null };
 
   // Check first few features to determine predominant type
   const sampleSize = Math.min(10, features.length);
@@ -236,7 +237,7 @@ export const useStreamingDebugRunQuery = (
             const remainingToAdd = displayLimit - streamData.length;
             const dataToAdd = result.data.slice(0, remainingToAdd);
 
-            console.log("dataToAdd", dataToAdd)
+            console.log("dataToAdd", dataToAdd);
 
             const transformedData = dataToAdd.map((feature) => {
               try {

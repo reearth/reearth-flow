@@ -24,7 +24,7 @@ const ThreeJSViewer = forwardRef<ThreeJSViewerRef, Props>(
           setResetTrigger((prev) => prev + 1);
         },
       }),
-      []
+      [],
     );
 
     return (
@@ -70,7 +70,7 @@ const ThreeJSViewer = forwardRef<ThreeJSViewerRef, Props>(
         </Canvas>
       </div>
     );
-  }
+  },
 );
 
 ThreeJSViewer.displayName = "ThreeJSViewer";
