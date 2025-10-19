@@ -237,8 +237,6 @@ export const useStreamingDebugRunQuery = (
             const remainingToAdd = displayLimit - streamData.length;
             const dataToAdd = result.data.slice(0, remainingToAdd);
 
-            console.log("dataToAdd", dataToAdd);
-
             const transformedData = dataToAdd.map((feature) => {
               try {
                 return intermediateDataTransform(feature);
