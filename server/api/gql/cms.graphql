@@ -9,6 +9,8 @@ type CMSProject {
   readme: String
   workspaceId: ID!
   visibility: CMSVisibility!
+  topics: [String!]!
+  starCount: Int!
   createdAt: DateTime!
   updatedAt: DateTime!
 }
@@ -106,6 +108,11 @@ type CMSItemsConnection {
   totalCount: Int!
 }
 
+enum CMSExportType {
+  JSON
+  GEOJSON
+}
+
 # Queries
 
 extend type Query {
@@ -113,23 +120,23 @@ extend type Query {
   cmsProject(projectIdOrAlias: ID!): CMSProject
   
   # List CMS projects for multiple workspaces
-  cmsProjects(workspaceIds: [ID!]!, publicOnly: Boolean, page: Int, pageSize: Int): [CMSProject!]!
-  
+  cmsProjects(workspaceIds: [ID!]!, keyword: String, publicOnly: Boolean, page: Int, pageSize: Int): [CMSProject!]!
+
   # Get a CMS asset by ID
   cmsAsset(assetId: ID!): CMSAsset
-  
+
   # List CMS assets for a project
   cmsAssets(projectId: ID!, page: Int, pageSize: Int): CMSAssetsConnection!
-  
+
   # Get a CMS model by project and model ID/alias
   cmsModel(projectIdOrAlias: ID!, modelIdOrAlias: ID!): CMSModel
-  
+
   # List CMS models for a project
   cmsModels(projectId: ID!, page: Int, pageSize: Int): CMSModelsConnection!
-  
+
   # List CMS items for a model
   cmsItems(projectId: ID!, modelId: ID!, keyword: String, page: Int, pageSize: Int): CMSItemsConnection!
-  
-  # Get GeoJSON export URL for a CMS model
-  cmsModelExportUrl(projectId: ID!, modelId: ID!): String!
-} 
+
+  # Get export URL for a CMS model with specified type
+  cmsModelExportUrl(projectId: ID!, modelId: ID!, exportType: CMSExportType): String!
+}

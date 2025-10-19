@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CmsItem, CmsModel, CmsProject } from "@flow/types/cmsIntegration";
 import { isDefined } from "@flow/utils";
 
+import { CmsExportType } from "../__gen__/graphql";
 import { toCmsAsset, toCmsItem, toCmsModel, toCmsProject } from "../convert";
 import { useGraphQLContext } from "../provider";
 
@@ -22,6 +23,7 @@ export const useQueries = () => {
 
   const useGetCmsProjectsQuery = (
     workspaceIds: [string],
+    keyword?: string,
     publicOnly?: boolean,
     page?: number,
     pageSize?: number,
@@ -31,6 +33,7 @@ export const useQueries = () => {
       queryFn: async () => {
         const data = await graphQLContext?.GetCmsProjects({
           workspaceIds,
+          keyword,
           publicOnly: publicOnly ?? false,
           page,
           pageSize,
@@ -115,13 +118,18 @@ export const useQueries = () => {
       enabled: !!modelId,
     });
 
-  const useGetCmsModelExportUrlQuery = (projectId: string, modelId: string) =>
+  const useGetCmsModelExportUrlQuery = (
+    projectId: string,
+    modelId: string,
+    exportType: CmsExportType,
+  ) =>
     useQuery({
       queryKey: [CmsQueryKeys.GetCmsModelExportUrl, modelId],
       queryFn: async () => {
         const data = await graphQLContext?.GetCmsModelExportUrl({
           projectId,
           modelId,
+          exportType,
         });
         if (!data) return;
 

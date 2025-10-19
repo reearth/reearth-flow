@@ -6,12 +6,14 @@ query GetCmsProjectByIdOrAlias($projectIdOrAlias: ID!) {
 
 query GetCmsProjects(
   $workspaceIds: [ID!]!
+  $keyword: String
   $publicOnly: Boolean
   $page: Int
   $pageSize: Int
 ) {
   cmsProjects(
     workspaceIds: $workspaceIds
+    keyword: $keyword
     publicOnly: $publicOnly
     page: $page
     pageSize: $pageSize
@@ -56,6 +58,14 @@ query GetCmsAsset($assetId: ID!) {
   }
 }
 
-query GetCmsModelExportUrl($projectId: ID!, $modelId: ID!) {
-  cmsModelExportUrl(projectId: $projectId, modelId: $modelId)
+query GetCmsModelExportUrl(
+  $projectId: ID!
+  $modelId: ID!
+  $exportType: CMSExportType!
+) {
+  cmsModelExportUrl(
+    projectId: $projectId
+    modelId: $modelId
+    exportType: $exportType
+  )
 }

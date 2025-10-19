@@ -16,5 +16,6 @@
   },
   "cityGmlPath": "udx/bldg/L13_LOD0_02.gml",
   "codelists": "codelists",
-  "schemas": "schemas"
+  "schemas": "schemas",
+  "expectResultOkFile": false
 }
