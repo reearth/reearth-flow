@@ -205,6 +205,8 @@ func TestConvertProtoToProject(t *testing.T) {
 		Readme:      &readme,
 		WorkspaceId: "workspace-456",
 		Visibility:  proto.Visibility_PUBLIC,
+		Topics:      []string{"geospatial", "data"},
+		StarCount:   42,
 		CreatedAt:   timestamppb.New(now),
 		UpdatedAt:   timestamppb.New(now),
 	}
@@ -220,6 +222,8 @@ func TestConvertProtoToProject(t *testing.T) {
 	assert.Equal(t, &readme, result.Readme)
 	assert.Equal(t, "workspace-456", result.WorkspaceID)
 	assert.Equal(t, cms.VisibilityPublic, result.Visibility)
+	assert.Equal(t, []string{"geospatial", "data"}, result.Topics)
+	assert.Equal(t, int32(42), result.StarCount)
 	assert.Equal(t, now.Unix(), result.CreatedAt.Unix())
 	assert.Equal(t, now.Unix(), result.UpdatedAt.Unix())
 
@@ -373,6 +377,16 @@ func TestConvertAnyToInterface(t *testing.T) {
 				"num": 123.0,
 			},
 		},
+		{
+			name: "unknown type returns raw bytes",
+			setup: func() *anypb.Any {
+				return &anypb.Any{
+					TypeUrl: "type.googleapis.com/unknown.CustomType",
+					Value:   []byte("raw data"),
+				}
+			},
+			expected: []byte("raw data"),
+		},
 	}
 
 	for _, tt := range tests {
@@ -472,6 +486,14 @@ func (m *MockReEarthCMSClient) ListItems(ctx context.Context, req *proto.ListIte
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*proto.ListItemsResponse), args.Error(1)
+}
+
+func (m *MockReEarthCMSClient) GetModelExportURL(ctx context.Context, req *proto.ModelExportRequest, opts ...grpc.CallOption) (*proto.ExportURLResponse, error) {
+	args := m.Called(ctx, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*proto.ExportURLResponse), args.Error(1)
 }
 
 func (m *MockReEarthCMSClient) GetModelGeoJSONExportURL(ctx context.Context, req *proto.ExportRequest, opts ...grpc.CallOption) (*proto.ExportURLResponse, error) {
