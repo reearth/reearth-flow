@@ -3,8 +3,8 @@ import { memo, useCallback, useState } from "react";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
+import { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useT } from "@flow/lib/i18n";
-import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 
 import FeatureDetailsOverlay from "./FeatureDetailsOverlay";
 

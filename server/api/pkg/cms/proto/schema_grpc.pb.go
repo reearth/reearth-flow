@@ -30,6 +30,7 @@ const (
 	ReEarthCMS_GetModel_FullMethodName                 = "/reearth.cms.v1.ReEarthCMS/GetModel"
 	ReEarthCMS_ListModels_FullMethodName               = "/reearth.cms.v1.ReEarthCMS/ListModels"
 	ReEarthCMS_ListItems_FullMethodName                = "/reearth.cms.v1.ReEarthCMS/ListItems"
+	ReEarthCMS_GetModelExportURL_FullMethodName        = "/reearth.cms.v1.ReEarthCMS/GetModelExportURL"
 	ReEarthCMS_GetModelGeoJSONExportURL_FullMethodName = "/reearth.cms.v1.ReEarthCMS/GetModelGeoJSONExportURL"
 )
 
@@ -49,6 +50,8 @@ type ReEarthCMSClient interface {
 	GetModel(ctx context.Context, in *ModelRequest, opts ...grpc.CallOption) (*ModelResponse, error)
 	ListModels(ctx context.Context, in *ListModelsRequest, opts ...grpc.CallOption) (*ListModelsResponse, error)
 	ListItems(ctx context.Context, in *ListItemsRequest, opts ...grpc.CallOption) (*ListItemsResponse, error)
+	GetModelExportURL(ctx context.Context, in *ModelExportRequest, opts ...grpc.CallOption) (*ExportURLResponse, error)
+	// Deprecated: Do not use.
 	GetModelGeoJSONExportURL(ctx context.Context, in *ExportRequest, opts ...grpc.CallOption) (*ExportURLResponse, error)
 }
 
@@ -170,6 +173,17 @@ func (c *reEarthCMSClient) ListItems(ctx context.Context, in *ListItemsRequest, 
 	return out, nil
 }
 
+func (c *reEarthCMSClient) GetModelExportURL(ctx context.Context, in *ModelExportRequest, opts ...grpc.CallOption) (*ExportURLResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ExportURLResponse)
+	err := c.cc.Invoke(ctx, ReEarthCMS_GetModelExportURL_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Deprecated: Do not use.
 func (c *reEarthCMSClient) GetModelGeoJSONExportURL(ctx context.Context, in *ExportRequest, opts ...grpc.CallOption) (*ExportURLResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ExportURLResponse)
@@ -196,6 +210,8 @@ type ReEarthCMSServer interface {
 	GetModel(context.Context, *ModelRequest) (*ModelResponse, error)
 	ListModels(context.Context, *ListModelsRequest) (*ListModelsResponse, error)
 	ListItems(context.Context, *ListItemsRequest) (*ListItemsResponse, error)
+	GetModelExportURL(context.Context, *ModelExportRequest) (*ExportURLResponse, error)
+	// Deprecated: Do not use.
 	GetModelGeoJSONExportURL(context.Context, *ExportRequest) (*ExportURLResponse, error)
 	mustEmbedUnimplementedReEarthCMSServer()
 }
@@ -239,6 +255,9 @@ func (UnimplementedReEarthCMSServer) ListModels(context.Context, *ListModelsRequ
 }
 func (UnimplementedReEarthCMSServer) ListItems(context.Context, *ListItemsRequest) (*ListItemsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListItems not implemented")
+}
+func (UnimplementedReEarthCMSServer) GetModelExportURL(context.Context, *ModelExportRequest) (*ExportURLResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetModelExportURL not implemented")
 }
 func (UnimplementedReEarthCMSServer) GetModelGeoJSONExportURL(context.Context, *ExportRequest) (*ExportURLResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetModelGeoJSONExportURL not implemented")
@@ -462,6 +481,24 @@ func _ReEarthCMS_ListItems_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ReEarthCMS_GetModelExportURL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ModelExportRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ReEarthCMSServer).GetModelExportURL(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ReEarthCMS_GetModelExportURL_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ReEarthCMSServer).GetModelExportURL(ctx, req.(*ModelExportRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ReEarthCMS_GetModelGeoJSONExportURL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ExportRequest)
 	if err := dec(in); err != nil {
@@ -530,6 +567,10 @@ var ReEarthCMS_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListItems",
 			Handler:    _ReEarthCMS_ListItems_Handler,
+		},
+		{
+			MethodName: "GetModelExportURL",
+			Handler:    _ReEarthCMS_GetModelExportURL_Handler,
 		},
 		{
 			MethodName: "GetModelGeoJSONExportURL",
