@@ -111,8 +111,8 @@ const AssetButton: React.FC<{
 }> = ({ assetId, onSelect }) => {
   const t = useT();
   const { useGetCmsAsset } = useCms();
-  const { cmsAsset, isLoading } = useGetCmsAsset(assetId);
-
+  const cleanedAssetId = assetId.replace(/[^a-zA-Z0-9]/g, "");
+  const { cmsAsset, isLoading } = useGetCmsAsset(cleanedAssetId);
   const handleClick = () => {
     if (cmsAsset?.url) {
       onSelect?.(cmsAsset.url);
