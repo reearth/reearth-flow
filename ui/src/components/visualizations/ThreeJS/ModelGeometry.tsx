@@ -1,6 +1,7 @@
+import { useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { useThree } from "@react-three/fiber";
+import type { OrbitControls as OrbitControlsImpl } from "three/examples/jsm/controls/OrbitControls.js";
 
 type Props = {
   features: any[];
@@ -150,12 +151,10 @@ const ModelGeometry: React.FC<Props> = ({ features, resetTrigger }) => {
         camera.updateProjectionMatrix();
 
         // Update OrbitControls target to center of model
-        // @ts-expect-error - OrbitControls has target property
-        if (controls.target) {
-          // @ts-expect-error - OrbitControls has target property
-          controls.target.copy(center);
-          // @ts-expect-error - OrbitControls has update method
-          controls.update();
+        if (controls && "target" in controls && "update" in controls) {
+          const orbitControls = controls as OrbitControlsImpl;
+          orbitControls.target.copy(center);
+          orbitControls.update();
         }
       }
     }

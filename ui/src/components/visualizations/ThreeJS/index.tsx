@@ -1,5 +1,5 @@
-import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Grid, PerspectiveCamera } from "@react-three/drei";
+import { Canvas } from "@react-three/fiber";
 import { forwardRef, Suspense, useImperativeHandle, useState } from "react";
 
 import ModelGeometry from "./ModelGeometry";
