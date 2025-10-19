@@ -47,6 +47,7 @@ export const useAsset = () => {
       const asset: Asset | undefined = await mutateAsync({
         workspaceId: input.workspaceId,
         file: formData,
+        token: input.token,
       });
       toast({
         title: t("Asset Created"),
@@ -158,7 +159,7 @@ export const useAsset = () => {
       const { mutateAsync } = createAssetMutation;
       const asset: Asset | undefined = await mutateAsync({
         workspaceId,
-        file: assetUpload.token as any,
+        token: assetUpload.token,
       });
 
       toast({
