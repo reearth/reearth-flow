@@ -1,8 +1,8 @@
 import { memo } from "react";
 
 import { CesiumViewer, RenderFallback } from "@flow/components";
+import { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useT } from "@flow/lib/i18n";
-import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 
 type Props = {
   className?: string;

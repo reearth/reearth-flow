@@ -47,7 +47,7 @@ func (i *cmsInteractor) GetCMSProject(ctx context.Context, projectIDOrAlias stri
 	return project, nil
 }
 
-func (i *cmsInteractor) ListCMSProjects(ctx context.Context, workspaceIDs []string, publicOnly bool, page, pageSize *int32) (*cms.ListProjectsOutput, error) {
+func (i *cmsInteractor) ListCMSProjects(ctx context.Context, workspaceIDs []string, keyword *string, publicOnly bool, page, pageSize *int32) (*cms.ListProjectsOutput, error) {
 	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceCMSProject, rbac.ActionAny); err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func (i *cmsInteractor) ListCMSProjects(ctx context.Context, workspaceIDs []stri
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
 
-	log.Debugfc(ctx, "Listing CMS projects for workspaces: %v, publicOnly: %v", workspaceIDs, publicOnly)
+	log.Debugfc(ctx, "Listing CMS projects for workspaces: %v, keyword: %v, publicOnly: %v", workspaceIDs, keyword, publicOnly)
 
 	var pageInfo *cms.PageInfo
 	if page != nil && pageSize != nil {
@@ -68,6 +68,7 @@ func (i *cmsInteractor) ListCMSProjects(ctx context.Context, workspaceIDs []stri
 
 	return i.gateways.CMS.ListProjects(ctx, cms.ListProjectsInput{
 		WorkspaceIDs: workspaceIDs,
+		Keyword:      keyword,
 		PublicOnly:   publicOnly,
 		PageInfo:     pageInfo,
 	})
@@ -183,13 +184,25 @@ func (i *cmsInteractor) ListCMSItems(ctx context.Context, projectID, modelID str
 	})
 }
 
-func (i *cmsInteractor) GetCMSModelExportURL(ctx context.Context, projectID, modelID string) (string, error) {
+func (i *cmsInteractor) GetCMSModelExportURL(ctx context.Context, projectID, modelID string, exportType *cms.ExportType) (string, error) {
 	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceCMSModel, rbac.ActionAny); err != nil {
 		return "", err
 	}
 
 	if i.gateways.CMS == nil {
 		return "", fmt.Errorf("CMS gateway not configured")
+	}
+
+	if exportType != nil {
+		output, err := i.gateways.CMS.GetModelExportURL(ctx, cms.ModelExportInput{
+			ProjectID:  projectID,
+			ModelID:    modelID,
+			ExportType: *exportType,
+		})
+		if err != nil {
+			return "", err
+		}
+		return output.URL, nil
 	}
 
 	output, err := i.gateways.CMS.GetModelGeoJSONExportURL(ctx, cms.ExportInput{
