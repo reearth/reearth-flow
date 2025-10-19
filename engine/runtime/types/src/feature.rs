@@ -453,29 +453,20 @@ impl Feature {
         with: &Option<HashMap<String, serde_json::Value>>,
     ) -> Scope {
         let scope = engine.new_scope();
-        let value: serde_json::Value = serde_json::Value::Object(
-            self.attributes
-                .clone()
-                .into_iter()
-                .map(|(k, v)| (k.into_inner().to_string(), v.into()))
-                .collect::<serde_json::Map<_, _>>(),
-        );
-        scope.set("__value", value);
-        scope.set(
-            "__feature_type",
-            serde_json::Value::String(self.feature_type().unwrap_or_default()),
-        );
-        scope.set(
-            "__feature_id",
-            serde_json::Value::String(self.feature_id().unwrap_or_default()),
-        );
-        scope.set(
-            "__lod",
-            serde_json::Value::String(self.lod().unwrap_or_default()),
-        );
+        let mut rhai_map = rhai::Map::new();
+        for (k, v) in self.attributes.iter() {
+            let json_value: serde_json::Value = v.clone().into();
+            let rhai_value: rhai::Dynamic = serde_json::from_value(json_value).unwrap_or_default();
+            rhai_map.insert(k.to_string().into(), rhai_value);
+        }
+        scope.set_scope_var("__value", &rhai_map);
+        scope.set_scope_var("__feature_type", &self.feature_type().unwrap_or_default());
+        scope.set_scope_var("__feature_id", &self.feature_id().unwrap_or_default());
+        scope.set_scope_var("__lod", &self.lod().unwrap_or_default());
         if let Some(with) = with {
             for (k, v) in with {
-                scope.set(k, v.clone());
+                let rhai_val: rhai::Dynamic = serde_json::from_value(v.clone()).unwrap_or_default();
+                scope.set_scope_var(k, &rhai_val);
             }
         }
         scope
