@@ -19,7 +19,7 @@ use reearth_flow_runtime::{
     executor_operation::NodeContext,
     node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
+use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -103,9 +103,9 @@ pub(super) struct ObjReaderParam {
     pub(super) parse_materials: bool,
 
     /// # Material File
-    /// External MTL file path to use instead of mtllib directives in the OBJ file. When specified, this overrides any material library references in the OBJ file.
+    /// Expression that returns the path to an external MTL file to use instead of mtllib directives in the OBJ file. When specified, this overrides any material library references in the OBJ file.
     #[serde(default)]
-    pub(super) material_file: Option<String>,
+    pub(super) material_file: Option<Expr>,
 
     /// # Triangulate
     /// Convert polygons with more than 3 vertices into triangles using fan triangulation
@@ -317,9 +317,14 @@ async fn read_obj(
     let materials = if params.parse_materials {
         let mut all_materials = HashMap::new();
 
-        if let Some(external_mtl) = &params.material_file {
+        if let Some(external_mtl_expr) = &params.material_file {
+            let scope = ctx.expr_engine.new_scope();
+            let external_mtl = ctx
+                .expr_engine
+                .eval_scope::<String>(external_mtl_expr.as_ref(), &scope)
+                .unwrap_or_else(|_| external_mtl_expr.to_string());
             let mtl_uri =
-                resolve_material_path(ctx, storage_resolver.clone(), &obj_uri, external_mtl)
+                resolve_material_path(ctx, storage_resolver.clone(), &obj_uri, &external_mtl)
                     .await?;
             if let Some(mtl_uri) = mtl_uri {
                 match parse_mtl(ctx, storage_resolver.clone(), &mtl_uri).await {

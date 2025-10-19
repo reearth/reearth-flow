@@ -4265,11 +4265,15 @@ Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, t
     },
     "materialFile": {
       "title": "Material File",
-      "description": "External MTL file path to use instead of mtllib directives in the OBJ file. When specified, this overrides any material library references in the OBJ file.",
+      "description": "Expression that returns the path to an external MTL file to use instead of mtllib directives in the OBJ file. When specified, this overrides any material library references in the OBJ file.",
       "default": null,
-      "type": [
-        "string",
-        "null"
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
       ]
     },
     "mergeGroups": {
