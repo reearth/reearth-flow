@@ -7,6 +7,7 @@ import {
   CreateAssetInput,
   UpdateAssetInput,
   DeleteAssetInput,
+  CreateAssetUploadInput,
 } from "../__gen__/graphql";
 
 import { useQueries } from "./useQueries";
@@ -17,6 +18,7 @@ export const useAsset = () => {
     createAssetMutation,
     updateAssetMutation,
     deleteAssetMutation,
+    createAssetUploadMutation,
   } = useQueries();
   const { toast } = useToast();
   const t = useT();
@@ -38,13 +40,12 @@ export const useAsset = () => {
 
   const createAsset = async (input: CreateAssetInput): Promise<CreateAsset> => {
     const { mutateAsync, ...rest } = createAssetMutation;
-    const formData = new FormData();
-    formData.append("file", input.file);
 
     try {
       const asset: Asset | undefined = await mutateAsync({
         workspaceId: input.workspaceId,
-        file: formData,
+        file: input.file,
+        token: input.token,
       });
       toast({
         title: t("Asset Created"),
@@ -103,9 +104,81 @@ export const useAsset = () => {
     }
   };
 
+  const createAssetUpload = async (input: CreateAssetUploadInput) => {
+    const { mutateAsync, ...rest } = createAssetUploadMutation;
+
+    try {
+      const assetUpload = await mutateAsync({
+        filename: input.filename,
+        workspaceId: input.workspaceId,
+      });
+
+      return { assetUpload, ...rest };
+    } catch (_err) {
+      return { assetUpload: undefined, ...rest };
+    }
+  };
+
+  const createAssetWithDirectUpload = async (input: {
+    workspaceId: string;
+    file: File;
+  }): Promise<CreateAsset> => {
+    const { workspaceId, file } = input;
+    try {
+      const { assetUpload } = await createAssetUpload({
+        workspaceId,
+        filename: file.name,
+      });
+
+      if (!assetUpload?.url || !assetUpload?.token) {
+        throw new Error("Failed to get upload URL");
+      }
+
+      const uploadResponse = await fetch(assetUpload.url, {
+        method: "PUT",
+        body: file,
+        headers: {
+          "Content-Type": assetUpload.contentType || file.type,
+          ...(assetUpload.contentEncoding && {
+            "Content-Encoding": assetUpload.contentEncoding,
+          }),
+        },
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Upload failed: ${uploadResponse.statusText}`);
+      }
+
+      const { mutateAsync } = createAssetMutation;
+      const asset: Asset | undefined = await mutateAsync({
+        workspaceId,
+        token: assetUpload.token,
+      });
+
+      toast({
+        title: t("Asset Created"),
+        description: t("Asset has been successfully created."),
+      });
+
+      const { mutateAsync: _, ...rest } = createAssetMutation;
+      return { asset, ...rest };
+    } catch (err) {
+      console.error("Direct upload failed:", err);
+      toast({
+        title: t("Asset Could Not Be Created"),
+        description: t("There was an error when creating the asset."),
+        variant: "destructive",
+      });
+      const { mutateAsync: _, ...rest } = createAssetMutation;
+      return { asset: undefined, ...rest };
+    }
+  };
+
   return {
     useGetAssets,
     createAsset,
+    createAssetUpload,
+    createAssetWithDirectUpload,
     updateAsset,
     deleteAsset,
   };
