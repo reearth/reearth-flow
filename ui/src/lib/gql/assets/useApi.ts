@@ -40,13 +40,11 @@ export const useAsset = () => {
 
   const createAsset = async (input: CreateAssetInput): Promise<CreateAsset> => {
     const { mutateAsync, ...rest } = createAssetMutation;
-    const formData = new FormData();
-    formData.append("file", input.file);
 
     try {
       const asset: Asset | undefined = await mutateAsync({
         workspaceId: input.workspaceId,
-        file: formData,
+        file: input.file,
         token: input.token,
       });
       toast({
@@ -113,9 +111,6 @@ export const useAsset = () => {
       const assetUpload = await mutateAsync({
         filename: input.filename,
         workspaceId: input.workspaceId,
-        // contentLength: input.contentLength,
-        // contentEncoding: input.contentEncoding,
-        // cursor: input.cursor,
       });
 
       return { assetUpload, ...rest };
@@ -133,8 +128,6 @@ export const useAsset = () => {
       const { assetUpload } = await createAssetUpload({
         workspaceId,
         filename: file.name,
-        // contentLength: file.size,
-        // contentEncoding: undefined,
       });
 
       if (!assetUpload?.url || !assetUpload?.token) {
