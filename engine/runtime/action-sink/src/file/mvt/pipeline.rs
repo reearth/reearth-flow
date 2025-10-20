@@ -328,6 +328,8 @@ pub(super) fn make_tile(
 
         // encode geometry
         let mut geom_enc = GeometryEncoder::new();
+        let has_polygons = !int_mpoly.is_empty();
+        if has_polygons {continue;}
         for poly in &int_mpoly {
             let exterior = poly.exterior();
             if exterior.signed_ring_area() > 0.0 {
@@ -340,6 +342,8 @@ pub(super) fn make_tile(
             }
         }
 
+        let has_linestrings = !int_line_string.is_empty();
+        let mut linestring_index = 0;
         for line_string in &int_line_string {
             let area = line_string.signed_ring_area();
             if area as i32 != 0 {
@@ -361,10 +365,18 @@ pub(super) fn make_tile(
             layer
         };
 
+        // Determine geometry type based on what's present
+        let geom_type = if has_polygons {
+            vector_tile::tile::GeomType::Polygon
+        } else if has_linestrings {
+            vector_tile::tile::GeomType::Linestring
+        } else {
+            vector_tile::tile::GeomType::Unknown
+        };
         layer.features.push(vector_tile::tile::Feature {
             id: None,
             tags: layer.tags_enc.take_tags(),
-            r#type: Some(vector_tile::tile::GeomType::Polygon as i32),
+            r#type: Some(geom_type as i32),
             geometry,
         });
     }
