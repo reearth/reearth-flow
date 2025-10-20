@@ -1,6 +1,7 @@
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { useToast } from "@flow/features/NotificationSystem/useToast";
+import { MAX_DIRECT_UPLOAD_SIZE_BYTES } from "@flow/global-constants";
 import { useDebouncedSearch } from "@flow/hooks";
 import { useAsset } from "@flow/lib/gql/assets";
 import { useT } from "@flow/lib/i18n";
@@ -99,9 +100,8 @@ export default ({ workspaceId }: { workspaceId: string }) => {
       const file = e.target.files?.[0];
       if (!file) return;
       if (!workspaceId) return console.error("Missing current workspace");
-      const megabytes = 28;
       const bytesInAMegabyte = 1024 * 1024;
-      const totalBytes = megabytes * bytesInAMegabyte;
+      const totalBytes = MAX_DIRECT_UPLOAD_SIZE_BYTES * bytesInAMegabyte;
       if (file.size > totalBytes) {
         try {
           await createAssetWithDirectUpload({
