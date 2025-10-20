@@ -341,7 +341,7 @@ fn slice_line_string(
         // todo?: check interior bbox to optimize
 
         line_string
-            .iter_closed()
+            .iter()
             .fold(None, |a, b| {
                 let Some(a) = a else { return Some(b) };
 
@@ -400,7 +400,7 @@ fn slice_line_string(
             );
             new_ring_buffer.clear();
             y_sliced_line_string
-                .iter_closed()
+                .iter()
                 .fold(None, |a, b| {
                     let Some(a) = a else { return Some(b) };
 
@@ -446,13 +446,13 @@ fn slice_line_string(
                     norm_coords_buf.pop();
                 }
 
-                if norm_coords_buf.len() < 3 {
+                // linestrings must have at least two points
+                if norm_coords_buf.len() < 2 {
                     continue;
                 }
             }
 
-            let mut ring = LineString2::from_raw(norm_coords_buf.clone().into());
-            ring.reverse_inplace();
+            let ring = LineString2::from_raw(norm_coords_buf.clone().into());
             let mline_string = out.entry(key).or_default();
             mline_string.add_linestring(ring.iter());
         }
