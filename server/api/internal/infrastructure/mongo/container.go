@@ -31,6 +31,7 @@ func New(ctx context.Context, db *mongo.Database, account *accountrepo.Container
 		Asset:         NewAsset(client),
 		AuthRequest:   authserver.NewMongo(client.WithCollection("authRequest")),
 		Config:        NewConfig(db.Collection("config"), lock),
+		WorkerConfig:  NewWorkerConfig(client),
 		Deployment:    NewDeployment(client),
 		EdgeExecution: NewEdgeExecution(client),
 		Job:           NewJob(client),
