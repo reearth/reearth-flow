@@ -31,6 +31,8 @@ struct WorkflowTestProfile {
     intermediate_assertions: Vec<IntermediateAssertion>,
     #[serde(skip_serializing_if = "Option::is_none")]
     summary_output: Option<SummaryOutput>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    expect_result_ok_file: Option<bool>,
     #[serde(default)]
     skip: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -192,7 +194,7 @@ fn generate_test_code(test_cases: &[TestCase], testdata_dir: &Path) -> Result<To
                 let profile: WorkflowTestProfile = serde_json::from_str(&profile_str)?;
 
                 // Create test context
-                let ctx = TestContext::new(
+                let mut ctx = TestContext::new(
                     #test_name_str.to_string(),
                     PathBuf::from(#test_dir_str),
                     PathBuf::from(#fixture_dir_str),
@@ -210,8 +212,8 @@ fn generate_test_code(test_cases: &[TestCase], testdata_dir: &Path) -> Result<To
                 // Verify intermediate data
                 ctx.verify_intermediate_data()?;
 
-                // Verify summary output
                 ctx.verify_summary_output()?;
+                ctx.verify_result_ok_file()?;
 
                 Ok(())
             }

@@ -13,6 +13,7 @@ var ErrOperationDenied = errors.New("operation denied")
 
 type Container struct {
 	Asset         Asset
+	AssetUpload   AssetUpload
 	AuthRequest   authserver.RequestRepo
 	Config        Config
 	Deployment    Deployment
@@ -49,6 +50,7 @@ func (c *Container) Filtered(workspace WorkspaceFilter) *Container {
 	}
 	return &Container{
 		Asset:         c.Asset.Filtered(workspace),
+		AssetUpload:   c.AssetUpload.Filtered(workspace),
 		AuthRequest:   c.AuthRequest,
 		Config:        c.Config,
 		Deployment:    c.Deployment.Filtered(workspace),

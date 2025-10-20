@@ -5,10 +5,9 @@ use super::{coordnum::CoordNum, geometry::Geometry};
 use alloc::vec::Vec;
 use core::iter::FromIterator;
 use core::ops::{Index, IndexMut};
-use num_traits::Zero;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct GeometryCollection<T: CoordNum = f64, Z: CoordNum = f64>(pub Vec<Geometry<T, Z>>);
 
 // Implementing Default by hand because T does not have Default restriction
@@ -172,11 +171,7 @@ impl<'a, T: CoordNum, Z: CoordNum> GeometryCollection<T, Z> {
     }
 }
 
-impl<T, Z> Elevation for GeometryCollection<T, Z>
-where
-    T: CoordNum + Zero,
-    Z: CoordNum + Zero,
-{
+impl Elevation for GeometryCollection3D<f64> {
     #[inline]
     fn is_elevation_zero(&self) -> bool {
         self.0.iter().all(|g| g.is_elevation_zero())

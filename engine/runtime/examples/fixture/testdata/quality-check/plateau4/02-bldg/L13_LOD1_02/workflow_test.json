@@ -16,5 +16,6 @@
   },
   "cityGmlPath": "udx/bldg/l13_fail_exterior_interior_touching.gml",
   "codelists": "codelists",
-  "schemas": "schemas"
+  "schemas": "schemas",
+  "expectResultOkFile": false
 }

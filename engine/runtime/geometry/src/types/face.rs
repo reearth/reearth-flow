@@ -2,6 +2,8 @@ use num_traits::Zero;
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
+use crate::types::line_string::LineString;
+
 use super::coordinate::Coordinate;
 use super::coordnum::CoordNum;
 use super::no_value::NoValue;
@@ -22,6 +24,12 @@ impl<T: CoordNum, Z: CoordNum> Face<T, Z> {
 impl From<Face3D<f64>> for Face2D<f64> {
     fn from(p: Face3D<f64>) -> Face2D<f64> {
         Face2D::new(p.0.into_iter().map(|c| c.into()).collect())
+    }
+}
+
+impl<T: CoordNum, Z: CoordNum> From<LineString<T, Z>> for Face<T, Z> {
+    fn from(ls: LineString<T, Z>) -> Self {
+        Face::new(ls.0)
     }
 }
 

@@ -263,7 +263,7 @@ export const resolvers = {
     debug: (job: JobFragment) => job.debug,
     startedAt: (job: JobFragment) => job.startedAt,
     completedAt: (job: JobFragment) => job.completedAt,
-    logsURL: (job: JobFragment) => job.logsURL,
+    userFacingLogsURL: (job: JobFragment) => job.userFacingLogsURL,
     outputURLs: (job: JobFragment) => job.outputURLs,
     deployment: (job: JobFragment) =>
       deployments.find((d) => d.id === job.deployment?.id),

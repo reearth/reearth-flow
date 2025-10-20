@@ -7,7 +7,6 @@ import {
   FloppyDiskIcon,
 } from "@phosphor-icons/react";
 import { memo } from "react";
-import { Doc } from "yjs";
 
 import {
   ContextMenuShortcut,
@@ -21,19 +20,19 @@ import {
   PopoverTrigger,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { Project } from "@flow/types";
+
+import { DialogOptions } from "../../types";
 
 import { DeployDialog, SharePopover } from "./components";
-import { VersionDialog } from "./components/Version/VersionDialog";
-import useHooks from "./hooks";
 
 const tooltipOffset = 6;
 
 type Props = {
-  project?: Project;
-  yDoc: Doc | null;
   allowedToDeploy: boolean;
   isSaving: boolean;
+  showDialog: DialogOptions;
+  onDialogOpen: (dialog: DialogOptions) => void;
+  onDialogClose: () => void;
   onWorkflowDeployment: (
     description: string,
     deploymentId?: string,
@@ -44,18 +43,17 @@ type Props = {
 };
 
 const ActionBar: React.FC<Props> = ({
-  project,
-  yDoc,
   allowedToDeploy,
   isSaving,
+  showDialog,
+  onDialogOpen,
+  onDialogClose,
   onWorkflowDeployment,
   onProjectShare,
   onProjectExport,
   onProjectSnapshotSave,
 }) => {
   const t = useT();
-
-  const { showDialog, handleDialogOpen, handleDialogClose } = useHooks();
 
   return (
     <>
@@ -64,19 +62,19 @@ const ActionBar: React.FC<Props> = ({
           tooltipText={t("Deploy project's workflow")}
           tooltipOffset={tooltipOffset}
           icon={<RocketIcon weight="thin" size={18} />}
-          onClick={() => handleDialogOpen("deploy")}
+          onClick={() => onDialogOpen("deploy")}
         />
         <Popover
           open={showDialog === "share"}
           onOpenChange={(open) => {
-            if (!open) handleDialogClose();
+            if (!open) onDialogClose();
           }}>
           <PopoverTrigger asChild>
             <IconButton
               tooltipText={t("Share Project")}
               tooltipOffset={tooltipOffset}
               icon={<PaperPlaneTiltIcon weight="thin" size={18} />}
-              onClick={() => handleDialogOpen("share")}
+              onClick={() => onDialogOpen("share")}
             />
           </PopoverTrigger>
           <PopoverContent
@@ -122,7 +120,7 @@ const ActionBar: React.FC<Props> = ({
             </DropdownMenuItem>
             <DropdownMenuItem
               className="flex items-center justify-between"
-              onClick={() => handleDialogOpen("version")}>
+              onClick={() => onDialogOpen("version")}>
               <div className="flex items-center gap-1">
                 <ClockCounterClockwiseIcon weight="light" />
                 <p>{t("Version History")}</p>
@@ -140,17 +138,10 @@ const ActionBar: React.FC<Props> = ({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      {showDialog === "version" && (
-        <VersionDialog
-          project={project}
-          yDoc={yDoc}
-          onDialogClose={handleDialogClose}
-        />
-      )}
       {showDialog === "deploy" && (
         <DeployDialog
           allowedToDeploy={allowedToDeploy}
-          onDialogClose={handleDialogClose}
+          onDialogClose={onDialogClose}
           onWorkflowDeployment={onWorkflowDeployment}
         />
       )}

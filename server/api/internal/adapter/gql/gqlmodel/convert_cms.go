@@ -18,6 +18,8 @@ func CMSProjectFrom(p *cms.Project) *CMSProject {
 		Readme:      p.Readme,
 		WorkspaceID: ID(p.WorkspaceID),
 		Visibility:  CMSVisibilityFrom(p.Visibility),
+		Topics:      p.Topics,
+		StarCount:   int(p.StarCount),
 		CreatedAt:   p.CreatedAt,
 		UpdatedAt:   p.UpdatedAt,
 	}
