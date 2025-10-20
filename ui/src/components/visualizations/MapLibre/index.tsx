@@ -2,7 +2,7 @@ import maplibregl from "maplibre-gl";
 import { useCallback, useMemo, useEffect, useState } from "react";
 import { Map } from "react-map-gl/maplibre";
 
-import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
+import { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 
 import "maplibre-gl/dist/maplibre-gl.css";
 import Timeline from "./components/Timeline";

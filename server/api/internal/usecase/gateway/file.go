@@ -9,6 +9,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/file"
 )
 
@@ -71,4 +72,6 @@ type File interface {
 	GetIntermediateDataURL(context.Context, string, string) string
 	CheckIntermediateDataExists(context.Context, string, string) (bool, error)
 	IssueUploadAssetLink(context.Context, IssueUploadAssetParam) (*UploadAssetLink, error)
+	GetPublicAssetURL(string, string) (*url.URL, error)
+	UploadedAsset(context.Context, *asset.Upload) (*file.File, error)
 }

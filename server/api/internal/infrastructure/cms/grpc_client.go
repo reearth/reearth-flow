@@ -222,6 +222,7 @@ func (c *grpcClient) GetProject(ctx context.Context, projectIDOrAlias string) (*
 func (c *grpcClient) ListProjects(ctx context.Context, input cms.ListProjectsInput) (*cms.ListProjectsOutput, error) {
 	req := &proto.ListProjectsRequest{
 		WorkspaceIds: input.WorkspaceIDs,
+		Keyword:      input.Keyword,
 		PublicOnly:   input.PublicOnly,
 	}
 
@@ -421,6 +422,31 @@ func (c *grpcClient) ListItems(ctx context.Context, input cms.ListItemsInput) (*
 	return output, nil
 }
 
+func (c *grpcClient) GetModelExportURL(ctx context.Context, input cms.ModelExportInput) (*cms.ExportOutput, error) {
+	var exportType proto.ModelExportRequest_Type
+	switch input.ExportType {
+	case cms.ExportTypeJSON:
+		exportType = proto.ModelExportRequest_JSON
+	case cms.ExportTypeGeoJSON:
+		exportType = proto.ModelExportRequest_GEOJSON
+	default:
+		exportType = proto.ModelExportRequest_JSON
+	}
+
+	resp, err := c.client.GetModelExportURL(ctx, &proto.ModelExportRequest{
+		ProjectId:  input.ProjectID,
+		ModelId:    input.ModelID,
+		ExportType: exportType,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get export URL: %w", err)
+	}
+
+	return &cms.ExportOutput{
+		URL: resp.Url,
+	}, nil
+}
+
 func (c *grpcClient) GetModelGeoJSONExportURL(ctx context.Context, input cms.ExportInput) (*cms.ExportOutput, error) {
 	resp, err := c.client.GetModelGeoJSONExportURL(ctx, &proto.ExportRequest{
 		ProjectId: input.ProjectID,
@@ -448,6 +474,8 @@ func convertProtoToProject(p *proto.Project) *cms.Project {
 		Readme:      p.Readme,
 		WorkspaceID: p.WorkspaceId,
 		Visibility:  convertProtoToVisibility(p.Visibility),
+		Topics:      p.Topics,
+		StarCount:   p.StarCount,
 		CreatedAt:   p.CreatedAt.AsTime(),
 		UpdatedAt:   p.UpdatedAt.AsTime(),
 	}
@@ -612,12 +640,6 @@ func convertAnyToInterface(a *anypb.Any) interface{} {
 		if err := protobuf.Unmarshal(a.Value, &lv); err == nil {
 			return lv.AsSlice()
 		}
-	}
-
-	var msg protobuf.Message
-	if err := anypb.UnmarshalTo(a, msg, protobuf.UnmarshalOptions{}); err == nil {
-		log.Debugf("Successfully unmarshaled Any type: %s", a.TypeUrl)
-		return msg
 	}
 
 	log.Warnf("Unable to unmarshal Any type: %s, returning raw value", a.TypeUrl)

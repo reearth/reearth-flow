@@ -59,6 +59,7 @@ const DebugPanel: React.FC = () => {
     handleFlyToSelectedFeature,
     // Data properties
     detectedGeometryType,
+    visualizerType,
     totalFeatures,
     isComplete,
   } = useHooks();
@@ -232,6 +233,7 @@ const DebugPanel: React.FC = () => {
                   onFlyToSelectedFeature={handleFlyToSelectedFeature}
                   // Data detection props
                   detectedGeometryType={detectedGeometryType}
+                  visualizerType={visualizerType}
                   isComplete={isComplete}
                 />
               </ResizablePanel>

@@ -1,3 +1,5 @@
+import { CmsExportType } from "../__gen__/graphql";
+
 import { useQueries } from "./useQueries";
 
 export const useCms = () => {
@@ -12,12 +14,14 @@ export const useCms = () => {
 
   const useGetCmsProjects = (
     workspaceId: [string],
+    keyword?: string,
     publicOnly?: boolean,
     page?: number,
     pageSize?: number,
   ) => {
     const { data, ...rest } = useGetCmsProjectsQuery(
       workspaceId,
+      keyword,
       publicOnly,
       page,
       pageSize,
@@ -69,8 +73,16 @@ export const useCms = () => {
     };
   };
 
-  const useGetCmsModelExportUrl = (projectId: string, modelId: string) => {
-    const { data, ...rest } = useGetCmsModelExportUrlQuery(projectId, modelId);
+  const useGetCmsModelExportUrl = (
+    projectId: string,
+    modelId: string,
+    exportType: CmsExportType,
+  ) => {
+    const { data, ...rest } = useGetCmsModelExportUrlQuery(
+      projectId,
+      modelId,
+      exportType,
+    );
     return {
       page: data,
       ...rest,
