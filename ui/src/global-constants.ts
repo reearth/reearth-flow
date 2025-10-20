@@ -61,4 +61,4 @@ export const CURSOR_COLORS = [
 ];
 
 // For Asset uploading optimization
-export const MAX_DIRECT_UPLOAD_SIZE_BYTES = 28;
+export const MAX_DIRECT_UPLOAD_SIZE_BYTES = 30;
