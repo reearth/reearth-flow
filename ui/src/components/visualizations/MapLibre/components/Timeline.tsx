@@ -55,7 +55,7 @@ const Timeline: React.FC<Props> = ({
 
     property.values.forEach((value) => {
       // Detect plain year numbers (number 1900-2100 or string /^\d{4}$/)
-      let isPlainYear =
+      const isPlainYear =
         (typeof value === "number" && value >= 1900 && value <= 2100) ||
         (typeof value === "string" && /^\d{4}$/.test(value));
 

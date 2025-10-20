@@ -34,9 +34,9 @@ function isTemporalValue(value: unknown): boolean {
       /^\d{4}-\d{2}-\d{2}$/, // YYYY-MM-DD
       /^\d{4}\/\d{2}\/\d{2}$/, // YYYY/MM/DD
       /^\d{2}\/\d{2}\/\d{4}$/, // MM/DD/YYYY
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/, // ISO 8601 with time: 2025-01-01T00:00:00
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z?/, // ISO 8601 with milliseconds: 2025-01-01T00:00:00.000Z
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}/, // ISO 8601 with timezone: 2025-01-01T00:00:00+00:00
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/, // ISO 8601 with time: 2025-01-01T00:00:00
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z?$/, // ISO 8601 with milliseconds: 2025-01-01T00:00:00.000Z
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/, // ISO 8601 with timezone: 2025-01-01T00:00:00+00:00
     ];
 
     // First check with patterns for performance
@@ -139,7 +139,19 @@ export function filterByTimelineValue(
       const featureValue = feature.properties[propertyName];
       if (!featureValue) return false;
 
-      const featureDate = new Date(featureValue);
+      // Handle numeric years as a special case
+      let featureDate: Date;
+      if (
+        typeof featureValue === "number" &&
+        featureValue >= 1900 &&
+        featureValue <= 2100
+      ) {
+        // For years, create Jan 1 of that year
+        featureDate = new Date(featureValue, 0, 1);
+      } else {
+        // For other temporal values, parse as regular date
+        featureDate = new Date(featureValue);
+      }
       if (isNaN(featureDate.getTime())) return false;
 
       // Match based on granularity
