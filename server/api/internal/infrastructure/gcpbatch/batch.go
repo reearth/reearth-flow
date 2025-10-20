@@ -6,12 +6,14 @@ import (
 	"encoding/hex"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	batch "cloud.google.com/go/batch/apiv1"
 	batchpb "cloud.google.com/go/batch/apiv1/batchpb"
 	"github.com/googleapis/gax-go/v2"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
+	"github.com/reearth/reearth-flow/api/pkg/batchconfig"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/log"
 	"google.golang.org/api/iterator"
@@ -89,7 +91,11 @@ func (b *BatchRepo) SubmitJob(
 	variables map[string]interface{},
 	projectID id.ProjectID,
 	workspaceID id.WorkspaceID,
+	workerConfig *batchconfig.WorkerConfig,
 ) (string, error) {
+	// Merge workspace config with environment defaults
+	effectiveConfig := b.mergeConfig(workerConfig)
+
 	formattedJobID := formatJobID(jobID.String())
 
 	jobName := fmt.Sprintf(
@@ -143,9 +149,9 @@ func (b *BatchRepo) SubmitJob(
 	}
 
 	computeResource := &batchpb.ComputeResource{
-		BootDiskMib: int64(b.config.BootDiskSizeGB * 1024),
-		CpuMilli:    int64(b.config.ComputeCpuMilli),
-		MemoryMib:   int64(b.config.ComputeMemoryMib),
+		BootDiskMib: int64(effectiveConfig.BootDiskSizeGB * 1024),
+		CpuMilli:    int64(effectiveConfig.ComputeCpuMilli),
+		MemoryMib:   int64(effectiveConfig.ComputeMemoryMib),
 	}
 
 	taskSpec := &batchpb.TaskSpec{
@@ -166,18 +172,21 @@ func (b *BatchRepo) SubmitJob(
 					"RUST_BACKTRACE":                            "1",
 				}
 
-				// Only set runtime config if values are provided
-				if b.config.NodeStatusPropagationDelayMS != "" {
-					vars["FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS"] = b.config.NodeStatusPropagationDelayMS
+				// Apply effective runtime configuration
+				if effectiveConfig.NodeStatusPropagationDelayMS != "" {
+					vars["FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS"] = effectiveConfig.NodeStatusPropagationDelayMS
 				}
-				if b.config.ChannelBufferSize != "" {
-					vars["FLOW_RUNTIME_CHANNEL_BUFFER_SIZE"] = b.config.ChannelBufferSize
+				if effectiveConfig.ChannelBufferSize != "" {
+					vars["FLOW_RUNTIME_CHANNEL_BUFFER_SIZE"] = effectiveConfig.ChannelBufferSize
 				}
-				if b.config.ThreadPoolSize != "" {
-					vars["FLOW_RUNTIME_THREAD_POOL_SIZE"] = b.config.ThreadPoolSize
+				if effectiveConfig.ThreadPoolSize != "" {
+					vars["FLOW_RUNTIME_THREAD_POOL_SIZE"] = effectiveConfig.ThreadPoolSize
 				}
-				if b.config.FeatureFlushThreshold != "" {
-					vars["FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD"] = b.config.FeatureFlushThreshold
+				if effectiveConfig.FeatureFlushThreshold != "" {
+					vars["FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD"] = effectiveConfig.FeatureFlushThreshold
+				}
+				if effectiveConfig.MaxConcurrency != "" {
+					vars["FLOW_RUNTIME_MAX_CONCURRENCY"] = effectiveConfig.MaxConcurrency
 				}
 
 				return vars
@@ -186,18 +195,18 @@ func (b *BatchRepo) SubmitJob(
 	}
 
 	taskGroup := &batchpb.TaskGroup{
-		TaskCount: int64(b.config.TaskCount),
+		TaskCount: int64(effectiveConfig.TaskCount),
 		TaskSpec:  taskSpec,
 	}
 
 	bootDisk := &batchpb.AllocationPolicy_Disk{
-		Type:   b.config.BootDiskType,
-		SizeGb: int64(b.config.BootDiskSizeGB),
+		Type:   effectiveConfig.BootDiskType,
+		SizeGb: int64(effectiveConfig.BootDiskSizeGB),
 	}
 
 	instancePolicy := &batchpb.AllocationPolicy_InstancePolicy{
 		ProvisioningModel: batchpb.AllocationPolicy_STANDARD,
-		MachineType:       b.config.MachineType,
+		MachineType:       effectiveConfig.MachineType,
 		BootDisk:          bootDisk,
 	}
 
@@ -404,4 +413,73 @@ func formatJobID(jobID string) string {
 	}
 
 	return jobID
+}
+
+// effectiveConfig holds the merged configuration values
+type effectiveConfig struct {
+	MachineType                  string
+	ComputeCpuMilli              int
+	ComputeMemoryMib             int
+	BootDiskSizeGB               int
+	BootDiskType                 string
+	TaskCount                    int
+	MaxConcurrency               string
+	ThreadPoolSize               string
+	ChannelBufferSize            string
+	FeatureFlushThreshold        string
+	NodeStatusPropagationDelayMS string
+}
+
+// mergeConfig merges workspace-specific config overrides with environment defaults
+func (b *BatchRepo) mergeConfig(workspaceConfig *batchconfig.WorkerConfig) *effectiveConfig {
+	cfg := &effectiveConfig{
+		// Defaults from environment config
+		MachineType:                  b.config.MachineType,
+		ComputeCpuMilli:              b.config.ComputeCpuMilli,
+		ComputeMemoryMib:             b.config.ComputeMemoryMib,
+		BootDiskSizeGB:               b.config.BootDiskSizeGB,
+		BootDiskType:                 b.config.BootDiskType,
+		TaskCount:                    b.config.TaskCount,
+		MaxConcurrency:               b.config.NodeStatusPropagationDelayMS,
+		ThreadPoolSize:               b.config.ThreadPoolSize,
+		ChannelBufferSize:            b.config.ChannelBufferSize,
+		FeatureFlushThreshold:        b.config.FeatureFlushThreshold,
+		NodeStatusPropagationDelayMS: b.config.NodeStatusPropagationDelayMS,
+	}
+
+	// Apply workspace overrides if provided
+	if workspaceConfig != nil {
+		if machineType := workspaceConfig.MachineType(); machineType != nil {
+			cfg.MachineType = *machineType
+		}
+		if cpuMilli := workspaceConfig.ComputeCpuMilli(); cpuMilli != nil {
+			cfg.ComputeCpuMilli = *cpuMilli
+		}
+		if memoryMib := workspaceConfig.ComputeMemoryMib(); memoryMib != nil {
+			cfg.ComputeMemoryMib = *memoryMib
+		}
+		if diskGB := workspaceConfig.BootDiskSizeGB(); diskGB != nil {
+			cfg.BootDiskSizeGB = *diskGB
+		}
+		if taskCount := workspaceConfig.TaskCount(); taskCount != nil {
+			cfg.TaskCount = *taskCount
+		}
+		if maxConcurrency := workspaceConfig.MaxConcurrency(); maxConcurrency != nil {
+			cfg.MaxConcurrency = strconv.Itoa(*maxConcurrency)
+		}
+		if threadPoolSize := workspaceConfig.ThreadPoolSize(); threadPoolSize != nil {
+			cfg.ThreadPoolSize = strconv.Itoa(*threadPoolSize)
+		}
+		if channelBufferSize := workspaceConfig.ChannelBufferSize(); channelBufferSize != nil {
+			cfg.ChannelBufferSize = strconv.Itoa(*channelBufferSize)
+		}
+		if featureFlush := workspaceConfig.FeatureFlushThreshold(); featureFlush != nil {
+			cfg.FeatureFlushThreshold = strconv.Itoa(*featureFlush)
+		}
+		if nodeStatusDelay := workspaceConfig.NodeStatusPropagationDelayMilli(); nodeStatusDelay != nil {
+			cfg.NodeStatusPropagationDelayMS = strconv.Itoa(*nodeStatusDelay)
+		}
+	}
+
+	return cfg
 }

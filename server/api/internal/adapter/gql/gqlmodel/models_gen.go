@@ -228,6 +228,14 @@ type DeleteProjectPayload struct {
 	ProjectID ID `json:"projectId"`
 }
 
+type DeleteWorkerConfigInput struct {
+	WorkspaceID ID `json:"workspaceId"`
+}
+
+type DeleteWorkerConfigPayload struct {
+	WorkspaceID ID `json:"workspaceId"`
+}
+
 type DeleteWorkspaceInput struct {
 	WorkspaceID ID `json:"workspaceId"`
 }
@@ -627,6 +635,24 @@ type UpdateTriggerInput struct {
 	APIDriverInput  *APIDriverInput  `json:"apiDriverInput,omitempty"`
 }
 
+type UpdateWorkerConfigInput struct {
+	WorkspaceID                     ID      `json:"workspaceId"`
+	MachineType                     *string `json:"machineType,omitempty"`
+	ComputeCPUMilli                 *int    `json:"computeCpuMilli,omitempty"`
+	ComputeMemoryMib                *int    `json:"computeMemoryMib,omitempty"`
+	BootDiskSizeGb                  *int    `json:"bootDiskSizeGB,omitempty"`
+	TaskCount                       *int    `json:"taskCount,omitempty"`
+	MaxConcurrency                  *int    `json:"maxConcurrency,omitempty"`
+	ThreadPoolSize                  *int    `json:"threadPoolSize,omitempty"`
+	ChannelBufferSize               *int    `json:"channelBufferSize,omitempty"`
+	FeatureFlushThreshold           *int    `json:"featureFlushThreshold,omitempty"`
+	NodeStatusPropagationDelayMilli *int    `json:"nodeStatusPropagationDelayMilli,omitempty"`
+}
+
+type UpdateWorkerConfigPayload struct {
+	Config *WorkerConfig `json:"config"`
+}
+
 type UpdateWorkspaceInput struct {
 	WorkspaceID ID     `json:"workspaceId"`
 	Name        string `json:"name"`
@@ -665,13 +691,30 @@ type UserMetadata struct {
 	Lang        language.Tag `json:"lang"`
 }
 
+type WorkerConfig struct {
+	Workspace                       ID        `json:"workspace"`
+	MachineType                     *string   `json:"machineType,omitempty"`
+	ComputeCPUMilli                 *int      `json:"computeCpuMilli,omitempty"`
+	ComputeMemoryMib                *int      `json:"computeMemoryMib,omitempty"`
+	BootDiskSizeGb                  *int      `json:"bootDiskSizeGB,omitempty"`
+	TaskCount                       *int      `json:"taskCount,omitempty"`
+	MaxConcurrency                  *int      `json:"maxConcurrency,omitempty"`
+	ThreadPoolSize                  *int      `json:"threadPoolSize,omitempty"`
+	ChannelBufferSize               *int      `json:"channelBufferSize,omitempty"`
+	FeatureFlushThreshold           *int      `json:"featureFlushThreshold,omitempty"`
+	NodeStatusPropagationDelayMilli *int      `json:"nodeStatusPropagationDelayMilli,omitempty"`
+	CreatedAt                       time.Time `json:"createdAt"`
+	UpdatedAt                       time.Time `json:"updatedAt"`
+}
+
 type Workspace struct {
-	Assets   *AssetConnection   `json:"assets"`
-	ID       ID                 `json:"id"`
-	Members  []*WorkspaceMember `json:"members"`
-	Name     string             `json:"name"`
-	Personal bool               `json:"personal"`
-	Projects *ProjectConnection `json:"projects"`
+	Assets       *AssetConnection   `json:"assets"`
+	ID           ID                 `json:"id"`
+	Members      []*WorkspaceMember `json:"members"`
+	Name         string             `json:"name"`
+	Personal     bool               `json:"personal"`
+	Projects     *ProjectConnection `json:"projects"`
+	WorkerConfig *WorkerConfig      `json:"workerConfig,omitempty"`
 }
 
 func (Workspace) IsNode()        {}

@@ -35,4 +35,5 @@ type Container struct {
 	User          User
 	Workspace     Workspace
 	Websocket     WebsocketClient
+	WorkerConfig  WorkerConfig
 }
