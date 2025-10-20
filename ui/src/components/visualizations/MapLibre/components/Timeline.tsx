@@ -54,25 +54,33 @@ const Timeline: React.FC<Props> = ({
     const groups = new Map<string, string | number>();
 
     property.values.forEach((value) => {
-      const date = new Date(value);
+      // Detect plain year numbers (number 1900-2100 or string /^\d{4}$/)
+      let isPlainYear =
+        (typeof value === "number" && value >= 1900 && value <= 2100) ||
+        (typeof value === "string" && /^\d{4}$/.test(value));
 
-      if (!isNaN(date.getTime())) {
-        let groupKey: string;
+      let groupKey: string | undefined = undefined;
 
-        if (granularity === "year") {
-          groupKey = date.getFullYear().toString();
-        } else if (granularity === "month") {
-          // Group by year-month
-          groupKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-        } else {
-          groupKey = date.toISOString().split("T")[0];
+      if (isPlainYear) {
+        // Use the year directly as the group key
+        groupKey = String(value);
+      } else {
+        const date = new Date(value);
+        if (!isNaN(date.getTime())) {
+          if (granularity === "year") {
+            groupKey = date.getFullYear().toString();
+          } else if (granularity === "month") {
+            // Group by year-month
+            groupKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+          } else {
+            groupKey = date.toISOString().split("T")[0];
+          }
         }
+      }
 
+      if (groupKey !== undefined) {
         // Store the most recent value for each group
         groups.set(groupKey, value);
-      } else {
-        // Not a date, use as-is (likely a year number)
-        groups.set(String(value), value);
       }
     });
 
