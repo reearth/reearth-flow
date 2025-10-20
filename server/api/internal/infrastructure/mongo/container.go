@@ -29,6 +29,7 @@ func New(ctx context.Context, db *mongo.Database, account *accountrepo.Container
 
 	c := &repo.Container{
 		Asset:         NewAsset(client),
+		AssetUpload:   NewAssetUpload(client),
 		AuthRequest:   authserver.NewMongo(client.WithCollection("authRequest")),
 		Config:        NewConfig(db.Collection("config"), lock),
 		Deployment:    NewDeployment(client),

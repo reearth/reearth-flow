@@ -71,4 +71,4 @@ const VersionHistoryList: React.FC<Props> = ({
   );
 };
 
-export { VersionHistoryList };
+export default VersionHistoryList;

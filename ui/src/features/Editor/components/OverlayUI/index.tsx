@@ -20,7 +20,9 @@ import {
   LayoutOptionsDialog,
   DebugPanel,
   Homebar,
+  VersionDialog,
 } from "./components";
+import useHooks from "./hooks";
 
 type OverlayUIProps = {
   nodePickerOpen?: {
@@ -99,6 +101,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   children: canvas,
 }) => {
   const [showLayoutOptions, setShowLayoutOptions] = useState(false);
+  const { showDialog, handleDialogOpen, handleDialogClose } = useHooks();
 
   const handleLayoutOptionsToggle = useCallback(() => {
     setShowLayoutOptions((prev) => !prev);
@@ -148,10 +151,11 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
               />
               <div className="h-4/5 border-r" />
               <ActionBar
-                project={project}
-                yDoc={yDoc}
                 allowedToDeploy={allowedToDeploy}
                 isSaving={isSaving}
+                showDialog={showDialog}
+                onDialogOpen={handleDialogOpen}
+                onDialogClose={handleDialogClose}
                 onProjectShare={onProjectShare}
                 onProjectExport={onProjectExport}
                 onWorkflowDeployment={onWorkflowDeployment}
@@ -160,6 +164,13 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             </div>
           )}
         </div>
+        {showDialog === "version" && (
+          <VersionDialog
+            project={project}
+            yDoc={yDoc}
+            onDialogClose={handleDialogClose}
+          />
+        )}
         <div id="left-bottom" className="absolute bottom-2 left-2 z-1">
           <DebugPanel />
         </div>

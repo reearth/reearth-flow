@@ -9,7 +9,7 @@ import (
 type CMS interface {
 	GetCMSProject(ctx context.Context, projectIDOrAlias string) (*cms.Project, error)
 
-	ListCMSProjects(ctx context.Context, workspaceIDs []string, publicOnly bool, page, pageSize *int32) (*cms.ListProjectsOutput, error)
+	ListCMSProjects(ctx context.Context, workspaceIDs []string, keyword *string, publicOnly bool, page, pageSize *int32) (*cms.ListProjectsOutput, error)
 
 	GetCMSAsset(ctx context.Context, assetID string) (*cms.Asset, error)
 
@@ -21,5 +21,5 @@ type CMS interface {
 
 	ListCMSItems(ctx context.Context, projectID, modelID string, keyword *string, page, pageSize *int32) (*cms.ListItemsOutput, error)
 
-	GetCMSModelExportURL(ctx context.Context, projectID, modelID string) (string, error)
+	GetCMSModelExportURL(ctx context.Context, projectID, modelID string, exportType *cms.ExportType) (string, error)
 }

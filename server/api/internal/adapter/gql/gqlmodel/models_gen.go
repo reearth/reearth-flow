@@ -121,6 +121,8 @@ type CMSProject struct {
 	Readme      *string       `json:"readme,omitempty"`
 	WorkspaceID ID            `json:"workspaceId"`
 	Visibility  CMSVisibility `json:"visibility"`
+	Topics      []string      `json:"topics"`
+	StarCount   int           `json:"starCount"`
 	CreatedAt   time.Time     `json:"createdAt"`
 	UpdatedAt   time.Time     `json:"updatedAt"`
 }
@@ -147,13 +149,31 @@ type CancelJobPayload struct {
 }
 
 type CreateAssetInput struct {
-	WorkspaceID ID             `json:"workspaceId"`
-	File        graphql.Upload `json:"file"`
-	Name        *string        `json:"name,omitempty"`
+	WorkspaceID ID              `json:"workspaceId"`
+	File        *graphql.Upload `json:"file,omitempty"`
+	Name        *string         `json:"name,omitempty"`
+	Token       *string         `json:"token,omitempty"`
 }
 
 type CreateAssetPayload struct {
 	Asset *Asset `json:"asset"`
+}
+
+type CreateAssetUploadInput struct {
+	WorkspaceID     ID      `json:"workspaceId"`
+	Filename        *string `json:"filename,omitempty"`
+	ContentLength   *int    `json:"contentLength,omitempty"`
+	ContentEncoding *string `json:"contentEncoding,omitempty"`
+	Cursor          *string `json:"cursor,omitempty"`
+}
+
+type CreateAssetUploadPayload struct {
+	Token           string  `json:"token"`
+	URL             string  `json:"url"`
+	ContentType     *string `json:"contentType,omitempty"`
+	ContentLength   int     `json:"contentLength"`
+	ContentEncoding *string `json:"contentEncoding,omitempty"`
+	Next            *string `json:"next,omitempty"`
 }
 
 type CreateDeploymentInput struct {
@@ -796,6 +816,61 @@ func (e *AssetSortType) UnmarshalJSON(b []byte) error {
 }
 
 func (e AssetSortType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type CMSExportType string
+
+const (
+	CMSExportTypeJSON    CMSExportType = "JSON"
+	CMSExportTypeGeojson CMSExportType = "GEOJSON"
+)
+
+var AllCMSExportType = []CMSExportType{
+	CMSExportTypeJSON,
+	CMSExportTypeGeojson,
+}
+
+func (e CMSExportType) IsValid() bool {
+	switch e {
+	case CMSExportTypeJSON, CMSExportTypeGeojson:
+		return true
+	}
+	return false
+}
+
+func (e CMSExportType) String() string {
+	return string(e)
+}
+
+func (e *CMSExportType) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CMSExportType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CMSExportType", str)
+	}
+	return nil
+}
+
+func (e CMSExportType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *CMSExportType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e CMSExportType) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

@@ -17,6 +17,7 @@ var (
 	ErrOperationDenied error = errors.New("operation denied")
 	ErrFileNotIncluded error = errors.New("file not included")
 	ErrFeatureNotFound error = errors.New("feature not found")
+	ErrInvalidOperator error = errors.New("invalid operator")
 )
 
 type Container struct {

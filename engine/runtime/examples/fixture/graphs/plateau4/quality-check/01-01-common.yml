@@ -618,12 +618,37 @@ nodes:
       supplierAttributeValue: |
         env.get("__value").filename
 
+  - id: 3e6f8a9b-4c5d-4e7f-9a1b-2c3d4e5f6a7b
+    name: AttributeManagerTotalErrorCount
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: totalErrorCount
+          method: create
+          value: |
+            let total = 0;
+            for key in env.get("__value").keys() {
+              let val = env.get("__value")[key];
+              if val.type_of() == "i64" {
+                total += val;
+              }
+            }
+            total
+
   - id: f9359716-5c5a-43e5-b197-d1df171d5684
     name: OutputRouter
     type: action
     action: OutputRouter
     with:
       routingPort: default
+
+  - id: 6a7b8c9d-0e1f-4a2b-3c4d-5e6f7a8b9c0d
+    name: OutputRouterSummary
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: summaryOutput
 
 edges:
   - id: 7c5a60ec-66cb-4ee0-9793-88c1f57b495c
@@ -884,5 +909,15 @@ edges:
   - id: e6bffa77-7ebb-f660-77b7-892ba4a4a4a5
     from: a9b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
     to: f9359716-5c5a-43e5-b197-d1df171d5684
+    fromPort: default
+    toPort: default
+  - id: 4f7a8b9c-5d6e-4f7a-8b9c-0d1e2f3a4b5c
+    from: 9e34709d-b8d1-4080-8ebf-bebe4641e681
+    to: 3e6f8a9b-4c5d-4e7f-9a1b-2c3d4e5f6a7b
+    fromPort: default
+    toPort: default
+  - id: 5a8b9c0d-6e7f-5a8b-9c0d-1e2f3a4b5c6d
+    from: 3e6f8a9b-4c5d-4e7f-9a1b-2c3d4e5f6a7b
+    to: 6a7b8c9d-0e1f-4a2b-3c4d-5e6f7a8b9c0d
     fromPort: default
     toPort: default

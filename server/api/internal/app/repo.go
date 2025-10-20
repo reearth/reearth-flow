@@ -101,7 +101,7 @@ func initFile(ctx context.Context, conf *config.Config) (fileRepo gateway.File) 
 	var err error
 	if conf.GCS.IsConfigured() {
 		log.Infofc(ctx, "file: GCS storage is used: %s\n", conf.GCS.BucketName)
-		fileRepo, err = gcs.NewFile(conf.GCS.BucketName, conf.AssetBaseURL, conf.GCS.PublicationCacheControl)
+		fileRepo, err = gcs.NewFile(conf.GCS.BucketName, conf.AssetBaseURL, conf.GCS.PublicationCacheControl, conf.AssetUploadURLReplacement)
 		if err != nil {
 			log.Warnf("file: failed to init GCS storage: %s\n", err.Error())
 		}
@@ -171,7 +171,7 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		SAEmail:                         conf.Worker_BatchSAEmail,
 		TaskCount:                       taskCount,
 		ThreadPoolSize:                  conf.Worker_ThreadPoolSize,
-		ZstdEnable:                      conf.Worker_ZstdEnable,
+		CompressIntermediateData:        conf.Worker_CompressIntermediateData,
 	}
 
 	batchRepo, err = gcpbatch.NewBatch(ctx, config)

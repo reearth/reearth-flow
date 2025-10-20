@@ -40,7 +40,7 @@ type BatchConfig struct {
 	SAEmail                         string
 	TaskCount                       int
 	ThreadPoolSize                  string
-	ZstdEnable                      bool
+	CompressIntermediateData        bool
 }
 
 type BatchClient interface {
@@ -181,8 +181,8 @@ func (b *BatchRepo) SubmitJob(
 				if b.config.FeatureFlushThreshold != "" {
 					vars["FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD"] = b.config.FeatureFlushThreshold
 				}
-				if b.config.ZstdEnable {
-					vars["FLOW_RUNTIME_ZSTD_ENABLE"] = strconv.FormatBool(b.config.ZstdEnable)
+				if b.config.CompressIntermediateData {
+					vars["FLOW_RUNTIME_COMPRESS_INTERMEDIATE_DATA"] = strconv.FormatBool(b.config.CompressIntermediateData)
 				}
 
 				return vars
