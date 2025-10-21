@@ -1,0 +1,91 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 83307700-04b9-490c-b6a1-11b93e7f7aaa
+name: "PLATEAU4-quality-check-03-tran-l-tran-03"
+entryGraphId: 34bf873b-3364-46b0-8153-efeb9568bbaa
+with:
+  cityGmlPath:
+  codelists:
+  schemas:
+  outputPath:
+graphs:
+  - id: 34bf873b-3364-46b0-8153-efeb9568bbaa
+    name: entry_point
+    nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad111
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                cityGmlPath: env.get("cityGmlPath"),
+                cityCode: file::extract_filename(env.get("cityGmlPath"))[0..5],
+                codelists: env.get("codelists"),
+                schemas: env.get("schemas"),
+                fileIndex: 1,
+                folder: "tran",
+                filename: file::extract_filename(env.get("cityGmlPath")),
+              },
+            ]
+
+      - id: d376f32b-7ce8-4721-8b9e-bfa39d71b222
+        name: TransportationXlinkDetector
+        type: action
+        action: PLATEAU4.TransportationXlinkDetector
+        with:
+          attribute: cityGmlPath
+
+      - id: aaaa1111-a3a7-4d1b-9216-ef523a6b4333
+        name: AttributeMapper
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Folder
+              expr: |
+                env.get("__value")["folder"]
+            - attribute: Index
+              expr: |
+                env.get("__value")["fileIndex"]
+            - attribute: Filename
+              expr: |
+                "l-tran-03.gml"
+            - attribute: FeatureType
+              expr: |
+                env.get("__value")["featureType"]
+            - attribute: LOD
+              expr: |
+                env.get("__value")["lod"]
+            - attribute: "gml:id"
+              expr: |
+                env.get("__value")["gmlId"]
+            - attribute: "未参照"
+              expr: |
+                env.get("__value")["unreferenced"]
+
+      - id: 9309842a-a3a7-4d1b-9216-ef523a6b4333
+        name: CsvWriter
+        type: action
+        action: FileWriter
+        with:
+          format: csv
+          output: |
+            file::join_path(env.get("outputPath"), "03_交通_xlink参照エラー.csv")
+
+    edges:
+      - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad111
+        to: d376f32b-7ce8-4721-8b9e-bfa39d71b222
+        fromPort: default
+        toPort: default
+      - id: aaaaaaa1-c465-48cf-bdf5-36e385ffbd41
+        from: d376f32b-7ce8-4721-8b9e-bfa39d71b222
+        to: aaaa1111-a3a7-4d1b-9216-ef523a6b4333
+        fromPort: failed
+        toPort: default
+      - id: f47c77ad-c465-48cf-bdf5-36e385ffbd41
+        from: aaaa1111-a3a7-4d1b-9216-ef523a6b4333
+        to: 9309842a-a3a7-4d1b-9216-ef523a6b4333
+        fromPort: default
+        toPort: default

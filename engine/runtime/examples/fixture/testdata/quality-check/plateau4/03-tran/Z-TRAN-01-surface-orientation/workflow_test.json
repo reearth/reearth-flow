@@ -1,0 +1,11 @@
+{
+  "workflowPath": "quality-check/plateau4/03-tran/workflow.yml",
+  "description": "Test for checking transportation objects' surface orientation errors.",
+  "expectedOutput": {
+    "expectedFile": "03_交通_面の向き不正.csv"
+  },
+  "cityGmlPath": "udx/tran/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "skip": false
+}
