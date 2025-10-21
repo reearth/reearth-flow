@@ -1360,6 +1360,13 @@ export type CreateAssetMutationVariables = Exact<{
 
 export type CreateAssetMutation = { __typename?: 'Mutation', createAsset?: { __typename?: 'CreateAssetPayload', asset: { __typename?: 'Asset', id: string, workspaceId: string, createdAt: any, fileName: string, size: any, contentType: string, name: string, url: string, uuid: string, flatFiles: boolean, public: boolean, archiveExtractionStatus?: ArchiveExtractionStatus | null } } | null };
 
+export type CreateAssetUploadMutationVariables = Exact<{
+  input: CreateAssetUploadInput;
+}>;
+
+
+export type CreateAssetUploadMutation = { __typename?: 'Mutation', createAssetUpload?: { __typename?: 'CreateAssetUploadPayload', token: string, url: string, contentType?: string | null, contentLength: number, contentEncoding?: string | null, next?: string | null } | null };
+
 export type UpdateAssetMutationVariables = Exact<{
   input: UpdateAssetInput;
 }>;
@@ -2094,6 +2101,18 @@ export const CreateAssetDocument = gql`
   }
 }
     ${AssetFragmentDoc}`;
+export const CreateAssetUploadDocument = gql`
+    mutation CreateAssetUpload($input: CreateAssetUploadInput!) {
+  createAssetUpload(input: $input) {
+    token
+    url
+    contentType
+    contentLength
+    contentEncoding
+    next
+  }
+}
+    `;
 export const UpdateAssetDocument = gql`
     mutation UpdateAsset($input: UpdateAssetInput!) {
   updateAsset(input: $input) {
@@ -2640,6 +2659,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     CreateAsset(variables: CreateAssetMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateAssetMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateAssetMutation>({ document: CreateAssetDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateAsset', 'mutation', variables);
+    },
+    CreateAssetUpload(variables: CreateAssetUploadMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateAssetUploadMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<CreateAssetUploadMutation>({ document: CreateAssetUploadDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateAssetUpload', 'mutation', variables);
     },
     UpdateAsset(variables: UpdateAssetMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateAssetMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<UpdateAssetMutation>({ document: UpdateAssetDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateAsset', 'mutation', variables);
