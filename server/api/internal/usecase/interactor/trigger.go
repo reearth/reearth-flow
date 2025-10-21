@@ -268,14 +268,12 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		projectID = *deployment.Project()
 	}
 
-	// Use empty variables for time-driven triggers
 	variables := make(map[string]interface{})
 
-	// Fetch workspace-specific worker config if available
 	workerCfg, err := i.workerConfigRepo.FindByWorkspace(ctx, deployment.Workspace())
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Failed to fetch worker config: %v\n", err)
-		// Continue with nil config to use environment defaults
+		workerCfg = nil
 	}
 
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variables, projectID, deployment.Workspace(), workerCfg)

@@ -25,5 +25,3 @@ type WorkerConfig interface {
 	) (*batchconfig.WorkerConfig, error)
 	Delete(context.Context, id.WorkspaceID) error
 }
-
-

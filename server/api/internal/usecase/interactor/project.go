@@ -260,7 +260,6 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 		return nil, err
 	}
 
-	// Fetch workspace-specific worker config if available
 	workerCfg, err := i.workerConfigRepo.FindByWorkspace(ctx, prj.Workspace())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch worker config: %v", err)

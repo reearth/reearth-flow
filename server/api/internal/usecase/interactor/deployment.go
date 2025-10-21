@@ -352,10 +352,9 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		projectID = *d.Project()
 	}
 
-	// Fetch workspace-specific worker config if available
 	workerCfg, err := i.workerConfigRepo.FindByWorkspace(ctx, d.Workspace())
 	if err != nil {
-		// Continue with nil config to use environment defaults
+		workerCfg = nil
 	}
 
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), nil, projectID, d.Workspace(), workerCfg)

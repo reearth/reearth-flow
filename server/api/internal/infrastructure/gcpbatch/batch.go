@@ -93,7 +93,6 @@ func (b *BatchRepo) SubmitJob(
 	workspaceID id.WorkspaceID,
 	workerConfig *batchconfig.WorkerConfig,
 ) (string, error) {
-	// Merge workspace config with environment defaults
 	effectiveConfig := b.mergeConfig(workerConfig)
 
 	formattedJobID := formatJobID(jobID.String())
@@ -172,7 +171,6 @@ func (b *BatchRepo) SubmitJob(
 					"RUST_BACKTRACE":                            "1",
 				}
 
-				// Apply effective runtime configuration
 				if effectiveConfig.NodeStatusPropagationDelayMS != "" {
 					vars["FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS"] = effectiveConfig.NodeStatusPropagationDelayMS
 				}
@@ -415,7 +413,6 @@ func formatJobID(jobID string) string {
 	return jobID
 }
 
-// effectiveConfig holds the merged configuration values
 type effectiveConfig struct {
 	MachineType                  string
 	ComputeCpuMilli              int
@@ -447,7 +444,6 @@ func (b *BatchRepo) mergeConfig(workspaceConfig *batchconfig.WorkerConfig) *effe
 		NodeStatusPropagationDelayMS: b.config.NodeStatusPropagationDelayMS,
 	}
 
-	// Apply workspace overrides if provided
 	if workspaceConfig != nil {
 		if machineType := workspaceConfig.MachineType(); machineType != nil {
 			cfg.MachineType = *machineType
