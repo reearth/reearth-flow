@@ -194,12 +194,12 @@ export const useAsset = () => {
       const maxStandardUploadSize =
         MAX_STANDARD_UPLOAD_SIZE_MB * bytesInAMegabyte;
       if (file.size > maxStandardUploadSize) {
-        await createAssetWithDirectUpload({
+        return await createAssetWithDirectUpload({
           workspaceId,
           file,
         });
       } else {
-        await createAssetWithStandardUpload({
+        return await createAssetWithStandardUpload({
           workspaceId,
           file,
         });
