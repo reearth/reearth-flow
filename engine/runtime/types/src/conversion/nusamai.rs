@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use nusamai_citygml::GeometryRef;
 use nusamai_citygml::{object::ObjectStereotype, GeometryType, Value};
 use nusamai_plateau::Entity;
+use reearth_flow_geometry::types::coordinate::Coordinate3D;
 use reearth_flow_geometry::types::line_string::LineString3D;
 use reearth_flow_geometry::types::polygon::Polygon3D;
 
@@ -53,7 +54,14 @@ impl TryFrom<Entity> for Geometry {
                         .iter_range(geometry.pos as usize..(geometry.pos + geometry.len) as usize)
                     {
                         let linestring = idx_linestring.transform(|c| geoms.vertices[*c as usize]);
-                        linestrings.push(linestring.into());
+                        // manually collect coordinates instead of using line_string.into()
+                        // This avoids iter_closed() which would incorrectly close the linestring
+                        linestrings.push(
+                            linestring
+                                .iter()
+                                .map(|a| Coordinate3D::new__(a[0], a[1], a[2]))
+                                .collect()
+                        );
                     }
                     let mut geometry_feature = GmlGeometry::from(geometry.clone());
                     geometry_feature.line_strings.extend(linestrings);

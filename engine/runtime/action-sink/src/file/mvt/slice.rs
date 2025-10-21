@@ -340,7 +340,7 @@ fn slice_line_string(
 
         // todo?: check interior bbox to optimize
 
-        line_string
+        let last_coord = line_string
             .iter()
             .fold(None, |a, b| {
                 let Some(a) = a else { return Some(b) };
@@ -370,6 +370,12 @@ fn slice_line_string(
                 Some(b)
             })
             .unwrap();
+
+        // Process the last coordinate that wasn't handled in the fold
+        if last_coord[1] >= k1 && last_coord[1] <= k2 {
+            y_sliced_line_string.push(last_coord);
+        }
+
         y_sliced_line_strings.push(y_sliced_line_string);
     }
 
@@ -399,7 +405,7 @@ fn slice_line_string(
                 typename.to_string(),
             );
             new_ring_buffer.clear();
-            y_sliced_line_string
+            let last_coord = y_sliced_line_string
                 .iter()
                 .fold(None, |a, b| {
                     let Some(a) = a else { return Some(b) };
@@ -429,6 +435,11 @@ fn slice_line_string(
                     Some(b)
                 })
                 .unwrap();
+
+            // Process the last coordinate that wasn't handled in the fold
+            if last_coord[0] >= k1 && last_coord[0] <= k2 {
+                new_ring_buffer.push(last_coord);
+            }
 
             // get integer coordinates and simplify the ring
             {
