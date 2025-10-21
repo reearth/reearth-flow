@@ -258,6 +258,8 @@ nodes:
           method: remove
         - attribute: cityGmlAttributes
           method: remove
+        - attribute: lod
+          method: remove
 
   - id: 72b70428-0bb9-401b-a295-881556adc526
     name: FileTSVWriterLBDLG04-05
@@ -318,6 +320,8 @@ nodes:
         - attribute: dirCodelists
           method: remove
         - attribute: extension
+          method: remove
+        - attribute: lod
           method: remove
 
   - id: ab3505ad-4e89-4442-ab36-c52ac29c332e
