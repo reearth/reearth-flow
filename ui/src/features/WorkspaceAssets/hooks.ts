@@ -93,7 +93,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
       const file = e.target.files?.[0];
       if (!file) return;
       if (!workspaceId) return console.error("Missing current workspace");
-      createAsset(file, workspaceId);
+      createAsset(workspaceId, file);
     },
     [createAsset, workspaceId],
   );

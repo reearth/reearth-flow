@@ -189,28 +189,20 @@ export const useAsset = () => {
 
   // Unified createAsset function
   const createAsset = useCallback(
-    async (file: File, workspaceId: string) => {
+    async (workspaceId: string, file: File) => {
       const bytesInAMegabyte = 1024 * 1024;
       const maxStandardUploadSize =
         MAX_STANDARD_UPLOAD_SIZE_MB * bytesInAMegabyte;
       if (file.size > maxStandardUploadSize) {
-        try {
-          await createAssetWithDirectUpload({
-            workspaceId,
-            file,
-          });
-        } catch (error) {
-          console.error("Failed to upload file:", error);
-        }
+        await createAssetWithDirectUpload({
+          workspaceId,
+          file,
+        });
       } else {
-        try {
-          await createAssetWithStandardUpload({
-            workspaceId,
-            file,
-          });
-        } catch (error) {
-          console.error("Failed to upload file:", error);
-        }
+        await createAssetWithStandardUpload({
+          workspaceId,
+          file,
+        });
       }
     },
     [createAssetWithStandardUpload, createAssetWithDirectUpload],
