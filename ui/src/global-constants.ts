@@ -59,6 +59,3 @@ export const CURSOR_COLORS = [
   "#365314", // Olive - natural tone
   "#92400e", // Burnt orange - warm earth
 ];
-
-// For Asset uploading optimization
-export const MAX_DIRECT_UPLOAD_SIZE_BYTES = 30;

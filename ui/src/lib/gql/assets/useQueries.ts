@@ -60,7 +60,7 @@ export const useQueries = () => {
       enabled: !!workspaceId,
     });
 
-  const createAssetMutation = useMutation({
+  const createAssetWithStandardUploadMutation = useMutation({
     mutationFn: async ({
       file,
       name,
@@ -120,7 +120,7 @@ export const useQueries = () => {
     },
   });
 
-  const createAssetUploadMutation = useMutation({
+  const createAssetDirectUploadMutation = useMutation({
     mutationFn: async (input: CreateAssetUploadInput) => {
       const data = await graphQLContext?.CreateAssetUpload({
         input,
@@ -141,8 +141,8 @@ export const useQueries = () => {
 
   return {
     useGetAssetsQuery,
-    createAssetMutation,
-    createAssetUploadMutation,
+    createAssetWithStandardUploadMutation,
+    createAssetDirectUploadMutation,
     updateAssetMutation,
     deleteAssetMutation,
   };
