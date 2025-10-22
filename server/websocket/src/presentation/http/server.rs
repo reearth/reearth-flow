@@ -91,7 +91,6 @@ pub async fn start_server(state: Arc<AppState>, port: &str, config: &Config) -> 
         .route("/{doc_id}", get(ws_handler))
         .with_state(server_state);
 
-
     let app = Router::new()
         .merge(ws_router)
         .nest("/api", document_routes())
@@ -132,7 +131,6 @@ pub async fn start_server(state: Arc<AppState>, port: &str, config: &Config) -> 
 }
 
 use crate::presentation::http::handlers::health_handler::{health_check_handler, HealthHandler};
-
 
 #[cfg(feature = "auth")]
 async fn ws_handler(
