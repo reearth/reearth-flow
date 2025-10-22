@@ -18,5 +18,6 @@ type CMS interface {
 
 	ListItems(ctx context.Context, input cms.ListItemsInput) (*cms.ListItemsOutput, error)
 
+	GetModelExportURL(ctx context.Context, input cms.ModelExportInput) (*cms.ExportOutput, error)
 	GetModelGeoJSONExportURL(ctx context.Context, input cms.ExportInput) (*cms.ExportOutput, error)
 }

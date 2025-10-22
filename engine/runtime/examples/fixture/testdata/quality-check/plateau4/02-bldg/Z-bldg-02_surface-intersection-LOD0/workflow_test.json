@@ -1,0 +1,21 @@
+{
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
+  "description": "Test surface intersection for LOD0 surfaces",
+  "expectedOutput": {
+    "expectedFile": "02_建築物_LOD0面の交差.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_bldg.json",
+      "includeFields": ["LOD0 面の交差"]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "02_建築物_検査結果一覧.csv",
+      "includeColumns": ["LOD0 面の交差"]
+    }
+  },
+  "cityGmlPath": "udx/bldg/LOD0_surface_intersection.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectResultOkFile": false
+}

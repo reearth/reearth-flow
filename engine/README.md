@@ -38,36 +38,27 @@ C:\> vcpkg install libxml2:x64-windows
 C:\> vcpkg integrate install
 ```
 
-### Python 3.11 and py2wasm (Optional)
+### Python (Optional)
 
-This project requires `Python 3.11` and `py2wasm` for compiling Python scripts into WebAssembly (.wasm) files. If you want to use processors whose category is `WASM`, follow the steps below to install Python 3.11 and py2wasm on your operating system.
+Python (version 3.11 or higher) is required if you want to use Python-based actions in your workflows. Install Python on your operating system:
 
 #### Linux/Debian
 
 ```
 $ sudo apt update
-$ sudo apt install python3.11 python3.11-distutils python3-pip
-$ python -m pip install --upgrade pip
-$ pip install py2wasm
+$ sudo apt install python3 python3-pip python3-distutils
 ```
 
 #### MacOS
 
 ```
-$ brew install python@3.11
-$ python -m pip install --upgrade pip
-$ pip install py2wasm
+$ brew install python3
 ```
 
 #### Windows
 
-1. Download and install Python 3.11 from Python.org.
-2. Ensure “Add Python to PATH” is selected during installation.
-
-```
-$ python -m pip install --upgrade pip
-$ pip install py2wasm
-```
+1. Download and install Python from [Python.org](https://www.python.org/downloads/).
+2. Ensure "Add Python to PATH" is selected during installation.
 
 ## Input Variables
 
@@ -159,6 +150,7 @@ export FLOW_VAR_targetPackages='["bldg", "fld"]'
 | FLOW_RUNTIME_SLOW_ACTION_THRESHOLD            | Threshold for writing slow action logs(ms)                         | 300     |
 | FLOW_RUNTIME_WORKING_DIRECTORY                | working directory                                                  | macOS: `$HOME/Library/Caches/<project_path>`, Linux: `$HOME/.cache/<project_path>`, Windows: `%LOCALAPPDATA%\<project_path>` |
 | FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS | Delay (ms) to ensure node status events propagate                  | 500     |
+| FLOW_RUNTIME_COMPRESS_INTERMEDIATE_DATA       | Enable zstd compression for Intermediate Data I/O.                 | false   |
 
 ## Intermediate Data & Cache
 
@@ -210,6 +202,13 @@ ls <cache_directory>/projects/<project>/jobs/<job_id>/
 ### Run workflow
 
 ```console
+$ cargo run --package reearth-flow-cli -- run --workflow ${workflow_path}
+```
+
+#### Enable zstd compression for State I/O
+
+```console
+$ export FLOW_RUNTIME_COMPRESS_INTERMEDIATE_DATA=true
 $ cargo run --package reearth-flow-cli -- run --workflow ${workflow_path}
 ```
 

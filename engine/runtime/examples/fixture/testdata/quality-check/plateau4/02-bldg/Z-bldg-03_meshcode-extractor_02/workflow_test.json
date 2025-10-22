@@ -1,0 +1,17 @@
+{
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
+  "description": "Test PLATEAU4.DestinationMeshCodeExtractor",
+  "expectedOutput": {
+    "expectedFile": "02_建築物_図郭不正.csv"
+  },
+  "cityGmlPath": "udx/bldg/54377094_bldg_6697_op.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "summaryOutput": {
+    "fileErrorSummary": {
+      "expectedFile": "02_建築物_検査結果一覧.csv",
+      "includeColumns": ["図郭不正"]
+    }
+  },
+  "expectResultOkFile": false
+}

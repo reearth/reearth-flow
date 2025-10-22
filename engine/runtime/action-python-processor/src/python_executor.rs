@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 use std::io::Write;
 use std::process::{Command, Stdio};
+use std::str::FromStr;
 
 use indexmap::IndexMap;
+use reearth_flow_common::uri::Uri;
 use reearth_flow_geometry::types::geometry::Geometry2D as FlowGeometry2D;
 use reearth_flow_geometry::types::point::Point2D;
 use reearth_flow_runtime::{
@@ -82,8 +84,25 @@ impl ProcessorFactory for PythonScriptProcessorFactory {
             .into());
         };
 
+        if params.script.is_none() && params.python_file.is_none() {
+            return Err(PythonProcessorError::FactoryError(
+                "Either 'script' (inline) or 'pythonFile' (file path) parameter must be provided"
+                    .to_string(),
+            )
+            .into());
+        }
+
+        if params.script.is_some() && params.python_file.is_some() {
+            return Err(PythonProcessorError::FactoryError(
+                "Cannot provide both 'script' and 'pythonFile' parameters. Use only one."
+                    .to_string(),
+            )
+            .into());
+        }
+
         let processor = PythonScriptProcessor {
-            script: params.script.to_string(),
+            script: params.script,
+            python_file: params.python_file,
             python_path: params.python_path.unwrap_or_else(|| "python3".to_string()),
             _timeout_seconds: params.timeout_seconds.unwrap_or(30),
             ctx,
@@ -95,7 +114,8 @@ impl ProcessorFactory for PythonScriptProcessorFactory {
 
 #[derive(Debug, Clone)]
 struct PythonScriptProcessor {
-    script: String,
+    script: Option<Expr>,
+    python_file: Option<Expr>,
     python_path: String,
     _timeout_seconds: u64,
     ctx: NodeContext,
@@ -104,7 +124,15 @@ struct PythonScriptProcessor {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct PythonScriptProcessorParam {
-    script: Expr,
+    /// # Inline Script
+    /// Python script code to execute inline
+    #[serde(skip_serializing_if = "Option::is_none")]
+    script: Option<Expr>,
+
+    /// # Python File
+    /// Path to a Python script file (supports file://, http://, https://, gs://, etc.)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    python_file: Option<Expr>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     python_path: Option<String>,
@@ -238,6 +266,52 @@ fn feature_to_geojson(feature: &Feature) -> serde_json::Value {
     })
 }
 
+fn dedent(text: &str) -> String {
+    let lines: Vec<&str> = text.lines().collect();
+
+    if lines.is_empty() {
+        return String::new();
+    }
+
+    let ends_with_newline = text.ends_with('\n');
+
+    // Calculate minimum indentation, ignoring blank lines and comment-only lines
+    // Comment-only lines shouldn't dictate indentation as they're often added at indent 0
+    let min_indent = lines
+        .iter()
+        .filter(|line| {
+            let trimmed = line.trim();
+            !trimmed.is_empty() && !trimmed.starts_with('#')
+        })
+        .map(|line| line.len() - line.trim_start().len())
+        .min()
+        .unwrap_or(0);
+
+    let result = lines
+        .iter()
+        .map(|line| {
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                ""
+            } else if trimmed.starts_with('#') {
+                // Preserve comment-only lines as-is
+                line
+            } else if line.len() >= min_indent {
+                &line[min_indent..]
+            } else {
+                line
+            }
+        })
+        .collect::<Vec<&str>>()
+        .join("\n");
+
+    if ends_with_newline {
+        format!("{result}\n")
+    } else {
+        result
+    }
+}
+
 fn geojson_to_geometry(geojson: &serde_json::Value) -> Result<Geometry, PythonProcessorError> {
     if geojson.is_null() {
         return Ok(Geometry::default());
@@ -292,24 +366,42 @@ impl Processor for PythonScriptProcessor {
             PythonProcessorError::SerializationError(format!("Failed to serialize feature: {e}"))
         })?;
 
-        // Resolve the script using expression engine
         let expr_engine = &self.ctx.expr_engine;
         let scope = expr_engine.new_scope();
-        let script_expr = Expr::new(&self.script);
-        let resolved_script = expr_engine
-            .eval_scope::<String>(script_expr.as_ref(), &scope)
-            .unwrap_or_else(|_| self.script.clone());
 
-        // Check if script is a file path or inline code
-        let (_is_file, script_content) = if resolved_script.ends_with(".py") {
-            // It's likely a file path
-            match std::fs::read_to_string(&resolved_script) {
-                Ok(content) => (true, content),
-                Err(_) => (false, resolved_script), // Treat as inline script if file not found
-            }
+        let script_content = if let Some(inline_script) = &self.script {
+            expr_engine
+                .eval_scope::<String>(inline_script.as_ref(), &scope)
+                .unwrap_or_else(|_| inline_script.to_string())
+        } else if let Some(python_file_path) = &self.python_file {
+            let path_str = expr_engine
+                .eval_scope::<String>(python_file_path.as_ref(), &scope)
+                .unwrap_or_else(|_| python_file_path.to_string());
+
+            let uri = Uri::from_str(&path_str).map_err(|e| {
+                PythonProcessorError::ExecutionError(format!("Invalid file path: {e}"))
+            })?;
+
+            let storage = ctx.storage_resolver.resolve(&uri).map_err(|e| {
+                PythonProcessorError::ExecutionError(format!("Failed to resolve storage: {e}"))
+            })?;
+
+            let bytes = storage.get_sync(uri.path().as_path()).map_err(|e| {
+                PythonProcessorError::ExecutionError(format!("Failed to read script file: {e}"))
+            })?;
+
+            String::from_utf8(bytes.to_vec()).map_err(|e| {
+                PythonProcessorError::ExecutionError(format!("Script file is not valid UTF-8: {e}"))
+            })?
         } else {
-            (false, resolved_script)
+            return Err(PythonProcessorError::ExecutionError(
+                "No script or pythonFile provided".to_string(),
+            )
+            .into());
         };
+
+        // Apply dedent to remove common leading whitespace from user script
+        let dedented_script = dedent(&script_content);
 
         let python_wrapper = format!(
             r#"
@@ -356,7 +448,7 @@ def create_polygon(coordinates):
     }}
 
 # User script starts here
-{script_content}
+{dedented_script}
 # User script ends here
 
 # Handle multiple output formats
@@ -577,6 +669,49 @@ mod tests {
     }
 
     #[test]
+    fn test_factory_build_missing_script_and_file() {
+        let factory = PythonScriptProcessorFactory;
+        let ctx = create_test_context();
+
+        let with = HashMap::new();
+
+        let result = factory.build(
+            ctx,
+            EventHub::new(10),
+            "test_action".to_string(),
+            Some(with),
+        );
+
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("Either 'script' (inline) or 'pythonFile'"));
+    }
+
+    #[test]
+    fn test_factory_build_both_script_and_file() {
+        let factory = PythonScriptProcessorFactory;
+        let ctx = create_test_context();
+
+        let mut with = HashMap::new();
+        with.insert(
+            "script".to_string(),
+            json!("properties['result'] = 'success'"),
+        );
+        with.insert("pythonFile".to_string(), json!("file:///path/to/script.py"));
+
+        let result = factory.build(
+            ctx,
+            EventHub::new(10),
+            "test_action".to_string(),
+            Some(with),
+        );
+
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("Cannot provide both 'script' and 'pythonFile'"));
+    }
+
+    #[test]
     fn test_geometry_to_geojson_point() {
         let point = Point2D::from((139.7, 35.7));
         let geometry = FlowGeometry::with_value(reearth_flow_types::GeometryValue::FlowGeometry2D(
@@ -688,5 +823,138 @@ mod tests {
         assert_eq!(factory.get_input_ports().len(), 1);
         assert_eq!(factory.get_output_ports().len(), 1);
         assert!(factory.parameter_schema().is_some());
+    }
+
+    #[test]
+    fn test_dedent_with_leading_spaces() {
+        let input = "            if True:\n                print('hello')";
+        let expected = "if True:\n    print('hello')";
+        assert_eq!(dedent(input), expected);
+    }
+
+    #[test]
+    fn test_dedent_with_no_indent() {
+        let input = "if True:\n    print('hello')";
+        let expected = "if True:\n    print('hello')";
+        assert_eq!(dedent(input), expected);
+    }
+
+    #[test]
+    fn test_dedent_with_mixed_indent() {
+        let input = "    line1\n        line2\n    line3";
+        let expected = "line1\n    line2\nline3";
+        assert_eq!(dedent(input), expected);
+    }
+
+    #[test]
+    fn test_dedent_with_empty_lines() {
+        let input = "    line1\n\n    line2";
+        let expected = "line1\n\nline2";
+        assert_eq!(dedent(input), expected);
+    }
+
+    #[test]
+    fn test_dedent_empty_string() {
+        let input = "";
+        let expected = "";
+        assert_eq!(dedent(input), expected);
+    }
+
+    #[test]
+    fn test_dedent_preserves_trailing_newline() {
+        let input = "    line1\n    line2\n";
+        let expected = "line1\nline2\n";
+        assert_eq!(dedent(input), expected);
+    }
+
+    #[test]
+    fn test_dedent_no_trailing_newline() {
+        let input = "    line1\n    line2";
+        let expected = "line1\nline2";
+        assert_eq!(dedent(input), expected);
+    }
+
+    #[test]
+    fn test_dedent_in_wrapper_context() {
+        // This test verifies the fix for the production bug where user scripts
+        // without preserved trailing newlines would concatenate with wrapper comments
+        let user_script =
+            "    if get_geometry_type(geometry) == \"MultiPoint\":\n        print(\"test\")\n";
+        let dedented = dedent(user_script);
+
+        // Simulate the wrapper insertion
+        let wrapper = format!("# User script starts here\n{dedented}# User script ends here");
+
+        // Verify the wrapper has proper line separation
+        assert!(wrapper.contains("print(\"test\")\n# User script ends here"));
+        assert!(!wrapper.contains("print(\"test\")# User script ends here")); // Bug case
+    }
+
+    #[test]
+    fn test_dedent_with_crlf_line_endings() {
+        // Verify CRLF (Windows) line endings are handled correctly
+        let input = "    line1\r\n    line2\r\n";
+        let result = dedent(input);
+
+        // Should preserve the trailing newline
+        assert!(result.ends_with('\n'));
+        // The dedented content should be correct
+        assert!(result.contains("line1"));
+        assert!(result.contains("line2"));
+    }
+
+    #[test]
+    fn test_dedent_crlf_no_trailing_newline() {
+        let input = "    line1\r\n    line2";
+        let result = dedent(input);
+
+        // Should NOT have trailing newline since original didn't have one
+        assert!(!result.ends_with('\n'));
+        assert!(!result.ends_with("\r\n"));
+    }
+
+    #[test]
+    fn test_dedent_ignores_comment_only_lines() {
+        // Production bug: comment at indent 0, code at indent 12
+        let input = "# Comment at indent 0\n            if True:\n                print('test')\n";
+        let result = dedent(input);
+
+        // Should dedent based on code lines (min indent 12), not comment (indent 0)
+        assert_eq!(
+            result,
+            "# Comment at indent 0\nif True:\n    print('test')\n"
+        );
+        assert!(!result.contains("            if"));
+    }
+
+    #[test]
+    fn test_dedent_with_actual_production_script() {
+        // Real production script from workflow 01k7fjkbx9ezhqrge9s891536x
+        let input = "# Split MultiPoint into individual station features with connections
+            if get_geometry_type(geometry) == \"MultiPoint\":
+                coords = get_coordinates(geometry)
+
+                # Station names corresponding to coordinates
+                station_names = [\"Tokyo Station\", \"Shimbashi\", \"Shinagawa\", \"Akihabara\"]
+";
+
+        let result = dedent(input);
+
+        // Comment should be preserved at indent 0
+        assert!(result.starts_with("# Split MultiPoint"));
+
+        // Code should be dedented to indent 0
+        assert!(result.contains("\nif get_geometry_type(geometry)"));
+        assert!(!result.contains("            if get_geometry_type"));
+
+        // Nested code should maintain relative indentation
+        assert!(result.contains("\n    coords = get_coordinates(geometry)"));
+
+        // Nested comments at indent 16 should also be preserved (they're comment-only lines)
+        // Note: We preserve ALL comment-only lines as-is, regardless of indentation
+        assert!(result.contains("# Station names"));
+
+        // Should preserve trailing newline
+        assert!(result.ends_with('\n'));
     }
 }

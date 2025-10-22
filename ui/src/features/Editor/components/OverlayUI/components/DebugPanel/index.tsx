@@ -6,7 +6,6 @@ import {
   CornersOutIcon,
   EyeIcon,
   MinusIcon,
-  TerminalIcon,
 } from "@phosphor-icons/react";
 import { memo, useEffect, useRef, useState } from "react";
 
@@ -43,27 +42,24 @@ const DebugPanel: React.FC = () => {
     fullscreenDebug,
     expanded,
     minimized,
-    showTempPossibleIssuesDialog,
     selectedDataURL,
     dataURLs,
     outputDataForDownload,
     selectedOutputData,
-    enableClustering,
     selectedFeature,
     setSelectedFeature,
     setConvertedSelectedFeature,
-    setEnableClustering,
     handleFullscreenExpand,
     handleExpand,
     handleMinimize,
     handleTabChange,
-    handleShowTempPossibleIssuesDialogClose,
     handleSelectedDataChange,
     handleRowSingleClick,
     handleRowDoubleClick,
     handleFlyToSelectedFeature,
     // Data properties
     detectedGeometryType,
+    visualizerType,
     totalFeatures,
     isComplete,
   } = useHooks();
@@ -95,30 +91,30 @@ const DebugPanel: React.FC = () => {
     <div
       className={`${fullscreenDebug ? "fixed inset-0" : ""} z-30 flex items-end`}>
       <Tabs
-        className={`pointer-events-auto w-[95vw] rounded-md border border-primary bg-secondary/70 p-2 shadow-md shadow-secondary backdrop-blur transition-all ${minimized ? "h-[42px]" : fullscreenDebug ? "h-[100vh] w-[100vw]" : expanded ? "h-[75vh]" : "h-[45vh]"}`}
+        className={`pointer-events-auto border border-primary bg-secondary/70 p-1 shadow-md shadow-secondary backdrop-blur transition-all ${minimized ? "h-[42px] w-[96vw] rounded-xl" : fullscreenDebug ? "h-[100vh] w-[100vw] rounded-none" : expanded ? "h-[65vh] w-[99vw] rounded-xl" : "h-[45vh] w-[96vw] rounded-xl"}`}
         value={tabValue}
         defaultValue="debug-logs"
         onValueChange={setTabValue}>
         <div
-          className="relative flex justify-between pb-2"
+          className="relative flex justify-between"
           onDoubleClick={handleExpand}>
           <div className="flex w-fit items-center">
             <TabsList className="gap-2">
               <TabsTrigger
-                className="gap-1 bg-card font-thin"
+                className="group h-8 gap-1 border border-transparent bg-card font-thin data-[state=active]:border-logo/40"
                 value="debug-logs"
                 onClick={handleTabChange}>
-                <CodeIcon />
+                <CodeIcon className="group-data-[state=active]:fill-logo" />
                 <p className="text-sm font-thin select-none">
                   {t("Workflow Logs")}
                 </p>
               </TabsTrigger>
               <TabsTrigger
-                className="gap-1 bg-card font-thin"
+                className="group h-8 gap-1 border border-transparent bg-card font-thin data-[state=active]:border-logo/40"
                 value="debug-viewer"
                 disabled={!dataURLs?.length}
                 onClick={handleTabChange}>
-                <EyeIcon />
+                <EyeIcon className="group-data-[state=active]:fill-logo" />
                 <p className="text-sm font-thin select-none">
                   {t("Data Preview")}
                 </p>
@@ -127,14 +123,14 @@ const DebugPanel: React.FC = () => {
             <div className="ml-2 h-full w-1 border-l" />
             <OutputDataDownload outputData={outputDataForDownload} />
           </div>
-          <div className="absolute left-1/2 mr-[120px] flex translate-x-1/2 items-center justify-center gap-2">
+          {/* <div className="absolute left-1/2 mr-[120px] flex h-full translate-x-1/2 items-center justify-center gap-2">
             <TerminalIcon />
             <p className="text-sm font-thin select-none">{t("Debug Run")}</p>
-          </div>
+          </div> */}
           <div className="flex items-center">
             {!fullscreenDebug && (
               <IconButton
-                className="h-[25px] cursor-pointer rounded hover:bg-primary"
+                className="h-8 cursor-pointer rounded hover:bg-primary"
                 icon={
                   minimized ? (
                     <CaretUpIcon weight="light" />
@@ -147,7 +143,7 @@ const DebugPanel: React.FC = () => {
             )}
             {!minimized && !fullscreenDebug && (
               <IconButton
-                className="h-[25px] cursor-pointer rounded hover:bg-primary"
+                className="h-8 cursor-pointer rounded hover:bg-primary"
                 icon={
                   expanded ? (
                     <CaretDownIcon weight="light" />
@@ -160,7 +156,7 @@ const DebugPanel: React.FC = () => {
             )}
             {!minimized && (
               <IconButton
-                className="h-[25px] cursor-pointer rounded hover:bg-primary"
+                className="h-8 cursor-pointer rounded hover:bg-primary"
                 icon={
                   fullscreenDebug ? (
                     <CornersInIcon weight="light" />
@@ -185,7 +181,7 @@ const DebugPanel: React.FC = () => {
             value="debug-viewer"
             forceMount={true}
             hidden={tabValue !== "debug-viewer"}
-            className="h-[calc(100%-30px)] overflow-scroll">
+            className="h-[calc(100%-32px)] overflow-scroll">
             <ResizablePanelGroup direction="horizontal">
               <ResizablePanel
                 defaultSize={60}
@@ -220,27 +216,24 @@ const DebugPanel: React.FC = () => {
                   />
                 </div>
               </ResizablePanel>
-              <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 mx-2 h-[30%] w-1 self-center rounded-md border border-accent bg-accent transition hover:border-transparent hover:bg-logo/70" />
+              {!minimized && (
+                <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 mx-2 h-[30%] w-1 self-center rounded-md border border-accent bg-accent transition hover:border-transparent hover:bg-logo/70" />
+              )}
               <ResizablePanel defaultSize={40} minSize={20}>
                 <DebugPreview
                   debugJobState={debugJobState}
                   dataURLs={dataURLs}
                   fileType={fileType}
                   selectedOutputData={selectedOutputData}
-                  showTempPossibleIssuesDialog={showTempPossibleIssuesDialog}
                   selectedFeature={selectedFeature}
-                  enableClustering={enableClustering}
                   mapRef={mapRef}
                   cesiumViewerRef={cesiumViewerRef}
                   onConvertedSelectedFeature={setConvertedSelectedFeature}
-                  onShowTempPossibleIssuesDialogClose={
-                    handleShowTempPossibleIssuesDialogClose
-                  }
                   onSelectedFeature={setSelectedFeature}
-                  onEnableClusteringChange={setEnableClustering}
                   onFlyToSelectedFeature={handleFlyToSelectedFeature}
                   // Data detection props
                   detectedGeometryType={detectedGeometryType}
+                  visualizerType={visualizerType}
                   isComplete={isComplete}
                 />
               </ResizablePanel>

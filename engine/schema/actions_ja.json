@@ -963,6 +963,84 @@
       ]
     },
     {
+      "name": "CSGBuilder",
+      "type": "processor",
+      "description": "Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, Right) of solid geometries. It detects union, intersection, difference (Left - Right). It however does not compute the resulting geometry, but outputs the CSG tree structure. To evaluate the CSG tree into a solid geometry, use CSGEvaluator.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CSG Builder Parameters",
+        "description": "Configure how the CSG builder pairs features from left and right ports",
+        "type": "object",
+        "properties": {
+          "createList": {
+            "title": "Create List",
+            "description": "When enabled, creates a list of attribute values from both children (left and right)",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "listAttributeName": {
+            "title": "List Attribute Name",
+            "description": "Name of the attribute to create the list from (required when create_list is true)",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pairIdAttribute": {
+            "title": "Pair ID Attribute",
+            "description": "Expression to evaluate the pair ID used to match features from left and right ports",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "left",
+        "right"
+      ],
+      "outputPorts": [
+        "intersection",
+        "union",
+        "difference",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "CSGEvaluator",
+      "type": "processor",
+      "description": "Evaluates a Constructive Solid Geometry (CSG) tree to produce a solid geometry. Takes a CSG representation and computes the resulting mesh from the boolean operations.",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "nullport",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "CenterPointReplacer",
       "type": "processor",
       "description": "地物のジオメトリを、地物のバウンディングボックス中央や質量中心、または地物領域内に確実に収まる点で置き換える",
@@ -1055,6 +1133,62 @@
         "schema"
       ],
       "outputPorts": [],
+      "categories": [
+        "File"
+      ]
+    },
+    {
+      "name": "CityGmlReader",
+      "type": "source",
+      "description": "Reads 3D city models from CityGML files.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CityGmlReader Parameters",
+        "description": "Configuration for reading CityGML files as 3D city models.",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "File Path",
+            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "flatten": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "default"
+      ],
       "categories": [
         "File"
       ]
@@ -1223,6 +1357,72 @@
       "outputPorts": [
         "default"
       ],
+      "categories": [
+        "File"
+      ]
+    },
+    {
+      "name": "CsvWriter",
+      "type": "sink",
+      "description": "Writes features to CSV or TSV files.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CsvWriter Parameters",
+        "description": "Configuration for writing features to CSV/TSV files.",
+        "type": "object",
+        "required": [
+          "format",
+          "output"
+        ],
+        "properties": {
+          "format": {
+            "description": "File format: csv (comma) or tsv (tab)",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CsvFormat"
+              }
+            ]
+          },
+          "output": {
+            "description": "Output path or expression for the CSV/TSV file to create",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "CsvFormat": {
+            "oneOf": [
+              {
+                "title": "CSV (Comma-Separated Values)",
+                "description": "File with comma-separated values",
+                "type": "string",
+                "enum": [
+                  "csv"
+                ]
+              },
+              {
+                "title": "TSV (Tab-Separated Values)",
+                "description": "File with tab-separated values",
+                "type": "string",
+                "enum": [
+                  "tsv"
+                ]
+              }
+            ]
+          },
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
       "categories": [
         "File"
       ]
@@ -1504,6 +1704,50 @@
       ],
       "categories": [
         "Geometry"
+      ]
+    },
+    {
+      "name": "ExcelWriter",
+      "type": "sink",
+      "description": "Writes features to Microsoft Excel format (.xlsx files).",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ExcelWriter Parameters",
+        "description": "Configuration for writing features to Microsoft Excel format.",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "output": {
+            "description": "Output path or expression for the Excel file to create",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          },
+          "sheetName": {
+            "description": "Sheet name (defaults to \"Sheet1\")",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
       ]
     },
     {
@@ -3374,6 +3618,74 @@
       ]
     },
     {
+      "name": "GltfReader",
+      "type": "source",
+      "description": "Reads 3D models from glTF 2.0 files, supporting meshes, nodes, scenes, and geometry primitives",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GltfReaderParam",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "File Path",
+            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "includeNodes": {
+            "title": "Include Nodes",
+            "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes",
+            "default": true,
+            "type": "boolean"
+          },
+          "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mergeMeshes": {
+            "title": "Merge Meshes",
+            "description": "If true, combines all meshes from the glTF file into a single output feature",
+            "default": false,
+            "type": "boolean"
+          },
+          "triangulate": {
+            "title": "Triangulate",
+            "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)",
+            "default": true,
+            "type": "boolean"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "File",
+        "3D"
+      ]
+    },
+    {
       "name": "GltfWriter",
       "type": "sink",
       "description": "地物をGltfファイルに書き出す",
@@ -3555,6 +3867,104 @@
       ],
       "categories": [
         "Geometry"
+      ]
+    },
+    {
+      "name": "JsonReader",
+      "type": "source",
+      "description": "Reads features from JSON files, supporting both single objects and arrays of objects.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "JsonReader Parameters",
+        "description": "Configuration for reading JSON files as features.",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "File Path",
+            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "File"
+      ]
+    },
+    {
+      "name": "JsonWriter",
+      "type": "sink",
+      "description": "Writes features to JSON files.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "JsonWriter Parameters",
+        "description": "Configuration for writing features to JSON files.",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "converter": {
+            "description": "Optional converter expression to transform features before writing",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "output": {
+            "description": "Output path or expression for the JSON file to create",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
       ]
     },
     {
@@ -3816,7 +4226,8 @@
       "description": "Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, texture coordinates, and materials",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ObjReaderParam",
+        "title": "ObjReader Parameters",
+        "description": "Configuration for reading Wavefront OBJ 3D model files with support for vertices, faces, normals, texture coordinates, and material definitions.",
         "type": "object",
         "properties": {
           "dataset": {
@@ -3832,10 +4243,14 @@
             ]
           },
           "includeNormals": {
+            "title": "Include Normals",
+            "description": "Include vertex normal data in the output geometry",
             "default": true,
             "type": "boolean"
           },
           "includeTexcoords": {
+            "title": "Include Texture Coordinates",
+            "description": "Include texture coordinate (UV) data in the output geometry",
             "default": true,
             "type": "boolean"
           },
@@ -3851,15 +4266,34 @@
               }
             ]
           },
+          "materialFile": {
+            "title": "Material File",
+            "description": "Expression that returns the path to an external MTL file to use instead of mtllib directives in the OBJ file. When specified, this overrides any material library references in the OBJ file.",
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "mergeGroups": {
+            "title": "Merge Groups",
+            "description": "Merge all groups and objects into a single feature instead of creating separate features per group/object",
             "default": false,
             "type": "boolean"
           },
           "parseMaterials": {
+            "title": "Parse Materials",
+            "description": "Enable parsing of material definitions from MTL files referenced in the OBJ file",
             "default": true,
             "type": "boolean"
           },
           "triangulate": {
+            "title": "Triangulate",
+            "description": "Convert polygons with more than 3 vertices into triangles using fan triangulation",
             "default": false,
             "type": "boolean"
           }
@@ -3875,6 +4309,72 @@
       "outputPorts": [
         "default"
       ],
+      "categories": [
+        "File",
+        "3D"
+      ]
+    },
+    {
+      "name": "ObjWriter",
+      "type": "sink",
+      "description": "Writes 3D features to Wavefront OBJ format with optional material (MTL) files",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "OBJ Writer Parameters",
+        "description": "Configure output settings for writing 3D features to Wavefront OBJ format",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "output": {
+            "title": "Output Path",
+            "description": "Expression for the output file path where the OBJ file will be written",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          },
+          "writeMaterials": {
+            "title": "Write Materials",
+            "description": "Enable writing of material (MTL) file alongside the OBJ file",
+            "default": null,
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "writeNormals": {
+            "title": "Write Normals",
+            "description": "Include vertex normal vectors in the output",
+            "default": null,
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "writeTexcoords": {
+            "title": "Write Texture Coordinates",
+            "description": "Include texture coordinate (UV) data in the output (currently not supported - geometry types don't include UV data)",
+            "default": null,
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
       "categories": [
         "File",
         "3D"
@@ -4259,6 +4759,75 @@
       ]
     },
     {
+      "name": "PLATEAU4.BuildingPartConnectivityChecker",
+      "type": "processor",
+      "description": "Check connectivity between BuildingParts within the same Building using 3D boundary surface matching",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "BuildingPartConnectivityChecker Parameters",
+        "description": "Configure how to check connectivity between BuildingParts",
+        "type": "object",
+        "properties": {
+          "buildingIdAttribute": {
+            "title": "Building ID Attribute",
+            "description": "Attribute containing the parent Building ID (default: \"gmlId\")",
+            "default": "gmlId",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "fileIndexAttribute": {
+            "title": "File Index Attribute",
+            "description": "Attribute containing the file index (default: \"fileIndex\")",
+            "default": "fileIndex",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "lodAttribute": {
+            "title": "LOD Attribute",
+            "description": "Attribute containing the Level of Detail (default: \"lod\")",
+            "default": "lod",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "partIdAttribute": {
+            "title": "Part ID Attribute",
+            "description": "Attribute containing the BuildingPart ID (default: \"featureId\")",
+            "default": "featureId",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature",
+        "PLATEAU"
+      ]
+    },
+    {
       "name": "PLATEAU4.BuildingUsageAttributeValidator",
       "type": "processor",
       "description": "This processor validates building usage attributes by checking for the presence of required attributes and ensuring the correctness of city codes. It outputs errors through the lBldgError and codeError ports if any issues are found.",
@@ -4331,6 +4900,59 @@
       ],
       "outputPorts": [
         "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU4.DestinationMeshCodeExtractor",
+      "type": "processor",
+      "description": "Extract Japanese standard regional mesh code for PLATEAU destination files and add as attribute",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "PLATEAU Destination MeshCode Extractor Parameters",
+        "description": "Configure mesh code extraction for Japanese standard regional mesh",
+        "type": "object",
+        "properties": {
+          "epsgCode": {
+            "title": "EPSG Code",
+            "description": "Japanese Plane Rectangular Coordinate System EPSG code for area calculation",
+            "default": "6691",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          },
+          "meshType": {
+            "title": "Mesh Type",
+            "description": "Japanese standard mesh type: 1=80km, 2=10km, 3=1km, 4=500m, 5=250m, 6=125m",
+            "default": 3,
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          },
+          "meshcodeAttr": {
+            "title": "Mesh Code Attribute Name",
+            "description": "Output attribute name for the mesh code",
+            "default": "_meshcode",
+            "type": "string"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
       ],
       "categories": [
         "PLATEAU"
@@ -4465,6 +5087,37 @@
       ]
     },
     {
+      "name": "PLATEAU4.SolidIntersectionTestPairCreator",
+      "type": "processor",
+      "description": "Creates pairs of features that can possibly intersect based on bounding box overlap",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "SolidIntersectionTestPairCreatorParam",
+        "type": "object",
+        "properties": {
+          "boundingBoxAttribute": {
+            "default": "bounding_box",
+            "type": "string"
+          },
+          "pairIdAttribute": {
+            "default": "pair_id",
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "A",
+        "B"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
       "name": "PLATEAU4.UDXFolderExtractor",
       "type": "processor",
       "description": "PLATEAU4データからUDXフォルダを抽出する",
@@ -4565,10 +5218,19 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "PythonScriptProcessorParam",
         "type": "object",
-        "required": [
-          "script"
-        ],
         "properties": {
+          "pythonFile": {
+            "title": "Python File",
+            "description": "Path to a Python script file (supports file://, http://, https://, gs://, etc.)",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "pythonPath": {
             "type": [
               "string",
@@ -4576,7 +5238,16 @@
             ]
           },
           "script": {
-            "$ref": "#/definitions/Expr"
+            "title": "Inline Script",
+            "description": "Python script code to execute inline",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "timeoutSeconds": {
             "type": [
@@ -5383,6 +6054,43 @@
       ],
       "categories": [
         "PLATEAU"
+      ]
+    },
+    {
+      "name": "XmlWriter",
+      "type": "sink",
+      "description": "Writes features to XML files.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "XmlWriter Parameters",
+        "description": "Configuration for writing features to XML files.",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "output": {
+            "description": "Output path or expression for the XML file to create",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
       ]
     },
     {

@@ -42,6 +42,8 @@ describe("yWorkflowConstructor", () => {
           officialName: "Node 1",
           inputs: ["input1", "input2"],
           outputs: ["output1", "output2"],
+          isCollapsed: false,
+          isDisabled: false,
           params: {
             param1: "value1",
             param2: 2,

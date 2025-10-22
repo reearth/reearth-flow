@@ -1,0 +1,21 @@
+{
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
+  "description": "Test L-bldg-02 error detection: Multiple isolated BuildingParts (3 parts, all disconnected, status='alone')",
+  "expectedOutput": {
+    "expectedFile": "02_建築物_L-bldg-02エラー.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_bldg.json",
+      "includeFields": ["L-bldg-02 エラー"]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "02_建築物_検査結果一覧.csv",
+      "includeColumns": ["L-bldg-02 エラー"]
+    }
+  },
+  "cityGmlPath": "udx/bldg/test_buildingpart_partial.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectResultOkFile": false
+}

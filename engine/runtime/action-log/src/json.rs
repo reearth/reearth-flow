@@ -1,5 +1,4 @@
 use serde::ser::SerializeMap;
-use serde::serde_if_integer128;
 use slog::o;
 use slog::Key;
 use slog::Record;
@@ -100,13 +99,11 @@ where
     fn emit_f64(&mut self, key: Key, val: f64) -> slog::Result {
         impl_m!(self, key, &val)
     }
-    serde_if_integer128! {
-        fn emit_u128(&mut self, key: Key, val: u128) -> slog::Result {
-            impl_m!(self, key, &val)
-        }
-        fn emit_i128(&mut self, key: Key, val: i128) -> slog::Result {
-            impl_m!(self, key, &val)
-        }
+    fn emit_u128(&mut self, key: Key, val: u128) -> slog::Result {
+        impl_m!(self, key, &val)
+    }
+    fn emit_i128(&mut self, key: Key, val: i128) -> slog::Result {
+        impl_m!(self, key, &val)
     }
     fn emit_str(&mut self, key: Key, val: &str) -> slog::Result {
         impl_m!(self, key, &val)

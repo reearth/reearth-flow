@@ -1,6 +1,7 @@
 import { Dispatch, SetStateAction, useCallback, useRef } from "react";
 import * as Y from "yjs";
 
+import { DEFAULT_ROUTING_PORT } from "@flow/global-constants";
 import type { Node, NodeChange, Workflow } from "@flow/types";
 
 import { yNodeConstructor } from "./conversions";
@@ -38,11 +39,101 @@ export default ({
               return [...snids, newNode.id];
             });
           }
+
+          // For routers without routingPort, generate unique port name
+          const isRouterInput = newNode.data.officialName === "InputRouter";
+          const isRouterOutput = newNode.data.officialName === "OutputRouter";
+
+          if (
+            (isRouterInput || isRouterOutput) &&
+            !newNode.data.params?.routingPort
+          ) {
+            const currentWorkflowId = currentYWorkflow
+              ?.get("id")
+              ?.toJSON() as string;
+            const parentWorkflow = rawWorkflows.find((w) => {
+              const nodes = w.nodes as Node[];
+              return nodes.some(
+                (n) => n.data.subworkflowId === currentWorkflowId,
+              );
+            });
+
+            let uniquePortName = DEFAULT_ROUTING_PORT;
+
+            if (parentWorkflow) {
+              const parentYWorkflow = yWorkflows.get(parentWorkflow.id);
+              if (parentYWorkflow) {
+                const parentYNodes = parentYWorkflow.get("nodes") as YNodesMap;
+                const parentNodes = Object.values(
+                  parentYNodes.toJSON(),
+                ) as Node[];
+                const subworkflowNode = parentNodes.find(
+                  (n) => n.data.subworkflowId === currentWorkflowId,
+                );
+
+                if (subworkflowNode) {
+                  const existingPorts = isRouterInput
+                    ? subworkflowNode.data.pseudoInputs || []
+                    : subworkflowNode.data.pseudoOutputs || [];
+
+                  const existingPortNames = new Set(
+                    existingPorts.map((p) => p.portName),
+                  );
+
+                  let counter = 1;
+                  while (existingPortNames.has(uniquePortName)) {
+                    uniquePortName = `${DEFAULT_ROUTING_PORT}-${counter}`;
+                    counter++;
+                  }
+                }
+              }
+            }
+
+            newNode.data.params = {
+              ...newNode.data.params,
+              routingPort: uniquePortName,
+            };
+          }
+
           yNodes.set(newNode.id, yNodeConstructor(newNode));
+
+          // Update parent pseudoports if this is a router with routingPort
+          if (
+            (isRouterInput || isRouterOutput) &&
+            newNode.data.params?.routingPort
+          ) {
+            const currentWorkflowId = currentYWorkflow
+              ?.get("id")
+              ?.toJSON() as string;
+            const parentWorkflow = rawWorkflows.find((w) => {
+              const nodes = w.nodes as Node[];
+              return nodes.some(
+                (n) => n.data.subworkflowId === currentWorkflowId,
+              );
+            });
+
+            if (parentWorkflow) {
+              const parentYWorkflow = yWorkflows.get(parentWorkflow.id);
+              if (parentYWorkflow) {
+                updateParentYWorkflow(
+                  currentWorkflowId,
+                  parentYWorkflow,
+                  newNode,
+                  newNode.data.params,
+                );
+              }
+            }
+          }
         });
       });
     },
-    [currentYWorkflow, setSelectedNodeIds, undoTrackerActionWrapper],
+    [
+      currentYWorkflow,
+      setSelectedNodeIds,
+      undoTrackerActionWrapper,
+      rawWorkflows,
+      yWorkflows,
+    ],
   );
 
   // Passed to editor context so needs to be a ref
@@ -152,45 +243,58 @@ export default ({
     [],
   );
 
-  const handleYNodeDataUpdate = useCallback(
-    (nodeId: string, updatedParams: any, updatedCustomizations: any) =>
+  const handleYNodesDataUpdate = useCallback(
+    (
+      nodesToChange: {
+        nodeId: string;
+        updatedParams?: any;
+        updatedCustomizations?: any;
+        isDisabled?: boolean;
+      }[],
+    ) =>
       undoTrackerActionWrapper(() => {
         const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
         if (!yNodes) return;
 
         const nodes = Object.values(yNodes.toJSON()) as Node[];
 
-        const prevNode = nodes.find((n) => n.id === nodeId);
+        nodesToChange.forEach(
+          ({ nodeId, updatedParams, updatedCustomizations, isDisabled }) => {
+            const prevNode = nodes.find((n) => n.id === nodeId);
 
-        if (!prevNode) return;
-        // if params.routingPort exists, it's parent is a subworkflow and
-        // we need to update pseudoInputs and pseudoOutputs on the parent node.
-        if (updatedParams?.routingPort) {
-          const currentWorkflowId = currentYWorkflow
-            ?.get("id")
-            ?.toJSON() as string;
+            if (!prevNode) return;
+            // if params.routingPort exists, it's parent is a subworkflow and
+            // we need to update pseudoInputs and pseudoOutputs on the parent node.
+            if (updatedParams?.routingPort) {
+              const currentWorkflowId = currentYWorkflow
+                ?.get("id")
+                ?.toJSON() as string;
 
-          const parentWorkflow = rawWorkflows.find((w) => {
-            const nodes = w.nodes as Node[];
-            return nodes.some(
-              (n) => n.data.subworkflowId === currentWorkflowId,
-            );
-          });
-          if (!parentWorkflow) return;
-          const parentYWorkflow = yWorkflows.get(parentWorkflow.id);
-          if (!parentYWorkflow) return;
+              const parentWorkflow = rawWorkflows.find((w) => {
+                const nodes = w.nodes as Node[];
+                return nodes.some(
+                  (n) => n.data.subworkflowId === currentWorkflowId,
+                );
+              });
+              if (!parentWorkflow) return;
+              const parentYWorkflow = yWorkflows.get(parentWorkflow.id);
+              if (!parentYWorkflow) return;
 
-          updateParentYWorkflow(
-            currentWorkflowId,
-            parentYWorkflow,
-            prevNode,
-            updatedParams,
-          );
-        }
+              updateParentYWorkflow(
+                currentWorkflowId,
+                parentYWorkflow,
+                prevNode,
+                updatedParams,
+              );
+            }
 
-        const yData = yNodes.get(nodeId)?.get("data") as Y.Map<YNodeValue>;
-        yData?.set("params", updatedParams);
-        yData?.set("customizations", updatedCustomizations);
+            const yData = yNodes.get(nodeId)?.get("data") as Y.Map<YNodeValue>;
+            if (updatedParams) yData?.set("params", updatedParams);
+            if (updatedCustomizations)
+              yData?.set("customizations", updatedCustomizations);
+            if (isDisabled !== undefined) yData?.set("isDisabled", isDisabled);
+          },
+        );
       }),
     [currentYWorkflow, rawWorkflows, yWorkflows, undoTrackerActionWrapper],
   );
@@ -198,6 +302,6 @@ export default ({
   return {
     handleYNodesAdd,
     handleYNodesChange,
-    handleYNodeDataUpdate,
+    handleYNodesDataUpdate,
   };
 };

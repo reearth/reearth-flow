@@ -85,8 +85,8 @@ fragment Job on Job {
   status
   startedAt
   completedAt
-  logsURL
   outputURLs
+  userFacingLogsURL
   debug
   deployment {
     id
@@ -158,6 +158,8 @@ fragment CmsProject on CMSProject {
   readme
   workspaceId
   visibility
+  topics
+  starCount
   createdAt
   updatedAt
 }

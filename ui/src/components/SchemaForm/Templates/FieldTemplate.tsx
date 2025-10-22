@@ -7,8 +7,6 @@ import {
   getUiOptions,
 } from "@rjsf/utils";
 
-import { Label } from "@flow/components";
-
 /** The `FieldTemplate` component is the template used by `SchemaField` to render any field. It renders the field
  * content, (label, description, children, errors and help) inside of a `WrapIfAdditional` component.
  *
@@ -66,16 +64,12 @@ const FieldTemplate = <
       registry={registry}>
       <div className="my-1.5">
         {displayLabel ? (
-          <div className="flex flex-1 items-center gap-2">
-            <Label htmlFor={id}>
-              <div className="flex flex-row items-center gap-1">
-                <p className="font-light">{label}</p>
-                {required && (
-                  <p className="h-2 font-thin text-destructive">*</p>
-                )}
-              </div>
-            </Label>
-            {children}
+          <div className="flex flex-1 items-center gap-6">
+            <div className="flex flex-row gap-1">
+              <p className="shrink-0 font-light">{label}</p>
+              {required && <p className="h-2 font-thin text-destructive">*</p>}
+            </div>
+            <div className="flex-1">{children}</div>
           </div>
         ) : (
           children

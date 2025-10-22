@@ -5,7 +5,7 @@ export const DEFAULT_NODE_SIZE = { width: 150, height: 25 };
 export const ALLOWED_WORKFLOW_FILE_EXTENSIONS = ".json, .yaml, .yml";
 export const ALLOWED_PROJECT_IMPORT_EXTENSIONS = ".zip";
 export const ALLOWED_ASSET_IMPORT_EXTENSIONS =
-  ".csv, .geojson, .gml, .json, .tsv, .py, .zip, .obj, .mtl, .jpg, .jpeg, .png, .tif, .tiff, .glb, .gltf, .gpkg";
+  ".csv, .czml, .geojson, .glb, .gltf, .gml, .gpkg, .jpg, .jpeg, .json, .mtl, .obj, .png, .py, .tif, .tiff, .tsv, .zip";
 export const CLIPBOARD_EXPIRATION_TIME = 1000 * 60 * 5;
 export const GENERAL_HOT_KEYS = ["ctrl+slash", "meta+slash"];
 export const GLOBAL_HOT_KEYS = [
@@ -27,6 +27,8 @@ export const CANVAS_HOT_KEYS = [
   "ctrl+x", // cut win
   "meta+v", // paste mac
   "ctrl+v", // paste win
+  "meta+e", // enable/disable node mac
+  "ctrl+e", // enable/disable node win
 ];
 export const EDITOR_HOT_KEYS = [
   "shift+meta+z", // redo mac
@@ -57,3 +59,6 @@ export const CURSOR_COLORS = [
   "#365314", // Olive - natural tone
   "#92400e", // Burnt orange - warm earth
 ];
+
+// For Asset uploading optimization
+export const MAX_DIRECT_UPLOAD_SIZE_BYTES = 30;

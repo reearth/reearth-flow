@@ -41,6 +41,7 @@ type BatchConfig struct {
 	SAEmail                         string
 	TaskCount                       int
 	ThreadPoolSize                  string
+	CompressIntermediateData        bool
 }
 
 type BatchClient interface {
@@ -185,6 +186,9 @@ func (b *BatchRepo) SubmitJob(
 				}
 				if effectiveConfig.MaxConcurrency != "" {
 					vars["FLOW_RUNTIME_MAX_CONCURRENCY"] = effectiveConfig.MaxConcurrency
+				}
+				if b.config.CompressIntermediateData {
+					vars["FLOW_RUNTIME_COMPRESS_INTERMEDIATE_DATA"] = strconv.FormatBool(b.config.CompressIntermediateData)
 				}
 
 				return vars

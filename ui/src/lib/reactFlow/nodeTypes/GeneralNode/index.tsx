@@ -19,7 +19,6 @@ export type GeneralNodeProps = NodeProps<Node> & {
 const typeIconClasses = "w-[15px]";
 
 const GeneralNode: React.FC<GeneralNodeProps> = ({
-  className,
   data,
   type,
   selected,
@@ -31,6 +30,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
     outputs,
     // status,
     // intermediateDataUrl,
+    backgroundColor,
     borderColor,
     selectedColor,
     selectedBackgroundColor,
@@ -39,10 +39,10 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
 
   return (
     <div
-      className={`max-w-[200px] min-w-[150px] rounded-md border bg-secondary ${selected ? selectedColor : borderColor}`}>
-      <div className="relative m-1 flex h-[25px] items-center gap-1 rounded-sm">
+      className={`max-w-[200px] min-w-[150px] rounded-lg border bg-secondary p-1 shadow-md shadow-secondary backdrop-blur-xs  ${selected ? selectedColor : borderColor} ${data.isDisabled ? "opacity-70" : ""}`}>
+      <div className="relative flex h-[25px] items-center gap-1 rounded-sm">
         <div
-          className={`flex justify-center self-center rounded-sm border p-1 align-middle ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className}`}>
+          className={`flex justify-center self-center rounded-lg border p-1 align-middle ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : backgroundColor}`}>
           {type === "reader" ? (
             <DatabaseIcon className={typeIconClasses} />
           ) : type === "writer" ? (

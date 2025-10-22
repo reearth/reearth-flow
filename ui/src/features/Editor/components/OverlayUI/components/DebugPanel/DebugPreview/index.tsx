@@ -3,30 +3,23 @@ import {
   GlobeIcon,
   MapPinAreaIcon,
   TargetIcon,
-  WarningIcon,
 } from "@phosphor-icons/react";
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo, useRef } from "react";
 
 import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogContentSection,
-  DialogContentWrapper,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
   LoadingSkeleton,
 } from "@flow/components";
+import ThreeJSViewer, {
+  type ThreeJSViewerRef,
+} from "@flow/components/visualizations/ThreeJS";
+import type { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useT } from "@flow/lib/i18n";
-import { JobState } from "@flow/stores";
-import type { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
+import type { JobState } from "@flow/stores";
 
 import ThreeDViewer from "./components/ThreeDViewer";
 import TwoDViewer from "./components/TwoDViewer";
@@ -38,16 +31,15 @@ type Props = {
   debugJobState?: JobState;
   onConvertedSelectedFeature: (value: any) => void;
   dataURLs?: { key: string; name: string }[];
-  showTempPossibleIssuesDialog: boolean;
   selectedFeature: any;
-  enableClustering?: boolean;
+  // enableClustering?: boolean;
   mapRef: React.RefObject<maplibregl.Map | null>;
   cesiumViewerRef: React.RefObject<any>;
-  onShowTempPossibleIssuesDialogClose: () => void;
   onSelectedFeature: (value: any) => void;
-  onEnableClusteringChange: (value: boolean) => void;
+  // onEnableClusteringChange: (value: boolean) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
   detectedGeometryType: string | null;
+  visualizerType: "2d-map" | "3d-map" | "3d-model" | null;
   isComplete?: boolean;
 };
 const DebugPreview: React.FC<Props> = ({
@@ -56,36 +48,21 @@ const DebugPreview: React.FC<Props> = ({
   selectedOutputData,
   dataURLs,
   onConvertedSelectedFeature,
-  showTempPossibleIssuesDialog,
-  enableClustering,
   mapRef,
   cesiumViewerRef,
   selectedFeature,
-  onShowTempPossibleIssuesDialogClose,
   onSelectedFeature,
-  onEnableClusteringChange,
   onFlyToSelectedFeature,
   detectedGeometryType,
+  visualizerType,
   isComplete,
 }) => {
   const t = useT();
+  const threeJSViewerRef = useRef<ThreeJSViewerRef>(null);
 
-  // Auto-detect which viewer to show based on geometry type
-  const getViewerType = (detectedType: string | null): "2d" | "3d" | null => {
-    if (!detectedType) return null; // Unknown type - no viewer
-
-    switch (detectedType) {
-      case "CityGmlGeometry":
-      case "FlowGeometry3D":
-        return "3d";
-      case "FlowGeometry2D":
-        return "2d";
-      default:
-        return null; // Unknown type - no viewer
-    }
-  };
-
-  const viewerType = getViewerType(detectedGeometryType);
+  const handleResetClick = useCallback(() => {
+    threeJSViewerRef.current?.resetCamera();
+  }, []);
 
   // Determine if we should show the viewer based on data availability
   const shouldShowViewer = () => {
@@ -186,18 +163,18 @@ const DebugPreview: React.FC<Props> = ({
             </p>
           </div>
         </div>
-      ) : viewerType === "2d" ? (
+      ) : visualizerType === "2d-map" ? (
         <div className="h-full">
           {/* 2D Viewer Header with actions */}
           <div className="py-1">
-            <div className="flex w-full justify-between rounded-md bg-muted/30 p-1">
+            <div className="flex w-full justify-between p-1">
               <div className="flex items-center gap-1 px-2">
                 <MapPinAreaIcon size={16} />
                 <p className="text-sm font-medium select-none">
                   {t("2D Viewer")}
                 </p>
                 {detectedGeometryType && (
-                  <span className="rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
+                  <span className="rounded px-2 text-xs text-muted-foreground">
                     {detectedGeometryType}
                   </span>
                 )}
@@ -212,13 +189,15 @@ const DebugPreview: React.FC<Props> = ({
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuCheckboxItem
-                    checked={enableClustering}
-                    onCheckedChange={(checked) =>
-                      onEnableClusteringChange(!!checked)
-                    }>
-                    {t("Enable Clustering")}
-                  </DropdownMenuCheckboxItem>
+                  {/* {fileType === "geojson" && (
+                    <DropdownMenuCheckboxItem
+                      checked={enableClustering}
+                      onCheckedChange={(checked) =>
+                        onEnableClusteringChange(!!checked)
+                      }>
+                      {t("Enable Clustering")}
+                    </DropdownMenuCheckboxItem>
+                  )} */}
                   <DropdownMenuItem onClick={() => handleMapLoad(true)}>
                     <TargetIcon />
                     {t("Center Data")}
@@ -231,7 +210,7 @@ const DebugPreview: React.FC<Props> = ({
             <TwoDViewer
               fileContent={processedOutputData}
               fileType={fileType}
-              enableClustering={enableClustering}
+              enableClustering={false}
               convertedSelectedFeature={convertedSelectedFeature}
               mapRef={mapRef}
               onMapLoad={handleMapLoad}
@@ -240,17 +219,17 @@ const DebugPreview: React.FC<Props> = ({
             />
           </div>
         </div>
-      ) : viewerType === "3d" ? (
+      ) : visualizerType === "3d-map" ? (
         <div className="h-full">
           {/* 3D Viewer Header */}
           <div className="py-1">
-            <div className="flex items-center gap-1 rounded-md bg-muted/30 px-3 py-2">
+            <div className="flex items-center gap-1 rounded-md px-3 py-2">
               <GlobeIcon size={16} />
               <p className="text-sm font-medium select-none">
                 {t("3D Viewer")}
               </p>
               {detectedGeometryType && (
-                <span className="rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
+                <span className="rounded px-2 py-1 text-xs text-muted-foreground">
                   {detectedGeometryType}
                 </span>
               )}
@@ -264,6 +243,47 @@ const DebugPreview: React.FC<Props> = ({
             />
           </div>
         </div>
+      ) : visualizerType === "3d-model" ? (
+        <div className="h-full">
+          {/* 3D Model Viewer Header with actions */}
+          <div className="py-1">
+            <div className="flex w-full justify-between p-1">
+              <div className="flex items-center gap-1 px-2">
+                <GlobeIcon size={16} />
+                <p className="text-sm font-medium select-none">
+                  {t("3D Model Viewer")}
+                </p>
+                {detectedGeometryType && (
+                  <span className="rounded px-2 text-xs text-muted-foreground">
+                    {detectedGeometryType}
+                  </span>
+                )}
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton
+                    className="w-[25px]"
+                    tooltipText={t("Additional actions")}
+                    tooltipOffset={12}
+                    icon={<DotsThreeVerticalIcon size={18} />}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleResetClick}>
+                    <TargetIcon />
+                    {t("Reset Camera")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+          <div className="h-[calc(100%-55px)]">
+            <ThreeJSViewer
+              ref={threeJSViewerRef}
+              fileContent={selectedOutputData}
+            />
+          </div>
+        </div>
       ) : (
         <div className="flex h-full items-center justify-center text-muted-foreground">
           <div className="text-center">
@@ -273,43 +293,13 @@ const DebugPreview: React.FC<Props> = ({
             <p className="mt-1 text-xs">
               {t("Data type")}: {detectedGeometryType || "Unknown"}
             </p>
+            <p className="mt-1 text-xs">
+              {t("Visualizer")}: {visualizerType || "Unknown"}
+            </p>
           </div>
         </div>
       )}
     </div>
-  ) : showTempPossibleIssuesDialog ? (
-    <Dialog open={showTempPossibleIssuesDialog}>
-      <DialogContent size="sm" hideCloseButton>
-        <DialogHeader className="text-warning">
-          <DialogTitle className="flex justify-center gap-1">
-            <WarningIcon weight="light" />
-            {t("Warning")}
-          </DialogTitle>
-        </DialogHeader>
-        <DialogContentWrapper>
-          <DialogContentSection>
-            <p className="text-sm font-light">
-              {t("Your workflow completed without any output data.")}
-            </p>
-          </DialogContentSection>
-          <DialogContentSection>
-            <p className="text-sm font-light">
-              {t(
-                "Please review the logs to see if there were any errors during the workflow process.",
-              )}
-            </p>
-          </DialogContentSection>
-        </DialogContentWrapper>
-        <DialogFooter>
-          <Button
-            className="self-end"
-            size="sm"
-            onClick={onShowTempPossibleIssuesDialogClose}>
-            {t("OK")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   ) : null;
 };
 

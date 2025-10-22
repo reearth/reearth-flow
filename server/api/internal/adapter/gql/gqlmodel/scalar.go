@@ -1,7 +1,6 @@
 package gqlmodel
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -81,19 +80,36 @@ type Bytes []byte
 
 func MarshalBytes(b Bytes) graphql.Marshaler {
 	return graphql.WriterFunc(func(w io.Writer) {
-		encoded := base64.StdEncoding.EncodeToString(b)
-		_, _ = io.WriteString(w, strconv.Quote(encoded))
+		nums := make([]int, len(b))
+		for i, v := range b {
+			nums[i] = int(v)
+		}
+		_ = json.NewEncoder(w).Encode(nums)
 	})
 }
 
 func UnmarshalBytes(v interface{}) (Bytes, error) {
-	str, ok := v.(string)
-	if !ok {
-		return nil, errors.New("Bytes must be a base64 encoded string")
+	if bytes, ok := v.([]byte); ok {
+		return Bytes(bytes), nil
 	}
-	decoded, err := base64.StdEncoding.DecodeString(str)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode base64: %w", err)
+
+	if arr, ok := v.([]interface{}); ok {
+		bytes := make([]byte, len(arr))
+		for i, item := range arr {
+			if num, ok := item.(json.Number); ok {
+				if val, err := num.Int64(); err == nil {
+					bytes[i] = byte(val)
+				} else if val, err := num.Float64(); err == nil {
+					bytes[i] = byte(val)
+				} else {
+					return nil, fmt.Errorf("array element at index %d is not a valid number: %v", i, num)
+				}
+			} else {
+				return nil, fmt.Errorf("array element at index %d is not a number, type=%T, value=%v", i, item, item)
+			}
+		}
+		return Bytes(bytes), nil
 	}
-	return Bytes(decoded), nil
+
+	return nil, errors.New("Bytes must be a byte array or number array (Uint8Array)")
 }

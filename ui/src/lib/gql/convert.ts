@@ -127,8 +127,8 @@ export const toJob = (job: JobFragment): Job => ({
   status: toJobStatus(job.status),
   startedAt: job.startedAt,
   completedAt: job.completedAt,
-  logsURL: job.logsURL ?? undefined,
   outputURLs: job.outputURLs ?? undefined,
+  userFacingLogsURL: job.userFacingLogsURL ?? undefined,
 });
 
 export const toUserFacingLog = (log: UserFacingLogFragment): UserFacingLog => ({
@@ -322,8 +322,6 @@ export const toUserParamVarType = (type: ParameterType): VarType => {
       return "yes_no";
     case "DATETIME":
       return "datetime";
-    case "FILE_FOLDER":
-      return "file_folder";
     // case "GEOMETRY":
     //   return "geometry";
     // case "MESSAGE":
@@ -357,8 +355,6 @@ export const toGqlParameterType = (
       return ParameterType.Color;
     case "datetime":
       return ParameterType.Datetime;
-    case "file_folder":
-      return ParameterType.FileFolder;
     case "number":
       return ParameterType.Number;
     case "text":

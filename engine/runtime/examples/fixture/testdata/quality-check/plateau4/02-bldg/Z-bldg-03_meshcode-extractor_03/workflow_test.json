@@ -1,0 +1,17 @@
+{
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
+  "description": "Test PLATEAU4.DestinationMeshCodeExtractor with cross-mesh features having equal areas - should select mesh with smaller mesh code",
+  "expectedOutput": {
+    "expectedFile": "02_建築物_図郭不正.csv"
+  },
+  "cityGmlPath": "udx/bldg/equal_area_cross_mesh.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "summaryOutput": {
+    "fileErrorSummary": {
+      "expectedFile": "02_建築物_検査結果一覧.csv",
+      "includeColumns": ["図郭不正"]
+    }
+  },
+  "expectResultOkFile": false
+}

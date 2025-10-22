@@ -24,7 +24,7 @@ export default ({ yAwareness }: { yAwareness: Awareness }) => {
     .filter(([key]) => key !== yAwareness?.clientID)
     .reduce<Record<string, AwarenessUser>>((acc, [key, value]) => {
       if (!value.userName) {
-        value.userName = "Unknown user";
+        return acc;
       }
       acc[key.toString()] = value;
       return acc;
@@ -66,7 +66,7 @@ export default ({ yAwareness }: { yAwareness: Awareness }) => {
   );
 
   const handlePaneMouseMove = useCallback(
-    (event: MouseEvent<Element, globalThis.MouseEvent>) => {
+    (event: MouseEvent) => {
       if (Object.keys(users).length === 0) return;
       throttledMouseMove(event, yAwareness, screenToFlowPosition);
     },

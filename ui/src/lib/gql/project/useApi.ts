@@ -25,6 +25,8 @@ export const useProject = () => {
     deleteProjectMutation,
     updateProjectMutation,
     runProjectMutation,
+    copyProjectMutation,
+    importProjectMutation,
     useGetProjectsQuery,
     useGetProjectByIdQuery,
   } = useQueries();
@@ -154,6 +156,52 @@ export const useProject = () => {
     }
   };
 
+  const copyProject = async (
+    projectId: string,
+    source: string,
+    workspaceId: string,
+  ): Promise<{ success?: boolean }> => {
+    const { mutateAsync, ...rest } = copyProjectMutation;
+    try {
+      const data = await mutateAsync({ projectId, source, workspaceId });
+      toast({
+        title: t("Project Copied"),
+        description: t("Project has been successfully copied."),
+      });
+      return { success: data.success, ...rest };
+    } catch (_err) {
+      toast({
+        title: t("Project Could Not Be Copied"),
+        description: t("There was an error when copying the project."),
+        variant: "destructive",
+      });
+      return { success: false, ...rest };
+    }
+  };
+
+  const importProject = async (
+    projectId: string,
+    data: Uint8Array,
+    workspaceId: string,
+  ): Promise<{ success?: boolean }> => {
+    const { mutateAsync, ...rest } = importProjectMutation;
+    try {
+      const result = await mutateAsync({ projectId, data, workspaceId });
+      toast({
+        title: t("Project Imported"),
+        description: t("Project has been successfully imported."),
+      });
+      return { success: result.success, ...rest };
+    } catch (_err) {
+      toast({
+        title: t("Project Could Not Be Imported"),
+        description: t("There was an error when importing the project."),
+        variant: "destructive",
+      });
+      return { success: false, ...rest };
+    }
+  };
+
   return {
     useGetWorkspaceProjects,
     useGetProject,
@@ -161,5 +209,7 @@ export const useProject = () => {
     updateProject,
     deleteProject,
     runProject,
+    copyProject,
+    importProject,
   };
 };

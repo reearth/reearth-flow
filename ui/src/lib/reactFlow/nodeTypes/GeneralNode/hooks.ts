@@ -23,26 +23,36 @@ export default ({
 
   const inputs: string[] = useMemo(() => {
     if (data.params?.conditions) {
-      const i = data.params.conditions
+      const conditionalInputs = data.params.conditions
         .map((condition: any) => condition.inputPort)
         .filter(isDefined);
-      return i.length ? i : defaultInputs;
+      return conditionalInputs.length ? conditionalInputs : defaultInputs;
     }
     return defaultInputs;
   }, [data.params?.conditions, defaultInputs]);
 
   const outputs: string[] = useMemo(() => {
     if (data.params?.conditions) {
-      const i = data.params.conditions
+      const availableOutputs: string[] = [];
+
+      if (defaultOutputs) {
+        availableOutputs.push(...defaultOutputs);
+      }
+
+      const conditionalOutputs = data.params.conditions
         .map((condition: any) => condition.outputPort)
         .filter(isDefined);
-      return i.length ? i : defaultOutputs;
+
+      return conditionalOutputs.length
+        ? [...availableOutputs, ...conditionalOutputs]
+        : availableOutputs;
     }
-    return defaultOutputs;
+    return defaultOutputs || [];
   }, [data.params?.conditions, defaultOutputs]);
 
-  const [borderColor, selectedColor, selectedBackgroundColor] =
-    getNodeColors(type);
+  const nodeType = data.isDisabled ? "disabled" : type;
+  const [borderColor, backgroundColor, selectedColor, selectedBackgroundColor] =
+    getNodeColors(nodeType);
 
   const handleCollapsedToggle = useCallback(
     (collapsed: boolean) => {
@@ -62,6 +72,7 @@ export default ({
     inputs,
     outputs,
     // status: nodeStatus,
+    backgroundColor,
     borderColor,
     selectedColor,
     selectedBackgroundColor,
