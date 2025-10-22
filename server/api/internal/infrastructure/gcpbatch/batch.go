@@ -431,10 +431,8 @@ type effectiveConfig struct {
 	NodeStatusPropagationDelayMS string
 }
 
-// mergeConfig merges workspace-specific config overrides with environment defaults
 func (b *BatchRepo) mergeConfig(workspaceConfig *batchconfig.WorkerConfig) *effectiveConfig {
 	cfg := &effectiveConfig{
-		// Defaults from environment config
 		MachineType:                  b.config.MachineType,
 		ComputeCpuMilli:              b.config.ComputeCpuMilli,
 		ComputeMemoryMib:             b.config.ComputeMemoryMib,

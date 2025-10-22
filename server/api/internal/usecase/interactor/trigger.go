@@ -185,11 +185,9 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		projectID = *deployment.Project()
 	}
 
-	// Fetch workspace-specific worker config if available
 	workerCfg, err := i.workerConfigRepo.FindByWorkspace(ctx, deployment.Workspace())
 	if err != nil {
-		log.Debugfc(ctx, "[Trigger] Failed to fetch worker config: %v\n", err)
-		// Continue with nil config to use environment defaults
+		log.Debugfc(ctx, "[Trigger] Failed to fetch worker config: %v\n , use environment defaults", err)
 	}
 
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), p.Variables, projectID, deployment.Workspace(), workerCfg)
