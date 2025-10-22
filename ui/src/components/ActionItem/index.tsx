@@ -52,7 +52,7 @@ const ActionItem = forwardRef<HTMLDivElement, Props>(
       <div
         ref={ref}
         key={action.name}
-        className={`group cursor-pointer rounded p-2 ${selected ? "bg-primary text-accent-foreground" : "hover:bg-primary hover:text-accent-foreground"} ${className}`}
+        className={`group cursor-pointer rounded bg-popover p-2 dark:bg-transparent ${selected ? "bg-primary text-accent-foreground" : "dark:hover:bg-primary dark:hover:text-accent-foreground"} ${className}`}
         onClick={() => onSingleClick?.(action.name)}
         onDoubleClick={() => onDoubleClick?.(action.name)}
         draggable={draggable}
@@ -60,10 +60,10 @@ const ActionItem = forwardRef<HTMLDivElement, Props>(
         onDragStart={(e) => onDragStart?.(e, action.name)}>
         <div className="flex w-full justify-between gap-1 pb-2">
           <div className="w-3/5 self-center text-sm break-words">
-            <p className="self-center text-zinc-200">{action.name}</p>
+            <p className="self-center dark:text-zinc-200">{action.name}</p>
           </div>
           <div
-            className={`self-center rounded border ${action.type === "transformer" ? "bg-node-transformer/30" : action.type === "reader" ? "bg-node-reader/30" : action.type === "writer" ? "bg-node-writer/30" : "bg-popover"} p-1 align-middle`}
+            className={`self-center rounded border ${action.type === "transformer" ? "bg-node-transformer/95 dark:bg-node-transformer/60" : action.type === "reader" ? "bg-node-reader/95 dark:bg-node-reader/60" : action.type === "writer" ? "bg-node-writer/85 dark:bg-node-writer/30" : "bg-popover"} p-1 align-middle`}
             onClick={handleTypeClick(action.type)}>
             <p className="self-center text-xs text-zinc-200 capitalize">
               {action.type}
