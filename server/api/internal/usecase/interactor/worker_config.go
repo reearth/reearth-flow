@@ -77,7 +77,11 @@ func (i *WorkerConfig) Update(
 
 	userRole, err := i.getUserWorkspaceRole(ctx, workspaceID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user workspace role: %w", err)
+		if skipPermissionCheck {
+			userRole = workspace.RoleOwner
+		} else {
+			return nil, fmt.Errorf("failed to get user workspace role: %w", err)
+		}
 	}
 
 	if err := validateWorkerConfigByRole(
