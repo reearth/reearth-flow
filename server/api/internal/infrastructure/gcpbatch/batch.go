@@ -30,6 +30,7 @@ type BatchConfig struct {
 	FeatureFlushThreshold           string
 	ImageURI                        string
 	MachineType                     string
+	MaxConcurrency                  string
 	NodeStatusPropagationDelayMS    string
 	PubSubEdgePassThroughEventTopic string
 	PubSubLogStreamTopic            string
@@ -439,7 +440,7 @@ func (b *BatchRepo) mergeConfig(workspaceConfig *batchconfig.WorkerConfig) *effe
 		BootDiskSizeGB:               b.config.BootDiskSizeGB,
 		BootDiskType:                 b.config.BootDiskType,
 		TaskCount:                    b.config.TaskCount,
-		MaxConcurrency:               b.config.NodeStatusPropagationDelayMS,
+		MaxConcurrency:               b.config.MaxConcurrency,
 		ThreadPoolSize:               b.config.ThreadPoolSize,
 		ChannelBufferSize:            b.config.ChannelBufferSize,
 		FeatureFlushThreshold:        b.config.FeatureFlushThreshold,
