@@ -82,18 +82,15 @@ func TestUpdateWorkerConfig_Owner(t *testing.T) {
 	jsonData, err := json.Marshal(request)
 	assert.NoError(t, err)
 
-	resp := e.POST("/api/graphql").
+	o := e.POST("/api/graphql").
 		WithHeader("authorization", "Bearer test").
 		WithHeader("Content-Type", "application/json").
 		WithHeader("X-Reearth-Debug-User", operatorID.String()).
 		WithBytes(jsonData).
-		Expect()
-
-	o := resp.Status(http.StatusOK).JSON().Object()
-
-	if o.Value("errors").Raw() != nil {
-		t.Logf("GraphQL errors: %v", o.Value("errors").Raw())
-	}
+		Expect().
+		Status(http.StatusOK).
+		JSON().
+		Object()
 
 	cfg := o.Value("data").Object().
 		Value("updateWorkerConfig").Object().
