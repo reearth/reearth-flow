@@ -160,6 +160,7 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		FeatureFlushThreshold:           conf.Worker_FeatureFlushThreshold,
 		ImageURI:                        conf.Worker_ImageURL,
 		MachineType:                     conf.Worker_MachineType,
+		MaxConcurrency:                  conf.Worker_MaxConcurrency,
 		NodeStatusPropagationDelayMS:    conf.Worker_NodeStatusPropagationDelayMS,
 		PubSubEdgePassThroughEventTopic: conf.Worker_PubSubEdgePassThroughEventTopic,
 		PubSubLogStreamTopic:            conf.Worker_PubSubLogStreamTopic,

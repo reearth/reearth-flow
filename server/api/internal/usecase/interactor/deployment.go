@@ -23,6 +23,7 @@ type Deployment struct {
 	projectRepo       repo.Project
 	workflowRepo      repo.Workflow
 	jobRepo           repo.Job
+	workerConfigRepo  repo.WorkerConfig
 	transaction       usecasex.Transaction
 	batch             gateway.Batch
 	file              gateway.File
@@ -36,6 +37,7 @@ func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfac
 		projectRepo:       r.Project,
 		workflowRepo:      r.Workflow,
 		jobRepo:           r.Job,
+		workerConfigRepo:  r.WorkerConfig,
 		transaction:       r.Transaction,
 		batch:             gr.Batch,
 		file:              gr.File,
@@ -350,7 +352,12 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		projectID = *d.Project()
 	}
 
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), nil, projectID, d.Workspace())
+	workerCfg, err := i.workerConfigRepo.FindByWorkspace(ctx, d.Workspace())
+	if err != nil {
+		workerCfg = nil
+	}
+
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), nil, projectID, d.Workspace(), workerCfg)
 	if err != nil {
 		return nil, interfaces.ErrJobCreationFailed
 	}

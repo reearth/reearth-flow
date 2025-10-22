@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 )
 
 type workspaceResolver struct{ *Resolver }
@@ -59,12 +60,26 @@ func (r *workspaceResolver) DeploymentsPage(ctx context.Context, obj *gqlmodel.W
 	return loaders(ctx).Deployment.FindByWorkspacePage(ctx, obj.ID, pagination)
 }
 
+func (r *workspaceResolver) WorkerConfig(ctx context.Context, obj *gqlmodel.Workspace) (*gqlmodel.WorkerConfig, error) {
+	wid, err := gqlmodel.ToID[id.Workspace](obj.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg, err := usecases(ctx).WorkerConfig.FindByWorkspace(ctx, wid)
+	if err != nil {
+		return nil, err
+	}
+
+	if cfg == nil {
+		return nil, nil
+	}
+
+	return gqlmodel.ToWorkerConfig(cfg), nil
+}
+
 type workspaceMemberResolver struct{ *Resolver }
 
 func (r *workspaceMemberResolver) User(ctx context.Context, obj *gqlmodel.WorkspaceMember) (*gqlmodel.User, error) {
 	return dataloaders(ctx).User.Load(obj.UserID)
-}
-
-func intPtr(i int) *int {
-	return &i
 }

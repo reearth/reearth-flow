@@ -8,6 +8,7 @@ type Workspace implements Node {
     includeArchived: Boolean
     pagination: Pagination
   ): ProjectConnection!
+  workerConfig: WorkerConfig
 }
 
 type WorkspaceMember {
@@ -59,6 +60,24 @@ input DeleteWorkspaceInput {
   workspaceId: ID!
 }
 
+input UpdateWorkerConfigInput {
+  workspaceId: ID!
+  machineType: String
+  computeCpuMilli: Int
+  computeMemoryMib: Int
+  bootDiskSizeGB: Int
+  taskCount: Int
+  maxConcurrency: Int
+  threadPoolSize: Int
+  channelBufferSize: Int
+  featureFlushThreshold: Int
+  nodeStatusPropagationDelayMilli: Int
+}
+
+input DeleteWorkerConfigInput {
+  workspaceId: ID!
+}
+
 # Payload
 
 type CreateWorkspacePayload {
@@ -85,6 +104,30 @@ type DeleteWorkspacePayload {
   workspaceId: ID!
 }
 
+type WorkerConfig {
+  workspace: ID!
+  machineType: String
+  computeCpuMilli: Int
+  computeMemoryMib: Int
+  bootDiskSizeGB: Int
+  taskCount: Int
+  maxConcurrency: Int
+  threadPoolSize: Int
+  channelBufferSize: Int
+  featureFlushThreshold: Int
+  nodeStatusPropagationDelayMilli: Int
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type UpdateWorkerConfigPayload {
+  config: WorkerConfig!
+}
+
+type DeleteWorkerConfigPayload {
+  workspaceId: ID!
+}
+
 # Query and Mutation
 
 extend type Mutation {
@@ -94,4 +137,6 @@ extend type Mutation {
   addMemberToWorkspace(input: AddMemberToWorkspaceInput!): AddMemberToWorkspacePayload
   removeMemberFromWorkspace(input: RemoveMemberFromWorkspaceInput!): RemoveMemberFromWorkspacePayload
   updateMemberOfWorkspace(input: UpdateMemberOfWorkspaceInput!): UpdateMemberOfWorkspacePayload
+  updateWorkerConfig(input: UpdateWorkerConfigInput!): UpdateWorkerConfigPayload
+  deleteWorkerConfig(input: DeleteWorkerConfigInput!): DeleteWorkerConfigPayload
 }
