@@ -1,17 +1,18 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: 83307700-04b9-490c-b6a1-11b93e7f7aaa
-name: "PLATEAU4-quality-check-03-tran-l-tran-03"
-entryGraphId: 34bf873b-3364-46b0-8153-efeb9568bbaa
+name: "PLATEAU4-quality-check-03-tran-surface-orientation"
+entryGraphId: 90f40a3e-61d3-48e2-a328-e7226c2ad111
 with:
   cityGmlPath:
-  codelists:
   schemas:
   outputPath:
 graphs:
-  - id: 34bf873b-3364-46b0-8153-efeb9568bbaa
+  - !include ../../../../graphs/lod_splitter_with_dm.yml
+  - !include ../../../../graphs/surface_validator.yml
+  - id: 90f40a3e-61d3-48e2-a328-e7226c2ad111
     name: entry_point
     nodes:
-      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad111
+      - id: 4d7b9e2a-5c8f-41d6-b9a3-7e1c5f8d2b9a
         name: FeatureCreator
         type: action
         action: FeatureCreator
@@ -20,23 +21,154 @@ graphs:
             [
               #{
                 cityGmlPath: env.get("cityGmlPath"),
-                cityCode: file::extract_filename(env.get("cityGmlPath"))[0..5],
-                codelists: env.get("codelists"),
+                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
                 schemas: env.get("schemas"),
-                fileIndex: 1,
-                folder: "tran",
-                filename: file::extract_filename(env.get("cityGmlPath")),
               },
             ]
 
-      - id: d376f32b-7ce8-4721-8b9e-bfa39d71b222
+      - id: c7315341-26b3-4405-9d02-039d721cd225
+        name: DirectoryDecompressor
+        type: action
+        action: DirectoryDecompressor
+        with:
+          archiveAttributes:
+            - codelists
+            - schemas
+
+      - id: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
+        name: FeatureFilePathExtractor
+        type: action
+        action: FeatureFilePathExtractor
+        with:
+          destPrefix: "udx"
+          sourceDataset: |
+            env.get("__value")["cityGmlPath"]
+          extractArchive: true
+
+      - id: 0daf7972-4d58-4ccd-a576-f3dfc418f749
+        name: FeatureFilterByGml
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").extension == "gml"
+              outputPort: default
+
+      - id: 151fbadf-1b40-4264-a003-f6f11f6af2d6
+        name: FeatureCounterFileIndex
+        type: action
+        action: FeatureCounter
+        with:
+          countStart: 1
+          outputAttribute: fileIndex
+
+      - id: 7e833060-f8c4-458b-a8cc-8c817527f25b
+        name: PLATEAU4.UDXFolderExtractor
+        type: action
+        action: PLATEAU4.UDXFolderExtractor
+        with:
+          cityGmlPath: |
+            env.get("__value")["path"]
+          codelistsPath: "codelists"
+          schemasPath: "schemas"
+
+      - id: 3f7b2a9d-1c8e-4a6f-b5d3-9e2c7a4f8b1d
+        name: FeatureCityGmlReader
+        type: action
+        action: FeatureCityGmlReader
+        with:
+          format: citygml
+          flatten: true
+          dataset: |
+            env.get("__value")["cityGmlPath"]
+
+      # Unreferenced XLink detection for L-TRAN-03
+      - id: a1111111-1111-1111-1111-111111111111
         name: TransportationXlinkDetector
         type: action
         action: PLATEAU4.TransportationXlinkDetector
         with:
           attribute: cityGmlPath
 
-      - id: aaaa1111-a3a7-4d1b-9216-ef523a6b4333
+      # Map attributes for XLink CSV output
+      - id: a2222222-2222-2222-2222-222222222222
+        name: XlinkAttributeMapper
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Folder
+              expr: |
+                "tran"
+            - attribute: Index
+              expr: |
+                env.get("__value")["fileIndex"] ?? 1
+            - attribute: Filename
+              expr: |
+                "l-tran-03.gml"
+            - attribute: FeatureType
+              expr: |
+                env.get("__value")["featureType"] ?? ""
+            - attribute: LOD
+              expr: |
+                env.get("__value")["lod"] ?? ""
+            - attribute: "gml:id"
+              expr: |
+                env.get("__value")["gmlId"] ?? ""
+            - attribute: "未参照"
+              expr: |
+                env.get("__value")["unreferenced"] ?? ""
+
+      # Write XLink CSV output
+      - id: a3333333-3333-3333-3333-333333333333
+        name: XlinkCsvWriter
+        type: action
+        action: FeatureWriter
+        with:
+          format: csv
+          output: |
+            file::join_path(env.get("outputPath"), "03_交通_xlink参照エラー.csv")
+
+      - id: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+        name: PLATEAU3.LodSplitterWithDM
+        type: subGraph
+        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+
+      # Surface validator 2D for LOD1 and LOD2
+      - id: 3c8d9e7f-2a5b-4f1c-8e6a-9d3c5b8e1a4f
+        name: PLATEAU3.SurfaceValidator2D
+        type: subGraph
+        subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+
+      # Surface validator 3D for LOD3
+      - id: 950407af-eec5-49ee-902c-2b41f31150d3
+        name: PLATEAU3.SurfaceValidator3D
+        type: subGraph
+        subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+
+      # Extract surface orientation
+      - id: b2222222-2222-2222-2222-222222222222
+        name: OrientationExtractor
+        type: action
+        action: OrientationExtractor
+        with:
+          outputAttribute: orientation
+
+      # Filter for incorrect orientation (clockwise/right_hand_rule)
+      - id: c3333333-3333-3333-3333-333333333333
+        name: FilterIncorrectOrientation
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value")["orientation"] == "clockwise"
+              outputPort: incorrectOrientation
+
+      # Map attributes for CSV output
+      - id: d4444444-4444-4444-4444-444444444444
         name: AttributeMapper
         type: action
         action: AttributeMapper
@@ -44,48 +176,152 @@ graphs:
           mappers:
             - attribute: Folder
               expr: |
-                env.get("__value")["folder"]
+                "tran"
             - attribute: Index
               expr: |
-                env.get("__value")["fileIndex"]
+                env.get("__value")["fileIndex"] ?? ""
             - attribute: Filename
               expr: |
-                "l-tran-03.gml"
+                "orientation.gml"
             - attribute: FeatureType
               expr: |
-                env.get("__value")["featureType"]
+                env.get("__value")["featureType"] ?? ""
             - attribute: LOD
               expr: |
-                env.get("__value")["lod"]
+                env.get("__value")["lod"] ?? ""
             - attribute: "gml:id"
               expr: |
-                env.get("__value")["gmlId"]
-            - attribute: "未参照"
-              expr: |
-                env.get("__value")["unreferenced"]
+                env.get("__value")["featureId"] ?? ""
 
-      - id: 9309842a-a3a7-4d1b-9216-ef523a6b4333
+            # The error count is always 1
+            - attribute: "エラー数"
+              expr: |
+                1
+
+            # We hardcode the following two attributes since coming here means the orientation is incorrect
+            - attribute: "エラー内容"
+              expr: |
+                "Incorrect Orientation"
+            - attribute: "面の向き"
+              expr: |
+                "right_hand_rule"
+
+      # Write CSV output
+      - id: e5555555-5555-5555-5555-555555555555
         name: CsvWriter
         type: action
-        action: FileWriter
+        action: FeatureWriter
         with:
           format: csv
           output: |
-            file::join_path(env.get("outputPath"), "03_交通_xlink参照エラー.csv")
+            file::join_path(env.get("outputPath"), "03_交通_面の向き不正.csv")
 
     edges:
-      - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
-        from: 90f40a3e-61d3-48e2-a328-e7226c2ad111
-        to: d376f32b-7ce8-4721-8b9e-bfa39d71b222
+      # Data preparation flow
+      - id: 60a37b9f-4cba-4386-96a0-85337fac398c
+        from: 4d7b9e2a-5c8f-41d6-b9a3-7e1c5f8d2b9a
+        to: c7315341-26b3-4405-9d02-039d721cd225
         fromPort: default
         toPort: default
-      - id: aaaaaaa1-c465-48cf-bdf5-36e385ffbd41
-        from: d376f32b-7ce8-4721-8b9e-bfa39d71b222
-        to: aaaa1111-a3a7-4d1b-9216-ef523a6b4333
+      - id: 71b48ba0-5dca-5497-a7b1-96448ebc139d
+        from: c7315341-26b3-4405-9d02-039d721cd225
+        to: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
+        fromPort: default
+        toPort: default
+      - id: 82c59cb1-6eda-6598-b8c2-a7559fcd23ae
+        from: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
+        to: 0daf7972-4d58-4ccd-a576-f3dfc418f749
+        fromPort: default
+        toPort: default
+      - id: 93d60dc2-7feb-7699-c9d3-b8660ede34bf
+        from: 0daf7972-4d58-4ccd-a576-f3dfc418f749
+        to: 151fbadf-1b40-4264-a003-f6f11f6af2d6
+        fromPort: default
+        toPort: default
+      - id: a4e71ed3-80fc-8790-da14-c9771fef45c0
+        from: 151fbadf-1b40-4264-a003-f6f11f6af2d6
+        to: 7e833060-f8c4-458b-a8cc-8c817527f25b
+        fromPort: default
+        toPort: default
+      - id: b5f82fe4-91ad-9891-eb25-da882eff56d1
+        from: 7e833060-f8c4-458b-a8cc-8c817527f25b
+        to: 3f7b2a9d-1c8e-4a6f-b5d3-9e2c7a4f8b1d
+        fromPort: default
+        toPort: default
+      - id: c6093af5-a2be-0992-fc36-eb993f007612
+        from: 3f7b2a9d-1c8e-4a6f-b5d3-9e2c7a4f8b1d
+        to: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+        fromPort: default
+        toPort: default
+
+      # XLink detection flow
+      - id: a60a37b9-4cba-4386-96a0-85337fac398c
+        from: 7e833060-f8c4-458b-a8cc-8c817527f25b
+        to: a1111111-1111-1111-1111-111111111111
+        fromPort: default
+        toPort: default
+      - id: a71b48ba-5dca-5497-a7b1-96448ebc139d
+        from: a1111111-1111-1111-1111-111111111111
+        to: a2222222-2222-2222-2222-222222222222
         fromPort: failed
         toPort: default
-      - id: f47c77ad-c465-48cf-bdf5-36e385ffbd41
-        from: aaaa1111-a3a7-4d1b-9216-ef523a6b4333
-        to: 9309842a-a3a7-4d1b-9216-ef523a6b4333
+      - id: a82c59cb-6eda-6598-b8c2-a7559fcd23ae
+        from: a2222222-2222-2222-2222-222222222222
+        to: a3333333-3333-3333-3333-333333333333
+        fromPort: default
+        toPort: default
+
+      # Connect LOD splitter to surface validators
+      # LOD1 and LOD2 go to SurfaceValidator2D
+      - id: d71a4b06-b3cf-1a93-0d47-fcaa40118723
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+        to: 3c8d9e7f-2a5b-4f1c-8e6a-9d3c5b8e1a4f
+        fromPort: lod1
+        toPort: default
+      - id: e82b5c17-c4d0-2ba4-1e58-0dbb51229834
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+        to: 3c8d9e7f-2a5b-4f1c-8e6a-9d3c5b8e1a4f
+        fromPort: lod2
+        toPort: default
+
+      # LOD3 goes to SurfaceValidator3D
+      - id: f93c6d28-d5e1-3cb5-2f69-1ecc6233a945
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+        to: 950407af-eec5-49ee-902c-2b41f31150d3
+        fromPort: lod3
+        toPort: default
+
+      # Connect SurfaceValidator2D incorrectOrientation to AttributeMapper (for LOD1/2)
+      - id: 4e70b263-f814-4fd8-7392-60009788fe9a
+        from: 3c8d9e7f-2a5b-4f1c-8e6a-9d3c5b8e1a4f
+        to: d4444444-4444-4444-4444-444444444444
+        fromPort: inCorrectOrientation
+        toPort: default
+
+      # Connect SurfaceValidator3D to OrientationExtractor (for LOD3)
+      - id: 0a4d7e39-e6f2-4dc6-3070-2fdd7344ba56
+        from: 950407af-eec5-49ee-902c-2b41f31150d3
+        to: b2222222-2222-2222-2222-222222222222
+        fromPort: inCorrectOrientation
+        toPort: default
+
+      # OrientationExtractor to Filter
+      - id: 1b5e8f40-f703-5ed7-4181-30ee8455cb67
+        from: b2222222-2222-2222-2222-222222222222
+        to: c3333333-3333-3333-3333-333333333333
+        fromPort: default
+        toPort: default
+
+      # Filter to AttributeMapper
+      - id: 2c6f9051-0814-6fe8-5292-41ff9566dc78
+        from: c3333333-3333-3333-3333-333333333333
+        to: d4444444-4444-4444-4444-444444444444
+        fromPort: incorrectOrientation
+        toPort: default
+
+      # AttributeMapper to FeatureWriter
+      - id: 3d70a162-1925-70f9-6303-52009677ed89
+        from: d4444444-4444-4444-4444-444444444444
+        to: e5555555-5555-5555-5555-555555555555
         fromPort: default
         toPort: default

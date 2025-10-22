@@ -214,6 +214,7 @@ pub struct TestContext {
     pub profile: WorkflowTestProfile,
     pub temp_dir: PathBuf,
     pub actual_output_dir: PathBuf,
+    pub last_job_id: Option<uuid::Uuid>,
     _temp_base: TempDir,
 }
 
@@ -242,6 +243,7 @@ impl TestContext {
             profile,
             actual_output_dir: temp_dir.clone(),
             temp_dir,
+            last_job_id: None,
             _temp_base: temp_base,
         })
     }
@@ -266,7 +268,7 @@ impl TestContext {
         Ok(workflow)
     }
 
-    pub fn run_workflow(&self, mut workflow: Workflow) -> Result<()> {
+    pub fn run_workflow(&mut self, mut workflow: Workflow) -> Result<()> {
         use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
         use reearth_flow_action_plateau_processor::mapping::ACTION_FACTORY_MAPPINGS as PLATEAU_MAPPINGS;
         use reearth_flow_action_processor::mapping::ACTION_FACTORY_MAPPINGS as PROCESSOR_MAPPINGS;
@@ -315,9 +317,20 @@ impl TestContext {
 
         // Setup logging and state
         let job_id = uuid::Uuid::new_v4();
-        let action_log_path = self.temp_dir.join("action-log");
+        self.last_job_id = Some(job_id);
+
+        // Use FLOW_RUNTIME_WORKING_DIRECTORY if set, otherwise use temp_dir
+        let working_dir = if let Ok(work_dir) = std::env::var("FLOW_RUNTIME_WORKING_DIRECTORY") {
+            PathBuf::from(work_dir)
+                .join("workflow_test_debug")
+                .join(job_id.to_string())
+        } else {
+            self.temp_dir.clone()
+        };
+
+        let action_log_path = working_dir.join("action-log");
         fs::create_dir_all(&action_log_path)?;
-        let state_path = self.temp_dir.join("feature-store");
+        let state_path = working_dir.join("feature-store");
         fs::create_dir_all(&state_path)?;
 
         let logger_factory = Arc::new(LoggerFactory::new(
@@ -434,8 +447,19 @@ impl TestContext {
                 anyhow::bail!("Expected intermediate data file does not exist: {expected_path:?}");
             }
 
-            let edge_data_path = self
-                .temp_dir
+            // Use FLOW_RUNTIME_WORKING_DIRECTORY if set, otherwise use temp_dir
+            let working_dir = if let Ok(work_dir) = std::env::var("FLOW_RUNTIME_WORKING_DIRECTORY") {
+                let job_id = self.last_job_id.ok_or_else(|| {
+                    anyhow::anyhow!("No job_id available - run_workflow must be called first")
+                })?;
+                PathBuf::from(work_dir)
+                    .join("workflow_test_debug")
+                    .join(job_id.to_string())
+            } else {
+                self.temp_dir.clone()
+            };
+
+            let edge_data_path = working_dir
                 .join("feature-store")
                 .join(format!("{}.jsonl", assertion.edge_id));
 

@@ -1,3 +1,3 @@
 "Folder","Index","Filename","FeatureType","LOD","gml:id","エラー数","エラー内容","面の向き"
-"tran","orientation.gml","Road",1,"tran_96b6edbd-fcc3-4569-a92c-e94773ba68b5",1,"Incorrect Orientation","right_hand_rule"
-"tran","orientation.gml","AuxiliaryTrafficArea",3,"tran_9bfd93b4-4dc5-4231-9440-d0c7f5204270",1,"Incorrect Orientation","right_hand_rule"
+"tran",1,"orientation.gml","tran:Road",1,"tran_96b6edbd-fcc3-4569-a92c-e94773ba68b5",1,"Incorrect Orientation","right_hand_rule"
+"tran",1,"orientation.gml","tran:AuxiliaryTrafficArea",3,"tran_9bfd93b4-4dc5-4231-9440-d0c7f5204270",1,"Incorrect Orientation","right_hand_rule"
