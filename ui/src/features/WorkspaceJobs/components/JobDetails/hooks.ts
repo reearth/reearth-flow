@@ -20,7 +20,6 @@ export default ({ jobId }: { jobId: string }) => {
   // Poll for outputURLs after job completes (they are generated asynchronously)
   useEffect(() => {
     if (jobStatus === "completed" && job && !job.outputURLs) {
-      console.log("TEST", "Starting polling for outputURLs");
       const pollInterval = setInterval(() => {
         refetch();
       }, 3000);
