@@ -53,7 +53,7 @@ func TestUpdateWorkerConfig_Owner(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{Disabled: true},
 	}, true, true, mock)
 
-	query := fmt.Sprintf(`mutation {
+	query := fmt.Sprintf(`mutation UpdateWorkerConfig {
 		updateWorkerConfig(input: {
 			workspaceId: "%s"
 			machineType: "e2-standard-16"
@@ -76,21 +76,24 @@ func TestUpdateWorkerConfig_Owner(t *testing.T) {
 	}`, wID)
 
 	request := GraphQLRequest{
-		OperationName: "updateWorkerConfig",
+		OperationName: "UpdateWorkerConfig",
 		Query:         query,
 	}
 	jsonData, err := json.Marshal(request)
 	assert.NoError(t, err)
 
-	o := e.POST("/api/graphql").
+	resp := e.POST("/api/graphql").
 		WithHeader("authorization", "Bearer test").
 		WithHeader("Content-Type", "application/json").
 		WithHeader("X-Reearth-Debug-User", operatorID.String()).
 		WithBytes(jsonData).
-		Expect().
-		Status(http.StatusOK).
-		JSON().
-		Object()
+		Expect()
+
+	o := resp.Status(http.StatusOK).JSON().Object()
+
+	if o.Value("errors").Raw() != nil {
+		t.Logf("GraphQL errors: %v", o.Value("errors").Raw())
+	}
 
 	cfg := o.Value("data").Object().
 		Value("updateWorkerConfig").Object().
@@ -142,7 +145,7 @@ func TestUpdateWorkerConfig_Maintainer(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{Disabled: true},
 	}, true, true, mock)
 
-	query := fmt.Sprintf(`mutation {
+	query := fmt.Sprintf(`mutation UpdateWorkerConfig {
 		updateWorkerConfig(input: {
 			workspaceId: "%s"
 			machineType: "e2-standard-8"
@@ -159,7 +162,7 @@ func TestUpdateWorkerConfig_Maintainer(t *testing.T) {
 	}`, wID)
 
 	request := GraphQLRequest{
-		OperationName: "updateWorkerConfig",
+		OperationName: "UpdateWorkerConfig",
 		Query:         query,
 	}
 	jsonData, err := json.Marshal(request)
@@ -220,7 +223,7 @@ func TestUpdateWorkerConfig_Maintainer_ExceedsLimit(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{Disabled: true},
 	}, true, true, mock)
 
-	query := fmt.Sprintf(`mutation {
+	query := fmt.Sprintf(`mutation UpdateWorkerConfig {
 		updateWorkerConfig(input: {
 			workspaceId: "%s"
 			machineType: "e2-standard-16"
@@ -230,7 +233,7 @@ func TestUpdateWorkerConfig_Maintainer_ExceedsLimit(t *testing.T) {
 	}`, wID)
 
 	request := GraphQLRequest{
-		OperationName: "updateWorkerConfig",
+		OperationName: "UpdateWorkerConfig",
 		Query:         query,
 	}
 	jsonData, err := json.Marshal(request)
@@ -287,7 +290,7 @@ func TestUpdateWorkerConfig_Writer_ExceedsLimit(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{Disabled: true},
 	}, true, true, mock)
 
-	query := fmt.Sprintf(`mutation {
+	query := fmt.Sprintf(`mutation UpdateWorkerConfig {
 		updateWorkerConfig(input: {
 			workspaceId: "%s"
 			computeCpuMilli: 16000
@@ -297,7 +300,7 @@ func TestUpdateWorkerConfig_Writer_ExceedsLimit(t *testing.T) {
 	}`, wID)
 
 	request := GraphQLRequest{
-		OperationName: "updateWorkerConfig",
+		OperationName: "UpdateWorkerConfig",
 		Query:         query,
 	}
 	jsonData, err := json.Marshal(request)
@@ -354,7 +357,7 @@ func TestDeleteWorkerConfig(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{Disabled: true},
 	}, true, true, mock)
 
-	query := fmt.Sprintf(`mutation {
+	query := fmt.Sprintf(`mutation DeleteWorkerConfig {
 		deleteWorkerConfig(input: {
 			workspaceId: "%s"
 		}) {
@@ -363,7 +366,7 @@ func TestDeleteWorkerConfig(t *testing.T) {
 	}`, wID)
 
 	request := GraphQLRequest{
-		OperationName: "deleteWorkerConfig",
+		OperationName: "DeleteWorkerConfig",
 		Query:         query,
 	}
 	jsonData, err := json.Marshal(request)
@@ -441,7 +444,7 @@ func TestUpdateWorkerConfig_ValidationErrors(t *testing.T) {
 		},
 		{
 			name:          "Disk too low",
-			param:         "bootDiskSizeGb",
+			param:         "bootDiskSizeGB",
 			value:         5,
 			expectedError: "must be at least 10",
 		},
@@ -449,7 +452,7 @@ func TestUpdateWorkerConfig_ValidationErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			query := fmt.Sprintf(`mutation {
+			query := fmt.Sprintf(`mutation UpdateWorkerConfig {
 				updateWorkerConfig(input: {
 					workspaceId: "%s"
 					%s: %d
@@ -459,7 +462,7 @@ func TestUpdateWorkerConfig_ValidationErrors(t *testing.T) {
 			}`, wID, tt.param, tt.value)
 
 			request := GraphQLRequest{
-				OperationName: "updateWorkerConfig",
+				OperationName: "UpdateWorkerConfig",
 				Query:         query,
 			}
 			jsonData, err := json.Marshal(request)
