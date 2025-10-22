@@ -329,7 +329,6 @@ pub(super) fn make_tile(
         // encode geometry
         let mut geom_enc = GeometryEncoder::new();
         let has_polygons = !int_mpoly.is_empty();
-        if has_polygons {continue;}
         for poly in &int_mpoly {
             let exterior = poly.exterior();
             if exterior.signed_ring_area() > 0.0 {
@@ -343,10 +342,8 @@ pub(super) fn make_tile(
         }
 
         let has_linestrings = !int_line_string.is_empty();
-        let mut linestring_index = 0;
         for line_string in &int_line_string {
-            let area = line_string.signed_ring_area();
-            if area as i32 != 0 {
+            if line_string.len() >= 2 {
                 geom_enc.add_linestring(&line_string);
             }
         }
