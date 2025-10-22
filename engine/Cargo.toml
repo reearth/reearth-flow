@@ -20,7 +20,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.88" # Remember to update clippy.toml as well
-version = "0.0.135"
+version = "0.0.136"
 
 [profile.dev]
 opt-level = 0
@@ -67,17 +67,17 @@ reearth-flow-storage = { path = "runtime/storage" }
 reearth-flow-telemetry = { path = "runtime/telemetry" }
 reearth-flow-types = { path = "runtime/types" }
 
-nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.3", features = [
+nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.4", features = [
   "serde",
   "serde_json",
 ] }
-nusamai-czml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.3" }
-nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.3" }
-nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.3", features = [
+nusamai-czml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.4" }
+nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.4" }
+nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.4", features = [
   "serde",
 ] }
-nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.3" }
-nusamai-shapefile = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.3" }
+nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.4" }
+nusamai-shapefile = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.4" }
 
 Inflector = "0.11.4"
 ahash = "0.8.11"
