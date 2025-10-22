@@ -59,7 +59,7 @@ func TestUpdateWorkerConfig_Owner(t *testing.T) {
 			machineType: "e2-standard-16"
 			computeCpuMilli: 32000
 			computeMemoryMib: 32768
-			bootDiskSizeGb: 500
+			bootDiskSizeGB: 500
 			taskCount: 10
 			maxConcurrency: 32
 		}) {
@@ -68,7 +68,7 @@ func TestUpdateWorkerConfig_Owner(t *testing.T) {
 				machineType
 				computeCpuMilli
 				computeMemoryMib
-				bootDiskSizeGb
+				bootDiskSizeGB
 				taskCount
 				maxConcurrency
 			}
@@ -100,7 +100,7 @@ func TestUpdateWorkerConfig_Owner(t *testing.T) {
 	cfg.Value("machineType").String().IsEqual("e2-standard-16")
 	cfg.Value("computeCpuMilli").Number().IsEqual(32000)
 	cfg.Value("computeMemoryMib").Number().IsEqual(32768)
-	cfg.Value("bootDiskSizeGb").Number().IsEqual(500)
+	cfg.Value("bootDiskSizeGB").Number().IsEqual(500)
 	cfg.Value("taskCount").Number().IsEqual(10)
 	cfg.Value("maxConcurrency").Number().IsEqual(32)
 }
