@@ -187,7 +187,11 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 
 	workerCfg, err := i.workerConfigRepo.FindByWorkspace(ctx, deployment.Workspace())
 	if err != nil {
-		log.Debugfc(ctx, "[Trigger] Failed to fetch worker config: %v\n , use environment defaults", err)
+		workerCfg = nil
+	}
+
+	if i.batch == nil {
+		return nil, fmt.Errorf("batch gateway not configured")
 	}
 
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), p.Variables, projectID, deployment.Workspace(), workerCfg)
