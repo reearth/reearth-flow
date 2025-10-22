@@ -91,12 +91,15 @@ pub async fn start_server(state: Arc<AppState>, port: &str, config: &Config) -> 
         .route("/{doc_id}", get(ws_handler))
         .with_state(server_state);
 
+    let health_usecase = create_health_usecase(&state);
+    let health_handler = Arc::new(HealthHandler::new(health_usecase));
 
     let app = Router::new()
         .merge(ws_router)
         .nest("/api", document_routes())
         .route("/health", get(health_check_handler))
         .with_state(state)
+        .layer(axum::extract::Extension(health_handler))
         .layer(
             ServiceBuilder::new()
                 .layer({
@@ -131,8 +134,21 @@ pub async fn start_server(state: Arc<AppState>, port: &str, config: &Config) -> 
     Ok(())
 }
 
+use crate::application::usecases::health_check::HealthCheckUseCase;
+use crate::infrastructure::health::{GcsHealthCheckerImpl, RedisHealthCheckerImpl};
 use crate::presentation::http::handlers::health_handler::{health_check_handler, HealthHandler};
 
+fn create_health_usecase(state: &AppState) -> Arc<HealthCheckUseCase> {
+    let mut health_usecase = HealthCheckUseCase::new("websocket");
+
+    let redis_checker = RedisHealthCheckerImpl::new(state.pool.get_redis_store());
+    health_usecase.add_checker(Arc::new(redis_checker));
+
+    let gcs_checker = GcsHealthCheckerImpl::new(state.pool.get_store());
+    health_usecase.add_checker(Arc::new(gcs_checker));
+
+    Arc::new(health_usecase)
+}
 
 #[cfg(feature = "auth")]
 async fn ws_handler(
