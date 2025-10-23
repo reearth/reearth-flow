@@ -97,5 +97,7 @@ jobs:
             git diff
             exit 1
           fi
+      - name: check generated cms workflows
+        run: cargo make check-generate-examples-cms-workflow
       - name: run tests
         run: cargo make test
