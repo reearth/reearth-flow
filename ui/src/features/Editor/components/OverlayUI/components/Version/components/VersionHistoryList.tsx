@@ -46,14 +46,14 @@ const VersionHistoryList: React.FC<Props> = ({
           {previousVersions?.map((version) => (
             <div>
               <div
-                className={`flex cursor-pointer justify-between gap-2 px-2 py-2 select-none ${version.version === selectedProjectSnapshotVersion ? "bg-primary" : "hover:bg-primary"}`}
+                className={`flex cursor-pointer justify-between gap-2 px-2 py-2 select-none ${version.version === selectedProjectSnapshotVersion ? "bg-border/40 dark:bg-primary" : "hover:bg-border/40 dark:hover:bg-primary"}`}
                 onClick={() => onVersionSelection(version.version)}
                 style={{ height: "100%" }}>
-                <p className="flex-2 self-center text-xs font-thin">
+                <p className="flex-2 self-center text-xs font-light dark:font-thin">
                   {formatDate(version.timestamp)}
                 </p>
                 <div className="flex justify-end">
-                  <p className="rounded border bg-primary/30 p-1 text-xs font-thin">
+                  <p className="rounded border bg-border/15 p-1 text-xs font-thin dark:bg-primary/30">
                     <span className="font-light">
                       {" "}
                       {t("Version ")}

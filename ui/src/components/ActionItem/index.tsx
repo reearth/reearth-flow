@@ -52,7 +52,7 @@ const ActionItem = forwardRef<HTMLDivElement, Props>(
       <div
         ref={ref}
         key={action.name}
-        className={`group cursor-pointer rounded bg-popover p-2 dark:bg-transparent ${selected ? "bg-primary text-accent-foreground" : "dark:hover:bg-primary dark:hover:text-accent-foreground"} ${className}`}
+        className={`group cursor-pointer rounded p-2 ${selected ? "bg-primary text-accent-foreground" : "hover:bg-primary hover:text-accent-foreground"} ${className}`}
         onClick={() => onSingleClick?.(action.name)}
         onDoubleClick={() => onDoubleClick?.(action.name)}
         draggable={draggable}
@@ -80,7 +80,7 @@ const ActionItem = forwardRef<HTMLDivElement, Props>(
                 className="rounded border bg-popover p-[2px]"
                 key={c}
                 onClick={handleCategoryClick(c)}>
-                <p className="text-zinc-400">{c}</p>
+                <p className="text-black dark:text-zinc-400">{c}</p>
               </div>
             ))}
           </div>
