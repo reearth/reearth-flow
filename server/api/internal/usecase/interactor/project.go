@@ -21,6 +21,7 @@ type Project struct {
 	workflowRepo      repo.Workflow
 	projectRepo       repo.Project
 	jobRepo           repo.Job
+	workerConfigRepo  repo.WorkerConfig
 	workspaceRepo     workspace.Repo
 	transaction       usecasex.Transaction
 	file              gateway.File
@@ -35,6 +36,7 @@ func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 		workflowRepo:      r.Workflow,
 		projectRepo:       r.Project,
 		jobRepo:           r.Job,
+		workerConfigRepo:  r.WorkerConfig,
 		workspaceRepo:     workspaceRepo,
 		transaction:       r.Transaction,
 		file:              gr.File,
@@ -258,7 +260,12 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 		return nil, err
 	}
 
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURL.String(), j.MetadataURL(), nil, p.ProjectID, prj.Workspace())
+	workerCfg, err := i.workerConfigRepo.FindByWorkspace(ctx, prj.Workspace())
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch worker config: %v", err)
+	}
+
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURL.String(), j.MetadataURL(), nil, p.ProjectID, prj.Workspace(), workerCfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to submit job: %v", err)
 	}

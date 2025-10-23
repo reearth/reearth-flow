@@ -20,6 +20,7 @@ type Trigger struct {
 	triggerRepo       repo.Trigger
 	deploymentRepo    repo.Deployment
 	jobRepo           repo.Job
+	workerConfigRepo  repo.WorkerConfig
 	transaction       usecasex.Transaction
 	batch             gateway.Batch
 	file              gateway.File
@@ -33,6 +34,7 @@ func NewTrigger(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 		triggerRepo:       r.Trigger,
 		deploymentRepo:    r.Deployment,
 		jobRepo:           r.Job,
+		workerConfigRepo:  r.WorkerConfig,
 		transaction:       r.Transaction,
 		batch:             gr.Batch,
 		file:              gr.File,
@@ -183,7 +185,16 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		projectID = *deployment.Project()
 	}
 
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), p.Variables, projectID, deployment.Workspace())
+	workerCfg, err := i.workerConfigRepo.FindByWorkspace(ctx, deployment.Workspace())
+	if err != nil {
+		workerCfg = nil
+	}
+
+	if i.batch == nil {
+		return nil, fmt.Errorf("batch gateway not configured")
+	}
+
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), p.Variables, projectID, deployment.Workspace(), workerCfg)
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Job submission failed: %v\n", err)
 		return nil, interfaces.ErrJobCreationFailed
@@ -259,10 +270,15 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		projectID = *deployment.Project()
 	}
 
-	// Use empty variables for time-driven triggers
 	variables := make(map[string]interface{})
 
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variables, projectID, deployment.Workspace())
+	workerCfg, err := i.workerConfigRepo.FindByWorkspace(ctx, deployment.Workspace())
+	if err != nil {
+		log.Debugfc(ctx, "[Trigger] Failed to fetch worker config: %v\n", err)
+		workerCfg = nil
+	}
+
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variables, projectID, deployment.Workspace(), workerCfg)
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Time-driven job submission failed: %v\n", err)
 		return nil, interfaces.ErrJobCreationFailed
