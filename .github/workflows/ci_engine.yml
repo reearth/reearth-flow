@@ -48,6 +48,8 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: taplo-cli,cargo-make,cargo-edit
+      - name: install yaml-include
+        run: cargo install yaml-include
       - name: Compare version with previous commit
         if: ${{ !(github.ref == 'refs/heads/main') }}
         run: |
