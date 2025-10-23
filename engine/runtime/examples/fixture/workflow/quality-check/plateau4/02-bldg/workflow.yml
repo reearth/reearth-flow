@@ -19,7 +19,7 @@ graphs:
     name: entry_point
     nodes:
       - id: 4d7b9e2a-5c8f-41d6-b9a3-7e1c5f8d2b9a
-        name: FeatureCreator
+        name: FeatureCreator_test
         type: action
         action: FeatureCreator
         with:
