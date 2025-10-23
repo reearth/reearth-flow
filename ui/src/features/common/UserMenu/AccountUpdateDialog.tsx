@@ -18,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@flow/components";
-// import { ThemeToggle } from "@flow/features/ThemeToggle";
 import { useUser } from "@flow/lib/gql";
 import { AvailableLanguage, localesWithLabel, useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
@@ -100,9 +99,7 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
       }
     }
 
-    if (selectedTheme) {
-      setTheme(selectedTheme);
-    }
+    setTheme(selectedTheme);
 
     const input = { name, email };
     const { me: user } = await updateMe(input);
