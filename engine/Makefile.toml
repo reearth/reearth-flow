@@ -169,3 +169,17 @@ process_workflows() {
 process_workflows "$BASEPATH_CONV" "${WORKFLOW_CONV[@]}"
 process_workflows "$BASEPATH_QC" "${WORKFLOW_QC[@]}"
 ''']
+
+[tasks.check-generate-examples-cms-workflow]
+script = ['''
+#!/usr/bin/env bash -eux
+
+cargo make generate-examples-cms-workflow
+git add -N .
+line=$(git diff | wc -l)
+if [ "$line" -gt 0 ]; then
+  echo "Please run 'cargo make generate-examples-cms-workflow' and commit the changes."
+  git --no-pager diff
+  exit 1
+fi
+''']
