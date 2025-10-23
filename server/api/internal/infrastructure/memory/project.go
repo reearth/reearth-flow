@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -31,7 +32,7 @@ func (r *Project) Filtered(f repo.WorkspaceFilter) repo.Project {
 	}
 }
 
-func (r *Project) FindByWorkspace(ctx context.Context, id id.WorkspaceID, pagination *interfaces.PaginationParam) ([]*project.Project, *interfaces.PageBasedInfo, error) {
+func (r *Project) FindByWorkspace(ctx context.Context, id id.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string) ([]*project.Project, *interfaces.PageBasedInfo, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -42,6 +43,9 @@ func (r *Project) FindByWorkspace(ctx context.Context, id id.WorkspaceID, pagina
 	result := make([]*project.Project, 0, len(r.data))
 	for _, p := range r.data {
 		if p.Workspace() == id {
+			if keyword != nil && *keyword != "" && !strings.Contains(strings.ToLower(p.Name()), strings.ToLower(*keyword)) {
+				continue
+			}
 			result = append(result, p)
 		}
 	}

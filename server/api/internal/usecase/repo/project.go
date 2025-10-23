@@ -14,7 +14,7 @@ type Project interface {
 	CountPublicByWorkspace(context.Context, id.WorkspaceID) (int, error)
 	FindByID(context.Context, id.ProjectID) (*project.Project, error)
 	FindByIDs(context.Context, id.ProjectIDList) ([]*project.Project, error)
-	FindByWorkspace(context.Context, id.WorkspaceID, *interfaces.PaginationParam) ([]*project.Project, *interfaces.PageBasedInfo, error)
+	FindByWorkspace(context.Context, id.WorkspaceID, *interfaces.PaginationParam, *string) ([]*project.Project, *interfaces.PageBasedInfo, error)
 	Remove(context.Context, id.ProjectID) error
 	Save(context.Context, *project.Project) error
 }
@@ -29,7 +29,7 @@ func IterateProjectsByWorkspace(repo Project, ctx context.Context, tid id.Worksp
 			},
 		}
 
-		projects, info, err := repo.FindByWorkspace(ctx, tid, pagination)
+		projects, info, err := repo.FindByWorkspace(ctx, tid, pagination, nil)
 		if err != nil {
 			return err
 		}

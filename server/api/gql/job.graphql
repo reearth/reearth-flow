@@ -50,7 +50,11 @@ extend type Subscription {
 # Query and Mutation
 
 extend type Query {
-  jobs(workspaceId: ID!, pagination: PageBasedPagination!): JobConnection!
+  jobs(
+    workspaceId: ID!
+    keyword: String
+    pagination: PageBasedPagination!
+  ): JobConnection!
   job(id: ID!): Job
 }
 

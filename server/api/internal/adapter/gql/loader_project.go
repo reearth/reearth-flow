@@ -37,7 +37,7 @@ func (c *ProjectLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmod
 	return projects, nil
 }
 
-func (c *ProjectLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error) {
+func (c *ProjectLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error) {
 	tid, err := gqlmodel.ToID[id.Workspace](wsID)
 	if err != nil {
 		return nil, err
@@ -47,7 +47,7 @@ func (c *ProjectLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.I
 	paginationParam := gqlmodel.ToPageBasedPagination(pagination)
 
 	// Use the pagination param for the usecase call
-	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam)
+	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam, keyword)
 	if err != nil {
 		return nil, err
 	}

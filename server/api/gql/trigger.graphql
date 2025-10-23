@@ -64,7 +64,11 @@ type TriggerConnection {
 # Query and Mutation
 
 extend type Query {
-    triggers(workspaceId: ID!, pagination: PageBasedPagination!): TriggerConnection!
+    triggers(
+      workspaceId: ID!
+      keyword: String
+      pagination: PageBasedPagination!
+    ): TriggerConnection!
 }
 
 extend type Mutation {

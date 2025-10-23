@@ -39,7 +39,7 @@ var (
 
 type Project interface {
 	Fetch(context.Context, []id.ProjectID) ([]*project.Project, error)
-	FindByWorkspace(context.Context, id.WorkspaceID, *PaginationParam) ([]*project.Project, *PageBasedInfo, error)
+	FindByWorkspace(context.Context, id.WorkspaceID, *PaginationParam, *string) ([]*project.Project, *PageBasedInfo, error)
 	Create(context.Context, CreateProjectParam) (*project.Project, error)
 	Update(context.Context, UpdateProjectParam) (*project.Project, error)
 	Delete(context.Context, id.ProjectID) error
