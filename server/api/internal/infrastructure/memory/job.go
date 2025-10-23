@@ -48,8 +48,7 @@ func (r *Job) FindByWorkspace(ctx context.Context, id id.WorkspaceID, pagination
 		}
 
 		if keyword != nil && *keyword != "" {
-			if !strings.Contains(strings.ToLower(j.ID().String()), strings.ToLower(*keyword)) &&
-				!(j.Description() != nil && strings.Contains(strings.ToLower(*j.Description()), strings.ToLower(*keyword))) {
+			if !strings.Contains(strings.ToLower(j.ID().String()), strings.ToLower(*keyword)) {
 				continue
 			}
 		}

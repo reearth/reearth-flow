@@ -2,8 +2,11 @@ package mongo
 
 import (
 	"context"
+	"fmt"
+	"regexp"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo/mongodoc"
@@ -75,7 +78,7 @@ func (r *Project) FindByWorkspace(ctx context.Context, id id.WorkspaceID, pagina
 
 	if keyword != nil && *keyword != "" {
 		re := primitive.Regex{Pattern: fmt.Sprintf(".*%s.*", regexp.QuoteMeta(*keyword)), Options: "i"}
-		filter = mongox.And(filter, "name", bson.M{"$regex": re})
+		filter = mongox.And(filter, "name", bson.M{"$regex": re}).(bson.M)
 	}
 
 	if pagination != nil && pagination.Page != nil {

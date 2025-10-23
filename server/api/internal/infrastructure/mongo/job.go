@@ -66,7 +66,7 @@ func (r *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
 	})
 }
 
-func (r *Job) FindByWorkspace(ctx context.Context, workspace id.WorkspaceID, pagination *interfaces.PaginationParam) ([]*job.Job, *interfaces.PageBasedInfo, error) {
+func (r *Job) FindByWorkspace(ctx context.Context, workspace id.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string) ([]*job.Job, *interfaces.PageBasedInfo, error) {
 	filter := bson.M{
 		"workspaceid": workspace.String(),
 		"$or": []bson.M{

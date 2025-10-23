@@ -72,7 +72,7 @@ func TestTrigger_FindByWorkspace(t *testing.T) {
 
 	r := NewTrigger(mongox.NewClientWithDatabase(c))
 
-	got, pageInfo, err := r.FindByWorkspace(ctx, wid, nil)
+	got, pageInfo, err := r.FindByWorkspace(ctx, wid, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, pageInfo)
 	assert.Equal(t, 2, len(got))
