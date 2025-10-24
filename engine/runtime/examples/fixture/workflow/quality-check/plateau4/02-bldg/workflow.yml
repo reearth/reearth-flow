@@ -320,6 +320,18 @@ graphs:
             - attribute: "LOD0-1のBuildingPart"
               expr: |
                 env.get("__value")._num_lod0_1_buildingpart ?? 0
+            - attribute: "LOD1 立体の交差"
+              expr: |
+                env.get("__value")._num_lod1_solid_intersection ?? 0
+            - attribute: "LOD2 立体の交差"
+              expr: |
+                env.get("__value")._num_lod2_solid_intersection ?? 0
+            - attribute: "LOD3 立体の交差"
+              expr: |
+                env.get("__value")._num_lod3_solid_intersection ?? 0
+            - attribute: "LOD4 立体の交差"
+              expr: |
+                env.get("__value")._num_lod4_solid_intersection ?? 0
 
       # Phase 4: CSV output
       - id: e4f5a6b7-8c9d-0e1f-2a3b-4c5d6e7f8a9b
@@ -378,10 +390,9 @@ graphs:
             - newAttribute: "LOD1 立体のエラー"
               expr: |
                 env.get("__value")["LOD1 立体のエラー"] ?? 0
-            # TODO: unimplemented
             - newAttribute: "LOD1 立体の交差"
               expr: |
-                0
+                env.get("__value")["LOD1 立体の交差"] ?? 0
 
             # LOD2
             - newAttribute: "LOD2 境界面のエラー"
@@ -393,10 +404,9 @@ graphs:
             - newAttribute: "LOD2 立体のエラー"
               expr: |
                 env.get("__value")["LOD2 立体のエラー"] ?? 0
-            # TODO: unimplemented
             - newAttribute: "LOD2 立体の交差"
               expr: |
-                0
+                env.get("__value")["LOD2 立体の交差"] ?? 0
 
             # LOD3
             - newAttribute: "LOD3 境界面のエラー"
@@ -408,10 +418,9 @@ graphs:
             - newAttribute: "LOD3 立体のエラー"
               expr: |
                 env.get("__value")["LOD3 立体のエラー"] ?? 0
-            # TODO: unimplemented
             - newAttribute: "LOD3 立体の交差"
               expr: |
-                0
+                env.get("__value")["LOD3 立体の交差"] ?? 0
 
             # LOD4
             - newAttribute: "LOD4 境界面のエラー"
@@ -423,10 +432,9 @@ graphs:
             - newAttribute: "LOD4 立体のエラー"
               expr: |
                 env.get("__value")["LOD4 立体のエラー"] ?? 0
-            # TODO: unimplemented
             - newAttribute: "LOD4 立体の交差"
               expr: |
-                0
+                env.get("__value")["LOD4 立体の交差"] ?? 0
 
             - newAttribute: "T-bldg-02エラー"
               expr: |
@@ -434,8 +442,23 @@ graphs:
             - newAttribute: "LOD0-1のBuildingPart"
               expr: |
                 env.get("__value")["LOD0-1のBuildingPart"] ?? 0
+            - newAttribute: totalErrorCount
+              expr: |
+                let total = 0;
+                let keys = ["C-bldg-01 エラー", "不正な建物ID", "市区町村コードエラー",
+                            "L-bldg-02 エラー", "L-bldg-04,05 エラー", "L-bldg-06 エラー",
+                            "LOD0 面のエラー", "LOD0 面の向きエラー", "LOD0 面の交差",
+                            "LOD1 境界面のエラー", "LOD1 非水密立体", "LOD1 立体のエラー", "LOD1 立体の交差",
+                            "LOD2 境界面のエラー", "LOD2 非水密立体", "LOD2 立体のエラー", "LOD2 立体の交差",
+                            "LOD3 境界面のエラー", "LOD3 非水密立体", "LOD3 立体のエラー", "LOD3 立体の交差",
+                            "LOD4 境界面のエラー", "LOD4 非水密立体", "LOD4 立体のエラー", "LOD4 立体の交差",
+                            "T-bldg-02エラー", "LOD0-1のBuildingPart", "図郭不正"];
+                for key in keys {
+                  total += env.get("__value")[key] ?? 0;
+                }
+                total
 
-      # Phase 6: JSON output with converter (same as 01-common)
+      # Phase 6: JSON output with converter
       - id: a6b7c8d9-0e1f-2a3b-4c5d-6e7f8a9b0c1d
         name: JSONSummaryWriter
         type: action
@@ -458,6 +481,49 @@ graphs:
             }
           output: |
             file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_bldg.json")
+
+      - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
+        name: StatisticsCalculatorTotalErrors
+        type: action
+        action: StatisticsCalculator
+        with:
+          calculations:
+            - newAttribute: totalErrorCount
+              expr: |
+                env.get("__value")["totalErrorCount"] ?? 0
+
+      - id: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+        name: FeatureFilterNoErrors
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value")["totalErrorCount"] == 0
+              outputPort: default
+
+      - id: b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
+        name: FileWriterQcResultOk
+        type: action
+        action: FileWriter
+        with:
+          format: json
+          converter: '[]'
+          output: |
+            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
+            let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+            file::join_path(dirname, filename)
+
+      # ZipFileWriter - Bundle all output files
+      - id: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
+        name: ZipFileWriter
+        type: action
+        action: ZipFileWriter
+        with:
+          output: |
+            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
+            let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+            file::join_path(dirname, filename)
 
     edges:
       - id: 8c9e2f4a-7b1d-4e5c-a3f2-9d8b6c4e1a7f
@@ -697,11 +763,41 @@ graphs:
         fromPort: errorCountIncorrectMeshcode
         toPort: supplier
 
-      # Phase 3: Merged result to AttributeMapper
+      - id: a9b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod1SolidIntersection
+        toPort: supplier
+
+      - id: b0c1d2e3-4f5a-6b7c-8d9e-0f1a2b3c4d5e
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod2SolidIntersection
+        toPort: supplier
+
+      - id: c1d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod3SolidIntersection
+        toPort: supplier
+
+      - id: d2e3f4a5-6b7c-8d9e-0f1a-2b3c4d5e6f7a
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f    # ErrorSummaryMerger (supplier)
+        fromPort: errorCountLod4SolidIntersection
+        toPort: supplier
+
+      # Phase 3: Merged and unmerged results to AttributeMapper
       - id: e0f1a2b3-4c5d-6e7f-8a9b-0c1d2e3f4a5b
         from: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f  # ErrorSummaryMerger
         to: d3e4f5a6-7b8c-9d0e-1f2a-3b4c5d6e7f8a    # SummaryAttributeMapper
         fromPort: merged
+        toPort: default
+
+      - id: f0a1b2c3-5d6e-7f8a-9b0c-1d2e3f4a5b6c
+        from: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f  # ErrorSummaryMerger
+        to: d3e4f5a6-7b8c-9d0e-1f2a-3b4c5d6e7f8a    # SummaryAttributeMapper
+        fromPort: unmerged
         toPort: default
 
       # Phase 4: CSV output
@@ -722,5 +818,67 @@ graphs:
       - id: b3c4d5e6-7f8a-9b0c-1d2e-3f4a5b6c7d8e
         from: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c  # StatisticsCalculator
         to: a6b7c8d9-0e1f-2a3b-4c5d-6e7f8a9b0c1d    # JSONSummaryWriter
+        fromPort: default
+        toPort: default
+
+      # ===== ZipFileWriter Connections - Bundle all output files =====
+      # Connect CSVSummaryWriter to ZipFileWriter
+      - id: c4d5e6f7-8a9b-0c1d-2e3f-4a5b6c7d8e9f
+        from: e4f5a6b7-8c9d-0e1f-2a3b-4c5d6e7f8a9b  # CSVSummaryWriter
+        to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a    # ZipFileWriter
+        fromPort: default
+        toPort: default
+
+      # Connect JSONSummaryWriter to ZipFileWriter
+      - id: d5e6f7a8-9b0c-1d2e-3f4a-5b6c7d8e9f0a
+        from: a6b7c8d9-0e1f-2a3b-4c5d-6e7f8a9b0c1d  # JSONSummaryWriter
+        to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a    # ZipFileWriter
+        fromPort: default
+        toPort: default
+
+      # Connect FormatChecker subgraph fileOutput to ZipFileWriter
+      - id: e6f7a8b9-0c1d-2e3f-4a5b-6c7d8e9f0a1b
+        from: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b  # FormatChecker subgraph
+        to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a    # ZipFileWriter
+        fromPort: fileOutput
+        toPort: default
+
+      # Connect ReferenceAndTypeChecker subgraph fileOutput to ZipFileWriter
+      - id: f7a8b9c0-1d2e-3f4a-5b6c-7d8e9f0a1b2c
+        from: 7a561c34-2e94-4883-91e4-4026b09c2f8a  # ReferenceAndTypeChecker subgraph
+        to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a    # ZipFileWriter
+        fromPort: fileOutput
+        toPort: default
+
+      # Connect SurfaceValidation subgraph fileOutput to ZipFileWriter
+      - id: a8b9c0d1-2e3f-4a5b-6c7d-8e9f0a1b2c3d
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f  # SurfaceValidation subgraph
+        to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a    # ZipFileWriter
+        fromPort: fileOutput
+        toPort: default
+
+      # Connect BuildingPartValidation subgraph fileOutput to ZipFileWriter
+      - id: b9c0d1e2-3f4a-5b6c-7d8e-9f0a1b2c3d4e
+        from: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f  # BuildingPartValidation subgraph
+        to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a    # ZipFileWriter
+        fromPort: fileOutput
+        toPort: default
+
+      # qc_result_ok generation flow
+      - id: c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
+        from: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c  # StatisticsCalculator
+        to: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b    # StatisticsCalculatorTotalErrors
+        fromPort: default
+        toPort: default
+
+      - id: e5f6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
+        from: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b  # StatisticsCalculatorTotalErrors
+        to: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d    # FeatureFilterNoErrors
+        fromPort: default
+        toPort: default
+
+      - id: f6a7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
+        from: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d  # FeatureFilterNoErrors
+        to: b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e    # FileWriterQcResultOk
         fromPort: default
         toPort: default

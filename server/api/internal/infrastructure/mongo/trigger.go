@@ -113,6 +113,11 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id id.WorkspaceID, pagina
 	return c.Result, interfaces.NewPageBasedInfo(total, 1, len(c.Result)), nil
 }
 
+func (r *Trigger) FindByDeployment(ctx context.Context, id id.DeploymentID) ([]*trigger.Trigger, error) {
+	filter := bson.M{"deploymentid": id.String()}
+	return r.find(ctx, filter)
+}
+
 func (r *Trigger) Save(ctx context.Context, trigger *trigger.Trigger) error {
 	if !r.f.CanWrite(trigger.Workspace()) {
 		return repo.ErrOperationDenied

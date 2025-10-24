@@ -10,5 +10,6 @@ pub(crate) mod mapping;
 pub(crate) mod max_lod_extractor;
 pub(crate) mod missing_attribute_detector;
 pub(crate) mod object_list_extractor;
+pub(crate) mod solid_intersection_test_pair_creator;
 pub(crate) mod udx_folder_extractor;
 pub(crate) mod unmatched_xlink_detector;

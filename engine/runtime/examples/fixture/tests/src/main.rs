@@ -62,6 +62,13 @@ pub struct WorkflowTestProfile {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary_output: Option<SummaryOutput>,
 
+    /// Whether qc_result_ok file should exist (same level as zip)
+    /// - Some(true): file must exist
+    /// - Some(false): file must NOT exist
+    /// - None: do not check (default)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expect_result_ok_file: Option<bool>,
+
     /// Whether to skip this test
     #[serde(default)]
     pub skip: bool,
@@ -206,6 +213,7 @@ pub struct TestContext {
     pub fixture_dir: PathBuf,
     pub profile: WorkflowTestProfile,
     pub temp_dir: PathBuf,
+    pub actual_output_dir: PathBuf,
     _temp_base: TempDir,
 }
 
@@ -232,6 +240,7 @@ impl TestContext {
             test_dir,
             fixture_dir,
             profile,
+            actual_output_dir: temp_dir.clone(),
             temp_dir,
             _temp_base: temp_base,
         })
@@ -334,7 +343,10 @@ impl TestContext {
         Ok(())
     }
 
-    pub fn verify_output(&self) -> Result<()> {
+    pub fn verify_output(&mut self) -> Result<()> {
+        // Ensure zip is extracted if it exists
+        self.ensure_extracted()?;
+
         if let Some(output) = &self.profile.expected_output {
             // Check if expected file(s) exist, fail test if not
             if let Some(expected_files) = &output.expected_file {
@@ -342,7 +354,7 @@ impl TestContext {
                 for expected_file_name in &files {
                     let expected_file = self.test_dir.join(expected_file_name);
                     if !expected_file.exists() {
-                        anyhow::bail!("Expected output file does not exist: {:?}", expected_file);
+                        anyhow::bail!("Expected output file does not exist: {expected_file:?}");
                     }
 
                     // Validate file format and route to appropriate verification method
@@ -350,6 +362,47 @@ impl TestContext {
                 }
             }
         }
+        Ok(())
+    }
+
+    fn ensure_extracted(&mut self) -> Result<()> {
+        use zip::ZipArchive;
+
+        // Look for any _qc_result.zip file in temp_dir
+        let zip_pattern = format!("{}", self.temp_dir.join("*_qc_result.zip").display());
+        let zip_files: Vec<PathBuf> = glob::glob(&zip_pattern)
+            .ok()
+            .map(|paths| paths.filter_map(|p| p.ok()).collect())
+            .unwrap_or_default();
+
+        if let Some(zip_path) = zip_files.first() {
+            // Extract zip to a subdirectory
+            let extract_dir = self.temp_dir.join("extracted");
+            fs::create_dir_all(&extract_dir)?;
+
+            let zip_file = fs::File::open(zip_path)?;
+            let mut archive = ZipArchive::new(zip_file)?;
+
+            for i in 0..archive.len() {
+                let mut file = archive.by_index(i)?;
+                let outpath = extract_dir.join(file.name());
+
+                if file.is_dir() {
+                    fs::create_dir_all(&outpath)?;
+                } else {
+                    if let Some(p) = outpath.parent() {
+                        fs::create_dir_all(p)?;
+                    }
+                    let mut outfile = fs::File::create(&outpath)?;
+                    std::io::copy(&mut file, &mut outfile)?;
+                }
+            }
+
+            // Update actual_output_dir to the extracted directory
+            self.actual_output_dir = extract_dir;
+        }
+        // If no zip file exists, actual_output_dir remains as temp_dir
+
         Ok(())
     }
 
@@ -367,8 +420,7 @@ impl TestContext {
             // Extract extension for error message
             let extension = file_name.rsplit('.').next().unwrap_or("unknown");
             anyhow::bail!(
-                "Unsupported file format '.{}'. Only json, jsonl, csv, and tsv files are supported.",
-                extension
+                "Unsupported file format '.{extension}'. Only json, jsonl, csv, and tsv files are supported."
             );
         }
         Ok(())
@@ -379,10 +431,7 @@ impl TestContext {
             // Check if expected file exists, fail test if not
             let expected_path = self.test_dir.join(&assertion.expected_file);
             if !expected_path.exists() {
-                anyhow::bail!(
-                    "Expected intermediate data file does not exist: {:?}",
-                    expected_path
-                );
+                anyhow::bail!("Expected intermediate data file does not exist: {expected_path:?}");
             }
 
             let edge_data_path = self
@@ -419,7 +468,10 @@ impl TestContext {
         Ok(())
     }
 
-    pub fn verify_summary_output(&self) -> Result<()> {
+    pub fn verify_summary_output(&mut self) -> Result<()> {
+        // Ensure zip is extracted if it exists
+        self.ensure_extracted()?;
+
         if let Some(summary) = &self.profile.summary_output {
             // Error count summary validation
             if let Some(error_count) = &summary.error_count_summary {
@@ -436,9 +488,9 @@ impl TestContext {
 
     fn verify_error_count_summary(&self, config: &ErrorCountSummaryValidation) -> Result<()> {
         // Load actual output
-        let actual_file = self.temp_dir.join(&config.expected_file);
+        let actual_file = self.actual_output_dir.join(&config.expected_file);
         if !actual_file.exists() {
-            anyhow::bail!("Error count summary file not found: {:?}", actual_file);
+            anyhow::bail!("Error count summary file not found: {actual_file:?}");
         }
         let actual_json: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&actual_file)?)?;
@@ -446,10 +498,7 @@ impl TestContext {
         // Load expected output
         let expected_file = self.test_dir.join(&config.expected_file);
         if !expected_file.exists() {
-            anyhow::bail!(
-                "Expected error count summary file not found: {:?}",
-                expected_file
-            );
+            anyhow::bail!("Expected error count summary file not found: {expected_file:?}");
         }
         let expected_json: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&expected_file)?)?;
@@ -468,19 +517,16 @@ impl TestContext {
 
         // Compare
         for field in &fields_to_check {
-            let expected_value = expected_map.get(field).ok_or_else(|| {
-                anyhow::anyhow!("Field '{}' not found in expected summary", field)
-            })?;
+            let expected_value = expected_map
+                .get(field)
+                .ok_or_else(|| anyhow::anyhow!("Field '{field}' not found in expected summary"))?;
             let actual_value = actual_map
                 .get(field)
-                .ok_or_else(|| anyhow::anyhow!("Field '{}' not found in actual summary", field))?;
+                .ok_or_else(|| anyhow::anyhow!("Field '{field}' not found in actual summary"))?;
 
             if actual_value != expected_value {
                 anyhow::bail!(
-                    "Error count summary mismatch for '{}': expected {:?}, got {:?}",
-                    field,
-                    expected_value,
-                    actual_value
+                    "Error count summary mismatch for '{field}': expected {expected_value:?}, got {actual_value:?}"
                 );
             }
         }
@@ -490,16 +536,16 @@ impl TestContext {
 
     fn verify_file_error_summary(&self, config: &FileErrorSummaryValidation) -> Result<()> {
         // Load actual CSV
-        let actual_file = self.temp_dir.join(&config.expected_file);
+        let actual_file = self.actual_output_dir.join(&config.expected_file);
         if !actual_file.exists() {
-            anyhow::bail!("File error summary not found: {:?}", actual_file);
+            anyhow::bail!("File error summary not found: {actual_file:?}");
         }
         let actual_content = fs::read_to_string(&actual_file)?;
 
         // Load expected CSV
         let expected_file = self.test_dir.join(&config.expected_file);
         if !expected_file.exists() {
-            anyhow::bail!("Expected file error summary not found: {:?}", expected_file);
+            anyhow::bail!("Expected file error summary not found: {expected_file:?}");
         }
         let expected_content = fs::read_to_string(&expected_file)?;
 
@@ -530,10 +576,10 @@ impl TestContext {
         // Verify columns exist
         for col in &columns_to_check {
             if !actual_headers.iter().any(|h| h == col) {
-                anyhow::bail!("Column '{}' not found in actual CSV", col);
+                anyhow::bail!("Column '{col}' not found in actual CSV");
             }
             if !expected_headers.iter().any(|h| h == col) {
-                anyhow::bail!("Column '{}' not found in expected CSV", col);
+                anyhow::bail!("Column '{col}' not found in expected CSV");
             }
         }
 
@@ -553,7 +599,7 @@ impl TestContext {
         for (key, expected_row) in &expected_rows {
             let actual_row = actual_rows
                 .get(key)
-                .ok_or_else(|| anyhow::anyhow!("Row with key {:?} not found in actual CSV", key))?;
+                .ok_or_else(|| anyhow::anyhow!("Row with key {key:?} not found in actual CSV"))?;
 
             // Compare specified columns
             for col in &columns_to_check {
@@ -563,18 +609,14 @@ impl TestContext {
 
                 let expected_val = expected_row
                     .get(col)
-                    .ok_or_else(|| anyhow::anyhow!("Column '{}' not found in expected row", col))?;
+                    .ok_or_else(|| anyhow::anyhow!("Column '{col}' not found in expected row"))?;
                 let actual_val = actual_row
                     .get(col)
-                    .ok_or_else(|| anyhow::anyhow!("Column '{}' not found in actual row", col))?;
+                    .ok_or_else(|| anyhow::anyhow!("Column '{col}' not found in actual row"))?;
 
                 if actual_val != expected_val {
                     anyhow::bail!(
-                        "File error summary mismatch for row {:?}, column '{}': expected '{}', got '{}'",
-                        key,
-                        col,
-                        expected_val,
-                        actual_val
+                        "File error summary mismatch for row {key:?}, column '{col}': expected '{expected_val}', got '{actual_val}'"
                     );
                 }
             }
@@ -621,7 +663,7 @@ impl TestContext {
                 let col_idx = headers
                     .iter()
                     .position(|h| h == key_col)
-                    .ok_or_else(|| anyhow::anyhow!("Key column '{}' not found", key_col))?;
+                    .ok_or_else(|| anyhow::anyhow!("Key column '{key_col}' not found"))?;
                 key.push(row.get(col_idx).unwrap_or("").to_string());
             }
 
@@ -639,10 +681,10 @@ impl TestContext {
 
     fn verify_csv_file(&self, output: &TestOutput, file_name: &str, delimiter: u8) -> Result<()> {
         let expected_file = self.test_dir.join(file_name);
-        let actual_file = self.temp_dir.join(file_name);
+        let actual_file = self.actual_output_dir.join(file_name);
 
         if !actual_file.exists() {
-            anyhow::bail!("Output file not found at {:?}", actual_file);
+            anyhow::bail!("Output file not found at {actual_file:?}");
         }
 
         let expected = fs::read_to_string(&expected_file)?;
@@ -654,10 +696,10 @@ impl TestContext {
 
     fn verify_json_file(&self, file_name: &str) -> Result<()> {
         let expected_file = self.test_dir.join(file_name);
-        let actual_file = self.temp_dir.join(file_name);
+        let actual_file = self.actual_output_dir.join(file_name);
 
         if !actual_file.exists() {
-            anyhow::bail!("Output file not found at {:?}", actual_file);
+            anyhow::bail!("Output file not found at {actual_file:?}");
         }
 
         let expected: serde_json::Value =
@@ -674,10 +716,10 @@ impl TestContext {
 
     fn verify_jsonl_file(&self, file_name: &str) -> Result<()> {
         let expected_file = self.test_dir.join(file_name);
-        let actual_file = self.temp_dir.join(file_name);
+        let actual_file = self.actual_output_dir.join(file_name);
 
         if !actual_file.exists() {
-            anyhow::bail!("Output file not found at {:?}", actual_file);
+            anyhow::bail!("Output file not found at {actual_file:?}");
         }
 
         let expected_content = fs::read_to_string(&expected_file)?;
@@ -714,8 +756,7 @@ impl TestContext {
         } else {
             let extension = file_name.rsplit('.').next().unwrap_or("unknown");
             anyhow::bail!(
-                "Unsupported file format '.{}'. Only json, jsonl, csv, and tsv files are supported.",
-                extension
+                "Unsupported file format '.{extension}'. Only json, jsonl, csv, and tsv files are supported."
             )
         }
     }
@@ -798,10 +839,7 @@ impl TestContext {
         if actual_cols_sorted != expected_cols_sorted {
             let file_type = if delimiter == b'\t' { "TSV" } else { "CSV" };
             anyhow::bail!(
-                "{} column mismatch. Expected columns: {:?}, Actual columns: {:?}",
-                file_type,
-                expected_cols_sorted,
-                actual_cols_sorted
+                "{file_type} column mismatch. Expected columns: {expected_cols_sorted:?}, Actual columns: {actual_cols_sorted:?}"
             );
         }
 
@@ -873,7 +911,7 @@ impl TestContext {
                     reordered_actual_values
                         .push(actual_row.get(actual_col_idx).unwrap_or("").to_string());
                 } else {
-                    anyhow::bail!("Column '{}' not found in actual data", expected_col_name);
+                    anyhow::bail!("Column '{expected_col_name}' not found in actual data");
                 }
             }
             actual_processed_rows.push(reordered_actual_values);
@@ -887,10 +925,7 @@ impl TestContext {
         if expected_processed_rows != actual_processed_rows {
             let file_type = if delimiter == b'\t' { "TSV" } else { "CSV" };
             anyhow::bail!(
-                "{} data mismatch (excluding excepted columns, ignoring row and column order).\nExpected rows (sorted): {:?}\nActual rows (sorted): {:?}", 
-                file_type,
-                expected_processed_rows,
-                actual_processed_rows
+                "{file_type} data mismatch (excluding excepted columns, ignoring row and column order).\nExpected rows (sorted): {expected_processed_rows:?}\nActual rows (sorted): {actual_processed_rows:?}"
             );
         }
 
@@ -1011,6 +1046,39 @@ impl TestContext {
             }
         }
     }
+
+    pub fn verify_result_ok_file(&self) -> Result<()> {
+        // If no check is defined, skip verification
+        let Some(expect_exists) = self.profile.expect_result_ok_file else {
+            return Ok(());
+        };
+
+        // Look for files ending with "qc_result_ok" in temp_dir (same level as zip)
+        let mut file_exists = false;
+        for entry in fs::read_dir(&self.temp_dir)? {
+            let entry = entry?;
+            if entry.file_type()?.is_file() {
+                if let Some(filename) = entry.file_name().to_str() {
+                    if filename.ends_with("qc_result_ok") {
+                        file_exists = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if expect_exists && !file_exists {
+            anyhow::bail!(
+                "Expected qc_result_ok file (suffix match) was not found in output directory"
+            );
+        }
+
+        if !expect_exists && file_exists {
+            anyhow::bail!("qc_result_ok file should not exist but was found in output directory");
+        }
+
+        Ok(())
+    }
 }
 
 // Include the generated tests
@@ -1038,6 +1106,7 @@ mod tests {
             schemas: None,
             intermediate_assertions: vec![],
             summary_output: None,
+            expect_result_ok_file: None,
             skip: false,
             skip_reason: None,
         };
@@ -1104,6 +1173,7 @@ mod tests {
             schemas: None,
             intermediate_assertions: vec![],
             summary_output: None,
+            expect_result_ok_file: None,
             skip: false,
             skip_reason: None,
         };

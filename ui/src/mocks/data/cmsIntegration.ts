@@ -13,6 +13,8 @@ export const mockCmsProjects: CmsProjectFragment[] = [
     alias: "env-monitor",
     description: "Environmental data collection and analysis",
     workspaceId: "workspace-1",
+    topics: ["environment", "sensors", "data"],
+    starCount: 42,
     visibility: GraphqlCmsVisibility.Public,
     createdAt: "2023-02-10T09:45:00Z",
     updatedAt: "2023-05-18T11:20:00Z",

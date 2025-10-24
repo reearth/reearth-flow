@@ -127,6 +127,14 @@ pub(super) enum GeometryProcessorError {
     SolidBoundaryValidatorFactory(String),
     #[error("SolidBoundaryValidator error: {0}")]
     SolidBoundaryValidator(String),
+    #[error("CSGBuilder Factory error: {0}")]
+    CSGBuilderFactory(String),
+    #[error("CSGBuilder error: {0}")]
+    CSGBuilder(String),
+    #[error("CSGEvaluator Factory error: {0}")]
+    CSGEvaluatorFactory(String),
+    #[error("CSGEvaluator error: {0}")]
+    CSGEvaluator(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

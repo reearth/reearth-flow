@@ -6,7 +6,7 @@ use crate::types::{
     multi_polygon::MultiPolygon, point::Point, polygon::Polygon, rect::Rect, triangle::Triangle,
 };
 
-#[derive(PartialEq, Debug, Hash)]
+#[derive(PartialEq, Debug)]
 pub(crate) enum GeometryCow<'a, T, Z>
 where
     T: CoordNum,

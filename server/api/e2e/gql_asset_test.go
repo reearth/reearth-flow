@@ -388,3 +388,66 @@ func TestWorkspaceAssetsQuery(t *testing.T) {
 	o.Value("data").Object().Value("node").Object().Value("assets").Object().Value("totalCount").Number().IsEqual(0)
 	o.Value("data").Object().Value("node").Object().Value("assets").Object().Value("nodes").Array().IsEmpty()
 }
+
+func TestCreateAssetUpload(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operator := factory.NewUser(func(b *pkguser.Builder) {})
+	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
+
+	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).Times(1)
+	mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil)
+
+	mock := &TestMocks{
+		UserRepo:      mockUserRepo,
+		WorkspaceRepo: mockWorkspaceRepo,
+	}
+
+	e, _ := StartGQLServer(t, &config.Config{
+		Origins: []string{"https://example.com"},
+		AuthSrv: config.AuthSrvConfig{
+			Disabled: true,
+		},
+	}, true, true, mock)
+
+	// GraphQL: createAssetUpload
+	req := GraphQLRequest{
+		Query: `mutation ($input: CreateAssetUploadInput!) {
+		createAssetUpload(input: $input) {
+			token
+			url
+			contentType
+			contentLength
+			contentEncoding
+			next
+		}
+    }`,
+		Variables: map[string]any{
+			"input": map[string]any{
+				"workspaceId":   wId1,
+				"filename":      "sample.png",
+				"contentLength": 12345,
+			},
+		},
+	}
+	jsonData, err := json.Marshal(req)
+	assert.NoError(t, err)
+
+	o := e.POST("/api/graphql").
+		WithHeader("authorization", "Bearer test").
+		WithHeader("Content-Type", "application/json").
+		WithHeader("X-Reearth-Debug-User", uId1.String()).
+		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
+
+	res := o.Value("data").Object().Value("createAssetUpload").Object()
+	res.Value("token").String().NotEmpty()
+	res.Value("url").String().NotEmpty()
+	res.Value("contentType").String().IsEqual("image/png")
+	res.Value("contentLength").Number().IsEqual(12345)
+	res.Value("contentEncoding").IsNull()
+	res.Value("next").IsNull()
+}

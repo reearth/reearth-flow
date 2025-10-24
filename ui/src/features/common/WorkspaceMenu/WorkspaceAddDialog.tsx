@@ -48,7 +48,7 @@ const WorkspaceAddDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
     setShowError(false);
     onOpenChange(false);
 
-    navigate({ to: `/workspaces/${workspace.id}` });
+    navigate({ to: `/workspaces/${workspace.id}/projects` });
   }, [name, currentWorkspace, navigate, createWorkspace, onOpenChange]);
 
   return (
