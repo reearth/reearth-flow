@@ -111,8 +111,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         };
         let (node_handles, receivers) = dag.collect_receivers(node_index);
 
-        // Collect edge_id and is_reader in the same order as node_handles
-        // Build a map: from_handle_id -> (edge_id, is_reader)
+        // Collect (edge_id, is_reader) for each upstream handle.
         let mut meta_map: HashMap<String, (EdgeId, bool)> = HashMap::new();
         for e in dag.graph().edges_directed(node_index, Direction::Incoming) {
             let src = e.source();
@@ -121,18 +120,30 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             let is_reader = dag.graph()[src].is_source;
             meta_map.insert(from_handle.id.to_string(), (w.edge_id.clone(), is_reader));
         }
-        // Reorder according to node_handles (keeps 1:1 with receivers)
+
+        // Keep order aligned with node_handles (== receivers) so index i maps across all vectors.
         let mut incoming_edge_ids = Vec::with_capacity(node_handles.len());
         let mut incoming_is_reader = Vec::with_capacity(node_handles.len());
+        let mut missing_handles: Vec<String> = Vec::new();
+
         for h in &node_handles {
             if let Some((eid, is_r)) = meta_map.get(&h.id.to_string()) {
                 incoming_edge_ids.push(eid.clone());
                 incoming_is_reader.push(*is_r);
             } else {
-                // If unmatched, use dummy edge_id (should not happen normally)
-                incoming_edge_ids.push(EdgeId::new(Uuid::new_v4()));
+                // No metadata for this upstream; skip ingress capture for this channel.
+                incoming_edge_ids.push(EdgeId::new(Uuid::nil()));
                 incoming_is_reader.push(false);
+                missing_handles.push(h.id.to_string());
             }
+        }
+
+        if !missing_handles.is_empty() {
+            tracing::warn!(
+                "Some upstream handles had no edge metadata; ingress capture will be skipped for those channels. node_id={} missing={:?}",
+                node_handle.id,
+                missing_handles
+            );
         }
 
         let senders = dag.collect_senders(node_index);
