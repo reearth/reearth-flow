@@ -101,7 +101,7 @@ const CanvasContextMenu: React.FC<Props> = ({
           toDelete.map((node) => ({ id: node.id, type: "remove" as const })),
         );
 
-        // If no nodes we are not selecting via React Flow and only right clicking on a node, so we need to manually delete the related edges.
+        // If no nodes are selected via React Flow and we are only right clicking on a node, we need to manually delete the related edges.
         if (!nodes) {
           const relatedEdges = allEdges.filter((edge) => {
             return toDelete.some(
@@ -109,9 +109,14 @@ const CanvasContextMenu: React.FC<Props> = ({
             );
           });
 
-          relatedEdges.forEach((relatedEdge) => {
-            onEdgesChange?.([{ id: relatedEdge.id, type: "remove" as const }]);
-          });
+          if (relatedEdges.length > 0) {
+            onEdgesChange?.(
+              relatedEdges.map((relatedEdge) => ({
+                id: relatedEdge.id,
+                type: "remove" as const,
+              })),
+            );
+          }
         }
 
         selectedEdgeIds?.forEach((edgeId) => {
