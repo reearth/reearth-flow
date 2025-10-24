@@ -402,6 +402,12 @@ export default ({
             parentWorkflowNodesMap?.delete(nodeId);
           });
 
+          // Delete internal edges that are moving to the subworkflow
+          internalEdges.forEach((edge) => {
+            parentWorkflowEdgesMap?.delete(edge.id);
+          });
+
+          // Delete boundary edges that are being replaced with router connections
           boundaryEdges.forEach((edge) => {
             parentWorkflowEdgesMap?.delete(edge.id);
           });
