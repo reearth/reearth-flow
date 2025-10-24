@@ -328,6 +328,7 @@ pub(super) fn make_tile(
 
         // encode geometry
         let mut geom_enc = GeometryEncoder::new();
+        let has_polygons = !int_mpoly.is_empty();
         for poly in &int_mpoly {
             let exterior = poly.exterior();
             if exterior.signed_ring_area() > 0.0 {
@@ -340,9 +341,9 @@ pub(super) fn make_tile(
             }
         }
 
+        let has_linestrings = !int_line_string.is_empty();
         for line_string in &int_line_string {
-            let area = line_string.signed_ring_area();
-            if area as i32 != 0 {
+            if line_string.len() >= 2 {
                 geom_enc.add_linestring(&line_string);
             }
         }
@@ -361,12 +362,28 @@ pub(super) fn make_tile(
             layer
         };
 
-        layer.features.push(vector_tile::tile::Feature {
-            id: None,
-            tags: layer.tags_enc.take_tags(),
-            r#type: Some(vector_tile::tile::GeomType::Polygon as i32),
-            geometry,
-        });
+        // Currently tile::Feature only supports one geometry type per feature.
+        // When both polygon and linestring are present, mark as polygon and report a warning.
+        if has_polygons {
+            if has_linestrings {
+                tracing::warn!("Feature has mixed geometry types, defaulting to polygons.");
+            }
+            layer.features.push(vector_tile::tile::Feature {
+                id: None,
+                tags: layer.tags_enc.take_tags(),
+                r#type: Some(vector_tile::tile::GeomType::Polygon as i32),
+                geometry,
+            });
+        } else if has_linestrings {
+            layer.features.push(vector_tile::tile::Feature {
+                id: None,
+                tags: layer.tags_enc.take_tags(),
+                r#type: Some(vector_tile::tile::GeomType::Linestring as i32),
+                geometry,
+            });
+        } else {
+            tracing::warn!("Feature has unknown geometry type, skipping.");
+        }
     }
 
     let layers = layers

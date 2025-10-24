@@ -340,8 +340,8 @@ fn slice_line_string(
 
         // todo?: check interior bbox to optimize
 
-        line_string
-            .iter_closed()
+        let last_coord = line_string
+            .iter()
             .fold(None, |a, b| {
                 let Some(a) = a else { return Some(b) };
 
@@ -370,6 +370,12 @@ fn slice_line_string(
                 Some(b)
             })
             .unwrap();
+
+        // Process the last coordinate that wasn't handled in the fold
+        if last_coord[1] >= k1 && last_coord[1] <= k2 {
+            y_sliced_line_string.push(last_coord);
+        }
+
         y_sliced_line_strings.push(y_sliced_line_string);
     }
 
@@ -399,8 +405,8 @@ fn slice_line_string(
                 typename.to_string(),
             );
             new_ring_buffer.clear();
-            y_sliced_line_string
-                .iter_closed()
+            let last_coord = y_sliced_line_string
+                .iter()
                 .fold(None, |a, b| {
                     let Some(a) = a else { return Some(b) };
 
@@ -430,6 +436,11 @@ fn slice_line_string(
                 })
                 .unwrap();
 
+            // Process the last coordinate that wasn't handled in the fold
+            if last_coord[0] >= k1 && last_coord[0] <= k2 {
+                new_ring_buffer.push(last_coord);
+            }
+
             // get integer coordinates and simplify the ring
             {
                 norm_coords_buf.clear();
@@ -446,13 +457,13 @@ fn slice_line_string(
                     norm_coords_buf.pop();
                 }
 
-                if norm_coords_buf.len() < 3 {
+                // linestrings must have at least two points
+                if norm_coords_buf.len() < 2 {
                     continue;
                 }
             }
 
-            let mut ring = LineString2::from_raw(norm_coords_buf.clone().into());
-            ring.reverse_inplace();
+            let ring = LineString2::from_raw(norm_coords_buf.clone().into());
             let mline_string = out.entry(key).or_default();
             mline_string.add_linestring(ring.iter());
         }
