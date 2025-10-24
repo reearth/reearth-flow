@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::env;
 use std::fmt::Debug;
 use std::sync::atomic::{AtomicU32, AtomicU64};
@@ -8,17 +9,19 @@ use std::{borrow::Cow, mem::swap};
 use crossbeam::channel::Receiver;
 use futures::Future;
 use once_cell::sync::Lazy;
-use petgraph::graph::NodeIndex;
+use petgraph::{graph::NodeIndex, visit::EdgeRef, Direction};
 use reearth_flow_eval_expr::engine::Engine;
+use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::runtime::Handle;
 use tracing::{info_span, Span};
+use uuid::Uuid;
 
 use crate::event::{Event, EventHub};
 use crate::executor_operation::{ExecutorContext, ExecutorOperation, NodeContext};
 use crate::forwarder::ProcessorChannelForwarder;
 use crate::kvs::KvStore;
-use crate::node::NodeStatus;
+use crate::node::{EdgeId, NodeStatus};
 use crate::{
     builder_dag::NodeKind,
     errors::ExecutionError,
@@ -45,6 +48,13 @@ static SLOW_ACTION_THRESHOLD: Lazy<Duration> = Lazy::new(|| {
         .unwrap_or(Duration::from_millis(1000))
 });
 
+static PERSIST_INGRESS_DATA: Lazy<bool> = Lazy::new(|| {
+    env::var("FLOW_RUNTIME_PERSIST_INGRESS_DATA")
+        .ok()
+        .map(|s| s.to_lowercase() == "true")
+        .unwrap_or(false)
+});
+
 /// A processor in the execution DAG.
 #[derive(Debug)]
 pub struct ProcessorNode<F> {
@@ -54,6 +64,10 @@ pub struct ProcessorNode<F> {
     node_name: String,
     /// Input node handles.
     node_handles: Vec<NodeHandle>,
+    /// Incoming edge IDs (1:1 with receivers)
+    incoming_edge_ids: Vec<EdgeId>,
+    /// Whether the upstream is a Reader/Source.
+    incoming_is_reader: Vec<bool>,
     /// Input data channels.
     receivers: Vec<Receiver<ExecutorOperation>>,
     /// The processor.
@@ -74,6 +88,8 @@ pub struct ProcessorNode<F> {
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
     event_hub: EventHub,
+    ingress_state: Arc<State>,
+    persist_ingress_data: bool,
 }
 
 impl<F: Future + Unpin + Debug> ProcessorNode<F> {
@@ -94,6 +110,30 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             panic!("Must pass in a processor node");
         };
         let (node_handles, receivers) = dag.collect_receivers(node_index);
+
+        // Collect edge_id and is_reader in the same order as node_handles
+        // Build a map: from_handle_id -> (edge_id, is_reader)
+        let mut meta_map: HashMap<String, (EdgeId, bool)> = HashMap::new();
+        for e in dag.graph().edges_directed(node_index, Direction::Incoming) {
+            let src = e.source();
+            let w = e.weight();
+            let from_handle = &dag.graph()[src].handle;
+            let is_reader = dag.graph()[src].is_source;
+            meta_map.insert(from_handle.id.to_string(), (w.edge_id.clone(), is_reader));
+        }
+        // Reorder according to node_handles (keeps 1:1 with receivers)
+        let mut incoming_edge_ids = Vec::with_capacity(node_handles.len());
+        let mut incoming_is_reader = Vec::with_capacity(node_handles.len());
+        for h in &node_handles {
+            if let Some((eid, is_r)) = meta_map.get(&h.id.to_string()) {
+                incoming_edge_ids.push(eid.clone());
+                incoming_is_reader.push(*is_r);
+            } else {
+                // If unmatched, use dummy edge_id (should not happen normally)
+                incoming_edge_ids.push(EdgeId::new(Uuid::new_v4()));
+                incoming_is_reader.push(false);
+            }
+        }
 
         let senders = dag.collect_senders(node_index);
         let record_writers = dag.collect_record_writers(node_index).await;
@@ -120,10 +160,32 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let kv_store = Arc::clone(&ctx.kv_store);
         let num_threads = processor.num_threads();
+        let persist_ingress_data = *PERSIST_INGRESS_DATA;
+
+        if persist_ingress_data {
+            let targets: Vec<String> = incoming_edge_ids
+                .iter()
+                .zip(&incoming_is_reader)
+                .filter_map(|(eid, is_r)| if *is_r { Some(eid.to_string()) } else { None })
+                .collect();
+            tracing::debug!(
+                "ingress-config: node_id={} persist_ingress_data=true target_edge_ids={:?}",
+                node_handle.id,
+                targets
+            );
+        } else {
+            tracing::debug!(
+                "ingress-config: node_id={} persist_ingress_data=false",
+                node_handle.id
+            );
+        }
+
         Self {
             node_handle,
             node_name,
             node_handles,
+            incoming_edge_ids,
+            incoming_is_reader,
             receivers,
             processor: Arc::new(parking_lot::RwLock::new(processor)),
             channel_manager: Arc::new(parking_lot::RwLock::new(channel_manager)),
@@ -140,6 +202,8 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             storage_resolver,
             kv_store,
             event_hub: dag.event_hub().clone(),
+            ingress_state: Arc::clone(dag.ingress_state()),
+            persist_ingress_data,
         }
     }
 
@@ -277,6 +341,24 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                 .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{e:?}")))?;
             match op {
                 ExecutorOperation::Op { ctx } => {
+                    // Save incoming feature data (Reader → this Processor) into ingress-store
+                    if self.persist_ingress_data && self.incoming_is_reader[index] {
+                        let file_id = self.incoming_edge_ids[index].to_string();
+                        if let Err(e) = self.ingress_state.append_sync(&ctx.feature, &file_id) {
+                            tracing::warn!(
+                                "ingress-append failed: edge_id={} err={:?}",
+                                file_id,
+                                e
+                            );
+                        } else {
+                            tracing::debug!(
+                                "ingress-append: edge_id={} feature_id={}",
+                                file_id,
+                                ctx.feature.id
+                            );
+                        }
+                    }
+
                     let has_failed_clone = has_failed.clone();
                     self.on_op_with_failure_tracking(ctx, has_failed_clone)?;
                 }
