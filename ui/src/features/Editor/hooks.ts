@@ -71,7 +71,7 @@ export default ({
     rawWorkflows,
     currentYWorkflow,
     handleYWorkflowAdd,
-    // handleYWorkflowAddFromSelection,
+    handleYWorkflowAddFromSelection,
     handleYWorkflowUpdate,
     handleYNodesAdd,
     handleYNodesChange,
@@ -305,7 +305,11 @@ export default ({
 
       switch (handler.keys?.join("")) {
         case "s":
-          if (hasModifier && !isSaving) handleProjectSnapshotSave?.();
+          if (hasModifier && !isSaving && !hasShift)
+            handleProjectSnapshotSave?.();
+          if (hasModifier && hasShift)
+            handleYWorkflowAddFromSelection(nodes, edges);
+
           break;
         case "z":
           if (hasModifier && hasShift) handleYWorkflowRedo?.();
@@ -399,6 +403,7 @@ export default ({
     handleWorkflowChange: handleCurrentWorkflowIdChange,
     handleWorkflowRedo: handleYWorkflowRedo,
     handleWorkflowUndo: handleYWorkflowUndo,
+    handleWorkflowAddFromSelection: handleYWorkflowAddFromSelection,
     handleWorkflowRename,
     handleWorkflowOpen,
     handleWorkflowClose,
