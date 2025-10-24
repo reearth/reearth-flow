@@ -65,7 +65,8 @@ impl Orchestrator {
         factories: HashMap<String, NodeKind>,
         shutdown: ShutdownReceiver,
         storage_resolver: Arc<StorageResolver>,
-        state: Arc<State>,
+        ingress_state: Arc<State>,
+        feature_state: Arc<State>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
     ) -> Result<(), Error> {
         let executor = Executor {};
@@ -101,7 +102,8 @@ impl Orchestrator {
                 &runtime_clone,
                 dag_executor,
                 shutdown_clone,
-                state,
+                ingress_state,
+                feature_state,
                 event_handlers,
             )
         });
@@ -122,7 +124,8 @@ impl Orchestrator {
         factories: HashMap<String, NodeKind>,
         shutdown: ShutdownReceiver,
         storage_resolver: Arc<StorageResolver>,
-        state: Arc<State>,
+        ingress_state: Arc<State>,
+        feature_state: Arc<State>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
     ) -> Result<(), Error> {
         let pipeline_shutdown = shutdown.clone();
@@ -131,7 +134,8 @@ impl Orchestrator {
             factories,
             pipeline_shutdown,
             storage_resolver,
-            state,
+            ingress_state,
+            feature_state,
             event_handlers,
         )
         .await

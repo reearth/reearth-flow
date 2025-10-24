@@ -58,7 +58,10 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<TempDir
     let binding = tempdir().unwrap();
     let folder_path = binding.path();
     std::fs::create_dir_all(folder_path).unwrap();
-    let state = Arc::new(State::new(&Uri::for_test("ram:///state/"), &storage_resolver).unwrap());
+    let ingress_state =
+        Arc::new(State::new(&Uri::for_test("ram:///ingress/"), &storage_resolver).unwrap());
+    let feature_state =
+        Arc::new(State::new(&Uri::for_test("ram:///state/"), &storage_resolver).unwrap());
     let logger_factory = Arc::new(LoggerFactory::new(
         reearth_flow_action_log::ActionLogger::root(
             reearth_flow_action_log::Discard,
@@ -83,7 +86,8 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<TempDir
         BUILTIN_ACTION_FACTORIES.clone(),
         logger_factory,
         storage_resolver,
-        state,
+        ingress_state,
+        feature_state,
     )
     .unwrap();
     Ok(binding)
