@@ -19,12 +19,13 @@ import {
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { Node, NodeChange } from "@flow/types";
+import { Node, Edge, NodeChange } from "@flow/types";
 
 type Props = {
   contextMenu: ContextMenuMeta;
   data?: Node | Node[];
   allNodes: Node[];
+  allEdges: Edge[];
   selectedEdgeIds?: string[];
   onNodesChange?: (changes: NodeChange[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
@@ -42,6 +43,7 @@ const CanvasContextMenu: React.FC<Props> = ({
   contextMenu,
   data,
   allNodes,
+  allEdges,
   onWorkflowOpen,
   onNodeSettings,
   selectedEdgeIds,
@@ -99,12 +101,25 @@ const CanvasContextMenu: React.FC<Props> = ({
           toDelete.map((node) => ({ id: node.id, type: "remove" as const })),
         );
 
+        // If no nodes we are not selecting via React Flow and only right clicking on a node, so we need to manually delete the related edges.
+        if (!nodes) {
+          const relatedEdges = allEdges.filter((edge) => {
+            return toDelete.some(
+              (node) => node.id === edge.source || node.id === edge.target,
+            );
+          });
+
+          relatedEdges.forEach((relatedEdge) => {
+            onEdgesChange?.([{ id: relatedEdge.id, type: "remove" as const }]);
+          });
+        }
+
         selectedEdgeIds?.forEach((edgeId) => {
           onEdgesChange?.([{ id: edgeId, type: "remove" as const }]);
         });
       }
     },
-    [selectedEdgeIds, onBeforeDelete, onNodesChange, onEdgesChange],
+    [selectedEdgeIds, allEdges, onBeforeDelete, onNodesChange, onEdgesChange],
   );
 
   const menuItems = useMemo(() => {

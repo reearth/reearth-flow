@@ -163,6 +163,7 @@ const Canvas: React.FC<Props> = ({
         <CanvasContextMenu
           data={contextMenu.data}
           allNodes={nodes}
+          allEdges={edges}
           selectedEdgeIds={selectedEdgeIds}
           contextMenu={contextMenu}
           onBeforeDelete={onBeforeDelete}
