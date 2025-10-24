@@ -6231,6 +6231,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "rayon",
+ "regex",
  "serde",
  "serde_json",
  "serde_yaml",

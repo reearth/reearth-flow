@@ -27,6 +27,7 @@ libxml.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
 rayon.workspace = true
+regex.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
