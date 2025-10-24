@@ -102,6 +102,7 @@ impl Processor for AttributeFlattener {
             ))
             .into());
         };
+
         let mut new_city_gml_attribute = HashMap::new();
         if let Some(flatten_attributes) =
             super::constants::FLATTEN_ATTRIBUTES.get("bldg/bldg:Building")
