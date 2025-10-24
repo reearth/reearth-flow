@@ -362,20 +362,28 @@ pub(super) fn make_tile(
             layer
         };
 
-        // Determine geometry type based on what's present
-        let geom_type = if has_polygons {
-            vector_tile::tile::GeomType::Polygon
+        // Currently tile::Feature only supports one geometry type per feature.
+        // When both polygon and linestring are present, mark as polygon and report a warning.
+        if has_polygons {
+            if has_linestrings {
+                tracing::warn!("Feature has mixed geometry types, defaulting to polygons.");
+            }
+            layer.features.push(vector_tile::tile::Feature {
+                id: None,
+                tags: layer.tags_enc.take_tags(),
+                r#type: Some(vector_tile::tile::GeomType::Polygon as i32),
+                geometry,
+            });
         } else if has_linestrings {
-            vector_tile::tile::GeomType::Linestring
+            layer.features.push(vector_tile::tile::Feature {
+                id: None,
+                tags: layer.tags_enc.take_tags(),
+                r#type: Some(vector_tile::tile::GeomType::Linestring as i32),
+                geometry,
+            });
         } else {
-            vector_tile::tile::GeomType::Unknown
-        };
-        layer.features.push(vector_tile::tile::Feature {
-            id: None,
-            tags: layer.tags_enc.take_tags(),
-            r#type: Some(geom_type as i32),
-            geometry,
-        });
+            tracing::warn!("Feature has unknown geometry type, skipping.");
+        }
     }
 
     let layers = layers
