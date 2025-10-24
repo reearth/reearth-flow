@@ -57,17 +57,52 @@ pub fn expand_yaml_includes(yaml_content: &str, base_path: Option<&Path>) -> cra
 
             // Find the indentation of the line containing !include
             let line_start = expanded[..match_start].rfind('\n').map(|i| i + 1).unwrap_or(0);
-            let indent = &expanded[line_start..match_start];
-            let base_indent = indent.chars().take_while(|c| c.is_whitespace()).count();
+            let line_before_include = &expanded[line_start..match_start];
+            let base_indent = line_before_include.chars().take_while(|c| c.is_whitespace()).count();
 
-            // Format the content as a YAML literal block scalar with proper indentation
-            // The '|-' chomps the final newline, and content is indented relative to the key
-            let formatted_content = format!("|-\n{}",
+            // Determine if this is a scalar value context (key: !include) or object/array context (- !include)
+            let is_scalar_context = line_before_include.trim_start().contains(':');
+            let is_array_item = line_before_include.trim_start().starts_with('-');
+
+            let formatted_content = if is_scalar_context && !is_array_item {
+                // Scalar context: format as YAML literal block scalar
+                // The '|-' chomps the final newline, and content is indented relative to the key
+                format!("|-\n{}",
+                    included_content.trim().lines()
+                        .map(|line| format!("{}{}", " ".repeat(base_indent + 2), line))
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                )
+            } else if is_array_item {
+                // Array item context (- !include): first line continues after dash, rest indented
+                let lines: Vec<&str> = included_content.trim().lines().collect();
+                if lines.is_empty() {
+                    String::new()
+                } else {
+                    let mut result = lines[0].to_string(); // First line: no extra indent
+                    for line in &lines[1..] {
+                        if line.trim().is_empty() {
+                            result.push('\n');
+                        } else {
+                            // Subsequent lines: indent to align with first line content (base + 2 for "- ")
+                            result.push_str(&format!("\n{}{}", " ".repeat(base_indent + 2), line));
+                        }
+                    }
+                    result
+                }
+            } else {
+                // Object context: insert raw YAML with proper indentation
                 included_content.trim().lines()
-                    .map(|line| format!("{}{}", " ".repeat(base_indent + 2), line))
+                    .map(|line| {
+                        if line.trim().is_empty() {
+                            String::new()
+                        } else {
+                            format!("{}{}", " ".repeat(base_indent), line)
+                        }
+                    })
                     .collect::<Vec<_>>()
                     .join("\n")
-            );
+            };
 
             new_content.push_str(&formatted_content);
             last_end = match_end;
