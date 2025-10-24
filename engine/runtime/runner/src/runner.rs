@@ -47,6 +47,7 @@ impl Runner {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn run_with_event_handler(
         job_id: uuid::Uuid,
         workflow: Workflow,
@@ -138,6 +139,7 @@ impl AsyncRunner {
         .await
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn run_with_event_handler(
         job_id: uuid::Uuid,
         workflow: Workflow,
