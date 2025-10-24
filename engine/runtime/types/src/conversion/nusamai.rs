@@ -60,7 +60,7 @@ impl TryFrom<Entity> for Geometry {
                             linestring
                                 .iter()
                                 .map(|a| Coordinate3D::new__(a[0], a[1], a[2]))
-                                .collect()
+                                .collect(),
                         );
                     }
                     let mut geometry_feature = GmlGeometry::from(geometry.clone());

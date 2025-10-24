@@ -176,9 +176,9 @@ impl Processor for FeatureCityGmlReader {
                 // error return should be delayed until all threads are safely joined
                 Ok(result) => {
                     if let Err(ref err) = result {
-                        errors.push(format!("Worker thread {i} error: {:?}", err));
+                        errors.push(format!("Worker thread {i} error: {err:?}"));
                     }
-                },
+                }
                 Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
                     errors.push(format!("Worker thread {i} timed out after {timeout:?}"));
                 }
