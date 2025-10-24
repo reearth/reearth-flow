@@ -53,12 +53,16 @@ graphs:
         with:
           filterKey: path
 
-      - id: 2ccf7b99-4123-446e-8ff7-049be1c604c7
-        name: FeatureDuplicateFilter
+      - id: 8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+        name: FeatureTypeFilterTrafficArea
         type: action
-        action: FeatureDuplicateFilter
+        action: FeatureTypeFilter
+        with:
+          targetTypes:
+            - "tran:TrafficArea"
+            - "tran:AuxiliaryTrafficArea"
 
-      - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+      - id: 2ccf7b99-4123-446e-8ff7-049be1c604c7
         name: AttributeMapperByLod0-2
         type: action
         action: AttributeMapper
@@ -129,16 +133,16 @@ graphs:
         toPort: default
       - id: 7303c673-ccf3-4075-9eec-97176ced4b86
         from: c32a279d-97be-4584-b282-4d65627b1132
-        to: 2ccf7b99-4123-446e-8ff7-049be1c604c7
+        to: 8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
         fromPort: up_to_lod2
+        toPort: default
+      - id: 9a8b7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d
+        from: 8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+        to: 2ccf7b99-4123-446e-8ff7-049be1c604c7
+        fromPort: default
         toPort: default
       - id: 841f1bed-a4d3-4425-a754-4f0dd7461ead
         from: 2ccf7b99-4123-446e-8ff7-049be1c604c7
-        to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
-        fromPort: default
-        toPort: default
-      - id: bef08313-519f-48b5-b74c-6744bbc6bee2
-        from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         to: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
         fromPort: default
         toPort: default
