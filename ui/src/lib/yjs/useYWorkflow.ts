@@ -53,6 +53,7 @@ export default ({
       routers: { inputRouter: Action; outputRouter: Action },
       initialNodes?: Node[],
       initialEdges?: Edge[],
+      needsDefaultRouters?: boolean,
     ) => {
       const { inputRouter, outputRouter } = routers;
 
@@ -86,9 +87,9 @@ export default ({
         },
       };
 
-      const workflowNodes = [
-        ...(initialNodes ?? [newInputNode, newOutputNode]),
-      ];
+      const workflowNodes = needsDefaultRouters
+        ? [newInputNode, ...(initialNodes ?? []), newOutputNode]
+        : [...(initialNodes ?? [newInputNode, newOutputNode])];
       const newYWorkflow = yWorkflowConstructor(
         workflowId,
         workflowName,
@@ -371,6 +372,8 @@ export default ({
             externalEdges.push(info.externalEdge);
           });
 
+          const needsDefaultRouters = boundaryEdges.length === 0;
+
           const allSubworkflowNodes = [
             ...adjustedNodes,
             ...additionalRouterNodes,
@@ -388,6 +391,7 @@ export default ({
             routers,
             allSubworkflowNodes,
             allSubworkflowEdges,
+            needsDefaultRouters,
           );
 
           const parentWorkflow = currentYWorkflow;
