@@ -13,7 +13,6 @@ type Deployment implements Node {
   workspaceId: ID!
 }
 
-# Enums
 
 enum DeploymentSortField {
   VERSION

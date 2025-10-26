@@ -76,6 +76,27 @@ func (r *Job) FindByWorkspace(ctx context.Context, workspace id.WorkspaceID, pag
 		},
 	}
 
+	if keyword != nil && *keyword != "" {
+		filter = bson.M{
+			"workspaceid": workspace.String(),
+			"$and": []bson.M{
+				{
+					"$or": []bson.M{
+						{"debug": false},
+						{"debug": nil},
+						{"debug": bson.M{"$exists": false}},
+					},
+				},
+				{
+					"$or": []bson.M{
+						{"id": bson.M{"$regex": *keyword, "$options": "i"}},
+						{"status": bson.M{"$regex": *keyword, "$options": "i"}},
+					},
+				},
+			},
+		}
+	}
+
 	total, err := r.client.Count(ctx, filter)
 	if err != nil {
 		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)

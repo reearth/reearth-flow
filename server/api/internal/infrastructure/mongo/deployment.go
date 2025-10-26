@@ -84,6 +84,14 @@ func (r *DeploymentAdapter) FindByWorkspace(ctx context.Context, id id.Workspace
 	c := mongodoc.NewDeploymentConsumer(r.f.Readable)
 	filter := bson.M{"workspaceid": id.String()}
 
+	if keyword != nil && *keyword != "" {
+		filter["$or"] = []bson.M{
+			{"description": bson.M{"$regex": *keyword, "$options": "i"}},
+			{"version": bson.M{"$regex": *keyword, "$options": "i"}},
+			{"id": bson.M{"$regex": *keyword, "$options": "i"}},
+		}
+	}
+
 	if pagination != nil && pagination.Page != nil {
 		skip := int64((pagination.Page.Page - 1) * pagination.Page.PageSize)
 		limit := int64(pagination.Page.PageSize)
