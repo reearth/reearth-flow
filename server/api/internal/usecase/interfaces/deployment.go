@@ -28,9 +28,10 @@ type ExecuteDeploymentParam struct {
 }
 
 var (
-	ErrDeploymentNotFound error = errors.New("deployment not found")
-	ErrJobCreationFailed  error = errors.New("failed to create job for deployment")
-	ErrInvalidPagination  error = errors.New("invalid pagination parameters")
+	ErrDeploymentNotFound    error = errors.New("deployment not found")
+	ErrJobCreationFailed     error = errors.New("failed to create job for deployment")
+	ErrInvalidPagination     error = errors.New("invalid pagination parameters")
+	ErrDeploymentHasTriggers error = errors.New("deployment has active triggers and cannot be deleted")
 )
 
 type Deployment interface {

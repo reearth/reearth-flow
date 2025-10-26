@@ -143,6 +143,19 @@ func (r *Trigger) FindByIDs(ctx context.Context, ids id.TriggerIDList) ([]*trigg
 	return result, nil
 }
 
+func (r *Trigger) FindByDeployment(ctx context.Context, deploymentID id.DeploymentID) ([]*trigger.Trigger, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	result := make([]*trigger.Trigger, 0)
+	for _, t := range r.data {
+		if t.Deployment() == deploymentID && r.f.CanRead(t.Workspace()) {
+			result = append(result, t)
+		}
+	}
+	return result, nil
+}
+
 func (r *Trigger) Save(ctx context.Context, t *trigger.Trigger) error {
 	if !r.f.CanWrite(t.Workspace()) {
 		return repo.ErrOperationDenied

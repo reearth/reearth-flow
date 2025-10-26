@@ -13,6 +13,7 @@ type Trigger interface {
 	FindByID(context.Context, id.TriggerID) (*trigger.Trigger, error)
 	FindByIDs(context.Context, id.TriggerIDList) ([]*trigger.Trigger, error)
 	FindByWorkspace(context.Context, id.WorkspaceID, *interfaces.PaginationParam, *string) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error)
+	FindByDeployment(context.Context, id.DeploymentID) ([]*trigger.Trigger, error)
 	Remove(context.Context, id.TriggerID) error
 	Save(context.Context, *trigger.Trigger) error
 }
