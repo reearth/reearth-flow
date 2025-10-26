@@ -5,7 +5,6 @@ type Workspace implements Node {
   name: String!
   personal: Boolean!
   projects(
-    includeArchived: Boolean
     pagination: Pagination
   ): ProjectConnection!
 }

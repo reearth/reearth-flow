@@ -27,6 +27,13 @@ enum TimeInterval {
     EVERY_WEEK
 }
 
+enum TriggerSortField {
+    DESCRIPTION
+    CREATED_AT
+    UPDATED_AT
+    LAST_TRIGGERED
+}
+
 # InputType
 
 input TimeDriverInput {

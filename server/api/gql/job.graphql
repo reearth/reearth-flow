@@ -23,6 +23,12 @@ enum JobStatus {
   RUNNING
 }
 
+enum JobSortField {
+  STARTED_AT
+  COMPLETED_AT
+  STATUS
+}
+
 # InputType
 input CancelJobInput {
   jobId: ID!
