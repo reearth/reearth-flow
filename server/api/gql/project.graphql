@@ -80,6 +80,7 @@ type ProjectConnection {
 extend type Query {
   projects(
     workspaceId: ID!
+    includeArchived: Boolean
     keyword: String
     pagination: PageBasedPagination!
   ): ProjectConnection!

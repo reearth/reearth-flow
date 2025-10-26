@@ -127,8 +127,8 @@ func (r *queryResolver) NodeExecution(ctx context.Context, jobID gqlmodel.ID, no
 	return loaders(ctx).Node.FindByJobNodeID(ctx, jobID, nodeID)
 }
 
-func (r *queryResolver) Projects(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error) {
-	return loaders(ctx).Project.FindByWorkspacePage(ctx, workspaceID, keyword, pagination)
+func (r *queryResolver) Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error) {
+	return loaders(ctx).Project.FindByWorkspacePage(ctx, workspaceID, keyword, includeArchived, pagination)
 }
 
 func (r *queryResolver) SearchUser(ctx context.Context, nameOrEmail string) (*gqlmodel.User, error) {

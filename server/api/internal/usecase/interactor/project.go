@@ -56,12 +56,12 @@ func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID) ([]*project.Pro
 	return i.projectRepo.FindByIDs(ctx, ids)
 }
 
-func (i *Project) FindByWorkspace(ctx context.Context, id id.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string) ([]*project.Project, *interfaces.PageBasedInfo, error) {
+func (i *Project) FindByWorkspace(ctx context.Context, id id.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string, includeArchived *bool) ([]*project.Project, *interfaces.PageBasedInfo, error) {
 	if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
 		return nil, nil, err
 	}
 
-	return i.projectRepo.FindByWorkspace(ctx, id, pagination, keyword)
+	return i.projectRepo.FindByWorkspace(ctx, id, pagination, keyword, includeArchived)
 }
 
 func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam) (_ *project.Project, err error) {

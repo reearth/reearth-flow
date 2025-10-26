@@ -27,9 +27,9 @@ func (r *workspaceResolver) AssetsPage(ctx context.Context, obj *gqlmodel.Worksp
 	return loaders(ctx).Asset.FindByWorkspace(ctx, obj.ID, nil, nil, &pagination)
 }
 
-func (r *workspaceResolver) Projects(ctx context.Context, obj *gqlmodel.Workspace, pagination *gqlmodel.Pagination) (*gqlmodel.ProjectConnection, error) {
+func (r *workspaceResolver) Projects(ctx context.Context, obj *gqlmodel.Workspace, includeArchived *bool, pagination *gqlmodel.Pagination) (*gqlmodel.ProjectConnection, error) {
 	if pagination != nil && pagination.Page != nil && pagination.PageSize != nil {
-		return loaders(ctx).Project.FindByWorkspacePage(ctx, obj.ID, nil, gqlmodel.PageBasedPagination{
+		return loaders(ctx).Project.FindByWorkspacePage(ctx, obj.ID, nil, includeArchived, gqlmodel.PageBasedPagination{
 			Page:     *pagination.Page,
 			PageSize: *pagination.PageSize,
 			OrderBy:  pagination.OrderBy,
@@ -39,8 +39,8 @@ func (r *workspaceResolver) Projects(ctx context.Context, obj *gqlmodel.Workspac
 	return nil, nil
 }
 
-func (r *workspaceResolver) ProjectsPage(ctx context.Context, obj *gqlmodel.Workspace, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error) {
-	return loaders(ctx).Project.FindByWorkspacePage(ctx, obj.ID, nil, pagination)
+func (r *workspaceResolver) ProjectsPage(ctx context.Context, obj *gqlmodel.Workspace, includeArchived *bool, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error) {
+	return loaders(ctx).Project.FindByWorkspacePage(ctx, obj.ID, nil, includeArchived, pagination)
 }
 
 func (r *workspaceResolver) Deployments(ctx context.Context, obj *gqlmodel.Workspace, pagination *gqlmodel.Pagination) (*gqlmodel.DeploymentConnection, error) {

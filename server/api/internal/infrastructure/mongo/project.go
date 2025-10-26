@@ -68,13 +68,17 @@ func (r *Project) FindByIDs(ctx context.Context, ids id.ProjectIDList) ([]*proje
 	return filterProjects(ids, res), nil
 }
 
-func (r *Project) FindByWorkspace(ctx context.Context, id id.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string) ([]*project.Project, *interfaces.PageBasedInfo, error) {
+func (r *Project) FindByWorkspace(ctx context.Context, id id.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string, includeArchived *bool) ([]*project.Project, *interfaces.PageBasedInfo, error) {
 	if !r.f.CanRead(id) {
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
 	c := mongodoc.NewProjectConsumer(r.f.Readable)
 	filter := bson.M{"workspace": id.String()}
+
+	if includeArchived == nil || !*includeArchived {
+		filter = mongox.And(filter, "archived", bson.M{"$ne": true}).(bson.M)
+	}
 
 	if keyword != nil && *keyword != "" {
 		re := primitive.Regex{Pattern: fmt.Sprintf(".*%s.*", regexp.QuoteMeta(*keyword)), Options: "i"}

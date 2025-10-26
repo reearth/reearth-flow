@@ -434,7 +434,7 @@ type ComplexityRoot struct {
 		ProjectHistory        func(childComplexity int, projectID gqlmodel.ID) int
 		ProjectSharingInfo    func(childComplexity int, projectID gqlmodel.ID) int
 		ProjectSnapshot       func(childComplexity int, projectID gqlmodel.ID, version int) int
-		Projects              func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) int
+		Projects              func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, pagination gqlmodel.PageBasedPagination) int
 		SearchUser            func(childComplexity int, nameOrEmail string) int
 		SharedProject         func(childComplexity int, token string) int
 		Triggers              func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) int
@@ -541,7 +541,7 @@ type ComplexityRoot struct {
 		Members  func(childComplexity int) int
 		Name     func(childComplexity int) int
 		Personal func(childComplexity int) int
-		Projects func(childComplexity int, pagination *gqlmodel.Pagination) int
+		Projects func(childComplexity int, includeArchived *bool, pagination *gqlmodel.Pagination) int
 	}
 
 	WorkspaceMember struct {
@@ -642,7 +642,7 @@ type QueryResolver interface {
 	Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error)
 	NodeExecution(ctx context.Context, jobID gqlmodel.ID, nodeID string) (*gqlmodel.NodeExecution, error)
 	Parameters(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.Parameter, error)
-	Projects(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error)
+	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error)
 	SharedProject(ctx context.Context, token string) (*gqlmodel.SharedProjectPayload, error)
 	ProjectSharingInfo(ctx context.Context, projectID gqlmodel.ID) (*gqlmodel.ProjectSharingInfoPayload, error)
 	Triggers(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.TriggerConnection, error)
@@ -662,7 +662,7 @@ type TriggerResolver interface {
 type WorkspaceResolver interface {
 	Assets(ctx context.Context, obj *gqlmodel.Workspace, pagination *gqlmodel.Pagination) (*gqlmodel.AssetConnection, error)
 
-	Projects(ctx context.Context, obj *gqlmodel.Workspace, pagination *gqlmodel.Pagination) (*gqlmodel.ProjectConnection, error)
+	Projects(ctx context.Context, obj *gqlmodel.Workspace, includeArchived *bool, pagination *gqlmodel.Pagination) (*gqlmodel.ProjectConnection, error)
 }
 type WorkspaceMemberResolver interface {
 	User(ctx context.Context, obj *gqlmodel.WorkspaceMember) (*gqlmodel.User, error)
@@ -2554,7 +2554,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Projects(childComplexity, args["workspaceId"].(gqlmodel.ID), args["keyword"].(*string), args["pagination"].(gqlmodel.PageBasedPagination)), true
+		return e.complexity.Query.Projects(childComplexity, args["workspaceId"].(gqlmodel.ID), args["includeArchived"].(*bool), args["keyword"].(*string), args["pagination"].(gqlmodel.PageBasedPagination)), true
 	case "Query.searchUser":
 		if e.complexity.Query.SearchUser == nil {
 			break
@@ -2952,7 +2952,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Workspace.Projects(childComplexity, args["pagination"].(*gqlmodel.Pagination)), true
+		return e.complexity.Workspace.Projects(childComplexity, args["includeArchived"].(*bool), args["pagination"].(*gqlmodel.Pagination)), true
 
 	case "WorkspaceMember.role":
 		if e.complexity.WorkspaceMember.Role == nil {
@@ -3465,7 +3465,6 @@ extend type Query {
   workspaceId: ID!
 }
 
-# Enums
 
 enum DeploymentSortField {
   VERSION
@@ -3901,6 +3900,7 @@ type ProjectConnection {
 extend type Query {
   projects(
     workspaceId: ID!
+    includeArchived: Boolean
     keyword: String
     pagination: PageBasedPagination!
   ): ProjectConnection!
@@ -4154,6 +4154,7 @@ extend type Subscription {
   name: String!
   personal: Boolean!
   projects(
+    includeArchived: Boolean
     pagination: Pagination
   ): ProjectConnection!
 }
@@ -5138,16 +5139,21 @@ func (ec *executionContext) field_Query_projects_args(ctx context.Context, rawAr
 		return nil, err
 	}
 	args["workspaceId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "keyword", ec.unmarshalOString2ᚖstring)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "includeArchived", ec.unmarshalOBoolean2ᚖbool)
 	if err != nil {
 		return nil, err
 	}
-	args["keyword"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	args["includeArchived"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "keyword", ec.unmarshalOString2ᚖstring)
 	if err != nil {
 		return nil, err
 	}
-	args["pagination"] = arg2
+	args["keyword"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	if err != nil {
+		return nil, err
+	}
+	args["pagination"] = arg3
 	return args, nil
 }
 
@@ -5257,11 +5263,16 @@ func (ec *executionContext) field_Workspace_assets_args(ctx context.Context, raw
 func (ec *executionContext) field_Workspace_projects_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalOPagination2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPagination)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "includeArchived", ec.unmarshalOBoolean2ᚖbool)
 	if err != nil {
 		return nil, err
 	}
-	args["pagination"] = arg0
+	args["includeArchived"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalOPagination2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPagination)
+	if err != nil {
+		return nil, err
+	}
+	args["pagination"] = arg1
 	return args, nil
 }
 
@@ -14467,7 +14478,7 @@ func (ec *executionContext) _Query_projects(ctx context.Context, field graphql.C
 		ec.fieldContext_Query_projects,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().Projects(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["keyword"].(*string), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
+			return ec.resolvers.Query().Projects(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["includeArchived"].(*bool), fc.Args["keyword"].(*string), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
 		},
 		nil,
 		ec.marshalNProjectConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectConnection,
@@ -16725,7 +16736,7 @@ func (ec *executionContext) _Workspace_projects(ctx context.Context, field graph
 		ec.fieldContext_Workspace_projects,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Workspace().Projects(ctx, obj, fc.Args["pagination"].(*gqlmodel.Pagination))
+			return ec.resolvers.Workspace().Projects(ctx, obj, fc.Args["includeArchived"].(*bool), fc.Args["pagination"].(*gqlmodel.Pagination))
 		},
 		nil,
 		ec.marshalNProjectConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectConnection,
