@@ -5233,6 +5233,8 @@
             ]
           },
           "pythonPath": {
+            "title": "Python Path",
+            "description": "Path to Python interpreter executable (default: python3)",
             "type": [
               "string",
               "null"
@@ -5251,6 +5253,8 @@
             ]
           },
           "timeoutSeconds": {
+            "title": "Timeout Seconds",
+            "description": "Maximum execution time for the Python script in seconds (default: 30)",
             "type": [
               "integer",
               "null"
