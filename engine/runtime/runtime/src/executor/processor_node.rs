@@ -117,6 +117,8 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             let src = e.source();
             let w = e.weight();
             let from_handle = &dag.graph()[src].handle;
+            // Use the persisted role snapshot instead of deriving from `kind`,
+            // because `kind` may have been taken by this point.
             let is_reader = dag.graph()[src].is_source;
             meta_map.insert(from_handle.id.to_string(), (w.edge_id.clone(), is_reader));
         }

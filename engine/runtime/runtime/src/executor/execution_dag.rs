@@ -26,6 +26,10 @@ pub struct NodeType {
     pub handle: NodeHandle,
     pub name: String,
     pub kind: Option<NodeKind>,
+    /// Snapshot of the node role (e.g., Source/Processor/Sink).
+    /// Although this is derivable from `kind`, we persist it here because `kind` is moved (`take()`) during execution graph construction (e.g., in ProcessorNode::new),
+    /// making it unavailable later. Keeping this immutable snapshot avoids timing issues.
+    /// TODO: refactor to remove duplication once initialization no longer requires taking `kind`.
     pub is_source: bool,
 }
 
@@ -142,6 +146,8 @@ impl ExecutionDag {
             |_, node| NodeType {
                 handle: node.handle.clone(),
                 name: node.name.clone(),
+                // Persist role early. `kind` will be taken later (e.g., in ProcessorNode::new),
+                // so we cannot reliably derive the role at that time.
                 is_source: matches!(node.kind, NodeKind::Source(_)),
                 kind: match &node.kind {
                     NodeKind::Source(source) => Some(NodeKind::Source(source.clone())),
