@@ -95,10 +95,10 @@ const CanvasContextMenu: React.FC<Props> = ({
       const shouldDelete = await onBeforeDelete?.({ nodes: toDelete });
 
       if (shouldDelete) {
+        onNodesDeleteCleanup?.(toDelete);
         onNodesChange?.(
           toDelete.map((node) => ({ id: node.id, type: "remove" as const })),
         );
-        onNodesDeleteCleanup?.(toDelete);
       }
     },
     [onBeforeDelete, onNodesChange, onNodesDeleteCleanup],
