@@ -24,7 +24,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
   const [viewMode, setViewMode] = useState<ViewMode>("projects");
   const [isItemDetailOpen, setIsItemDetailOpen] = useState(false);
 
-  const projectsQuery = useGetCmsProjects([workspaceId], true);
+  const projectsQuery = useGetCmsProjects([workspaceId], undefined, true);
   const cmsProjects = projectsQuery.page?.cmsProjects || [];
 
   const modelsQuery = useGetCmsModels(

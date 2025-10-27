@@ -17,7 +17,6 @@ export const mockJobs: JobFragment[] = [
     debug: false,
     startedAt: "2024-01-15T10:00:00Z",
     completedAt: "2024-01-15T10:05:30Z",
-    logsURL: "https://logs.reearth.io/job-1",
     outputURLs: [
       "https://output.reearth.io/job-1/result.json",
       "https://output.reearth.io/job-1/processed_data.geojson",
@@ -34,7 +33,6 @@ export const mockJobs: JobFragment[] = [
     debug: true,
     startedAt: "2024-01-28T14:20:00Z",
     completedAt: null,
-    logsURL: "https://logs.reearth.io/job-2",
     outputURLs: [],
   },
   {
@@ -48,7 +46,6 @@ export const mockJobs: JobFragment[] = [
     debug: false,
     startedAt: "2024-01-25T09:15:00Z",
     completedAt: "2024-01-25T09:18:45Z",
-    logsURL: "https://logs.reearth.io/job-3",
     outputURLs: [],
   },
   {
@@ -62,7 +59,6 @@ export const mockJobs: JobFragment[] = [
     debug: false,
     startedAt: "2024-01-28T16:00:00Z",
     completedAt: null,
-    logsURL: null,
     outputURLs: [],
   },
   {
@@ -76,7 +72,6 @@ export const mockJobs: JobFragment[] = [
     debug: false,
     startedAt: "2024-01-20T11:30:00Z",
     completedAt: "2024-01-20T11:35:15Z",
-    logsURL: null,
     outputURLs: [],
   },
 ];

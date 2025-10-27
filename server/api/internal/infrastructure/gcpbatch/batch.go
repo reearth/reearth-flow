@@ -37,10 +37,11 @@ type BatchConfig struct {
 	PubSubUserFacingLogTopic        string
 	ProjectID                       string
 	Region                          string
+	RustLog                         string
 	SAEmail                         string
 	TaskCount                       int
 	ThreadPoolSize                  string
-	ZstdEnable                      bool
+	CompressIntermediateData        bool
 }
 
 type BatchClient interface {
@@ -157,6 +158,10 @@ func (b *BatchRepo) SubmitJob(
 		},
 		Environment: &batchpb.Environment{
 			Variables: func() map[string]string {
+				rustLog := b.config.RustLog
+				if rustLog == "" {
+					rustLog = "info"
+				}
 				vars := map[string]string{
 					"FLOW_WORKER_ENABLE_JSON_LOG":               "true",
 					"FLOW_WORKER_EDGE_PASS_THROUGH_EVENT_TOPIC": b.config.PubSubEdgePassThroughEventTopic,
@@ -164,7 +169,7 @@ func (b *BatchRepo) SubmitJob(
 					"FLOW_WORKER_JOB_COMPLETE_TOPIC":            b.config.PubSubJobCompleteTopic,
 					"FLOW_WORKER_NODE_STATUS_TOPIC":             b.config.PubSubNodeStatusTopic,
 					"FLOW_WORKER_USER_FACING_LOG_TOPIC":         b.config.PubSubUserFacingLogTopic,
-					"RUST_LOG":                                  "info",
+					"RUST_LOG":                                  rustLog,
 					"RUST_BACKTRACE":                            "1",
 				}
 
@@ -181,8 +186,8 @@ func (b *BatchRepo) SubmitJob(
 				if b.config.FeatureFlushThreshold != "" {
 					vars["FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD"] = b.config.FeatureFlushThreshold
 				}
-				if b.config.ZstdEnable {
-					vars["FLOW_RUNTIME_ZSTD_ENABLE"] = strconv.FormatBool(b.config.ZstdEnable)
+				if b.config.CompressIntermediateData {
+					vars["FLOW_RUNTIME_COMPRESS_INTERMEDIATE_DATA"] = strconv.FormatBool(b.config.CompressIntermediateData)
 				}
 
 				return vars

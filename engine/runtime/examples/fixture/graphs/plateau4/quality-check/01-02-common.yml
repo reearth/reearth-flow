@@ -94,7 +94,7 @@ nodes:
           feature["dataFileData"]
         }
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_" + env.get("__value")["package"] + ".json")
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_common2-" + env.get("__value")["package"] + ".json")
 
   - id: a4b8150a-6241-46ac-849d-39be21d39d1b
     name: AttributeMapperRequired
@@ -211,12 +211,40 @@ nodes:
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01-2_必須属性等_C08公共測量品質属性_" + env.get("__value")["package"] + ".csv")
 
+  - id: 6b8c9d0e-7f8a-4b90-9c1d-2e3f4a5b6c7d
+    name: AttributeManagerTotalErrorCount
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: totalErrorCount
+          method: create
+          value: |
+            let total = 0;
+            let data = env.get("__value")["dataFileData"];
+            if data != () {
+              for key in data.keys() {
+                let val = data[key];
+                if val.type_of() == "i64" {
+                  total += val;
+                }
+              }
+            }
+            total
+
   - id: da1eaeee-4a50-4b6b-afee-3cfaf4887613
     name: OutputRouter
     type: action
     action: OutputRouter
     with:
       routingPort: default
+
+  - id: 7d8e9f0a-1b2c-4d3e-5f6a-7b8c9d0e1f2a
+    name: OutputRouterSummary
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: summaryOutput
 
 edges:
   - id: 668cbbf5-9da8-45db-baca-312d69d219c2
@@ -327,5 +355,15 @@ edges:
   - id: b8c9d0e1-f2a3-4b4c-f5d6-e7f8a9b0c1d2
     from: b245c6d7-f8a9-4b01-c234-5d6e7f8a9b0c
     to: da1eaeee-4a50-4b6b-afee-3cfaf4887613
+    fromPort: default
+    toPort: default
+  - id: 7c8d9e0f-8a9b-4c0d-1e2f-3a4b5c6d7e8f
+    from: 7dd338ed-f9e4-408d-bcdf-39e4141126ba
+    to: 6b8c9d0e-7f8a-4b90-9c1d-2e3f4a5b6c7d
+    fromPort: summary
+    toPort: default
+  - id: 8d9e0f1a-9b0c-4d1e-2f3a-4b5c6d7e8f9a
+    from: 6b8c9d0e-7f8a-4b90-9c1d-2e3f4a5b6c7d
+    to: 7d8e9f0a-1b2c-4d3e-5f6a-7b8c9d0e1f2a
     fromPort: default
     toPort: default

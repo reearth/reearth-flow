@@ -23,7 +23,7 @@ func (r *queryResolver) CmsProject(ctx context.Context, projectIDOrAlias gqlmode
 	return gqlmodel.CMSProjectFrom(project), nil
 }
 
-func (r *queryResolver) CmsProjects(ctx context.Context, workspaceIDs []gqlmodel.ID, publicOnly *bool, page, pageSize *int) ([]*gqlmodel.CMSProject, error) {
+func (r *queryResolver) CmsProjects(ctx context.Context, workspaceIDs []gqlmodel.ID, keyword *string, publicOnly *bool, page, pageSize *int) ([]*gqlmodel.CMSProject, error) {
 	var pageInt32 *int32
 	var pageSizeInt32 *int32
 
@@ -38,7 +38,7 @@ func (r *queryResolver) CmsProjects(ctx context.Context, workspaceIDs []gqlmodel
 
 	workspaceIDStrings := util.Map(workspaceIDs, func(id gqlmodel.ID) string { return string(id) })
 
-	output, err := usecases(ctx).CMS.ListCMSProjects(ctx, workspaceIDStrings, lo.FromPtr(publicOnly), pageInt32, pageSizeInt32)
+	output, err := usecases(ctx).CMS.ListCMSProjects(ctx, workspaceIDStrings, keyword, lo.FromPtr(publicOnly), pageInt32, pageSizeInt32)
 	if err != nil {
 		log.Errorfc(ctx, "failed to list CMS projects: %v", err)
 		return nil, err
@@ -174,8 +174,20 @@ func (r *queryResolver) CmsItems(ctx context.Context, projectID gqlmodel.ID, mod
 	}, nil
 }
 
-func (r *queryResolver) CmsModelExportURL(ctx context.Context, projectID gqlmodel.ID, modelID gqlmodel.ID) (string, error) {
-	url, err := usecases(ctx).CMS.GetCMSModelExportURL(ctx, string(projectID), string(modelID))
+func (r *queryResolver) CmsModelExportURL(ctx context.Context, projectID gqlmodel.ID, modelID gqlmodel.ID, exportType *gqlmodel.CMSExportType) (string, error) {
+	var cmsExportType *cms.ExportType
+	if exportType != nil {
+		switch *exportType {
+		case gqlmodel.CMSExportTypeJSON:
+			t := cms.ExportTypeJSON
+			cmsExportType = &t
+		case gqlmodel.CMSExportTypeGeojson:
+			t := cms.ExportTypeGeoJSON
+			cmsExportType = &t
+		}
+	}
+
+	url, err := usecases(ctx).CMS.GetCMSModelExportURL(ctx, string(projectID), string(modelID), cmsExportType)
 	if err != nil {
 		log.Errorfc(ctx, "failed to get CMS model export URL: %v", err)
 		return "", err

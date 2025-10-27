@@ -139,13 +139,16 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
                     "Failed to create context: {e}"
                 ))
             })?;
-            let nodes =
-                xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//gml:Definition", &root_node)
-                    .map_err(|e| {
-                        PlateauProcessorError::BuildingUsageAttributeValidatorFactory(format!(
-                            "Failed to find nodes: {e}"
-                        ))
-                    })?;
+            let nodes = xml::find_readonly_nodes_by_xpath(
+                &xml_ctx,
+                "//*[name()='gml:Definition']",
+                &root_node,
+            )
+            .map_err(|e| {
+                PlateauProcessorError::BuildingUsageAttributeValidatorFactory(format!(
+                    "Failed to find nodes: {e}"
+                ))
+            })?;
             for node in nodes {
                 let mut name = None;
                 let mut code = None;

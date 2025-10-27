@@ -963,6 +963,84 @@
       ]
     },
     {
+      "name": "CSGBuilder",
+      "type": "processor",
+      "description": "Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, Right) of solid geometries. It detects union, intersection, difference (Left - Right). It however does not compute the resulting geometry, but outputs the CSG tree structure. To evaluate the CSG tree into a solid geometry, use CSGEvaluator.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CSG Builder Parameters",
+        "description": "Configure how the CSG builder pairs features from left and right ports",
+        "type": "object",
+        "properties": {
+          "createList": {
+            "title": "Create List",
+            "description": "When enabled, creates a list of attribute values from both children (left and right)",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "listAttributeName": {
+            "title": "List Attribute Name",
+            "description": "Name of the attribute to create the list from (required when create_list is true)",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pairIdAttribute": {
+            "title": "Pair ID Attribute",
+            "description": "Expression to evaluate the pair ID used to match features from left and right ports",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "left",
+        "right"
+      ],
+      "outputPorts": [
+        "intersection",
+        "union",
+        "difference",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "CSGEvaluator",
+      "type": "processor",
+      "description": "Evaluates a Constructive Solid Geometry (CSG) tree to produce a solid geometry. Takes a CSG representation and computes the resulting mesh from the boolean operations.",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "nullport",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "CenterPointReplacer",
       "type": "processor",
       "description": "将实体的几何形状替换为位于其包围盒中心、质心或实体区域内部的点。",
@@ -2024,6 +2102,7 @@
         "default"
       ],
       "outputPorts": [
+        "up_to_lod0",
         "up_to_lod1",
         "up_to_lod2",
         "up_to_lod3",
@@ -4148,7 +4227,8 @@
       "description": "Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, texture coordinates, and materials",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ObjReaderParam",
+        "title": "ObjReader Parameters",
+        "description": "Configuration for reading Wavefront OBJ 3D model files with support for vertices, faces, normals, texture coordinates, and material definitions.",
         "type": "object",
         "properties": {
           "dataset": {
@@ -4164,10 +4244,14 @@
             ]
           },
           "includeNormals": {
+            "title": "Include Normals",
+            "description": "Include vertex normal data in the output geometry",
             "default": true,
             "type": "boolean"
           },
           "includeTexcoords": {
+            "title": "Include Texture Coordinates",
+            "description": "Include texture coordinate (UV) data in the output geometry",
             "default": true,
             "type": "boolean"
           },
@@ -4183,15 +4267,34 @@
               }
             ]
           },
+          "materialFile": {
+            "title": "Material File",
+            "description": "Expression that returns the path to an external MTL file to use instead of mtllib directives in the OBJ file. When specified, this overrides any material library references in the OBJ file.",
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "mergeGroups": {
+            "title": "Merge Groups",
+            "description": "Merge all groups and objects into a single feature instead of creating separate features per group/object",
             "default": false,
             "type": "boolean"
           },
           "parseMaterials": {
+            "title": "Parse Materials",
+            "description": "Enable parsing of material definitions from MTL files referenced in the OBJ file",
             "default": true,
             "type": "boolean"
           },
           "triangulate": {
+            "title": "Triangulate",
+            "description": "Convert polygons with more than 3 vertices into triangles using fan triangulation",
             "default": false,
             "type": "boolean"
           }
@@ -4979,6 +5082,37 @@
       ],
       "outputPorts": [
         "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU4.SolidIntersectionTestPairCreator",
+      "type": "processor",
+      "description": "Creates pairs of features that can possibly intersect based on bounding box overlap",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "SolidIntersectionTestPairCreatorParam",
+        "type": "object",
+        "properties": {
+          "boundingBoxAttribute": {
+            "default": "bounding_box",
+            "type": "string"
+          },
+          "pairIdAttribute": {
+            "default": "pair_id",
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "A",
+        "B"
       ],
       "categories": [
         "PLATEAU"

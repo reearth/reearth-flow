@@ -1,9 +1,12 @@
+use std::ops::Div;
+
 use approx::{AbsDiffEq, RelativeEq};
-use num_traits::Zero;
+use num_traits::{Float, Zero};
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
 use crate::polygon;
+use crate::types::coordinate::Coordinate3D;
 
 use super::conversion::geojson::create_from_triangle_type;
 use super::coordinate::Coordinate;
@@ -150,5 +153,93 @@ impl Triangle3D<f64> {
         self.0.transform_offset(x, y, z);
         self.1.transform_offset(x, y, z);
         self.2.transform_offset(x, y, z);
+    }
+}
+
+impl<T> Triangle3D<T>
+where
+    T: CoordNum + Float + Div,
+{
+    pub fn boundary_contains(&self, p: &Coordinate3D<T>) -> bool {
+        let lines = self.to_lines();
+        lines.iter().any(|line| line.contains(*p))
+    }
+
+    pub fn contains(&self, p: &Coordinate3D<T>) -> bool {
+        let epsilon = T::from(1e-10).unwrap();
+        let area_abc = self.area();
+        let area_pab = Triangle::new(self.0, self.1, *p).area();
+        let area_pbc = Triangle::new(self.1, self.2, *p).area();
+        let area_pca = Triangle::new(self.2, self.0, *p).area();
+
+        (area_abc - (area_pab + area_pbc + area_pca)).abs() < epsilon
+    }
+
+    pub fn area(&self) -> T {
+        let a = self.0;
+        let b = self.1;
+        let c = self.2;
+
+        let ab = ((b.x - a.x).powi(2) + (b.y - a.y).powi(2) + (b.z - a.z).powi(2)).sqrt();
+        let bc = ((c.x - b.x).powi(2) + (c.y - b.y).powi(2) + (c.z - b.z).powi(2)).sqrt();
+        let ca = ((a.x - c.x).powi(2) + (a.y - c.y).powi(2) + (a.z - c.z).powi(2)).sqrt();
+
+        let s = (ab + bc + ca) / T::from(2.0).unwrap();
+        (s * (s - ab) * (s - bc) * (s - ca)).sqrt()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::coordinate::Coordinate3D;
+
+    #[test]
+    fn test_triangle_area() {
+        let t = Triangle3D::new(
+            Coordinate3D::new__(0.0, 0.0, 1.0),
+            Coordinate3D::new__(1.0, 0.0, 0.0),
+            Coordinate3D::new__(0.0, 1.0, 0.0),
+        );
+        assert!(
+            (t.area() - 3.0.sqrt() / 2.0).abs() < 1e-10,
+            "area: {}",
+            t.area()
+        );
+    }
+
+    #[test]
+    fn test_triangle_contains() {
+        let t = Triangle3D::new(
+            Coordinate3D::new__(0.0, 0.0, 1.0),
+            Coordinate3D::new__(1.0, 0.0, 0.0),
+            Coordinate3D::new__(0.0, 1.0, 0.0),
+        );
+        let points = [
+            // (point, inside, on_boundary)
+            (Coordinate3D::new__(1.0, 0.0, 0.0), true, true),
+            (Coordinate3D::new__(0.0, 0.5, 0.5), true, true),
+            (
+                Coordinate3D::new__(1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0),
+                true,
+                false,
+            ),
+            (Coordinate3D::new__(-0.1, 0.1, 0.1), false, false),
+        ];
+
+        for (p, inside, on_boundary) in points {
+            assert!(
+                t.contains(&p) == inside,
+                "point {:?} must {} be inside",
+                p,
+                if inside { "" } else { "not" }
+            );
+            assert!(
+                t.boundary_contains(&p) == on_boundary,
+                "point {:?} must {} be on boundary",
+                p,
+                if on_boundary { "" } else { "not" }
+            );
+        }
     }
 }

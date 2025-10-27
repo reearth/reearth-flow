@@ -52,6 +52,7 @@ export default ({
 
         if (
           yWebSocketProvider.awareness &&
+          isProtected &&
           !yWebSocketProvider.awareness.getLocalState()?.color
         ) {
           const color =

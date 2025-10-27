@@ -25,6 +25,7 @@ import {
   TableBody,
   TableHead,
   TableHeader,
+  Table,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 
@@ -205,95 +206,97 @@ function VirtualizedTable<TData, TValue>({
           style={{
             height: `${virtualizer.getTotalSize() + 32}px`,
           }}>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => {
+                    return (
+                      <TableHead
+                        key={header.id}
+                        className={`${condensed ? "h-8" : "h-10"}`}
+                        style={{
+                          width: Math.min(
+                            header.getSize(),
+                            header.column.columnDef.maxSize || 400,
+                          ),
+                          maxWidth: header.column.columnDef.maxSize || 400,
+                        }}>
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )}
+                      </TableHead>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {rows.length ? (
+                virtualizer.getVirtualItems().map((virtualRow, idx) => {
+                  const row = rows[virtualRow.index] as any;
+                  const isSelected = selectedRowIndex === virtualRow.index;
                   return (
-                    <TableHead
-                      key={header.id}
-                      className={`${condensed ? "h-8" : "h-10"}`}
+                    <TableRow
+                      key={row.id}
+                      // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
+                      className="after:border-line-200 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b relative cursor-pointer border-0"
                       style={{
-                        width: Math.min(
-                          header.getSize(),
-                          header.column.columnDef.maxSize || 400,
-                        ),
-                        maxWidth: header.column.columnDef.maxSize || 400,
+                        height: `${virtualRow.size}px`,
+                        transform: `translateY(${virtualRow.start - idx * virtualRow.size}px)`,
+                      }}
+                      data-state={
+                        useStrictSelectedRow
+                          ? selectedRow && isSelected
+                            ? "selected"
+                            : undefined
+                          : row.getIsSelected()
+                            ? "selected"
+                            : undefined
+                      }
+                      onClick={() => {
+                        row.toggleSelected();
+                        onRowClick?.(row.original);
+                      }}
+                      onDoubleClick={() => {
+                        onRowDoubleClick?.(row.original);
                       }}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
-                    </TableHead>
+                      {row.getVisibleCells().map((cell: any) => {
+                        return (
+                          <TableCell
+                            key={cell.id}
+                            className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}
+                            style={{
+                              width: Math.min(
+                                cell.column.getSize(),
+                                cell.column.columnDef.maxSize || 400,
+                              ),
+                              maxWidth: cell.column.columnDef.maxSize || 400,
+                            }}>
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext(),
+                            )}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
                   );
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {rows.length ? (
-              virtualizer.getVirtualItems().map((virtualRow, idx) => {
-                const row = rows[virtualRow.index] as any;
-                const isSelected = selectedRowIndex === virtualRow.index;
-                return (
-                  <TableRow
-                    key={row.id}
-                    // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
-                    className="after:border-line-200 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b relative cursor-pointer border-0"
-                    style={{
-                      height: `${virtualRow.size}px`,
-                      transform: `translateY(${virtualRow.start - idx * virtualRow.size}px)`,
-                    }}
-                    data-state={
-                      useStrictSelectedRow
-                        ? selectedRow && isSelected
-                          ? "selected"
-                          : undefined
-                        : row.getIsSelected()
-                          ? "selected"
-                          : undefined
-                    }
-                    onClick={() => {
-                      row.toggleSelected();
-                      onRowClick?.(row.original);
-                    }}
-                    onDoubleClick={() => {
-                      onRowDoubleClick?.(row.original);
-                    }}>
-                    {row.getVisibleCells().map((cell: any) => {
-                      return (
-                        <TableCell
-                          key={cell.id}
-                          className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}
-                          style={{
-                            width: Math.min(
-                              cell.column.getSize(),
-                              cell.column.columnDef.maxSize || 400,
-                            ),
-                            maxWidth: cell.column.columnDef.maxSize || 400,
-                          }}>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
-                        </TableCell>
-                      );
-                    })}
-                  </TableRow>
-                );
-              })
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center">
-                  {t("No Results")}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
+                })
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center">
+                    {t("No Results")}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
       </div>
     </div>

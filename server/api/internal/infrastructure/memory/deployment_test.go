@@ -38,7 +38,7 @@ func TestDeployment(t *testing.T) {
 	})
 
 	t.Run("FindByWorkspace", func(t *testing.T) {
-		results, pageInfo, err := repo.FindByWorkspace(ctx, wsID, nil)
+		results, pageInfo, err := repo.FindByWorkspace(ctx, wsID, nil, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, pageInfo)
 		assert.Len(t, results, 1)
@@ -205,7 +205,7 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 				f:    repo.WorkspaceFilter{Readable: []id.WorkspaceID{tt.wsID}},
 			}
 
-			got, gotInfo, err := r.FindByWorkspace(ctx, tt.wsID, tt.pagination)
+			got, gotInfo, err := r.FindByWorkspace(ctx, tt.wsID, tt.pagination, nil)
 			if tt.wantErr {
 				assert.Error(t, err)
 				return

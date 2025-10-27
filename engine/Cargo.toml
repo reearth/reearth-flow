@@ -20,7 +20,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.88" # Remember to update clippy.toml as well
-version = "0.0.125"
+version = "0.0.139"
 
 [profile.dev]
 opt-level = 0
@@ -67,17 +67,17 @@ reearth-flow-storage = { path = "runtime/storage" }
 reearth-flow-telemetry = { path = "runtime/telemetry" }
 reearth-flow-types = { path = "runtime/types" }
 
-nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.3", features = [
+nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.5", features = [
   "serde",
   "serde_json",
 ] }
-nusamai-czml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.3" }
-nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.3" }
-nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.3", features = [
+nusamai-czml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.5" }
+nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.5" }
+nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.5", features = [
   "serde",
 ] }
-nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.3" }
-nusamai-shapefile = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.3" }
+nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.5" }
+nusamai-shapefile = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.5" }
 
 Inflector = "0.11.4"
 ahash = "0.8.11"
@@ -219,7 +219,7 @@ strum_macros = "0.27.1"
 tempfile = "3.18.0"
 thiserror = "2.0.12"
 time = { version = "0.3.39", features = ["formatting"] }
-tinymvt = { git = "https://github.com/MIERUNE/tinymvt.git", tag = "v0.0.1" }
+tinymvt = { git = "https://github.com/reearth/tinymvt.git", tag = "v0.0.2" }
 tokio = { version = "1.44.0", features = ["full", "time"] }
 tokio-stream = { version = "0.1.17", features = ["sync"] }
 tokio-util = { version = "0.7.13", features = ["full"] }

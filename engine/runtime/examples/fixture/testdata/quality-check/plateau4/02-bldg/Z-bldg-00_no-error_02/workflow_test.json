@@ -1,0 +1,8 @@
+{
+  "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
+  "description": "Verify output files: no errors, valid building feature",
+  "cityGmlPath": "udx/bldg/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectResultOkFile": true
+}

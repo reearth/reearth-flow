@@ -30,5 +30,6 @@
       "jsonFilter": "{attributes}",
       "except": "gmlFilename"
     }
-  ]
+  ],
+  "expectResultOkFile": false
 }
