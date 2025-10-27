@@ -43,7 +43,7 @@ const AttributionsDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
         <DialogContentWrapper>
           <DialogContentSection>
             {attributions.map((attr, idx) => (
-              <div key={idx} className="mb-4">
+              <div key={attr.name} className="mb-4">
                 <h3 className="font-semibold">{attr.name}</h3>
                 <p className="italic">{attr.description}</p>
                 <a
