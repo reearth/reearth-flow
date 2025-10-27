@@ -19,18 +19,17 @@ import {
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { Node, Edge, NodeChange } from "@flow/types";
+import { Node, NodeChange } from "@flow/types";
 
 type Props = {
   contextMenu: ContextMenuMeta;
   data?: Node | Node[];
   allNodes: Node[];
-  allEdges: Edge[];
-  selectedEdgeIds?: string[];
   onNodesChange?: (changes: NodeChange[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onBeforeDelete?: (args: { nodes: Node[] }) => Promise<boolean>;
   onWorkflowOpen?: (workflowId: string) => void;
+  onNodesDeleteCleanup?: (nodes: Node[]) => void;
   onNodeSettings?: (e: React.MouseEvent | undefined, nodeId: string) => void;
   onCopy?: (node?: Node) => void;
   onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
@@ -43,11 +42,10 @@ const CanvasContextMenu: React.FC<Props> = ({
   contextMenu,
   data,
   allNodes,
-  allEdges,
   onWorkflowOpen,
   onNodeSettings,
-  selectedEdgeIds,
   onNodesChange,
+  onNodesDeleteCleanup,
   onEdgesChange,
   onBeforeDelete,
   onCopy,
@@ -100,31 +98,10 @@ const CanvasContextMenu: React.FC<Props> = ({
         onNodesChange?.(
           toDelete.map((node) => ({ id: node.id, type: "remove" as const })),
         );
-
-        // If no nodes are selected via React Flow and we are only right clicking on a node, we need to manually delete the related edges.
-        if (!nodes) {
-          const relatedEdges = allEdges.filter((edge) => {
-            return toDelete.some(
-              (node) => node.id === edge.source || node.id === edge.target,
-            );
-          });
-
-          if (relatedEdges.length > 0) {
-            onEdgesChange?.(
-              relatedEdges.map((relatedEdge) => ({
-                id: relatedEdge.id,
-                type: "remove" as const,
-              })),
-            );
-          }
-        }
-
-        selectedEdgeIds?.forEach((edgeId) => {
-          onEdgesChange?.([{ id: edgeId, type: "remove" as const }]);
-        });
+        onNodesDeleteCleanup?.(toDelete);
       }
     },
-    [selectedEdgeIds, allEdges, onBeforeDelete, onNodesChange, onEdgesChange],
+    [onBeforeDelete, onNodesChange, onNodesDeleteCleanup],
   );
 
   const menuItems = useMemo(() => {
