@@ -38,7 +38,7 @@ type Deployment interface {
 	Fetch(context.Context, []id.DeploymentID) ([]*deployment.Deployment, error)
 	FindByProject(context.Context, id.ProjectID) (*deployment.Deployment, error)
 	FindByVersion(context.Context, id.WorkspaceID, *id.ProjectID, string) (*deployment.Deployment, error)
-	FindByWorkspace(context.Context, id.WorkspaceID, *PaginationParam) ([]*deployment.Deployment, *PageBasedInfo, error)
+	FindByWorkspace(context.Context, id.WorkspaceID, *PaginationParam, *string) ([]*deployment.Deployment, *PageBasedInfo, error)
 	FindHead(context.Context, id.WorkspaceID, *id.ProjectID) (*deployment.Deployment, error)
 	FindVersions(context.Context, id.WorkspaceID, *id.ProjectID) ([]*deployment.Deployment, error)
 	Create(context.Context, CreateDeploymentParam) (*deployment.Deployment, error)
