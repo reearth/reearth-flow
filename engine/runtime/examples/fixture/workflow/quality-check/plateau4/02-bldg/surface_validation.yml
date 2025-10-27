@@ -291,6 +291,24 @@ nodes:
     type: subGraph
     subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
 
+  - id: 77a7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
+    name: Lod2-4InvalidSurfaceCounter
+    type: action
+    action: StatisticsCalculator
+    with:
+      aggregateName: gmlFilename
+      aggregateAttribute: gmlFilename
+      calculations:
+        - newAttribute: _num_lod2_invalid_surface
+          expr: |
+            if env.get("__value").lod == "2" { 1 } else { 0 }
+        - newAttribute: _num_lod3_invalid_surface
+          expr: |
+            if env.get("__value").lod == "3" { 1 } else { 0 }
+        - newAttribute: _num_lod4_invalid_surface
+          expr: |
+            if env.get("__value").lod == "4" { 1 } else { 0 }
+
   - id: 7f2a5c8d-4b9e-4c3a-9f6d-2e8b5c7a4f9d
     name: AttributeManagerLod2-4InvalidSurface
     type: action
@@ -385,24 +403,6 @@ nodes:
       format: csv
       output: |
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_LOD2以上境界面のエラー.csv")
-
-  - id: 77a7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
-    name: Lod2-4InvalidSurfaceCounter
-    type: action
-    action: StatisticsCalculator
-    with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
-      calculations:
-        - newAttribute: _num_lod2_invalid_surface
-          expr: |
-            if env.get("__value").lod == "2" { 1 } else { 0 }
-        - newAttribute: _num_lod3_invalid_surface
-          expr: |
-            if env.get("__value").lod == "3" { 1 } else { 0 }
-        - newAttribute: _num_lod4_invalid_surface
-          expr: |
-            if env.get("__value").lod == "4" { 1 } else { 0 }
 
   - id: 88b8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d
     name: ErrorCount-Lod2InvalidSurface
@@ -1161,21 +1161,21 @@ edges:
 
   - id: 2b6f4d9e-3c8a-4e5b-9d7c-6a8f2e5c9b4d
     from: 3b6e9c5d-8f2a-4d7b-9e3c-6a1f4b9e2c5d
-    to: 7f2a5c8d-4b9e-4c3a-9f6d-2e8b5c7a4f9d
+    to: 77a7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
     fromPort: invalidSurface
     toPort: default
 
-  # LOD2-4 Invalid Surface: AttributeManager → Counter → Writer + 3 OutputRouters
+  # LOD2-4 Invalid Surface: Validator → Counter → AttributeManager → Writer + 3 OutputRouters
   - id: 3c7f5e0a-4d9b-4f6c-8e4a-7b0f3c6d8e5a
-    from: 7f2a5c8d-4b9e-4c3a-9f6d-2e8b5c7a4f9d
-    to: 77a7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
-    fromPort: default
+    from: 77a7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
+    to: 7f2a5c8d-4b9e-4c3a-9f6d-2e8b5c7a4f9d
+    fromPort: complete
     toPort: default
 
   - id: 4d8f6f1b-5e0c-4f7d-9f5b-8c1f4d7e0f6b
-    from: 77a7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
+    from: 7f2a5c8d-4b9e-4c3a-9f6d-2e8b5c7a4f9d
     to: 9e3c6b8f-5a2d-4f7e-8c1a-4d9b6e3c8f5a
-    fromPort: complete
+    fromPort: default
     toPort: default
 
   - id: 5e9f7f2c-6f0d-4f8e-af6c-9d2f5e7f0f7c

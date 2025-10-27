@@ -146,6 +146,8 @@ type ComplexityRoot struct {
 		License     func(childComplexity int) int
 		Name        func(childComplexity int) int
 		Readme      func(childComplexity int) int
+		StarCount   func(childComplexity int) int
+		Topics      func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
 		Visibility  func(childComplexity int) int
 		WorkspaceID func(childComplexity int) int
@@ -413,16 +415,16 @@ type ComplexityRoot struct {
 		CmsAssets             func(childComplexity int, projectID gqlmodel.ID, page *int, pageSize *int) int
 		CmsItems              func(childComplexity int, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) int
 		CmsModel              func(childComplexity int, projectIDOrAlias gqlmodel.ID, modelIDOrAlias gqlmodel.ID) int
-		CmsModelExportURL     func(childComplexity int, projectID gqlmodel.ID, modelID gqlmodel.ID) int
+		CmsModelExportURL     func(childComplexity int, projectID gqlmodel.ID, modelID gqlmodel.ID, exportType *gqlmodel.CMSExportType) int
 		CmsModels             func(childComplexity int, projectID gqlmodel.ID, page *int, pageSize *int) int
 		CmsProject            func(childComplexity int, projectIDOrAlias gqlmodel.ID) int
-		CmsProjects           func(childComplexity int, workspaceIds []gqlmodel.ID, publicOnly *bool, page *int, pageSize *int) int
+		CmsProjects           func(childComplexity int, workspaceIds []gqlmodel.ID, keyword *string, publicOnly *bool, page *int, pageSize *int) int
 		DeploymentByVersion   func(childComplexity int, input gqlmodel.GetByVersionInput) int
 		DeploymentHead        func(childComplexity int, input gqlmodel.GetHeadInput) int
 		DeploymentVersions    func(childComplexity int, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) int
-		Deployments           func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
+		Deployments           func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) int
 		Job                   func(childComplexity int, id gqlmodel.ID) int
-		Jobs                  func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
+		Jobs                  func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) int
 		LatestProjectSnapshot func(childComplexity int, projectID gqlmodel.ID) int
 		Me                    func(childComplexity int) int
 		Node                  func(childComplexity int, id gqlmodel.ID, typeArg gqlmodel.NodeType) int
@@ -432,10 +434,10 @@ type ComplexityRoot struct {
 		ProjectHistory        func(childComplexity int, projectID gqlmodel.ID) int
 		ProjectSharingInfo    func(childComplexity int, projectID gqlmodel.ID) int
 		ProjectSnapshot       func(childComplexity int, projectID gqlmodel.ID, version int) int
-		Projects              func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) int
+		Projects              func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, pagination gqlmodel.PageBasedPagination) int
 		SearchUser            func(childComplexity int, nameOrEmail string) int
 		SharedProject         func(childComplexity int, token string) int
-		Triggers              func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
+		Triggers              func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) int
 	}
 
 	RemoveMemberFromWorkspacePayload struct {
@@ -622,28 +624,28 @@ type QueryResolver interface {
 	Nodes(ctx context.Context, id []gqlmodel.ID, typeArg gqlmodel.NodeType) ([]gqlmodel.Node, error)
 	Assets(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) (*gqlmodel.AssetConnection, error)
 	CmsProject(ctx context.Context, projectIDOrAlias gqlmodel.ID) (*gqlmodel.CMSProject, error)
-	CmsProjects(ctx context.Context, workspaceIds []gqlmodel.ID, publicOnly *bool, page *int, pageSize *int) ([]*gqlmodel.CMSProject, error)
+	CmsProjects(ctx context.Context, workspaceIds []gqlmodel.ID, keyword *string, publicOnly *bool, page *int, pageSize *int) ([]*gqlmodel.CMSProject, error)
 	CmsAsset(ctx context.Context, assetID gqlmodel.ID) (*gqlmodel.CMSAsset, error)
 	CmsAssets(ctx context.Context, projectID gqlmodel.ID, page *int, pageSize *int) (*gqlmodel.CMSAssetsConnection, error)
 	CmsModel(ctx context.Context, projectIDOrAlias gqlmodel.ID, modelIDOrAlias gqlmodel.ID) (*gqlmodel.CMSModel, error)
 	CmsModels(ctx context.Context, projectID gqlmodel.ID, page *int, pageSize *int) (*gqlmodel.CMSModelsConnection, error)
 	CmsItems(ctx context.Context, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) (*gqlmodel.CMSItemsConnection, error)
-	CmsModelExportURL(ctx context.Context, projectID gqlmodel.ID, modelID gqlmodel.ID) (string, error)
-	Deployments(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error)
+	CmsModelExportURL(ctx context.Context, projectID gqlmodel.ID, modelID gqlmodel.ID, exportType *gqlmodel.CMSExportType) (string, error)
+	Deployments(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error)
 	DeploymentByVersion(ctx context.Context, input gqlmodel.GetByVersionInput) (*gqlmodel.Deployment, error)
 	DeploymentHead(ctx context.Context, input gqlmodel.GetHeadInput) (*gqlmodel.Deployment, error)
 	DeploymentVersions(ctx context.Context, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) ([]*gqlmodel.Deployment, error)
 	LatestProjectSnapshot(ctx context.Context, projectID gqlmodel.ID) (*gqlmodel.ProjectDocument, error)
 	ProjectHistory(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.ProjectSnapshotMetadata, error)
 	ProjectSnapshot(ctx context.Context, projectID gqlmodel.ID, version int) (*gqlmodel.ProjectSnapshot, error)
-	Jobs(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error)
+	Jobs(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error)
 	Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error)
 	NodeExecution(ctx context.Context, jobID gqlmodel.ID, nodeID string) (*gqlmodel.NodeExecution, error)
 	Parameters(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.Parameter, error)
-	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error)
+	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error)
 	SharedProject(ctx context.Context, token string) (*gqlmodel.SharedProjectPayload, error)
 	ProjectSharingInfo(ctx context.Context, projectID gqlmodel.ID) (*gqlmodel.ProjectSharingInfoPayload, error)
-	Triggers(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.TriggerConnection, error)
+	Triggers(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.TriggerConnection, error)
 	Me(ctx context.Context) (*gqlmodel.Me, error)
 	SearchUser(ctx context.Context, nameOrEmail string) (*gqlmodel.User, error)
 }
@@ -1043,6 +1045,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.CMSProject.Readme(childComplexity), true
+	case "CMSProject.starCount":
+		if e.complexity.CMSProject.StarCount == nil {
+			break
+		}
+
+		return e.complexity.CMSProject.StarCount(childComplexity), true
+	case "CMSProject.topics":
+		if e.complexity.CMSProject.Topics == nil {
+			break
+		}
+
+		return e.complexity.CMSProject.Topics(childComplexity), true
 	case "CMSProject.updatedAt":
 		if e.complexity.CMSProject.UpdatedAt == nil {
 			break
@@ -2336,7 +2350,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.CmsModelExportURL(childComplexity, args["projectId"].(gqlmodel.ID), args["modelId"].(gqlmodel.ID)), true
+		return e.complexity.Query.CmsModelExportURL(childComplexity, args["projectId"].(gqlmodel.ID), args["modelId"].(gqlmodel.ID), args["exportType"].(*gqlmodel.CMSExportType)), true
 	case "Query.cmsModels":
 		if e.complexity.Query.CmsModels == nil {
 			break
@@ -2369,7 +2383,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.CmsProjects(childComplexity, args["workspaceIds"].([]gqlmodel.ID), args["publicOnly"].(*bool), args["page"].(*int), args["pageSize"].(*int)), true
+		return e.complexity.Query.CmsProjects(childComplexity, args["workspaceIds"].([]gqlmodel.ID), args["keyword"].(*string), args["publicOnly"].(*bool), args["page"].(*int), args["pageSize"].(*int)), true
 	case "Query.deploymentByVersion":
 		if e.complexity.Query.DeploymentByVersion == nil {
 			break
@@ -2413,7 +2427,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Deployments(childComplexity, args["workspaceId"].(gqlmodel.ID), args["pagination"].(gqlmodel.PageBasedPagination)), true
+		return e.complexity.Query.Deployments(childComplexity, args["workspaceId"].(gqlmodel.ID), args["keyword"].(*string), args["pagination"].(gqlmodel.PageBasedPagination)), true
 	case "Query.job":
 		if e.complexity.Query.Job == nil {
 			break
@@ -2435,7 +2449,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Jobs(childComplexity, args["workspaceId"].(gqlmodel.ID), args["pagination"].(gqlmodel.PageBasedPagination)), true
+		return e.complexity.Query.Jobs(childComplexity, args["workspaceId"].(gqlmodel.ID), args["keyword"].(*string), args["pagination"].(gqlmodel.PageBasedPagination)), true
 	case "Query.latestProjectSnapshot":
 		if e.complexity.Query.LatestProjectSnapshot == nil {
 			break
@@ -2540,7 +2554,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Projects(childComplexity, args["workspaceId"].(gqlmodel.ID), args["includeArchived"].(*bool), args["pagination"].(gqlmodel.PageBasedPagination)), true
+		return e.complexity.Query.Projects(childComplexity, args["workspaceId"].(gqlmodel.ID), args["includeArchived"].(*bool), args["keyword"].(*string), args["pagination"].(gqlmodel.PageBasedPagination)), true
 	case "Query.searchUser":
 		if e.complexity.Query.SearchUser == nil {
 			break
@@ -2573,7 +2587,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Triggers(childComplexity, args["workspaceId"].(gqlmodel.ID), args["pagination"].(gqlmodel.PageBasedPagination)), true
+		return e.complexity.Query.Triggers(childComplexity, args["workspaceId"].(gqlmodel.ID), args["keyword"].(*string), args["pagination"].(gqlmodel.PageBasedPagination)), true
 
 	case "RemoveMemberFromWorkspacePayload.workspace":
 		if e.complexity.RemoveMemberFromWorkspacePayload.Workspace == nil {
@@ -3222,8 +3236,9 @@ enum ArchiveExtractionStatus {
 
 input CreateAssetInput {
   workspaceId: ID!
-  file: Upload!
+  file: Upload
   name: String
+  token: String
 }
 
 input DeleteAssetInput {
@@ -3303,6 +3318,8 @@ type CMSProject {
   readme: String
   workspaceId: ID!
   visibility: CMSVisibility!
+  topics: [String!]!
+  starCount: Int!
   createdAt: DateTime!
   updatedAt: DateTime!
 }
@@ -3400,6 +3417,11 @@ type CMSItemsConnection {
   totalCount: Int!
 }
 
+enum CMSExportType {
+  JSON
+  GEOJSON
+}
+
 # Queries
 
 extend type Query {
@@ -3407,26 +3429,27 @@ extend type Query {
   cmsProject(projectIdOrAlias: ID!): CMSProject
   
   # List CMS projects for multiple workspaces
-  cmsProjects(workspaceIds: [ID!]!, publicOnly: Boolean, page: Int, pageSize: Int): [CMSProject!]!
-  
+  cmsProjects(workspaceIds: [ID!]!, keyword: String, publicOnly: Boolean, page: Int, pageSize: Int): [CMSProject!]!
+
   # Get a CMS asset by ID
   cmsAsset(assetId: ID!): CMSAsset
-  
+
   # List CMS assets for a project
   cmsAssets(projectId: ID!, page: Int, pageSize: Int): CMSAssetsConnection!
-  
+
   # Get a CMS model by project and model ID/alias
   cmsModel(projectIdOrAlias: ID!, modelIdOrAlias: ID!): CMSModel
-  
+
   # List CMS models for a project
   cmsModels(projectId: ID!, page: Int, pageSize: Int): CMSModelsConnection!
-  
+
   # List CMS items for a model
   cmsItems(projectId: ID!, modelId: ID!, keyword: String, page: Int, pageSize: Int): CMSItemsConnection!
-  
-  # Get GeoJSON export URL for a CMS model
-  cmsModelExportUrl(projectId: ID!, modelId: ID!): String!
-} `, BuiltIn: false},
+
+  # Get export URL for a CMS model with specified type
+  cmsModelExportUrl(projectId: ID!, modelId: ID!, exportType: CMSExportType): String!
+}
+`, BuiltIn: false},
 	{Name: "../../../gql/deployment.graphql", Input: `type Deployment implements Node {
   createdAt: DateTime!
   description: String!
@@ -3440,6 +3463,13 @@ extend type Query {
   workflowUrl: String!
   workspace: Workspace
   workspaceId: ID!
+}
+
+
+enum DeploymentSortField {
+  VERSION
+  UPDATED_AT
+  DESCRIPTION
 }
 
 # Input Types
@@ -3501,7 +3531,11 @@ type DeploymentConnection {
 # Query and Mutation
 
 extend type Query {
-  deployments(workspaceId: ID!, pagination: PageBasedPagination!): DeploymentConnection!
+  deployments(
+    workspaceId: ID!
+    keyword: String
+    pagination: PageBasedPagination!
+  ): DeploymentConnection!
   deploymentByVersion(input: GetByVersionInput!): Deployment
   deploymentHead(input: GetHeadInput!): Deployment
   deploymentVersions(workspaceId: ID!, projectId: ID): [Deployment!]!
@@ -3586,6 +3620,12 @@ enum JobStatus {
   RUNNING
 }
 
+enum JobSortField {
+  STARTED_AT
+  COMPLETED_AT
+  STATUS
+}
+
 # InputType
 input CancelJobInput {
   jobId: ID!
@@ -3613,7 +3653,11 @@ extend type Subscription {
 # Query and Mutation
 
 extend type Query {
-  jobs(workspaceId: ID!, pagination: PageBasedPagination!): JobConnection!
+  jobs(
+    workspaceId: ID!
+    keyword: String
+    pagination: PageBasedPagination!
+  ): JobConnection!
   job(id: ID!): Job
 }
 
@@ -3792,6 +3836,14 @@ extend type Mutation {
   workspaceId: ID!
 }
 
+# Enums
+
+enum ProjectSortField {
+  NAME
+  CREATED_AT
+  UPDATED_AT
+}
+
 # InputType
 
 input CreateProjectInput {
@@ -3849,6 +3901,7 @@ extend type Query {
   projects(
     workspaceId: ID!
     includeArchived: Boolean
+    keyword: String
     pagination: PageBasedPagination!
   ): ProjectConnection!
 }
@@ -3931,6 +3984,13 @@ enum TimeInterval {
     EVERY_WEEK
 }
 
+enum TriggerSortField {
+    DESCRIPTION
+    CREATED_AT
+    UPDATED_AT
+    LAST_TRIGGERED
+}
+
 # InputType
 
 input TimeDriverInput {
@@ -3968,7 +4028,11 @@ type TriggerConnection {
 # Query and Mutation
 
 extend type Query {
-    triggers(workspaceId: ID!, pagination: PageBasedPagination!): TriggerConnection!
+    triggers(
+      workspaceId: ID!
+      keyword: String
+      pagination: PageBasedPagination!
+    ): TriggerConnection!
 }
 
 extend type Mutation {
@@ -4781,6 +4845,11 @@ func (ec *executionContext) field_Query_cmsModelExportUrl_args(ctx context.Conte
 		return nil, err
 	}
 	args["modelId"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "exportType", ec.unmarshalOCMSExportType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSExportType)
+	if err != nil {
+		return nil, err
+	}
+	args["exportType"] = arg2
 	return args, nil
 }
 
@@ -4840,21 +4909,26 @@ func (ec *executionContext) field_Query_cmsProjects_args(ctx context.Context, ra
 		return nil, err
 	}
 	args["workspaceIds"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "publicOnly", ec.unmarshalOBoolean2ᚖbool)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "keyword", ec.unmarshalOString2ᚖstring)
 	if err != nil {
 		return nil, err
 	}
-	args["publicOnly"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "page", ec.unmarshalOInt2ᚖint)
+	args["keyword"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "publicOnly", ec.unmarshalOBoolean2ᚖbool)
 	if err != nil {
 		return nil, err
 	}
-	args["page"] = arg2
-	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "pageSize", ec.unmarshalOInt2ᚖint)
+	args["publicOnly"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "page", ec.unmarshalOInt2ᚖint)
 	if err != nil {
 		return nil, err
 	}
-	args["pageSize"] = arg3
+	args["page"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "pageSize", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["pageSize"] = arg4
 	return args, nil
 }
 
@@ -4904,11 +4978,16 @@ func (ec *executionContext) field_Query_deployments_args(ctx context.Context, ra
 		return nil, err
 	}
 	args["workspaceId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "keyword", ec.unmarshalOString2ᚖstring)
 	if err != nil {
 		return nil, err
 	}
-	args["pagination"] = arg1
+	args["keyword"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	if err != nil {
+		return nil, err
+	}
+	args["pagination"] = arg2
 	return args, nil
 }
 
@@ -4931,11 +5010,16 @@ func (ec *executionContext) field_Query_jobs_args(ctx context.Context, rawArgs m
 		return nil, err
 	}
 	args["workspaceId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "keyword", ec.unmarshalOString2ᚖstring)
 	if err != nil {
 		return nil, err
 	}
-	args["pagination"] = arg1
+	args["keyword"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	if err != nil {
+		return nil, err
+	}
+	args["pagination"] = arg2
 	return args, nil
 }
 
@@ -5060,11 +5144,16 @@ func (ec *executionContext) field_Query_projects_args(ctx context.Context, rawAr
 		return nil, err
 	}
 	args["includeArchived"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "keyword", ec.unmarshalOString2ᚖstring)
 	if err != nil {
 		return nil, err
 	}
-	args["pagination"] = arg2
+	args["keyword"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	if err != nil {
+		return nil, err
+	}
+	args["pagination"] = arg3
 	return args, nil
 }
 
@@ -5098,11 +5187,16 @@ func (ec *executionContext) field_Query_triggers_args(ctx context.Context, rawAr
 		return nil, err
 	}
 	args["workspaceId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "keyword", ec.unmarshalOString2ᚖstring)
 	if err != nil {
 		return nil, err
 	}
-	args["pagination"] = arg1
+	args["keyword"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	if err != nil {
+		return nil, err
+	}
+	args["pagination"] = arg2
 	return args, nil
 }
 
@@ -7076,6 +7170,64 @@ func (ec *executionContext) fieldContext_CMSProject_visibility(_ context.Context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type CMSVisibility does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSProject_topics(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSProject) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CMSProject_topics,
+		func(ctx context.Context) (any, error) {
+			return obj.Topics, nil
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CMSProject_topics(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSProject",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CMSProject_starCount(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSProject) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CMSProject_starCount,
+		func(ctx context.Context) (any, error) {
+			return obj.StarCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CMSProject_starCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSProject",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -13274,6 +13426,10 @@ func (ec *executionContext) fieldContext_Query_cmsProject(ctx context.Context, f
 				return ec.fieldContext_CMSProject_workspaceId(ctx, field)
 			case "visibility":
 				return ec.fieldContext_CMSProject_visibility(ctx, field)
+			case "topics":
+				return ec.fieldContext_CMSProject_topics(ctx, field)
+			case "starCount":
+				return ec.fieldContext_CMSProject_starCount(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_CMSProject_createdAt(ctx, field)
 			case "updatedAt":
@@ -13304,7 +13460,7 @@ func (ec *executionContext) _Query_cmsProjects(ctx context.Context, field graphq
 		ec.fieldContext_Query_cmsProjects,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().CmsProjects(ctx, fc.Args["workspaceIds"].([]gqlmodel.ID), fc.Args["publicOnly"].(*bool), fc.Args["page"].(*int), fc.Args["pageSize"].(*int))
+			return ec.resolvers.Query().CmsProjects(ctx, fc.Args["workspaceIds"].([]gqlmodel.ID), fc.Args["keyword"].(*string), fc.Args["publicOnly"].(*bool), fc.Args["page"].(*int), fc.Args["pageSize"].(*int))
 		},
 		nil,
 		ec.marshalNCMSProject2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSProjectᚄ,
@@ -13337,6 +13493,10 @@ func (ec *executionContext) fieldContext_Query_cmsProjects(ctx context.Context, 
 				return ec.fieldContext_CMSProject_workspaceId(ctx, field)
 			case "visibility":
 				return ec.fieldContext_CMSProject_visibility(ctx, field)
+			case "topics":
+				return ec.fieldContext_CMSProject_topics(ctx, field)
+			case "starCount":
+				return ec.fieldContext_CMSProject_starCount(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_CMSProject_createdAt(ctx, field)
 			case "updatedAt":
@@ -13638,7 +13798,7 @@ func (ec *executionContext) _Query_cmsModelExportUrl(ctx context.Context, field 
 		ec.fieldContext_Query_cmsModelExportUrl,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().CmsModelExportURL(ctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["modelId"].(gqlmodel.ID))
+			return ec.resolvers.Query().CmsModelExportURL(ctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["modelId"].(gqlmodel.ID), fc.Args["exportType"].(*gqlmodel.CMSExportType))
 		},
 		nil,
 		ec.marshalNString2string,
@@ -13679,7 +13839,7 @@ func (ec *executionContext) _Query_deployments(ctx context.Context, field graphq
 		ec.fieldContext_Query_deployments,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().Deployments(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
+			return ec.resolvers.Query().Deployments(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["keyword"].(*string), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
 		},
 		nil,
 		ec.marshalNDeploymentConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDeploymentConnection,
@@ -14076,7 +14236,7 @@ func (ec *executionContext) _Query_jobs(ctx context.Context, field graphql.Colle
 		ec.fieldContext_Query_jobs,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().Jobs(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
+			return ec.resolvers.Query().Jobs(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["keyword"].(*string), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
 		},
 		nil,
 		ec.marshalNJobConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJobConnection,
@@ -14318,7 +14478,7 @@ func (ec *executionContext) _Query_projects(ctx context.Context, field graphql.C
 		ec.fieldContext_Query_projects,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().Projects(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["includeArchived"].(*bool), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
+			return ec.resolvers.Query().Projects(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["includeArchived"].(*bool), fc.Args["keyword"].(*string), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
 		},
 		nil,
 		ec.marshalNProjectConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectConnection,
@@ -14459,7 +14619,7 @@ func (ec *executionContext) _Query_triggers(ctx context.Context, field graphql.C
 		ec.fieldContext_Query_triggers,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().Triggers(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
+			return ec.resolvers.Query().Triggers(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["keyword"].(*string), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
 		},
 		nil,
 		ec.marshalNTriggerConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTriggerConnection,
@@ -18264,7 +18424,7 @@ func (ec *executionContext) unmarshalInputCreateAssetInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceId", "file", "name"}
+	fieldsInOrder := [...]string{"workspaceId", "file", "name", "token"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -18280,7 +18440,7 @@ func (ec *executionContext) unmarshalInputCreateAssetInput(ctx context.Context, 
 			it.WorkspaceID = data
 		case "file":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("file"))
-			data, err := ec.unmarshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, v)
+			data, err := ec.unmarshalOUpload2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚐUpload(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -18292,6 +18452,13 @@ func (ec *executionContext) unmarshalInputCreateAssetInput(ctx context.Context, 
 				return it, err
 			}
 			it.Name = data
+		case "token":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("token"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Token = data
 		}
 	}
 
@@ -20469,6 +20636,16 @@ func (ec *executionContext) _CMSProject(ctx context.Context, sel ast.SelectionSe
 			}
 		case "visibility":
 			out.Values[i] = ec._CMSProject_visibility(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "topics":
+			out.Values[i] = ec._CMSProject_topics(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "starCount":
+			out.Values[i] = ec._CMSProject_starCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -26589,6 +26766,22 @@ func (ec *executionContext) marshalOCMSAsset2ᚖgithubᚗcomᚋreearthᚋreearth
 		return graphql.Null
 	}
 	return ec._CMSAsset(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOCMSExportType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSExportType(ctx context.Context, v any) (*gqlmodel.CMSExportType, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(gqlmodel.CMSExportType)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOCMSExportType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSExportType(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.CMSExportType) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalOCMSModel2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSModel(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.CMSModel) graphql.Marshaler {

@@ -155,6 +155,14 @@ impl Processor for AttributeFlattener {
                 .extract_lsld_risk_attribute(&edit_city_gml_attribute),
         );
 
+        // Set feature_type from metadata
+        if let Some(feature_type) = &feature.metadata.feature_type {
+            new_city_gml_attribute.insert(
+                Attribute::new("feature_type".to_string()),
+                AttributeValue::String(feature_type.clone()),
+            );
+        }
+
         feature.attributes.extend(
             new_city_gml_attribute
                 .iter()

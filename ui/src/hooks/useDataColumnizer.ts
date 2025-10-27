@@ -1,8 +1,8 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useEffect, useState } from "react";
 
+import { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 import { Polygon, PolygonCoordinateRing } from "@flow/types/gisTypes/geoJSON";
-import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 
 // Helper function to format cell values with truncation
 function formatCellValue(value: any): string {

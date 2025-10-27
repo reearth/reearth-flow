@@ -36,7 +36,6 @@ export default function Editor({
     users,
     nodes,
     edges,
-    selectedEdgeIds,
     openNode,
     nodePickerOpen,
     canUndo,
@@ -142,7 +141,6 @@ export default function Editor({
             <Canvas
               nodes={nodes}
               edges={edges}
-              selectedEdgeIds={selectedEdgeIds}
               yDoc={yDoc}
               users={users}
               currentWorkflowId={currentWorkflowId}

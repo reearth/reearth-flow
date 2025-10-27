@@ -4,7 +4,7 @@ import {
   MapPinAreaIcon,
   TargetIcon,
 } from "@phosphor-icons/react";
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo, useRef } from "react";
 
 import {
   DropdownMenu,
@@ -14,9 +14,12 @@ import {
   IconButton,
   LoadingSkeleton,
 } from "@flow/components";
+import ThreeJSViewer, {
+  type ThreeJSViewerRef,
+} from "@flow/components/visualizations/ThreeJS";
+import type { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useT } from "@flow/lib/i18n";
-import { JobState } from "@flow/stores";
-import type { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
+import type { JobState } from "@flow/stores";
 
 import ThreeDViewer from "./components/ThreeDViewer";
 import TwoDViewer from "./components/TwoDViewer";
@@ -36,6 +39,7 @@ type Props = {
   // onEnableClusteringChange: (value: boolean) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
   detectedGeometryType: string | null;
+  visualizerType: "2d-map" | "3d-map" | "3d-model" | null;
   isComplete?: boolean;
 };
 const DebugPreview: React.FC<Props> = ({
@@ -50,26 +54,15 @@ const DebugPreview: React.FC<Props> = ({
   onSelectedFeature,
   onFlyToSelectedFeature,
   detectedGeometryType,
+  visualizerType,
   isComplete,
 }) => {
   const t = useT();
+  const threeJSViewerRef = useRef<ThreeJSViewerRef>(null);
 
-  // Auto-detect which viewer to show based on geometry type
-  const getViewerType = (detectedType: string | null): "2d" | "3d" | null => {
-    if (!detectedType) return null; // Unknown type - no viewer
-
-    switch (detectedType) {
-      case "CityGmlGeometry":
-      case "FlowGeometry3D":
-        return "3d";
-      case "FlowGeometry2D":
-        return "2d";
-      default:
-        return null; // Unknown type - no viewer
-    }
-  };
-
-  const viewerType = getViewerType(detectedGeometryType);
+  const handleResetClick = useCallback(() => {
+    threeJSViewerRef.current?.resetCamera();
+  }, []);
 
   // Determine if we should show the viewer based on data availability
   const shouldShowViewer = () => {
@@ -170,7 +163,7 @@ const DebugPreview: React.FC<Props> = ({
             </p>
           </div>
         </div>
-      ) : viewerType === "2d" ? (
+      ) : visualizerType === "2d-map" ? (
         <div className="h-full">
           {/* 2D Viewer Header with actions */}
           <div className="py-1">
@@ -226,7 +219,7 @@ const DebugPreview: React.FC<Props> = ({
             />
           </div>
         </div>
-      ) : viewerType === "3d" ? (
+      ) : visualizerType === "3d-map" ? (
         <div className="h-full">
           {/* 3D Viewer Header */}
           <div className="py-1">
@@ -250,6 +243,47 @@ const DebugPreview: React.FC<Props> = ({
             />
           </div>
         </div>
+      ) : visualizerType === "3d-model" ? (
+        <div className="h-full">
+          {/* 3D Model Viewer Header with actions */}
+          <div className="py-1">
+            <div className="flex w-full justify-between p-1">
+              <div className="flex items-center gap-1 px-2">
+                <GlobeIcon size={16} />
+                <p className="text-sm font-medium select-none">
+                  {t("3D Model Viewer")}
+                </p>
+                {detectedGeometryType && (
+                  <span className="rounded px-2 text-xs text-muted-foreground">
+                    {detectedGeometryType}
+                  </span>
+                )}
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton
+                    className="w-[25px]"
+                    tooltipText={t("Additional actions")}
+                    tooltipOffset={12}
+                    icon={<DotsThreeVerticalIcon size={18} />}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleResetClick}>
+                    <TargetIcon />
+                    {t("Reset Camera")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+          <div className="h-[calc(100%-55px)]">
+            <ThreeJSViewer
+              ref={threeJSViewerRef}
+              fileContent={selectedOutputData}
+            />
+          </div>
+        </div>
       ) : (
         <div className="flex h-full items-center justify-center text-muted-foreground">
           <div className="text-center">
@@ -258,6 +292,9 @@ const DebugPreview: React.FC<Props> = ({
             </p>
             <p className="mt-1 text-xs">
               {t("Data type")}: {detectedGeometryType || "Unknown"}
+            </p>
+            <p className="mt-1 text-xs">
+              {t("Visualizer")}: {visualizerType || "Unknown"}
             </p>
           </div>
         </div>

@@ -16,6 +16,7 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/google/uuid"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
+	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/workflow"
@@ -95,6 +96,28 @@ func (f *fileRepo) UploadAsset(ctx context.Context, file *file.File) (*url.URL, 
 		return nil, 0, err
 	}
 	return u, s, nil
+}
+
+func (f *fileRepo) UploadedAsset(ctx context.Context, u *asset.Upload) (*file.File, error) {
+	sn := sanitizePath(u.UUID() + path.Ext(u.FileName()))
+	if sn == "" {
+		return nil, gateway.ErrInvalidFile
+	}
+	p := path.Join(gcsAssetBasePath, sn)
+	bucket, err := f.bucket(ctx)
+	if err != nil {
+		return nil, err
+	}
+	attrs, err := bucket.Object(p).Attrs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("attrs(object=%s): %w", p, err)
+	}
+	return &file.File{
+		Content:     nil,
+		Path:        u.FileName(),
+		Size:        attrs.Size,
+		ContentType: attrs.ContentType,
+	}, nil
 }
 
 func (f *fileRepo) DeleteAsset(ctx context.Context, u *url.URL) error {
@@ -471,10 +494,11 @@ func (f *fileRepo) IssueUploadAssetLink(ctx context.Context, param gateway.Issue
 		return nil, err
 	}
 
-	p := getGCSObjectPath(param.UUID, param.Filename)
-	if p == "" {
+	sn := sanitizePath(param.UUID + path.Ext(param.Filename))
+	if sn == "" {
 		return nil, gateway.ErrInvalidFile
 	}
+	p := path.Join(gcsAssetBasePath, sn)
 
 	bucket, err := f.bucket(ctx)
 	if err != nil {
@@ -500,6 +524,7 @@ func (f *fileRepo) IssueUploadAssetLink(ctx context.Context, param gateway.Issue
 	}
 	uploadURL, err := bucket.SignedURL(p, opt)
 	if err != nil {
+		log.Errorfc(ctx, "gcs: SignedURL failed (path=%s, bucket=%s): %v", p, f.bucketName, err)
 		return nil, gateway.ErrUnsupportedOperation
 	}
 
@@ -510,6 +535,19 @@ func (f *fileRepo) IssueUploadAssetLink(ctx context.Context, param gateway.Issue
 		ContentEncoding: param.ContentEncoding,
 		Next:            "",
 	}, nil
+}
+
+func (f *fileRepo) GetPublicAssetURL(uuid, filename string) (*url.URL, error) {
+	sn := sanitizePath(uuid + path.Ext(filename))
+	if sn == "" {
+		return nil, gateway.ErrInvalidFile
+	}
+	p := path.Join(gcsAssetBasePath, sn)
+	u := getGCSObjectURL(f.base, p)
+	if u == nil {
+		return nil, gateway.ErrInvalidFile
+	}
+	return u, nil
 }
 
 func (f *fileRepo) toPublicUrl(uploadURL string) string {
@@ -569,14 +607,6 @@ func validateContentEncoding(ce string) error {
 		return gateway.ErrUnsupportedContentEncoding
 	}
 	return nil
-}
-
-func getGCSObjectPath(uuid, objectName string) string {
-	if uuid == "" || !IsValidUUID(uuid) {
-		return ""
-	}
-
-	return path.Join(gcsAssetBasePath, uuid[:2], uuid[2:], objectName)
 }
 
 func IsValidUUID(u string) bool {

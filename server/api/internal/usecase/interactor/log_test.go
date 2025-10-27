@@ -55,7 +55,7 @@ func (m *mockJobRepo) FindByIDs(ctx context.Context, jobIDs id.JobIDList) ([]*jo
 	panic("unimplemented")
 }
 
-func (m *mockJobRepo) FindByWorkspace(ctx context.Context, workspaceID id.WorkspaceID, p *interfaces.PaginationParam) ([]*job.Job, *interfaces.PageBasedInfo, error) {
+func (m *mockJobRepo) FindByWorkspace(ctx context.Context, workspaceID id.WorkspaceID, p *interfaces.PaginationParam, keyword *string) ([]*job.Job, *interfaces.PageBasedInfo, error) {
 	panic("unimplemented")
 }
 

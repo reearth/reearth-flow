@@ -389,7 +389,7 @@ func TestWorkspaceAssetsQuery(t *testing.T) {
 	o.Value("data").Object().Value("node").Object().Value("assets").Object().Value("nodes").Array().IsEmpty()
 }
 
-func TestCreateAssetUpload_Simple(t *testing.T) {
+func TestCreateAssetUpload(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
