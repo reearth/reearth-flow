@@ -2102,6 +2102,7 @@
         "default"
       ],
       "outputPorts": [
+        "up_to_lod0",
         "up_to_lod1",
         "up_to_lod2",
         "up_to_lod3",
