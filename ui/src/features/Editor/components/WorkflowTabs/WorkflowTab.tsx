@@ -23,11 +23,11 @@ const WorkflowTab: React.FC<Props> = ({
       onClick={() => onWorkflowChange(id)}
       key={id}>
       <div
-        className={`ml-[8px] flex h-full items-center gap-2 group-hover:text-white dark:font-extralight ${currentWorkflowId !== id && "text-accent-foreground"}`}>
+        className={`ml-[8px] flex h-full items-center gap-2 text-white dark:font-extralight ${currentWorkflowId !== id && "text-accent-foreground"}`}>
         <GraphIcon weight="light" />
       </div>
       <div className="flex h-full w-[100px] items-center justify-center overflow-hidden text-center">
-        <p className="w-full truncate text-center text-xs select-none">
+        <p className="w-full truncate text-center text-xs text-white select-none">
           {name}
         </p>
       </div>
