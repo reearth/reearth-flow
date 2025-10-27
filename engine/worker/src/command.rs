@@ -2,7 +2,10 @@ use std::{collections::HashMap, io, str::FromStr, sync::Arc};
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
-use reearth_flow_common::{dir::setup_job_directory, uri::Uri};
+use reearth_flow_common::{
+    dir::setup_job_directory,
+    uri::{Protocol, Uri},
+};
 use reearth_flow_runner::runner::AsyncRunner;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::{self, StorageResolver};
@@ -282,7 +285,7 @@ impl RunWorkerCommand {
             let path = Uri::from_str(self.workflow.as_str()).map_err(crate::errors::Error::init)?;
 
             // Extract base directory for !include resolution
-            let base_dir = if path.scheme() == "file" || path.scheme().is_empty() {
+            let base_dir = if path.protocol() == Protocol::File {
                 path.path().parent().map(|p| p.to_path_buf())
             } else {
                 None

@@ -19,7 +19,7 @@ pub fn expand_yaml_includes(yaml_content: &str, base_path: Option<&Path>) -> cra
 
     // Match patterns like: !include path/to/file.txt
     let include_pattern = Regex::new(r"!include\s+([^\s\r\n]+)")
-        .map_err(|e| crate::Error::Serde(format!("Failed to create regex: {}", e)))?;
+        .map_err(|e| crate::Error::Serde(format!("Failed to create regex: {e}")))?;
 
     let mut expanded = yaml_content.to_string();
     let mut iterations = 0;
@@ -50,15 +50,22 @@ pub fn expand_yaml_includes(yaml_content: &str, base_path: Option<&Path>) -> cra
             };
 
             // Read the included file
-            let included_content = std::fs::read_to_string(&resolved_path)
-                .map_err(|e| crate::Error::Serde(format!(
-                    "Failed to read included file {:?}: {}", resolved_path, e
-                )))?;
+            let included_content = std::fs::read_to_string(&resolved_path).map_err(|e| {
+                crate::Error::Serde(format!(
+                    "Failed to read included file {resolved_path:?}: {e}"
+                ))
+            })?;
 
             // Find the indentation of the line containing !include
-            let line_start = expanded[..match_start].rfind('\n').map(|i| i + 1).unwrap_or(0);
+            let line_start = expanded[..match_start]
+                .rfind('\n')
+                .map(|i| i + 1)
+                .unwrap_or(0);
             let line_before_include = &expanded[line_start..match_start];
-            let base_indent = line_before_include.chars().take_while(|c| c.is_whitespace()).count();
+            let base_indent = line_before_include
+                .chars()
+                .take_while(|c| c.is_whitespace())
+                .count();
 
             // Determine if this is a scalar value context (key: !include) or object/array context (- !include)
             let is_scalar_context = line_before_include.trim_start().contains(':');
@@ -67,8 +74,11 @@ pub fn expand_yaml_includes(yaml_content: &str, base_path: Option<&Path>) -> cra
             let formatted_content = if is_scalar_context && !is_array_item {
                 // Scalar context: format as YAML literal block scalar
                 // The '|-' chomps the final newline, and content is indented relative to the key
-                format!("|-\n{}",
-                    included_content.trim().lines()
+                format!(
+                    "|-\n{}",
+                    included_content
+                        .trim()
+                        .lines()
                         .map(|line| format!("{}{}", " ".repeat(base_indent + 2), line))
                         .collect::<Vec<_>>()
                         .join("\n")
@@ -92,7 +102,9 @@ pub fn expand_yaml_includes(yaml_content: &str, base_path: Option<&Path>) -> cra
                 }
             } else {
                 // Object context: insert raw YAML with proper indentation
-                included_content.trim().lines()
+                included_content
+                    .trim()
+                    .lines()
                     .map(|line| {
                         if line.trim().is_empty() {
                             String::new()
@@ -115,7 +127,7 @@ pub fn expand_yaml_includes(yaml_content: &str, base_path: Option<&Path>) -> cra
 
     if iterations >= MAX_ITERATIONS {
         return Err(crate::Error::Serde(
-            "Maximum !include expansion depth exceeded (possible circular include)".to_string()
+            "Maximum !include expansion depth exceeded (possible circular include)".to_string(),
         ));
     }
 
