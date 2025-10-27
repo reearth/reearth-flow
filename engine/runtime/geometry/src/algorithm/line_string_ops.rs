@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use rstar::RTreeObject;
 
 use crate::{
-    algorithm::line_ops::LineOps,
+    algorithm::line_ops::{LineOps, SplitResult},
     types::{
         coordinate::Coordinate,
         line::{Line, Line2D},
@@ -19,13 +19,20 @@ use super::{
     GeoFloat,
 };
 
+pub struct LineStringSplitResult<T: GeoFloat, Z: GeoFloat> {
+    /// The resulting line strings after the split.
+    pub split_line_strings: Vec<LineString<T, Z>>,
+    /// The coordinates used to split the line string. Not all input coordinates may be used, as some split points are invalid.
+    pub split_coords: Vec<Coordinate<T, Z>>,
+}
+
 /// Trait that defines additional operations on a line string.
 pub trait LineStringOps<T: GeoFloat, Z: GeoFloat> {
     /// Returns a vector of intersections between `self` and another line string.
     fn intersection(&self, other: &LineString<T, Z>) -> Vec<LineIntersection<T, Z>>;
 
     /// Splits the line string using the provided coordinates as split points with a given tolerance.
-    fn split(&self, coordinates: &[Coordinate<T, Z>], tolerance: T) -> Vec<LineString<T, Z>>;
+    fn split(&self, coordinates: &[Coordinate<T, Z>], tolerance: T) -> LineStringSplitResult<T, Z>;
 }
 
 #[derive(Debug, Clone)]
@@ -97,23 +104,35 @@ impl LineStringOps<f64, NoValue> for LineStringWithTree2D {
         &self,
         coordinates: &[Coordinate<f64, NoValue>],
         tolerance: f64,
-    ) -> Vec<LineString<f64, NoValue>> {
+    ) -> LineStringSplitResult<f64, NoValue> {
         // Helper function to split a single line by multiple coordinates.
         fn split_line_by_multiple_coords(
             line: Line<f64, NoValue>,
             coords: Vec<Coordinate<f64, NoValue>>,
             tolerance: f64,
-        ) -> Vec<Line<f64, NoValue>> {
+        ) -> (Vec<Line<f64, NoValue>>, Vec<Coordinate<f64, NoValue>>, Vec<Coordinate<f64, NoValue>> ) {
             let mut lines = vec![line];
+            let mut split_coords = Vec::new();
+            let mut ignored_coords = Vec::new();
             for coord in coords {
                 let mut new_lines = Vec::new();
                 // Split each current segment by the coordinate.
                 for line in lines {
-                    new_lines.extend(line.split(&coord, tolerance));
+                    match line.split(&coord, tolerance) {
+                        SplitResult::Success([first, second]) => {
+                            new_lines.push(first);
+                            new_lines.push(second);
+                            split_coords.push(coord);
+                        }
+                        SplitResult::FailureNotOnLine(_) => {
+                            new_lines.push(line);
+                            ignored_coords.push(coord);
+                        }
+                    }
                 }
                 lines = new_lines;
             }
-            lines
+            (lines, split_coords, ignored_coords)
         }
 
         // Helper function to connect a vector of line segments into a single linestring.
@@ -144,6 +163,9 @@ impl LineStringOps<f64, NoValue> for LineStringWithTree2D {
         let mut new_lss = Vec::new();
         let mut lines_buffer = Vec::new();
 
+        let mut split_coords = Vec::new();
+        let mut ignored_coords = Vec::new();
+
         // Iterate through each line segment and apply splitting if needed.
         for (line_index, line) in self.line_string.lines().enumerate() {
             let coords_indexes = coords_around_line[line_index]
@@ -157,12 +179,9 @@ impl LineStringOps<f64, NoValue> for LineStringWithTree2D {
                     .iter()
                     .map(|index| coordinates[*index])
                     .collect::<Vec<_>>();
-                let splits = split_line_by_multiple_coords(line, split_points, tolerance);
-
-                if splits.is_empty() {
-                    continue;
-                }
-
+                let (splits, split_points, ignored_points) = split_line_by_multiple_coords(line, split_points, tolerance);
+                split_coords.extend(split_points);
+                ignored_coords.extend(ignored_points);
                 for line in splits.iter().take(splits.len() - 1) {
                     lines_buffer.push(*line);
                     new_lss.push(connected_lines_into_line_string(lines_buffer.clone()));
@@ -172,9 +191,30 @@ impl LineStringOps<f64, NoValue> for LineStringWithTree2D {
             }
         }
 
+        // split the line strings further at vertices of degree higher than 2
         new_lss.push(connected_lines_into_line_string(lines_buffer.clone()));
+        let mut final_lss = Vec::new();
+        for ls in new_lss {
+            let mut splits = Vec::new();
+            for (i, &v) in ls.coords().enumerate().skip(1).take(ls.len()-2) {
+                if ignored_coords.iter().any(|&c| (c-v).norm() < tolerance) {
+                    split_coords.push(v);
+                    splits.push(i);
+                }
+            }
+            let mut curr_lss = ls;
+            for split in splits.into_iter().rev() {
+                let (first, second) = curr_lss.split_at(split);
+                curr_lss = first;
+                final_lss.push(second);
+            }
+            final_lss.push(curr_lss);
+        }
 
-        new_lss
+        LineStringSplitResult {
+            split_line_strings: final_lss,
+            split_coords,
+        }
     }
 }
 
@@ -239,9 +279,9 @@ mod tests {
             Coordinate2D::new_(8.0, 0.0),
         ];
         let tolerance = 1e-6;
-        let split_lines = tree.split(&split_points, tolerance);
+        let split_result = tree.split(&split_points, tolerance);
 
-        assert_eq!(split_lines.len(), 4);
+        assert_eq!(split_result.split_line_strings.len(), 4);
     }
 
     #[test]
@@ -254,9 +294,9 @@ mod tests {
         let tree = LineStringWithTree2D::new(line_string);
         let split_points = vec![Coordinate2D::new_(2.0, 2.0)];
         let tolerance = 1e-6;
-        let split_lines = tree.split(&split_points, tolerance);
+        let split_result = tree.split(&split_points, tolerance);
 
-        assert_eq!(split_lines.len(), 1);
-        assert_eq!(split_lines[0].points().len(), 2);
+        assert_eq!(split_result.split_line_strings.len(), 1);
+        assert_eq!(split_result.split_line_strings[0].points().len(), 2);
     }
 }

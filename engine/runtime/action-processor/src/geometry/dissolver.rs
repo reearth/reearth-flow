@@ -21,6 +21,28 @@ use super::errors::GeometryProcessorError;
 
 pub static AREA_PORT: Lazy<Port> = Lazy::new(|| Port::new("area"));
 
+/// # Attribute Accumulation Strategy
+/// Defines how attributes should be handled when dissolving multiple features into one
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum AttributeAccumulationStrategy {
+    /// # Drop Incoming Attributes
+    /// No attributes from any incoming features will be preserved in the output (except group_by attributes if specified)
+    DropAttributes,
+    /// # Merge Incoming Attributes
+    /// The output feature will merge all input attributes. When multiple features have the same attribute with different values, all values are collected into an array
+    MergeAttributes,
+    /// # Use Attributes From One Feature
+    /// The output inherits the attributes of one representative feature (the last feature in the group)
+    UseOneFeature,
+}
+
+impl Default for AttributeAccumulationStrategy {
+    fn default() -> Self {
+        Self::UseOneFeature
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct DissolverFactory;
 
@@ -75,6 +97,7 @@ impl ProcessorFactory for DissolverFactory {
         };
         let process = Dissolver {
             group_by: param.group_by,
+            attribute_accumulation: param.attribute_accumulation,
             buffer: HashMap::new(),
         };
 
@@ -84,19 +107,22 @@ impl ProcessorFactory for DissolverFactory {
 
 /// # Dissolver Parameters
 /// Configure how to dissolve features by grouping them based on shared attributes
-/// # Dissolver Parameters
-/// Configure how to dissolve features by grouping them based on shared attributes
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DissolverParam {
     /// # Group By Attributes
     /// List of attribute names to group features by before dissolving. Features with the same values for these attributes will be dissolved together
     group_by: Option<Vec<Attribute>>,
+    /// # Attribute Accumulation
+    /// Strategy for handling attributes when dissolving features
+    #[serde(default)]
+    attribute_accumulation: AttributeAccumulationStrategy,
 }
 
 #[derive(Debug, Clone)]
 pub struct Dissolver {
     group_by: Option<Vec<Attribute>>,
+    attribute_accumulation: AttributeAccumulationStrategy,
     buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
@@ -206,19 +232,64 @@ impl Dissolver {
 
         if let Some(multi_polygon_2d) = multi_polygon_2d {
             let mut feature = Feature::new();
-            if let (Some(group_by), Some(last_feature)) =
-                (&self.group_by, buffered_features_2d.last())
-            {
-                feature.attributes = group_by
-                    .iter()
-                    .filter_map(|attr| {
-                        let value = last_feature.attributes.get(attr).cloned()?;
-                        Some((attr.clone(), value))
-                    })
-                    .collect::<IndexMap<_, _>>();
-            } else {
-                feature.attributes = IndexMap::new();
-            }
+
+            // Apply attribute accumulation strategy
+            feature.attributes = match self.attribute_accumulation {
+                AttributeAccumulationStrategy::DropAttributes => {
+                    // Only keep group_by attributes if specified
+                    if let (Some(group_by), Some(last_feature)) = (&self.group_by, buffered_features_2d.last()) {
+                        group_by
+                            .iter()
+                            .filter_map(|attr| {
+                                let value = last_feature.attributes.get(attr).cloned()?;
+                                Some((attr.clone(), value))
+                            })
+                            .collect::<IndexMap<_, _>>()
+                    } else {
+                        IndexMap::new()
+                    }
+                }
+                AttributeAccumulationStrategy::MergeAttributes => {
+                    // Merge all attributes from all features
+                    let mut merged_attributes = IndexMap::new();
+
+                    for feature in &buffered_features_2d {
+                        for (key, value) in &feature.attributes {
+                            merged_attributes
+                                .entry(key.clone())
+                                .and_modify(|existing: &mut Vec<AttributeValue>| {
+                                    // Add value if it's not already in the list
+                                    if !existing.contains(value) {
+                                        existing.push(value.clone());
+                                    }
+                                })
+                                .or_insert_with(|| vec![value.clone()]);
+                        }
+                    }
+
+                    // Convert single-element vectors to single values
+                    merged_attributes
+                        .into_iter()
+                        .map(|(key, values)| {
+                            let final_value = if values.len() == 1 {
+                                values.into_iter().next().unwrap()
+                            } else {
+                                AttributeValue::Array(values)
+                            };
+                            (key, final_value)
+                        })
+                        .collect::<IndexMap<_, _>>()
+                }
+                AttributeAccumulationStrategy::UseOneFeature => {
+                    // Use attributes from the last feature
+                    if let Some(last_feature) = buffered_features_2d.last() {
+                        last_feature.attributes.clone()
+                    } else {
+                        IndexMap::new()
+                    }
+                }
+            };
+
             feature.geometry.value = GeometryValue::FlowGeometry2D(multi_polygon_2d.into());
             Some(feature)
         } else {

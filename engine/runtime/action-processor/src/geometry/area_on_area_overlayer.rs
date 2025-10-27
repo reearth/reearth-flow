@@ -242,101 +242,112 @@ impl AreaOnAreaOverlayer {
                 .iter()
                 .filter(|f| matches!(&f.geometry.value, GeometryValue::FlowGeometry2D(_)))
                 .collect::<Vec<_>>();
-            overlayed.extend(self.overlay_2d(buffered_features_2d));
+            let polygons = buffered_features_2d
+                .iter()
+                .filter_map(|f| f.geometry.value.as_flow_geometry_2d())
+                .filter_map(|g| {
+                    // Try to get MultiPolygon directly
+                    if let Some(multi_polygon) = g.as_multi_polygon() {
+                        return Some(multi_polygon);
+                    }
+
+                    // Try to get polygon directly
+                    if let Some(polygon) = g.as_polygon() {
+                        return Some(MultiPolygon2D::new(vec![polygon]));
+                    }
+
+                    // If it's a closed LineString, convert to Polygon
+                    if let Some(linestring) = g.as_line_string() {
+                        let coords = linestring.coords().collect::<Vec<_>>();
+                        if coords.len() >= 4 && coords.first() == coords.last() {
+                            // Create polygon from closed linestring
+                            use reearth_flow_geometry::types::polygon::Polygon2D;
+                            let polygon = Polygon2D::new(linestring.clone(), vec![]);
+                            return Some(MultiPolygon2D::new(vec![polygon]));
+                        }
+                    }
+
+                    None
+                })
+                .collect::<Vec<_>>();
+
+            let midpolygons = overlay_2d(polygons);
+
+            let overlayed_features = OverlayedFeatures::from_midpolygons(
+                midpolygons,
+                buffered_features_2d
+                    .iter()
+                    .map(|f| f.attributes.clone())
+                    .collect(),
+                &self.group_by,
+                &self.output_attribute,
+                &self.generate_list,
+                &self.accumulation_mode,
+            );
+            overlayed.extend(overlayed_features);
         }
 
         overlayed
     }
+}
 
-    fn overlay_2d(&self, buffered_features_2d: Vec<&Feature>) -> OverlayedFeatures {
-        let polygons_incoming = buffered_features_2d
-            .iter()
-            .filter_map(|f| f.geometry.value.as_flow_geometry_2d())
-            .filter_map(|g| {
-                // Try to get polygon directly
-                if let Some(polygon) = g.as_polygon() {
-                    return Some(MultiPolygon2D::new(vec![polygon]));
+fn overlay_2d(polygons: Vec<MultiPolygon2D<f64>>) -> Vec<MiddlePolygon> {
+    let overlay_graph = OverlayGraph::bulk_load(&polygons);
+
+    // all (devided) polygons to output
+    (0..polygons.len())
+        .into_par_iter()
+        .map(|i| {
+            let mut polygon_target = polygons[i].clone();
+
+            // cut off the target polygon by upper polygons
+            for j in overlay_graph.overlayed_iter(i).copied() {
+                if i < j {
+                    polygon_target = polygon_target.difference(&polygons[j]);
                 }
+            }
 
-                // If it's a closed LineString, convert to Polygon
-                if let Some(linestring) = g.as_line_string() {
-                    let coords = linestring.coords().collect::<Vec<_>>();
-                    if coords.len() >= 4 && coords.first() == coords.last() {
-                        // Create polygon from closed linestring
-                        use reearth_flow_geometry::types::polygon::Polygon2D;
-                        let polygon = Polygon2D::new(linestring.clone(), vec![]);
-                        return Some(MultiPolygon2D::new(vec![polygon]));
-                    }
-                }
+            let mut queue = vec![MiddlePolygon {
+                polygon: polygon_target,
+                parents: vec![i],
+            }];
 
-                None
-            })
-            .collect::<Vec<_>>();
+            // divide the target polygon by lower polygons
+            for j in overlay_graph.overlayed_iter(i).copied() {
+                if i > j {
+                    let mut new_queue = Vec::new();
+                    for subpolygon in queue {
+                        let intersection =
+                            subpolygon.polygon.intersection(&polygons[j]);
 
-        let overlay_graph = OverlayGraph::bulk_load(&polygons_incoming);
-
-        // all (devided) polygons to output
-        let midpolygons = (0..polygons_incoming.len())
-            .into_par_iter()
-            .map(|i| {
-                let mut polygon_target = polygons_incoming[i].clone();
-
-                // cut off the target polygon by upper polygons
-                for j in overlay_graph.overlayed_iter(i).copied() {
-                    if i < j {
-                        polygon_target = polygon_target.difference(&polygons_incoming[j]);
-                    }
-                }
-
-                let mut queue = vec![MiddlePolygon {
-                    polygon: polygon_target,
-                    parents: vec![i],
-                }];
-
-                // divide the target polygon by lower polygons
-                for j in overlay_graph.overlayed_iter(i).copied() {
-                    if i > j {
-                        let mut new_queue = Vec::new();
-                        for subpolygon in queue {
-                            let intersected =
-                                subpolygon.polygon.intersection(&polygons_incoming[j]);
+                        if !intersection.is_empty() {
                             new_queue.push(MiddlePolygon {
-                                polygon: intersected,
+                                polygon: intersection,
                                 parents: subpolygon
                                     .parents
                                     .clone()
                                     .into_iter()
-                                    .chain(vec![j])
-                                    .collect(),
+                                .chain(vec![j])
+                                .collect(),
                             });
+                        }
 
-                            let difference = subpolygon.polygon.difference(&polygons_incoming[j]);
+                        let difference = subpolygon.polygon.difference(&polygons[j]);
+                        if !difference.is_empty() {
                             new_queue.push(MiddlePolygon {
                                 polygon: difference,
                                 parents: subpolygon.parents.clone(),
                             });
                         }
-                        queue = new_queue;
                     }
+                    queue = new_queue;
                 }
+            }
 
-                queue
-            })
-            .flatten()
-            .collect::<Vec<_>>();
-
-        OverlayedFeatures::from_midpolygons(
-            midpolygons,
-            buffered_features_2d
-                .iter()
-                .map(|f| f.attributes.clone())
-                .collect(),
-            &self.group_by,
-            &self.output_attribute,
-            &self.generate_list,
-            &self.accumulation_mode,
-        )
-    }
+            queue
+        })
+        .flatten()
+        .collect::<Vec<_>>()
 }
 
 struct PolygonWithMbr2D {
@@ -358,7 +369,10 @@ impl rstar::RTreeObject for PolygonWithMbr2D {
     }
 }
 
+/// Overlay graph that stores which polygons overlay which other polygons.
 struct OverlayGraph {
+    /// Adjacency list representation of the overlay graph.
+    /// Each index corresponds to a polygon, and the set contains indices of polygons whose AABB intersects with the polygon at that index.
     graph: Vec<HashSet<usize>>,
 }
 
@@ -523,5 +537,69 @@ impl OverlayedFeatures {
     fn extend(&mut self, other: Self) {
         self.area.extend(other.area);
         self.remnant.extend(other.remnant);
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use reearth_flow_geometry::types::{coordinate::Coordinate2D, line_string::LineString2D, polygon::Polygon2D};
+
+    use super::*;
+
+    #[test]
+    fn test_overlay_two_squares() {
+        let polygons = vec![
+            MultiPolygon2D::new(vec![Polygon2D::new(
+                LineString2D::new(vec![
+                    Coordinate2D::new_(0.0, 0.0),
+                    Coordinate2D::new_(2.0, 0.0),
+                    Coordinate2D::new_(2.0, 2.0),
+                    Coordinate2D::new_(0.0, 2.0),
+                    Coordinate2D::new_(0.0, 0.0),
+                ]),
+                vec![],
+            )]),
+            MultiPolygon2D::new(vec![Polygon2D::new(
+                LineString2D::new(vec![
+                    Coordinate2D::new_(1.0, 1.0),
+                    Coordinate2D::new_(3.0, 1.0),
+                    Coordinate2D::new_(3.0, 3.0),
+                    Coordinate2D::new_(1.0, 3.0),
+                    Coordinate2D::new_(1.0, 1.0),
+                ]),
+                vec![],
+            )]),
+        ];
+
+        let midpolygons = overlay_2d(polygons);
+        assert_eq!(midpolygons.len(), 3);
+    }
+
+    #[test]
+    fn test_overlay_triangles_sharing_an_edge() {
+        let polygons = vec![
+            MultiPolygon2D::new(vec![Polygon2D::new(
+                LineString2D::new(vec![
+                    Coordinate2D::new_(0.0, 0.0),
+                    Coordinate2D::new_(2.0, 0.0),
+                    Coordinate2D::new_(1.0, 2.0),
+                    Coordinate2D::new_(0.0, 0.0),
+                ]),
+                vec![],
+            )]),
+            MultiPolygon2D::new(vec![Polygon2D::new(
+                LineString2D::new(vec![
+                    Coordinate2D::new_(0.0, 0.0),
+                    Coordinate2D::new_(2.0, 0.0),
+                    Coordinate2D::new_(1.0, 1.0),
+                    Coordinate2D::new_(0.0, 0.0),
+                ]),
+                vec![],
+            )]),
+        ];
+
+        let midpolygons = overlay_2d(polygons);
+        assert_eq!(midpolygons.len(), 2);
     }
 }

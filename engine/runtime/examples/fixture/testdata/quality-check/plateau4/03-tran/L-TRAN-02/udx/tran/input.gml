@@ -266,7 +266,7 @@
 			<tran:lod1MultiSurface>
 				<gml:MultiSurface>
                     <gml:surfaceMember>
-						<gml:Polygon gml:id="pol_fd5b9988-fdd4-4d53-b68e-9f25e63bbc79">
+						<gml:Polygon gml:id="pol_fd5b9988-fdd4-4d53-b68e-9f25e63bbc70">
 							<gml:exterior>
 								<gml:LinearRing>
 									<gml:posList>

@@ -107,7 +107,7 @@ graphs:
                 env.get("__value")["fileIndex"] ?? 1
             - attribute: Filename
               expr: |
-                "l-tran-03.gml"
+                "l-.gml"
             - attribute: FeatureType
               expr: |
                 env.get("__value")["featureType"] ?? ""
@@ -182,7 +182,7 @@ graphs:
                 env.get("__value")["fileIndex"] ?? ""
             - attribute: Filename
               expr: |
-                "orientation.gml"
+                "ori.gml"
             - attribute: FeatureType
               expr: |
                 env.get("__value")["featureType"] ?? ""
@@ -215,6 +215,178 @@ graphs:
           format: csv
           output: |
             file::join_path(env.get("outputPath"), "03_交通_面の向き不正.csv")
+
+      # L-TRAN-02: Adjacent surface overlap detection
+      # Convert surfaces to 2D for overlap detection
+      - id: f1111111-1111-1111-1111-111111111111
+        name: TwoDimensionForcer
+        type: action
+        action: TwoDimensionForcer
+
+      # Dissolve geometries by feature ID to get boundaries
+      - id: f2222222-2222-2222-2222-222222222222
+        name: Dissolver
+        type: action
+        action: Dissolver
+        with:
+          groupBy:
+            - featureId
+            - lod
+            - fileIndex
+            - gmlParentId
+
+      # Extract geometry to attribute for later replacement
+      - id: 5adf6eb3-f86d-4f02-baf3-72273ac0cc88
+        name: GeometryExtractor
+        type: action
+        action: GeometryExtractor
+        with:
+          outputAttribute: 2d_geometry
+
+      # Coerce to LineString to extract boundaries
+      - id: f3333333-3333-3333-3333-333333333333
+        name: GeometryCoercer
+        type: action
+        action: GeometryCoercer
+        with:
+          coercerType: lineString
+
+      # Filter for LOD2 and LOD3 only (L-TRAN-02 applies to these)
+      - id: f4444444-4444-4444-4444-444444444444
+        name: FeatureFilterLOD23
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value")["lod"] == "2" || env.get("__value")["lod"] == "3"
+              outputPort: lod23
+
+      # Detect overlaps between different Road instances (not within same parent)
+      - id: f5555555-5555-5555-5555-555555555555
+        name: LineOnLineOverlayer
+        type: action
+        action: LineOnLineOverlayer
+        with:
+          groupBy:
+            - featureType
+            - lod
+            - fileIndex
+          tolerance: 0.000000001
+
+      # Filter features with overlaps (lines that have overlap attribute > 1)
+      - id: f7777777-7777-7777-7777-777777777777
+        name: FilterOverlaps
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value")["overlayCount"] > 1
+              outputPort: hasLineOverlap
+
+      # Attach the overlap index
+      - id: f7777777-7777-7777-7777-777777777778
+        name: OverlapCounter
+        type: action
+        action: FeatureCounter
+        with:
+          countStart: 1
+          outputAttribute: overlapIndex
+
+      # List exploder for line-on-line overlaps
+      - id: f8888888-8888-8888-8888-888888888888
+        name: ListExploderForLineOverlaps
+        type: action
+        action: ListExploder
+        with:
+          sourceAttribute: overlayedLists
+
+      # Replace geometry from attribute
+      - id: 316648ef-640a-4e59-a01e-eeffc43acc3c
+        name: GeometryReplacer
+        type: action
+        action: GeometryReplacer
+        with:
+          sourceAttribute: 2d_geometry
+
+      # AreaOnAreaOverlayer to find overlapping areas
+      - id: f9999999-9999-9999-9999-999999999999
+        name: AreaOnAreaOverlayer
+        type: action
+        action: AreaOnAreaOverlayer
+        with:
+          groupBy:
+            - featureType
+            - lod
+          generateList: areaOverlapList
+      
+      # Filter for overlapping areas
+      - id: faaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+        name: FilterAreaOverlaps
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value")["overlayCount"] > 1
+              outputPort: hasAreaOverlap
+
+      # Attach area overlap index
+      - id: fbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
+        name: AreaOverlapCounter
+        type: action
+        action: FeatureCounter
+        with:
+          countStart: 0
+          outputAttribute: areaOverlapIndex
+
+      # List exploder for area overlaps
+      - id: fccccccc-cccc-cccc-cccc-cccccccccccc
+        name: ListExploderForAreaOverlaps
+        type: action
+        action: ListExploder
+        with:
+          sourceAttribute: areaOverlapList
+
+      # Attribute Mapper
+      - id: ffffffff-ffff-ffff-ffff-ffffffffffff
+        name: OverlapAttributeMapper
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Folder
+              expr: |
+                "tran"
+            - attribute: Index
+              expr: |
+                env.get("__value")["fileIndex"] ?? ""
+            - attribute: Filename
+              expr: |
+                "l-.gml"
+            - attribute: FeatureType
+              expr: |
+                env.get("__value")["featureType"] ?? ""
+            - attribute: LOD
+              expr: |
+                env.get("__value")["lod"] ?? ""
+            - attribute: "gml:id"
+              expr: |
+                env.get("__value")["featureId"] ?? ""
+            - attribute: "隣接ID"
+              expr: |
+                env.get("__value")["areaOverlapIndex"] ?? ""
+
+      # Feature Writer
+      - id: ec1fd29f-0cc8-4f9f-84d1-286ebb67cc3c
+        name: OverlapCsvWriter
+        type: action
+        action: FeatureWriter
+        with:
+          format: csv
+          output: |
+            file::join_path(env.get("outputPath"), "03_交通_隣接面重複.csv")
 
     edges:
       # Data preparation flow
@@ -323,5 +495,123 @@ graphs:
       - id: 3d70a162-1925-70f9-6303-52009677ed89
         from: d4444444-4444-4444-4444-444444444444
         to: e5555555-5555-5555-5555-555555555555
+        fromPort: default
+        toPort: default
+
+      # L-TRAN-02: Adjacent surface overlap detection flow
+      # Connect LOD splitter to TwoDimensionForcer
+      - id: 4e81c374-9a5c-4fd9-8403-61119788fe9b
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+        to: f1111111-1111-1111-1111-111111111111
+        fromPort: lod2
+        toPort: default
+      - id: 5f92d485-ab6d-5e0a-9514-72229899009c
+        from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+        to: f1111111-1111-1111-1111-111111111111
+        fromPort: lod3
+        toPort: default
+
+      # TwoDimensionForcer to Dissolver
+      - id: 60a3e596-bc7e-6bf1-a625-83339a110a1d
+        from: f1111111-1111-1111-1111-111111111111
+        to: f2222222-2222-2222-2222-222222222222
+        fromPort: default
+        toPort: default
+
+      # Dissolver to GeometryExtractor
+      - id: 71b4f607-cd8f-7c02-b736-94449b221b2e
+        from: f2222222-2222-2222-2222-222222222222
+        to: 5adf6eb3-f86d-4f02-baf3-72273ac0cc88
+        fromPort: area
+        toPort: default
+
+      # GeometryExtractor to GeometryCoercer
+      - id: 9d8cfde7-3198-48f8-9406-69b528d5b6f8
+        from: 5adf6eb3-f86d-4f02-baf3-72273ac0cc88
+        to: f3333333-3333-3333-3333-333333333333
+        fromPort: default
+        toPort: default
+
+      # GeometryCoercer to FeatureFilterLOD23
+      - id: 82c60718-de9a-8d13-c847-a5559c332c3f
+        from: f3333333-3333-3333-3333-333333333333
+        to: f4444444-4444-4444-4444-444444444444
+        fromPort: default
+        toPort: default
+
+      # FeatureFilterLOD23 to LineOnLineOverlayer
+      - id: 93d71829-ef0b-9e24-d958-b6669d443d40
+        from: f4444444-4444-4444-4444-444444444444
+        to: f5555555-5555-5555-5555-555555555555
+        fromPort: lod23
+        toPort: default
+
+      # LineOnLineOverlayer to FilterOverlaps
+      - id: d131ff3b-8ea3-4feb-8b3f-55b3db1f2101
+        from: f5555555-5555-5555-5555-555555555555
+        to: f7777777-7777-7777-7777-777777777777
+        fromPort: line
+        toPort: default
+
+      # FilterOverlaps to OverlapCounter
+      - id: 781df663-9cd8-4a42-a96c-d0e069cbb87f
+        from: f7777777-7777-7777-7777-777777777777
+        to: f7777777-7777-7777-7777-777777777778
+        fromPort: hasLineOverlap
+        toPort: default
+
+      # OverlapCounter to ListExploderForLineOverlaps
+      - id: 0de54121-aaf6-4319-a9b3-c785cc428178
+        from: f7777777-7777-7777-7777-777777777778
+        to: f8888888-8888-8888-8888-888888888888
+        fromPort: default
+        toPort: default
+
+      # ListExploderForLineOverlaps to GeometryReplacer
+      - id: 6138f973-e9cc-4684-a673-b61b1bcc6937
+        from: f8888888-8888-8888-8888-888888888888
+        to: 316648ef-640a-4e59-a01e-eeffc43acc3c
+        fromPort: default
+        toPort: default
+
+      # GeometryReplacer to AreaOnAreaOverlayer
+      - id: 3c6c2c23-c027-425e-af6e-a33920b19bd1
+        from: 316648ef-640a-4e59-a01e-eeffc43acc3c
+        to: f9999999-9999-9999-9999-999999999999
+        fromPort: default
+        toPort: default
+
+      # AreaOnAreaOverlayer to FilterAreaOverlaps
+      - id: 9fcc9048-2607-466b-916c-c079aa0e0c4e
+        from: f9999999-9999-9999-9999-999999999999
+        to: faaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+        fromPort: area
+        toPort: default
+
+      # FilterAreaOverlaps to AreaOverlapCounter
+      - id: ad9e1e74-ca1e-4b3c-b04f-76ddfc53e2a8
+        from: faaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+        to: fbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
+        fromPort: hasAreaOverlap
+        toPort: default
+
+      # AreaOverlapCounter to ListExploderForAreaOverlaps
+      - id: be0f2f85-db2f-5c4d-c15e-87eefd64f3b9
+        from: fbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
+        to: fccccccc-cccc-cccc-cccc-cccccccccccc
+        fromPort: default
+        toPort: default
+
+      # ListExploderForAreaOverlaps to OverlapAttributeMapper
+      - id: cf103096-ec30-6d5e-d26f-98ff0e75f4ca
+        from: fccccccc-cccc-cccc-cccc-cccccccccccc
+        to: ffffffff-ffff-ffff-ffff-ffffffffffff
+        fromPort: default
+        toPort: default
+
+      # OverlapAttributeMapper to OverlapCsvWriter
+      - id: d02140a7-fd41-7e6f-e370-a9000f86f5db
+        from: ffffffff-ffff-ffff-ffff-ffffffffffff
+        to: ec1fd29f-0cc8-4f9f-84d1-286ebb67cc3c
         fromPort: default
         toPort: default

@@ -291,6 +291,14 @@ impl<T: CoordNum, Z: CoordNum> LineString<T, Z> {
         }
         area / 2.0
     }
+
+    /// Splits the LineString at the given index.
+    pub fn split_at(self, index: usize) -> (Self, Self) {
+        assert!(index < self.len());
+        let first = LineString(self.0[..=index].to_vec());
+        let second = LineString(self.0[index..].to_vec());
+        (first, second)
+    }
 }
 
 impl<T: CoordNum, Z: CoordNum, IC: Into<Coordinate<T, Z>>> From<Vec<IC>> for LineString<T, Z> {
