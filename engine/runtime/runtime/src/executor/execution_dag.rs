@@ -26,12 +26,7 @@ pub struct NodeType {
     pub handle: NodeHandle,
     pub name: String,
     pub kind: Option<NodeKind>,
-}
-
-impl NodeType {
-    pub fn is_source(&self) -> bool {
-        matches!(self.kind, Some(NodeKind::Source(_)))
-    }
+    pub is_source: bool,
 }
 
 type SharedFeatureWriter = Arc<Mutex<Box<dyn FeatureWriter>>>;
@@ -147,6 +142,7 @@ impl ExecutionDag {
             |_, node| NodeType {
                 handle: node.handle.clone(),
                 name: node.name.clone(),
+                is_source: matches!(node.kind, NodeKind::Source(_)),
                 kind: match &node.kind {
                     NodeKind::Source(source) => Some(NodeKind::Source(source.clone())),
                     NodeKind::Processor(processor) => Some(NodeKind::Processor(processor.clone())),
