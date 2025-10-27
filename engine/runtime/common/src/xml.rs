@@ -6,6 +6,7 @@ use libxml::parser::{Parser, ParserOptions};
 use libxml::schemas::SchemaValidationContext;
 use libxml::tree::document;
 use libxml::xpath::Context;
+use tracing::{debug, warn};
 
 use crate::str::to_hash;
 use crate::uri::Uri;
@@ -100,11 +101,32 @@ pub fn create_context(document: &XmlDocument) -> crate::Result<XmlContext> {
     let root = document
         .get_root_element()
         .ok_or(crate::Error::Xml("No root element".to_string()))?;
-    for ns in root.get_namespace_declarations().iter() {
+
+    let ns_decls = root.get_namespace_declarations();
+    debug!(
+        "xml::create_context: Root element '{}' has {} namespace declarations",
+        root.get_name(),
+        ns_decls.len()
+    );
+
+    for ns in ns_decls.iter() {
+        debug!(
+            "xml::create_context: Registering namespace - prefix='{}', href='{}'",
+            ns.get_prefix(),
+            ns.get_href()
+        );
         context
             .register_namespace(ns.get_prefix().as_str(), ns.get_href().as_str())
             .map_err(|_| crate::Error::Xml("Failed to register namespace".to_string()))?;
     }
+
+    if ns_decls.is_empty() {
+        warn!(
+            "xml::create_context: No namespace declarations found on root element '{}'. XPath queries with namespace prefixes may fail.",
+            root.get_name()
+        );
+    }
+
     Ok(context)
 }
 
@@ -114,11 +136,32 @@ pub fn create_safe_context(document: &XmlDocument) -> crate::Result<XmlSafeConte
     let root = document
         .get_root_element()
         .ok_or(crate::Error::Xml("No root element".to_string()))?;
-    for ns in root.get_namespace_declarations().iter() {
+
+    let ns_decls = root.get_namespace_declarations();
+    debug!(
+        "xml::create_safe_context: Root element '{}' has {} namespace declarations",
+        root.get_name(),
+        ns_decls.len()
+    );
+
+    for ns in ns_decls.iter() {
+        debug!(
+            "xml::create_safe_context: Registering namespace - prefix='{}', href='{}'",
+            ns.get_prefix(),
+            ns.get_href()
+        );
         context
             .register_namespace(ns.get_prefix().as_str(), ns.get_href().as_str())
             .map_err(|_| crate::Error::Xml("Failed to register namespace".to_string()))?;
     }
+
+    if ns_decls.is_empty() {
+        warn!(
+            "xml::create_safe_context: No namespace declarations found on root element '{}'. XPath queries with namespace prefixes may fail.",
+            root.get_name()
+        );
+    }
+
     Ok(XmlSafeContext {
         inner: parking_lot::RwLock::new(context),
         _marker: PhantomData,
