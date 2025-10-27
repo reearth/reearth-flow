@@ -541,7 +541,7 @@ type ComplexityRoot struct {
 		Members  func(childComplexity int) int
 		Name     func(childComplexity int) int
 		Personal func(childComplexity int) int
-		Projects func(childComplexity int, includeArchived *bool, pagination *gqlmodel.Pagination) int
+		Projects func(childComplexity int, includeArchived *bool, keyword *string, pagination *gqlmodel.Pagination) int
 	}
 
 	WorkspaceMember struct {
@@ -662,7 +662,7 @@ type TriggerResolver interface {
 type WorkspaceResolver interface {
 	Assets(ctx context.Context, obj *gqlmodel.Workspace, pagination *gqlmodel.Pagination) (*gqlmodel.AssetConnection, error)
 
-	Projects(ctx context.Context, obj *gqlmodel.Workspace, includeArchived *bool, pagination *gqlmodel.Pagination) (*gqlmodel.ProjectConnection, error)
+	Projects(ctx context.Context, obj *gqlmodel.Workspace, includeArchived *bool, keyword *string, pagination *gqlmodel.Pagination) (*gqlmodel.ProjectConnection, error)
 }
 type WorkspaceMemberResolver interface {
 	User(ctx context.Context, obj *gqlmodel.WorkspaceMember) (*gqlmodel.User, error)
@@ -2952,7 +2952,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Workspace.Projects(childComplexity, args["includeArchived"].(*bool), args["pagination"].(*gqlmodel.Pagination)), true
+		return e.complexity.Workspace.Projects(childComplexity, args["includeArchived"].(*bool), args["keyword"].(*string), args["pagination"].(*gqlmodel.Pagination)), true
 
 	case "WorkspaceMember.role":
 		if e.complexity.WorkspaceMember.Role == nil {
@@ -3836,8 +3836,6 @@ extend type Mutation {
   workspaceId: ID!
 }
 
-# Enums
-
 enum ProjectSortField {
   NAME
   CREATED_AT
@@ -4155,6 +4153,7 @@ extend type Subscription {
   personal: Boolean!
   projects(
     includeArchived: Boolean
+    keyword: String
     pagination: Pagination
   ): ProjectConnection!
 }
@@ -5268,11 +5267,16 @@ func (ec *executionContext) field_Workspace_projects_args(ctx context.Context, r
 		return nil, err
 	}
 	args["includeArchived"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalOPagination2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPagination)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "keyword", ec.unmarshalOString2ᚖstring)
 	if err != nil {
 		return nil, err
 	}
-	args["pagination"] = arg1
+	args["keyword"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalOPagination2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPagination)
+	if err != nil {
+		return nil, err
+	}
+	args["pagination"] = arg2
 	return args, nil
 }
 
@@ -16736,7 +16740,7 @@ func (ec *executionContext) _Workspace_projects(ctx context.Context, field graph
 		ec.fieldContext_Workspace_projects,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Workspace().Projects(ctx, obj, fc.Args["includeArchived"].(*bool), fc.Args["pagination"].(*gqlmodel.Pagination))
+			return ec.resolvers.Workspace().Projects(ctx, obj, fc.Args["includeArchived"].(*bool), fc.Args["keyword"].(*string), fc.Args["pagination"].(*gqlmodel.Pagination))
 		},
 		nil,
 		ec.marshalNProjectConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectConnection,
