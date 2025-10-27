@@ -354,6 +354,12 @@ export type DeploymentPayload = {
   deployment: Deployment;
 };
 
+export enum DeploymentSortField {
+  Description = 'DESCRIPTION',
+  UpdatedAt = 'UPDATED_AT',
+  Version = 'VERSION'
+}
+
 export enum EventSourceType {
   ApiDriven = 'API_DRIVEN',
   TimeDriven = 'TIME_DRIVEN'
@@ -408,6 +414,12 @@ export type JobPayload = {
   __typename?: 'JobPayload';
   job: Job;
 };
+
+export enum JobSortField {
+  CompletedAt = 'COMPLETED_AT',
+  StartedAt = 'STARTED_AT',
+  Status = 'STATUS'
+}
 
 export enum JobStatus {
   Cancelled = 'CANCELLED',
@@ -859,6 +871,12 @@ export type ProjectSnapshotMetadata = {
   version: Scalars['Int']['output'];
 };
 
+export enum ProjectSortField {
+  CreatedAt = 'CREATED_AT',
+  Name = 'NAME',
+  UpdatedAt = 'UPDATED_AT'
+}
+
 export type Query = {
   __typename?: 'Query';
   assets: AssetConnection;
@@ -972,6 +990,7 @@ export type QueryDeploymentVersionsArgs = {
 
 
 export type QueryDeploymentsArgs = {
+  keyword?: InputMaybe<Scalars['String']['input']>;
   pagination: PageBasedPagination;
   workspaceId: Scalars['ID']['input'];
 };
@@ -983,6 +1002,7 @@ export type QueryJobArgs = {
 
 
 export type QueryJobsArgs = {
+  keyword?: InputMaybe<Scalars['String']['input']>;
   pagination: PageBasedPagination;
   workspaceId: Scalars['ID']['input'];
 };
@@ -1034,6 +1054,7 @@ export type QueryProjectSnapshotArgs = {
 
 export type QueryProjectsArgs = {
   includeArchived?: InputMaybe<Scalars['Boolean']['input']>;
+  keyword?: InputMaybe<Scalars['String']['input']>;
   pagination: PageBasedPagination;
   workspaceId: Scalars['ID']['input'];
 };
@@ -1050,6 +1071,7 @@ export type QuerySharedProjectArgs = {
 
 
 export type QueryTriggersArgs = {
+  keyword?: InputMaybe<Scalars['String']['input']>;
   pagination: PageBasedPagination;
   workspaceId: Scalars['ID']['input'];
 };
@@ -1189,6 +1211,13 @@ export type TriggerConnection = {
   pageInfo: PageInfo;
   totalCount: Scalars['Int']['output'];
 };
+
+export enum TriggerSortField {
+  CreatedAt = 'CREATED_AT',
+  Description = 'DESCRIPTION',
+  LastTriggered = 'LAST_TRIGGERED',
+  UpdatedAt = 'UPDATED_AT'
+}
 
 export type UnshareProjectInput = {
   projectId: Scalars['ID']['input'];
@@ -1594,6 +1623,7 @@ export type CreateProjectMutation = { __typename?: 'Mutation', createProject?: {
 
 export type GetProjectsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
+  keyword?: InputMaybe<Scalars['String']['input']>;
   pagination: PageBasedPagination;
 }>;
 
@@ -2347,8 +2377,8 @@ export const CreateProjectDocument = gql`
 }
     ${ProjectFragmentDoc}`;
 export const GetProjectsDocument = gql`
-    query GetProjects($workspaceId: ID!, $pagination: PageBasedPagination!) {
-  projects(workspaceId: $workspaceId, pagination: $pagination) {
+    query GetProjects($workspaceId: ID!, $keyword: String, $pagination: PageBasedPagination!) {
+  projects(workspaceId: $workspaceId, keyword: $keyword, pagination: $pagination) {
     totalCount
     nodes {
       ...Project
