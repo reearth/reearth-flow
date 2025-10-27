@@ -384,7 +384,6 @@ export default ({
     users,
     nodes,
     edges,
-    selectedEdgeIds,
     openNode,
     nodePickerOpen,
     allowedToDeploy,
