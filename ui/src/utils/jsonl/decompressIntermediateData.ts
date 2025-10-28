@@ -15,9 +15,6 @@ export function decompressIntermediateData(
     const decoder = new TextDecoder("utf-8");
     const decompressedJsonl = decoder.decode(decompressed);
 
-    console.log(
-      `Decompressed ${compressedData.length} bytes -> ${decompressedJsonl.length} characters`,
-    );
     return decompressedJsonl;
   } catch (err) {
     console.error("Decompression error:", err);

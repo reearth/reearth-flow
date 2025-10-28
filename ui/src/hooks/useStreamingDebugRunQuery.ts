@@ -248,7 +248,7 @@ export const useStreamingDebugRunQuery = (
 
         // Update streaming state with final data
         setStreamingState({
-          data: transformedData,
+          data: streamData,
           detectedGeometryType,
           visualizerType: detectedVisualizerType,
           totalFeatures,
