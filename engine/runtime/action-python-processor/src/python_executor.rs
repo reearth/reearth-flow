@@ -1,12 +1,12 @@
 use std::collections::HashMap;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 use std::str::FromStr;
+use std::time::Duration;
 
 use indexmap::IndexMap;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_geometry::types::geometry::Geometry2D as FlowGeometry2D;
-use reearth_flow_geometry::types::point::Point2D;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -21,6 +21,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tempfile::NamedTempFile;
 use thiserror::Error;
+use wait_timeout::ChildExt;
 
 #[derive(Debug, Error)]
 #[allow(clippy::enum_variant_names)]
@@ -104,7 +105,7 @@ impl ProcessorFactory for PythonScriptProcessorFactory {
             script: params.script,
             python_file: params.python_file,
             python_path: params.python_path.unwrap_or_else(|| "python3".to_string()),
-            _timeout_seconds: params.timeout_seconds.unwrap_or(30),
+            timeout_seconds: params.timeout_seconds.unwrap_or(30),
             ctx,
         };
 
@@ -117,7 +118,7 @@ struct PythonScriptProcessor {
     script: Option<Expr>,
     python_file: Option<Expr>,
     python_path: String,
-    _timeout_seconds: u64,
+    timeout_seconds: u64,
     ctx: NodeContext,
 }
 
@@ -127,17 +128,37 @@ struct PythonScriptProcessorParam {
     /// # Inline Script
     /// Python script code to execute inline
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(
+        title = "Inline Script",
+        description = "Python script code to execute inline"
+    )]
     script: Option<Expr>,
 
     /// # Python File
     /// Path to a Python script file (supports file://, http://, https://, gs://, etc.)
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(
+        title = "Python File",
+        description = "Path to a Python script file (supports file://, http://, https://, gs://, etc.)"
+    )]
     python_file: Option<Expr>,
 
+    /// # Python Path
+    /// Path to Python interpreter executable (e.g., python3, /usr/bin/python3.11)
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(
+        title = "Python Path",
+        description = "Path to Python interpreter executable (default: python3)"
+    )]
     python_path: Option<String>,
 
+    /// # Timeout Seconds
+    /// Maximum execution time for the Python script in seconds
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(
+        title = "Timeout Seconds",
+        description = "Maximum execution time for the Python script in seconds (default: 30)"
+    )]
     timeout_seconds: Option<u64>,
 }
 
@@ -313,6 +334,10 @@ fn dedent(text: &str) -> String {
 }
 
 fn geojson_to_geometry(geojson: &serde_json::Value) -> Result<Geometry, PythonProcessorError> {
+    use reearth_flow_geometry::types::line_string::LineString2D;
+    use reearth_flow_geometry::types::point::Point2D;
+    use reearth_flow_geometry::types::polygon::Polygon2D;
+
     if geojson.is_null() {
         return Ok(Geometry::default());
     }
@@ -345,6 +370,236 @@ fn geojson_to_geometry(geojson: &serde_json::Value) -> Result<Geometry, PythonPr
                     "Invalid point coordinates".to_string(),
                 ))
             }
+        }
+        "LineString" => {
+            let coords_array = coords.as_array().ok_or_else(|| {
+                PythonProcessorError::SerializationError(
+                    "Invalid LineString coordinates".to_string(),
+                )
+            })?;
+            let points: Result<Vec<_>, _> = coords_array
+                .iter()
+                .map(|coord| {
+                    coord
+                        .as_array()
+                        .ok_or_else(|| {
+                            PythonProcessorError::SerializationError(
+                                "Invalid coordinate".to_string(),
+                            )
+                        })
+                        .and_then(|arr| {
+                            if arr.len() >= 2 {
+                                Ok((
+                                    arr[0].as_f64().unwrap_or(0.0),
+                                    arr[1].as_f64().unwrap_or(0.0),
+                                ))
+                            } else {
+                                Err(PythonProcessorError::SerializationError(
+                                    "Invalid coordinate".to_string(),
+                                ))
+                            }
+                        })
+                })
+                .collect();
+            let points = points?;
+            Ok(Geometry::with_value(GeometryValue::FlowGeometry2D(
+                FlowGeometry2D::LineString(LineString2D::from(points)),
+            )))
+        }
+        "Polygon" => {
+            let rings = coords.as_array().ok_or_else(|| {
+                PythonProcessorError::SerializationError("Invalid Polygon coordinates".to_string())
+            })?;
+
+            if rings.is_empty() {
+                return Err(PythonProcessorError::SerializationError(
+                    "Polygon must have at least one ring".to_string(),
+                ));
+            }
+
+            // Parse exterior ring
+            let exterior_coords = rings[0].as_array().ok_or_else(|| {
+                PythonProcessorError::SerializationError("Invalid exterior ring".to_string())
+            })?;
+            let exterior_points: Vec<(f64, f64)> = exterior_coords
+                .iter()
+                .filter_map(|coord| {
+                    coord.as_array().and_then(|arr| {
+                        if arr.len() >= 2 {
+                            Some((
+                                arr[0].as_f64().unwrap_or(0.0),
+                                arr[1].as_f64().unwrap_or(0.0),
+                            ))
+                        } else {
+                            None
+                        }
+                    })
+                })
+                .collect();
+
+            // Parse interior rings (holes)
+            let mut interiors = Vec::new();
+            for ring in rings.iter().skip(1) {
+                let interior_coords = ring.as_array().ok_or_else(|| {
+                    PythonProcessorError::SerializationError("Invalid interior ring".to_string())
+                })?;
+                let interior_points: Vec<(f64, f64)> = interior_coords
+                    .iter()
+                    .filter_map(|coord| {
+                        coord.as_array().and_then(|arr| {
+                            if arr.len() >= 2 {
+                                Some((
+                                    arr[0].as_f64().unwrap_or(0.0),
+                                    arr[1].as_f64().unwrap_or(0.0),
+                                ))
+                            } else {
+                                None
+                            }
+                        })
+                    })
+                    .collect();
+                interiors.push(LineString2D::from(interior_points));
+            }
+
+            let polygon = Polygon2D::new(LineString2D::from(exterior_points), interiors);
+            Ok(Geometry::with_value(GeometryValue::FlowGeometry2D(
+                FlowGeometry2D::Polygon(polygon),
+            )))
+        }
+        "MultiPoint" => {
+            use reearth_flow_geometry::types::coordinate::Coordinate;
+            use reearth_flow_geometry::types::multi_point::MultiPoint as MP;
+            use reearth_flow_geometry::types::no_value::NoValue;
+            use reearth_flow_geometry::types::point::Point;
+            let coords_array = coords.as_array().ok_or_else(|| {
+                PythonProcessorError::SerializationError(
+                    "Invalid MultiPoint coordinates".to_string(),
+                )
+            })?;
+            let points: Vec<Point<f64, NoValue>> = coords_array
+                .iter()
+                .filter_map(|coord| {
+                    coord.as_array().and_then(|arr| {
+                        if arr.len() >= 2 {
+                            Some(Point(Coordinate {
+                                x: arr[0].as_f64().unwrap_or(0.0),
+                                y: arr[1].as_f64().unwrap_or(0.0),
+                                z: NoValue,
+                            }))
+                        } else {
+                            None
+                        }
+                    })
+                })
+                .collect();
+            Ok(Geometry::with_value(GeometryValue::FlowGeometry2D(
+                FlowGeometry2D::MultiPoint(MP::<f64, NoValue>(points)),
+            )))
+        }
+        "MultiLineString" => {
+            let lines = coords.as_array().ok_or_else(|| {
+                PythonProcessorError::SerializationError(
+                    "Invalid MultiLineString coordinates".to_string(),
+                )
+            })?;
+            let line_strings: Vec<LineString2D<f64>> = lines
+                .iter()
+                .filter_map(|line| {
+                    line.as_array().map(|coords_array| {
+                        let points: Vec<(f64, f64)> = coords_array
+                            .iter()
+                            .filter_map(|coord| {
+                                coord.as_array().and_then(|arr| {
+                                    if arr.len() >= 2 {
+                                        Some((
+                                            arr[0].as_f64().unwrap_or(0.0),
+                                            arr[1].as_f64().unwrap_or(0.0),
+                                        ))
+                                    } else {
+                                        None
+                                    }
+                                })
+                            })
+                            .collect();
+                        LineString2D::from(points)
+                    })
+                })
+                .collect();
+            use reearth_flow_geometry::types::multi_line_string::MultiLineString as MLS;
+            use reearth_flow_geometry::types::no_value::NoValue;
+            Ok(Geometry::with_value(GeometryValue::FlowGeometry2D(
+                FlowGeometry2D::MultiLineString(MLS::<f64, NoValue>(line_strings)),
+            )))
+        }
+        "MultiPolygon" => {
+            let polygons_array = coords.as_array().ok_or_else(|| {
+                PythonProcessorError::SerializationError(
+                    "Invalid MultiPolygon coordinates".to_string(),
+                )
+            })?;
+
+            let polygons: Vec<Polygon2D<f64>> = polygons_array
+                .iter()
+                .filter_map(|polygon_rings| {
+                    polygon_rings.as_array().and_then(|rings| {
+                        if rings.is_empty() {
+                            return None;
+                        }
+
+                        // Parse exterior ring
+                        let exterior_coords = rings[0].as_array()?;
+                        let exterior_points: Vec<(f64, f64)> = exterior_coords
+                            .iter()
+                            .filter_map(|coord| {
+                                coord.as_array().and_then(|arr| {
+                                    if arr.len() >= 2 {
+                                        Some((
+                                            arr[0].as_f64().unwrap_or(0.0),
+                                            arr[1].as_f64().unwrap_or(0.0),
+                                        ))
+                                    } else {
+                                        None
+                                    }
+                                })
+                            })
+                            .collect();
+
+                        // Parse interior rings
+                        let mut interiors = Vec::new();
+                        for ring in rings.iter().skip(1) {
+                            if let Some(interior_coords) = ring.as_array() {
+                                let interior_points: Vec<(f64, f64)> = interior_coords
+                                    .iter()
+                                    .filter_map(|coord| {
+                                        coord.as_array().and_then(|arr| {
+                                            if arr.len() >= 2 {
+                                                Some((
+                                                    arr[0].as_f64().unwrap_or(0.0),
+                                                    arr[1].as_f64().unwrap_or(0.0),
+                                                ))
+                                            } else {
+                                                None
+                                            }
+                                        })
+                                    })
+                                    .collect();
+                                interiors.push(LineString2D::from(interior_points));
+                            }
+                        }
+
+                        Some(Polygon2D::new(
+                            LineString2D::from(exterior_points),
+                            interiors,
+                        ))
+                    })
+                })
+                .collect();
+
+            use reearth_flow_geometry::types::multi_polygon::MultiPolygon as MP;
+            use reearth_flow_geometry::types::no_value::NoValue;
+            Ok(Geometry::with_value(GeometryValue::FlowGeometry2D(
+                FlowGeometry2D::MultiPolygon(MP::<f64, NoValue>(polygons)),
+            )))
         }
         _ => {
             // For unsupported types, return empty geometry
@@ -502,27 +757,50 @@ print(json.dumps(output))
             stdin.write_all(input_json.as_bytes()).map_err(|e| {
                 PythonProcessorError::ExecutionError(format!("Failed to write to stdin: {e}"))
             })?;
+            drop(stdin); // Close stdin to signal EOF
         }
 
-        let output = match child.wait_with_output() {
-            Ok(output) => output,
-            Err(e) => {
+        let mut stdout_handle = child.stdout.take().ok_or_else(|| {
+            PythonProcessorError::ExecutionError("Failed to capture stdout".to_string())
+        })?;
+        let mut stderr_handle = child.stderr.take().ok_or_else(|| {
+            PythonProcessorError::ExecutionError("Failed to capture stderr".to_string())
+        })?;
+
+        let timeout_duration = Duration::from_secs(self.timeout_seconds);
+        let status_code = match child.wait_timeout(timeout_duration).map_err(|e| {
+            PythonProcessorError::ExecutionError(format!("Failed to wait for Python process: {e}"))
+        })? {
+            Some(status) => status,
+            None => {
+                // Timeout occurred, kill the process
+                let _ = child.kill();
+                let _ = child.wait(); // Clean up zombie process
                 return Err(PythonProcessorError::ExecutionError(format!(
-                    "Failed to execute Python script: {e}"
+                    "Python script execution timed out after {} seconds",
+                    self.timeout_seconds
                 ))
                 .into());
             }
         };
 
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
+        let mut stdout = String::new();
+        let mut stderr = String::new();
+        stdout_handle.read_to_string(&mut stdout).map_err(|e| {
+            PythonProcessorError::ExecutionError(format!("Failed to read stdout: {e}"))
+        })?;
+        stderr_handle.read_to_string(&mut stderr).map_err(|e| {
+            PythonProcessorError::ExecutionError(format!("Failed to read stderr: {e}"))
+        })?;
+
+        if !status_code.success() {
             return Err(PythonProcessorError::ExecutionError(format!(
-                "Python script failed: {stderr}"
+                "Python script failed with exit code {:?}: {stderr}",
+                status_code.code()
             ))
             .into());
         }
 
-        let stdout = String::from_utf8_lossy(&output.stdout);
         let geojson_response: serde_json::Value =
             serde_json::from_str(stdout.trim()).map_err(|e| {
                 PythonProcessorError::SerializationError(format!(
@@ -551,10 +829,14 @@ print(json.dumps(output))
                         output_feature.attributes = updated_attributes;
                     }
 
-                    // Update geometry if present
+                    // Update geometry if present and successfully converted
                     if let Some(geometry_json) = geojson_feature.get("geometry") {
                         if let Ok(new_geometry) = geojson_to_geometry(geometry_json) {
-                            output_feature.geometry = new_geometry;
+                            // Only update if it's not an empty geometry (truly unsupported type)
+                            if !matches!(new_geometry.value, GeometryValue::None) {
+                                output_feature.geometry = new_geometry;
+                            }
+                            // Otherwise preserve original geometry
                         }
                     }
 
@@ -575,7 +857,9 @@ print(json.dumps(output))
 
             if let Some(geometry_json) = geojson_response.get("geometry") {
                 if let Ok(new_geometry) = geojson_to_geometry(geometry_json) {
-                    feature.geometry = new_geometry;
+                    if !matches!(new_geometry.value, GeometryValue::None) {
+                        feature.geometry = new_geometry;
+                    }
                 }
             }
 
@@ -777,6 +1061,150 @@ mod tests {
             geometry.value,
             reearth_flow_types::GeometryValue::None
         ));
+    }
+
+    #[test]
+    fn test_geojson_to_geometry_linestring() {
+        let geojson = json!({
+            "type": "LineString",
+            "coordinates": [[139.7, 35.7], [139.8, 35.8], [139.9, 35.9]]
+        });
+
+        let result = geojson_to_geometry(&geojson);
+        assert!(result.is_ok());
+
+        let geometry = result.unwrap();
+        if let reearth_flow_types::GeometryValue::FlowGeometry2D(FlowGeometry2D::LineString(line)) =
+            geometry.value
+        {
+            assert_eq!(line.0.len(), 3);
+            assert_eq!(line.0[0].x, 139.7);
+            assert_eq!(line.0[0].y, 35.7);
+        } else {
+            panic!("Expected LineString geometry");
+        }
+    }
+
+    #[test]
+    fn test_geojson_to_geometry_polygon() {
+        let geojson = json!({
+            "type": "Polygon",
+            "coordinates": [
+                [[139.0, 35.0], [140.0, 35.0], [140.0, 36.0], [139.0, 36.0], [139.0, 35.0]]
+            ]
+        });
+
+        let result = geojson_to_geometry(&geojson);
+        assert!(result.is_ok());
+
+        let geometry = result.unwrap();
+        if let reearth_flow_types::GeometryValue::FlowGeometry2D(FlowGeometry2D::Polygon(polygon)) =
+            geometry.value
+        {
+            assert_eq!(polygon.exterior().0.len(), 5);
+            assert_eq!(polygon.interiors().len(), 0);
+        } else {
+            panic!("Expected Polygon geometry");
+        }
+    }
+
+    #[test]
+    fn test_geojson_to_geometry_polygon_with_holes() {
+        let geojson = json!({
+            "type": "Polygon",
+            "coordinates": [
+                [[139.0, 35.0], [140.0, 35.0], [140.0, 36.0], [139.0, 36.0], [139.0, 35.0]],
+                [[139.2, 35.2], [139.8, 35.2], [139.8, 35.8], [139.2, 35.8], [139.2, 35.2]]
+            ]
+        });
+
+        let result = geojson_to_geometry(&geojson);
+        assert!(result.is_ok());
+
+        let geometry = result.unwrap();
+        if let reearth_flow_types::GeometryValue::FlowGeometry2D(FlowGeometry2D::Polygon(polygon)) =
+            geometry.value
+        {
+            assert_eq!(polygon.exterior().0.len(), 5);
+            assert_eq!(polygon.interiors().len(), 1);
+            assert_eq!(polygon.interiors()[0].0.len(), 5);
+        } else {
+            panic!("Expected Polygon geometry with holes");
+        }
+    }
+
+    #[test]
+    fn test_geojson_to_geometry_multipoint() {
+        let geojson = json!({
+            "type": "MultiPoint",
+            "coordinates": [[139.7, 35.7], [139.8, 35.8]]
+        });
+
+        let result = geojson_to_geometry(&geojson);
+        assert!(result.is_ok());
+
+        let geometry = result.unwrap();
+        if let reearth_flow_types::GeometryValue::FlowGeometry2D(FlowGeometry2D::MultiPoint(mp)) =
+            geometry.value
+        {
+            assert_eq!(mp.0.len(), 2);
+            assert_eq!(mp.0[0].x(), 139.7);
+            assert_eq!(mp.0[1].y(), 35.8);
+        } else {
+            panic!("Expected MultiPoint geometry");
+        }
+    }
+
+    #[test]
+    fn test_geojson_to_geometry_multilinestring() {
+        let geojson = json!({
+            "type": "MultiLineString",
+            "coordinates": [
+                [[139.7, 35.7], [139.8, 35.8]],
+                [[140.0, 36.0], [140.1, 36.1]]
+            ]
+        });
+
+        let result = geojson_to_geometry(&geojson);
+        assert!(result.is_ok());
+
+        let geometry = result.unwrap();
+        if let reearth_flow_types::GeometryValue::FlowGeometry2D(FlowGeometry2D::MultiLineString(
+            mls,
+        )) = geometry.value
+        {
+            assert_eq!(mls.0.len(), 2);
+            assert_eq!(mls.0[0].0.len(), 2);
+            assert_eq!(mls.0[1].0.len(), 2);
+        } else {
+            panic!("Expected MultiLineString geometry");
+        }
+    }
+
+    #[test]
+    fn test_geojson_to_geometry_multipolygon() {
+        let geojson = json!({
+            "type": "MultiPolygon",
+            "coordinates": [
+                [[[139.0, 35.0], [140.0, 35.0], [140.0, 36.0], [139.0, 36.0], [139.0, 35.0]]],
+                [[[141.0, 37.0], [142.0, 37.0], [142.0, 38.0], [141.0, 38.0], [141.0, 37.0]]]
+            ]
+        });
+
+        let result = geojson_to_geometry(&geojson);
+        assert!(result.is_ok());
+
+        let geometry = result.unwrap();
+        if let reearth_flow_types::GeometryValue::FlowGeometry2D(FlowGeometry2D::MultiPolygon(
+            mpoly,
+        )) = geometry.value
+        {
+            assert_eq!(mpoly.0.len(), 2);
+            assert_eq!(mpoly.0[0].exterior().0.len(), 5);
+            assert_eq!(mpoly.0[1].exterior().0.len(), 5);
+        } else {
+            panic!("Expected MultiPolygon geometry");
+        }
     }
 
     #[test]

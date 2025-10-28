@@ -409,7 +409,6 @@ func TestListProjects(t *testing.T) {
 	err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 	assert.NoError(t, err)
 
-	// Verify the response
 	projects := result.Data.ProjectsPage
 	assert.NotNil(t, projects.Nodes)
 	assert.Len(t, projects.Nodes, 2)
@@ -421,4 +420,441 @@ func TestListProjects(t *testing.T) {
 	assert.Equal(t, 3, projects.PageInfo.TotalCount)
 	assert.Equal(t, 2, projects.PageInfo.TotalPages)
 	assert.Equal(t, 1, projects.PageInfo.CurrentPage)
+}
+
+func TestProjectKeywordSearch(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operatorID := pkguser.NewID()
+	operator := factory.NewUser(func(b *pkguser.Builder) {
+		b.ID(operatorID)
+		b.Name("operator")
+		b.Email("operator@e2e.com")
+	})
+
+	wid := pkgworkspace.NewID()
+	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {
+		b.ID(wid)
+	})
+
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
+	gomock.InOrder(
+		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
+		mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil),
+		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
+		mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil),
+		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
+		mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil),
+		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
+	)
+	mock := &TestMocks{
+		UserRepo:      mockUserRepo,
+		WorkspaceRepo: mockWorkspaceRepo,
+	}
+
+	e, _ := StartGQLServer(t, &config.Config{
+		Origins: []string{"https://example.com"},
+		AuthSrv: config.AuthSrvConfig{
+			Disabled: true,
+		},
+	}, true, true, mock)
+
+	projectNames := []string{"Alpha Project", "Beta Test", "Gamma Project"}
+	projectIDs := make([]string, len(projectNames))
+
+	for i, name := range projectNames {
+		query := `mutation($input: CreateProjectInput!) {
+			createProject(input: $input) {
+				project {
+					id
+					name
+				}
+			}
+		}`
+
+		variables := fmt.Sprintf(`{
+			"input": {
+				"workspaceId": "%s",
+				"name": "%s",
+				"description": "Test description"
+			}
+		}`, wid.String(), name)
+
+		var variablesMap map[string]any
+		err := json.Unmarshal([]byte(variables), &variablesMap)
+		assert.NoError(t, err)
+
+		request := GraphQLRequest{
+			Query:     query,
+			Variables: variablesMap,
+		}
+		jsonData, err := json.Marshal(request)
+		assert.NoError(t, err)
+
+		resp := e.POST("/api/graphql").
+			WithHeader("authorization", "Bearer test").
+			WithHeader("Content-Type", "application/json").
+			WithHeader("X-Reearth-Debug-User", operatorID.String()).
+			WithBytes(jsonData).
+			Expect().Status(http.StatusOK)
+
+		var result struct {
+			Data struct {
+				CreateProject struct {
+					Project struct {
+						ID   string `json:"id"`
+						Name string `json:"name"`
+					} `json:"project"`
+				} `json:"createProject"`
+			} `json:"data"`
+		}
+
+		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+		assert.NoError(t, err)
+		projectIDs[i] = result.Data.CreateProject.Project.ID
+
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	query := fmt.Sprintf(`{
+		projects(
+			workspaceId: "%s"
+			keyword: "Project"
+			pagination: {
+				page: 1
+				pageSize: 10
+			}
+		) {
+			nodes {
+				id
+				name
+			}
+			pageInfo {
+				totalCount
+			}
+		}
+	}`, wid.String())
+
+	request := GraphQLRequest{
+		Query: query,
+	}
+	jsonData, err := json.Marshal(request)
+	assert.NoError(t, err)
+
+	resp := e.POST("/api/graphql").
+		WithHeader("authorization", "Bearer test").
+		WithHeader("Content-Type", "application/json").
+		WithHeader("X-Reearth-Debug-User", operatorID.String()).
+		WithBytes(jsonData).
+		Expect().Status(http.StatusOK)
+
+	var result struct {
+		Data struct {
+			Projects struct {
+				Nodes []struct {
+					ID   string `json:"id"`
+					Name string `json:"name"`
+				} `json:"nodes"`
+				PageInfo struct {
+					TotalCount int `json:"totalCount"`
+				} `json:"pageInfo"`
+			} `json:"projects"`
+		} `json:"data"`
+	}
+
+	err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+	assert.NoError(t, err)
+
+	projects := result.Data.Projects
+	assert.Equal(t, 2, projects.PageInfo.TotalCount, "Should find 2 projects with 'Project' in name")
+	assert.Len(t, projects.Nodes, 2)
+
+	for _, node := range projects.Nodes {
+		assert.Contains(t, node.Name, "Project")
+	}
+}
+
+func TestProjectIncludeArchived(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	operatorID := pkguser.NewID()
+	operator := factory.NewUser(func(b *pkguser.Builder) {
+		b.ID(operatorID)
+		b.Name("operator")
+		b.Email("operator@e2e.com")
+	})
+
+	wid := pkgworkspace.NewID()
+	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {
+		b.ID(wid)
+	})
+
+	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
+	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
+	gomock.InOrder(
+		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
+		mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil),
+		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
+		mockWorkspaceRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Return(w, nil),
+		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
+		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
+		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
+	)
+	mock := &TestMocks{
+		UserRepo:      mockUserRepo,
+		WorkspaceRepo: mockWorkspaceRepo,
+	}
+
+	e, _ := StartGQLServer(t, &config.Config{
+		Origins: []string{"https://example.com"},
+		AuthSrv: config.AuthSrvConfig{
+			Disabled: true,
+		},
+	}, true, true, mock)
+
+	activeProjectID := createProjectHelper(t, e, operatorID.String(), wid.String(), "Active Project", false)
+
+	archivedProjectID := createProjectHelper(t, e, operatorID.String(), wid.String(), "Archived Project", true)
+
+	query := fmt.Sprintf(`{
+		projects(
+			workspaceId: "%s"
+			pagination: {
+				page: 1
+				pageSize: 10
+			}
+		) {
+			nodes {
+				id
+				name
+				isArchived
+			}
+			pageInfo {
+				totalCount
+			}
+		}
+	}`, wid.String())
+
+	request := GraphQLRequest{
+		Query: query,
+	}
+	jsonData, err := json.Marshal(request)
+	assert.NoError(t, err)
+
+	resp := e.POST("/api/graphql").
+		WithHeader("authorization", "Bearer test").
+		WithHeader("Content-Type", "application/json").
+		WithHeader("X-Reearth-Debug-User", operatorID.String()).
+		WithBytes(jsonData).
+		Expect().Status(http.StatusOK)
+
+	var result1 struct {
+		Data struct {
+			Projects struct {
+				Nodes []struct {
+					ID         string `json:"id"`
+					Name       string `json:"name"`
+					IsArchived bool   `json:"isArchived"`
+				} `json:"nodes"`
+				PageInfo struct {
+					TotalCount int `json:"totalCount"`
+				} `json:"pageInfo"`
+			} `json:"projects"`
+		} `json:"data"`
+	}
+
+	err = json.Unmarshal([]byte(resp.Body().Raw()), &result1)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, result1.Data.Projects.PageInfo.TotalCount, "Default should exclude archived projects")
+	assert.Len(t, result1.Data.Projects.Nodes, 1)
+	assert.Equal(t, activeProjectID, result1.Data.Projects.Nodes[0].ID)
+	assert.False(t, result1.Data.Projects.Nodes[0].IsArchived)
+
+	query2 := fmt.Sprintf(`{
+		projects(
+			workspaceId: "%s"
+			includeArchived: false
+			pagination: {
+				page: 1
+				pageSize: 10
+			}
+		) {
+			nodes {
+				id
+				name
+				isArchived
+			}
+			pageInfo {
+				totalCount
+			}
+		}
+	}`, wid.String())
+
+	request2 := GraphQLRequest{
+		Query: query2,
+	}
+	jsonData2, err := json.Marshal(request2)
+	assert.NoError(t, err)
+
+	resp2 := e.POST("/api/graphql").
+		WithHeader("authorization", "Bearer test").
+		WithHeader("Content-Type", "application/json").
+		WithHeader("X-Reearth-Debug-User", operatorID.String()).
+		WithBytes(jsonData2).
+		Expect().Status(http.StatusOK)
+
+	var result2 struct {
+		Data struct {
+			Projects struct {
+				Nodes []struct {
+					ID         string `json:"id"`
+					Name       string `json:"name"`
+					IsArchived bool   `json:"isArchived"`
+				} `json:"nodes"`
+				PageInfo struct {
+					TotalCount int `json:"totalCount"`
+				} `json:"pageInfo"`
+			} `json:"projects"`
+		} `json:"data"`
+	}
+
+	err = json.Unmarshal([]byte(resp2.Body().Raw()), &result2)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, result2.Data.Projects.PageInfo.TotalCount)
+	assert.Len(t, result2.Data.Projects.Nodes, 1)
+	assert.False(t, result2.Data.Projects.Nodes[0].IsArchived)
+
+	query3 := fmt.Sprintf(`{
+		projects(
+			workspaceId: "%s"
+			includeArchived: true
+			pagination: {
+				page: 1
+				pageSize: 10
+			}
+		) {
+			nodes {
+				id
+				name
+				isArchived
+			}
+			pageInfo {
+				totalCount
+			}
+		}
+	}`, wid.String())
+
+	request3 := GraphQLRequest{
+		Query: query3,
+	}
+	jsonData3, err := json.Marshal(request3)
+	assert.NoError(t, err)
+
+	resp3 := e.POST("/api/graphql").
+		WithHeader("authorization", "Bearer test").
+		WithHeader("Content-Type", "application/json").
+		WithHeader("X-Reearth-Debug-User", operatorID.String()).
+		WithBytes(jsonData3).
+		Expect().Status(http.StatusOK)
+
+	var result3 struct {
+		Data struct {
+			Projects struct {
+				Nodes []struct {
+					ID         string `json:"id"`
+					Name       string `json:"name"`
+					IsArchived bool   `json:"isArchived"`
+				} `json:"nodes"`
+				PageInfo struct {
+					TotalCount int `json:"totalCount"`
+				} `json:"pageInfo"`
+			} `json:"projects"`
+		} `json:"data"`
+	}
+
+	err = json.Unmarshal([]byte(resp3.Body().Raw()), &result3)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 2, result3.Data.Projects.PageInfo.TotalCount, "Should include archived projects")
+	assert.Len(t, result3.Data.Projects.Nodes, 2)
+
+	var hasActive, hasArchived bool
+	for _, node := range result3.Data.Projects.Nodes {
+		if node.ID == activeProjectID {
+			hasActive = true
+			assert.False(t, node.IsArchived)
+		}
+		if node.ID == archivedProjectID {
+			hasArchived = true
+			assert.True(t, node.IsArchived)
+		}
+	}
+	assert.True(t, hasActive, "Should find active project")
+	assert.True(t, hasArchived, "Should find archived project")
+}
+
+func createProjectHelper(t *testing.T, e *httpexpect.Expect, operatorID, wid, name string, archived bool) string {
+	query := `mutation($input: CreateProjectInput!) {
+		createProject(input: $input) {
+			project {
+				id
+				name
+				isArchived
+			}
+		}
+	}`
+
+	variables := fmt.Sprintf(`{
+		"input": {
+			"workspaceId": "%s",
+			"name": "%s",
+			"description": "Test description",
+			"archived": %t
+		}
+	}`, wid, name, archived)
+
+	var variablesMap map[string]any
+	err := json.Unmarshal([]byte(variables), &variablesMap)
+	assert.NoError(t, err)
+
+	request := GraphQLRequest{
+		Query:     query,
+		Variables: variablesMap,
+	}
+	jsonData, err := json.Marshal(request)
+	assert.NoError(t, err)
+
+	resp := e.POST("/api/graphql").
+		WithHeader("authorization", "Bearer test").
+		WithHeader("Content-Type", "application/json").
+		WithHeader("X-Reearth-Debug-User", operatorID).
+		WithBytes(jsonData).
+		Expect().Status(http.StatusOK)
+
+	var result struct {
+		Data struct {
+			CreateProject struct {
+				Project struct {
+					ID         string `json:"id"`
+					Name       string `json:"name"`
+					IsArchived bool   `json:"isArchived"`
+				} `json:"project"`
+			} `json:"createProject"`
+		} `json:"data"`
+	}
+
+	err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+	assert.NoError(t, err)
+
+	project := result.Data.CreateProject.Project
+	assert.NotEmpty(t, project.ID)
+	assert.Equal(t, name, project.Name)
+	assert.Equal(t, archived, project.IsArchived)
+
+	return project.ID
 }
