@@ -2,7 +2,7 @@ import { useQuery, useQueryClient, QueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { parseJSONL } from "@flow/utils/jsonl";
-import { decompressIntermediateData } from "@flow/utils/jsonl/decrompressIntermediateData";
+import { decompressIntermediateData } from "@flow/utils/jsonl/decompressIntermediateData";
 import { intermediateDataTransform } from "@flow/utils/jsonl/transformIntermediateData";
 import type { StreamingProgress } from "@flow/utils/streaming";
 

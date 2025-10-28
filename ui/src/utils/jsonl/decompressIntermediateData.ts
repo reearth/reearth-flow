@@ -10,12 +10,6 @@ import * as fzstd from "fzstd";
 export function decompressIntermediateData(
   compressedData: Uint8Array,
 ): string | undefined {
-  if (!compressedData) {
-    console.error(
-      "No compressed data provided for decompression. Please ensure that the data is of jsonl.zst format.",
-    );
-    return;
-  }
   try {
     const decompressed = fzstd.decompress(compressedData);
     const decoder = new TextDecoder("utf-8");
