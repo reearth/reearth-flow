@@ -292,7 +292,7 @@ export default ({
 
                 pseudoInputs.push({
                   nodeId: inputRouterId,
-                  portName: portName,
+                  portName,
                 });
               }
 
@@ -350,7 +350,7 @@ export default ({
 
                 pseudoOutputs.push({
                   nodeId: outputRouterId,
-                  portName: portName,
+                  portName,
                 });
               }
 
