@@ -52,7 +52,7 @@ function analyzeDataType(features: any[]): {
 } {
   if (features.length === 0)
     return { geometryType: null, visualizerType: null };
-  console.log("FEATUREs:", features);
+
   // Check first few features to determine predominant type
   const sampleSize = Math.min(10, features.length);
   const typeCounts: Record<string, number> = {};
@@ -61,7 +61,6 @@ function analyzeDataType(features: any[]): {
   for (let i = 0; i < sampleSize; i++) {
     const feature = features[i];
     const type = detectGeometryType(feature);
-    console.log("DETECTED TYPE:", type, "FOR FEATURE:", feature);
     const source = feature?.attributes?.source;
 
     if (type && type !== "Unknown") {
@@ -242,8 +241,6 @@ export const useStreamingDebugRunQuery = (
             return feature;
           }
         });
-
-        console.log("TRANSFORMED DATA:", transformedData);
 
         streamData.push(...transformedData);
 
