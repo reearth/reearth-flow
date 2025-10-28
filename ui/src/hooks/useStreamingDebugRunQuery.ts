@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient, QueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { parseJSONL } from "@flow/utils/jsonl";
+import { decompressIntermediateData } from "@flow/utils/jsonl/decrompressIntermediateData";
 import { intermediateDataTransform } from "@flow/utils/jsonl/transformIntermediateData";
-import { streamJsonl } from "@flow/utils/streaming";
 import type { StreamingProgress } from "@flow/utils/streaming";
 
 export type SupportedDataTypes = "geojson" | "jsonl";
@@ -51,7 +52,7 @@ function analyzeDataType(features: any[]): {
 } {
   if (features.length === 0)
     return { geometryType: null, visualizerType: null };
-
+  console.log("FEATUREs:", features);
   // Check first few features to determine predominant type
   const sampleSize = Math.min(10, features.length);
   const typeCounts: Record<string, number> = {};
@@ -60,6 +61,7 @@ function analyzeDataType(features: any[]): {
   for (let i = 0; i < sampleSize; i++) {
     const feature = features[i];
     const type = detectGeometryType(feature);
+    console.log("DETECTED TYPE:", type, "FOR FEATURE:", feature);
     const source = feature?.attributes?.source;
 
     if (type && type !== "Unknown") {
@@ -148,14 +150,7 @@ export const useStreamingDebugRunQuery = (
   isLoading: boolean;
   [key: string]: any;
 } => {
-  const {
-    enabled = true,
-    batchSize = 1000,
-    chunkSize = 64 * 1024,
-    displayLimit = 2000,
-    onProgress,
-    onError,
-  } = options;
+  const { enabled = true, displayLimit = 2000, onProgress } = options;
 
   const queryClient = useQueryClient();
   const queryKey = useMemo(() => ["streamingDataUrl", dataUrl], [dataUrl]);
@@ -195,7 +190,7 @@ export const useStreamingDebugRunQuery = (
       const streamData: any[] = [];
       let totalFeatures = 0;
       let isComplete = false;
-      let progress = { bytesProcessed: 0, featuresProcessed: 0 };
+      const progress = { bytesProcessed: 0, featuresProcessed: 0 };
 
       // Create abort controller for this query
       const controller = new AbortController();
@@ -209,68 +204,66 @@ export const useStreamingDebugRunQuery = (
       }));
 
       try {
-        const streamGenerator = await streamJsonl(dataUrl, {
-          batchSize,
-          chunkSize,
-          signal: controller.signal,
-          onProgress: (streamProgress) => {
-            progress = streamProgress;
-            onProgress?.(streamProgress);
-          },
-          onError,
+        // Fetch the compressed file
+        const response = await fetch(dataUrl, { signal: controller.signal });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+
+        progress.bytesProcessed = uint8Array.length;
+
+        const decompressedJsonl = decompressIntermediateData(uint8Array);
+
+        if (!decompressedJsonl) {
+          throw new Error("Failed to decompress data");
+        }
+
+        // Parse JSONL to get array of features
+        const parsedData = parseJSONL(decompressedJsonl);
+        totalFeatures = parsedData.length;
+        progress.featuresProcessed = totalFeatures;
+
+        const limitedData = parsedData.slice(0, displayLimit);
+
+        if (!detectedGeometryType && parsedData.length > 0) {
+          const analysis = analyzeDataType(parsedData);
+          detectedGeometryType = analysis.geometryType;
+          detectedVisualizerType = analysis.visualizerType;
+        }
+
+        const transformedData = limitedData.map((feature) => {
+          try {
+            return intermediateDataTransform(feature);
+          } catch (error) {
+            console.warn("Failed to transform feature:", error, feature);
+            return feature;
+          }
         });
 
-        // Process stream with progressive updates
-        for await (const result of streamGenerator) {
-          totalFeatures = result.progress.featuresProcessed;
+        console.log("TRANSFORMED DATA:", transformedData);
 
-          // Detect geometry type and visualizer from first batch
-          if (!detectedGeometryType && result.data.length > 0) {
-            const analysis = analyzeDataType(result.data);
-            detectedGeometryType = analysis.geometryType;
-            detectedVisualizerType = analysis.visualizerType;
-          }
+        streamData.push(...transformedData);
 
-          // Only store data up to display limit, but always update progress
-          let shouldUpdateData = false;
-          if (streamData.length < displayLimit) {
-            const remainingToAdd = displayLimit - streamData.length;
-            const dataToAdd = result.data.slice(0, remainingToAdd);
+        isComplete = true;
 
-            const transformedData = dataToAdd.map((feature) => {
-              try {
-                return intermediateDataTransform(feature);
-              } catch (error) {
-                console.warn(
-                  "Failed to transform streaming feature:",
-                  error,
-                  feature,
-                );
-                return feature;
-              }
-            });
-            streamData.push(...transformedData);
-            shouldUpdateData = true;
-          }
+        // Update streaming state with final data
+        setStreamingState({
+          data: transformedData,
+          detectedGeometryType,
+          visualizerType: detectedVisualizerType,
+          totalFeatures,
+          isStreaming: false,
+          isComplete: true,
+          progress,
+          hasMore: totalFeatures > displayLimit,
+          error: null,
+        });
 
-          // Always update streaming state to show current progress and total count
-          setStreamingState((prev) => ({
-            ...prev,
-            data: shouldUpdateData ? [...streamData] : prev.data, // Only update data if we added new items
-            detectedGeometryType,
-            visualizerType: detectedVisualizerType,
-            totalFeatures, // Always update total count
-            progress: result.progress, // Always update progress
-            hasMore: totalFeatures > displayLimit,
-            isComplete: result.isComplete,
-            isStreaming: !result.isComplete,
-          }));
-
-          if (result.isComplete) {
-            isComplete = true;
-            break;
-          }
-        }
+        // Notify progress callback
+        onProgress?.(progress);
 
         // Store final result in React Query cache
         const finalResult = {
