@@ -109,9 +109,12 @@ export default () => {
   const metadataUrl =
     selectedDataURL ?? (dataURLs?.length ? dataURLs[0].key : "");
 
-  const streamingQuery = useStreamingDebugRunQuery(metadataUrl, {
-    enabled: !!metadataUrl,
-  });
+  const streamingQuery = useStreamingDebugRunQuery(
+    "https://storage.googleapis.com/reearth-flow-oss-bucket/artifacts/6a3bc035-3163-4e1b-8931-b0df5a57b0b8/feature-store/d116ba2c-f748-49e3-bc8b-419df661109f.jsonl.zst",
+    {
+      enabled: !!metadataUrl,
+    },
+  );
 
   const selectedOutputData = streamingQuery.fileContent;
   const fileType = streamingQuery.fileType;
