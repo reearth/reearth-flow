@@ -172,8 +172,13 @@ const CanvasContextMenu: React.FC<Props> = ({
             {
               type: "action" as const,
               props: {
-                label: t("Group into Subworkflow"),
+                label: t("Create Subworkflow"),
                 icon: <GraphIcon weight="light" />,
+                shortcut: (
+                  <ContextMenuShortcut
+                    keyBinding={{ key: "s", commandKey: true, shiftKey: true }}
+                  />
+                ),
                 disabled: !onNodesChange || !onEdgesChange,
                 onCallback: wrapWithClose(() =>
                   handleWorkflowAddFromSelection(),
