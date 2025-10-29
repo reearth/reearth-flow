@@ -143,6 +143,6 @@ async fn flatten_join_handle<T>(handle: JoinHandle<Result<T, Error>>) -> Result<
     match handle.await {
         Ok(Ok(result)) => Ok(result),
         Ok(Err(e)) => Err(e),
-        Err(e) => Err(Error::RuntimeError(format!("Task panicked: {e:?}"))),
+        Err(e) => Err(Error::JoinError(e)),
     }
 }
