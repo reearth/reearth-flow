@@ -9,6 +9,7 @@ use tracing::{debug, error, info};
 use uuid;
 
 mod macros;
+use macros::RELEASE_LOCK_SCRIPT;
 use macros::*;
 
 pub mod trimmer;
@@ -200,37 +201,22 @@ impl RedisStore {
         lock_value: &str,
         ttl_seconds: u64,
     ) -> Result<bool> {
-        let mut conn = self.pool.get().await?;
-        let result: Option<String> = redis::cmd("SET")
-            .arg(lock_key)
-            .arg(lock_value)
-            .arg("NX")
-            .arg("EX")
-            .arg(ttl_seconds)
-            .query_async(&mut *conn)
-            .await?;
-
-        Ok(result.is_some())
+        Ok(acquire_lock_with_ttl!(
+            self.pool,
+            lock_key,
+            lock_value,
+            ttl_seconds
+        ))
     }
 
     pub async fn release_lock(&self, lock_key: &str, lock_value: &str) -> Result<()> {
-        let mut conn = self.pool.get().await?;
-        let script = redis::Script::new(
-            r"
-            if redis.call('get', KEYS[1]) == ARGV[1] then
-                return redis.call('del', KEYS[1])
-            else
-                return 0
-            end
-        ",
+        let _: i32 = exec_script!(
+            self.pool,
+            RELEASE_LOCK_SCRIPT,
+            keys: [lock_key],
+            args: [lock_value]
+            => i32
         );
-
-        let _: () = script
-            .key(lock_key)
-            .arg(lock_value)
-            .invoke_async(&mut *conn)
-            .await?;
-
         Ok(())
     }
 
@@ -271,23 +257,18 @@ impl RedisStore {
         instance_id: &str,
         ttl_seconds: u64,
     ) -> Result<bool> {
-        let key = format!("doc:instance:{doc_id}");
-        let mut conn = self.pool.get().await?;
+        let key = doc_instance_key!(doc_id);
         let effective_ttl = if ttl_seconds < 2 { 2 } else { ttl_seconds };
-        let result: bool = redis::cmd("SET")
-            .arg(&key)
-            .arg(instance_id)
-            .arg("NX")
-            .arg("EX")
-            .arg(effective_ttl)
-            .query_async(&mut *conn)
-            .await?;
-
-        Ok(result)
+        Ok(acquire_lock_with_ttl!(
+            self.pool,
+            &key,
+            instance_id,
+            effective_ttl
+        ))
     }
 
     pub async fn get_doc_instance(&self, doc_id: &str) -> Result<Option<String>> {
-        let key = format!("doc:instance:{doc_id}");
+        let key = doc_instance_key!(doc_id);
         let mut conn = self.pool.get().await?;
         let result: Option<String> = conn.get(&key).await?;
         Ok(result)
@@ -448,41 +429,23 @@ impl RedisStore {
 
     pub async fn acquire_doc_lock(&self, doc_id: &str, instance_id: &str) -> Result<bool> {
         let lock_key = lock_key!(doc_id);
-        let ttl = 10;
-
-        let mut conn = self.pool.get().await?;
-        let result: Option<String> = redis::cmd("SET")
-            .arg(&lock_key)
-            .arg(instance_id)
-            .arg("NX")
-            .arg("EX")
-            .arg(ttl)
-            .query_async(&mut *conn)
-            .await?;
-
-        Ok(result.is_some())
+        Ok(acquire_lock_with_ttl!(
+            self.pool,
+            &lock_key,
+            instance_id,
+            10
+        ))
     }
 
     pub async fn release_doc_lock(&self, doc_id: &str, instance_id: &str) -> Result<bool> {
         let lock_key = lock_key!(doc_id);
-
-        let mut conn = self.pool.get().await?;
-        let script = redis::Script::new(
-            r#"
-            if redis.call('get', KEYS[1]) == ARGV[1] then
-                return redis.call('del', KEYS[1])
-            else
-                return 0
-            end
-        "#,
+        let result: i32 = exec_script!(
+            self.pool,
+            RELEASE_LOCK_SCRIPT,
+            keys: [&lock_key],
+            args: [instance_id]
+            => i32
         );
-
-        let result: i32 = script
-            .key(&lock_key)
-            .arg(instance_id)
-            .invoke_async(&mut *conn)
-            .await?;
-
         Ok(result == 1)
     }
 
@@ -490,22 +453,16 @@ impl RedisStore {
         let key = instances_key!(doc_id);
         let timestamp = timestamp_secs!();
 
-        let mut conn = self.pool.get().await?;
-        let script = redis::Script::new(
+        let _: i32 = exec_script!(
+            self.pool,
             r#"
             redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
             return redis.call('EXPIRE', KEYS[1], ARGV[3])
             "#,
+            keys: [&key],
+            args: [instance_id, timestamp, 120]
+            => i32
         );
-
-        let _: () = script
-            .key(&key)
-            .arg(instance_id)
-            .arg(timestamp)
-            .arg(120)
-            .invoke_async(&mut *conn)
-            .await?;
-
         Ok(())
     }
 
@@ -513,8 +470,8 @@ impl RedisStore {
         let key = instances_key!(doc_id);
         let now = timestamp_secs!();
 
-        let mut conn = self.pool.get().await?;
-        let script = redis::Script::new(
+        let count: i64 = exec_script!(
+            self.pool,
             r#"
             local active_count = 0
             local instances = redis.call('HGETALL', KEYS[1])
@@ -530,50 +487,40 @@ impl RedisStore {
             end
             
             return active_count
-        "#,
+            "#,
+            keys: [&key],
+            args: [now, timeout_secs]
+            => i64
         );
-
-        let count: i64 = script
-            .key(&key)
-            .arg(now)
-            .arg(timeout_secs)
-            .invoke_async(&mut *conn)
-            .await?;
-
         Ok(count)
     }
 
     pub async fn remove_instance_heartbeat(&self, doc_id: &str, instance_id: &u64) -> Result<bool> {
         let key = instances_key!(doc_id);
 
-        let mut conn = self.pool.get().await?;
-
-        let script = redis::Script::new(
+        let is_empty: i32 = exec_script!(
+            self.pool,
             r#"
             redis.call('HDEL', KEYS[1], ARGV[1])
             local count = redis.call('HLEN', KEYS[1])
             if count == 0 then
-                    redis.call('DEL', KEYS[1])
-                    return 1
-                else
-                    return 0
-                end
-                "#,
+                redis.call('DEL', KEYS[1])
+                return 1
+            else
+                return 0
+            end
+            "#,
+            keys: [&key],
+            args: [instance_id]
+            => i32
         );
-
-        let is_empty: i32 = script
-            .key(&key)
-            .arg(instance_id)
-            .invoke_async(&mut *conn)
-            .await?;
-
         Ok(is_empty == 1)
     }
 
     pub async fn safe_delete_stream(&self, doc_id: &str, instance_id: &str) -> Result<()> {
         let stream_key = stream_key!(doc_id);
         let instances_key = instances_key!(doc_id);
-        let read_lock_key = format!("read:lock:{doc_id}");
+        let read_lock_key = read_lock_key!(doc_id);
         let now = timestamp_secs!();
 
         let mut conn = self.pool.get().await?;
@@ -708,7 +655,7 @@ impl RedisStore {
         lock_value: &mut Option<String>,
     ) -> Result<(Vec<Bytes>, String)> {
         let stream_key = stream_key!(doc_id);
-        let protection_lock_key = format!("read:lock:{doc_id}");
+        let protection_lock_key = read_lock_key!(doc_id);
 
         if is_first_batch {
             let lock_id = uuid::Uuid::new_v4().to_string();
@@ -819,24 +766,13 @@ impl RedisStore {
     }
 
     pub async fn release_oid_lock(&self, lock_value: &str) -> Result<bool> {
-        let mut conn = self.pool.get().await?;
-
-        let script = redis::Script::new(
-            r#"
-            if redis.call('get', KEYS[1]) == ARGV[1] then
-                return redis.call('del', KEYS[1])
-            else
-                return 0
-            end
-            "#,
+        let result: i32 = exec_script!(
+            self.pool,
+            RELEASE_LOCK_SCRIPT,
+            keys: [OID_LOCK_KEY],
+            args: [lock_value]
+            => i32
         );
-
-        let result: i32 = script
-            .key(OID_LOCK_KEY)
-            .arg(lock_value)
-            .invoke_async(&mut *conn)
-            .await?;
-
         Ok(result == 1)
     }
 
