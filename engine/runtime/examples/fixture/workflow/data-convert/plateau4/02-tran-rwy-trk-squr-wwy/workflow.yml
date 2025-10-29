@@ -104,7 +104,7 @@ graphs:
         with:
           attributes:
             # sorting is required by MVT writer
-            # must sort by output path, no feature type
+            # must sort by output path, not feature type
             - _folder_package
             - lod
           order: ascending

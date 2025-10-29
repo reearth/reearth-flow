@@ -108,13 +108,14 @@ impl SinkFactory for MVTSinkFactory {
 }
 
 type JoinHandle = Arc<parking_lot::Mutex<Receiver<Result<(), SinkError>>>>;
+type BufferValue = Vec<(Feature, String)>;
 
 #[derive(Debug, Clone)]
 pub struct MVTWriter {
     pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
     pub(super) params: MVTWriterCompiledParam,
     /// (output, compress_output) -> Vec<(Feature, layer_name)>
-    pub(super) buffer: HashMap<(Uri, Option<Uri>), Vec<(Feature, String)>>,
+    pub(super) buffer: HashMap<(Uri, Option<Uri>), BufferValue>,
     #[allow(clippy::type_complexity)]
     pub(super) join_handles: Vec<JoinHandle>,
 }
@@ -186,20 +187,16 @@ impl Sink for MVTWriter {
                 let layer_name = scope
                     .eval_ast::<String>(&self.params.layer_name)
                     .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))?;
-                // the flushing logic requires sorted features
-                // output and compress_output must 1-to-1 matches or file corruption will occur
-                if !self.buffer.contains_key(&(
-                    output.clone(),
-                    compress_output.clone(),
-                )) {
+                // the flushing logic requires sorted features, or the output file will be corrupted
+                if !self
+                    .buffer
+                    .contains_key(&(output.clone(), compress_output.clone()))
+                {
                     let result = self.flush_buffer(context)?;
                     self.buffer.clear();
                     self.join_handles.extend(result);
                 }
-                let buffer = self
-                    .buffer
-                    .entry((output, compress_output))
-                    .or_default();
+                let buffer = self.buffer.entry((output, compress_output)).or_default();
                 buffer.push((feature.clone(), layer_name.clone()));
             }
             _ => {
@@ -246,7 +243,7 @@ impl MVTWriter {
     #[allow(clippy::type_complexity)]
     pub(crate) fn flush_buffer(&self, ctx: Context) -> crate::errors::Result<Vec<JoinHandle>> {
         let mut result = Vec::new();
-        let mut features = HashMap::<(Uri, Option<Uri>), Vec<(Feature, String)>>::new();
+        let mut features = HashMap::<(Uri, Option<Uri>), BufferValue>::new();
         for ((output, compress_output), buffer) in &self.buffer {
             features
                 .entry((output.clone(), compress_output.clone()))
@@ -254,12 +251,7 @@ impl MVTWriter {
                 .extend(buffer.clone());
         }
         for ((output, compress_output), buffer) in &features {
-            let res = self.write(
-                ctx.clone(),
-                buffer.clone(),
-                output,
-                compress_output,
-            )?;
+            let res = self.write(ctx.clone(), buffer.clone(), output, compress_output)?;
             result.extend(res);
         }
         Ok(result)
@@ -268,7 +260,7 @@ impl MVTWriter {
     pub fn write(
         &self,
         ctx: Context,
-        upstream: Vec<(Feature, String)>,
+        upstream: BufferValue,
         output: &Uri,
         compress_output: &Option<Uri>,
     ) -> crate::errors::Result<Vec<JoinHandle>> {
