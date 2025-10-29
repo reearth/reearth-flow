@@ -68,7 +68,9 @@ impl Storage {
                 let url = format!("{}{}", self.base_uri, result);
 
                 // Use std::thread to avoid creating nested Tokio runtime
-                let handle = std::thread::spawn(move || {
+                // Clone URL for error reporting since it moves into closure
+                let url_for_error = url.clone();
+                let handle = std::thread::spawn(move || -> Result<Bytes> {
                     let client = reqwest::blocking::Client::builder()
                         .timeout(Duration::from_secs(30))
                         .build()
@@ -78,7 +80,7 @@ impl Storage {
                         })?;
                     let res =
                         client
-                            .get(url.clone())
+                            .get(url)
                             .send()
                             .map_err(|err| object_store::Error::Generic {
                                 store: "HttpError",
@@ -93,7 +95,9 @@ impl Storage {
 
                 handle.join().map_err(|_| object_store::Error::Generic {
                     store: "HttpError",
-                    source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Thread panicked")),
+                    source: Box::new(std::io::Error::other(format!(
+                        "HTTP request thread panicked while fetching {url_for_error}"
+                    ))),
                 })?
             }
             _ => {
