@@ -66,26 +66,35 @@ impl Storage {
             Protocol::Http | Protocol::Https => {
                 let result = location.to_str().unwrap();
                 let url = format!("{}{}", self.base_uri, result);
-                let client = reqwest::blocking::Client::builder()
-                    .timeout(Duration::from_secs(30))
-                    .build()
-                    .map_err(|err| object_store::Error::Generic {
-                        store: "HttpError",
-                        source: Box::new(err),
-                    })?;
-                let res =
-                    client
-                        .get(url.clone())
-                        .send()
+
+                // Use std::thread to avoid creating nested Tokio runtime
+                let handle = std::thread::spawn(move || {
+                    let client = reqwest::blocking::Client::builder()
+                        .timeout(Duration::from_secs(30))
+                        .build()
                         .map_err(|err| object_store::Error::Generic {
                             store: "HttpError",
                             source: Box::new(err),
                         })?;
-                let buf = res.bytes().map_err(|err| object_store::Error::Generic {
+                    let res =
+                        client
+                            .get(url.clone())
+                            .send()
+                            .map_err(|err| object_store::Error::Generic {
+                                store: "HttpError",
+                                source: Box::new(err),
+                            })?;
+                    let buf = res.bytes().map_err(|err| object_store::Error::Generic {
+                        store: "HttpError",
+                        source: Box::new(err),
+                    })?;
+                    Ok(buf)
+                });
+
+                handle.join().map_err(|_| object_store::Error::Generic {
                     store: "HttpError",
-                    source: Box::new(err),
-                })?;
-                Ok(buf)
+                    source: Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Thread panicked")),
+                })?
             }
             _ => {
                 let p = location.to_str().ok_or(object_store::Error::InvalidPath {
