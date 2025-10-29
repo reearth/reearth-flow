@@ -66,11 +66,6 @@ func (b *Builder) Auths(auths []string) *Builder {
 	return b
 }
 
-func (b *Builder) Workspaces(workspaces workspace.List) *Builder {
-	b.a.workspaces = workspaces
-	return b
-}
-
 func (b *Builder) MyWorkspace(myWorkspace workspace.Workspace) *Builder {
 	b.a.myWorkspace = myWorkspace
 	return b
