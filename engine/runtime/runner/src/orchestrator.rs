@@ -99,7 +99,7 @@ impl Orchestrator {
                 expr_engine,
                 storage_resolver,
                 kv_store,
-                &runtime_clone,
+                runtime_clone,
                 dag_executor,
                 shutdown,
                 state,

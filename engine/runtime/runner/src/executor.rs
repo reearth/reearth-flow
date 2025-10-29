@@ -51,7 +51,7 @@ pub fn run_dag_executor(
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
-    runtime: &Arc<Handle>,
+    runtime: Arc<Handle>,
     dag_executor: DagExecutor,
     shutdown: ShutdownReceiver,
     state: Arc<State>,
@@ -69,7 +69,7 @@ pub fn run_dag_executor(
         event_handlers,
     ))?;
     let result = join_handle
-        .join((**runtime).clone())
+        .join((*runtime).clone())
         .map_err(Error::ExecutionError);
     std::thread::sleep(Duration::from_millis(1000));
     join_handle.notify();
