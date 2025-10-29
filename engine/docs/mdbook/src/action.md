@@ -2097,6 +2097,7 @@ Filters features by Level of Detail (LOD), routing them to appropriate output po
 ### Input Ports
 * default
 ### Output Ports
+* up_to_lod0
 * up_to_lod1
 * up_to_lod2
 * up_to_lod3
@@ -5206,6 +5207,8 @@ Execute Python Scripts with Geospatial Data Processing
       ]
     },
     "pythonPath": {
+      "title": "Python Path",
+      "description": "Path to Python interpreter executable (default: python3)",
       "type": [
         "string",
         "null"
@@ -5224,6 +5227,8 @@ Execute Python Scripts with Geospatial Data Processing
       ]
     },
     "timeoutSeconds": {
+      "title": "Timeout Seconds",
+      "description": "Maximum execution time for the Python script in seconds (default: 30)",
       "type": [
         "integer",
         "null"
