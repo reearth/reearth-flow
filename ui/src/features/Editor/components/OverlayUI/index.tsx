@@ -106,7 +106,11 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   const handleLayoutOptionsToggle = useCallback(() => {
     setShowLayoutOptions((prev) => !prev);
   }, []);
-  console.log("NODE PICKER OPEN:", nodePickerOpen);
+
+  const isTransformer = nodePickerOpen?.nodeType === "transformer";
+  const shouldShowNodePicker =
+    !!nodePickerOpen && (isMainWorkflow || isTransformer);
+
   return (
     <>
       <div
@@ -189,7 +193,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         onLayoutChange={onLayoutChange}
         onClose={handleLayoutOptionsToggle}
       />
-      {nodePickerOpen && (
+      {shouldShowNodePicker && (
         <NodePickerDialog
           openedActionType={nodePickerOpen}
           isMainWorkflow={isMainWorkflow}

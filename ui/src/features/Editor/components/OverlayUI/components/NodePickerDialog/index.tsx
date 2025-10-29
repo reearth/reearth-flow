@@ -52,7 +52,6 @@ const NodePickerDialog: React.FC<Props> = ({
     handleActionByTypeChange,
   } = useHooks({ openedActionType, isMainWorkflow, onNodesAdd, onClose });
 
-  console.log("CURRENT ACTION BY TYPE:", currentActionByType);
   return (
     <Dialog open={!!openedActionType} onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
