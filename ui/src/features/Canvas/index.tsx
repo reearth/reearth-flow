@@ -100,6 +100,7 @@ const Canvas: React.FC<Props> = ({
   } = useHooks({
     nodes,
     edges,
+    isMainWorkflow,
     onWorkflowAdd,
     onNodesAdd,
     onNodesChange,
