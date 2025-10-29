@@ -257,6 +257,13 @@ fn parse_tree_reader<R: BufRead>(
                         AttributeValue::String(typename.to_string()),
                     );
                 }
+                // Override gmlId with child's ID
+                if let Some(id) = &child_id {
+                    attributes.insert(
+                        Attribute::new("gmlId"),
+                        AttributeValue::String(id.clone()),
+                    );
+                }
                 // Add lod attribute for StatisticsCalculator to use
                 // Use child_lod if available, otherwise use parent lod
                 let effective_lod = child_lod.highest_lod().or_else(|| lod.highest_lod());
