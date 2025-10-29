@@ -24,9 +24,9 @@ nodes:
         - attribute: Filename
           expr: env.get("__value").gmlFilename
         - attribute: Building.gml_id
-          expr: env.get("__value").gmlId
+          expr: env.get("__value").gmlParentId
         - attribute: BuildingPart.gml_id
-          expr: env.get("__value").featureId
+          expr: env.get("__value").gmlId
         - attribute: lod
           expr: env.get("__value").lod
 
@@ -67,7 +67,7 @@ nodes:
     type: action
     action: PLATEAU4.BuildingPartConnectivityChecker
     with:
-      buildingIdAttribute: gmlId
+      buildingIdAttribute: gmlParentId
       partIdAttribute: featureId
       lodAttribute: lod
       fileIndexAttribute: fileIndex
@@ -113,7 +113,7 @@ nodes:
         - attribute: Filename
           expr: env.get("__value").gmlFilename
         - attribute: Building.gml_id
-          expr: env.get("__value").gmlId
+          expr: env.get("__value").gmlParentId
         - attribute: BuildingPart.gml_id
           expr: env.get("__value").featureId
         - attribute: lod

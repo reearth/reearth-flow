@@ -257,6 +257,13 @@ fn parse_tree_reader<R: BufRead>(
                         AttributeValue::String(typename.to_string()),
                     );
                 }
+                // Save parent's gmlId before overriding with child's ID
+                if let Some(parent_gml_id) = attributes.get(&Attribute::new("gmlId")) {
+                    attributes.insert(
+                        Attribute::new("gmlParentId"),
+                        parent_gml_id.clone(),
+                    );
+                }
                 // Override gmlId with child's ID
                 if let Some(id) = &child_id {
                     attributes.insert(

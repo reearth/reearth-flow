@@ -73,6 +73,8 @@ nodes:
           method: remove
         - attribute: gmlName
           method: remove
+        - attribute: gmlParentId
+          method: remove
         - attribute: geometryName
           method: remove
         - attribute: gmlRootId
@@ -219,6 +221,8 @@ nodes:
           method: remove
         - attribute: gmlName
           method: remove
+        - attribute: gmlParentId
+          method: remove
         - attribute: geometryName
           method: remove
         - attribute: gmlRootId
@@ -362,6 +366,8 @@ nodes:
         - attribute: dumpGeometry
           method: remove
         - attribute: gmlName
+          method: remove
+        - attribute: gmlParentId
           method: remove
         - attribute: geometryName
           method: remove
@@ -682,6 +688,8 @@ nodes:
           method: remove
         - attribute: gmlRootId
           method: remove
+        - attribute: gmlParentId
+          method: remove
         - attribute: udxDirs
           method: remove
         - attribute: admin
@@ -783,6 +791,8 @@ nodes:
         - attribute: root
           method: remove
         - attribute: gmlRootId
+          method: remove
+        - attribute: gmlParentId
           method: remove
         - attribute: udxDirs
           method: remove

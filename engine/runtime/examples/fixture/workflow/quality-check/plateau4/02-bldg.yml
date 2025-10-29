@@ -1029,6 +1029,8 @@ graphs:
         method: remove
       - attribute: gmlName
         method: remove
+      - attribute: gmlParentId
+        method: remove
       - attribute: extension
         method: remove
       - attribute: area
@@ -1101,6 +1103,8 @@ graphs:
       - attribute: gmlName
         method: remove
       - attribute: gmlRootId
+        method: remove
+      - attribute: gmlParentId
         method: remove
       - attribute: admin
         method: remove
@@ -1916,6 +1920,8 @@ graphs:
         method: remove
       - attribute: gmlName
         method: remove
+      - attribute: gmlParentId
+        method: remove
       - attribute: geometryName
         method: remove
       - attribute: gmlRootId
@@ -2050,6 +2056,8 @@ graphs:
         method: remove
       - attribute: gmlName
         method: remove
+      - attribute: gmlParentId
+        method: remove
       - attribute: geometryName
         method: remove
       - attribute: gmlRootId
@@ -2180,6 +2188,8 @@ graphs:
       - attribute: dumpGeometry
         method: remove
       - attribute: gmlName
+        method: remove
+      - attribute: gmlParentId
         method: remove
       - attribute: geometryName
         method: remove
@@ -2467,6 +2477,8 @@ graphs:
         method: remove
       - attribute: gmlRootId
         method: remove
+      - attribute: gmlParentId
+        method: remove
       - attribute: udxDirs
         method: remove
       - attribute: admin
@@ -2563,6 +2575,8 @@ graphs:
       - attribute: root
         method: remove
       - attribute: gmlRootId
+        method: remove
+      - attribute: gmlParentId
         method: remove
       - attribute: udxDirs
         method: remove

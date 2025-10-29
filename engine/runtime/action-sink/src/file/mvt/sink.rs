@@ -187,7 +187,7 @@ impl Sink for MVTWriter {
                     .eval_ast::<String>(&self.params.layer_name)
                     .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))?;
                 // the flushing logic requires sorted features
-                // output and compress_output must 1-to-1 matches or file corruption will occur
+                // output and compress_output must be uniquely paired or file corruption will occur
                 if !self.buffer.contains_key(&(
                     output.clone(),
                     compress_output.clone(),

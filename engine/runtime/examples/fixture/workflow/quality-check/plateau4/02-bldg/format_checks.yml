@@ -236,6 +236,8 @@ nodes:
           method: remove
         - attribute: gmlName
           method: remove
+        - attribute: gmlParentId
+          method: remove
         - attribute: extension
           method: remove
         - attribute: area
@@ -310,6 +312,8 @@ nodes:
         - attribute: gmlName
           method: remove
         - attribute: gmlRootId
+          method: remove
+        - attribute: gmlParentId
           method: remove
         - attribute: admin
           method: remove
