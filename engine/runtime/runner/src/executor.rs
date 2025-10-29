@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc, thread, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use reearth_flow_common::future::SharedFuture;
 use reearth_flow_eval_expr::engine::Engine;
@@ -68,8 +68,10 @@ pub fn run_dag_executor(
         state,
         event_handlers,
     ))?;
-    let result = join_handle.join().map_err(Error::ExecutionError);
-    thread::sleep(Duration::from_millis(1000));
+    let result = join_handle
+        .join((**runtime).clone())
+        .map_err(Error::ExecutionError);
+    std::thread::sleep(Duration::from_millis(1000));
     join_handle.notify();
     result
 }
