@@ -11,7 +11,6 @@ type User struct {
 	host          *string
 	myWorkspaceID WorkspaceID
 	auths         []string
-	workspaces    workspace.List
 	myWorkspace   workspace.Workspace
 }
 
@@ -50,10 +49,6 @@ func (u *User) MyWorkspaceID() WorkspaceID {
 
 func (u *User) Auths() []string {
 	return u.auths
-}
-
-func (u *User) Workspaces() workspace.List {
-	return u.workspaces
 }
 
 func (u *User) MyWorkspace() workspace.Workspace {
