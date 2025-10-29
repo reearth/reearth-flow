@@ -31,11 +31,10 @@ use super::tiling::TileMetadata;
 #[allow(clippy::too_many_arguments)]
 pub(super) fn geometry_slicing_stage(
     ctx: Context,
-    upstream: &[Feature],
+    upstream: &[(Feature, String)],
     tile_id_conv: TileIdMethod,
     sender_sliced: std::sync::mpsc::SyncSender<(u64, Vec<u8>)>,
     output_path: &Uri,
-    layer_name: &str,
     min_zoom: u8,
     max_zoom: u8,
 ) -> crate::errors::Result<()> {
@@ -47,7 +46,7 @@ pub(super) fn geometry_slicing_stage(
         .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
 
     // Convert CityObjects to sliced features
-    upstream.iter().par_bridge().try_for_each(|feature| {
+    upstream.iter().par_bridge().try_for_each(|(feature, layer_name)| {
         let max_detail = 12; // 4096
         let buffer_pixels = 5;
         let tile_content = slice_cityobj_geoms(
@@ -114,8 +113,14 @@ pub(super) fn geometry_slicing_stage(
         tile_content.min_lat = tile_content.min_lat.min(content.min_lat);
         tile_content.max_lat = tile_content.max_lat.max(content.max_lat);
     }
+    
+    // Using output path basename as tileset name. Fallback to empty string.
+    let basename = output_path
+        .file_name()
+        .map(|name| name.to_string_lossy().to_string())
+        .unwrap_or_default();
     let metadata = TileMetadata::from_tile_content(
-        layer_name.to_string(),
+        basename,
         min_zoom,
         max_zoom,
         &TileContent {

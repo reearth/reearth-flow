@@ -42,6 +42,7 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
+          flatten: true
           format: citygml
           dataset: |
             env.get("__value")["path"]
@@ -55,6 +56,15 @@ graphs:
 
       - id: 8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
         name: FeatureTypeFilterTrafficArea
+        type: action
+        action: FeatureTypeFilter
+        with:
+          targetTypes:
+            - "tran:TrafficArea"
+            - "tran:AuxiliaryTrafficArea"
+
+      - id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+        name: FeatureTypeFilterTrafficAreaLod3
         type: action
         action: FeatureTypeFilter
         with:
@@ -81,7 +91,10 @@ graphs:
             - attribute: gml_id
               valueAttribute: gmlId
             - attribute: lod
-              valueAttribute: maxLod
+              expr: |
+                env.get("__lod")
+            - attribute: _folder_package
+              valueAttribute: package
 
       - id: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
         name: FeatureSorter
@@ -89,7 +102,9 @@ graphs:
         action: FeatureSorter
         with:
           attributes:
-            - feature_type
+            # sorting is required by MVT writer
+            # must sort by output path, no feature type
+            - _folder_package
             - lod
           order: ascending
 
@@ -103,7 +118,7 @@ graphs:
           minZoom: 8
           maxZoom: 16
           output: |
-            file::join_path(env.get("outputPath"), env.get("__value").gml_id.split("_")[0] + "_lod" + env.get("__value").lod)
+            file::join_path(env.get("outputPath"), env.get("__value")._folder_package + "_lod" + env.get("__value").lod)
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
@@ -140,6 +155,11 @@ graphs:
         from: 8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
         to: 2ccf7b99-4123-446e-8ff7-049be1c604c7
         fromPort: default
+        toPort: default
+      - id: 2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e
+        from: c32a279d-97be-4584-b282-4d65627b1132
+        to: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+        fromPort: up_to_lod3
         toPort: default
       - id: 841f1bed-a4d3-4425-a754-4f0dd7461ead
         from: 2ccf7b99-4123-446e-8ff7-049be1c604c7
