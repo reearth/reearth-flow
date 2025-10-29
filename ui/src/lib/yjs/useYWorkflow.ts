@@ -162,6 +162,13 @@ export default ({
       try {
         const routers = await fetchRouterConfigs();
         undoTrackerActionWrapper(() => {
+          const selectedNodes = nodes.filter((n) => n.selected);
+          const containsReadersOrWriters = selectedNodes?.some(
+            (n) => n.type === "reader" || n.type === "writer",
+          );
+          if (containsReadersOrWriters) {
+            return;
+          }
           const nodesByParentId = new Map<string, Node[]>();
           nodes.forEach((node) => {
             if (node.parentId) {
@@ -172,7 +179,6 @@ export default ({
             }
           });
 
-          const selectedNodes = nodes.filter((n) => n.selected);
           if (selectedNodes.length === 0) return;
 
           const getBatchNodes = (batchId: string): Node[] =>

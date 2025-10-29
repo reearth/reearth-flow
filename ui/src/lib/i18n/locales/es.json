@@ -561,6 +561,8 @@
   "Insert Template": "Insertar plantilla",
   "Node Editor": "Editor de nodos",
   "Main Workflow": "Flujo de trabajo principal",
+  "Readers/Writers not allowed": "Lectores/Escritores no permitidos",
+  "Reader and Writer nodes cannot be pasted into subworkflows.": "Los nodos lector y escritor no se pueden pegar en subflujos de trabajo.",
   "Empty workflow detected": "Se detectó un flujo de trabajo vacío",
   "You cannot create a deployment without a workflow.": "No puedes crear un despliegue sin un flujo de trabajo.",
   "General shortcuts": "Atajos generales",

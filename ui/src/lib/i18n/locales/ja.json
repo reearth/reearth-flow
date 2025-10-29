@@ -561,6 +561,8 @@
   "Insert Template": "テンプレートを挿入",
   "Node Editor": "ノードエディタ",
   "Main Workflow": "メインワークフロー",
+  "Readers/Writers not allowed": "リーダー/ライターは許可されていません",
+  "Reader and Writer nodes cannot be pasted into subworkflows.": "リーダーおよびライターノードはサブワークフローに貼り付けることはできません。",
   "Empty workflow detected": "空のワークフローが検出されました",
   "You cannot create a deployment without a workflow.": "ワークフローがないとデプロイメントを作成できません。",
   "General shortcuts": "一般ショートカット",

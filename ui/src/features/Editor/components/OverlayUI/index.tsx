@@ -106,7 +106,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   const handleLayoutOptionsToggle = useCallback(() => {
     setShowLayoutOptions((prev) => !prev);
   }, []);
-
+  console.log("NODE PICKER OPEN:", nodePickerOpen);
   return (
     <>
       <div

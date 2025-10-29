@@ -36,6 +36,7 @@ type Props = {
   yDoc?: Doc | null;
   users?: Record<string, AwarenessUser>;
   currentWorkflowId?: string;
+  isMainWorkflow: boolean;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onWorkflowOpen?: (workflowId: string) => void;
   onWorkflowAddFromSelection?: (nodes: Node[], edges: Edge[]) => Promise<void>;
@@ -64,6 +65,7 @@ const Canvas: React.FC<Props> = ({
   edges,
   users,
   currentWorkflowId,
+  isMainWorkflow,
   onWorkflowAdd,
   onWorkflowOpen,
   onWorkflowAddFromSelection,
@@ -164,6 +166,7 @@ const Canvas: React.FC<Props> = ({
           data={contextMenu.data}
           edges={edges}
           allNodes={nodes}
+          isMainWorkflow={isMainWorkflow}
           contextMenu={contextMenu}
           onBeforeDelete={onBeforeDelete}
           onNodesChange={onNodesChange}

@@ -561,6 +561,8 @@
   "Insert Template": "Insérer le modèle",
   "Node Editor": "Éditeur de nœuds",
   "Main Workflow": "Flux de travail principal",
+  "Readers/Writers not allowed": "Lecteurs/écrivains non autorisés",
+  "Reader and Writer nodes cannot be pasted into subworkflows.": "Les nœuds de lecteur et d'écrivain ne peuvent pas être collés dans des sous-flux de travail.",
   "Empty workflow detected": "Flux de travail vide détecté",
   "You cannot create a deployment without a workflow.": "Vous ne pouvez pas créer de déploiement sans flux de travail.",
   "General shortcuts": "Raccourcis généraux",

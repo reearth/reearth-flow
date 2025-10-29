@@ -145,6 +145,7 @@ export default function Editor({
               yDoc={yDoc}
               users={users}
               currentWorkflowId={currentWorkflowId}
+              isMainWorkflow={isMainWorkflow}
               onWorkflowAdd={handleWorkflowAdd}
               onWorkflowOpen={handleWorkflowOpen}
               onWorkflowAddFromSelection={handleWorkflowAddFromSelection}

@@ -561,6 +561,8 @@
   "Insert Template": "",
   "Node Editor": "",
   "Main Workflow": "",
+  "Readers/Writers not allowed": "",
+  "Reader and Writer nodes cannot be pasted into subworkflows.": "",
   "Empty workflow detected": "",
   "You cannot create a deployment without a workflow.": "",
   "General shortcuts": "",

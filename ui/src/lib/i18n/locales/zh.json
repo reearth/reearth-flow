@@ -561,6 +561,8 @@
   "Insert Template": "插入模板",
   "Node Editor": "节点编辑器",
   "Main Workflow": "主工作流",
+  "Readers/Writers not allowed": "禁止读写",
+  "Reader and Writer nodes cannot be pasted into subworkflows.": "读取器和写入器节点不能粘贴到子工作流中。",
   "Empty workflow detected": "检测到空工作流",
   "You cannot create a deployment without a workflow.": "没有工作流，您无法创建部署。",
   "General shortcuts": "常规快捷键",

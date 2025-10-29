@@ -26,6 +26,7 @@ type Props = {
   data?: Node | Node[];
   edges: Edge[];
   allNodes: Node[];
+  isMainWorkflow: boolean;
   onNodesChange?: (changes: NodeChange[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onBeforeDelete?: (args: { nodes: Node[] }) => Promise<boolean>;
@@ -45,6 +46,7 @@ const CanvasContextMenu: React.FC<Props> = ({
   data,
   edges,
   allNodes,
+  isMainWorkflow,
   onWorkflowOpen,
   onWorkflowAddFromSelection,
   onNodeSettings,
@@ -112,6 +114,16 @@ const CanvasContextMenu: React.FC<Props> = ({
     [onBeforeDelete, onNodesChange, onNodesDeleteCleanup],
   );
 
+  const clipboardHasReadersOrWriters =
+    !isMainWorkflow &&
+    value?.clipboard?.nodes?.some(
+      (n: any) => n.type === "reader" || n.type === "writer",
+    );
+
+  const containsReadersOrWriters = nodes?.some(
+    (n) => n.type === "reader" || n.type === "writer",
+  );
+
   const menuItems = useMemo(() => {
     const wrapWithClose = (callback: () => void) => () => {
       callback();
@@ -151,7 +163,8 @@ const CanvasContextMenu: React.FC<Props> = ({
           shortcut: (
             <ContextMenuShortcut keyBinding={{ key: "v", commandKey: true }} />
           ),
-          disabled: !value?.clipboard || !onPaste,
+          disabled:
+            !value?.clipboard || !onPaste || clipboardHasReadersOrWriters,
           onCallback: wrapWithClose(() => onPaste?.(contextMenu.mousePosition)),
         },
       },
@@ -179,7 +192,8 @@ const CanvasContextMenu: React.FC<Props> = ({
                     keyBinding={{ key: "s", commandKey: true, shiftKey: true }}
                   />
                 ),
-                disabled: !onNodesChange || !onEdgesChange,
+                disabled:
+                  !onNodesChange || !onEdgesChange || containsReadersOrWriters,
                 onCallback: wrapWithClose(() =>
                   handleWorkflowAddFromSelection(),
                 ),
@@ -259,6 +273,8 @@ const CanvasContextMenu: React.FC<Props> = ({
     t,
     node,
     nodes,
+    clipboardHasReadersOrWriters,
+    containsReadersOrWriters,
     onCopy,
     onCut,
     onPaste,
