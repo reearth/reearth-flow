@@ -24,6 +24,7 @@ use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
 use yrs::{Doc, ReadTxn, Transact, Update};
 
+use super::redis_channels::RedisChannels;
 use super::types::BroadcastConfig;
 use crate::domain::value_objects::count::Count;
 
@@ -38,10 +39,7 @@ pub struct BroadcastGroup {
     last_read_id: Arc<Mutex<String>>,
     shutdown_handle: Arc<Mutex<Option<ShutdownHandle>>>,
     connections_count: Count,
-    redis_write_tx: tokio::sync::mpsc::Sender<Vec<u8>>,
-    redis_write_rx: Arc<Mutex<tokio::sync::mpsc::Receiver<Vec<u8>>>>,
-    redis_awareness_tx: tokio::sync::mpsc::Sender<Vec<u8>>,
-    redis_awareness_rx: Arc<Mutex<tokio::sync::mpsc::Receiver<Vec<u8>>>>,
+    redis_channels: RedisChannels,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -104,9 +102,8 @@ impl BroadcastGroup {
         });
         drop(lock);
 
-        let (redis_awareness_tx, redis_awareness_rx) = tokio::sync::mpsc::channel::<Vec<u8>>(512);
-        let redis_awareness_rx = Arc::new(Mutex::new(redis_awareness_rx));
-        let redis_awareness_tx_clone = redis_awareness_tx.clone();
+        let redis_channels = RedisChannels::new(1024, 512);
+        let redis_awareness_tx_clone = redis_channels.awareness_tx.clone();
 
         let awareness_updater = tokio::task::spawn(async move {
             loop {
@@ -273,9 +270,6 @@ impl BroadcastGroup {
             }
         });
 
-        let (redis_write_tx, redis_write_rx) = tokio::sync::mpsc::channel::<Vec<u8>>(1024);
-        let redis_write_rx = Arc::new(Mutex::new(redis_write_rx));
-
         Ok(BroadcastGroup {
             awareness_ref: awareness,
             sender,
@@ -296,10 +290,7 @@ impl BroadcastGroup {
                 sync_shutdown_tx,
             }))),
             connections_count: Count::new(),
-            redis_write_tx,
-            redis_write_rx,
-            redis_awareness_tx,
-            redis_awareness_rx,
+            redis_channels,
         })
     }
 
@@ -379,9 +370,9 @@ impl BroadcastGroup {
 
         let stream_task = {
             let awareness = self.awareness().clone();
-            let redis_write_tx = self.redis_write_tx.clone();
-            let redis_write_rx = self.redis_write_rx.clone();
-            let redis_awareness_rx = self.redis_awareness_rx.clone();
+            let redis_write_tx = self.redis_channels.write_tx.clone();
+            let redis_write_rx = self.redis_channels.write_rx.clone();
+            let redis_awareness_rx = self.redis_channels.awareness_rx.clone();
             let redis_store = self.redis_store.clone();
             let doc_name = self.doc_name.clone();
             let stream_key = format!("yjs:stream:{doc_name}");
@@ -431,7 +422,7 @@ impl BroadcastGroup {
                     }
 
                     let mut rx = redis_write_rx.lock().await;
-                    flush_pending_updates(
+                    RedisChannels::flush_pending_updates(
                         &redis_store,
                         &mut conn,
                         &mut rx,
@@ -442,7 +433,7 @@ impl BroadcastGroup {
                     drop(rx);
 
                     let mut awareness_rx = redis_awareness_rx.lock().await;
-                    flush_pending_awareness(
+                    RedisChannels::flush_pending_awareness(
                         &redis_store,
                         &mut conn,
                         &mut awareness_rx,
@@ -683,75 +674,6 @@ impl Drop for BroadcastGroup {
             if let Some(handle) = guard.take() {
                 handle.shutdown_sync();
             }
-        }
-    }
-}
-
-async fn flush_pending_updates(
-    redis_store: &RedisStore,
-    conn: &mut redis::aio::MultiplexedConnection,
-    receiver: &mut tokio::sync::mpsc::Receiver<Vec<u8>>,
-    stream_key: &str,
-    instance_id: &u64,
-) {
-    let mut updates = Vec::new();
-
-    while let Ok(update) = receiver.try_recv() {
-        updates.push(update);
-        if updates.len() >= 100 {
-            break;
-        }
-    }
-
-    if !updates.is_empty() {
-        let refs: Vec<&[u8]> = updates.iter().map(|u| u.as_slice()).collect();
-        if let Err(e) = redis_store
-            .publish_multiple_updates(conn, stream_key, &refs, instance_id)
-            .await
-        {
-            warn!(
-                "Failed to batch write {} updates to Redis: {}",
-                updates.len(),
-                e
-            );
-        } else {
-            debug!("Successfully batched {} updates to Redis", updates.len());
-        }
-    }
-}
-
-async fn flush_pending_awareness(
-    redis_store: &RedisStore,
-    conn: &mut redis::aio::MultiplexedConnection,
-    receiver: &mut tokio::sync::mpsc::Receiver<Vec<u8>>,
-    stream_key: &str,
-    instance_id: &u64,
-) {
-    let mut updates = Vec::new();
-
-    while let Ok(update) = receiver.try_recv() {
-        updates.push(update);
-        if updates.len() >= 50 {
-            break;
-        }
-    }
-
-    if !updates.is_empty() {
-        let refs: Vec<&[u8]> = updates.iter().map(|u| u.as_slice()).collect();
-        if let Err(e) = redis_store
-            .publish_multiple_awareness(conn, stream_key, &refs, instance_id)
-            .await
-        {
-            warn!(
-                "Failed to batch write {} awareness updates to Redis: {}",
-                updates.len(),
-                e
-            );
-        } else {
-            debug!(
-                "Successfully batched {} awareness updates to Redis",
-                updates.len()
-            );
         }
     }
 }

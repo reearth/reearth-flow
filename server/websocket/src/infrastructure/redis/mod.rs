@@ -8,6 +8,9 @@ use tokio::sync::Mutex;
 use tracing::{debug, error, info};
 use uuid;
 
+mod macros;
+use macros::*;
+
 pub mod trimmer;
 
 use crate::{
@@ -50,10 +53,7 @@ impl RedisStore {
         update: &[u8],
         instance_id: &u64,
     ) -> Result<()> {
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis();
+        let timestamp = timestamp_millis!();
 
         let script = redis::Script::new(
             r#"
@@ -95,11 +95,7 @@ impl RedisStore {
             return Ok(());
         }
 
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis();
-
+        let timestamp = timestamp_millis!();
         let mut pipe = redis::pipe();
 
         for update in updates {
@@ -133,11 +129,7 @@ impl RedisStore {
             return Ok(());
         }
 
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis();
-
+        let timestamp = timestamp_millis!();
         let mut pipe = redis::pipe();
 
         for awareness_data in awareness_updates {
@@ -168,10 +160,7 @@ impl RedisStore {
         ttl: u64,
     ) -> Result<()> {
         let mut conn = self.pool.get().await?;
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis();
+        let timestamp = timestamp_millis!();
 
         let script = redis::Script::new(
             r#"
@@ -252,42 +241,29 @@ impl RedisStore {
         Ok(())
     }
 
-    pub async fn exists(&self, key: &str) -> Result<bool> {
-        let mut conn = self.pool.get().await?;
-        let exists: bool = redis::cmd("EXISTS")
-            .arg(key)
-            .query_async(&mut *conn)
-            .await?;
-        Ok(exists)
-    }
+    redis_cmd!(
+        pub async fn exists(&self, key: &str) -> Result<bool> {
+            redis::cmd("EXISTS"), arg(key)
+        }
+    );
 
-    pub async fn set_nx(&self, key: &str, value: &str) -> Result<bool> {
-        let mut conn = self.pool.get().await?;
-        let result: bool = redis::cmd("SETNX")
-            .arg(key)
-            .arg(value)
-            .query_async(&mut *conn)
-            .await?;
-        Ok(result)
-    }
+    redis_cmd!(
+        pub async fn set_nx(&self, key: &str, value: &str) -> Result<bool> {
+            redis::cmd("SETNX"), arg(key), arg(value)
+        }
+    );
 
-    pub async fn del(&self, key: &str) -> Result<()> {
-        let mut conn = self.pool.get().await?;
-        let _: () = redis::cmd("DEL").arg(key).query_async(&mut *conn).await?;
+    redis_cmd!(
+        pub async fn del(&self, key: &str) -> Result<()> {
+            redis::cmd("DEL"), arg(key)
+        }
+    );
 
-        Ok(())
-    }
-
-    pub async fn expire(&self, key: &str, ttl_seconds: u64) -> Result<()> {
-        let mut conn = self.pool.get().await?;
-        let _: () = redis::cmd("EXPIRE")
-            .arg(key)
-            .arg(ttl_seconds)
-            .query_async(&mut *conn)
-            .await?;
-
-        Ok(())
-    }
+    redis_cmd!(
+        pub async fn expire(&self, key: &str, ttl_seconds: u64) -> Result<()> {
+            redis::cmd("EXPIRE"), arg(key), arg(ttl_seconds)
+        }
+    );
 
     pub async fn register_doc_instance(
         &self,
@@ -406,18 +382,12 @@ impl RedisStore {
     }
 
     pub async fn delete_stream(&self, doc_id: &str) -> Result<()> {
-        let stream_key = format!("yjs:stream:{doc_id}");
-        let mut conn = self.pool.get().await?;
-        let _: () = redis::cmd("DEL")
-            .arg(&stream_key)
-            .query_async(&mut *conn)
-            .await?;
-
-        Ok(())
+        let stream_key = stream_key!(doc_id);
+        self.del(&stream_key).await
     }
 
     pub async fn get_stream_last_id(&self, doc_id: &str) -> Result<Option<String>> {
-        let stream_key = format!("yjs:stream:{doc_id}");
+        let stream_key = stream_key!(doc_id);
         let mut conn = self.pool.get().await?;
 
         // Get the last entry ID from the stream
@@ -441,7 +411,7 @@ impl RedisStore {
     }
 
     pub async fn trim_stream_before(&self, doc_id: &str, last_id: &str) -> Result<()> {
-        let stream_key = format!("yjs:stream:{doc_id}");
+        let stream_key = stream_key!(doc_id);
         let mut conn = self.pool.get().await?;
 
         // Delete all entries before and including the specified ID
@@ -477,7 +447,7 @@ impl RedisStore {
     }
 
     pub async fn acquire_doc_lock(&self, doc_id: &str, instance_id: &str) -> Result<bool> {
-        let lock_key = format!("lock:doc:{doc_id}");
+        let lock_key = lock_key!(doc_id);
         let ttl = 10;
 
         let mut conn = self.pool.get().await?;
@@ -494,7 +464,7 @@ impl RedisStore {
     }
 
     pub async fn release_doc_lock(&self, doc_id: &str, instance_id: &str) -> Result<bool> {
-        let lock_key = format!("lock:doc:{doc_id}");
+        let lock_key = lock_key!(doc_id);
 
         let mut conn = self.pool.get().await?;
         let script = redis::Script::new(
@@ -517,11 +487,8 @@ impl RedisStore {
     }
 
     pub async fn update_instance_heartbeat(&self, doc_id: &str, instance_id: &u64) -> Result<()> {
-        let key = format!("doc:instances:{doc_id}");
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+        let key = instances_key!(doc_id);
+        let timestamp = timestamp_secs!();
 
         let mut conn = self.pool.get().await?;
         let script = redis::Script::new(
@@ -543,11 +510,8 @@ impl RedisStore {
     }
 
     pub async fn get_active_instances(&self, doc_id: &str, timeout_secs: u64) -> Result<i64> {
-        let key = format!("doc:instances:{doc_id}");
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+        let key = instances_key!(doc_id);
+        let now = timestamp_secs!();
 
         let mut conn = self.pool.get().await?;
         let script = redis::Script::new(
@@ -580,7 +544,7 @@ impl RedisStore {
     }
 
     pub async fn remove_instance_heartbeat(&self, doc_id: &str, instance_id: &u64) -> Result<bool> {
-        let key = format!("doc:instances:{doc_id}");
+        let key = instances_key!(doc_id);
 
         let mut conn = self.pool.get().await?;
 
@@ -607,13 +571,10 @@ impl RedisStore {
     }
 
     pub async fn safe_delete_stream(&self, doc_id: &str, instance_id: &str) -> Result<()> {
-        let stream_key = format!("yjs:stream:{doc_id}");
-        let instances_key = format!("doc:instances:{doc_id}");
+        let stream_key = stream_key!(doc_id);
+        let instances_key = instances_key!(doc_id);
         let read_lock_key = format!("read:lock:{doc_id}");
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+        let now = timestamp_secs!();
 
         let mut conn = self.pool.get().await?;
 
@@ -672,7 +633,7 @@ impl RedisStore {
             "#,
         );
 
-        let lock_key = format!("lock:doc:{doc_id}");
+        let lock_key = lock_key!(doc_id);
 
         let _: redis::Value = script
             .key(&lock_key)
@@ -691,7 +652,7 @@ impl RedisStore {
     }
 
     pub async fn check_stream_exists(&self, doc_id: &str) -> Result<bool> {
-        let stream_key = format!("yjs:stream:{doc_id}");
+        let stream_key = stream_key!(doc_id);
 
         let mut conn = self.pool.get().await?;
         let exists: bool = redis::cmd("EXISTS")
@@ -709,7 +670,7 @@ impl RedisStore {
     }
 
     pub async fn read_all_stream_data(&self, doc_id: &str) -> Result<(Vec<Bytes>, Option<String>)> {
-        let stream_key = format!("yjs:stream:{doc_id}");
+        let stream_key = stream_key!(doc_id);
         let mut conn = self.pool.get().await?;
 
         let entries: Vec<(String, Vec<(String, bytes::Bytes)>)> = redis::cmd("XRANGE")
@@ -746,7 +707,7 @@ impl RedisStore {
         is_final_batch: bool,
         lock_value: &mut Option<String>,
     ) -> Result<(Vec<Bytes>, String)> {
-        let stream_key = format!("yjs:stream:{doc_id}");
+        let stream_key = stream_key!(doc_id);
         let protection_lock_key = format!("read:lock:{doc_id}");
 
         if is_first_batch {
@@ -886,10 +847,7 @@ impl RedisStore {
         awareness_data: &[u8],
         instance_id: &u64,
     ) -> Result<()> {
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis();
+        let timestamp = timestamp_millis!();
 
         let script = redis::Script::new(
             r#"
@@ -921,7 +879,7 @@ impl RedisStore {
     }
 
     pub async fn trim_stream_by_length(&self, doc_id: &str, max_length: u64) -> Result<u64> {
-        let stream_key = format!("yjs:stream:{doc_id}");
+        let stream_key = stream_key!(doc_id);
         let mut conn = self.pool.get().await?;
 
         let trimmed_count: u64 = redis::cmd("XTRIM")
@@ -940,7 +898,7 @@ impl RedisStore {
     }
 
     pub async fn trim_stream_by_min_id(&self, doc_id: &str, min_id: &str) -> Result<u64> {
-        let stream_key = format!("yjs:stream:{doc_id}");
+        let stream_key = stream_key!(doc_id);
         let mut conn = self.pool.get().await?;
 
         let trimmed_count: u64 = redis::cmd("XTRIM")
@@ -959,7 +917,7 @@ impl RedisStore {
     }
 
     pub async fn get_stream_length(&self, doc_id: &str) -> Result<u64> {
-        let stream_key = format!("yjs:stream:{doc_id}");
+        let stream_key = stream_key!(doc_id);
         let mut conn = self.pool.get().await?;
 
         let length: u64 = redis::cmd("XLEN")
@@ -988,10 +946,7 @@ impl RedisStore {
         max_length: u64,
     ) -> Result<(u64, u64)> {
         let streams = self.list_all_streams().await?;
-        let current_time = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as u64;
+        let current_time = timestamp_millis!() as u64;
 
         let cutoff_time = current_time.saturating_sub(max_message_age_ms);
         let min_id = format!("{cutoff_time}-0");
