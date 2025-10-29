@@ -89,7 +89,8 @@ graphs:
             - attribute: feature_type
               valueAttribute: gmlName
             - attribute: gml_id
-              valueAttribute: gmlId
+              expr: |
+                env.get("__feature_id")
             - attribute: lod
               expr: |
                 env.get("__lod")
