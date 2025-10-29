@@ -620,7 +620,7 @@ impl BroadcastGroup {
                         || (update_bytes.len() == 2
                             && update_bytes[0] == 0
                             && update_bytes[1] == 0)
-                            && awareness_state == gcs_state)
+                        || awareness_state == gcs_state)
                     {
                         let update_future = self.storage.push_update(
                             &self.doc_name,
