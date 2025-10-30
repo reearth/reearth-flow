@@ -126,7 +126,10 @@ pub(super) fn geometry_slicing_stage(
             tracing::warn!("Failed to parse output path basename {:?} as UTF-8.", path);
         }
     } else {
-        tracing::warn!("Failed to get tileset name from output path {:?}", output_path);
+        tracing::warn!(
+            "Failed to get tileset name from output path {:?}",
+            output_path
+        );
     }
 
     let metadata = TileMetadata::from_tile_content(
