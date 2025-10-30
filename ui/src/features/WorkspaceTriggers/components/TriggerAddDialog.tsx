@@ -278,7 +278,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
                 <span className="font-semibold">1. {t("Endpoint:")}</span>
                 <div className="max-w-[200px] overflow-x-auto overflow-y-hidden p-1">
                   <span className="rounded border bg-background px-2 py-1 font-mono text-xs whitespace-nowrap">
-                    POST {apiUrl}/api/triggers/{createdTrigger.id}/run
+                    {/* POST {apiUrl}/api/triggers/{createdTrigger.id}/run */}
                   </span>
                 </div>
                 <IconButton
@@ -299,10 +299,11 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
                   `Add token to "Authorization: Bearer ${createdTrigger.authToken}" header`,
                 )}
               </div>
-              <div className="flex flex-nowrap items-center gap-0.5">
+              <div className="flex flex-wrap items-center">
                 <span className="font-semibold">
-                  3. {t("Custom Variables:")}
-                </span>{" "}
+                  3. {t("Custom Variables")}
+                </span>
+
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="cursor-pointer p-1">
@@ -317,7 +318,14 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
                     </div>
                   </TooltipContent>
                 </Tooltip>
+
+                <span className="mx-1">:</span>
+
+                <span className="text-muted-foreground">
+                  {t('Pass {"with": {"key": "value"}} in body')}
+                </span>
               </div>
+
               <div>
                 <span className="font-semibold">4. {t("Callback:")}</span>{" "}
                 {t('Optional "notificationUrl" for status updates')}
@@ -336,7 +344,6 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
           </DialogContentWrapper>
         </DialogContent>
       )}
-
       {openSelectDeploymentsDialog && (
         <DeploymentsDialog
           setShowDialog={() => setOpenSelectDeploymentsDialog(false)}
