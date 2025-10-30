@@ -1,12 +1,14 @@
 import {
   CaretLeftIcon,
+  CopyIcon,
   PencilLineIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 
-import { Button } from "@flow/components";
+import { Button, IconButton } from "@flow/components";
+import { config } from "@flow/config";
 import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
 import { useT } from "@flow/lib/i18n";
 import { Trigger } from "@flow/types";
@@ -28,7 +30,7 @@ const TriggerDetails: React.FC<Props> = ({
   const [openTriggerEditDialog, setOpenTriggerEditDialog] = useState(false);
 
   const handleBack = useCallback(() => history.go(-1), [history]); // Go back to previous page
-
+  const apiUrl = config().api || window.location.origin;
   const details: DetailsBoxContent[] | undefined = useMemo(
     () =>
       selectedTrigger
@@ -139,6 +141,56 @@ const TriggerDetails: React.FC<Props> = ({
         <div className="mt-6 flex max-w-[1200px] flex-col gap-6">
           <DetailsBox title={t("Trigger Details")} content={details} />
         </div>
+        {selectedTrigger?.eventSource === "API_DRIVEN" && (
+          <div className="mt-4 flex max-w-[1200px] flex-col gap-4 rounded-lg border-muted bg-muted/20 p-6 shadow-sm">
+            <p className="flex items-center gap-2 text-base font-semibold">
+              <span className="inline-block rounded bg-primary/10 px-2 py-0.5 text-xs font-bold  text-white">
+                API
+              </span>
+              {t("How to Trigger API Driven Event:")}
+            </p>
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">1. {t("Endpoint:")}</span>
+                <span className="rounded border bg-background px-2 py-1 font-mono text-xs break-all">
+                  POST {apiUrl}/api/triggers/{selectedTrigger.id}/run
+                </span>
+                <IconButton
+                  size="icon"
+                  variant="ghost"
+                  className="ml-1"
+                  onClick={() =>
+                    navigator.clipboard.writeText(
+                      `${apiUrl}/api/triggers/${selectedTrigger.id}/run`,
+                    )
+                  }
+                  icon={<CopyIcon />}
+                />
+              </div>
+              <div>
+                <span className="font-semibold">2. {t("Auth:")}</span>{" "}
+                {t('Add token to "Authorization: Bearer {token}" header')}
+              </div>
+              <div>
+                <span className="font-semibold">
+                  3. {t("Custom Variables:")}
+                </span>{" "}
+                {t('Pass {"with": {"key": "value"}} in body')}
+              </div>
+              <div>
+                <span className="font-semibold">4. {t("Callback:")}</span>{" "}
+                {t('Optional "notificationUrl" for status updates')}
+              </div>
+              <div>
+                <span className="font-semibold">5. {t("Response:")}</span>{" "}
+                {t("Returns runId, deploymentId, and job status")}
+              </div>
+              <p className="mt-2 border-t border-muted-foreground/20 pt-2 text-xs italic">
+                {t("Copy your auth token - you'll need it for API calls.")}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
       {openTriggerEditDialog && selectedTrigger && (
         <TriggerEditDialog

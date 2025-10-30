@@ -1,3 +1,4 @@
+import { CopyIcon } from "@phosphor-icons/react";
 import { useCallback, useState, useEffect } from "react";
 
 import {
@@ -15,11 +16,13 @@ import {
   SelectContent,
   SelectItem,
   Input,
+  IconButton,
 } from "@flow/components";
+import { config } from "@flow/config";
 import { useDeployment, useTrigger } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
-import { Deployment, TimeInterval } from "@flow/types";
+import { Deployment, TimeInterval, Trigger } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
 
 import { DeploymentsDialog } from "../../WorkspaceDeployments/components/DeploymentsDialog";
@@ -32,6 +35,10 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
   const { createTrigger } = useTrigger();
+  const apiUrl = config().api || window.location.origin;
+  const [createdTrigger, setCreatedTrigger] = useState<Trigger | undefined>(
+    undefined,
+  );
   const [deploymentId, setDeploymentId] = useState<string>("");
   const [selectedDeployment, setSelectedDeployment] =
     useState<Deployment | null>(null);
@@ -115,7 +122,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
       return;
     }
 
-    await createTrigger(
+    const { trigger: createdTrigger } = await createTrigger(
       workspaceId,
       deploymentId,
       description,
@@ -123,7 +130,11 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
       eventSource === "API_DRIVEN" ? authToken : undefined,
     );
 
-    setShowDialog(false);
+    setCreatedTrigger(createdTrigger);
+
+    if (eventSource === "TIME_DRIVEN") {
+      setShowDialog(false);
+    }
   }, [
     currentWorkspace?.id,
     deploymentId,
@@ -137,76 +148,50 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
 
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(false)}>
-      <DialogContent size="sm">
-        <DialogTitle>{t("Create a new trigger")}</DialogTitle>
-        <DialogContentWrapper>
-          <DialogContentSection className="flex flex-col">
-            <Label>{t("Description")}</Label>
-            <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder={t("Give your trigger a meaningful description...")}
-            />
-          </DialogContentSection>
-          <DialogContentSection className="flex flex-col">
-            <Label>{t("Deployment: ")}</Label>
-            <div
-              className="flex min-h-8 w-full items-center rounded-md border bg-transparent px-3 py-1 text-sm"
-              onClick={() => setOpenSelectDeploymentsDialog(true)}>
-              <span className="cursor-default pr-2 whitespace-nowrap text-muted-foreground">
-                {t("Select Deployment: ")}
-              </span>
-              {selectedDeployment ? (
-                <span className="cursor-default">
-                  {selectedDeployment.description}@{selectedDeployment.version}
-                </span>
-              ) : (
-                <span className="cursor-default">
-                  {t("No Deployment Selected")}
-                </span>
-              )}
-            </div>
-          </DialogContentSection>
-          <DialogContentSection className="flex-1">
-            <Label htmlFor="event-source-selector">
-              {t("Select Event Source")}
-            </Label>
-            <Select value={eventSource} onValueChange={handleSelectEventSource}>
-              <SelectTrigger>
-                <SelectValue placeholder={t("Select an event source")} />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(eventSources).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </DialogContentSection>
-          {eventSource === "API_DRIVEN" && (
+      {!createdTrigger && (
+        <DialogContent size="sm">
+          <DialogTitle>{t("Create a new trigger")}</DialogTitle>
+          <DialogContentWrapper>
             <DialogContentSection className="flex flex-col">
-              <Label>{t("Auth Token")}</Label>
+              <Label>{t("Description")}</Label>
               <Input
-                value={authToken}
-                onChange={(e) => setAuthToken(e.target.value)}
-                placeholder={t("Add your auth token")}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={t("Give your trigger a meaningful description...")}
               />
             </DialogContentSection>
-          )}
-          {eventSource === "TIME_DRIVEN" && (
+            <DialogContentSection className="flex flex-col">
+              <Label>{t("Deployment: ")}</Label>
+              <div
+                className="flex min-h-8 w-full items-center rounded-md border bg-transparent px-3 py-1 text-sm"
+                onClick={() => setOpenSelectDeploymentsDialog(true)}>
+                <span className="cursor-default pr-2 whitespace-nowrap text-muted-foreground">
+                  {t("Select Deployment: ")}
+                </span>
+                {selectedDeployment ? (
+                  <span className="cursor-default">
+                    {selectedDeployment.description}@
+                    {selectedDeployment.version}
+                  </span>
+                ) : (
+                  <span className="cursor-default">
+                    {t("No Deployment Selected")}
+                  </span>
+                )}
+              </div>
+            </DialogContentSection>
             <DialogContentSection className="flex-1">
-              <Label htmlFor="time-interval-selector">
-                {t("Select Time Interval")}
+              <Label htmlFor="event-source-selector">
+                {t("Select Event Source")}
               </Label>
               <Select
-                value={timeInterval || "EVERY_DAY"} // Set default value here as well
-                onValueChange={handleSelectTimeInterval}>
+                value={eventSource}
+                onValueChange={handleSelectEventSource}>
                 <SelectTrigger>
-                  <SelectValue placeholder={timeIntervals.EVERY_DAY} />
+                  <SelectValue placeholder={t("Select an event source")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(timeIntervals).map(([value, label]) => (
+                  {Object.entries(eventSources).map(([value, label]) => (
                     <SelectItem key={value} value={value}>
                       {label}
                     </SelectItem>
@@ -214,27 +199,105 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
                 </SelectContent>
               </Select>
             </DialogContentSection>
-          )}
-          <DialogContentSection>
-            <p className="dark:font-light">
-              {t("Are you sure you want to proceed?")}
-            </p>
-          </DialogContentSection>
-        </DialogContentWrapper>
-        <DialogFooter>
-          <Button
-            onClick={handleTriggerCreation}
-            disabled={
-              (eventSource === "API_DRIVEN" && !authToken) ||
-              (eventSource === "TIME_DRIVEN" && !timeInterval) ||
-              !eventSource ||
-              !deploymentId ||
-              !description
-            }>
-            {t("Add New Trigger")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
+            {eventSource === "API_DRIVEN" && (
+              <DialogContentSection className="flex flex-col">
+                <Label>{t("Auth Token")}</Label>
+                <Input
+                  value={authToken}
+                  onChange={(e) => setAuthToken(e.target.value)}
+                  placeholder={t("Add your auth token")}
+                />
+              </DialogContentSection>
+            )}
+            {eventSource === "TIME_DRIVEN" && (
+              <DialogContentSection className="flex-1">
+                <Label htmlFor="time-interval-selector">
+                  {t("Select Time Interval")}
+                </Label>
+                <Select
+                  value={timeInterval || "EVERY_DAY"} // Set default value here as well
+                  onValueChange={handleSelectTimeInterval}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={timeIntervals.EVERY_DAY} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(timeIntervals).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </DialogContentSection>
+            )}
+            <DialogContentSection>
+              <p className="dark:font-light">
+                {t("Are you sure you want to proceed?")}
+              </p>
+            </DialogContentSection>
+          </DialogContentWrapper>
+          <DialogFooter>
+            <Button
+              onClick={handleTriggerCreation}
+              disabled={
+                (eventSource === "API_DRIVEN" && !authToken) ||
+                (eventSource === "TIME_DRIVEN" && !timeInterval) ||
+                !eventSource ||
+                !deploymentId ||
+                !description
+              }>
+              {t("Add New Trigger")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      )}
+      {createdTrigger?.eventSource === "API_DRIVEN" && (
+        <DialogContent size="2xl">
+          <DialogTitle>{t("How to Trigger API Driven Event:")}</DialogTitle>
+          <DialogContentWrapper>
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">1. {t("Endpoint:")}</span>
+                <span className="rounded border bg-background px-2 py-1 font-mono text-xs break-all">
+                  POST {apiUrl}/api/triggers/{createdTrigger.id}/run
+                </span>
+                <IconButton
+                  size="icon"
+                  variant="ghost"
+                  className="ml-1"
+                  onClick={() =>
+                    navigator.clipboard.writeText(
+                      `${apiUrl}/api/triggers/${createdTrigger.id}/run`,
+                    )
+                  }
+                  icon={<CopyIcon />}
+                />
+              </div>
+              <div>
+                <span className="font-semibold">2. {t("Auth:")}</span>{" "}
+                {t('Add token to "Authorization: Bearer {token}" header')}
+              </div>
+              <div>
+                <span className="font-semibold">
+                  3. {t("Custom Variables:")}
+                </span>{" "}
+                {t('Pass {"with": {"key": "value"}} in body')}
+              </div>
+              <div>
+                <span className="font-semibold">4. {t("Callback:")}</span>{" "}
+                {t('Optional "notificationUrl" for status updates')}
+              </div>
+              <div>
+                <span className="font-semibold">5. {t("Response:")}</span>{" "}
+                {t("Returns runId, deploymentId, and job status")}
+              </div>
+              <p className="mt-2 border-t border-muted-foreground/20 pt-2 text-xs italic">
+                {t("Copy your auth token - you'll need it for API calls.")}
+              </p>
+            </div>
+          </DialogContentWrapper>
+        </DialogContent>
+      )}
       {openSelectDeploymentsDialog && (
         <DeploymentsDialog
           setShowDialog={() => setOpenSelectDeploymentsDialog(false)}
