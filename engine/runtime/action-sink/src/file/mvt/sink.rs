@@ -107,14 +107,15 @@ impl SinkFactory for MVTSinkFactory {
     }
 }
 
-type BufferKey = (Uri, String, Option<Uri>); // (output, feature_type, compress_output)
 type JoinHandle = Arc<parking_lot::Mutex<Receiver<Result<(), SinkError>>>>;
+type BufferValue = Vec<(Feature, String)>;
 
 #[derive(Debug, Clone)]
 pub struct MVTWriter {
     pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
     pub(super) params: MVTWriterCompiledParam,
-    pub(super) buffer: HashMap<BufferKey, Vec<Feature>>,
+    /// (output, compress_output) -> Vec<(Feature, layer_name)>
+    pub(super) buffer: HashMap<(Uri, Option<Uri>), BufferValue>,
     #[allow(clippy::type_complexity)]
     pub(super) join_handles: Vec<JoinHandle>,
 }
@@ -186,20 +187,17 @@ impl Sink for MVTWriter {
                 let layer_name = scope
                     .eval_ast::<String>(&self.params.layer_name)
                     .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))?;
-                if !self.buffer.contains_key(&(
-                    output.clone(),
-                    layer_name.clone(),
-                    compress_output.clone(),
-                )) {
+                // the flushing logic requires sorted features, or the output file will be corrupted
+                if !self
+                    .buffer
+                    .contains_key(&(output.clone(), compress_output.clone()))
+                {
                     let result = self.flush_buffer(context)?;
                     self.buffer.clear();
                     self.join_handles.extend(result);
                 }
-                let buffer = self
-                    .buffer
-                    .entry((output, layer_name, compress_output))
-                    .or_default();
-                buffer.push(feature.clone());
+                let buffer = self.buffer.entry((output, compress_output)).or_default();
+                buffer.push((feature.clone(), layer_name.clone()));
             }
             _ => {
                 return Err(Box::new(SinkError::MvtWriter(
@@ -245,21 +243,15 @@ impl MVTWriter {
     #[allow(clippy::type_complexity)]
     pub(crate) fn flush_buffer(&self, ctx: Context) -> crate::errors::Result<Vec<JoinHandle>> {
         let mut result = Vec::new();
-        let mut features = HashMap::<(Uri, Option<Uri>, String), Vec<Feature>>::new();
-        for ((output, layer_name, compress_output), buffer) in &self.buffer {
+        let mut features = HashMap::<(Uri, Option<Uri>), BufferValue>::new();
+        for ((output, compress_output), buffer) in &self.buffer {
             features
-                .entry((output.clone(), compress_output.clone(), layer_name.clone()))
+                .entry((output.clone(), compress_output.clone()))
                 .or_default()
                 .extend(buffer.clone());
         }
-        for ((output, compress_output, layer_name), buffer) in &features {
-            let res = self.write(
-                ctx.clone(),
-                buffer.clone(),
-                output,
-                layer_name,
-                compress_output,
-            )?;
+        for ((output, compress_output), buffer) in &features {
+            let res = self.write(ctx.clone(), buffer.clone(), output, compress_output)?;
             result.extend(res);
         }
         Ok(result)
@@ -268,9 +260,8 @@ impl MVTWriter {
     pub fn write(
         &self,
         ctx: Context,
-        upstream: Vec<Feature>,
+        upstream: BufferValue,
         output: &Uri,
-        layer_name: &str,
         compress_output: &Option<Uri>,
     ) -> crate::errors::Result<Vec<JoinHandle>> {
         let tile_id_conv = TileIdMethod::Hilbert;
@@ -281,7 +272,6 @@ impl MVTWriter {
         let max_zoom = self.params.max_zoom;
         let gctx = ctx.clone();
         let out = output.clone();
-        let layer_name = layer_name.to_string();
 
         let mut result = Vec::new();
 
@@ -294,7 +284,6 @@ impl MVTWriter {
                 tile_id_conv,
                 sender_sliced,
                 &out,
-                &layer_name,
                 min_zoom,
                 max_zoom,
             );
