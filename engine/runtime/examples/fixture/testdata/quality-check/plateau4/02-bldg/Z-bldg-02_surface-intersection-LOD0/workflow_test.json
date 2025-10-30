@@ -16,5 +16,6 @@
   },
   "cityGmlPath": "udx/bldg/LOD0_surface_intersection.gml",
   "codelists": "codelists",
-  "schemas": "schemas"
+  "schemas": "schemas",
+  "expectResultOkFile": false
 }

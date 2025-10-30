@@ -103,7 +103,9 @@ impl Processor for SolidBoundaryValidator {
         }
 
         // Extract solid faces from feature
-        let faces = match &geometry.value {
+        let faces: Vec<reearth_flow_geometry::types::line_string::LineString> = match &geometry
+            .value
+        {
             GeometryValue::FlowGeometry3D(geom) => {
                 if let Some(solid) = geom.as_solid() {
                     solid
@@ -140,10 +142,11 @@ impl Processor for SolidBoundaryValidator {
                     return Ok(());
                 }
 
-                geom.polygons
-                    .iter()
-                    .map(|p| p.clone().into_merged_contour())
-                    .collect::<Vec<_>>()
+                let mut polygons = Vec::new();
+                for p in &geom.polygons {
+                    polygons.push(p.clone().into_merged_contour()?);
+                }
+                polygons
             }
             _ => {
                 // Not a solid geometry, send to rejected port
@@ -153,7 +156,7 @@ impl Processor for SolidBoundaryValidator {
         };
 
         // Extract vertices, edges, and triangles from the solid
-        let mesh = TriangularMesh::from_faces(&faces);
+        let mesh = TriangularMesh::from_faces(&faces)?;
         if mesh.is_empty() {
             // If triangulation fails, send to rejected port
             fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));

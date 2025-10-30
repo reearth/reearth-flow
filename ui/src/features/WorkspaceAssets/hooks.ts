@@ -93,15 +93,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
       const file = e.target.files?.[0];
       if (!file) return;
       if (!workspaceId) return console.error("Missing current workspace");
-
-      try {
-        await createAsset({
-          workspaceId,
-          file,
-        });
-      } catch (error) {
-        console.error("Failed to upload file:", error);
-      }
+      createAsset(workspaceId, file);
     },
     [createAsset, workspaceId],
   );

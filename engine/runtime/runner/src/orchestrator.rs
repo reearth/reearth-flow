@@ -81,6 +81,7 @@ impl Orchestrator {
         }
         let expr_engine = Arc::new(expr_engine);
         let kv_store = Arc::new(create_kv_store());
+
         let dag_executor = executor
             .create_dag_executor(
                 expr_engine.clone(),
@@ -91,16 +92,16 @@ impl Orchestrator {
                 options,
             )
             .await?;
+
         let runtime_clone = self.runtime.clone();
-        let shutdown_clone = shutdown.clone();
         let pipeline_future = self.runtime.spawn_blocking(move || {
             run_dag_executor(
-                expr_engine.clone(),
+                expr_engine,
                 storage_resolver,
-                kv_store.clone(),
-                &runtime_clone,
+                kv_store,
+                runtime_clone,
                 dag_executor,
-                shutdown_clone,
+                shutdown,
                 state,
                 event_handlers,
             )
@@ -108,10 +109,10 @@ impl Orchestrator {
 
         let mut futures = FuturesUnordered::new();
         futures.push(flatten_join_handle(pipeline_future).boxed());
-
         while let Some(result) = futures.next().await {
             result?;
         }
+
         Ok(())
     }
 
@@ -138,10 +139,10 @@ impl Orchestrator {
     }
 }
 
-async fn flatten_join_handle(handle: JoinHandle<Result<(), Error>>) -> Result<(), Error> {
+async fn flatten_join_handle<T>(handle: JoinHandle<Result<T, Error>>) -> Result<T, Error> {
     match handle.await {
-        Ok(Ok(_)) => Ok(()),
-        Ok(Err(err)) => Err(err),
-        Err(err) => Err(Error::JoinError(err)),
+        Ok(Ok(result)) => Ok(result),
+        Ok(Err(e)) => Err(e),
+        Err(e) => Err(Error::JoinError(e)),
     }
 }

@@ -451,6 +451,7 @@ export default () => {
     streamingQuery: streamingQuery,
     streamingProgress: streamingQuery.progress,
     detectedGeometryType: streamingQuery.detectedGeometryType,
+    visualizerType: streamingQuery.visualizerType,
     totalFeatures: streamingQuery.totalFeatures,
     isComplete: streamingQuery.isComplete,
   };

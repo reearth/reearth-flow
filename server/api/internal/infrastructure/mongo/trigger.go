@@ -58,13 +58,20 @@ func (r *Trigger) FindByIDs(ctx context.Context, ids id.TriggerIDList) ([]*trigg
 	return filterTriggers(ids, res), nil
 }
 
-func (r *Trigger) FindByWorkspace(ctx context.Context, id id.WorkspaceID, pagination *interfaces.PaginationParam) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
+func (r *Trigger) FindByWorkspace(ctx context.Context, id id.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
 	if !r.f.CanRead(id) {
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
 	c := mongodoc.NewTriggerConsumer(r.f.Readable)
 	filter := bson.M{"workspaceid": id.String()}
+
+	if keyword != nil && *keyword != "" {
+		filter["$or"] = []bson.M{
+			{"description": bson.M{"$regex": *keyword, "$options": "i"}},
+			{"id": bson.M{"$regex": *keyword, "$options": "i"}},
+		}
+	}
 
 	if pagination != nil && pagination.Page != nil {
 		skip := int64((pagination.Page.Page - 1) * pagination.Page.PageSize)
@@ -111,6 +118,11 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id id.WorkspaceID, pagina
 	}
 	total := int64(len(c.Result))
 	return c.Result, interfaces.NewPageBasedInfo(total, 1, len(c.Result)), nil
+}
+
+func (r *Trigger) FindByDeployment(ctx context.Context, id id.DeploymentID) ([]*trigger.Trigger, error) {
+	filter := bson.M{"deploymentid": id.String()}
+	return r.find(ctx, filter)
 }
 
 func (r *Trigger) Save(ctx context.Context, trigger *trigger.Trigger) error {

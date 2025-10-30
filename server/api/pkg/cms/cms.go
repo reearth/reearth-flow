@@ -13,6 +13,8 @@ type Project struct {
 	Readme      *string
 	WorkspaceID string
 	Visibility  Visibility
+	Topics      []string
+	StarCount   int32
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -104,6 +106,7 @@ type SortInfo struct {
 
 type ListProjectsInput struct {
 	WorkspaceIDs []string
+	Keyword      *string
 	PublicOnly   bool
 	PageInfo     *PageInfo
 	SortInfo     *SortInfo
@@ -165,6 +168,19 @@ type ListItemsOutput struct {
 type ExportInput struct {
 	ProjectID string
 	ModelID   string
+}
+
+type ExportType int
+
+const (
+	ExportTypeJSON ExportType = iota
+	ExportTypeGeoJSON
+)
+
+type ModelExportInput struct {
+	ProjectID  string
+	ModelID    string
+	ExportType ExportType
 }
 
 type ExportOutput struct {

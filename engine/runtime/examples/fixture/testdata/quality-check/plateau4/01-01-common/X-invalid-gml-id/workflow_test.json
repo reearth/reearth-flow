@@ -1,0 +1,21 @@
+{
+  "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
+  "description": "Detect invalid gml:id",
+  "cityGmlPath": "udx/bldg/54377074_bldg_6697_op.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectedOutput": {
+    "expectedFile": "01_共通_GML_ID書式不正.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_common.json",
+      "includeFields": ["gml:id書式不正"]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "01_共通.csv",
+      "includeColumns": ["Index", "Folder", "Filename", "gml:id書式不正"]
+    }
+  },
+  "expectResultOkFile": false
+}

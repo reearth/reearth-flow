@@ -164,12 +164,13 @@ func (i *Job) FindByWorkspace(
 	ctx context.Context,
 	wsID id.WorkspaceID,
 	p *interfaces.PaginationParam,
+	keyword *string,
 ) ([]*job.Job, *interfaces.PageBasedInfo, error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, nil, err
 	}
 
-	return i.jobRepo.FindByWorkspace(ctx, wsID, p)
+	return i.jobRepo.FindByWorkspace(ctx, wsID, p, keyword)
 }
 
 func (i *Job) GetStatus(ctx context.Context, jobID id.JobID) (job.Status, error) {

@@ -99,6 +99,11 @@ export type CmsAssetsConnection = {
   totalCount: Scalars['Int']['output'];
 };
 
+export enum CmsExportType {
+  Geojson = 'GEOJSON',
+  Json = 'JSON'
+}
+
 export type CmsItem = {
   __typename?: 'CMSItem';
   createdAt: Scalars['DateTime']['output'];
@@ -149,6 +154,8 @@ export type CmsProject = {
   license?: Maybe<Scalars['String']['output']>;
   name: Scalars['String']['output'];
   readme?: Maybe<Scalars['String']['output']>;
+  starCount: Scalars['Int']['output'];
+  topics: Array<Scalars['String']['output']>;
   updatedAt: Scalars['DateTime']['output'];
   visibility: CmsVisibility;
   workspaceId: Scalars['ID']['output'];
@@ -204,14 +211,33 @@ export type CancelJobPayload = {
 };
 
 export type CreateAssetInput = {
-  file: Scalars['Upload']['input'];
+  file?: InputMaybe<Scalars['Upload']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
+  token?: InputMaybe<Scalars['String']['input']>;
   workspaceId: Scalars['ID']['input'];
 };
 
 export type CreateAssetPayload = {
   __typename?: 'CreateAssetPayload';
   asset: Asset;
+};
+
+export type CreateAssetUploadInput = {
+  contentEncoding?: InputMaybe<Scalars['String']['input']>;
+  contentLength?: InputMaybe<Scalars['Int']['input']>;
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  filename?: InputMaybe<Scalars['String']['input']>;
+  workspaceId: Scalars['ID']['input'];
+};
+
+export type CreateAssetUploadPayload = {
+  __typename?: 'CreateAssetUploadPayload';
+  contentEncoding?: Maybe<Scalars['String']['output']>;
+  contentLength: Scalars['Int']['output'];
+  contentType?: Maybe<Scalars['String']['output']>;
+  next?: Maybe<Scalars['String']['output']>;
+  token: Scalars['String']['output'];
+  url: Scalars['String']['output'];
 };
 
 export type CreateDeploymentInput = {
@@ -426,6 +452,7 @@ export type Mutation = {
   cancelJob: CancelJobPayload;
   copyProject: Scalars['Boolean']['output'];
   createAsset?: Maybe<CreateAssetPayload>;
+  createAssetUpload?: Maybe<CreateAssetUploadPayload>;
   createDeployment?: Maybe<DeploymentPayload>;
   createProject?: Maybe<ProjectPayload>;
   createTrigger: Trigger;
@@ -481,6 +508,11 @@ export type MutationCopyProjectArgs = {
 
 export type MutationCreateAssetArgs = {
   input: CreateAssetInput;
+};
+
+
+export type MutationCreateAssetUploadArgs = {
+  input: CreateAssetUploadInput;
 };
 
 
@@ -896,6 +928,7 @@ export type QueryCmsModelArgs = {
 
 
 export type QueryCmsModelExportUrlArgs = {
+  exportType?: InputMaybe<CmsExportType>;
   modelId: Scalars['ID']['input'];
   projectId: Scalars['ID']['input'];
 };
@@ -914,6 +947,7 @@ export type QueryCmsProjectArgs = {
 
 
 export type QueryCmsProjectsArgs = {
+  keyword?: InputMaybe<Scalars['String']['input']>;
   page?: InputMaybe<Scalars['Int']['input']>;
   pageSize?: InputMaybe<Scalars['Int']['input']>;
   publicOnly?: InputMaybe<Scalars['Boolean']['input']>;
@@ -1326,6 +1360,13 @@ export type CreateAssetMutationVariables = Exact<{
 
 export type CreateAssetMutation = { __typename?: 'Mutation', createAsset?: { __typename?: 'CreateAssetPayload', asset: { __typename?: 'Asset', id: string, workspaceId: string, createdAt: any, fileName: string, size: any, contentType: string, name: string, url: string, uuid: string, flatFiles: boolean, public: boolean, archiveExtractionStatus?: ArchiveExtractionStatus | null } } | null };
 
+export type CreateAssetUploadMutationVariables = Exact<{
+  input: CreateAssetUploadInput;
+}>;
+
+
+export type CreateAssetUploadMutation = { __typename?: 'Mutation', createAssetUpload?: { __typename?: 'CreateAssetUploadPayload', token: string, url: string, contentType?: string | null, contentLength: number, contentEncoding?: string | null, next?: string | null } | null };
+
 export type UpdateAssetMutationVariables = Exact<{
   input: UpdateAssetInput;
 }>;
@@ -1345,17 +1386,18 @@ export type GetCmsProjectByIdOrAliasQueryVariables = Exact<{
 }>;
 
 
-export type GetCmsProjectByIdOrAliasQuery = { __typename?: 'Query', cmsProject?: { __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, createdAt: any, updatedAt: any } | null };
+export type GetCmsProjectByIdOrAliasQuery = { __typename?: 'Query', cmsProject?: { __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, topics: Array<string>, starCount: number, createdAt: any, updatedAt: any } | null };
 
 export type GetCmsProjectsQueryVariables = Exact<{
   workspaceIds: Array<Scalars['ID']['input']> | Scalars['ID']['input'];
+  keyword?: InputMaybe<Scalars['String']['input']>;
   publicOnly?: InputMaybe<Scalars['Boolean']['input']>;
   page?: InputMaybe<Scalars['Int']['input']>;
   pageSize?: InputMaybe<Scalars['Int']['input']>;
 }>;
 
 
-export type GetCmsProjectsQuery = { __typename?: 'Query', cmsProjects: Array<{ __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, createdAt: any, updatedAt: any }> };
+export type GetCmsProjectsQuery = { __typename?: 'Query', cmsProjects: Array<{ __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, topics: Array<string>, starCount: number, createdAt: any, updatedAt: any }> };
 
 export type GetCmsModelsQueryVariables = Exact<{
   projectId: Scalars['ID']['input'];
@@ -1387,6 +1429,7 @@ export type GetCmsAssetQuery = { __typename?: 'Query', cmsAsset?: { __typename?:
 export type GetCmsModelExportUrlQueryVariables = Exact<{
   projectId: Scalars['ID']['input'];
   modelId: Scalars['ID']['input'];
+  exportType: CmsExportType;
 }>;
 
 
@@ -1504,7 +1547,7 @@ export type ProjectSnapshotFragment = { __typename?: 'ProjectSnapshot', timestam
 
 export type UserFacingLogFragment = { __typename?: 'UserFacingLog', jobId: string, timestamp: any, nodeId?: string | null, nodeName?: string | null, level: UserFacingLogLevel, message: string };
 
-export type CmsProjectFragment = { __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, createdAt: any, updatedAt: any };
+export type CmsProjectFragment = { __typename?: 'CMSProject', id: string, name: string, alias: string, description?: string | null, license?: string | null, readme?: string | null, workspaceId: string, visibility: CmsVisibility, topics: Array<string>, starCount: number, createdAt: any, updatedAt: any };
 
 export type CmsModelFragment = { __typename?: 'CMSModel', id: string, projectId: string, name: string, description: string, editorUrl: string, key: string, publicApiEp: string, createdAt: any, updatedAt: any, schema: { __typename?: 'CMSSchema', schemaId: string, fields: Array<{ __typename?: 'CMSSchemaField', fieldId: string, key: string, type: CmsSchemaFieldType, name: string, description?: string | null }> } };
 
@@ -1983,6 +2026,8 @@ export const CmsProjectFragmentDoc = gql`
   readme
   workspaceId
   visibility
+  topics
+  starCount
   createdAt
   updatedAt
 }
@@ -2056,6 +2101,18 @@ export const CreateAssetDocument = gql`
   }
 }
     ${AssetFragmentDoc}`;
+export const CreateAssetUploadDocument = gql`
+    mutation CreateAssetUpload($input: CreateAssetUploadInput!) {
+  createAssetUpload(input: $input) {
+    token
+    url
+    contentType
+    contentLength
+    contentEncoding
+    next
+  }
+}
+    `;
 export const UpdateAssetDocument = gql`
     mutation UpdateAsset($input: UpdateAssetInput!) {
   updateAsset(input: $input) {
@@ -2080,9 +2137,10 @@ export const GetCmsProjectByIdOrAliasDocument = gql`
 }
     ${CmsProjectFragmentDoc}`;
 export const GetCmsProjectsDocument = gql`
-    query GetCmsProjects($workspaceIds: [ID!]!, $publicOnly: Boolean, $page: Int, $pageSize: Int) {
+    query GetCmsProjects($workspaceIds: [ID!]!, $keyword: String, $publicOnly: Boolean, $page: Int, $pageSize: Int) {
   cmsProjects(
     workspaceIds: $workspaceIds
+    keyword: $keyword
     publicOnly: $publicOnly
     page: $page
     pageSize: $pageSize
@@ -2125,8 +2183,12 @@ export const GetCmsAssetDocument = gql`
 }
     ${CmsAssetFragmentDoc}`;
 export const GetCmsModelExportUrlDocument = gql`
-    query GetCmsModelExportUrl($projectId: ID!, $modelId: ID!) {
-  cmsModelExportUrl(projectId: $projectId, modelId: $modelId)
+    query GetCmsModelExportUrl($projectId: ID!, $modelId: ID!, $exportType: CMSExportType!) {
+  cmsModelExportUrl(
+    projectId: $projectId
+    modelId: $modelId
+    exportType: $exportType
+  )
 }
     `;
 export const CreateDeploymentDocument = gql`
@@ -2597,6 +2659,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     CreateAsset(variables: CreateAssetMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateAssetMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateAssetMutation>({ document: CreateAssetDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateAsset', 'mutation', variables);
+    },
+    CreateAssetUpload(variables: CreateAssetUploadMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateAssetUploadMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<CreateAssetUploadMutation>({ document: CreateAssetUploadDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateAssetUpload', 'mutation', variables);
     },
     UpdateAsset(variables: UpdateAssetMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateAssetMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<UpdateAssetMutation>({ document: UpdateAssetDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateAsset', 'mutation', variables);

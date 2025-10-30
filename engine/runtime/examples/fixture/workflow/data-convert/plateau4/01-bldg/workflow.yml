@@ -55,7 +55,17 @@ graphs:
               value: |
                 let attributes = env.get("__value").cityGmlAttributes;
                 let buildingIdAttributes = attributes["uro:BuildingIDAttribute"] ?? {};
-                buildingIdAttributes["uro:city_code"] ?? env.get("__value").cityCode
+                let gmlCityCode = buildingIdAttributes["uro:city_code"];
+                if gmlCityCode != () && gmlCityCode != "" {
+                  gmlCityCode
+                } else {
+                  let featureCityCode = env.get("__value").cityCode;
+                  if featureCityCode != () && featureCityCode != "" {
+                    featureCityCode
+                  } else {
+                    env.get("cityCode") ?? "30406"
+                  }
+                }
 
             - attribute: cityName
               method: create
@@ -106,6 +116,10 @@ graphs:
               method: create
               value: |
                 env.get("__lod")
+            - attribute: _lod_type
+              method: create
+              value: |
+                env.get("__lod_type") ?? "undefined"
             - attribute: feature_type
               method: create
               value: |
@@ -412,7 +426,7 @@ graphs:
             }
           compressOutput: |
             if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod1.zip")
+              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_bldg_3dtiles_lod1.zip")
             } else {
               file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod1.zip")
             }
@@ -433,7 +447,7 @@ graphs:
             }
           compressOutput: |
             if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod2.zip")
+              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_bldg_3dtiles_lod2.zip")
             } else {
               file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod2.zip")
             }
@@ -454,7 +468,7 @@ graphs:
             }
           compressOutput: |
             if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod2_no_texture.zip")
+              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_bldg_3dtiles_lod2_no_texture.zip")
             } else {
               file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod2_no_texture.zip")
             }
@@ -475,7 +489,7 @@ graphs:
             }
           compressOutput: |
             if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod3.zip")
+              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_bldg_3dtiles_lod3.zip")
             } else {
               file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod3.zip")
             }
@@ -496,7 +510,7 @@ graphs:
             }
           compressOutput: |
             if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod3_no_texture.zip")
+              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_bldg_3dtiles_lod3_no_texture.zip")
             } else {
               file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod3_no_texture.zip")
             }
@@ -517,7 +531,7 @@ graphs:
             }
           compressOutput: |
             if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod4.zip")
+              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_bldg_3dtiles_lod4.zip")
             } else {
               file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod4.zip")
             }
@@ -538,7 +552,7 @@ graphs:
             }
           compressOutput: |
             if env.get("__value").baseCityCode == env.get("__value").city_code {
-              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod4_no_texture.zip")
+              file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_bldg_3dtiles_lod4_no_texture.zip")
             } else {
               file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod4_no_texture.zip")
             }

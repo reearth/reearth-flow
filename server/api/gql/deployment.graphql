@@ -13,6 +13,13 @@ type Deployment implements Node {
   workspaceId: ID!
 }
 
+
+enum DeploymentSortField {
+  VERSION
+  UPDATED_AT
+  DESCRIPTION
+}
+
 # Input Types
 
 input CreateDeploymentInput {
@@ -72,7 +79,11 @@ type DeploymentConnection {
 # Query and Mutation
 
 extend type Query {
-  deployments(workspaceId: ID!, pagination: PageBasedPagination!): DeploymentConnection!
+  deployments(
+    workspaceId: ID!
+    keyword: String
+    pagination: PageBasedPagination!
+  ): DeploymentConnection!
   deploymentByVersion(input: GetByVersionInput!): Deployment
   deploymentHead(input: GetHeadInput!): Deployment
   deploymentVersions(workspaceId: ID!, projectId: ID): [Deployment!]!

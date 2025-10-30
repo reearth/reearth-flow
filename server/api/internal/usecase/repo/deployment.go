@@ -12,7 +12,7 @@ type Deployment interface {
 	Filtered(WorkspaceFilter) Deployment
 	FindByIDs(context.Context, id.DeploymentIDList) ([]*deployment.Deployment, error)
 	FindByID(context.Context, id.DeploymentID) (*deployment.Deployment, error)
-	FindByWorkspace(context.Context, id.WorkspaceID, *interfaces.PaginationParam) ([]*deployment.Deployment, *interfaces.PageBasedInfo, error)
+	FindByWorkspace(context.Context, id.WorkspaceID, *interfaces.PaginationParam, *string) ([]*deployment.Deployment, *interfaces.PageBasedInfo, error)
 	FindByProject(context.Context, id.ProjectID) (*deployment.Deployment, error)
 	FindByVersion(context.Context, id.WorkspaceID, *id.ProjectID, string) (*deployment.Deployment, error)
 	FindHead(context.Context, id.WorkspaceID, *id.ProjectID) (*deployment.Deployment, error)
@@ -31,7 +31,7 @@ func IterateDeploymentsByWorkspace(repo Deployment, ctx context.Context, tid id.
 			},
 		}
 
-		deployments, info, err := repo.FindByWorkspace(ctx, tid, pagination)
+		deployments, info, err := repo.FindByWorkspace(ctx, tid, pagination, nil)
 		if err != nil {
 			return err
 		}

@@ -11,6 +11,7 @@ import {
   CreateAssetInput,
   UpdateAssetInput,
   DeleteAssetInput,
+  CreateAssetUploadInput,
 } from "../__gen__/graphql";
 import { toAsset } from "../convert";
 import { useGraphQLContext } from "../provider";
@@ -59,12 +60,18 @@ export const useQueries = () => {
       enabled: !!workspaceId,
     });
 
-  const createAssetMutation = useMutation({
-    mutationFn: async ({ file, name, workspaceId }: CreateAssetInput) => {
+  const createAssetWithStandardUploadMutation = useMutation({
+    mutationFn: async ({
+      file,
+      name,
+      token,
+      workspaceId,
+    }: CreateAssetInput) => {
       const data = await graphQLContext?.CreateAsset({
         input: {
-          file: file.get("file"),
+          file,
           name,
+          token,
           workspaceId,
         },
       });
@@ -113,9 +120,29 @@ export const useQueries = () => {
     },
   });
 
+  const createAssetDirectUploadMutation = useMutation({
+    mutationFn: async (input: CreateAssetUploadInput) => {
+      const data = await graphQLContext?.CreateAssetUpload({
+        input,
+      });
+
+      if (data?.createAssetUpload) {
+        return {
+          token: data.createAssetUpload.token,
+          url: data.createAssetUpload.url,
+          contentType: data.createAssetUpload.contentType,
+          contentLength: data.createAssetUpload.contentLength,
+          contentEncoding: data.createAssetUpload.contentEncoding,
+          next: data.createAssetUpload.next,
+        };
+      }
+    },
+  });
+
   return {
     useGetAssetsQuery,
-    createAssetMutation,
+    createAssetWithStandardUploadMutation,
+    createAssetDirectUploadMutation,
     updateAssetMutation,
     deleteAssetMutation,
   };
