@@ -38,7 +38,6 @@ const DeploymentsDialog: React.FC<Props> = ({
   onSelectDeployment,
   onSortChange,
   setCurrentPage,
-  setCurrentOrderDir,
   setSearchTerm,
   setShowDialog,
 }) => {
@@ -88,7 +87,6 @@ const DeploymentsDialog: React.FC<Props> = ({
               }}
               onSortChange={onSortChange}
               setCurrentPage={setCurrentPage}
-              setCurrentOrderDir={setCurrentOrderDir}
               setSearchTerm={setSearchTerm}
             />
           </DialogContentSection>

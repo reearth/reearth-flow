@@ -47,7 +47,6 @@ const DeploymentManager: React.FC = () => {
     handleDeploymentRun,
     handleSortChange,
     setCurrentPage,
-    setCurrentOrderDir,
   } = useHooks();
   const resultsPerPage = DEPLOYMENT_FETCH_RATE;
   const columns: ColumnDef<Deployment>[] = [
@@ -138,7 +137,6 @@ const DeploymentManager: React.FC = () => {
                 onRowClick={handleDeploymentSelect}
                 onSortChange={handleSortChange}
                 setCurrentPage={setCurrentPage}
-                setCurrentOrderDir={setCurrentOrderDir}
                 setSearchTerm={setSearchTerm}
               />
             </div>

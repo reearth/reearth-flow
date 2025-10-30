@@ -298,7 +298,6 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
           setSearchTerm={setSearchTerm}
           onSortChange={handleSortChange}
           setCurrentPage={setCurrentPage}
-          setCurrentOrderDir={setCurrentOrderDir}
         />
       )}
     </Dialog>

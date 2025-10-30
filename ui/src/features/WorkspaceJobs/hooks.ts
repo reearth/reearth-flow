@@ -44,7 +44,7 @@ export default () => {
   const sortOptions = [
     {
       value: `${JobOrderBy.StartedAt}_${OrderDirection.Desc}`,
-      label: t("Most Recent Started"),
+      label: t("Recently Started"),
     },
     {
       value: `${JobOrderBy.StartedAt}_${OrderDirection.Asc}`,
@@ -52,7 +52,7 @@ export default () => {
     },
     {
       value: `${JobOrderBy.CompletedAt}_${OrderDirection.Desc}`,
-      label: t("Most Recent Completed"),
+      label: t("Recently Completed"),
     },
     {
       value: `${JobOrderBy.CompletedAt}_${OrderDirection.Asc}`,

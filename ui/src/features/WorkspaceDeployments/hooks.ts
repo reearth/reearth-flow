@@ -176,7 +176,6 @@ export default () => {
     setDeploymentToBeDeleted,
     setDeploymentToBeEdited,
     setOpenDeploymentAddDialog,
-
     setSearchTerm,
   };
 };
