@@ -54,9 +54,9 @@ type DataTableProps<TData, TValue> = {
   currentSortValue?: string;
   onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
+  onSortChange?: (value: string) => void;
   setCurrentPage?: (page: number) => void;
   setCurrentOrder?: (order: OrderDirection) => void;
-  onSortChange?: (value: string) => void;
   setSearchTerm?: (term: string) => void;
 };
 

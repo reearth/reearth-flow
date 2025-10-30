@@ -1494,6 +1494,7 @@ export type ExecuteDeploymentMutation = { __typename?: 'Mutation', executeDeploy
 
 export type GetDeploymentsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
+  keyword?: InputMaybe<Scalars['String']['input']>;
   pagination: PageBasedPagination;
 }>;
 
@@ -2258,8 +2259,12 @@ export const ExecuteDeploymentDocument = gql`
 }
     ${JobFragmentDoc}`;
 export const GetDeploymentsDocument = gql`
-    query GetDeployments($workspaceId: ID!, $pagination: PageBasedPagination!) {
-  deployments(workspaceId: $workspaceId, pagination: $pagination) {
+    query GetDeployments($workspaceId: ID!, $keyword: String, $pagination: PageBasedPagination!) {
+  deployments(
+    workspaceId: $workspaceId
+    keyword: $keyword
+    pagination: $pagination
+  ) {
     totalCount
     nodes {
       ...Deployment

@@ -36,6 +36,7 @@ const TriggerManager: React.FC = () => {
     currentSortValue,
     currentPage,
     totalPages,
+    setSearchTerm,
     setTriggerToBeEdited,
     setOpenTriggerAddDialog,
     setTriggerToBeDeleted,
@@ -127,6 +128,7 @@ const TriggerManager: React.FC = () => {
                 onSortChange={handleSortChange}
                 setCurrentPage={setCurrentPage}
                 setCurrentOrder={setCurrentOrder}
+                setSearchTerm={setSearchTerm}
               />
             ) : (
               <BasicBoiler

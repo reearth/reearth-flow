@@ -22,22 +22,29 @@ type Props = {
   currentOrder?: OrderDirection;
   totalPages?: number;
   isFetching?: boolean;
-  setShowDialog: (show: boolean) => void;
-  handleSelectDeployment: (deployment: Deployment) => void;
+  currentSortValue?: string;
+  sortOptions?: { value: string; label: string }[];
+  onSelectDeployment: (deployment: Deployment) => void;
+  onSortChange?: (value: string) => void;
   setCurrentPage?: (page: number) => void;
   setCurrentOrder?: (order: OrderDirection) => void;
+  setSearchTerm?: (term: string) => void;
+  setShowDialog: (show: boolean) => void;
 };
 
 const DeploymentsDialog: React.FC<Props> = ({
   deployments,
   currentPage = 1,
-  currentOrder = OrderDirection.Desc,
+  sortOptions,
+  currentSortValue,
   totalPages,
   isFetching,
-  setShowDialog,
-  handleSelectDeployment,
+  onSelectDeployment,
+  onSortChange,
   setCurrentPage,
   setCurrentOrder,
+  setSearchTerm,
+  setShowDialog,
 }) => {
   const t = useT();
   const resultsPerPage = DEPLOYMENT_FETCH_RATE;
@@ -74,16 +81,20 @@ const DeploymentsDialog: React.FC<Props> = ({
                 data={deployments}
                 selectColumns
                 enablePagination
-                onRowClick={(deployment) => {
-                  handleSelectDeployment(deployment);
-                  setShowDialog(false);
-                }}
                 currentPage={currentPage}
-                setCurrentPage={setCurrentPage}
                 totalPages={totalPages}
                 resultsPerPage={resultsPerPage}
-                currentOrder={currentOrder}
+                currentSortValue={currentSortValue}
+                sortOptions={sortOptions}
+                showFiltering
+                onRowClick={(deployment) => {
+                  onSelectDeployment(deployment);
+                  setShowDialog(false);
+                }}
+                onSortChange={onSortChange}
+                setCurrentPage={setCurrentPage}
                 setCurrentOrder={setCurrentOrder}
+                setSearchTerm={setSearchTerm}
               />
             ) : (
               <BasicBoiler

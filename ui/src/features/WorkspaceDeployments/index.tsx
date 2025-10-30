@@ -36,15 +36,19 @@ const DeploymentManager: React.FC = () => {
     openDeploymentAddDialog,
     deploymentToBeEdited,
     isFetching,
+    isDebouncingSearch,
+    sortOptions,
+    currentSortValue,
     currentPage,
     totalPages,
-    currentOrder,
     setDeploymentToBeEdited,
     setOpenDeploymentAddDialog,
     setDeploymentToBeDeleted,
+    setSearchTerm,
     handleDeploymentSelect,
     handleDeploymentDelete,
     handleDeploymentRun,
+    handleSortChange,
     setCurrentPage,
     setCurrentOrder,
   } = useHooks();
@@ -120,7 +124,7 @@ const DeploymentManager: React.FC = () => {
                 <p className="text-xs dark:font-light">{t("New Deployment")}</p>
               </Button>
             </div>
-            {isFetching ? (
+            {isDebouncingSearch || isFetching ? (
               <LoadingSkeleton />
             ) : deployments && deployments.length > 0 ? (
               <div className="h-full flex-1 overflow-hidden">
@@ -129,13 +133,17 @@ const DeploymentManager: React.FC = () => {
                   data={deployments}
                   selectColumns
                   enablePagination
-                  onRowClick={handleDeploymentSelect}
                   currentPage={currentPage}
-                  setCurrentPage={setCurrentPage}
                   totalPages={totalPages}
                   resultsPerPage={resultsPerPage}
-                  currentOrder={currentOrder}
+                  currentSortValue={currentSortValue}
+                  sortOptions={sortOptions}
+                  showFiltering
+                  onRowClick={handleDeploymentSelect}
+                  onSortChange={handleSortChange}
+                  setCurrentPage={setCurrentPage}
                   setCurrentOrder={setCurrentOrder}
+                  setSearchTerm={setSearchTerm}
                 />
               </div>
             ) : (
