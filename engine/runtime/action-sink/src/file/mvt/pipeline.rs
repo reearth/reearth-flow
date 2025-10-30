@@ -117,13 +117,20 @@ pub(super) fn geometry_slicing_stage(
         tile_content.max_lat = tile_content.max_lat.max(content.max_lat);
     }
 
-    // Using output path basename as tileset name. Fallback to empty string.
-    let basename = output_path
-        .file_name()
-        .map(|name| name.to_string_lossy().to_string())
-        .unwrap_or_default();
+    // Using output path basename as tileset name. Fallback to "unnamed_tileset".
+    let mut basename = "unnamed_tileset";
+    if let Some(path) = output_path.file_name() {
+        if let Some(path_str) = path.to_str() {
+            basename = path_str;
+        } else {
+            tracing::warn!("Failed to parse output path basename {:?} as UTF-8.", path);
+        }
+    } else {
+        tracing::warn!("Failed to get tileset name from output path {:?}", output_path);
+    }
+
     let metadata = TileMetadata::from_tile_content(
-        basename,
+        basename.to_string(),
         min_zoom,
         max_zoom,
         &TileContent {
