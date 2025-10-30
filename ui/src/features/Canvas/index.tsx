@@ -33,7 +33,6 @@ type Props = {
   readonly?: boolean;
   nodes: Node[];
   edges: Edge[];
-  selectedEdgeIds?: string[];
   yDoc?: Doc | null;
   users?: Record<string, AwarenessUser>;
   currentWorkflowId?: string;
@@ -62,7 +61,6 @@ const Canvas: React.FC<Props> = ({
   readonly,
   nodes,
   edges,
-  selectedEdgeIds,
   users,
   currentWorkflowId,
   onWorkflowAdd,
@@ -82,7 +80,7 @@ const Canvas: React.FC<Props> = ({
   onPaneClick,
 }) => {
   const {
-    handleNodesDelete,
+    handleNodesDeleteCleanup,
     handleNodeDragOver,
     handleNodeDragStop,
     handleNodeDrop,
@@ -138,7 +136,7 @@ const Canvas: React.FC<Props> = ({
       onNodeDoubleClick={handleNodeSettings}
       onNodeDragStart={handleCloseContextmenu}
       onNodeDragStop={handleNodeDragStop}
-      onNodesDelete={handleNodesDelete}
+      onNodesDelete={handleNodesDeleteCleanup}
       onNodeContextMenu={handleNodeContextMenu}
       onSelectionContextMenu={handleSelectionContextMenu}
       onPaneContextMenu={handlePaneContextMenu}
@@ -163,13 +161,13 @@ const Canvas: React.FC<Props> = ({
         <CanvasContextMenu
           data={contextMenu.data}
           allNodes={nodes}
-          selectedEdgeIds={selectedEdgeIds}
           contextMenu={contextMenu}
           onBeforeDelete={onBeforeDelete}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onWorkflowOpen={onWorkflowOpen}
           onNodeSettings={onNodeSettings}
+          onNodesDeleteCleanup={handleNodesDeleteCleanup}
           onCopy={onCopy}
           onCut={onCut}
           onPaste={onPaste}

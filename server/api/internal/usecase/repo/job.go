@@ -12,7 +12,7 @@ type Job interface {
 	Filtered(WorkspaceFilter) Job
 	FindByIDs(context.Context, id.JobIDList) ([]*job.Job, error)
 	FindByID(context.Context, id.JobID) (*job.Job, error)
-	FindByWorkspace(context.Context, id.WorkspaceID, *interfaces.PaginationParam) ([]*job.Job, *interfaces.PageBasedInfo, error)
+	FindByWorkspace(context.Context, id.WorkspaceID, *interfaces.PaginationParam, *string) ([]*job.Job, *interfaces.PageBasedInfo, error)
 	Save(context.Context, *job.Job) error
 	Remove(context.Context, id.JobID) error
 }
@@ -27,7 +27,7 @@ func IterateJobsByWorkspace(repo Job, ctx context.Context, tid id.WorkspaceID, b
 			},
 		}
 
-		jobs, info, err := repo.FindByWorkspace(ctx, tid, pagination)
+		jobs, info, err := repo.FindByWorkspace(ctx, tid, pagination, nil)
 		if err != nil {
 			return err
 		}
