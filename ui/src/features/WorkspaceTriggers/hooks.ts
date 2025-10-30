@@ -35,7 +35,7 @@ export default () => {
   const [currentOrderBy, setCurrentOrderBy] = useState<TriggerOrderBy>(
     TriggerOrderBy.UpdatedAt,
   );
-  const [currentOrderDir, setCurrentOrder] = useState<OrderDirection>(
+  const [currentOrderDir, setCurrentOrderDir] = useState<OrderDirection>(
     OrderDirection.Desc,
   );
 
@@ -89,7 +89,7 @@ export default () => {
       OrderDirection,
     ];
     setCurrentOrderBy(orderBy);
-    setCurrentOrder(orderDir);
+    setCurrentOrderDir(orderDir);
   }, []);
 
   const totalPages = page?.totalPages as number;
@@ -137,20 +137,20 @@ export default () => {
     openTriggerAddDialog,
     triggerToBeEdited,
     isDebouncingSearch,
+    isFetching,
+    currentPage,
     currentSortValue,
     sortOptions,
-    setSearchTerm,
-    setTriggerToBeEdited,
-    setOpenTriggerAddDialog,
-    setTriggerToBeDeleted,
+    totalPages,
+    handleSortChange,
     handleTriggerSelect,
     handleTriggerDelete,
-    handleSortChange,
-    currentPage,
     setCurrentPage,
-    totalPages,
-    setCurrentOrder,
-    isFetching,
+    setCurrentOrderDir,
+    setOpenTriggerAddDialog,
+    setSearchTerm,
+    setTriggerToBeDeleted,
+    setTriggerToBeEdited,
   };
 };
 

@@ -16,7 +16,6 @@ import { OrderDirection } from "@flow/types/paginationOptions";
 type Props = {
   deployments: Deployment[] | undefined;
   currentPage?: number;
-  currentOrder?: OrderDirection;
   totalPages?: number;
   isFetching?: boolean;
   currentSortValue?: string;
@@ -24,7 +23,7 @@ type Props = {
   onSelectDeployment: (deployment: Deployment) => void;
   onSortChange?: (value: string) => void;
   setCurrentPage?: (page: number) => void;
-  setCurrentOrder?: (order: OrderDirection) => void;
+  setCurrentOrderDir?: (order: OrderDirection) => void;
   setSearchTerm?: (term: string) => void;
   setShowDialog: (show: boolean) => void;
 };
@@ -39,7 +38,7 @@ const DeploymentsDialog: React.FC<Props> = ({
   onSelectDeployment,
   onSortChange,
   setCurrentPage,
-  setCurrentOrder,
+  setCurrentOrderDir,
   setSearchTerm,
   setShowDialog,
 }) => {
@@ -89,7 +88,7 @@ const DeploymentsDialog: React.FC<Props> = ({
               }}
               onSortChange={onSortChange}
               setCurrentPage={setCurrentPage}
-              setCurrentOrder={setCurrentOrder}
+              setCurrentOrderDir={setCurrentOrderDir}
               setSearchTerm={setSearchTerm}
             />
           </DialogContentSection>

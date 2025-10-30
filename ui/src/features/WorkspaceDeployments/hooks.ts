@@ -27,7 +27,7 @@ export default () => {
   const [currentOrderBy, setCurrentOrderBy] = useState<DeploymentOrderBy>(
     DeploymentOrderBy.UpdatedAt,
   );
-  const [currentOrderDir, setCurrentOrder] = useState<OrderDirection>(
+  const [currentOrderDir, setCurrentOrderDir] = useState<OrderDirection>(
     OrderDirection.Desc,
   );
   const { useGetDeployments, useDeleteDeployment, executeDeployment } =
@@ -92,7 +92,7 @@ export default () => {
       OrderDirection,
     ];
     setCurrentOrderBy(orderBy);
-    setCurrentOrder(orderDir);
+    setCurrentOrderDir(orderDir);
   }, []);
 
   const totalPages = page?.totalPages as number;
@@ -161,21 +161,22 @@ export default () => {
     deploymentToBeDeleted,
     openDeploymentAddDialog,
     deploymentToBeEdited,
+    isDebouncingSearch,
     isFetching,
     currentPage,
-    totalPages,
-    isDebouncingSearch,
     currentSortValue,
     sortOptions,
-    setDeploymentToBeEdited,
-    setOpenDeploymentAddDialog,
-    setDeploymentToBeDeleted,
+    totalPages,
     handleDeploymentSelect,
     handleDeploymentDelete,
     handleDeploymentRun,
     handleSortChange,
     setCurrentPage,
-    setCurrentOrder,
+    setCurrentOrderDir,
+    setDeploymentToBeDeleted,
+    setDeploymentToBeEdited,
+    setOpenDeploymentAddDialog,
+
     setSearchTerm,
   };
 };

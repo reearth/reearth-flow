@@ -26,7 +26,7 @@ const JobsManager: React.FC = () => {
     handleJobSelect,
     handleSortChange,
     setCurrentPage,
-    setCurrentOrder,
+    setCurrentOrderDir,
   } = useHooks();
 
   const columns: ColumnDef<Job>[] = [
@@ -78,7 +78,7 @@ const JobsManager: React.FC = () => {
           onSortChange={handleSortChange}
           setSearchTerm={setSearchTerm}
           setCurrentPage={setCurrentPage}
-          setCurrentOrder={setCurrentOrder}
+          setCurrentOrderDir={setCurrentOrderDir}
         />
       </div>
       {openJobRunDialog && <JobRunDialog setShowDialog={setOpenJobRunDialog} />}

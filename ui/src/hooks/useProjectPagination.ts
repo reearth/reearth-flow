@@ -15,7 +15,7 @@ export default ({ workspace }: { workspace?: Workspace }) => {
   const [currentOrderBy, setCurrentOrderBy] = useState<ProjectOrderBy>(
     ProjectOrderBy.CreatedAt,
   );
-  const [currentOrderDir, setCurrentOrder] = useState<OrderDirection>(
+  const [currentOrderDir, setCurrentOrderDir] = useState<OrderDirection>(
     OrderDirection.Desc,
   );
 
@@ -82,7 +82,7 @@ export default ({ workspace }: { workspace?: Workspace }) => {
       OrderDirection,
     ];
     setCurrentOrderBy(orderBy);
-    setCurrentOrder(orderDir);
+    setCurrentOrderDir(orderDir);
   }, []);
   const orderDirections: Record<OrderDirection, string> = {
     DESC: t("Newest"),

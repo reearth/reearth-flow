@@ -46,7 +46,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
   const [currentOrderBy, setCurrentOrderBy] = useState<DeploymentOrderBy>(
     DeploymentOrderBy.UpdatedAt,
   );
-  const [currentOrderDir, setCurrentOrder] = useState<OrderDirection>(
+  const [currentOrderDir, setCurrentOrderDir] = useState<OrderDirection>(
     OrderDirection.Desc,
   );
   const { useGetDeployments } = useDeployment();
@@ -109,7 +109,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
       OrderDirection,
     ];
     setCurrentOrderBy(orderBy);
-    setCurrentOrder(orderDir);
+    setCurrentOrderDir(orderDir);
   }, []);
 
   const deployments = page?.deployments;
@@ -293,13 +293,12 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
           currentPage={currentPage}
           totalPages={totalPages}
           isFetching={isDebouncingSearch || isFetching}
-          currentOrder={currentOrderDir}
           currentSortValue={currentSortValue}
           sortOptions={sortOptions}
           setSearchTerm={setSearchTerm}
           onSortChange={handleSortChange}
           setCurrentPage={setCurrentPage}
-          setCurrentOrder={setCurrentOrder}
+          setCurrentOrderDir={setCurrentOrderDir}
         />
       )}
     </Dialog>

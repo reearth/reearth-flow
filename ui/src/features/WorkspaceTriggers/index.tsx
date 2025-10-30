@@ -41,7 +41,7 @@ const TriggerManager: React.FC = () => {
     handleTriggerDelete,
     handleSortChange,
     setCurrentPage,
-    setCurrentOrder,
+    setCurrentOrderDir,
   } = useHooks();
   const columns: ColumnDef<Trigger>[] = [
     {
@@ -122,7 +122,7 @@ const TriggerManager: React.FC = () => {
               onRowClick={handleTriggerSelect}
               onSortChange={handleSortChange}
               setCurrentPage={setCurrentPage}
-              setCurrentOrder={setCurrentOrder}
+              setCurrentOrderDir={setCurrentOrderDir}
               setSearchTerm={setSearchTerm}
             />
           </div>

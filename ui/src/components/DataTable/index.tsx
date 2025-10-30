@@ -61,7 +61,7 @@ type DataTableProps<TData, TValue> = {
   onRowDoubleClick?: (row: TData) => void;
   onSortChange?: (value: string) => void;
   setCurrentPage?: (page: number) => void;
-  setCurrentOrder?: (order: OrderDirection) => void;
+  setCurrentOrderDir?: (order: OrderDirection) => void;
   setSearchTerm?: (term: string) => void;
 };
 
@@ -84,7 +84,7 @@ function DataTable<TData, TValue>({
   onRowClick,
   onRowDoubleClick,
   setCurrentPage,
-  setCurrentOrder,
+  setCurrentOrderDir,
   onSortChange,
   setSearchTerm,
 }: DataTableProps<TData, TValue>) {
@@ -137,7 +137,7 @@ function DataTable<TData, TValue>({
   });
 
   const handleOrderChange = () => {
-    setCurrentOrder?.(
+    setCurrentOrderDir?.(
       currentOrder === OrderDirection.Asc
         ? OrderDirection.Desc
         : OrderDirection.Asc,
@@ -148,8 +148,6 @@ function DataTable<TData, TValue>({
     DESC: t("Newest"),
     ASC: t("Oldest"),
   };
-
-  console.log("GLOBAL FIlter:", globalFilter);
 
   const { rows } = table.getRowModel();
 
@@ -228,81 +226,75 @@ function DataTable<TData, TValue>({
           )}
         </div>
       )}
-      <div className="flex-1 overflow-auto">
-        <div
-          className="overflow-auto rounded-md border"
-          style={{ contain: "paint", willChange: "transform" }}>
-          <Table>
-            <TableHeader className="sticky top-0 z-10 bg-background/50 backdrop-blur-2xl">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow
-                  key={headerGroup.id}
-                  className="bg-background/50 backdrop-blur-2xl">
-                  {headerGroup.headers.map((header) => {
+      {isFetching ? (
+        <LoadingSkeleton />
+      ) : rows.length ? (
+        <div className="flex-1 overflow-auto">
+          <div
+            className="overflow-auto rounded-md border"
+            style={{ contain: "paint", willChange: "transform" }}>
+            <Table>
+              <TableHeader className="sticky top-0 z-10 bg-background/50 backdrop-blur-2xl">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow
+                    key={headerGroup.id}
+                    className="bg-background/50 backdrop-blur-2xl">
+                    {headerGroup.headers.map((header) => {
+                      return (
+                        <TableHead
+                          key={header.id}
+                          className={`${condensed ? "h-8" : "h-10"}`}>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext(),
+                              )}
+                        </TableHead>
+                      );
+                    })}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {rows.length &&
+                  rows.map((row) => {
                     return (
-                      <TableHead
-                        key={header.id}
-                        className={`${condensed ? "h-8" : "h-10"}`}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
+                      <TableRow
+                        key={row.id}
+                        data-state={
+                          row.getIsSelected() ? "selected" : undefined
+                        }
+                        onClick={() => {
+                          row.toggleSelected();
+                          onRowClick?.(row.original);
+                        }}
+                        onDoubleClick={() => {
+                          onRowDoubleClick?.(row.original);
+                        }}>
+                        {row.getVisibleCells().map((cell: any) => (
+                          <TableCell
+                            key={cell.id}
+                            className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext(),
                             )}
-                      </TableHead>
+                          </TableCell>
+                        ))}
+                      </TableRow>
                     );
                   })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {isFetching ? (
-                <TableRow>
-                  <TableCell colSpan={columns.length} className="text-center">
-                    <LoadingSkeleton />
-                  </TableCell>
-                </TableRow>
-              ) : rows.length ? (
-                rows.map((row) => {
-                  return (
-                    <TableRow
-                      key={row.id}
-                      data-state={row.getIsSelected() ? "selected" : undefined}
-                      onClick={() => {
-                        row.toggleSelected();
-                        onRowClick?.(row.original);
-                      }}
-                      onDoubleClick={() => {
-                        onRowDoubleClick?.(row.original);
-                      }}>
-                      {row.getVisibleCells().map((cell: any) => (
-                        <TableCell
-                          key={cell.id}
-                          className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  );
-                })
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={columns.length} className="text-center">
-                    <BasicBoiler
-                      text={noResultsMessage || t("No Results")}
-                      icon={<FlowLogo className="size-16 text-accent" />}
-                    />
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableBody>
+            </Table>
+          </div>
         </div>
-      </div>
-
+      ) : (
+        <BasicBoiler
+          text={noResultsMessage || t("No Results")}
+          icon={<FlowLogo className="size-16 text-accent" />}
+        />
+      )}
       {enablePagination && rows.length > 0 && (
         <Pagination
           currentPage={currentPage}

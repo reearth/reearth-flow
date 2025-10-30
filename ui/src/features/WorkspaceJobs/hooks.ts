@@ -18,7 +18,7 @@ export default () => {
   const [currentOrderBy, setCurrentOrderBy] = useState<JobOrderBy>(
     JobOrderBy.StartedAt,
   );
-  const [currentOrderDir, setCurrentOrder] = useState<OrderDirection>(
+  const [currentOrderDir, setCurrentOrderDir] = useState<OrderDirection>(
     OrderDirection.Desc,
   );
   const { useGetJobs } = useJob();
@@ -86,7 +86,7 @@ export default () => {
       OrderDirection,
     ];
     setCurrentOrderBy(orderBy);
-    setCurrentOrder(orderDir);
+    setCurrentOrderDir(orderDir);
   }, []);
 
   return {
@@ -104,7 +104,7 @@ export default () => {
     handleJobSelect,
     handleSortChange,
     setCurrentPage,
-    setCurrentOrder,
+    setCurrentOrderDir,
     setSearchTerm,
   };
 };
