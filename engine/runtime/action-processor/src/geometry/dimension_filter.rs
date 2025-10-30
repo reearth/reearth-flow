@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
-use reearth_flow_geometry::types::traits::Elevation;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,

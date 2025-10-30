@@ -2,7 +2,8 @@
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "description": "Test quality check L07 for LOD2-4",
   "expectedOutput": {
-    "expectedFile": "02_建築物_LOD2以上境界面のエラー.csv"
+    "expectedFile": "02_建築物_LOD2以上境界面のエラー.csv",
+    "except": "gml_id"
   },
   "summaryOutput": {
     "errorCountSummary": {
@@ -17,5 +18,6 @@
   "cityGmlPath": "udx/bldg/l7_fail_lod2.gml",
   "codelists": "codelists",
   "schemas": "schemas",
-  "skip": true
+  "expectResultOkFile": false,
+  "skip": false
 }

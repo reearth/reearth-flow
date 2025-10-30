@@ -37,14 +37,14 @@ func (c *TriggerLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmod
 	return triggers, nil
 }
 
-func (c *TriggerLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.TriggerConnection, error) {
+func (c *TriggerLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.TriggerConnection, error) {
 	tid, err := gqlmodel.ToID[id.Workspace](wsID)
 	if err != nil {
 		return nil, err
 	}
 
 	paginationParam := gqlmodel.ToPageBasedPagination(pagination)
-	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam)
+	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam, keyword)
 	if err != nil {
 		return nil, err
 	}

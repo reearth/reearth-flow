@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/reearth/reearth-flow/api/internal/adapter"
+	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -29,16 +29,15 @@ func NewCMS(r *repo.Container, gr *gateway.Container, permissionChecker gateway.
 }
 
 func (i *cmsInteractor) GetCMSProject(ctx context.Context, projectIDOrAlias string) (*cms.Project, error) {
-	op := adapter.Operator(ctx)
-	if op == nil {
-		return nil, fmt.Errorf("operator not found")
+	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceCMSProject, rbac.ActionAny); err != nil {
+		return nil, err
 	}
 
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
 
-	log.Debugfc(ctx, "Fetching CMS project: %s for user: %s", projectIDOrAlias, op.AcOperator.User)
+	log.Debugfc(ctx, "Fetching CMS project: %s", projectIDOrAlias)
 
 	project, err := i.gateways.CMS.GetProject(ctx, projectIDOrAlias)
 	if err != nil {
@@ -48,17 +47,16 @@ func (i *cmsInteractor) GetCMSProject(ctx context.Context, projectIDOrAlias stri
 	return project, nil
 }
 
-func (i *cmsInteractor) ListCMSProjects(ctx context.Context, workspaceIDs []string, publicOnly bool, page, pageSize *int32) (*cms.ListProjectsOutput, error) {
-	op := adapter.Operator(ctx)
-	if op == nil {
-		return nil, fmt.Errorf("operator not found")
+func (i *cmsInteractor) ListCMSProjects(ctx context.Context, workspaceIDs []string, keyword *string, publicOnly bool, page, pageSize *int32) (*cms.ListProjectsOutput, error) {
+	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceCMSProject, rbac.ActionAny); err != nil {
+		return nil, err
 	}
 
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
 
-	log.Debugfc(ctx, "Listing CMS projects for workspaces: %v, publicOnly: %v", workspaceIDs, publicOnly)
+	log.Debugfc(ctx, "Listing CMS projects for workspaces: %v, keyword: %v, publicOnly: %v", workspaceIDs, keyword, publicOnly)
 
 	var pageInfo *cms.PageInfo
 	if page != nil && pageSize != nil {
@@ -70,15 +68,15 @@ func (i *cmsInteractor) ListCMSProjects(ctx context.Context, workspaceIDs []stri
 
 	return i.gateways.CMS.ListProjects(ctx, cms.ListProjectsInput{
 		WorkspaceIDs: workspaceIDs,
+		Keyword:      keyword,
 		PublicOnly:   publicOnly,
 		PageInfo:     pageInfo,
 	})
 }
 
 func (i *cmsInteractor) GetCMSAsset(ctx context.Context, assetID string) (*cms.Asset, error) {
-	op := adapter.Operator(ctx)
-	if op == nil {
-		return nil, fmt.Errorf("operator not found")
+	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceCMSAsset, rbac.ActionAny); err != nil {
+		return nil, err
 	}
 
 	if i.gateways.CMS == nil {
@@ -93,9 +91,8 @@ func (i *cmsInteractor) GetCMSAsset(ctx context.Context, assetID string) (*cms.A
 }
 
 func (i *cmsInteractor) ListCMSAssets(ctx context.Context, projectID string, page, pageSize *int32) (*cms.ListAssetsOutput, error) {
-	op := adapter.Operator(ctx)
-	if op == nil {
-		return nil, fmt.Errorf("operator not found")
+	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceCMSAsset, rbac.ActionAny); err != nil {
+		return nil, err
 	}
 
 	if i.gateways.CMS == nil {
@@ -119,9 +116,8 @@ func (i *cmsInteractor) ListCMSAssets(ctx context.Context, projectID string, pag
 }
 
 func (i *cmsInteractor) GetCMSModel(ctx context.Context, projectIDOrAlias, modelIDOrAlias string) (*cms.Model, error) {
-	op := adapter.Operator(ctx)
-	if op == nil {
-		return nil, fmt.Errorf("operator not found")
+	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceCMSModel, rbac.ActionAny); err != nil {
+		return nil, err
 	}
 
 	if i.gateways.CMS == nil {
@@ -137,9 +133,8 @@ func (i *cmsInteractor) GetCMSModel(ctx context.Context, projectIDOrAlias, model
 }
 
 func (i *cmsInteractor) ListCMSModels(ctx context.Context, projectID string, page, pageSize *int32) (*cms.ListModelsOutput, error) {
-	op := adapter.Operator(ctx)
-	if op == nil {
-		return nil, fmt.Errorf("operator not found")
+	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceCMSModel, rbac.ActionAny); err != nil {
+		return nil, err
 	}
 
 	if i.gateways.CMS == nil {
@@ -163,9 +158,8 @@ func (i *cmsInteractor) ListCMSModels(ctx context.Context, projectID string, pag
 }
 
 func (i *cmsInteractor) ListCMSItems(ctx context.Context, projectID, modelID string, keyword *string, page, pageSize *int32) (*cms.ListItemsOutput, error) {
-	op := adapter.Operator(ctx)
-	if op == nil {
-		return nil, fmt.Errorf("operator not found")
+	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceCMSItem, rbac.ActionAny); err != nil {
+		return nil, err
 	}
 
 	if i.gateways.CMS == nil {
@@ -190,14 +184,25 @@ func (i *cmsInteractor) ListCMSItems(ctx context.Context, projectID, modelID str
 	})
 }
 
-func (i *cmsInteractor) GetCMSModelExportURL(ctx context.Context, projectID, modelID string) (string, error) {
-	op := adapter.Operator(ctx)
-	if op == nil {
-		return "", fmt.Errorf("operator not found")
+func (i *cmsInteractor) GetCMSModelExportURL(ctx context.Context, projectID, modelID string, exportType *cms.ExportType) (string, error) {
+	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceCMSModel, rbac.ActionAny); err != nil {
+		return "", err
 	}
 
 	if i.gateways.CMS == nil {
 		return "", fmt.Errorf("CMS gateway not configured")
+	}
+
+	if exportType != nil {
+		output, err := i.gateways.CMS.GetModelExportURL(ctx, cms.ModelExportInput{
+			ProjectID:  projectID,
+			ModelID:    modelID,
+			ExportType: *exportType,
+		})
+		if err != nil {
+			return "", err
+		}
+		return output.URL, nil
 	}
 
 	output, err := i.gateways.CMS.GetModelGeoJSONExportURL(ctx, cms.ExportInput{

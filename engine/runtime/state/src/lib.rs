@@ -28,7 +28,7 @@ impl State {
         let storage = storage_resolver
             .resolve(root)
             .map_err(std::io::Error::other)?;
-        let use_compression = env::var("FLOW_RUNTIME_ZSTD_ENABLE")
+        let use_compression = env::var("FLOW_RUNTIME_COMPRESS_INTERMEDIATE_DATA")
             .ok()
             .map(|s| s.to_lowercase() == "true")
             .unwrap_or(false);

@@ -1,0 +1,8 @@
+{
+  "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
+  "description": "Verify output files for quality check with no errors",
+  "cityGmlPath": "udx/bldg/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectResultOkFile": true
+}

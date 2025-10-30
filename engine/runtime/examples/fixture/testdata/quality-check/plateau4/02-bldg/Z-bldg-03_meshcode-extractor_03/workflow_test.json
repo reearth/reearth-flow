@@ -12,5 +12,6 @@
       "expectedFile": "02_建築物_検査結果一覧.csv",
       "includeColumns": ["図郭不正"]
     }
-  }
+  },
+  "expectResultOkFile": false
 }

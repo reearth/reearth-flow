@@ -4,9 +4,11 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/gavv/httpexpect/v2"
+	"github.com/google/uuid"
 	"github.com/reearth/reearth-flow/api/internal/app"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/fs"
@@ -169,12 +171,16 @@ func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Conta
 	}
 
 	cfg.SkipPermissionCheck = true
+	base := lo.Must(fs.NewFile(afero.NewMemMapFs(), "https://example.com", "https://example2.com"))
 	srv := app.NewServer(ctx, &app.ServerConfig{
 		Config:       cfg,
 		Repos:        repos,
 		AccountRepos: accountrepos,
 		Gateways: &gateway.Container{
-			File: lo.Must(fs.NewFile(afero.NewMemMapFs(), "https://example.com", "https://example2.com")),
+			File: &UploadableFileRepo{
+				File:      base,
+				DummyBase: "http://localhost:4443",
+			},
 		},
 		AccountGateways: &accountgateway.Container{
 			Mailer: mailer.New(ctx, &mailer.Config{}),
@@ -201,4 +207,26 @@ func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Conta
 		}
 	})
 	return httpexpect.Default(t, "http://"+l.Addr().String())
+}
+
+type UploadableFileRepo struct {
+	gateway.File
+	DummyBase string
+}
+
+func (t *UploadableFileRepo) IssueUploadAssetLink(_ context.Context, p gateway.IssueUploadAssetParam) (*gateway.UploadAssetLink, error) {
+	u, _ := url.Parse(t.DummyBase)
+	if u.Scheme == "" {
+		u.Scheme = "http"
+	}
+	u.Path = "/dummy-upload/" + uuid.New().String()
+
+	ct := p.GetOrGuessContentType()
+	return &gateway.UploadAssetLink{
+		URL:             u.String(),
+		ContentType:     ct,
+		ContentLength:   p.ContentLength,
+		ContentEncoding: p.ContentEncoding,
+		Next:            "",
+	}, nil
 }

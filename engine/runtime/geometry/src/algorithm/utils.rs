@@ -3,7 +3,7 @@ use num_traits::FromPrimitive;
 use std::cmp::Ordering;
 
 use crate::types::{
-    coordinate::Coordinate,
+    coordinate::{Coordinate, Coordinate3D},
     coordnum::{CoordFloat, CoordNum},
 };
 
@@ -160,6 +160,71 @@ pub fn normalize_longitude<T: CoordFloat + FromPrimitive>(coord: T) -> T {
     ((coord + five_forty) % three_sixty) - one_eighty
 }
 
+// Normalizes the vertices for numerical stability.
+// The normalization is done by:
+// 1. Translating the vertices so that the first vertex is at the origin.
+// 2. Translating the vertices so that their centroid is at the origin.
+// 3. Doing the coordinate-wise scaling.
+// Returns the translation and scaling applied to the vertices.
+// This normalization can be reverted by the `denormalize_vertices` function.
+pub fn normalize_vertices<T: CoordFloat>(
+    vertices: &mut [Coordinate3D<T>],
+) -> (Coordinate3D<T>, Coordinate3D<T>) {
+    if vertices.is_empty() {
+        return (
+            Coordinate3D::zero(),
+            Coordinate3D::new__(T::one(), T::one(), T::one()),
+        );
+    }
+    let first = vertices[0];
+    for v in vertices.iter_mut() {
+        *v = *v - first;
+    }
+    let avg = vertices
+        .iter()
+        .fold(Coordinate3D::zero(), |acc, v| acc + *v)
+        / T::from(vertices.len()).unwrap();
+    for v in vertices.iter_mut() {
+        *v = *v - avg;
+    }
+
+    let mut norm_avg = vertices
+        .iter()
+        .map(|v| Coordinate3D::new__(v.x.abs(), v.y.abs(), v.z.abs()))
+        .fold(Coordinate3D::zero(), |acc, v| acc + v)
+        / T::from(vertices.len()).unwrap();
+    // Avoid division by zero
+    if norm_avg.x.abs() < T::from(1e-10).unwrap() {
+        norm_avg.x = T::one();
+    }
+    if norm_avg.y.abs() < T::from(1e-10).unwrap() {
+        norm_avg.y = T::one();
+    }
+    if norm_avg.z.abs() < T::from(1e-10).unwrap() {
+        norm_avg.z = T::one();
+    }
+    for v in vertices.iter_mut() {
+        v.x = v.x / norm_avg.x;
+        v.y = v.y / norm_avg.y;
+        v.z = v.z / norm_avg.z;
+    }
+    (avg + first, norm_avg)
+}
+
+/// Denormalizes the vertices using the given translation and scaling.
+/// This is the inverse operation of `normalize_vertices`.
+pub fn denormalize_vertices<T: CoordFloat>(
+    vertices: &mut [Coordinate3D<T>],
+    avg: Coordinate3D<T>,
+    norm_avg: Coordinate3D<T>,
+) {
+    for v in vertices.iter_mut() {
+        v.x = v.x * norm_avg.x + avg.x;
+        v.y = v.y * norm_avg.y + avg.y;
+        v.z = v.z * norm_avg.z + avg.z;
+    }
+}
+
 pub fn has_disjoint_bboxes<T, Z, A, B>(a: &A, b: &B) -> bool
 where
     T: CoordNum,
@@ -180,6 +245,11 @@ where
 
 #[cfg(test)]
 mod test {
+    use crate::{
+        algorithm::utils::{denormalize_vertices, normalize_vertices},
+        types::coordinate::Coordinate3D,
+    };
+
     use super::{partial_max, partial_min};
 
     #[test]
@@ -192,5 +262,20 @@ mod test {
     fn test_partial_min() {
         assert_eq!(4, partial_min(5, 4));
         assert_eq!(4, partial_min(4, 4));
+    }
+
+    #[test]
+    fn test_normalize() {
+        let mut pts = vec![
+            Coordinate3D::new__(1.0, 2.0, 3.0),
+            Coordinate3D::new__(4.0, 5.0, 6.0),
+            Coordinate3D::new__(7.0, 8.0, 9.0),
+        ];
+        let answer = pts.clone();
+        let (avg, norm_avg) = normalize_vertices(&mut pts);
+        denormalize_vertices(&mut pts, avg, norm_avg);
+        for i in 0..pts.len() {
+            assert!((pts[i] - answer[i]).norm() < 1e-10);
+        }
     }
 }

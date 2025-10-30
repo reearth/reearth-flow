@@ -54,7 +54,7 @@ func (c *JobLoader) FindByID(ctx context.Context, jobID gqlmodel.ID) (*gqlmodel.
 	return gqlmodel.ToJob(job), nil
 }
 
-func (c *JobLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error) {
+func (c *JobLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error) {
 	tid, err := gqlmodel.ToID[id.Workspace](wsID)
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func (c *JobLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, p
 
 	paginationParam := gqlmodel.ToPageBasedPagination(pagination)
 
-	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam)
+	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam, keyword)
 	if err != nil {
 		return nil, err
 	}

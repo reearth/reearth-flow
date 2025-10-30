@@ -4,6 +4,7 @@ use reearth_flow_geometry::algorithm::centroid::Centroid;
 use reearth_flow_geometry::algorithm::normal_3d::compute_normal_3d_from_coords;
 use reearth_flow_geometry::algorithm::rotate::query::RotateQuery3D;
 use reearth_flow_geometry::algorithm::rotate::rotate_3d::Rotate3D;
+use reearth_flow_geometry::types::csg::CSGChild;
 use reearth_flow_geometry::types::geometry::Geometry3D;
 use reearth_flow_geometry::types::line_string::LineString3D;
 use reearth_flow_geometry::types::point::Point3D;
@@ -159,6 +160,18 @@ fn rotate_geometry(geometry: &Geometry3D<f64>) -> Vec<RotatedGeometry> {
             .iter()
             .flat_map(rotate_geometry)
             .collect(),
+        Geometry3D::CSG(csg) => {
+            let mut left = match csg.left() {
+                CSGChild::CSG(csg) => rotate_geometry(&Geometry3D::CSG(csg.clone())),
+                CSGChild::Solid(solid) => rotate_geometry(&Geometry3D::Solid(solid.clone())),
+            };
+            let mut right = match csg.right() {
+                CSGChild::CSG(csg) => rotate_geometry(&Geometry3D::CSG(csg.clone())),
+                CSGChild::Solid(solid) => rotate_geometry(&Geometry3D::Solid(solid.clone())),
+            };
+            left.append(&mut right);
+            left
+        }
     }
 }
 
@@ -182,6 +195,7 @@ fn rotate_single_geometry(geometry: &Geometry3D<f64>) -> Option<Geometry3D<f64>>
         Geometry3D::MultiPolygon(_) => return None,
         Geometry3D::MultiLineString(_) => return None,
         Geometry3D::GeometryCollection(_) => return None,
+        Geometry3D::CSG(_) => return None,
     };
 
     let surface_points = surface_coords

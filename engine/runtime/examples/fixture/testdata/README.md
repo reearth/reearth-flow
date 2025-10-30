@@ -24,6 +24,11 @@ Each testdata is a folder consisting of a test profile named `workflow_test.json
 - **summaryOutput**: Validate aggregated summary outputs (see Summary Output Validation section)
   - **errorCountSummary**: Validate JSON-based error count summary files
   - **fileErrorSummary**: Validate CSV-based per-file error summary files
+- **expectResultOkFile**: Control validation of `qc_result_ok` file generation (optional)
+  - If omitted or `null`: Skip validation (no check performed)
+  - Set to `true`: Verify that the workflow generates a result OK marker file
+  - Set to `false`: Verify that the workflow does NOT generate a result OK marker file
+  - Used primarily for testing no-error scenarios (`true`) or error detection scenarios (`false`)
 - **skip**: Skip this test (useful for debugging)
 
 ## JSON Filtering System

@@ -158,6 +158,8 @@ fragment CmsProject on CMSProject {
   readme
   workspaceId
   visibility
+  topics
+  starCount
   createdAt
   updatedAt
 }
