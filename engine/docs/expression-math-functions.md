@@ -11,7 +11,10 @@ The `math::` module provides comprehensive mathematical functions for use in act
 - [Mathematical Constants](#mathematical-constants)
 - [Trigonometric Functions](#trigonometric-functions)
 - [Inverse Trigonometric Functions](#inverse-trigonometric-functions)
+- [Hyperbolic Functions](#hyperbolic-functions)
+- [Inverse Hyperbolic Functions](#inverse-hyperbolic-functions)
 - [Angle Conversion](#angle-conversion)
+- [Exponential & Logarithmic Functions](#exponential--logarithmic-functions)
 - [Power & Root Functions](#power--root-functions)
 - [Comparison & Selection](#comparison--selection)
 - [Rounding Functions](#rounding-functions)
@@ -28,6 +31,7 @@ Returns the mathematical constant π (pi).
 **Returns:** 3.14159265358979323846
 
 **Example:**
+
 ```rhai
 let circumference = 2.0 * math::pi() * radius;
 let half_circle = math::pi() * radius;
@@ -42,6 +46,7 @@ Returns Euler's number (the base of natural logarithms).
 **Returns:** 2.71828182845904523536
 
 **Example:**
+
 ```rhai
 let natural_exp = math::pow(math::e(), 2.0);
 ```
@@ -57,11 +62,13 @@ All trigonometric functions work with **radians**. Use [`math::to_radians()`](#m
 Computes the sine of an angle (in radians).
 
 **Parameters:**
+
 - `x` (f64): Angle in radians
 
 **Returns:** Sine of x, in the range [-1, 1]
 
 **Example:**
+
 ```rhai
 // Calculate sin(30°)
 let result = math::sin(math::to_radians(30.0));  // Returns 0.5
@@ -77,11 +84,13 @@ let result2 = math::sin(math::pi() / 2.0);  // Returns 1.0
 Computes the cosine of an angle (in radians).
 
 **Parameters:**
+
 - `x` (f64): Angle in radians
 
 **Returns:** Cosine of x, in the range [-1, 1]
 
 **Example:**
+
 ```rhai
 // Calculate cos(60°)
 let result = math::cos(math::to_radians(60.0));  // Returns 0.5
@@ -97,11 +106,13 @@ let result2 = math::cos(0.0);  // Returns 1.0
 Computes the tangent of an angle (in radians).
 
 **Parameters:**
+
 - `x` (f64): Angle in radians
 
 **Returns:** Tangent of x
 
 **Example:**
+
 ```rhai
 // Calculate tan(45°)
 let result = math::tan(math::to_radians(45.0));  // Returns 1.0
@@ -121,6 +132,7 @@ All inverse trigonometric functions return results in **radians**. Use [`math::t
 Computes the arcsine (inverse sine) of a number.
 
 **Parameters:**
+
 - `x` (f64): Value in the range [-1, 1]
 
 **Returns:** Arcsine of x in radians, in the range [-π/2, π/2]
@@ -128,6 +140,7 @@ Computes the arcsine (inverse sine) of a number.
 **Note:** Returns NaN if x is outside [-1, 1]
 
 **Example:**
+
 ```rhai
 // Find the angle whose sine is 0.5
 let angle_rad = math::asin(0.5);  // Returns π/6 radians
@@ -141,6 +154,7 @@ let angle_deg = math::to_degrees(angle_rad);  // Returns 30°
 Computes the arccosine (inverse cosine) of a number.
 
 **Parameters:**
+
 - `x` (f64): Value in the range [-1, 1]
 
 **Returns:** Arccosine of x in radians, in the range [0, π]
@@ -148,6 +162,7 @@ Computes the arccosine (inverse cosine) of a number.
 **Note:** Returns NaN if x is outside [-1, 1]
 
 **Example:**
+
 ```rhai
 // Find the angle whose cosine is 0.5
 let angle_rad = math::acos(0.5);  // Returns π/3 radians
@@ -161,11 +176,13 @@ let angle_deg = math::to_degrees(angle_rad);  // Returns 60°
 Computes the arctangent (inverse tangent) of a number.
 
 **Parameters:**
+
 - `x` (f64): Any real number
 
 **Returns:** Arctangent of x in radians, in the range [-π/2, π/2]
 
 **Example:**
+
 ```rhai
 // Find the angle whose tangent is 1
 let angle_rad = math::atan(1.0);  // Returns π/4 radians
@@ -179,6 +196,7 @@ let angle_deg = math::to_degrees(angle_rad);  // Returns 45°
 Computes the four-quadrant arctangent of y and x.
 
 **Parameters:**
+
 - `y` (f64): Y coordinate
 - `x` (f64): X coordinate
 
@@ -187,6 +205,7 @@ Computes the four-quadrant arctangent of y and x.
 **Why use atan2?** Unlike `atan(y/x)`, `atan2` uses the signs of both arguments to determine the correct quadrant of the result.
 
 **Example:**
+
 ```rhai
 // Quadrant I (both positive)
 let angle1 = math::atan2(1.0, 1.0);  // Returns π/4 (45°)
@@ -200,6 +219,153 @@ let direction = math::atan2(building_y, building_x);
 
 ---
 
+## Hyperbolic Functions
+
+Hyperbolic functions are analogs of trigonometric functions but for hyperbolas instead of circles. They're used in physics, engineering, and modeling natural phenomena like hanging cables (catenary curves).
+
+### `math::sinh(x)` → f64
+
+Computes the hyperbolic sine of a number.
+
+**Parameters:**
+
+- `x` (f64): Any real number
+
+**Returns:** Hyperbolic sine of x
+
+**Formula:** `sinh(x) = (e^x - e^(-x)) / 2`
+
+**Example:**
+
+```rhai
+let result1 = math::sinh(0.0);  // Returns 0.0
+let result2 = math::sinh(1.0);  // Returns ~1.175
+let result3 = math::sinh(-1.0); // Returns ~-1.175
+```
+
+---
+
+### `math::cosh(x)` → f64
+
+Computes the hyperbolic cosine of a number.
+
+**Parameters:**
+
+- `x` (f64): Any real number
+
+**Returns:** Hyperbolic cosine of x (always ≥ 1)
+
+**Formula:** `cosh(x) = (e^x + e^(-x)) / 2`
+
+**Example:**
+
+```rhai
+let result1 = math::cosh(0.0);  // Returns 1.0
+let result2 = math::cosh(1.0);  // Returns ~1.543
+let result3 = math::cosh(-1.0); // Returns ~1.543 (even function)
+
+// Catenary curve (hanging cable): y = a * cosh(x/a)
+let a = 10.0;
+let x = 5.0;
+let y = a * math::cosh(x / a);
+```
+
+---
+
+### `math::tanh(x)` → f64
+
+Computes the hyperbolic tangent of a number.
+
+**Parameters:**
+
+- `x` (f64): Any real number
+
+**Returns:** Hyperbolic tangent of x, in the range (-1, 1)
+
+**Formula:** `tanh(x) = sinh(x) / cosh(x)`
+
+**Example:**
+
+```rhai
+let result1 = math::tanh(0.0);  // Returns 0.0
+let result2 = math::tanh(1.0);  // Returns ~0.762
+let result3 = math::tanh(-1.0); // Returns ~-0.762
+
+// Activation function in neural networks
+let activation = math::tanh(weighted_sum);
+```
+
+---
+
+## Inverse Hyperbolic Functions
+
+### `math::asinh(x)` → f64
+
+Computes the inverse hyperbolic sine of a number.
+
+**Parameters:**
+
+- `x` (f64): Any real number
+
+**Returns:** Inverse hyperbolic sine of x
+
+**Example:**
+
+```rhai
+let result1 = math::asinh(0.0);  // Returns 0.0
+let result2 = math::asinh(1.0);  // Returns ~0.881
+
+// asinh(sinh(x)) = x
+let x = 1.5;
+let round_trip = math::asinh(math::sinh(x));  // Returns 1.5
+```
+
+---
+
+### `math::acosh(x)` → f64
+
+Computes the inverse hyperbolic cosine of a number.
+
+**Parameters:**
+
+- `x` (f64): Value ≥ 1
+
+**Returns:** Inverse hyperbolic cosine of x
+
+**Note:** Returns NaN if x < 1
+
+**Example:**
+
+```rhai
+let result1 = math::acosh(1.0);  // Returns 0.0
+let result2 = math::acosh(2.0);  // Returns ~1.317
+let result3 = math::acosh(5.0);  // Returns ~2.292
+```
+
+---
+
+### `math::atanh(x)` → f64
+
+Computes the inverse hyperbolic tangent of a number.
+
+**Parameters:**
+
+- `x` (f64): Value in the range (-1, 1)
+
+**Returns:** Inverse hyperbolic tangent of x
+
+**Note:** Returns ±infinity if x = ±1, NaN if |x| > 1
+
+**Example:**
+
+```rhai
+let result1 = math::atanh(0.0);   // Returns 0.0
+let result2 = math::atanh(0.5);   // Returns ~0.549
+let result3 = math::atanh(-0.5);  // Returns ~-0.549
+```
+
+---
+
 ## Angle Conversion
 
 ### `math::to_radians(degrees)` → f64
@@ -207,6 +373,7 @@ let direction = math::atan2(building_y, building_x);
 Converts degrees to radians.
 
 **Parameters:**
+
 - `degrees` (f64): Angle in degrees
 
 **Returns:** Angle in radians
@@ -214,6 +381,7 @@ Converts degrees to radians.
 **Formula:** `radians = degrees × π / 180`
 
 **Example:**
+
 ```rhai
 let rad1 = math::to_radians(0.0);    // Returns 0.0
 let rad2 = math::to_radians(90.0);   // Returns π/2
@@ -228,6 +396,7 @@ let rad4 = math::to_radians(360.0);  // Returns 2π
 Converts radians to degrees.
 
 **Parameters:**
+
 - `radians` (f64): Angle in radians
 
 **Returns:** Angle in degrees
@@ -235,11 +404,187 @@ Converts radians to degrees.
 **Formula:** `degrees = radians × 180 / π`
 
 **Example:**
+
 ```rhai
 let deg1 = math::to_degrees(0.0);               // Returns 0.0
 let deg2 = math::to_degrees(math::pi() / 2.0);  // Returns 90.0
 let deg3 = math::to_degrees(math::pi());        // Returns 180.0
 let deg4 = math::to_degrees(2.0 * math::pi());  // Returns 360.0
+```
+
+---
+
+## Exponential & Logarithmic Functions
+
+### `math::exp(x)` → f64
+
+Computes e raised to the power of x.
+
+**Parameters:**
+
+- `x` (f64): Any real number
+
+**Returns:** e^x
+
+**Example:**
+
+```rhai
+let result1 = math::exp(0.0);  // Returns 1.0
+let result2 = math::exp(1.0);  // Returns e ≈ 2.718
+let result3 = math::exp(2.0);  // Returns e² ≈ 7.389
+
+// Exponential growth: P(t) = P₀ * e^(rt)
+let population = initial_pop * math::exp(growth_rate * time);
+```
+
+---
+
+### `math::ln(x)` → f64
+
+Computes the natural logarithm (base e) of a number.
+
+**Parameters:**
+
+- `x` (f64): Value > 0
+
+**Returns:** Natural logarithm of x
+
+**Note:** Returns NaN if x ≤ 0
+
+**Example:**
+
+```rhai
+let result1 = math::ln(1.0);        // Returns 0.0
+let result2 = math::ln(math::e());  // Returns 1.0
+let result3 = math::ln(10.0);       // Returns ~2.303
+
+// Inverse of exp: ln(exp(x)) = x
+let x = 2.5;
+let round_trip = math::ln(math::exp(x));  // Returns 2.5
+```
+
+---
+
+### `math::log(x, base)` → f64
+
+Computes the logarithm of a number with a specified base.
+
+**Parameters:**
+
+- `x` (f64): Value > 0
+- `base` (f64): Base of the logarithm (> 0, ≠ 1)
+
+**Returns:** Logarithm of x in the given base
+
+**Note:** Returns NaN if x ≤ 0 or base ≤ 0 or base = 1
+
+**Example:**
+
+```rhai
+let result1 = math::log(100.0, 10.0);  // Returns 2.0 (log₁₀(100))
+let result2 = math::log(8.0, 2.0);     // Returns 3.0 (log₂(8))
+let result3 = math::log(27.0, 3.0);    // Returns 3.0 (log₃(27))
+
+// Change of base: log_b(x) = ln(x) / ln(b)
+let log_5_25 = math::log(25.0, 5.0);   // Returns 2.0
+```
+
+---
+
+### `math::log10(x)` → f64
+
+Computes the base-10 logarithm of a number.
+
+**Parameters:**
+
+- `x` (f64): Value > 0
+
+**Returns:** Base-10 logarithm of x
+
+**Note:** Returns NaN if x ≤ 0
+
+**Example:**
+
+```rhai
+let result1 = math::log10(1.0);     // Returns 0.0
+let result2 = math::log10(10.0);    // Returns 1.0
+let result3 = math::log10(100.0);   // Returns 2.0
+let result4 = math::log10(1000.0);  // Returns 3.0
+
+// Richter scale (earthquakes), pH scale, decibels
+let magnitude = math::log10(intensity);
+```
+
+---
+
+### `math::log2(x)` → f64
+
+Computes the base-2 logarithm of a number.
+
+**Parameters:**
+
+- `x` (f64): Value > 0
+
+**Returns:** Base-2 logarithm of x
+
+**Note:** Returns NaN if x ≤ 0
+
+**Example:**
+
+```rhai
+let result1 = math::log2(1.0);     // Returns 0.0
+let result2 = math::log2(2.0);     // Returns 1.0
+let result3 = math::log2(8.0);     // Returns 3.0
+let result4 = math::log2(1024.0);  // Returns 10.0
+
+// Bits required to represent a number
+let bits_needed = math::ceil(math::log2(value));
+```
+
+---
+
+### `math::exp_m1(x)` → f64
+
+Computes e^x - 1 with better precision for small values of x.
+
+**Parameters:**
+
+- `x` (f64): Any real number
+
+**Returns:** e^x - 1
+
+**Why use this?** For very small values of x, `exp_m1(x)` is more accurate than `exp(x) - 1` due to floating-point precision limits.
+
+**Example:**
+
+```rhai
+let result1 = math::exp_m1(0.0);     // Returns 0.0
+let result2 = math::exp_m1(1.0);     // Returns ~1.718 (e - 1)
+let result3 = math::exp_m1(0.0001);  // High precision for small x
+```
+
+---
+
+### `math::ln_1p(x)` → f64
+
+Computes ln(1 + x) with better precision for small values of x.
+
+**Parameters:**
+
+- `x` (f64): Value > -1
+
+**Returns:** ln(1 + x)
+
+**Note:** Returns NaN if x ≤ -1
+
+**Why use this?** For very small values of x, `ln_1p(x)` is more accurate than `ln(1 + x)` due to floating-point precision limits.
+
+**Example:**
+
+```rhai
+let result1 = math::ln_1p(0.0);           // Returns 0.0
+let result2 = math::ln_1p(math::e() - 1.0);  // Returns 1.0
+let result3 = math::ln_1p(0.0001);        // High precision for small x
 ```
 
 ---
@@ -251,6 +596,7 @@ let deg4 = math::to_degrees(2.0 * math::pi());  // Returns 360.0
 Computes the square root of a number.
 
 **Parameters:**
+
 - `x` (f64): Non-negative number
 
 **Returns:** Square root of x
@@ -258,6 +604,7 @@ Computes the square root of a number.
 **Note:** Returns NaN if x is negative
 
 **Example:**
+
 ```rhai
 let result1 = math::sqrt(0.0);   // Returns 0.0
 let result2 = math::sqrt(4.0);   // Returns 2.0
@@ -275,12 +622,14 @@ let c = math::sqrt(math::pow(a, 2.0) + math::pow(b, 2.0));
 Raises a number to a floating-point power.
 
 **Parameters:**
+
 - `base` (f64): Base number
 - `exp` (f64): Exponent
 
 **Returns:** base<sup>exp</sup>
 
 **Example:**
+
 ```rhai
 let result1 = math::pow(2.0, 3.0);   // Returns 8.0 (2³)
 let result2 = math::pow(10.0, 2.0);  // Returns 100.0 (10²)
@@ -293,6 +642,60 @@ let area = math::pi() * math::pow(radius, 2.0);
 
 ---
 
+### `math::cbrt(x)` → f64
+
+Computes the cube root of a number.
+
+**Parameters:**
+
+- `x` (f64): Any real number
+
+**Returns:** Cube root of x
+
+**Note:** Unlike `sqrt`, `cbrt` works with negative numbers
+
+**Example:**
+
+```rhai
+let result1 = math::cbrt(0.0);   // Returns 0.0
+let result2 = math::cbrt(8.0);   // Returns 2.0
+let result3 = math::cbrt(27.0);  // Returns 3.0
+let result4 = math::cbrt(-8.0);  // Returns -2.0
+
+// Cbrt is more accurate than pow(x, 1/3)
+let cube_root = math::cbrt(value);
+```
+
+---
+
+### `math::hypot(x, y)` → f64
+
+Computes the Euclidean distance: √(x² + y²).
+
+**Parameters:**
+
+- `x` (f64): First coordinate
+- `y` (f64): Second coordinate
+
+**Returns:** Euclidean distance from origin to (x, y)
+
+**Why use this?** `hypot` is more numerically stable than `sqrt(x² + y²)` for very large or very small values.
+
+**Example:**
+
+```rhai
+let result1 = math::hypot(3.0, 4.0);   // Returns 5.0 (3-4-5 triangle)
+let result2 = math::hypot(5.0, 12.0);  // Returns 13.0 (5-12-13 triangle)
+let result3 = math::hypot(8.0, 15.0);  // Returns 17.0 (8-15-17 triangle)
+
+// Calculate distance between two points
+let dx = x2 - x1;
+let dy = y2 - y1;
+let distance = math::hypot(dx, dy);
+```
+
+---
+
 ## Comparison & Selection
 
 ### `math::abs(x)` → f64
@@ -300,11 +703,13 @@ let area = math::pi() * math::pow(radius, 2.0);
 Returns the absolute value of a number.
 
 **Parameters:**
+
 - `x` (f64): Any real number
 
 **Returns:** |x| (always non-negative)
 
 **Example:**
+
 ```rhai
 let result1 = math::abs(0.0);    // Returns 0.0
 let result2 = math::abs(5.0);    // Returns 5.0
@@ -322,12 +727,14 @@ let distance = math::abs(x2 - x1);
 Returns the maximum of two numbers.
 
 **Parameters:**
+
 - `a` (f64): First number
 - `b` (f64): Second number
 
 **Returns:** The larger of a and b
 
 **Example:**
+
 ```rhai
 let result1 = math::max(5.0, 10.0);    // Returns 10.0
 let result2 = math::max(10.0, 5.0);    // Returns 10.0
@@ -344,12 +751,14 @@ let positive = math::max(value, 0.0);
 Returns the minimum of two numbers.
 
 **Parameters:**
+
 - `a` (f64): First number
 - `b` (f64): Second number
 
 **Returns:** The smaller of a and b
 
 **Example:**
+
 ```rhai
 let result1 = math::min(5.0, 10.0);    // Returns 5.0
 let result2 = math::min(10.0, 5.0);    // Returns 5.0
@@ -368,11 +777,13 @@ let clamped = math::min(value, 100.0);
 Returns the largest integer less than or equal to x.
 
 **Parameters:**
+
 - `x` (f64): Any real number
 
 **Returns:** ⌊x⌋ (floor of x)
 
 **Example:**
+
 ```rhai
 let result1 = math::floor(3.7);   // Returns 3.0
 let result2 = math::floor(3.2);   // Returns 3.0
@@ -388,11 +799,13 @@ let result5 = math::floor(5.0);   // Returns 5.0
 Returns the smallest integer greater than or equal to x.
 
 **Parameters:**
+
 - `x` (f64): Any real number
 
 **Returns:** ⌈x⌉ (ceiling of x)
 
 **Example:**
+
 ```rhai
 let result1 = math::ceil(3.2);   // Returns 4.0
 let result2 = math::ceil(3.7);   // Returns 4.0
@@ -408,11 +821,13 @@ let result5 = math::ceil(5.0);   // Returns 5.0
 Returns the nearest integer to x. Rounds half-way cases away from zero.
 
 **Parameters:**
+
 - `x` (f64): Any real number
 
 **Returns:** Rounded value of x
 
 **Example:**
+
 ```rhai
 let result1 = math::round(3.5);   // Returns 4.0
 let result2 = math::round(3.4);   // Returns 3.0
@@ -605,17 +1020,20 @@ mappers:
 
 ## Function Summary Table
 
-| Category | Functions |
-|----------|-----------|
-| **Constants** | `pi()`, `e()` |
-| **Trigonometry** | `sin()`, `cos()`, `tan()` |
-| **Inverse Trig** | `asin()`, `acos()`, `atan()`, `atan2()` |
-| **Angle Conversion** | `to_radians()`, `to_degrees()` |
-| **Power & Roots** | `sqrt()`, `pow()` |
-| **Comparison** | `abs()`, `max()`, `min()` |
-| **Rounding** | `floor()`, `ceil()`, `round()` |
+| Category                      | Functions                                                            |
+| ----------------------------- | -------------------------------------------------------------------- |
+| **Constants**                 | `pi()`, `e()`                                                        |
+| **Trigonometry**              | `sin()`, `cos()`, `tan()`                                            |
+| **Inverse Trig**              | `asin()`, `acos()`, `atan()`, `atan2()`                              |
+| **Hyperbolic**                | `sinh()`, `cosh()`, `tanh()`                                         |
+| **Inverse Hyperbolic**        | `asinh()`, `acosh()`, `atanh()`                                      |
+| **Angle Conversion**          | `to_radians()`, `to_degrees()`                                       |
+| **Exponential & Logarithmic** | `exp()`, `ln()`, `log()`, `log10()`, `log2()`, `exp_m1()`, `ln_1p()` |
+| **Power & Roots**             | `sqrt()`, `pow()`, `cbrt()`, `hypot()`                               |
+| **Comparison**                | `abs()`, `max()`, `min()`                                            |
+| **Rounding**                  | `floor()`, `ceil()`, `round()`                                       |
 
-**Total:** 19 mathematical functions
+**Total:** 38 mathematical functions (19 Tier 1 + 19 Tier 2)
 
 ---
 

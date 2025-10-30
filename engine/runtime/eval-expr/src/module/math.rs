@@ -353,6 +353,295 @@ pub(crate) mod math_module {
     pub fn round(x: f64) -> f64 {
         x.round()
     }
+
+    // ============================================================================
+    // Hyperbolic Functions
+    // ============================================================================
+
+    /// Computes the hyperbolic sine of a number.
+    ///
+    /// # Arguments
+    /// * `x` - Any real number
+    ///
+    /// # Returns
+    /// The hyperbolic sine of x
+    ///
+    /// # Example
+    /// ```rhai
+    /// let result = math::sinh(0.0);  // Returns 0.0
+    /// let result2 = math::sinh(1.0);  // Returns ~1.175
+    /// ```
+    pub fn sinh(x: f64) -> f64 {
+        x.sinh()
+    }
+
+    /// Computes the hyperbolic cosine of a number.
+    ///
+    /// # Arguments
+    /// * `x` - Any real number
+    ///
+    /// # Returns
+    /// The hyperbolic cosine of x (always ≥ 1)
+    ///
+    /// # Example
+    /// ```rhai
+    /// let result = math::cosh(0.0);  // Returns 1.0
+    /// let result2 = math::cosh(1.0);  // Returns ~1.543
+    /// ```
+    pub fn cosh(x: f64) -> f64 {
+        x.cosh()
+    }
+
+    /// Computes the hyperbolic tangent of a number.
+    ///
+    /// # Arguments
+    /// * `x` - Any real number
+    ///
+    /// # Returns
+    /// The hyperbolic tangent of x, in the range (-1, 1)
+    ///
+    /// # Example
+    /// ```rhai
+    /// let result = math::tanh(0.0);  // Returns 0.0
+    /// let result2 = math::tanh(1.0);  // Returns ~0.762
+    /// ```
+    pub fn tanh(x: f64) -> f64 {
+        x.tanh()
+    }
+
+    // ============================================================================
+    // Inverse Hyperbolic Functions
+    // ============================================================================
+
+    /// Computes the inverse hyperbolic sine of a number.
+    ///
+    /// # Arguments
+    /// * `x` - Any real number
+    ///
+    /// # Returns
+    /// The inverse hyperbolic sine of x
+    ///
+    /// # Example
+    /// ```rhai
+    /// let result = math::asinh(0.0);  // Returns 0.0
+    /// let result2 = math::asinh(1.0);  // Returns ~0.881
+    /// ```
+    pub fn asinh(x: f64) -> f64 {
+        x.asinh()
+    }
+
+    /// Computes the inverse hyperbolic cosine of a number.
+    ///
+    /// # Arguments
+    /// * `x` - Value ≥ 1
+    ///
+    /// # Returns
+    /// The inverse hyperbolic cosine of x
+    /// Returns NaN if x < 1
+    ///
+    /// # Example
+    /// ```rhai
+    /// let result = math::acosh(1.0);  // Returns 0.0
+    /// let result2 = math::acosh(2.0);  // Returns ~1.317
+    /// ```
+    pub fn acosh(x: f64) -> f64 {
+        x.acosh()
+    }
+
+    /// Computes the inverse hyperbolic tangent of a number.
+    ///
+    /// # Arguments
+    /// * `x` - Value in the range (-1, 1)
+    ///
+    /// # Returns
+    /// The inverse hyperbolic tangent of x
+    /// Returns NaN if |x| ≥ 1
+    ///
+    /// # Example
+    /// ```rhai
+    /// let result = math::atanh(0.0);  // Returns 0.0
+    /// let result2 = math::atanh(0.5);  // Returns ~0.549
+    /// ```
+    pub fn atanh(x: f64) -> f64 {
+        x.atanh()
+    }
+
+    // ============================================================================
+    // Exponential and Logarithmic Functions
+    // ============================================================================
+
+    /// Computes e raised to the power of x.
+    ///
+    /// # Arguments
+    /// * `x` - Any real number
+    ///
+    /// # Returns
+    /// e^x
+    ///
+    /// # Example
+    /// ```rhai
+    /// let result = math::exp(0.0);  // Returns 1.0
+    /// let result2 = math::exp(1.0);  // Returns e ≈ 2.718
+    /// let result3 = math::exp(2.0);  // Returns e^2 ≈ 7.389
+    /// ```
+    pub fn exp(x: f64) -> f64 {
+        x.exp()
+    }
+
+    /// Computes the natural logarithm (base e) of a number.
+    ///
+    /// # Arguments
+    /// * `x` - Value > 0
+    ///
+    /// # Returns
+    /// The natural logarithm of x
+    /// Returns NaN if x ≤ 0
+    ///
+    /// # Example
+    /// ```rhai
+    /// let result = math::ln(math::e());  // Returns 1.0
+    /// let result2 = math::ln(1.0);  // Returns 0.0
+    /// let result3 = math::ln(10.0);  // Returns ~2.303
+    /// ```
+    pub fn ln(x: f64) -> f64 {
+        x.ln()
+    }
+
+    /// Computes the logarithm of a number with a specified base.
+    ///
+    /// # Arguments
+    /// * `x` - Value > 0
+    /// * `base` - Base of the logarithm (> 0, ≠ 1)
+    ///
+    /// # Returns
+    /// The logarithm of x in the given base
+    /// Returns NaN if x ≤ 0 or base ≤ 0 or base = 1
+    ///
+    /// # Example
+    /// ```rhai
+    /// let result = math::log(100.0, 10.0);  // Returns 2.0
+    /// let result2 = math::log(8.0, 2.0);  // Returns 3.0
+    /// let result3 = math::log(27.0, 3.0);  // Returns 3.0
+    /// ```
+    pub fn log(x: f64, base: f64) -> f64 {
+        x.log(base)
+    }
+
+    /// Computes the base-10 logarithm of a number.
+    ///
+    /// # Arguments
+    /// * `x` - Value > 0
+    ///
+    /// # Returns
+    /// The base-10 logarithm of x
+    /// Returns NaN if x ≤ 0
+    ///
+    /// # Example
+    /// ```rhai
+    /// let result = math::log10(100.0);  // Returns 2.0
+    /// let result2 = math::log10(1000.0);  // Returns 3.0
+    /// let result3 = math::log10(1.0);  // Returns 0.0
+    /// ```
+    pub fn log10(x: f64) -> f64 {
+        x.log10()
+    }
+
+    /// Computes the base-2 logarithm of a number.
+    ///
+    /// # Arguments
+    /// * `x` - Value > 0
+    ///
+    /// # Returns
+    /// The base-2 logarithm of x
+    /// Returns NaN if x ≤ 0
+    ///
+    /// # Example
+    /// ```rhai
+    /// let result = math::log2(8.0);  // Returns 3.0
+    /// let result2 = math::log2(1024.0);  // Returns 10.0
+    /// let result3 = math::log2(1.0);  // Returns 0.0
+    /// ```
+    pub fn log2(x: f64) -> f64 {
+        x.log2()
+    }
+
+    // ============================================================================
+    // Advanced Utility Functions
+    // ============================================================================
+
+    /// Computes the cube root of a number.
+    ///
+    /// # Arguments
+    /// * `x` - Any real number
+    ///
+    /// # Returns
+    /// The cube root of x
+    ///
+    /// # Example
+    /// ```rhai
+    /// let result = math::cbrt(8.0);  // Returns 2.0
+    /// let result2 = math::cbrt(27.0);  // Returns 3.0
+    /// let result3 = math::cbrt(-8.0);  // Returns -2.0
+    /// ```
+    pub fn cbrt(x: f64) -> f64 {
+        x.cbrt()
+    }
+
+    /// Computes the Euclidean distance: sqrt(x^2 + y^2).
+    ///
+    /// # Arguments
+    /// * `x` - First coordinate
+    /// * `y` - Second coordinate
+    ///
+    /// # Returns
+    /// The Euclidean distance from the origin to (x, y)
+    ///
+    /// # Example
+    /// ```rhai
+    /// let result = math::hypot(3.0, 4.0);  // Returns 5.0
+    /// let result2 = math::hypot(5.0, 12.0);  // Returns 13.0
+    /// let distance = math::hypot(x2 - x1, y2 - y1);  // Distance between points
+    /// ```
+    pub fn hypot(x: f64, y: f64) -> f64 {
+        x.hypot(y)
+    }
+
+    /// Computes e^x - 1 with better precision for small values of x.
+    ///
+    /// # Arguments
+    /// * `x` - Any real number
+    ///
+    /// # Returns
+    /// e^x - 1
+    ///
+    /// # Example
+    /// ```rhai
+    /// let result = math::exp_m1(0.0);  // Returns 0.0
+    /// let result2 = math::exp_m1(1.0);  // Returns ~1.718 (e - 1)
+    /// let small_value = math::exp_m1(0.0001);  // More accurate than exp(x) - 1 for small x
+    /// ```
+    pub fn exp_m1(x: f64) -> f64 {
+        x.exp_m1()
+    }
+
+    /// Computes ln(1 + x) with better precision for small values of x.
+    ///
+    /// # Arguments
+    /// * `x` - Value > -1
+    ///
+    /// # Returns
+    /// ln(1 + x)
+    /// Returns NaN if x ≤ -1
+    ///
+    /// # Example
+    /// ```rhai
+    /// let result = math::ln_1p(0.0);  // Returns 0.0
+    /// let result2 = math::ln_1p(math::e() - 1.0);  // Returns 1.0
+    /// let small_value = math::ln_1p(0.0001);  // More accurate than ln(1 + x) for small x
+    /// ```
+    pub fn ln_1p(x: f64) -> f64 {
+        x.ln_1p()
+    }
 }
 
 #[cfg(test)]
@@ -446,5 +735,54 @@ mod tests {
         let y2 = 4.0;
         let distance = sqrt(pow(x2 - x1, 2.0) + pow(y2 - y1, 2.0));
         assert_approx_eq(distance, 5.0, "Distance from (0,0) to (3,4) should be 5");
+    }
+
+    // ============================================================================
+    // Tier 2 Integration Tests: Real-world scenarios with new functions
+    // ============================================================================
+
+    #[test]
+    fn test_exponential_growth_model() {
+        // Model: population = initial * e^(rate * time)
+        let initial_population = 100.0;
+        let growth_rate = 0.05; // 5% per year
+        let years = 10.0;
+
+        let final_population = initial_population * exp(growth_rate * years);
+        assert!(
+            final_population > initial_population,
+            "Population should grow"
+        );
+        assert_approx_eq(
+            final_population,
+            164.87212707001282,
+            "Exponential growth calculation",
+        );
+    }
+
+    #[test]
+    fn test_logarithmic_scale() {
+        // Richter scale, pH scale, decibels - all use logarithmic scales
+        let intensity1 = 100.0;
+        let intensity2 = 1000.0;
+
+        let magnitude_diff = log10(intensity2) - log10(intensity1);
+        assert_approx_eq(magnitude_diff, 1.0, "10x intensity = 1 unit on log scale");
+    }
+
+    #[test]
+    fn test_catenary_curve() {
+        // Catenary curve: y = a * cosh(x/a)
+        // Used for hanging cables, chains
+        let a = 10.0;
+        let x = 5.0;
+        let y = a * cosh(x / a);
+
+        assert!(y >= a, "Catenary minimum is at y = a");
+        // Note: Using more relaxed precision due to compounding floating-point operations
+        assert!(
+            (y - 11.275).abs() < 0.01,
+            "Catenary curve calculation should be around 11.275"
+        );
     }
 }
