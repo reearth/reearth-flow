@@ -50,7 +50,7 @@ RUN \
     apt-get install -y \
     ca-certificates \
     libxml2 \
-    python3.11 && \
+    python3 && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --chmod=0755 --from=builder /tmp/reearth-flow-worker /bin
