@@ -19,11 +19,13 @@ import {
   IconButton,
 } from "@flow/components";
 import { config } from "@flow/config";
+import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useDeployment, useTrigger } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Deployment, TimeInterval, Trigger } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
+import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
 import { DeploymentsDialog } from "../../WorkspaceDeployments/components/DeploymentsDialog";
 
@@ -33,6 +35,8 @@ type Props = {
 
 const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
   const t = useT();
+  const { toast } = useToast();
+
   const [currentWorkspace] = useCurrentWorkspace();
   const { createTrigger } = useTrigger();
   const apiUrl = config().api || window.location.origin;
@@ -146,6 +150,17 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     description,
   ]);
 
+  const handleCopyToClipboard = useCallback(
+    (url: string) => {
+      copyToClipboard(url);
+      toast({
+        title: t("Copied to clipboard"),
+        description: t("URL copied to clipboard"),
+      });
+    },
+    [t, toast],
+  );
+
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(false)}>
       {!createdTrigger && (
@@ -255,9 +270,9 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
         <DialogContent size="2xl">
           <DialogTitle>{t("How to Trigger API Driven Event:")}</DialogTitle>
           <DialogContentWrapper>
-            <div className="space-y-3 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold">1. {t("Endpoint:")}</span>
+            <ol className="list-inside list-decimal space-y-3 text-sm text-muted-foreground">
+              <li className="flex items-center gap-2">
+                <span className="font-semibold">{t("Endpoint:")}</span>
                 <span className="rounded border bg-background px-2 py-1 font-mono text-xs break-all">
                   POST {apiUrl}/api/triggers/{createdTrigger.id}/run
                 </span>
@@ -266,35 +281,33 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
                   variant="ghost"
                   className="ml-1"
                   onClick={() =>
-                    navigator.clipboard.writeText(
+                    handleCopyToClipboard(
                       `${apiUrl}/api/triggers/${createdTrigger.id}/run`,
                     )
                   }
                   icon={<CopyIcon />}
                 />
-              </div>
-              <div>
-                <span className="font-semibold">2. {t("Auth:")}</span>{" "}
+              </li>
+              <li>
+                <span className="font-semibold">{t("Auth:")}</span>{" "}
                 {t('Add token to "Authorization: Bearer {token}" header')}
-              </div>
-              <div>
-                <span className="font-semibold">
-                  3. {t("Custom Variables:")}
-                </span>{" "}
+              </li>
+              <li>
+                <span className="font-semibold">{t("Custom Variables:")}</span>{" "}
                 {t('Pass {"with": {"key": "value"}} in body')}
-              </div>
-              <div>
-                <span className="font-semibold">4. {t("Callback:")}</span>{" "}
+              </li>
+              <li>
+                <span className="font-semibold">{t("Callback:")}</span>{" "}
                 {t('Optional "notificationUrl" for status updates')}
-              </div>
-              <div>
-                <span className="font-semibold">5. {t("Response:")}</span>{" "}
+              </li>
+              <li>
+                <span className="font-semibold">{t("Response:")}</span>{" "}
                 {t("Returns runId, deploymentId, and job status")}
-              </div>
-              <p className="mt-2 border-t border-muted-foreground/20 pt-2 text-xs italic">
-                {t("Copy your auth token - you'll need it for API calls.")}
-              </p>
-            </div>
+              </li>
+            </ol>
+            <p className="mt-2 border-t border-muted-foreground/20 pt-2 text-xs">
+              {t("Copy your auth token - you'll need it for API calls.")}
+            </p>
           </DialogContentWrapper>
         </DialogContent>
       )}

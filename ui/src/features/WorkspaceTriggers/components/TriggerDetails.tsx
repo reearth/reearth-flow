@@ -10,9 +10,11 @@ import { useCallback, useMemo, useState } from "react";
 import { Button, IconButton } from "@flow/components";
 import { config } from "@flow/config";
 import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
+import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
 import { Trigger } from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
+import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
 import { TriggerEditDialog } from "./TriggerEditDialog";
 
@@ -26,6 +28,8 @@ const TriggerDetails: React.FC<Props> = ({
   setTriggerToBeDeleted,
 }) => {
   const t = useT();
+  const { toast } = useToast();
+
   const { history } = useRouter();
   const [openTriggerEditDialog, setOpenTriggerEditDialog] = useState(false);
 
@@ -112,6 +116,17 @@ const TriggerDetails: React.FC<Props> = ({
     [t, selectedTrigger],
   );
 
+  const handleCopyToClipboard = useCallback(
+    (url: string) => {
+      copyToClipboard(url);
+      toast({
+        title: t("Copied to clipboard"),
+        description: t("URL copied to clipboard"),
+      });
+    },
+    [t, toast],
+  );
+
   return (
     <>
       <div className="flex flex-1 flex-col gap-4 px-6 pt-6 pb-2">
@@ -142,16 +157,16 @@ const TriggerDetails: React.FC<Props> = ({
           <DetailsBox title={t("Trigger Details")} content={details} />
         </div>
         {selectedTrigger?.eventSource === "API_DRIVEN" && (
-          <div className="mt-4 flex max-w-[1200px] flex-col gap-4 rounded-lg border-muted bg-muted/20 p-6 shadow-sm">
+          <div className="mt-2 flex max-w-[1200px] flex-col gap-4 rounded-lg border-muted bg-muted/20 p-6 shadow-sm">
             <p className="flex items-center gap-2 text-base font-semibold">
-              <span className="inline-block rounded bg-primary/10 px-2 py-0.5 text-xs font-bold  text-white">
+              <span className="inline-block rounded bg-border px-2 py-0.5 text-xs font-bold  text-white">
                 API
               </span>
               {t("How to Trigger API Driven Event:")}
             </p>
-            <div className="space-y-3 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold">1. {t("Endpoint:")}</span>
+            <ol className="list-inside list-decimal space-y-3 text-sm text-muted-foreground">
+              <li className="flex items-center gap-2">
+                <span className="font-semibold">{t("Endpoint:")}</span>
                 <span className="rounded border bg-background px-2 py-1 font-mono text-xs break-all">
                   POST {apiUrl}/api/triggers/{selectedTrigger.id}/run
                 </span>
@@ -160,35 +175,33 @@ const TriggerDetails: React.FC<Props> = ({
                   variant="ghost"
                   className="ml-1"
                   onClick={() =>
-                    navigator.clipboard.writeText(
+                    handleCopyToClipboard(
                       `${apiUrl}/api/triggers/${selectedTrigger.id}/run`,
                     )
                   }
                   icon={<CopyIcon />}
                 />
-              </div>
-              <div>
-                <span className="font-semibold">2. {t("Auth:")}</span>{" "}
+              </li>
+              <li>
+                <span className="font-semibold">{t("Auth:")}</span>{" "}
                 {t('Add token to "Authorization: Bearer {token}" header')}
-              </div>
-              <div>
-                <span className="font-semibold">
-                  3. {t("Custom Variables:")}
-                </span>{" "}
+              </li>
+              <li>
+                <span className="font-semibold">{t("Custom Variables:")}</span>{" "}
                 {t('Pass {"with": {"key": "value"}} in body')}
-              </div>
-              <div>
-                <span className="font-semibold">4. {t("Callback:")}</span>{" "}
+              </li>
+              <li>
+                <span className="font-semibold">{t("Callback:")}</span>{" "}
                 {t('Optional "notificationUrl" for status updates')}
-              </div>
-              <div>
-                <span className="font-semibold">5. {t("Response:")}</span>{" "}
+              </li>
+              <li>
+                <span className="font-semibold">{t("Response:")}</span>{" "}
                 {t("Returns runId, deploymentId, and job status")}
-              </div>
-              <p className="mt-2 border-t border-muted-foreground/20 pt-2 text-xs italic">
-                {t("Copy your auth token - you'll need it for API calls.")}
-              </p>
-            </div>
+              </li>
+            </ol>
+            <p className="mt-2 border-t border-muted-foreground/20 pt-2 text-xs">
+              {t("Copy your auth token - you'll need it for API calls.")}
+            </p>
           </div>
         )}
       </div>
