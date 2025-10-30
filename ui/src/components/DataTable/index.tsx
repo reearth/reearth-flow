@@ -164,7 +164,7 @@ function DataTable<TData, TValue>({
                 const value = String(e.target.value);
                 handleSearch(value);
               }}
-              className="max-w-sm"
+              className="h-[36px] max-w-[220px]"
             />
           )}
           {showOrdering && sortOptions && onSortChange ? (
