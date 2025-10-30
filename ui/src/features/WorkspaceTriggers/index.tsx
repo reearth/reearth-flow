@@ -4,11 +4,8 @@ import { ColumnDef } from "@tanstack/react-table";
 import {
   Button,
   ButtonWithTooltip,
-  FlowLogo,
-  LoadingSkeleton,
   DataTable as Table,
 } from "@flow/components";
-import BasicBoiler from "@flow/components/BasicBoiler";
 import { TRIGGERS_FETCH_RATE } from "@flow/lib/gql/trigger/useQueries";
 import { useT } from "@flow/lib/i18n";
 import { Trigger } from "@flow/types";
@@ -109,33 +106,25 @@ const TriggerManager: React.FC = () => {
                 <p className="text-xs dark:font-light">{t("New Trigger")}</p>
               </Button>
             </div>
-
-            {isDebouncingSearch || isFetching ? (
-              <LoadingSkeleton />
-            ) : triggers && triggers.length > 0 ? (
-              <Table
-                columns={columns}
-                data={triggers}
-                selectColumns
-                enablePagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                resultsPerPage={resultsPerPage}
-                currentSortValue={currentSortValue}
-                sortOptions={sortOptions}
-                showFiltering
-                onRowClick={handleTriggerSelect}
-                onSortChange={handleSortChange}
-                setCurrentPage={setCurrentPage}
-                setCurrentOrder={setCurrentOrder}
-                setSearchTerm={setSearchTerm}
-              />
-            ) : (
-              <BasicBoiler
-                text={t("No Triggers")}
-                icon={<FlowLogo className="size-16 text-accent" />}
-              />
-            )}
+            <Table
+              columns={columns}
+              data={triggers}
+              selectColumns
+              enablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              resultsPerPage={resultsPerPage}
+              currentSortValue={currentSortValue}
+              sortOptions={sortOptions}
+              showFiltering
+              isFetching={isDebouncingSearch || isFetching}
+              noResultsMessage={t("No Triggers")}
+              onRowClick={handleTriggerSelect}
+              onSortChange={handleSortChange}
+              setCurrentPage={setCurrentPage}
+              setCurrentOrder={setCurrentOrder}
+              setSearchTerm={setSearchTerm}
+            />
           </div>
           {openTriggerAddDialog && (
             <TriggerAddDialog setShowDialog={setOpenTriggerAddDialog} />

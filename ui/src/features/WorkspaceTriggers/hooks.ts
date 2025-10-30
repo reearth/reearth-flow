@@ -33,7 +33,7 @@ export default () => {
   const tab = getTab(pathname);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [currentOrderBy, setCurrentOrderBy] = useState<TriggerOrderBy>(
-    TriggerOrderBy.CreatedAt,
+    TriggerOrderBy.UpdatedAt,
   );
   const [currentOrderDir, setCurrentOrder] = useState<OrderDirection>(
     OrderDirection.Desc,

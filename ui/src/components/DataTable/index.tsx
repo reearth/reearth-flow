@@ -25,10 +25,13 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
+  LoadingSkeleton,
+  FlowLogo,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { OrderDirection } from "@flow/types/paginationOptions";
 
+import BasicBoiler from "../BasicBoiler";
 import {
   Table,
   TableBody,
@@ -52,6 +55,8 @@ type DataTableProps<TData, TValue> = {
   currentOrder?: OrderDirection;
   sortOptions?: { value: string; label: string }[];
   currentSortValue?: string;
+  isFetching?: boolean;
+  noResultsMessage?: string;
   onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
   onSortChange?: (value: string) => void;
@@ -74,6 +79,8 @@ function DataTable<TData, TValue>({
   currentOrder = OrderDirection.Desc,
   sortOptions,
   currentSortValue,
+  isFetching,
+  noResultsMessage,
   onRowClick,
   onRowDoubleClick,
   setCurrentPage,
@@ -249,12 +256,17 @@ function DataTable<TData, TValue>({
               ))}
             </TableHeader>
             <TableBody>
-              {rows.length ? (
+              {isFetching ? (
+                <TableRow>
+                  <TableCell colSpan={columns.length} className="text-center">
+                    <LoadingSkeleton />
+                  </TableCell>
+                </TableRow>
+              ) : rows.length ? (
                 rows.map((row) => {
                   return (
                     <TableRow
                       key={row.id}
-                      // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
                       data-state={row.getIsSelected() ? "selected" : undefined}
                       onClick={() => {
                         row.toggleSelected();
@@ -278,10 +290,11 @@ function DataTable<TData, TValue>({
                 })
               ) : (
                 <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center">
-                    {t("No Results")}
+                  <TableCell colSpan={columns.length} className="text-center">
+                    <BasicBoiler
+                      text={noResultsMessage || t("No Results")}
+                      icon={<FlowLogo className="size-16 text-accent" />}
+                    />
                   </TableCell>
                 </TableRow>
               )}

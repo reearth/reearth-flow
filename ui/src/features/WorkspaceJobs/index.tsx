@@ -1,11 +1,6 @@
 import { ColumnDef } from "@tanstack/react-table";
 
-import {
-  FlowLogo,
-  LoadingSkeleton,
-  DataTable as Table,
-} from "@flow/components";
-import BasicBoiler from "@flow/components/BasicBoiler";
+import { DataTable as Table } from "@flow/components";
 import { JOBS_FETCH_RATE } from "@flow/lib/gql/job/useQueries";
 import { useT } from "@flow/lib/i18n";
 import type { Job } from "@flow/types";
@@ -66,32 +61,25 @@ const JobsManager: React.FC = () => {
         <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
           <p className="text-lg dark:font-extralight">{t("Jobs")}</p>
         </div>
-        {isDebouncingSearch || isFetching ? (
-          <LoadingSkeleton />
-        ) : jobs && jobs.length > 0 ? (
-          <Table
-            columns={columns}
-            showFiltering
-            data={jobs}
-            selectColumns
-            enablePagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            resultsPerPage={resultsPerPage}
-            currentSortValue={currentSortValue}
-            sortOptions={sortOptions}
-            onRowClick={handleJobSelect}
-            onSortChange={handleSortChange}
-            setSearchTerm={setSearchTerm}
-            setCurrentPage={setCurrentPage}
-            setCurrentOrder={setCurrentOrder}
-          />
-        ) : (
-          <BasicBoiler
-            text={t("No Jobs")}
-            icon={<FlowLogo className="size-16 text-accent" />}
-          />
-        )}
+        <Table
+          columns={columns}
+          showFiltering
+          data={jobs}
+          selectColumns
+          enablePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          resultsPerPage={resultsPerPage}
+          currentSortValue={currentSortValue}
+          sortOptions={sortOptions}
+          isFetching={isDebouncingSearch || isFetching}
+          noResultsMessage={t("No Jobs")}
+          onRowClick={handleJobSelect}
+          onSortChange={handleSortChange}
+          setSearchTerm={setSearchTerm}
+          setCurrentPage={setCurrentPage}
+          setCurrentOrder={setCurrentOrder}
+        />
       </div>
       {openJobRunDialog && <JobRunDialog setShowDialog={setOpenJobRunDialog} />}
     </div>

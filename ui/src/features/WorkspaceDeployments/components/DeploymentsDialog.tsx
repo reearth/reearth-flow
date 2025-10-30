@@ -7,10 +7,7 @@ import {
   DialogContentWrapper,
   DialogTitle,
   DataTable as Table,
-  FlowLogo,
-  LoadingSkeleton,
 } from "@flow/components";
-import BasicBoiler from "@flow/components/BasicBoiler";
 import { DEPLOYMENT_FETCH_RATE } from "@flow/lib/gql/deployment/useQueries";
 import { useT } from "@flow/lib/i18n";
 import { Deployment } from "@flow/types";
@@ -73,35 +70,28 @@ const DeploymentsDialog: React.FC<Props> = ({
         <DialogTitle> {t("Select a deployment")}</DialogTitle>
         <DialogContentWrapper>
           <DialogContentSection className="flex-1">
-            {isFetching ? (
-              <LoadingSkeleton className="h-[373px]" />
-            ) : deployments && deployments.length > 0 ? (
-              <Table
-                columns={columns}
-                data={deployments}
-                selectColumns
-                enablePagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                resultsPerPage={resultsPerPage}
-                currentSortValue={currentSortValue}
-                sortOptions={sortOptions}
-                showFiltering
-                onRowClick={(deployment) => {
-                  onSelectDeployment(deployment);
-                  setShowDialog(false);
-                }}
-                onSortChange={onSortChange}
-                setCurrentPage={setCurrentPage}
-                setCurrentOrder={setCurrentOrder}
-                setSearchTerm={setSearchTerm}
-              />
-            ) : (
-              <BasicBoiler
-                text={t("No Deployments")}
-                icon={<FlowLogo className="size-16 text-accent" />}
-              />
-            )}
+            <Table
+              columns={columns}
+              data={deployments}
+              selectColumns
+              enablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              resultsPerPage={resultsPerPage}
+              currentSortValue={currentSortValue}
+              sortOptions={sortOptions}
+              showFiltering
+              isFetching={isFetching}
+              noResultsMessage={t("No Deployments")}
+              onRowClick={(deployment) => {
+                onSelectDeployment(deployment);
+                setShowDialog(false);
+              }}
+              onSortChange={onSortChange}
+              setCurrentPage={setCurrentPage}
+              setCurrentOrder={setCurrentOrder}
+              setSearchTerm={setSearchTerm}
+            />
           </DialogContentSection>
         </DialogContentWrapper>
       </DialogContent>
