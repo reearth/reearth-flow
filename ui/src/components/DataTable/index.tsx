@@ -142,6 +142,8 @@ function DataTable<TData, TValue>({
     ASC: t("Oldest"),
   };
 
+  console.log("GLOBAL FIlter:", globalFilter);
+
   const { rows } = table.getRowModel();
 
   return (

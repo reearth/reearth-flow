@@ -21,11 +21,15 @@ const JobsManager: React.FC = () => {
     jobs,
     openJobRunDialog,
     isFetching,
+    isDebouncingSearch,
     currentPage,
     totalPages,
-    currentOrder,
+    sortOptions,
+    currentSortValue,
+    setSearchTerm,
     setOpenJobRunDialog,
     handleJobSelect,
+    handleSortChange,
     setCurrentPage,
     setCurrentOrder,
   } = useHooks();
@@ -62,11 +66,12 @@ const JobsManager: React.FC = () => {
         <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
           <p className="text-lg dark:font-extralight">{t("Jobs")}</p>
         </div>
-        {isFetching ? (
+        {isDebouncingSearch || isFetching ? (
           <LoadingSkeleton />
         ) : jobs && jobs.length > 0 ? (
           <Table
             columns={columns}
+            showFiltering
             data={jobs}
             selectColumns
             enablePagination
@@ -75,7 +80,10 @@ const JobsManager: React.FC = () => {
             setCurrentPage={setCurrentPage}
             totalPages={totalPages}
             resultsPerPage={resultsPerPage}
-            currentOrder={currentOrder}
+            onSortChange={handleSortChange}
+            currentSortValue={currentSortValue}
+            setSearchTerm={setSearchTerm}
+            sortOptions={sortOptions}
             setCurrentOrder={setCurrentOrder}
           />
         ) : (

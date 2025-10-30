@@ -1586,6 +1586,7 @@ export type CmsAssetFragment = { __typename?: 'CMSAsset', id: string, uuid: stri
 
 export type GetJobsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
+  keyword?: InputMaybe<Scalars['String']['input']>;
   pagination: PageBasedPagination;
 }>;
 
@@ -2330,8 +2331,8 @@ export const SaveSnapshotDocument = gql`
 }
     `;
 export const GetJobsDocument = gql`
-    query GetJobs($workspaceId: ID!, $pagination: PageBasedPagination!) {
-  jobs(workspaceId: $workspaceId, pagination: $pagination) {
+    query GetJobs($workspaceId: ID!, $keyword: String, $pagination: PageBasedPagination!) {
+  jobs(workspaceId: $workspaceId, keyword: $keyword, pagination: $pagination) {
     totalCount
     nodes {
       ...Job
