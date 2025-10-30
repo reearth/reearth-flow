@@ -717,7 +717,7 @@
   "Optional \"notificationUrl\" for status updates": "",
   "Response:": "",
   "Returns runId, deploymentId, and job status": "",
-  "Copy your auth token - you'll need it for API calls.": "",
+  "You can review these details any time on the trigger's details page": "",
   "This action cannot be undone. This will permanently delete your trigger and remove your data from our servers.": "",
   "Unknown or deleted trigger": "",
   "Trigger Description": "",

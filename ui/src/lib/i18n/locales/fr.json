@@ -718,7 +718,7 @@
   "Optional \"notificationUrl\" for status updates": "URL de notification facultative pour les mises à jour de statut",
   "Response:": "Réponse :",
   "Returns runId, deploymentId, and job status": "Renvoie runId, deploymentId et statut du travail",
-  "Copy your auth token - you'll need it for API calls.": "Copiez votre jeton d'authentification - vous en aurez besoin pour les appels API.",
+  "You can review these details any time on the trigger's details page": "Vous pouvez consulter ces détails à tout moment sur la page de détails du déclencheur",
   "This action cannot be undone. This will permanently delete your trigger and remove your data from our servers.": "Cette action ne peut pas être annulée. Cela supprimera définitivement votre déclencheur et retirera vos données de nos serveurs.",
   "Unknown or deleted trigger": "Déclencheur inconnu ou supprimé",
   "Trigger Description": "Description du déclencheur",

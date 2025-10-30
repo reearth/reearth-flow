@@ -716,7 +716,7 @@
   "Optional \"notificationUrl\" for status updates": "オプションの \"notificationUrl\" はステータス更新用",
   "Response:": "レスポンス:",
   "Returns runId, deploymentId, and job status": "runId、deploymentId、およびジョブステータスを返します",
-  "Copy your auth token - you'll need it for API calls.": "authトークンをコピーしてください - APIコールに必要です。",
+  "You can review these details any time on the trigger's details page": " これらの詳細は、トリガーの詳細ページでいつでも確認できます",
   "This action cannot be undone. This will permanently delete your trigger and remove your data from our servers.": "この操作は元に戻すことができません。この操作はトリガーを完全に削除し、データをサーバーから削除します。",
   "Unknown or deleted trigger": "不明または削除されたトリガー",
   "Trigger Description": "トリガーの説明",

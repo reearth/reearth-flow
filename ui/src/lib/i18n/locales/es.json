@@ -718,7 +718,7 @@
   "Optional \"notificationUrl\" for status updates": "URL de notificación opcional para actualizaciones de estado",
   "Response:": "Respuesta:",
   "Returns runId, deploymentId, and job status": "Devuelve runId, deploymentId y estado del trabajo",
-  "Copy your auth token - you'll need it for API calls.": "Copia tu token de autenticación - lo necesitarás para las llamadas API.",
+  "You can review these details any time on the trigger's details page": "Puedes revisar estos detalles en cualquier momento en la página de detalles del disparador",
   "This action cannot be undone. This will permanently delete your trigger and remove your data from our servers.": "Esta acción no se puede deshacer. Esto eliminará permanentemente tu disparador y eliminará tus datos de nuestros servidores.",
   "Unknown or deleted trigger": "Disparador desconocido o eliminado",
   "Trigger Description": "Descripción del disparador",

@@ -165,11 +165,13 @@ const TriggerDetails: React.FC<Props> = ({
               {t("How to Trigger API Driven Event:")}
             </p>
             <ol className="list-inside list-decimal space-y-2 text-sm text-muted-foreground">
-              <li className="flex items-center gap-2">
+              <li className="flex items-center gap-1">
                 <span className="font-semibold">{t("Endpoint:")}</span>
-                <span className="rounded border bg-background px-2 py-1 font-mono text-xs break-all">
-                  POST {apiUrl}/api/triggers/{selectedTrigger.id}/run
-                </span>
+                <div className="max-w-full overflow-x-auto overflow-y-hidden p-1">
+                  <span className="rounded border bg-background px-2 py-1 font-mono text-xs whitespace-nowrap">
+                    POST {apiUrl}/api/triggers/{selectedTrigger.id}/run
+                  </span>
+                </div>
                 <IconButton
                   size="icon"
                   variant="ghost"
@@ -203,9 +205,6 @@ const TriggerDetails: React.FC<Props> = ({
                 {t("Returns runId, deploymentId, and job status")}
               </li>
             </ol>
-            <p className="border-t border-muted-foreground/20 pt-3 text-xs">
-              {t("Copy your auth token - you'll need it for API calls.")}
-            </p>
           </div>
         )}
       </div>

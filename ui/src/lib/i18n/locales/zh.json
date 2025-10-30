@@ -716,7 +716,7 @@
   "Optional \"notificationUrl\" for status updates": "可选的“notificationUrl”用于状态更新",
   "Response:": "响应:",
   "Returns runId, deploymentId, and job status": "返回 runId、deploymentId 和任务状态",
-  "Copy your auth token - you'll need it for API calls.": "复制您的认证令牌 - 您将需要它进行API调用。",
+  "You can review these details any time on the trigger's details page": " 您可以随时在触发器的详情页面查看这些详情",
   "This action cannot be undone. This will permanently delete your trigger and remove your data from our servers.": "此操作无法撤销。这将永久删除您的触发器并从我们的服务器中删除您的数据。",
   "Unknown or deleted trigger": "未知或已删除的触发器",
   "Trigger Description": "触发器描述",

@@ -267,7 +267,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
         </DialogContent>
       )}
       {createdTrigger?.eventSource === "API_DRIVEN" && (
-        <DialogContent size="2xl">
+        <DialogContent size="sm">
           <DialogTitle>{t("How to Trigger API Driven Event:")}</DialogTitle>
           <DialogContentWrapper>
             <ol className="list-inside list-decimal space-y-3 text-sm text-muted-foreground">
@@ -310,7 +310,9 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
               </li>
             </ol>
             <p className="mt-2 border-t border-muted-foreground/20 pt-2 text-xs">
-              {t("Copy your auth token - you'll need it for API calls.")}
+              {t(
+                "You can review these details any time on the trigger's details page",
+              )}
             </p>
           </DialogContentWrapper>
         </DialogContent>
