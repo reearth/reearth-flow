@@ -106,11 +106,16 @@ impl LineStringOps<f64, NoValue> for LineStringWithTree2D {
         tolerance: f64,
     ) -> LineStringSplitResult<f64, NoValue> {
         // Helper function to split a single line by multiple coordinates.
+        #[allow(clippy::type_complexity)]
         fn split_line_by_multiple_coords(
             line: Line<f64, NoValue>,
             coords: Vec<Coordinate<f64, NoValue>>,
             tolerance: f64,
-        ) -> (Vec<Line<f64, NoValue>>, Vec<Coordinate<f64, NoValue>>, Vec<Coordinate<f64, NoValue>> ) {
+        ) -> (
+            Vec<Line<f64, NoValue>>,
+            Vec<Coordinate<f64, NoValue>>,
+            Vec<Coordinate<f64, NoValue>>,
+        ) {
             let mut lines = vec![line];
             let mut split_coords = Vec::new();
             let mut ignored_coords = Vec::new();
@@ -179,7 +184,8 @@ impl LineStringOps<f64, NoValue> for LineStringWithTree2D {
                     .iter()
                     .map(|index| coordinates[*index])
                     .collect::<Vec<_>>();
-                let (splits, split_points, ignored_points) = split_line_by_multiple_coords(line, split_points, tolerance);
+                let (splits, split_points, ignored_points) =
+                    split_line_by_multiple_coords(line, split_points, tolerance);
                 split_coords.extend(split_points);
                 ignored_coords.extend(ignored_points);
                 for line in splits.iter().take(splits.len() - 1) {
@@ -196,8 +202,8 @@ impl LineStringOps<f64, NoValue> for LineStringWithTree2D {
         let mut final_lss = Vec::new();
         for ls in new_lss {
             let mut splits = Vec::new();
-            for (i, &v) in ls.coords().enumerate().skip(1).take(ls.len()-2) {
-                if ignored_coords.iter().any(|&c| (c-v).norm() < tolerance) {
+            for (i, &v) in ls.coords().enumerate().skip(1).take(ls.len() - 2) {
+                if ignored_coords.iter().any(|&c| (c - v).norm() < tolerance) {
                     split_coords.push(v);
                     splits.push(i);
                 }

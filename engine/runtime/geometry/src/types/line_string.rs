@@ -10,6 +10,8 @@ use std::ops::{Index, IndexMut};
 use flatgeom::{LineString2 as NLineString2, LineString3 as NLineString3};
 use geo_types::LineString as GeoLineString;
 
+use crate::algorithm::utils::denormalize_vertices_2d;
+use crate::types::coordinate::Coordinate2D;
 use crate::types::coordinate::Coordinate3D;
 use crate::types::face::Face;
 use crate::utils::line_string_bounding_rect;
@@ -597,5 +599,21 @@ impl<T: CoordNum> From<LineString2D<T>> for GeoLineString<T> {
 impl<T: CoordNum> From<GeoLineString<T>> for LineString2D<T> {
     fn from(line_string: GeoLineString<T>) -> Self {
         LineString2D::new(line_string.0.into_iter().map(Into::into).collect())
+    }
+}
+
+impl<T: CoordFloat> LineString2D<T> {
+    pub fn denormalize_vertices_2d(&mut self, avg: Coordinate2D<T>, norm: Coordinate2D<T>) {
+        denormalize_vertices_2d(&mut self.0, avg, norm);
+    }
+}
+
+impl<T: CoordFloat + From<Z>, Z: CoordFloat> LineString<T, Z> {
+    pub fn get_vertices(&self) -> Vec<&Coordinate<T, Z>> {
+        self.0.iter().collect()
+    }
+
+    pub fn get_vertices_mut(&mut self) -> Vec<&mut Coordinate<T, Z>> {
+        self.0.iter_mut().collect()
     }
 }

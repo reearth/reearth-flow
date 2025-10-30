@@ -9,6 +9,8 @@ use num_traits::Zero;
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
+use crate::types::coordinate::{Coordinate, Coordinate2D};
+
 use super::conversion::geojson::{
     create_geo_multi_polygon_2d, create_geo_multi_polygon_3d, create_multi_polygon_type,
     mismatch_geom_err,
@@ -329,5 +331,35 @@ impl MultiPolygon3D<f64> {
         for poly in self.0.iter_mut() {
             poly.transform_offset(x, y, z);
         }
+    }
+}
+
+impl<T: CoordFloat> MultiPolygon2D<T> {
+    pub fn denormalize_vertices_2d(&mut self, avg: Coordinate2D<T>, norm_avg: Coordinate2D<T>) {
+        for polygon in self.0.iter_mut() {
+            polygon.denormalize_vertices_2d(avg, norm_avg);
+        }
+    }
+}
+
+impl<T: CoordFloat + From<Z>, Z: CoordFloat> MultiPolygon<T, Z> {
+    pub fn get_vertices(&self) -> Vec<&Coordinate<T, Z>> {
+        let mut vertices = Vec::new();
+        for polygon in self.0.iter() {
+            for coord in polygon.get_vertices() {
+                vertices.push(coord);
+            }
+        }
+        vertices
+    }
+
+    pub fn get_vertices_mut(&mut self) -> Vec<&mut Coordinate<T, Z>> {
+        let mut vertices = Vec::new();
+        for polygon in self.0.iter_mut() {
+            for coord in polygon.get_vertices_mut() {
+                vertices.push(coord);
+            }
+        }
+        vertices
     }
 }

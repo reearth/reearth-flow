@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::{
-    algorithm::bool_ops::BooleanOps, types::multi_polygon::MultiPolygon2D,
+    algorithm::{bool_ops::BooleanOps, tolerance::glue_vertices_closer_than},
+    types::multi_polygon::MultiPolygon2D,
 };
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -97,6 +98,9 @@ impl ProcessorFactory for DissolverFactory {
         };
         let process = Dissolver {
             group_by: param.group_by,
+            // Default tolerance to 0.0 if not specified.
+            // TODO: This default value is to not break existing behavior, but should be changed in the future once we have more unit tests.
+            tolerance: param.tolerance.unwrap_or(0.0),
             attribute_accumulation: param.attribute_accumulation,
             buffer: HashMap::new(),
         };
@@ -113,6 +117,9 @@ pub struct DissolverParam {
     /// # Group By Attributes
     /// List of attribute names to group features by before dissolving. Features with the same values for these attributes will be dissolved together
     group_by: Option<Vec<Attribute>>,
+    /// # Tolerance
+    /// Geometric tolerance. Vertices closer than this distance will be considered identical during the dissolve operation.
+    tolerance: Option<f64>,
     /// # Attribute Accumulation
     /// Strategy for handling attributes when dissolving features
     #[serde(default)]
@@ -122,6 +129,7 @@ pub struct DissolverParam {
 #[derive(Debug, Clone)]
 pub struct Dissolver {
     group_by: Option<Vec<Attribute>>,
+    tolerance: f64,
     attribute_accumulation: AttributeAccumulationStrategy,
     buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
@@ -210,7 +218,7 @@ impl Dissolver {
             None,
             |multi_polygon_acc: Option<_>, feature_incoming| {
                 let geometry_incoming = feature_incoming.geometry.value.as_flow_geometry_2d()?;
-                let multi_polygon_incoming =
+                let mut multi_polygon_incoming =
                     if let Some(multi_polygon) = geometry_incoming.as_multi_polygon() {
                         multi_polygon
                     } else if let Some(polygon) = geometry_incoming.as_polygon() {
@@ -219,81 +227,85 @@ impl Dissolver {
                         return multi_polygon_acc;
                     };
 
-                let mutli_polygon_acc = if let Some(mutli_polygon_acc) = multi_polygon_acc {
+                let mut mutli_polygon_acc = if let Some(mutli_polygon_acc) = multi_polygon_acc {
                     mutli_polygon_acc
                 } else {
                     return Some(multi_polygon_incoming);
                 };
+
+                let mut vertices = mutli_polygon_acc.get_vertices_mut();
+                vertices.extend(multi_polygon_incoming.get_vertices_mut());
+                glue_vertices_closer_than(self.tolerance, vertices);
 
                 let unite = multi_polygon_incoming.union(&mutli_polygon_acc);
                 Some(unite)
             },
         );
 
-        if let Some(multi_polygon_2d) = multi_polygon_2d {
-            let mut feature = Feature::new();
+        let multi_polygon_2d = multi_polygon_2d?;
 
-            // Apply attribute accumulation strategy
-            feature.attributes = match self.attribute_accumulation {
-                AttributeAccumulationStrategy::DropAttributes => {
-                    // Only keep group_by attributes if specified
-                    if let (Some(group_by), Some(last_feature)) = (&self.group_by, buffered_features_2d.last()) {
-                        group_by
-                            .iter()
-                            .filter_map(|attr| {
-                                let value = last_feature.attributes.get(attr).cloned()?;
-                                Some((attr.clone(), value))
-                            })
-                            .collect::<IndexMap<_, _>>()
-                    } else {
-                        IndexMap::new()
-                    }
-                }
-                AttributeAccumulationStrategy::MergeAttributes => {
-                    // Merge all attributes from all features
-                    let mut merged_attributes = IndexMap::new();
+        let mut feature = Feature::new();
 
-                    for feature in &buffered_features_2d {
-                        for (key, value) in &feature.attributes {
-                            merged_attributes
-                                .entry(key.clone())
-                                .and_modify(|existing: &mut Vec<AttributeValue>| {
-                                    // Add value if it's not already in the list
-                                    if !existing.contains(value) {
-                                        existing.push(value.clone());
-                                    }
-                                })
-                                .or_insert_with(|| vec![value.clone()]);
-                        }
-                    }
-
-                    // Convert single-element vectors to single values
-                    merged_attributes
-                        .into_iter()
-                        .map(|(key, values)| {
-                            let final_value = if values.len() == 1 {
-                                values.into_iter().next().unwrap()
-                            } else {
-                                AttributeValue::Array(values)
-                            };
-                            (key, final_value)
+        // Apply attribute accumulation strategy
+        feature.attributes = match self.attribute_accumulation {
+            AttributeAccumulationStrategy::DropAttributes => {
+                // Only keep group_by attributes if specified
+                if let (Some(group_by), Some(last_feature)) =
+                    (&self.group_by, buffered_features_2d.last())
+                {
+                    group_by
+                        .iter()
+                        .filter_map(|attr| {
+                            let value = last_feature.attributes.get(attr).cloned()?;
+                            Some((attr.clone(), value))
                         })
                         .collect::<IndexMap<_, _>>()
+                } else {
+                    IndexMap::new()
                 }
-                AttributeAccumulationStrategy::UseOneFeature => {
-                    // Use attributes from the last feature
-                    if let Some(last_feature) = buffered_features_2d.last() {
-                        last_feature.attributes.clone()
-                    } else {
-                        IndexMap::new()
+            }
+            AttributeAccumulationStrategy::MergeAttributes => {
+                // Merge all attributes from all features
+                let mut merged_attributes = IndexMap::new();
+
+                for feature in &buffered_features_2d {
+                    for (key, value) in &feature.attributes {
+                        merged_attributes
+                            .entry(key.clone())
+                            .and_modify(|existing: &mut Vec<AttributeValue>| {
+                                // Add value if it's not already in the list
+                                if !existing.contains(value) {
+                                    existing.push(value.clone());
+                                }
+                            })
+                            .or_insert_with(|| vec![value.clone()]);
                     }
                 }
-            };
 
-            feature.geometry.value = GeometryValue::FlowGeometry2D(multi_polygon_2d.into());
-            Some(feature)
-        } else {
-            None
-        }
+                // Convert single-element vectors to single values
+                merged_attributes
+                    .into_iter()
+                    .map(|(key, values)| {
+                        let final_value = if values.len() == 1 {
+                            values.into_iter().next().unwrap()
+                        } else {
+                            AttributeValue::Array(values)
+                        };
+                        (key, final_value)
+                    })
+                    .collect::<IndexMap<_, _>>()
+            }
+            AttributeAccumulationStrategy::UseOneFeature => {
+                // Use attributes from the last feature
+                if let Some(last_feature) = buffered_features_2d.last() {
+                    last_feature.attributes.clone()
+                } else {
+                    IndexMap::new()
+                }
+            }
+        };
+
+        feature.geometry.value = GeometryValue::FlowGeometry2D(multi_polygon_2d.into());
+        Some(feature)
     }
 }

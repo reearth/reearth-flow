@@ -448,7 +448,8 @@ impl TestContext {
             }
 
             // Use FLOW_RUNTIME_WORKING_DIRECTORY if set, otherwise use temp_dir
-            let working_dir = if let Ok(work_dir) = std::env::var("FLOW_RUNTIME_WORKING_DIRECTORY") {
+            let working_dir = if let Ok(work_dir) = std::env::var("FLOW_RUNTIME_WORKING_DIRECTORY")
+            {
                 let job_id = self.last_job_id.ok_or_else(|| {
                     anyhow::anyhow!("No job_id available - run_workflow must be called first")
                 })?;

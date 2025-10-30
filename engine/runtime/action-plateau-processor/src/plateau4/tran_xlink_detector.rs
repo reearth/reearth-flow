@@ -3,7 +3,6 @@ use std::{
     str::FromStr,
 };
 
-use nusamai_citygml::GML31_NS;
 use once_cell::sync::Lazy;
 use reearth_flow_common::{
     uri::Uri,
@@ -16,7 +15,8 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue};
+use reearth_flow_types::{Attribute, AttributeValue, Expr};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -52,7 +52,7 @@ impl ProcessorFactory for TransportationXlinkDetectorFactory {
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        None
+        Some(schemars::schema_for!(TransportationXlinkDetectorParam))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -69,7 +69,7 @@ impl ProcessorFactory for TransportationXlinkDetectorFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -91,20 +91,30 @@ impl ProcessorFactory for TransportationXlinkDetectorFactory {
             )
             .into());
         };
-        let process = TransportationXlinkDetector { params };
+
+        let city_gml_path = ctx
+            .expr_engine
+            .compile(params.city_gml_path.as_ref())
+            .map_err(|e| {
+                PlateauProcessorError::TranXlinkDetectorFactory(format!(
+                    "Failed to compile city_gml_path: {e}"
+                ))
+            })?;
+
+        let process = TransportationXlinkDetector { city_gml_path };
         Ok(Box::new(process))
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TransportationXlinkDetectorParam {
-    attribute: Attribute,
+    city_gml_path: Expr,
 }
 
 #[derive(Debug, Clone)]
 pub struct TransportationXlinkDetector {
-    params: TransportationXlinkDetectorParam,
+    city_gml_path: rhai::AST,
 }
 
 impl Processor for TransportationXlinkDetector {
@@ -132,14 +142,15 @@ impl TransportationXlinkDetector {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), Error> {
         let feature = &ctx.feature;
-        let uri = feature
-            .attributes
-            .get(&self.params.attribute)
-            .ok_or(Error::TranXlinkDetector("Required URI".to_string()))?;
-        let uri = match uri {
-            AttributeValue::String(s) => Uri::from_str(s)?,
-            _ => return Err(Error::TranXlinkDetector("Invalid Attribute".to_string())),
+        let city_gml_path = {
+            let scope = feature.new_scope(ctx.expr_engine.clone(), &None);
+            scope.eval_ast::<String>(&self.city_gml_path).map_err(|e| {
+                Error::TranXlinkDetector(format!(
+                    "Failed to evaluate cityGmlPath expression: {e:?}"
+                ))
+            })?
         };
+        let uri = Uri::from_str(&city_gml_path)?;
         let storage = ctx.storage_resolver.resolve(&uri)?;
         let content = storage.get_sync(uri.path().as_path())?;
         let xml_content = String::from_utf8(content.to_vec())?;
@@ -205,10 +216,7 @@ fn extract_unreferenced_surfaces(
 ) -> Result<Option<UnreferencedSurfacesResult>, Error> {
     // Get Road gml:id
     let road_id = road_node
-        .get_attribute_ns(
-            "id",
-            String::from_utf8(GML31_NS.into_inner().to_vec())?.as_str(),
-        )
+        .get_attribute_ns("id", "http://www.opengis.net/gml")
         .ok_or(Error::TranXlinkDetector(
             "Failed to get Road gml:id".to_string(),
         ))?;

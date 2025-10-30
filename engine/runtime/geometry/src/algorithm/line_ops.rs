@@ -11,7 +11,11 @@ pub trait LineOps: Sized {
     fn difference(&self, other: &Self, tolerance: Self::Scalar) -> Vec<Self>;
 
     /// Split the line at the point. If the point is not on the line, return the original line
-    fn split(&self, point: &Coordinate2D<Self::Scalar>, tolerance: Self::Scalar) -> SplitResult<Self::Scalar>;
+    fn split(
+        &self,
+        point: &Coordinate2D<Self::Scalar>,
+        tolerance: Self::Scalar,
+    ) -> SplitResult<Self::Scalar>;
 }
 
 #[derive(Debug, Clone, PartialEq)]

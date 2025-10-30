@@ -16,6 +16,7 @@ use crate::algorithm::line_intersection::{
     line_intersection, line_intersection3d, LineIntersection,
 };
 use crate::algorithm::GeoFloat;
+use crate::types::coordinate::Coordinate2D;
 
 use super::conversion::geojson::create_polygon_type;
 use super::coordinate::Coordinate;
@@ -796,6 +797,33 @@ impl<T: CoordNum> From<GeoPolygon<T>> for Polygon2D<T> {
             .map(|interior| interior.clone().into())
             .collect();
         Polygon2D::new(exterior, interiors)
+    }
+}
+
+impl<T: CoordFloat> Polygon2D<T> {
+    pub fn denormalize_vertices_2d(&mut self, avg: Coordinate2D<T>, norm: Coordinate2D<T>) {
+        self.exterior.denormalize_vertices_2d(avg, norm);
+        for interior in &mut self.interiors {
+            interior.denormalize_vertices_2d(avg, norm);
+        }
+    }
+}
+
+impl<T: CoordFloat + From<Z>, Z: CoordFloat> Polygon<T, Z> {
+    pub fn get_vertices(&self) -> Vec<&Coordinate<T, Z>> {
+        let mut vertices = self.exterior.get_vertices();
+        for interior in &self.interiors {
+            vertices.extend(interior.get_vertices());
+        }
+        vertices
+    }
+
+    pub fn get_vertices_mut(&mut self) -> Vec<&mut Coordinate<T, Z>> {
+        let mut vertices = self.exterior.get_vertices_mut();
+        for interior in &mut self.interiors {
+            vertices.extend(interior.get_vertices_mut());
+        }
+        vertices
     }
 }
 

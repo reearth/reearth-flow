@@ -1,9 +1,10 @@
-use std::collections::HashMap;
 use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use reearth_flow_geometry::algorithm::line_intersection::LineIntersection;
-use reearth_flow_geometry::algorithm::line_string_ops::{LineStringOps, LineStringSplitResult, LineStringWithTree2D};
+use reearth_flow_geometry::algorithm::line_string_ops::{
+    LineStringOps, LineStringSplitResult, LineStringWithTree2D,
+};
 use reearth_flow_geometry::algorithm::GeoFloat;
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
 use reearth_flow_geometry::types::geometry::Geometry2D;
@@ -22,6 +23,7 @@ use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Number, Value};
+use std::collections::HashMap;
 
 use super::errors::GeometryProcessorError;
 
@@ -83,6 +85,9 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
         Ok(Box::new(LineOnLineOverlayer {
             group_by: params.group_by,
             tolerance: params.tolerance,
+            overlaid_lists_attr_name: params
+                .overlaid_lists_attr_name
+                .unwrap_or_else(|| "overlaidLists".to_string()),
             buffer: HashMap::new(),
         }))
     }
@@ -96,6 +101,8 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
 pub struct LineOnLineOverlayerParam {
     group_by: Option<Vec<Attribute>>,
     tolerance: f64,
+    /// Name of the attribute to store the overlaid lists. Defaults to "overlaidLists".
+    overlaid_lists_attr_name: Option<String>,
 }
 
 #[allow(clippy::type_complexity)]
@@ -103,6 +110,7 @@ pub struct LineOnLineOverlayerParam {
 pub struct LineOnLineOverlayer {
     group_by: Option<Vec<Attribute>>,
     tolerance: f64,
+    overlaid_lists_attr_name: String,
     buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
@@ -135,11 +143,11 @@ impl Processor for LineOnLineOverlayer {
                 };
 
                 if !self.buffer.contains_key(&key) {
-                    let overlayed = self.overlay()?;
-                    for feature in &overlayed.line {
+                    let overlaid = self.overlay()?;
+                    for feature in &overlaid.line {
                         fw.send(ctx.new_with_feature_and_port(feature.clone(), LINE_PORT.clone()));
                     }
-                    for feature in &overlayed.point {
+                    for feature in &overlaid.point {
                         fw.send(ctx.new_with_feature_and_port(feature.clone(), POINT_PORT.clone()));
                     }
                     self.buffer.clear();
@@ -157,15 +165,15 @@ impl Processor for LineOnLineOverlayer {
     }
 
     fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
-        let overlayed = self.overlay()?;
-        for feature in &overlayed.line {
+        let overlaid = self.overlay()?;
+        for feature in &overlaid.line {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
                 feature.clone(),
                 LINE_PORT.clone(),
             ));
         }
-        for feature in &overlayed.point {
+        for feature in &overlaid.point {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
                 feature.clone(),
@@ -202,33 +210,52 @@ impl OverlayedFeatures {
 
 impl LineOnLineOverlayer {
     fn overlay(&self) -> Result<OverlayedFeatures, BoxedError> {
-        let mut overlayed = OverlayedFeatures::new();
+        let mut overlaid = OverlayedFeatures::new();
         for buffer in self.buffer.values() {
             let buffered_features_2d = buffer
                 .iter()
                 .filter(|f| matches!(&f.geometry.value, GeometryValue::FlowGeometry2D(_)))
                 .collect::<Vec<_>>();
-            overlayed.extend(self.overlay_2d(buffered_features_2d)?);
+            overlaid.extend(self.overlay_2d(buffered_features_2d)?);
         }
 
-        Ok(overlayed)
+        Ok(overlaid)
     }
 
     fn overlay_2d(&self, features_2d: Vec<&Feature>) -> Result<OverlayedFeatures, BoxedError> {
+        // mapping from line string index to feature index
+        let mut map_ls_to_features = Vec::new();
         let line_strings = features_2d
             .iter()
-            .filter_map(|f| f.geometry.value.as_flow_geometry_2d())
-            .filter_map(|g| {
+            .enumerate()
+            .filter_map(|(i, f)| f.geometry.value.as_flow_geometry_2d().map(|f| (i, f)))
+            .filter_map(|(i, g)| {
                 if let Geometry2D::LineString(line) = g {
+                    map_ls_to_features.push(i);
                     Some(vec![line.clone()])
                 } else if let Geometry2D::MultiLineString(multi_line) = g {
+                    // Add one entry for each line in the multi-line
+                    for _ in 0..multi_line.0.len() {
+                        map_ls_to_features.push(i);
+                    }
                     Some(multi_line.0.clone())
                 } else if let Geometry2D::Polygon(polygon) = g {
                     // Extract exterior ring as LineString
+                    map_ls_to_features.push(i);
                     Some(vec![polygon.exterior().clone()])
                 } else if let Geometry2D::MultiPolygon(multi_polygon) = g {
                     // Extract all exterior rings as LineStrings
-                    Some(multi_polygon.0.iter().map(|p| p.exterior().clone()).collect())
+                    // Add one entry for each polygon in the multi-polygon
+                    for _ in 0..multi_polygon.0.len() {
+                        map_ls_to_features.push(i);
+                    }
+                    Some(
+                        multi_polygon
+                            .0
+                            .iter()
+                            .map(|p| p.exterior().clone())
+                            .collect(),
+                    )
                 } else {
                     None
                 }
@@ -239,7 +266,7 @@ impl LineOnLineOverlayer {
         let line_string_intersection_result =
             line_string_intersection_2d(&line_strings, self.tolerance);
 
-        let mut overlayed = OverlayedFeatures::new();
+        let mut overlaid = OverlayedFeatures::new();
 
         for ls in &line_string_intersection_result.line_strings_with_metadata {
             let LineString2DWithMetadata {
@@ -253,35 +280,42 @@ impl LineOnLineOverlayer {
                 AttributeValue::Number(Number::from(*overlay_count)),
             );
             feature.attributes.insert(
-                Attribute::new("overlayedLists"),
+                Attribute::new(&self.overlaid_lists_attr_name),
                 AttributeValue::Array(
                     overlay_ids
                         .iter()
-                        .map(|&id| AttributeValue::Map(
-                            features_2d[id].attributes.clone().into_iter().map(|(k,v)| (k.inner(),v)).collect::<HashMap<_,_>>())
-                        )
+                        .map(|&id| {
+                            AttributeValue::Map(
+                                features_2d[map_ls_to_features[id]]
+                                    .attributes
+                                    .clone()
+                                    .into_iter()
+                                    .map(|(k, v)| (k.inner(), v))
+                                    .collect::<HashMap<_, _>>(),
+                            )
+                        })
                         .collect::<Vec<_>>(),
                 ),
             );
 
             // Add common attributes. These are attributes that are listed in `group_by` and exist in all overlaid features.
             if let Some(group_by) = &self.group_by {
-                let attr = &features_2d[overlay_ids[0]].attributes;
+                let attr = &features_2d[map_ls_to_features[overlay_ids[0]]].attributes;
                 for group_by in group_by {
                     if let Some(value) = attr.get(group_by) {
-                        feature
-                            .attributes
-                            .insert(group_by.clone(), value.clone());
+                        feature.attributes.insert(group_by.clone(), value.clone());
                     } else {
-                        return Err(Box::new(GeometryProcessorError::LineOnLineOverlayerFactory(
-                            "Group by attribute not found in feature".to_string(),
-                        )));
+                        return Err(Box::new(
+                            GeometryProcessorError::LineOnLineOverlayerFactory(
+                                "Group by attribute not found in feature".to_string(),
+                            ),
+                        ));
                     }
                 }
             };
             feature.geometry.value =
                 GeometryValue::FlowGeometry2D(Geometry2D::LineString(result_ls.clone()));
-            overlayed.line.push(feature);
+            overlaid.line.push(feature);
         }
 
         let last_feature = features_2d.last().unwrap();
@@ -303,10 +337,10 @@ impl LineOnLineOverlayer {
 
             feature.geometry.value =
                 GeometryValue::FlowGeometry2D(Geometry2D::Point(Point(result_coords)));
-            overlayed.point.push(feature);
+            overlaid.point.push(feature);
         }
 
-        Ok(overlayed)
+        Ok(overlaid)
     }
 }
 
@@ -403,34 +437,41 @@ fn line_string_intersection_2d(
             split_coords,
         } = packed_line_string.split(&split_coords, tolerance);
 
-        let split_line_strings_with_indices = split_line_strings.into_iter()
-            .map(|l| (i,l))
+        let split_line_strings_with_indices = split_line_strings
+            .into_iter()
+            .map(|l| (i, l))
             .collect::<Vec<_>>();
 
-        let split_coords_with_indices = split_coords.iter()
+        let split_coords_with_indices = split_coords
+            .iter()
             .map(|&v| {
-                let indices  = split_coords_with_index.iter()
-                    .filter(|&o| (v-o.coordinates).norm() < tolerance)
+                let indices = split_coords_with_index
+                    .iter()
+                    .filter(|&o| (v - o.coordinates).norm() < tolerance)
                     .flat_map(|o| [o.i_by, o.i_other])
                     .collect::<Vec<_>>();
                 (v, indices)
-            }).collect::<Vec<_>>();
+            })
+            .collect::<Vec<_>>();
 
-        (
-            split_line_strings_with_indices,
-            split_coords_with_indices,
-        )
+        (split_line_strings_with_indices, split_coords_with_indices)
     });
 
     let (result_line_strings, split_coords_with_indices): (Vec<_>, Vec<_>) = results.unzip();
-    let line_strings_with_indices = result_line_strings.into_iter().flatten().collect::<Vec<_>>();
-    let split_coords_with_indices = split_coords_with_indices.into_iter().flatten().collect::<Vec<_>>();
+    let line_strings_with_indices = result_line_strings
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+    let split_coords_with_indices = split_coords_with_indices
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
 
-    // We have all the intersection points and line strings now. 
+    // We have all the intersection points and line strings now.
     // What remains is to compute duplicates and overlay counts.
     let mut line_strings_with_metadata = Vec::new();
     let mut processed = vec![false; line_strings_with_indices.len()];
-    for (i,(idx1, ls1)) in line_strings_with_indices.iter().enumerate() {
+    for (i, (idx1, ls1)) in line_strings_with_indices.iter().enumerate() {
         if processed[i] {
             continue;
         }
@@ -439,9 +480,17 @@ fn line_string_intersection_2d(
         for j in i + 1..line_strings_with_indices.len() {
             let ls2 = &line_strings_with_indices[j].1;
             let idx2 = &line_strings_with_indices[j].0;
-            if 
-                ls1.0.iter().zip(ls2.0.iter()).all(|(&c1,&c2)| (c1 - c2).norm() < tolerance) 
-                || ls1.0.iter().rev().zip(ls2.0.iter()).all(|(&c1,&c2)| (c1 - c2).norm() < tolerance)
+            if ls1
+                .0
+                .iter()
+                .zip(ls2.0.iter())
+                .all(|(&c1, &c2)| (c1 - c2).norm() < tolerance)
+                || ls1
+                    .0
+                    .iter()
+                    .rev()
+                    .zip(ls2.0.iter())
+                    .all(|(&c1, &c2)| (c1 - c2).norm() < tolerance)
             {
                 overlay_count += 1;
                 overlay_ids.push(*idx2);
@@ -495,7 +544,7 @@ mod tests {
             Coordinate2D::new_(5.0, 0.0),
         ]);
 
-        let overlay_result = line_string_intersection_2d(&vec![line_string1, line_string2], 0.1);
+        let overlay_result = line_string_intersection_2d(&[line_string1, line_string2], 0.1);
 
         // Assert the overlay result
         let OverlayResult {
@@ -526,7 +575,7 @@ mod tests {
             Coordinate2D::new_(3.0, 3.0),
         ]);
         let overlay_result =
-            line_string_intersection_2d(&vec![line_string1, line_string2, line_string3], 0.1);
+            line_string_intersection_2d(&[line_string1, line_string2, line_string3], 0.1);
         let OverlayResult {
             line_strings_with_metadata,
             split_coords,
@@ -558,8 +607,7 @@ mod tests {
             Coordinate2D::new_(6.0, 2.0),
             Coordinate2D::new_(6.0, 6.0),
         ]);
-        let overlay_result =
-            line_string_intersection_2d(&vec![line_string1, line_string2], 0.1);
+        let overlay_result = line_string_intersection_2d(&[line_string1, line_string2], 0.1);
         let OverlayResult {
             line_strings_with_metadata,
             split_coords: _,
@@ -580,7 +628,7 @@ mod tests {
             Coordinate2D::new_(2.0, 0.0),
         ]);
 
-        let overlay_result = line_string_intersection_2d(&vec![line_string1, line_string2], 0.1);
+        let overlay_result = line_string_intersection_2d(&[line_string1, line_string2], 0.1);
 
         // Assert the overlay result
         let OverlayResult {
@@ -588,7 +636,9 @@ mod tests {
             split_coords,
         } = overlay_result;
         assert_eq!(line_strings_with_metadata.len(), 4);
-        assert!(line_strings_with_metadata.iter().all(|ls| ls.overlay_count == 1));
+        assert!(line_strings_with_metadata
+            .iter()
+            .all(|ls| ls.overlay_count == 1));
         assert_eq!(split_coords.len(), 1);
     }
 
@@ -613,7 +663,8 @@ mod tests {
             Coordinate2D::new_(1.0, 0.0),
         ]);
 
-        let overlay_result = line_string_intersection_2d(&vec![line_string1, line_string2, line_string3], 0.1);
+        let overlay_result =
+            line_string_intersection_2d(&[line_string1, line_string2, line_string3], 0.1);
 
         // Assert the overlay result
         let OverlayResult {
