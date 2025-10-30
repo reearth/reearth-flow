@@ -290,11 +290,15 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
               </li>
               <li>
                 <span className="font-semibold">{t("Auth:")}</span>{" "}
-                {t('Add token to "Authorization: Bearer {token}" header')}
+                {t(
+                  `Add token to "Authorization: Bearer ${createdTrigger.authToken}" header`,
+                )}
               </li>
               <li>
                 <span className="font-semibold">{t("Custom Variables:")}</span>{" "}
-                {t('Pass {"with": {"key": "value"}} in body')}
+                {t(
+                  'Pass {"with": {"key": "value"}} in body to inject dynamic parameters into workflow execution. These variables override/supplement default workflow values and are accessible in nodes.',
+                )}
               </li>
               <li>
                 <span className="font-semibold">{t("Callback:")}</span>{" "}
