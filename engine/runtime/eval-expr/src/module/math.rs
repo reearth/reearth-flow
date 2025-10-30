@@ -378,8 +378,16 @@ mod tests {
 
     #[test]
     fn test_constants() {
-        assert_approx_eq(PI, std::f64::consts::PI, "PI constant should match std::f64::consts::PI");
-        assert_approx_eq(E, std::f64::consts::E, "E constant should match std::f64::consts::E");
+        assert_approx_eq(
+            PI,
+            std::f64::consts::PI,
+            "PI constant should match std::f64::consts::PI",
+        );
+        assert_approx_eq(
+            E,
+            std::f64::consts::E,
+            "E constant should match std::f64::consts::E",
+        );
     }
 
     // ========================================================================
