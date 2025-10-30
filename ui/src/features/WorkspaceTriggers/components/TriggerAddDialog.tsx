@@ -1,4 +1,4 @@
-import { CopyIcon } from "@phosphor-icons/react";
+import { CopyIcon, QuestionIcon } from "@phosphor-icons/react";
 import { useCallback, useState, useEffect } from "react";
 
 import {
@@ -17,6 +17,9 @@ import {
   SelectItem,
   Input,
   IconButton,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
 } from "@flow/components";
 import { config } from "@flow/config";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
@@ -269,17 +272,19 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
       {createdTrigger?.eventSource === "API_DRIVEN" && (
         <DialogContent size="sm">
           <DialogTitle>{t("How to Trigger API Driven Event:")}</DialogTitle>
-          <DialogContentWrapper>
-            <ol className="list-inside list-decimal space-y-3 text-sm text-muted-foreground">
-              <li className="flex items-center gap-2">
-                <span className="font-semibold">{t("Endpoint:")}</span>
-                <span className="rounded border bg-background px-2 py-1 font-mono text-xs break-all">
-                  POST {apiUrl}/api/triggers/{createdTrigger.id}/run
-                </span>
+          <DialogContentWrapper className="overflow-hidden">
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <div className="flex flex-nowrap items-center gap-2">
+                <span className="font-semibold">1. {t("Endpoint:")}</span>
+                <div className="max-w-[200px] overflow-x-auto overflow-y-hidden p-1">
+                  <span className="rounded border bg-background px-2 py-1 font-mono text-xs whitespace-nowrap">
+                    POST {apiUrl}/api/triggers/{createdTrigger.id}/run
+                  </span>
+                </div>
                 <IconButton
                   size="icon"
                   variant="ghost"
-                  className="ml-1"
+                  className="ml-1 shrink-0"
                   onClick={() =>
                     handleCopyToClipboard(
                       `${apiUrl}/api/triggers/${createdTrigger.id}/run`,
@@ -287,28 +292,42 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
                   }
                   icon={<CopyIcon />}
                 />
-              </li>
-              <li>
-                <span className="font-semibold">{t("Auth:")}</span>{" "}
+              </div>
+              <div>
+                <span className="font-semibold">2. {t("Auth:")}</span>{" "}
                 {t(
                   `Add token to "Authorization: Bearer ${createdTrigger.authToken}" header`,
                 )}
-              </li>
-              <li>
-                <span className="font-semibold">{t("Custom Variables:")}</span>{" "}
-                {t(
-                  'Pass {"with": {"key": "value"}} in body to inject dynamic parameters into workflow execution. These variables override/supplement default workflow values and are accessible in nodes.',
-                )}
-              </li>
-              <li>
-                <span className="font-semibold">{t("Callback:")}</span>{" "}
+              </div>
+              <div className="flex flex-nowrap items-center gap-0.5">
+                <span className="font-semibold">
+                  3. {t("Custom Variables:")}
+                </span>{" "}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="cursor-pointer p-1">
+                      <QuestionIcon className="h-4 w-4" weight="thin" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" align="end" className="bg-primary">
+                    <div className="max-w-[300px] text-xs text-muted-foreground">
+                      {t(
+                        'Pass {"with": {"key": "value"}} in body to inject dynamic parameters into workflow execution. These variables override/supplement default workflow values and are accessible in nodes.',
+                      )}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <div>
+                <span className="font-semibold">4. {t("Callback:")}</span>{" "}
                 {t('Optional "notificationUrl" for status updates')}
-              </li>
-              <li>
-                <span className="font-semibold">{t("Response:")}</span>{" "}
+              </div>
+              <div>
+                <span className="font-semibold">5. {t("Response:")}</span>{" "}
                 {t("Returns runId, deploymentId, and job status")}
-              </li>
-            </ol>
+              </div>
+            </div>
+
             <p className="mt-2 border-t border-muted-foreground/20 pt-2 text-xs">
               {t(
                 "You can review these details any time on the trigger's details page",
@@ -317,6 +336,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
           </DialogContentWrapper>
         </DialogContent>
       )}
+
       {openSelectDeploymentsDialog && (
         <DeploymentsDialog
           setShowDialog={() => setOpenSelectDeploymentsDialog(false)}
