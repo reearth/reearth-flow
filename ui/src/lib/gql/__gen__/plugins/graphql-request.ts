@@ -1802,6 +1802,7 @@ export type DeleteTriggerMutation = { __typename?: 'Mutation', deleteTrigger: bo
 
 export type GetTriggersQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
+  keyword?: InputMaybe<Scalars['String']['input']>;
   pagination: PageBasedPagination;
 }>;
 
@@ -2547,8 +2548,8 @@ export const DeleteTriggerDocument = gql`
 }
     `;
 export const GetTriggersDocument = gql`
-    query GetTriggers($workspaceId: ID!, $pagination: PageBasedPagination!) {
-  triggers(workspaceId: $workspaceId, pagination: $pagination) {
+    query GetTriggers($workspaceId: ID!, $keyword: String, $pagination: PageBasedPagination!) {
+  triggers(workspaceId: $workspaceId, keyword: $keyword, pagination: $pagination) {
     totalCount
     nodes {
       ...Trigger

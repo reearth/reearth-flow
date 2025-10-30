@@ -30,17 +30,20 @@ const TriggerManager: React.FC = () => {
     triggerToBeDeleted,
     openTriggerAddDialog,
     triggerToBeEdited,
+    isFetching,
+    isDebouncingSearch,
+    sortOptions,
+    currentSortValue,
+    currentPage,
+    totalPages,
     setTriggerToBeEdited,
     setOpenTriggerAddDialog,
     setTriggerToBeDeleted,
     handleTriggerSelect,
     handleTriggerDelete,
-    currentPage,
+    handleSortChange,
     setCurrentPage,
-    totalPages,
-    currentOrder,
     setCurrentOrder,
-    isFetching,
   } = useHooks();
   const columns: ColumnDef<Trigger>[] = [
     {
@@ -106,7 +109,7 @@ const TriggerManager: React.FC = () => {
               </Button>
             </div>
 
-            {isFetching ? (
+            {isDebouncingSearch || isFetching ? (
               <LoadingSkeleton />
             ) : triggers && triggers.length > 0 ? (
               <Table
@@ -114,12 +117,15 @@ const TriggerManager: React.FC = () => {
                 data={triggers}
                 selectColumns
                 enablePagination
-                onRowClick={handleTriggerSelect}
                 currentPage={currentPage}
-                setCurrentPage={setCurrentPage}
                 totalPages={totalPages}
                 resultsPerPage={resultsPerPage}
-                currentOrder={currentOrder}
+                currentSortValue={currentSortValue}
+                sortOptions={sortOptions}
+                showFiltering
+                onRowClick={handleTriggerSelect}
+                onSortChange={handleSortChange}
+                setCurrentPage={setCurrentPage}
                 setCurrentOrder={setCurrentOrder}
               />
             ) : (

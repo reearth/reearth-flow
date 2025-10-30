@@ -75,15 +75,15 @@ const JobsManager: React.FC = () => {
             data={jobs}
             selectColumns
             enablePagination
-            onRowClick={handleJobSelect}
             currentPage={currentPage}
-            setCurrentPage={setCurrentPage}
             totalPages={totalPages}
             resultsPerPage={resultsPerPage}
-            onSortChange={handleSortChange}
             currentSortValue={currentSortValue}
-            setSearchTerm={setSearchTerm}
             sortOptions={sortOptions}
+            onRowClick={handleJobSelect}
+            onSortChange={handleSortChange}
+            setSearchTerm={setSearchTerm}
+            setCurrentPage={setCurrentPage}
             setCurrentOrder={setCurrentOrder}
           />
         ) : (
