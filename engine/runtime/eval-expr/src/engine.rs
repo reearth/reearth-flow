@@ -9,6 +9,7 @@ use super::module::str::str_module;
 use crate::module::collection::collection_module;
 use crate::module::datetime::datetime_module;
 use crate::module::json::json_module;
+use crate::module::math::math_module;
 use crate::module::xml::xml_module;
 use crate::{error::Error, scope::Scope, ShareLock, Value, Vars};
 
@@ -49,6 +50,7 @@ impl Engine {
         );
         script_engine
             .register_static_module("datetime", rhai::exported_module!(datetime_module).into());
+        script_engine.register_static_module("math", rhai::exported_module!(math_module).into());
 
         let engine = Self {
             script_engine: Arc::new(script_engine),

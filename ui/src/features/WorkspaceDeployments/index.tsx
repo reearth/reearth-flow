@@ -9,11 +9,8 @@ import { ColumnDef } from "@tanstack/react-table";
 import {
   Button,
   ButtonWithTooltip,
-  FlowLogo,
-  LoadingSkeleton,
   DataTable as Table,
 } from "@flow/components";
-import BasicBoiler from "@flow/components/BasicBoiler";
 import { DEPLOYMENT_FETCH_RATE } from "@flow/lib/gql/deployment/useQueries";
 import { useT } from "@flow/lib/i18n";
 import type { Deployment } from "@flow/types";
@@ -36,17 +33,20 @@ const DeploymentManager: React.FC = () => {
     openDeploymentAddDialog,
     deploymentToBeEdited,
     isFetching,
+    isDebouncingSearch,
+    sortOptions,
+    currentSortValue,
     currentPage,
     totalPages,
-    currentOrder,
     setDeploymentToBeEdited,
     setOpenDeploymentAddDialog,
     setDeploymentToBeDeleted,
+    setSearchTerm,
     handleDeploymentSelect,
     handleDeploymentDelete,
     handleDeploymentRun,
+    handleSortChange,
     setCurrentPage,
-    setCurrentOrder,
   } = useHooks();
   const resultsPerPage = DEPLOYMENT_FETCH_RATE;
   const columns: ColumnDef<Deployment>[] = [
@@ -120,30 +120,26 @@ const DeploymentManager: React.FC = () => {
                 <p className="text-xs dark:font-light">{t("New Deployment")}</p>
               </Button>
             </div>
-            {isFetching ? (
-              <LoadingSkeleton />
-            ) : deployments && deployments.length > 0 ? (
-              <div className="h-full flex-1 overflow-hidden">
-                <Table
-                  columns={columns}
-                  data={deployments}
-                  selectColumns
-                  enablePagination
-                  onRowClick={handleDeploymentSelect}
-                  currentPage={currentPage}
-                  setCurrentPage={setCurrentPage}
-                  totalPages={totalPages}
-                  resultsPerPage={resultsPerPage}
-                  currentOrder={currentOrder}
-                  setCurrentOrder={setCurrentOrder}
-                />
-              </div>
-            ) : (
-              <BasicBoiler
-                text={t("No Deployments")}
-                icon={<FlowLogo className="size-16 text-accent" />}
+            <div className="h-full flex-1 overflow-hidden">
+              <Table
+                columns={columns}
+                data={deployments}
+                selectColumns
+                enablePagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                resultsPerPage={resultsPerPage}
+                currentSortValue={currentSortValue}
+                sortOptions={sortOptions}
+                showFiltering
+                isFetching={isDebouncingSearch || isFetching}
+                noResultsMessage={t("No Deployments")}
+                onRowClick={handleDeploymentSelect}
+                onSortChange={handleSortChange}
+                setCurrentPage={setCurrentPage}
+                setSearchTerm={setSearchTerm}
               />
-            )}
+            </div>
           </div>
           {openDeploymentAddDialog && (
             <DeploymentAddDialog setShowDialog={setOpenDeploymentAddDialog} />

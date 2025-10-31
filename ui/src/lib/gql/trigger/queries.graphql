@@ -14,8 +14,16 @@ mutation DeleteTrigger($triggerId: ID!) {
   deleteTrigger(triggerId: $triggerId)
 }
 
-query GetTriggers($workspaceId: ID!, $pagination: PageBasedPagination!) {
-  triggers(workspaceId: $workspaceId, pagination: $pagination) {
+query GetTriggers(
+  $workspaceId: ID!
+  $keyword: String
+  $pagination: PageBasedPagination!
+) {
+  triggers(
+    workspaceId: $workspaceId
+    keyword: $keyword
+    pagination: $pagination
+  ) {
     totalCount
     nodes {
       ...Trigger
