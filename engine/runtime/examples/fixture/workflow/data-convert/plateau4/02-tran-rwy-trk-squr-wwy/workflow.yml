@@ -109,6 +109,23 @@ graphs:
             - lod
           order: ascending
 
+      # corresponding to FME's 2DForcer_lod0-2
+      # 2DForcer is needed for dissolver
+      - id: 8a9b7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d
+        name: TwoDimensionForcer
+        type: action
+        action: TwoDimensionForcer
+
+      - id: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
+        name: Dissolver
+        type: action
+        action: Dissolver
+        with:
+          groupBy:
+            - gml_id
+            - lod
+          attributeAccumulationMode: useOne
+
       - id: 7a17c4f9-dd4d-44b0-936c-50c394272016
         name: MVTWriter
         type: action
@@ -169,6 +186,16 @@ graphs:
         toPort: default
       - id: 3c7d9e2f-4a5b-6c8d-9e0f-1a2b3c4d5e6f
         from: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
-        to: 7a17c4f9-dd4d-44b0-936c-50c394272016
+        to: 8a9b7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d
         fromPort: default
+        toPort: default
+      - id: 5b6c7d8e-9f0a-1b2c-3d4e-5f6a7b8c9d0e
+        from: 8a9b7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d
+        to: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
+        fromPort: default
+        toPort: default
+      - id: 4d5e6f7a-8b9c-0d1e-2f3a-4b5c6d7e8f9a
+        from: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
+        to: 7a17c4f9-dd4d-44b0-936c-50c394272016
+        fromPort: area
         toPort: default
