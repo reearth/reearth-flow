@@ -32,6 +32,26 @@ pub(crate) mod math_module {
     /// ```
     pub const E: f64 = std::f64::consts::E;
 
+    /// The mathematical constant τ (tau), equal to 2π.
+    ///
+    /// # Value
+    /// τ = 2π ≈ 6.28318530717958647692
+    ///
+    /// # Why use tau?
+    /// Some mathematicians argue that τ is more natural than π because:
+    /// - One full circle = τ radians (instead of 2π radians)
+    /// - C = τr (circumference) instead of C = 2πr
+    /// - Many formulas become simpler
+    ///
+    /// # Example
+    /// ```rhai
+    /// let tau_value = math::TAU;
+    /// let full_circle = math::TAU;  // One complete rotation in radians
+    /// let half_circle = math::TAU / 2.0;  // Same as π
+    /// let quarter_circle = math::TAU / 4.0;  // Same as π/2
+    /// ```
+    pub const TAU: f64 = std::f64::consts::TAU;
+
     // ============================================================================
     // Trigonometric Functions (Core)
     // ============================================================================
@@ -642,6 +662,33 @@ pub(crate) mod math_module {
     pub fn ln_1p(x: f64) -> f64 {
         x.ln_1p()
     }
+
+    // ============================================================================
+    // Sign Manipulation
+    // ============================================================================
+
+    /// Returns a value with the magnitude of x and the sign of y.
+    ///
+    /// # Arguments
+    /// * `x` - Value providing the magnitude
+    /// * `y` - Value providing the sign
+    ///
+    /// # Returns
+    /// |x| with the sign of y
+    ///
+    /// # Example
+    /// ```rhai
+    /// let result1 = math::copysign(5.0, 1.0);   // Returns 5.0 (positive)
+    /// let result2 = math::copysign(5.0, -1.0);  // Returns -5.0 (negative)
+    /// let result3 = math::copysign(-5.0, 1.0);  // Returns 5.0 (positive)
+    /// let result4 = math::copysign(-5.0, -1.0); // Returns -5.0 (negative)
+    ///
+    /// // Useful for ensuring consistent sign in calculations
+    /// let adjusted = math::copysign(magnitude, reference_value);
+    /// ```
+    pub fn copysign(x: f64, y: f64) -> f64 {
+        x.copysign(y)
+    }
 }
 
 #[cfg(test)]
@@ -676,6 +723,11 @@ mod tests {
             E,
             std::f64::consts::E,
             "E constant should match std::f64::consts::E",
+        );
+        assert_approx_eq(
+            TAU,
+            std::f64::consts::TAU,
+            "TAU constant should match std::f64::consts::TAU",
         );
     }
 
