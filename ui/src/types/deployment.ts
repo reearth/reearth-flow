@@ -1,6 +1,12 @@
 import { ApiResponse } from "./api";
 import { Job } from "./job";
 
+export enum DeploymentOrderBy {
+  Version = "version",
+  UpdatedAt = "updatedAt",
+  Description = "description",
+}
+
 export type Deployment = {
   id: string;
   projectId?: string | null;

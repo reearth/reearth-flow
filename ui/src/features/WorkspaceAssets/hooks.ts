@@ -17,7 +17,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
   const [currentOrderBy, setCurrentOrderBy] = useState<AssetOrderBy>(
     AssetOrderBy.CreatedAt,
   );
-  const [currentOrderDir, setCurrentOrder] = useState<OrderDirection>(
+  const [currentOrderDir, setCurrentOrderDir] = useState<OrderDirection>(
     OrderDirection.Desc,
   );
 
@@ -130,7 +130,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
       OrderDirection,
     ];
     setCurrentOrderBy(orderBy);
-    setCurrentOrder(orderDir);
+    setCurrentOrderDir(orderDir);
   }, []);
 
   const handleCopyUrlToClipBoard = useCallback(

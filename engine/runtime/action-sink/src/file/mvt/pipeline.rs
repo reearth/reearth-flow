@@ -31,11 +31,10 @@ use super::tiling::TileMetadata;
 #[allow(clippy::too_many_arguments)]
 pub(super) fn geometry_slicing_stage(
     ctx: Context,
-    upstream: &[Feature],
+    upstream: &[(Feature, String)],
     tile_id_conv: TileIdMethod,
     sender_sliced: std::sync::mpsc::SyncSender<(u64, Vec<u8>)>,
     output_path: &Uri,
-    layer_name: &str,
     min_zoom: u8,
     max_zoom: u8,
 ) -> crate::errors::Result<()> {
@@ -47,61 +46,64 @@ pub(super) fn geometry_slicing_stage(
         .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
 
     // Convert CityObjects to sliced features
-    upstream.iter().par_bridge().try_for_each(|feature| {
-        let max_detail = 12; // 4096
-        let buffer_pixels = 5;
-        let tile_content = slice_cityobj_geoms(
-            feature,
-            layer_name,
-            min_zoom,
-            max_zoom,
-            max_detail,
-            buffer_pixels,
-            |(z, x, y, typename), mpoly| {
-                let feature = super::slice::SlicedFeature {
-                    typename,
-                    multi_polygons: mpoly,
-                    multi_line_strings: MultiLineString2::new(),
-                    properties: feature.attributes.clone(),
-                };
-                let bytes =
-                    bincode::serde::encode_to_vec(&feature, bincode_config).map_err(|err| {
-                        crate::errors::SinkError::MvtWriter(format!(
-                            "Failed to serialize a sliced feature: {err:?}"
-                        ))
-                    })?;
-                let tile_id = tile_id_conv.zxy_to_id(z, x, y);
-                if sender_sliced.send((tile_id, bytes)).is_err() {
-                    return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
-                };
-                Ok(())
-            },
-            |(z, x, y, typename), line_strings| {
-                let feature = super::slice::SlicedFeature {
-                    typename,
-                    multi_polygons: MultiPolygon2::new(),
-                    multi_line_strings: line_strings,
-                    properties: feature.attributes.clone(),
-                };
-                let bytes =
-                    bincode::serde::encode_to_vec(&feature, bincode_config).map_err(|err| {
-                        crate::errors::SinkError::MvtWriter(format!(
-                            "Failed to serialize a sliced feature: {err:?}"
-                        ))
-                    })?;
-                let tile_id = tile_id_conv.zxy_to_id(z, x, y);
-                if sender_sliced.send((tile_id, bytes)).is_err() {
-                    return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
-                };
-                Ok(())
-            },
-        )?;
-        tile_contents
-            .lock()
-            .map_err(|e| crate::errors::SinkError::MvtWriter(format!("Mutex poisoned: {e}")))?
-            .push(tile_content);
-        Ok::<(), crate::errors::SinkError>(())
-    })?;
+    upstream
+        .iter()
+        .par_bridge()
+        .try_for_each(|(feature, layer_name)| {
+            let max_detail = 12; // 4096
+            let buffer_pixels = 5;
+            let tile_content = slice_cityobj_geoms(
+                feature,
+                layer_name,
+                min_zoom,
+                max_zoom,
+                max_detail,
+                buffer_pixels,
+                |(z, x, y, typename), mpoly| {
+                    let feature = super::slice::SlicedFeature {
+                        typename,
+                        multi_polygons: mpoly,
+                        multi_line_strings: MultiLineString2::new(),
+                        properties: feature.attributes.clone(),
+                    };
+                    let bytes =
+                        bincode::serde::encode_to_vec(&feature, bincode_config).map_err(|err| {
+                            crate::errors::SinkError::MvtWriter(format!(
+                                "Failed to serialize a sliced feature: {err:?}"
+                            ))
+                        })?;
+                    let tile_id = tile_id_conv.zxy_to_id(z, x, y);
+                    if sender_sliced.send((tile_id, bytes)).is_err() {
+                        return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
+                    };
+                    Ok(())
+                },
+                |(z, x, y, typename), line_strings| {
+                    let feature = super::slice::SlicedFeature {
+                        typename,
+                        multi_polygons: MultiPolygon2::new(),
+                        multi_line_strings: line_strings,
+                        properties: feature.attributes.clone(),
+                    };
+                    let bytes =
+                        bincode::serde::encode_to_vec(&feature, bincode_config).map_err(|err| {
+                            crate::errors::SinkError::MvtWriter(format!(
+                                "Failed to serialize a sliced feature: {err:?}"
+                            ))
+                        })?;
+                    let tile_id = tile_id_conv.zxy_to_id(z, x, y);
+                    if sender_sliced.send((tile_id, bytes)).is_err() {
+                        return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
+                    };
+                    Ok(())
+                },
+            )?;
+            tile_contents
+                .lock()
+                .map_err(|e| crate::errors::SinkError::MvtWriter(format!("Mutex poisoned: {e}")))?
+                .push(tile_content);
+            Ok::<(), crate::errors::SinkError>(())
+        })?;
 
     let mut tile_content = TileContent::default();
     for content in tile_contents
@@ -114,8 +116,24 @@ pub(super) fn geometry_slicing_stage(
         tile_content.min_lat = tile_content.min_lat.min(content.min_lat);
         tile_content.max_lat = tile_content.max_lat.max(content.max_lat);
     }
+
+    // Using output path basename as tileset name. Fallback to "unnamed_tileset".
+    let mut basename = "unnamed_tileset";
+    if let Some(path) = output_path.file_name() {
+        if let Some(path_str) = path.to_str() {
+            basename = path_str;
+        } else {
+            tracing::warn!("Failed to parse output path basename {:?} as UTF-8.", path);
+        }
+    } else {
+        tracing::warn!(
+            "Failed to get tileset name from output path {:?}",
+            output_path
+        );
+    }
+
     let metadata = TileMetadata::from_tile_content(
-        layer_name.to_string(),
+        basename.to_string(),
         min_zoom,
         max_zoom,
         &TileContent {
