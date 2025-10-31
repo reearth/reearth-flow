@@ -23,10 +23,16 @@ import {
 } from "@flow/components";
 import { config } from "@flow/config";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
+import { useDebouncedSearch } from "@flow/hooks";
 import { useDeployment, useTrigger } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
-import { Deployment, TimeInterval, Trigger } from "@flow/types";
+import {
+  Deployment,
+  DeploymentOrderBy,
+  TimeInterval,
+  Trigger,
+} from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
@@ -56,25 +62,74 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
   const [authToken, setAuthToken] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [currentOrder, setCurrentOrder] = useState<OrderDirection>(
+  const [currentOrderBy, setCurrentOrderBy] = useState<DeploymentOrderBy>(
+    DeploymentOrderBy.UpdatedAt,
+  );
+  const [currentOrderDir, setCurrentOrderDir] = useState<OrderDirection>(
     OrderDirection.Desc,
   );
   const { useGetDeployments } = useDeployment();
 
+  const { searchTerm, isDebouncingSearch, setSearchTerm } = useDebouncedSearch({
+    initialSearchTerm: "",
+    delay: 300,
+    onDebounced: () => {
+      refetch();
+    },
+  });
   const { page, refetch, isFetching } = useGetDeployments(
     currentWorkspace?.id,
+    searchTerm,
     {
       page: currentPage,
-      orderDir: currentOrder,
-      orderBy: "updatedAt",
+      orderDir: currentOrderDir,
+      orderBy: currentOrderBy,
     },
   );
+
+  const sortOptions = [
+    {
+      value: `${DeploymentOrderBy.UpdatedAt}_${OrderDirection.Desc}`,
+      label: t("Latest Updated"),
+    },
+    {
+      value: `${DeploymentOrderBy.UpdatedAt}_${OrderDirection.Asc}`,
+      label: t("Oldest Updated"),
+    },
+    {
+      value: `${DeploymentOrderBy.Version}_${OrderDirection.Desc}`,
+      label: t("Latest Version"),
+    },
+    {
+      value: `${DeploymentOrderBy.Version}_${OrderDirection.Asc}`,
+      label: t("Oldest Version"),
+    },
+    {
+      value: `${DeploymentOrderBy.Description}_${OrderDirection.Asc}`,
+      label: t("A To Z"),
+    },
+    {
+      value: `${DeploymentOrderBy.Description}_${OrderDirection.Desc}`,
+      label: t("Z To A"),
+    },
+  ];
 
   useEffect(() => {
     (async () => {
       await refetch();
     })();
-  }, [currentPage, currentOrder, refetch]);
+  }, [currentPage, currentOrderDir, currentOrderBy, refetch]);
+
+  const currentSortValue = `${currentOrderBy}_${currentOrderDir}`;
+
+  const handleSortChange = useCallback((newSortValue: string) => {
+    const [orderBy, orderDir] = newSortValue.split("_") as [
+      DeploymentOrderBy,
+      OrderDirection,
+    ];
+    setCurrentOrderBy(orderBy);
+    setCurrentOrderDir(orderDir);
+  }, []);
 
   const deployments = page?.deployments;
   const totalPages = page?.totalPages as number;
@@ -348,13 +403,15 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
         <DeploymentsDialog
           setShowDialog={() => setOpenSelectDeploymentsDialog(false)}
           deployments={deployments}
-          handleSelectDeployment={handleSelectDeployment}
+          onSelectDeployment={handleSelectDeployment}
           currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
           totalPages={totalPages}
-          currentOrder={currentOrder}
-          setCurrentOrder={setCurrentOrder}
-          isFetching={isFetching}
+          isFetching={isDebouncingSearch || isFetching}
+          currentSortValue={currentSortValue}
+          sortOptions={sortOptions}
+          setSearchTerm={setSearchTerm}
+          onSortChange={handleSortChange}
+          setCurrentPage={setCurrentPage}
         />
       )}
     </Dialog>

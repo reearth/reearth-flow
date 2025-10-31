@@ -3,6 +3,12 @@ import { Deployment } from "./deployment";
 import { Job } from "./job";
 import { Workflow } from "./workflow";
 
+export enum ProjectOrderBy {
+  CreatedAt = "createdAt",
+  Name = "name",
+  UpdatedAt = "updatedAt",
+}
+
 export type Project = {
   id: string;
   name: string;

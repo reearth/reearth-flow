@@ -151,10 +151,12 @@ export const useDeployment = () => {
 
   const useGetDeployments = (
     workspaceId?: string,
+    keyword?: string,
     paginationOptions?: PaginationOptions,
   ) => {
     const { data, ...rest } = useGetDeploymentsQuery(
       workspaceId,
+      keyword,
       paginationOptions,
     );
     return {
