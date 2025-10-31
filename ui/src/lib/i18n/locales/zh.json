@@ -755,6 +755,8 @@
   "Subworkflow node": "子工作流节点",
   "Subworkflow nodes are for creating subworkflows and grouping those workflows together.": "子工作流节点用于创建子工作流并将这些工作流组合在一起。",
   "(import)": "(导入)",
+  "Last Created": "最后创建",
+  "First Created": "最早创建",
   "Asset Updated": "资产已更新",
   "Asset has been successfully updated.": "资产已成功更新。",
   "Asset Could Not Be Updated": "资产无法更新",

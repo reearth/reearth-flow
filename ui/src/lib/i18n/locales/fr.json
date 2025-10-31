@@ -757,6 +757,8 @@
   "Subworkflow node": "Nœud de sous-flux de travail",
   "Subworkflow nodes are for creating subworkflows and grouping those workflows together.": "Les nœuds de sous-flux de travail servent à créer des sous-flux de travail et à regrouper ces flux de travail.",
   "(import)": "(importer)",
+  "Last Created": "Dernière création",
+  "First Created": "Première création",
   "Asset Updated": "Actif mis à jour",
   "Asset has been successfully updated.": "L'actif a été mis à jour avec succès.",
   "Asset Could Not Be Updated": "L'actif n'a pas pu être mis à jour",

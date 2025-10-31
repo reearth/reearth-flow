@@ -756,6 +756,8 @@
   "Subworkflow node": "",
   "Subworkflow nodes are for creating subworkflows and grouping those workflows together.": "",
   "(import)": "",
+  "Last Created": "",
+  "First Created": "",
   "Asset Updated": "",
   "Asset has been successfully updated.": "",
   "Asset Could Not Be Updated": "",
