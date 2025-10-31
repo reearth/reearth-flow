@@ -36,6 +36,8 @@ import { useAuth } from "@flow/lib/auth";
 import { useT } from "@flow/lib/i18n";
 import { openLinkInNewTab } from "@flow/utils";
 
+import { AttributionsDialog } from "./AttributionsDialog";
+
 type Props = {
   className?: string;
   dropdownPosition?: "left" | "right" | "bottom" | "top";
@@ -65,32 +67,13 @@ const HomeMenu: React.FC<Props> = ({
 
   const [openAccountUpdateDialog, setOpenAccountUpdateDialog] = useState(false);
   const [openShortcutDialog, setOpenShortcutDialog] = useState(false);
+  const [openAttributionsDialog, setOpenAttributionsDialog] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
 
   const { tosUrl, documentationUrl } = config();
 
   const handleTosPageOpen = openLinkInNewTab(tosUrl ?? "");
   const handleDocumentationPageOpen = openLinkInNewTab(documentationUrl ?? "");
-
-  const handleAttributionsOpen = useCallback(() => {
-    const attributionsText = [
-      "This application uses the following open source libraries:",
-      "",
-      "• ReactFlow (@xyflow/react) - MIT License",
-      "  Node-based workflow visualization",
-      "  https://reactflow.dev",
-      "",
-      "• Cesium (cesium) - Apache License 2.0",
-      "  3D geospatial visualization engine",
-      "  https://cesium.com",
-      "",
-      "• MapLibre GL JS (maplibre-gl) - BSD-3-Clause License",
-      "  Interactive vector maps in web browsers",
-      "  https://maplibre.org",
-    ].join("\n");
-
-    alert(attributionsText);
-  }, []);
 
   useHotkeys(GENERAL_HOT_KEYS, () => setOpenShortcutDialog(true));
 
@@ -183,7 +166,9 @@ const HomeMenu: React.FC<Props> = ({
               </div>
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem className="gap-3" onClick={handleAttributionsOpen}>
+          <DropdownMenuItem
+            className="gap-3"
+            onClick={() => setOpenAttributionsDialog(true)}>
             <CopyrightIcon weight="light" />
             <p>{t("Attributions")}</p>
           </DropdownMenuItem>
@@ -200,6 +185,12 @@ const HomeMenu: React.FC<Props> = ({
         <AccountUpdateDialog
           isOpen={openAccountUpdateDialog}
           onOpenChange={setOpenAccountUpdateDialog}
+        />
+      )}
+      {openAttributionsDialog && (
+        <AttributionsDialog
+          isOpen={openAttributionsDialog}
+          onOpenChange={setOpenAttributionsDialog}
         />
       )}
       {openShortcutDialog && (
