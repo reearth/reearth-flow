@@ -110,11 +110,18 @@ graphs:
           order: ascending
 
       # corresponding to FME's 2DForcer_lod0-2
-      # 2DForcer is needed for dissolver
       - id: 8a9b7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d
         name: TwoDimensionForcer
         type: action
         action: TwoDimensionForcer
+
+      # Filter geometry types: polygons go to Dissolver, linestrings bypass
+      - id: 6f7a8b9c-0d1e-2f3a-4b5c-6d7e8f9a0b1c
+        name: GeometryFilter
+        type: action
+        action: GeometryFilter
+        with:
+          filterType: geometryType
 
       - id: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
         name: Dissolver
@@ -126,6 +133,17 @@ graphs:
             - _folder_package
             - lod
           attributeAccumulationMode: useOne
+
+      - id: b4c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
+        name: FeatureSorterPreMVT
+        type: action
+        action: FeatureSorter
+        with:
+          attributes:
+            - _folder_package
+            - lod
+            - feature_type
+          order: ascending
 
       - id: 7a17c4f9-dd4d-44b0-936c-50c394272016
         name: MVTWriter
@@ -190,13 +208,33 @@ graphs:
         to: 8a9b7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d
         fromPort: default
         toPort: default
+      # TwoDimensionForcer -> GeometryFilter
       - id: 5b6c7d8e-9f0a-1b2c-3d4e-5f6a7b8c9d0e
         from: 8a9b7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d
-        to: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
+        to: 6f7a8b9c-0d1e-2f3a-4b5c-6d7e8f9a0b1c
         fromPort: default
         toPort: default
+      # GeometryFilter (polygon) -> Dissolver
+      - id: 8d9e0f1a-2b3c-4d5e-6f7a-8b9c0d1e2f3a
+        from: 6f7a8b9c-0d1e-2f3a-4b5c-6d7e8f9a0b1c
+        to: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
+        fromPort: surface
+        toPort: default
+      # Dissolver -> FeatureSorterPreMVT
       - id: 4d5e6f7a-8b9c-0d1e-2f3a-4b5c6d7e8f9a
         from: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
-        to: 7a17c4f9-dd4d-44b0-936c-50c394272016
+        to: b4c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
         fromPort: area
+        toPort: default
+      # GeometryFilter (linestrings) -> FeatureSorterPreMVT
+      - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
+        from: 6f7a8b9c-0d1e-2f3a-4b5c-6d7e8f9a0b1c
+        to: b4c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
+        fromPort: curve
+        toPort: default
+      # FeatureSorterPreMVT -> MVTWriter
+      - id: c1d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
+        from: b4c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
+        to: 7a17c4f9-dd4d-44b0-936c-50c394272016
+        fromPort: default
         toPort: default
