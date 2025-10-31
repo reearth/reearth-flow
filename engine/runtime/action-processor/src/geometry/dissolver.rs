@@ -214,40 +214,27 @@ impl Dissolver {
     }
 
     fn dissolve_2d(&self, buffered_features_2d: Vec<&Feature>) -> Option<Feature> {
-        // Collect and union all polygons from all features
-        let mut multi_polygon_acc: Option<MultiPolygon2D<f64>> = None;
+        // Start with an empty multi-polygon
+        let mut multi_polygon_2d = MultiPolygon2D::new(vec![]);
 
+        // Process all features uniformly
         for feature in buffered_features_2d.iter() {
             let geometry = feature.geometry.value.as_flow_geometry_2d()?;
-
-            // Get polygons from this feature
-            let polygons_to_add = if let Some(multi_polygon) = geometry.as_multi_polygon() {
-                multi_polygon.iter().cloned().collect::<Vec<_>>()
+            let mut multi_polygon = if let Some(mp) = geometry.as_multi_polygon() {
+                mp
             } else if let Some(polygon) = geometry.as_polygon() {
-                vec![polygon.clone()]
+                MultiPolygon2D::new(vec![polygon.clone()])
             } else {
                 continue;
             };
-
-            // Union each polygon with the accumulator
-            for polygon in polygons_to_add {
-                let mut single_polygon = MultiPolygon2D::new(vec![polygon]);
-
-                if let Some(mut acc) = multi_polygon_acc {
-                    // Apply tolerance by gluing vertices
-                    let mut vertices = acc.get_vertices_mut();
-                    vertices.extend(single_polygon.get_vertices_mut());
-                    glue_vertices_closer_than(self.tolerance, vertices);
-
-                    // Union the polygons
-                    multi_polygon_acc = Some(single_polygon.union(&acc));
-                } else {
-                    multi_polygon_acc = Some(single_polygon);
-                }
-            }
+            let mut vertices = multi_polygon_2d.get_vertices_mut();
+            vertices.extend(multi_polygon.get_vertices_mut());
+            glue_vertices_closer_than(self.tolerance, vertices);
+            multi_polygon_2d = multi_polygon_2d.union(&multi_polygon);
         }
 
-        let multi_polygon_2d = multi_polygon_acc?;
+        // Only create feature if we accumulated some geometry
+        if multi_polygon_2d.is_empty() { return None; }
 
         let mut feature = Feature::new();
 
