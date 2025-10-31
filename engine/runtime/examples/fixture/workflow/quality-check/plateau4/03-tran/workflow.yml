@@ -469,14 +469,14 @@ graphs:
                 env.get("__value")["name"] ?? ""
             - attribute: FeatureType
               expr: |
-                env.get("__value")["gmlName"] ?? ""
+                env.get("__value")["featureType"] ?? ""
             - attribute: LOD
               expr: |
                 env.get("__value")["lod"] ?? ""
             - attribute: "gml:id"
               expr: |
                 env.get("__value")["gmlId"] ?? ""
-            - attribute: "隣接ID"
+            - attribute: 隣接ID
               expr: |
                 env.get("__value")["areaOverlapIndex"] ?? ""
 

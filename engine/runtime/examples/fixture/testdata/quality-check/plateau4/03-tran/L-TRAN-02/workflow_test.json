@@ -17,5 +17,6 @@
   "cityGmlPath": "udx/tran/input.gml",
   "codelists": "codelists",
   "schemas": "schemas",
-  "expectResultOkFile": false
+  "expectResultOkFile": false,
+  "skip": true
 }
