@@ -7,13 +7,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"path"
 	"strings"
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/google/uuid"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
+	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/workflow"
@@ -31,12 +34,13 @@ const (
 )
 
 type fileRepo struct {
-	bucketName   string
-	base         *url.URL
-	cacheControl string
+	bucketName       string
+	base             *url.URL
+	cacheControl     string
+	replaceUploadURL bool
 }
 
-func NewFile(bucketName, base string, cacheControl string) (gateway.File, error) {
+func NewFile(bucketName, base string, cacheControl string, replaceUploadURL bool) (gateway.File, error) {
 	if bucketName == "" {
 		return nil, errors.New("bucket name is empty")
 	}
@@ -53,9 +57,10 @@ func NewFile(bucketName, base string, cacheControl string) (gateway.File, error)
 	}
 
 	return &fileRepo{
-		bucketName:   bucketName,
-		base:         u,
-		cacheControl: cacheControl,
+		bucketName:       bucketName,
+		base:             u,
+		cacheControl:     cacheControl,
+		replaceUploadURL: replaceUploadURL,
 	}, nil
 }
 
@@ -91,6 +96,28 @@ func (f *fileRepo) UploadAsset(ctx context.Context, file *file.File) (*url.URL, 
 		return nil, 0, err
 	}
 	return u, s, nil
+}
+
+func (f *fileRepo) UploadedAsset(ctx context.Context, u *asset.Upload) (*file.File, error) {
+	sn := sanitizePath(u.UUID() + path.Ext(u.FileName()))
+	if sn == "" {
+		return nil, gateway.ErrInvalidFile
+	}
+	p := path.Join(gcsAssetBasePath, sn)
+	bucket, err := f.bucket(ctx)
+	if err != nil {
+		return nil, err
+	}
+	attrs, err := bucket.Object(p).Attrs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("attrs(object=%s): %w", p, err)
+	}
+	return &file.File{
+		Content:     nil,
+		Path:        u.FileName(),
+		Size:        attrs.Size,
+		ContentType: attrs.ContentType,
+	}, nil
 }
 
 func (f *fileRepo) DeleteAsset(ctx context.Context, u *url.URL) error {
@@ -461,6 +488,82 @@ func (f *fileRepo) generateMetadata(jobID string, assets []string) (*file.File, 
 	}, nil
 }
 
+func (f *fileRepo) IssueUploadAssetLink(ctx context.Context, param gateway.IssueUploadAssetParam) (*gateway.UploadAssetLink, error) {
+	contentType := param.GetOrGuessContentType()
+	if err := validateContentEncoding(param.ContentEncoding); err != nil {
+		return nil, err
+	}
+
+	sn := sanitizePath(param.UUID + path.Ext(param.Filename))
+	if sn == "" {
+		return nil, gateway.ErrInvalidFile
+	}
+	p := path.Join(gcsAssetBasePath, sn)
+
+	bucket, err := f.bucket(ctx)
+	if err != nil {
+		return nil, err
+	}
+	opt := &storage.SignedURLOptions{
+		Scheme:      storage.SigningSchemeV4,
+		Method:      http.MethodPut,
+		Expires:     param.ExpiresAt,
+		ContentType: contentType,
+		QueryParameters: map[string][]string{
+			"reearth-x-workspace": {param.Workspace},
+		},
+	}
+
+	var headers []string
+	if param.ContentEncoding != "" {
+		headers = append(headers, "Content-Encoding: "+param.ContentEncoding)
+	}
+
+	if len(headers) > 0 {
+		opt.Headers = headers
+	}
+	uploadURL, err := bucket.SignedURL(p, opt)
+	if err != nil {
+		log.Errorfc(ctx, "gcs: SignedURL failed (path=%s, bucket=%s): %v", p, f.bucketName, err)
+		return nil, gateway.ErrUnsupportedOperation
+	}
+
+	return &gateway.UploadAssetLink{
+		URL:             f.toPublicUrl(uploadURL),
+		ContentType:     contentType,
+		ContentLength:   param.ContentLength,
+		ContentEncoding: param.ContentEncoding,
+		Next:            "",
+	}, nil
+}
+
+func (f *fileRepo) GetPublicAssetURL(uuid, filename string) (*url.URL, error) {
+	sn := sanitizePath(uuid + path.Ext(filename))
+	if sn == "" {
+		return nil, gateway.ErrInvalidFile
+	}
+	p := path.Join(gcsAssetBasePath, sn)
+	u := getGCSObjectURL(f.base, p)
+	if u == nil {
+		return nil, gateway.ErrInvalidFile
+	}
+	return u, nil
+}
+
+func (f *fileRepo) toPublicUrl(uploadURL string) string {
+	// Replace storage.googleapis.com with custom asset base URL if configured and enabled
+	if f.replaceUploadURL && f.base != nil && f.base.Host != "" && f.base.Host != "storage.googleapis.com" {
+		parsedURL, err := url.Parse(uploadURL)
+		if err == nil {
+			parsedURL.Scheme = f.base.Scheme
+			parsedURL.Host = f.base.Host
+			parsedURL.Path = path.Join(f.base.Path, parsedURL.Path)
+			uploadURL = parsedURL.String()
+		}
+	}
+	return uploadURL
+}
+
 func getGCSObjectURL(base *url.URL, objectName string) *url.URL {
 	if base == nil {
 		return nil
@@ -497,4 +600,16 @@ func newWorkflowID() string {
 
 func sanitizePath(name string) string {
 	return path.Clean(name)
+}
+
+func validateContentEncoding(ce string) error {
+	if ce != "" && ce != "identity" && ce != "gzip" {
+		return gateway.ErrUnsupportedContentEncoding
+	}
+	return nil
+}
+
+func IsValidUUID(u string) bool {
+	_, err := uuid.Parse(u)
+	return err == nil
 }

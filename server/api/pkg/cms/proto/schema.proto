@@ -20,7 +20,10 @@ service ReEarthCMS {
   rpc GetModel(ModelRequest) returns (ModelResponse) {}
   rpc ListModels(ListModelsRequest) returns (ListModelsResponse) {}
   rpc ListItems(ListItemsRequest) returns (ListItemsResponse) {}
-  rpc GetModelGeoJSONExportURL(ExportRequest) returns (ExportURLResponse) {}
+  rpc GetModelExportURL(ModelExportRequest) returns (ExportURLResponse) {}
+  rpc GetModelGeoJSONExportURL(ExportRequest) returns (ExportURLResponse) {
+    option deprecated = true;
+  }
 }
 
 // Implementation note:
@@ -39,8 +42,10 @@ message Project {
   optional string readme = 6;
   string workspace_id = 7;
   Visibility visibility = 8;
-  google.protobuf.Timestamp created_at = 9;
-  google.protobuf.Timestamp updated_at = 10;
+  repeated string topics = 9;
+  int32 star_count = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
 }
 
 enum Visibility {
@@ -161,6 +166,7 @@ message DeleteProjectRequest {
 
 message ListProjectsRequest {
   repeated string workspace_ids = 1;
+  optional string keyword = 2;
   bool public_only = 3;
 
   optional PageInfo page_info = 100;
@@ -200,8 +206,21 @@ message ListItemsRequest {
 }
 
 message ExportRequest {
+  option deprecated = true;
+
   string project_id = 1;
   string model_id = 2;
+}
+
+message ModelExportRequest {
+  enum Type {
+    JSON = 0;
+    GEOJSON = 1;
+  }
+
+  string project_id = 1;
+  string model_id = 2;
+  Type export_type = 3;
 }
 
 // Response messages

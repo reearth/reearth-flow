@@ -66,7 +66,7 @@ func (r *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
 	})
 }
 
-func (r *Job) FindByWorkspace(ctx context.Context, workspace id.WorkspaceID, pagination *interfaces.PaginationParam) ([]*job.Job, *interfaces.PageBasedInfo, error) {
+func (r *Job) FindByWorkspace(ctx context.Context, workspace id.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string) ([]*job.Job, *interfaces.PageBasedInfo, error) {
 	filter := bson.M{
 		"workspaceid": workspace.String(),
 		"$or": []bson.M{
@@ -74,6 +74,27 @@ func (r *Job) FindByWorkspace(ctx context.Context, workspace id.WorkspaceID, pag
 			{"debug": nil},
 			{"debug": bson.M{"$exists": false}},
 		},
+	}
+
+	if keyword != nil && *keyword != "" {
+		filter = bson.M{
+			"workspaceid": workspace.String(),
+			"$and": []bson.M{
+				{
+					"$or": []bson.M{
+						{"debug": false},
+						{"debug": nil},
+						{"debug": bson.M{"$exists": false}},
+					},
+				},
+				{
+					"$or": []bson.M{
+						{"id": bson.M{"$regex": *keyword, "$options": "i"}},
+						{"status": bson.M{"$regex": *keyword, "$options": "i"}},
+					},
+				},
+			},
+		}
 	}
 
 	total, err := r.client.Count(ctx, filter)

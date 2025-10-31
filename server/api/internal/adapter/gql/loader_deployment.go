@@ -38,7 +38,7 @@ func (c *DeploymentLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gql
 	return deployments, nil
 }
 
-func (c *DeploymentLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error) {
+func (c *DeploymentLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error) {
 	wID, err := gqlmodel.ToID[id.Workspace](wsID)
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (c *DeploymentLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmode
 		},
 	}
 
-	res, pageInfo, err := c.usecase.FindByWorkspace(ctx, wID, paginationParam)
+	res, pageInfo, err := c.usecase.FindByWorkspace(ctx, wID, paginationParam, keyword)
 	if err != nil {
 		return nil, err
 	}

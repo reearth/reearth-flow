@@ -16,5 +16,6 @@
   },
   "cityGmlPath": "udx/bldg/l7_fail.gml",
   "codelists": "codelists",
-  "schemas": "schemas"
+  "schemas": "schemas",
+  "expectResultOkFile": false
 }

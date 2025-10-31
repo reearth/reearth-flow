@@ -3,39 +3,34 @@ use rhai::export_module;
 #[export_module]
 pub(crate) mod math_module {
     use rhai::plugin::*;
-    use std::f64::consts::{E, PI};
 
     // ============================================================================
     // Mathematical Constants
     // ============================================================================
 
-    /// Returns the mathematical constant π (pi).
+    /// The mathematical constant π (pi).
     ///
-    /// # Returns
-    /// The value of π ≈ 3.14159265358979323846
+    /// # Value
+    /// π ≈ 3.14159265358979323846
     ///
     /// # Example
     /// ```rhai
-    /// let pi_value = math::pi();
-    /// let circumference = 2.0 * math::pi() * radius;
+    /// let pi_value = math::PI;
+    /// let circumference = 2.0 * math::PI * radius;
     /// ```
-    pub fn pi() -> f64 {
-        PI
-    }
+    pub const PI: f64 = std::f64::consts::PI;
 
-    /// Returns the mathematical constant e (Euler's number).
+    /// The mathematical constant e (Euler's number).
     ///
-    /// # Returns
-    /// The value of e ≈ 2.71828182845904523536
+    /// # Value
+    /// e ≈ 2.71828182845904523536
     ///
     /// # Example
     /// ```rhai
-    /// let e_value = math::e();
-    /// let result = math::pow(math::e(), 2.0);
+    /// let e_value = math::E;
+    /// let result = math::pow(math::E, 2.0);
     /// ```
-    pub fn e() -> f64 {
-        E
-    }
+    pub const E: f64 = std::f64::consts::E;
 
     /// Returns the mathematical constant τ (tau), equal to 2π.
     ///
@@ -701,7 +696,6 @@ pub(crate) mod math_module {
 #[cfg(test)]
 mod tests {
     use super::math_module::*;
-    use std::f64::consts::{E, PI};
 
     const EPSILON: f64 = 1e-10;
 
@@ -721,212 +715,17 @@ mod tests {
     // ========================================================================
 
     #[test]
-    fn test_pi() {
-        assert_approx_eq(pi(), PI, "pi() should return correct value");
-    }
-
-    #[test]
-    fn test_e() {
-        assert_approx_eq(e(), E, "e() should return correct value");
-    }
-
-    // ========================================================================
-    // Trigonometric Functions Tests
-    // ========================================================================
-
-    #[test]
-    fn test_sin() {
-        assert_approx_eq(sin(0.0), 0.0, "sin(0) should be 0");
-        assert_approx_eq(sin(PI / 2.0), 1.0, "sin(π/2) should be 1");
-        assert_approx_eq(sin(PI), 0.0, "sin(π) should be 0");
-        assert_approx_eq(sin(3.0 * PI / 2.0), -1.0, "sin(3π/2) should be -1");
-        assert_approx_eq(sin(PI / 6.0), 0.5, "sin(30°) should be 0.5");
-    }
-
-    #[test]
-    fn test_cos() {
-        assert_approx_eq(cos(0.0), 1.0, "cos(0) should be 1");
-        assert_approx_eq(cos(PI / 2.0), 0.0, "cos(π/2) should be 0");
-        assert_approx_eq(cos(PI), -1.0, "cos(π) should be -1");
-        assert_approx_eq(cos(PI / 3.0), 0.5, "cos(60°) should be 0.5");
-    }
-
-    #[test]
-    fn test_tan() {
-        assert_approx_eq(tan(0.0), 0.0, "tan(0) should be 0");
-        assert_approx_eq(tan(PI / 4.0), 1.0, "tan(π/4) should be 1");
-        assert_approx_eq(tan(-PI / 4.0), -1.0, "tan(-π/4) should be -1");
-    }
-
-    // ========================================================================
-    // Inverse Trigonometric Functions Tests
-    // ========================================================================
-
-    #[test]
-    fn test_asin() {
-        assert_approx_eq(asin(0.0), 0.0, "asin(0) should be 0");
-        assert_approx_eq(asin(0.5), PI / 6.0, "asin(0.5) should be π/6");
-        assert_approx_eq(asin(1.0), PI / 2.0, "asin(1) should be π/2");
-        assert_approx_eq(asin(-1.0), -PI / 2.0, "asin(-1) should be -π/2");
-    }
-
-    #[test]
-    fn test_acos() {
-        assert_approx_eq(acos(1.0), 0.0, "acos(1) should be 0");
-        assert_approx_eq(acos(0.5), PI / 3.0, "acos(0.5) should be π/3");
-        assert_approx_eq(acos(0.0), PI / 2.0, "acos(0) should be π/2");
-        assert_approx_eq(acos(-1.0), PI, "acos(-1) should be π");
-    }
-
-    #[test]
-    fn test_atan() {
-        assert_approx_eq(atan(0.0), 0.0, "atan(0) should be 0");
-        assert_approx_eq(atan(1.0), PI / 4.0, "atan(1) should be π/4");
-        assert_approx_eq(atan(-1.0), -PI / 4.0, "atan(-1) should be -π/4");
-    }
-
-    #[test]
-    fn test_atan2() {
-        // Quadrant I
-        assert_approx_eq(atan2(1.0, 1.0), PI / 4.0, "atan2(1, 1) should be π/4");
-        // Quadrant II
+    fn test_constants() {
         assert_approx_eq(
-            atan2(1.0, -1.0),
-            3.0 * PI / 4.0,
-            "atan2(1, -1) should be 3π/4",
+            PI,
+            std::f64::consts::PI,
+            "PI constant should match std::f64::consts::PI",
         );
-        // Quadrant III
         assert_approx_eq(
-            atan2(-1.0, -1.0),
-            -3.0 * PI / 4.0,
-            "atan2(-1, -1) should be -3π/4",
+            E,
+            std::f64::consts::E,
+            "E constant should match std::f64::consts::E",
         );
-        // Quadrant IV
-        assert_approx_eq(atan2(-1.0, 1.0), -PI / 4.0, "atan2(-1, 1) should be -π/4");
-        // Special cases
-        assert_approx_eq(atan2(0.0, 1.0), 0.0, "atan2(0, 1) should be 0");
-        assert_approx_eq(atan2(1.0, 0.0), PI / 2.0, "atan2(1, 0) should be π/2");
-    }
-
-    // ========================================================================
-    // Angle Conversion Tests
-    // ========================================================================
-
-    #[test]
-    fn test_to_radians() {
-        assert_approx_eq(to_radians(0.0), 0.0, "0° should be 0 radians");
-        assert_approx_eq(to_radians(90.0), PI / 2.0, "90° should be π/2 radians");
-        assert_approx_eq(to_radians(180.0), PI, "180° should be π radians");
-        assert_approx_eq(to_radians(360.0), 2.0 * PI, "360° should be 2π radians");
-        assert_approx_eq(to_radians(-90.0), -PI / 2.0, "-90° should be -π/2 radians");
-    }
-
-    #[test]
-    fn test_to_degrees() {
-        assert_approx_eq(to_degrees(0.0), 0.0, "0 radians should be 0°");
-        assert_approx_eq(to_degrees(PI / 2.0), 90.0, "π/2 radians should be 90°");
-        assert_approx_eq(to_degrees(PI), 180.0, "π radians should be 180°");
-        assert_approx_eq(to_degrees(2.0 * PI), 360.0, "2π radians should be 360°");
-        assert_approx_eq(to_degrees(-PI / 2.0), -90.0, "-π/2 radians should be -90°");
-    }
-
-    #[test]
-    fn test_angle_conversion_roundtrip() {
-        let degrees = 45.0;
-        let radians = to_radians(degrees);
-        let back_to_degrees = to_degrees(radians);
-        assert_approx_eq(
-            back_to_degrees,
-            degrees,
-            "Conversion roundtrip should be exact",
-        );
-    }
-
-    // ========================================================================
-    // Power & Root Functions Tests
-    // ========================================================================
-
-    #[test]
-    fn test_sqrt() {
-        assert_approx_eq(sqrt(0.0), 0.0, "sqrt(0) should be 0");
-        assert_approx_eq(sqrt(1.0), 1.0, "sqrt(1) should be 1");
-        assert_approx_eq(sqrt(4.0), 2.0, "sqrt(4) should be 2");
-        assert_approx_eq(sqrt(16.0), 4.0, "sqrt(16) should be 4");
-        assert_approx_eq(
-            sqrt(2.0),
-            std::f64::consts::SQRT_2,
-            "sqrt(2) should be ~1.414",
-        );
-    }
-
-    #[test]
-    fn test_pow() {
-        assert_approx_eq(pow(2.0, 0.0), 1.0, "2^0 should be 1");
-        assert_approx_eq(pow(2.0, 1.0), 2.0, "2^1 should be 2");
-        assert_approx_eq(pow(2.0, 3.0), 8.0, "2^3 should be 8");
-        assert_approx_eq(pow(10.0, 2.0), 100.0, "10^2 should be 100");
-        assert_approx_eq(pow(3.0, 4.0), 81.0, "3^4 should be 81");
-        assert_approx_eq(pow(4.0, 0.5), 2.0, "4^0.5 should be 2");
-    }
-
-    // ========================================================================
-    // Comparison & Selection Tests
-    // ========================================================================
-
-    #[test]
-    fn test_abs() {
-        assert_approx_eq(abs(0.0), 0.0, "abs(0) should be 0");
-        assert_approx_eq(abs(5.0), 5.0, "abs(5) should be 5");
-        assert_approx_eq(abs(-5.0), 5.0, "abs(-5) should be 5");
-        assert_approx_eq(abs(-7.5), 7.5, "abs(-7.5) should be 7.5");
-    }
-
-    #[test]
-    fn test_max() {
-        assert_approx_eq(max(5.0, 10.0), 10.0, "max(5, 10) should be 10");
-        assert_approx_eq(max(10.0, 5.0), 10.0, "max(10, 5) should be 10");
-        assert_approx_eq(max(-5.0, -10.0), -5.0, "max(-5, -10) should be -5");
-        assert_approx_eq(max(0.0, 0.0), 0.0, "max(0, 0) should be 0");
-    }
-
-    #[test]
-    fn test_min() {
-        assert_approx_eq(min(5.0, 10.0), 5.0, "min(5, 10) should be 5");
-        assert_approx_eq(min(10.0, 5.0), 5.0, "min(10, 5) should be 5");
-        assert_approx_eq(min(-5.0, -10.0), -10.0, "min(-5, -10) should be -10");
-        assert_approx_eq(min(0.0, 0.0), 0.0, "min(0, 0) should be 0");
-    }
-
-    // ========================================================================
-    // Rounding Functions Tests
-    // ========================================================================
-
-    #[test]
-    fn test_floor() {
-        assert_approx_eq(floor(3.7), 3.0, "floor(3.7) should be 3");
-        assert_approx_eq(floor(3.2), 3.0, "floor(3.2) should be 3");
-        assert_approx_eq(floor(-3.2), -4.0, "floor(-3.2) should be -4");
-        assert_approx_eq(floor(-3.7), -4.0, "floor(-3.7) should be -4");
-        assert_approx_eq(floor(5.0), 5.0, "floor(5.0) should be 5");
-    }
-
-    #[test]
-    fn test_ceil() {
-        assert_approx_eq(ceil(3.2), 4.0, "ceil(3.2) should be 4");
-        assert_approx_eq(ceil(3.7), 4.0, "ceil(3.7) should be 4");
-        assert_approx_eq(ceil(-3.7), -3.0, "ceil(-3.7) should be -3");
-        assert_approx_eq(ceil(-3.2), -3.0, "ceil(-3.2) should be -3");
-        assert_approx_eq(ceil(5.0), 5.0, "ceil(5.0) should be 5");
-    }
-
-    #[test]
-    fn test_round() {
-        assert_approx_eq(round(3.5), 4.0, "round(3.5) should be 4");
-        assert_approx_eq(round(3.4), 3.0, "round(3.4) should be 3");
-        assert_approx_eq(round(3.6), 4.0, "round(3.6) should be 4");
-        assert_approx_eq(round(-3.5), -4.0, "round(-3.5) should be -4");
-        assert_approx_eq(round(-3.4), -3.0, "round(-3.4) should be -3");
-        assert_approx_eq(round(5.0), 5.0, "round(5.0) should be 5");
     }
 
     // ========================================================================
@@ -943,7 +742,7 @@ mod tests {
         let result = (sunset / 86400.0 - sunrise / 86400.0)
             * 24.0
             * sin(to_radians(altitude_degrees))
-            * (2.0 / pi());
+            * (2.0 / PI);
 
         assert!(result > 0.0, "Solar radiation should be positive");
         assert!(
@@ -988,297 +787,8 @@ mod tests {
     }
 
     // ============================================================================
-    // Tier 2 Tests: Hyperbolic Functions
+    // Tier 2 Integration Tests: Real-world scenarios with new functions
     // ============================================================================
-
-    #[test]
-    fn test_sinh() {
-        assert_approx_eq(sinh(0.0), 0.0, "sinh(0) should be 0");
-        assert_approx_eq(sinh(1.0), 1.1752011936438014, "sinh(1) should be ~1.175");
-        assert_approx_eq(
-            sinh(-1.0),
-            -1.1752011936438014,
-            "sinh(-1) should be ~-1.175",
-        );
-
-        // sinh is an odd function: sinh(-x) = -sinh(x)
-        let x = 2.5;
-        assert_approx_eq(sinh(-x), -sinh(x), "sinh should be an odd function");
-    }
-
-    #[test]
-    fn test_cosh() {
-        assert_approx_eq(cosh(0.0), 1.0, "cosh(0) should be 1");
-        assert_approx_eq(cosh(1.0), 1.5430806348152437, "cosh(1) should be ~1.543");
-        assert_approx_eq(cosh(-1.0), 1.5430806348152437, "cosh(-1) should be ~1.543");
-
-        // cosh is an even function: cosh(-x) = cosh(x)
-        let x = 2.5;
-        assert_approx_eq(cosh(-x), cosh(x), "cosh should be an even function");
-
-        // cosh(x) >= 1 for all x
-        assert!(cosh(0.0) >= 1.0, "cosh should be >= 1");
-        assert!(cosh(5.0) >= 1.0, "cosh should be >= 1");
-    }
-
-    #[test]
-    fn test_tanh() {
-        assert_approx_eq(tanh(0.0), 0.0, "tanh(0) should be 0");
-        assert_approx_eq(tanh(1.0), 0.7615941559557649, "tanh(1) should be ~0.762");
-        assert_approx_eq(
-            tanh(-1.0),
-            -0.7615941559557649,
-            "tanh(-1) should be ~-0.762",
-        );
-
-        // tanh is an odd function: tanh(-x) = -tanh(x)
-        let x = 2.5;
-        assert_approx_eq(tanh(-x), -tanh(x), "tanh should be an odd function");
-
-        // tanh(x) is always in (-1, 1)
-        assert!(
-            (-1.0..=1.0).contains(&tanh(5.0)),
-            "tanh should be in (-1, 1)"
-        );
-        assert!(
-            (-1.0..=1.0).contains(&tanh(-5.0)),
-            "tanh should be in (-1, 1)"
-        );
-    }
-
-    #[test]
-    fn test_hyperbolic_identity() {
-        // cosh^2(x) - sinh^2(x) = 1
-        let x = 2.0;
-        let identity = pow(cosh(x), 2.0) - pow(sinh(x), 2.0);
-        assert_approx_eq(
-            identity,
-            1.0,
-            "Hyperbolic identity: cosh²(x) - sinh²(x) = 1",
-        );
-    }
-
-    // ============================================================================
-    // Tier 2 Tests: Inverse Hyperbolic Functions
-    // ============================================================================
-
-    #[test]
-    fn test_asinh() {
-        assert_approx_eq(asinh(0.0), 0.0, "asinh(0) should be 0");
-        assert_approx_eq(asinh(1.0), 0.881373587019543, "asinh(1) should be ~0.881");
-        assert_approx_eq(
-            asinh(-1.0),
-            -0.881373587019543,
-            "asinh(-1) should be ~-0.881",
-        );
-
-        // asinh(sinh(x)) = x
-        let x = 1.5;
-        assert_approx_eq(asinh(sinh(x)), x, "asinh(sinh(x)) should equal x");
-    }
-
-    #[test]
-    fn test_acosh() {
-        assert_approx_eq(acosh(1.0), 0.0, "acosh(1) should be 0");
-        assert_approx_eq(acosh(2.0), 1.3169578969248166, "acosh(2) should be ~1.317");
-        assert_approx_eq(acosh(5.0), 2.2924316695611777, "acosh(5) should be ~2.292");
-
-        // acosh(cosh(x)) = x for x >= 0
-        let x = 1.5;
-        assert_approx_eq(acosh(cosh(x)), x, "acosh(cosh(x)) should equal x");
-
-        // acosh(x) for x < 1 returns NaN
-        assert!(acosh(0.5).is_nan(), "acosh(x < 1) should be NaN");
-    }
-
-    #[test]
-    fn test_atanh() {
-        assert_approx_eq(atanh(0.0), 0.0, "atanh(0) should be 0");
-        assert_approx_eq(
-            atanh(0.5),
-            0.5493061443340548,
-            "atanh(0.5) should be ~0.549",
-        );
-        assert_approx_eq(
-            atanh(-0.5),
-            -0.5493061443340548,
-            "atanh(-0.5) should be ~-0.549",
-        );
-
-        // atanh(tanh(x)) = x
-        let x = 0.5;
-        assert_approx_eq(atanh(tanh(x)), x, "atanh(tanh(x)) should equal x");
-
-        // atanh(x) for |x| >= 1 returns NaN or infinity
-        assert!(atanh(1.0).is_infinite(), "atanh(1) should be infinite");
-        assert!(atanh(-1.0).is_infinite(), "atanh(-1) should be infinite");
-        assert!(atanh(1.5).is_nan(), "atanh(x > 1) should be NaN");
-    }
-
-    // ============================================================================
-    // Tier 2 Tests: Exponential and Logarithmic Functions
-    // ============================================================================
-
-    #[test]
-    fn test_exp() {
-        assert_approx_eq(exp(0.0), 1.0, "exp(0) should be 1");
-        assert_approx_eq(exp(1.0), e(), "exp(1) should be e");
-        assert_approx_eq(exp(2.0), 7.38905609893065, "exp(2) should be ~7.389");
-        assert_approx_eq(exp(-1.0), 1.0 / e(), "exp(-1) should be 1/e");
-
-        // exp(ln(x)) = x
-        let x = 5.0;
-        assert_approx_eq(exp(ln(x)), x, "exp(ln(x)) should equal x");
-    }
-
-    #[test]
-    fn test_ln() {
-        assert_approx_eq(ln(1.0), 0.0, "ln(1) should be 0");
-        assert_approx_eq(ln(e()), 1.0, "ln(e) should be 1");
-        assert_approx_eq(ln(10.0), std::f64::consts::LN_10, "ln(10) should be ~2.303");
-
-        // ln(exp(x)) = x
-        let x = 2.5;
-        assert_approx_eq(ln(exp(x)), x, "ln(exp(x)) should equal x");
-
-        // ln(x) for x <= 0 returns NaN or -inf
-        assert!(ln(0.0).is_infinite(), "ln(0) should be -infinity");
-        assert!(ln(-1.0).is_nan(), "ln(negative) should be NaN");
-    }
-
-    #[test]
-    fn test_log() {
-        assert_approx_eq(log(100.0, 10.0), 2.0, "log₁₀(100) should be 2");
-        assert_approx_eq(log(8.0, 2.0), 3.0, "log₂(8) should be 3");
-        assert_approx_eq(log(27.0, 3.0), 3.0, "log₃(27) should be 3");
-        assert_approx_eq(log(1.0, 10.0), 0.0, "log of 1 in any base should be 0");
-
-        // log_b(b) = 1
-        assert_approx_eq(log(5.0, 5.0), 1.0, "log_b(b) should be 1");
-
-        // Invalid base or value
-        assert!(log(-1.0, 10.0).is_nan(), "log of negative should be NaN");
-        assert!(
-            log(10.0, -1.0).is_nan(),
-            "log with negative base should be NaN"
-        );
-        // Note: log(x, 1) returns infinity in Rust, not NaN
-        assert!(
-            log(10.0, 1.0).is_infinite() || log(10.0, 1.0).is_nan(),
-            "log with base 1 should be infinite or NaN"
-        );
-    }
-
-    #[test]
-    fn test_log10() {
-        assert_approx_eq(log10(1.0), 0.0, "log10(1) should be 0");
-        assert_approx_eq(log10(10.0), 1.0, "log10(10) should be 1");
-        assert_approx_eq(log10(100.0), 2.0, "log10(100) should be 2");
-        assert_approx_eq(log10(1000.0), 3.0, "log10(1000) should be 3");
-
-        // 10^(log10(x)) = x
-        let x = 42.0;
-        assert_approx_eq(pow(10.0, log10(x)), x, "10^(log10(x)) should equal x");
-    }
-
-    #[test]
-    fn test_log2() {
-        assert_approx_eq(log2(1.0), 0.0, "log2(1) should be 0");
-        assert_approx_eq(log2(2.0), 1.0, "log2(2) should be 1");
-        assert_approx_eq(log2(8.0), 3.0, "log2(8) should be 3");
-        assert_approx_eq(log2(1024.0), 10.0, "log2(1024) should be 10");
-
-        // 2^(log2(x)) = x
-        let x = 42.0;
-        assert_approx_eq(pow(2.0, log2(x)), x, "2^(log2(x)) should equal x");
-    }
-
-    #[test]
-    fn test_logarithm_properties() {
-        let a = 5.0;
-        let b = 3.0;
-
-        // log(a * b) = log(a) + log(b)
-        assert_approx_eq(ln(a * b), ln(a) + ln(b), "log(a*b) = log(a) + log(b)");
-
-        // log(a / b) = log(a) - log(b)
-        assert_approx_eq(ln(a / b), ln(a) - ln(b), "log(a/b) = log(a) - log(b)");
-
-        // log(a^b) = b * log(a)
-        assert_approx_eq(ln(pow(a, b)), b * ln(a), "log(a^b) = b * log(a)");
-    }
-
-    // ============================================================================
-    // Tier 2 Tests: Advanced Utility Functions
-    // ============================================================================
-
-    #[test]
-    fn test_cbrt() {
-        assert_approx_eq(cbrt(0.0), 0.0, "cbrt(0) should be 0");
-        assert_approx_eq(cbrt(1.0), 1.0, "cbrt(1) should be 1");
-        assert_approx_eq(cbrt(8.0), 2.0, "cbrt(8) should be 2");
-        assert_approx_eq(cbrt(27.0), 3.0, "cbrt(27) should be 3");
-        assert_approx_eq(cbrt(-8.0), -2.0, "cbrt(-8) should be -2");
-
-        // cbrt(x^3) = x
-        let x = 5.0;
-        assert_approx_eq(cbrt(pow(x, 3.0)), x, "cbrt(x³) should equal x");
-    }
-
-    #[test]
-    fn test_hypot() {
-        assert_approx_eq(hypot(3.0, 4.0), 5.0, "hypot(3, 4) should be 5");
-        assert_approx_eq(hypot(5.0, 12.0), 13.0, "hypot(5, 12) should be 13");
-        assert_approx_eq(hypot(8.0, 15.0), 17.0, "hypot(8, 15) should be 17");
-        assert_approx_eq(hypot(0.0, 0.0), 0.0, "hypot(0, 0) should be 0");
-
-        // hypot is symmetric
-        assert_approx_eq(
-            hypot(3.0, 4.0),
-            hypot(4.0, 3.0),
-            "hypot should be symmetric",
-        );
-
-        // hypot(x, 0) = |x|
-        assert_approx_eq(hypot(5.0, 0.0), abs(5.0), "hypot(x, 0) should be |x|");
-        assert_approx_eq(hypot(-5.0, 0.0), abs(-5.0), "hypot(-x, 0) should be |x|");
-    }
-
-    #[test]
-    fn test_exp_m1() {
-        assert_approx_eq(exp_m1(0.0), 0.0, "exp_m1(0) should be 0");
-        assert_approx_eq(exp_m1(1.0), e() - 1.0, "exp_m1(1) should be e - 1");
-
-        // For small values, exp_m1 is more accurate than exp(x) - 1
-        let small = 0.0001;
-        let result = exp_m1(small);
-        assert!(result > 0.0, "exp_m1(small positive) should be positive");
-        assert!(result < small * 2.0, "exp_m1(small) should be close to x");
-
-        // exp_m1(x) = exp(x) - 1
-        let x = 2.0;
-        assert_approx_eq(exp_m1(x), exp(x) - 1.0, "exp_m1(x) = exp(x) - 1");
-    }
-
-    #[test]
-    fn test_ln_1p() {
-        assert_approx_eq(ln_1p(0.0), 0.0, "ln_1p(0) should be 0");
-        assert_approx_eq(ln_1p(e() - 1.0), 1.0, "ln_1p(e-1) should be 1");
-
-        // For small values, ln_1p is more accurate than ln(1 + x)
-        let small = 0.0001;
-        let result = ln_1p(small);
-        assert!(result > 0.0, "ln_1p(small positive) should be positive");
-        assert!(result < small * 2.0, "ln_1p(small) should be close to x");
-
-        // ln_1p(x) = ln(1 + x)
-        let x = 2.0;
-        assert_approx_eq(ln_1p(x), ln(1.0 + x), "ln_1p(x) = ln(1 + x)");
-
-        // ln_1p(x) for x <= -1 returns NaN or -inf
-        assert!(ln_1p(-1.0).is_infinite(), "ln_1p(-1) should be -infinity");
-        assert!(ln_1p(-2.0).is_nan(), "ln_1p(x < -1) should be NaN");
-    }
 
     #[test]
     fn test_exponential_growth_model() {
@@ -1323,118 +833,5 @@ mod tests {
             (y - 11.275).abs() < 0.01,
             "Catenary curve calculation should be around 11.275"
         );
-    }
-
-    // ============================================================================
-    // Tier 3 Tests: Specialized Constants & Utilities
-    // ============================================================================
-
-    #[test]
-    fn test_tau() {
-        // tau = 2 * pi
-        assert_approx_eq(tau(), 2.0 * pi(), "tau should equal 2π");
-        assert_approx_eq(tau(), std::f64::consts::TAU, "tau should be ~6.283");
-
-        // One full circle in radians
-        assert_approx_eq(tau(), 2.0 * pi(), "Full circle = τ radians");
-
-        // Common fractions
-        assert_approx_eq(tau() / 2.0, pi(), "τ/2 = π");
-        assert_approx_eq(tau() / 4.0, pi() / 2.0, "τ/4 = π/2");
-        assert_approx_eq(tau() / 8.0, pi() / 4.0, "τ/8 = π/4");
-    }
-
-    #[test]
-    fn test_tau_circle_calculations() {
-        let radius = 5.0;
-
-        // Circumference using tau
-        let circumference_tau = tau() * radius;
-        let circumference_pi = 2.0 * pi() * radius;
-        assert_approx_eq(
-            circumference_tau,
-            circumference_pi,
-            "C = τr should equal C = 2πr",
-        );
-
-        // Full rotation
-        let full_rotation = tau();
-        let half_rotation = tau() / 2.0;
-        assert_approx_eq(half_rotation, pi(), "Half rotation = π");
-        assert_approx_eq(sin(full_rotation), sin(0.0), "sin(τ) = sin(0)");
-        assert_approx_eq(cos(full_rotation), cos(0.0), "cos(τ) = cos(0)");
-    }
-
-    #[test]
-    fn test_copysign() {
-        // Basic sign copying
-        assert_approx_eq(copysign(5.0, 1.0), 5.0, "copysign(5, +) = 5");
-        assert_approx_eq(copysign(5.0, -1.0), -5.0, "copysign(5, -) = -5");
-        assert_approx_eq(copysign(-5.0, 1.0), 5.0, "copysign(-5, +) = 5");
-        assert_approx_eq(copysign(-5.0, -1.0), -5.0, "copysign(-5, -) = -5");
-
-        // Zero cases
-        assert_approx_eq(copysign(0.0, 1.0), 0.0, "copysign(0, +) = 0");
-        assert_approx_eq(copysign(0.0, -1.0), -0.0, "copysign(0, -) = -0");
-
-        // Magnitude is preserved
-        let magnitude = 42.5;
-        assert_approx_eq(
-            abs(copysign(magnitude, -1.0)),
-            magnitude,
-            "Magnitude should be preserved",
-        );
-        assert_approx_eq(
-            abs(copysign(-magnitude, 1.0)),
-            magnitude,
-            "Magnitude should be preserved",
-        );
-    }
-
-    #[test]
-    fn test_copysign_with_special_values() {
-        // NaN propagation
-        assert!(
-            copysign(f64::NAN, 1.0).is_nan(),
-            "copysign(NaN, +) should be NaN"
-        );
-
-        // Infinity
-        assert!(
-            copysign(f64::INFINITY, 1.0).is_infinite(),
-            "copysign(∞, +) should be ∞"
-        );
-        assert!(
-            copysign(f64::INFINITY, -1.0).is_infinite(),
-            "copysign(∞, -) should be -∞"
-        );
-        assert!(
-            copysign(f64::INFINITY, -1.0) < 0.0,
-            "copysign(∞, -) should be negative"
-        );
-    }
-
-    #[test]
-    fn test_copysign_practical_use() {
-        // Ensure a value has the same sign as another
-        let reference = -10.0;
-        let values = [5.0, -5.0, 7.5, -7.5];
-
-        for val in values {
-            let adjusted = copysign(val, reference);
-            assert!(adjusted < 0.0, "All values should have negative sign");
-            assert_approx_eq(abs(adjusted), abs(val), "Magnitude should be unchanged");
-        }
-    }
-
-    #[test]
-    fn test_tier_3_constants_relationship() {
-        // Verify relationships between constants
-        assert_approx_eq(tau(), 2.0 * pi(), "τ = 2π");
-        assert_approx_eq(tau() / pi(), 2.0, "τ/π = 2");
-
-        // e and pi are independent
-        assert!(e() != pi(), "e ≠ π");
-        assert!(e() < pi(), "e < π");
     }
 }

@@ -49,6 +49,15 @@ Perform Area Overlay Analysis
         "string",
         "null"
       ]
+    },
+    "tolerance": {
+      "title": "Tolerance",
+      "description": "Geometric tolerance. Vertices closer than this distance will be considered identical during the overlay operation.",
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
     }
   },
   "definitions": {
@@ -962,6 +971,82 @@ Rename Feature Attributes in Bulk
 ### Category
 * Attribute
 
+## CSGBuilder
+### Type
+* processor
+### Description
+Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, Right) of solid geometries. It detects union, intersection, difference (Left - Right). It however does not compute the resulting geometry, but outputs the CSG tree structure. To evaluate the CSG tree into a solid geometry, use CSGEvaluator.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CSG Builder Parameters",
+  "description": "Configure how the CSG builder pairs features from left and right ports",
+  "type": "object",
+  "properties": {
+    "createList": {
+      "title": "Create List",
+      "description": "When enabled, creates a list of attribute values from both children (left and right)",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "listAttributeName": {
+      "title": "List Attribute Name",
+      "description": "Name of the attribute to create the list from (required when create_list is true)",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "pairIdAttribute": {
+      "title": "Pair ID Attribute",
+      "description": "Expression to evaluate the pair ID used to match features from left and right ports",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* left
+* right
+### Output Ports
+* intersection
+* union
+* difference
+* rejected
+### Category
+* Geometry
+
+## CSGEvaluator
+### Type
+* processor
+### Description
+Evaluates a Constructive Solid Geometry (CSG) tree to produce a solid geometry. Takes a CSG representation and computes the resulting mesh from the boolean operations.
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+* nullport
+* rejected
+### Category
+* Geometry
+
 ## CenterPointReplacer
 ### Type
 * processor
@@ -1526,9 +1611,19 @@ Dissolve Features by Grouping Attributes
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Dissolver Parameters",
-  "description": "Configure how to dissolve features by grouping them based on shared attributes # Dissolver Parameters Configure how to dissolve features by grouping them based on shared attributes",
+  "description": "Configure how to dissolve features by grouping them based on shared attributes",
   "type": "object",
   "properties": {
+    "attributeAccumulation": {
+      "title": "Attribute Accumulation",
+      "description": "Strategy for handling attributes when dissolving features",
+      "default": "useOneFeature",
+      "allOf": [
+        {
+          "$ref": "#/definitions/AttributeAccumulationStrategy"
+        }
+      ]
+    },
     "groupBy": {
       "title": "Group By Attributes",
       "description": "List of attribute names to group features by before dissolving. Features with the same values for these attributes will be dissolved together",
@@ -1539,11 +1634,50 @@ Dissolve Features by Grouping Attributes
       "items": {
         "$ref": "#/definitions/Attribute"
       }
+    },
+    "tolerance": {
+      "title": "Tolerance",
+      "description": "Geometric tolerance. Vertices closer than this distance will be considered identical during the dissolve operation.",
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
     }
   },
   "definitions": {
     "Attribute": {
       "type": "string"
+    },
+    "AttributeAccumulationStrategy": {
+      "title": "Attribute Accumulation Strategy",
+      "description": "Defines how attributes should be handled when dissolving multiple features into one",
+      "oneOf": [
+        {
+          "title": "Drop Incoming Attributes",
+          "description": "No attributes from any incoming features will be preserved in the output (except group_by attributes if specified)",
+          "type": "string",
+          "enum": [
+            "dropAttributes"
+          ]
+        },
+        {
+          "title": "Merge Incoming Attributes",
+          "description": "The output feature will merge all input attributes. When multiple features have the same attribute with different values, all values are collected into an array",
+          "type": "string",
+          "enum": [
+            "mergeAttributes"
+          ]
+        },
+        {
+          "title": "Use Attributes From One Feature",
+          "description": "The output inherits the attributes of one representative feature (the last feature in the group)",
+          "type": "string",
+          "enum": [
+            "useOneFeature"
+          ]
+        }
+      ]
     }
   }
 }
@@ -2021,6 +2155,7 @@ Filters features by Level of Detail (LOD), routing them to appropriate output po
 ### Input Ports
 * default
 ### Output Ports
+* up_to_lod0
 * up_to_lod1
 * up_to_lod2
 * up_to_lod3
@@ -3912,6 +4047,13 @@ Intersection points are turned into point features that can contain the merged l
         "$ref": "#/definitions/Attribute"
       }
     },
+    "overlaidListsAttrName": {
+      "description": "Name of the attribute to store the overlaid lists. Defaults to \"overlaidLists\".",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "tolerance": {
       "type": "number",
       "format": "double"
@@ -3932,6 +4074,68 @@ Intersection points are turned into point features that can contain the merged l
 * rejected
 ### Category
 * Geometry
+
+## ListConcatenator
+### Type
+* processor
+### Description
+Extracts a specific attribute from each element in a list and concatenates them into a single string
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ListConcatenator Parameters",
+  "description": "Configuration for concatenating a specific attribute from list elements.",
+  "type": "object",
+  "required": [
+    "attribute",
+    "list",
+    "outputAttributeName",
+    "separateCharacter"
+  ],
+  "properties": {
+    "attribute": {
+      "description": "Attribute name to extract from each list element",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "list": {
+      "description": "List attribute to read from",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "outputAttributeName": {
+      "description": "Name of the attribute to store the concatenated result",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "separateCharacter": {
+      "description": "Character(s) to use as separator between concatenated values",
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Feature
 
 ## ListExploder
 ### Type
@@ -4147,7 +4351,8 @@ Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, t
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ObjReaderParam",
+  "title": "ObjReader Parameters",
+  "description": "Configuration for reading Wavefront OBJ 3D model files with support for vertices, faces, normals, texture coordinates, and material definitions.",
   "type": "object",
   "properties": {
     "dataset": {
@@ -4163,10 +4368,14 @@ Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, t
       ]
     },
     "includeNormals": {
+      "title": "Include Normals",
+      "description": "Include vertex normal data in the output geometry",
       "default": true,
       "type": "boolean"
     },
     "includeTexcoords": {
+      "title": "Include Texture Coordinates",
+      "description": "Include texture coordinate (UV) data in the output geometry",
       "default": true,
       "type": "boolean"
     },
@@ -4182,15 +4391,34 @@ Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, t
         }
       ]
     },
+    "materialFile": {
+      "title": "Material File",
+      "description": "Expression that returns the path to an external MTL file to use instead of mtllib directives in the OBJ file. When specified, this overrides any material library references in the OBJ file.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "mergeGroups": {
+      "title": "Merge Groups",
+      "description": "Merge all groups and objects into a single feature instead of creating separate features per group/object",
       "default": false,
       "type": "boolean"
     },
     "parseMaterials": {
+      "title": "Parse Materials",
+      "description": "Enable parsing of material definitions from MTL files referenced in the OBJ file",
       "default": true,
       "type": "boolean"
     },
     "triangulate": {
+      "title": "Triangulate",
+      "description": "Convert polygons with more than 3 vertices into triangles using fan triangulation",
       "default": false,
       "type": "boolean"
     }
@@ -4961,6 +5189,71 @@ Extract object list
 ### Category
 * PLATEAU
 
+## PLATEAU4.SolidIntersectionTestPairCreator
+### Type
+* processor
+### Description
+Creates pairs of features that can possibly intersect based on bounding box overlap
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SolidIntersectionTestPairCreatorParam",
+  "type": "object",
+  "properties": {
+    "boundingBoxAttribute": {
+      "default": "bounding_box",
+      "type": "string"
+    },
+    "pairIdAttribute": {
+      "default": "pair_id",
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* A
+* B
+### Category
+* PLATEAU
+
+## PLATEAU4.TransportationXlinkDetector
+### Type
+* processor
+### Description
+Detect unreferenced surfaces in PLATEAU transportation models (L-TRAN-03)
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TransportationXlinkDetectorParam",
+  "type": "object",
+  "required": [
+    "cityGmlPath"
+  ],
+  "properties": {
+    "cityGmlPath": {
+      "$ref": "#/definitions/Expr"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* passed
+* failed
+### Category
+* PLATEAU
+
 ## PLATEAU4.UDXFolderExtractor
 ### Type
 * processor
@@ -5075,6 +5368,8 @@ Execute Python Scripts with Geospatial Data Processing
       ]
     },
     "pythonPath": {
+      "title": "Python Path",
+      "description": "Path to Python interpreter executable (default: python3)",
       "type": [
         "string",
         "null"
@@ -5093,6 +5388,8 @@ Execute Python Scripts with Geospatial Data Processing
       ]
     },
     "timeoutSeconds": {
+      "title": "Timeout Seconds",
+      "description": "Maximum execution time for the Python script in seconds (default: 30)",
       "type": [
         "integer",
         "null"

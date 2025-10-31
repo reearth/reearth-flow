@@ -23,6 +23,7 @@ type Deployment struct {
 	projectRepo       repo.Project
 	workflowRepo      repo.Workflow
 	jobRepo           repo.Job
+	triggerRepo       repo.Trigger
 	transaction       usecasex.Transaction
 	batch             gateway.Batch
 	file              gateway.File
@@ -36,6 +37,7 @@ func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfac
 		projectRepo:       r.Project,
 		workflowRepo:      r.Workflow,
 		jobRepo:           r.Job,
+		triggerRepo:       r.Trigger,
 		transaction:       r.Transaction,
 		batch:             gr.Batch,
 		file:              gr.File,
@@ -56,12 +58,12 @@ func (i *Deployment) Fetch(ctx context.Context, ids []id.DeploymentID) ([]*deplo
 	return i.deploymentRepo.FindByIDs(ctx, ids)
 }
 
-func (i *Deployment) FindByWorkspace(ctx context.Context, id id.WorkspaceID, p *interfaces.PaginationParam) ([]*deployment.Deployment, *interfaces.PageBasedInfo, error) {
+func (i *Deployment) FindByWorkspace(ctx context.Context, id id.WorkspaceID, p *interfaces.PaginationParam, keyword *string) ([]*deployment.Deployment, *interfaces.PageBasedInfo, error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, nil, err
 	}
 
-	return i.deploymentRepo.FindByWorkspace(ctx, id, p)
+	return i.deploymentRepo.FindByWorkspace(ctx, id, p, keyword)
 }
 
 func (i *Deployment) FindByProject(ctx context.Context, id id.ProjectID) (*deployment.Deployment, error) {
@@ -245,6 +247,14 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 func (i *Deployment) Delete(ctx context.Context, deploymentID id.DeploymentID) (err error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return err
+	}
+
+	triggers, err := i.triggerRepo.FindByDeployment(ctx, deploymentID)
+	if err != nil {
+		return err
+	}
+	if len(triggers) > 0 {
+		return interfaces.ErrDeploymentHasTriggers
 	}
 
 	tx, err := i.transaction.Begin(ctx)

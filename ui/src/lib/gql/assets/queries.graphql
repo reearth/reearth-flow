@@ -28,6 +28,17 @@ mutation CreateAsset($input: CreateAssetInput!) {
   }
 }
 
+mutation CreateAssetUpload($input: CreateAssetUploadInput!) {
+  createAssetUpload(input: $input) {
+    token
+    url
+    contentType
+    contentLength
+    contentEncoding
+    next
+  }
+}
+
 mutation UpdateAsset($input: UpdateAssetInput!) {
   updateAsset(input: $input) {
     asset {

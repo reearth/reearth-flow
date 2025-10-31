@@ -24,35 +24,36 @@ type (
 	Mailer mailer.Mailer
 	Config struct {
 		mailer.Config
-		AccountsApiHost     string            `envconfig:"REEARTH_ACCOUNTS_API_HOST" pp:",omitempty"`
-		AssetBaseURL        string            `default:"http://localhost:8080/assets"`
-		DB                  string            `default:"mongodb://localhost"`
-		DB_Account          string            `pp:",omitempty"`
-		DB_Users            []appx.NamedURI   `pp:",omitempty"`
-		Dev                 bool              `pp:",omitempty"`
-		GCPProject          string            `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
-		GCPRegion           string            `envconfig:"GOOGLE_CLOUD_REGION" pp:",omitempty"`
-		GraphQL             GraphQLConfig     `pp:",omitempty"`
-		Host                string            `default:"http://localhost:8080"`
-		Host_Web            string            `pp:",omitempty"`
-		HTTPSREDIRECT       bool              `pp:",omitempty"`
-		Origins             []string          `pp:",omitempty"`
-		Port                string            `default:"8080"`
-		Profiler            string            `pp:",omitempty"`
-		ServerHost          string            `pp:",omitempty"`
-		SharedPath          string            `default:"shared"`
-		SignupDisabled      bool              `pp:",omitempty"`
-		SignupSecret        string            `pp:",omitempty"`
-		SkipPermissionCheck bool              `default:"false"`
-		Tracer              string            `pp:",omitempty"`
-		TracerSample        float64           `pp:",omitempty"`
-		Web                 map[string]string `pp:",omitempty"`
-		Web_App_Disabled    bool              `pp:",omitempty"`
-		Web_Config          JSON              `pp:",omitempty"`
-		Web_Disabled        bool              `pp:",omitempty"`
-		Web_FaviconURL      string            `pp:",omitempty"`
-		Web_Title           string            `pp:",omitempty"`
-		WorkflowBaseURL     string            `default:"http://localhost:8080/workflows"`
+		AccountsApiHost           string            `envconfig:"REEARTH_ACCOUNTS_API_HOST" pp:",omitempty"`
+		AssetBaseURL              string            `default:"http://localhost:8080/assets"`
+		AssetUploadURLReplacement bool              `default:"false" pp:",omitempty"`
+		DB                        string            `default:"mongodb://localhost"`
+		DB_Account                string            `pp:",omitempty"`
+		DB_Users                  []appx.NamedURI   `pp:",omitempty"`
+		Dev                       bool              `pp:",omitempty"`
+		GCPProject                string            `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
+		GCPRegion                 string            `envconfig:"GOOGLE_CLOUD_REGION" pp:",omitempty"`
+		GraphQL                   GraphQLConfig     `pp:",omitempty"`
+		Host                      string            `default:"http://localhost:8080"`
+		Host_Web                  string            `pp:",omitempty"`
+		HTTPSREDIRECT             bool              `pp:",omitempty"`
+		Origins                   []string          `pp:",omitempty"`
+		Port                      string            `default:"8080"`
+		Profiler                  string            `pp:",omitempty"`
+		ServerHost                string            `pp:",omitempty"`
+		SharedPath                string            `default:"shared"`
+		SignupDisabled            bool              `pp:",omitempty"`
+		SignupSecret              string            `pp:",omitempty"`
+		SkipPermissionCheck       bool              `default:"false"`
+		Tracer                    string            `pp:",omitempty"`
+		TracerSample              float64           `pp:",omitempty"`
+		Web                       map[string]string `pp:",omitempty"`
+		Web_App_Disabled          bool              `pp:",omitempty"`
+		Web_Config                JSON              `pp:",omitempty"`
+		Web_Disabled              bool              `pp:",omitempty"`
+		Web_FaviconURL            string            `pp:",omitempty"`
+		Web_Title                 string            `pp:",omitempty"`
+		WorkflowBaseURL           string            `default:"http://localhost:8080/workflows"`
 
 		// storage
 		GCS GCSConfig `pp:",omitempty"`
@@ -94,7 +95,8 @@ type (
 		Worker_PubSubUserFacingLogTopic        string   `envconfig:"WORKER_PUBSUB_USER_FACING_LOG_TOPIC" default:"flow-user-facing-log" pp:",omitempty"`
 		Worker_TaskCount                       string   `envconfig:"WORKER_TASK_COUNT" default:"1" pp:",omitempty"`
 		Worker_ThreadPoolSize                  string   `envconfig:"WORKER_THREAD_POOL_SIZE" default:"30" pp:",omitempty"`
-		Worker_ZstdEnable                      bool     `envconfig:"WORKER_ZSTD_ENABLE" default:"false" pp:",omitempty"`
+		Worker_CompressIntermediateData        bool     `envconfig:"WORKER_COMPRESS_INTERMEDIATE_DATA" default:"false" pp:",omitempty"`
+		Worker_RustLog                         string   `envconfig:"WORKER_RUST_LOG" default:"info" pp:",omitempty"`
 
 		// websocket
 		WebsocketThriftServerURL string `envconfig:"REEARTH_FLOW_WEBSOCKET_THRIFT_SERVER_URL" default:"http://localhost:8000" pp:",omitempty"`

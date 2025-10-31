@@ -22,7 +22,7 @@ on:
 jobs:
   build-worker:
     name: Build Worker
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -63,7 +63,7 @@ jobs:
   build-docker-image:
     name: Build and Push Docker Image
     needs: build-worker
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     if: ${{ inputs.name != 'blank' || inputs.new_tag != 'blank' }}
     permissions:
       contents: read

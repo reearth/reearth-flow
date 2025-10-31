@@ -3,12 +3,17 @@ use num_traits::Bounded;
 use num_traits::Zero;
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
+use std::f64::consts::PI;
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
 
 use flatgeom::{LineString2 as NLineString2, LineString3 as NLineString3};
 use geo_types::LineString as GeoLineString;
 
+use crate::algorithm::utils::denormalize_vertices_2d;
+use crate::types::coordinate::Coordinate2D;
+use crate::types::coordinate::Coordinate3D;
+use crate::types::face::Face;
 use crate::utils::line_string_bounding_rect;
 
 use super::conversion::geojson::create_geo_line_string_2d;
@@ -43,6 +48,13 @@ impl From<LineString<f64, f64>> for LineString<f64, NoValue> {
     }
 }
 
+impl<T: CoordNum, Z: CoordNum> From<Face<T, Z>> for LineString<T, Z> {
+    #[inline]
+    fn from(face: Face<T, Z>) -> Self {
+        LineString(face.0)
+    }
+}
+
 impl<T: CoordNum, Z: CoordNum> LineString<T, Z> {
     pub fn len(&self) -> usize {
         self.0.len()
@@ -68,6 +80,44 @@ impl LineString3D<f64> {
         for coord in &mut self.0 {
             coord.transform_offset(x, y, z);
         }
+    }
+
+    /// Calculates the exterior angle sum of the LineString, assuming that the line is closed and that the line is planar.
+    /// The sign of the angle sum is determined by the normal vector `n`. If `n` is not provided, it is estimated from the cross products of the first segments.
+    pub fn exterior_angle_sum(&self, n: Option<Coordinate3D<f64>>) -> f64 {
+        assert!(
+            self.0.len() >= 3,
+            "LineString must have at least 3 vertices"
+        );
+        assert!(self.0.first() == self.0.last(), "LineString must be closed");
+        let n = n.unwrap_or(
+            self.0
+                .windows(3)
+                .map(|w| {
+                    let a = w[0] - w[1];
+                    let b = w[2] - w[1];
+                    a.cross(&b)
+                })
+                .max_by(|a, b| a.norm().partial_cmp(&b.norm()).unwrap())
+                .unwrap()
+                .normalize(),
+        );
+        let num_vertices = self.0.len() - 1;
+        (0..num_vertices)
+            .map(|i| {
+                let prev = (i + num_vertices - 1) % num_vertices;
+                let next = (i + 1) % num_vertices;
+                let a = self.0[prev] - self.0[i];
+                let b = self.0[next] - self.0[i];
+                let cross = a.cross(&b);
+                let angle = a.angle(&b);
+                if cross.dot(&n) > 0.0 {
+                    PI - angle
+                } else {
+                    angle - PI
+                }
+            })
+            .sum::<f64>()
     }
 }
 
@@ -242,6 +292,14 @@ impl<T: CoordNum, Z: CoordNum> LineString<T, Z> {
             prev = xy;
         }
         area / 2.0
+    }
+
+    /// Splits the LineString at the given index.
+    pub fn split_at(self, index: usize) -> (Self, Self) {
+        assert!(index < self.len());
+        let first = LineString(self.0[..=index].to_vec());
+        let second = LineString(self.0[index..].to_vec());
+        (first, second)
     }
 }
 
@@ -541,5 +599,21 @@ impl<T: CoordNum> From<LineString2D<T>> for GeoLineString<T> {
 impl<T: CoordNum> From<GeoLineString<T>> for LineString2D<T> {
     fn from(line_string: GeoLineString<T>) -> Self {
         LineString2D::new(line_string.0.into_iter().map(Into::into).collect())
+    }
+}
+
+impl<T: CoordFloat> LineString2D<T> {
+    pub fn denormalize_vertices_2d(&mut self, avg: Coordinate2D<T>, norm: Coordinate2D<T>) {
+        denormalize_vertices_2d(&mut self.0, avg, norm);
+    }
+}
+
+impl<T: CoordFloat + From<Z>, Z: CoordFloat> LineString<T, Z> {
+    pub fn get_vertices(&self) -> Vec<&Coordinate<T, Z>> {
+        self.0.iter().collect()
+    }
+
+    pub fn get_vertices_mut(&mut self) -> Vec<&mut Coordinate<T, Z>> {
+        self.0.iter_mut().collect()
     }
 }

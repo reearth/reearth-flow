@@ -29,7 +29,7 @@ const JobRunDialog: React.FC<Props> = ({ setShowDialog }) => {
     Deployment | undefined
   >(undefined);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [currentOrder, setCurrentOrder] = useState<OrderDirection>(
+  const [currentOrder, setCurrentOrderDir] = useState<OrderDirection>(
     OrderDirection.Desc,
   );
   const [openSelectDeploymentsDialog, setOpenSelectDeploymentsDialog] =
@@ -100,12 +100,11 @@ const JobRunDialog: React.FC<Props> = ({ setShowDialog }) => {
           deployments={deployments}
           currentPage={currentPage}
           totalPages={totalPages}
-          currentOrder={currentOrder}
           isFetching={isFetching}
           setShowDialog={() => setOpenSelectDeploymentsDialog(false)}
-          handleSelectDeployment={selectDeployment}
+          onSelectDeployment={selectDeployment}
           setCurrentPage={setCurrentPage}
-          setCurrentOrder={setCurrentOrder}
+          setCurrentOrderDir={setCurrentOrderDir}
         />
       )}
     </Dialog>

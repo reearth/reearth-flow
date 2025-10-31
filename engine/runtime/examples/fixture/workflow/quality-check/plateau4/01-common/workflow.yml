@@ -49,7 +49,41 @@ graphs:
         action: ZipFileWriter
         with:
           output: |
-            file::join_path(env.get("outputPath"), file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip")
+            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
+            let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+            file::join_path(dirname, filename)
+
+      - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
+        name: StatisticsCalculatorTotalErrors
+        type: action
+        action: StatisticsCalculator
+        with:
+          calculations:
+            - newAttribute: totalErrorCount
+              expr: |
+                env.get("__value")["totalErrorCount"] ?? 0
+
+      - id: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+        name: FeatureFilterNoErrors
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value")["totalErrorCount"] == 0
+              outputPort: default
+
+      - id: b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
+        name: FileWriterQcResultOk
+        type: action
+        action: FileWriter
+        with:
+          format: json
+          converter: '[]'
+          output: |
+            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
+            let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+            file::join_path(dirname, filename)
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
@@ -70,5 +104,25 @@ graphs:
       - id: f69a4e59-b7b8-4fab-97cd-112b4d1e4a53
         from: 9309842a-a3a7-4d1b-9216-ef523a6b4789
         to: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
+        fromPort: default
+        toPort: default
+      - id: c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
+        from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+        to: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
+        fromPort: summaryOutput
+        toPort: default
+      - id: d4e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a
+        from: 9309842a-a3a7-4d1b-9216-ef523a6b4789
+        to: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
+        fromPort: summaryOutput
+        toPort: default
+      - id: e5f6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
+        from: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
+        to: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+        fromPort: default
+        toPort: default
+      - id: f6a7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
+        from: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+        to: b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
         fromPort: default
         toPort: default

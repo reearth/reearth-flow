@@ -63,7 +63,7 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 	r := NewDeployment(mongox.NewClientWithDatabase(c))
 
 	// Test without pagination
-	got, pageInfo, err := r.FindByWorkspace(ctx, wid, nil)
+	got, pageInfo, err := r.FindByWorkspace(ctx, wid, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, pageInfo)
 	assert.Equal(t, 3, len(got))
@@ -81,7 +81,7 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 			PageSize: 2,
 		},
 	}
-	got, pageInfo, err = r.FindByWorkspace(ctx, wid, pagination)
+	got, pageInfo, err = r.FindByWorkspace(ctx, wid, pagination, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, pageInfo)
 	assert.Equal(t, 2, len(got))
@@ -98,7 +98,7 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 			PageSize: 2,
 		},
 	}
-	got, pageInfo, err = r.FindByWorkspace(ctx, wid, pagination)
+	got, pageInfo, err = r.FindByWorkspace(ctx, wid, pagination, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, pageInfo)
 	assert.Equal(t, 1, len(got))
@@ -114,7 +114,7 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 			PageSize: 2,
 		},
 	}
-	got, pageInfo, err = r.FindByWorkspace(ctx, wid, pagination)
+	got, pageInfo, err = r.FindByWorkspace(ctx, wid, pagination, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, pageInfo)
 	assert.Equal(t, 0, len(got))
@@ -126,7 +126,7 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 	r2 := r.Filtered(repo.WorkspaceFilter{
 		Readable: id.WorkspaceIDList{wid2},
 	})
-	got, pageInfo, err = r2.FindByWorkspace(ctx, wid, nil)
+	got, pageInfo, err = r2.FindByWorkspace(ctx, wid, nil, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, pageInfo)
 	assert.Equal(t, 0, len(got))

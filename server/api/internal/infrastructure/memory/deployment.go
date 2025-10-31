@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -31,7 +32,7 @@ func (r *Deployment) Filtered(f repo.WorkspaceFilter) repo.Deployment {
 	}
 }
 
-func (r *Deployment) FindByWorkspace(_ context.Context, wid id.WorkspaceID, p *interfaces.PaginationParam) ([]*deployment.Deployment, *interfaces.PageBasedInfo, error) {
+func (r *Deployment) FindByWorkspace(_ context.Context, wid id.WorkspaceID, p *interfaces.PaginationParam, keyword *string) ([]*deployment.Deployment, *interfaces.PageBasedInfo, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -41,9 +42,18 @@ func (r *Deployment) FindByWorkspace(_ context.Context, wid id.WorkspaceID, p *i
 
 	result := []*deployment.Deployment{}
 	for _, d := range r.data {
-		if d.Workspace() == wid {
-			result = append(result, d)
+		if d.Workspace() != wid {
+			continue
 		}
+
+		if keyword != nil && *keyword != "" {
+			desc := strings.ToLower(d.Description())
+			if !strings.Contains(desc, strings.ToLower(*keyword)) && !strings.Contains(strings.ToLower(d.ID().String()), strings.ToLower(*keyword)) {
+				continue
+			}
+		}
+
+		result = append(result, d)
 	}
 
 	total := int64(len(result))

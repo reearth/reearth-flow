@@ -28,7 +28,7 @@ graphs:
             [
               #{
                 cityGmlPath: env.get("cityGmlPath"),
-                cityCode: env.get("cityCode"),
+                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
               },
             ]
 
@@ -40,67 +40,12 @@ graphs:
       - id: ded2e272-e05c-4918-86b3-aa9f763da6e6
         name: FeatureReaderByCityGml
         type: action
-        action: FeatureReader
+        action: FeatureCityGmlReader
         with:
+          flatten: true
           format: citygml
           dataset: |
             env.get("__value")["path"]
-
-      - id: dc498449-5478-4bff-abaa-59f2d160925f
-        name: PLATEAU4.MaxLodExtractor
-        type: action
-        action: PLATEAU4.MaxLodExtractor
-        with:
-          cityGmlPathAttribute: path
-          maxLodAttribute: maxLod
-
-      - id: 1fb4ce1c-538a-436d-8dfa-79185e032de3
-        name: AttributeAggregatorByMaxLod
-        type: action
-        action: AttributeAggregator
-        with:
-          aggregateAttributes:
-          - newAttribute: file
-            attributeValue: |
-              file::extract_filename(env.get("__value")["path"])
-          - newAttribute: type
-            attributeValue: |
-              env.get("__feature_type")
-          - newAttribute: maxLod
-            attributeValue: |
-              env.get("__value").maxLod
-          calculation: |
-            1
-          calculationAttribute: count
-          method: count
-
-      - id: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
-        name: AttributeMapperByMaxLod
-        type: action
-        action: AttributeMapper
-        with:
-          mappers:
-          - attribute: code
-            expr: |
-              env.get("__value").file[0..6]
-          - attribute: type
-            expr: |
-              env.get("__value")["type"].split(":")[0]
-          - attribute: maxLod
-            expr: |
-              env.get("__value").maxLod
-          - attribute: file
-            expr: |
-              env.get("__value").file
-
-      - id: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
-        name: FileWriterTsvFilePath
-        type: action
-        action: FileWriter
-        with:
-          format: tsv
-          output: |
-            file::join_path(env.get("outputPath"), "maxLod.tsv")
 
       - id: c32a279d-97be-4584-b282-4d65627b1132
         name: FeatureLodFilter
@@ -109,12 +54,25 @@ graphs:
         with:
           filterKey: path
 
-      - id: 2ccf7b99-4123-446e-8ff7-049be1c604c7
-        name: FeatureDuplicateFilter
+      - id: 8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+        name: FeatureTypeFilterTrafficArea
         type: action
-        action: FeatureDuplicateFilter
+        action: FeatureTypeFilter
+        with:
+          targetTypes:
+            - "tran:TrafficArea"
+            - "tran:AuxiliaryTrafficArea"
 
-      - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+      - id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+        name: FeatureTypeFilterTrafficAreaLod3
+        type: action
+        action: FeatureTypeFilter
+        with:
+          targetTypes:
+            - "tran:TrafficArea"
+            - "tran:AuxiliaryTrafficArea"
+
+      - id: 2ccf7b99-4123-446e-8ff7-049be1c604c7
         name: AttributeMapperByLod0-2
         type: action
         action: AttributeMapper
@@ -131,9 +89,25 @@ graphs:
             - attribute: feature_type
               valueAttribute: gmlName
             - attribute: gml_id
-              valueAttribute: gmlId
+              expr: |
+                env.get("__feature_id")
             - attribute: lod
-              valueAttribute: maxLod
+              expr: |
+                env.get("__lod")
+            - attribute: _folder_package
+              valueAttribute: package
+
+      - id: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
+        name: FeatureSorter
+        type: action
+        action: FeatureSorter
+        with:
+          attributes:
+            # sorting is required by MVT writer
+            # must sort by output path, not feature type
+            - _folder_package
+            - lod
+          order: ascending
 
       - id: 7a17c4f9-dd4d-44b0-936c-50c394272016
         name: MVTWriter
@@ -145,7 +119,7 @@ graphs:
           minZoom: 8
           maxZoom: 16
           output: |
-            file::join_path(env.get("outputPath"), env.get("__value").feature_type.split(":")[0] + "_lod" + env.get("__value").lod)
+            file::join_path(env.get("outputPath"), env.get("__value")._folder_package + "_lod" + env.get("__value").lod)
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
@@ -156,26 +130,6 @@ graphs:
       - id: 64196428-ea1b-4177-9d66-28331fad14f8
         from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
         to: ded2e272-e05c-4918-86b3-aa9f763da6e6
-        fromPort: default
-        toPort: default
-      - id: cf845867-6ffc-4b83-9fd5-e376a22470e2
-        from: ded2e272-e05c-4918-86b3-aa9f763da6e6
-        to: dc498449-5478-4bff-abaa-59f2d160925f
-        fromPort: default
-        toPort: default
-      - id: 046c94ea-9937-4439-b5f8-c8a616f6599d
-        from: dc498449-5478-4bff-abaa-59f2d160925f
-        to: 1fb4ce1c-538a-436d-8dfa-79185e032de3
-        fromPort: default
-        toPort: default
-      - id: 59c14dab-0e56-4f90-85e6-0c8cfa6d1d14
-        from: 1fb4ce1c-538a-436d-8dfa-79185e032de3
-        to: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
-        fromPort: default
-        toPort: default
-      - id: 993360df-5cfd-4525-9626-bfe13fa62117
-        from: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
-        to: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
         fromPort: default
         toPort: default
       - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
@@ -193,23 +147,28 @@ graphs:
         to: 2ccf7b99-4123-446e-8ff7-049be1c604c7
         fromPort: up_to_lod1
         toPort: default
-      - id: dde1d751-fe3e-4283-8742-ec4a61a41574
-        from: c32a279d-97be-4584-b282-4d65627b1132
-        to: 2ccf7b99-4123-446e-8ff7-049be1c604c7
-        fromPort: up_to_lod0
-        toPort: default
       - id: 7303c673-ccf3-4075-9eec-97176ced4b86
         from: c32a279d-97be-4584-b282-4d65627b1132
-        to: 2ccf7b99-4123-446e-8ff7-049be1c604c7
+        to: 8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
         fromPort: up_to_lod2
+        toPort: default
+      - id: 9a8b7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d
+        from: 8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+        to: 2ccf7b99-4123-446e-8ff7-049be1c604c7
+        fromPort: default
+        toPort: default
+      - id: 2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e
+        from: c32a279d-97be-4584-b282-4d65627b1132
+        to: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+        fromPort: up_to_lod3
         toPort: default
       - id: 841f1bed-a4d3-4425-a754-4f0dd7461ead
         from: 2ccf7b99-4123-446e-8ff7-049be1c604c7
-        to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        to: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
         fromPort: default
         toPort: default
-      - id: bef08313-519f-48b5-b74c-6744bbc6bee2
-        from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+      - id: 3c7d9e2f-4a5b-6c8d-9e0f-1a2b3c4d5e6f
+        from: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
         to: 7a17c4f9-dd4d-44b0-936c-50c394272016
         fromPort: default
         toPort: default

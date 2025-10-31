@@ -16,5 +16,6 @@
   },
   "cityGmlPath": "udx/bldg/test_buildingpart.gml",
   "codelists": "codelists",
-  "schemas": "schemas"
+  "schemas": "schemas",
+  "expectResultOkFile": false
 }
