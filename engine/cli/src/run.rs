@@ -112,18 +112,34 @@ impl RunCliCommand {
     pub fn execute(&self) -> crate::Result<()> {
         debug!(args = ?self, "run-workflow");
         let storage_resolver = Arc::new(resolve::StorageResolver::new());
-        let json = if self.workflow_path == "-" {
-            io::read_to_string(io::stdin()).map_err(crate::errors::Error::init)?
+        let (yaml_content, base_dir) = if self.workflow_path == "-" {
+            let content = io::read_to_string(io::stdin()).map_err(crate::errors::Error::init)?;
+            (content, None)
         } else {
             let path = Uri::for_test(self.workflow_path.as_str());
+
+            // Extract base directory for !include resolution
+            let base_dir = path.path().parent().map(|p| p.to_path_buf());
+
             let storage = storage_resolver
                 .resolve(&path)
                 .map_err(crate::errors::Error::init)?;
             let bytes = storage
                 .get_sync(path.path().as_path())
                 .map_err(crate::errors::Error::init)?;
-            String::from_utf8(bytes.to_vec()).map_err(crate::errors::Error::init)?
+            let content = String::from_utf8(bytes.to_vec()).map_err(crate::errors::Error::init)?;
+            (content, base_dir)
         };
+
+        // Expand !include directives
+        let json = if let Some(base) = base_dir.as_ref() {
+            reearth_flow_common::serde::expand_yaml_includes(&yaml_content, Some(base))
+                .map_err(crate::errors::Error::init)?
+        } else {
+            reearth_flow_common::serde::expand_yaml_includes(&yaml_content, None)
+                .map_err(crate::errors::Error::init)?
+        };
+
         let mut workflow = Workflow::try_from(json.as_str()).map_err(crate::errors::Error::init)?;
         workflow
             .merge_with(self.vars.clone())
