@@ -32,10 +32,10 @@ pub(crate) mod math_module {
     /// ```
     pub const E: f64 = std::f64::consts::E;
 
-    /// Returns the mathematical constant τ (tau), equal to 2π.
+    /// The mathematical constant τ (tau), equal to 2π.
     ///
-    /// # Returns
-    /// The value of τ = 2π ≈ 6.28318530717958647692
+    /// # Value
+    /// τ = 2π ≈ 6.28318530717958647692
     ///
     /// # Why use tau?
     /// Some mathematicians argue that τ is more natural than π because:
@@ -45,14 +45,12 @@ pub(crate) mod math_module {
     ///
     /// # Example
     /// ```rhai
-    /// let tau_value = math::tau();
-    /// let full_circle = math::tau();  // One complete rotation in radians
-    /// let half_circle = math::tau() / 2.0;  // Same as π
-    /// let quarter_circle = math::tau() / 4.0;  // Same as π/2
+    /// let tau_value = math::TAU;
+    /// let full_circle = math::TAU;  // One complete rotation in radians
+    /// let half_circle = math::TAU / 2.0;  // Same as π
+    /// let quarter_circle = math::TAU / 4.0;  // Same as π/2
     /// ```
-    pub fn tau() -> f64 {
-        2.0 * PI
-    }
+    pub const TAU: f64 = std::f64::consts::TAU;
 
     // ============================================================================
     // Trigonometric Functions (Core)
@@ -725,6 +723,11 @@ mod tests {
             E,
             std::f64::consts::E,
             "E constant should match std::f64::consts::E",
+        );
+        assert_approx_eq(
+            TAU,
+            std::f64::consts::TAU,
+            "TAU constant should match std::f64::consts::TAU",
         );
     }
 
