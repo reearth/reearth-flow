@@ -9,13 +9,17 @@ import {
 import { useCallback } from "react";
 
 import { useCopyPaste } from "@flow/hooks/useCopyPaste";
+import { useT } from "@flow/lib/i18n";
 import type { Edge, Node, NodeChange, Workflow } from "@flow/types";
 import { generateUUID } from "@flow/utils";
+
+import { toast } from "../NotificationSystem/useToast";
 
 export default ({
   nodes,
   edges,
   rawWorkflows,
+  isMainWorkflow,
   handleWorkflowUpdate,
   handleNodesAdd,
   handleNodesChange,
@@ -25,6 +29,7 @@ export default ({
   nodes: Node[];
   edges: Edge[];
   rawWorkflows: Workflow[];
+  isMainWorkflow: boolean;
   handleWorkflowUpdate: (
     workflowId: string,
     nodes?: Node[],
@@ -38,7 +43,7 @@ export default ({
   const { copy, paste } = useCopyPaste();
   const { x, y, zoom } = useViewport();
   const { screenToFlowPosition } = useReactFlow();
-
+  const t = useT();
   const newEdgeCreation = useCallback(
     (pastedEdges: Edge[], oldNodes: Node[], newNodes: Node[]): Edge[] => {
       let newEdges: Edge[] = [];
@@ -353,6 +358,18 @@ export default ({
         edges: [],
       };
 
+      if (
+        !isMainWorkflow &&
+        pastedNodes.some((n: any) => n.type === "reader" || n.type === "writer")
+      ) {
+        return toast({
+          title: t("Readers/Writers not allowed"),
+          description: t(
+            "Reader and Writer nodes cannot be pasted into subworkflows.",
+          ),
+        });
+      }
+
       const newNodes = newNodeCreation(
         pastedNodes,
         mousePosition,
@@ -400,6 +417,8 @@ export default ({
     [
       nodes,
       edges,
+      isMainWorkflow,
+      t,
       copy,
       paste,
       handleNodesAdd,
