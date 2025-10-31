@@ -34,6 +34,7 @@ pub mod remove_repeated_points;
 pub mod rotate;
 pub mod segment_triangle_intersection;
 pub mod sweep;
+pub mod tolerance;
 pub mod transverse_mercator_proj;
 pub mod triangle_intersection;
 pub mod utils;

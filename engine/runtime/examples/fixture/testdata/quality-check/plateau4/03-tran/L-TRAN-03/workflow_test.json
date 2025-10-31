@@ -1,0 +1,21 @@
+{
+  "workflowPath": "quality-check/plateau4/03-tran/workflow.yml",
+  "description": "Test for plateau4 L-TRAN-03 inspection.",
+  "expectedOutput": {
+    "expectedFile": "03_交通_xlink参照エラー.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_tran.json",
+      "includeFields": ["L-TRAN-03 xlink参照エラー"]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "03_交通_検査結果一覧.csv",
+      "includeColumns": ["L-TRAN-03 xlink参照エラー"]
+    }
+  },
+  "cityGmlPath": "udx/tran/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectResultOkFile": false
+}

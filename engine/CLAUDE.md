@@ -68,8 +68,14 @@ Each action defines input/output ports, JSON schema for validation, and paramete
 ### Expression System
 - Uses **Rhai scripting language** for dynamic parameter evaluation
 - Available in action parameters and workflow variables
-- Built-in modules for file ops, JSON processing, string manipulation
-- Feature context provides access to attributes, metadata, geometry
+- Built-in modules: `math::`, `file::`, `json::`, `xml::`, `str::`, `datetime::`, `collection::`, `console::`
+- **math:: module** provides comprehensive mathematical functions:
+  - Trigonometry: `sin()`, `cos()`, `tan()`, `asin()`, `acos()`, `atan()`, `atan2()`
+  - Constants: `pi()`, `e()`
+  - Utilities: `sqrt()`, `pow()`, `abs()`, `max()`, `min()`, `floor()`, `ceil()`, `round()`
+  - Angle conversion: `to_radians()`, `to_degrees()`
+- Feature context provides access to attributes, metadata, geometry via `env.get("__value")`
+- See `docs/expression-math-functions.md` for complete math function reference
 
 ### Environment Variables
 Runtime behavior controlled by `FLOW_RUNTIME_*` variables:

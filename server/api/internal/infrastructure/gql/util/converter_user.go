@@ -17,11 +17,6 @@ func ToMe(m gqlmodel.Me) (*user.User, error) {
 		return nil, err
 	}
 
-	workspaces, err := ToWorkspaces(m.Workspaces)
-	if err != nil {
-		return nil, err
-	}
-
 	return user.New().
 		ID(uid).
 		Name(string(m.Name)).
@@ -31,7 +26,6 @@ func ToMe(m gqlmodel.Me) (*user.User, error) {
 		Host(lo.ToPtr(string(m.Host))).
 		MyWorkspaceID(wid).
 		Auths(toStringSlice(m.Auths)).
-		Workspaces(workspaces).
 		Build()
 }
 

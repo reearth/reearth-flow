@@ -115,10 +115,12 @@ export const useTrigger = () => {
 
   const useGetTriggers = (
     workspaceId?: string,
+    keyword?: string,
     paginationOptions?: PaginationOptions,
   ) => {
     const { data, ...rest } = useGetTriggersQuery(
       workspaceId,
+      keyword,
       paginationOptions,
     );
     return {
