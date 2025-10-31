@@ -273,7 +273,7 @@ impl From<CityGmlGeometry> for FlowGeometry2D {
         // Return geometry based on what's available
         if !polygons.is_empty() {
             if !line_strings.is_empty() {
-                tracing::warn!("CityGML feature contains both polygons and linestrings. Linestrings will be dropped");
+                tracing::warn!("CityGML feature contains both polygons and line strings. Line strings will be dropped");
             }
             Self::MultiPolygon(MultiPolygon2D::from(polygons))
         } else if !line_strings.is_empty() {

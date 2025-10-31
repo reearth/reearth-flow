@@ -234,7 +234,9 @@ impl Dissolver {
         }
 
         // Only create feature if we accumulated some geometry
-        if multi_polygon_2d.is_empty() { return None; }
+        if multi_polygon_2d.is_empty() {
+            return None;
+        }
 
         let mut feature = Feature::new();
 
