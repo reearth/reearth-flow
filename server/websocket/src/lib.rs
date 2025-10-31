@@ -14,6 +14,7 @@ pub mod tools;
 pub mod ws;
 pub use broadcast::group;
 pub use broadcast::pool;
+pub use broadcast::redis_channels;
 pub use infrastructure::redis::RedisStore;
 
 pub type AwarenessRef = Arc<RwLock<yrs::sync::Awareness>>;
