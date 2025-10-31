@@ -151,6 +151,7 @@ export FLOW_VAR_targetPackages='["bldg", "fld"]'
 | FLOW_RUNTIME_WORKING_DIRECTORY                | working directory                                                  | macOS: `$HOME/Library/Caches/<project_path>`, Linux: `$HOME/.cache/<project_path>`, Windows: `%LOCALAPPDATA%\<project_path>` |
 | FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS | Delay (ms) to ensure node status events propagate                  | 500     |
 | FLOW_RUNTIME_COMPRESS_INTERMEDIATE_DATA       | Enable zstd compression for Intermediate Data I/O.                 | false   |
+| FLOW_RUNTIME_PERSIST_INGRESS_DATA             | Enable saving data features from Source nodes                      | false   |
 
 ## Intermediate Data & Cache
 
@@ -209,6 +210,13 @@ $ cargo run --package reearth-flow-cli -- run --workflow ${workflow_path}
 
 ```console
 $ export FLOW_RUNTIME_COMPRESS_INTERMEDIATE_DATA=true
+$ cargo run --package reearth-flow-cli -- run --workflow ${workflow_path}
+```
+
+#### Enable saving data features from Source nodes
+
+```console
+$ export FLOW_RUNTIME_PERSIST_INGRESS_DATA=true
 $ cargo run --package reearth-flow-cli -- run --workflow ${workflow_path}
 ```
 
