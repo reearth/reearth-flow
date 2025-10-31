@@ -2,12 +2,19 @@ import {
   CaretLeftIcon,
   CopyIcon,
   PencilLineIcon,
+  QuestionIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 
-import { Button, IconButton } from "@flow/components";
+import {
+  Button,
+  IconButton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@flow/components";
 import { config } from "@flow/config";
 import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
@@ -164,47 +171,62 @@ const TriggerDetails: React.FC<Props> = ({
               </span>
               {t("How to Trigger API Driven Event:")}
             </p>
-            <ol className="list-inside list-decimal space-y-2 text-sm text-muted-foreground">
-              <li className="flex items-center gap-1">
-                <span className="font-semibold">{t("Endpoint:")}</span>
-                <div className="max-w-full overflow-x-auto overflow-y-hidden p-1">
-                  <span className="rounded border bg-background px-2 py-1 font-mono text-xs whitespace-nowrap">
-                    POST {apiUrl}/api/triggers/{selectedTrigger.id}/run
-                  </span>
-                </div>
-                <IconButton
-                  size="icon"
-                  variant="ghost"
-                  className="ml-1"
-                  onClick={() =>
-                    handleCopyToClipboard(
-                      `${apiUrl}/api/triggers/${selectedTrigger.id}/run`,
-                    )
-                  }
-                  icon={<CopyIcon />}
-                />
-              </li>
-              <li>
-                <span className="font-semibold">{t("Auth:")}</span>{" "}
-                {t(
-                  `Add token to "Authorization: Bearer ${selectedTrigger.authToken}" header`,
-                )}
-              </li>
-              <li>
-                <span className="font-semibold">{t("Custom Variables:")}</span>{" "}
-                {t(
-                  'Pass {"with": {"key": "value"}} in body to inject dynamic parameters into workflow execution. These variables override/supplement default workflow values and are accessible in nodes.',
-                )}
-              </li>
-              <li>
-                <span className="font-semibold">{t("Callback:")}</span>{" "}
-                {t('Optional "notificationUrl" for status updates')}
-              </li>
-              <li>
-                <span className="font-semibold">{t("Response:")}</span>{" "}
-                {t("Returns runId, deploymentId, and job status")}
-              </li>
-            </ol>
+            <div className="flex flex-nowrap items-center gap-2">
+              <span className="font-semibold">1. {t("Endpoint:")}</span>
+              <div className="max-w-[200px] overflow-x-auto overflow-y-hidden p-1">
+                <span className="rounded border bg-background px-2 py-1 font-mono text-xs whitespace-nowrap">
+                  POST {apiUrl}/api/triggers/{selectedTrigger.id}/run
+                </span>
+              </div>
+              <IconButton
+                size="icon"
+                variant="ghost"
+                className="ml-1 shrink-0"
+                onClick={() =>
+                  handleCopyToClipboard(
+                    `${apiUrl}/api/triggers/${selectedTrigger.id}/run`,
+                  )
+                }
+                icon={<CopyIcon />}
+              />
+            </div>
+            <div>
+              <span className="font-semibold">2. {t("Auth:")}</span>{" "}
+              {t(
+                `Add token to "Authorization: Bearer ${selectedTrigger.authToken}" header`,
+              )}
+            </div>
+            <div className="flex flex-wrap items-center">
+              <span className="font-semibold">3. {t("Custom Variables")}</span>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="cursor-pointer p-1">
+                    <QuestionIcon className="h-4 w-4" weight="thin" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" align="end" className="bg-primary">
+                  <div className="max-w-[300px] text-xs text-muted-foreground">
+                    {t(
+                      'Pass {"with": {"key": "value"}} in body to inject dynamic parameters into workflow execution. These variables override/supplement default workflow values and are accessible in nodes.',
+                    )}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+
+              <span className="mx-1">:</span>
+
+              <span>{t('Pass {"with": {"key": "value"}} in body')}</span>
+            </div>
+
+            <div>
+              <span className="font-semibold">4. {t("Callback:")}</span>{" "}
+              {t('Optional "notificationUrl" for status updates')}
+            </div>
+            <div>
+              <span className="font-semibold">5. {t("Response:")}</span>{" "}
+              {t("Returns runId, deploymentId, and job status")}
+            </div>
           </div>
         )}
       </div>
