@@ -150,7 +150,20 @@ impl Processor for Dissolver {
             GeometryValue::None => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             }
-            GeometryValue::FlowGeometry2D(_) => {
+            GeometryValue::FlowGeometry2D(g2d) => {
+                // Check if this feature has polygons to dissolve
+                let has_polygons = if let Some(mp) = g2d.as_multi_polygon() {
+                    !mp.0.is_empty()
+                } else {
+                    g2d.as_polygon().is_some()
+                };
+
+                // Pass through features without polygons (e.g., line strings)
+                if !has_polygons {
+                    fw.send(ctx.new_with_feature_and_port(feature.clone(), AREA_PORT.clone()));
+                    return Ok(());
+                }
+
                 let key = if let Some(group_by) = &self.group_by {
                     AttributeValue::Array(
                         group_by

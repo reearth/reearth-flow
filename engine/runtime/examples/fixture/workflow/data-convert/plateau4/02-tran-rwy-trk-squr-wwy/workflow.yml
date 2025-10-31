@@ -103,7 +103,7 @@ graphs:
         action: FeatureSorter
         with:
           attributes:
-            # sorting is required by MVT writer
+            # sorting is required by MVT writer and dissolver
             # must sort by output path, not feature type
             - _folder_package
             - lod
@@ -123,6 +123,7 @@ graphs:
         with:
           groupBy:
             - gml_id
+            - _folder_package
             - lod
           attributeAccumulationMode: useOne
 

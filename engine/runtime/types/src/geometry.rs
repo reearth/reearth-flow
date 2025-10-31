@@ -4,11 +4,12 @@ use std::hash::Hash;
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use reearth_flow_geometry::types::coordinate::Coordinate3D;
 use reearth_flow_geometry::types::coordnum::CoordNum;
-use reearth_flow_geometry::types::line_string::LineString3D;
+use reearth_flow_geometry::types::line_string::{LineString2D, LineString3D};
 use reearth_flow_geometry::types::traits::Elevation;
 
 use nusamai_projection::crs::EpsgCode;
 use reearth_flow_geometry::algorithm::hole::HoleCounter;
+use reearth_flow_geometry::types::multi_line_string::MultiLineString2D;
 use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
 use reearth_flow_geometry::utils::are_points_coplanar;
 use serde::{Deserialize, Serialize};
@@ -258,12 +259,28 @@ impl Default for MaxMinVertice {
 impl From<CityGmlGeometry> for FlowGeometry2D {
     fn from(geometry: CityGmlGeometry) -> Self {
         let mut polygons = Vec::<Polygon2D<f64>>::new();
+        let mut line_strings = Vec::<LineString2D<f64>>::new();
+
         for gml_geometry in geometry.gml_geometries {
             for polygon in gml_geometry.polygons {
                 polygons.push(polygon.into());
             }
+            for line_string in gml_geometry.line_strings {
+                line_strings.push(line_string.into());
+            }
         }
-        Self::MultiPolygon(MultiPolygon2D::from(polygons))
+
+        // Return geometry based on what's available
+        if !polygons.is_empty() {
+            if !line_strings.is_empty() {
+                tracing::warn!("CityGML feature contains both polygons and linestrings. Linestrings will be dropped");
+            }
+            Self::MultiPolygon(MultiPolygon2D::from(polygons))
+        } else if !line_strings.is_empty() {
+            Self::MultiLineString(MultiLineString2D::new(line_strings))
+        } else {
+            Self::MultiPolygon(MultiPolygon2D::from(Vec::new()))
+        }
     }
 }
 
