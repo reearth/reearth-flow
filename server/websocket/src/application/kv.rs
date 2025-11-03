@@ -408,9 +408,7 @@ where
 
         if let Some(data) = self.get(doc_key_bytes).await? {
             if data.as_ref().is_empty() {
-                return Err(anyhow::anyhow!(
-                    "Document data is empty for key: {doc_key}"
-                ));
+                return Err(anyhow::anyhow!("Document data is empty for key: {doc_key}"));
             }
             let decompressed_data = decompress_brotli(data.as_ref())?;
             if let Ok(update) = Update::decode_v2(&decompressed_data) {
