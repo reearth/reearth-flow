@@ -409,8 +409,7 @@ where
         if let Some(data) = self.get(doc_key_bytes).await? {
             if data.as_ref().is_empty() {
                 return Err(anyhow::anyhow!(
-                    "Document data is empty for key: {}",
-                    doc_key
+                    "Document data is empty for key: {doc_key}"
                 ));
             }
             let decompressed_data = decompress_brotli(data.as_ref())?;
@@ -516,14 +515,14 @@ where
                         return Ok(oid);
                     }
                 } else {
-                    return Err(anyhow::anyhow!("Failed to acquire OID lock: {}", e));
+                    return Err(anyhow::anyhow!("Failed to acquire OID lock: {e}"));
                 }
             }
         }
     }
 
     let lock_value = lock_value.ok_or_else(|| {
-        anyhow::anyhow!("Failed to acquire OID lock after {} attempts", max_retries)
+        anyhow::anyhow!("Failed to acquire OID lock after {max_retries} attempts")
     })?;
 
     if let Some(oid) = get_oid(db, name).await? {

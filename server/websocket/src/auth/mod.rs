@@ -54,7 +54,7 @@ impl AuthService {
 
         if !response.status().is_success() {
             let error_text = response.text().await?;
-            return Err(anyhow!("Token verification failed: {}", error_text));
+            return Err(anyhow!("Token verification failed: {error_text}"));
         }
 
         let verify_response = response.json::<TokenVerifyResponse>().await?;
