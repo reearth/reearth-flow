@@ -9,8 +9,8 @@ use crate::{
         cesium3dtiles::sink::Cesium3DTilesSinkFactory, csv::CsvWriterFactory,
         czml::CzmlWriterFactory, excel_writer::ExcelWriterFactory, geojson::GeoJsonWriterFactory,
         gltf::GltfWriterSinkFactory, json::JsonWriterFactory, mvt::sink::MVTSinkFactory,
-        obj::ObjWriterFactory, shapefile::ShapefileWriterFactory,
-        xml::XmlWriterFactory, zip::ZipFileWriterFactory,
+        obj::ObjWriterFactory, shapefile::ShapefileWriterFactory, xml::XmlWriterFactory,
+        zip::ZipFileWriterFactory,
     },
     noop::NoopSinkFactory,
 };

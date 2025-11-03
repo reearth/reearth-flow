@@ -9,8 +9,7 @@ use crate::{
         citygml::CityGmlReaderFactory, csv::CsvReaderFactory, czml::CzmlReaderFactory,
         geojson::GeoJsonReaderFactory, geopackage::GeoPackageReaderFactory,
         gltf::GltfReaderFactory, json::JsonReaderFactory, obj::ObjReaderFactory,
-        path_extractor::FilePathExtractorFactory,
-        shapefile::ShapefileReaderFactory,
+        path_extractor::FilePathExtractorFactory, shapefile::ShapefileReaderFactory,
     },
     sql::SqlReaderFactory,
 };
