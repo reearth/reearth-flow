@@ -79,9 +79,9 @@ graphs:
       - id: 7debf320-37c4-414e-acab-9f2fb41e2848
         name: FileTSVWriterC02
         type: action
-        action: FileWriter
+        action: CsvWriter
         with:
-          format: tsv
+          delimiter: "\t"
           output: |
             file::join_path(env.get("outputPath"), "地物インスタンス数.tsv")
 
@@ -159,9 +159,9 @@ graphs:
       - id: 286ffd20-54e8-4a88-97bb-dd718b5b05e6
         name: FileWriterTsv-05-InvalidOrientation
         type: action
-        action: FileWriter
+        action: CsvWriter
         with:
-          format: tsv
+          delimiter: "\t"
           output: |
             file::join_path(env.get("outputPath"), "不正な面の向きエラー.tsv")
 
@@ -196,9 +196,9 @@ graphs:
       - id: 70a9225b-b900-4b41-859e-6bd951841fbe
         name: FileWriterTsv-05-InvalidSurface
         type: action
-        action: FileWriter
+        action: CsvWriter
         with:
-          format: tsv
+          delimiter: "\t"
           output: |
             file::join_path(env.get("outputPath"), "不正な面エラー.tsv")
 
@@ -238,9 +238,9 @@ graphs:
       - id: 4372e35f-fe90-442b-9bab-167d8fa08f23
         name: FileWriterTsvResult
         type: action
-        action: FileWriter
+        action: CsvWriter
         with:
-          format: tsv
+          delimiter: "\t"
           output: |
             file::join_path(env.get("outputPath"), "検査結果一覧.tsv")
 

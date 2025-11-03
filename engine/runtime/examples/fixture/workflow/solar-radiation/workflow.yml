@@ -298,9 +298,8 @@ graphs:
       - id: 88888888-8888-8888-8888-888888888888
         name: WriteResultsCSV
         type: action
-        action: FileWriter
+        action: CsvWriter
         with:
-          format: csv
           output: |
             "solar-radiation-results.csv"
 

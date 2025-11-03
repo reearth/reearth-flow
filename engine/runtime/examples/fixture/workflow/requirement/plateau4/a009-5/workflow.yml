@@ -9,9 +9,8 @@ graphs:
       - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
         name: FileReader
         type: action
-        action: FileReader
+        action: CityGmlReader
         with:
-          format: citygml
           dataset: |
             file::join_path(env.get("currentPath"), file::convert_slice_to_slash("runtime/examples/fixture/workflow/requirement/plateau4/a009-5/files/52310614_bldg_6697_op.gml"))
 

@@ -33,9 +33,8 @@ graphs:
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: CSVWriter
         type: action
-        action: FileWriter
+        action: CsvWriter
         with:
-          format: csv
           output: |
             file::join_path(env.get("currentPath"), "a009-4.csv")
 

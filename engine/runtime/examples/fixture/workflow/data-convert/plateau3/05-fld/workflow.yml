@@ -62,9 +62,9 @@ graphs:
       - id: 6e2a7c56-1ce3-48ee-b969-b1a1a0f057ca
         name: FileWriterTsvFilePath
         type: action
-        action: FileWriter
+        action: CsvWriter
         with:
-          format: tsv
+          delimiter: "\t"
           output: |
             file::join_path(env.get("outputPath"), "maxLod.tsv")
 

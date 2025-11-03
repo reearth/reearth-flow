@@ -37,11 +37,10 @@ graphs:
           text_to_find: null
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
-        name: FileWriter
+        name: JsonWriter
         type: action
-        action: FileWriter
+        action: JsonWriter
         with:
-          format: json
           output: |
             env.get("outputFilePath")
 

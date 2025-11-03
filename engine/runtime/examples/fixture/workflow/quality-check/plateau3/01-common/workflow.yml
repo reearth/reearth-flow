@@ -218,9 +218,9 @@ graphs:
       - id: 94e4f345-c22d-4dc0-b3e0-6e914172e2fa
         name: FileWriterTsv
         type: action
-        action: FileWriter
+        action: CsvWriter
         with:
-          format: tsv
+          delimiter: "\t"
           output: |
             file::join_path(env.get("outputPath"), "01_共通.tsv")
 
@@ -273,9 +273,8 @@ graphs:
       - id: b1d1c5d0-12a1-46d6-ac35-803f3eb22d63
         name: FileWriterJson
         type: action
-        action: FileWriter
+        action: JsonWriter
         with:
-          format: json
           converter: |
             if env.get("__features").is_empty() {
               []
