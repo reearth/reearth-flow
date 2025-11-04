@@ -300,6 +300,7 @@ graphs:
         type: action
         action: CsvWriter
         with:
+          format: csv
           output: |
             "solar-radiation-results.csv"
 

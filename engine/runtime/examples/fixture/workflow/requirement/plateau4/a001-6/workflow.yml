@@ -47,6 +47,7 @@ graphs:
         type: action
         action: CsvWriter
         with:
+          format: csv
           output: |
             file::join_path(env.get("currentPath"), "a001-6.csv")
 
