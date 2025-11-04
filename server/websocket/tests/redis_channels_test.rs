@@ -1,4 +1,4 @@
-use websocket::redis_channels::RedisChannels;
+use websocket::infrastructure::websocket::redis_channels::RedisChannels;
 
 #[tokio::test]
 async fn test_redis_channels_new() {
