@@ -1,25 +1,20 @@
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-#[cfg(feature = "auth")]
-pub mod auth;
-
 pub mod application;
-mod broadcast;
 pub mod conf;
 pub mod domain;
 pub mod infrastructure;
-pub mod interface;
-pub mod tools;
-pub mod ws;
-pub use broadcast::group;
-pub use broadcast::pool;
-pub use broadcast::redis_channels;
+pub mod presentation;
+pub mod shared;
 pub use infrastructure::redis::RedisStore;
 
 pub type AwarenessRef = Arc<RwLock<yrs::sync::Awareness>>;
 
-pub mod server;
+pub use infrastructure::websocket::BroadcastPool;
+pub type WebsocketUseCase = application::usecases::websocket::WebsocketUseCase<BroadcastPool>;
+
+pub use presentation::http::server::{ensure_bucket, start_server};
 
 #[cfg(feature = "auth")]
 #[derive(Debug, serde::Deserialize)]
@@ -35,12 +30,13 @@ pub struct RollbackQuery {
     #[serde(default)]
     pub token: String,
 }
-
 #[cfg(feature = "auth")]
 #[derive(Clone, Debug)]
 pub struct AppState {
     pub pool: Arc<BroadcastPool>,
-    pub auth: Arc<AuthService>,
+    pub document_usecase: Arc<DocumentUseCase>,
+    pub websocket_usecase: Arc<WebsocketUseCase>,
+    pub auth_usecase: Arc<application::usecases::auth::VerifyTokenUseCase>,
     pub instance_id: String,
 }
 
@@ -48,30 +44,28 @@ pub struct AppState {
 #[derive(Clone, Debug)]
 pub struct AppState {
     pub pool: Arc<BroadcastPool>,
+    pub document_usecase: Arc<DocumentUseCase>,
+    pub websocket_usecase: Arc<WebsocketUseCase>,
     pub instance_id: String,
 }
 
-#[cfg(feature = "auth")]
-pub use auth::AuthService;
-
 pub use conf::Config;
+pub use domain::entities::doc::HistoryItem;
 pub use domain::value_objects::conf::{
     DEFAULT_APP_ENV, DEFAULT_GCS_BUCKET, DEFAULT_ORIGINS, DEFAULT_REDIS_TTL, DEFAULT_REDIS_URL,
     DEFAULT_WS_PORT,
 };
-pub use domain::value_objects::http::*;
-pub use domain::value_objects::sub::Subscription;
 
+pub use application::usecases::document::{DocumentUseCase, DocumentUseCaseError};
+pub use application::usecases::websocket::WebsocketUseCaseError;
 #[cfg(feature = "auth")]
 pub use domain::value_objects::conf::DEFAULT_AUTH_URL;
 pub use domain::value_objects::redis::{
     RedisConfig, RedisField, RedisFields, RedisPool, RedisStreamMessage, RedisStreamResult,
     RedisStreamResults, StreamMessages, MESSAGE_TYPE_AWARENESS, MESSAGE_TYPE_SYNC, OID_LOCK_KEY,
 };
-pub use group::BroadcastGroup;
+pub use domain::value_objects::websocket::{ConnectionCounter, ShutdownHandle, Subscription};
 pub use infrastructure::gcs::GcsStore;
-pub use interface::http::handlers::DocumentHandler;
-pub use interface::http::router::document_routes;
-pub use interface::websocket::conn::Connection;
-pub use pool::BroadcastPool;
-pub use server::{ensure_bucket, start_server};
+pub use infrastructure::websocket::{BroadcastGroup, CollaborativeStorage};
+pub use presentation::http::handlers::document_handler::DocumentHandler;
+pub use presentation::http::router::document_routes;

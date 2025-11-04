@@ -1,6 +1,6 @@
-use crate::application::kv::{get_oid, get_or_create_oid, DocOps};
-use crate::domain::repository::kv::KVEntry;
-use crate::domain::repository::kv::KVStore;
+use crate::application::usecases::kv::{get_oid, get_or_create_oid, DocOps};
+use crate::domain::repositories::kv::KVEntry;
+use crate::domain::repositories::kv::KVStore;
 use crate::domain::value_objects::keys::{
     key_doc, key_state_vector, key_update, KEYSPACE_DOC, SUB_DOC, SUB_STATE_VEC, SUB_UPDATE, V1,
 };
@@ -26,7 +26,7 @@ use yrs::{
     updates::decoder::Decode, updates::encoder::Encode, Doc, ReadTxn, StateVector, Transact, Update,
 };
 
-use crate::tools::first_zero_bit;
+use crate::shared::utils::first_zero_bit;
 
 const BATCH_SIZE: usize = 50;
 
