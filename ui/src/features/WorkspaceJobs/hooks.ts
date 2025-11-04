@@ -1,33 +1,72 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useDebouncedSearch } from "@flow/hooks";
 import { useJob } from "@flow/lib/gql/job";
+import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
-import type { Job } from "@flow/types";
+import { JobOrderBy, type Job } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
 
 export default () => {
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-
+  const t = useT();
   const [openJobRunDialog, setOpenJobRunDialog] = useState(false);
   const [currentWorkspace] = useCurrentWorkspace();
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [currentOrder, setCurrentOrder] = useState<OrderDirection>(
+  const [currentOrderBy, setCurrentOrderBy] = useState<JobOrderBy>(
+    JobOrderBy.StartedAt,
+  );
+  const [currentOrderDir, setCurrentOrderDir] = useState<OrderDirection>(
     OrderDirection.Desc,
   );
   const { useGetJobs } = useJob();
 
-  const { page, refetch, isFetching } = useGetJobs(currentWorkspace?.id, {
-    page: currentPage,
-    orderDir: currentOrder,
+  const { searchTerm, isDebouncingSearch, setSearchTerm } = useDebouncedSearch({
+    initialSearchTerm: "",
+    delay: 300,
+    onDebounced: () => {
+      refetch();
+    },
   });
+
+  const { page, refetch, isFetching } = useGetJobs(
+    currentWorkspace?.id,
+    searchTerm,
+    {
+      page: currentPage,
+      orderBy: currentOrderBy,
+      orderDir: currentOrderDir,
+    },
+  );
+
+  const sortOptions = [
+    {
+      value: `${JobOrderBy.StartedAt}_${OrderDirection.Desc}`,
+      label: t("Recently Started"),
+    },
+    {
+      value: `${JobOrderBy.StartedAt}_${OrderDirection.Asc}`,
+      label: t("Oldest Started"),
+    },
+    {
+      value: `${JobOrderBy.CompletedAt}_${OrderDirection.Desc}`,
+      label: t("Recently Completed"),
+    },
+    {
+      value: `${JobOrderBy.CompletedAt}_${OrderDirection.Asc}`,
+      label: t("Oldest Completed"),
+    },
+  ];
+
+  const currentSortValue = `${currentOrderBy}_${currentOrderDir}`;
 
   useEffect(() => {
     (async () => {
       await refetch();
     })();
-  }, [currentPage, currentOrder, refetch]);
+  }, [currentPage, currentOrderDir, currentOrderBy, refetch]);
 
   const totalPages = page?.totalPages as number;
 
@@ -41,6 +80,15 @@ export default () => {
     [currentWorkspace, navigate],
   );
 
+  const handleSortChange = useCallback((newSortValue: string) => {
+    const [orderBy, orderDir] = newSortValue.split("_") as [
+      JobOrderBy,
+      OrderDirection,
+    ];
+    setCurrentOrderBy(orderBy);
+    setCurrentOrderDir(orderDir);
+  }, []);
+
   return {
     ref,
     jobs,
@@ -48,10 +96,15 @@ export default () => {
     isFetching,
     currentPage,
     totalPages,
-    currentOrder,
+    currentSortValue,
+    sortOptions,
+    searchTerm,
+    isDebouncingSearch,
     setOpenJobRunDialog,
     handleJobSelect,
+    handleSortChange,
     setCurrentPage,
-    setCurrentOrder,
+    setCurrentOrderDir,
+    setSearchTerm,
   };
 };

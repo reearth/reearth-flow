@@ -1,5 +1,9 @@
-query GetJobs($workspaceId: ID!, $pagination: PageBasedPagination!) {
-  jobs(workspaceId: $workspaceId, pagination: $pagination) {
+query GetJobs(
+  $workspaceId: ID!
+  $keyword: String
+  $pagination: PageBasedPagination!
+) {
+  jobs(workspaceId: $workspaceId, keyword: $keyword, pagination: $pagination) {
     totalCount
     nodes {
       ...Job
