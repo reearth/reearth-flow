@@ -54,15 +54,9 @@ pub enum SinkError {
     JsonWriterFactory(String),
     #[error("Json Writer error: {0}")]
     JsonWriter(String),
-    #[error("File Writer error: {0}")]
-    FileWriter(String),
 }
 
 impl SinkError {
-    pub fn file_writer<T: ToString>(message: T) -> Self {
-        Self::FileWriter(message.to_string())
-    }
-
     pub fn geojson_writer<T: ToString>(message: T) -> Self {
         Self::GeoJsonWriter(message.to_string())
     }
