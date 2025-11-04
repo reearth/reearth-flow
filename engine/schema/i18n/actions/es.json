@@ -173,14 +173,6 @@
       "description": "Extrae propiedades de un archivo"
     },
     {
-      "name": "FileReader",
-      "description": "Lee entidades desde un archivo"
-    },
-    {
-      "name": "FileWriter",
-      "description": "Escribe entidades en un archivo"
-    },
-    {
       "name": "GeoJsonReader",
       "description": "Lee características de un archivo GeoJSON"
     },
