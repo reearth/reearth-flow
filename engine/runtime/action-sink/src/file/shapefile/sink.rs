@@ -90,8 +90,10 @@ pub(crate) struct ShapefileWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ShapefileWriterParam {
+    /// # Output Path
     /// Output path or expression for the Shapefile to create
     pub(super) output: Expr,
+    /// # Group By
     /// Optional attributes to group features by, creating separate files for each group
     pub(super) group_by: Option<Vec<Attribute>>,
 }

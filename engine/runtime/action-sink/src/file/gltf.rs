@@ -175,10 +175,14 @@ pub struct GltfWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GltfWriterParam {
+    /// # Output Path
     /// Output path or expression for the GLTF file to create
     output: Expr,
+    /// # Attach Texture
     /// Whether to attach texture information to the GLTF model
     attach_texture: Option<bool>,
+    /// # Draco Compression
+    /// Enable Draco compression for mesh geometry
     draco_compression: Option<bool>,
 }
 

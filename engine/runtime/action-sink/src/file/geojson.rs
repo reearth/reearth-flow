@@ -90,8 +90,10 @@ pub(super) struct GeoJsonWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct GeoJsonWriterParam {
+    /// # Output Path
     /// Output path or expression for the GeoJSON file to create
     pub(super) output: Expr,
+    /// # Group By
     /// Optional attributes to group features by, creating separate files for each group
     pub(super) group_by: Option<Vec<Attribute>>,
 }

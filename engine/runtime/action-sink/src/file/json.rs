@@ -83,8 +83,10 @@ pub(super) struct JsonWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct JsonWriterParam {
+    /// # Output Path
     /// Output path or expression for the JSON file to create
     pub(super) output: Expr,
+    /// # Converter
     /// Optional converter expression to transform features before writing
     pub(super) converter: Option<Expr>,
 }

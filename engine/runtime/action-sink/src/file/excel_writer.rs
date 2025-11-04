@@ -86,8 +86,10 @@ pub(super) struct ExcelWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ExcelWriterParam {
+    /// # Output Path
     /// Output path or expression for the Excel file to create
     pub(super) output: Expr,
+    /// # Sheet Name
     /// Sheet name (defaults to "Sheet1")
     pub(super) sheet_name: Option<String>,
 }
