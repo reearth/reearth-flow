@@ -18,6 +18,8 @@ type JobDocument struct {
 	WorkerLogsURL     string     `bson:"workerlogsurl"`
 	UserFacingLogsURL string     `bson:"userfacinglogsurl"`
 	Status            string     `bson:"status"`
+	BatchStatus       *string    `bson:"batchstatus,omitempty"`
+	WorkerStatus      *string    `bson:"workerstatus,omitempty"`
 	StartedAt         time.Time  `bson:"startedat"`
 	CompletedAt       *time.Time `bson:"completedat"`
 	MetadataURL       string     `bson:"metadataurl"`
@@ -40,6 +42,18 @@ func NewJob(j *job.Job) (*JobDocument, string) {
 
 	jid := j.ID().String()
 
+	var batchStatus *string
+	if j.BatchStatus() != nil {
+		s := string(*j.BatchStatus())
+		batchStatus = &s
+	}
+
+	var workerStatus *string
+	if j.WorkerStatus() != nil {
+		s := string(*j.WorkerStatus())
+		workerStatus = &s
+	}
+
 	doc := &JobDocument{
 		ID:                jid,
 		Debug:             j.Debug(),
@@ -50,6 +64,8 @@ func NewJob(j *job.Job) (*JobDocument, string) {
 		WorkerLogsURL:     j.WorkerLogsURL(),
 		UserFacingLogsURL: j.UserFacingLogsURL(),
 		Status:            string(j.Status()),
+		BatchStatus:       batchStatus,
+		WorkerStatus:      workerStatus,
 		StartedAt:         j.StartedAt(),
 		CompletedAt:       j.CompletedAt(),
 		MetadataURL:       j.MetadataURL(),
@@ -79,12 +95,26 @@ func (d *JobDocument) Model() (*job.Job, error) {
 		return nil, err
 	}
 
+	var batchStatus *job.Status
+	if d.BatchStatus != nil {
+		s := job.Status(*d.BatchStatus)
+		batchStatus = &s
+	}
+
+	var workerStatus *job.Status
+	if d.WorkerStatus != nil {
+		s := job.Status(*d.WorkerStatus)
+		workerStatus = &s
+	}
+
 	j := job.New().
 		ID(jid).
 		Debug(d.Debug).
 		Deployment(did).
 		Workspace(wid).
 		Status(job.Status(d.Status)).
+		BatchStatus(batchStatus).
+		WorkerStatus(workerStatus).
 		StartedAt(d.StartedAt).
 		MetadataURL(d.MetadataURL).
 		GCPJobID(d.GCPJobID).

@@ -26,6 +26,7 @@ type Job struct {
 	transaction       usecasex.Transaction
 	file              gateway.File
 	batch             gateway.Batch
+	redis             gateway.Redis
 	monitor           *monitor.Monitor
 	subscriptions     *subscription.JobManager
 	notifier          notification.Notifier
@@ -54,6 +55,7 @@ func NewJob(
 		transaction:       r.Transaction,
 		file:              gr.File,
 		batch:             gr.Batch,
+		redis:             gr.Redis,
 		monitor:           monitor.NewMonitor(),
 		subscriptions:     subscription.NewJobManager(),
 		notifier:          notification.NewHTTPNotifier(),
@@ -284,7 +286,7 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 		return err
 	}
 
-	newStatus := job.Status(status)
+	newBatchStatus := job.Status(status)
 
 	jobLock := i.getJobLock(j.ID().String())
 	jobLock.Lock()
@@ -295,25 +297,50 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 		return fmt.Errorf("failed to fetch current job state: %w", err)
 	}
 
-	statusChanged := currentJob.Status() != newStatus
-	if !statusChanged {
-		return nil
+	workerEvent, err := i.redis.GetJobCompleteEvent(ctx, currentJob.ID())
+	if err != nil {
+		log.Warnf("Failed to get worker status from Redis for job %s: %v", currentJob.ID(), err)
 	}
 
-	if err := i.updateJobStatus(ctx, currentJob, newStatus); err != nil {
-		return err
+	if workerEvent != nil {
+		var workerStatus job.Status
+		if workerEvent.Result == "success" {
+			workerStatus = job.StatusCompleted
+		} else if workerEvent.Result == "failed" {
+			workerStatus = job.StatusFailed
+		}
+
+		if workerStatus != "" {
+			currentJob.SetWorkerStatus(workerStatus)
+			log.Infof("Updated worker status for job %s to %s", currentJob.ID(), workerStatus)
+		}
 	}
 
-	isTerminalState := newStatus == job.StatusCompleted || newStatus == job.StatusFailed ||
-		newStatus == job.StatusCancelled
+	batchStatusChanged := currentJob.BatchStatus() == nil || *currentJob.BatchStatus() != newBatchStatus
+	if batchStatusChanged {
+		currentJob.SetBatchStatus(newBatchStatus)
+	}
+
+	if batchStatusChanged || workerEvent != nil {
+		// Update legacy status field with computed value
+		currentJob.SetStatus(currentJob.Status())
+
+		if err := i.jobRepo.Save(ctx, currentJob); err != nil {
+			return fmt.Errorf("failed to save job: %w", err)
+		}
+
+		i.subscriptions.Notify(currentJob.ID().String(), currentJob.Status())
+	}
+
+	computedStatus := currentJob.Status()
+	isTerminalState := computedStatus == job.StatusCompleted || computedStatus == job.StatusFailed ||
+		computedStatus == job.StatusCancelled
 	if isTerminalState {
 		log.Infof(
 			"Job %s transitioning to terminal state %s, handling completion",
 			currentJob.ID(),
-			newStatus,
+			computedStatus,
 		)
-
-		currentJob.SetStatus(newStatus)
 
 		if err := i.handleJobCompletion(ctx, currentJob); err != nil {
 			log.Errorfc(ctx, "job: completion handling failed: %v", err)
@@ -341,6 +368,37 @@ func (i *Job) updateJobStatus(ctx context.Context, j *job.Job, status job.Status
 	}()
 
 	j.SetStatus(status)
+	if err := i.jobRepo.Save(ctx, j); err != nil {
+		txErr = err
+		return err
+	}
+
+	tx.Commit()
+	i.subscriptions.Notify(j.ID().String(), j.Status())
+	return nil
+}
+
+func (i *Job) updateJobBatchStatus(ctx context.Context, j *job.Job, batchStatus job.Status) error {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return err
+	}
+
+	tx, err := i.transaction.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	var txErr error
+	defer func() {
+		if err2 := tx.End(ctx); err2 != nil && txErr == nil {
+			log.Errorfc(ctx, "transaction end failed: %v", err2)
+		}
+	}()
+
+	j.SetBatchStatus(batchStatus)
+	// legacy status update
+	j.SetStatus(j.Status())
+
 	if err := i.jobRepo.Save(ctx, j); err != nil {
 		txErr = err
 		return err
