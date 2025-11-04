@@ -288,6 +288,10 @@ nodes:
           expr: |
             env.get("__value")["不正なcodeSpace数"] ?? 0
 
+        - newAttribute: "L05CRS識別子"
+          expr: |
+            env.get("__value")["L05CRS識別子"] ?? 0
+
         - newAttribute: "L06エラー"
           expr: |
             env.get("__value")["L06エラー"] ?? 0
