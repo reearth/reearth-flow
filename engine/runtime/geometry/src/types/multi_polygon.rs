@@ -9,7 +9,8 @@ use num_traits::Zero;
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
-use crate::types::coordinate::{Coordinate, Coordinate2D};
+use crate::algorithm::utils::NormalizationResult2D;
+use crate::types::coordinate::Coordinate;
 
 use super::conversion::geojson::{
     create_geo_multi_polygon_2d, create_geo_multi_polygon_3d, create_multi_polygon_type,
@@ -335,9 +336,9 @@ impl MultiPolygon3D<f64> {
 }
 
 impl<T: CoordFloat> MultiPolygon2D<T> {
-    pub fn denormalize_vertices_2d(&mut self, avg: Coordinate2D<T>, norm_avg: Coordinate2D<T>) {
+    pub fn denormalize_vertices_2d(&mut self, norm: NormalizationResult2D<T>) {
         for polygon in self.0.iter_mut() {
-            polygon.denormalize_vertices_2d(avg, norm_avg);
+            polygon.denormalize_vertices_2d(norm);
         }
     }
 }
