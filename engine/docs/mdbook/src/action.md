@@ -1100,6 +1100,8 @@ Export Features as Cesium 3D Tiles for Web Visualization
       ]
     },
     "dracoCompressionEnabled": {
+      "title": "Draco Compression",
+      "description": "Enable Draco compression for mesh geometry (defaults to true)",
       "type": [
         "boolean",
         "null"
@@ -1169,6 +1171,8 @@ Reads 3D city models from CityGML files.
       ]
     },
     "flatten": {
+      "title": "Flatten Features",
+      "description": "Flatten nested feature structures into a flat attribute list",
       "type": [
         "boolean",
         "null"
@@ -2867,6 +2871,8 @@ Reads features from a file
           ]
         },
         "flatten": {
+          "title": "Flatten Features",
+          "description": "Flatten nested feature structures into a flat attribute list",
           "type": [
             "boolean",
             "null"
@@ -3234,6 +3240,8 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
   "type": "object",
   "properties": {
     "attributeFilter": {
+      "title": "Attribute Filter",
+      "description": "SQL WHERE clause to filter features by attributes",
       "default": null,
       "type": [
         "string",
@@ -3241,6 +3249,8 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
       ]
     },
     "batchSize": {
+      "title": "Batch Size",
+      "description": "Number of features to read in each batch for memory efficiency",
       "default": null,
       "type": [
         "integer",
@@ -3262,10 +3272,14 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
       ]
     },
     "force2D": {
+      "title": "Force 2D",
+      "description": "Force all geometries to be 2D (ignoring Z values)",
       "default": false,
       "type": "boolean"
     },
     "includeMetadata": {
+      "title": "Include Metadata",
+      "description": "Include GeoPackage metadata in the output features",
       "default": false,
       "type": "boolean"
     },
@@ -3282,12 +3296,16 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
       ]
     },
     "layerName": {
+      "title": "Layer Name",
+      "description": "Name of the layer to read from the GeoPackage file",
       "type": [
         "string",
         "null"
       ]
     },
     "readMode": {
+      "title": "Read Mode",
+      "description": "Specify what to read from the GeoPackage: features, tiles, all, or metadata only",
       "default": "features",
       "allOf": [
         {
@@ -3296,6 +3314,8 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
       ]
     },
     "spatialFilter": {
+      "title": "Spatial Filter",
+      "description": "Bounding box filter in format \"minX,minY,maxX,maxY\" to limit features by location",
       "default": null,
       "type": [
         "string",
@@ -3303,6 +3323,8 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
       ]
     },
     "tileFormat": {
+      "title": "Tile Format",
+      "description": "Format for tile data (PNG, JPEG, or WebP)",
       "default": "png",
       "allOf": [
         {
@@ -6256,7 +6278,8 @@ Writes features to a zip file
   ],
   "properties": {
     "output": {
-      "description": "Output path",
+      "title": "Output Path",
+      "description": "Output path or expression for the ZIP file to create",
       "allOf": [
         {
           "$ref": "#/definitions/Expr"

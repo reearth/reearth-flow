@@ -90,7 +90,8 @@ struct ZipFileWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct ZipFileWriterParam {
-    /// Output path
+    /// # Output Path
+    /// Output path or expression for the ZIP file to create
     output: Expr,
 }
 

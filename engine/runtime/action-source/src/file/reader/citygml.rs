@@ -26,6 +26,8 @@ use url::Url;
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CityGmlReaderParam {
+    /// # Flatten Features
+    /// Flatten nested feature structures into a flat attribute list
     pub(super) flatten: Option<bool>,
 }
 

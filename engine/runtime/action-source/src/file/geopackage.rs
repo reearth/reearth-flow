@@ -88,19 +88,35 @@ impl SourceFactory for GeoPackageReaderFactory {
 pub(super) struct GeoPackageReaderParam {
     #[serde(flatten)]
     pub(super) common_property: FileReaderCommonParam,
+    /// # Read Mode
+    /// Specify what to read from the GeoPackage: features, tiles, all, or metadata only
     #[serde(default)]
     read_mode: GeoPackageReadMode,
+    /// # Layer Name
+    /// Name of the layer to read from the GeoPackage file
     layer_name: Option<String>,
+    /// # Include Metadata
+    /// Include GeoPackage metadata in the output features
     #[serde(default)]
     include_metadata: bool,
+    /// # Tile Format
+    /// Format for tile data (PNG, JPEG, or WebP)
     #[serde(default)]
     tile_format: TileFormat,
+    /// # Attribute Filter
+    /// SQL WHERE clause to filter features by attributes
     #[serde(default)]
     attribute_filter: Option<String>,
+    /// # Batch Size
+    /// Number of features to read in each batch for memory efficiency
     #[serde(default)]
     batch_size: Option<usize>,
+    /// # Force 2D
+    /// Force all geometries to be 2D (ignoring Z values)
     #[serde(default, rename = "force2D")]
     force_2d: bool,
+    /// # Spatial Filter
+    /// Bounding box filter in format "minX,minY,maxX,maxY" to limit features by location
     #[serde(default)]
     spatial_filter: Option<String>,
 }
