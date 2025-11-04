@@ -10,8 +10,12 @@ use std::ops::{Index, IndexMut};
 use flatgeom::{LineString2 as NLineString2, LineString3 as NLineString3};
 use geo_types::LineString as GeoLineString;
 
+use crate::algorithm::utils::denormalize_vertices;
 use crate::algorithm::utils::denormalize_vertices_2d;
-use crate::types::coordinate::Coordinate2D;
+use crate::algorithm::utils::normalize_vertices;
+use crate::algorithm::utils::normalize_vertices_2d;
+use crate::algorithm::utils::NormalizationResult2D;
+use crate::algorithm::utils::NormalizationResult3D;
 use crate::types::coordinate::Coordinate3D;
 use crate::types::face::Face;
 use crate::utils::line_string_bounding_rect;
@@ -603,8 +607,20 @@ impl<T: CoordNum> From<GeoLineString<T>> for LineString2D<T> {
 }
 
 impl<T: CoordFloat> LineString2D<T> {
-    pub fn denormalize_vertices_2d(&mut self, avg: Coordinate2D<T>, norm: Coordinate2D<T>) {
-        denormalize_vertices_2d(&mut self.0, avg, norm);
+    pub fn normalize_vertices_2d(&mut self) -> NormalizationResult2D<T> {
+        normalize_vertices_2d(&mut self.0)
+    }
+    pub fn denormalize_vertices_2d(&mut self, norm: NormalizationResult2D<T>) {
+        denormalize_vertices_2d(&mut self.0, norm);
+    }
+}
+
+impl<T: CoordFloat> LineString3D<T> {
+    pub fn normalize_vertices_3d(&mut self) -> NormalizationResult3D<T> {
+        normalize_vertices(&mut self.0)
+    }
+    pub fn denormalize_vertices(&mut self, norm: NormalizationResult3D<T>) {
+        denormalize_vertices(&mut self.0, norm);
     }
 }
 

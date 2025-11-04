@@ -5,12 +5,13 @@ use once_cell::sync::Lazy;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reearth_flow_geometry::{
     algorithm::{
-        bool_ops::BooleanOps, bounding_rect::BoundingRect, tolerance::glue_vertices_closer_than,
-        utils::normalize_vertices_2d,
+        bool_ops::BooleanOps,
+        bounding_rect::BoundingRect,
+        tolerance::glue_vertices_closer_than,
+        utils::{normalize_vertices_2d, NormalizationResult2D},
     },
     types::{
-        coordinate::Coordinate2D, line_string::LineString2D, multi_polygon::MultiPolygon2D,
-        polygon::Polygon2D, rect::Rect2D,
+        line_string::LineString2D, multi_polygon::MultiPolygon2D, polygon::Polygon2D, rect::Rect2D,
     },
 };
 use reearth_flow_runtime::{
@@ -315,7 +316,7 @@ impl AreaOnAreaOverlayer {
 fn overlay_2d(mut polygons: Vec<MultiPolygon2D<f64>>) -> Vec<MiddlePolygon> {
     // normalize vertices
     // TODO: This can be removed to improve performance when we choose the right coordinate system.
-    let (avg, norm_avg) = normalize_vertices_2d_for_multipolygons(&mut polygons);
+    let norm = normalize_vertices_2d_for_multipolygons(&mut polygons);
     let overlay_graph = OverlayGraph::bulk_load(&polygons);
 
     // all (devided) polygons to output
@@ -371,7 +372,7 @@ fn overlay_2d(mut polygons: Vec<MultiPolygon2D<f64>>) -> Vec<MiddlePolygon> {
         })
         .flatten()
         .map(|mut p| {
-            p.polygon.denormalize_vertices_2d(avg, norm_avg);
+            p.polygon.denormalize_vertices_2d(norm);
             p
         })
         .collect::<Vec<_>>()
@@ -569,7 +570,7 @@ impl OverlaidFeatures {
 
 fn normalize_vertices_2d_for_multipolygons(
     polygons: &mut [MultiPolygon2D<f64>],
-) -> (Coordinate2D<f64>, Coordinate2D<f64>) {
+) -> NormalizationResult2D<f64> {
     let mut all_vertices = Vec::new();
 
     for multi_polygon in polygons.iter() {
@@ -585,7 +586,7 @@ fn normalize_vertices_2d_for_multipolygons(
         }
     }
 
-    let (avg, norm_avg) = normalize_vertices_2d(&mut all_vertices);
+    let norm = normalize_vertices_2d(&mut all_vertices);
 
     let mut index = 0;
 
@@ -616,7 +617,7 @@ fn normalize_vertices_2d_for_multipolygons(
             .collect::<Vec<_>>();
     }
 
-    (avg, norm_avg)
+    norm
 }
 
 #[cfg(test)]
