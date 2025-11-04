@@ -52,7 +52,7 @@ const WorkspaceMenu: React.FC = () => {
                 {t("Current workspace:")}
               </p>
               {/* <div className="flex justify-center gap-2"> */}
-              <p className="line-clamp-2 pr-1 text-sm font-light italic">
+              <p className="line-clamp-2 w-full px-4 text-start text-sm font-light italic">
                 {currentWorkspace?.name}
               </p>
             </div>
