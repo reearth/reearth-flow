@@ -190,7 +190,7 @@ impl RunWorkerCommand {
             }
         };
 
-        let (state, logger_factory) = self
+        let (ingress_state, feature_state, logger_factory) = self
             .prepare_workflow(&storage_resolver, &meta, &mut workflow)
             .await?;
 
@@ -207,7 +207,8 @@ impl RunWorkerCommand {
             ALL_ACTION_FACTORIES.clone(),
             logger_factory,
             storage_resolver.clone(),
-            state,
+            ingress_state,
+            feature_state,
             vec![handler, node_failure_handler.clone()],
         )
         .await;
@@ -340,7 +341,7 @@ impl RunWorkerCommand {
         storage_resolver: &Arc<StorageResolver>,
         meta: &Metadata,
         workflow: &mut Workflow,
-    ) -> crate::errors::Result<(Arc<State>, Arc<LoggerFactory>)> {
+    ) -> crate::errors::Result<(Arc<State>, Arc<State>, Arc<LoggerFactory>)> {
         let job_id = meta.job_id;
         let asset_path =
             setup_job_directory("workers", "assets", job_id).map_err(crate::errors::Error::init)?;
@@ -368,16 +369,22 @@ impl RunWorkerCommand {
 
         let action_log_uri = setup_job_directory("workers", "action-log", job_id)
             .map_err(crate::errors::Error::init)?;
-        let state_uri = setup_job_directory("workers", "feature-store", job_id)
+        let ingress_state_uri = setup_job_directory("workers", "ingress-store", job_id)
             .map_err(crate::errors::Error::init)?;
-        let state =
-            Arc::new(State::new(&state_uri, storage_resolver).map_err(crate::errors::Error::init)?);
+        let ingress_state = Arc::new(
+            State::new(&ingress_state_uri, storage_resolver).map_err(crate::errors::Error::init)?,
+        );
+        let feature_state_uri = setup_job_directory("workers", "feature-store", job_id)
+            .map_err(crate::errors::Error::init)?;
+        let feature_state = Arc::new(
+            State::new(&feature_state_uri, storage_resolver).map_err(crate::errors::Error::init)?,
+        );
 
         let logger_factory = Arc::new(LoggerFactory::new(
             create_root_logger(action_log_uri.path()),
             action_log_uri.path(),
         ));
-        Ok((state, logger_factory))
+        Ok((ingress_state, feature_state, logger_factory))
     }
 
     async fn cleanup(
