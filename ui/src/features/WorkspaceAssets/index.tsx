@@ -64,7 +64,7 @@ const AssetsManager: React.FC = () => {
   });
 
   return (
-    <div className="flex h-full flex-1 flex-col px-6 pt-4 pb-2">
+    <div className="flex h-full flex-1 flex-col pt-4 pr-3 pb-2 pl-2">
       <div className="flex h-[50px] flex-shrink-0 items-center justify-between gap-2 border-b pb-4">
         <p className="text-lg dark:font-extralight">{t("Workspace Assets")}</p>
         <Button
@@ -78,7 +78,7 @@ const AssetsManager: React.FC = () => {
       <div className="mt-4 flex min-h-0 w-full flex-1 flex-col gap-4">
         <div className="flex flex-shrink-0 items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 py-3">
+            <div className="flex items-center gap-2">
               <Input
                 placeholder={t("Search") + "..."}
                 value={searchTerm ?? ""}

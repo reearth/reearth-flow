@@ -3,7 +3,7 @@ import * as React from "react";
 import { useCallback } from "react";
 import { Map } from "react-map-gl/maplibre";
 
-import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
+import { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 
 import "maplibre-gl/dist/maplibre-gl.css";
 import { GeoJsonDataSource } from "./sources";

@@ -168,10 +168,12 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		PubSubUserFacingLogTopic:        conf.Worker_PubSubUserFacingLogTopic,
 		ProjectID:                       conf.GCPProject,
 		Region:                          conf.GCPRegion,
+		RustLog:                         conf.Worker_RustLog,
 		SAEmail:                         conf.Worker_BatchSAEmail,
 		TaskCount:                       taskCount,
 		ThreadPoolSize:                  conf.Worker_ThreadPoolSize,
 		CompressIntermediateData:        conf.Worker_CompressIntermediateData,
+		PersistIngressData:              conf.Worker_PersistIngressData,
 	}
 
 	batchRepo, err = gcpbatch.NewBatch(ctx, config)

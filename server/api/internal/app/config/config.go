@@ -96,6 +96,8 @@ type (
 		Worker_TaskCount                       string   `envconfig:"WORKER_TASK_COUNT" default:"1" pp:",omitempty"`
 		Worker_ThreadPoolSize                  string   `envconfig:"WORKER_THREAD_POOL_SIZE" default:"30" pp:",omitempty"`
 		Worker_CompressIntermediateData        bool     `envconfig:"WORKER_COMPRESS_INTERMEDIATE_DATA" default:"false" pp:",omitempty"`
+		Worker_RustLog                         string   `envconfig:"WORKER_RUST_LOG" default:"info" pp:",omitempty"`
+		Worker_PersistIngressData              bool     `envconfig:"WORKER_PERSIST_INGRESS_DATA" default:"false" pp:",omitempty"`
 
 		// websocket
 		WebsocketThriftServerURL string `envconfig:"REEARTH_FLOW_WEBSOCKET_THRIFT_SERVER_URL" default:"http://localhost:8000" pp:",omitempty"`

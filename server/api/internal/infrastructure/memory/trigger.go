@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -31,7 +32,7 @@ func (r *Trigger) Filtered(f repo.WorkspaceFilter) repo.Trigger {
 	}
 }
 
-func (r *Trigger) FindByWorkspace(ctx context.Context, id id.WorkspaceID, pagination *interfaces.PaginationParam) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
+func (r *Trigger) FindByWorkspace(ctx context.Context, id id.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -41,9 +42,18 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id id.WorkspaceID, pagina
 
 	result := make([]*trigger.Trigger, 0, len(r.data))
 	for _, t := range r.data {
-		if t.Workspace() == id {
-			result = append(result, t)
+		if t.Workspace() != id {
+			continue
 		}
+
+		if keyword != nil && *keyword != "" {
+			if !strings.Contains(strings.ToLower(t.Description()), strings.ToLower(*keyword)) &&
+				!strings.Contains(strings.ToLower(t.ID().String()), strings.ToLower(*keyword)) {
+				continue
+			}
+		}
+
+		result = append(result, t)
 	}
 
 	total := int64(len(result))
@@ -129,6 +139,19 @@ func (r *Trigger) FindByIDs(ctx context.Context, ids id.TriggerIDList) ([]*trigg
 			continue
 		}
 		result[i] = nil
+	}
+	return result, nil
+}
+
+func (r *Trigger) FindByDeployment(ctx context.Context, deploymentID id.DeploymentID) ([]*trigger.Trigger, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	result := make([]*trigger.Trigger, 0)
+	for _, t := range r.data {
+		if t.Deployment() == deploymentID && r.f.CanRead(t.Workspace()) {
+			result = append(result, t)
+		}
 	}
 	return result, nil
 }

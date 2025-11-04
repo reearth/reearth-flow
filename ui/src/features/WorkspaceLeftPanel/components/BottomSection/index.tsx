@@ -10,7 +10,7 @@ const BottomSection: React.FC<Props> = ({ route }) => {
   return (
     <div className="flex flex-1 items-end">
       <div className="flex flex-1 flex-col">
-        <div className="flex flex-1 flex-col gap-4 p-4">
+        <div className="flex flex-1 flex-col gap-4 p-2">
           <WorkspaceSettings selected={route} />
         </div>
       </div>

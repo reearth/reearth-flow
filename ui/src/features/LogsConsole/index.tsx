@@ -67,20 +67,6 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
       // Logs are JSONL there we have ensure they are parsed correctly and cleaned to be used
       const logsArray = parseJSONL(textData, {
         transform: (parsedLog) => {
-          if (
-            typeof parsedLog.message === "string" &&
-            parsedLog.message.trim() !== ""
-          ) {
-            try {
-              parsedLog.message = JSON.parse(parsedLog.message);
-            } catch (innerError) {
-              console.error(
-                "Failed to clean msg:",
-                parsedLog.message,
-                innerError,
-              );
-            }
-          }
           return {
             nodeId: parsedLog.nodeId,
             jobId: debugJob.id,

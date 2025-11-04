@@ -66,7 +66,7 @@ export default ({
 }: Props) => {
   const {
     handleNodesChange,
-    handleNodesDelete,
+    handleNodesDeleteCleanup,
     handleNodeDragOver,
     handleNodeDragStop,
     handleNodeDrop,
@@ -190,7 +190,7 @@ export default ({
 
   return {
     handleNodesChange,
-    handleNodesDelete,
+    handleNodesDeleteCleanup,
     handleNodeDragStop,
     handleNodeDragOver,
     handleNodeDrop,

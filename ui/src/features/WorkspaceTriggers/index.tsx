@@ -4,11 +4,8 @@ import { ColumnDef } from "@tanstack/react-table";
 import {
   Button,
   ButtonWithTooltip,
-  FlowLogo,
-  LoadingSkeleton,
   DataTable as Table,
 } from "@flow/components";
-import BasicBoiler from "@flow/components/BasicBoiler";
 import { TRIGGERS_FETCH_RATE } from "@flow/lib/gql/trigger/useQueries";
 import { useT } from "@flow/lib/i18n";
 import { Trigger } from "@flow/types";
@@ -30,17 +27,20 @@ const TriggerManager: React.FC = () => {
     triggerToBeDeleted,
     openTriggerAddDialog,
     triggerToBeEdited,
+    isFetching,
+    isDebouncingSearch,
+    sortOptions,
+    currentSortValue,
+    currentPage,
+    totalPages,
+    setSearchTerm,
     setTriggerToBeEdited,
     setOpenTriggerAddDialog,
     setTriggerToBeDeleted,
     handleTriggerSelect,
     handleTriggerDelete,
-    currentPage,
+    handleSortChange,
     setCurrentPage,
-    totalPages,
-    currentOrder,
-    setCurrentOrder,
-    isFetching,
   } = useHooks();
   const columns: ColumnDef<Trigger>[] = [
     {
@@ -95,7 +95,7 @@ const TriggerManager: React.FC = () => {
         </div>
       ) : (
         <div className="flex h-full flex-1 flex-col">
-          <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pt-4 pb-2">
+          <div className="flex flex-1 flex-col gap-1 overflow-scroll pt-4 pr-3 pb-2 pl-2">
             <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
               <p className="text-lg dark:font-extralight">{t("Triggers")}</p>
               <Button
@@ -105,29 +105,24 @@ const TriggerManager: React.FC = () => {
                 <p className="text-xs dark:font-light">{t("New Trigger")}</p>
               </Button>
             </div>
-
-            {isFetching ? (
-              <LoadingSkeleton />
-            ) : triggers && triggers.length > 0 ? (
-              <Table
-                columns={columns}
-                data={triggers}
-                selectColumns
-                enablePagination
-                onRowClick={handleTriggerSelect}
-                currentPage={currentPage}
-                setCurrentPage={setCurrentPage}
-                totalPages={totalPages}
-                resultsPerPage={resultsPerPage}
-                currentOrder={currentOrder}
-                setCurrentOrder={setCurrentOrder}
-              />
-            ) : (
-              <BasicBoiler
-                text={t("No Triggers")}
-                icon={<FlowLogo className="size-16 text-accent" />}
-              />
-            )}
+            <Table
+              columns={columns}
+              data={triggers}
+              selectColumns
+              enablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              resultsPerPage={resultsPerPage}
+              currentSortValue={currentSortValue}
+              sortOptions={sortOptions}
+              showFiltering
+              isFetching={isDebouncingSearch || isFetching}
+              noResultsMessage={t("No Triggers")}
+              onRowClick={handleTriggerSelect}
+              onSortChange={handleSortChange}
+              setCurrentPage={setCurrentPage}
+              setSearchTerm={setSearchTerm}
+            />
           </div>
           {openTriggerAddDialog && (
             <TriggerAddDialog setShowDialog={setOpenTriggerAddDialog} />

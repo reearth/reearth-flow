@@ -7,10 +7,7 @@ import {
   DialogContentWrapper,
   DialogTitle,
   DataTable as Table,
-  FlowLogo,
-  LoadingSkeleton,
 } from "@flow/components";
-import BasicBoiler from "@flow/components/BasicBoiler";
 import { DEPLOYMENT_FETCH_RATE } from "@flow/lib/gql/deployment/useQueries";
 import { useT } from "@flow/lib/i18n";
 import { Deployment } from "@flow/types";
@@ -19,25 +16,30 @@ import { OrderDirection } from "@flow/types/paginationOptions";
 type Props = {
   deployments: Deployment[] | undefined;
   currentPage?: number;
-  currentOrder?: OrderDirection;
   totalPages?: number;
   isFetching?: boolean;
-  setShowDialog: (show: boolean) => void;
-  handleSelectDeployment: (deployment: Deployment) => void;
+  currentSortValue?: string;
+  sortOptions?: { value: string; label: string }[];
+  onSelectDeployment: (deployment: Deployment) => void;
+  onSortChange?: (value: string) => void;
   setCurrentPage?: (page: number) => void;
-  setCurrentOrder?: (order: OrderDirection) => void;
+  setCurrentOrderDir?: (order: OrderDirection) => void;
+  setSearchTerm?: (term: string) => void;
+  setShowDialog: (show: boolean) => void;
 };
 
 const DeploymentsDialog: React.FC<Props> = ({
   deployments,
   currentPage = 1,
-  currentOrder = OrderDirection.Desc,
+  sortOptions,
+  currentSortValue,
   totalPages,
   isFetching,
-  setShowDialog,
-  handleSelectDeployment,
+  onSelectDeployment,
+  onSortChange,
   setCurrentPage,
-  setCurrentOrder,
+  setSearchTerm,
+  setShowDialog,
 }) => {
   const t = useT();
   const resultsPerPage = DEPLOYMENT_FETCH_RATE;
@@ -66,31 +68,27 @@ const DeploymentsDialog: React.FC<Props> = ({
         <DialogTitle> {t("Select a deployment")}</DialogTitle>
         <DialogContentWrapper>
           <DialogContentSection className="flex-1">
-            {isFetching ? (
-              <LoadingSkeleton className="h-[373px]" />
-            ) : deployments && deployments.length > 0 ? (
-              <Table
-                columns={columns}
-                data={deployments}
-                selectColumns
-                enablePagination
-                onRowClick={(deployment) => {
-                  handleSelectDeployment(deployment);
-                  setShowDialog(false);
-                }}
-                currentPage={currentPage}
-                setCurrentPage={setCurrentPage}
-                totalPages={totalPages}
-                resultsPerPage={resultsPerPage}
-                currentOrder={currentOrder}
-                setCurrentOrder={setCurrentOrder}
-              />
-            ) : (
-              <BasicBoiler
-                text={t("No Deployments")}
-                icon={<FlowLogo className="size-16 text-accent" />}
-              />
-            )}
+            <Table
+              columns={columns}
+              data={deployments}
+              selectColumns
+              enablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              resultsPerPage={resultsPerPage}
+              currentSortValue={currentSortValue}
+              sortOptions={sortOptions}
+              showFiltering
+              isFetching={isFetching}
+              noResultsMessage={t("No Deployments")}
+              onRowClick={(deployment) => {
+                onSelectDeployment(deployment);
+                setShowDialog(false);
+              }}
+              onSortChange={onSortChange}
+              setCurrentPage={setCurrentPage}
+              setSearchTerm={setSearchTerm}
+            />
           </DialogContentSection>
         </DialogContentWrapper>
       </DialogContent>

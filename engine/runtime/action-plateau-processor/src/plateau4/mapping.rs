@@ -15,6 +15,7 @@ use super::{
     missing_attribute_detector::MissingAttributeDetectorFactory,
     object_list_extractor::ObjectListExtractorFactory,
     solid_intersection_test_pair_creator::SolidIntersectionTestPairCreatorFactory,
+    tran_xlink_detector::TransportationXlinkDetectorFactory,
     udx_folder_extractor::UDXFolderExtractorFactory,
     unmatched_xlink_detector::UnmatchedXlinkDetectorFactory,
 };
@@ -34,6 +35,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<DomainOfDefinitionValidatorFactory>::default(),
         Box::<UnmatchedXlinkDetectorFactory>::default(),
         Box::<SolidIntersectionTestPairCreatorFactory>::default(),
+        Box::<TransportationXlinkDetectorFactory>::default(),
     ];
     factories
         .into_iter()

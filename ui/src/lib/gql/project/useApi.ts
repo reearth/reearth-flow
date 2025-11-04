@@ -54,10 +54,12 @@ export const useProject = () => {
 
   const useGetWorkspaceProjects = (
     workspaceId?: string,
+    keyword?: string,
     paginationOptions?: PaginationOptions,
   ) => {
     const { data, ...rest } = useGetProjectsQuery(
       workspaceId,
+      keyword,
       paginationOptions,
     );
     return {

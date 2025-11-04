@@ -25,7 +25,7 @@ export default ({
   const [currentOrderBy, setCurrentOrderBy] = useState<AssetOrderBy>(
     AssetOrderBy.CreatedAt,
   );
-  const [currentOrderDir, setCurrentOrder] = useState<OrderDirection>(
+  const [currentOrderDir, setCurrentOrderDir] = useState<OrderDirection>(
     OrderDirection.Desc,
   );
 
@@ -102,15 +102,7 @@ export default ({
       const file = e.target.files?.[0];
       if (!file) return;
       if (!workspaceId) return console.error("Missing current workspace");
-
-      try {
-        await createAsset({
-          workspaceId,
-          file,
-        });
-      } catch (error) {
-        console.error("Failed to upload file:", error);
-      }
+      createAsset(workspaceId, file);
     },
     [createAsset, workspaceId],
   );
@@ -147,7 +139,7 @@ export default ({
       OrderDirection,
     ];
     setCurrentOrderBy(orderBy);
-    setCurrentOrder(orderDir);
+    setCurrentOrderDir(orderDir);
   }, []);
 
   const handleCopyUrlToClipBoard = useCallback(

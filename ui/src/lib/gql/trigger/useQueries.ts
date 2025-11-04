@@ -119,6 +119,7 @@ export const useQueries = () => {
 
   const useGetTriggersQuery = (
     workspaceId?: string,
+    keyword?: string,
     paginationOptions?: PaginationOptions,
   ) =>
     useQuery({
@@ -126,6 +127,7 @@ export const useQueries = () => {
       queryFn: async () => {
         const data = await graphQLContext?.GetTriggers({
           workspaceId: workspaceId ?? "",
+          keyword,
           pagination: {
             page: paginationOptions?.page ?? 1,
             pageSize: TRIGGERS_FETCH_RATE,

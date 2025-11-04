@@ -97,3 +97,68 @@ impl<T: GeoFloat> BooleanOps for MultiPolygon2D<T> {
         bop.sweep()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::{coordinate::Coordinate2D, line_string::LineString2D};
+    #[test]
+    fn test_polygon_boolean_ops_two_squares() {
+        let poly1 = MultiPolygon2D::new(vec![Polygon2D::new(
+            LineString2D::new(vec![
+                Coordinate2D::new_(0.0, 0.0),
+                Coordinate2D::new_(2.0, 0.0),
+                Coordinate2D::new_(2.0, 2.0),
+                Coordinate2D::new_(0.0, 2.0),
+                Coordinate2D::new_(0.0, 0.0),
+            ]),
+            vec![],
+        )]);
+        let poly2 = MultiPolygon2D::new(vec![Polygon2D::new(
+            LineString2D::new(vec![
+                Coordinate2D::new_(1.0, 1.0),
+                Coordinate2D::new_(3.0, 1.0),
+                Coordinate2D::new_(3.0, 3.0),
+                Coordinate2D::new_(1.0, 3.0),
+                Coordinate2D::new_(1.0, 1.0),
+            ]),
+            vec![],
+        )]);
+        let intersection = poly1.intersection(&poly2);
+        assert_eq!(intersection.0.len(), 1);
+        assert_eq!(intersection.0[0].exterior().0.len(), 5);
+
+        let diff = poly1.difference(&poly2);
+        assert_eq!(diff.0.len(), 1);
+        assert_eq!(diff.0[0].exterior().0.len(), 7);
+    }
+
+    #[test]
+    fn test_polygon_boolean_ops_two_triangles() {
+        let poly1 = MultiPolygon2D::new(vec![Polygon2D::new(
+            LineString2D::new(vec![
+                Coordinate2D::new_(0.0, 0.0),
+                Coordinate2D::new_(2.0, 0.0),
+                Coordinate2D::new_(1.0, 2.0),
+                Coordinate2D::new_(0.0, 0.0),
+            ]),
+            vec![],
+        )]);
+        let poly2 = MultiPolygon2D::new(vec![Polygon2D::new(
+            LineString2D::new(vec![
+                Coordinate2D::new_(0.0, 0.0),
+                Coordinate2D::new_(2.0, 0.0),
+                Coordinate2D::new_(1.0, 1.0),
+                Coordinate2D::new_(0.0, 0.0),
+            ]),
+            vec![],
+        )]);
+        let intersection = poly1.intersection(&poly2);
+        assert_eq!(intersection.0.len(), 1);
+        assert_eq!(intersection.0[0].exterior().0.len(), 4);
+
+        let diff = poly1.difference(&poly2);
+        assert_eq!(diff.0.len(), 1);
+        assert_eq!(diff.0[0].exterior().0.len(), 5);
+    }
+}

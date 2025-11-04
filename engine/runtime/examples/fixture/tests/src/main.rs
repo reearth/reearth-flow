@@ -214,6 +214,7 @@ pub struct TestContext {
     pub profile: WorkflowTestProfile,
     pub temp_dir: PathBuf,
     pub actual_output_dir: PathBuf,
+    pub last_job_id: Option<uuid::Uuid>,
     _temp_base: TempDir,
 }
 
@@ -242,6 +243,7 @@ impl TestContext {
             profile,
             actual_output_dir: temp_dir.clone(),
             temp_dir,
+            last_job_id: None,
             _temp_base: temp_base,
         })
     }
@@ -266,7 +268,7 @@ impl TestContext {
         Ok(workflow)
     }
 
-    pub fn run_workflow(&self, mut workflow: Workflow) -> Result<()> {
+    pub fn run_workflow(&mut self, mut workflow: Workflow) -> Result<()> {
         use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
         use reearth_flow_action_plateau_processor::mapping::ACTION_FACTORY_MAPPINGS as PLATEAU_MAPPINGS;
         use reearth_flow_action_processor::mapping::ACTION_FACTORY_MAPPINGS as PROCESSOR_MAPPINGS;
@@ -315,10 +317,23 @@ impl TestContext {
 
         // Setup logging and state
         let job_id = uuid::Uuid::new_v4();
-        let action_log_path = self.temp_dir.join("action-log");
+        self.last_job_id = Some(job_id);
+
+        // Use FLOW_RUNTIME_WORKING_DIRECTORY if set, otherwise use temp_dir
+        let working_dir = if let Ok(work_dir) = std::env::var("FLOW_RUNTIME_WORKING_DIRECTORY") {
+            PathBuf::from(work_dir)
+                .join("workflow_test_debug")
+                .join(job_id.to_string())
+        } else {
+            self.temp_dir.clone()
+        };
+
+        let action_log_path = working_dir.join("action-log");
         fs::create_dir_all(&action_log_path)?;
-        let state_path = self.temp_dir.join("feature-store");
-        fs::create_dir_all(&state_path)?;
+        let ingress_state_path = self.temp_dir.join("ingress-store");
+        fs::create_dir_all(&ingress_state_path)?;
+        let feature_state_path = self.temp_dir.join("feature-store");
+        fs::create_dir_all(&feature_state_path)?;
 
         let logger_factory = Arc::new(LoggerFactory::new(
             create_root_logger(action_log_path.clone()),
@@ -326,9 +341,12 @@ impl TestContext {
         ));
 
         let storage_resolver = Arc::new(StorageResolver::new());
-        let state_uri = format!("file://{}", state_path.display());
-        let state_uri = reearth_flow_common::uri::Uri::from_str(&state_uri)?;
-        let state = Arc::new(State::new(&state_uri, &storage_resolver).unwrap());
+        let ingress_state_uri = format!("file://{}", ingress_state_path.display());
+        let ingress_state_uri = reearth_flow_common::uri::Uri::from_str(&ingress_state_uri)?;
+        let ingress_state = Arc::new(State::new(&ingress_state_uri, &storage_resolver).unwrap());
+        let feature_state_uri = format!("file://{}", feature_state_path.display());
+        let feature_state_uri = reearth_flow_common::uri::Uri::from_str(&feature_state_uri)?;
+        let feature_state = Arc::new(State::new(&feature_state_uri, &storage_resolver).unwrap());
 
         // Run workflow
         Runner::run(
@@ -337,7 +355,8 @@ impl TestContext {
             action_factories,
             logger_factory,
             storage_resolver,
-            state,
+            ingress_state,
+            feature_state,
         )?;
 
         Ok(())
@@ -354,7 +373,7 @@ impl TestContext {
                 for expected_file_name in &files {
                     let expected_file = self.test_dir.join(expected_file_name);
                     if !expected_file.exists() {
-                        anyhow::bail!("Expected output file does not exist: {:?}", expected_file);
+                        anyhow::bail!("Expected output file does not exist: {expected_file:?}");
                     }
 
                     // Validate file format and route to appropriate verification method
@@ -420,8 +439,7 @@ impl TestContext {
             // Extract extension for error message
             let extension = file_name.rsplit('.').next().unwrap_or("unknown");
             anyhow::bail!(
-                "Unsupported file format '.{}'. Only json, jsonl, csv, and tsv files are supported.",
-                extension
+                "Unsupported file format '.{extension}'. Only json, jsonl, csv, and tsv files are supported."
             );
         }
         Ok(())
@@ -432,14 +450,23 @@ impl TestContext {
             // Check if expected file exists, fail test if not
             let expected_path = self.test_dir.join(&assertion.expected_file);
             if !expected_path.exists() {
-                anyhow::bail!(
-                    "Expected intermediate data file does not exist: {:?}",
-                    expected_path
-                );
+                anyhow::bail!("Expected intermediate data file does not exist: {expected_path:?}");
             }
 
-            let edge_data_path = self
-                .temp_dir
+            // Use FLOW_RUNTIME_WORKING_DIRECTORY if set, otherwise use temp_dir
+            let working_dir = if let Ok(work_dir) = std::env::var("FLOW_RUNTIME_WORKING_DIRECTORY")
+            {
+                let job_id = self.last_job_id.ok_or_else(|| {
+                    anyhow::anyhow!("No job_id available - run_workflow must be called first")
+                })?;
+                PathBuf::from(work_dir)
+                    .join("workflow_test_debug")
+                    .join(job_id.to_string())
+            } else {
+                self.temp_dir.clone()
+            };
+
+            let edge_data_path = working_dir
                 .join("feature-store")
                 .join(format!("{}.jsonl", assertion.edge_id));
 
@@ -494,7 +521,7 @@ impl TestContext {
         // Load actual output
         let actual_file = self.actual_output_dir.join(&config.expected_file);
         if !actual_file.exists() {
-            anyhow::bail!("Error count summary file not found: {:?}", actual_file);
+            anyhow::bail!("Error count summary file not found: {actual_file:?}");
         }
         let actual_json: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&actual_file)?)?;
@@ -502,10 +529,7 @@ impl TestContext {
         // Load expected output
         let expected_file = self.test_dir.join(&config.expected_file);
         if !expected_file.exists() {
-            anyhow::bail!(
-                "Expected error count summary file not found: {:?}",
-                expected_file
-            );
+            anyhow::bail!("Expected error count summary file not found: {expected_file:?}");
         }
         let expected_json: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(&expected_file)?)?;
@@ -524,19 +548,16 @@ impl TestContext {
 
         // Compare
         for field in &fields_to_check {
-            let expected_value = expected_map.get(field).ok_or_else(|| {
-                anyhow::anyhow!("Field '{}' not found in expected summary", field)
-            })?;
+            let expected_value = expected_map
+                .get(field)
+                .ok_or_else(|| anyhow::anyhow!("Field '{field}' not found in expected summary"))?;
             let actual_value = actual_map
                 .get(field)
-                .ok_or_else(|| anyhow::anyhow!("Field '{}' not found in actual summary", field))?;
+                .ok_or_else(|| anyhow::anyhow!("Field '{field}' not found in actual summary"))?;
 
             if actual_value != expected_value {
                 anyhow::bail!(
-                    "Error count summary mismatch for '{}': expected {:?}, got {:?}",
-                    field,
-                    expected_value,
-                    actual_value
+                    "Error count summary mismatch for '{field}': expected {expected_value:?}, got {actual_value:?}"
                 );
             }
         }
@@ -548,14 +569,14 @@ impl TestContext {
         // Load actual CSV
         let actual_file = self.actual_output_dir.join(&config.expected_file);
         if !actual_file.exists() {
-            anyhow::bail!("File error summary not found: {:?}", actual_file);
+            anyhow::bail!("File error summary not found: {actual_file:?}");
         }
         let actual_content = fs::read_to_string(&actual_file)?;
 
         // Load expected CSV
         let expected_file = self.test_dir.join(&config.expected_file);
         if !expected_file.exists() {
-            anyhow::bail!("Expected file error summary not found: {:?}", expected_file);
+            anyhow::bail!("Expected file error summary not found: {expected_file:?}");
         }
         let expected_content = fs::read_to_string(&expected_file)?;
 
@@ -586,10 +607,10 @@ impl TestContext {
         // Verify columns exist
         for col in &columns_to_check {
             if !actual_headers.iter().any(|h| h == col) {
-                anyhow::bail!("Column '{}' not found in actual CSV", col);
+                anyhow::bail!("Column '{col}' not found in actual CSV");
             }
             if !expected_headers.iter().any(|h| h == col) {
-                anyhow::bail!("Column '{}' not found in expected CSV", col);
+                anyhow::bail!("Column '{col}' not found in expected CSV");
             }
         }
 
@@ -609,7 +630,7 @@ impl TestContext {
         for (key, expected_row) in &expected_rows {
             let actual_row = actual_rows
                 .get(key)
-                .ok_or_else(|| anyhow::anyhow!("Row with key {:?} not found in actual CSV", key))?;
+                .ok_or_else(|| anyhow::anyhow!("Row with key {key:?} not found in actual CSV"))?;
 
             // Compare specified columns
             for col in &columns_to_check {
@@ -619,18 +640,14 @@ impl TestContext {
 
                 let expected_val = expected_row
                     .get(col)
-                    .ok_or_else(|| anyhow::anyhow!("Column '{}' not found in expected row", col))?;
+                    .ok_or_else(|| anyhow::anyhow!("Column '{col}' not found in expected row"))?;
                 let actual_val = actual_row
                     .get(col)
-                    .ok_or_else(|| anyhow::anyhow!("Column '{}' not found in actual row", col))?;
+                    .ok_or_else(|| anyhow::anyhow!("Column '{col}' not found in actual row"))?;
 
                 if actual_val != expected_val {
                     anyhow::bail!(
-                        "File error summary mismatch for row {:?}, column '{}': expected '{}', got '{}'",
-                        key,
-                        col,
-                        expected_val,
-                        actual_val
+                        "File error summary mismatch for row {key:?}, column '{col}': expected '{expected_val}', got '{actual_val}'"
                     );
                 }
             }
@@ -677,7 +694,7 @@ impl TestContext {
                 let col_idx = headers
                     .iter()
                     .position(|h| h == key_col)
-                    .ok_or_else(|| anyhow::anyhow!("Key column '{}' not found", key_col))?;
+                    .ok_or_else(|| anyhow::anyhow!("Key column '{key_col}' not found"))?;
                 key.push(row.get(col_idx).unwrap_or("").to_string());
             }
 
@@ -698,7 +715,7 @@ impl TestContext {
         let actual_file = self.actual_output_dir.join(file_name);
 
         if !actual_file.exists() {
-            anyhow::bail!("Output file not found at {:?}", actual_file);
+            anyhow::bail!("Output file not found at {actual_file:?}");
         }
 
         let expected = fs::read_to_string(&expected_file)?;
@@ -713,7 +730,7 @@ impl TestContext {
         let actual_file = self.actual_output_dir.join(file_name);
 
         if !actual_file.exists() {
-            anyhow::bail!("Output file not found at {:?}", actual_file);
+            anyhow::bail!("Output file not found at {actual_file:?}");
         }
 
         let expected: serde_json::Value =
@@ -733,7 +750,7 @@ impl TestContext {
         let actual_file = self.actual_output_dir.join(file_name);
 
         if !actual_file.exists() {
-            anyhow::bail!("Output file not found at {:?}", actual_file);
+            anyhow::bail!("Output file not found at {actual_file:?}");
         }
 
         let expected_content = fs::read_to_string(&expected_file)?;
@@ -770,8 +787,7 @@ impl TestContext {
         } else {
             let extension = file_name.rsplit('.').next().unwrap_or("unknown");
             anyhow::bail!(
-                "Unsupported file format '.{}'. Only json, jsonl, csv, and tsv files are supported.",
-                extension
+                "Unsupported file format '.{extension}'. Only json, jsonl, csv, and tsv files are supported."
             )
         }
     }
@@ -854,10 +870,7 @@ impl TestContext {
         if actual_cols_sorted != expected_cols_sorted {
             let file_type = if delimiter == b'\t' { "TSV" } else { "CSV" };
             anyhow::bail!(
-                "{} column mismatch. Expected columns: {:?}, Actual columns: {:?}",
-                file_type,
-                expected_cols_sorted,
-                actual_cols_sorted
+                "{file_type} column mismatch. Expected columns: {expected_cols_sorted:?}, Actual columns: {actual_cols_sorted:?}"
             );
         }
 
@@ -929,7 +942,7 @@ impl TestContext {
                     reordered_actual_values
                         .push(actual_row.get(actual_col_idx).unwrap_or("").to_string());
                 } else {
-                    anyhow::bail!("Column '{}' not found in actual data", expected_col_name);
+                    anyhow::bail!("Column '{expected_col_name}' not found in actual data");
                 }
             }
             actual_processed_rows.push(reordered_actual_values);
@@ -943,10 +956,7 @@ impl TestContext {
         if expected_processed_rows != actual_processed_rows {
             let file_type = if delimiter == b'\t' { "TSV" } else { "CSV" };
             anyhow::bail!(
-                "{} data mismatch (excluding excepted columns, ignoring row and column order).\nExpected rows (sorted): {:?}\nActual rows (sorted): {:?}", 
-                file_type,
-                expected_processed_rows,
-                actual_processed_rows
+                "{file_type} data mismatch (excluding excepted columns, ignoring row and column order).\nExpected rows (sorted): {expected_processed_rows:?}\nActual rows (sorted): {actual_processed_rows:?}"
             );
         }
 
