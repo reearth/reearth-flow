@@ -5180,7 +5180,7 @@ checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 
 [[package]]
 name = "plateau-gis-quality-checker"
-version = "0.0.147"
+version = "0.0.146"
 dependencies = [
  "directories",
  "log",
@@ -10174,7 +10174,7 @@ checksum = "f17a85883d4e6d00e8a97c586de764dabcc06133f7f1d55dce5cdc070ad7fe59"
 
 [[package]]
 name = "workflow-tests"
-version = "0.1.50"
+version = "0.1.49"
 dependencies = [
  "anyhow",
  "csv",

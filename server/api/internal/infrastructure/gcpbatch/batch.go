@@ -42,6 +42,7 @@ type BatchConfig struct {
 	TaskCount                       int
 	ThreadPoolSize                  string
 	CompressIntermediateData        bool
+	PersistIngressData              bool
 }
 
 type BatchClient interface {
@@ -188,6 +189,9 @@ func (b *BatchRepo) SubmitJob(
 				}
 				if b.config.CompressIntermediateData {
 					vars["FLOW_RUNTIME_COMPRESS_INTERMEDIATE_DATA"] = strconv.FormatBool(b.config.CompressIntermediateData)
+				}
+				if b.config.PersistIngressData {
+					vars["FLOW_RUNTIME_PERSIST_INGRESS_DATA"] = strconv.FormatBool(b.config.PersistIngressData)
 				}
 
 				return vars
