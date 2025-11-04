@@ -452,7 +452,7 @@ graphs:
     type: action
     action: CsvWriter
     with:
-      delimiter: "\t"
+      format: tsv
       output: |
         env.get("outputPath") + "/01_共通.tsv"
   - id: 3b6f77dc-fc94-4610-bec8-3b1cd2789f3d

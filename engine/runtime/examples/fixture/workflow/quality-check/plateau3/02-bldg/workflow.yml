@@ -131,7 +131,7 @@ graphs:
         type: action
         action: CsvWriter
         with:
-          delimiter: "\t"
+          format: tsv
           output: |
             file::join_path(env.get("outputPath"), "02_bldg_l_bldg_06エラー.tsv")
 
@@ -178,7 +178,7 @@ graphs:
         type: action
         action: CsvWriter
         with:
-          delimiter: "\t"
+          format: tsv
           output: |
             file::join_path(env.get("outputPath"), "02_bldg_t_bldg_02エラー.tsv")
 
@@ -321,7 +321,7 @@ graphs:
         type: action
         action: CsvWriter
         with:
-          delimiter: "\t"
+          format: tsv
           output: |
             file::join_path(env.get("outputPath"), "02_bldg_地物インスタンス数.tsv")
 
@@ -355,7 +355,7 @@ graphs:
         type: action
         action: CsvWriter
         with:
-          delimiter: "\t"
+          format: tsv
           output: |
             file::join_path(env.get("outputPath"), "02_bldg_市町村コードエラー.tsv")
 
@@ -383,7 +383,7 @@ graphs:
         type: action
         action: CsvWriter
         with:
-          delimiter: "\t"
+          format: tsv
           output: |
             file::join_path(env.get("outputPath"), "02_bldg_l-bldg-04-05-エラー.tsv")
 
@@ -483,7 +483,7 @@ graphs:
         type: action
         action: CsvWriter
         with:
-          delimiter: "\t"
+          format: tsv
           output: |
             file::join_path(env.get("outputPath"), "02_bldg_c_bldg_01エラー.tsv")
 

@@ -675,7 +675,7 @@ graphs:
     type: action
     action: CsvWriter
     with:
-      delimiter: "\t"
+      format: tsv
       output: |
         file::join_path(env.get("outputPath"), "地物インスタンス数.tsv")
   - id: 0d469855-57f4-4f0f-923c-c5aca71645e2
@@ -746,7 +746,7 @@ graphs:
     type: action
     action: CsvWriter
     with:
-      delimiter: "\t"
+      format: tsv
       output: |
         file::join_path(env.get("outputPath"), "不正な面の向きエラー.tsv")
   - id: 0c30b482-b241-4d47-9a88-175c5f98ff8d
@@ -781,7 +781,7 @@ graphs:
     type: action
     action: CsvWriter
     with:
-      delimiter: "\t"
+      format: tsv
       output: |
         file::join_path(env.get("outputPath"), "不正な面エラー.tsv")
   - id: e51e64b4-6cc0-4698-b677-e5f7f667f24f
@@ -820,7 +820,7 @@ graphs:
     type: action
     action: CsvWriter
     with:
-      delimiter: "\t"
+      format: tsv
       output: |
         file::join_path(env.get("outputPath"), "検査結果一覧.tsv")
   edges:

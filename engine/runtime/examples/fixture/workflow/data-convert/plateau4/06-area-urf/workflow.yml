@@ -95,7 +95,7 @@ graphs:
         type: action
         action: CsvWriter
         with:
-          delimiter: "\t"
+          format: tsv
           output: |
             file::join_path(env.get("outputPath"), "maxLod.tsv")
 

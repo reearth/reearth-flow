@@ -678,7 +678,7 @@ graphs:
     type: action
     action: CsvWriter
     with:
-      delimiter: "\t"
+      format: tsv
       output: |
         file::join_path(file::join_path(env.get("outputPath"), env.get("__value").destDataset), "xlink参照エラー.tsv")
   - id: 5028de22-eb9e-4ec4-80f2-62b585445042
@@ -917,7 +917,7 @@ graphs:
     type: action
     action: CsvWriter
     with:
-      delimiter: "\t"
+      format: tsv
       output: |
         file::join_path(env.get("outputPath"), "隣接面重複エラー.tsv")
   - id: 9f84917a-560c-468d-b78d-e862f5984120
@@ -974,7 +974,7 @@ graphs:
     type: action
     action: CsvWriter
     with:
-      delimiter: "\t"
+      format: tsv
       output: |
         file::join_path(env.get("outputPath"), "検査結果一覧.tsv")
   edges:
