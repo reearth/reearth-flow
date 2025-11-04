@@ -406,7 +406,7 @@ async fn test_channel_ordering() {
     let mut rx = channels.write_rx.lock().await;
     for i in 0..50 {
         let received = rx.recv().await.expect("Failed to receive");
-        assert_eq!(received, vec![i as u8], "Messages out of order at {}", i);
+        assert_eq!(received, vec![i as u8], "Messages out of order at {i}");
     }
 }
 
