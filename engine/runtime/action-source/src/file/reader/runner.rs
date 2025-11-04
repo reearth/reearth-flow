@@ -70,10 +70,7 @@ pub(crate) async fn get_content(
             .get(input_path.path().as_path())
             .await
             .map_err(|e| format!("{e:?}"))?;
-        let byte = result
-            .bytes()
-            .await
-            .map_err(|e| format!("{e:?}"))?;
+        let byte = result.bytes().await.map_err(|e| format!("{e:?}"))?;
         return Ok(byte);
     }
     Err("Missing required parameter `dataset` or `inline`".to_string())

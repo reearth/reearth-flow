@@ -49,7 +49,9 @@ impl SourceFactory for CityGmlReaderFactory {
     ) -> Result<Box<dyn Source>, BoxedError> {
         let params = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                SourceError::CityGmlReaderFactory(format!("Failed to serialize `with` parameter: {e}"))
+                SourceError::CityGmlReaderFactory(format!(
+                    "Failed to serialize `with` parameter: {e}"
+                ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 SourceError::CityGmlReaderFactory(format!(
