@@ -8,8 +8,6 @@ pub enum SinkError {
     CsvWriter(String),
     #[error("Csv Writer Factory error: {0}")]
     CsvWriterFactory(String),
-    #[error("File Writer error: {0}")]
-    FileWriter(String),
     #[error("Cesium3DTiles Writer Factory error: {0}")]
     Cesium3DTilesWriterFactory(String),
     #[error("Cesium3DTiles Writer error: {0}")]
@@ -56,6 +54,8 @@ pub enum SinkError {
     JsonWriterFactory(String),
     #[error("Json Writer error: {0}")]
     JsonWriter(String),
+    #[error("File Writer error: {0}")]
+    FileWriter(String),
 }
 
 impl SinkError {
@@ -64,7 +64,7 @@ impl SinkError {
     }
 
     pub fn geojson_writer<T: ToString>(message: T) -> Self {
-        Self::FileWriter(message.to_string())
+        Self::GeoJsonWriter(message.to_string())
     }
 
     pub fn cesium3dtiles_writer<T: ToString>(message: T) -> Self {
@@ -81,6 +81,10 @@ impl SinkError {
 
     pub fn obj_writer<T: ToString>(message: T) -> Self {
         Self::ObjWriter(message.to_string())
+    }
+
+    pub fn excel_writer<T: ToString>(message: T) -> Self {
+        Self::ExcelWriter(message.to_string())
     }
 }
 

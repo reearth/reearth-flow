@@ -580,7 +580,7 @@ pub(super) fn tile_writing_stage(
         .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
     storage
         .put_sync(Path::new(&root_tileset_path.path()), tileset_json.into())
-        .map_err(crate::errors::SinkError::file_writer)?;
+        .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
 
     Ok(())
 }

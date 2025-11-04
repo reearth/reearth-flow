@@ -49,15 +49,15 @@ impl SourceFactory for GeoJsonReaderFactory {
     ) -> Result<Box<dyn Source>, BoxedError> {
         let params = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                SourceError::FileReaderFactory(format!("Failed to serialize `with` parameter: {e}"))
+                SourceError::GeoJsonReaderFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                SourceError::FileReaderFactory(format!(
+                SourceError::GeoJsonReaderFactory(format!(
                     "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
-            return Err(SourceError::FileReaderFactory(
+            return Err(SourceError::GeoJsonReaderFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());

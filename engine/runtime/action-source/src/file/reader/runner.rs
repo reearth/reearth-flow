@@ -7,8 +7,6 @@ use reearth_flow_runtime::executor_operation::NodeContext;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Expr;
 use schemars::JsonSchema;
-
-use crate::errors::SourceError;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -25,7 +23,7 @@ pub struct FileReaderCommonParam {
 pub(crate) fn get_input_path(
     ctx: &NodeContext,
     common_property: &FileReaderCommonParam,
-) -> Result<Option<Uri>, SourceError> {
+) -> Result<Option<Uri>, String> {
     let Some(path) = &common_property.dataset else {
         return Ok(None);
     };
@@ -36,9 +34,7 @@ pub(crate) fn get_input_path(
         .unwrap_or_else(|_| path.to_string());
     let uri = Uri::from_str(path.as_str());
     let Ok(uri) = uri else {
-        return Err(crate::errors::SourceError::FileReader(
-            "Invalid path".to_string(),
-        ));
+        return Err("Invalid path".to_string());
     };
     Ok(Some(uri))
 }
@@ -46,7 +42,7 @@ pub(crate) fn get_input_path(
 fn get_inline_content(
     ctx: &NodeContext,
     common_property: &FileReaderCommonParam,
-) -> Result<Option<Bytes>, SourceError> {
+) -> Result<Option<Bytes>, String> {
     let Some(inline) = &common_property.inline else {
         return Ok(None);
     };
@@ -62,25 +58,23 @@ pub(crate) async fn get_content(
     ctx: &NodeContext,
     common_property: &FileReaderCommonParam,
     storage_resolver: Arc<StorageResolver>,
-) -> Result<Bytes, SourceError> {
+) -> Result<Bytes, String> {
     if let Some(content) = get_inline_content(ctx, common_property)? {
         return Ok(content);
     }
     if let Some(input_path) = get_input_path(ctx, common_property)? {
         let storage = storage_resolver
             .resolve(&input_path)
-            .map_err(|e| crate::errors::SourceError::FileReader(format!("{e:?}")))?;
+            .map_err(|e| format!("{e:?}"))?;
         let result = storage
             .get(input_path.path().as_path())
             .await
-            .map_err(|e| crate::errors::SourceError::FileReader(format!("{e:?}")))?;
+            .map_err(|e| format!("{e:?}"))?;
         let byte = result
             .bytes()
             .await
-            .map_err(|e| crate::errors::SourceError::FileReader(format!("{e:?}")))?;
+            .map_err(|e| format!("{e:?}"))?;
         return Ok(byte);
     }
-    Err(crate::errors::SourceError::FileReader(
-        "Missing required parameter `dataset` or `inline`".to_string(),
-    ))
+    Err("Missing required parameter `dataset` or `inline`".to_string())
 }
