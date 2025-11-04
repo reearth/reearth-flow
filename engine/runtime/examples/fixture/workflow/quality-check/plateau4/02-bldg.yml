@@ -1309,7 +1309,7 @@ graphs:
             part_id
           }
   - id: bba483d0-9813-499e-a0f6-22874646450d
-    name: FileWriterTsv-c-bldg-01
+    name: FeatureWriterCsv-c-bldg-01
     type: action
     action: FeatureWriter
     with:
