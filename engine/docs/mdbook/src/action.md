@@ -1383,6 +1383,7 @@ Writes features to CSV or TSV files.
   ],
   "properties": {
     "format": {
+      "title": "File Format",
       "description": "File format: csv (comma) or tsv (tab)",
       "allOf": [
         {
@@ -1391,6 +1392,7 @@ Writes features to CSV or TSV files.
       ]
     },
     "output": {
+      "title": "Output Path",
       "description": "Output path or expression for the CSV/TSV file to create",
       "allOf": [
         {
@@ -1774,6 +1776,7 @@ Writes features to Microsoft Excel format (.xlsx files).
   ],
   "properties": {
     "output": {
+      "title": "Output Path",
       "description": "Output path or expression for the Excel file to create",
       "allOf": [
         {
@@ -1782,6 +1785,7 @@ Writes features to Microsoft Excel format (.xlsx files).
       ]
     },
     "sheetName": {
+      "title": "Sheet Name",
       "description": "Sheet name (defaults to \"Sheet1\")",
       "type": [
         "string",
@@ -3181,6 +3185,7 @@ Writes geographic features to GeoJSON files with optional grouping
   ],
   "properties": {
     "groupBy": {
+      "title": "Group By",
       "description": "Optional attributes to group features by, creating separate files for each group",
       "type": [
         "array",
@@ -3191,6 +3196,7 @@ Writes geographic features to GeoJSON files with optional grouping
       }
     },
     "output": {
+      "title": "Output Path",
       "description": "Output path or expression for the GeoJSON file to create",
       "allOf": [
         {
@@ -3757,6 +3763,7 @@ Writes 3D features to GLTF format with optional texture attachment
   ],
   "properties": {
     "attachTexture": {
+      "title": "Attach Texture",
       "description": "Whether to attach texture information to the GLTF model",
       "type": [
         "boolean",
@@ -3764,12 +3771,15 @@ Writes 3D features to GLTF format with optional texture attachment
       ]
     },
     "dracoCompression": {
+      "title": "Draco Compression",
+      "description": "Enable Draco compression for mesh geometry",
       "type": [
         "boolean",
         "null"
       ]
     },
     "output": {
+      "title": "Output Path",
       "description": "Output path or expression for the GLTF file to create",
       "allOf": [
         {
@@ -3990,6 +4000,7 @@ Writes features to JSON files.
   ],
   "properties": {
     "converter": {
+      "title": "Converter",
       "description": "Optional converter expression to transform features before writing",
       "anyOf": [
         {
@@ -4001,6 +4012,7 @@ Writes features to JSON files.
       ]
     },
     "output": {
+      "title": "Output Path",
       "description": "Output path or expression for the JSON file to create",
       "allOf": [
         {
@@ -5558,6 +5570,7 @@ Writes geographic features to ESRI Shapefile format with optional grouping
   ],
   "properties": {
     "groupBy": {
+      "title": "Group By",
       "description": "Optional attributes to group features by, creating separate files for each group",
       "type": [
         "array",
@@ -5568,6 +5581,7 @@ Writes geographic features to ESRI Shapefile format with optional grouping
       }
     },
     "output": {
+      "title": "Output Path",
       "description": "Output path or expression for the Shapefile to create",
       "allOf": [
         {
@@ -6203,6 +6217,7 @@ Writes features to XML files.
   ],
   "properties": {
     "output": {
+      "title": "Output Path",
       "description": "Output path or expression for the XML file to create",
       "allOf": [
         {

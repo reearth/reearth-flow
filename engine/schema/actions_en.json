@@ -1385,6 +1385,7 @@
         ],
         "properties": {
           "format": {
+            "title": "File Format",
             "description": "File format: csv (comma) or tsv (tab)",
             "allOf": [
               {
@@ -1393,6 +1394,7 @@
             ]
           },
           "output": {
+            "title": "Output Path",
             "description": "Output path or expression for the CSV/TSV file to create",
             "allOf": [
               {
@@ -1778,6 +1780,7 @@
         ],
         "properties": {
           "output": {
+            "title": "Output Path",
             "description": "Output path or expression for the Excel file to create",
             "allOf": [
               {
@@ -1786,6 +1789,7 @@
             ]
           },
           "sheetName": {
+            "title": "Sheet Name",
             "description": "Sheet name (defaults to \"Sheet1\")",
             "type": [
               "string",
@@ -3181,6 +3185,7 @@
         ],
         "properties": {
           "groupBy": {
+            "title": "Group By",
             "description": "Optional attributes to group features by, creating separate files for each group",
             "type": [
               "array",
@@ -3191,6 +3196,7 @@
             }
           },
           "output": {
+            "title": "Output Path",
             "description": "Output path or expression for the GeoJSON file to create",
             "allOf": [
               {
@@ -3758,6 +3764,7 @@
         ],
         "properties": {
           "attachTexture": {
+            "title": "Attach Texture",
             "description": "Whether to attach texture information to the GLTF model",
             "type": [
               "boolean",
@@ -3765,12 +3772,15 @@
             ]
           },
           "dracoCompression": {
+            "title": "Draco Compression",
+            "description": "Enable Draco compression for mesh geometry",
             "type": [
               "boolean",
               "null"
             ]
           },
           "output": {
+            "title": "Output Path",
             "description": "Output path or expression for the GLTF file to create",
             "allOf": [
               {
@@ -3992,6 +4002,7 @@
         ],
         "properties": {
           "converter": {
+            "title": "Converter",
             "description": "Optional converter expression to transform features before writing",
             "anyOf": [
               {
@@ -4003,6 +4014,7 @@
             ]
           },
           "output": {
+            "title": "Output Path",
             "description": "Output path or expression for the JSON file to create",
             "allOf": [
               {
@@ -5585,6 +5597,7 @@
         ],
         "properties": {
           "groupBy": {
+            "title": "Group By",
             "description": "Optional attributes to group features by, creating separate files for each group",
             "type": [
               "array",
@@ -5595,6 +5608,7 @@
             }
           },
           "output": {
+            "title": "Output Path",
             "description": "Output path or expression for the Shapefile to create",
             "allOf": [
               {
@@ -6236,6 +6250,7 @@
         ],
         "properties": {
           "output": {
+            "title": "Output Path",
             "description": "Output path or expression for the XML file to create",
             "allOf": [
               {

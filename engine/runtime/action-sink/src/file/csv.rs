@@ -84,8 +84,10 @@ pub(super) struct CsvWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct CsvWriterParam {
+    /// # Output Path
     /// Output path or expression for the CSV/TSV file to create
     pub(super) output: Expr,
+    /// # File Format
     /// File format: csv (comma) or tsv (tab)
     format: CsvFormat,
 }
