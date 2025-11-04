@@ -51,7 +51,6 @@ const WorkspaceMenu: React.FC = () => {
               <p className="self-start text-xs font-thin">
                 {t("Current workspace:")}
               </p>
-              {/* <div className="flex justify-center gap-2"> */}
               <p className="line-clamp-2 w-full px-4 text-start text-sm font-light italic">
                 {currentWorkspace?.name}
               </p>
@@ -59,7 +58,6 @@ const WorkspaceMenu: React.FC = () => {
             <div className="absolute right-1 bottom-1/2 flex shrink-0 translate-1/2 items-center justify-center opacity-0 group-hover:opacity-100">
               <CaretDownIcon size="12px" weight="thin" />
             </div>
-            {/* </div> */}
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
