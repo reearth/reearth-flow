@@ -1215,7 +1215,7 @@ graphs:
           let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
           building_id_attribute["uro:partID"] ?? "（なし）"
   - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
-    name: FileWriter-invalid-building-id-format
+    name: FeatureWriter-invalid-building-id-format
     type: action
     action: FeatureWriter
     with:

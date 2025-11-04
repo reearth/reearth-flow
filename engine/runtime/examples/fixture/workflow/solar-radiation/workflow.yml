@@ -312,7 +312,7 @@ graphs:
         fromPort: default
         toPort: default
 
-      # AttributeMapper -> FileWriter
+      # AttributeMapper -> CsvWriter
       - id: e2222222-2222-2222-2222-222222222222
         from: 22222222-2222-2222-2222-222222222222
         to: 88888888-8888-8888-8888-888888888888
