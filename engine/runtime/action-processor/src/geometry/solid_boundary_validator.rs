@@ -241,6 +241,7 @@ impl SolidBoundaryValidator {
         faces: &[LineString3D<f64>],
         vertices: &[Coordinate3D<f64>],
     ) -> Option<ValidationResult> {
+        let epsilon = 1e-8;
         if faces.is_empty() {
             return None;
         }
@@ -249,7 +250,12 @@ impl SolidBoundaryValidator {
             .iter()
             .map(|f| {
                 f.iter()
-                    .map(|v| vertices.iter().position(|&vv| vv == *v).unwrap())
+                    .map(|v| {
+                        vertices
+                            .iter()
+                            .position(|&vv| (vv - *v).norm() < epsilon)
+                            .unwrap()
+                    })
                     .collect::<Vec<_>>()
             })
             .collect::<Vec<_>>();

@@ -5,8 +5,16 @@ mutation CreateProject($input: CreateProjectInput!) {
     }
   }
 }
-query GetProjects($workspaceId: ID!, $pagination: PageBasedPagination!) {
-  projects(workspaceId: $workspaceId, pagination: $pagination) {
+query GetProjects(
+  $workspaceId: ID!
+  $keyword: String
+  $pagination: PageBasedPagination!
+) {
+  projects(
+    workspaceId: $workspaceId
+    keyword: $keyword
+    pagination: $pagination
+  ) {
     totalCount
     nodes {
       ...Project

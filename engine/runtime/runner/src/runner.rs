@@ -32,7 +32,8 @@ impl Runner {
         factories: HashMap<String, NodeKind>,
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
-        state: Arc<State>,
+        ingress_state: Arc<State>,
+        feature_state: Arc<State>,
     ) -> Result<(), crate::errors::Error> {
         Self::run_with_event_handler(
             job_id,
@@ -40,18 +41,21 @@ impl Runner {
             factories,
             logger_factory,
             storage_resolver,
-            state,
+            ingress_state,
+            feature_state,
             vec![],
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn run_with_event_handler(
         job_id: uuid::Uuid,
         workflow: Workflow,
         factories: HashMap<String, NodeKind>,
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
-        state: Arc<State>,
+        ingress_state: Arc<State>,
+        feature_state: Arc<State>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
     ) -> Result<(), crate::errors::Error> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -93,7 +97,8 @@ impl Runner {
                     factories,
                     shutdown_receiver,
                     storage_resolver,
-                    state,
+                    ingress_state,
+                    feature_state,
                     handlers,
                 )
                 .await
@@ -118,7 +123,8 @@ impl AsyncRunner {
         factories: HashMap<String, NodeKind>,
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
-        state: Arc<State>,
+        ingress_state: Arc<State>,
+        feature_state: Arc<State>,
     ) -> Result<(), crate::errors::Error> {
         Self::run_with_event_handler(
             job_id,
@@ -126,19 +132,22 @@ impl AsyncRunner {
             factories,
             logger_factory,
             storage_resolver,
-            state,
+            ingress_state,
+            feature_state,
             vec![],
         )
         .await
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn run_with_event_handler(
         job_id: uuid::Uuid,
         workflow: Workflow,
         factories: HashMap<String, NodeKind>,
         logger_factory: Arc<LoggerFactory>,
         storage_resolver: Arc<StorageResolver>,
-        state: Arc<State>,
+        ingress_state: Arc<State>,
+        feature_state: Arc<State>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
     ) -> Result<(), crate::errors::Error> {
         let start = Instant::now();
@@ -169,7 +178,8 @@ impl AsyncRunner {
                 factories,
                 shutdown_receiver,
                 storage_resolver,
-                state,
+                ingress_state,
+                feature_state,
                 handlers,
             )
             .await;

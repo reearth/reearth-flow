@@ -10,6 +10,12 @@ use std::ops::{Index, IndexMut};
 use flatgeom::{LineString2 as NLineString2, LineString3 as NLineString3};
 use geo_types::LineString as GeoLineString;
 
+use crate::algorithm::utils::denormalize_vertices;
+use crate::algorithm::utils::denormalize_vertices_2d;
+use crate::algorithm::utils::normalize_vertices;
+use crate::algorithm::utils::normalize_vertices_2d;
+use crate::algorithm::utils::NormalizationResult2D;
+use crate::algorithm::utils::NormalizationResult3D;
 use crate::types::coordinate::Coordinate3D;
 use crate::types::face::Face;
 use crate::utils::line_string_bounding_rect;
@@ -290,6 +296,14 @@ impl<T: CoordNum, Z: CoordNum> LineString<T, Z> {
             prev = xy;
         }
         area / 2.0
+    }
+
+    /// Splits the LineString at the given index.
+    pub fn split_at(self, index: usize) -> (Self, Self) {
+        assert!(index < self.len());
+        let first = LineString(self.0[..=index].to_vec());
+        let second = LineString(self.0[index..].to_vec());
+        (first, second)
     }
 }
 
@@ -589,5 +603,33 @@ impl<T: CoordNum> From<LineString2D<T>> for GeoLineString<T> {
 impl<T: CoordNum> From<GeoLineString<T>> for LineString2D<T> {
     fn from(line_string: GeoLineString<T>) -> Self {
         LineString2D::new(line_string.0.into_iter().map(Into::into).collect())
+    }
+}
+
+impl<T: CoordFloat> LineString2D<T> {
+    pub fn normalize_vertices_2d(&mut self) -> NormalizationResult2D<T> {
+        normalize_vertices_2d(&mut self.0)
+    }
+    pub fn denormalize_vertices_2d(&mut self, norm: NormalizationResult2D<T>) {
+        denormalize_vertices_2d(&mut self.0, norm);
+    }
+}
+
+impl<T: CoordFloat> LineString3D<T> {
+    pub fn normalize_vertices_3d(&mut self) -> NormalizationResult3D<T> {
+        normalize_vertices(&mut self.0)
+    }
+    pub fn denormalize_vertices(&mut self, norm: NormalizationResult3D<T>) {
+        denormalize_vertices(&mut self.0, norm);
+    }
+}
+
+impl<T: CoordFloat + From<Z>, Z: CoordFloat> LineString<T, Z> {
+    pub fn get_vertices(&self) -> Vec<&Coordinate<T, Z>> {
+        self.0.iter().collect()
+    }
+
+    pub fn get_vertices_mut(&mut self) -> Vec<&mut Coordinate<T, Z>> {
+        self.0.iter_mut().collect()
     }
 }

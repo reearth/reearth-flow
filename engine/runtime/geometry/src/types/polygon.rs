@@ -15,6 +15,11 @@ use crate::algorithm::coords_iter::CoordsIter;
 use crate::algorithm::line_intersection::{
     line_intersection, line_intersection3d, LineIntersection,
 };
+use crate::algorithm::utils::{
+    denormalize_vertices, normalize_vertices, normalize_vertices_2d,
+    normalize_vertices_2d_with_params, normalize_vertices_with_params, NormalizationResult2D,
+    NormalizationResult3D,
+};
 use crate::algorithm::GeoFloat;
 
 use super::conversion::geojson::create_polygon_type;
@@ -249,19 +254,28 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
 
 impl Polygon<f64> {
     // Merges all the rings (exterior and interiors) into a single closed LineString.
-    pub fn into_merged_contour(self) -> Result<LineString<f64, f64>, String> {
+    pub fn into_merged_contour(mut self) -> Result<LineString<f64, f64>, String> {
+        let norm = self.normalize_vertices_3d();
         let mut exterior = self.exterior;
-        for interior in self.interiors {
-            exterior = Self::into_merged_contour_single_interior(exterior, interior)?;
+        let len = self.interiors.len();
+        let mut interiors = self.interiors.into_iter();
+        for _ in 0..len {
+            // Safe because we are iterating `len` times
+            let interior = unsafe { interiors.next().unwrap_unchecked() };
+            let remaining_interiors = interiors.as_slice();
+            exterior =
+                Self::into_merged_contour_single_interior(exterior, interior, remaining_interiors)?;
         }
+        exterior.denormalize_vertices(norm);
         Ok(exterior)
     }
 
     fn into_merged_contour_single_interior(
-        mut exterior: LineString<f64, f64>,
-        mut interior: LineString<f64, f64>,
+        exterior: LineString<f64, f64>,
+        mut merging_interior: LineString<f64, f64>,
+        remaining_interiors: &[LineString<f64, f64>],
     ) -> Result<LineString<f64, f64>, String> {
-        if interior.is_empty() {
+        if merging_interior.is_empty() {
             return Ok(exterior);
         }
 
@@ -269,8 +283,8 @@ impl Polygon<f64> {
 
         let (mut x, mut y) = (usize::MAX, usize::MAX);
         'outer: for (i, &v) in exterior.iter().enumerate() {
-            'inner: for (j, &w) in interior.iter().enumerate() {
-                // check if the line segment vw intersects with any edge of the exterior ring and the interior ring
+            'inner: for (j, &w) in merging_interior.iter().enumerate() {
+                // check if the line segment vw intersects with any edge of the exterior ring and the interior rings
                 let e1 = Line::new_(v, w);
                 for e2 in exterior
                     .iter()
@@ -285,10 +299,10 @@ impl Polygon<f64> {
                         continue 'inner;
                     }
                 }
-                for e2 in interior
+                for e2 in merging_interior
                     .iter()
                     .copied()
-                    .zip(interior.iter().copied().skip(1))
+                    .zip(merging_interior.iter().copied().skip(1))
                 {
                     if (e2.0 - w).norm() < epsilon || (e2.1 - w).norm() < epsilon {
                         continue;
@@ -296,6 +310,21 @@ impl Polygon<f64> {
                     let e2 = Line::new_(e2.0, e2.1);
                     if line_intersection3d(e1, e2).is_some() {
                         continue 'inner;
+                    }
+                }
+                for interior in remaining_interiors {
+                    for e2 in interior
+                        .iter()
+                        .copied()
+                        .zip(interior.iter().copied().skip(1))
+                    {
+                        if (e2.0 - w).norm() < epsilon || (e2.1 - w).norm() < epsilon {
+                            continue;
+                        }
+                        let e2 = Line::new_(e2.0, e2.1);
+                        if line_intersection3d(e1, e2).is_some() {
+                            continue 'inner;
+                        }
                     }
                 }
                 // check if `i` is not a vertex of adjacency greater than 2
@@ -314,7 +343,7 @@ impl Polygon<f64> {
             }
         }
 
-        // The orientation of the interior ring must be opposite to that of the exterior ring.
+        // The orientation of the interior rings must be opposite to that of the exterior ring.
         let are_orientations_opposite = {
             let n = exterior
                 .0
@@ -327,7 +356,7 @@ impl Polygon<f64> {
                 .max_by(|a, b| a.norm().partial_cmp(&b.norm()).unwrap())
                 .unwrap()
                 .normalize();
-            let inner = interior.exterior_angle_sum(Some(n));
+            let inner = merging_interior.exterior_angle_sum(Some(n));
             let outer = exterior.exterior_angle_sum(Some(n));
             if (inner.abs() - outer.abs()).abs() < epsilon {
                 (inner + outer).abs() < epsilon
@@ -336,21 +365,24 @@ impl Polygon<f64> {
             }
         };
 
-        if !are_orientations_opposite {
-            interior.0.reverse();
+        let mut out = Vec::with_capacity(exterior.len() + merging_interior.len() + 1);
+        let mut ext_first = exterior.0;
+        let ext_split = ext_first[x];
+        let ext_second = ext_first.split_off(x + 1);
+        out.extend(ext_first);
+
+        merging_interior.0.pop(); // remove duplicated last point
+        merging_interior.0.rotate_left(y);
+        merging_interior.0.push(merging_interior.0[0]); // close the ring again
+        if are_orientations_opposite {
+            out.extend(merging_interior.0);
+        } else {
+            out.extend(merging_interior.0.into_iter().rev());
         }
+        out.push(ext_split);
+        out.extend(ext_second);
 
-        exterior.0.pop();
-        exterior.0.rotate_left(x);
-        exterior.0.push(exterior.0[0]);
-        interior.0.pop();
-        interior.0.rotate_left(y);
-        interior.0.push(interior.0[0]);
-
-        exterior.0.extend(interior.0);
-        exterior.0.push(exterior.0[0]);
-
-        Ok(exterior)
+        Ok(LineString::new(out))
     }
 }
 
@@ -799,6 +831,58 @@ impl<T: CoordNum> From<GeoPolygon<T>> for Polygon2D<T> {
     }
 }
 
+impl<T: CoordFloat> Polygon2D<T> {
+    pub fn normalize_vertices_2d(&mut self) -> NormalizationResult2D<T> {
+        let norm = normalize_vertices_2d(&mut self.exterior.0);
+        for interior in &mut self.interiors {
+            normalize_vertices_2d_with_params(&mut interior.0, norm);
+        }
+        norm
+    }
+
+    pub fn denormalize_vertices_2d(&mut self, norm: NormalizationResult2D<T>) {
+        self.exterior.denormalize_vertices_2d(norm);
+        for interior in &mut self.interiors {
+            interior.denormalize_vertices_2d(norm);
+        }
+    }
+}
+
+impl<T: CoordFloat> Polygon3D<T> {
+    pub fn normalize_vertices_3d(&mut self) -> NormalizationResult3D<T> {
+        let norm = normalize_vertices(&mut self.exterior.0);
+        for interior in &mut self.interiors {
+            normalize_vertices_with_params(&mut interior.0, norm);
+        }
+        norm
+    }
+
+    pub fn denormalize_vertices_3d(&mut self, norm: NormalizationResult3D<T>) {
+        denormalize_vertices(&mut self.exterior.0, norm);
+        for interior in &mut self.interiors {
+            denormalize_vertices(&mut interior.0, norm);
+        }
+    }
+}
+
+impl<T: CoordFloat + From<Z>, Z: CoordFloat> Polygon<T, Z> {
+    pub fn get_vertices(&self) -> Vec<&Coordinate<T, Z>> {
+        let mut vertices = self.exterior.get_vertices();
+        for interior in &self.interiors {
+            vertices.extend(interior.get_vertices());
+        }
+        vertices
+    }
+
+    pub fn get_vertices_mut(&mut self) -> Vec<&mut Coordinate<T, Z>> {
+        let mut vertices = self.exterior.get_vertices_mut();
+        for interior in &mut self.interiors {
+            vertices.extend(interior.get_vertices_mut());
+        }
+        vertices
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -825,15 +909,15 @@ mod tests {
         let merged = polygon.into_merged_contour().unwrap();
         let expected_coords = vec![
             Coordinate::new__(0.0, 0.0, 0.0),
-            Coordinate::new__(4.0, 0.0, 0.0),
-            Coordinate::new__(4.0, 4.0, 0.0),
-            Coordinate::new__(0.0, 4.0, 0.0),
-            Coordinate::new__(0.0, 0.0, 0.0),
             Coordinate::new__(1.0, 1.0, 0.0),
             Coordinate::new__(1.0, 2.0, 0.0),
             Coordinate::new__(2.0, 2.0, 0.0),
             Coordinate::new__(2.0, 1.0, 0.0),
             Coordinate::new__(1.0, 1.0, 0.0),
+            Coordinate::new__(0.0, 0.0, 0.0),
+            Coordinate::new__(4.0, 0.0, 0.0),
+            Coordinate::new__(4.0, 4.0, 0.0),
+            Coordinate::new__(0.0, 4.0, 0.0),
             Coordinate::new__(0.0, 0.0, 0.0),
         ];
         let expected = LineString3D::new(expected_coords);
@@ -860,12 +944,12 @@ mod tests {
         assert_eq!(merged.len(), 8);
         let expected_coords = vec![
             Coordinate::new__(-2.0, 0.0, 0.0),
-            Coordinate::new__(0.0, 3.0, 0.0),
-            Coordinate::new__(2.0, 0.0, 0.0),
-            Coordinate::new__(-2.0, 0.0, 0.0),
             Coordinate::new__(0.0, 1.0, 0.0),
             Coordinate::new__(0.0, 2.0, 0.0),
             Coordinate::new__(0.0, 1.0, 0.0),
+            Coordinate::new__(-2.0, 0.0, 0.0),
+            Coordinate::new__(0.0, 3.0, 0.0),
+            Coordinate::new__(2.0, 0.0, 0.0),
             Coordinate::new__(-2.0, 0.0, 0.0),
         ];
         let expected = LineString3D::new(expected_coords);
@@ -877,66 +961,137 @@ mod tests {
     #[test]
     fn test_into_merged_contour3() {
         let exterior = LineString3D::new(vec![
-            Coordinate::new__(-1.2194539968515465, 0.16933105043042337, 0.0),
-            Coordinate::new__(-1.055857735333338, 0.4778411954004563, 0.0),
-            Coordinate::new__(-0.6853019923873935, 0.24672195911322675, 0.0),
-            Coordinate::new__(-0.5833398829901584, 0.43943710577733136, 0.0),
-            Coordinate::new__(0.09143713416665612, 0.01846906540020424, 0.0),
-            Coordinate::new__(0.03360770119237577, -0.09070861028635324, 0.0),
-            Coordinate::new__(-0.033488920040556945, -0.048611415950504736, 0.0),
-            Coordinate::new__(-0.09436194563997304, -0.1635788079200148, 0.0),
-            Coordinate::new__(-1.0344747782448054, 0.4224735580414215, 0.0),
-            Coordinate::new__(-1.2094860785722195, 0.09411205118207576, 0.0),
-            Coordinate::new__(-1.4199251562078496, 0.22535458947396547, 0.0),
-            Coordinate::new__(-1.8095119541428824, -0.50911502605386, 0.0),
-            Coordinate::new__(-1.6021226584354356, -0.6387069655611979, 0.0),
-            Coordinate::new__(-1.8349611545790832, -1.0778998728746179, 0.0),
-            Coordinate::new__(-1.4781306577310172, -1.2999381710149365, 0.0),
-            Coordinate::new__(-1.2612714401132272, -0.8905213629396685, 0.0),
-            Coordinate::new__(-0.4553518611871161, -1.3940324579852619, 0.0),
-            Coordinate::new__(-0.48654868467646323, -1.4535836170526768, 0.0),
-            Coordinate::new__(0.35977956630138175, -1.9818579435999786, 0.0),
-            Coordinate::new__(0.24412029417678788, -2.1993865707687323, 0.0),
-            Coordinate::new__(2.0069177989502758, -3.2988597200846757, 0.0),
-            Coordinate::new__(2.9961112587714194, -1.434570505224098, 0.0),
-            Coordinate::new__(2.5279636768865688, -1.1431932733038, 0.0),
-            Coordinate::new__(2.6177519190084935, -0.973637427949112, 0.0),
-            Coordinate::new__(1.8766429631621764, -0.5105684032750967, 0.0),
-            Coordinate::new__(1.7883776549743646, -0.6784695400510318, 0.0),
-            Coordinate::new__(1.3301400359839846, -0.39204397002019326, 0.0),
-            Coordinate::new__(0.8713081665710084, -1.2580207963071683, 0.0),
-            Coordinate::new__(0.7607521844701187, -1.1895108170904136, 0.0),
-            Coordinate::new__(0.9572256678649496, -0.06999017268013079, 0.0),
-            Coordinate::new__(0.848957065611682, -0.0031313800969762005, 0.0),
-            Coordinate::new__(1.2583308533118243, 0.7685561964332482, 0.0),
-            Coordinate::new__(1.073053192369885, 0.8841164426087409, 0.0),
-            Coordinate::new__(1.3020897669743488, 1.315864417446708, 0.0),
-            Coordinate::new__(1.0321781807408184, 1.4850789517386835, 0.0),
-            Coordinate::new__(1.0983773918902138, 1.6107982125647209, 0.0),
-            Coordinate::new__(0.7476455114122035, 1.829537078051839, 0.0),
-            Coordinate::new__(0.7141648859428431, 1.7666770671892256, 0.0),
-            Coordinate::new__(-0.2076513132318949, 2.3420011628583612, 0.0),
-            Coordinate::new__(-0.34765878002084466, 2.0765014300828795, 0.0),
-            Coordinate::new__(-0.5489486854778642, 2.2019661703255338, 0.0),
-            Coordinate::new__(-0.7954853956507596, 1.7371333518039644, 0.0),
-            Coordinate::new__(-0.7299133806140475, 1.695861478434628, 0.0),
-            Coordinate::new__(-0.81209244465817, 1.5411927534099812, 0.0),
-            Coordinate::new__(-0.863939717982187, 1.5733841404529636, 0.0),
-            Coordinate::new__(-1.0725030617437434, 1.1797282100502866, 0.0),
-            Coordinate::new__(-1.3228410916347892, 0.7074499089428343, 0.0),
-            Coordinate::new__(-1.5114766353620608, 0.35175035192546195, 0.0),
-            Coordinate::new__(-1.2194539968515465, 0.16933105043042337, 0.0),
+            Coordinate {
+                x: 140.09708962225727,
+                y: 35.99512898183915,
+                z: 32.79,
+            },
+            Coordinate {
+                x: 140.09555668025482,
+                y: 35.99462354625683,
+                z: 32.79,
+            },
+            Coordinate {
+                x: 140.09624635068798,
+                y: 35.99339173244797,
+                z: 32.79,
+            },
+            Coordinate {
+                x: 140.09789194898937,
+                y: 35.9945915596748,
+                z: 32.79,
+            },
+            Coordinate {
+                x: 140.09730773488315,
+                y: 35.99521268554008,
+                z: 32.79,
+            },
+            Coordinate {
+                x: 140.09727545290357,
+                y: 35.99524412256327,
+                z: 32.79,
+            },
+            Coordinate {
+                x: 140.09708962225727,
+                y: 35.99512898183915,
+                z: 32.79,
+            },
         ]);
-        let interior = LineString3D::new(vec![
-            Coordinate::new__(-0.2924963013937458, -1.1119771975084152, 0.0),
-            Coordinate::new__(0.11234391452351394, -0.39072103819093074, 0.0),
-            Coordinate::new__(0.4882480268812336, -0.6400230272020863, 0.0),
-            Coordinate::new__(0.36247518786088223, -1.5453647114996691, 0.0),
-            Coordinate::new__(-0.2924963013937458, -1.1119771975084152, 0.0),
+        let interior1 = LineString3D::new(vec![
+            Coordinate {
+                x: 140.09710401945233,
+                y: 35.9950892018988,
+                z: 32.79,
+            },
+            Coordinate {
+                x: 140.09711324769185,
+                y: 35.99509594152065,
+                z: 32.79,
+            },
+            Coordinate {
+                x: 140.09754605468706,
+                y: 35.99463738805688,
+                z: 32.79,
+            },
+            Coordinate {
+                x: 140.09738002142203,
+                y: 35.99453842795718,
+                z: 32.79,
+            },
+            Coordinate {
+                x: 140.09736023491905,
+                y: 35.99455848084872,
+                z: 32.79,
+            },
+            Coordinate {
+                x: 140.09751216947643,
+                y: 35.99465359633982,
+                z: 32.79,
+            },
+            Coordinate {
+                x: 140.09751272403554,
+                y: 35.99465359511862,
+                z: 32.79,
+            },
+            Coordinate {
+                x: 140.09710401945233,
+                y: 35.9950892018988,
+                z: 32.79,
+            },
         ]);
-        let polygon = Polygon3D::new(exterior, vec![interior]);
+
+        let interior2 = LineString3D::new(vec![
+            Coordinate {
+                x: 140.09731712189793,
+                y: 35.99453478083192,
+                z: 32.79,
+            },
+            Coordinate {
+                x: 140.09733922643701,
+                y: 35.99451138795566,
+                z: 32.79,
+            },
+            Coordinate {
+                x: 140.09713905713213,
+                y: 35.99438645443723,
+                z: 32.79,
+            },
+            Coordinate {
+                x: 140.09705052818714,
+                y: 35.99448011614768,
+                z: 32.79,
+            },
+            Coordinate {
+                x: 140.09708920583506,
+                y: 35.99450418654107,
+                z: 32.79,
+            },
+            Coordinate {
+                x: 140.09715551929034,
+                y: 35.9944339178934,
+                z: 32.79,
+            },
+            Coordinate {
+                x: 140.09731712189793,
+                y: 35.99453478083192,
+                z: 32.79,
+            },
+        ]);
+        let polygon = Polygon3D::new(exterior, vec![interior2, interior1]);
         let merged = polygon.into_merged_contour().unwrap();
-        let exterior_angle_sum = merged.exterior_angle_sum(None);
-        assert!((exterior_angle_sum - TAU).abs() < 1e-5);
+        for e1 in merged.0.iter().zip(merged.0.iter().skip(1)) {
+            for e2 in merged.0.iter().zip(merged.0.iter().skip(1)) {
+                if e1.0 == e2.0 || e1.0 == e2.1 || e1.1 == e2.0 || e1.1 == e2.1 {
+                    continue;
+                }
+                let line1 = Line::new_(*e1.0, *e1.1);
+                let line2 = Line::new_(*e2.0, *e2.1);
+                let intersection = line_intersection3d(line1, line2);
+                assert!(
+                    intersection.is_none(),
+                    "Found intersection between edges {line1:?} and {line2:?}"
+                );
+            }
+        }
     }
 }

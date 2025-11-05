@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Arc;
+use std::thread::Builder;
 use std::thread::JoinHandle;
-use std::thread::{self, Builder};
 use std::time::Duration;
 
 use futures::Future;
@@ -68,7 +68,8 @@ impl DagExecutor {
         expr_engine: Arc<Engine>,
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn crate::kvs::KvStore>,
-        state: Arc<State>,
+        ingress_state: Arc<State>,
+        feature_state: Arc<State>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
     ) -> Result<DagExecutorJoinHandle, ExecutionError> {
         // Construct execution dag.
@@ -76,7 +77,8 @@ impl DagExecutor {
             self.builder_dag,
             self.options.channel_buffer_sz,
             self.options.feature_flush_threshold,
-            Arc::clone(&state),
+            Arc::clone(&ingress_state),
+            Arc::clone(&feature_state),
         )?;
         let node_indexes = execution_dag.graph().node_indices().collect::<Vec<_>>();
 
@@ -164,7 +166,7 @@ async fn subscribe_event(
 }
 
 impl DagExecutorJoinHandle {
-    pub fn join(&mut self) -> Result<(), ExecutionError> {
+    pub fn join(&mut self, runtime: Handle) -> Result<(), ExecutionError> {
         loop {
             let Some(finished) = self
                 .join_handles
@@ -172,7 +174,7 @@ impl DagExecutorJoinHandle {
                 .enumerate()
                 .find_map(|(i, handle)| handle.is_finished().then_some(i))
             else {
-                thread::sleep(Duration::from_millis(250));
+                std::thread::sleep(Duration::from_millis(250));
 
                 continue;
             };
@@ -181,16 +183,12 @@ impl DagExecutorJoinHandle {
 
             if self.join_handles.is_empty() {
                 // All threads have completed, add a delay before returning
-                if let Ok(handle) = Handle::try_current() {
-                    tracing::info!(
-                        "Workflow complete, waiting for final events to be published..."
-                    );
+                tracing::info!("Workflow complete, waiting for final events to be published...");
 
-                    // Enhanced delay approach - use improved flush with dynamic waiting
-                    handle.block_on(self.event_hub.enhanced_flush(5000));
+                // Enhanced delay approach - use improved flush with dynamic waiting
+                runtime.block_on(self.event_hub.enhanced_flush(5000));
 
-                    tracing::info!("Proceeding with workflow termination");
-                }
+                tracing::info!("Proceeding with workflow termination");
 
                 return Ok(());
             }
