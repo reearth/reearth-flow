@@ -168,7 +168,8 @@ impl Sink for MVTWriter {
         let feature = &ctx.feature;
         let context = ctx.as_context();
         match feature.geometry.value {
-            geometry_types::GeometryValue::CityGmlGeometry(_) => {
+            geometry_types::GeometryValue::CityGmlGeometry(_)
+            | geometry_types::GeometryValue::FlowGeometry2D(_) => {
                 let output = self.params.output.clone();
                 let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
                 let path = scope

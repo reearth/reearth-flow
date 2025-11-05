@@ -198,7 +198,32 @@ impl Processor for OrientationExtractor {
                 }
                 _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone())),
             },
-            GeometryValue::CityGmlGeometry(_) => unimplemented!(),
+            GeometryValue::CityGmlGeometry(city_gml) => {
+                let mut feature = feature.clone();
+                let mut ring_winding_orders = Vec::new();
+
+                // Check all polygons in the CityGML geometry
+                for gml_geo in &city_gml.gml_geometries {
+                    for polygon in &gml_geo.polygons {
+                        // Get the exterior ring (first ring)
+                        if let Some(exterior) = polygon.rings().first() {
+                            ring_winding_orders.push(exterior.winding_order());
+                        }
+
+                        // Also check interior rings (holes)
+                        for interior in polygon.rings().iter().skip(1) {
+                            ring_winding_orders.push(interior.winding_order());
+                        }
+                    }
+                }
+
+                let result = detect_orientation_by_ring_winding_orders(ring_winding_orders);
+                feature.attributes.insert(
+                    self.output_attribute.clone(),
+                    AttributeValue::String(result.to_string()),
+                );
+                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            }
         }
         Ok(())
     }

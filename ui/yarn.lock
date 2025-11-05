@@ -5373,6 +5373,7 @@ __metadata:
     eslint-plugin-import: "npm:2.32.0"
     eslint-plugin-storybook: "npm:9.1.10"
     file-saver: "npm:2.0.5"
+    fzstd: "npm:0.1.1"
     graphql: "npm:16.11.0"
     graphql-request: "npm:7.2.0"
     graphql-ws: "npm:6.0.6"
@@ -10760,6 +10761,13 @@ __metadata:
   version: 1.2.3
   resolution: "functions-have-names@npm:1.2.3"
   checksum: 10c0/33e77fd29bddc2d9bb78ab3eb854c165909201f88c75faa8272e35899e2d35a8a642a15e7420ef945e1f64a9670d6aa3ec744106b2aa42be68ca5114025954ca
+  languageName: node
+  linkType: hard
+
+"fzstd@npm:0.1.1":
+  version: 0.1.1
+  resolution: "fzstd@npm:0.1.1"
+  checksum: 10c0/c4ae25a4b9e7ac58e9716fcb0c4ec19f3e678d90a67a59e97ce361beb27e4aa4b8666b58b4dc2d715e92db4b65b189c978186a5fedba6fccb5ec9765717dd1cd
   languageName: node
   linkType: hard
 

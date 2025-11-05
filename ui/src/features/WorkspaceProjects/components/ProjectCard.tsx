@@ -83,7 +83,7 @@ const ProjectCard: React.FC<Props> = ({
 
   return (
     <Card
-      className="group relative cursor-pointer border-transparent bg-secondary hover:border-border"
+      className="group relative cursor-pointer rounded-xl border bg-secondary shadow-md shadow-secondary backdrop-blur-xs"
       key={id}
       onClick={() => onProjectSelect(project)}>
       <CardContent className="relative flex h-[120px] items-center justify-center p-0">
@@ -110,7 +110,7 @@ const ProjectCard: React.FC<Props> = ({
         </p>
       </CardFooter>
       <div
-        className={`absolute inset-0 ${persistOverlay ? "flex flex-col" : "hidden"} rounded-lg group-hover:flex group-hover:flex-col`}>
+        className={`absolute inset-0 ${persistOverlay ? "flex flex-col" : "hidden"} rounded-xl group-hover:flex group-hover:flex-col`}>
         <div
           className={`flex h-[120px] items-center justify-center rounded-t-lg bg-black/30 p-4 ${description ? "backdrop-blur-xs" : ""}`}>
           <p className="line-clamp-4 overflow-hidden text-center text-sm break-words text-ellipsis whitespace-normal text-secondary dark:font-light dark:text-foreground">

@@ -18,37 +18,63 @@ The `math::` module provides comprehensive mathematical functions for use in act
 - [Power & Root Functions](#power--root-functions)
 - [Comparison & Selection](#comparison--selection)
 - [Rounding Functions](#rounding-functions)
+- [Sign Manipulation](#sign-manipulation)
 - [Real-World Examples](#real-world-examples)
 
 ---
 
 ## Mathematical Constants
 
-### `math::pi()` → f64
+### `math::PI` → f64
 
-Returns the mathematical constant π (pi).
+The mathematical constant π (pi).
 
-**Returns:** 3.14159265358979323846
+**Value:** 3.14159265358979323846
 
 **Example:**
 
 ```rhai
-let circumference = 2.0 * math::pi() * radius;
-let half_circle = math::pi() * radius;
+let circumference = 2.0 * math::PI * radius;
+let half_circle = math::PI * radius;
 ```
 
 ---
 
-### `math::e()` → f64
+### `math::E` → f64
 
-Returns Euler's number (the base of natural logarithms).
+Euler's number (the base of natural logarithms).
 
-**Returns:** 2.71828182845904523536
+**Value:** 2.71828182845904523536
 
 **Example:**
 
 ```rhai
-let natural_exp = math::pow(math::e(), 2.0);
+let natural_exp = math::pow(math::E, 2.0);
+```
+
+---
+
+### `math::TAU` → f64
+
+The mathematical constant τ (tau), equal to 2π.
+
+**Value:** 6.28318530717958647692
+
+**Why use tau?** Some mathematicians argue that τ is more natural than π because:
+
+- One full circle = τ radians (instead of 2π radians)
+- C = τr (circumference formula) instead of C = 2πr
+- Many trigonometric formulas become simpler
+
+**Example:**
+
+```rhai
+let full_circle = math::TAU;  // One complete rotation = τ radians
+let half_circle = math::TAU / 2.0;  // Same as π
+let quarter_circle = math::TAU / 4.0;  // Same as π/2
+
+// Circumference using tau
+let circumference = math::TAU * radius;  // Simpler than 2πr
 ```
 
 ---
@@ -74,7 +100,7 @@ Computes the sine of an angle (in radians).
 let result = math::sin(math::to_radians(30.0));  // Returns 0.5
 
 // Calculate sin(π/2)
-let result2 = math::sin(math::pi() / 2.0);  // Returns 1.0
+let result2 = math::sin(math::PI / 2.0);  // Returns 1.0
 ```
 
 ---
@@ -118,7 +144,7 @@ Computes the tangent of an angle (in radians).
 let result = math::tan(math::to_radians(45.0));  // Returns 1.0
 
 // Calculate tan(π/4)
-let result2 = math::tan(math::pi() / 4.0);  // Returns 1.0
+let result2 = math::tan(math::PI / 4.0);  // Returns 1.0
 ```
 
 ---
@@ -406,10 +432,10 @@ Converts radians to degrees.
 **Example:**
 
 ```rhai
-let deg1 = math::to_degrees(0.0);               // Returns 0.0
-let deg2 = math::to_degrees(math::pi() / 2.0);  // Returns 90.0
-let deg3 = math::to_degrees(math::pi());        // Returns 180.0
-let deg4 = math::to_degrees(2.0 * math::pi());  // Returns 360.0
+let deg1 = math::to_degrees(0.0);            // Returns 0.0
+let deg2 = math::to_degrees(math::PI / 2.0);  // Returns 90.0
+let deg3 = math::to_degrees(math::PI);        // Returns 180.0
+let deg4 = math::to_degrees(2.0 * math::PI);  // Returns 360.0
 ```
 
 ---
@@ -454,9 +480,9 @@ Computes the natural logarithm (base e) of a number.
 **Example:**
 
 ```rhai
-let result1 = math::ln(1.0);        // Returns 0.0
-let result2 = math::ln(math::e());  // Returns 1.0
-let result3 = math::ln(10.0);       // Returns ~2.303
+let result1 = math::ln(1.0);      // Returns 0.0
+let result2 = math::ln(math::E);  // Returns 1.0
+let result3 = math::ln(10.0);     // Returns ~2.303
 
 // Inverse of exp: ln(exp(x)) = x
 let x = 2.5;
@@ -582,9 +608,9 @@ Computes ln(1 + x) with better precision for small values of x.
 **Example:**
 
 ```rhai
-let result1 = math::ln_1p(0.0);           // Returns 0.0
-let result2 = math::ln_1p(math::e() - 1.0);  // Returns 1.0
-let result3 = math::ln_1p(0.0001);        // High precision for small x
+let result1 = math::ln_1p(0.0);        // Returns 0.0
+let result2 = math::ln_1p(math::E - 1.0);  // Returns 1.0
+let result3 = math::ln_1p(0.0001);     // High precision for small x
 ```
 
 ---
@@ -637,7 +663,7 @@ let result3 = math::pow(4.0, 0.5);   // Returns 2.0 (√4)
 let result4 = math::pow(27.0, 1.0/3.0);  // Returns 3.0 (∛27)
 
 // Calculate area of circle
-let area = math::pi() * math::pow(radius, 2.0);
+let area = math::PI * math::pow(radius, 2.0);
 ```
 
 ---
@@ -838,6 +864,40 @@ let result5 = math::round(-3.4);  // Returns -3.0
 
 ---
 
+## Sign Manipulation
+
+### `math::copysign(x, y)` → f64
+
+Returns a value with the magnitude of x and the sign of y.
+
+**Parameters:**
+
+- `x` (f64): Value providing the magnitude
+- `y` (f64): Value providing the sign
+
+**Returns:** |x| with the sign of y
+
+**Example:**
+
+```rhai
+let result1 = math::copysign(5.0, 1.0);   // Returns 5.0 (positive)
+let result2 = math::copysign(5.0, -1.0);  // Returns -5.0 (negative)
+let result3 = math::copysign(-5.0, 1.0);  // Returns 5.0 (positive)
+let result4 = math::copysign(-5.0, -1.0); // Returns -5.0 (negative)
+
+// Useful for ensuring consistent signs in calculations
+let values = [5.0, -5.0, 10.0, -10.0];
+let reference_sign = -1.0;
+
+// Make all values have the same sign as reference
+for val in values {
+    let adjusted = math::copysign(val, reference_sign);
+    // All adjusted values will be negative
+}
+```
+
+---
+
 ## Real-World Examples
 
 ### Example 1: Solar Radiation Calculation
@@ -858,7 +918,7 @@ mappers:
       // Calculate radiation (simplified model)
       let radiation = daylight_fraction * 24.0
         * math::sin(math::to_radians(altitude_deg))
-        * (2.0 / math::pi());
+        * (2.0 / math::PI);
 
       radiation
 ```
@@ -1022,7 +1082,7 @@ mappers:
 
 | Category                      | Functions                                                            |
 | ----------------------------- | -------------------------------------------------------------------- |
-| **Constants**                 | `pi()`, `e()`                                                        |
+| **Constants**                 | `PI`, `E`, `TAU`                                                     |
 | **Trigonometry**              | `sin()`, `cos()`, `tan()`                                            |
 | **Inverse Trig**              | `asin()`, `acos()`, `atan()`, `atan2()`                              |
 | **Hyperbolic**                | `sinh()`, `cosh()`, `tanh()`                                         |
@@ -1032,8 +1092,9 @@ mappers:
 | **Power & Roots**             | `sqrt()`, `pow()`, `cbrt()`, `hypot()`                               |
 | **Comparison**                | `abs()`, `max()`, `min()`                                            |
 | **Rounding**                  | `floor()`, `ceil()`, `round()`                                       |
+| **Sign Manipulation**         | `copysign()`                                                         |
 
-**Total:** 38 mathematical functions (19 Tier 1 + 19 Tier 2)
+**Total:** 40 mathematical functions (19 Tier 1 + 19 Tier 2 + 2 Tier 3)
 
 ---
 
