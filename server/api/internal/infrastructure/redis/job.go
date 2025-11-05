@@ -3,8 +3,10 @@ package redis
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/log"
@@ -16,7 +18,7 @@ func (r *redisLog) GetJobCompleteEvent(ctx context.Context, jobID id.JobID) (*ga
 	data, err := r.client.Get(ctx, key).Result()
 	if err != nil {
 		// Key doesn't exist - worker hasn't reported yet
-		if err.Error() == "redis: nil" {
+		if errors.Is(err, redis.Nil) {
 			return nil, nil
 		}
 		log.Errorfc(ctx, "Failed to get job complete event from Redis: %v", err)
