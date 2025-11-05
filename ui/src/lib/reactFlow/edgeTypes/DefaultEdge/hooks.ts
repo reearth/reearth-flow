@@ -59,7 +59,7 @@ export default ({
 
   const intermediateDataUrl = useMemo(() => {
     if (api && debugJobState?.jobId) {
-      return `${api}/artifacts/${debugJobState.jobId}/feature-store/${id}.jsonl`;
+      return `${api}/artifacts/${debugJobState.jobId}/feature-store/${id}.jsonl.zst`;
     }
     return undefined;
   }, [api, debugJobState?.jobId, id]);
