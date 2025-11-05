@@ -48,13 +48,6 @@ static SLOW_ACTION_THRESHOLD: Lazy<Duration> = Lazy::new(|| {
         .unwrap_or(Duration::from_millis(1000))
 });
 
-static PERSIST_INGRESS_DATA: Lazy<bool> = Lazy::new(|| {
-    env::var("FLOW_RUNTIME_PERSIST_INGRESS_DATA")
-        .ok()
-        .map(|s| s.to_lowercase() == "true")
-        .unwrap_or(false)
-});
-
 /// A processor in the execution DAG.
 #[derive(Debug)]
 pub struct ProcessorNode<F> {
@@ -89,7 +82,6 @@ pub struct ProcessorNode<F> {
     kv_store: Arc<dyn KvStore>,
     event_hub: EventHub,
     ingress_state: Arc<State>,
-    persist_ingress_data: bool,
 }
 
 impl<F: Future + Unpin + Debug> ProcessorNode<F> {
@@ -173,25 +165,17 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let kv_store = Arc::clone(&ctx.kv_store);
         let num_threads = processor.num_threads();
-        let persist_ingress_data = *PERSIST_INGRESS_DATA;
 
-        if persist_ingress_data {
-            let targets: Vec<String> = incoming_edge_ids
-                .iter()
-                .zip(&incoming_is_reader)
-                .filter_map(|(eid, is_r)| if *is_r { Some(eid.to_string()) } else { None })
-                .collect();
-            tracing::debug!(
-                "ingress-config: node_id={} persist_ingress_data=true target_edge_ids={:?}",
-                node_handle.id,
-                targets
-            );
-        } else {
-            tracing::debug!(
-                "ingress-config: node_id={} persist_ingress_data=false",
-                node_handle.id
-            );
-        }
+        let targets: Vec<String> = incoming_edge_ids
+            .iter()
+            .zip(&incoming_is_reader)
+            .filter_map(|(eid, is_r)| if *is_r { Some(eid.to_string()) } else { None })
+            .collect();
+        tracing::debug!(
+            "ingress-config: node_id={} target_edge_ids={:?}",
+            node_handle.id,
+            targets
+        );
 
         Self {
             node_handle,
@@ -216,7 +200,6 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             kv_store,
             event_hub: dag.event_hub().clone(),
             ingress_state: Arc::clone(dag.ingress_state()),
-            persist_ingress_data,
         }
     }
 
@@ -355,7 +338,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             match op {
                 ExecutorOperation::Op { ctx } => {
                     // Save incoming feature data (Reader → this Processor) into ingress-store
-                    if self.persist_ingress_data && self.incoming_is_reader[index] {
+                    if self.incoming_is_reader[index] {
                         let file_id = self.incoming_edge_ids[index].to_string();
                         if let Err(e) = self.ingress_state.append_sync(&ctx.feature, &file_id) {
                             tracing::warn!(
