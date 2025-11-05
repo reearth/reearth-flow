@@ -304,9 +304,10 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 
 	if workerEvent != nil {
 		var workerStatus job.Status
-		if workerEvent.Result == "success" {
+		switch workerEvent.Result {
+		case "success":
 			workerStatus = job.StatusCompleted
-		} else if workerEvent.Result == "failed" {
+		case "failed":
 			workerStatus = job.StatusFailed
 		}
 
@@ -325,10 +326,25 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 		// Update legacy status field with computed value
 		currentJob.SetStatus(currentJob.Status())
 
+		// Use transaction for MongoDB update
+		tx, err := i.transaction.Begin(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to begin transaction: %w", err)
+		}
+
+		var txErr error
+		defer func() {
+			if err2 := tx.End(ctx); err2 != nil && txErr == nil {
+				log.Errorfc(ctx, "transaction end failed: %v", err2)
+			}
+		}()
+
 		if err := i.jobRepo.Save(ctx, currentJob); err != nil {
+			txErr = err
 			return fmt.Errorf("failed to save job: %w", err)
 		}
 
+		tx.Commit()
 		i.subscriptions.Notify(currentJob.ID().String(), currentJob.Status())
 	}
 
@@ -347,65 +363,6 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 		}
 	}
 
-	return nil
-}
-
-func (i *Job) updateJobStatus(ctx context.Context, j *job.Job, status job.Status) error {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return err
-	}
-
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return err
-	}
-
-	var txErr error
-	defer func() {
-		if err2 := tx.End(ctx); err2 != nil && txErr == nil {
-			log.Errorfc(ctx, "transaction end failed: %v", err2)
-		}
-	}()
-
-	j.SetStatus(status)
-	if err := i.jobRepo.Save(ctx, j); err != nil {
-		txErr = err
-		return err
-	}
-
-	tx.Commit()
-	i.subscriptions.Notify(j.ID().String(), j.Status())
-	return nil
-}
-
-func (i *Job) updateJobBatchStatus(ctx context.Context, j *job.Job, batchStatus job.Status) error {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return err
-	}
-
-	tx, err := i.transaction.Begin(ctx)
-	if err != nil {
-		return err
-	}
-
-	var txErr error
-	defer func() {
-		if err2 := tx.End(ctx); err2 != nil && txErr == nil {
-			log.Errorfc(ctx, "transaction end failed: %v", err2)
-		}
-	}()
-
-	j.SetBatchStatus(batchStatus)
-	// legacy status update
-	j.SetStatus(j.Status())
-
-	if err := i.jobRepo.Save(ctx, j); err != nil {
-		txErr = err
-		return err
-	}
-
-	tx.Commit()
-	i.subscriptions.Notify(j.ID().String(), j.Status())
 	return nil
 }
 

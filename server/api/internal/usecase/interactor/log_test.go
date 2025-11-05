@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter"
+	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/graph"
@@ -40,6 +41,10 @@ func (m *mockLogGateway) GetLogs(ctx context.Context, since time.Time, until tim
 
 func (m *mockLogGateway) GetUserFacingLogs(ctx context.Context, since time.Time, until time.Time, jobID id.JobID) ([]*userfacinglog.UserFacingLog, error) {
 	return []*userfacinglog.UserFacingLog{}, nil
+}
+
+func (m *mockLogGateway) GetJobCompleteEvent(ctx context.Context, jobID id.JobID) (*gateway.JobCompleteEvent, error) {
+	return nil, nil
 }
 
 type mockJobRepo struct {
