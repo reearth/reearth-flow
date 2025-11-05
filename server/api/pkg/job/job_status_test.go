@@ -140,6 +140,7 @@ func TestJob_BatchStatusGetter(t *testing.T) {
 	got := j.BatchStatus()
 	if got == nil {
 		t.Error("BatchStatus() should return non-nil")
+		return
 	}
 	if *got != status {
 		t.Errorf("BatchStatus() = %v, want %v", *got, status)
@@ -159,6 +160,7 @@ func TestJob_WorkerStatusGetter(t *testing.T) {
 	got := j.WorkerStatus()
 	if got == nil {
 		t.Error("WorkerStatus() should return non-nil")
+		return
 	}
 	if *got != status {
 		t.Errorf("WorkerStatus() = %v, want %v", *got, status)
