@@ -549,3 +549,7 @@ impl Feature {
         self.metadata.feature_id = Some(feature_id);
     }
 }
+
+#[cfg(test)]
+#[path = "feature_test.rs"]
+mod feature_test;
