@@ -68,7 +68,8 @@ impl DagExecutor {
         expr_engine: Arc<Engine>,
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn crate::kvs::KvStore>,
-        state: Arc<State>,
+        ingress_state: Arc<State>,
+        feature_state: Arc<State>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
     ) -> Result<DagExecutorJoinHandle, ExecutionError> {
         // Construct execution dag.
@@ -76,7 +77,8 @@ impl DagExecutor {
             self.builder_dag,
             self.options.channel_buffer_sz,
             self.options.feature_flush_threshold,
-            Arc::clone(&state),
+            Arc::clone(&ingress_state),
+            Arc::clone(&feature_state),
         )?;
         let node_indexes = execution_dag.graph().node_indices().collect::<Vec<_>>();
 
