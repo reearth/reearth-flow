@@ -635,7 +635,8 @@ graphs:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
       - newAttribute: _num_lod0_1_buildingpart
         expr: '1'
@@ -673,7 +674,8 @@ graphs:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
       - newAttribute: _num_lbldg02_error
         expr: '1'
@@ -831,7 +833,8 @@ graphs:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
       - newAttribute: Building
         expr: |
@@ -1128,7 +1131,8 @@ graphs:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
       - newAttribute: _num_incorrect_city_code
         expr: '1'
@@ -1144,7 +1148,8 @@ graphs:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
       - newAttribute: _num_incorrect_usage_attribute
         expr: '1'
@@ -1322,7 +1327,8 @@ graphs:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
       - newAttribute: _num_duplicate_building_id
         expr: '1'
@@ -1338,7 +1344,8 @@ graphs:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
       - newAttribute: _num_missing_building_id
         expr: '1'
@@ -1641,7 +1648,8 @@ graphs:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
       - newAttribute: _num_lbldg06_error
         expr: '1'
@@ -1699,7 +1707,8 @@ graphs:
     action: StatisticsCalculator
     with:
       aggregateName: cityGmlPath
-      aggregateAttribute: cityGmlPath
+      groupBy: 
+      - cityGmlPath
       calculations:
       - newAttribute: instGmlIdTotalCount
         expr: |
@@ -1719,7 +1728,8 @@ graphs:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
       - newAttribute: _num_invalid_bldginst_geom_type
         expr: '1'
@@ -1960,7 +1970,8 @@ graphs:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
       - newAttribute: _num_lod0_incorrect_orientation
         expr: '1'
@@ -1984,7 +1995,8 @@ graphs:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
       - newAttribute: _num_lod0_invalid_surface
         expr: '1'
@@ -2094,7 +2106,8 @@ graphs:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
       - newAttribute: _num_lod1_invalid_surface
         expr: '1'
@@ -2118,7 +2131,8 @@ graphs:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
       - newAttribute: _num_lod2_invalid_surface
         expr: |
@@ -2319,7 +2333,8 @@ graphs:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: filename_a
+      groupBy: 
+      - filename_a
       calculations:
       - newAttribute: _num_lod0_surface_intersection
         expr: '1'
@@ -2398,7 +2413,8 @@ graphs:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
       - newAttribute: _num_incorrect_meshcode
         expr: '1'
@@ -2505,7 +2521,8 @@ graphs:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
       - newAttribute: _num_lod1_not_closed_solid
         expr: |
@@ -2602,7 +2619,8 @@ graphs:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
       - newAttribute: _num_lod1_solid_issues
         expr: |
@@ -2664,7 +2682,8 @@ graphs:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: filename
+      groupBy: 
+      - filename
       calculations:
       - newAttribute: _num_lod1_not_closed_solid
         expr: '1'
@@ -2680,7 +2699,8 @@ graphs:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: filename
+      groupBy: 
+      - filename
       calculations:
       - newAttribute: _num_lod1_solid_issues
         expr: '1'
@@ -2758,7 +2778,8 @@ graphs:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilenameA
+      groupBy: 
+      - gmlFilenameA
       calculations:
       - newAttribute: _num_lod1_solid_intersection
         expr: |

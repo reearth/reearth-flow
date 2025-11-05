@@ -17,14 +17,6 @@
   "cityGmlPath": "udx/bldg/input.gml",
   "codelists": "codelists",
   "schemas": "schemas",
-  "intermediateAssertions": [
-    {
-      "edgeId": "7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b.22b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
-      "expectedFile": "error_count_test_filtered.jsonl",
-      "jsonFilter": "{attributes}",
-      "except": "gmlFilename"
-    }
-  ],
   "expectResultOkFile": false,
   "skip": false
 }

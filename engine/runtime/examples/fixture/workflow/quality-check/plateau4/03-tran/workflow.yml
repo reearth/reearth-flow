@@ -523,7 +523,8 @@ graphs:
         action: StatisticsCalculator
         with:
           aggregateName: Filename
-          aggregateAttribute: Filename
+          groupBy:
+          - Filename
           calculations:
             - newAttribute: _num_unreferenced_surface
               expr: "1"
@@ -535,7 +536,8 @@ graphs:
         action: StatisticsCalculator
         with:
           aggregateName: Filename
-          aggregateAttribute: Filename
+          groupBy:
+          - Filename
           calculations:
             - newAttribute: _num_incorrect_orientation
               expr: "1"
@@ -547,7 +549,8 @@ graphs:
         action: StatisticsCalculator
         with:
           aggregateName: Filename
-          aggregateAttribute: Filename
+          groupBy:
+          - Filename
           calculations:
             - newAttribute: _num_overlaps
               expr: "1"
@@ -559,7 +562,8 @@ graphs:
         action: StatisticsCalculator
         with:
           aggregateName: Filename
-          aggregateAttribute: Filename
+          groupBy:
+          - Filename
           calculations:
             - newAttribute: _surface_issues
               expr: "1"

@@ -120,7 +120,8 @@ nodes:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
         - newAttribute: _num_lod0_incorrect_orientation
           expr: "1"
@@ -147,7 +148,8 @@ nodes:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
         - newAttribute: _num_lod0_invalid_surface
           expr: "1"
@@ -266,7 +268,8 @@ nodes:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
         - newAttribute: _num_lod1_invalid_surface
           expr: "1"
@@ -297,7 +300,8 @@ nodes:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
         - newAttribute: _num_lod2_invalid_surface
           expr: |
@@ -517,7 +521,8 @@ nodes:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: filename_a
+      groupBy: 
+      - filename_a
       calculations:
         - newAttribute: _num_lod0_surface_intersection
           expr: "1"
@@ -604,7 +609,8 @@ nodes:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
         - newAttribute: _num_incorrect_meshcode
           expr: "1"
@@ -722,7 +728,8 @@ nodes:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
         - newAttribute: _num_lod1_not_closed_solid
           expr: |
@@ -824,7 +831,8 @@ nodes:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy: 
+      - gmlFilename
       calculations:
         - newAttribute: _num_lod1_solid_issues
           expr: |
@@ -894,7 +902,8 @@ nodes:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: filename
+      groupBy: 
+      - filename
       calculations:
         - newAttribute: _num_lod1_not_closed_solid
           expr: "1"
@@ -912,7 +921,8 @@ nodes:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: filename
+      groupBy: 
+      - filename
       calculations:
         - newAttribute: _num_lod1_solid_issues
           expr: "1"
@@ -998,7 +1008,8 @@ nodes:
     action: StatisticsCalculator
     with:
       aggregateName: gmlFilename
-      aggregateAttribute: gmlFilenameA
+      groupBy: 
+      - gmlFilenameA
       calculations:
         - newAttribute: _num_lod1_solid_intersection
           expr: |

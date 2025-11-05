@@ -5700,17 +5700,6 @@
           "calculations"
         ],
         "properties": {
-          "aggregateAttribute": {
-            "description": "Attribute to group features by for aggregation",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "aggregateName": {
             "description": "Name of the attribute containing the aggregate group name",
             "anyOf": [
@@ -5727,6 +5716,16 @@
             "type": "array",
             "items": {
               "$ref": "#/definitions/Calculation"
+            }
+          },
+          "groupBy": {
+            "description": "Attributes to group features by for aggregation",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
             }
           }
         },

@@ -5673,17 +5673,6 @@ Calculates statistical aggregations on feature attributes with customizable expr
     "calculations"
   ],
   "properties": {
-    "aggregateAttribute": {
-      "description": "Attribute to group features by for aggregation",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "aggregateName": {
       "description": "Name of the attribute containing the aggregate group name",
       "anyOf": [
@@ -5700,6 +5689,16 @@ Calculates statistical aggregations on feature attributes with customizable expr
       "type": "array",
       "items": {
         "$ref": "#/definitions/Calculation"
+      }
+    },
+    "groupBy": {
+      "description": "Attributes to group features by for aggregation",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
       }
     }
   },
