@@ -634,7 +634,6 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      groupId: gmlFilename
       groupBy:
       - gmlFilename
       calculations:
@@ -673,7 +672,6 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      groupId: gmlFilename
       groupBy:
       - gmlFilename
       calculations:
@@ -832,7 +830,6 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      groupId: gmlFilename
       groupBy:
       - gmlFilename
       calculations:
@@ -1130,7 +1127,6 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      groupId: gmlFilename
       groupBy:
       - gmlFilename
       calculations:
@@ -1147,7 +1143,6 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      groupId: gmlFilename
       groupBy:
       - gmlFilename
       calculations:
@@ -1326,7 +1321,6 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      groupId: gmlFilename
       groupBy:
       - gmlFilename
       calculations:
@@ -1343,7 +1337,6 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      groupId: gmlFilename
       groupBy:
       - gmlFilename
       calculations:
@@ -1647,7 +1640,6 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      groupId: gmlFilename
       groupBy:
       - gmlFilename
       calculations:
@@ -1726,7 +1718,6 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      groupId: gmlFilename
       groupBy:
       - gmlFilename
       calculations:
@@ -1968,7 +1959,6 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      groupId: gmlFilename
       groupBy:
       - gmlFilename
       calculations:
@@ -1993,7 +1983,6 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      groupId: gmlFilename
       groupBy:
       - gmlFilename
       calculations:
@@ -2104,7 +2093,6 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      groupId: gmlFilename
       groupBy:
       - gmlFilename
       calculations:
@@ -2129,7 +2117,6 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      groupId: gmlFilename
       groupBy:
       - gmlFilename
       calculations:
@@ -2411,7 +2398,6 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      groupId: gmlFilename
       groupBy:
       - gmlFilename
       calculations:
@@ -2519,7 +2505,6 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      groupId: gmlFilename
       groupBy:
       - gmlFilename
       calculations:
@@ -2617,7 +2602,6 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      groupId: gmlFilename
       groupBy:
       - gmlFilename
       calculations:
