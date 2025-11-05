@@ -522,7 +522,6 @@ graphs:
         type: action
         action: StatisticsCalculator
         with:
-          aggregateName: Filename
           groupBy:
           - Filename
           calculations:
@@ -535,7 +534,6 @@ graphs:
         type: action
         action: StatisticsCalculator
         with:
-          aggregateName: Filename
           groupBy:
           - Filename
           calculations:
@@ -548,7 +546,6 @@ graphs:
         type: action
         action: StatisticsCalculator
         with:
-          aggregateName: Filename
           groupBy:
           - Filename
           calculations:
@@ -561,7 +558,6 @@ graphs:
         type: action
         action: StatisticsCalculator
         with:
-          aggregateName: Filename
           groupBy:
           - Filename
           calculations:

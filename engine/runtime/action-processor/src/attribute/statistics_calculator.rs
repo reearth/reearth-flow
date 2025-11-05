@@ -83,7 +83,7 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
         }
 
         let process = StatisticsCalculator {
-            aggregate_name: params.aggregate_name,
+            group_id: params.group_id,
             group_by: params.group_by,
             calculations,
             aggregate_buffer: HashMap::new(),
@@ -95,7 +95,7 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
 
 #[derive(Debug, Clone)]
 struct StatisticsCalculator {
-    aggregate_name: Option<Attribute>,
+    group_id: Option<Attribute>,
     group_by: Option<Vec<Attribute>>,
     calculations: Vec<CompiledCalculation>,
     aggregate_buffer: HashMap<Attribute, HashMap<String, i64>>,
@@ -114,10 +114,13 @@ struct CompiledCalculation {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct StatisticsCalculatorParam {
-    /// Name of the attribute containing the aggregate group name
-    aggregate_name: Option<Attribute>,
-    /// Attributes to group features by for aggregation
+    /// # Group id
+    /// Optional attribute to store the group identifier. The ID will be formed by concatenating the values of the group_by attributes separated by '|'.
+    group_id: Option<Attribute>,
+    /// # Group by
+    /// Attributes to group features by for aggregation. All of the inputs will be grouped if not specified.
     group_by: Option<Vec<Attribute>>,
+    /// # Calculations
     /// List of statistical calculations to perform on grouped features
     calculations: Vec<Calculation>,
 }
@@ -197,12 +200,9 @@ impl Processor for StatisticsCalculator {
                 }
             }
 
-            // Add aggregate_name if specified
-            if let Some(aggregate_name) = self.aggregate_name.as_ref() {
-                feature.insert(
-                    aggregate_name,
-                    AttributeValue::String(aggregate_key.clone()),
-                );
+            // Add group_id if specified
+            if let Some(group_id) = self.group_id.as_ref() {
+                feature.insert(group_id, AttributeValue::String(aggregate_key.clone()));
             }
 
             // Add calculated statistics

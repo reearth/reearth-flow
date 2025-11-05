@@ -45,8 +45,7 @@ nodes:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      groupBy: 
+      groupBy:
         - gmlFilename
       calculations:
         - newAttribute: _num_lod0_1_buildingpart
@@ -96,8 +95,7 @@ nodes:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      groupBy: 
+      groupBy:
         - gmlFilename
       calculations:
         - newAttribute: _num_lbldg02_error

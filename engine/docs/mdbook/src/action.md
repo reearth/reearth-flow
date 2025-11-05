@@ -5673,8 +5673,28 @@ Calculates statistical aggregations on feature attributes with customizable expr
     "calculations"
   ],
   "properties": {
-    "aggregateName": {
-      "description": "Name of the attribute containing the aggregate group name",
+    "calculations": {
+      "title": "Calculations",
+      "description": "List of statistical calculations to perform on grouped features",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Calculation"
+      }
+    },
+    "groupBy": {
+      "title": "Group by",
+      "description": "Attributes to group features by for aggregation. All of the inputs will be grouped if not specified.",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "groupId": {
+      "title": "Group id",
+      "description": "Optional attribute to store the group identifier. The ID will be formed by concatenating the values of the group_by attributes separated by '|'.",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -5683,23 +5703,6 @@ Calculates statistical aggregations on feature attributes with customizable expr
           "type": "null"
         }
       ]
-    },
-    "calculations": {
-      "description": "List of statistical calculations to perform on grouped features",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/Calculation"
-      }
-    },
-    "groupBy": {
-      "description": "Attributes to group features by for aggregation",
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "$ref": "#/definitions/Attribute"
-      }
     }
   },
   "definitions": {

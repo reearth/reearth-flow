@@ -113,7 +113,6 @@ graphs:
         type: action
         action: StatisticsCalculator
         with:
-          aggregateName: instanceCounts
           groupBy:
             - fileIndex
             - featureType
@@ -217,8 +216,7 @@ graphs:
         type: action
         action: StatisticsCalculator
         with:
-          aggregateName: Filename
-          groupBy: 
+          groupBy:
             - name
           calculations:
             - newAttribute: _num_incorrect_orientation
@@ -266,8 +264,7 @@ graphs:
         type: action
         action: StatisticsCalculator
         with:
-          aggregateName: Filename
-          groupBy: 
+          groupBy:
             - name
           calculations:
             - newAttribute: _num_surface_issues
@@ -283,7 +280,7 @@ graphs:
           requestorAttributeValue: |
             env.get("__value").Filename
           supplierAttributeValue: |
-            env.get("__value").Filename
+            env.get("__value").name
 
       # AttributeMapper for CSV formatting
       - id: f58eeb2c-9187-4880-8c1f-7da2f9388069
