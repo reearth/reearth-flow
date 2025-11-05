@@ -143,19 +143,16 @@ impl Processor for StatisticsCalculator {
         let aggregate_key = self
             .group_by
             .as_ref()
-            .map(|attrs| {
-                let values: Vec<String> = attrs
-                    .iter()
-                    .map(|attr| {
-                        let Some(value) = feature.attributes.get(attr) else {
-                            return "undefined".to_string();
-                        };
-                        value.to_string()
-                    })
-                    .collect();
-                values.join("|")
+            .unwrap_or(&Vec::new())
+            .iter()
+            .map(|attr| {
+                let Some(value) = feature.attributes.get(attr) else {
+                    return "".to_string();
+                };
+                value.to_string()
             })
-            .unwrap_or("all".to_string());
+            .collect::<Vec<_>>()
+            .join("|");
 
         for calculation in &self.calculations {
             let aggregate_buffer = self
