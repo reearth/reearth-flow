@@ -749,7 +749,7 @@ impl GltfWriter {
         // Add to classified features
         self.classified_features
             .entry(feature_type)
-            .or_insert_with(ClassFeatures::default)
+            .or_default()
             .features
             .push(class_feature);
 
@@ -806,7 +806,7 @@ impl GltfWriter {
             // Add to classified features
             self.classified_features
                 .entry(feature_type.clone())
-                .or_insert_with(ClassFeatures::default)
+                .or_default()
                 .features
                 .push(class_feature);
         }
