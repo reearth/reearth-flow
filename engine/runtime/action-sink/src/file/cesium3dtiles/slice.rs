@@ -131,7 +131,7 @@ pub fn slice_to_tiles<E>(
                     let (mat_idx, _) = materials.insert_full(mat);
                     // Slice polygon for each zoom level
                     for zoom in min_zoom..=max_zoom {
-                        if zoom <= max_zoom {
+                        if zoom < max_zoom {
                             let geom_error = {
                                 let (_, _, y) =
                                     tiling::scheme::zxy_from_lng_lat(zoom, lng_center, lat_center);
@@ -144,6 +144,7 @@ pub fn slice_to_tiles<E>(
                             }
 
                             // Skip the feature if the size is small for geometricError.
+                            // Don't filter at max_zoom - include all features at highest detail
                             let threshold = geom_error * 0.5;
                             if approx_dx < threshold
                                 && approx_dy < threshold
