@@ -4,7 +4,7 @@ mod tests {
     use reearth_flow_types::AttributeValue;
     use std::collections::HashMap;
 
-    /// Test the complete Record lifecycle with realistic data
+
     #[test]
     fn test_record_lifecycle_with_complex_xpath() {
         let columns = vec![
@@ -61,7 +61,7 @@ mod tests {
     fn test_attribute_state_hierarchical_updates() {
         let mut state = AttributeState::default();
         
-        // Build up a hierarchy
+
         state.update_feature_type("bldg:Building");
         state.update_attribute(1, "uro:buildingIDAttribute");
         state.update_attribute(2, "uro:buildingID");
@@ -73,7 +73,7 @@ mod tests {
         assert_eq!(attrs[2], "uro:branchID");
         assert_eq!(attrs[3], "");
         
-        // Update level 2 should clear level 3
+
         state.update_attribute(2, "uro:newAttribute");
         let attrs = state.get_attributes();
         assert_eq!(attrs[0], "uro:buildingIDAttribute");
@@ -92,7 +92,7 @@ mod tests {
         state.update_attribute(3, "attr3");
         state.update_attribute(4, "attr4");
         
-        // Changing feature type should clear all attributes
+
         state.update_feature_type("tun:Tunnel");
         
         let attrs = state.get_attributes();
@@ -111,7 +111,7 @@ mod tests {
 
         let expanded = expand_row_for_special_prefix(row.clone());
         
-        // Should expand to 5 different flood risk types
+
         assert_eq!(expanded.len(), 5);
         
         let prefixes: Vec<String> = expanded.iter().map(|r| r[0].clone()).collect();
@@ -121,7 +121,7 @@ mod tests {
         assert!(prefixes.contains(&"ifld".to_string()));
         assert!(prefixes.contains(&"rfld".to_string()));
         
-        // All other columns should remain the same
+
         for expanded_row in &expanded {
             assert_eq!(expanded_row[1], "bldg:Building");
             assert_eq!(expanded_row[2], "uro:floodingRiskAttribute");
@@ -164,7 +164,7 @@ mod tests {
 
         let object_list = ObjectList::from(records);
         
-        // Check Building has 2 required and 1 target
+
         let building_value = object_list.get("bldg:Building").unwrap();
         assert_eq!(building_value.required.len(), 2);
         assert_eq!(building_value.target.len(), 1);
@@ -172,7 +172,7 @@ mod tests {
         assert!(building_value.required.contains(&"bldg:usage".to_string()));
         assert!(building_value.target.contains(&"bldg:yearOfConstruction".to_string()));
         
-        // Check BuildingPart has 1 required
+
         let building_part_value = object_list.get("bldg:BuildingPart").unwrap();
         assert_eq!(building_part_value.required.len(), 1);
         assert_eq!(building_part_value.target.len(), 0);
@@ -187,10 +187,10 @@ mod tests {
             conditional: vec!["attr5".to_string()],
         };
 
-        // Convert to AttributeValue
+
         let attr_value: AttributeValue = original.clone().into();
         
-        // Convert back to ObjectListValue
+
         let roundtrip = ObjectListValue::from(attr_value);
         
         assert_eq!(roundtrip.required, original.required);
@@ -255,7 +255,7 @@ mod tests {
         let feature_types = FeatureTypes::new(types.clone());
         let attr_value: AttributeValue = feature_types.clone().into();
         
-        // Verify structure
+
         match attr_value {
             AttributeValue::Map(map) => {
                 assert_eq!(map.len(), 2);
@@ -281,7 +281,7 @@ mod tests {
             "".to_string(),
             "".to_string(),
             "".to_string(),
-            "関連役割".to_string(), // Related role category
+            "関連役割".to_string(),
             "".to_string(),
             "create".to_string(),
         ];
@@ -291,7 +291,7 @@ mod tests {
 
     #[test]
     fn test_should_process_row_edge_cases() {
-        // Missing category (index 6)
+
         let columns1 = vec![
             "bldg".to_string(),
             "bldg:Building".to_string(),
@@ -305,7 +305,7 @@ mod tests {
         ];
         assert_eq!(should_process_row(&columns1), false);
         
-        // Has create but wrong category
+
         let columns2 = vec![
             "bldg".to_string(),
             "bldg:Building".to_string(),
@@ -319,7 +319,7 @@ mod tests {
         ];
         assert_eq!(should_process_row(&columns2), false);
         
-        // Correct category but no create
+
         let columns3 = vec![
             "bldg".to_string(),
             "bldg:Building".to_string(),
@@ -343,19 +343,19 @@ mod tests {
         
         let row = vec![
             "bldg".to_string(),
-            "".to_string(), // Empty - should use state's feature type
-            "".to_string(), // Will be replaced by state's attr1
-            "".to_string(), // Will be replaced by state's attr2
-            "uro:prefecture".to_string(), // Will be replaced by state's attr3 (empty)
-            "".to_string(), // Will be replaced by state's attr4 (empty)
+            "".to_string(),
+            "".to_string(),
+            "".to_string(),
+            "uro:prefecture".to_string(),
+            "".to_string(),
             "主題".to_string(),
         ];
 
         let record = Record::from_row_with_state(row, &state);
         
         assert_eq!(record.feature_type, "bldg:Building");
-        // State's attributes are ["uro:buildingIDAttribute", "uro:buildingID", "", ""]
-        // So xpath will be those two concatenated (empty strings filtered out)
+
+
         assert_eq!(record.xpath, "uro:buildingIDAttribute/uro:buildingID");
     }
 
@@ -400,7 +400,7 @@ mod tests {
 
         let record = Record::from(columns);
         
-        // Parentheses should be removed, dots should become slashes
+
         assert_eq!(record.xpath, "uro:buildingIDAttribute/uro:buildingID/value");
     }
 

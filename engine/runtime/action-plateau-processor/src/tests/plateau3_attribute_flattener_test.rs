@@ -84,9 +84,9 @@ mod tests {
         assert_eq!(send_features.len(), 1);
         
         let output_feature = &send_features[0];
-        // cityGmlAttributes should be removed
+
         assert!(output_feature.get(&"cityGmlAttributes").is_none());
-        // Flattened attributes should be present
+
         assert!(output_feature.get(&"type").is_some());
     }
 
@@ -97,7 +97,7 @@ mod tests {
         
         city_gml_attrs.insert("type".to_string(), AttributeValue::String("bldg:Building".to_string()));
         
-        // Add nested building ID attribute
+
         let mut building_id_attr = HashMap::new();
         building_id_attr.insert("uro:buildingID".to_string(), AttributeValue::String("12345".to_string()));
         building_id_attr.insert("uro:branchID".to_string(), AttributeValue::String("1".to_string()));
@@ -135,7 +135,7 @@ mod tests {
         
         city_gml_attrs.insert("type".to_string(), AttributeValue::String("bldg:Building".to_string()));
         
-        // Add disaster risk attribute
+
         let mut risk_attr = HashMap::new();
         risk_attr.insert("uro:description".to_string(), AttributeValue::String("洪水".to_string()));
         risk_attr.insert("uro:adminType".to_string(), AttributeValue::String("国".to_string()));
@@ -167,7 +167,7 @@ mod tests {
         let send_features = noop_forwarder.send_features.lock().unwrap();
         assert_eq!(send_features.len(), 1);
         
-        // Disaster risk attributes should be flattened
+
         let output_feature = &send_features[0];
         assert!(output_feature.get(&"uro:buildingDisasterRiskAttribute").is_none());
     }
@@ -180,7 +180,7 @@ mod tests {
         city_gml_attrs.insert("type".to_string(), AttributeValue::String("bldg:BuildingPart".to_string()));
         city_gml_attrs.insert("gml:name".to_string(), AttributeValue::String("Test Part".to_string()));
         
-        // Add ancestors (root building attributes)
+
         let mut ancestors = HashMap::new();
         ancestors.insert("rootAttr".to_string(), AttributeValue::String("rootValue".to_string()));
         city_gml_attrs.insert("ancestors".to_string(), AttributeValue::Map(ancestors));
@@ -205,7 +205,7 @@ mod tests {
         let send_features = noop_forwarder.send_features.lock().unwrap();
         assert_eq!(send_features.len(), 1);
         
-        // Should have merged ancestor attributes
+
         let output_feature = &send_features[0];
         assert!(output_feature.get(&"rootAttr").is_some());
     }
@@ -217,7 +217,7 @@ mod tests {
         
         city_gml_attrs.insert("type".to_string(), AttributeValue::String("bldg:Building".to_string()));
         
-        // Add generic attributes
+
         let mut generic_attrs = HashMap::new();
         generic_attrs.insert("customAttr1".to_string(), AttributeValue::String("value1".to_string()));
         generic_attrs.insert("customAttr2".to_string(), AttributeValue::String("value2".to_string()));
@@ -246,16 +246,16 @@ mod tests {
         assert_eq!(send_features.len(), 1);
         
         let output_feature = &send_features[0];
-        // Generic attributes should be flattened (excluding 'type')
+
         assert!(output_feature.get(&"customAttr1").is_some());
         assert!(output_feature.get(&"customAttr2").is_some());
-        // gen:genericAttribute should be removed
+
         assert!(output_feature.get(&"gen:genericAttribute").is_none());
     }
 
     #[test]
     fn test_process_missing_city_gml_attributes() {
-        let feature = Feature::new(); // No cityGmlAttributes
+        let feature = Feature::new();
         
         let factory = AttributeFlattenerFactory::default();
         let node_ctx = create_default_node_context();
@@ -273,7 +273,7 @@ mod tests {
     #[test]
     fn test_process_missing_type_in_city_gml_attributes() {
         let mut feature = Feature::new();
-        let city_gml_attrs = HashMap::new(); // No 'type' field
+        let city_gml_attrs = HashMap::new();
         
         feature.attributes.insert(
             Attribute::new("cityGmlAttributes"),

@@ -36,7 +36,7 @@ mod tests {
         let result = extractor.process(ctx, &fw);
         assert!(result.is_ok());
 
-        // Feature should be buffered, not sent yet
+
         let send_features = noop_forwarder.send_features.lock().unwrap();
         assert_eq!(send_features.len(), 0);
     }
@@ -67,12 +67,12 @@ mod tests {
 
         extractor.process(ctx, &fw).unwrap();
 
-        // Call finish to flush buffer
+
         let node_ctx = create_default_node_context();
         let result = extractor.finish(node_ctx, &fw);
         assert!(result.is_ok());
 
-        // Now feature should be sent with maxLod attribute
+
         let send_features = noop_forwarder.send_features.lock().unwrap();
         assert_eq!(send_features.len(), 1);
         
@@ -94,7 +94,7 @@ mod tests {
             buffer: HashMap::new(),
         };
 
-        // Process first feature with LOD 1
+
         let mut feature1 = Feature::new();
         feature1.attributes.insert(
             Attribute::new("cityGmlPath"),
@@ -109,7 +109,7 @@ mod tests {
         let ctx1 = create_default_execute_context(feature1);
         extractor.process(ctx1, &fw).unwrap();
 
-        // Process second feature with LOD 3 (higher)
+
         let mut feature2 = Feature::new();
         feature2.attributes.insert(
             Attribute::new("cityGmlPath"),
@@ -124,11 +124,11 @@ mod tests {
         let ctx2 = create_default_execute_context(feature2);
         extractor.process(ctx2, &fw).unwrap();
 
-        // Finish to flush
+
         let node_ctx = create_default_node_context();
         extractor.finish(node_ctx, &fw).unwrap();
 
-        // Should output with maxLod = 3
+
         let send_features = noop_forwarder.send_features.lock().unwrap();
         assert_eq!(send_features.len(), 1);
         
@@ -150,7 +150,7 @@ mod tests {
             buffer: HashMap::new(),
         };
 
-        // Process feature from file1
+
         let mut feature1 = Feature::new();
         feature1.attributes.insert(
             Attribute::new("cityGmlPath"),
@@ -165,7 +165,7 @@ mod tests {
         let ctx1 = create_default_execute_context(feature1);
         extractor.process(ctx1, &fw).unwrap();
 
-        // Process feature from file2 - should flush file1
+
         let mut feature2 = Feature::new();
         feature2.attributes.insert(
             Attribute::new("cityGmlPath"),
@@ -180,14 +180,14 @@ mod tests {
         let ctx2 = create_default_execute_context(feature2);
         extractor.process(ctx2, &fw).unwrap();
 
-        // Should have flushed file1
+
         let send_features = noop_forwarder.send_features.lock().unwrap();
         assert_eq!(send_features.len(), 1);
     }
 
     #[test]
     fn test_max_lod_extractor_missing_city_gml_path() {
-        let feature = Feature::new(); // No cityGmlPath attribute
+        let feature = Feature::new();
         let ctx = create_default_execute_context(feature);
         let noop_forwarder = NoopChannelForwarder::default();
         let fw = ProcessorChannelForwarder::Noop(noop_forwarder);
@@ -209,7 +209,7 @@ mod tests {
             Attribute::new("cityGmlPath"),
             AttributeValue::String("file:///path/to/building.gml".to_string()),
         );
-        // No LOD metadata
+
 
         let ctx = create_default_execute_context(feature);
         let noop_forwarder = NoopChannelForwarder::default();
@@ -235,7 +235,7 @@ mod tests {
         let mut lod = LodMask::default();
         lod.add_lod(1);
         lod.add_lod(2);
-        lod.add_lod(3); // Range from 1 to 3
+        lod.add_lod(3);
         feature.metadata = Metadata {
             lod: Some(lod),
             ..Default::default()
@@ -253,11 +253,11 @@ mod tests {
 
         extractor.process(ctx, &fw).unwrap();
 
-        // Finish to flush
+
         let node_ctx = create_default_node_context();
         extractor.finish(node_ctx, &fw).unwrap();
 
-        // Should use highest LOD from range (3)
+
         let send_features = noop_forwarder.send_features.lock().unwrap();
         assert_eq!(send_features.len(), 1);
         

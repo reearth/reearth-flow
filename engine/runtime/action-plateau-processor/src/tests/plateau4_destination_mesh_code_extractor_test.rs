@@ -28,7 +28,7 @@ mod tests {
     fn test_factory_ports() {
         let factory = DestinationMeshCodeExtractorFactory::default();
         assert_eq!(factory.get_input_ports().len(), 1);
-        assert_eq!(factory.get_output_ports().len(), 2); // DEFAULT_PORT and REJECTED_PORT
+        assert_eq!(factory.get_output_ports().len(), 2);
     }
 
     #[test]
@@ -40,7 +40,7 @@ mod tests {
         let event_hub = EventHub::new(30);
 
         let mut params = HashMap::new();
-        params.insert("meshType".to_string(), json!(3)); // 1km mesh
+        params.insert("meshType".to_string(), json!(3));
         params.insert("epsgCode".to_string(), json!("6668"));
 
         let result = factory.build(node_ctx, event_hub, "test".to_string(), Some(params));
@@ -56,7 +56,7 @@ mod tests {
         let event_hub = EventHub::new(30);
 
         let mut params = HashMap::new();
-        params.insert("meshType".to_string(), json!(10)); // Invalid mesh type
+        params.insert("meshType".to_string(), json!(10));
         params.insert("epsgCode".to_string(), json!("6668"));
 
         let result = factory.build(node_ctx, event_hub, "test".to_string(), Some(params));
@@ -71,7 +71,7 @@ mod tests {
         let node_ctx = create_default_node_context();
         let event_hub = EventHub::new(30);
 
-        // Build without params should use defaults
+
         let result = factory.build(node_ctx, event_hub, "test".to_string(), None);
         assert!(result.is_ok());
     }
@@ -92,7 +92,7 @@ mod tests {
         let event_hub = EventHub::new(30);
 
         let mut params = HashMap::new();
-        params.insert("meshType".to_string(), json!(1)); // 80km mesh
+        params.insert("meshType".to_string(), json!(1));
         params.insert("epsgCode".to_string(), json!("6668"));
 
         let result = factory.build(node_ctx, event_hub, "test".to_string(), Some(params));
@@ -108,7 +108,7 @@ mod tests {
         let event_hub = EventHub::new(30);
 
         let mut params = HashMap::new();
-        params.insert("meshType".to_string(), json!(6)); // 125m mesh
+        params.insert("meshType".to_string(), json!(6));
         params.insert("epsgCode".to_string(), json!("6668"));
 
         let result = factory.build(node_ctx, event_hub, "test".to_string(), Some(params));
@@ -121,7 +121,7 @@ mod tests {
 
         let factory = DestinationMeshCodeExtractorFactory::default();
 
-        // Test with EPSG:6697
+
         let node_ctx1 = create_default_node_context();
         let event_hub1 = EventHub::new(30);
         let mut params1 = HashMap::new();
@@ -131,7 +131,7 @@ mod tests {
         let result1 = factory.build(node_ctx1, event_hub1, "test".to_string(), Some(params1));
         assert!(result1.is_ok());
 
-        // Test with EPSG:6668
+
         let node_ctx2 = create_default_node_context();
         let event_hub2 = EventHub::new(30);
         let mut params2 = HashMap::new();

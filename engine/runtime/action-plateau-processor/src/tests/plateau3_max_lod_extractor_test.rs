@@ -39,7 +39,7 @@ mod tests {
         assert_eq!(send_features.len(), 1);
         let output_feature = &send_features[0];
 
-        // Check that the correct attributes are set
+
         assert_eq!(
             output_feature.get(&"code"),
             Some(&AttributeValue::String("53394525".to_string()))
@@ -85,10 +85,10 @@ mod tests {
         let mut extractor = MaxLodExtractor {};
         let result = extractor.process(ctx, &fw);
 
-        // Non-numeric files should return Ok but not process
+
         assert!(result.is_ok());
         
-        // No features should be sent since file doesn't start with digits
+
         let send_features = noop_forwarder.send_features.lock().unwrap();
         assert_eq!(send_features.len(), 0);
     }
@@ -96,7 +96,7 @@ mod tests {
     #[test]
     fn test_max_lod_extractor_missing_package() {
         let mut feature = Feature::new();
-        // Missing package attribute
+
         feature.attributes.insert(
             Attribute::new("cityGmlPath"),
             AttributeValue::String("file:///path/to/53394525_bldg_6697_op.gml".to_string()),
@@ -131,7 +131,7 @@ mod tests {
             Attribute::new("cityGmlPath"),
             AttributeValue::String("file:///path/to/53394525_bldg_6697_op.gml".to_string()),
         );
-        // Missing meshCode
+
         feature.attributes.insert(
             Attribute::new("maxLod"),
             AttributeValue::Number(serde_json::Number::from(2)),
@@ -162,7 +162,7 @@ mod tests {
             Attribute::new("meshCode"),
             AttributeValue::String("53394525".to_string()),
         );
-        // Missing maxLod
+
 
         let ctx = create_default_execute_context(feature);
         let noop_forwarder = NoopChannelForwarder::default();
@@ -201,7 +201,7 @@ mod tests {
         let mut extractor = MaxLodExtractor {};
         let result = extractor.process(ctx, &fw);
 
-        // Should handle invalid URIs
+
         assert!(result.is_err() || result.is_ok());
     }
 

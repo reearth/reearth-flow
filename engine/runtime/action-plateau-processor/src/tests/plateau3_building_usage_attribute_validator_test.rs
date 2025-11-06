@@ -28,13 +28,13 @@ mod tests {
     #[test]
     fn test_validator_with_missing_required_attribute() {
         let mut usage_map = HashMap::new();
-        // majorUsage2 exists but majorUsage doesn't
+
         usage_map.insert(
             "uro:majorUsage2".to_string(),
             AttributeValue::String("residential".to_string()),
         );
         
-        // Add survey year for better error message
+
         let mut detail_attr = HashMap::new();
         detail_attr.insert(
             "uro:surveyYear".to_string(),
@@ -57,7 +57,7 @@ mod tests {
         let result = validator.process(ctx, &fw);
         assert!(result.is_ok());
 
-        // Check that error was sent to L_BLDG_ERROR_PORT
+
         let send_ports = noop_forwarder.send_ports.lock().unwrap();
         assert!(send_ports.contains(&L_BLDG_ERROR_PORT.clone()));
     }
@@ -86,7 +86,7 @@ mod tests {
         let result = validator.process(ctx, &fw);
         assert!(result.is_ok());
 
-        // Should send to default port when no errors
+
         let send_ports = noop_forwarder.send_ports.lock().unwrap();
         assert_eq!(send_ports.len(), 1);
     }
@@ -110,7 +110,7 @@ mod tests {
         let noop_forwarder = NoopChannelForwarder::default();
         let fw = ProcessorChannelForwarder::Noop(noop_forwarder.clone());
 
-        // Create validator with city code mapping that includes a major city
+
         let mut city_name_to_code = HashMap::new();
         city_name_to_code.insert("札幌市".to_string(), "01100".to_string());
 
@@ -121,7 +121,7 @@ mod tests {
         let result = validator.process(ctx, &fw);
         assert!(result.is_ok());
 
-        // Should send to CODE_ERROR_PORT
+
         let send_ports = noop_forwarder.send_ports.lock().unwrap();
         assert!(send_ports.contains(&CODE_ERROR_PORT.clone()));
     }
@@ -145,7 +145,7 @@ mod tests {
         let noop_forwarder = NoopChannelForwarder::default();
         let fw = ProcessorChannelForwarder::Noop(noop_forwarder.clone());
 
-        // Create validator with city code mapping for non-major city
+
         let mut city_name_to_code = HashMap::new();
         city_name_to_code.insert("筑波市".to_string(), "08220".to_string());
 
@@ -156,7 +156,7 @@ mod tests {
         let result = validator.process(ctx, &fw);
         assert!(result.is_ok());
 
-        // Should send to default port (no error for non-major city)
+
         let send_features = noop_forwarder.send_features.lock().unwrap();
         assert_eq!(send_features.len(), 1);
     }
@@ -248,7 +248,7 @@ mod tests {
         let result = validator.process(ctx, &fw);
         assert!(result.is_ok());
 
-        // Should send to CODE_ERROR_PORT for city not in codelist
+
         let send_ports = noop_forwarder.send_ports.lock().unwrap();
         assert!(send_ports.contains(&CODE_ERROR_PORT.clone()));
     }
@@ -256,7 +256,7 @@ mod tests {
     #[test]
     fn test_validator_multiple_missing_attributes() {
         let mut usage_map = HashMap::new();
-        // Multiple attributes missing their prerequisites
+
         usage_map.insert(
             "uro:detailedUsage2".to_string(),
             AttributeValue::String("type1".to_string()),
@@ -288,14 +288,14 @@ mod tests {
         let result = validator.process(ctx, &fw);
         assert!(result.is_ok());
 
-        // Check that errors were sent
+
         let send_features = noop_forwarder.send_features.lock().unwrap();
         assert!(!send_features.is_empty());
         
         let output_feature = &send_features[0];
         let errors = output_feature.get(&"errors");
         
-        // Should have multiple error messages
+
         if let Some(AttributeValue::Array(error_array)) = errors {
             assert!(error_array.len() >= 2);
         }

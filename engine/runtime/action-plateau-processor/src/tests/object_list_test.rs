@@ -48,7 +48,7 @@ mod tests {
             "".to_string(),
             "".to_string(),
             "".to_string(),
-            "".to_string(), // Empty means not required
+            "".to_string(),
         ];
 
         let record = Record::from(columns);
@@ -73,7 +73,7 @@ mod tests {
 
         let record = Record::from(columns);
         
-        // Parentheses and dots should be replaced
+
         assert_eq!(record.xpath, "attr1/attr2/test");
     }
 
@@ -84,7 +84,7 @@ mod tests {
         state.update_feature_type("bldg:Building");
         assert_eq!(state.feature_type, Some("bldg:Building".to_string()));
         
-        // Empty string should not update
+
         state.update_feature_type("");
         assert_eq!(state.feature_type, Some("bldg:Building".to_string()));
     }
@@ -111,7 +111,7 @@ mod tests {
         state.update_attribute(3, "attr3");
         state.update_attribute(4, "attr4");
         
-        // Updating level 2 should clear 3 and 4
+
         state.update_attribute(2, "new_attr2");
         
         let attrs = state.get_attributes();
@@ -127,9 +127,9 @@ mod tests {
             "attr2".to_string(),
             "attr3".to_string(),
             "attr4".to_string(),
-            "主題".to_string(), // index 6 - valid category
+            "主題".to_string(),
             "".to_string(),
-            "create".to_string(), // index 8 - has create
+            "create".to_string(),
         ];
 
         assert_eq!(should_process_row(&columns), true);
@@ -144,9 +144,9 @@ mod tests {
             "attr2".to_string(),
             "attr3".to_string(),
             "attr4".to_string(),
-            "invalid".to_string(), // index 6 - invalid category
+            "invalid".to_string(),
             "".to_string(),
-            "create".to_string(), // index 8 - has create
+            "create".to_string(),
         ];
 
         assert_eq!(should_process_row(&columns), false);
@@ -161,9 +161,9 @@ mod tests {
             "attr2".to_string(),
             "attr3".to_string(),
             "attr4".to_string(),
-            "主題".to_string(), // index 6 - valid category
+            "主題".to_string(),
             "".to_string(),
-            "".to_string(), // index 8 - no create
+            "".to_string(),
         ];
 
         assert_eq!(should_process_row(&columns), false);
@@ -185,7 +185,7 @@ mod tests {
         assert_eq!(expanded[3][0], "ifld");
         assert_eq!(expanded[4][0], "rfld");
         
-        // Other columns should remain the same
+
         for row in &expanded {
             assert_eq!(row[1], "feature");
         }
@@ -200,7 +200,7 @@ mod tests {
 
         let expanded = expand_row_for_special_prefix(row.clone());
         
-        // Should return the original row unchanged
+
         assert_eq!(expanded.len(), 1);
         assert_eq!(expanded[0], row);
     }
@@ -327,20 +327,20 @@ mod tests {
 
         let object_list = ObjectList::from(records);
         
-        // Should have two feature types
+
         let feature_types = object_list.get_feature_types();
         assert_eq!(feature_types.len(), 2);
         assert!(feature_types.contains(&"bldg:Building".to_string()));
         assert!(feature_types.contains(&"bldg:BuildingPart".to_string()));
         
-        // Check building attributes
+
         let building_value = object_list.get("bldg:Building").unwrap();
         assert_eq!(building_value.required.len(), 1);
         assert_eq!(building_value.target.len(), 1);
         assert_eq!(building_value.required[0], "gml:name");
         assert_eq!(building_value.target[0], "bldg:usage");
         
-        // Check building part attributes
+
         let building_part_value = object_list.get("bldg:BuildingPart").unwrap();
         assert_eq!(building_part_value.required.len(), 1);
         assert_eq!(building_part_value.required[0], "gml:id");
