@@ -67,7 +67,7 @@ pub(crate) struct Record {
 }
 
 impl Record {
-    fn from_row_with_state(mut row: Vec<String>, state: &AttributeState) -> Self {
+    pub(crate) fn from_row_with_state(mut row: Vec<String>, state: &AttributeState) -> Self {
         if let Some(feature_type) = &state.feature_type {
             row[1] = feature_type.clone();
         }
