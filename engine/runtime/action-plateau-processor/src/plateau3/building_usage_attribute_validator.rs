@@ -182,7 +182,7 @@ pub struct BuildingUsageAttributeValidatorParam {
 
 #[derive(Debug, Clone)]
 pub struct BuildingUsageAttributeValidator {
-    city_name_to_code: HashMap<String, String>,
+    pub(crate) city_name_to_code: HashMap<String, String>,
 }
 
 impl Processor for BuildingUsageAttributeValidator {

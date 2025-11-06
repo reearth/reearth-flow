@@ -9,7 +9,7 @@ use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Feature;
 use std::sync::Arc;
 
-pub(crate) fn create_default_execute_context(feature: Feature) -> ExecutorContext {
+pub fn create_default_execute_context(feature: Feature) -> ExecutorContext {
     ExecutorContext::new(
         feature,
         DEFAULT_PORT.clone(),
@@ -20,7 +20,7 @@ pub(crate) fn create_default_execute_context(feature: Feature) -> ExecutorContex
     )
 }
 
-pub(crate) fn create_default_node_context() -> NodeContext {
+pub fn create_default_node_context() -> NodeContext {
     let expr_engine = Arc::new(Engine::new());
     let storage_resolver = Arc::new(StorageResolver::new());
     let kv_store = Arc::new(create_kv_store());

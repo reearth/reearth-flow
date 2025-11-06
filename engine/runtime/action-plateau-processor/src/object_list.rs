@@ -343,23 +343,23 @@ impl From<Vec<Record>> for ObjectList {
 }
 
 #[derive(Clone, Debug, Default)]
-struct AttributeState {
-    feature_type: Option<String>,
-    attribute1: Option<String>,
-    attribute2: Option<String>,
-    attribute3: Option<String>,
-    attribute4: Option<String>,
+pub(crate) struct AttributeState {
+    pub(crate) feature_type: Option<String>,
+    pub(crate) attribute1: Option<String>,
+    pub(crate) attribute2: Option<String>,
+    pub(crate) attribute3: Option<String>,
+    pub(crate) attribute4: Option<String>,
 }
 
 impl AttributeState {
-    fn update_feature_type(&mut self, value: &str) {
+    pub(crate) fn update_feature_type(&mut self, value: &str) {
         if !value.is_empty() {
             self.feature_type = Some(value.to_string());
             self.clear_attributes();
         }
     }
 
-    fn update_attribute(&mut self, level: usize, value: &str) {
+    pub(crate) fn update_attribute(&mut self, level: usize, value: &str) {
         if value.is_empty() {
             return;
         }
@@ -402,7 +402,7 @@ impl AttributeState {
         }
     }
 
-    fn get_attributes(&self) -> Vec<String> {
+    pub(crate) fn get_attributes(&self) -> Vec<String> {
         vec![
             self.attribute1.clone().unwrap_or_default(),
             self.attribute2.clone().unwrap_or_default(),
@@ -417,7 +417,7 @@ fn open_workbook(bytes: Bytes) -> Result<Xlsx<Cursor<Bytes>>, Error> {
     calamine::open_workbook_from_rs(reader).map_err(|e| Error::Parse(format!("{e:?}")))
 }
 
-fn should_process_row(columns: &[String]) -> bool {
+pub(crate) fn should_process_row(columns: &[String]) -> bool {
     let has_create = columns
         .get(8)
         .map(|is_create| !is_create.is_empty())
@@ -431,7 +431,7 @@ fn should_process_row(columns: &[String]) -> bool {
     has_create && has_valid_category
 }
 
-fn expand_row_for_special_prefix(row: Vec<String>) -> Vec<Vec<String>> {
+pub(crate) fn expand_row_for_special_prefix(row: Vec<String>) -> Vec<Vec<String>> {
     if let Some(prefix) = row.first() {
         if prefix.starts_with("fld/") {
             return ["fld", "tnm", "htd", "ifld", "rfld"]
