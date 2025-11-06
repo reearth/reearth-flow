@@ -153,6 +153,8 @@ BASEPATH_QC=./runtime/examples/fixture/workflow/quality-check/plateau4/
 WORKFLOW_QC=(
   "01-common"
   "02-bldg"
+  "03-tran"
+  "05-luse-urf-area"
 )
 
 process_workflows() {
