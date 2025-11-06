@@ -14,8 +14,8 @@ nodes:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
         - newAttribute: Building
           expr: |
@@ -338,8 +338,8 @@ nodes:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
         - newAttribute: _num_incorrect_city_code
           expr: "1"
@@ -356,8 +356,8 @@ nodes:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
         - newAttribute: _num_incorrect_usage_attribute
           expr: "1"
@@ -547,8 +547,8 @@ nodes:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
         - newAttribute: _num_duplicate_building_id
           expr: "1"
@@ -565,8 +565,8 @@ nodes:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
         - newAttribute: _num_missing_building_id
           expr: "1"

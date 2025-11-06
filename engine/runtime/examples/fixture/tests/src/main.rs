@@ -330,9 +330,9 @@ impl TestContext {
 
         let action_log_path = working_dir.join("action-log");
         fs::create_dir_all(&action_log_path)?;
-        let ingress_state_path = self.temp_dir.join("ingress-store");
+        let ingress_state_path = working_dir.join("ingress-store");
         fs::create_dir_all(&ingress_state_path)?;
-        let feature_state_path = self.temp_dir.join("feature-store");
+        let feature_state_path = working_dir.join("feature-store");
         fs::create_dir_all(&feature_state_path)?;
 
         let logger_factory = Arc::new(LoggerFactory::new(
