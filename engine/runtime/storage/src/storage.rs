@@ -351,4 +351,88 @@ mod tests {
         let expected_files = vec![&p1, &p2];
         assert_eq!(locations, expected_files);
     }
+
+    #[tokio::test]
+    async fn test_put_large_file() {
+        let op = Operator::new(services::Memory::default()).unwrap().finish();
+        let storage = Storage::new(Uri::for_test("ram:///test"), op);
+        
+        let large_data = vec![b'X'; 1_000_000];
+        storage.put(Path::new("large.dat"), Bytes::from(large_data)).await.unwrap();
+        
+        let result = storage.get(Path::new("large.dat")).await.unwrap();
+        let bytes = result.bytes().await.unwrap();
+        assert_eq!(bytes.len(), 1_000_000);
+    }
+
+    #[test]
+    fn test_get_sync_nonexistent() {
+        let op = Operator::new(services::Memory::default()).unwrap().finish();
+        let storage = Storage::new(Uri::for_test("ram:///test"), op);
+        
+        let result = storage.get_sync(Path::new("nonexistent.txt"));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_put_sync_empty_file() {
+        let op = Operator::new(services::Memory::default()).unwrap().finish();
+        let storage = Storage::new(Uri::for_test("ram:///test"), op);
+        
+        storage.put_sync(Path::new("empty.txt"), Bytes::new()).unwrap();
+        let result = storage.get_sync(Path::new("empty.txt")).unwrap();
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_put_get_roundtrip() {
+        let op = Operator::new(services::Memory::default()).unwrap().finish();
+        let storage = Storage::new(Uri::for_test("ram:///test"), op);
+        
+        let content = "Round trip test data";
+        storage.put_sync(Path::new("roundtrip.txt"), Bytes::from(content)).unwrap();
+        
+        let result = storage.get_sync(Path::new("roundtrip.txt")).unwrap();
+        assert_eq!(String::from_utf8_lossy(&result), content);
+    }
+
+    #[test]
+    fn test_multiple_files_same_directory() {
+        let op = Operator::new(services::Memory::default()).unwrap().finish();
+        let storage = Storage::new(Uri::for_test("ram:///test"), op);
+        
+        storage.put_sync(Path::new("dir/file1.txt"), Bytes::from("data1")).unwrap();
+        storage.put_sync(Path::new("dir/file2.txt"), Bytes::from("data2")).unwrap();
+        storage.put_sync(Path::new("dir/file3.txt"), Bytes::from("data3")).unwrap();
+        
+        let f1 = storage.get_sync(Path::new("dir/file1.txt")).unwrap();
+        let f3 = storage.get_sync(Path::new("dir/file3.txt")).unwrap();
+        
+        assert_eq!(String::from_utf8_lossy(&f1), "data1");
+        assert_eq!(String::from_utf8_lossy(&f3), "data3");
+    }
+
+    #[tokio::test]
+    async fn test_get_range_boundaries() {
+        let op = Operator::new(services::Memory::default()).unwrap().finish();
+        let storage = Storage::new(Uri::for_test("ram:///test"), op);
+        
+        let data = b"0123456789";
+        storage.put(Path::new("range.txt"), Bytes::from(&data[..])).await.unwrap();
+        
+        let partial = storage.get_range(Path::new("range.txt"), 3..7).await.unwrap();
+        assert_eq!(partial.as_ref(), b"3456");
+    }
+
+    #[test]
+    fn test_overwrite_file() {
+        let op = Operator::new(services::Memory::default()).unwrap().finish();
+        let storage = Storage::new(Uri::for_test("ram:///test"), op);
+        
+        storage.put_sync(Path::new("file.txt"), Bytes::from("v1")).unwrap();
+        storage.put_sync(Path::new("file.txt"), Bytes::from("v2")).unwrap();
+        
+        let result = storage.get_sync(Path::new("file.txt")).unwrap();
+        assert_eq!(String::from_utf8_lossy(&result), "v2");
+    }
 }
