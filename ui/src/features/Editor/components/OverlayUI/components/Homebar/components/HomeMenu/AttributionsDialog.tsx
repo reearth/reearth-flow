@@ -18,7 +18,6 @@ type Props = {
 const AttributionsDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
   const t = useT();
 
-
   return (
     <Dialog open={isOpen} onOpenChange={(o) => onOpenChange(o)}>
       <DialogContent className="h-[500px] w-full">
