@@ -155,7 +155,7 @@ function DataTable<TData, TValue>({
     <div className="flex h-full flex-col justify-between">
       {(showOrdering || showFiltering || selectColumns) && (
         <div
-          className={`flex items-center gap-4 ${condensed ? "py-1" : "py-3"}`}>
+          className={`flex items-center gap-2 ${condensed ? "py-1" : "py-3"}`}>
           {showFiltering && (
             <Input
               placeholder={t("Search") + "..."}
@@ -169,7 +169,7 @@ function DataTable<TData, TValue>({
           )}
           {showOrdering && sortOptions && onSortChange ? (
             <Select value={currentSortValue} onValueChange={onSortChange}>
-              <SelectTrigger className="h-[32px] w-[150px]">
+              <SelectTrigger className="h-[36px] w-[150px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -184,7 +184,7 @@ function DataTable<TData, TValue>({
             <Select
               value={currentOrder || "DESC"}
               onValueChange={handleOrderChange}>
-              <SelectTrigger className="h-[32px] w-[100px]">
+              <SelectTrigger className="h-[36px] w-[150px]">
                 <SelectValue placeholder={orderDirections.ASC} />
               </SelectTrigger>
               <SelectContent>
@@ -262,6 +262,7 @@ function DataTable<TData, TValue>({
                     return (
                       <TableRow
                         key={row.id}
+                        className="bg-secondary"
                         data-state={
                           row.getIsSelected() ? "selected" : undefined
                         }
