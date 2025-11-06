@@ -13,11 +13,13 @@ export default ({
   const [currentProject] = useCurrentProject();
 
   const [showDialog, setShowDialog] = useState<
-    "deploy" | "share" | "debugStop" | undefined
+    "deploy" | "share" | "debugStart" | "debugStop" | undefined
   >(undefined);
 
+  const handleShowDebugStartDialog = () => setShowDialog("debugStart");
   const handleShowDebugStopDialog = () => setShowDialog("debugStop");
   const handleDialogClose = () => setShowDialog(undefined);
+  const [debugRunStarted, setDebugRunStarted] = useState(false);
 
   const { useGetJob } = useJob();
 
@@ -46,8 +48,6 @@ export default ({
     () => realTimeJobStatus ?? debugJob?.status ?? undefined,
     [realTimeJobStatus, debugJob],
   );
-
-  const [debugRunStarted, setDebugRunStarted] = useState(false);
 
   useEffect(() => {
     if (
@@ -81,6 +81,7 @@ export default ({
     jobStatus,
     debugJob,
     handleDebugRunStart,
+    handleShowDebugStartDialog,
     handleShowDebugStopDialog,
     handleDialogClose,
     handleDebugRunReset,
