@@ -91,6 +91,7 @@ impl ProcessorFactory for ThreeDimensionForcerFactory {
 /// Configure how to convert 2D geometries to 3D by adding Z-coordinates
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub struct ThreeDimensionForcerParam {
     /// # Elevation
     /// The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified.
@@ -102,14 +103,6 @@ pub struct ThreeDimensionForcerParam {
     pub preserve_existing_z: bool,
 }
 
-impl Default for ThreeDimensionForcerParam {
-    fn default() -> Self {
-        Self {
-            elevation: None,
-            preserve_existing_z: false,
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct ThreeDimensionForcer {
