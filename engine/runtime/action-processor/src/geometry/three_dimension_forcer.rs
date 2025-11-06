@@ -70,15 +70,11 @@ impl ProcessorFactory for ThreeDimensionForcerFactory {
 
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let elevation_ast = if let Some(ref elevation_expr) = params.elevation {
-            Some(
-                expr_engine
-                    .compile(elevation_expr.as_ref())
-                    .map_err(|e| {
-                        GeometryProcessorError::ThreeDimensionForcerFactory(format!(
-                            "Failed to compile elevation expression: {e:?}"
-                        ))
-                    })?,
-            )
+            Some(expr_engine.compile(elevation_expr.as_ref()).map_err(|e| {
+                GeometryProcessorError::ThreeDimensionForcerFactory(format!(
+                    "Failed to compile elevation expression: {e:?}"
+                ))
+            })?)
         } else {
             None
         };
@@ -195,11 +191,7 @@ impl Processor for ThreeDimensionForcer {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -211,32 +203,22 @@ impl Processor for ThreeDimensionForcer {
 /// Convert a 2D geometry to 3D by adding the specified Z coordinate to all points
 fn convert_2d_to_3d(geom: Geometry2D, z: f64) -> Geometry3D {
     use reearth_flow_geometry::types::{
-        geometry::Geometry3D,
-        line::Line,
-        line_string::LineString,
-        multi_line_string::MultiLineString,
-        multi_point::MultiPoint,
-        multi_polygon::MultiPolygon,
-        point::Point,
-        polygon::Polygon,
-        rect::Rect,
-        triangle::Triangle,
+        geometry::Geometry3D, line::Line, line_string::LineString,
+        multi_line_string::MultiLineString, multi_point::MultiPoint, multi_polygon::MultiPolygon,
+        point::Point, polygon::Polygon, rect::Rect, triangle::Triangle,
     };
 
     match geom {
-        Geometry2D::Point(p) => {
-            Geometry3D::Point(Point(Coordinate3D::new__(p.0.x, p.0.y, z)))
-        }
+        Geometry2D::Point(p) => Geometry3D::Point(Point(Coordinate3D::new__(p.0.x, p.0.y, z))),
         Geometry2D::Line(l) => Geometry3D::Line(Line {
             start: Coordinate3D::new__(l.start.x, l.start.y, z),
             end: Coordinate3D::new__(l.end.x, l.end.y, z),
         }),
         Geometry2D::LineString(ls) => {
-            let coords: Vec<Coordinate3D<f64>> = ls
-                .0
-                .into_iter()
-                .map(|c| Coordinate3D::new__(c.x, c.y, z))
-                .collect();
+            let coords: Vec<Coordinate3D<f64>> =
+                ls.0.into_iter()
+                    .map(|c| Coordinate3D::new__(c.x, c.y, z))
+                    .collect();
             Geometry3D::LineString(LineString(coords))
         }
         Geometry2D::Polygon(poly) => {
@@ -257,17 +239,13 @@ fn convert_2d_to_3d(geom: Geometry2D, z: f64) -> Geometry3D {
                     LineString(coords)
                 })
                 .collect();
-            Geometry3D::Polygon(Polygon::new(
-                LineString(exterior_coords),
-                interior_coords,
-            ))
+            Geometry3D::Polygon(Polygon::new(LineString(exterior_coords), interior_coords))
         }
         Geometry2D::MultiPoint(mp) => {
-            let points: Vec<Point<f64, f64>> = mp
-                .0
-                .into_iter()
-                .map(|p| Point(Coordinate3D::new__(p.0.x, p.0.y, z)))
-                .collect();
+            let points: Vec<Point<f64, f64>> =
+                mp.0.into_iter()
+                    .map(|p| Point(Coordinate3D::new__(p.0.x, p.0.y, z)))
+                    .collect();
             Geometry3D::MultiPoint(MultiPoint(points))
         }
         Geometry2D::MultiLineString(mls) => {
@@ -275,41 +253,39 @@ fn convert_2d_to_3d(geom: Geometry2D, z: f64) -> Geometry3D {
                 .0
                 .into_iter()
                 .map(|ls| {
-                    let coords: Vec<Coordinate3D<f64>> = ls
-                        .0
-                        .into_iter()
-                        .map(|c| Coordinate3D::new__(c.x, c.y, z))
-                        .collect();
+                    let coords: Vec<Coordinate3D<f64>> =
+                        ls.0.into_iter()
+                            .map(|c| Coordinate3D::new__(c.x, c.y, z))
+                            .collect();
                     LineString(coords)
                 })
                 .collect();
             Geometry3D::MultiLineString(MultiLineString(line_strings))
         }
         Geometry2D::MultiPolygon(mp) => {
-            let polygons: Vec<Polygon<f64, f64>> = mp
-                .0
-                .into_iter()
-                .map(|poly| {
-                    let (exterior, interiors) = poly.into_inner();
-                    let exterior_coords: Vec<Coordinate3D<f64>> = exterior
-                        .0
-                        .into_iter()
-                        .map(|c| Coordinate3D::new__(c.x, c.y, z))
-                        .collect();
-                    let interior_coords: Vec<LineString<f64, f64>> = interiors
-                        .into_iter()
-                        .map(|interior| {
-                            let coords: Vec<Coordinate3D<f64>> = interior
-                                .0
-                                .into_iter()
-                                .map(|c| Coordinate3D::new__(c.x, c.y, z))
-                                .collect();
-                            LineString(coords)
-                        })
-                        .collect();
-                    Polygon::new(LineString(exterior_coords), interior_coords)
-                })
-                .collect();
+            let polygons: Vec<Polygon<f64, f64>> =
+                mp.0.into_iter()
+                    .map(|poly| {
+                        let (exterior, interiors) = poly.into_inner();
+                        let exterior_coords: Vec<Coordinate3D<f64>> = exterior
+                            .0
+                            .into_iter()
+                            .map(|c| Coordinate3D::new__(c.x, c.y, z))
+                            .collect();
+                        let interior_coords: Vec<LineString<f64, f64>> = interiors
+                            .into_iter()
+                            .map(|interior| {
+                                let coords: Vec<Coordinate3D<f64>> = interior
+                                    .0
+                                    .into_iter()
+                                    .map(|c| Coordinate3D::new__(c.x, c.y, z))
+                                    .collect();
+                                LineString(coords)
+                            })
+                            .collect();
+                        Polygon::new(LineString(exterior_coords), interior_coords)
+                    })
+                    .collect();
             Geometry3D::MultiPolygon(MultiPolygon(polygons))
         }
         Geometry2D::Rect(rect) => {
@@ -334,10 +310,8 @@ fn convert_2d_to_3d(geom: Geometry2D, z: f64) -> Geometry3D {
             unreachable!("2D Solid should not exist")
         }
         Geometry2D::GeometryCollection(gc) => {
-            let geometries: Vec<Geometry3D> = gc
-                .into_iter()
-                .map(|g| convert_2d_to_3d(g, z))
-                .collect();
+            let geometries: Vec<Geometry3D> =
+                gc.into_iter().map(|g| convert_2d_to_3d(g, z)).collect();
             Geometry3D::GeometryCollection(geometries)
         }
         Geometry2D::CSG(_) => {
