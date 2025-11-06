@@ -382,11 +382,10 @@ graphs:
 
       # Write qc_result_ok file
       - id: 734ebb2a-c2b0-429e-9363-5ccdd2a5b2ae
-        name: FileWriterQcResultOk
+        name: JsonWriterQcResultOk
         type: action
-        action: FileWriter
+        action: JsonWriter
         with:
-          format: json
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
