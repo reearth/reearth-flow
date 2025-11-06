@@ -146,11 +146,10 @@ graphs:
                 properties['note'] = 'Passed through - not a MultiPoint'
 
       - id: C3D4E5F6-G7H8-9012-CDEF-345678901234
-        name: FileWriter
+        name: JsonWriter
         type: action
-        action: FileWriter
+        action: JsonWriter
         with:
-          format: json
           output: |
             env.get("outputFilePath")
 

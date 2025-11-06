@@ -114,11 +114,10 @@ graphs:
             properties['original_geometry_type'] = geom_type
 
       - id: 756F498A-7A5C-4579-AB1C-FCBBA8121870
-        name: FileWriter
+        name: JsonWriter
         type: action
-        action: FileWriter
+        action: JsonWriter
         with:
-          format: json
           output: |
             env.get("outputFilePath")
 

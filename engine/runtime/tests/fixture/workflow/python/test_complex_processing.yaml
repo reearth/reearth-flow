@@ -121,11 +121,10 @@ graphs:
             properties['processing_type'] = 'complex'
 
       - id: 40000000-0000-0000-0000-000000000002
-        name: FileWriter
+        name: JsonWriter
         type: action
-        action: FileWriter
+        action: JsonWriter
         with:
-          format: json
           output: |
             env.get("outputFilePath")
 

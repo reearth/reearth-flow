@@ -173,14 +173,6 @@
       "description": "提取文件的属性"
     },
     {
-      "name": "FileReader",
-      "description": "从文件中读取实体"
-    },
-    {
-      "name": "FileWriter",
-      "description": "将实体写入文件"
-    },
-    {
       "name": "GeoJsonReader",
       "description": "从GeoJSON文件读取要素"
     },

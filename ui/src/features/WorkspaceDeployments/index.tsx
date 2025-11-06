@@ -21,6 +21,7 @@ import {
   DeploymentDeletionDialog,
   DeploymentDetails,
   DeploymentEditDialog,
+  DeploymentRunDialog,
 } from "./components";
 import useHooks from "./hooks";
 
@@ -30,6 +31,7 @@ const DeploymentManager: React.FC = () => {
     deployments,
     selectedDeployment,
     deploymentToBeDeleted,
+    deploymentToBeRun,
     openDeploymentAddDialog,
     deploymentToBeEdited,
     isFetching,
@@ -41,10 +43,12 @@ const DeploymentManager: React.FC = () => {
     setDeploymentToBeEdited,
     setOpenDeploymentAddDialog,
     setDeploymentToBeDeleted,
+    setDeploymentToBeRun,
     setSearchTerm,
     handleDeploymentSelect,
     handleDeploymentDelete,
     handleDeploymentRun,
+    handleDeploymentRunConfirmed,
     handleSortChange,
     setCurrentPage,
   } = useHooks();
@@ -157,6 +161,13 @@ const DeploymentManager: React.FC = () => {
           deploymentToBeDeleted={deploymentToBeDeleted}
           setDeploymentToBeDeleted={setDeploymentToBeDeleted}
           onDeploymentDelete={handleDeploymentDelete}
+        />
+      )}
+      {deploymentToBeRun && (
+        <DeploymentRunDialog
+          deployment={deploymentToBeRun}
+          onDeploymentRun={handleDeploymentRunConfirmed}
+          onDialogClose={() => setDeploymentToBeRun(undefined)}
         />
       )}
     </>
