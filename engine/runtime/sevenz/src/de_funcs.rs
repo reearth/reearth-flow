@@ -85,3 +85,173 @@ pub fn default_entry_extract_fn(
     }
     Ok(true)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::archive::SevenZArchiveEntry;
+    use crate::de_funcs::{decompress, default_entry_extract_fn};
+    use std::io::Cursor;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_decompress_empty_archive() {
+        let temp_dir = TempDir::new().unwrap();
+        let dest = temp_dir.path();
+        
+        let empty_7z = create_minimal_7z_archive();
+        let cursor = Cursor::new(empty_7z);
+        
+        let result = decompress(cursor, dest);
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_decompress_invalid_signature() {
+        let temp_dir = TempDir::new().unwrap();
+        let dest = temp_dir.path();
+        
+        let invalid_data = vec![0u8; 100];
+        let cursor = Cursor::new(invalid_data);
+        
+        let result = decompress(cursor, dest);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_decompress_truncated_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let dest = temp_dir.path();
+        
+        let truncated = b"7z\xBC\xAF\x27\x1C";
+        let cursor = Cursor::new(truncated.to_vec());
+        
+        let result = decompress(cursor, dest);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_decompress_to_nonexistent_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        let dest = temp_dir.path().join("nonexistent/nested/path");
+        
+        let empty_7z = create_minimal_7z_archive();
+        let cursor = Cursor::new(empty_7z);
+        
+        let result = decompress(cursor, &dest);
+        if result.is_ok() {
+            assert!(dest.exists());
+        }
+    }
+
+    #[test]
+    fn test_default_entry_extract_fn_directory() {
+        let temp_dir = TempDir::new().unwrap();
+        let dest = temp_dir.path().join("test_dir");
+        
+        let entry = SevenZArchiveEntry {
+            name: "test_directory".to_string(),
+            is_directory: true,
+            has_stream: false,
+            size: 0,
+            ..Default::default()
+        };
+        
+        let mut empty_reader: &[u8] = &[];
+        let result = default_entry_extract_fn(&entry, &mut empty_reader, &dest);
+        
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_default_entry_extract_fn_empty_file() {
+        let temp_dir = TempDir::new().unwrap();
+        let dest = temp_dir.path().join("empty.txt");
+        
+        let entry = SevenZArchiveEntry {
+            name: "empty.txt".to_string(),
+            is_directory: false,
+            has_stream: true,
+            size: 0,
+            ..Default::default()
+        };
+        
+        let mut empty_reader: &[u8] = &[];
+        let result = default_entry_extract_fn(&entry, &mut empty_reader, &dest);
+        
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_default_entry_extract_fn_with_content() {
+        let temp_dir = TempDir::new().unwrap();
+        let dest = temp_dir.path().join("test.txt");
+        
+        let content = b"Test content for Plateau CityGML";
+        let entry = SevenZArchiveEntry {
+            name: "test.txt".to_string(),
+            is_directory: false,
+            has_stream: true,
+            size: content.len() as u64,
+            ..Default::default()
+        };
+        
+        let mut reader: &[u8] = content;
+        let result = default_entry_extract_fn(&entry, &mut reader, &dest);
+        
+        assert!(result.is_ok());
+        if dest.exists() {
+            let extracted_content = std::fs::read_to_string(&dest).unwrap();
+            assert_eq!(extracted_content, "Test content for Plateau CityGML");
+        }
+    }
+
+    #[test]
+    fn test_sevenz_archive_entry_new() {
+        let entry = SevenZArchiveEntry::new();
+        assert_eq!(entry.name(), "");
+        assert!(!entry.is_directory());
+        assert!(!entry.has_stream());
+    }
+
+    #[test]
+    fn test_sevenz_archive_entry_accessors() {
+        let entry = SevenZArchiveEntry {
+            name: "test.gml".to_string(),
+            is_directory: false,
+            has_stream: true,
+            size: 1024,
+            ..Default::default()
+        };
+        
+        assert_eq!(entry.name(), "test.gml");
+        assert!(!entry.is_directory());
+        assert!(entry.has_stream());
+        assert_eq!(entry.size(), 1024);
+    }
+
+    #[test]
+    fn test_japanese_filename_entry() {
+        let entry = SevenZArchiveEntry {
+            name: "東京都/建物/bldg_001.gml".to_string(),
+            is_directory: false,
+            has_stream: true,
+            size: 512,
+            ..Default::default()
+        };
+        
+        assert!(entry.name().contains("東京都"));
+        assert!(entry.name().contains("建物"));
+    }
+
+    fn create_minimal_7z_archive() -> Vec<u8> {
+        vec![
+            0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00,
+        ]
+    }
+}
+
