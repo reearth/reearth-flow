@@ -32,11 +32,10 @@ graphs:
             "runtime/examples/fixture/workflow/requirement/plateau4/b005-3/files/sample.py"
 
       - id: 756F498A-7A5C-4579-AB1C-FCBBA8121869
-        name: FileWriter
+        name: JsonWriter
         type: action
-        action: FileWriter
+        action: JsonWriter
         with:
-          format: json
           output: |
             file::join_path(env.get("currentPath"), "b005-3.json")
 

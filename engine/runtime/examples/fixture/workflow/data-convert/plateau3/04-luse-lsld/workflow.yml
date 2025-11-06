@@ -59,7 +59,7 @@ graphs:
       - id: c8d0f9dd-8f3d-46e0-8608-dfa22801a3d2
         name: FileWriterTsvFilePath
         type: action
-        action: FileWriter
+        action: CsvWriter
         with:
           format: tsv
           output: |
