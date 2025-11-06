@@ -105,8 +105,8 @@ nodes:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
         - newAttribute: _num_lbldg06_error
           expr: "1"
@@ -170,8 +170,8 @@ nodes:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: "cityGmlPath"
-      aggregateAttribute: "cityGmlPath"
+      groupBy:
+      - "cityGmlPath"
       calculations:
         - newAttribute: instGmlIdTotalCount
           expr: |
@@ -192,8 +192,8 @@ nodes:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
         - newAttribute: _num_invalid_bldginst_geom_type
           expr: "1"

@@ -3,9 +3,8 @@ use num_traits::FromPrimitive;
 use std::cmp::Ordering;
 
 use crate::types::{
-    coordinate::{Coordinate, Coordinate3D},
+    coordinate::{Coordinate, Coordinate2D, Coordinate3D},
     coordnum::{CoordFloat, CoordNum},
-    no_value,
 };
 
 use super::bounding_rect::*;
@@ -161,6 +160,14 @@ pub fn normalize_longitude<T: CoordFloat + FromPrimitive>(coord: T) -> T {
     ((coord + five_forty) % three_sixty) - one_eighty
 }
 
+/// Normalization result for 2D coordinates.
+/// Contains the translation and scaling applied to the vertices.
+#[derive(Clone, Copy, Debug)]
+pub struct NormalizationResult2D<T: CoordFloat> {
+    pub translation: Coordinate2D<T>,
+    pub scale: Coordinate2D<T>,
+}
+
 // Normalizes the vertices for numerical stability (2D version).
 // The normalization is done by:
 // 1. Translating the vertices so that the first vertex is at the origin.
@@ -169,16 +176,13 @@ pub fn normalize_longitude<T: CoordFloat + FromPrimitive>(coord: T) -> T {
 // Returns the translation and scaling applied to the vertices.
 // This normalization can be reverted by the `denormalize_vertices_2d` function.
 pub fn normalize_vertices_2d<T: CoordFloat>(
-    vertices: &mut [Coordinate<T, no_value::NoValue>],
-) -> (
-    Coordinate<T, no_value::NoValue>,
-    Coordinate<T, no_value::NoValue>,
-) {
+    vertices: &mut [Coordinate2D<T>],
+) -> NormalizationResult2D<T> {
     if vertices.is_empty() {
-        return (
-            Coordinate::new_(T::zero(), T::zero()),
-            Coordinate::new_(T::one(), T::one()),
-        );
+        return NormalizationResult2D {
+            translation: Coordinate2D::new_(T::zero(), T::zero()),
+            scale: Coordinate2D::new_(T::one(), T::one()),
+        };
     }
     let first = vertices[0];
     for v in vertices.iter_mut() {
@@ -206,20 +210,41 @@ pub fn normalize_vertices_2d<T: CoordFloat>(
         v.x = v.x / norm_avg.x;
         v.y = v.y / norm_avg.y;
     }
-    (avg + first, norm_avg)
+    NormalizationResult2D {
+        translation: avg + first,
+        scale: norm_avg,
+    }
+}
+
+pub fn normalize_vertices_2d_with_params<T: CoordFloat>(
+    vertices: &mut [Coordinate2D<T>],
+    norm: NormalizationResult2D<T>,
+) {
+    if vertices.is_empty() {
+        return;
+    }
+    for v in vertices.iter_mut() {
+        *v = *v - norm.translation;
+        *v = *v / norm.scale;
+    }
 }
 
 /// Denormalizes the vertices using the given translation and scaling (2D version).
 /// This is the inverse operation of `normalize_vertices_2d`.
 pub fn denormalize_vertices_2d<T: CoordFloat>(
-    vertices: &mut [Coordinate<T, no_value::NoValue>],
-    avg: Coordinate<T, no_value::NoValue>,
-    norm_avg: Coordinate<T, no_value::NoValue>,
+    vertices: &mut [Coordinate2D<T>],
+    norm: NormalizationResult2D<T>,
 ) {
     for v in vertices.iter_mut() {
-        v.x = v.x * norm_avg.x + avg.x;
-        v.y = v.y * norm_avg.y + avg.y;
+        v.x = v.x * norm.scale.x + norm.translation.x;
+        v.y = v.y * norm.scale.y + norm.translation.y;
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct NormalizationResult3D<T: CoordFloat> {
+    pub translation: Coordinate3D<T>,
+    pub scale: Coordinate3D<T>,
 }
 
 // Normalizes the vertices for numerical stability (3D version).
@@ -231,12 +256,12 @@ pub fn denormalize_vertices_2d<T: CoordFloat>(
 // This normalization can be reverted by the `denormalize_vertices` function.
 pub fn normalize_vertices<T: CoordFloat>(
     vertices: &mut [Coordinate3D<T>],
-) -> (Coordinate3D<T>, Coordinate3D<T>) {
+) -> NormalizationResult3D<T> {
     if vertices.is_empty() {
-        return (
-            Coordinate3D::zero(),
-            Coordinate3D::new__(T::one(), T::one(), T::one()),
-        );
+        return NormalizationResult3D {
+            translation: Coordinate3D::zero(),
+            scale: Coordinate3D::new__(T::one(), T::one(), T::one()),
+        };
     }
     let first = vertices[0];
     for v in vertices.iter_mut() {
@@ -270,20 +295,33 @@ pub fn normalize_vertices<T: CoordFloat>(
         v.y = v.y / norm_avg.y;
         v.z = v.z / norm_avg.z;
     }
-    (avg + first, norm_avg)
+    NormalizationResult3D {
+        translation: avg + first,
+        scale: norm_avg,
+    }
+}
+
+pub fn normalize_vertices_with_params<T: CoordFloat>(
+    vertices: &mut [Coordinate3D<T>],
+    norm: NormalizationResult3D<T>,
+) {
+    if vertices.is_empty() {
+        return;
+    }
+    for v in vertices.iter_mut() {
+        *v = *v - norm.translation;
+        *v = *v / norm.scale;
+    }
 }
 
 /// Denormalizes the vertices using the given translation and scaling (3D version).
 /// This is the inverse operation of `normalize_vertices`.
 pub fn denormalize_vertices<T: CoordFloat>(
     vertices: &mut [Coordinate3D<T>],
-    avg: Coordinate3D<T>,
-    norm_avg: Coordinate3D<T>,
+    norm: NormalizationResult3D<T>,
 ) {
     for v in vertices.iter_mut() {
-        v.x = v.x * norm_avg.x + avg.x;
-        v.y = v.y * norm_avg.y + avg.y;
-        v.z = v.z * norm_avg.z + avg.z;
+        *v = *v * norm.scale + norm.translation;
     }
 }
 
@@ -337,10 +375,10 @@ mod test {
             Coordinate::new_(7e-5_f64, 8e-5_f64),
         ];
         let answer = pts.clone();
-        let (avg, norm) = normalize_vertices_2d(&mut pts);
+        let norm = normalize_vertices_2d(&mut pts);
         let norm_avg = pts.iter().map(|v| v.norm()).sum::<f64>();
         assert!(norm_avg > 0.1);
-        denormalize_vertices_2d(&mut pts, avg, norm);
+        denormalize_vertices_2d(&mut pts, norm);
         for i in 0..pts.len() {
             assert!((pts[i].x - answer[i].x).abs() < 1e-10_f64);
             assert!((pts[i].y - answer[i].y).abs() < 1e-10_f64);
@@ -355,8 +393,8 @@ mod test {
             Coordinate3D::new__(7.0, 8.0, 9.0),
         ];
         let answer = pts.clone();
-        let (avg, norm_avg) = normalize_vertices(&mut pts);
-        denormalize_vertices(&mut pts, avg, norm_avg);
+        let norm = normalize_vertices(&mut pts);
+        denormalize_vertices(&mut pts, norm);
         for i in 0..pts.len() {
             assert!((pts[i] - answer[i]).norm() < 1e-10);
         }

@@ -1,11 +1,18 @@
 import { useQuery, useQueryClient, QueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { streamDecompressZstdJsonl } from "@flow/utils/compression";
 import { intermediateDataTransform } from "@flow/utils/jsonl/transformIntermediateData";
 import { streamJsonl } from "@flow/utils/streaming";
 import type { StreamingProgress } from "@flow/utils/streaming";
 
 export type SupportedDataTypes = "geojson" | "jsonl";
+
+// Simple check for compression files, but this will be removed if all files are compressed
+function isCompressedUrl(url: string): boolean {
+  const lowerUrl = url.toLowerCase();
+  return lowerUrl.endsWith(".zst");
+}
 
 type GeometryType =
   | "FlowGeometry2D"
@@ -209,66 +216,135 @@ export const useStreamingDebugRunQuery = (
       }));
 
       try {
-        const streamGenerator = await streamJsonl(dataUrl, {
-          batchSize,
-          chunkSize,
-          signal: controller.signal,
-          onProgress: (streamProgress) => {
-            progress = streamProgress;
-            onProgress?.(streamProgress);
-          },
-          onError,
-        });
+        // Check if file is compressed
+        if (isCompressedUrl(dataUrl)) {
+          // COMPRESSED FILES (.jsonl.zst) - Stream decompression
+          console.log("📦 Streaming compressed file:", dataUrl);
 
-        // Process stream with progressive updates
-        for await (const result of streamGenerator) {
-          totalFeatures = result.progress.featuresProcessed;
+          const streamGenerator = streamDecompressZstdJsonl(dataUrl, {
+            batchSize,
+            signal: controller.signal,
+            onProgress: (streamProgress) => {
+              progress = {
+                bytesProcessed: streamProgress.bytesDownloaded,
+                featuresProcessed: streamProgress.featuresProcessed,
+              };
+              onProgress?.(progress);
+            },
+          });
 
-          // Detect geometry type and visualizer from first batch
-          if (!detectedGeometryType && result.data.length > 0) {
-            const analysis = analyzeDataType(result.data);
-            detectedGeometryType = analysis.geometryType;
-            detectedVisualizerType = analysis.visualizerType;
+          // Process stream with progressive updates
+          for await (const result of streamGenerator) {
+            totalFeatures = result.progress.featuresProcessed;
+
+            // Detect geometry type and visualizer from first batch
+            if (!detectedGeometryType && result.data.length > 0) {
+              const analysis = analyzeDataType(result.data);
+              detectedGeometryType = analysis.geometryType;
+              detectedVisualizerType = analysis.visualizerType;
+            }
+
+            // Only store data up to display limit, but always update progress
+            let shouldUpdateData = false;
+            if (streamData.length < displayLimit) {
+              const remainingToAdd = displayLimit - streamData.length;
+              const dataToAdd = result.data.slice(0, remainingToAdd);
+
+              const transformedData = dataToAdd.map((feature) => {
+                try {
+                  return intermediateDataTransform(feature);
+                } catch (error) {
+                  console.warn("Failed to transform feature:", error, feature);
+                  return feature;
+                }
+              });
+              streamData.push(...transformedData);
+              shouldUpdateData = true;
+            }
+
+            // Update streaming state
+            setStreamingState((prev) => ({
+              ...prev,
+              data: shouldUpdateData ? [...streamData] : prev.data,
+              detectedGeometryType,
+              visualizerType: detectedVisualizerType,
+              totalFeatures,
+              progress: result.progress,
+              hasMore: totalFeatures > displayLimit,
+              isComplete: result.isComplete,
+              isStreaming: !result.isComplete,
+            }));
+
+            if (result.isComplete) {
+              isComplete = true;
+              break;
+            }
           }
+        } else {
+          // UNCOMPRESSED FILES (.jsonl) - Use existing streaming
+          console.log("📊 Streaming uncompressed file:", dataUrl);
 
-          // Only store data up to display limit, but always update progress
-          let shouldUpdateData = false;
-          if (streamData.length < displayLimit) {
-            const remainingToAdd = displayLimit - streamData.length;
-            const dataToAdd = result.data.slice(0, remainingToAdd);
+          const streamGenerator = await streamJsonl(dataUrl, {
+            batchSize,
+            chunkSize,
+            signal: controller.signal,
+            onProgress: (streamProgress) => {
+              progress = streamProgress;
+              onProgress?.(streamProgress);
+            },
+            onError,
+          });
 
-            const transformedData = dataToAdd.map((feature) => {
-              try {
-                return intermediateDataTransform(feature);
-              } catch (error) {
-                console.warn(
-                  "Failed to transform streaming feature:",
-                  error,
-                  feature,
-                );
-                return feature;
-              }
-            });
-            streamData.push(...transformedData);
-            shouldUpdateData = true;
-          }
+          // Process stream with progressive updates
+          for await (const result of streamGenerator) {
+            totalFeatures = result.progress.featuresProcessed;
 
-          // Always update streaming state to show current progress and total count
-          setStreamingState((prev) => ({
-            ...prev,
-            data: shouldUpdateData ? [...streamData] : prev.data, // Only update data if we added new items
-            detectedGeometryType,
-            visualizerType: detectedVisualizerType,
-            totalFeatures, // Always update total count
-            progress: result.progress, // Always update progress
-            hasMore: totalFeatures > displayLimit,
-            isComplete: result.isComplete,
-            isStreaming: !result.isComplete,
-          }));
+            // Detect geometry type from first batch
+            if (!detectedGeometryType && result.data.length > 0) {
+              const analysis = analyzeDataType(result.data);
+              detectedGeometryType = analysis.geometryType;
+              detectedVisualizerType = analysis.visualizerType;
+            }
 
-          if (result.isComplete) {
-            isComplete = true;
-            break;
+            // Only store data up to display limit
+            let shouldUpdateData = false;
+            if (streamData.length < displayLimit) {
+              const remainingToAdd = displayLimit - streamData.length;
+              const dataToAdd = result.data.slice(0, remainingToAdd);
+
+              const transformedData = dataToAdd.map((feature) => {
+                try {
+                  return intermediateDataTransform(feature);
+                } catch (error) {
+                  console.warn(
+                    "Failed to transform streaming feature:",
+                    error,
+                    feature,
+                  );
+                  return feature;
+                }
+              });
+              streamData.push(...transformedData);
+              shouldUpdateData = true;
+            }
+
+            // Update streaming state
+            setStreamingState((prev) => ({
+              ...prev,
+              data: shouldUpdateData ? [...streamData] : prev.data,
+              detectedGeometryType,
+              visualizerType: detectedVisualizerType,
+              totalFeatures,
+              progress: result.progress,
+              hasMore: totalFeatures > displayLimit,
+              isComplete: result.isComplete,
+              isStreaming: !result.isComplete,
+            }));
+
+            if (result.isComplete) {
+              isComplete = true;
+              break;
+            }
           }
         }
 

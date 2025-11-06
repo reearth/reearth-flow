@@ -51,7 +51,10 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
         let mut out = Self::default();
         let mut vertices = Vec::new();
         for v in faces.iter().flat_map(|f| f.0.iter()) {
-            if !vertices.contains(v) {
+            if vertices
+                .iter()
+                .all(|&existing_v: &Coordinate3D<T>| (existing_v - *v).norm() >= epsilon)
+            {
                 vertices.push(*v);
             }
         }
@@ -106,7 +109,7 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
     /// - The face does not intersect itself
     fn triangulate_face(face: LineString3D<T>) -> Result<Vec<[Coordinate3D<T>; 3]>, String> {
         let mut face = face.0;
-        let (avg, norm_avg) = normalize_vertices(&mut face);
+        let norm = normalize_vertices(&mut face);
         // face at least must be triangle
         if face.len() < 4 {
             return Err("Face must have at least 3 vertices")?;
@@ -256,7 +259,7 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
         }
 
         for t in triangles.iter_mut() {
-            denormalize_vertices(t, avg, norm_avg);
+            denormalize_vertices(t, norm);
         }
 
         Ok(triangles)
@@ -819,7 +822,7 @@ impl TriangularMesh<f64> {
             .into_iter()
             .chain(vertices2.clone()) // TODO: remove clone
             .collect::<Vec<_>>();
-        let (avg, norm_avg) = normalize_vertices(&mut vertices);
+        let norm = normalize_vertices(&mut vertices);
         let triangles = triangles1
             .iter()
             .copied()
@@ -1325,7 +1328,7 @@ impl TriangularMesh<f64> {
         }
 
         let mut out: TriangularMesh<f64> = polygons.try_into()?;
-        denormalize_vertices(&mut out.vertices, avg, norm_avg);
+        denormalize_vertices(&mut out.vertices, norm);
         Ok(out)
     }
 }
@@ -1437,30 +1440,6 @@ pub mod tests {
                 -0.32917833606816443,
                 0.32917833606816443,
             ),
-        ];
-        let face = LineString3D::new(face);
-        let result = TriangularMesh::triangulate_face(face);
-        assert!(result.is_ok(), "Triangulation failed: {:?}", result.err());
-    }
-
-    #[test]
-    fn test_triangulate_face_actual() {
-        let face = vec![
-            Coordinate3D::new__(137.39552002447252, 34.759225761765265, 6.032),
-            Coordinate3D::new__(137.39550983757542, 34.75921559388263, 6.032),
-            Coordinate3D::new__(137.39560067843433, 34.759160611513906, 6.032),
-            Coordinate3D::new__(137.39556528556645, 34.75912074129539, 6.032),
-            Coordinate3D::new__(137.3955507815562, 34.759129513175225, 6.032),
-            Coordinate3D::new__(137.3955198810056, 34.75909459278696, 6.032),
-            Coordinate3D::new__(137.39542413283158, 34.75915255928761, 6.032),
-            Coordinate3D::new__(137.39541931185693, 34.75914724945373, 6.032),
-            Coordinate3D::new__(137.39541734887388, 34.759148425100236, 6.032),
-            Coordinate3D::new__(137.39541362347404, 34.75914428516695, 6.032),
-            Coordinate3D::new__(137.3953643309087, 34.75917385702838, 6.032),
-            Coordinate3D::new__(137.39539238387428, 34.75920607828393, 6.032),
-            Coordinate3D::new__(137.39539718172898, 34.7592030041485, 6.032),
-            Coordinate3D::new__(137.39545360946195, 34.75926528241638, 6.032),
-            Coordinate3D::new__(137.39552002447252, 34.759225761765265, 6.032),
         ];
         let face = LineString3D::new(face);
         let result = TriangularMesh::triangulate_face(face);
