@@ -84,16 +84,16 @@ pub(crate) struct MaxLodExtractorParam {
 }
 
 #[derive(Debug, Clone)]
-struct MaxLodBuffer {
-    features: Vec<Feature>,
-    max_lod: u8,
+pub(crate) struct MaxLodBuffer {
+    pub(crate) features: Vec<Feature>,
+    pub(crate) max_lod: u8,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct MaxLodExtractor {
-    city_gml_path_attribute: Attribute,
-    max_lod_attribute: Attribute,
-    buffer: HashMap<String, MaxLodBuffer>,
+    pub(crate) city_gml_path_attribute: Attribute,
+    pub(crate) max_lod_attribute: Attribute,
+    pub(crate) buffer: HashMap<String, MaxLodBuffer>,
 }
 
 impl Processor for MaxLodExtractor {
