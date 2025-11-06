@@ -103,7 +103,6 @@ pub struct ThreeDimensionForcerParam {
     pub preserve_existing_z: bool,
 }
 
-
 #[derive(Debug, Clone)]
 pub struct ThreeDimensionForcer {
     global_params: Option<HashMap<String, serde_json::Value>>,
