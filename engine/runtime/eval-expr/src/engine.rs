@@ -263,4 +263,50 @@ mod tests {
         let result = scope.eval::<f64>(script);
         assert_eq!(result.unwrap(), 1.5);
     }
+
+    #[test]
+    fn test_engine_plateau_building_calculation() {
+        let engine = Engine::new();
+        engine.set("building_height", serde_json::json!(45.5));
+        engine.set("floor_count", serde_json::json!(15));
+        
+        let result: f64 = engine.eval("env.get(\"building_height\") / env.get(\"floor_count\")").unwrap();
+        assert!((result - 3.0333).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_engine_string_manipulation_japanese() {
+        let engine = Engine::new();
+        engine.set("city", serde_json::json!("東京都"));
+        engine.set("ward", serde_json::json!("渋谷区"));
+        
+        let result: String = engine.eval(r#"env.get("city") + env.get("ward")"#).unwrap();
+        assert_eq!(result, "東京都渋谷区");
+    }
+
+    #[test]
+    fn test_engine_conditional_for_quality_check() {
+        let engine = Engine::new();
+        engine.set("measured_height", serde_json::json!(45.0));
+        engine.set("calculated_height", serde_json::json!(44.8));
+        
+        let result: bool = engine.eval(
+            "math::abs(env.get(\"measured_height\") - env.get(\"calculated_height\")) < 1.0"
+        ).unwrap();
+        assert_eq!(result, true);
+    }
+
+    #[test]
+    fn test_engine_array_operations() {
+        let engine = Engine::new();
+        let result: i64 = engine.eval("[1, 2, 3, 4, 5].len()").unwrap();
+        assert_eq!(result, 5);
+    }
+
+    #[test]
+    fn test_engine_map_creation() {
+        let engine = Engine::new();
+        let result: rhai::Map = engine.eval(r#"#{name: "test", value: 42}"#).unwrap();
+        assert!(result.contains_key("name"));
+    }
 }

@@ -34,4 +34,47 @@ mod tests {
         let decompressed = decode(compressed).expect("Decompression failed");
         assert_eq!(original, decompressed);
     }
+
+    #[test]
+    fn test_compress_japanese_text() {
+        let original = "東京都渋谷区の建物データ";
+        let compressed = compress(original).unwrap();
+        let decompressed = decode(compressed).unwrap();
+        assert_eq!(original, decompressed);
+    }
+
+    #[test]
+    fn test_compress_large_text() {
+        let original = "X".repeat(10000);
+        let compressed = compress(&original).unwrap();
+        let decompressed = decode(compressed).unwrap();
+        assert_eq!(original, decompressed);
+    }
+
+    #[test]
+    fn test_compress_plateau_xml() {
+        let xml = r#"<?xml version="1.0"?>
+<bldg:Building xmlns:bldg="http://www.opengis.net/citygml/building/2.0">
+    <gml:name>テストビル</gml:name>
+</bldg:Building>"#;
+        
+        let compressed = compress(xml).unwrap();
+        let decompressed = decode(compressed).unwrap();
+        assert_eq!(xml, decompressed);
+    }
+
+    #[test]
+    fn test_compress_special_characters() {
+        let original = "Special: \n\t\r<>&\"'";
+        let compressed = compress(original).unwrap();
+        let decompressed = decode(compressed).unwrap();
+        assert_eq!(original, decompressed);
+    }
+
+    #[test]
+    fn test_decode_invalid_base64() {
+        let result = decode("not-valid-base64!!!");
+        assert!(result.is_err());
+    }
 }
+

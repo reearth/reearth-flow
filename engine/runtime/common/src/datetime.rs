@@ -17,3 +17,7 @@ pub fn try_from(s: &str) -> crate::Result<chrono::DateTime<Utc>> {
         Err(crate::Error::datetime(format!("Invalid datetime: {s}")))
     }
 }
+
+#[cfg(test)]
+#[path = "datetime_test.rs"]
+mod datetime_test;

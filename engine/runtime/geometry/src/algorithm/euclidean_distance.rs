@@ -530,3 +530,111 @@ pub fn nearest_neighbour_distance3d(geom1: &LineString3D<f64>, geom2: &LineStrin
             acc.min(nearest.euclidean_distance(&point))
         }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{coord, point};
+
+    #[test]
+    fn test_point_to_point_distance_same() {
+        let p1 = point! { x: 0.0, y: 0.0 };
+        let p2 = point! { x: 0.0, y: 0.0 };
+        assert_eq!(p1.euclidean_distance(&p2), 0.0);
+    }
+
+    #[test]
+    fn test_point_to_point_distance_pythagorean() {
+        let p1 = point! { x: 0.0, y: 0.0 };
+        let p2 = point! { x: 3.0, y: 4.0 };
+        assert_eq!(p1.euclidean_distance(&p2), 5.0);
+    }
+
+    #[test]
+    fn test_point_to_line_distance() {
+        let point = point! { x: 0.0, y: 5.0 };
+        let line = Line2D::new(
+            coord! { x: 0.0, y: 0.0 },
+            coord! { x: 10.0, y: 0.0 },
+        );
+        assert_eq!(point.euclidean_distance(&line), 5.0);
+    }
+
+    #[test]
+    fn test_point_to_polygon_distance_inside() {
+        let point = point! { x: 5.0, y: 5.0 };
+        let exterior = LineString2D::new(vec![
+            coord! { x: 0.0, y: 0.0 },
+            coord! { x: 10.0, y: 0.0 },
+            coord! { x: 10.0, y: 10.0 },
+            coord! { x: 0.0, y: 10.0 },
+            coord! { x: 0.0, y: 0.0 },
+        ]);
+        let polygon = Polygon2D::new(exterior, vec![]);
+        
+        assert_eq!(point.euclidean_distance(&polygon), 0.0);
+    }
+
+    #[test]
+    fn test_line_to_line_distance_parallel() {
+        let line1 = Line2D::new(
+            coord! { x: 0.0, y: 0.0 },
+            coord! { x: 10.0, y: 0.0 },
+        );
+        let line2 = Line2D::new(
+            coord! { x: 0.0, y: 5.0 },
+            coord! { x: 10.0, y: 5.0 },
+        );
+        
+        assert_eq!(line1.euclidean_distance(&line2), 5.0);
+    }
+
+    #[test]
+    fn test_line_to_line_distance_intersecting() {
+        let line1 = Line2D::new(
+            coord! { x: 0.0, y: 0.0 },
+            coord! { x: 10.0, y: 10.0 },
+        );
+        let line2 = Line2D::new(
+            coord! { x: 0.0, y: 10.0 },
+            coord! { x: 10.0, y: 0.0 },
+        );
+        
+        assert_eq!(line1.euclidean_distance(&line2), 0.0);
+    }
+
+    #[test]
+    fn test_polygon_to_polygon_distance_separate() {
+        let exterior1 = LineString2D::new(vec![
+            coord! { x: 0.0, y: 0.0 },
+            coord! { x: 5.0, y: 0.0 },
+            coord! { x: 5.0, y: 5.0 },
+            coord! { x: 0.0, y: 5.0 },
+            coord! { x: 0.0, y: 0.0 },
+        ]);
+        
+        let exterior2 = LineString2D::new(vec![
+            coord! { x: 10.0, y: 10.0 },
+            coord! { x: 15.0, y: 10.0 },
+            coord! { x: 15.0, y: 15.0 },
+            coord! { x: 10.0, y: 15.0 },
+            coord! { x: 10.0, y: 10.0 },
+        ]);
+        
+        let poly1 = Polygon2D::new(exterior1, vec![]);
+        let poly2 = Polygon2D::new(exterior2, vec![]);
+        
+        let distance = poly1.euclidean_distance(&poly2);
+        assert!(distance > 0.0);
+    }
+
+    #[test]
+    fn test_building_distance_calculation() {
+        let building1 = point! { x: 139.7503, y: 35.6851 };
+        let building2 = point! { x: 139.7506, y: 35.6854 };
+        
+        let distance = building1.euclidean_distance(&building2);
+        assert!(distance > 0.0);
+        assert!(distance < 1.0);
+    }
+}
