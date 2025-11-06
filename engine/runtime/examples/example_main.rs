@@ -103,11 +103,9 @@ pub(crate) fn execute(workflow: &str) {
         .expect("Failed to setup job directory.");
     let feature_state_uri = setup_job_directory("engine", "feature-store", job_id)
         .expect("Failed to setup job directory.");
-    let ingress_state_uri = setup_job_directory("engine", "ingress-store", job_id)
-        .expect("Failed to setup job directory.");
     let storage_resolver = Arc::new(StorageResolver::new());
-    let ingress_state = Arc::new(State::new(&ingress_state_uri, &storage_resolver).unwrap());
     let feature_state = Arc::new(State::new(&feature_state_uri, &storage_resolver).unwrap());
+    let ingress_state = Arc::clone(&feature_state);
     let workflow = create_workflow(workflow);
     let logger_factory = Arc::new(LoggerFactory::new(
         create_root_logger(action_log_uri.path()),
