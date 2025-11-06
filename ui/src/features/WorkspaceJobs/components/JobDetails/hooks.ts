@@ -1,5 +1,5 @@
 import { useRouter } from "@tanstack/react-router";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { DetailsBoxContent } from "@flow/features/common";
 import { useJob } from "@flow/lib/gql/job";
@@ -15,7 +15,25 @@ export default ({ jobId }: { jobId: string }) => {
 
   const { data: jobStatus } = useSubscription("GetSubscribedJobStatus", jobId);
 
-  const { job } = useGetJob(jobId);
+  const { job, refetch } = useGetJob(jobId);
+
+  // Poll for outputURLs after job completes (they are generated asynchronously)
+  useEffect(() => {
+    if (jobStatus === "completed" && job && !job.outputURLs) {
+      const pollInterval = setInterval(() => {
+        refetch();
+      }, 3000);
+
+      const timeout = setTimeout(() => {
+        clearInterval(pollInterval);
+      }, 30000);
+
+      return () => {
+        clearInterval(pollInterval);
+        clearTimeout(timeout);
+      };
+    }
+  }, [jobStatus, job, refetch]);
 
   const handleCancelJob = useCallback(async () => {
     await useJobCancel(jobId);

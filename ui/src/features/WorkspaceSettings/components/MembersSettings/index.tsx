@@ -123,7 +123,7 @@ const MembersSettings: React.FC = () => {
         )}
       </div>
       <div className="mt-4 flex max-w-[900px] flex-col gap-6">
-        <div className="rounded border dark:font-extralight">
+        <div className="rounded dark:font-extralight">
           <div className="flex h-[42px] items-center justify-between gap-2 border-b p-2">
             <div className="flex items-center gap-8">
               <Input

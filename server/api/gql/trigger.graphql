@@ -27,6 +27,13 @@ enum TimeInterval {
     EVERY_WEEK
 }
 
+enum TriggerSortField {
+    DESCRIPTION
+    CREATED_AT
+    UPDATED_AT
+    LAST_TRIGGERED
+}
+
 # InputType
 
 input TimeDriverInput {
@@ -64,7 +71,11 @@ type TriggerConnection {
 # Query and Mutation
 
 extend type Query {
-    triggers(workspaceId: ID!, pagination: PageBasedPagination!): TriggerConnection!
+    triggers(
+      workspaceId: ID!
+      keyword: String
+      pagination: PageBasedPagination!
+    ): TriggerConnection!
 }
 
 extend type Mutation {

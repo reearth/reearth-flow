@@ -44,6 +44,7 @@ impl<T: GeoFloat> RegionAssembly<T> {
         }
         self.segments.push(edge.into());
     }
+
     /// Creates the final `MultiPolygon` from the edges previously added.
     pub fn finish(self) -> MultiPolygon2D<T> {
         let mut iter = CrossingsIter::new_simple(self.segments.iter());
@@ -143,6 +144,14 @@ impl<T: GeoFloat> RegionAssembly<T> {
                     }
                 }
             }
+        }
+
+        // at this point all snakes should be finished. If not, something went wrong.
+        // TODO: Thoroughly review the algorithm and make sure this cannot happen, and eventually
+        // remove this check.
+        let unfinished_snakes = snakes.iter().filter(|s| s.end_pair.is_none()).count();
+        if unfinished_snakes > 0 {
+            return MultiPolygon2D::new(vec![]);
         }
 
         let (rings, snakes_idx_map) = rings_from_snakes(&mut snakes[..]);

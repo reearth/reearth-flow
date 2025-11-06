@@ -40,19 +40,91 @@ pub(super) fn slice_cityobj_geoms<'a>(
             "Feature does not have geometry".to_string(),
         ));
     };
-    let GeometryValue::CityGmlGeometry(city_geometry) = &geometry.value else {
-        return Err(crate::errors::SinkError::MvtWriter(
-            "Feature does not have geometry value".to_string(),
-        ));
-    };
 
     let mut tile_content = TileContent::default();
-    city_geometry
-        .gml_geometries
-        .iter()
-        .for_each(|entry| match entry.ty {
-            GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
-                for flow_poly in entry.polygons.iter() {
+
+    match &geometry.value {
+        GeometryValue::CityGmlGeometry(city_geometry) => {
+            city_geometry
+                .gml_geometries
+                .iter()
+                .for_each(|entry| match entry.ty {
+                    GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
+                        for flow_poly in entry.polygons.iter() {
+                            let idx_poly: Polygon2 = flow_poly.clone().into();
+                            idx_poly.raw_coords().iter().for_each(|[lng, lat]| {
+                                tile_content.min_lng = tile_content.min_lng.min(*lng);
+                                tile_content.max_lng = tile_content.max_lng.max(*lng);
+                                tile_content.min_lat = tile_content.min_lat.min(*lat);
+                                tile_content.max_lat = tile_content.max_lat.max(*lat);
+                            });
+                            let poly = idx_poly.transform(|[lng, lat]| {
+                                let (mx, my) = lnglat_to_web_mercator(*lng, *lat);
+                                [mx, my]
+                            });
+
+                            if !poly.exterior().is_cw() {
+                                continue;
+                            }
+                            let area = poly.area();
+
+                            for zoom in min_z..=max_z {
+                                // Skip if the polygon is smaller than 4 square subpixels
+                                //
+                                // TODO: emulate the 'tiny-polygon-reduction' of tippecanoe
+                                if area * (4u64.pow(zoom as u32 + max_detail) as f64) < 4.0 {
+                                    continue;
+                                }
+                                slice_polygon(
+                                    zoom,
+                                    extent,
+                                    buffer,
+                                    &poly,
+                                    layer_name,
+                                    &mut tiled_mpolys,
+                                );
+                            }
+                        }
+                    }
+                    GeometryType::Curve => {
+                        for flow_line_string in entry.line_strings.iter() {
+                            let idx_line_string: LineString2 = flow_line_string.clone().into();
+                            idx_line_string.raw_coords().iter().for_each(|[lng, lat]| {
+                                tile_content.min_lng = tile_content.min_lng.min(*lng);
+                                tile_content.max_lng = tile_content.max_lng.max(*lng);
+                                tile_content.min_lat = tile_content.min_lat.min(*lat);
+                                tile_content.max_lat = tile_content.max_lat.max(*lat);
+                            });
+                            let line_string = idx_line_string.transform(|[lng, lat]| {
+                                let (mx, my) = lnglat_to_web_mercator(*lng, *lat);
+                                [mx, my]
+                            });
+
+                            for zoom in min_z..=max_z {
+                                slice_line_string(
+                                    zoom,
+                                    extent,
+                                    buffer,
+                                    &line_string,
+                                    layer_name,
+                                    &mut tiled_line_strings,
+                                );
+                            }
+                        }
+                    }
+                    GeometryType::Point => {
+                        unimplemented!()
+                    }
+                });
+        }
+        GeometryValue::FlowGeometry2D(flow_geometry) => {
+            use reearth_flow_geometry::types::geometry::Geometry;
+
+            let mut process_polygon =
+                |flow_poly: &reearth_flow_geometry::types::polygon::Polygon<
+                    f64,
+                    reearth_flow_geometry::types::no_value::NoValue,
+                >| {
                     let idx_poly: Polygon2 = flow_poly.clone().into();
                     idx_poly.raw_coords().iter().for_each(|[lng, lat]| {
                         tile_content.min_lng = tile_content.min_lng.min(*lng);
@@ -66,31 +138,36 @@ pub(super) fn slice_cityobj_geoms<'a>(
                     });
 
                     if !poly.exterior().is_cw() {
-                        continue;
+                        return;
                     }
                     let area = poly.area();
 
                     for zoom in min_z..=max_z {
-                        // Skip if the polygon is smaller than 4 square subpixels
-                        //
-                        // TODO: emulate the 'tiny-polygon-reduction' of tippecanoe
                         if area * (4u64.pow(zoom as u32 + max_detail) as f64) < 4.0 {
                             continue;
                         }
                         slice_polygon(zoom, extent, buffer, &poly, layer_name, &mut tiled_mpolys);
                     }
+                };
+
+            match flow_geometry {
+                Geometry::Polygon(poly) => {
+                    process_polygon(poly);
                 }
-            }
-            GeometryType::Curve => {
-                for flow_line_string in entry.line_strings.iter() {
-                    let idx_line_string: LineString2 = flow_line_string.clone().into();
+                Geometry::MultiPolygon(multi_poly) => {
+                    for poly in multi_poly.iter() {
+                        process_polygon(poly);
+                    }
+                }
+                Geometry::LineString(line_string) => {
+                    let idx_line_string: LineString2 = line_string.clone().into();
                     idx_line_string.raw_coords().iter().for_each(|[lng, lat]| {
                         tile_content.min_lng = tile_content.min_lng.min(*lng);
                         tile_content.max_lng = tile_content.max_lng.max(*lng);
                         tile_content.min_lat = tile_content.min_lat.min(*lat);
                         tile_content.max_lat = tile_content.max_lat.max(*lat);
                     });
-                    let line_string = idx_line_string.transform(|[lng, lat]| {
+                    let line_string_transformed = idx_line_string.transform(|[lng, lat]| {
                         let (mx, my) = lnglat_to_web_mercator(*lng, *lat);
                         [mx, my]
                     });
@@ -100,17 +177,49 @@ pub(super) fn slice_cityobj_geoms<'a>(
                             zoom,
                             extent,
                             buffer,
-                            &line_string,
+                            &line_string_transformed,
                             layer_name,
                             &mut tiled_line_strings,
                         );
                     }
                 }
+                Geometry::MultiLineString(multi_line_string) => {
+                    for line_string in multi_line_string.iter() {
+                        let idx_line_string: LineString2 = line_string.clone().into();
+                        idx_line_string.raw_coords().iter().for_each(|[lng, lat]| {
+                            tile_content.min_lng = tile_content.min_lng.min(*lng);
+                            tile_content.max_lng = tile_content.max_lng.max(*lng);
+                            tile_content.min_lat = tile_content.min_lat.min(*lat);
+                            tile_content.max_lat = tile_content.max_lat.max(*lat);
+                        });
+                        let line_string_transformed = idx_line_string.transform(|[lng, lat]| {
+                            let (mx, my) = lnglat_to_web_mercator(*lng, *lat);
+                            [mx, my]
+                        });
+
+                        for zoom in min_z..=max_z {
+                            slice_line_string(
+                                zoom,
+                                extent,
+                                buffer,
+                                &line_string_transformed,
+                                layer_name,
+                                &mut tiled_line_strings,
+                            );
+                        }
+                    }
+                }
+                _ => {
+                    // Other geometry types not supported for MVT
+                }
             }
-            GeometryType::Point => {
-                unimplemented!()
-            }
-        });
+        }
+        _ => {
+            return Err(crate::errors::SinkError::MvtWriter(
+                "Unsupported geometry type for MVT".to_string(),
+            ));
+        }
+    }
 
     for ((z, x, y, typename), mpoly) in tiled_mpolys {
         if mpoly.is_empty() {
@@ -340,8 +449,8 @@ fn slice_line_string(
 
         // todo?: check interior bbox to optimize
 
-        line_string
-            .iter_closed()
+        let last_coord = line_string
+            .iter()
             .fold(None, |a, b| {
                 let Some(a) = a else { return Some(b) };
 
@@ -370,6 +479,12 @@ fn slice_line_string(
                 Some(b)
             })
             .unwrap();
+
+        // Process the last coordinate that wasn't handled in the fold
+        if last_coord[1] >= k1 && last_coord[1] <= k2 {
+            y_sliced_line_string.push(last_coord);
+        }
+
         y_sliced_line_strings.push(y_sliced_line_string);
     }
 
@@ -399,8 +514,8 @@ fn slice_line_string(
                 typename.to_string(),
             );
             new_ring_buffer.clear();
-            y_sliced_line_string
-                .iter_closed()
+            let last_coord = y_sliced_line_string
+                .iter()
                 .fold(None, |a, b| {
                     let Some(a) = a else { return Some(b) };
 
@@ -430,6 +545,11 @@ fn slice_line_string(
                 })
                 .unwrap();
 
+            // Process the last coordinate that wasn't handled in the fold
+            if last_coord[0] >= k1 && last_coord[0] <= k2 {
+                new_ring_buffer.push(last_coord);
+            }
+
             // get integer coordinates and simplify the ring
             {
                 norm_coords_buf.clear();
@@ -446,13 +566,13 @@ fn slice_line_string(
                     norm_coords_buf.pop();
                 }
 
-                if norm_coords_buf.len() < 3 {
+                // linestrings must have at least two points
+                if norm_coords_buf.len() < 2 {
                     continue;
                 }
             }
 
-            let mut ring = LineString2::from_raw(norm_coords_buf.clone().into());
-            ring.reverse_inplace();
+            let ring = LineString2::from_raw(norm_coords_buf.clone().into());
             let mline_string = out.entry(key).or_default();
             mline_string.add_linestring(ring.iter());
         }

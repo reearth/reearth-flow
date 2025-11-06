@@ -2,6 +2,12 @@ import type { ApiResponse } from "./api";
 import type { Deployment } from "./deployment";
 
 export type EventSourceType = "TIME_DRIVEN" | "API_DRIVEN";
+export enum TriggerOrderBy {
+  CreatedAt = "createdAt",
+  UpdatedAt = "updatedAt",
+  LastTriggered = "lastTriggered",
+  Description = "description",
+}
 
 export enum TimeIntervalEnum {
   EVERY_DAY = "EVERY_DAY",

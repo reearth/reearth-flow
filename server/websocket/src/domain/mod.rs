@@ -1,3 +1,3 @@
-pub mod entity;
-pub mod repository;
+pub mod entities;
+pub mod repositories;
 pub mod value_objects;

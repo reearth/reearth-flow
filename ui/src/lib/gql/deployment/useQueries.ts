@@ -154,6 +154,7 @@ export const useQueries = () => {
 
   const useGetDeploymentsQuery = (
     workspaceId?: string,
+    keyword?: string,
     paginationOptions?: PaginationOptions,
   ) =>
     useQuery({
@@ -161,6 +162,7 @@ export const useQueries = () => {
       queryFn: async () => {
         const data = await graphQLContext?.GetDeployments({
           workspaceId: workspaceId ?? "",
+          keyword,
           pagination: {
             page: paginationOptions?.page ?? 1,
             pageSize: DEPLOYMENT_FETCH_RATE,

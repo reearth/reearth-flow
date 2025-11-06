@@ -1,0 +1,22 @@
+{
+  "workflowPath": "quality-check/plateau4/03-tran/workflow.yml",
+  "description": "Test for plateau4 L-TRAN-02 inspection.",
+  "expectedOutput": {
+    "expectedFile": "03_交通_隣接面重複.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_tran.json",
+      "includeFields": ["L-TRAN-02 隣接面重複"]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "03_交通_検査結果一覧.csv",
+      "includeColumns": ["L-TRAN-02 隣接面重複"]
+    }
+  },
+  "cityGmlPath": "udx/tran/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectResultOkFile": false,
+  "skip": true
+}

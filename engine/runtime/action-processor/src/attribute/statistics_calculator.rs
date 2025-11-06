@@ -83,8 +83,8 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
         }
 
         let process = StatisticsCalculator {
-            aggregate_name: params.aggregate_name,
-            aggregate_attribute: params.aggregate_attribute,
+            group_id: params.group_id,
+            group_by: params.group_by,
             calculations,
             aggregate_buffer: HashMap::new(),
             global_params: with,
@@ -95,8 +95,8 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
 
 #[derive(Debug, Clone)]
 struct StatisticsCalculator {
-    aggregate_name: Option<Attribute>,
-    aggregate_attribute: Option<Attribute>,
+    group_id: Option<Attribute>,
+    group_by: Option<Vec<Attribute>>,
     calculations: Vec<CompiledCalculation>,
     aggregate_buffer: HashMap<Attribute, HashMap<String, i64>>,
     global_params: Option<HashMap<String, serde_json::Value>>,
@@ -114,10 +114,13 @@ struct CompiledCalculation {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct StatisticsCalculatorParam {
-    /// Name of the attribute containing the aggregate group name
-    aggregate_name: Option<Attribute>,
-    /// Attribute to group features by for aggregation
-    aggregate_attribute: Option<Attribute>,
+    /// # Group id
+    /// Optional attribute to store the group identifier. The ID will be formed by concatenating the values of the group_by attributes separated by '|'.
+    group_id: Option<Attribute>,
+    /// # Group by
+    /// Attributes to group features by for aggregation. All of the inputs will be grouped if not specified.
+    group_by: Option<Vec<Attribute>>,
+    /// # Calculations
     /// List of statistical calculations to perform on grouped features
     calculations: Vec<Calculation>,
 }
@@ -140,26 +143,26 @@ impl Processor for StatisticsCalculator {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let feature = &ctx.feature;
         let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
-        let aggregate = self
-            .aggregate_attribute
-            .clone()
+        let aggregate_key = self
+            .group_by
+            .as_ref()
+            .unwrap_or(&Vec::new())
+            .iter()
             .map(|attr| {
-                let Some(value) = feature.attributes.get(&attr) else {
-                    return "undefined".to_string();
-                };
-                let AttributeValue::String(value) = value else {
-                    return "undefined".to_string();
+                let Some(value) = feature.attributes.get(attr) else {
+                    return "".to_string();
                 };
                 value.to_string()
             })
-            .unwrap_or("all".to_string());
+            .collect::<Vec<_>>()
+            .join("|");
 
         for calculation in &self.calculations {
             let aggregate_buffer = self
                 .aggregate_buffer
                 .entry(calculation.new_attribute.clone())
                 .or_default();
-            let content = aggregate_buffer.entry(aggregate.clone()).or_default();
+            let content = aggregate_buffer.entry(aggregate_key.clone()).or_default();
             let eval = scope.eval_ast::<i64>(&calculation.expr);
             match eval {
                 Ok(eval) => {
@@ -177,20 +180,32 @@ impl Processor for StatisticsCalculator {
     fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         let mut features = HashMap::<String, HashMap<Attribute, i64>>::new();
         for (new_attribute, value) in &self.aggregate_buffer {
-            for (attr, count) in value {
+            for (aggregate_key, count) in value {
                 let current = features
-                    .entry(attr.to_string())
+                    .entry(aggregate_key.to_string())
                     .or_default()
                     .entry(new_attribute.clone())
                     .or_default();
                 *current += count;
             }
         }
-        for (attr, value) in features {
+        for (aggregate_key, value) in features {
             let mut feature = Feature::new();
-            if let Some(aggregate_name) = self.aggregate_name.as_ref() {
-                feature.insert(aggregate_name, AttributeValue::String(attr.clone()));
+
+            // Add group_by attributes to the output feature
+            if let Some(group_by_attrs) = self.group_by.as_ref() {
+                let group_values: Vec<&str> = aggregate_key.split('|').collect();
+                for (attr, attr_value) in group_by_attrs.iter().zip(group_values.iter()) {
+                    feature.insert(attr, AttributeValue::String(attr_value.to_string()));
+                }
             }
+
+            // Add group_id if specified
+            if let Some(group_id) = self.group_id.as_ref() {
+                feature.insert(group_id, AttributeValue::String(aggregate_key.clone()));
+            }
+
+            // Add calculated statistics
             for (new_attribute, count) in &value {
                 feature.insert(
                     new_attribute.clone(),

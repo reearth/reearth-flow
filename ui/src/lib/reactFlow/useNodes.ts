@@ -53,7 +53,7 @@ export default ({
     [onNodesChange],
   );
 
-  const handleNodesDelete = useCallback(
+  const handleNodesDeleteCleanup = useCallback(
     (deleted: Node[]) => {
       // We use deletedIds below to make sure we don't create new connections between nodes
       // that are being deleted
@@ -260,7 +260,7 @@ export default ({
 
   return {
     handleNodesChange,
-    handleNodesDelete,
+    handleNodesDeleteCleanup,
     handleNodeDragOver,
     handleNodeDragStop,
     handleNodeDrop,

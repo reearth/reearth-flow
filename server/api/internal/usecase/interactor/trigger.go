@@ -56,12 +56,12 @@ func (i *Trigger) Fetch(ctx context.Context, ids []id.TriggerID) ([]*trigger.Tri
 	return i.triggerRepo.FindByIDs(ctx, ids)
 }
 
-func (i *Trigger) FindByWorkspace(ctx context.Context, id id.WorkspaceID, p *interfaces.PaginationParam) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
+func (i *Trigger) FindByWorkspace(ctx context.Context, id id.WorkspaceID, p *interfaces.PaginationParam, keyword *string) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, nil, err
 	}
 
-	return i.triggerRepo.FindByWorkspace(ctx, id, p)
+	return i.triggerRepo.FindByWorkspace(ctx, id, p, keyword)
 }
 
 func (i *Trigger) FindByID(ctx context.Context, id id.TriggerID) (*trigger.Trigger, error) {

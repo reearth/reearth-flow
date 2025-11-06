@@ -1059,6 +1059,63 @@ func (e CMSVisibility) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+type DeploymentSortField string
+
+const (
+	DeploymentSortFieldVersion     DeploymentSortField = "VERSION"
+	DeploymentSortFieldUpdatedAt   DeploymentSortField = "UPDATED_AT"
+	DeploymentSortFieldDescription DeploymentSortField = "DESCRIPTION"
+)
+
+var AllDeploymentSortField = []DeploymentSortField{
+	DeploymentSortFieldVersion,
+	DeploymentSortFieldUpdatedAt,
+	DeploymentSortFieldDescription,
+}
+
+func (e DeploymentSortField) IsValid() bool {
+	switch e {
+	case DeploymentSortFieldVersion, DeploymentSortFieldUpdatedAt, DeploymentSortFieldDescription:
+		return true
+	}
+	return false
+}
+
+func (e DeploymentSortField) String() string {
+	return string(e)
+}
+
+func (e *DeploymentSortField) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = DeploymentSortField(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid DeploymentSortField", str)
+	}
+	return nil
+}
+
+func (e DeploymentSortField) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *DeploymentSortField) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e DeploymentSortField) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
 type EventSourceType string
 
 const (
@@ -1109,6 +1166,63 @@ func (e *EventSourceType) UnmarshalJSON(b []byte) error {
 }
 
 func (e EventSourceType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type JobSortField string
+
+const (
+	JobSortFieldStartedAt   JobSortField = "STARTED_AT"
+	JobSortFieldCompletedAt JobSortField = "COMPLETED_AT"
+	JobSortFieldStatus      JobSortField = "STATUS"
+)
+
+var AllJobSortField = []JobSortField{
+	JobSortFieldStartedAt,
+	JobSortFieldCompletedAt,
+	JobSortFieldStatus,
+}
+
+func (e JobSortField) IsValid() bool {
+	switch e {
+	case JobSortFieldStartedAt, JobSortFieldCompletedAt, JobSortFieldStatus:
+		return true
+	}
+	return false
+}
+
+func (e JobSortField) String() string {
+	return string(e)
+}
+
+func (e *JobSortField) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = JobSortField(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid JobSortField", str)
+	}
+	return nil
+}
+
+func (e JobSortField) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *JobSortField) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e JobSortField) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
@@ -1478,6 +1592,63 @@ func (e ParameterType) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+type ProjectSortField string
+
+const (
+	ProjectSortFieldName      ProjectSortField = "NAME"
+	ProjectSortFieldCreatedAt ProjectSortField = "CREATED_AT"
+	ProjectSortFieldUpdatedAt ProjectSortField = "UPDATED_AT"
+)
+
+var AllProjectSortField = []ProjectSortField{
+	ProjectSortFieldName,
+	ProjectSortFieldCreatedAt,
+	ProjectSortFieldUpdatedAt,
+}
+
+func (e ProjectSortField) IsValid() bool {
+	switch e {
+	case ProjectSortFieldName, ProjectSortFieldCreatedAt, ProjectSortFieldUpdatedAt:
+		return true
+	}
+	return false
+}
+
+func (e ProjectSortField) String() string {
+	return string(e)
+}
+
+func (e *ProjectSortField) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ProjectSortField(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ProjectSortField", str)
+	}
+	return nil
+}
+
+func (e ProjectSortField) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ProjectSortField) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ProjectSortField) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
 type Role string
 
 const (
@@ -1648,6 +1819,65 @@ func (e *TimeInterval) UnmarshalJSON(b []byte) error {
 }
 
 func (e TimeInterval) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type TriggerSortField string
+
+const (
+	TriggerSortFieldDescription   TriggerSortField = "DESCRIPTION"
+	TriggerSortFieldCreatedAt     TriggerSortField = "CREATED_AT"
+	TriggerSortFieldUpdatedAt     TriggerSortField = "UPDATED_AT"
+	TriggerSortFieldLastTriggered TriggerSortField = "LAST_TRIGGERED"
+)
+
+var AllTriggerSortField = []TriggerSortField{
+	TriggerSortFieldDescription,
+	TriggerSortFieldCreatedAt,
+	TriggerSortFieldUpdatedAt,
+	TriggerSortFieldLastTriggered,
+}
+
+func (e TriggerSortField) IsValid() bool {
+	switch e {
+	case TriggerSortFieldDescription, TriggerSortFieldCreatedAt, TriggerSortFieldUpdatedAt, TriggerSortFieldLastTriggered:
+		return true
+	}
+	return false
+}
+
+func (e TriggerSortField) String() string {
+	return string(e)
+}
+
+func (e *TriggerSortField) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TriggerSortField(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TriggerSortField", str)
+	}
+	return nil
+}
+
+func (e TriggerSortField) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *TriggerSortField) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e TriggerSortField) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

@@ -1,11 +1,6 @@
 import { ColumnDef } from "@tanstack/react-table";
 
-import {
-  FlowLogo,
-  LoadingSkeleton,
-  DataTable as Table,
-} from "@flow/components";
-import BasicBoiler from "@flow/components/BasicBoiler";
+import { DataTable as Table } from "@flow/components";
 import { JOBS_FETCH_RATE } from "@flow/lib/gql/job/useQueries";
 import { useT } from "@flow/lib/i18n";
 import type { Job } from "@flow/types";
@@ -21,13 +16,16 @@ const JobsManager: React.FC = () => {
     jobs,
     openJobRunDialog,
     isFetching,
+    isDebouncingSearch,
     currentPage,
     totalPages,
-    currentOrder,
+    sortOptions,
+    currentSortValue,
+    setSearchTerm,
     setOpenJobRunDialog,
     handleJobSelect,
+    handleSortChange,
     setCurrentPage,
-    setCurrentOrder,
   } = useHooks();
 
   const columns: ColumnDef<Job>[] = [
@@ -58,32 +56,28 @@ const JobsManager: React.FC = () => {
 
   return (
     <div className="flex h-full flex-1 flex-col">
-      <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pt-4 pb-2">
-        <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
+      <div className="flex flex-1 flex-col gap-1 overflow-scroll pt-4 pr-3 pb-2 pl-2">
+        <div className="flex h-[50px] shrink-0 items-center justify-between gap-2 border-b pb-4">
           <p className="text-lg dark:font-extralight">{t("Jobs")}</p>
         </div>
-        {isFetching ? (
-          <LoadingSkeleton />
-        ) : jobs && jobs.length > 0 ? (
-          <Table
-            columns={columns}
-            data={jobs}
-            selectColumns
-            enablePagination
-            onRowClick={handleJobSelect}
-            currentPage={currentPage}
-            setCurrentPage={setCurrentPage}
-            totalPages={totalPages}
-            resultsPerPage={resultsPerPage}
-            currentOrder={currentOrder}
-            setCurrentOrder={setCurrentOrder}
-          />
-        ) : (
-          <BasicBoiler
-            text={t("No Jobs")}
-            icon={<FlowLogo className="size-16 text-accent" />}
-          />
-        )}
+        <Table
+          columns={columns}
+          showFiltering
+          data={jobs}
+          selectColumns
+          enablePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          resultsPerPage={resultsPerPage}
+          currentSortValue={currentSortValue}
+          sortOptions={sortOptions}
+          isFetching={isDebouncingSearch || isFetching}
+          noResultsMessage={t("No Jobs")}
+          onRowClick={handleJobSelect}
+          onSortChange={handleSortChange}
+          setSearchTerm={setSearchTerm}
+          setCurrentPage={setCurrentPage}
+        />
       </div>
       {openJobRunDialog && <JobRunDialog setShowDialog={setOpenJobRunDialog} />}
     </div>
