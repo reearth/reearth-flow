@@ -1,21 +1,10 @@
 # CSV Reader Examples
 
-This directory contains example workflows demonstrating how to use the CsvReader action with various geometry configurations.
+This directory contains example workflows demonstrating how to use the CsvReader action with geometry support.
 
 ## Examples
 
-### 1. Basic CSV Reading (`basic-example.yml`)
-
-Simple CSV file reading without geometry parsing. All columns are read as string attributes.
-
-```yaml
-action: CsvReader
-with:
-  format: csv
-  dataset: ./sample-with-wkt.csv
-```
-
-### 2. WKT Geometry Parsing (`wkt-example.yml`)
+### 1. WKT Geometry Parsing (`wkt-example.yml`)
 
 Reads CSV files with geometry stored as Well-Known Text (WKT) in a single column.
 
@@ -46,7 +35,7 @@ Supported WKT geometry types:
 - `MULTILINESTRING(...)`
 - `MULTIPOLYGON(...)`
 
-### 3. Coordinate Columns (`coordinates-example.yml`)
+### 2. Coordinate Columns (`coordinates-example.yml`)
 
 Reads CSV files with coordinates in separate X, Y, and optional Z columns.
 
@@ -105,10 +94,14 @@ geometry:
 ## Running Examples
 
 ```bash
-# From the engine directory
-cargo run --package reearth-flow-cli -- run \
-  --workflow runtime/examples/fixture/workflow/examples/csv-reader/wkt-example.yml \
-  --param outputPath=/tmp/output
+# From the engine directory, navigate to the examples directory
+cd runtime/examples/fixture/workflow/examples/csv-reader
+
+# Run WKT example
+cargo run --package reearth-flow-cli -- run --workflow ./wkt-example.yml
+
+# Run coordinates example
+cargo run --package reearth-flow-cli -- run --workflow ./coordinates-example.yml
 ```
 
 ## Output
@@ -120,6 +113,8 @@ All examples output features that can be:
 
 Features will have:
 - `id`: UUID
-- `attributes`: All CSV columns as string attributes
+- `attributes`: CSV columns as string attributes (excluding geometry columns)
 - `geometry.epsg`: EPSG code if specified
 - `geometry.value`: Parsed geometry (if geometry config provided)
+
+**Note**: When geometry parsing is enabled, the columns used for geometry (WKT column, or X/Y/Z columns) are automatically excluded from the feature attributes to avoid redundancy. This follows GIS industry standards (similar to QGIS, PostGIS, ArcGIS).
