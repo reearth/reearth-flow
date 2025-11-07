@@ -9,11 +9,10 @@ graphs:
     name: entry_point
     nodes:
       - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
-        name: FileReader
+        name: GeoJsonReader
         type: action
-        action: FileReader
+        action: GeoJsonReader
         with:
-          format: geojson
           inline: |
             env.get("geojson")
 

@@ -46,11 +46,10 @@ graphs:
             attributes['computed_sum'] = sum([v for v in attributes.values() if isinstance(v, (int, float))])
 
       - id: 756F498A-7A5C-4579-AB1C-FCBBA8121870
-        name: FileWriter
+        name: JsonWriter
         type: action
-        action: FileWriter
+        action: JsonWriter
         with:
-          format: json
           output: |
             env.get("outputFilePath")
 

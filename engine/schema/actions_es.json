@@ -2701,423 +2701,6 @@
       ]
     },
     {
-      "name": "FileReader",
-      "type": "source",
-      "description": "Lee entidades desde un archivo",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FileReader",
-        "oneOf": [
-          {
-            "title": "CSV",
-            "type": "object",
-            "required": [
-              "format"
-            ],
-            "properties": {
-              "dataset": {
-                "title": "File Path",
-                "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "format": {
-                "type": "string",
-                "enum": [
-                  "csv"
-                ]
-              },
-              "inline": {
-                "title": "Inline Content",
-                "description": "Expression that returns the file content as text instead of reading from a file path",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "offset": {
-                "title": "Header Row Offset",
-                "description": "Skip this many rows from the beginning to find the header row (0 = first row is header)",
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint",
-                "minimum": 0.0
-              }
-            }
-          },
-          {
-            "title": "TSV",
-            "type": "object",
-            "required": [
-              "format"
-            ],
-            "properties": {
-              "dataset": {
-                "title": "File Path",
-                "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "format": {
-                "type": "string",
-                "enum": [
-                  "tsv"
-                ]
-              },
-              "inline": {
-                "title": "Inline Content",
-                "description": "Expression that returns the file content as text instead of reading from a file path",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "offset": {
-                "title": "Header Row Offset",
-                "description": "Skip this many rows from the beginning to find the header row (0 = first row is header)",
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint",
-                "minimum": 0.0
-              }
-            }
-          },
-          {
-            "title": "JSON",
-            "type": "object",
-            "required": [
-              "format"
-            ],
-            "properties": {
-              "dataset": {
-                "title": "File Path",
-                "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "format": {
-                "type": "string",
-                "enum": [
-                  "json"
-                ]
-              },
-              "inline": {
-                "title": "Inline Content",
-                "description": "Expression that returns the file content as text instead of reading from a file path",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            }
-          },
-          {
-            "title": "CityGML",
-            "description": "Configuration for reading CityGML files as a data source.",
-            "type": "object",
-            "required": [
-              "format"
-            ],
-            "properties": {
-              "dataset": {
-                "title": "File Path",
-                "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "flatten": {
-                "type": [
-                  "boolean",
-                  "null"
-                ]
-              },
-              "format": {
-                "type": "string",
-                "enum": [
-                  "citygml"
-                ]
-              },
-              "inline": {
-                "title": "Inline Content",
-                "description": "Expression that returns the file content as text instead of reading from a file path",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            }
-          },
-          {
-            "title": "GeoJSON",
-            "type": "object",
-            "required": [
-              "format"
-            ],
-            "properties": {
-              "dataset": {
-                "title": "File Path",
-                "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "format": {
-                "type": "string",
-                "enum": [
-                  "geojson"
-                ]
-              },
-              "inline": {
-                "title": "Inline Content",
-                "description": "Expression that returns the file content as text instead of reading from a file path",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            }
-          }
-        ],
-        "definitions": {
-          "Expr": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [],
-      "outputPorts": [
-        "default"
-      ],
-      "categories": [
-        "File"
-      ]
-    },
-    {
-      "name": "FileWriter",
-      "type": "sink",
-      "description": "Escribe entidades en un archivo",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "File Writer Parameters",
-        "description": "Configure the output file format and destination for writing features",
-        "oneOf": [
-          {
-            "title": "File Writer Common Parameters",
-            "description": "Common parameters shared across all file format types",
-            "type": "object",
-            "required": [
-              "format",
-              "output"
-            ],
-            "properties": {
-              "format": {
-                "type": "string",
-                "enum": [
-                  "csv"
-                ]
-              },
-              "output": {
-                "title": "Output Path",
-                "description": "Expression for the output file path where features will be written",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  }
-                ]
-              }
-            }
-          },
-          {
-            "title": "File Writer Common Parameters",
-            "description": "Common parameters shared across all file format types",
-            "type": "object",
-            "required": [
-              "format",
-              "output"
-            ],
-            "properties": {
-              "format": {
-                "type": "string",
-                "enum": [
-                  "tsv"
-                ]
-              },
-              "output": {
-                "title": "Output Path",
-                "description": "Expression for the output file path where features will be written",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  }
-                ]
-              }
-            }
-          },
-          {
-            "title": "File Writer Common Parameters",
-            "description": "Common parameters shared across all file format types",
-            "type": "object",
-            "required": [
-              "format",
-              "output"
-            ],
-            "properties": {
-              "format": {
-                "type": "string",
-                "enum": [
-                  "xml"
-                ]
-              },
-              "output": {
-                "title": "Output Path",
-                "description": "Expression for the output file path where features will be written",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  }
-                ]
-              }
-            }
-          },
-          {
-            "title": "File Writer Common Parameters",
-            "description": "Common parameters shared across all file format types",
-            "type": "object",
-            "required": [
-              "format",
-              "output"
-            ],
-            "properties": {
-              "converter": {
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "format": {
-                "type": "string",
-                "enum": [
-                  "json"
-                ]
-              },
-              "output": {
-                "title": "Output Path",
-                "description": "Expression for the output file path where features will be written",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  }
-                ]
-              }
-            }
-          },
-          {
-            "title": "File Writer Common Parameters",
-            "description": "Common parameters shared across all file format types",
-            "type": "object",
-            "required": [
-              "format",
-              "output"
-            ],
-            "properties": {
-              "format": {
-                "type": "string",
-                "enum": [
-                  "excel"
-                ]
-              },
-              "output": {
-                "title": "Output Path",
-                "description": "Expression for the output file path where features will be written",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  }
-                ]
-              },
-              "sheetName": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            }
-          }
-        ],
-        "definitions": {
-          "Expr": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [],
-      "categories": [
-        "File"
-      ]
-    },
-    {
       "name": "GeoJsonReader",
       "type": "source",
       "description": "Lee características de un archivo GeoJSON",
@@ -5902,6 +5485,52 @@
         },
         "definitions": {
           "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "ThreeDimensionForcer",
+      "type": "processor",
+      "description": "Convert 2D Geometry to 3D by Adding Z-Coordinates",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ThreeDimensionForcer Parameters",
+        "description": "Configure how to convert 2D geometries to 3D by adding Z-coordinates",
+        "type": "object",
+        "properties": {
+          "elevation": {
+            "title": "Elevation",
+            "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "preserveExistingZ": {
+            "title": "Preserve Existing Z Values",
+            "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false.",
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "definitions": {
+          "Expr": {
             "type": "string"
           }
         }

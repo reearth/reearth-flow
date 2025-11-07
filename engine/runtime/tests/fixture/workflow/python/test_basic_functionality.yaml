@@ -63,11 +63,10 @@ graphs:
                 properties['coordinates'] = f"{coords[0]}, {coords[1]}"
 
       - id: 40000000-0000-0000-0000-000000000001
-        name: FileWriter
+        name: JsonWriter
         type: action
-        action: FileWriter
+        action: JsonWriter
         with:
-          format: json
           output: |
             env.get("outputFilePath")
 

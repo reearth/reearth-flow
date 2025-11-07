@@ -9,8 +9,7 @@ use crate::{
         citygml::CityGmlReaderFactory, csv::CsvReaderFactory, czml::CzmlReaderFactory,
         geojson::GeoJsonReaderFactory, geopackage::GeoPackageReaderFactory,
         gltf::GltfReaderFactory, json::JsonReaderFactory, obj::ObjReaderFactory,
-        path_extractor::FilePathExtractorFactory, reader::FileReaderFactory,
-        shapefile::ShapefileReaderFactory,
+        path_extractor::FilePathExtractorFactory, shapefile::ShapefileReaderFactory,
     },
     sql::SqlReaderFactory,
 };
@@ -18,7 +17,6 @@ use crate::{
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn SourceFactory>> = vec![
         Box::<CityGmlReaderFactory>::default(),
-        Box::<FileReaderFactory>::default(),
         Box::<FilePathExtractorFactory>::default(),
         Box::<FeatureCreatorFactory>::default(),
         Box::<SqlReaderFactory>::default(),
