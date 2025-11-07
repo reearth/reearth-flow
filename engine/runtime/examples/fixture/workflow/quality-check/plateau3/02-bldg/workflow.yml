@@ -129,7 +129,7 @@ graphs:
       - id: fba9510a-5667-4095-a77a-9b9d363c537c
         name: FileWriterTsvL-bldg-06
         type: action
-        action: FileWriter
+        action: CsvWriter
         with:
           format: tsv
           output: |
@@ -176,7 +176,7 @@ graphs:
       - id: c4afa6a5-8e9f-4d77-8cd9-f50c146b64b8
         name: FileWriterTsvT-bldg-02
         type: action
-        action: FileWriter
+        action: CsvWriter
         with:
           format: tsv
           output: |
@@ -319,7 +319,7 @@ graphs:
       - id: 7debf320-37c4-414e-acab-9f2fb41e2848
         name: FileTSVWriterC02
         type: action
-        action: FileWriter
+        action: CsvWriter
         with:
           format: tsv
           output: |
@@ -353,7 +353,7 @@ graphs:
       - id: 702a1096-35c8-4b85-a20b-ea5547a5f5e4
         name: FileWriterTsv-city-code-error
         type: action
-        action: FileWriter
+        action: CsvWriter
         with:
           format: tsv
           output: |
@@ -381,7 +381,7 @@ graphs:
       - id: e31f82df-e776-4368-9440-182e1b817f46
         name: FileWriterTsv-l-bldg-04-05-error
         type: action
-        action: FileWriter
+        action: CsvWriter
         with:
           format: tsv
           output: |
@@ -481,7 +481,7 @@ graphs:
       - id: d7124377-8f43-4170-b157-a1f1af27f9fd
         name: FileWriterTsv-c-bldg-01
         type: action
-        action: FileWriter
+        action: CsvWriter
         with:
           format: tsv
           output: |

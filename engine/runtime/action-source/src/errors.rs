@@ -2,26 +2,40 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum SourceError {
-    #[error("File Reader Factory error: {0}")]
-    FileReaderFactory(String),
-    #[error("File Reader error: {0}")]
-    FileReader(String),
+    #[error("CityGmlReaderFactory error: {0}")]
+    CityGmlReaderFactory(String),
     #[error("CityGmlFileReader error: {0}")]
     CityGmlFileReader(String),
+    #[error("CsvReaderFactory error: {0}")]
+    CsvReaderFactory(String),
     #[error("CsvFileReader error: {0}")]
     CsvFileReader(String),
+    #[error("JsonReaderFactory error: {0}")]
+    JsonReaderFactory(String),
     #[error("JsonFileReader error: {0}")]
     JsonFileReader(String),
+    #[error("GeoJsonReaderFactory error: {0}")]
+    GeoJsonReaderFactory(String),
     #[error("GeoJsonFileReader error: {0}")]
     GeoJsonFileReader(String),
+    #[error("ShapefileReaderFactory error: {0}")]
+    ShapefileReaderFactory(String),
     #[error("ShapefileReader error: {0}")]
     ShapefileReader(String),
+    #[error("CzmlReaderFactory error: {0}")]
+    CzmlReaderFactory(String),
     #[error("CzmlReader error: {0}")]
     CzmlReader(String),
     #[error("GeoPackageReader error: {0}")]
     GeoPackageReader(String),
+    #[error("GltfReaderFactory error: {0}")]
+    GltfReaderFactory(String),
     #[error("GltfReader error: {0}")]
     GltfReader(String),
+    #[error("ObjReaderFactory error: {0}")]
+    ObjReaderFactory(String),
+    #[error("ObjReader error: {0}")]
+    ObjReader(String),
     #[error("File Path Extractor Factory error: {0}")]
     FilePathExtractorFactory(String),
     #[error("File Path Extractor error: {0}")]

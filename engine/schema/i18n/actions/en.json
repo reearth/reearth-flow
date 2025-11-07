@@ -173,14 +173,6 @@
       "description": "Extracts properties from a file"
     },
     {
-      "name": "FileReader",
-      "description": "Reads features from a file"
-    },
-    {
-      "name": "FileWriter",
-      "description": "Writes features to a file"
-    },
-    {
       "name": "GeoJsonReader",
       "description": "Reads features from a GeoJSON file"
     },
