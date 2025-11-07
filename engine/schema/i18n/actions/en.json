@@ -385,8 +385,12 @@
       "description": "Forces a geometry to be two dimensional."
     },
     {
+      "name": "ThreeDimensionForcer",
+      "description": "Converts 2D geometries to 3D by adding Z-coordinates (elevation)"
+    },
+    {
       "name": "VertexRemover",
-      "description": "Removes specific vertices from a feature’s geometry"
+      "description": "Removes specific vertices from a feature's geometry"
     },
     {
       "name": "VerticalReprojector",
