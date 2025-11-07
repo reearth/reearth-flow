@@ -271,31 +271,36 @@ export default ({
 
           boundaryEdges.forEach((edge) => {
             const sourceSelected = allIncludedNodeIds.has(edge.source);
+            const targetSelected = allIncludedNodeIds.has(edge.target);
             const nodeSource = nodes.find((n) => n.id === edge.source);
             const nodeTarget = nodes.find((n) => n.id === edge.target);
-            const targetSelected = allIncludedNodeIds.has(edge.target);
 
+            // --- INPUT ROUTERS (external -> internal) ---
             if (!sourceSelected && targetSelected) {
-              // INPUT ROUTER: Group by internal target node + handle
-              const internalTargetKey = `${edge.target}:${edge.targetHandle ?? "default"}`;
-
+              const inputRouterKey = `${edge.source}:${edge.sourceHandle ?? "default"}`;
               let inputRouterInfo =
-                inputRoutersByInternalTarget.get(internalTargetKey);
+                inputRoutersByInternalTarget.get(inputRouterKey);
 
               if (!inputRouterInfo) {
                 const inputRouterId = generateUUID();
 
-                // Build port name: use internal target node name
-                const officialName = nodeTarget?.data.officialName ?? "input";
-                const instanceNum = nodeInstanceNumbers.get(edge.target);
+                // ✅ use internal target node name for readability + instance numbering
+                const targetNodeName =
+                  nodeTarget?.data.officialName ?? nodeTarget?.id ?? "input";
                 const targetHandle = edge.targetHandle ?? "default";
+                const instanceNum = nodeInstanceNumbers.get(edge.target);
 
-                // Build port name: nodeName[-instanceNum][-handle]
-                let portName = officialName;
-                if (instanceNum !== undefined) {
+                let portName =
+                  targetHandle === "default"
+                    ? DEFAULT_ROUTING_PORT
+                    : targetNodeName;
+                if (
+                  instanceNum !== undefined &&
+                  portName !== DEFAULT_ROUTING_PORT
+                ) {
                   portName += `-${instanceNum}`;
                 }
-                if (targetHandle !== "default") {
+                if (targetHandle !== "default" && portName !== targetHandle) {
                   portName += `-${targetHandle}`;
                 }
 
@@ -312,24 +317,17 @@ export default ({
                     params: { routingPort: portName },
                   },
                 };
-                additionalRouterNodes.push(inputRouter);
 
-                inputRouterInfo = {
-                  routerId: inputRouterId,
-                  portName,
-                };
+                additionalRouterNodes.push(inputRouter);
+                inputRouterInfo = { routerId: inputRouterId, portName };
                 inputRoutersByInternalTarget.set(
-                  internalTargetKey,
+                  inputRouterKey,
                   inputRouterInfo,
                 );
-
-                pseudoInputs.push({
-                  nodeId: inputRouterId,
-                  portName,
-                });
+                pseudoInputs.push({ nodeId: inputRouterId, portName });
               }
 
-              // Create internal edge from router to internal target
+              // Internal connection (router -> internal node)
               const internalEdge: Edge = {
                 id: generateUUID(),
                 source: inputRouterInfo.routerId,
@@ -338,7 +336,7 @@ export default ({
               };
               additionalInternalEdges.push(internalEdge);
 
-              // Create external edge from external source to subworkflow
+              // External connection (external -> subworkflow)
               const externalEdge: Edge = {
                 ...edge,
                 id: edge.id,
@@ -346,27 +344,34 @@ export default ({
                 targetHandle: inputRouterInfo.portName,
               };
               externalEdges.push(externalEdge);
-            } else if (sourceSelected && !targetSelected) {
-              // OUTPUT ROUTER: Group by internal source node + handle
-              const internalSourceKey = `${edge.source}:${edge.sourceHandle ?? "default"}`;
+            }
 
+            // --- OUTPUT ROUTERS (internal -> external) ---
+            else if (sourceSelected && !targetSelected) {
+              const outputRouterKey = `${edge.target}:${edge.targetHandle ?? "default"}`;
               let outputRouterInfo =
-                outputRoutersByInternalSource.get(internalSourceKey);
+                outputRoutersByInternalSource.get(outputRouterKey);
 
               if (!outputRouterInfo) {
                 const outputRouterId = generateUUID();
 
-                // Build port name: use internal source node name
-                const officialName = nodeSource?.data.officialName ?? "output";
-                const instanceNum = nodeInstanceNumbers.get(edge.source);
+                // ✅ use internal source node name for readability + instance numbering
+                const sourceNodeName =
+                  nodeSource?.data.officialName ?? nodeSource?.id ?? "output";
                 const sourceHandle = edge.sourceHandle ?? "default";
+                const instanceNum = nodeInstanceNumbers.get(edge.source);
 
-                // Build port name: nodeName[-instanceNum][-handle]
-                let portName = officialName;
-                if (instanceNum !== undefined) {
+                let portName =
+                  sourceHandle === "default"
+                    ? DEFAULT_ROUTING_PORT
+                    : sourceNodeName;
+                if (
+                  instanceNum !== undefined &&
+                  portName !== DEFAULT_ROUTING_PORT
+                ) {
                   portName += `-${instanceNum}`;
                 }
-                if (sourceHandle !== "default") {
+                if (sourceHandle !== "default" && portName !== sourceHandle) {
                   portName += `-${sourceHandle}`;
                 }
 
@@ -383,24 +388,17 @@ export default ({
                     params: { routingPort: portName },
                   },
                 };
-                additionalRouterNodes.push(outputRouter);
 
-                outputRouterInfo = {
-                  routerId: outputRouterId,
-                  portName,
-                };
+                additionalRouterNodes.push(outputRouter);
+                outputRouterInfo = { routerId: outputRouterId, portName };
                 outputRoutersByInternalSource.set(
-                  internalSourceKey,
+                  outputRouterKey,
                   outputRouterInfo,
                 );
-
-                pseudoOutputs.push({
-                  nodeId: outputRouterId,
-                  portName,
-                });
+                pseudoOutputs.push({ nodeId: outputRouterId, portName });
               }
 
-              // Create internal edge from internal source to router
+              // Internal connection (internal node -> router)
               const internalEdge: Edge = {
                 id: generateUUID(),
                 source: edge.source,
@@ -409,7 +407,7 @@ export default ({
               };
               additionalInternalEdges.push(internalEdge);
 
-              // Create external edge from subworkflow to external target
+              // External connection (subworkflow -> external)
               const externalEdge: Edge = {
                 ...edge,
                 id: edge.id,
