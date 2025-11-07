@@ -715,12 +715,23 @@ impl GltfWriter {
         let flat_polygon: FlatPolygon3 = polygon.clone().into();
 
         let mut multi_polygon = flatgeom::MultiPolygon::new();
+        let mut local_bvol = BoundingVolume::default();
 
         // Add exterior ring
         let exterior_coords: Vec<[f64; 5]> = flat_polygon
             .exterior()
             .iter()
-            .map(|coord| [coord[0], coord[1], coord[2], 0.0, 0.0])
+            .map(|coord| {
+                let [lng, lat, height] = [coord[0], coord[1], coord[2]];
+                // Update bounding volume
+                local_bvol.min_lng = local_bvol.min_lng.min(lng);
+                local_bvol.max_lng = local_bvol.max_lng.max(lng);
+                local_bvol.min_lat = local_bvol.min_lat.min(lat);
+                local_bvol.max_lat = local_bvol.max_lat.max(lat);
+                local_bvol.min_height = local_bvol.min_height.min(height);
+                local_bvol.max_height = local_bvol.max_height.max(height);
+                [lng, lat, height, 0.0, 0.0]
+            })
             .collect();
         multi_polygon.add_exterior(exterior_coords);
 
@@ -728,7 +739,17 @@ impl GltfWriter {
         for interior in flat_polygon.interiors() {
             let interior_coords: Vec<[f64; 5]> = interior
                 .iter()
-                .map(|coord| [coord[0], coord[1], coord[2], 0.0, 0.0])
+                .map(|coord| {
+                    let [lng, lat, height] = [coord[0], coord[1], coord[2]];
+                    // Update bounding volume
+                    local_bvol.min_lng = local_bvol.min_lng.min(lng);
+                    local_bvol.max_lng = local_bvol.max_lng.max(lng);
+                    local_bvol.min_lat = local_bvol.min_lat.min(lat);
+                    local_bvol.max_lat = local_bvol.max_lat.max(lat);
+                    local_bvol.min_height = local_bvol.min_height.min(height);
+                    local_bvol.max_height = local_bvol.max_height.max(height);
+                    [lng, lat, height, 0.0, 0.0]
+                })
                 .collect();
             multi_polygon.add_interior(interior_coords);
         }
@@ -746,12 +767,10 @@ impl GltfWriter {
             feature_type: feature_type.clone(),
         };
 
-        // Add to classified features
-        self.classified_features
-            .entry(feature_type)
-            .or_default()
-            .features
-            .push(class_feature);
+        // Add to classified features and update bounding volume
+        let feats = self.classified_features.entry(feature_type).or_default();
+        feats.features.push(class_feature);
+        feats.bounding_volume.update(&local_bvol);
 
         Ok(())
     }
@@ -770,6 +789,9 @@ impl GltfWriter {
         // Extract all faces from the solid
         let faces = solid.all_faces();
 
+        // Track bounding volume across all faces
+        let mut local_bvol = BoundingVolume::default();
+
         // Convert each face to a polygon and add it
         for face in faces.iter() {
             // Face is essentially a LineString of coordinates
@@ -785,7 +807,19 @@ impl GltfWriter {
             // Convert face coordinates to [x, y, z, u, v] format
             let face_coords: Vec<[f64; 5]> = coords
                 .iter()
-                .map(|coord| [coord.x, coord.y, coord.z, 0.0, 0.0])
+                .map(|coord| {
+                    let lng = coord.x;
+                    let lat = coord.y;
+                    let height = coord.z;
+                    // Update bounding volume
+                    local_bvol.min_lng = local_bvol.min_lng.min(lng);
+                    local_bvol.max_lng = local_bvol.max_lng.max(lng);
+                    local_bvol.min_lat = local_bvol.min_lat.min(lat);
+                    local_bvol.max_lat = local_bvol.max_lat.max(lat);
+                    local_bvol.min_height = local_bvol.min_height.min(height);
+                    local_bvol.max_height = local_bvol.max_height.max(height);
+                    [lng, lat, height, 0.0, 0.0]
+                })
                 .collect();
 
             multi_polygon.add_exterior(face_coords);
@@ -809,6 +843,15 @@ impl GltfWriter {
                 .or_default()
                 .features
                 .push(class_feature);
+        }
+
+        // Update bounding volume for the entire solid
+        if !faces.is_empty() {
+            self.classified_features
+                .entry(feature_type)
+                .or_default()
+                .bounding_volume
+                .update(&local_bvol);
         }
 
         Ok(())
