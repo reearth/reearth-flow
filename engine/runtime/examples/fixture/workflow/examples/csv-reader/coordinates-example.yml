@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 3da19dc4-1ebd-4762-8250-2a4bc8043402
+name: "CSV Reader with Coordinate Columns Example"
+entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec332
+with:
+  csvFile: !include ./sample-with-coords.csv
+graphs:
+  - id: 3e3450c8-2344-4728-afa9-5fdb81eec332
+    name: main
+    nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1a2
+        name: CsvReader
+        type: action
+        action: CsvReader
+        with:
+          format: csv
+          inline: |
+            env.get("csvFile")
+          geometry:
+            geometryMode: coordinates
+            x_column: longitude
+            y_column: latitude
+            z_column: elevation
+            epsg: 4326
+
+      - id: f5e66920-24c0-4c70-ae16-6be1ed3b906b
+        name: GeoJsonWriter
+        type: action
+        action: GeoJsonWriter
+        with:
+          output: ./output-coords.geojson
+
+    edges:
+      - id: c064cf52-705f-443a-b2de-6795266c540b
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1a2
+        to: f5e66920-24c0-4c70-ae16-6be1ed3b906b
+        fromPort: default
+        toPort: default

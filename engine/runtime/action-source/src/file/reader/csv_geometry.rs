@@ -54,6 +54,24 @@ pub enum GeometryMode {
     },
 }
 
+/// Get the names of columns that are used for geometry
+pub fn get_geometry_column_names(config: &GeometryConfig) -> Vec<String> {
+    match &config.mode {
+        GeometryMode::Wkt { column } => vec![column.clone()],
+        GeometryMode::Coordinates {
+            x_column,
+            y_column,
+            z_column,
+        } => {
+            let mut cols = vec![x_column.clone(), y_column.clone()];
+            if let Some(z) = z_column {
+                cols.push(z.clone());
+            }
+            cols
+        }
+    }
+}
+
 pub fn parse_geometry(
     row: &IndexMap<String, String>,
     config: &GeometryConfig,

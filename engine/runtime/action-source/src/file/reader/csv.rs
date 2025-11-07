@@ -52,17 +52,20 @@ pub(crate) async fn read_csv(
             .map(|(i, value)| (header[i].clone(), value.clone()))
             .collect();
 
-        // Parse geometry if config is provided
-        let geometry = if let Some(geom_config) = &props.geometry {
-            super::csv_geometry::parse_geometry(&row_map, geom_config)
-                .map_err(|e| crate::errors::SourceError::CsvFileReader(format!("Geometry parse error: {}", e)))?
+        // Parse geometry if config is provided and get column names to exclude
+        let (geometry, excluded_columns) = if let Some(geom_config) = &props.geometry {
+            let geom = super::csv_geometry::parse_geometry(&row_map, geom_config)
+                .map_err(|e| crate::errors::SourceError::CsvFileReader(format!("Geometry parse error: {}", e)))?;
+            let excluded = super::csv_geometry::get_geometry_column_names(geom_config);
+            (geom, excluded)
         } else {
-            reearth_flow_types::Geometry::default()
+            (reearth_flow_types::Geometry::default(), vec![])
         };
 
-        // Convert to attributes
+        // Convert to attributes, excluding geometry columns
         let attributes = row_map
             .into_iter()
+            .filter(|(k, _)| !excluded_columns.contains(k))
             .map(|(k, v)| (k, AttributeValue::String(v)))
             .collect::<IndexMap<String, AttributeValue>>();
 

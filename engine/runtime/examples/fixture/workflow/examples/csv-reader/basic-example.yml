@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 3da19dc4-1ebd-4762-8250-2a4bc8043403
+name: "CSV Reader Basic Example"
+entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec333
+with:
+graphs:
+  - id: 3e3450c8-2344-4728-afa9-5fdb81eec333
+    name: main
+    nodes:
+      - id: csv-reader-node
+        name: CsvReader
+        type: action
+        action: CsvReader
+        with:
+          format: csv
+          dataset: ./sample-with-wkt.csv
+
+      - id: feature-writer-node
+        name: FeatureWriter
+        type: action
+        action: FeatureWriter
+        with:
+          format: csv
+          output: |
+            file::join_path(env.get("currentPath"), "output-basic.csv")
+
+    edges:
+      - id: edge-1
+        from: csv-reader-node
+        to: feature-writer-node
+        fromPort: default
+        toPort: default
