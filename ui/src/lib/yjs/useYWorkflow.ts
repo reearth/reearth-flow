@@ -230,8 +230,8 @@ export default ({
 
           const additionalRouterNodes: Node[] = [];
           const additionalInternalEdges: Edge[] = [];
-          const externalEdgesMap = new Map<string, Edge>(); // Use map to avoid duplicates
-          const edgesToDelete = new Set<string>(); // Track all boundary edges to delete
+          const externalEdgesMap = new Map<string, Edge>();
+          const edgesToDelete = new Set<string>();
           const pseudoInputs: { nodeId: string; portName: string }[] = [];
           const pseudoOutputs: { nodeId: string; portName: string }[] = [];
 
@@ -316,10 +316,10 @@ export default ({
                   inputConnectionCounts.get(externalSourceKey) || 1;
                 const hasMultipleConnections = connectionCount > 1;
 
-                const sourceHandle = edge.sourceHandle ?? "default";
+                const targetHandle = edge.targetHandle ?? "default";
                 let portName: string;
 
-                if (sourceHandle === "default") {
+                if (targetHandle === "default") {
                   // Always use default for default handle
                   portName = DEFAULT_ROUTING_PORT;
                 } else if (hasMultipleConnections) {
@@ -329,14 +329,13 @@ export default ({
                   // Single connection: use internal target node name + handle
                   const targetNodeName =
                     nodeTarget?.data.officialName ?? nodeTarget?.id ?? "input";
-                  const targetHandle = edge.targetHandle ?? "default";
                   const instanceNum = nodeInstanceNumbers.get(edge.target);
 
                   portName = targetNodeName;
                   if (instanceNum !== undefined) {
                     portName += `-${instanceNum}`;
                   }
-                  if (targetHandle !== "default") {
+                  if (portName !== targetHandle) {
                     portName += `-${targetHandle}`;
                   }
                 }
@@ -368,7 +367,7 @@ export default ({
                   ...edge,
                   id: edge.id,
                   target: workflowId,
-                  targetHandle: inputRouterInfo.portName,
+                  targetHandle: portName,
                 };
                 externalEdgesMap.set(externalSourceKey, externalEdge);
               }
@@ -401,10 +400,10 @@ export default ({
                   outputConnectionCounts.get(externalTargetKey) || 1;
                 const hasMultipleConnections = connectionCount > 1;
 
-                const targetHandle = edge.targetHandle ?? "default";
+                const sourceHandle = edge.sourceHandle ?? "default";
                 let portName: string;
 
-                if (targetHandle === "default") {
+                if (sourceHandle === "default") {
                   // Always use default for default handle
                   portName = DEFAULT_ROUTING_PORT;
                 } else if (hasMultipleConnections) {
@@ -414,14 +413,13 @@ export default ({
                   // Single connection: use internal source node name + handle
                   const sourceNodeName =
                     nodeSource?.data.officialName ?? nodeSource?.id ?? "output";
-                  const sourceHandle = edge.sourceHandle ?? "default";
                   const instanceNum = nodeInstanceNumbers.get(edge.source);
 
                   portName = sourceNodeName;
                   if (instanceNum !== undefined) {
                     portName += `-${instanceNum}`;
                   }
-                  if (sourceHandle !== "default") {
+                  if (portName !== sourceHandle) {
                     portName += `-${sourceHandle}`;
                   }
                 }
@@ -453,7 +451,7 @@ export default ({
                   ...edge,
                   id: edge.id,
                   source: workflowId,
-                  sourceHandle: outputRouterInfo.portName,
+                  sourceHandle: portName,
                 };
                 externalEdgesMap.set(externalTargetKey, externalEdge);
               }
@@ -488,7 +486,6 @@ export default ({
               routerNode.data.params.routingPort = DEFAULT_ROUTING_PORT;
             }
 
-            // Update the external edge in the map
             externalEdgesMap.forEach((edge) => {
               if (edge.targetHandle === oldPortName) {
                 edge.targetHandle = DEFAULT_ROUTING_PORT;
@@ -518,7 +515,6 @@ export default ({
               routerNode.data.params.routingPort = DEFAULT_ROUTING_PORT;
             }
 
-            // Update the external edge in the map
             externalEdgesMap.forEach((edge) => {
               if (edge.sourceHandle === oldPortName) {
                 edge.sourceHandle = DEFAULT_ROUTING_PORT;
@@ -577,7 +573,7 @@ export default ({
             parentWorkflowEdgesMap?.delete(edgeId);
           });
 
-          // Add the new external edges (with same IDs but new targets/sources)
+          // Add the new external edges (one per unique external connection)
           externalEdgesMap.forEach((edge) => {
             const yEdge = yEdgeConstructor(edge);
             parentWorkflowEdgesMap?.set(edge.id, yEdge);
