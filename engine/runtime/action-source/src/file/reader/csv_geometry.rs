@@ -121,9 +121,7 @@ pub fn parse_geometry(
             } else {
                 Ok(Geometry {
                     epsg,
-                    value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point2D::from([
-                        x, y,
-                    ]))),
+                    value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point2D::from([x, y]))),
                 })
             }
         }
@@ -191,7 +189,8 @@ fn convert_geo_to_flow(
             })
         }
         GeoGeometry::MultiPoint(mp) => {
-            let points: Vec<Point2D<f64>> = mp.0.iter().map(|p| Point2D::from([p.0.x, p.0.y])).collect();
+            let points: Vec<Point2D<f64>> =
+                mp.0.iter().map(|p| Point2D::from([p.0.x, p.0.y])).collect();
             Ok(Geometry {
                 epsg,
                 value: GeometryValue::FlowGeometry2D(Geometry2D::MultiPoint(MultiPoint2D::new(
@@ -240,9 +239,9 @@ fn convert_geo_to_flow(
                 )),
             })
         }
-        GeoGeometry::GeometryCollection(_) => Err(
-            "GeometryCollection is not yet supported in CSV reader".to_string(),
-        ),
+        GeoGeometry::GeometryCollection(_) => {
+            Err("GeometryCollection is not yet supported in CSV reader".to_string())
+        }
         _ => Err(format!("Unsupported geometry type: {:?}", geo_geom)),
     }
 }
