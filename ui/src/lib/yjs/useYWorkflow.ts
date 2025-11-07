@@ -240,7 +240,10 @@ export default ({
 
           allIncludedNodes.forEach((node) => {
             const officialName = node.data.officialName || node.id;
-            nodeNameCounts.set(officialName, (nodeNameCounts.get(officialName) || 0) + 1);
+            nodeNameCounts.set(
+              officialName,
+              (nodeNameCounts.get(officialName) || 0) + 1,
+            );
           });
 
           // Assign instance numbers to nodes whose names appear multiple times
@@ -276,7 +279,8 @@ export default ({
               // INPUT ROUTER: Group by internal target node + handle
               const internalTargetKey = `${edge.target}:${edge.targetHandle ?? "default"}`;
 
-              let inputRouterInfo = inputRoutersByInternalTarget.get(internalTargetKey);
+              let inputRouterInfo =
+                inputRoutersByInternalTarget.get(internalTargetKey);
 
               if (!inputRouterInfo) {
                 const inputRouterId = generateUUID();
@@ -314,7 +318,10 @@ export default ({
                   routerId: inputRouterId,
                   portName,
                 };
-                inputRoutersByInternalTarget.set(internalTargetKey, inputRouterInfo);
+                inputRoutersByInternalTarget.set(
+                  internalTargetKey,
+                  inputRouterInfo,
+                );
 
                 pseudoInputs.push({
                   nodeId: inputRouterId,
@@ -343,7 +350,8 @@ export default ({
               // OUTPUT ROUTER: Group by internal source node + handle
               const internalSourceKey = `${edge.source}:${edge.sourceHandle ?? "default"}`;
 
-              let outputRouterInfo = outputRoutersByInternalSource.get(internalSourceKey);
+              let outputRouterInfo =
+                outputRoutersByInternalSource.get(internalSourceKey);
 
               if (!outputRouterInfo) {
                 const outputRouterId = generateUUID();
@@ -381,7 +389,10 @@ export default ({
                   routerId: outputRouterId,
                   portName,
                 };
-                outputRoutersByInternalSource.set(internalSourceKey, outputRouterInfo);
+                outputRoutersByInternalSource.set(
+                  internalSourceKey,
+                  outputRouterInfo,
+                );
 
                 pseudoOutputs.push({
                   nodeId: outputRouterId,
@@ -410,45 +421,59 @@ export default ({
           });
 
           // If only ONE router total, rename to "default"
-          if (inputRoutersByInternalTarget.size === 1 && outputRoutersByInternalSource.size === 0) {
+          if (
+            inputRoutersByInternalTarget.size === 1 &&
+            outputRoutersByInternalSource.size === 0
+          ) {
             const [routerInfo] = inputRoutersByInternalTarget.values();
             const oldPortName = routerInfo.portName;
             routerInfo.portName = DEFAULT_ROUTING_PORT;
 
-            const routerNode = additionalRouterNodes.find(n => n.id === routerInfo.routerId);
+            const routerNode = additionalRouterNodes.find(
+              (n) => n.id === routerInfo.routerId,
+            );
             if (routerNode?.data.params) {
               routerNode.data.params.routingPort = DEFAULT_ROUTING_PORT;
             }
 
-            externalEdges.forEach(edge => {
+            externalEdges.forEach((edge) => {
               if (edge.targetHandle === oldPortName) {
                 edge.targetHandle = DEFAULT_ROUTING_PORT;
               }
             });
 
-            const pseudoInput = pseudoInputs.find(p => p.portName === oldPortName);
+            const pseudoInput = pseudoInputs.find(
+              (p) => p.portName === oldPortName,
+            );
             if (pseudoInput) {
               pseudoInput.portName = DEFAULT_ROUTING_PORT;
             }
           }
 
-          if (outputRoutersByInternalSource.size === 1 && inputRoutersByInternalTarget.size === 0) {
+          if (
+            outputRoutersByInternalSource.size === 1 &&
+            inputRoutersByInternalTarget.size === 0
+          ) {
             const [routerInfo] = outputRoutersByInternalSource.values();
             const oldPortName = routerInfo.portName;
             routerInfo.portName = DEFAULT_ROUTING_PORT;
 
-            const routerNode = additionalRouterNodes.find(n => n.id === routerInfo.routerId);
+            const routerNode = additionalRouterNodes.find(
+              (n) => n.id === routerInfo.routerId,
+            );
             if (routerNode?.data.params) {
               routerNode.data.params.routingPort = DEFAULT_ROUTING_PORT;
             }
 
-            externalEdges.forEach(edge => {
+            externalEdges.forEach((edge) => {
               if (edge.sourceHandle === oldPortName) {
                 edge.sourceHandle = DEFAULT_ROUTING_PORT;
               }
             });
 
-            const pseudoOutput = pseudoOutputs.find(p => p.portName === oldPortName);
+            const pseudoOutput = pseudoOutputs.find(
+              (p) => p.portName === oldPortName,
+            );
             if (pseudoOutput) {
               pseudoOutput.portName = DEFAULT_ROUTING_PORT;
             }
