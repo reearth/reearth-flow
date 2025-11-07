@@ -5468,6 +5468,52 @@ Replace Geometry with 3D Box from Attributes
 ### Category
 * Geometry
 
+## ThreeDimensionForcer
+### Type
+* processor
+### Description
+Convert 2D Geometry to 3D by Adding Z-Coordinates
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThreeDimensionForcer Parameters",
+  "description": "Configure how to convert 2D geometries to 3D by adding Z-coordinates",
+  "type": "object",
+  "properties": {
+    "elevation": {
+      "title": "Elevation",
+      "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "preserveExistingZ": {
+      "title": "Preserve Existing Z Values",
+      "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
+
 ## ThreeDimensionPlanarityRotator
 ### Type
 * processor

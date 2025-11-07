@@ -27,18 +27,23 @@ type Job struct {
 	outputURLs        []string
 	startedAt         time.Time
 	status            Status
+	batchStatus       *Status
+	workerStatus      *Status
 	workspace         WorkspaceID
 }
 
 func NewJob(id ID, deployment DeploymentID, workspace WorkspaceID, gcpJobID string) *Job {
+	pending := StatusPending
 	return &Job{
-		deployment:  deployment,
-		gcpJobID:    gcpJobID,
-		id:          id,
-		metadataURL: "",
-		status:      StatusPending,
-		startedAt:   time.Now(),
-		workspace:   workspace,
+		deployment:   deployment,
+		gcpJobID:     gcpJobID,
+		id:           id,
+		metadataURL:  "",
+		status:       StatusPending,
+		batchStatus:  &pending,
+		workerStatus: nil,
+		startedAt:    time.Now(),
+		workspace:    workspace,
 	}
 }
 
@@ -63,7 +68,40 @@ func (j *Job) GCPJobID() string {
 }
 
 func (j *Job) Status() Status {
-	return j.status
+	if j.batchStatus == nil && j.workerStatus == nil {
+		return j.status // Use legacy status field
+	}
+
+	if j.workerStatus == nil && j.batchStatus != nil {
+		return *j.batchStatus
+	}
+
+	if j.batchStatus == nil && j.workerStatus != nil {
+		return *j.workerStatus
+	}
+
+	// Both available - apply AND logic
+	if *j.batchStatus == StatusFailed || *j.workerStatus == StatusFailed {
+		return StatusFailed
+	}
+
+	if *j.batchStatus == StatusCompleted && *j.workerStatus == StatusCompleted {
+		return StatusCompleted
+	}
+
+	if *j.batchStatus == StatusCancelled {
+		return StatusCancelled
+	}
+
+	return StatusRunning
+}
+
+func (j *Job) BatchStatus() *Status {
+	return j.batchStatus
+}
+
+func (j *Job) WorkerStatus() *Status {
+	return j.workerStatus
 }
 
 func (j *Job) StartedAt() time.Time {
@@ -148,4 +186,12 @@ func (j *Job) SetMetadataURL(metadataURL string) {
 
 func (j *Job) SetOutputURLs(outputURLs []string) {
 	j.outputURLs = outputURLs
+}
+
+func (j *Job) SetBatchStatus(batchStatus Status) {
+	j.batchStatus = &batchStatus
+}
+
+func (j *Job) SetWorkerStatus(workerStatus Status) {
+	j.workerStatus = &workerStatus
 }
