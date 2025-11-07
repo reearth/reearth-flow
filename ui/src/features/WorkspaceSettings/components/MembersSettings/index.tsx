@@ -32,7 +32,7 @@ const MembersSettings: React.FC = () => {
   const [email, setEmail] = useState<string>("");
   const [currentFilter, setFilter] = useState<string>("all");
   const [error, setError] = useState<string | undefined>();
-
+  const [currentPage, setCurrentPage] = useState<number>(1);
   const handleSortChange = useCallback((newSortValue: string) => {
     setFilter(newSortValue);
   }, []);
@@ -47,13 +47,22 @@ const MembersSettings: React.FC = () => {
     { value: Role.Writer, label: t("Writer") },
   ];
 
-  const members = currentWorkspace?.members?.filter(
-    (m) =>
-      "userId" in m &&
-      (currentFilter === "all" || m.role === currentFilter) &&
-      (m.user?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        m.user?.email.toLowerCase().includes(searchTerm.toLowerCase())),
-  ) as UserMember[];
+  const filteredMembers =
+    (currentWorkspace?.members?.filter(
+      (m) =>
+        "userId" in m &&
+        (currentFilter === "all" || m.role === currentFilter) &&
+        (m.user?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          m.user?.email.toLowerCase().includes(searchTerm.toLowerCase())),
+    ) as UserMember[]) || [];
+
+  const resultsPerPage = 12;
+  const totalPages = Math.ceil(filteredMembers.length / resultsPerPage);
+
+  const members = filteredMembers.slice(
+    (currentPage - 1) * resultsPerPage,
+    currentPage * resultsPerPage,
+  );
 
   const [openMemberAddDialog, setOpenMemberAddDialog] =
     useState<boolean>(false);
@@ -180,11 +189,16 @@ const MembersSettings: React.FC = () => {
             columns={columns}
             data={members}
             selectColumns
+            enablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            resultsPerPage={resultsPerPage}
             showFiltering
             showOrdering
             currentSortValue={currentFilter}
             sortOptions={filters}
             onSortChange={handleSortChange}
+            setCurrentPage={setCurrentPage}
             setSearchTerm={setSearchTerm}
           />
         </div>
