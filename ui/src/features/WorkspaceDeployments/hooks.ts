@@ -23,6 +23,9 @@ export default () => {
   const [deploymentToBeDeleted, setDeploymentToBeDeleted] = useState<
     Deployment | undefined
   >(undefined);
+  const [deploymentToBeRun, setDeploymentToBeRun] = useState<
+    Deployment | undefined
+  >(undefined);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [currentOrderBy, setCurrentOrderBy] = useState<DeploymentOrderBy>(
     DeploymentOrderBy.UpdatedAt,
@@ -139,12 +142,17 @@ export default () => {
     ],
   );
 
-  const handleDeploymentRun = useCallback(
+  const handleDeploymentRun = useCallback((deployment?: Deployment) => {
+    if (deployment) {
+      setDeploymentToBeRun(deployment);
+    }
+  }, []);
+
+  const handleDeploymentRunConfirmed = useCallback(
     async (deployment?: Deployment) => {
-      const d = deployment;
-      if (!d || !currentWorkspace) return;
+      if (!currentWorkspace || !deployment) return;
       const jobData = await executeDeployment({
-        deploymentId: d.id,
+        deploymentId: deployment.id,
       });
       if (jobData) {
         navigate({
@@ -159,6 +167,7 @@ export default () => {
     deployments,
     selectedDeployment,
     deploymentToBeDeleted,
+    deploymentToBeRun,
     openDeploymentAddDialog,
     deploymentToBeEdited,
     isDebouncingSearch,
@@ -170,10 +179,12 @@ export default () => {
     handleDeploymentSelect,
     handleDeploymentDelete,
     handleDeploymentRun,
+    handleDeploymentRunConfirmed,
     handleSortChange,
     setCurrentPage,
     setCurrentOrderDir,
     setDeploymentToBeDeleted,
+    setDeploymentToBeRun,
     setDeploymentToBeEdited,
     setOpenDeploymentAddDialog,
     setSearchTerm,

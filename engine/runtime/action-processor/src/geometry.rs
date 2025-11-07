@@ -30,6 +30,7 @@ pub(crate) mod solid_boundary_validator;
 pub(crate) mod splitter;
 pub(crate) mod surface_footprint_replacer;
 pub(crate) mod three_dimension_box_replacer;
+pub(crate) mod three_dimension_forcer;
 pub(crate) mod three_dimension_planarity_rotator;
 pub(crate) mod three_dimension_rotator;
 pub(crate) mod two_dimension_forcer;

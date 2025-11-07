@@ -173,14 +173,6 @@
       "description": "Extracts file system properties (type, size, timestamps) from files"
     },
     {
-      "name": "FileReader",
-      "description": "Reads features from a file"
-    },
-    {
-      "name": "FileWriter",
-      "description": "Write Features to Files in Various Formats"
-    },
-    {
       "name": "GeoJsonReader",
       "description": "Reads geographic features from GeoJSON files, supporting both single features and feature collections"
     },

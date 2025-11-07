@@ -17,7 +17,7 @@ import useHooks from "./hooks";
 type Props = {
   selectedDeployment: Deployment;
   setDeploymentToBeDeleted: (deployment?: Deployment) => void;
-  onDeploymentRun: (deployment?: Deployment) => Promise<void>;
+  onDeploymentRun: (deployment?: Deployment | undefined) => void;
 };
 
 const DeploymentDetails: React.FC<Props> = ({

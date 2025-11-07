@@ -1215,7 +1215,7 @@ graphs:
           let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
           building_id_attribute["uro:partID"] ?? "（なし）"
   - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
-    name: FileWriter-invalid-building-id-format
+    name: FeatureWriter-invalid-building-id-format
     type: action
     action: FeatureWriter
     with:
@@ -1309,7 +1309,7 @@ graphs:
             part_id
           }
   - id: bba483d0-9813-499e-a0f6-22874646450d
-    name: FileWriterTsv-c-bldg-01
+    name: FeatureWriterCsv-c-bldg-01
     type: action
     action: FeatureWriter
     with:
@@ -3733,9 +3733,8 @@ graphs:
   - id: b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
     name: FileWriterQcResultOk
     type: action
-    action: FileWriter
+    action: JsonWriter
     with:
-      format: json
       converter: '[]'
       output: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";

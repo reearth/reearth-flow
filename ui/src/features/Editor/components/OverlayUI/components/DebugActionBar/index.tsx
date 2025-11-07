@@ -7,7 +7,7 @@ import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
 
-import { DebugStopDialog } from "./components";
+import { DebugStartDialog, DebugStopDialog } from "./components";
 import useHooks from "./hooks";
 
 const tooltipOffset = 6;
@@ -28,6 +28,7 @@ const DebugActionBar: React.FC<Props> = ({
     jobStatus,
     debugJob,
     handleDebugRunStart,
+    handleShowDebugStartDialog,
     handleShowDebugStopDialog,
     handleDialogClose,
     handleDebugRunReset,
@@ -38,7 +39,7 @@ const DebugActionBar: React.FC<Props> = ({
       <div className="flex items-center gap-2 align-middle">
         <StartButton
           debugRunStarted={debugRunStarted}
-          onDebugRunStart={handleDebugRunStart}
+          onShowDialog={handleShowDebugStartDialog}
         />
         <IconButton
           className="shrink-0"
@@ -64,6 +65,13 @@ const DebugActionBar: React.FC<Props> = ({
           onClick={handleDebugRunReset}
         />
       </div>
+      {showDialog === "debugStart" && (
+        <DebugStartDialog
+          debugRunStarted={debugRunStarted}
+          onDialogClose={handleDialogClose}
+          onDebugRunStart={handleDebugRunStart}
+        />
+      )}
       {showDialog === "debugStop" && (
         <DebugStopDialog
           onDialogClose={handleDialogClose}
@@ -78,8 +86,8 @@ export default memo(DebugActionBar);
 
 const StartButton: React.FC<{
   debugRunStarted: boolean;
-  onDebugRunStart: () => Promise<void>;
-}> = ({ debugRunStarted, onDebugRunStart }) => {
+  onShowDialog: () => void;
+}> = ({ debugRunStarted, onShowDialog }) => {
   const t = useT();
   const [currentProject] = useCurrentProject();
 
@@ -105,6 +113,9 @@ const StartButton: React.FC<{
           ? `h-8 w-full rounded-lg bg-primary/50 px-4 ${jobStatus === "running" || jobStatus === "queued" ? "cursor-pointer" : ""}`
           : "w-[36px]"
       }`}
+      disabled={
+        debugRunStarted || jobStatus === "running" || jobStatus === "queued"
+      }
       tooltipText={jobStatus ?? t("Start debug run of workflow")}
       tooltipOffset={tooltipOffset}
       delayDuration={200}
@@ -137,7 +148,7 @@ const StartButton: React.FC<{
       onClick={
         debugRunStarted || jobStatus === "running" || jobStatus === "queued"
           ? undefined
-          : onDebugRunStart
+          : onShowDialog
       }
     />
   );
