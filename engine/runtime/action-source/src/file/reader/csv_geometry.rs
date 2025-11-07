@@ -76,13 +76,13 @@ pub fn parse_geometry(
     row: &IndexMap<String, String>,
     config: &GeometryConfig,
 ) -> Result<Geometry, String> {
-    let epsg = config.epsg.map(EpsgCode::from);
+    let epsg = config.epsg;
 
     match &config.mode {
         GeometryMode::Wkt { column } => {
             let wkt_str = row
                 .get(column)
-                .ok_or_else(|| format!("WKT column '{}' not found", column))?;
+                .ok_or_else(|| format!("WKT column '{column}' not found"))?;
             parse_wkt_geometry(wkt_str, epsg)
         }
         GeometryMode::Coordinates {
@@ -92,25 +92,25 @@ pub fn parse_geometry(
         } => {
             let x_str = row
                 .get(x_column)
-                .ok_or_else(|| format!("X column '{}' not found", x_column))?;
+                .ok_or_else(|| format!("X column '{x_column}' not found"))?;
             let y_str = row
                 .get(y_column)
-                .ok_or_else(|| format!("Y column '{}' not found", y_column))?;
+                .ok_or_else(|| format!("Y column '{y_column}' not found"))?;
 
             let x: f64 = x_str
                 .parse()
-                .map_err(|_| format!("Invalid X coordinate: {}", x_str))?;
+                .map_err(|_| format!("Invalid X coordinate: {x_str}"))?;
             let y: f64 = y_str
                 .parse()
-                .map_err(|_| format!("Invalid Y coordinate: {}", y_str))?;
+                .map_err(|_| format!("Invalid Y coordinate: {y_str}"))?;
 
             if let Some(z_col) = z_column {
                 let z_str = row
                     .get(z_col)
-                    .ok_or_else(|| format!("Z column '{}' not found", z_col))?;
+                    .ok_or_else(|| format!("Z column '{z_col}' not found"))?;
                 let z: f64 = z_str
                     .parse()
-                    .map_err(|_| format!("Invalid Z coordinate: {}", z_str))?;
+                    .map_err(|_| format!("Invalid Z coordinate: {z_str}"))?;
 
                 Ok(Geometry {
                     epsg,
@@ -137,11 +137,11 @@ fn parse_wkt_geometry(wkt_str: &str, epsg: Option<EpsgCode>) -> Result<Geometry,
 
     // Parse WKT string
     let wkt: wkt::Wkt<f64> =
-        wkt::Wkt::from_str(wkt_str).map_err(|e| format!("Failed to parse WKT: {}", e))?;
+        wkt::Wkt::from_str(wkt_str).map_err(|e| format!("Failed to parse WKT: {e}"))?;
 
     // Convert WKT geometry to geo_types
     let geo_geom: geo_types::Geometry<f64> = geo_types::Geometry::try_from(wkt)
-        .map_err(|e| format!("Failed to convert WKT to geometry: {:?}", e))?;
+        .map_err(|e| format!("Failed to convert WKT to geometry: {e:?}"))?;
 
     // Convert geo_types to Flow geometry
     convert_geo_to_flow(geo_geom, epsg)
@@ -242,6 +242,6 @@ fn convert_geo_to_flow(
         GeoGeometry::GeometryCollection(_) => {
             Err("GeometryCollection is not yet supported in CSV reader".to_string())
         }
-        _ => Err(format!("Unsupported geometry type: {:?}", geo_geom)),
+        _ => Err(format!("Unsupported geometry type: {geo_geom:?}")),
     }
 }

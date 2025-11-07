@@ -55,7 +55,7 @@ pub(crate) async fn read_csv(
         // Parse geometry if config is provided and get column names to exclude
         let (geometry, excluded_columns) = if let Some(geom_config) = &props.geometry {
             let geom = super::csv_geometry::parse_geometry(&row_map, geom_config).map_err(|e| {
-                crate::errors::SourceError::CsvFileReader(format!("Geometry parse error: {}", e))
+                crate::errors::SourceError::CsvFileReader(format!("Geometry parse error: {e}"))
             })?;
             let excluded = super::csv_geometry::get_geometry_column_names(geom_config);
             (geom, excluded)
