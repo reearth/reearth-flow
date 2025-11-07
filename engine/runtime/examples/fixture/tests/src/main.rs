@@ -330,9 +330,7 @@ impl TestContext {
 
         let action_log_path = working_dir.join("action-log");
         fs::create_dir_all(&action_log_path)?;
-        let ingress_state_path = self.temp_dir.join("ingress-store");
-        fs::create_dir_all(&ingress_state_path)?;
-        let feature_state_path = self.temp_dir.join("feature-store");
+        let feature_state_path = working_dir.join("feature-store");
         fs::create_dir_all(&feature_state_path)?;
 
         let logger_factory = Arc::new(LoggerFactory::new(
@@ -341,12 +339,10 @@ impl TestContext {
         ));
 
         let storage_resolver = Arc::new(StorageResolver::new());
-        let ingress_state_uri = format!("file://{}", ingress_state_path.display());
-        let ingress_state_uri = reearth_flow_common::uri::Uri::from_str(&ingress_state_uri)?;
-        let ingress_state = Arc::new(State::new(&ingress_state_uri, &storage_resolver).unwrap());
         let feature_state_uri = format!("file://{}", feature_state_path.display());
         let feature_state_uri = reearth_flow_common::uri::Uri::from_str(&feature_state_uri)?;
         let feature_state = Arc::new(State::new(&feature_state_uri, &storage_resolver).unwrap());
+        let ingress_state = Arc::clone(&feature_state);
 
         // Run workflow
         Runner::run(

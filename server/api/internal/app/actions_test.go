@@ -83,9 +83,9 @@ func TestListActions(t *testing.T) {
 func TestGetSegregatedActions(t *testing.T) {
 	testActions := []Action{
 		{
-			Name:        "FileWriter",
+			Name:        "CsvWriter",
 			Type:        ActionTypeSink,
-			Description: "Writes features to a file",
+			Description: "Writes features to a CSV file",
 			Categories:  []string{"File"},
 		},
 		{

@@ -57,11 +57,10 @@ graphs:
             env.get("__value").csvPath
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
-        name: FileWriter
+        name: JsonWriter
         type: action
-        action: FileWriter
+        action: JsonWriter
         with:
-          format: json
           output: |
             file::join_path(env.get("workerArtifactPath"), env.get("outputPath"))
 

@@ -676,7 +676,7 @@ graphs:
   - id: 25e5965f-0d1d-400a-82c8-f6b82f31c2db
     name: FileTSVWriter-l-tran-03
     type: action
-    action: FileWriter
+    action: CsvWriter
     with:
       format: tsv
       output: |
@@ -915,7 +915,7 @@ graphs:
   - id: 232e98e5-f320-48ab-8573-a04c1451c2fb
     name: FileWriterTsvAdjacentSurfaceOverlap
     type: action
-    action: FileWriter
+    action: CsvWriter
     with:
       format: tsv
       output: |
@@ -972,7 +972,7 @@ graphs:
   - id: 8efcd690-c0b0-4d26-b8ff-8b1281440286
     name: FileWriterTsvCreateResult
     type: action
-    action: FileWriter
+    action: CsvWriter
     with:
       format: tsv
       output: |

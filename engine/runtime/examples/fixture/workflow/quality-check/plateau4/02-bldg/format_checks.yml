@@ -14,8 +14,8 @@ nodes:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
         - newAttribute: Building
           expr: |
@@ -338,8 +338,8 @@ nodes:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
         - newAttribute: _num_incorrect_city_code
           expr: "1"
@@ -356,8 +356,8 @@ nodes:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
         - newAttribute: _num_incorrect_usage_attribute
           expr: "1"
@@ -434,7 +434,7 @@ nodes:
             building_id_attribute["uro:partID"] ?? "（なし）"
 
   - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
-    name: FileWriter-invalid-building-id-format
+    name: FeatureWriter-invalid-building-id-format
     type: action
     action: FeatureWriter
     with:
@@ -534,7 +534,7 @@ nodes:
             }
 
   - id: bba483d0-9813-499e-a0f6-22874646450d
-    name: FileWriterTsv-c-bldg-01
+    name: FeatureWriterCsv-c-bldg-01
     type: action
     action: FeatureWriter
     with:
@@ -547,8 +547,8 @@ nodes:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
         - newAttribute: _num_duplicate_building_id
           expr: "1"
@@ -565,8 +565,8 @@ nodes:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
         - newAttribute: _num_missing_building_id
           expr: "1"
@@ -782,13 +782,13 @@ edges:
     toPort: default
 
   - id: 3d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
-    from: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f  # FileWriter-invalid-building-id-format
+    from: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f  # FeatureWriter-invalid-building-id-format
     fromPort: default
     to: 9a0b1c2d-3e4f-5a6b-7c8d-9e0f1a2b3c4d  # FileOutputRouter
     toPort: default
 
   - id: 4e5f6a7b-8c9d-0e1f-2a3b-4c5d6e7f8a9b
-    from: bba483d0-9813-499e-a0f6-22874646450d  # FileWriterTsv-c-bldg-01
+    from: bba483d0-9813-499e-a0f6-22874646450d  # FeatureWriterCsv-c-bldg-01
     fromPort: default
     to: 9a0b1c2d-3e4f-5a6b-7c8d-9e0f1a2b3c4d  # FileOutputRouter
     toPort: default
