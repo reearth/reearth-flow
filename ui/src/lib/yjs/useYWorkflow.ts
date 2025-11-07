@@ -269,6 +269,29 @@ export default ({
             { routerId: string; portName: string }
           >();
 
+          // First pass: count how many internal nodes connect to each external handle
+          const inputRouterConnectionCounts = new Map<string, number>();
+          const outputRouterConnectionCounts = new Map<string, number>();
+
+          boundaryEdges.forEach((edge) => {
+            const sourceSelected = allIncludedNodeIds.has(edge.source);
+            const targetSelected = allIncludedNodeIds.has(edge.target);
+
+            if (!sourceSelected && targetSelected) {
+              const inputRouterKey = `${edge.source}:${edge.sourceHandle ?? "default"}`;
+              inputRouterConnectionCounts.set(
+                inputRouterKey,
+                (inputRouterConnectionCounts.get(inputRouterKey) || 0) + 1,
+              );
+            } else if (sourceSelected && !targetSelected) {
+              const outputRouterKey = `${edge.target}:${edge.targetHandle ?? "default"}`;
+              outputRouterConnectionCounts.set(
+                outputRouterKey,
+                (outputRouterConnectionCounts.get(outputRouterKey) || 0) + 1,
+              );
+            }
+          });
+
           boundaryEdges.forEach((edge) => {
             const sourceSelected = allIncludedNodeIds.has(edge.source);
             const targetSelected = allIncludedNodeIds.has(edge.target);
@@ -284,24 +307,30 @@ export default ({
               if (!inputRouterInfo) {
                 const inputRouterId = generateUUID();
 
-                // ✅ use internal target node name for readability + instance numbering
-                const targetNodeName =
-                  nodeTarget?.data.officialName ?? nodeTarget?.id ?? "input";
-                const targetHandle = edge.targetHandle ?? "default";
-                const instanceNum = nodeInstanceNumbers.get(edge.target);
+                // Check if multiple internal nodes connect to this external handle
+                const connectionCount =
+                  inputRouterConnectionCounts.get(inputRouterKey) || 1;
+                const hasMultipleConnections = connectionCount > 1;
 
-                let portName =
-                  targetHandle === "default"
-                    ? DEFAULT_ROUTING_PORT
-                    : targetNodeName;
-                if (
-                  instanceNum !== undefined &&
-                  portName !== DEFAULT_ROUTING_PORT
-                ) {
-                  portName += `-${instanceNum}`;
-                }
-                if (targetHandle !== "default" && portName !== targetHandle) {
-                  portName += `-${targetHandle}`;
+                const targetHandle = edge.targetHandle ?? "default";
+                let portName: string;
+
+                if (hasMultipleConnections || targetHandle === "default") {
+                  // Use generic name when multiple connections or default handle
+                  portName = DEFAULT_ROUTING_PORT;
+                } else {
+                  // Use internal target node name for single connection
+                  const targetNodeName =
+                    nodeTarget?.data.officialName ?? nodeTarget?.id ?? "input";
+                  const instanceNum = nodeInstanceNumbers.get(edge.target);
+
+                  portName = targetNodeName;
+                  if (instanceNum !== undefined) {
+                    portName += `-${instanceNum}`;
+                  }
+                  if (portName !== targetHandle) {
+                    portName += `-${targetHandle}`;
+                  }
                 }
 
                 const inputRouter: Node = {
@@ -355,24 +384,30 @@ export default ({
               if (!outputRouterInfo) {
                 const outputRouterId = generateUUID();
 
-                // ✅ use internal source node name for readability + instance numbering
-                const sourceNodeName =
-                  nodeSource?.data.officialName ?? nodeSource?.id ?? "output";
-                const sourceHandle = edge.sourceHandle ?? "default";
-                const instanceNum = nodeInstanceNumbers.get(edge.source);
+                // Check if multiple internal nodes connect to this external handle
+                const connectionCount =
+                  outputRouterConnectionCounts.get(outputRouterKey) || 1;
+                const hasMultipleConnections = connectionCount > 1;
 
-                let portName =
-                  sourceHandle === "default"
-                    ? DEFAULT_ROUTING_PORT
-                    : sourceNodeName;
-                if (
-                  instanceNum !== undefined &&
-                  portName !== DEFAULT_ROUTING_PORT
-                ) {
-                  portName += `-${instanceNum}`;
-                }
-                if (sourceHandle !== "default" && portName !== sourceHandle) {
-                  portName += `-${sourceHandle}`;
+                const sourceHandle = edge.sourceHandle ?? "default";
+                let portName: string;
+
+                if (hasMultipleConnections || sourceHandle === "default") {
+                  // Use generic name when multiple connections or default handle
+                  portName = DEFAULT_ROUTING_PORT;
+                } else {
+                  // Use internal source node name for single connection
+                  const sourceNodeName =
+                    nodeSource?.data.officialName ?? nodeSource?.id ?? "output";
+                  const instanceNum = nodeInstanceNumbers.get(edge.source);
+
+                  portName = sourceNodeName;
+                  if (instanceNum !== undefined) {
+                    portName += `-${instanceNum}`;
+                  }
+                  if (portName !== sourceHandle) {
+                    portName += `-${sourceHandle}`;
+                  }
                 }
 
                 const outputRouter: Node = {
