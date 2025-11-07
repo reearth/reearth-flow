@@ -47,6 +47,10 @@ func (m *mockLogGateway) GetJobCompleteEvent(ctx context.Context, jobID id.JobID
 	return nil, nil
 }
 
+func (m *mockLogGateway) DeleteJobCompleteEvent(ctx context.Context, jobID id.JobID) error {
+	return nil
+}
+
 type mockJobRepo struct {
 	job *job.Job
 	err error

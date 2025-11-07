@@ -23,4 +23,5 @@ type Redis interface {
 	GetNodeExecutions(ctx context.Context, jobID id.JobID) ([]*graph.NodeExecution, error)
 	GetNodeExecution(ctx context.Context, jobID id.JobID, nodeID string) (*graph.NodeExecution, error)
 	GetJobCompleteEvent(ctx context.Context, jobID id.JobID) (*JobCompleteEvent, error)
+	DeleteJobCompleteEvent(ctx context.Context, jobID id.JobID) error
 }

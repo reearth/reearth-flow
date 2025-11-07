@@ -31,10 +31,18 @@ func (r *redisLog) GetJobCompleteEvent(ctx context.Context, jobID id.JobID) (*ga
 		return nil, fmt.Errorf("failed to unmarshal: %w", err)
 	}
 
-	if err := r.client.Del(ctx, key).Err(); err != nil {
-		log.Warnf("Failed to delete job complete event key: %v", err)
-	}
-
 	log.Debugfc(ctx, "Retrieved job complete event from Redis for jobID=%s, result=%s", jobID.String(), event.Result)
 	return &event, nil
+}
+
+func (r *redisLog) DeleteJobCompleteEvent(ctx context.Context, jobID id.JobID) error {
+	key := fmt.Sprintf("job_complete:%s", jobID.String())
+
+	if err := r.client.Del(ctx, key).Err(); err != nil {
+		log.Errorfc(ctx, "Failed to delete job complete event key for jobID=%s: %v", jobID.String(), err)
+		return fmt.Errorf("failed to delete from Redis: %w", err)
+	}
+
+	log.Debugfc(ctx, "Deleted job complete event from Redis for jobID=%s", jobID.String())
+	return nil
 }

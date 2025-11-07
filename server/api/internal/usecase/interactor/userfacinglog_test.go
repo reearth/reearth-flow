@@ -44,6 +44,10 @@ func (m *mockUserFacingLogGateway) GetJobCompleteEvent(ctx context.Context, jobI
 	return nil, nil
 }
 
+func (m *mockUserFacingLogGateway) DeleteJobCompleteEvent(ctx context.Context, jobID id.JobID) error {
+	return nil
+}
+
 func TestNewUserFacingLogInteractor(t *testing.T) {
 	t.Run("successfully create UserFacingLogInteractor", func(t *testing.T) {
 		redisMock := &mockUserFacingLogGateway{}

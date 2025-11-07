@@ -345,6 +345,14 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 		}
 
 		tx.Commit()
+
+		// Delete Redis key only after successful DB commit
+		if workerEvent != nil {
+			if err := i.redis.DeleteJobCompleteEvent(ctx, currentJob.ID()); err != nil {
+				log.Warnf("Failed to delete job complete event from Redis for job %s: %v", currentJob.ID(), err)
+			}
+		}
+
 		i.subscriptions.Notify(currentJob.ID().String(), currentJob.Status())
 	}
 
