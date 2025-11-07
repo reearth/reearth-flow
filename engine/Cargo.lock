@@ -6112,6 +6112,7 @@ dependencies = [
  "bytes",
  "csv",
  "futures",
+ "geo-types",
  "geojson",
  "gltf",
  "indexmap 2.12.0",
@@ -6144,6 +6145,7 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
+ "wkt",
  "zip 2.4.2",
 ]
 
@@ -10171,6 +10173,18 @@ name = "wit-bindgen"
 version = "0.46.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f17a85883d4e6d00e8a97c586de764dabcc06133f7f1d55dce5cdc070ad7fe59"
+
+[[package]]
+name = "wkt"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54f7f1ff4ea4c18936d6cd26a6fd24f0003af37e951a8e0e8b9e9a2d0bd0a46d"
+dependencies = [
+ "geo-types",
+ "log",
+ "num-traits",
+ "thiserror 1.0.69",
+]
 
 [[package]]
 name = "workflow-tests"

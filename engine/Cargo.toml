@@ -245,5 +245,6 @@ uuid = { version = "1.15.1", features = [
 ] }
 wait-timeout = "0.2"
 walkdir = "2.5.0"
+wkt = "0.11.0"
 zip = "2.2.3"
 zstd = "0.13.3"
