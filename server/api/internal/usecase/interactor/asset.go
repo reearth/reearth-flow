@@ -188,7 +188,6 @@ func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam) (re
 
 			return a, nil
 		})
-
 	if err != nil {
 		return nil, err
 	}
