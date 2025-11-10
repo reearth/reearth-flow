@@ -48,16 +48,16 @@ func createTestDeployment(t *testing.T, e *httpexpect.Expect) string {
 
 	operations := map[string]interface{}{
 		"query": `
-            mutation($input: CreateDeploymentInput!) {
-                createDeployment(input: $input) {
-                    deployment {
-                        id
-                        workspaceId
-                        description
-                    }
-                }
-            }
-        `,
+			mutation($input: CreateDeploymentInput!) {
+				createDeployment(input: $input) {
+					deployment {
+						id
+						workspaceId
+						description
+					}
+				}
+			}
+		`,
 		"variables": map[string]interface{}{
 			"input": map[string]interface{}{
 				"workspaceId": wId1.String(),
@@ -77,9 +77,9 @@ func createTestDeployment(t *testing.T, e *httpexpect.Expect) string {
 	assert.NoError(t, err)
 
 	workflowContent := `{
-        "name": "Test Workflow",
-        "version": "1.0",
-        "steps": []
+		"name": "Test Workflow",
+		"version": "1.0",
+		"steps": []
     }`
 	part, err := w.CreateFormFile("0", "workflow.json")
 	assert.NoError(t, err)
@@ -232,11 +232,11 @@ func TestUpdateTrigger(t *testing.T) {
 
 	deploymentId := createTestDeployment(t, e)
 	query := `mutation($input: CreateTriggerInput!) {
-        createTrigger(input: $input) {
-            id
-            deploymentId
-        }
-    }`
+		createTrigger(input: $input) {
+			id
+			deploymentId
+		}
+	}`
 
 	variables := map[string]interface{}{
 		"input": map[string]interface{}{
@@ -371,16 +371,16 @@ func TestCreateAPIDrivenTrigger(t *testing.T) {
 	assert.NotEmpty(t, deploymentId)
 
 	query := `mutation($input: CreateTriggerInput!) {
-        createTrigger(input: $input) {
-            id
-            workspaceId
-            deploymentId
-            description
-            eventSource
-            authToken
-            variables
-        }
-    }`
+		createTrigger(input: $input) {
+			id
+			workspaceId
+			deploymentId
+			description
+			eventSource
+			authToken
+			variables
+		}
+	}`
 
 	variables := map[string]interface{}{
 		"input": map[string]interface{}{
