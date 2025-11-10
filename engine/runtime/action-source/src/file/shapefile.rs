@@ -30,7 +30,7 @@ use serde_json::Value;
 use tokio::sync::mpsc::Sender;
 
 use crate::{
-    errors::SourceError,
+    errors::{ShapefileError, SourceError},
     file::reader::runner::{get_content, FileReaderCommonParam},
 };
 
@@ -168,9 +168,7 @@ async fn read_shapefile(
     let shapes_and_records = if is_zip_file(content) {
         read_shapefile_from_zip(content, &params.encoding)?
     } else {
-        return Err(crate::errors::SourceError::ShapefileReader(
-            "Direct shapefile bytes not supported. Please provide a ZIP archive containing the shapefile components (.shp, .dbf, .shx)".to_string()
-        ));
+        return Err(ShapefileError::DirectBytesNotSupported.into());
     };
 
     for (shape, record) in shapes_and_records {
@@ -189,9 +187,7 @@ async fn read_shapefile(
                 IngestionMessage::OperationEvent { feature },
             ))
             .await
-            .map_err(|e| {
-                crate::errors::SourceError::ShapefileReader(format!("Failed to send feature: {e}"))
-            })?;
+            .map_err(|_| ShapefileError::FeatureSendError)?;
     }
 
     Ok(())
@@ -203,10 +199,13 @@ fn is_zip_file(content: &Bytes) -> bool {
 
 /// Parse encoding string from .cpg file content
 fn parse_cpg_encoding(cpg_data: &[u8]) -> Option<String> {
-    std::str::from_utf8(cpg_data)
-        .ok()
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
+    let s = String::from_utf8_lossy(cpg_data);
+    let trimmed = s.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
 }
 
 /// Resolve the encoding to use, with priority: parameter > .cpg file > default
@@ -248,19 +247,16 @@ fn create_dbase_reader<T: std::io::Read + std::io::Seek>(
                 source,
                 shapefile::dbase::encoding::UnicodeLossy,
             )
-            .map_err(|e| {
-                crate::errors::SourceError::ShapefileReader(format!(
-                    "Failed to create dbase reader with UnicodeLossy encoding: {e}"
-                ))
+            .map_err(|_| {
+                ShapefileError::DbaseReaderCreationError {
+                    encoding: "UnicodeLossy".to_string(),
+                }
+                .into()
             })
         }
         "UTF-16" | "UTF16" | "UTF-16LE" | "UTF-16BE" => {
             // UTF-16 requires different byte-level handling and is not supported
-            Err(crate::errors::SourceError::ShapefileReader(
-                "UTF-16 encoding is not supported. DBF files with UTF-16 require different byte-level decoding. \
-                Please convert the shapefile to UTF-8 encoding using a tool like ogr2ogr: \
-                ogr2ogr -f \"ESRI Shapefile\" output.shp input.shp -lco ENCODING=UTF-8".to_string()
-            ))
+            Err(ShapefileError::Utf16NotSupported.into())
         }
         _ => {
             // For other encodings, fall back to UnicodeLossy with a warning
@@ -273,10 +269,11 @@ fn create_dbase_reader<T: std::io::Read + std::io::Seek>(
                 source,
                 shapefile::dbase::encoding::UnicodeLossy,
             )
-            .map_err(|e| {
-                crate::errors::SourceError::ShapefileReader(format!(
-                    "Failed to create dbase reader with fallback encoding: {e}"
-                ))
+            .map_err(|_| {
+                ShapefileError::DbaseReaderCreationError {
+                    encoding: "fallback UnicodeLossy".to_string(),
+                }
+                .into()
             })
         }
     }
@@ -287,16 +284,12 @@ fn read_shapefile_from_zip(
     encoding_param: &Option<String>,
 ) -> Result<Vec<(shapefile::Shape, shapefile::dbase::Record)>, crate::errors::SourceError> {
     let cursor = Cursor::new(content.as_ref());
-    let mut archive = zip::ZipArchive::new(cursor).map_err(|e| {
-        crate::errors::SourceError::ShapefileReader(format!("Failed to read ZIP archive: {e}"))
-    })?;
+    let mut archive = zip::ZipArchive::new(cursor).map_err(|_| ShapefileError::ZipReadError)?;
 
     let mut shapefile_groups: HashMap<String, ShapefileComponents> = HashMap::new();
 
     for i in 0..archive.len() {
-        let mut file = archive.by_index(i).map_err(|e| {
-            crate::errors::SourceError::ShapefileReader(format!("Failed to read ZIP entry: {e}"))
-        })?;
+        let mut file = archive.by_index(i).map_err(|_| ShapefileError::ZipEntryReadError)?;
 
         let file_name = file.name().to_string();
 
@@ -330,9 +323,8 @@ fn read_shapefile_from_zip(
         };
 
         let mut buffer = Vec::new();
-        file.read_to_end(&mut buffer).map_err(|e| {
-            crate::errors::SourceError::ShapefileReader(format!("Failed to read ZIP entry: {e}"))
-        })?;
+        file.read_to_end(&mut buffer)
+            .map_err(|_| ShapefileError::ZipEntryReadError)?;
 
         let components = shapefile_groups.entry(base_name).or_default();
 
@@ -352,12 +344,7 @@ fn read_shapefile_from_zip(
     let (base_name, components) = shapefile_groups
         .into_iter()
         .find(|(_, comp)| comp.shp.is_some() && comp.dbf.is_some())
-        .ok_or_else(|| {
-            crate::errors::SourceError::ShapefileReader(
-                "No complete shapefile found in ZIP archive (needs both .shp and .dbf files)"
-                    .to_string(),
-            )
-        })?;
+        .ok_or(ShapefileError::MissingComponents)?;
 
     tracing::info!("Processing shapefile: {}", base_name);
 
@@ -369,9 +356,8 @@ fn read_shapefile_from_zip(
 
     let shp_cursor = Cursor::new(shp_data);
     let dbf_cursor = Cursor::new(dbf_data);
-    let shape_reader = shapefile::ShapeReader::new(shp_cursor).map_err(|e| {
-        crate::errors::SourceError::ShapefileReader(format!("Failed to create shape reader: {e}"))
-    })?;
+    let shape_reader =
+        shapefile::ShapeReader::new(shp_cursor).map_err(|_| ShapefileError::ShapeReaderCreationError)?;
 
     // Create dbase reader with resolved encoding
     let dbase_reader = create_dbase_reader(dbf_cursor, &encoding)?;
@@ -380,11 +366,8 @@ fn read_shapefile_from_zip(
 
     let mut shapes_and_records = Vec::new();
     for result in reader.iter_shapes_and_records() {
-        let (shape, record) = result.map_err(|e| {
-            crate::errors::SourceError::ShapefileReader(format!(
-                "Failed to read shape and record: {e}"
-            ))
-        })?;
+        let (shape, record) =
+            result.map_err(|_| ShapefileError::ShapeReaderCreationError)?;
         shapes_and_records.push((shape, record));
     }
 
@@ -404,9 +387,7 @@ fn process_polygon_rings_2d(
     use shapefile::PolygonRing;
 
     if rings.is_empty() {
-        return Err(crate::errors::SourceError::ShapefileReader(
-            "Polygon has no rings".to_string(),
-        ));
+        return Err(ShapefileError::PolygonNoRings.into());
     }
 
     let mut polygon_data = Vec::new();
@@ -440,9 +421,7 @@ fn process_polygon_rings_2d(
     }
 
     if polygon_data.is_empty() {
-        return Err(crate::errors::SourceError::ShapefileReader(
-            "Polygon has no outer rings".to_string(),
-        ));
+        return Err(ShapefileError::PolygonNoOuterRings.into());
     }
 
     Ok(polygon_data)
@@ -454,9 +433,7 @@ fn process_polygonz_rings_2d(
     use shapefile::PolygonRing;
 
     if rings.is_empty() {
-        return Err(crate::errors::SourceError::ShapefileReader(
-            "Polygon has no rings".to_string(),
-        ));
+        return Err(ShapefileError::PolygonNoRings.into());
     }
 
     let mut polygon_data = Vec::new();
@@ -490,9 +467,7 @@ fn process_polygonz_rings_2d(
     }
 
     if polygon_data.is_empty() {
-        return Err(crate::errors::SourceError::ShapefileReader(
-            "Polygon has no outer rings".to_string(),
-        ));
+        return Err(ShapefileError::PolygonNoOuterRings.into());
     }
 
     Ok(polygon_data)
@@ -504,9 +479,7 @@ fn process_polygon_rings_3d(
     use shapefile::PolygonRing;
 
     if rings.is_empty() {
-        return Err(crate::errors::SourceError::ShapefileReader(
-            "Polygon has no rings".to_string(),
-        ));
+        return Err(ShapefileError::PolygonNoRings.into());
     }
 
     let mut polygon_data = Vec::new();
@@ -540,9 +513,7 @@ fn process_polygon_rings_3d(
     }
 
     if polygon_data.is_empty() {
-        return Err(crate::errors::SourceError::ShapefileReader(
-            "Polygon has no outer rings".to_string(),
-        ));
+        return Err(ShapefileError::PolygonNoOuterRings.into());
     }
 
     Ok(polygon_data)
@@ -756,9 +727,10 @@ fn convert_shape_to_geometry(
             }
         }
         _ => {
-            return Err(crate::errors::SourceError::ShapefileReader(
-                "Unsupported shape type".to_string(),
-            ))
+            return Err(ShapefileError::UnsupportedShapeType(
+                "Unknown or unsupported shape type".to_string(),
+            )
+            .into())
         }
     };
 

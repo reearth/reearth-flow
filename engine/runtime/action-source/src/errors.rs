@@ -50,6 +50,34 @@ pub enum SourceError {
     SqlReader(String),
     #[error("Geometry parsing error: {0}")]
     GeometryParsing(#[from] GeometryParsingError),
+    #[error("Shapefile processing error: {0}")]
+    ShapefileProcessing(#[from] ShapefileError),
+}
+
+#[derive(Error, Debug)]
+pub enum ShapefileError {
+    #[error("Failed to read ZIP archive")]
+    ZipReadError,
+    #[error("Failed to read ZIP entry")]
+    ZipEntryReadError,
+    #[error("No complete shapefile found in ZIP archive (needs both .shp and .dbf files)")]
+    MissingComponents,
+    #[error("Direct shapefile bytes not supported. Please provide a ZIP archive containing the shapefile components (.shp, .dbf, .shx)")]
+    DirectBytesNotSupported,
+    #[error("Failed to create shape reader")]
+    ShapeReaderCreationError,
+    #[error("Failed to create dbase reader with {encoding} encoding")]
+    DbaseReaderCreationError { encoding: String },
+    #[error("UTF-16 encoding is not supported. DBF files with UTF-16 require different byte-level decoding. Please convert the shapefile to UTF-8 encoding using a tool like ogr2ogr: ogr2ogr -f \"ESRI Shapefile\" output.shp input.shp -lco ENCODING=UTF-8")]
+    Utf16NotSupported,
+    #[error("Failed to send feature")]
+    FeatureSendError,
+    #[error("Unsupported shape type: {0}")]
+    UnsupportedShapeType(String),
+    #[error("Polygon has no rings")]
+    PolygonNoRings,
+    #[error("Polygon has no outer rings")]
+    PolygonNoOuterRings,
 }
 
 #[derive(Error, Debug)]
