@@ -157,12 +157,25 @@ export default ({
     ],
   );
 
+  // Helper function to create a meaningful handle name
+  const getHandleName = (
+    node: Node | undefined,
+    handle: string | undefined | null,
+  ): string => {
+    if (!handle) {
+      return node?.data.officialName || node?.id || "default";
+    }
+    return handle;
+  };
+
   const handleYWorkflowAddFromSelection = useCallback(
     async (nodes: Node[], edges: Edge[]) => {
       try {
         const routers = await fetchRouterConfigs();
         undoTrackerActionWrapper(() => {
           const selectedNodes = nodes.filter((n) => n.selected);
+          if (selectedNodes.length === 0) return;
+
           const containsReadersOrWriters = selectedNodes?.some(
             (n) => n.type === "reader" || n.type === "writer",
           );
@@ -178,8 +191,6 @@ export default ({
               nodesByParentId.get(node.parentId)?.push(node);
             }
           });
-
-          if (selectedNodes.length === 0) return;
 
           const getBatchNodes = (batchId: string): Node[] =>
             nodesByParentId.get(batchId) ?? [];
@@ -202,6 +213,7 @@ export default ({
             y: Math.min(...selectedNodes.map((n) => n.position.y)),
           };
 
+          // Adjust positions to be relative to new workflow and center around initial position
           const adjustedNodes = allIncludedNodes.map((node) => ({
             ...node,
             position: node.parentId
@@ -270,17 +282,6 @@ export default ({
             { routerId: string; portName: string }
           >();
 
-          // Helper function to create a meaningful handle name
-          const getHandleName = (
-            node: Node | undefined,
-            handle: string | undefined | null,
-          ): string => {
-            if (!handle) {
-              return node?.data.officialName || node?.id || "default";
-            }
-            return handle;
-          };
-
           // First pass: count how many external sources connect to each internal target
           // and how many external targets each internal source connects to
           const inputConnectionCounts = new Map<string, number>();
@@ -317,6 +318,7 @@ export default ({
             }
           });
 
+          // Second pass: create routers and edges based on connection counts
           boundaryEdges.forEach((edge) => {
             const sourceSelected = allIncludedNodeIds.has(edge.source);
             const targetSelected = allIncludedNodeIds.has(edge.target);
@@ -339,7 +341,7 @@ export default ({
 
                 let portName: string;
 
-                // Use target node name + handle
+                // Use target node name + handle for input portname and routingPort
                 const targetNodeName =
                   nodeTarget?.data.officialName ?? nodeTarget?.id ?? "input";
                 const instanceNum = nodeInstanceNumbers.get(edge.target);
@@ -355,7 +357,7 @@ export default ({
                   type: routers.inputRouter.type as NodeType,
                   position: {
                     x: 200 + inputRoutersByInternalTarget.size * 50,
-                    y: 150,
+                    y: 150 + inputRoutersByInternalTarget.size * 50,
                   },
                   data: {
                     officialName: routers.inputRouter.name,
@@ -371,6 +373,15 @@ export default ({
                   inputRouterInfo,
                 );
                 pseudoInputs.push({ nodeId: inputRouterId, portName });
+
+                // Create internal edge ONLY when router is first created (one edge per router)
+                const internalEdge: Edge = {
+                  id: generateUUID(),
+                  source: inputRouterId,
+                  target: edge.target,
+                  targetHandle: edge.targetHandle,
+                };
+                additionalInternalEdges.push(internalEdge);
               }
 
               // Mark this boundary edge for deletion
@@ -387,15 +398,6 @@ export default ({
                 };
                 externalEdgesMap.set(externalEdgeKey, externalEdge);
               }
-
-              // Internal connection (router -> internal node)
-              const internalEdge: Edge = {
-                id: generateUUID(),
-                source: inputRouterInfo.routerId,
-                target: edge.target,
-                targetHandle: edge.targetHandle,
-              };
-              additionalInternalEdges.push(internalEdge);
             }
 
             // --- OUTPUT ROUTERS (internal -> external) ---
@@ -414,7 +416,7 @@ export default ({
 
                 let portName: string;
 
-                // Use source node name + handle
+                // Use source node name + handle for output portname and routingPort
                 const sourceNodeName =
                   nodeSource?.data.officialName ?? nodeSource?.id ?? "output";
                 const instanceNum = nodeInstanceNumbers.get(edge.source);
@@ -446,6 +448,15 @@ export default ({
                   outputRouterInfo,
                 );
                 pseudoOutputs.push({ nodeId: outputRouterId, portName });
+
+                // Create internal edge ONLY when router is first created (one edge per router)
+                const internalEdge: Edge = {
+                  id: generateUUID(),
+                  source: edge.source,
+                  target: outputRouterId,
+                  sourceHandle: edge.sourceHandle,
+                };
+                additionalInternalEdges.push(internalEdge);
               }
 
               // Mark this boundary edge for deletion
@@ -462,18 +473,10 @@ export default ({
                 };
                 externalEdgesMap.set(externalEdgeKey, externalEdge);
               }
-
-              // Internal connection (internal node -> router)
-              const internalEdge: Edge = {
-                id: generateUUID(),
-                source: edge.source,
-                target: outputRouterInfo.routerId,
-                sourceHandle: edge.sourceHandle,
-              };
-              additionalInternalEdges.push(internalEdge);
             }
           });
 
+          // Only add default routers if there are no boundary edges as it means no external connections
           const needsDefaultRouters = boundaryEdges.length === 0;
 
           const allSubworkflowNodes = [
@@ -540,6 +543,7 @@ export default ({
               const existingPseudoOutputs = nodeData?.get(
                 "pseudoOutputs",
               ) as Y.Array<any>;
+
               // Clear existing pseudo inputs/outputs as it is easier to create them from scratch than attempt to connect to the existing ones
               if (existingPseudoInputs) {
                 existingPseudoInputs.delete(0, existingPseudoInputs.length);
