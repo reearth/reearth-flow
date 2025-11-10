@@ -54,6 +54,20 @@ pub enum SinkError {
     JsonWriterFactory(String),
     #[error("Json Writer error: {0}")]
     JsonWriter(String),
+    #[error("Geometry export error: {0}")]
+    GeometryExport(#[from] GeometryExportError),
+}
+
+#[derive(Error, Debug)]
+pub enum GeometryExportError {
+    #[error("Cannot export empty geometry")]
+    EmptyGeometry,
+    #[error("Cannot export non-point geometry to coordinate columns")]
+    NonPointGeometry,
+    #[error("GeometryCollection export is not yet supported")]
+    UnsupportedGeometryCollection,
+    #[error("Geometry type export to WKT is not yet supported: {0}")]
+    UnsupportedGeometryType(String),
 }
 
 impl SinkError {

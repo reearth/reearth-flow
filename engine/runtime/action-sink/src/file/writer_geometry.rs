@@ -1,3 +1,4 @@
+use crate::errors::GeometryExportError;
 use indexmap::IndexMap;
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_types::{Geometry, GeometryValue};
@@ -68,7 +69,7 @@ pub fn get_geometry_column_names(config: &GeometryExportConfig) -> Vec<String> {
 pub fn export_geometry(
     geometry: &Geometry,
     config: &GeometryExportConfig,
-) -> Result<IndexMap<String, String>, String> {
+) -> Result<IndexMap<String, String>, GeometryExportError> {
     let mut columns = IndexMap::new();
 
     match &config.mode {
@@ -96,18 +97,20 @@ pub fn export_geometry(
 }
 
 /// Convert Flow geometry to WKT string
-pub fn geometry_to_wkt(geometry: &Geometry) -> Result<String, String> {
+pub fn geometry_to_wkt(geometry: &Geometry) -> Result<String, GeometryExportError> {
     match &geometry.value {
         GeometryValue::None => Ok(String::new()),
         GeometryValue::FlowGeometry2D(geom) => geometry_2d_to_wkt(geom),
         GeometryValue::FlowGeometry3D(geom) => geometry_3d_to_wkt(geom),
         GeometryValue::CityGmlGeometry(_) => {
-            Err("CityGML geometry export to WKT is not supported".to_string())
+            Err(GeometryExportError::UnsupportedGeometryType(
+                "CityGML geometry".to_string(),
+            ))
         }
     }
 }
 
-fn geometry_2d_to_wkt(geom: &Geometry2D) -> Result<String, String> {
+fn geometry_2d_to_wkt(geom: &Geometry2D) -> Result<String, GeometryExportError> {
     match geom {
         Geometry2D::Point(pt) => Ok(format!("POINT({} {})", pt.x(), pt.y())),
         Geometry2D::LineString(ls) => {
@@ -206,20 +209,18 @@ fn geometry_2d_to_wkt(geom: &Geometry2D) -> Result<String, String> {
             wkt.push(')');
             Ok(wkt)
         }
-        Geometry2D::GeometryCollection(_) => {
-            Err("GeometryCollection export is not yet supported".to_string())
-        }
+        Geometry2D::GeometryCollection(_) => Err(GeometryExportError::UnsupportedGeometryCollection),
         Geometry2D::Line(_)
         | Geometry2D::Rect(_)
         | Geometry2D::Triangle(_)
         | Geometry2D::Solid(_)
-        | Geometry2D::CSG(_) => Err(format!(
-            "Geometry type export to WKT is not yet supported: {geom:?}"
-        )),
+        | Geometry2D::CSG(_) => Err(GeometryExportError::UnsupportedGeometryType(format!(
+            "{geom:?}"
+        ))),
     }
 }
 
-fn geometry_3d_to_wkt(geom: &Geometry3D) -> Result<String, String> {
+fn geometry_3d_to_wkt(geom: &Geometry3D) -> Result<String, GeometryExportError> {
     match geom {
         Geometry3D::Point(pt) => Ok(format!("POINT({} {} {})", pt.x(), pt.y(), pt.z())),
         Geometry3D::LineString(ls) => {
@@ -318,31 +319,28 @@ fn geometry_3d_to_wkt(geom: &Geometry3D) -> Result<String, String> {
             wkt.push(')');
             Ok(wkt)
         }
-        Geometry3D::GeometryCollection(_) => {
-            Err("GeometryCollection export is not yet supported".to_string())
-        }
+        Geometry3D::GeometryCollection(_) => Err(GeometryExportError::UnsupportedGeometryCollection),
         Geometry3D::Line(_)
         | Geometry3D::Rect(_)
         | Geometry3D::Triangle(_)
         | Geometry3D::Solid(_)
-        | Geometry3D::CSG(_) => Err(format!(
-            "Geometry type export to WKT is not yet supported: {geom:?}"
-        )),
+        | Geometry3D::CSG(_) => Err(GeometryExportError::UnsupportedGeometryType(format!(
+            "{geom:?}"
+        ))),
     }
 }
 
 /// Extract X, Y, Z coordinates from Point geometries
 /// Returns (x, y, optional z)
-pub fn extract_coordinates(geometry: &Geometry) -> Result<(f64, f64, Option<f64>), String> {
+pub fn extract_coordinates(
+    geometry: &Geometry,
+) -> Result<(f64, f64, Option<f64>), GeometryExportError> {
     match &geometry.value {
-        GeometryValue::None => Err("Cannot extract coordinates from empty geometry".to_string()),
+        GeometryValue::None => Err(GeometryExportError::EmptyGeometry),
         GeometryValue::FlowGeometry2D(Geometry2D::Point(pt)) => Ok((pt.x(), pt.y(), None)),
         GeometryValue::FlowGeometry3D(Geometry3D::Point(pt)) => {
             Ok((pt.x(), pt.y(), Some(pt.z())))
         }
-        _ => Err(
-            "Coordinate column mode only supports Point geometries. Use WKT mode for other geometry types."
-                .to_string(),
-        ),
+        _ => Err(GeometryExportError::NonPointGeometry),
     }
 }
