@@ -51,7 +51,6 @@ const NodePickerDialog: React.FC<Props> = ({
     handleDoubleClick,
     handleActionByTypeChange,
   } = useHooks({ openedActionType, isMainWorkflow, onNodesAdd, onClose });
-
   return (
     <Dialog open={!!openedActionType} onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
@@ -65,14 +64,20 @@ const NodePickerDialog: React.FC<Props> = ({
           />
           <Select
             value={currentActionByType}
-            disabled={currentActionByType === "transformer" && !isMainWorkflow}
             onValueChange={handleActionByTypeChange}>
             <SelectTrigger className="h-[32px] min-w-[150px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {actionTypes.map((actionType) => (
-                <SelectItem key={actionType.value} value={actionType.value}>
+                <SelectItem
+                  key={actionType.value}
+                  value={actionType.value}
+                  disabled={
+                    (actionType.value === "reader" ||
+                      actionType.value === "writer") &&
+                    !isMainWorkflow
+                  }>
                   {actionType.label}
                 </SelectItem>
               ))}
