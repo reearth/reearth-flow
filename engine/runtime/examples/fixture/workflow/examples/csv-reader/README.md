@@ -85,9 +85,9 @@ geometry:
 ```yaml
 geometry:
   geometryMode: coordinates
-  xColumn: <x_column>      # X coordinate (longitude)
-  yColumn: <y_column>      # Y coordinate (latitude)
-  zColumn: <z_column>      # Optional: Z coordinate (elevation)
+  xColumn: <column_name>   # X coordinate (longitude)
+  yColumn: <column_name>   # Y coordinate (latitude)
+  zColumn: <column_name>   # Optional: Z coordinate (elevation)
   epsg: <epsg_code>        # Optional: CRS code
 ```
 

@@ -43,12 +43,15 @@ pub enum GeometryMode {
     Coordinates {
         /// # X Column Name
         /// Name of the column containing X coordinate (longitude)
+        #[serde(rename = "xColumn")]
         x_column: String,
         /// # Y Column Name
         /// Name of the column containing Y coordinate (latitude)
+        #[serde(rename = "yColumn")]
         y_column: String,
         /// # Z Column Name
         /// Optional name of the column containing Z coordinate (elevation)
+        #[serde(rename = "zColumn")]
         #[serde(skip_serializing_if = "Option::is_none")]
         z_column: Option<String>,
     },

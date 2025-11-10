@@ -18,9 +18,9 @@ graphs:
             env.get("csvFile")
           geometry:
             geometryMode: coordinates
-            x_column: longitude
-            y_column: latitude
-            z_column: elevation
+            xColumn: longitude
+            yColumn: latitude
+            zColumn: elevation
             epsg: 4326
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906b
