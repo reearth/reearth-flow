@@ -157,17 +157,6 @@ export default ({
     ],
   );
 
-  // Helper function to create a meaningful handle name
-  const getHandleName = (
-    node: Node | undefined,
-    handle: string | undefined | null,
-  ): string => {
-    if (!handle) {
-      return node?.data.officialName || "default";
-    }
-    return handle;
-  };
-
   const handleYWorkflowAddFromSelection = useCallback(
     async (nodes: Node[], edges: Edge[]) => {
       try {
@@ -182,6 +171,7 @@ export default ({
           if (containsReadersOrWriters) {
             return;
           }
+
           const nodesByParentId = new Map<string, Node[]>();
           nodes.forEach((node) => {
             if (node.parentId) {
@@ -668,4 +658,15 @@ export default ({
     handleYWorkflowRename,
     handleYWorkflowAddFromSelection,
   };
+};
+
+// Helper function to create a meaningful handle name
+const getHandleName = (
+  node: Node | undefined,
+  handle: string | undefined | null,
+): string => {
+  if (!handle) {
+    return node?.data.officialName || "default";
+  }
+  return handle;
 };
