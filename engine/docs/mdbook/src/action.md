@@ -1099,7 +1099,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
         }
       ]
     },
-    "dracoCompressionEnabled": {
+    "dracoCompression": {
       "type": [
         "boolean",
         "null"
@@ -1309,6 +1309,18 @@ Read Features from CSV or TSV File
         }
       ]
     },
+    "geometry": {
+      "title": "Geometry Configuration",
+      "description": "Optional configuration for parsing geometry from CSV columns",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/GeometryConfig"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "inline": {
       "title": "Inline Content",
       "description": "Expression that returns the file content as text instead of reading from a file path",
@@ -1355,6 +1367,83 @@ Read Features from CSV or TSV File
     },
     "Expr": {
       "type": "string"
+    },
+    "GeometryConfig": {
+      "title": "Geometry Configuration",
+      "description": "Configure how geometry data is extracted from CSV columns",
+      "type": "object",
+      "oneOf": [
+        {
+          "title": "WKT Column",
+          "description": "Geometry stored as Well-Known Text in a single column",
+          "type": "object",
+          "required": [
+            "column",
+            "geometryMode"
+          ],
+          "properties": {
+            "column": {
+              "title": "WKT Column Name",
+              "description": "Name of the column containing WKT geometry",
+              "type": "string"
+            },
+            "geometryMode": {
+              "type": "string",
+              "enum": [
+                "wkt"
+              ]
+            }
+          }
+        },
+        {
+          "title": "Coordinate Columns",
+          "description": "Geometry stored as separate X, Y, (optional Z) columns",
+          "type": "object",
+          "required": [
+            "geometryMode",
+            "xColumn",
+            "yColumn"
+          ],
+          "properties": {
+            "geometryMode": {
+              "type": "string",
+              "enum": [
+                "coordinates"
+              ]
+            },
+            "xColumn": {
+              "title": "X Column Name",
+              "description": "Name of the column containing X coordinate (longitude)",
+              "type": "string"
+            },
+            "yColumn": {
+              "title": "Y Column Name",
+              "description": "Name of the column containing Y coordinate (latitude)",
+              "type": "string"
+            },
+            "zColumn": {
+              "title": "Z Column Name",
+              "description": "Optional name of the column containing Z coordinate (elevation)",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      ],
+      "properties": {
+        "epsg": {
+          "title": "EPSG Code",
+          "description": "Coordinate Reference System code (e.g., 4326 for WGS84)",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint16",
+          "minimum": 0.0
+        }
+      }
     }
   }
 }
