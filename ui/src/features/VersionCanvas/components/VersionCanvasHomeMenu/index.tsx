@@ -1,7 +1,6 @@
 import { memo } from "react";
 
 import { WorkflowsDropdown } from "@flow/features/Editor/components/OverlayUI/components/Homebar/components";
-import type { Workspace } from "@flow/types";
 
 type Props = {
   currentWorkflowId: string;
@@ -9,7 +8,6 @@ type Props = {
     id: string;
     name: string;
   }[];
-  workspaces?: Workspace[] | undefined;
   onWorkflowClose: (workflowId: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
 };
