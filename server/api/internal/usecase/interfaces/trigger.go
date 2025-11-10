@@ -16,17 +16,19 @@ type CreateTriggerParam struct {
 	EventSource  trigger.EventSourceType
 	TimeInterval trigger.TimeInterval
 	AuthToken    string
+	Variables    map[string]string
 }
 
 type ExecuteAPITriggerParam struct {
 	AuthenticationToken string
 	TriggerID           id.TriggerID
 	NotificationURL     *string
-	Variables           map[string]interface{}
+	Variables           map[string]string
 }
 
 type ExecuteTimeDrivenTriggerParam struct {
 	TriggerID id.TriggerID
+	Variables map[string]string
 }
 
 type UpdateTriggerParam struct {
@@ -36,6 +38,7 @@ type UpdateTriggerParam struct {
 	EventSource  trigger.EventSourceType
 	TimeInterval trigger.TimeInterval
 	AuthToken    string
+	Variables    map[string]string
 }
 
 var (

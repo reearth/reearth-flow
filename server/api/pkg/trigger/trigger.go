@@ -34,6 +34,7 @@ type Trigger struct {
 	eventSource   EventSourceType
 	authToken     *string
 	timeInterval  *TimeInterval
+	variables     map[string]string
 }
 
 func (t *Trigger) ID() ID {
@@ -76,6 +77,10 @@ func (t *Trigger) TimeInterval() *TimeInterval {
 	return t.timeInterval
 }
 
+func (t *Trigger) Variables() map[string]string {
+	return t.variables
+}
+
 func (t *Trigger) SetLastTriggered(lastTriggered time.Time) {
 	t.lastTriggered = &lastTriggered
 	t.updatedAt = time.Now()
@@ -103,6 +108,11 @@ func (t *Trigger) SetDeployment(deploymentId DeploymentID) {
 
 func (t *Trigger) SetTimeInterval(interval TimeInterval) {
 	t.timeInterval = &interval
+	t.updatedAt = time.Now()
+}
+
+func (t *Trigger) SetVariables(variables map[string]string) {
+	t.variables = variables
 	t.updatedAt = time.Now()
 }
 
