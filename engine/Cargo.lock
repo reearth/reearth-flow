@@ -1366,6 +1366,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dbase"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4b2ee10366b9a0956358110073ea66ab06d77169ee9955d32c9ba7b7b8d4e1c3"
+dependencies = [
+ "byteorder",
+ "codepage",
+ "encoding_rs",
+ "time",
+]
+
+[[package]]
 name = "defer"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4525,7 +4537,7 @@ version = "0.1.0"
 source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.5#e49155ed5cff081df3fe0c70f821ca90ebcd28f4"
 dependencies = [
  "flatgeom",
- "shapefile",
+ "shapefile 0.6.0",
 ]
 
 [[package]]
@@ -6091,7 +6103,7 @@ dependencies = [
  "schemars 0.8.22",
  "serde",
  "serde_json",
- "shapefile",
+ "shapefile 0.7.0",
  "tempfile",
  "thiserror 2.0.17",
  "tinymvt",
@@ -6137,7 +6149,7 @@ dependencies = [
  "schemars 0.8.22",
  "serde",
  "serde_json",
- "shapefile",
+ "shapefile 0.7.0",
  "sqlx",
  "tempfile",
  "thiserror 2.0.17",
@@ -7416,7 +7428,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "79d5472e932503059d02779ad2c1b96258980940c6923e49f427fbe80eb3053c"
 dependencies = [
  "byteorder",
- "dbase",
+ "dbase 0.5.0",
+]
+
+[[package]]
+name = "shapefile"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c318c0e76bc2d54086b2d936ae0ca92eab5b84eb73f5704c1d14dba33be643e3"
+dependencies = [
+ "byteorder",
+ "dbase 0.6.1",
 ]
 
 [[package]]

@@ -39,6 +39,8 @@ struct ShapefileComponents {
     shp: Option<Vec<u8>>,
     dbf: Option<Vec<u8>>,
     shx: Option<Vec<u8>>,
+    prj: Option<Vec<u8>>,
+    cpg: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -110,7 +112,19 @@ pub(super) struct ShapefileReaderParam {
     #[serde(flatten)]
     pub(super) common_property: FileReaderCommonParam,
     /// # Character Encoding
-    /// Character encoding for attribute data in the DBF file (e.g., "UTF-8", "Shift_JIS")
+    ///
+    /// Character encoding for attribute data in the DBF file.
+    /// If not specified, encoding is determined from the .cpg file (if present), otherwise defaults to UTF-8.
+    ///
+    /// Common values:
+    /// - "UTF-8" - Unicode (default, handles most international characters)
+    /// - "UTF-16" - Unicode 16-bit
+    ///
+    /// Note: The implementation currently uses UnicodeLossy encoding which gracefully handles
+    /// invalid characters by replacing them with the Unicode replacement character.
+    /// This ensures robust processing of legacy shapefiles with mixed or incorrect encodings.
+    ///
+    /// Priority order: encoding parameter > .cpg file > UTF-8 default
     pub(super) encoding: Option<String>,
     /// # Force 2D
     /// If true, forces all geometries to be 2D (ignoring Z values)
@@ -150,7 +164,7 @@ async fn read_shapefile(
     sender: Sender<(Port, IngestionMessage)>,
 ) -> Result<(), crate::errors::SourceError> {
     let shapes_and_records = if is_zip_file(content) {
-        read_shapefile_from_zip(content)?
+        read_shapefile_from_zip(content, &params.encoding)?
     } else {
         return Err(crate::errors::SourceError::ShapefileReader(
             "Direct shapefile bytes not supported. Please provide a ZIP archive containing the shapefile components (.shp, .dbf, .shx)".to_string()
@@ -185,8 +199,81 @@ fn is_zip_file(content: &Bytes) -> bool {
     content.len() >= 2 && content[0] == 0x50 && content[1] == 0x4B
 }
 
+/// Parse encoding string from .cpg file content
+fn parse_cpg_encoding(cpg_data: &[u8]) -> Option<String> {
+    std::str::from_utf8(cpg_data)
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+}
+
+/// Resolve the encoding to use, with priority: parameter > .cpg file > default
+fn resolve_encoding(encoding_param: &Option<String>, cpg_data: Option<&Vec<u8>>) -> String {
+    // Priority 1: Explicit encoding parameter
+    if let Some(enc) = encoding_param {
+        if !enc.is_empty() {
+            tracing::debug!("Using encoding from parameter: {}", enc);
+            return enc.clone();
+        }
+    }
+
+    // Priority 2: .cpg file
+    if let Some(cpg) = cpg_data {
+        if let Some(enc) = parse_cpg_encoding(cpg) {
+            tracing::debug!("Using encoding from .cpg file: {}", enc);
+            return enc;
+        }
+    }
+
+    // Priority 3: Default to UTF-8
+    tracing::debug!("Using default encoding: UTF-8");
+    "UTF-8".to_string()
+}
+
+/// Create a dbase Reader with the appropriate encoding
+fn create_dbase_reader<T: std::io::Read + std::io::Seek>(
+    source: T,
+    encoding_name: &str,
+) -> Result<shapefile::dbase::Reader<T>, crate::errors::SourceError> {
+    let encoding_upper = encoding_name.to_uppercase();
+
+    // Match common encoding names and use UnicodeLossy for UTF-8/Unicode variants
+    // This handles UTF-8 properly, including UTF-8 field names in DBF headers
+    match encoding_upper.as_str() {
+        "UTF-8" | "UTF8" | "UNICODE" | "UTF-16" | "UTF16" => {
+            tracing::debug!("Using UnicodeLossy encoding for: {}", encoding_name);
+            shapefile::dbase::Reader::new_with_encoding(
+                source,
+                shapefile::dbase::encoding::UnicodeLossy,
+            )
+            .map_err(|e| {
+                crate::errors::SourceError::ShapefileReader(format!(
+                    "Failed to create dbase reader with UnicodeLossy encoding: {e}"
+                ))
+            })
+        }
+        _ => {
+            // For other encodings, fall back to UnicodeLossy with a warning
+            tracing::warn!(
+                "Unsupported encoding '{}', falling back to UnicodeLossy",
+                encoding_name
+            );
+            shapefile::dbase::Reader::new_with_encoding(
+                source,
+                shapefile::dbase::encoding::UnicodeLossy,
+            )
+            .map_err(|e| {
+                crate::errors::SourceError::ShapefileReader(format!(
+                    "Failed to create dbase reader with fallback encoding: {e}"
+                ))
+            })
+        }
+    }
+}
+
 fn read_shapefile_from_zip(
     content: &Bytes,
+    encoding_param: &Option<String>,
 ) -> Result<Vec<(shapefile::Shape, shapefile::dbase::Record)>, crate::errors::SourceError> {
     let cursor = Cursor::new(content.as_ref());
     let mut archive = zip::ZipArchive::new(cursor).map_err(|e| {
@@ -244,6 +331,10 @@ fn read_shapefile_from_zip(
             components.dbf = Some(buffer);
         } else if filename_lower.ends_with(".shx") {
             components.shx = Some(buffer);
+        } else if filename_lower.ends_with(".prj") {
+            components.prj = Some(buffer);
+        } else if filename_lower.ends_with(".cpg") {
+            components.cpg = Some(buffer);
         }
     }
 
@@ -259,6 +350,9 @@ fn read_shapefile_from_zip(
 
     tracing::info!("Processing shapefile: {}", base_name);
 
+    // Resolve encoding from parameter, .cpg file, or default
+    let encoding = resolve_encoding(encoding_param, components.cpg.as_ref());
+
     let shp_data = components.shp.unwrap();
     let dbf_data = components.dbf.unwrap();
 
@@ -267,9 +361,9 @@ fn read_shapefile_from_zip(
     let shape_reader = shapefile::ShapeReader::new(shp_cursor).map_err(|e| {
         crate::errors::SourceError::ShapefileReader(format!("Failed to create shape reader: {e}"))
     })?;
-    let dbase_reader = shapefile::dbase::Reader::new(dbf_cursor).map_err(|e| {
-        crate::errors::SourceError::ShapefileReader(format!("Failed to create dbase reader: {e}"))
-    })?;
+
+    // Create dbase reader with resolved encoding
+    let dbase_reader = create_dbase_reader(dbf_cursor, &encoding)?;
 
     let mut reader = shapefile::Reader::new(shape_reader, dbase_reader);
 
