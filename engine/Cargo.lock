@@ -6057,6 +6057,7 @@ dependencies = [
  "earcut",
  "flate2",
  "flatgeom",
+ "geo-types",
  "geojson",
  "glam",
  "hashbrown 0.15.5",
@@ -6099,6 +6100,7 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
+ "wkt",
 ]
 
 [[package]]

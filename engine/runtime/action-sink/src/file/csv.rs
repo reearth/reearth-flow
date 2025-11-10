@@ -89,6 +89,10 @@ pub(super) struct CsvWriterParam {
     pub(super) output: Expr,
     /// File format: csv (comma) or tsv (tab)
     format: CsvFormat,
+    /// # Geometry Configuration
+    /// Optional configuration for exporting geometry to CSV columns
+    #[serde(skip_serializing_if = "Option::is_none")]
+    geometry: Option<super::writer_geometry::GeometryExportConfig>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -132,7 +136,13 @@ impl Sink for CsvWriter {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let delimiter = self.params.format.delimiter();
         for (uri, features) in &self.buffer {
-            write_csv(uri, features, delimiter.clone(), &storage_resolver)?;
+            write_csv(
+                uri,
+                features,
+                delimiter.clone(),
+                &storage_resolver,
+                self.params.geometry.as_ref(),
+            )?;
         }
         Ok(())
     }
@@ -143,6 +153,7 @@ fn write_csv(
     features: &[Feature],
     delimiter: Delimiter,
     storage_resolver: &Arc<StorageResolver>,
+    geometry_config: Option<&super::writer_geometry::GeometryExportConfig>,
 ) -> Result<(), crate::errors::SinkError> {
     if features.is_empty() {
         return Ok(());
@@ -151,23 +162,65 @@ fn write_csv(
         .delimiter(delimiter.into())
         .quote_style(csv::QuoteStyle::NonNumeric)
         .from_writer(vec![]);
-    let rows: Vec<AttributeValue> = features.iter().map(|f| f.clone().into()).collect();
-    let mut fields = get_fields(rows.first().unwrap());
 
-    if let Some(ref mut fields) = fields {
+    // Get geometry column names if geometry export is configured
+    let geometry_columns = geometry_config
+        .map(|config| super::writer_geometry::get_geometry_column_names(config))
+        .unwrap_or_default();
+
+    let rows: Vec<AttributeValue> = features.iter().map(|f| f.clone().into()).collect();
+    let mut attribute_fields = get_fields(rows.first().unwrap());
+
+    // Prepare attribute fields (without geometry columns)
+    if let Some(ref mut fields) = attribute_fields {
         // Remove _id field
         fields.retain(|field| field != "_id");
-        // Write header
+    }
+
+    // Prepare full header fields (including geometry columns)
+    let header_fields = if let Some(ref attr_fields) = attribute_fields {
+        let mut header = attr_fields.clone();
+        header.extend(geometry_columns.iter().cloned());
+        Some(header)
+    } else {
+        None
+    };
+
+    // Write header
+    if let Some(ref fields) = header_fields {
         if !fields.is_empty() {
             wtr.write_record(fields.clone())
                 .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
         }
     }
 
-    for row in rows {
-        match fields {
-            Some(ref fields) if !fields.is_empty() => {
-                let values = get_row_values(&row, &fields.clone())?;
+    // Write rows with geometry
+    for (feature, row) in features.iter().zip(rows.iter()) {
+        match attribute_fields {
+            Some(ref attr_fields) if !attr_fields.is_empty() => {
+                // Get attribute values only (not geometry)
+                let mut values = get_row_values(row, attr_fields)?;
+
+                // Add geometry values if configured
+                if let Some(config) = geometry_config {
+                    match super::writer_geometry::export_geometry(&feature.geometry, config) {
+                        Ok(geom_cols) => {
+                            // Append geometry column values in the order specified in header
+                            for col_name in &geometry_columns {
+                                values.push(geom_cols.get(col_name).cloned().unwrap_or_default());
+                            }
+                        }
+                        Err(e) => {
+                            // Skip non-point geometries for coordinate mode, or log error for WKT mode
+                            tracing::warn!("Failed to export geometry: {}", e);
+                            // Write empty strings for geometry columns
+                            for _ in &geometry_columns {
+                                values.push(String::new());
+                            }
+                        }
+                    }
+                }
+
                 wtr.write_record(values)
                     .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
             }
@@ -179,8 +232,8 @@ fn write_csv(
                     let values = s
                         .into_iter()
                         .map(|v| match v {
-                            AttributeValue::String(s) => s,
-                            _ => "".to_string(),
+                            AttributeValue::String(s) => s.clone(),
+                            _ => String::new(),
                         })
                         .collect::<Vec<_>>();
                     wtr.write_record(values)
