@@ -1099,7 +1099,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
         }
       ]
     },
-    "dracoCompressionEnabled": {
+    "dracoCompression": {
       "type": [
         "boolean",
         "null"
