@@ -93,24 +93,32 @@ impl Storage {
                 path: format!("{location:?}").into(),
             },
         })?;
-        let meta = self
-            .inner
-            .stat(p)
-            .await
-            .map_err(|err| format_object_store_error(err, p))?;
 
-        let meta = ObjectMeta {
-            location: object_store::path::Path::parse(p)?,
-            last_modified: meta.last_modified().unwrap_or_default(),
-            size: meta.content_length() as u64,
-            e_tag: meta.etag().map(|x| x.to_string()),
-            version: None,
-        };
+        let meta_result = self.inner.stat(p).await;
+
         let r = self
             .inner
             .read(p)
             .await
             .map_err(|err| format_object_store_error(err, p))?;
+
+        let meta = match meta_result {
+            Ok(m) => ObjectMeta {
+                location: object_store::path::Path::parse(p)?,
+                last_modified: m.last_modified().unwrap_or_default(),
+                size: m.content_length(),
+                e_tag: m.etag().map(|x| x.to_string()),
+                version: None,
+            },
+            Err(_) => ObjectMeta {
+                location: object_store::path::Path::parse(p)?,
+                last_modified: Default::default(),
+                size: 0,
+                e_tag: None,
+                version: None,
+            },
+        };
+
         Ok(GetResult {
             payload: GetResultPayload::Stream(Box::pin(OpendalReader { inner: r })),
             range: (0..meta.size),
@@ -162,7 +170,7 @@ impl Storage {
         Ok(ObjectMeta {
             location: object_store::path::Path::parse(p)?,
             last_modified: meta.last_modified().unwrap_or_default(),
-            size: meta.content_length() as u64,
+            size: meta.content_length(),
             e_tag: None,
             version: None,
         })
