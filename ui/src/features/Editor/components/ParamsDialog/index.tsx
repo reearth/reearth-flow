@@ -99,8 +99,6 @@ const ParamsDialog: React.FC<Props> = ({
     }
   };
 
-  console.log("PARAMS", updatedParams);
-
   return (
     <>
       <Dialog open={!!openNode} onOpenChange={() => onOpenNode()}>
