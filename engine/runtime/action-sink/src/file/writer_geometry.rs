@@ -102,11 +102,9 @@ pub fn geometry_to_wkt(geometry: &Geometry) -> Result<String, GeometryExportErro
         GeometryValue::None => Ok(String::new()),
         GeometryValue::FlowGeometry2D(geom) => geometry_2d_to_wkt(geom),
         GeometryValue::FlowGeometry3D(geom) => geometry_3d_to_wkt(geom),
-        GeometryValue::CityGmlGeometry(_) => {
-            Err(GeometryExportError::UnsupportedGeometryType(
-                "CityGML geometry".to_string(),
-            ))
-        }
+        GeometryValue::CityGmlGeometry(_) => Err(GeometryExportError::UnsupportedGeometryType(
+            "CityGML geometry".to_string(),
+        )),
     }
 }
 
@@ -209,7 +207,9 @@ fn geometry_2d_to_wkt(geom: &Geometry2D) -> Result<String, GeometryExportError> 
             wkt.push(')');
             Ok(wkt)
         }
-        Geometry2D::GeometryCollection(_) => Err(GeometryExportError::UnsupportedGeometryCollection),
+        Geometry2D::GeometryCollection(_) => {
+            Err(GeometryExportError::UnsupportedGeometryCollection)
+        }
         Geometry2D::Line(_)
         | Geometry2D::Rect(_)
         | Geometry2D::Triangle(_)
@@ -319,7 +319,9 @@ fn geometry_3d_to_wkt(geom: &Geometry3D) -> Result<String, GeometryExportError> 
             wkt.push(')');
             Ok(wkt)
         }
-        Geometry3D::GeometryCollection(_) => Err(GeometryExportError::UnsupportedGeometryCollection),
+        Geometry3D::GeometryCollection(_) => {
+            Err(GeometryExportError::UnsupportedGeometryCollection)
+        }
         Geometry3D::Line(_)
         | Geometry3D::Rect(_)
         | Geometry3D::Triangle(_)
@@ -338,9 +340,7 @@ pub fn extract_coordinates(
     match &geometry.value {
         GeometryValue::None => Err(GeometryExportError::EmptyGeometry),
         GeometryValue::FlowGeometry2D(Geometry2D::Point(pt)) => Ok((pt.x(), pt.y(), None)),
-        GeometryValue::FlowGeometry3D(Geometry3D::Point(pt)) => {
-            Ok((pt.x(), pt.y(), Some(pt.z())))
-        }
+        GeometryValue::FlowGeometry3D(Geometry3D::Point(pt)) => Ok((pt.x(), pt.y(), Some(pt.z()))),
         _ => Err(GeometryExportError::NonPointGeometry),
     }
 }
