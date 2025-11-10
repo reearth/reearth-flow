@@ -48,6 +48,24 @@ pub enum SourceError {
     SqlReaderFactory(String),
     #[error("SqlReader error: {0}")]
     SqlReader(String),
+    #[error("Geometry parsing error: {0}")]
+    GeometryParsing(#[from] GeometryParsingError),
+}
+
+#[derive(Error, Debug)]
+pub enum GeometryParsingError {
+    #[error("Column not found: {0}")]
+    ColumnNotFound(String),
+    #[error("Invalid coordinate in column '{column}': {value}")]
+    InvalidCoordinate { column: String, value: String },
+    #[error("Failed to parse WKT: {0}")]
+    WktParsing(String),
+    #[error("Failed to convert WKT to geometry: {0}")]
+    WktConversion(String),
+    #[error("GeometryCollection is not yet supported in CSV reader")]
+    UnsupportedGeometryCollection,
+    #[error("Unsupported geometry type: {0}")]
+    UnsupportedGeometryType(String),
 }
 
 pub type Result<T, E = SourceError> = std::result::Result<T, E>;

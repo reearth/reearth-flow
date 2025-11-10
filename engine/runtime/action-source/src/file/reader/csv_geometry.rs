@@ -1,3 +1,4 @@
+use crate::errors::GeometryParsingError;
 use indexmap::IndexMap;
 use nusamai_projection::crs::EpsgCode;
 use reearth_flow_geometry::types::{
@@ -78,14 +79,14 @@ pub fn get_geometry_column_names(config: &GeometryConfig) -> Vec<String> {
 pub fn parse_geometry(
     row: &IndexMap<String, String>,
     config: &GeometryConfig,
-) -> Result<Geometry, String> {
+) -> Result<Geometry, GeometryParsingError> {
     let epsg = config.epsg;
 
     match &config.mode {
         GeometryMode::Wkt { column } => {
             let wkt_str = row
                 .get(column)
-                .ok_or_else(|| format!("WKT column '{column}' not found"))?;
+                .ok_or(GeometryParsingError::ColumnNotFound(column.clone()))?;
             parse_wkt_geometry(wkt_str, epsg)
         }
         GeometryMode::Coordinates {
@@ -95,25 +96,34 @@ pub fn parse_geometry(
         } => {
             let x_str = row
                 .get(x_column)
-                .ok_or_else(|| format!("X column '{x_column}' not found"))?;
+                .ok_or(GeometryParsingError::ColumnNotFound(x_column.clone()))?;
             let y_str = row
                 .get(y_column)
-                .ok_or_else(|| format!("Y column '{y_column}' not found"))?;
+                .ok_or(GeometryParsingError::ColumnNotFound(y_column.clone()))?;
 
-            let x: f64 = x_str
-                .parse()
-                .map_err(|_| format!("Invalid X coordinate: {x_str}"))?;
-            let y: f64 = y_str
-                .parse()
-                .map_err(|_| format!("Invalid Y coordinate: {y_str}"))?;
+            let x: f64 = x_str.parse().map_err(|_| {
+                GeometryParsingError::InvalidCoordinate {
+                    column: x_column.clone(),
+                    value: x_str.clone(),
+                }
+            })?;
+            let y: f64 = y_str.parse().map_err(|_| {
+                GeometryParsingError::InvalidCoordinate {
+                    column: y_column.clone(),
+                    value: y_str.clone(),
+                }
+            })?;
 
             if let Some(z_col) = z_column {
                 let z_str = row
                     .get(z_col)
-                    .ok_or_else(|| format!("Z column '{z_col}' not found"))?;
-                let z: f64 = z_str
-                    .parse()
-                    .map_err(|_| format!("Invalid Z coordinate: {z_str}"))?;
+                    .ok_or(GeometryParsingError::ColumnNotFound(z_col.clone()))?;
+                let z: f64 = z_str.parse().map_err(|_| {
+                    GeometryParsingError::InvalidCoordinate {
+                        column: z_col.clone(),
+                        value: z_str.clone(),
+                    }
+                })?;
 
                 Ok(Geometry {
                     epsg,
@@ -131,7 +141,10 @@ pub fn parse_geometry(
     }
 }
 
-fn parse_wkt_geometry(wkt_str: &str, epsg: Option<EpsgCode>) -> Result<Geometry, String> {
+fn parse_wkt_geometry(
+    wkt_str: &str,
+    epsg: Option<EpsgCode>,
+) -> Result<Geometry, GeometryParsingError> {
     // Trim whitespace
     let wkt_str = wkt_str.trim();
     if wkt_str.is_empty() {
@@ -139,12 +152,12 @@ fn parse_wkt_geometry(wkt_str: &str, epsg: Option<EpsgCode>) -> Result<Geometry,
     }
 
     // Parse WKT string
-    let wkt: wkt::Wkt<f64> =
-        wkt::Wkt::from_str(wkt_str).map_err(|e| format!("Failed to parse WKT: {e}"))?;
+    let wkt: wkt::Wkt<f64> = wkt::Wkt::from_str(wkt_str)
+        .map_err(|e| GeometryParsingError::WktParsing(e.to_string()))?;
 
     // Convert WKT geometry to geo_types
     let geo_geom: geo_types::Geometry<f64> = geo_types::Geometry::try_from(wkt)
-        .map_err(|e| format!("Failed to convert WKT to geometry: {e:?}"))?;
+        .map_err(|e| GeometryParsingError::WktConversion(format!("{e:?}")))?;
 
     // Convert geo_types to Flow geometry
     convert_geo_to_flow(geo_geom, epsg)
@@ -153,7 +166,7 @@ fn parse_wkt_geometry(wkt_str: &str, epsg: Option<EpsgCode>) -> Result<Geometry,
 fn convert_geo_to_flow(
     geo_geom: geo_types::Geometry<f64>,
     epsg: Option<EpsgCode>,
-) -> Result<Geometry, String> {
+) -> Result<Geometry, GeometryParsingError> {
     use geo_types::Geometry as GeoGeometry;
 
     match geo_geom {
@@ -242,9 +255,9 @@ fn convert_geo_to_flow(
                 )),
             })
         }
-        GeoGeometry::GeometryCollection(_) => {
-            Err("GeometryCollection is not yet supported in CSV reader".to_string())
-        }
-        _ => Err(format!("Unsupported geometry type: {geo_geom:?}")),
+        GeoGeometry::GeometryCollection(_) => Err(GeometryParsingError::UnsupportedGeometryCollection),
+        _ => Err(GeometryParsingError::UnsupportedGeometryType(format!(
+            "{geo_geom:?}"
+        ))),
     }
 }

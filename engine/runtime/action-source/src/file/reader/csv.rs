@@ -49,14 +49,14 @@ pub(crate) async fn read_csv(
         let row_map: IndexMap<String, String> = record
             .iter()
             .enumerate()
-            .map(|(i, value)| (header[i].clone(), value.clone()))
+            .filter_map(|(i, value)| {
+                header.get(i).map(|h| (h.clone(), value.clone()))
+            })
             .collect();
 
         // Parse geometry if config is provided and get column names to exclude
         let (geometry, excluded_columns) = if let Some(geom_config) = &props.geometry {
-            let geom = super::csv_geometry::parse_geometry(&row_map, geom_config).map_err(|e| {
-                crate::errors::SourceError::CsvFileReader(format!("Geometry parse error: {e}"))
-            })?;
+            let geom = super::csv_geometry::parse_geometry(&row_map, geom_config)?;
             let excluded = super::csv_geometry::get_geometry_column_names(geom_config);
             (geom, excluded)
         } else {
