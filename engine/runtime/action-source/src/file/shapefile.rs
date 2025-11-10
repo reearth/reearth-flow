@@ -116,13 +116,15 @@ pub(super) struct ShapefileReaderParam {
     /// Character encoding for attribute data in the DBF file.
     /// If not specified, encoding is determined from the .cpg file (if present), otherwise defaults to UTF-8.
     ///
-    /// Common values:
-    /// - "UTF-8" - Unicode (default, handles most international characters)
-    /// - "UTF-16" - Unicode 16-bit
+    /// Supported encodings:
+    /// - "UTF-8" - Unicode UTF-8 (default, handles most international characters)
     ///
-    /// Note: The implementation currently uses UnicodeLossy encoding which gracefully handles
-    /// invalid characters by replacing them with the Unicode replacement character.
-    /// This ensures robust processing of legacy shapefiles with mixed or incorrect encodings.
+    /// Note: The implementation uses UnicodeLossy encoding which gracefully handles
+    /// invalid characters by replacing them with the Unicode replacement character (�).
+    /// This ensures robust processing of shapefiles with UTF-8 or ASCII encoded field names and data.
+    ///
+    /// Legacy code pages (CP1252, etc.) may work with the `encoding_rs` feature but are not officially supported.
+    /// UTF-16 is not supported as it requires different byte-level handling.
     ///
     /// Priority order: encoding parameter > .cpg file > UTF-8 default
     pub(super) encoding: Option<String>,
@@ -240,7 +242,7 @@ fn create_dbase_reader<T: std::io::Read + std::io::Seek>(
     // Match common encoding names and use UnicodeLossy for UTF-8/Unicode variants
     // This handles UTF-8 properly, including UTF-8 field names in DBF headers
     match encoding_upper.as_str() {
-        "UTF-8" | "UTF8" | "UNICODE" | "UTF-16" | "UTF16" => {
+        "UTF-8" | "UTF8" | "UNICODE" => {
             tracing::debug!("Using UnicodeLossy encoding for: {}", encoding_name);
             shapefile::dbase::Reader::new_with_encoding(
                 source,
@@ -252,10 +254,19 @@ fn create_dbase_reader<T: std::io::Read + std::io::Seek>(
                 ))
             })
         }
+        "UTF-16" | "UTF16" | "UTF-16LE" | "UTF-16BE" => {
+            // UTF-16 requires different byte-level handling and is not supported
+            Err(crate::errors::SourceError::ShapefileReader(
+                "UTF-16 encoding is not supported. DBF files with UTF-16 require different byte-level decoding. \
+                Please convert the shapefile to UTF-8 encoding using a tool like ogr2ogr: \
+                ogr2ogr -f \"ESRI Shapefile\" output.shp input.shp -lco ENCODING=UTF-8".to_string()
+            ))
+        }
         _ => {
             // For other encodings, fall back to UnicodeLossy with a warning
             tracing::warn!(
-                "Unsupported encoding '{}', falling back to UnicodeLossy",
+                "Unsupported or unrecognized encoding '{}', falling back to UnicodeLossy (UTF-8). \
+                This may result in incorrect character decoding for legacy code pages.",
                 encoding_name
             );
             shapefile::dbase::Reader::new_with_encoding(

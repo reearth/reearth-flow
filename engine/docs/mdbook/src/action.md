@@ -5173,7 +5173,7 @@ Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .
     },
     "encoding": {
       "title": "Character Encoding",
-      "description": "Character encoding for attribute data in the DBF file (e.g., \"UTF-8\", \"Shift_JIS\")",
+      "description": "Character encoding for attribute data in the DBF file. If not specified, encoding is determined from the .cpg file (if present), otherwise defaults to UTF-8.\n\nSupported encodings: - \"UTF-8\" - Unicode UTF-8 (default, handles most international characters)\n\nNote: The implementation uses UnicodeLossy encoding which gracefully handles invalid characters by replacing them with the Unicode replacement character (�). This ensures robust processing of shapefiles with UTF-8 or ASCII encoded field names and data.\n\nLegacy code pages (CP1252, etc.) may work with the `encoding_rs` feature but are not officially supported. UTF-16 is not supported as it requires different byte-level handling.\n\nPriority order: encoding parameter > .cpg file > UTF-8 default",
       "type": [
         "string",
         "null"
