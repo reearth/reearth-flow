@@ -70,8 +70,11 @@ const VersionDialog: React.FC<Props> = ({
         '[data-slot="dropdown-menu-content"]',
       );
 
+      const isDialogClick = target?.closest?.("#dialog-content");
+
       if (
         dialogRef.current &&
+        !isDialogClick &&
         !dialogRef.current.contains(event.target as Node) &&
         !isDropdownClick &&
         !openVersionConfirmationDialog
