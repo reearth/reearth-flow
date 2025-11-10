@@ -131,7 +131,8 @@ pub fn slice_to_tiles<E>(
                     let (mat_idx, _) = materials.insert_full(mat);
                     // Slice polygon for each zoom level
                     for zoom in min_zoom..=max_zoom {
-                        if zoom <= max_zoom {
+                        // Don't filter at max_zoom - include all features at highest detail
+                        if zoom < max_zoom {
                             let geom_error = {
                                 let (_, _, y) =
                                     tiling::scheme::zxy_from_lng_lat(zoom, lng_center, lat_center);
