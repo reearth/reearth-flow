@@ -14,7 +14,7 @@ export function intermediateDataTransform(parsedData: any) {
       return {
         id: parsedData.id,
         type: "Feature",
-        properties: { ...parsedData.attributes },
+        attributes: { ...parsedData.attributes },
         geometry: handle2DGeometry(parsedData.geometry.value.flowGeometry2D),
       };
     }
@@ -23,7 +23,7 @@ export function intermediateDataTransform(parsedData: any) {
       return {
         id: parsedData.id,
         type: "Feature",
-        properties: { ...parsedData.attributes },
+        attributes: { ...parsedData.attributes },
         geometry: handle3DGeometry(parsedData.geometry.value.flowGeometry3D),
       };
     }
@@ -32,7 +32,7 @@ export function intermediateDataTransform(parsedData: any) {
       return {
         id: parsedData.id,
         type: "Feature",
-        properties: { ...parsedData.attributes },
+        attributes: { ...parsedData.attributes },
         geometry: handleCityGmlGeometry(
           parsedData.geometry.value.cityGmlGeometry,
         ),

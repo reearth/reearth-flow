@@ -38,11 +38,11 @@ export default ({
             );
           }
         });
-        // Get unique properties from all features
-        const allProps = new Set<string>();
+        // Get unique attributes from all features
+        const allAttrs = new Set<string>();
         features.forEach((feature: any) => {
-          if (feature.properties) {
-            Object.keys(feature.properties).forEach((key) => allProps.add(key));
+          if (feature.attributes) {
+            Object.keys(feature.attributes).forEach((key) => allAttrs.add(key));
           }
         });
 
@@ -65,11 +65,11 @@ export default ({
                 minSize: 100,
               }) as ColumnDef<any>,
           ),
-          ...Array.from(allProps).map(
-            (prop) =>
+          ...Array.from(allAttrs).map(
+            (attr) =>
               ({
-                accessorKey: `properties${prop}`,
-                header: `properties.${prop}`,
+                accessorKey: `attributes${attr}`,
+                header: `attributes.${attr}`,
                 size: 200,
                 maxSize: 400,
                 minSize: 100,
@@ -107,9 +107,9 @@ export default ({
             }),
           ),
           ...Object.fromEntries(
-            Array.from(allProps).map((prop) => [
-              `properties${prop}`,
-              formatCellValue(feature.properties?.[prop] || null),
+            Array.from(allAttrs).map((attr) => [
+              `attributes${attr}`,
+              formatCellValue(feature.attributes?.[attr] || null),
             ]),
           ),
         }));
