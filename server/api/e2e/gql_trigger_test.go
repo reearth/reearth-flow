@@ -48,16 +48,16 @@ func createTestDeployment(t *testing.T, e *httpexpect.Expect) string {
 
 	operations := map[string]interface{}{
 		"query": `
-			mutation($input: CreateDeploymentInput!) {
-				createDeployment(input: $input) {
-					deployment {
-						id
-						workspaceId
-						description
-					}
-				}
-			}
-		`,
+            mutation($input: CreateDeploymentInput!) {
+                createDeployment(input: $input) {
+                    deployment {
+                        id
+                        workspaceId
+                        description
+                    }
+                }
+            }
+        `,
 		"variables": map[string]interface{}{
 			"input": map[string]interface{}{
 				"workspaceId": wId1.String(),
@@ -77,10 +77,10 @@ func createTestDeployment(t *testing.T, e *httpexpect.Expect) string {
 	assert.NoError(t, err)
 
 	workflowContent := `{
-		"name": "Test Workflow",
-		"version": "1.0",
-		"steps": []
-	}`
+        "name": "Test Workflow",
+        "version": "1.0",
+        "steps": []
+    }`
 	part, err := w.CreateFormFile("0", "workflow.json")
 	assert.NoError(t, err)
 	_, err = part.Write([]byte(workflowContent))
@@ -136,6 +136,7 @@ func createTimeDrivenTrigger(t *testing.T, e *httpexpect.Expect, deploymentId st
             description
             eventSource
             timeInterval
+            variables
         }
     }`
 
@@ -146,6 +147,10 @@ func createTimeDrivenTrigger(t *testing.T, e *httpexpect.Expect, deploymentId st
 			"description":  "Daily scheduled trigger",
 			"timeDriverInput": map[string]interface{}{
 				"interval": "EVERY_DAY",
+			},
+			"variables": map[string]interface{}{
+				"TEST_VAR_1": "test_value_1",
+				"TEST_VAR_2": "test_value_2",
 			},
 		},
 	}
@@ -169,12 +174,13 @@ func createTimeDrivenTrigger(t *testing.T, e *httpexpect.Expect, deploymentId st
 	var result struct {
 		Data struct {
 			CreateTrigger struct {
-				ID           string `json:"id"`
-				WorkspaceID  string `json:"workspaceId"`
-				DeploymentID string `json:"deploymentId"`
-				Description  string `json:"description"`
-				EventSource  string `json:"eventSource"`
-				TimeInterval string `json:"timeInterval"`
+				ID           string            `json:"id"`
+				WorkspaceID  string            `json:"workspaceId"`
+				DeploymentID string            `json:"deploymentId"`
+				Description  string            `json:"description"`
+				EventSource  string            `json:"eventSource"`
+				TimeInterval string            `json:"timeInterval"`
+				Variables    map[string]string `json:"variables"`
 			} `json:"createTrigger"`
 		} `json:"data"`
 		Errors []struct {
@@ -198,6 +204,10 @@ func createTimeDrivenTrigger(t *testing.T, e *httpexpect.Expect, deploymentId st
 	assert.Equal(t, "Daily scheduled trigger", trigger.Description)
 	assert.Equal(t, "TIME_DRIVEN", trigger.EventSource)
 	assert.Equal(t, "EVERY_DAY", trigger.TimeInterval)
+	assert.Equal(t, map[string]string{
+		"TEST_VAR_1": "test_value_1",
+		"TEST_VAR_2": "test_value_2",
+	}, trigger.Variables)
 
 	t.Logf("Created trigger with ID: %s", trigger.ID)
 }
@@ -222,11 +232,11 @@ func TestUpdateTrigger(t *testing.T) {
 
 	deploymentId := createTestDeployment(t, e)
 	query := `mutation($input: CreateTriggerInput!) {
-		createTrigger(input: $input) {
-			id
-			deploymentId
-		}
-	}`
+        createTrigger(input: $input) {
+            id
+            deploymentId
+        }
+    }`
 
 	variables := map[string]interface{}{
 		"input": map[string]interface{}{
@@ -235,6 +245,11 @@ func TestUpdateTrigger(t *testing.T) {
 			"description":  "Initial trigger",
 			"timeDriverInput": map[string]interface{}{
 				"interval": "EVERY_DAY",
+			},
+			"variables": map[string]interface{}{
+				"VAR_1": "v1",
+				"VAR_2": "v2",
+				"VAR_3": "v3",
 			},
 		},
 	}
@@ -268,13 +283,14 @@ func TestUpdateTrigger(t *testing.T) {
 	triggerId := createResult.Data.CreateTrigger.ID
 
 	updateQuery := `mutation($input: UpdateTriggerInput!) {
-		updateTrigger(input: $input) {
-			id
-			description
-			eventSource
-			timeInterval
-		}
-	}`
+        updateTrigger(input: $input) {
+            id
+            description
+            eventSource
+            timeInterval
+            variables
+        }
+    }`
 
 	updateVariables := map[string]interface{}{
 		"input": map[string]interface{}{
@@ -282,6 +298,11 @@ func TestUpdateTrigger(t *testing.T) {
 			"description": "Updated trigger",
 			"timeDriverInput": map[string]interface{}{
 				"interval": "EVERY_HOUR",
+			},
+			"variables": map[string]interface{}{
+				"VAR_1": "v1",
+				"VAR_2": "v2-2",
+				"VAR_4": "v4",
 			},
 		},
 	}
@@ -304,10 +325,11 @@ func TestUpdateTrigger(t *testing.T) {
 	var updateResult struct {
 		Data struct {
 			UpdateTrigger struct {
-				ID           string `json:"id"`
-				Description  string `json:"description"`
-				EventSource  string `json:"eventSource"`
-				TimeInterval string `json:"timeInterval"`
+				ID           string            `json:"id"`
+				Description  string            `json:"description"`
+				EventSource  string            `json:"eventSource"`
+				TimeInterval string            `json:"timeInterval"`
+				Variables    map[string]string `json:"variables"`
 			} `json:"updateTrigger"`
 		} `json:"data"`
 	}
@@ -320,6 +342,11 @@ func TestUpdateTrigger(t *testing.T) {
 	assert.Equal(t, "Updated trigger", trigger.Description)
 	assert.Equal(t, "TIME_DRIVEN", trigger.EventSource)
 	assert.Equal(t, "EVERY_HOUR", trigger.TimeInterval)
+	assert.Equal(t, map[string]string{
+		"VAR_1": "v1",
+		"VAR_2": "v2-2",
+		"VAR_4": "v4",
+	}, trigger.Variables)
 }
 
 func TestCreateAPIDrivenTrigger(t *testing.T) {
@@ -344,15 +371,16 @@ func TestCreateAPIDrivenTrigger(t *testing.T) {
 	assert.NotEmpty(t, deploymentId)
 
 	query := `mutation($input: CreateTriggerInput!) {
-		createTrigger(input: $input) {
-			id
-			workspaceId
-			deploymentId
-			description
-			eventSource
-			authToken
-		}
-	}`
+        createTrigger(input: $input) {
+            id
+            workspaceId
+            deploymentId
+            description
+            eventSource
+            authToken
+            variables
+        }
+    }`
 
 	variables := map[string]interface{}{
 		"input": map[string]interface{}{
@@ -361,6 +389,10 @@ func TestCreateAPIDrivenTrigger(t *testing.T) {
 			"description":  "API trigger test",
 			"apiDriverInput": map[string]interface{}{
 				"token": "test-api-token",
+			},
+			"variables": map[string]interface{}{
+				"API_VAR_A": "value_A",
+				"API_VAR_B": "value_B",
 			},
 		},
 	}
@@ -384,12 +416,13 @@ func TestCreateAPIDrivenTrigger(t *testing.T) {
 	var result struct {
 		Data struct {
 			CreateTrigger struct {
-				ID           string `json:"id"`
-				WorkspaceID  string `json:"workspaceId"`
-				DeploymentID string `json:"deploymentId"`
-				Description  string `json:"description"`
-				EventSource  string `json:"eventSource"`
-				AuthToken    string `json:"authToken"`
+				ID           string            `json:"id"`
+				WorkspaceID  string            `json:"workspaceId"`
+				DeploymentID string            `json:"deploymentId"`
+				Description  string            `json:"description"`
+				EventSource  string            `json:"eventSource"`
+				AuthToken    string            `json:"authToken"`
+				Variables    map[string]string `json:"variables"`
 			} `json:"createTrigger"`
 		} `json:"data"`
 		Errors []struct {
@@ -413,6 +446,10 @@ func TestCreateAPIDrivenTrigger(t *testing.T) {
 	assert.Equal(t, "API trigger test", trigger.Description)
 	assert.Equal(t, "API_DRIVEN", trigger.EventSource)
 	assert.NotEmpty(t, trigger.AuthToken)
+	assert.Equal(t, map[string]string{
+		"API_VAR_A": "value_A",
+		"API_VAR_B": "value_B",
+	}, trigger.Variables)
 
 	t.Logf("Created API trigger with ID: %s", trigger.ID)
 }

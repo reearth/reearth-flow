@@ -26,7 +26,7 @@ func (r *mutationResolver) CreateTrigger(ctx context.Context, input gqlmodel.Cre
 	param.Description = input.Description
 
 	if input.Variables != nil {
-		param.Variables, err = toStringMap(input.Variables)
+		param.Variables, err = gqlmodel.FromVariables(input.Variables)
 		if err != nil {
 			return nil, err
 		}
@@ -76,7 +76,7 @@ func (r *mutationResolver) UpdateTrigger(ctx context.Context, input gqlmodel.Upd
 	}
 
 	if input.Variables != nil {
-		param.Variables, err = toStringMap(input.Variables)
+		param.Variables, err = gqlmodel.FromVariables(input.Variables)
 		if err != nil {
 			return nil, err
 		}
