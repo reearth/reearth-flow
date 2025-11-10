@@ -49,9 +49,7 @@ pub(crate) async fn read_csv(
         let row_map: IndexMap<String, String> = record
             .iter()
             .enumerate()
-            .filter_map(|(i, value)| {
-                header.get(i).map(|h| (h.clone(), value.clone()))
-            })
+            .filter_map(|(i, value)| header.get(i).map(|h| (h.clone(), value.clone())))
             .collect();
 
         // Parse geometry if config is provided and get column names to exclude

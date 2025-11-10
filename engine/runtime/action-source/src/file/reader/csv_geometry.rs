@@ -101,29 +101,30 @@ pub fn parse_geometry(
                 .get(y_column)
                 .ok_or(GeometryParsingError::ColumnNotFound(y_column.clone()))?;
 
-            let x: f64 = x_str.parse().map_err(|_| {
-                GeometryParsingError::InvalidCoordinate {
+            let x: f64 = x_str
+                .parse()
+                .map_err(|_| GeometryParsingError::InvalidCoordinate {
                     column: x_column.clone(),
                     value: x_str.clone(),
-                }
-            })?;
-            let y: f64 = y_str.parse().map_err(|_| {
-                GeometryParsingError::InvalidCoordinate {
+                })?;
+            let y: f64 = y_str
+                .parse()
+                .map_err(|_| GeometryParsingError::InvalidCoordinate {
                     column: y_column.clone(),
                     value: y_str.clone(),
-                }
-            })?;
+                })?;
 
             if let Some(z_col) = z_column {
                 let z_str = row
                     .get(z_col)
                     .ok_or(GeometryParsingError::ColumnNotFound(z_col.clone()))?;
-                let z: f64 = z_str.parse().map_err(|_| {
-                    GeometryParsingError::InvalidCoordinate {
-                        column: z_col.clone(),
-                        value: z_str.clone(),
-                    }
-                })?;
+                let z: f64 =
+                    z_str
+                        .parse()
+                        .map_err(|_| GeometryParsingError::InvalidCoordinate {
+                            column: z_col.clone(),
+                            value: z_str.clone(),
+                        })?;
 
                 Ok(Geometry {
                     epsg,
@@ -152,8 +153,8 @@ fn parse_wkt_geometry(
     }
 
     // Parse WKT string
-    let wkt: wkt::Wkt<f64> = wkt::Wkt::from_str(wkt_str)
-        .map_err(|e| GeometryParsingError::WktParsing(e.to_string()))?;
+    let wkt: wkt::Wkt<f64> =
+        wkt::Wkt::from_str(wkt_str).map_err(|e| GeometryParsingError::WktParsing(e.to_string()))?;
 
     // Convert WKT geometry to geo_types
     let geo_geom: geo_types::Geometry<f64> = geo_types::Geometry::try_from(wkt)
@@ -255,7 +256,9 @@ fn convert_geo_to_flow(
                 )),
             })
         }
-        GeoGeometry::GeometryCollection(_) => Err(GeometryParsingError::UnsupportedGeometryCollection),
+        GeoGeometry::GeometryCollection(_) => {
+            Err(GeometryParsingError::UnsupportedGeometryCollection)
+        }
         _ => Err(GeometryParsingError::UnsupportedGeometryType(format!(
             "{geo_geom:?}"
         ))),
