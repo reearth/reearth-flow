@@ -165,7 +165,7 @@ fn write_csv(
 
     // Get geometry column names if geometry export is configured
     let geometry_columns = geometry_config
-        .map(|config| super::writer_geometry::get_geometry_column_names(config))
+        .map(super::writer_geometry::get_geometry_column_names)
         .unwrap_or_default();
 
     let rows: Vec<AttributeValue> = features.iter().map(|f| f.clone().into()).collect();
@@ -230,7 +230,7 @@ fn write_csv(
                     .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?,
                 AttributeValue::Array(s) => {
                     let values = s
-                        .into_iter()
+                        .iter()
                         .map(|v| match v {
                             AttributeValue::String(s) => s.clone(),
                             _ => String::new(),

@@ -214,8 +214,7 @@ fn geometry_2d_to_wkt(geom: &Geometry2D) -> Result<String, String> {
         | Geometry2D::Triangle(_)
         | Geometry2D::Solid(_)
         | Geometry2D::CSG(_) => Err(format!(
-            "Geometry type export to WKT is not yet supported: {:?}",
-            geom
+            "Geometry type export to WKT is not yet supported: {geom:?}"
         )),
     }
 }
@@ -327,8 +326,7 @@ fn geometry_3d_to_wkt(geom: &Geometry3D) -> Result<String, String> {
         | Geometry3D::Triangle(_)
         | Geometry3D::Solid(_)
         | Geometry3D::CSG(_) => Err(format!(
-            "Geometry type export to WKT is not yet supported: {:?}",
-            geom
+            "Geometry type export to WKT is not yet supported: {geom:?}"
         )),
     }
 }
