@@ -552,14 +552,22 @@ export default ({
                 existingPseudoOutputs.delete(0, existingPseudoOutputs.length);
               }
 
-              pseudoInputs.forEach((pseudoInput) => {
+              // Sort pseudo inputs/outputs by portName for consistent ordering
+              const sortedPseudoInputs = [...pseudoInputs].sort((a, b) =>
+                a.portName.localeCompare(b.portName),
+              );
+              const sortedPseudoOutputs = [...pseudoOutputs].sort((a, b) =>
+                a.portName.localeCompare(b.portName),
+              );
+
+              sortedPseudoInputs.forEach((pseudoInput) => {
                 const yPseudoInput = new Y.Map();
                 yPseudoInput.set("nodeId", new Y.Text(pseudoInput.nodeId));
                 yPseudoInput.set("portName", new Y.Text(pseudoInput.portName));
                 existingPseudoInputs?.push([yPseudoInput]);
               });
 
-              pseudoOutputs.forEach((pseudoOutput) => {
+              sortedPseudoOutputs.forEach((pseudoOutput) => {
                 const yPseudoOutput = new Y.Map();
                 yPseudoOutput.set("nodeId", new Y.Text(pseudoOutput.nodeId));
                 yPseudoOutput.set(
