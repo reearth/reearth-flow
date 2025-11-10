@@ -88,16 +88,14 @@ const ParamsDialog: React.FC<Props> = ({
   };
 
   const handleValueChange = (value: any) => {
-    if (currentFieldContext && openNode) {
-      // Update the node's params with the new value
-      const currentParams = openNode.data.params || {};
-      const updatedParams = setValueAtPath(
+    if (currentFieldContext) {
+      const currentParams = updatedParams || {};
+      const newParams = setValueAtPath(
         currentParams,
         currentFieldContext.path,
         value,
       );
-      // Update the local state with the new params
-      handleParamChange?.(updatedParams);
+      handleParamChange(newParams);
     }
   };
 
