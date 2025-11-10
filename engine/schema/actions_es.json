@@ -1404,8 +1404,8 @@
                 "type": "object",
                 "required": [
                   "geometryMode",
-                  "x_column",
-                  "y_column"
+                  "xColumn",
+                  "yColumn"
                 ],
                 "properties": {
                   "geometryMode": {
@@ -1414,17 +1414,17 @@
                       "coordinates"
                     ]
                   },
-                  "x_column": {
+                  "xColumn": {
                     "title": "X Column Name",
                     "description": "Name of the column containing X coordinate (longitude)",
                     "type": "string"
                   },
-                  "y_column": {
+                  "yColumn": {
                     "title": "Y Column Name",
                     "description": "Name of the column containing Y coordinate (latitude)",
                     "type": "string"
                   },
-                  "z_column": {
+                  "zColumn": {
                     "title": "Z Column Name",
                     "description": "Optional name of the column containing Z coordinate (elevation)",
                     "type": [
