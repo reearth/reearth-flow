@@ -27,6 +27,11 @@ func (b *JobBuilder) MustBuild() *Job {
 	return r
 }
 
+func (b *JobBuilder) BatchStatus(batchStatus *Status) *JobBuilder {
+	b.j.batchStatus = batchStatus
+	return b
+}
+
 func (b *JobBuilder) ID(id ID) *JobBuilder {
 	b.j.id = id
 	return b
@@ -94,5 +99,10 @@ func (b *JobBuilder) WorkerLogsURL(workerLogsURL string) *JobBuilder {
 
 func (b *JobBuilder) UserFacingLogsURL(userFacingLogsURL string) *JobBuilder {
 	b.j.userFacingLogsURL = userFacingLogsURL
+	return b
+}
+
+func (b *JobBuilder) WorkerStatus(workerStatus *Status) *JobBuilder {
+	b.j.workerStatus = workerStatus
 	return b
 }
