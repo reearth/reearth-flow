@@ -163,7 +163,7 @@ export default ({
     handle: string | undefined | null,
   ): string => {
     if (!handle) {
-      return node?.data.officialName || node?.id || "default";
+      return node?.data.officialName || "default";
     }
     return handle;
   };
@@ -252,7 +252,7 @@ export default ({
           const nodeInstanceNumbers = new Map<string, number>();
 
           allIncludedNodes.forEach((node) => {
-            const officialName = node.data.officialName || node.id;
+            const officialName = node.data.officialName;
             nodeNameCounts.set(
               officialName,
               (nodeNameCounts.get(officialName) || 0) + 1,
@@ -262,7 +262,7 @@ export default ({
           // Assign instance numbers to nodes whose names appear multiple times
           const nodeNameCounters = new Map<string, number>();
           allIncludedNodes.forEach((node) => {
-            const officialName = node.data.officialName || node.id;
+            const officialName = node.data.officialName;
             const count = nodeNameCounts.get(officialName) || 0;
 
             if (count > 1) {
