@@ -80,7 +80,7 @@ func createTestDeployment(t *testing.T, e *httpexpect.Expect) string {
 		"name": "Test Workflow",
 		"version": "1.0",
 		"steps": []
-    }`
+	}`
 	part, err := w.CreateFormFile("0", "workflow.json")
 	assert.NoError(t, err)
 	_, err = part.Write([]byte(workflowContent))
