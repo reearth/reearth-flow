@@ -1479,6 +1479,18 @@ Writes features to CSV or TSV files.
         }
       ]
     },
+    "geometry": {
+      "title": "Geometry Configuration",
+      "description": "Optional configuration for exporting geometry to CSV columns",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/GeometryExportConfig"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "output": {
       "description": "Output path or expression for the CSV/TSV file to create",
       "allOf": [
@@ -1511,6 +1523,71 @@ Writes features to CSV or TSV files.
     },
     "Expr": {
       "type": "string"
+    },
+    "GeometryExportConfig": {
+      "title": "Geometry Export Configuration",
+      "description": "Configure how geometry data is written to CSV columns",
+      "type": "object",
+      "oneOf": [
+        {
+          "title": "WKT Column",
+          "description": "Write geometry as Well-Known Text in a single column",
+          "type": "object",
+          "required": [
+            "column",
+            "geometryMode"
+          ],
+          "properties": {
+            "column": {
+              "title": "WKT Column Name",
+              "description": "Name of the column to write WKT geometry",
+              "type": "string"
+            },
+            "geometryMode": {
+              "type": "string",
+              "enum": [
+                "wkt"
+              ]
+            }
+          }
+        },
+        {
+          "title": "Coordinate Columns",
+          "description": "Write geometry as separate X, Y, (optional Z) columns Note: Only supports Point geometries. Non-point geometries will be skipped with a warning.",
+          "type": "object",
+          "required": [
+            "geometryMode",
+            "xColumn",
+            "yColumn"
+          ],
+          "properties": {
+            "geometryMode": {
+              "type": "string",
+              "enum": [
+                "coordinates"
+              ]
+            },
+            "xColumn": {
+              "title": "X Column Name",
+              "description": "Name of the column for X coordinate (longitude)",
+              "type": "string"
+            },
+            "yColumn": {
+              "title": "Y Column Name",
+              "description": "Name of the column for Y coordinate (latitude)",
+              "type": "string"
+            },
+            "zColumn": {
+              "title": "Z Column Name",
+              "description": "Optional name of the column for Z coordinate (elevation)",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      ]
     }
   }
 }
