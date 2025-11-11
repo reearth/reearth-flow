@@ -1481,6 +1481,18 @@
               }
             ]
           },
+          "geometry": {
+            "title": "Geometry Configuration",
+            "description": "Optional configuration for exporting geometry to CSV columns",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/GeometryExportConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "output": {
             "description": "Output path or expression for the CSV/TSV file to create",
             "allOf": [
@@ -1513,6 +1525,71 @@
           },
           "Expr": {
             "type": "string"
+          },
+          "GeometryExportConfig": {
+            "title": "Geometry Export Configuration",
+            "description": "Configure how geometry data is written to CSV columns",
+            "type": "object",
+            "oneOf": [
+              {
+                "title": "WKT Column",
+                "description": "Write geometry as Well-Known Text in a single column",
+                "type": "object",
+                "required": [
+                  "column",
+                  "geometryMode"
+                ],
+                "properties": {
+                  "column": {
+                    "title": "WKT Column Name",
+                    "description": "Name of the column to write WKT geometry",
+                    "type": "string"
+                  },
+                  "geometryMode": {
+                    "type": "string",
+                    "enum": [
+                      "wkt"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Coordinate Columns",
+                "description": "Write geometry as separate X, Y, (optional Z) columns Note: Only supports Point geometries. Non-point geometries will be skipped with a warning.",
+                "type": "object",
+                "required": [
+                  "geometryMode",
+                  "xColumn",
+                  "yColumn"
+                ],
+                "properties": {
+                  "geometryMode": {
+                    "type": "string",
+                    "enum": [
+                      "coordinates"
+                    ]
+                  },
+                  "xColumn": {
+                    "title": "X Column Name",
+                    "description": "Name of the column for X coordinate (longitude)",
+                    "type": "string"
+                  },
+                  "yColumn": {
+                    "title": "Y Column Name",
+                    "description": "Name of the column for Y coordinate (latitude)",
+                    "type": "string"
+                  },
+                  "zColumn": {
+                    "title": "Z Column Name",
+                    "description": "Optional name of the column for Z coordinate (elevation)",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            ]
           }
         }
       },
@@ -5203,7 +5280,7 @@
           },
           "encoding": {
             "title": "Character Encoding",
-            "description": "Character encoding for attribute data in the DBF file (e.g., \"UTF-8\", \"Shift_JIS\")",
+            "description": "Character encoding for attribute data in the DBF file. If not specified, encoding is determined from the .cpg file (if present), otherwise defaults to UTF-8.\n\nSupported encodings include: - **UTF-8** - Unicode UTF-8 (default, recommended for all new shapefiles) - **Windows Code Pages** - Windows-1250 through Windows-1258, Windows-874 - **ISO-8859 family** - ISO-8859-1 (Latin-1) through ISO-8859-16 - **Asian encodings** - Shift-JIS, EUC-JP, EUC-KR, Big5, GBK, GB18030 - **Other legacy encodings** - KOI8-R, KOI8-U, IBM866, Macintosh\n\nAll encoding labels are case-insensitive and support common variations (e.g., \"UTF-8\", \"UTF8\", \"utf8\" all work).\n\nUTF-16 is not supported due to byte-level handling requirements. If a UTF-16 shapefile is encountered, an error with conversion instructions is returned.\n\nExamples: - `\"UTF-8\"` - Modern standard - `\"Windows-1252\"` - Common for Western European legacy data - `\"ISO-8859-1\"` - Latin-1, common in older shapefiles - `\"Shift-JIS\"` - Japanese data\n\nPriority order: encoding parameter > .cpg file > UTF-8 default",
             "type": [
               "string",
               "null"
