@@ -344,3 +344,294 @@ pub fn extract_coordinates(
         _ => Err(GeometryExportError::NonPointGeometry),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reearth_flow_geometry::types::{
+        coordinate::Coordinate,
+        line_string::{LineString2D, LineString3D},
+        multi_line_string::{MultiLineString2D, MultiLineString3D},
+        multi_point::{MultiPoint2D, MultiPoint3D},
+        multi_polygon::{MultiPolygon2D, MultiPolygon3D},
+        no_value::NoValue,
+        point::{Point2D, Point3D},
+        polygon::{Polygon2D, Polygon3D},
+    };
+
+    #[test]
+    fn test_geometry_2d_point_to_wkt() {
+        let point = Point2D::from([1.0, 2.0]);
+        let geom = Geometry2D::Point(point);
+        let wkt = geometry_2d_to_wkt(&geom).unwrap();
+        assert_eq!(wkt, "POINT(1 2)");
+    }
+
+    #[test]
+    fn test_geometry_3d_point_to_wkt() {
+        let point = Point3D::from([1.0, 2.0, 3.0]);
+        let geom = Geometry3D::Point(point);
+        let wkt = geometry_3d_to_wkt(&geom).unwrap();
+        assert_eq!(wkt, "POINT(1 2 3)");
+    }
+
+    #[test]
+    fn test_geometry_2d_linestring_to_wkt() {
+        let coords = vec![
+            Coordinate::<f64, NoValue>::from([0.0, 0.0]),
+            Coordinate::<f64, NoValue>::from([1.0, 1.0]),
+            Coordinate::<f64, NoValue>::from([2.0, 2.0]),
+        ];
+        let linestring = LineString2D::new(coords);
+        let geom = Geometry2D::LineString(linestring);
+        let wkt = geometry_2d_to_wkt(&geom).unwrap();
+        assert_eq!(wkt, "LINESTRING(0 0, 1 1, 2 2)");
+    }
+
+    #[test]
+    fn test_geometry_3d_linestring_to_wkt() {
+        let coords = vec![
+            Coordinate::<f64, f64>::from([0.0, 0.0, 0.0]),
+            Coordinate::<f64, f64>::from([1.0, 1.0, 1.0]),
+            Coordinate::<f64, f64>::from([2.0, 2.0, 2.0]),
+        ];
+        let linestring = LineString3D::new(coords);
+        let geom = Geometry3D::LineString(linestring);
+        let wkt = geometry_3d_to_wkt(&geom).unwrap();
+        assert_eq!(wkt, "LINESTRING(0 0 0, 1 1 1, 2 2 2)");
+    }
+
+    #[test]
+    fn test_geometry_2d_polygon_to_wkt() {
+        // Simple polygon without holes
+        let exterior = LineString2D::new(vec![
+            Coordinate::<f64, NoValue>::from([0.0, 0.0]),
+            Coordinate::<f64, NoValue>::from([4.0, 0.0]),
+            Coordinate::<f64, NoValue>::from([4.0, 4.0]),
+            Coordinate::<f64, NoValue>::from([0.0, 4.0]),
+            Coordinate::<f64, NoValue>::from([0.0, 0.0]),
+        ]);
+        let polygon = Polygon2D::new(exterior, vec![]);
+        let geom = Geometry2D::Polygon(polygon);
+        let wkt = geometry_2d_to_wkt(&geom).unwrap();
+        assert_eq!(wkt, "POLYGON((0 0, 4 0, 4 4, 0 4, 0 0))");
+    }
+
+    #[test]
+    fn test_geometry_2d_polygon_with_hole_to_wkt() {
+        // Polygon with one hole
+        let exterior = LineString2D::new(vec![
+            Coordinate::<f64, NoValue>::from([0.0, 0.0]),
+            Coordinate::<f64, NoValue>::from([10.0, 0.0]),
+            Coordinate::<f64, NoValue>::from([10.0, 10.0]),
+            Coordinate::<f64, NoValue>::from([0.0, 10.0]),
+            Coordinate::<f64, NoValue>::from([0.0, 0.0]),
+        ]);
+        let hole = LineString2D::new(vec![
+            Coordinate::<f64, NoValue>::from([2.0, 2.0]),
+            Coordinate::<f64, NoValue>::from([8.0, 2.0]),
+            Coordinate::<f64, NoValue>::from([8.0, 8.0]),
+            Coordinate::<f64, NoValue>::from([2.0, 8.0]),
+            Coordinate::<f64, NoValue>::from([2.0, 2.0]),
+        ]);
+        let polygon = Polygon2D::new(exterior, vec![hole]);
+        let geom = Geometry2D::Polygon(polygon);
+        let wkt = geometry_2d_to_wkt(&geom).unwrap();
+        assert_eq!(
+            wkt,
+            "POLYGON((0 0, 10 0, 10 10, 0 10, 0 0), (2 2, 8 2, 8 8, 2 8, 2 2))"
+        );
+    }
+
+    #[test]
+    fn test_geometry_3d_polygon_to_wkt() {
+        let exterior = LineString3D::new(vec![
+            Coordinate::<f64, f64>::from([0.0, 0.0, 0.0]),
+            Coordinate::<f64, f64>::from([4.0, 0.0, 0.0]),
+            Coordinate::<f64, f64>::from([4.0, 4.0, 1.0]),
+            Coordinate::<f64, f64>::from([0.0, 4.0, 1.0]),
+            Coordinate::<f64, f64>::from([0.0, 0.0, 0.0]),
+        ]);
+        let polygon = Polygon3D::new(exterior, vec![]);
+        let geom = Geometry3D::Polygon(polygon);
+        let wkt = geometry_3d_to_wkt(&geom).unwrap();
+        assert_eq!(wkt, "POLYGON((0 0 0, 4 0 0, 4 4 1, 0 4 1, 0 0 0))");
+    }
+
+    #[test]
+    fn test_geometry_2d_multipoint_to_wkt() {
+        let points = vec![
+            Point2D::from([0.0, 0.0]),
+            Point2D::from([1.0, 1.0]),
+            Point2D::from([2.0, 2.0]),
+        ];
+        let multipoint = MultiPoint2D::new(points);
+        let geom = Geometry2D::MultiPoint(multipoint);
+        let wkt = geometry_2d_to_wkt(&geom).unwrap();
+        assert_eq!(wkt, "MULTIPOINT(0 0, 1 1, 2 2)");
+    }
+
+    #[test]
+    fn test_geometry_3d_multipoint_to_wkt() {
+        let points = vec![
+            Point3D::from([0.0, 0.0, 0.0]),
+            Point3D::from([1.0, 1.0, 1.0]),
+            Point3D::from([2.0, 2.0, 2.0]),
+        ];
+        let multipoint = MultiPoint3D::new(points);
+        let geom = Geometry3D::MultiPoint(multipoint);
+        let wkt = geometry_3d_to_wkt(&geom).unwrap();
+        assert_eq!(wkt, "MULTIPOINT(0 0 0, 1 1 1, 2 2 2)");
+    }
+
+    #[test]
+    fn test_geometry_2d_multilinestring_to_wkt() {
+        let line1 = LineString2D::new(vec![
+            Coordinate::<f64, NoValue>::from([0.0, 0.0]),
+            Coordinate::<f64, NoValue>::from([1.0, 1.0]),
+        ]);
+        let line2 = LineString2D::new(vec![
+            Coordinate::<f64, NoValue>::from([2.0, 2.0]),
+            Coordinate::<f64, NoValue>::from([3.0, 3.0]),
+        ]);
+        let mls = MultiLineString2D::new(vec![line1, line2]);
+        let geom = Geometry2D::MultiLineString(mls);
+        let wkt = geometry_2d_to_wkt(&geom).unwrap();
+        assert_eq!(wkt, "MULTILINESTRING((0 0, 1 1), (2 2, 3 3))");
+    }
+
+    #[test]
+    fn test_geometry_3d_multilinestring_to_wkt() {
+        let line1 = LineString3D::new(vec![
+            Coordinate::<f64, f64>::from([0.0, 0.0, 0.0]),
+            Coordinate::<f64, f64>::from([1.0, 1.0, 1.0]),
+        ]);
+        let line2 = LineString3D::new(vec![
+            Coordinate::<f64, f64>::from([2.0, 2.0, 2.0]),
+            Coordinate::<f64, f64>::from([3.0, 3.0, 3.0]),
+        ]);
+        let mls = MultiLineString3D::new(vec![line1, line2]);
+        let geom = Geometry3D::MultiLineString(mls);
+        let wkt = geometry_3d_to_wkt(&geom).unwrap();
+        assert_eq!(wkt, "MULTILINESTRING((0 0 0, 1 1 1), (2 2 2, 3 3 3))");
+    }
+
+    #[test]
+    fn test_geometry_2d_multipolygon_to_wkt() {
+        let poly1 = Polygon2D::new(
+            LineString2D::new(vec![
+                Coordinate::<f64, NoValue>::from([0.0, 0.0]),
+                Coordinate::<f64, NoValue>::from([2.0, 0.0]),
+                Coordinate::<f64, NoValue>::from([2.0, 2.0]),
+                Coordinate::<f64, NoValue>::from([0.0, 2.0]),
+                Coordinate::<f64, NoValue>::from([0.0, 0.0]),
+            ]),
+            vec![],
+        );
+        let poly2 = Polygon2D::new(
+            LineString2D::new(vec![
+                Coordinate::<f64, NoValue>::from([3.0, 3.0]),
+                Coordinate::<f64, NoValue>::from([5.0, 3.0]),
+                Coordinate::<f64, NoValue>::from([5.0, 5.0]),
+                Coordinate::<f64, NoValue>::from([3.0, 5.0]),
+                Coordinate::<f64, NoValue>::from([3.0, 3.0]),
+            ]),
+            vec![],
+        );
+        let mpoly = MultiPolygon2D::new(vec![poly1, poly2]);
+        let geom = Geometry2D::MultiPolygon(mpoly);
+        let wkt = geometry_2d_to_wkt(&geom).unwrap();
+        assert_eq!(
+            wkt,
+            "MULTIPOLYGON(((0 0, 2 0, 2 2, 0 2, 0 0)), ((3 3, 5 3, 5 5, 3 5, 3 3)))"
+        );
+    }
+
+    #[test]
+    fn test_geometry_3d_multipolygon_to_wkt() {
+        let poly1 = Polygon3D::new(
+            LineString3D::new(vec![
+                Coordinate::<f64, f64>::from([0.0, 0.0, 0.0]),
+                Coordinate::<f64, f64>::from([2.0, 0.0, 0.0]),
+                Coordinate::<f64, f64>::from([2.0, 2.0, 1.0]),
+                Coordinate::<f64, f64>::from([0.0, 2.0, 1.0]),
+                Coordinate::<f64, f64>::from([0.0, 0.0, 0.0]),
+            ]),
+            vec![],
+        );
+        let poly2 = Polygon3D::new(
+            LineString3D::new(vec![
+                Coordinate::<f64, f64>::from([3.0, 3.0, 2.0]),
+                Coordinate::<f64, f64>::from([5.0, 3.0, 2.0]),
+                Coordinate::<f64, f64>::from([5.0, 5.0, 3.0]),
+                Coordinate::<f64, f64>::from([3.0, 5.0, 3.0]),
+                Coordinate::<f64, f64>::from([3.0, 3.0, 2.0]),
+            ]),
+            vec![],
+        );
+        let mpoly = MultiPolygon3D::new(vec![poly1, poly2]);
+        let geom = Geometry3D::MultiPolygon(mpoly);
+        let wkt = geometry_3d_to_wkt(&geom).unwrap();
+        assert_eq!(
+            wkt,
+            "MULTIPOLYGON(((0 0 0, 2 0 0, 2 2 1, 0 2 1, 0 0 0)), ((3 3 2, 5 3 2, 5 5 3, 3 5 3, 3 3 2)))"
+        );
+    }
+
+    #[test]
+    fn test_geometry_2d_multipolygon_with_holes_to_wkt() {
+        // MultiPolygon with polygons containing holes
+        let poly1_exterior = LineString2D::new(vec![
+            Coordinate::<f64, NoValue>::from([0.0, 0.0]),
+            Coordinate::<f64, NoValue>::from([10.0, 0.0]),
+            Coordinate::<f64, NoValue>::from([10.0, 10.0]),
+            Coordinate::<f64, NoValue>::from([0.0, 10.0]),
+            Coordinate::<f64, NoValue>::from([0.0, 0.0]),
+        ]);
+        let poly1_hole = LineString2D::new(vec![
+            Coordinate::<f64, NoValue>::from([2.0, 2.0]),
+            Coordinate::<f64, NoValue>::from([8.0, 2.0]),
+            Coordinate::<f64, NoValue>::from([8.0, 8.0]),
+            Coordinate::<f64, NoValue>::from([2.0, 8.0]),
+            Coordinate::<f64, NoValue>::from([2.0, 2.0]),
+        ]);
+        let poly1 = Polygon2D::new(poly1_exterior, vec![poly1_hole]);
+
+        let poly2_exterior = LineString2D::new(vec![
+            Coordinate::<f64, NoValue>::from([20.0, 20.0]),
+            Coordinate::<f64, NoValue>::from([30.0, 20.0]),
+            Coordinate::<f64, NoValue>::from([30.0, 30.0]),
+            Coordinate::<f64, NoValue>::from([20.0, 30.0]),
+            Coordinate::<f64, NoValue>::from([20.0, 20.0]),
+        ]);
+        let poly2 = Polygon2D::new(poly2_exterior, vec![]);
+
+        let mpoly = MultiPolygon2D::new(vec![poly1, poly2]);
+        let geom = Geometry2D::MultiPolygon(mpoly);
+        let wkt = geometry_2d_to_wkt(&geom).unwrap();
+        assert_eq!(
+            wkt,
+            "MULTIPOLYGON(((0 0, 10 0, 10 10, 0 10, 0 0), (2 2, 8 2, 8 8, 2 8, 2 2)), ((20 20, 30 20, 30 30, 20 30, 20 20)))"
+        );
+    }
+
+    #[test]
+    fn test_geometry_collection_2d_unsupported() {
+        let geom = Geometry2D::GeometryCollection(vec![]);
+        let result = geometry_2d_to_wkt(&geom);
+        assert!(matches!(
+            result,
+            Err(GeometryExportError::UnsupportedGeometryCollection)
+        ));
+    }
+
+    #[test]
+    fn test_geometry_collection_3d_unsupported() {
+        let geom = Geometry3D::GeometryCollection(vec![]);
+        let result = geometry_3d_to_wkt(&geom);
+        assert!(matches!(
+            result,
+            Err(GeometryExportError::UnsupportedGeometryCollection)
+        ));
+    }
+}
