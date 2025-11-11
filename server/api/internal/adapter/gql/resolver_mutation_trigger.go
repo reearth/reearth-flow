@@ -25,6 +25,13 @@ func (r *mutationResolver) CreateTrigger(ctx context.Context, input gqlmodel.Cre
 
 	param.Description = input.Description
 
+	if input.Variables != nil {
+		param.Variables, err = gqlmodel.FromVariables(input.Variables)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if input.TimeDriverInput != nil {
 		param.EventSource = "TIME_DRIVEN"
 		param.TimeInterval = gqlmodel.FromTimeInterval(input.TimeDriverInput.Interval)
@@ -66,6 +73,13 @@ func (r *mutationResolver) UpdateTrigger(ctx context.Context, input gqlmodel.Upd
 	} else if input.APIDriverInput != nil {
 		param.EventSource = "API_DRIVEN"
 		param.AuthToken = input.APIDriverInput.Token
+	}
+
+	if input.Variables != nil {
+		param.Variables, err = gqlmodel.FromVariables(input.Variables)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	res, err := usecases(ctx).Trigger.Update(ctx, param)

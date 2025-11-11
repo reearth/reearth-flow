@@ -485,6 +485,7 @@ type ComplexityRoot struct {
 		LastTriggered func(childComplexity int) int
 		TimeInterval  func(childComplexity int) int
 		UpdatedAt     func(childComplexity int) int
+		Variables     func(childComplexity int) int
 		Workspace     func(childComplexity int) int
 		WorkspaceID   func(childComplexity int) int
 	}
@@ -2794,6 +2795,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Trigger.UpdatedAt(childComplexity), true
+	case "Trigger.variables":
+		if e.complexity.Trigger.Variables == nil {
+			break
+		}
+
+		return e.complexity.Trigger.Variables(childComplexity), true
 	case "Trigger.workspace":
 		if e.complexity.Trigger.Workspace == nil {
 			break
@@ -3640,6 +3647,7 @@ input DeleteDeploymentInput {
 
 input ExecuteDeploymentInput {
   deploymentId: ID!
+  # variables: JSON
 }
 
 input GetHeadInput {
@@ -3989,8 +3997,6 @@ extend type Mutation {
   workspaceId: ID!
 }
 
-# Enums
-
 enum ProjectSortField {
   NAME
   CREATED_AT
@@ -4121,6 +4127,8 @@ extend type Mutation {
     description: String!
     authToken: String
     timeInterval: TimeInterval
+    variables: JSON
+    # enabled: Boolean
 }
 
 # Enums
@@ -4160,6 +4168,8 @@ input CreateTriggerInput {
     description: String!
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
+    variables: JSON
+    # enabled: Boolean
 }
 
 input UpdateTriggerInput {
@@ -4168,6 +4178,8 @@ input UpdateTriggerInput {
     deploymentId: ID 
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
+    variables: JSON
+    # enabled: Boolean
 }
 
 # Connection
@@ -4210,6 +4222,7 @@ type Me {
   myWorkspace: Workspace
   myWorkspaceId: ID!
   name: String!
+  # Kept for backward compatibility.
   workspaces: [Workspace!]!
 }
 
@@ -11181,6 +11194,8 @@ func (ec *executionContext) fieldContext_Mutation_createTrigger(ctx context.Cont
 				return ec.fieldContext_Trigger_authToken(ctx, field)
 			case "timeInterval":
 				return ec.fieldContext_Trigger_timeInterval(ctx, field)
+			case "variables":
+				return ec.fieldContext_Trigger_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Trigger", field.Name)
 		},
@@ -11248,6 +11263,8 @@ func (ec *executionContext) fieldContext_Mutation_updateTrigger(ctx context.Cont
 				return ec.fieldContext_Trigger_authToken(ctx, field)
 			case "timeInterval":
 				return ec.fieldContext_Trigger_timeInterval(ctx, field)
+			case "variables":
+				return ec.fieldContext_Trigger_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Trigger", field.Name)
 		},
@@ -16069,6 +16086,35 @@ func (ec *executionContext) fieldContext_Trigger_timeInterval(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _Trigger_variables(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Trigger) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Trigger_variables,
+		func(ctx context.Context) (any, error) {
+			return obj.Variables, nil
+		},
+		nil,
+		ec.marshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Trigger_variables(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Trigger",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type JSON does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TriggerConnection_nodes(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.TriggerConnection) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -16117,6 +16163,8 @@ func (ec *executionContext) fieldContext_TriggerConnection_nodes(_ context.Conte
 				return ec.fieldContext_Trigger_authToken(ctx, field)
 			case "timeInterval":
 				return ec.fieldContext_Trigger_timeInterval(ctx, field)
+			case "variables":
+				return ec.fieldContext_Trigger_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Trigger", field.Name)
 		},
@@ -19477,7 +19525,7 @@ func (ec *executionContext) unmarshalInputCreateTriggerInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceId", "deploymentId", "description", "timeDriverInput", "apiDriverInput"}
+	fieldsInOrder := [...]string{"workspaceId", "deploymentId", "description", "timeDriverInput", "apiDriverInput", "variables"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -19519,6 +19567,13 @@ func (ec *executionContext) unmarshalInputCreateTriggerInput(ctx context.Context
 				return it, err
 			}
 			it.APIDriverInput = data
+		case "variables":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variables"))
+			data, err := ec.unmarshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Variables = data
 		}
 	}
 
@@ -20733,7 +20788,7 @@ func (ec *executionContext) unmarshalInputUpdateTriggerInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"triggerId", "description", "deploymentId", "timeDriverInput", "apiDriverInput"}
+	fieldsInOrder := [...]string{"triggerId", "description", "deploymentId", "timeDriverInput", "apiDriverInput", "variables"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -20775,6 +20830,13 @@ func (ec *executionContext) unmarshalInputUpdateTriggerInput(ctx context.Context
 				return it, err
 			}
 			it.APIDriverInput = data
+		case "variables":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variables"))
+			data, err := ec.unmarshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Variables = data
 		}
 	}
 
@@ -24812,6 +24874,8 @@ func (ec *executionContext) _Trigger(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Trigger_authToken(ctx, field, obj)
 		case "timeInterval":
 			out.Values[i] = ec._Trigger_timeInterval(ctx, field, obj)
+		case "variables":
+			out.Values[i] = ec._Trigger_variables(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

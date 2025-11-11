@@ -35,6 +35,10 @@ pub(super) enum GeometryProcessorError {
     TwoDimensionForcerFactory(String),
     #[error("TwoDimensionForcer error: {0}")]
     TwoDimensionForcer(String),
+    #[error("ThreeDimensionForcer Factory error: {0}")]
+    ThreeDimensionForcerFactory(String),
+    #[error("ThreeDimensionForcer error: {0}")]
+    ThreeDimensionForcer(String),
     #[error("GeometryExtractor Factory error: {0}")]
     GeometryExtractorFactory(String),
     #[error("GeometryExtractor error: {0}")]

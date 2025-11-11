@@ -53,18 +53,13 @@ pub(crate) async fn run_flow(
     let job_id = uuid::Uuid::new_v4();
     let action_log_uri = setup_job_directory("plateau-gis-quality-checker", "action-log", job_id)
         .map_err(crate::errors::Error::setup)?;
-    let ingress_state_uri =
-        setup_job_directory("plateau-gis-quality-checker", "ingress-store", job_id)
-            .map_err(crate::errors::Error::setup)?;
-    let ingress_state = Arc::new(
-        State::new(&ingress_state_uri, &storage_resolver).map_err(crate::errors::Error::setup)?,
-    );
     let feature_state_uri =
         setup_job_directory("plateau-gis-quality-checker", "feature-store", job_id)
             .map_err(crate::errors::Error::setup)?;
     let feature_state = Arc::new(
         State::new(&feature_state_uri, &storage_resolver).map_err(crate::errors::Error::setup)?,
     );
+    let ingress_state = Arc::clone(&feature_state);
 
     let logger_factory = Arc::new(LoggerFactory::new(
         create_root_logger(action_log_uri.path()),

@@ -8,8 +8,6 @@ pub enum SinkError {
     CsvWriter(String),
     #[error("Csv Writer Factory error: {0}")]
     CsvWriterFactory(String),
-    #[error("File Writer error: {0}")]
-    FileWriter(String),
     #[error("Cesium3DTiles Writer Factory error: {0}")]
     Cesium3DTilesWriterFactory(String),
     #[error("Cesium3DTiles Writer error: {0}")]
@@ -56,15 +54,25 @@ pub enum SinkError {
     JsonWriterFactory(String),
     #[error("Json Writer error: {0}")]
     JsonWriter(String),
+    #[error("Geometry export error: {0}")]
+    GeometryExport(#[from] GeometryExportError),
+}
+
+#[derive(Error, Debug)]
+pub enum GeometryExportError {
+    #[error("Cannot export empty geometry")]
+    EmptyGeometry,
+    #[error("Cannot export non-point geometry to coordinate columns")]
+    NonPointGeometry,
+    #[error("GeometryCollection export is not yet supported")]
+    UnsupportedGeometryCollection,
+    #[error("Geometry type export to WKT is not yet supported: {0}")]
+    UnsupportedGeometryType(String),
 }
 
 impl SinkError {
-    pub fn file_writer<T: ToString>(message: T) -> Self {
-        Self::FileWriter(message.to_string())
-    }
-
     pub fn geojson_writer<T: ToString>(message: T) -> Self {
-        Self::FileWriter(message.to_string())
+        Self::GeoJsonWriter(message.to_string())
     }
 
     pub fn cesium3dtiles_writer<T: ToString>(message: T) -> Self {
@@ -81,6 +89,10 @@ impl SinkError {
 
     pub fn obj_writer<T: ToString>(message: T) -> Self {
         Self::ObjWriter(message.to_string())
+    }
+
+    pub fn excel_writer<T: ToString>(message: T) -> Self {
+        Self::ExcelWriter(message.to_string())
     }
 }
 

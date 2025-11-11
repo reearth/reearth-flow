@@ -84,7 +84,7 @@ type (
 		Worker_RustLog                         string `envconfig:"WORKER_RUST_LOG" default:"info" pp:",omitempty"`
 
 		// websocket
-		WebsocketThriftServerURL string `envconfig:"REEARTH_FLOW_WEBSOCKET_THRIFT_SERVER_URL" default:"http://localhost:8000" pp:",omitempty"`
+		WebsocketThriftServerURL string `envconfig:"REEARTH_FLOW_WEBSOCKET_SERVER_URL" default:"http://localhost:8000" pp:",omitempty"`
 
 		// cms
 		CMS_Endpoint string          `envconfig:"REEARTH_FLOW_GRPC_ENDPOINT_CMS" pp:",omitempty"`

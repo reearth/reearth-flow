@@ -91,7 +91,7 @@ func (b *BatchRepo) SubmitJob(
 	ctx context.Context,
 	jobID id.JobID,
 	workflowsURL, metadataURL string,
-	variables map[string]interface{},
+	variables map[string]string,
 	projectID id.ProjectID,
 	workspaceID id.WorkspaceID,
 	workerConfig *batchconfig.WorkerConfig,

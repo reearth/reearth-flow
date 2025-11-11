@@ -1099,7 +1099,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
         }
       ]
     },
-    "dracoCompressionEnabled": {
+    "dracoCompression": {
       "type": [
         "boolean",
         "null"
@@ -1309,6 +1309,18 @@ Read Features from CSV or TSV File
         }
       ]
     },
+    "geometry": {
+      "title": "Geometry Configuration",
+      "description": "Optional configuration for parsing geometry from CSV columns",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/GeometryConfig"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "inline": {
       "title": "Inline Content",
       "description": "Expression that returns the file content as text instead of reading from a file path",
@@ -1355,6 +1367,83 @@ Read Features from CSV or TSV File
     },
     "Expr": {
       "type": "string"
+    },
+    "GeometryConfig": {
+      "title": "Geometry Configuration",
+      "description": "Configure how geometry data is extracted from CSV columns",
+      "type": "object",
+      "oneOf": [
+        {
+          "title": "WKT Column",
+          "description": "Geometry stored as Well-Known Text in a single column",
+          "type": "object",
+          "required": [
+            "column",
+            "geometryMode"
+          ],
+          "properties": {
+            "column": {
+              "title": "WKT Column Name",
+              "description": "Name of the column containing WKT geometry",
+              "type": "string"
+            },
+            "geometryMode": {
+              "type": "string",
+              "enum": [
+                "wkt"
+              ]
+            }
+          }
+        },
+        {
+          "title": "Coordinate Columns",
+          "description": "Geometry stored as separate X, Y, (optional Z) columns",
+          "type": "object",
+          "required": [
+            "geometryMode",
+            "xColumn",
+            "yColumn"
+          ],
+          "properties": {
+            "geometryMode": {
+              "type": "string",
+              "enum": [
+                "coordinates"
+              ]
+            },
+            "xColumn": {
+              "title": "X Column Name",
+              "description": "Name of the column containing X coordinate (longitude)",
+              "type": "string"
+            },
+            "yColumn": {
+              "title": "Y Column Name",
+              "description": "Name of the column containing Y coordinate (latitude)",
+              "type": "string"
+            },
+            "zColumn": {
+              "title": "Z Column Name",
+              "description": "Optional name of the column containing Z coordinate (elevation)",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      ],
+      "properties": {
+        "epsg": {
+          "title": "EPSG Code",
+          "description": "Coordinate Reference System code (e.g., 4326 for WGS84)",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint16",
+          "minimum": 0.0
+        }
+      }
     }
   }
 }
@@ -1390,6 +1479,18 @@ Writes features to CSV or TSV files.
         }
       ]
     },
+    "geometry": {
+      "title": "Geometry Configuration",
+      "description": "Optional configuration for exporting geometry to CSV columns",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/GeometryExportConfig"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "output": {
       "description": "Output path or expression for the CSV/TSV file to create",
       "allOf": [
@@ -1422,6 +1523,71 @@ Writes features to CSV or TSV files.
     },
     "Expr": {
       "type": "string"
+    },
+    "GeometryExportConfig": {
+      "title": "Geometry Export Configuration",
+      "description": "Configure how geometry data is written to CSV columns",
+      "type": "object",
+      "oneOf": [
+        {
+          "title": "WKT Column",
+          "description": "Write geometry as Well-Known Text in a single column",
+          "type": "object",
+          "required": [
+            "column",
+            "geometryMode"
+          ],
+          "properties": {
+            "column": {
+              "title": "WKT Column Name",
+              "description": "Name of the column to write WKT geometry",
+              "type": "string"
+            },
+            "geometryMode": {
+              "type": "string",
+              "enum": [
+                "wkt"
+              ]
+            }
+          }
+        },
+        {
+          "title": "Coordinate Columns",
+          "description": "Write geometry as separate X, Y, (optional Z) columns Note: Only supports Point geometries. Non-point geometries will be skipped with a warning.",
+          "type": "object",
+          "required": [
+            "geometryMode",
+            "xColumn",
+            "yColumn"
+          ],
+          "properties": {
+            "geometryMode": {
+              "type": "string",
+              "enum": [
+                "coordinates"
+              ]
+            },
+            "xColumn": {
+              "title": "X Column Name",
+              "description": "Name of the column for X coordinate (longitude)",
+              "type": "string"
+            },
+            "yColumn": {
+              "title": "Y Column Name",
+              "description": "Name of the column for Y coordinate (latitude)",
+              "type": "string"
+            },
+            "zColumn": {
+              "title": "Z Column Name",
+              "description": "Optional name of the column for Z coordinate (elevation)",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      ]
     }
   }
 }
@@ -2691,425 +2857,6 @@ Extracts file system properties (type, size, timestamps) from files
 ### Output Ports
 * default
 * rejected
-### Category
-* File
-
-## FileReader
-### Type
-* source
-### Description
-Reads features from a file
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FileReader",
-  "oneOf": [
-    {
-      "title": "CSV",
-      "type": "object",
-      "required": [
-        "format"
-      ],
-      "properties": {
-        "dataset": {
-          "title": "File Path",
-          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "format": {
-          "type": "string",
-          "enum": [
-            "csv"
-          ]
-        },
-        "inline": {
-          "title": "Inline Content",
-          "description": "Expression that returns the file content as text instead of reading from a file path",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "offset": {
-          "title": "Header Row Offset",
-          "description": "Skip this many rows from the beginning to find the header row (0 = first row is header)",
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint",
-          "minimum": 0.0
-        }
-      }
-    },
-    {
-      "title": "TSV",
-      "type": "object",
-      "required": [
-        "format"
-      ],
-      "properties": {
-        "dataset": {
-          "title": "File Path",
-          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "format": {
-          "type": "string",
-          "enum": [
-            "tsv"
-          ]
-        },
-        "inline": {
-          "title": "Inline Content",
-          "description": "Expression that returns the file content as text instead of reading from a file path",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "offset": {
-          "title": "Header Row Offset",
-          "description": "Skip this many rows from the beginning to find the header row (0 = first row is header)",
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint",
-          "minimum": 0.0
-        }
-      }
-    },
-    {
-      "title": "JSON",
-      "type": "object",
-      "required": [
-        "format"
-      ],
-      "properties": {
-        "dataset": {
-          "title": "File Path",
-          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "format": {
-          "type": "string",
-          "enum": [
-            "json"
-          ]
-        },
-        "inline": {
-          "title": "Inline Content",
-          "description": "Expression that returns the file content as text instead of reading from a file path",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "title": "CityGML",
-      "description": "Configuration for reading CityGML files as a data source.",
-      "type": "object",
-      "required": [
-        "format"
-      ],
-      "properties": {
-        "dataset": {
-          "title": "File Path",
-          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "flatten": {
-          "type": [
-            "boolean",
-            "null"
-          ]
-        },
-        "format": {
-          "type": "string",
-          "enum": [
-            "citygml"
-          ]
-        },
-        "inline": {
-          "title": "Inline Content",
-          "description": "Expression that returns the file content as text instead of reading from a file path",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "title": "GeoJSON",
-      "type": "object",
-      "required": [
-        "format"
-      ],
-      "properties": {
-        "dataset": {
-          "title": "File Path",
-          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "format": {
-          "type": "string",
-          "enum": [
-            "geojson"
-          ]
-        },
-        "inline": {
-          "title": "Inline Content",
-          "description": "Expression that returns the file content as text instead of reading from a file path",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      }
-    }
-  ],
-  "definitions": {
-    "Expr": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-### Output Ports
-* default
-### Category
-* File
-
-## FileWriter
-### Type
-* sink
-### Description
-Write Features to Files in Various Formats
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "File Writer Parameters",
-  "description": "Configure the output file format and destination for writing features",
-  "oneOf": [
-    {
-      "title": "File Writer Common Parameters",
-      "description": "Common parameters shared across all file format types",
-      "type": "object",
-      "required": [
-        "format",
-        "output"
-      ],
-      "properties": {
-        "format": {
-          "type": "string",
-          "enum": [
-            "csv"
-          ]
-        },
-        "output": {
-          "title": "Output Path",
-          "description": "Expression for the output file path where features will be written",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "title": "File Writer Common Parameters",
-      "description": "Common parameters shared across all file format types",
-      "type": "object",
-      "required": [
-        "format",
-        "output"
-      ],
-      "properties": {
-        "format": {
-          "type": "string",
-          "enum": [
-            "tsv"
-          ]
-        },
-        "output": {
-          "title": "Output Path",
-          "description": "Expression for the output file path where features will be written",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "title": "File Writer Common Parameters",
-      "description": "Common parameters shared across all file format types",
-      "type": "object",
-      "required": [
-        "format",
-        "output"
-      ],
-      "properties": {
-        "format": {
-          "type": "string",
-          "enum": [
-            "xml"
-          ]
-        },
-        "output": {
-          "title": "Output Path",
-          "description": "Expression for the output file path where features will be written",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "title": "File Writer Common Parameters",
-      "description": "Common parameters shared across all file format types",
-      "type": "object",
-      "required": [
-        "format",
-        "output"
-      ],
-      "properties": {
-        "converter": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "format": {
-          "type": "string",
-          "enum": [
-            "json"
-          ]
-        },
-        "output": {
-          "title": "Output Path",
-          "description": "Expression for the output file path where features will be written",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "title": "File Writer Common Parameters",
-      "description": "Common parameters shared across all file format types",
-      "type": "object",
-      "required": [
-        "format",
-        "output"
-      ],
-      "properties": {
-        "format": {
-          "type": "string",
-          "enum": [
-            "excel"
-          ]
-        },
-        "output": {
-          "title": "Output Path",
-          "description": "Expression for the output file path where features will be written",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            }
-          ]
-        },
-        "sheetName": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      }
-    }
-  ],
-  "definitions": {
-    "Expr": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
 ### Category
 * File
 
@@ -5503,7 +5250,7 @@ Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .
     },
     "encoding": {
       "title": "Character Encoding",
-      "description": "Character encoding for attribute data in the DBF file (e.g., \"UTF-8\", \"Shift_JIS\")",
+      "description": "Character encoding for attribute data in the DBF file. If not specified, encoding is determined from the .cpg file (if present), otherwise defaults to UTF-8.\n\nSupported encodings include: - **UTF-8** - Unicode UTF-8 (default, recommended for all new shapefiles) - **Windows Code Pages** - Windows-1250 through Windows-1258, Windows-874 - **ISO-8859 family** - ISO-8859-1 (Latin-1) through ISO-8859-16 - **Asian encodings** - Shift-JIS, EUC-JP, EUC-KR, Big5, GBK, GB18030 - **Other legacy encodings** - KOI8-R, KOI8-U, IBM866, Macintosh\n\nAll encoding labels are case-insensitive and support common variations (e.g., \"UTF-8\", \"UTF8\", \"utf8\" all work).\n\nUTF-16 is not supported due to byte-level handling requirements. If a UTF-16 shapefile is encountered, an error with conversion instructions is returned.\n\nExamples: - `\"UTF-8\"` - Modern standard - `\"Windows-1252\"` - Common for Western European legacy data - `\"ISO-8859-1\"` - Latin-1, common in older shapefiles - `\"Shift-JIS\"` - Japanese data\n\nPriority order: encoding parameter > .cpg file > UTF-8 default",
       "type": [
         "string",
         "null"
@@ -5875,6 +5622,52 @@ Replace Geometry with 3D Box from Attributes
   },
   "definitions": {
     "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
+
+## ThreeDimensionForcer
+### Type
+* processor
+### Description
+Convert 2D Geometry to 3D by Adding Z-Coordinates
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThreeDimensionForcer Parameters",
+  "description": "Configure how to convert 2D geometries to 3D by adding Z-coordinates",
+  "type": "object",
+  "properties": {
+    "elevation": {
+      "title": "Elevation",
+      "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "preserveExistingZ": {
+      "title": "Preserve Existing Z Values",
+      "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    }
+  },
+  "definitions": {
+    "Expr": {
       "type": "string"
     }
   }

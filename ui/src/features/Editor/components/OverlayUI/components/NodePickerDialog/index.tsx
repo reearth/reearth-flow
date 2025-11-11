@@ -70,7 +70,14 @@ const NodePickerDialog: React.FC<Props> = ({
             </SelectTrigger>
             <SelectContent>
               {actionTypes.map((actionType) => (
-                <SelectItem key={actionType.value} value={actionType.value}>
+                <SelectItem
+                  key={actionType.value}
+                  value={actionType.value}
+                  disabled={
+                    (actionType.value === "reader" ||
+                      actionType.value === "writer") &&
+                    !isMainWorkflow
+                  }>
                   {actionType.label}
                 </SelectItem>
               ))}
