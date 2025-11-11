@@ -42,10 +42,14 @@ graphs:
         type: action
         action: FeatureCityGmlReader
         with:
-          flatten: true
           format: citygml
           dataset: |
             env.get("__value")["path"]
+
+      - id: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        name: AttributeFlattener
+        type: action
+        action: PLATEAU4.AttributeFlattener
 
       - id: c32a279d-97be-4584-b282-4d65627b1132
         name: FeatureLodFilter
@@ -80,29 +84,42 @@ graphs:
           reprojectorType: jgd2011ToWgs84
 
       - id: 5f6a7b8c-9d0e-1f2a-3b4c-5d6e7f8a9b0c
-        name: AttributeMapperByLod3
+        name: AttributeManagerByLod3
         type: action
-        action: AttributeMapper
+        action: AttributeManager
         with:
-          mappers:
+          operations:
             - attribute: meshcode
-              expr: |
+              method: create
+              value: |
                 let file = file::extract_filename(env.get("__value")["path"]);
                 file[0..8]
             - attribute: city_code
-              valueAttribute: cityCode
+              method: convert
+              value: |
+                env.get("__value").cityCode
             - attribute: city_name
-              valueAttribute: cityName
+              method: convert
+              value: |
+                env.get("__value").cityName
             - attribute: feature_type
-              valueAttribute: gmlName
+              method: convert
+              value: |
+                env.get("__value").gmlName
             - attribute: gml_id
-              expr: |
+              method: create
+              value: |
                 env.get("__feature_id")
-            - attribute: lod
-              expr: |
+            - attribute: _lod
+              method: create
+              value: |
                 env.get("__lod")
-            - attribute: _folder_package
-              valueAttribute: package
+            - attribute: fileIndex
+              method: remove
+            - attribute: uro:StationSquareAttribute_uro:areaPlanned
+              method: convert
+              value:
+                env.get("__value")["uro:StationSquareAttribute_uro:areaPlanned"].to_string()
 
       - id: 4f5a6b7c-8d9e-0f1a-2b3c-4d5e6f7a8b9c
         name: Cesium3DTilesWriterLod3
@@ -116,29 +133,70 @@ graphs:
             file::join_path(env.get("outputPath"), "tran_lod3")
 
       - id: 2ccf7b99-4123-446e-8ff7-049be1c604c7
-        name: AttributeMapperByLod0-2
+        name: AttributeManagerByLod0-2
         type: action
-        action: AttributeMapper
+        action: AttributeManager
         with:
-          mappers:
+          operations:
             - attribute: meshcode
-              expr: |
+              method: create
+              value: |
                 let file = file::extract_filename(env.get("__value")["path"]);
                 file[0..8]
-            - attribute: city_code
-              valueAttribute: cityCode
-            - attribute: city_name
-              valueAttribute: cityName
-            - attribute: feature_type
-              valueAttribute: gmlName
+            - attribute: cityCode
+              method: rename
+              value: city_code
+            - attribute: cityName
+              method: rename
+              value: city_name
+            - attribute: gmlName
+              method: remove
             - attribute: gml_id
-              expr: |
+              method: create
+              value: |
                 env.get("__feature_id")
+            - attribute: gmlId
+              method: remove
             - attribute: lod
-              expr: |
-                env.get("__lod")
-            - attribute: _folder_package
-              valueAttribute: package
+              method: rename
+              value: _lod
+            - attribute: fileIndex
+              method: remove
+            - attribute: root
+              method: remove
+            - attribute: cityGmlPath
+              method: remove
+            - attribute: admin
+              method: remove
+            - attribute: area
+              method: remove
+            - attribute: package
+              method: remove
+            - attribute: extension
+              method: remove
+            - attribute: dirRoot
+              method: remove
+            - attribute: gmlRootId
+              method: remove
+            - attribute: maxLod
+              method: remove
+            - attribute: dirSchemas
+              method: remove
+            - attribute: dirCodelists
+              method: remove
+            - attribute: gml:name_code
+              method: remove
+            - attribute: path
+              method: remove
+            - attribute: name
+              method: remove
+            - attribute: udxDirs
+              method: rename
+              value: _udxDirs
+            - attribute: uro:StationSquareAttribute_uro:areaPlanned
+              method: convert
+              value:
+                env.get("__value")["uro:StationSquareAttribute_uro:areaPlanned"].to_string()
 
       - id: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
         name: FeatureSorter
@@ -148,8 +206,8 @@ graphs:
           attributes:
             # sorting is required by MVT writer and dissolver
             # must sort by output path, not feature type
-            - _folder_package
-            - lod
+            - _udxDirs
+            - _lod
           order: ascending
 
       # corresponding to FME's 2DForcer_lod0-2
@@ -173,8 +231,8 @@ graphs:
         with:
           groupBy:
             - gml_id
-            - _folder_package
-            - lod
+            - _udxDirs
+            - _lod
           attributeAccumulationMode: useOne
 
       - id: b4c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
@@ -183,8 +241,8 @@ graphs:
         action: FeatureSorter
         with:
           attributes:
-            - _folder_package
-            - lod
+            - _udxDirs
+            - _lod
             - feature_type
           order: ascending
 
@@ -198,7 +256,7 @@ graphs:
           minZoom: 8
           maxZoom: 16
           output: |
-            file::join_path(env.get("outputPath"), env.get("__value")._folder_package + "_lod" + env.get("__value").lod)
+            file::join_path(env.get("outputPath"), env.get("__value")._udxDirs + "_lod" + env.get("__value")._lod)
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
@@ -211,8 +269,13 @@ graphs:
         to: ded2e272-e05c-4918-86b3-aa9f763da6e6
         fromPort: default
         toPort: default
-      - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
+      - id: cf845867-6ffc-4b83-9fd5-e376a22470e2
         from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+        to: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        fromPort: default
+        toPort: default
+      - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         to: c32a279d-97be-4584-b282-4d65627b1132
         fromPort: default
         toPort: default

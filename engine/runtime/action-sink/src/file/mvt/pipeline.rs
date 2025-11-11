@@ -64,7 +64,7 @@ pub(super) fn geometry_slicing_stage(
                         typename,
                         multi_polygons: mpoly,
                         multi_line_strings: MultiLineString2::new(),
-                        properties: feature.attributes.clone(),
+                        properties: super::slice::sanitize_numbers_for_bincode(&feature.attributes),
                     };
                     let bytes =
                         bincode::serde::encode_to_vec(&feature, bincode_config).map_err(|err| {
@@ -83,7 +83,7 @@ pub(super) fn geometry_slicing_stage(
                         typename,
                         multi_polygons: MultiPolygon2::new(),
                         multi_line_strings: line_strings,
-                        properties: feature.attributes.clone(),
+                        properties: super::slice::sanitize_numbers_for_bincode(&feature.attributes),
                     };
                     let bytes =
                         bincode::serde::encode_to_vec(&feature, bincode_config).map_err(|err| {
@@ -247,6 +247,7 @@ pub(super) fn tile_writing_stage(
                 };
                 if detail != min_detail && compressed_size > 500_000 {
                     // If the tile is too large, try a lower detail level
+                    tracing::warn!("Large tile skipped, retry unimplemented");
                     continue;
                 }
                 storage
@@ -375,7 +376,10 @@ pub(super) fn make_tile(
 
             // Encode attributes as MVT tags
             for (key, value) in &feature.properties {
-                convert_properties(&mut layer.tags_enc, key.as_ref(), value);
+                // skip keys starting with "_"
+                if key.as_ref().starts_with("_") { continue; }
+                let normalized_key = key.inner().replace(":", "_");
+                convert_properties(&mut layer.tags_enc, &normalized_key, value);
             }
             layer
         };
