@@ -30,6 +30,7 @@ export type Trigger = {
   authToken?: string;
   timeInterval?: TimeInterval;
   description?: string;
+  variables?: Record<string, any>;
 };
 
 export type GetTriggers = {

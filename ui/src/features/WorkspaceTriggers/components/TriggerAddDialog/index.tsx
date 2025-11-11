@@ -66,10 +66,9 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     pendingWorkflowData,
     openTriggerProjectVariablesDialog,
     setOpenTriggerProjectVariablesDialog,
+    handleVariablesConfirm,
   } = useHooks({ setShowDialog });
 
-  console.log("SELECTED DEPLOYMENT: ", selectedDeployment);
-  console.log("PENDING WORKFLOW DATA: ", pendingWorkflowData?.variables);
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(false)}>
       {!createdTrigger && (
@@ -271,7 +270,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
           onOpenChange={setOpenTriggerProjectVariablesDialog}
           variables={pendingWorkflowData?.variables || []}
           workflowName={pendingWorkflowData?.workflowName || ""}
-          onConfirm={() => setOpenTriggerProjectVariablesDialog(false)}
+          onConfirm={handleVariablesConfirm}
           onCancel={() => setOpenTriggerProjectVariablesDialog(false)}
         />
       )}

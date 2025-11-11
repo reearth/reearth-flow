@@ -30,6 +30,7 @@ export const useTrigger = () => {
     description: string,
     timeInterval?: TimeInterval,
     authToken?: string,
+    variables?: Record<string, any>,
   ): Promise<CreateTrigger> => {
     const { mutateAsync, ...rest } = createTriggerMutation;
 
@@ -41,6 +42,7 @@ export const useTrigger = () => {
           ? { interval: timeInterval as TimeDriverInput["interval"] }
           : undefined,
         apiDriverInput: authToken ? { token: authToken } : undefined,
+        variables,
         description,
       });
       toast({

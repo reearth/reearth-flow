@@ -2,7 +2,6 @@ import { useState } from "react";
 
 import {
   Button,
-  Checkbox,
   Dialog,
   DialogContent,
   DialogContentWrapper,
@@ -14,22 +13,19 @@ import {
   Label,
   TextArea,
 } from "@flow/components";
-import { VariableTypeSelector } from "@flow/features/WorkspaceProjects/components";
 import {
   getDefaultValue,
   inferProjectVariableType,
 } from "@flow/features/WorkspaceProjects/components/WorkflowImport/inferVariableType";
 import SimpleArrayInput from "@flow/features/WorkspaceProjects/components/WorkflowImport/SimpleArrayInput";
 import { useT } from "@flow/lib/i18n";
-import { AnyProjectVariable, VarType } from "@flow/types";
+import { VarType } from "@flow/types";
 import type { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
 
 type VariableMapping = {
   name: string;
   type: VarType;
   defaultValue: any;
-  required: boolean;
-  public: boolean;
 };
 
 type TriggerProjectVariablesMappingDialogProps = {
@@ -37,12 +33,7 @@ type TriggerProjectVariablesMappingDialogProps = {
   onOpenChange: (open: boolean) => void;
   variables: WorkflowVariable[];
   workflowName: string;
-  onConfirm: (
-    projectVariables: Omit<
-      AnyProjectVariable,
-      "id" | "createdAt" | "updatedAt" | "projectId"
-    >[],
-  ) => void;
+  onConfirm: (projectVariables: any[]) => void;
   onCancel: () => void;
 };
 
@@ -56,7 +47,6 @@ export default function TriggerProjectVariablesMappingDialog({
 }: TriggerProjectVariablesMappingDialogProps) {
   const t = useT();
 
-  // Initialize variable mappings with inferred types
   const [variableMappings, setVariableMappings] = useState<VariableMapping[]>(
     () =>
       variables.map((variable) => {
@@ -69,24 +59,9 @@ export default function TriggerProjectVariablesMappingDialog({
           type: inferredType,
           defaultValue: getDefaultValue(variable.value, inferredType),
           required: variable.value !== null && variable.value !== undefined,
-          public: false,
         };
       }),
   );
-
-  const handleTypeChange = (index: number, newType: VarType) => {
-    setVariableMappings((prev) =>
-      prev.map((mapping, i) =>
-        i === index
-          ? {
-              ...mapping,
-              type: newType,
-              defaultValue: getDefaultValue(mapping.defaultValue, newType),
-            }
-          : mapping,
-      ),
-    );
-  };
 
   const handleDefaultValueChange = (index: number, newValue: any) => {
     setVariableMappings((prev) =>
@@ -95,31 +70,11 @@ export default function TriggerProjectVariablesMappingDialog({
       ),
     );
   };
-
-  const handleRequiredChange = (index: number, required: boolean) => {
-    setVariableMappings((prev) =>
-      prev.map((mapping, i) =>
-        i === index ? { ...mapping, required } : mapping,
-      ),
-    );
-  };
-
-  const handlePublicChange = (index: number, isPublic: boolean) => {
-    setVariableMappings((prev) =>
-      prev.map((mapping, i) =>
-        i === index ? { ...mapping, public: isPublic } : mapping,
-      ),
-    );
-  };
-
   const handleConfirm = () => {
     const projectVariables = variableMappings.map((mapping) => ({
       name: mapping.name,
       type: mapping.type,
       defaultValue: mapping.defaultValue,
-      required: mapping.required,
-      public: mapping.public,
-      config: undefined, // Basic implementation without specific config
     }));
 
     onConfirm(projectVariables);
@@ -130,27 +85,14 @@ export default function TriggerProjectVariablesMappingDialog({
     onOpenChange(false);
   };
 
-  // const renderValuePreview = (value: any) => {
-  //   if (value === null || value === undefined) {
-  //     return <span className="text-muted-foreground italic">null</span>;
-  //   }
-  //   if (Array.isArray(value)) {
-  //     return <span className="font-mono text-xs">[{value.join(", ")}]</span>;
-  //   }
-  //   if (typeof value === "object") {
-  //     return <span className="font-mono text-xs">{JSON.stringify(value)}</span>;
-  //   }
-  //   return <span className="font-mono text-xs">{String(value)}</span>;
-  // };
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent size="xl">
         <DialogHeader>
-          <DialogTitle>{t("Configure Workflow Variables")}</DialogTitle>
+          <DialogTitle>{t("Configure Project Variables")}</DialogTitle>
           <DialogDescription>
             {t(
-              "The workflow '{{workflowName}}' contains {{count}} variables. Configure how they should be imported as Project Variables.",
+              "The deployment contains {{count}} variables. Configure how they should be set as Project Variables.",
               {
                 workflowName,
                 count: variables.length,
@@ -167,49 +109,18 @@ export default function TriggerProjectVariablesMappingDialog({
                     {mapping.name}
                   </Label>
                 </div>
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`required-${index}`}
-                      checked={mapping.required}
-                      onCheckedChange={(checked) =>
-                        handleRequiredChange(index, checked as boolean)
-                      }
-                    />
-                    <Label htmlFor={`required-${index}`} className="text-sm">
-                      {t("Required")}
-                    </Label>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`public-${index}`}
-                      checked={mapping.public}
-                      onCheckedChange={(checked) =>
-                        handlePublicChange(index, checked as boolean)
-                      }
-                    />
-                    <Label htmlFor={`public-${index}`} className="text-sm">
-                      {t("Public")}
-                    </Label>
-                  </div>
-                </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2">
+                <div className="flex flex-col justify-center space-y-2">
                   <Label htmlFor={`type-${index}`}>{t("Variable Type")}</Label>
-                  <VariableTypeSelector
-                    value={mapping.type}
-                    onValueChange={(newType) =>
-                      handleTypeChange(index, newType)
-                    }
-                  />
+                  <span className="flex h-8 w-fit items-center gap-1 rounded-md bg-primary px-2 py-0.5 text-sm">
+                    {mapping.type}
+                  </span>
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor={`default-${index}`}>
-                    {t("Default Value")}
+                    <span>{t("Default Value")}</span>
                   </Label>
                   {mapping.type === "array" ? (
                     <SimpleArrayInput

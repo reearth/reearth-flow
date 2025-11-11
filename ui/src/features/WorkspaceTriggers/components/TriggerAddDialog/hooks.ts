@@ -14,7 +14,8 @@ import {
 } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
-import { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
+
+import { useDeploymentWorkflowVariables } from "../TriggerWorkflowVariables/useDeploymentWorkflowVariables";
 
 export default ({
   setShowDialog,
@@ -23,10 +24,7 @@ export default ({
 }) => {
   const t = useT();
   const { toast } = useToast();
-  const [pendingWorkflowData, setPendingWorkflowData] = useState<{
-    variables: WorkflowVariable[];
-    workflowName: string;
-  } | null>(null);
+
   const [currentWorkspace] = useCurrentWorkspace();
   const { createTrigger } = useTrigger();
   const apiUrl = config().api || window.location.origin;
@@ -117,10 +115,6 @@ export default ({
   const totalPages = page?.totalPages as number;
   const [openSelectDeploymentsDialog, setOpenSelectDeploymentsDialog] =
     useState<boolean>(false);
-  const [
-    openTriggerProjectVariablesDialog,
-    setOpenTriggerProjectVariablesDialog,
-  ] = useState<boolean>(false);
 
   useEffect(() => {
     if (eventSource === "API_DRIVEN") {
@@ -130,43 +124,21 @@ export default ({
     }
   }, [eventSource]);
 
-  const handleWorkflowFileUpload = useCallback(async (workflowUrl: string) => {
-    if (!workflowUrl) return;
-
-    // const urlExtension = workflowUrl.split(".").pop();
-    const response = await fetch(workflowUrl || "");
-
-    const jsonData = await response.json();
-
-    // Convert variables object to array format
-    const variablesObj = jsonData.with || {};
-
-    console.log("variablesObj", variablesObj);
-    const variablesArray: WorkflowVariable[] = Object.entries(variablesObj).map(
-      ([name, value]) => ({
-        name,
-        value,
-      }),
-    );
-
-    if (variablesArray.length === 0) {
-      return;
-    }
-
-    setPendingWorkflowData({
-      variables: variablesArray,
-      workflowName: jsonData.name,
-    });
-  }, []);
-
-  console.log("pendingWorkflowData", pendingWorkflowData);
+  const {
+    pendingWorkflowData,
+    workflowVariablesObject,
+    openTriggerProjectVariablesDialog,
+    setOpenTriggerProjectVariablesDialog,
+    handleWorkflowFileRead,
+    handleVariablesConfirm,
+  } = useDeploymentWorkflowVariables();
 
   const handleSelectDeployment = (deployment: Deployment) => {
     const deploymentId = deployment.id;
     const selectedDeployment = deployments?.find((d) => d.id === deploymentId);
     setSelectedDeployment(selectedDeployment || null);
     setDeploymentId(deploymentId);
-    handleWorkflowFileUpload(selectedDeployment?.workflowUrl || "");
+    handleWorkflowFileRead(selectedDeployment?.workflowUrl);
     setOpenTriggerProjectVariablesDialog(true);
   };
 
@@ -209,6 +181,7 @@ export default ({
       description,
       eventSource === "TIME_DRIVEN" ? timeInterval : undefined,
       eventSource === "API_DRIVEN" ? authToken : undefined,
+      workflowVariablesObject,
     );
 
     setCreatedTrigger(createdTrigger);
@@ -225,6 +198,7 @@ export default ({
     setShowDialog,
     createTrigger,
     description,
+    workflowVariablesObject,
   ]);
 
   const handleCopyToClipboard = useCallback(
@@ -270,6 +244,8 @@ export default ({
     handleTriggerCreation,
     setCurrentPage,
     handleSortChange,
+    // Project Params for Workflow Variables
+    handleVariablesConfirm,
     pendingWorkflowData,
     openTriggerProjectVariablesDialog,
     setOpenTriggerProjectVariablesDialog,

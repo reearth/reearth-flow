@@ -32,12 +32,14 @@ export const useQueries = () => {
       timeDriverInput,
       apiDriverInput,
       description,
+      variables,
     }: {
       workspaceId: string;
       deploymentId: string;
       timeDriverInput?: TimeDriverInput;
       apiDriverInput?: ApiDriverInput;
       description: string;
+      variables?: Record<string, any>;
     }) => {
       const data = await graphQLContext?.CreateTrigger({
         input: {
@@ -46,6 +48,7 @@ export const useQueries = () => {
           timeDriverInput,
           apiDriverInput,
           description,
+          variables,
         },
       });
 

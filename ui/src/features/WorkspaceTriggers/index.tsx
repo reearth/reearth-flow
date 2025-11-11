@@ -84,6 +84,7 @@ const TriggerManager: React.FC = () => {
     },
   ];
   const resultsPerPage = TRIGGERS_FETCH_RATE;
+
   return (
     <>
       {selectedTrigger ? (
