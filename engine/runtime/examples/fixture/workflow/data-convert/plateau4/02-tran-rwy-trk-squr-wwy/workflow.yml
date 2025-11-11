@@ -43,6 +43,7 @@ graphs:
         action: FeatureCityGmlReader
         with:
           format: citygml
+          resolve_code: false
           dataset: |
             env.get("__value")["path"]
 

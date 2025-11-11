@@ -6,7 +6,7 @@ use std::{
 };
 
 use indexmap::IndexMap;
-use nusamai_citygml::{CityGmlElement, CityGmlReader, Envelope, ParseError, SubTreeReader};
+use nusamai_citygml::{CityGmlElement, CityGmlReader, Envelope, ParseError, SubTreeReader, codelist::CodeResolver};
 use nusamai_plateau::{
     appearance::AppearanceStore, models, Entity, FlattenTreeTransform, GeometricMergedownTransform,
 };
@@ -31,9 +31,14 @@ pub(super) fn read_citygml(
     dataset: rhai::AST,
     original_dataset: reearth_flow_types::Expr,
     flatten: Option<bool>,
+    resolve_code: Option<bool>,
     global_params: Option<HashMap<String, serde_json::Value>>,
 ) -> Result<(), crate::feature::errors::FeatureProcessorError> {
-    let code_resolver = nusamai_plateau::codelist::Resolver::new();
+    let code_resolver: Box<dyn CodeResolver> = if resolve_code.unwrap_or(true) {
+        Box::new(nusamai_plateau::codelist::Resolver::new())
+    } else {
+        Box::new(nusamai_citygml::codelist::NoopResolver {})
+    };
     let expr_engine = Arc::clone(&ctx.expr_engine);
     let scope = feature.new_scope(expr_engine.clone(), &global_params);
     let city_gml_path = scope
@@ -54,7 +59,7 @@ pub(super) fn read_citygml(
 
     let base_url: Url = input_path.into();
     let mut xml_reader = NsReader::from_reader(buf_reader);
-    let context = nusamai_citygml::ParseContext::new(base_url.clone(), &code_resolver);
+    let context = nusamai_citygml::ParseContext::new(base_url.clone(), code_resolver.as_ref());
     let mut citygml_reader = CityGmlReader::new(context);
     let mut st = citygml_reader.start_root(&mut xml_reader).map_err(|e| {
         crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))

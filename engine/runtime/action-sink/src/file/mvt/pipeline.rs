@@ -38,7 +38,6 @@ pub(super) fn geometry_slicing_stage(
     min_zoom: u8,
     max_zoom: u8,
 ) -> crate::errors::Result<()> {
-    let bincode_config = bincode::config::standard();
     let tile_contents = Arc::new(Mutex::new(Vec::new()));
     let storage = ctx
         .storage_resolver
@@ -64,10 +63,10 @@ pub(super) fn geometry_slicing_stage(
                         typename,
                         multi_polygons: mpoly,
                         multi_line_strings: MultiLineString2::new(),
-                        properties: super::slice::sanitize_numbers_for_bincode(&feature.attributes),
+                        properties: feature.attributes.clone(),
                     };
                     let bytes =
-                        bincode::serde::encode_to_vec(&feature, bincode_config).map_err(|err| {
+                        serde_json::to_vec(&feature).map_err(|err| {
                             crate::errors::SinkError::MvtWriter(format!(
                                 "Failed to serialize a sliced feature: {err:?}"
                             ))
@@ -83,10 +82,10 @@ pub(super) fn geometry_slicing_stage(
                         typename,
                         multi_polygons: MultiPolygon2::new(),
                         multi_line_strings: line_strings,
-                        properties: super::slice::sanitize_numbers_for_bincode(&feature.attributes),
+                        properties: feature.attributes.clone(),
                     };
                     let bytes =
-                        bincode::serde::encode_to_vec(&feature, bincode_config).map_err(|err| {
+                        serde_json::to_vec(&feature).map_err(|err| {
                             crate::errors::SinkError::MvtWriter(format!(
                                 "Failed to serialize a sliced feature: {err:?}"
                             ))
@@ -268,11 +267,10 @@ pub(super) fn make_tile(
     let mut int_ring_buf = Vec::new();
     let mut int_ring_buf2 = Vec::new();
     let extent = 1 << default_detail;
-    let bincode_config = bincode::config::standard();
 
     for serialized_feat in serialized_feats {
-        let (feature, _): (super::slice::SlicedFeature, _) =
-            bincode::serde::decode_from_slice(serialized_feat, bincode_config).map_err(|err| {
+        let feature: super::slice::SlicedFeature =
+            serde_json::from_slice(serialized_feat).map_err(|err| {
                 crate::errors::SinkError::MvtWriter(format!(
                     "Failed to deserialize a sliced feature: {err:?}"
                 ))

@@ -18,31 +18,6 @@ pub(super) struct SlicedFeature<'a> {
     pub(super) properties: IndexMap<Attribute, AttributeValue>,
 }
 
-/// Convert all Number variants to String to avoid bincode serde_json::Number deserialization issue
-pub(super) fn sanitize_numbers_for_bincode(
-    attributes: &IndexMap<Attribute, AttributeValue>,
-) -> IndexMap<Attribute, AttributeValue> {
-    attributes
-        .iter()
-        .map(|(k, v)| (k.clone(), sanitize_value(v)))
-        .collect()
-}
-
-fn sanitize_value(value: &AttributeValue) -> AttributeValue {
-    match value {
-        AttributeValue::Number(n) => AttributeValue::String(n.to_string()),
-        AttributeValue::Array(arr) => {
-            AttributeValue::Array(arr.iter().map(sanitize_value).collect())
-        }
-        AttributeValue::Map(map) => AttributeValue::Map(
-            map.iter()
-                .map(|(k, v)| (k.clone(), sanitize_value(v)))
-                .collect(),
-        ),
-        _ => value.clone(),
-    }
-}
-
 #[allow(clippy::too_many_arguments)]
 pub(super) fn slice_cityobj_geoms<'a>(
     feature: &Feature,
