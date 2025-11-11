@@ -23,7 +23,7 @@ type ExecuteAPITriggerParam struct {
 	AuthenticationToken string
 	TriggerID           id.TriggerID
 	NotificationURL     *string
-	Variables           map[string]string
+	Variables           map[string]interface{}
 }
 
 type ExecuteTimeDrivenTriggerParam struct {

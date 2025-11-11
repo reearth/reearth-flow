@@ -103,3 +103,37 @@ func projectParametersToMap(pl *parameter.ParameterList) map[string]string {
 	}
 	return vals
 }
+
+func normalizeRequestVars(vars map[string]interface{}) map[string]string {
+	if len(vars) == 0 {
+		return nil
+	}
+
+	out := make(map[string]string, len(vars))
+	for k, v := range vars {
+		switch vv := v.(type) {
+		case nil:
+			continue
+		case string:
+			out[k] = vv
+		case float64, float32,
+			int, int8, int16, int32, int64,
+			uint, uint8, uint16, uint32, uint64,
+			bool:
+			out[k] = fmt.Sprint(vv)
+		default:
+			b, err := json.Marshal(vv)
+			if err != nil {
+				log.Debugf("failed to marshal variable %s: %v", k, err)
+				continue
+			}
+			out[k] = string(b)
+		}
+	}
+
+	if len(out) == 0 {
+		return nil
+	}
+
+	return out
+}

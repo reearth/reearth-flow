@@ -180,7 +180,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	// }
 
 	triggerVars := trigger.Variables()
-	requestVars := p.Variables
+	requestVars := normalizeRequestVars(p.Variables)
 
 	finalVars := resolveVariables(
 		ModeAPIDriven,

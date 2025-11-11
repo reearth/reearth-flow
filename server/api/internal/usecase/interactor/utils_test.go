@@ -204,3 +204,91 @@ func buildParameterList(t *testing.T, defs []map[string]interface{}) *parameter.
 	}
 	return &list
 }
+
+func TestNormalizeRequestVars(t *testing.T) {
+	arr := []interface{}{"a", "b"}
+	obj := map[string]interface{}{"k": "v"}
+
+	arrJSON, _ := json.Marshal(arr)
+	objJSON, _ := json.Marshal(obj)
+
+	tests := []struct {
+		name     string
+		input    map[string]interface{}
+		expected map[string]string
+	}{
+		{
+			name:     "nil input returns nil",
+			input:    nil,
+			expected: nil,
+		},
+		{
+			name: "primitive types",
+			input: map[string]interface{}{
+				"s":   "str",
+				"f64": float64(1.5),
+				"f32": float32(2.5),
+				"i":   int(10),
+				"i8":  int8(1),
+				"i16": int16(2),
+				"i32": int32(3),
+				"i64": int64(4),
+				"u":   uint(5),
+				"u8":  uint8(6),
+				"u16": uint16(7),
+				"u32": uint32(8),
+				"u64": uint64(9),
+				"b":   true,
+			},
+			expected: map[string]string{
+				"s":   "str",
+				"f64": "1.5",
+				"f32": "2.5",
+				"i":   "10",
+				"i8":  "1",
+				"i16": "2",
+				"i32": "3",
+				"i64": "4",
+				"u":   "5",
+				"u8":  "6",
+				"u16": "7",
+				"u32": "8",
+				"u64": "9",
+				"b":   "true",
+			},
+		},
+		{
+			name: "complex types marshalled as JSON",
+			input: map[string]interface{}{
+				"arr": arr,
+				"obj": obj,
+			},
+			expected: map[string]string{
+				"arr": string(arrJSON),
+				"obj": string(objJSON),
+			},
+		},
+		{
+			name: "nil values are skipped",
+			input: map[string]interface{}{
+				"a": nil,
+				"b": "value",
+			},
+			expected: map[string]string{
+				"b": "value",
+			},
+		},
+		{
+			name:     "empty map returns nil",
+			input:    map[string]interface{}{},
+			expected: nil,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := normalizeRequestVars(tc.input)
+			assert.Equal(t, tc.expected, actual)
+		})
+	}
+}
