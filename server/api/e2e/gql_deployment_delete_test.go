@@ -199,6 +199,10 @@ func createDeploymentForTest(t *testing.T, e *httpexpect.Expect) string {
 				"workspaceId": wId1.String(),
 				"description": "Test deployment for deletion",
 				"file":        nil,
+				"variables": map[string]interface{}{
+					"DEPLOYMENT_VAR_1": "deployment_value_1",
+					"DEPLOYMENT_VAR_2": "deployment_value_2",
+				},
 			},
 		},
 	}
@@ -274,6 +278,10 @@ func createTriggerForDeployment(t *testing.T, e *httpexpect.Expect, deploymentID
 				"description":  "Test trigger",
 				"timeDriverInput": map[string]interface{}{
 					"interval": "EVERY_DAY",
+				},
+				"variables": map[string]interface{}{
+					"TRIGGER_VAR_1": "trigger_value_1",
+					"TRIGGER_VAR_2": "trigger_value_2",
 				},
 			},
 		},

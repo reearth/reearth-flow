@@ -21,6 +21,7 @@ func ToDeployment(d *deployment.Deployment) *Deployment {
 		ProjectID:   IDFromRef(d.Project()),
 		HeadID:      IDFromRef(d.HeadID()),
 		IsHead:      d.IsHead(),
+		Variables:   ToVariables(d.Variables()),
 	}
 }
 
@@ -36,6 +37,7 @@ func ToJob(j *job.Job) *Job {
 		Status:       ToJobStatus(j.Status()),
 		StartedAt:    j.StartedAt(),
 		CompletedAt:  j.CompletedAt(),
+		Variables:    ToVariables(j.Variables()),
 	}
 
 	if urls := j.OutputURLs(); len(urls) > 0 {

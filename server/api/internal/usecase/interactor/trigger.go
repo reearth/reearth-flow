@@ -173,11 +173,10 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		projectParamsMap = projectParametersToMap(pls)
 	}
 
-	// TODO: Deployment.variables (to be implemented in Phase 2 of the task — Triggers Variables Support on Flow UI
 	var deploymentVars map[string]string
-	// if dv := deployment.Variables(); dv != nil {
-	// 	deploymentVars = dv
-	// }
+	if dv := deployment.Variables(); dv != nil {
+		deploymentVars = dv
+	}
 
 	triggerVars := trigger.Variables()
 	requestVars := normalizeRequestVars(p.Variables)
@@ -196,6 +195,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		Workspace(deployment.Workspace()).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
+		Variables(finalVars).
 		Build()
 	if err != nil {
 		return nil, err
@@ -215,7 +215,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		projectID = *deployment.Project()
 	}
 
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), finalVars, projectID, deployment.Workspace())
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), j.Variables(), projectID, deployment.Workspace())
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Job submission failed: %v\n", err)
 		return nil, interfaces.ErrJobCreationFailed
@@ -275,11 +275,10 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		projectParamsMap = projectParametersToMap(pls)
 	}
 
-	// TODO: Deployment.variables (to be implemented in Phase 2 of the task — Triggers Variables Support on Flow UI
 	var deploymentVars map[string]string
-	// if dv := deployment.Variables(); dv != nil {
-	// 	deploymentVars = dv
-	// }
+	if dv := deployment.Variables(); dv != nil {
+		deploymentVars = dv
+	}
 
 	triggerVars := trigger.Variables()
 
@@ -297,6 +296,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		Workspace(deployment.Workspace()).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
+		Variables(finalVars).
 		Build()
 	if err != nil {
 		return nil, err
@@ -316,7 +316,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		projectID = *deployment.Project()
 	}
 
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), finalVars, projectID, deployment.Workspace())
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), j.Variables(), projectID, deployment.Workspace())
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Time-driven job submission failed: %v\n", err)
 		return nil, interfaces.ErrJobCreationFailed

@@ -216,6 +216,7 @@ type ComplexityRoot struct {
 		Project     func(childComplexity int) int
 		ProjectID   func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
+		Variables   func(childComplexity int) int
 		Version     func(childComplexity int) int
 		WorkflowURL func(childComplexity int) int
 		Workspace   func(childComplexity int) int
@@ -244,6 +245,7 @@ type ComplexityRoot struct {
 		StartedAt         func(childComplexity int) int
 		Status            func(childComplexity int) int
 		UserFacingLogsURL func(childComplexity int) int
+		Variables         func(childComplexity int) int
 		WorkerLogsURL     func(childComplexity int) int
 		Workspace         func(childComplexity int) int
 		WorkspaceID       func(childComplexity int) int
@@ -1262,6 +1264,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Deployment.UpdatedAt(childComplexity), true
+	case "Deployment.variables":
+		if e.complexity.Deployment.Variables == nil {
+			break
+		}
+
+		return e.complexity.Deployment.Variables(childComplexity), true
 	case "Deployment.version":
 		if e.complexity.Deployment.Version == nil {
 			break
@@ -1384,6 +1392,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Job.UserFacingLogsURL(childComplexity), true
+	case "Job.variables":
+		if e.complexity.Job.Variables == nil {
+			break
+		}
+
+		return e.complexity.Job.Variables(childComplexity), true
 	case "Job.workerLogsURL":
 		if e.complexity.Job.WorkerLogsURL == nil {
 			break
@@ -3470,6 +3484,7 @@ extend type Query {
   workflowUrl: String!
   workspace: Workspace
   workspaceId: ID!
+  variables: JSON
 }
 
 
@@ -3486,6 +3501,7 @@ input CreateDeploymentInput {
   file: Upload!
   projectId: ID
   description: String!
+  variables: JSON
 }
 
 input DeleteDeploymentInput {
@@ -3494,7 +3510,7 @@ input DeleteDeploymentInput {
 
 input ExecuteDeploymentInput {
   deploymentId: ID!
-  # variables: JSON
+  variables: JSON
 }
 
 input GetHeadInput {
@@ -3512,6 +3528,7 @@ input UpdateDeploymentInput {
   deploymentId: ID!
   file: Upload
   description: String
+  variables: JSON
 }
 
 # Payload Types
@@ -3618,6 +3635,7 @@ extend type Query {
   workspace: Workspace
   workspaceId: ID!
   logs(since: DateTime!): [Log]
+  variables: JSON
 }
 
 enum JobStatus {
@@ -7571,6 +7589,8 @@ func (ec *executionContext) fieldContext_CancelJobPayload_job(_ context.Context,
 				return ec.fieldContext_Job_workspaceId(ctx, field)
 			case "logs":
 				return ec.fieldContext_Job_logs(ctx, field)
+			case "variables":
+				return ec.fieldContext_Job_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -8391,6 +8411,35 @@ func (ec *executionContext) fieldContext_Deployment_workspaceId(_ context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Deployment_variables(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Deployment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Deployment_variables,
+		func(ctx context.Context) (any, error) {
+			return obj.Variables, nil
+		},
+		nil,
+		ec.marshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Deployment_variables(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Deployment",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type JSON does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _DeploymentConnection_nodes(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.DeploymentConnection) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -8439,6 +8488,8 @@ func (ec *executionContext) fieldContext_DeploymentConnection_nodes(_ context.Co
 				return ec.fieldContext_Deployment_workspace(ctx, field)
 			case "workspaceId":
 				return ec.fieldContext_Deployment_workspaceId(ctx, field)
+			case "variables":
+				return ec.fieldContext_Deployment_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Deployment", field.Name)
 		},
@@ -8560,6 +8611,8 @@ func (ec *executionContext) fieldContext_DeploymentPayload_deployment(_ context.
 				return ec.fieldContext_Deployment_workspace(ctx, field)
 			case "workspaceId":
 				return ec.fieldContext_Deployment_workspaceId(ctx, field)
+			case "variables":
+				return ec.fieldContext_Deployment_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Deployment", field.Name)
 		},
@@ -8644,6 +8697,8 @@ func (ec *executionContext) fieldContext_Job_deployment(_ context.Context, field
 				return ec.fieldContext_Deployment_workspace(ctx, field)
 			case "workspaceId":
 				return ec.fieldContext_Deployment_workspaceId(ctx, field)
+			case "variables":
+				return ec.fieldContext_Deployment_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Deployment", field.Name)
 		},
@@ -9037,6 +9092,35 @@ func (ec *executionContext) fieldContext_Job_logs(ctx context.Context, field gra
 	return fc, nil
 }
 
+func (ec *executionContext) _Job_variables(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Job_variables,
+		func(ctx context.Context) (any, error) {
+			return obj.Variables, nil
+		},
+		nil,
+		ec.marshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Job_variables(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Job",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type JSON does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _JobConnection_nodes(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.JobConnection) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -9089,6 +9173,8 @@ func (ec *executionContext) fieldContext_JobConnection_nodes(_ context.Context, 
 				return ec.fieldContext_Job_workspaceId(ctx, field)
 			case "logs":
 				return ec.fieldContext_Job_logs(ctx, field)
+			case "variables":
+				return ec.fieldContext_Job_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -9214,6 +9300,8 @@ func (ec *executionContext) fieldContext_JobPayload_job(_ context.Context, field
 				return ec.fieldContext_Job_workspaceId(ctx, field)
 			case "logs":
 				return ec.fieldContext_Job_logs(ctx, field)
+			case "variables":
+				return ec.fieldContext_Job_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -12429,6 +12517,8 @@ func (ec *executionContext) fieldContext_Project_deployment(_ context.Context, f
 				return ec.fieldContext_Deployment_workspace(ctx, field)
 			case "workspaceId":
 				return ec.fieldContext_Deployment_workspaceId(ctx, field)
+			case "variables":
+				return ec.fieldContext_Deployment_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Deployment", field.Name)
 		},
@@ -13946,6 +14036,8 @@ func (ec *executionContext) fieldContext_Query_deploymentByVersion(ctx context.C
 				return ec.fieldContext_Deployment_workspace(ctx, field)
 			case "workspaceId":
 				return ec.fieldContext_Deployment_workspaceId(ctx, field)
+			case "variables":
+				return ec.fieldContext_Deployment_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Deployment", field.Name)
 		},
@@ -14013,6 +14105,8 @@ func (ec *executionContext) fieldContext_Query_deploymentHead(ctx context.Contex
 				return ec.fieldContext_Deployment_workspace(ctx, field)
 			case "workspaceId":
 				return ec.fieldContext_Deployment_workspaceId(ctx, field)
+			case "variables":
+				return ec.fieldContext_Deployment_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Deployment", field.Name)
 		},
@@ -14080,6 +14174,8 @@ func (ec *executionContext) fieldContext_Query_deploymentVersions(ctx context.Co
 				return ec.fieldContext_Deployment_workspace(ctx, field)
 			case "workspaceId":
 				return ec.fieldContext_Deployment_workspaceId(ctx, field)
+			case "variables":
+				return ec.fieldContext_Deployment_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Deployment", field.Name)
 		},
@@ -14347,6 +14443,8 @@ func (ec *executionContext) fieldContext_Query_job(ctx context.Context, field gr
 				return ec.fieldContext_Job_workspaceId(ctx, field)
 			case "logs":
 				return ec.fieldContext_Job_logs(ctx, field)
+			case "variables":
+				return ec.fieldContext_Job_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -14980,6 +15078,8 @@ func (ec *executionContext) fieldContext_RunProjectPayload_job(_ context.Context
 				return ec.fieldContext_Job_workspaceId(ctx, field)
 			case "logs":
 				return ec.fieldContext_Job_logs(ctx, field)
+			case "variables":
+				return ec.fieldContext_Job_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -15575,6 +15675,8 @@ func (ec *executionContext) fieldContext_Trigger_deployment(_ context.Context, f
 				return ec.fieldContext_Deployment_workspace(ctx, field)
 			case "workspaceId":
 				return ec.fieldContext_Deployment_workspaceId(ctx, field)
+			case "variables":
+				return ec.fieldContext_Deployment_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Deployment", field.Name)
 		},
@@ -18575,7 +18677,7 @@ func (ec *executionContext) unmarshalInputCreateDeploymentInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceId", "file", "projectId", "description"}
+	fieldsInOrder := [...]string{"workspaceId", "file", "projectId", "description", "variables"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -18610,6 +18712,13 @@ func (ec *executionContext) unmarshalInputCreateDeploymentInput(ctx context.Cont
 				return it, err
 			}
 			it.Description = data
+		case "variables":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variables"))
+			data, err := ec.unmarshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Variables = data
 		}
 	}
 
@@ -18964,7 +19073,7 @@ func (ec *executionContext) unmarshalInputExecuteDeploymentInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"deploymentId"}
+	fieldsInOrder := [...]string{"deploymentId", "variables"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -18978,6 +19087,13 @@ func (ec *executionContext) unmarshalInputExecuteDeploymentInput(ctx context.Con
 				return it, err
 			}
 			it.DeploymentID = data
+		case "variables":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variables"))
+			data, err := ec.unmarshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Variables = data
 		}
 	}
 
@@ -19605,7 +19721,7 @@ func (ec *executionContext) unmarshalInputUpdateDeploymentInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"deploymentId", "file", "description"}
+	fieldsInOrder := [...]string{"deploymentId", "file", "description", "variables"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -19633,6 +19749,13 @@ func (ec *executionContext) unmarshalInputUpdateDeploymentInput(ctx context.Cont
 				return it, err
 			}
 			it.Description = data
+		case "variables":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variables"))
+			data, err := ec.unmarshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Variables = data
 		}
 	}
 
@@ -21329,6 +21452,8 @@ func (ec *executionContext) _Deployment(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "variables":
+			out.Values[i] = ec._Deployment_variables(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -21587,6 +21712,8 @@ func (ec *executionContext) _Job(ctx context.Context, sel ast.SelectionSet, obj 
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "variables":
+			out.Values[i] = ec._Job_variables(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

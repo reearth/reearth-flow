@@ -60,6 +60,10 @@ func TestDeploymentsPagination(t *testing.T) {
 					"workspaceId": wId1.String(),
 					"description": fmt.Sprintf("Test Deployment %d", i),
 					"file":        nil,
+					"variables": map[string]any{
+						"DEPLOYMENT_VAR_1": fmt.Sprintf("deployment_value_1_%d", i),
+						"DEPLOYMENT_VAR_2": "deployment_value_2",
+					},
 				},
 			},
 		}
@@ -145,6 +149,7 @@ func TestDeploymentsPagination(t *testing.T) {
 					id
 					description
 					workflowUrl
+					variables
 				}
 				pageInfo {
 					totalCount
@@ -173,9 +178,10 @@ func TestDeploymentsPagination(t *testing.T) {
 			Data struct {
 				Deployments struct {
 					Nodes []struct {
-						ID          string `json:"id"`
-						Description string `json:"description"`
-						WorkflowURL string `json:"workflowUrl"`
+						ID          string            `json:"id"`
+						Description string            `json:"description"`
+						WorkflowURL string            `json:"workflowUrl"`
+						Variables   map[string]string `json:"variables"`
 					} `json:"nodes"`
 					PageInfo struct {
 						TotalCount  int `json:"totalCount"`
@@ -220,6 +226,11 @@ func TestDeploymentsPagination(t *testing.T) {
 		assert.Equal(t, 5, result.Data.Deployments.PageInfo.TotalCount)
 		assert.Equal(t, 3, result.Data.Deployments.PageInfo.TotalPages)
 		assert.Equal(t, 1, result.Data.Deployments.PageInfo.CurrentPage)
+
+		for _, n := range result.Data.Deployments.Nodes {
+			assert.NotNil(t, n.Variables)
+			assert.NotEmpty(t, n.Variables)
+		}
 	})
 
 	// Test sorting by description

@@ -11,6 +11,7 @@ type Deployment implements Node {
   workflowUrl: String!
   workspace: Workspace
   workspaceId: ID!
+  variables: JSON
 }
 
 
@@ -27,6 +28,7 @@ input CreateDeploymentInput {
   file: Upload!
   projectId: ID
   description: String!
+  variables: JSON
 }
 
 input DeleteDeploymentInput {
@@ -35,6 +37,7 @@ input DeleteDeploymentInput {
 
 input ExecuteDeploymentInput {
   deploymentId: ID!
+  variables: JSON
 }
 
 input GetHeadInput {
@@ -52,6 +55,7 @@ input UpdateDeploymentInput {
   deploymentId: ID!
   file: Upload
   description: String
+  variables: JSON
 }
 
 # Payload Types

@@ -181,6 +181,7 @@ type CreateDeploymentInput struct {
 	File        graphql.Upload `json:"file"`
 	ProjectID   *ID            `json:"projectId,omitempty"`
 	Description string         `json:"description"`
+	Variables   JSON           `json:"variables,omitempty"`
 }
 
 type CreateProjectInput struct {
@@ -270,6 +271,7 @@ type Deployment struct {
 	WorkflowURL string     `json:"workflowUrl"`
 	Workspace   *Workspace `json:"workspace,omitempty"`
 	WorkspaceID ID         `json:"workspaceId"`
+	Variables   JSON       `json:"variables,omitempty"`
 }
 
 func (Deployment) IsNode()        {}
@@ -286,7 +288,8 @@ type DeploymentPayload struct {
 }
 
 type ExecuteDeploymentInput struct {
-	DeploymentID ID `json:"deploymentId"`
+	DeploymentID ID   `json:"deploymentId"`
+	Variables    JSON `json:"variables,omitempty"`
 }
 
 type GetByVersionInput struct {
@@ -315,6 +318,7 @@ type Job struct {
 	Workspace         *Workspace  `json:"workspace,omitempty"`
 	WorkspaceID       ID          `json:"workspaceId"`
 	Logs              []*Log      `json:"logs,omitempty"`
+	Variables         JSON        `json:"variables,omitempty"`
 }
 
 func (Job) IsNode()        {}
@@ -593,6 +597,7 @@ type UpdateDeploymentInput struct {
 	DeploymentID ID              `json:"deploymentId"`
 	File         *graphql.Upload `json:"file,omitempty"`
 	Description  *string         `json:"description,omitempty"`
+	Variables    JSON            `json:"variables,omitempty"`
 }
 
 type UpdateMeInput struct {
