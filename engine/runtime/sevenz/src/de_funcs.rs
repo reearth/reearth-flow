@@ -97,10 +97,10 @@ mod tests {
     fn test_decompress_empty_archive() {
         let temp_dir = TempDir::new().unwrap();
         let dest = temp_dir.path();
-        
+
         let empty_7z = create_minimal_7z_archive();
         let cursor = Cursor::new(empty_7z);
-        
+
         let result = decompress(cursor, dest);
         assert!(result.is_ok() || result.is_err());
     }
@@ -109,10 +109,10 @@ mod tests {
     fn test_decompress_invalid_signature() {
         let temp_dir = TempDir::new().unwrap();
         let dest = temp_dir.path();
-        
+
         let invalid_data = vec![0u8; 100];
         let cursor = Cursor::new(invalid_data);
-        
+
         let result = decompress(cursor, dest);
         assert!(result.is_err());
     }
@@ -121,10 +121,10 @@ mod tests {
     fn test_decompress_truncated_file() {
         let temp_dir = TempDir::new().unwrap();
         let dest = temp_dir.path();
-        
+
         let truncated = b"7z\xBC\xAF\x27\x1C";
         let cursor = Cursor::new(truncated.to_vec());
-        
+
         let result = decompress(cursor, dest);
         assert!(result.is_err());
     }
@@ -133,10 +133,10 @@ mod tests {
     fn test_decompress_to_nonexistent_directory() {
         let temp_dir = TempDir::new().unwrap();
         let dest = temp_dir.path().join("nonexistent/nested/path");
-        
+
         let empty_7z = create_minimal_7z_archive();
         let cursor = Cursor::new(empty_7z);
-        
+
         let result = decompress(cursor, &dest);
         if result.is_ok() {
             assert!(dest.exists());
@@ -147,7 +147,7 @@ mod tests {
     fn test_default_entry_extract_fn_directory() {
         let temp_dir = TempDir::new().unwrap();
         let dest = temp_dir.path().join("test_dir");
-        
+
         let entry = SevenZArchiveEntry {
             name: "test_directory".to_string(),
             is_directory: true,
@@ -155,10 +155,10 @@ mod tests {
             size: 0,
             ..Default::default()
         };
-        
+
         let mut empty_reader: &[u8] = &[];
         let result = default_entry_extract_fn(&entry, &mut empty_reader, &dest);
-        
+
         assert!(result.is_ok());
     }
 
@@ -166,7 +166,7 @@ mod tests {
     fn test_default_entry_extract_fn_empty_file() {
         let temp_dir = TempDir::new().unwrap();
         let dest = temp_dir.path().join("empty.txt");
-        
+
         let entry = SevenZArchiveEntry {
             name: "empty.txt".to_string(),
             is_directory: false,
@@ -174,10 +174,10 @@ mod tests {
             size: 0,
             ..Default::default()
         };
-        
+
         let mut empty_reader: &[u8] = &[];
         let result = default_entry_extract_fn(&entry, &mut empty_reader, &dest);
-        
+
         assert!(result.is_ok());
     }
 
@@ -185,7 +185,7 @@ mod tests {
     fn test_default_entry_extract_fn_with_content() {
         let temp_dir = TempDir::new().unwrap();
         let dest = temp_dir.path().join("test.txt");
-        
+
         let content = b"Test content for Plateau CityGML";
         let entry = SevenZArchiveEntry {
             name: "test.txt".to_string(),
@@ -194,10 +194,10 @@ mod tests {
             size: content.len() as u64,
             ..Default::default()
         };
-        
+
         let mut reader: &[u8] = content;
         let result = default_entry_extract_fn(&entry, &mut reader, &dest);
-        
+
         assert!(result.is_ok());
         if dest.exists() {
             let extracted_content = std::fs::read_to_string(&dest).unwrap();
@@ -222,7 +222,7 @@ mod tests {
             size: 1024,
             ..Default::default()
         };
-        
+
         assert_eq!(entry.name(), "test.gml");
         assert!(!entry.is_directory());
         assert!(entry.has_stream());
@@ -238,20 +238,16 @@ mod tests {
             size: 512,
             ..Default::default()
         };
-        
+
         assert!(entry.name().contains("東京都"));
         assert!(entry.name().contains("建物"));
     }
 
     fn create_minimal_7z_archive() -> Vec<u8> {
         vec![
-            0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00,
+            0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00,
         ]
     }
 }
-
