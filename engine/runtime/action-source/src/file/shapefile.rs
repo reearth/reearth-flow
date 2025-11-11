@@ -318,7 +318,10 @@ fn create_dbase_reader<T: std::io::Read + std::io::Seek>(
         )
         .map_err(|_| {
             ShapefileError::DbaseReaderCreationError {
-                encoding: format!("fallback UnicodeLossy (from unrecognized '{}')", encoding_name),
+                encoding: format!(
+                    "fallback UnicodeLossy (from unrecognized '{}')",
+                    encoding_name
+                ),
             }
             .into()
         })
@@ -335,7 +338,9 @@ fn read_shapefile_from_zip(
     let mut shapefile_groups: HashMap<String, ShapefileComponents> = HashMap::new();
 
     for i in 0..archive.len() {
-        let mut file = archive.by_index(i).map_err(|_| ShapefileError::ZipEntryReadError)?;
+        let mut file = archive
+            .by_index(i)
+            .map_err(|_| ShapefileError::ZipEntryReadError)?;
 
         let file_name = file.name().to_string();
 
@@ -402,8 +407,8 @@ fn read_shapefile_from_zip(
 
     let shp_cursor = Cursor::new(shp_data);
     let dbf_cursor = Cursor::new(dbf_data);
-    let shape_reader =
-        shapefile::ShapeReader::new(shp_cursor).map_err(|_| ShapefileError::ShapeReaderCreationError)?;
+    let shape_reader = shapefile::ShapeReader::new(shp_cursor)
+        .map_err(|_| ShapefileError::ShapeReaderCreationError)?;
 
     // Create dbase reader with resolved encoding
     let dbase_reader = create_dbase_reader(dbf_cursor, &encoding)?;
@@ -412,8 +417,7 @@ fn read_shapefile_from_zip(
 
     let mut shapes_and_records = Vec::new();
     for result in reader.iter_shapes_and_records() {
-        let (shape, record) =
-            result.map_err(|_| ShapefileError::ShapeReaderCreationError)?;
+        let (shape, record) = result.map_err(|_| ShapefileError::ShapeReaderCreationError)?;
         shapes_and_records.push((shape, record));
     }
 
