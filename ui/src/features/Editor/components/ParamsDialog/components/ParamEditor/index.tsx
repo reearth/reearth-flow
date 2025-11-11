@@ -238,15 +238,13 @@ const ParamEditor: React.FC<Props> = ({
                 </div>
               )}
             </div>
-            <div className="flex items-center justify-between gap-2">
-              <Button
-                className="shrink-0 self-end"
-                size="lg"
-                onClick={handleUpdate}
-                disabled={readonly || !isCurrentTabValid}>
-                {t("Update")}
-              </Button>
-            </div>
+            <Button
+              className="shrink-0 self-end"
+              size="lg"
+              onClick={handleUpdate}
+              disabled={readonly || !isCurrentTabValid}>
+              {t("Update")}
+            </Button>
           </div>
         </TabsContent>
         <TabsContent className="w-full px-6 py-4" value="details">
