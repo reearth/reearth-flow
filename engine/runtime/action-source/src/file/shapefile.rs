@@ -337,9 +337,8 @@ fn read_shapefile_from_zip(
     encoding_param: &Option<String>,
 ) -> Result<Vec<(shapefile::Shape, shapefile::dbase::Record)>, crate::errors::SourceError> {
     let cursor = Cursor::new(content.as_ref());
-    let mut archive = zip::ZipArchive::new(cursor).map_err(|e| {
-        SourceError::shapefile_reader(format!("Failed to read ZIP archive: {e}"))
-    })?;
+    let mut archive = zip::ZipArchive::new(cursor)
+        .map_err(|e| SourceError::shapefile_reader(format!("Failed to read ZIP archive: {e}")))?;
 
     let mut shapefile_groups: HashMap<String, ShapefileComponents> = HashMap::new();
 
