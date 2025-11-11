@@ -300,6 +300,246 @@ pub(super) static FLATTEN_ATTRIBUTES: Lazy<HashMap<String, Vec<AttributePath>>> 
                     "data_type": "string",
                     "json_path": "uro:buildingDataQualityAttribute uro:lod1HeightType_code"
                 }
+            ],
+            "squr/tran:Square": [
+                {
+                    "attribute": "gml:name",
+                    "data_type": "string",
+                    "json_path": "gml:name"
+                },
+                {
+                    "attribute": "gml:name_code",
+                    "data_type": "string",
+                    "json_path": "gml:name_code"
+                },
+                {
+                    "attribute": "core:creationDate",
+                    "data_type": "string",
+                    "json_path": "core:creationDate"
+                },
+                {
+                    "attribute": "uro:TerminalAttribute_uro:prefecture",
+                    "data_type": "string",
+                    "json_path": "uro:TerminalAttribute uro:prefecture"
+                },
+                {
+                    "attribute": "uro:TerminalAttribute_uro:city",
+                    "data_type": "string",
+                    "json_path": "uro:TerminalAttribute uro:city"
+                },
+                {
+                    "attribute": "uro:TerminalAttribute_uro:urbanPlanningAreaName",
+                    "data_type": "string",
+                    "json_path": "uro:TerminalAttribute uro:urbanPlanningAreaName"
+                },
+                {
+                    "attribute": "uro:TerminalAttribute_uro:areaPlanned",
+                    "data_type": "string",
+                    "json_path": "uro:TerminalAttribute uro:areaPlanned"
+                },
+                {
+                    "attribute": "uro:TerminalAttribute_uro:status",
+                    "data_type": "string",
+                    "json_path": "uro:TerminalAttribute uro:status"
+                },
+                {
+                    "attribute": "uro:TerminalAttribute_uro:terminalType",
+                    "data_type": "string",
+                    "json_path": "uro:TerminalAttribute uro:terminalType"
+                },
+                {
+                    "attribute": "uro:TerminalAttribute_uro:dateOfRevision",
+                    "data_type": "string",
+                    "json_path": "uro:TerminalAttribute uro:dateOfRevision"
+                },
+                {
+                    "attribute": "uro:StationSquareAttribute_uro:prefecture",
+                    "data_type": "string",
+                    "json_path": "uro:StationSquareAttribute uro:prefecture"
+                },
+                {
+                    "attribute": "uro:StationSquareAttribute_uro:city",
+                    "data_type": "string",
+                    "json_path": "uro:StationSquareAttribute uro:city"
+                },
+                {
+                    "attribute": "uro:StationSquareAttribute_uro:urbanPlanningAreaName",
+                    "data_type": "string",
+                    "json_path": "uro:StationSquareAttribute uro:urbanPlanningAreaName"
+                },
+                {
+                    "attribute": "uro:StationSquareAttribute_uro:areaPlanned",
+                    "data_type": "string",
+                    "json_path": "uro:StationSquareAttribute uro:areaPlanned"
+                },
+                {
+                    "attribute": "uro:StationSquareAttribute_uro:status",
+                    "data_type": "string",
+                    "json_path": "uro:StationSquareAttribute uro:status"
+                },
+                {
+                    "attribute": "uro:StationSquareAttribute_uro:dateOfRevision",
+                    "data_type": "string",
+                    "json_path": "uro:StationSquareAttribute uro:dateOfRevision"
+                },
+                {
+                    "attribute": "uro:StationSquareAttribute_uro:dateOfDecision",
+                    "data_type": "string",
+                    "json_path": "uro:StationSquareAttribute uro:dateOfDecision"
+                },
+                {
+                    "attribute": "uro:geometrySrcDescLod1",
+                    "data_type": "string",
+                    "json_path": "uro:tranDataQualityAttribute uro:geometrySrcDescLod1"
+                }
+            ],
+            "tran/tran:Road": [
+                {
+                    "attribute": "gml:name",
+                    "data_type": "string",
+                    "json_path": "gml:name"
+                },
+                {
+                    "attribute": "gml:name_code",
+                    "data_type": "string",
+                    "json_path": "gml:name_code"
+                },
+                {
+                    "attribute": "core:creationDate",
+                    "data_type": "string",
+                    "json_path": "core:creationDate"
+                },
+                {
+                    "attribute": "uro:TransportationRoadIDAttribute_uro:prefecture",
+                    "data_type": "string",
+                    "json_path": "uro:TransportationRoadIDAttribute uro:prefecture"
+                },
+                {
+                    "attribute": "uro:TransportationRoadIDAttribute_uro:city",
+                    "data_type": "string",
+                    "json_path": "uro:TransportationRoadIDAttribute uro:city"
+                },
+                {
+                    "attribute": "uro:thematicSrcDesc",
+                    "data_type": "string",
+                    "json_path": "uro:tranDataQualityAttribute uro:thematicSrcDesc"
+                },
+                {
+                    "attribute": "uro:geometrySrcDescLod1",
+                    "data_type": "string",
+                    "json_path": "uro:tranDataQualityAttribute uro:geometrySrcDescLod1"
+                }
+            ],
+            "rwy/tran:Railway": [
+                {
+                    "attribute": "gml:name",
+                    "data_type": "string",
+                    "json_path": "gml:name"
+                },
+                {
+                    "attribute": "gml:name_code",
+                    "data_type": "string",
+                    "json_path": "gml:name_code"
+                },
+                {
+                    "attribute": "core:creationDate",
+                    "data_type": "string",
+                    "json_path": "core:creationDate"
+                },
+                {
+                    "attribute": "uro:TransportationRailwayIDAttribute_uro:prefecture",
+                    "data_type": "string",
+                    "json_path": "uro:TransportationRailwayIDAttribute uro:prefecture"
+                },
+                {
+                    "attribute": "uro:TransportationRailwayIDAttribute_uro:city",
+                    "data_type": "string",
+                    "json_path": "uro:TransportationRailwayIDAttribute uro:city"
+                },
+                {
+                    "attribute": "uro:thematicSrcDesc",
+                    "data_type": "string",
+                    "json_path": "uro:tranDataQualityAttribute uro:thematicSrcDesc"
+                },
+                {
+                    "attribute": "uro:geometrySrcDescLod1",
+                    "data_type": "string",
+                    "json_path": "uro:tranDataQualityAttribute uro:geometrySrcDescLod1"
+                }
+            ],
+            "trk/tran:Track": [
+                {
+                    "attribute": "gml:name",
+                    "data_type": "string",
+                    "json_path": "gml:name"
+                },
+                {
+                    "attribute": "gml:name_code",
+                    "data_type": "string",
+                    "json_path": "gml:name_code"
+                },
+                {
+                    "attribute": "core:creationDate",
+                    "data_type": "string",
+                    "json_path": "core:creationDate"
+                },
+                {
+                    "attribute": "uro:TransportationTrackIDAttribute_uro:prefecture",
+                    "data_type": "string",
+                    "json_path": "uro:TransportationTrackIDAttribute uro:prefecture"
+                },
+                {
+                    "attribute": "uro:TransportationTrackIDAttribute_uro:city",
+                    "data_type": "string",
+                    "json_path": "uro:TransportationTrackIDAttribute uro:city"
+                },
+                {
+                    "attribute": "uro:thematicSrcDesc",
+                    "data_type": "string",
+                    "json_path": "uro:tranDataQualityAttribute uro:thematicSrcDesc"
+                },
+                {
+                    "attribute": "uro:geometrySrcDescLod1",
+                    "data_type": "string",
+                    "json_path": "uro:tranDataQualityAttribute uro:geometrySrcDescLod1"
+                }
+            ],
+            "wwy/tran:Waterway": [
+                {
+                    "attribute": "gml:name",
+                    "data_type": "string",
+                    "json_path": "gml:name"
+                },
+                {
+                    "attribute": "gml:name_code",
+                    "data_type": "string",
+                    "json_path": "gml:name_code"
+                },
+                {
+                    "attribute": "core:creationDate",
+                    "data_type": "string",
+                    "json_path": "core:creationDate"
+                },
+                {
+                    "attribute": "uro:TransportationWaterwayIDAttribute_uro:prefecture",
+                    "data_type": "string",
+                    "json_path": "uro:TransportationWaterwayIDAttribute uro:prefecture"
+                },
+                {
+                    "attribute": "uro:TransportationWaterwayIDAttribute_uro:city",
+                    "data_type": "string",
+                    "json_path": "uro:TransportationWaterwayIDAttribute uro:city"
+                },
+                {
+                    "attribute": "uro:thematicSrcDesc",
+                    "data_type": "string",
+                    "json_path": "uro:tranDataQualityAttribute uro:thematicSrcDesc"
+                },
+                {
+                    "attribute": "uro:geometrySrcDescLod1",
+                    "data_type": "string",
+                    "json_path": "uro:tranDataQualityAttribute uro:geometrySrcDescLod1"
+                }
             ]
         }
     );
@@ -313,7 +553,12 @@ mod tests {
     #[test]
     fn test_flatten_attributes() {
         let flatten_attributes = FLATTEN_ATTRIBUTES.clone();
-        assert_eq!(flatten_attributes.len(), 1);
+        assert!(flatten_attributes.len() >= 6); // At least bldg + 5 transportation types
         assert!(flatten_attributes.contains_key("bldg/bldg:Building"));
+        assert!(flatten_attributes.contains_key("squr/tran:Square"));
+        assert!(flatten_attributes.contains_key("tran/tran:Road"));
+        assert!(flatten_attributes.contains_key("rwy/tran:Railway"));
+        assert!(flatten_attributes.contains_key("trk/tran:Track"));
+        assert!(flatten_attributes.contains_key("wwy/tran:Waterway"));
     }
 }

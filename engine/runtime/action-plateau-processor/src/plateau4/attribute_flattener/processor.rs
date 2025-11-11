@@ -83,6 +83,7 @@ impl ProcessorFactory for AttributeFlattenerFactory {
 #[derive(Debug, Clone, Default)]
 pub(super) struct AttributeFlattener {
     existing_flatten_attributes: HashSet<String>,
+    encountered_feature_types: HashSet<String>,
     flattener: super::flattener::Flattener,
     common_attribute_processor: super::flattener::CommonAttributeProcessor,
 }
@@ -104,8 +105,22 @@ impl Processor for AttributeFlattener {
         };
 
         let mut new_city_gml_attribute = HashMap::new();
+
+        // Build lookup key from package and feature type
+        let lookup_key = if let (Some(AttributeValue::String(package)), Some(feature_type)) =
+            (feature.get(&"package"), &feature.metadata.feature_type)
+        {
+            format!("{}/{}", package, feature_type)
+        } else {
+            // fallback to building
+            "bldg/bldg:Building".to_string()
+        };
+
+        // Track encountered feature type
+        self.encountered_feature_types.insert(lookup_key.clone());
+
         if let Some(flatten_attributes) =
-            super::constants::FLATTEN_ATTRIBUTES.get("bldg/bldg:Building")
+            super::constants::FLATTEN_ATTRIBUTES.get(&lookup_key)
         {
             for attribute in flatten_attributes {
                 let mut json_path: Vec<&str> = vec![];
@@ -189,54 +204,59 @@ impl Processor for AttributeFlattener {
     }
 
     fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
-        let mut feature = Feature::new();
-        for (key, value) in BASE_SCHEMA_KEYS.clone().into_iter() {
-            feature.attributes.insert(Attribute::new(key), value);
-        }
-        if let Some(flatten_attributes) =
-            super::constants::FLATTEN_ATTRIBUTES.get("bldg/bldg:Building")
-        {
-            for attribute in flatten_attributes {
-                if !self
-                    .existing_flatten_attributes
-                    .contains(&attribute.attribute)
-                {
-                    continue;
-                }
-                let data_type = match attribute.data_type.as_str() {
-                    "string" | "date" => AttributeValue::default_string(),
-                    "int" | "double" | "measure" => AttributeValue::default_number(),
-                    _ => continue,
-                };
-                feature
-                    .attributes
-                    .insert(Attribute::new(attribute.attribute.clone()), data_type);
+        // Generate a schema feature for each encountered feature type
+        for feature_type_key in &self.encountered_feature_types {
+            let mut feature = Feature::new();
+            for (key, value) in BASE_SCHEMA_KEYS.clone().into_iter() {
+                feature.attributes.insert(Attribute::new(key), value);
             }
-        }
-        let generic_schema = self.common_attribute_processor.get_generic_schema();
-        feature.extend(generic_schema);
 
-        for typ in ["fld", "tnm", "htd", "ifld", "rfld", "lsld"] {
-            if let Some(definition) = self.flattener.risk_to_attribute_definitions.get(typ) {
-                feature.extend(
-                    definition
-                        .clone()
-                        .into_iter()
-                        .map(|(k, v)| (Attribute::new(k), v))
-                        .collect::<HashMap<Attribute, AttributeValue>>(),
-                );
+            // Add attributes specific to this feature type that were actually used
+            if let Some(flatten_attributes) =
+                super::constants::FLATTEN_ATTRIBUTES.get(feature_type_key.as_str())
+            {
+                for attribute in flatten_attributes {
+                    if !self
+                        .existing_flatten_attributes
+                        .contains(&attribute.attribute)
+                    {
+                        continue;
+                    }
+                    let data_type = match attribute.data_type.as_str() {
+                        "string" | "date" => AttributeValue::default_string(),
+                        "int" | "double" | "measure" => AttributeValue::default_number(),
+                        _ => continue,
+                    };
+                    feature
+                        .attributes
+                        .insert(Attribute::new(attribute.attribute.clone()), data_type);
+                }
             }
+            let generic_schema = self.common_attribute_processor.get_generic_schema();
+            feature.extend(generic_schema);
+
+            for typ in ["fld", "tnm", "htd", "ifld", "rfld", "lsld"] {
+                if let Some(definition) = self.flattener.risk_to_attribute_definitions.get(typ) {
+                    feature.extend(
+                        definition
+                            .clone()
+                            .into_iter()
+                            .map(|(k, v)| (Attribute::new(k), v))
+                            .collect::<HashMap<Attribute, AttributeValue>>(),
+                    );
+                }
+            }
+            feature.metadata = Metadata {
+                feature_id: None,
+                feature_type: Some(feature_type_key.clone()),
+                lod: None,
+            };
+            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                &ctx,
+                feature,
+                SCHEMA_PORT.clone(),
+            ));
         }
-        feature.metadata = Metadata {
-            feature_id: None,
-            feature_type: Some("bldg:Building".to_string()),
-            lod: None,
-        };
-        fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-            &ctx,
-            feature,
-            SCHEMA_PORT.clone(),
-        ));
         Ok(())
     }
 
