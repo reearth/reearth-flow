@@ -232,50 +232,96 @@ fn resolve_encoding(encoding_param: &Option<String>, cpg_data: Option<&Vec<u8>>)
 }
 
 /// Create a dbase Reader with the appropriate encoding
+///
+/// Supports a wide range of encodings via the `encoding_rs` crate, matching industry-standard
+/// GIS software (GDAL, ArcGIS, QGIS) capabilities:
+///
+/// # Supported Encodings
+/// - **UTF-8** and variants (UTF8, UNICODE)
+/// - **Windows Code Pages**: Windows-1250 through Windows-1258, Windows-874
+/// - **ISO-8859 family**: ISO-8859-1 through ISO-8859-16 (Latin-1, Latin-2, etc.)
+/// - **Asian encodings**: Shift-JIS, EUC-JP, EUC-KR, Big5, GBK, GB18030
+/// - **Other legacy encodings**: KOI8-R, KOI8-U, IBM866, Macintosh
+///
+/// # Error Handling
+/// - UTF-16 encodings return a clear error with conversion instructions
+/// - Unrecognized encodings fall back to UTF-8 with a warning
+/// - encoding_rs::Encoding::for_label() handles case-insensitive matching and common variations
+///
+/// # Examples
+/// - "Windows-1252" → Full support for Western European legacy data
+/// - "ISO-8859-1" → Latin-1 encoding commonly used in shapefiles
+/// - "Shift-JIS" → Japanese encoding support
+/// - "UTF-8" → Modern standard encoding
 fn create_dbase_reader<T: std::io::Read + std::io::Seek>(
     source: T,
     encoding_name: &str,
 ) -> Result<shapefile::dbase::Reader<T>, crate::errors::SourceError> {
     let encoding_upper = encoding_name.to_uppercase();
 
-    // Match common encoding names and use UnicodeLossy for UTF-8/Unicode variants
-    // This handles UTF-8 properly, including UTF-8 field names in DBF headers
-    match encoding_upper.as_str() {
-        "UTF-8" | "UTF8" | "UNICODE" => {
-            tracing::debug!("Using UnicodeLossy encoding for: {}", encoding_name);
-            shapefile::dbase::Reader::new_with_encoding(
-                source,
-                shapefile::dbase::encoding::UnicodeLossy,
-            )
-            .map_err(|_| {
-                ShapefileError::DbaseReaderCreationError {
-                    encoding: "UnicodeLossy".to_string(),
-                }
-                .into()
-            })
-        }
-        "UTF-16" | "UTF16" | "UTF-16LE" | "UTF-16BE" => {
-            // UTF-16 requires different byte-level handling and is not supported
-            Err(ShapefileError::Utf16NotSupported.into())
-        }
-        _ => {
-            // For other encodings, fall back to UnicodeLossy with a warning
-            tracing::warn!(
-                "Unsupported or unrecognized encoding '{}', falling back to UnicodeLossy (UTF-8). \
-                This may result in incorrect character decoding for legacy code pages.",
-                encoding_name
-            );
-            shapefile::dbase::Reader::new_with_encoding(
-                source,
-                shapefile::dbase::encoding::UnicodeLossy,
-            )
-            .map_err(|_| {
-                ShapefileError::DbaseReaderCreationError {
-                    encoding: "fallback UnicodeLossy".to_string(),
-                }
-                .into()
-            })
-        }
+    // Handle UTF-8/Unicode variants with UnicodeLossy
+    if matches!(
+        encoding_upper.as_str(),
+        "UTF-8" | "UTF8" | "UNICODE" | "UTF_8"
+    ) {
+        tracing::debug!("Using UnicodeLossy encoding for: {}", encoding_name);
+        return shapefile::dbase::Reader::new_with_encoding(
+            source,
+            shapefile::dbase::encoding::UnicodeLossy,
+        )
+        .map_err(|_| {
+            ShapefileError::DbaseReaderCreationError {
+                encoding: "UnicodeLossy".to_string(),
+            }
+            .into()
+        });
+    }
+
+    // UTF-16 requires different byte-level handling and is not supported by encoding_rs in DBF context
+    if matches!(
+        encoding_upper.as_str(),
+        "UTF-16" | "UTF16" | "UTF-16LE" | "UTF-16BE" | "UTF_16"
+    ) {
+        return Err(ShapefileError::Utf16NotSupported.into());
+    }
+
+    // Try to use encoding_rs for all other encodings
+    // encoding_rs::Encoding::for_label() supports case-insensitive matching and common variations
+    if let Some(encoding) = encoding_rs::Encoding::for_label(encoding_name.as_bytes()) {
+        tracing::debug!(
+            "Using encoding_rs with {} encoding for: {}",
+            encoding.name(),
+            encoding_name
+        );
+
+        // Wrap the encoding_rs Encoding in the dbase EncodingRs wrapper
+        let dbase_encoding = shapefile::dbase::encoding::EncodingRs::from(encoding);
+
+        shapefile::dbase::Reader::new_with_encoding(source, dbase_encoding).map_err(|_| {
+            ShapefileError::DbaseReaderCreationError {
+                encoding: encoding.name().to_string(),
+            }
+            .into()
+        })
+    } else {
+        // Encoding not recognized by encoding_rs, fall back to UnicodeLossy
+        tracing::warn!(
+            "Unrecognized encoding '{}', falling back to UnicodeLossy (UTF-8). \
+            This may result in incorrect character decoding. \
+            Supported encodings include: Windows-1252, ISO-8859-1, Shift-JIS, GBK, etc.",
+            encoding_name
+        );
+
+        shapefile::dbase::Reader::new_with_encoding(
+            source,
+            shapefile::dbase::encoding::UnicodeLossy,
+        )
+        .map_err(|_| {
+            ShapefileError::DbaseReaderCreationError {
+                encoding: format!("fallback UnicodeLossy (from unrecognized '{}')", encoding_name),
+            }
+            .into()
+        })
     }
 }
 

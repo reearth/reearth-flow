@@ -6123,6 +6123,7 @@ dependencies = [
  "byteorder",
  "bytes",
  "csv",
+ "encoding_rs",
  "futures",
  "geo-types",
  "geojson",
