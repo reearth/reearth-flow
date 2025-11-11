@@ -116,15 +116,24 @@ pub(super) struct ShapefileReaderParam {
     /// Character encoding for attribute data in the DBF file.
     /// If not specified, encoding is determined from the .cpg file (if present), otherwise defaults to UTF-8.
     ///
-    /// Supported encodings:
-    /// - "UTF-8" - Unicode UTF-8 (default, handles most international characters)
+    /// Supported encodings include:
+    /// - **UTF-8** - Unicode UTF-8 (default, recommended for all new shapefiles)
+    /// - **Windows Code Pages** - Windows-1250 through Windows-1258, Windows-874
+    /// - **ISO-8859 family** - ISO-8859-1 (Latin-1) through ISO-8859-16
+    /// - **Asian encodings** - Shift-JIS, EUC-JP, EUC-KR, Big5, GBK, GB18030
+    /// - **Other legacy encodings** - KOI8-R, KOI8-U, IBM866, Macintosh
     ///
-    /// Note: The implementation uses UnicodeLossy encoding which gracefully handles
-    /// invalid characters by replacing them with the Unicode replacement character (�).
-    /// This ensures robust processing of shapefiles with UTF-8 or ASCII encoded field names and data.
+    /// All encoding labels are case-insensitive and support common variations
+    /// (e.g., "UTF-8", "UTF8", "utf8" all work).
     ///
-    /// Legacy code pages (CP1252, etc.) may work with the `encoding_rs` feature but are not officially supported.
-    /// UTF-16 is not supported as it requires different byte-level handling.
+    /// UTF-16 is not supported due to byte-level handling requirements.
+    /// If a UTF-16 shapefile is encountered, an error with conversion instructions is returned.
+    ///
+    /// Examples:
+    /// - `"UTF-8"` - Modern standard
+    /// - `"Windows-1252"` - Common for Western European legacy data
+    /// - `"ISO-8859-1"` - Latin-1, common in older shapefiles
+    /// - `"Shift-JIS"` - Japanese data
     ///
     /// Priority order: encoding parameter > .cpg file > UTF-8 default
     pub(super) encoding: Option<String>,
@@ -319,8 +328,7 @@ fn create_dbase_reader<T: std::io::Read + std::io::Seek>(
         .map_err(|_| {
             ShapefileError::DbaseReaderCreationError {
                 encoding: format!(
-                    "fallback UnicodeLossy (from unrecognized '{}')",
-                    encoding_name
+                    "fallback UnicodeLossy (from unrecognized '{encoding_name}')"
                 ),
             }
             .into()
