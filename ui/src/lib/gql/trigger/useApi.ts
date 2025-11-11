@@ -65,6 +65,7 @@ export const useTrigger = () => {
     timeInterval?: TimeInterval,
     authToken?: string,
     description?: string,
+    variables?: Record<string, any>,
   ): Promise<UpdateTrigger> => {
     const { mutateAsync, ...rest } = updateTriggerMutation;
     try {
@@ -75,6 +76,7 @@ export const useTrigger = () => {
           : undefined,
         apiDriverInput: authToken ? { token: authToken } : undefined,
         description,
+        variables,
       });
       toast({
         title: t("Trigger Updated"),

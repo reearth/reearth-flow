@@ -71,17 +71,20 @@ export const useQueries = () => {
       apiDriverInput,
       timeDriverInput,
       description,
+      variables,
     }: {
       triggerId: string;
       apiDriverInput?: ApiDriverInput;
       timeDriverInput?: TimeDriverInput;
       description?: string;
+      variables?: Record<string, any>;
     }) => {
       const input: UpdateTriggerInput = {
         triggerId,
         apiDriverInput,
         timeDriverInput,
         description,
+        variables,
       };
 
       const data = await graphQLContext?.UpdateTrigger({

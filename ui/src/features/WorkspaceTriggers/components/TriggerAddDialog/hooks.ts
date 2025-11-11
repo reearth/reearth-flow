@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { config } from "@flow/config";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useDebouncedSearch } from "@flow/hooks";
 import { useTrigger, useDeployment } from "@flow/lib/gql";
@@ -27,7 +26,6 @@ export default ({
 
   const [currentWorkspace] = useCurrentWorkspace();
   const { createTrigger } = useTrigger();
-  const apiUrl = config().api || window.location.origin;
   const [createdTrigger, setCreatedTrigger] = useState<Trigger | undefined>(
     undefined,
   );
@@ -124,21 +122,12 @@ export default ({
     }
   }, [eventSource]);
 
-  const {
-    pendingWorkflowData,
-    workflowVariablesObject,
-    openTriggerProjectVariablesDialog,
-    setOpenTriggerProjectVariablesDialog,
-    handleWorkflowFileRead,
-    handleVariablesConfirm,
-  } = useDeploymentWorkflowVariables();
-
   const handleSelectDeployment = (deployment: Deployment) => {
     const deploymentId = deployment.id;
     const selectedDeployment = deployments?.find((d) => d.id === deploymentId);
     setSelectedDeployment(selectedDeployment || null);
     setDeploymentId(deploymentId);
-    handleWorkflowFileRead(selectedDeployment?.workflowUrl);
+    handleWorkflowFetch(selectedDeployment?.workflowUrl);
     setOpenTriggerProjectVariablesDialog(true);
   };
 
@@ -166,6 +155,15 @@ export default ({
     EVERY_WEEK: t("Every Week"),
     EVERY_MONTH: t("Every Month"),
   };
+
+  const {
+    pendingWorkflowData,
+    workflowVariablesObject,
+    openTriggerProjectVariablesDialog,
+    setOpenTriggerProjectVariablesDialog,
+    handleWorkflowFetch,
+    handleVariablesConfirm,
+  } = useDeploymentWorkflowVariables();
 
   const handleTriggerCreation = useCallback(async () => {
     const workspaceId = currentWorkspace?.id;
@@ -213,7 +211,6 @@ export default ({
   );
 
   return {
-    apiUrl,
     createdTrigger,
     eventSources,
     eventSource,
@@ -247,6 +244,7 @@ export default ({
     // Project Params for Workflow Variables
     handleVariablesConfirm,
     pendingWorkflowData,
+    workflowVariablesObject,
     openTriggerProjectVariablesDialog,
     setOpenTriggerProjectVariablesDialog,
   };

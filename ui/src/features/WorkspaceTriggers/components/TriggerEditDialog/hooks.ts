@@ -3,6 +3,8 @@ import { ChangeEvent, useCallback, useState } from "react";
 import { useTrigger } from "@flow/lib/gql";
 import { Trigger, TimeInterval, EventSourceType } from "@flow/types";
 
+import { useDeploymentWorkflowVariables } from "../TriggerWorkflowVariables/useDeploymentWorkflowVariables";
+
 export default ({
   selectedTrigger,
   onDialogClose,
@@ -51,6 +53,15 @@ export default ({
     [],
   );
 
+  const {
+    workflowVariablesObject,
+    pendingWorkflowData,
+    openTriggerProjectVariablesDialog,
+    setOpenTriggerProjectVariablesDialog,
+    handleVariablesConfirm,
+    initializeVariables,
+  } = useDeploymentWorkflowVariables(selectedTrigger.variables);
+
   const handleTriggerUpdate = useCallback(async () => {
     if (!selectedTrigger) return;
 
@@ -59,6 +70,7 @@ export default ({
       updatedEventSource === "TIME_DRIVEN" ? updatedTimeInterval : undefined,
       updatedEventSource === "API_DRIVEN" ? updatedAuthToken : undefined,
       updatedDescription,
+      workflowVariablesObject,
     );
 
     onDialogClose();
@@ -70,17 +82,30 @@ export default ({
     onDialogClose,
     useUpdateTrigger,
     updatedDescription,
+    workflowVariablesObject,
   ]);
+
+  // Check if variables have changed by comparing JSON strings
+  const variablesChanged =
+    JSON.stringify(workflowVariablesObject || {}) !==
+    JSON.stringify(selectedTrigger.variables || {});
 
   return {
     updatedEventSource,
     updatedAuthToken,
     updatedTimeInterval,
     updatedDescription,
+    variablesChanged,
     handleEventSourceChange,
     handleAuthTokenChange,
     handleTimeIntervalChange,
     handleTriggerUpdate,
     handleDescriptionChange,
+    workflowVariablesObject,
+    pendingWorkflowData,
+    openTriggerProjectVariablesDialog,
+    setOpenTriggerProjectVariablesDialog,
+    handleVariablesConfirm,
+    initializeVariables,
   };
 };

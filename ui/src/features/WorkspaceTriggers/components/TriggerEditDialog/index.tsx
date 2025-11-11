@@ -17,6 +17,8 @@ import {
 import { useT } from "@flow/lib/i18n";
 import { TimeInterval, Trigger } from "@flow/types";
 
+import TriggerProjectVariablesMappingDialog from "../TriggerWorkflowVariables";
+
 import useHooks from "./hooks";
 
 type Props = {
@@ -35,11 +37,16 @@ const TriggerEditDialog: React.FC<Props> = ({
     updatedAuthToken,
     updatedTimeInterval,
     updatedDescription,
+    variablesChanged,
     handleEventSourceChange,
     handleAuthTokenChange,
     handleTimeIntervalChange,
     handleDescriptionChange,
     handleTriggerUpdate,
+    pendingWorkflowData,
+    openTriggerProjectVariablesDialog,
+    setOpenTriggerProjectVariablesDialog,
+    handleVariablesConfirm,
   } = useHooks({ selectedTrigger, onDialogClose });
 
   const eventSources: Record<string, string> = {
@@ -67,6 +74,17 @@ const TriggerEditDialog: React.FC<Props> = ({
               placeholder={t("Give your trigger a meaningful description...")}
             />
           </DialogContentSection>
+          {selectedTrigger.variables && (
+            <DialogContentSection className="flex flex-col">
+              <Label>{t("Workflow Variables")}</Label>
+              <Button
+                variant="outline"
+                onClick={() => setOpenTriggerProjectVariablesDialog(true)}>
+                {t("Edit Variables")} (
+                {Object.keys(selectedTrigger.variables).length})
+              </Button>
+            </DialogContentSection>
+          )}
           <DialogContentSection className="flex-1">
             <Label htmlFor="event-source-selector">
               {t("Select Event Source")}
@@ -86,6 +104,7 @@ const TriggerEditDialog: React.FC<Props> = ({
               </SelectContent>
             </Select>
           </DialogContentSection>
+
           {updatedEventSource === "API_DRIVEN" && (
             <DialogContentSection className="flex flex-col">
               <Label>{t("Auth Token")}</Label>
@@ -128,12 +147,23 @@ const TriggerEditDialog: React.FC<Props> = ({
               updatedTimeInterval === selectedTrigger.timeInterval &&
               updatedAuthToken === selectedTrigger.authToken &&
               (updatedDescription === selectedTrigger.description ||
-                !updatedDescription.trim())
+                !updatedDescription.trim()) &&
+              !variablesChanged
             }>
             {t("Update Trigger")}
           </Button>
         </DialogFooter>
       </DialogContent>
+      {pendingWorkflowData?.variables && (
+        <TriggerProjectVariablesMappingDialog
+          isOpen={openTriggerProjectVariablesDialog}
+          onOpenChange={setOpenTriggerProjectVariablesDialog}
+          variables={pendingWorkflowData.variables}
+          workflowName={selectedTrigger.deployment.projectName || ""}
+          onConfirm={handleVariablesConfirm}
+          onCancel={() => setOpenTriggerProjectVariablesDialog(false)}
+        />
+      )}
     </Dialog>
   );
 };

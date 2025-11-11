@@ -31,7 +31,7 @@ type VariableMapping = {
 type TriggerProjectVariablesMappingDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  variables: WorkflowVariable[];
+  variables: WorkflowVariable[] | Record<string, any>[];
   workflowName: string;
   onConfirm: (projectVariables: any[]) => void;
   onCancel: () => void;

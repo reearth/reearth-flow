@@ -1,8 +1,10 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
 
-export const useDeploymentWorkflowVariables = () => {
+export const useDeploymentWorkflowVariables = (
+  initialVariables?: Record<string, any>,
+) => {
   const [
     openTriggerProjectVariablesDialog,
     setOpenTriggerProjectVariablesDialog,
@@ -15,9 +17,28 @@ export const useDeploymentWorkflowVariables = () => {
 
   const [workflowVariablesObject, setWorkflowVariablesObject] = useState<
     Record<string, any> | undefined
-  >(undefined);
+  >(initialVariables);
 
-  const handleWorkflowFileRead = useCallback(async (workflowUrl?: string) => {
+  // Initialize variables from trigger when editing
+  useEffect(() => {
+    if (initialVariables) {
+      const variablesArray: WorkflowVariable[] = Object.entries(
+        initialVariables,
+      ).map(([name, value]) => ({
+        name,
+        value,
+      }));
+
+      if (variablesArray.length > 0) {
+        setPendingWorkflowData({
+          variables: variablesArray,
+          workflowName: "",
+        });
+      }
+    }
+  }, [initialVariables]);
+
+  const handleWorkflowFetch = useCallback(async (workflowUrl?: string) => {
     if (!workflowUrl) return;
     const response = await fetch(workflowUrl);
 
@@ -52,12 +73,29 @@ export const useDeploymentWorkflowVariables = () => {
     setOpenTriggerProjectVariablesDialog(false);
   }, []);
 
+  const initializeVariables = useCallback((variables: Record<string, any>) => {
+    setWorkflowVariablesObject(variables);
+    const variablesArray: WorkflowVariable[] = Object.entries(variables).map(
+      ([name, value]) => ({
+        name,
+        value,
+      }),
+    );
+    if (variablesArray.length > 0) {
+      setPendingWorkflowData({
+        variables: variablesArray,
+        workflowName: "",
+      });
+    }
+  }, []);
+
   return {
     pendingWorkflowData,
     workflowVariablesObject,
     openTriggerProjectVariablesDialog,
     setOpenTriggerProjectVariablesDialog,
-    handleWorkflowFileRead,
+    handleWorkflowFetch,
     handleVariablesConfirm,
+    initializeVariables,
   };
 };
