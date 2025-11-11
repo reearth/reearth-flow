@@ -8,7 +8,6 @@ type Workspace implements Node {
     includeArchived: Boolean
     pagination: Pagination
   ): ProjectConnection!
-  workerConfig: WorkerConfig
 }
 
 type WorkspaceMember {
@@ -129,6 +128,10 @@ type DeleteWorkerConfigPayload {
 }
 
 # Query and Mutation
+
+extend type Query {
+  workerConfig(workspaceId: ID!): WorkerConfig
+}
 
 extend type Mutation {
   createWorkspace(input: CreateWorkspaceInput!): CreateWorkspacePayload

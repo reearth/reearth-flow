@@ -22,18 +22,7 @@ func NewWorkerConfig(client *mongox.Client) repo.WorkerConfig {
 }
 
 func (r *WorkerConfig) FindByWorkspace(ctx context.Context, workspace id.WorkspaceID) (*batchconfig.WorkerConfig, error) {
-	consumer := mongodoc.NewWorkerConfigConsumer(workspace)
-	if err := r.client.Find(ctx, bson.M{"workspace": workspace.String()}, consumer); err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	res := consumer.Result
-	if len(res) == 0 {
-		return nil, nil
-	}
-	return res[0], nil
+	return r.findOne(ctx, bson.M{"workspace": workspace.String()})
 }
 
 func (r *WorkerConfig) Save(ctx context.Context, cfg *batchconfig.WorkerConfig) error {
@@ -46,4 +35,18 @@ func (r *WorkerConfig) Save(ctx context.Context, cfg *batchconfig.WorkerConfig) 
 
 func (r *WorkerConfig) Remove(ctx context.Context, workspace id.WorkspaceID) error {
 	return r.client.RemoveOne(ctx, bson.M{"workspace": workspace.String()})
+}
+
+func (r *WorkerConfig) findOne(ctx context.Context, filter interface{}) (*batchconfig.WorkerConfig, error) {
+	c := mongodoc.NewWorkerConfigConsumer()
+	if err := r.client.FindOne(ctx, filter, c); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if len(c.Result) == 0 {
+		return nil, nil
+	}
+	return c.Result[0], nil
 }

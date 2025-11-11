@@ -19,7 +19,7 @@ type WorkerConfigDocument struct {
 	ThreadPoolSize        *int      `bson:"thread_pool_size,omitempty"`
 	ChannelBufferSize     *int      `bson:"channel_buffer_size,omitempty"`
 	FeatureFlushThreshold *int      `bson:"feature_flush_threshold,omitempty"`
-	NodeStatusDelayMilli  *int      `bson:"node_status_delay_ms,omitempty"`
+	NodeStatusDelayMilli  *int      `bson:"node_status_delay_milli,omitempty"`
 	Workspace             string    `bson:"workspace"`
 }
 
@@ -46,13 +46,21 @@ func NewWorkerConfig(cfg *batchconfig.WorkerConfig) (*WorkerConfigDocument, stri
 	return d, cfg.Workspace().String()
 }
 
-func (d *WorkerConfigDocument) Model() *batchconfig.WorkerConfig {
+type WorkerConfigConsumer = Consumer[*WorkerConfigDocument, *batchconfig.WorkerConfig]
+
+func NewWorkerConfigConsumer() *WorkerConfigConsumer {
+	return NewConsumer[*WorkerConfigDocument](func(a *batchconfig.WorkerConfig) bool {
+		return true
+	})
+}
+
+func (d *WorkerConfigDocument) Model() (*batchconfig.WorkerConfig, error) {
 	if d == nil {
-		return nil
+		return nil, nil
 	}
 	ws, err := id.WorkspaceIDFrom(d.Workspace)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	cfg := batchconfig.New(ws)
 	cfg.SetMachineType(d.MachineType)
@@ -66,5 +74,5 @@ func (d *WorkerConfigDocument) Model() *batchconfig.WorkerConfig {
 	cfg.SetFeatureFlushThreshold(d.FeatureFlushThreshold)
 	cfg.SetNodeStatusPropagationDelayMilli(d.NodeStatusDelayMilli)
 	cfg.ReplaceTimestamps(d.CreatedAt, d.UpdatedAt)
-	return cfg
+	return cfg, nil
 }
