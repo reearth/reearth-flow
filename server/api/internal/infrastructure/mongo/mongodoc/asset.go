@@ -9,20 +9,20 @@ import (
 )
 
 type AssetDocument struct {
-	ID                      string
-	Project                 *string // Made optional for workspace-based assets
-	Workspace               string
 	CreatedAt               time.Time
+	Project                 *string // Made optional for workspace-based assets
 	User                    *string
 	Integration             *string
+	Thread                  *string
+	ArchiveExtractionStatus *string
+	ID                      string
+	Workspace               string
 	FileName                string
 	Name                    string
-	Size                    uint64
 	URL                     string
 	ContentType             string
 	UUID                    string
-	Thread                  *string
-	ArchiveExtractionStatus *string
+	Size                    uint64
 	FlatFiles               bool
 	Public                  bool
 }

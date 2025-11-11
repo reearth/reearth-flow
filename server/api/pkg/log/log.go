@@ -13,11 +13,11 @@ const (
 )
 
 type Log struct {
-	jobID     JobID
-	nodeID    *NodeID
 	timestamp time.Time
+	nodeID    *NodeID
 	level     Level
 	message   string
+	jobID     JobID
 }
 
 func NewLog(jobID JobID, nodeID *NodeID, time time.Time, level Level, message string) *Log {

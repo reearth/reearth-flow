@@ -10,12 +10,12 @@ import (
 )
 
 type AuthConfig struct {
-	ISS      string   `pp:",omitempty"`
-	AUD      []string `pp:",omitempty"`
 	ALG      *string  `pp:",omitempty"`
 	TTL      *int     `pp:",omitempty"`
 	ClientID *string  `pp:",omitempty"`
 	JWKSURI  *string  `pp:",omitempty"`
+	ISS      string   `pp:",omitempty"`
+	AUD      []string `pp:",omitempty"`
 }
 
 func (a AuthConfig) JWTProvider() appx.JWTProvider {

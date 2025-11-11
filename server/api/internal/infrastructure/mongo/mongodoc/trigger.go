@@ -9,6 +9,9 @@ import (
 )
 
 type TriggerDocument struct {
+	CreatedAt     time.Time `bson:"createdat"`
+	UpdatedAt     time.Time `bson:"updatedat"`
+	LastTriggered time.Time `bson:"lasttriggered,omitempty"`
 	ID            string    `bson:"id"`
 	WorkspaceID   string    `bson:"workspaceid"`
 	DeploymentID  string    `bson:"deploymentid"`
@@ -16,9 +19,6 @@ type TriggerDocument struct {
 	EventSource   string    `bson:"eventsource"`
 	TimeInterval  string    `bson:"timeinterval,omitempty"`
 	AuthToken     string    `bson:"authtoken,omitempty"`
-	CreatedAt     time.Time `bson:"createdat"`
-	UpdatedAt     time.Time `bson:"updatedat"`
-	LastTriggered time.Time `bson:"lasttriggered,omitempty"`
 }
 
 type TriggerConsumer = Consumer[*TriggerDocument, *trigger.Trigger]

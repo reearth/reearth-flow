@@ -18,33 +18,33 @@ const (
 )
 
 type CreateAssetParam struct {
-	WorkspaceID id.WorkspaceID
 	File        *file.File
 	Name        *string
 	Token       string
+	WorkspaceID id.WorkspaceID
 }
 
 type UpdateAssetParam struct {
-	AssetID id.AssetID
 	Name    *string
+	AssetID id.AssetID
 }
 
 type CreateAssetUploadParam struct {
-	WorkspaceID     id.WorkspaceID
 	Filename        string
-	ContentLength   int64
 	ContentType     string
 	ContentEncoding string
 	Cursor          string
+	ContentLength   int64
+	WorkspaceID     id.WorkspaceID
 }
 
 type AssetUpload struct {
 	URL             string
 	UUID            string
 	ContentType     string
-	ContentLength   int64
 	ContentEncoding string
 	Next            string
+	ContentLength   int64
 }
 
 var ErrCreateAssetFailed error = errors.New("failed to create asset")

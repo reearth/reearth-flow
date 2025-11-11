@@ -9,13 +9,13 @@ import (
 )
 
 type AssetUploadDocument struct {
+	ExpiresAt       time.Time `bson:"expires_at"`
 	UUID            string    `bson:"uuid"`
 	Workspace       string    `bson:"workspace"`
 	FileName        string    `bson:"filename"`
-	ExpiresAt       time.Time `bson:"expires_at"`
-	ContentLength   int64     `bson:"content_length"`
 	ContentType     string    `bson:"content_type"`
 	ContentEncoding string    `bson:"content_encoding"`
+	ContentLength   int64     `bson:"content_length"`
 }
 
 type AssetUploadConsumer = Consumer[*AssetUploadDocument, *asset.Upload]

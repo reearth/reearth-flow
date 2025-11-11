@@ -2,15 +2,15 @@ package websocket
 
 type documentResponse struct {
 	ID        string `json:"id"`
+	Timestamp string `json:"timestamp"`
 	Updates   []byte `json:"updates"`
 	Version   uint64 `json:"version"`
-	Timestamp string `json:"timestamp"`
 }
 
 type historyResponse struct {
+	Timestamp string `json:"timestamp"`
 	Updates   []byte `json:"updates"`
 	Version   uint64 `json:"version"`
-	Timestamp string `json:"timestamp"`
 }
 
 type rollbackRequest struct {
@@ -20,16 +20,16 @@ type rollbackRequest struct {
 
 type createSnapshotRequest struct {
 	DocID   string `json:"doc_id"`
-	Version uint64 `json:"version"`
 	Name    string `json:"name"`
+	Version uint64 `json:"version"`
 }
 
 type snapshotResponse struct {
 	ID        string `json:"id"`
-	Updates   []byte `json:"updates"`
-	Version   uint64 `json:"version"`
 	Timestamp string `json:"timestamp"`
 	Name      string `json:"name"`
+	Updates   []byte `json:"updates"`
+	Version   uint64 `json:"version"`
 }
 
 type importDocumentRequest struct {

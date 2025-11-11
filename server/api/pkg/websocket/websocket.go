@@ -3,19 +3,19 @@ package websocket
 import "time"
 
 type Document struct {
+	Timestamp time.Time
 	ID        string
 	Updates   []int
 	Version   int
-	Timestamp time.Time
 }
 
 type History struct {
+	Timestamp time.Time
 	Updates   []int
 	Version   int
-	Timestamp time.Time
 }
 
 type HistoryMetadata struct {
-	Version   int
 	Timestamp time.Time
+	Version   int
 }

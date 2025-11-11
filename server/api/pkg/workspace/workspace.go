@@ -1,12 +1,12 @@
 package workspace
 
 type Workspace struct {
-	id       ID
+	metadata Metadata
 	name     string
 	alias    string
-	metadata Metadata
-	personal bool
 	members  []Member
+	id       ID
+	personal bool
 }
 
 type List []*Workspace

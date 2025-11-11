@@ -10,8 +10,8 @@ import (
 )
 
 type WorkerConfig struct {
-	lock sync.RWMutex
 	data map[id.WorkspaceID]*batchconfig.WorkerConfig
+	lock sync.RWMutex
 }
 
 func NewWorkerConfig() repo.WorkerConfig {

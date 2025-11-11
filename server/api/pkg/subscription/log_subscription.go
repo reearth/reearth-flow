@@ -7,8 +7,8 @@ import (
 )
 
 type LogManager struct {
-	mu          sync.RWMutex
 	subscribers map[string][]chan *log.Log
+	mu          sync.RWMutex
 }
 
 func NewLogManager() *LogManager {

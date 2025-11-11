@@ -5,18 +5,18 @@ import (
 )
 
 type Project struct {
-	ID          string
-	Name        string
-	Alias       string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	Description *string
 	License     *string
 	Readme      *string
+	ID          string
+	Name        string
+	Alias       string
 	WorkspaceID string
-	Visibility  Visibility
 	Topics      []string
+	Visibility  Visibility
 	StarCount   int32
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
 }
 
 type Visibility int
@@ -27,29 +27,29 @@ const (
 )
 
 type Asset struct {
+	CreatedAt               time.Time
+	PreviewType             *string
+	ArchiveExtractionStatus *string
 	ID                      string
 	UUID                    string
 	ProjectID               string
 	Filename                string
-	Size                    uint64
-	PreviewType             *string
 	URL                     string
-	ArchiveExtractionStatus *string
+	Size                    uint64
 	Public                  bool
-	CreatedAt               time.Time
 }
 
 type Model struct {
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	ID          string
 	ProjectID   string
 	Name        string
 	Description string
 	Key         string
-	Schema      Schema
 	PublicAPIEP string
 	EditorURL   string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	Schema      Schema
 }
 
 type Schema struct {
@@ -58,11 +58,11 @@ type Schema struct {
 }
 
 type SchemaField struct {
+	Description *string
 	FieldID     string
 	Name        string
-	Type        SchemaFieldType
 	Key         string
-	Description *string
+	Type        SchemaFieldType
 }
 
 type SchemaFieldType int
@@ -88,10 +88,10 @@ const (
 )
 
 type Item struct {
-	ID        string
-	Fields    map[string]interface{}
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	Fields    map[string]interface{}
+	ID        string
 }
 
 type PageInfo struct {
@@ -105,17 +105,17 @@ type SortInfo struct {
 }
 
 type ListProjectsInput struct {
-	WorkspaceIDs []string
 	Keyword      *string
-	PublicOnly   bool
 	PageInfo     *PageInfo
 	SortInfo     *SortInfo
+	WorkspaceIDs []string
+	PublicOnly   bool
 }
 
 type ListProjectsOutput struct {
+	PageInfo   *PageInfo
 	Projects   []*Project
 	TotalCount int64
-	PageInfo   *PageInfo
 }
 
 type GetAssetInput struct {
@@ -123,15 +123,15 @@ type GetAssetInput struct {
 }
 
 type ListAssetsInput struct {
-	ProjectID string
 	PageInfo  *PageInfo
 	SortInfo  *SortInfo
+	ProjectID string
 }
 
 type ListAssetsOutput struct {
+	PageInfo   *PageInfo
 	Assets     []*Asset
 	TotalCount int64
-	PageInfo   *PageInfo
 }
 
 type GetModelInput struct {
@@ -140,29 +140,29 @@ type GetModelInput struct {
 }
 
 type ListModelsInput struct {
-	ProjectID string
 	PageInfo  *PageInfo
 	SortInfo  *SortInfo
+	ProjectID string
 }
 
 type ListModelsOutput struct {
+	PageInfo   *PageInfo
 	Models     []*Model
 	TotalCount int64
-	PageInfo   *PageInfo
 }
 
 type ListItemsInput struct {
-	ModelID   string
-	ProjectID string
 	Keyword   *string
 	PageInfo  *PageInfo
 	SortInfo  *SortInfo
+	ModelID   string
+	ProjectID string
 }
 
 type ListItemsOutput struct {
+	PageInfo   *PageInfo
 	Items      []Item
 	TotalCount int64
-	PageInfo   *PageInfo
 }
 
 type ExportInput struct {

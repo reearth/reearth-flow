@@ -20,8 +20,8 @@ type ProjectAccess struct {
 	projectRepo       repo.Project
 	projectAccessRepo repo.ProjectAccess
 	transaction       usecasex.Transaction
-	config            ContainerConfig
 	permissionChecker gateway.PermissionChecker
+	config            ContainerConfig
 }
 
 func NewProjectAccess(r *repo.Container, gr *gateway.Container, config ContainerConfig, permissionChecker gateway.PermissionChecker) interfaces.ProjectAccess {

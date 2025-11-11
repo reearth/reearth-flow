@@ -27,12 +27,12 @@ const (
 var defaultLang = language.English
 
 type AuthInfo struct {
+	EmailVerified *bool
 	Token         string
 	Sub           string
 	Iss           string
 	Name          string
 	Email         string
-	EmailVerified *bool
 }
 
 // TODO: After migration, remove this function

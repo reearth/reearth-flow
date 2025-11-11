@@ -7,13 +7,13 @@ import (
 const AuthServerDefaultClientID = "reearth-authsrv-client-default"
 
 type AuthSrvConfig struct {
-	Dev      bool             `pp:",omitempty"`
-	Disabled bool             `pp:",omitempty"`
+	DN       *AuthSrvDNConfig `pp:",omitempty"`
 	Issuer   string           `pp:",omitempty"`
 	Domain   string           `pp:",omitempty"`
 	UIDomain string           `pp:",omitempty"`
 	Key      string           `pp:",omitempty"`
-	DN       *AuthSrvDNConfig `pp:",omitempty"`
+	Dev      bool             `pp:",omitempty"`
+	Disabled bool             `pp:",omitempty"`
 }
 
 func (c AuthSrvConfig) AuthConfig(debug bool, host string) *AuthConfig {

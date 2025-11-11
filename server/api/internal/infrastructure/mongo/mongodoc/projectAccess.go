@@ -8,8 +8,8 @@ import (
 type ProjectAccessDocument struct {
 	ID       string
 	Project  string
-	IsPublic bool
 	Token    string
+	IsPublic bool
 }
 
 type ProjectAccessConsumer = Consumer[*ProjectAccessDocument, *projectAccess.ProjectAccess]

@@ -31,12 +31,12 @@ type SignupInput struct {
 	UserID      *id.UserID      `json:"userId"`
 	WorkspaceID *id.WorkspaceID `json:"workspaceId"`
 	TeamID      *id.WorkspaceID `json:"teamId"` // TeamID is an alias of WorkspaceID
+	Theme       *user.Theme     `json:"theme"`
+	Lang        *language.Tag   `json:"lang"`
 	Name        string          `json:"name"`
 	Username    string          `json:"username"` // ysername is an alias of Name
 	Email       string          `json:"email"`
 	Password    string          `json:"password"`
-	Theme       *user.Theme     `json:"theme"`
-	Lang        *language.Tag   `json:"lang"`
 }
 
 type CreateVerificationInput struct {

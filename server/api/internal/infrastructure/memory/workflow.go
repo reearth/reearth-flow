@@ -12,9 +12,9 @@ import (
 )
 
 type Workflow struct {
-	lock sync.Mutex
 	data *util.SyncMap[id.WorkflowID, *workflow.Workflow]
 	f    repo.WorkspaceFilter
+	lock sync.Mutex
 }
 
 func NewWorkflow() *Workflow {

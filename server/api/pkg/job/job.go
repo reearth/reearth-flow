@@ -15,18 +15,18 @@ const (
 )
 
 type Job struct {
+	startedAt         time.Time
 	completedAt       *time.Time
 	debug             *bool
-	deployment        DeploymentID
 	gcpJobID          string
-	id                ID
 	logsURL           string
 	workerLogsURL     string
 	userFacingLogsURL string
 	metadataURL       string
-	outputURLs        []string
-	startedAt         time.Time
 	status            Status
+	outputURLs        []string
+	deployment        DeploymentID
+	id                ID
 	workspace         WorkspaceID
 }
 

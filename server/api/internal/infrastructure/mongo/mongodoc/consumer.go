@@ -10,8 +10,8 @@ type Model[T any] interface {
 }
 
 type Consumer[T, K any] struct {
-	Result []K
 	c      mongox.SimpleConsumer[T]
+	Result []K
 }
 
 func NewConsumer[T Model[U], U any](filter func(U) bool) *Consumer[T, U] {

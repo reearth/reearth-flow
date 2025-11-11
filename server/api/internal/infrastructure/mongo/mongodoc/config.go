@@ -5,8 +5,8 @@ import (
 )
 
 type ConfigDocument struct {
-	Migration int64
 	Auth      *Auth
+	Migration int64
 }
 
 type Auth struct {

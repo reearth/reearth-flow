@@ -20,13 +20,9 @@ import (
 )
 
 type BatchConfig struct {
-	AllowedLocations                []string
 	BinaryPath                      string
-	BootDiskSizeGB                  int
 	BootDiskType                    string
 	ChannelBufferSize               string
-	ComputeCpuMilli                 int
-	ComputeMemoryMib                int
 	FeatureFlushThreshold           string
 	ImageURI                        string
 	MachineType                     string
@@ -41,8 +37,12 @@ type BatchConfig struct {
 	Region                          string
 	RustLog                         string
 	SAEmail                         string
-	TaskCount                       int
 	ThreadPoolSize                  string
+	AllowedLocations                []string
+	BootDiskSizeGB                  int
+	ComputeCpuMilli                 int
+	ComputeMemoryMib                int
+	TaskCount                       int
 	CompressIntermediateData        bool
 }
 
@@ -425,16 +425,16 @@ func formatJobID(jobID string) string {
 
 type effectiveConfig struct {
 	MachineType                  string
-	ComputeCpuMilli              int
-	ComputeMemoryMib             int
-	BootDiskSizeGB               int
 	BootDiskType                 string
-	TaskCount                    int
 	MaxConcurrency               string
 	ThreadPoolSize               string
 	ChannelBufferSize            string
 	FeatureFlushThreshold        string
 	NodeStatusPropagationDelayMS string
+	ComputeCpuMilli              int
+	ComputeMemoryMib             int
+	BootDiskSizeGB               int
+	TaskCount                    int
 }
 
 func (b *BatchRepo) mergeConfig(workspaceConfig *batchconfig.WorkerConfig) *effectiveConfig {

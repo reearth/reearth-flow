@@ -26,17 +26,17 @@ const (
 )
 
 type Parameter struct {
-	id           ID
-	projectID    ProjectID
-	name         string
-	typ          Type
-	required     bool
-	public       bool
-	defaultValue interface{}
-	config       interface{}
-	index        int
 	createdAt    time.Time
 	updatedAt    time.Time
+	defaultValue interface{}
+	config       interface{}
+	name         string
+	typ          Type
+	index        int
+	id           ID
+	projectID    ProjectID
+	required     bool
+	public       bool
 }
 
 func (p *Parameter) ID() ID {

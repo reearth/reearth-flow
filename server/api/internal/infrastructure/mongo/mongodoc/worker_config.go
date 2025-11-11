@@ -8,7 +8,8 @@ import (
 )
 
 type WorkerConfigDocument struct {
-	Workspace             string    `bson:"workspace"`
+	CreatedAt             time.Time `bson:"created_at"`
+	UpdatedAt             time.Time `bson:"updated_at"`
 	MachineType           *string   `bson:"machine_type,omitempty"`
 	ComputeCpuMilli       *int      `bson:"compute_cpu_milli,omitempty"`
 	ComputeMemoryMib      *int      `bson:"compute_memory_mib,omitempty"`
@@ -19,8 +20,7 @@ type WorkerConfigDocument struct {
 	ChannelBufferSize     *int      `bson:"channel_buffer_size,omitempty"`
 	FeatureFlushThreshold *int      `bson:"feature_flush_threshold,omitempty"`
 	NodeStatusDelayMilli  *int      `bson:"node_status_delay_ms,omitempty"`
-	CreatedAt             time.Time `bson:"created_at"`
-	UpdatedAt             time.Time `bson:"updated_at"`
+	Workspace             string    `bson:"workspace"`
 }
 
 func NewWorkerConfig(cfg *batchconfig.WorkerConfig) (*WorkerConfigDocument, string) {

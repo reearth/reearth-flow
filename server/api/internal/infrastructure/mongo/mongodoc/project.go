@@ -9,6 +9,9 @@ import (
 )
 
 type ProjectDocument struct {
+	PublishedAt time.Time
+	UpdatedAt   time.Time
+
 	// Core Identity
 	ID        string
 	Alias     string
@@ -19,27 +22,26 @@ type ProjectDocument struct {
 	// Authentication
 	BasicAuthPassword string
 	BasicAuthUsername string
-	IsBasicAuthActive bool
 
 	// Content
 	Description string
 	ImageURL    string
 
-	// Metadata
-	Archived    bool
-	PublishedAt time.Time
-	UpdatedAt   time.Time
-
 	// Public Visibility Configuration
 	PublicDescription string
 	PublicImage       string
-	PublicNoIndex     bool
 	PublicTitle       string
 	SharedToken       string
 
+	TrackingID        string
+	IsBasicAuthActive bool
+
+	// Metadata
+	Archived      bool
+	PublicNoIndex bool
+
 	// Analytics
-	EnableGA   bool
-	TrackingID string
+	EnableGA bool
 }
 
 type ProjectConsumer = Consumer[*ProjectDocument, *project.Project]

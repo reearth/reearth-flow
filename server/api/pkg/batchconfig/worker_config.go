@@ -7,7 +7,8 @@ import (
 )
 
 type WorkerConfig struct {
-	workspace             id.WorkspaceID
+	createdAt             time.Time
+	updatedAt             time.Time
 	machineType           *string
 	computeCpuMilli       *int
 	computeMemoryMib      *int
@@ -18,8 +19,7 @@ type WorkerConfig struct {
 	channelBufferSize     *int
 	featureFlushThreshold *int
 	nodeStatusDelayMilli  *int
-	createdAt             time.Time
-	updatedAt             time.Time
+	workspace             id.WorkspaceID
 }
 
 func New(workspace id.WorkspaceID) *WorkerConfig {

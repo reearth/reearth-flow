@@ -9,9 +9,9 @@ import (
 )
 
 type Config struct {
+	data   *config.Config
 	lock   sync.Mutex
 	locked bool
-	data   *config.Config
 }
 
 func NewConfig() repo.Config {

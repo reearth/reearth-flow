@@ -7,10 +7,10 @@ import (
 )
 
 type EdgeExecutionDocument struct {
+	IntermediateDataURL *string `bson:"intermediateDataUrl,omitempty"`
 	ID                  string  `bson:"id"`
 	EdgeID              string  `bson:"edgeId"`
 	JobID               string  `bson:"jobId"`
-	IntermediateDataURL *string `bson:"intermediateDataUrl,omitempty"`
 }
 
 type EdgeExecutionConsumer = Consumer[*EdgeExecutionDocument, *graph.EdgeExecution]

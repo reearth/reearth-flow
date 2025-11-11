@@ -19,9 +19,9 @@ const (
 )
 
 type JobInfo struct {
-	ID     id.JobID
 	Name   string
 	Status JobStatus
+	ID     id.JobID
 }
 
 type Batch interface {

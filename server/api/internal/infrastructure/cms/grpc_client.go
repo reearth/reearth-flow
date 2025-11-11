@@ -27,10 +27,10 @@ import (
 var _ gateway.CMS = (*grpcClient)(nil)
 
 type ConnectionPool struct {
-	mu          sync.RWMutex
 	connections map[string]*pooledConnection
 	maxSize     int
 	maxIdleTime time.Duration
+	mu          sync.RWMutex
 }
 
 type pooledConnection struct {
