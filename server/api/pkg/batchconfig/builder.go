@@ -102,4 +102,3 @@ func (b *Builder) UpdatedAt(updatedAt time.Time) *Builder {
 	b.c.updatedAt = updatedAt
 	return b
 }
-
