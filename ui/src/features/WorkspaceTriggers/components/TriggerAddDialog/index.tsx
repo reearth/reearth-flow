@@ -23,6 +23,8 @@ import {
 import { DeploymentsDialog } from "@flow/features/WorkspaceDeployments/components/DeploymentsDialog";
 import { useT } from "@flow/lib/i18n";
 
+import TriggerProjectVariablesMappingDialog from "../TriggerWorkflowVariables";
+
 import useHooks from "./hooks";
 
 type Props = {
@@ -61,10 +63,13 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     handleTriggerCreation,
     setCurrentPage,
     handleSortChange,
+    pendingWorkflowData,
+    openTriggerProjectVariablesDialog,
+    setOpenTriggerProjectVariablesDialog,
   } = useHooks({ setShowDialog });
 
   console.log("SELECTED DEPLOYMENT: ", selectedDeployment);
-
+  console.log("PENDING WORKFLOW DATA: ", pendingWorkflowData?.variables);
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(false)}>
       {!createdTrigger && (
@@ -258,6 +263,16 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
           setSearchTerm={setSearchTerm}
           onSortChange={handleSortChange}
           setCurrentPage={setCurrentPage}
+        />
+      )}
+      {pendingWorkflowData?.variables && (
+        <TriggerProjectVariablesMappingDialog
+          isOpen={openTriggerProjectVariablesDialog}
+          onOpenChange={setOpenTriggerProjectVariablesDialog}
+          variables={pendingWorkflowData?.variables || []}
+          workflowName={pendingWorkflowData?.workflowName || ""}
+          onConfirm={() => setOpenTriggerProjectVariablesDialog(false)}
+          onCancel={() => setOpenTriggerProjectVariablesDialog(false)}
         />
       )}
     </Dialog>
