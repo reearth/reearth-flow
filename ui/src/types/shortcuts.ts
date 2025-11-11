@@ -87,7 +87,7 @@ export const EditorKeyBindings: Partial<
   leftPanelCanvasNavigator: { key: "c", shiftKey: true },
   leftPanelActionsList: { key: "a", shiftKey: true },
   leftPanelResources: { key: "r", shiftKey: true },
-  groupToSubWorkFlow: { key: "s" },
+  groupToSubWorkFlow: { key: "s", shiftKey: true, commandKey: true },
 };
 
 export const CanvasKeyBindings: Partial<

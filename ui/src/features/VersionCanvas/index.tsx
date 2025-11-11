@@ -56,6 +56,7 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
             <div className="flex flex-1">
               <div className="relative flex flex-1 flex-col">
                 <Canvas
+                  isMainWorkflow={isMainWorkflow}
                   readonly
                   onWorkflowOpen={handleWorkflowOpen}
                   nodes={nodes}
