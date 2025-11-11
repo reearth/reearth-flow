@@ -196,7 +196,7 @@ async fn read_shapefile(
                 IngestionMessage::OperationEvent { feature },
             ))
             .await
-            .map_err(|_| ShapefileError::FeatureSendError)?;
+            .map_err(|e| SourceError::shapefile_reader(format!("Failed to send feature: {e}")))?;
     }
 
     Ok(())
@@ -278,11 +278,10 @@ fn create_dbase_reader<T: std::io::Read + std::io::Seek>(
             source,
             shapefile::dbase::encoding::UnicodeLossy,
         )
-        .map_err(|_| {
-            ShapefileError::DbaseReaderCreationError {
-                encoding: "UnicodeLossy".to_string(),
-            }
-            .into()
+        .map_err(|e| {
+            SourceError::shapefile_reader(format!(
+                "Failed to create dbase reader with UnicodeLossy encoding: {e}"
+            ))
         });
     }
 
@@ -306,11 +305,11 @@ fn create_dbase_reader<T: std::io::Read + std::io::Seek>(
         // Wrap the encoding_rs Encoding in the dbase EncodingRs wrapper
         let dbase_encoding = shapefile::dbase::encoding::EncodingRs::from(encoding);
 
-        shapefile::dbase::Reader::new_with_encoding(source, dbase_encoding).map_err(|_| {
-            ShapefileError::DbaseReaderCreationError {
-                encoding: encoding.name().to_string(),
-            }
-            .into()
+        shapefile::dbase::Reader::new_with_encoding(source, dbase_encoding).map_err(|e| {
+            SourceError::shapefile_reader(format!(
+                "Failed to create dbase reader with {} encoding: {e}",
+                encoding.name()
+            ))
         })
     } else {
         // Encoding not recognized by encoding_rs, fall back to UnicodeLossy
@@ -325,13 +324,10 @@ fn create_dbase_reader<T: std::io::Read + std::io::Seek>(
             source,
             shapefile::dbase::encoding::UnicodeLossy,
         )
-        .map_err(|_| {
-            ShapefileError::DbaseReaderCreationError {
-                encoding: format!(
-                    "fallback UnicodeLossy (from unrecognized '{encoding_name}')"
-                ),
-            }
-            .into()
+        .map_err(|e| {
+            SourceError::shapefile_reader(format!(
+                "Failed to create dbase reader with fallback UnicodeLossy encoding (from unrecognized '{encoding_name}'): {e}"
+            ))
         })
     }
 }
@@ -341,14 +337,16 @@ fn read_shapefile_from_zip(
     encoding_param: &Option<String>,
 ) -> Result<Vec<(shapefile::Shape, shapefile::dbase::Record)>, crate::errors::SourceError> {
     let cursor = Cursor::new(content.as_ref());
-    let mut archive = zip::ZipArchive::new(cursor).map_err(|_| ShapefileError::ZipReadError)?;
+    let mut archive = zip::ZipArchive::new(cursor).map_err(|e| {
+        SourceError::shapefile_reader(format!("Failed to read ZIP archive: {e}"))
+    })?;
 
     let mut shapefile_groups: HashMap<String, ShapefileComponents> = HashMap::new();
 
     for i in 0..archive.len() {
-        let mut file = archive
-            .by_index(i)
-            .map_err(|_| ShapefileError::ZipEntryReadError)?;
+        let mut file = archive.by_index(i).map_err(|e| {
+            SourceError::shapefile_reader(format!("Failed to read ZIP entry at index {i}: {e}"))
+        })?;
 
         let file_name = file.name().to_string();
 
@@ -382,8 +380,9 @@ fn read_shapefile_from_zip(
         };
 
         let mut buffer = Vec::new();
-        file.read_to_end(&mut buffer)
-            .map_err(|_| ShapefileError::ZipEntryReadError)?;
+        file.read_to_end(&mut buffer).map_err(|e| {
+            SourceError::shapefile_reader(format!("Failed to read ZIP entry '{file_name}': {e}"))
+        })?;
 
         let components = shapefile_groups.entry(base_name).or_default();
 
@@ -403,7 +402,12 @@ fn read_shapefile_from_zip(
     let (base_name, components) = shapefile_groups
         .into_iter()
         .find(|(_, comp)| comp.shp.is_some() && comp.dbf.is_some())
-        .ok_or(ShapefileError::MissingComponents)?;
+        .ok_or_else(|| {
+            SourceError::shapefile_reader(
+                "No complete shapefile found in ZIP archive. Required files: .shp and .dbf"
+                    .to_string(),
+            )
+        })?;
 
     tracing::info!("Processing shapefile: {}", base_name);
 
@@ -415,8 +419,9 @@ fn read_shapefile_from_zip(
 
     let shp_cursor = Cursor::new(shp_data);
     let dbf_cursor = Cursor::new(dbf_data);
-    let shape_reader = shapefile::ShapeReader::new(shp_cursor)
-        .map_err(|_| ShapefileError::ShapeReaderCreationError)?;
+    let shape_reader = shapefile::ShapeReader::new(shp_cursor).map_err(|e| {
+        SourceError::shapefile_reader(format!("Failed to create shape reader: {e}"))
+    })?;
 
     // Create dbase reader with resolved encoding
     let dbase_reader = create_dbase_reader(dbf_cursor, &encoding)?;
@@ -425,7 +430,9 @@ fn read_shapefile_from_zip(
 
     let mut shapes_and_records = Vec::new();
     for result in reader.iter_shapes_and_records() {
-        let (shape, record) = result.map_err(|_| ShapefileError::ShapeReaderCreationError)?;
+        let (shape, record) = result.map_err(|e| {
+            SourceError::shapefile_reader(format!("Failed to read shape and record: {e}"))
+        })?;
         shapes_and_records.push((shape, record));
     }
 
