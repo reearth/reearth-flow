@@ -54,6 +54,7 @@ const Toolbox: React.FC<Props> = ({
       id: "reader" as const,
       name: t("Reader Node"),
       icon: <DatabaseIcon weight="thin" size={16} />,
+      disabled: !isMainWorkflow,
     },
     {
       id: "transformer" as const,

@@ -258,6 +258,7 @@ export type CreateTriggerInput = {
   deploymentId: Scalars['ID']['input'];
   description: Scalars['String']['input'];
   timeDriverInput?: InputMaybe<TimeDriverInput>;
+  variables?: InputMaybe<Scalars['JSON']['input']>;
   workspaceId: Scalars['ID']['input'];
 };
 
@@ -1200,6 +1201,7 @@ export type Trigger = Node & {
   lastTriggered?: Maybe<Scalars['DateTime']['output']>;
   timeInterval?: Maybe<TimeInterval>;
   updatedAt: Scalars['DateTime']['output'];
+  variables?: Maybe<Scalars['JSON']['output']>;
   workspace?: Maybe<Workspace>;
   workspaceId: Scalars['ID']['output'];
 };
@@ -1297,6 +1299,7 @@ export type UpdateTriggerInput = {
   description?: InputMaybe<Scalars['String']['input']>;
   timeDriverInput?: InputMaybe<TimeDriverInput>;
   triggerId: Scalars['ID']['input'];
+  variables?: InputMaybe<Scalars['JSON']['input']>;
 };
 
 export type UpdateWorkspaceInput = {

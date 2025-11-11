@@ -9,19 +9,7 @@ export default () => {
   >(undefined);
 
   const handleNodePickerOpen = useCallback(
-    (
-      position?: XYPosition,
-      nodeType?: ActionNodeType,
-      isMainWorkflow?: boolean,
-    ) => {
-      if (isMainWorkflow === false && nodeType === "reader") {
-        return;
-      }
-
-      if (isMainWorkflow === false && nodeType === "writer") {
-        return;
-      }
-
+    (position?: XYPosition, nodeType?: ActionNodeType) => {
       setNodePickerOpen(
         !position || !nodeType ? undefined : { position, nodeType },
       );

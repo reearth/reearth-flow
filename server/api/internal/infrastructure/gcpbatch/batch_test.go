@@ -73,7 +73,7 @@ func TestBatchRepo_SubmitJob(t *testing.T) {
 	workspaceID, _ := id.WorkspaceIDFrom("test-workspace-id")
 	workflowURL := "gs://test-bucket/test-workflow.yaml"
 	metadataURL := "gs://test-bucket/test-metadata.json"
-	var variables map[string]interface{}
+	var variables map[string]string
 
 	expectedJobName := "projects/test-project/locations/us-central1/jobs/test-job-id"
 
