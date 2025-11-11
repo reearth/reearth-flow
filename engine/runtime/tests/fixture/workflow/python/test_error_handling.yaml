@@ -52,11 +52,10 @@ graphs:
             properties['status'] = 'error_test_completed'
 
       - id: writer
-        name: FileWriter
+        name: JsonWriter
         type: action
-        action: FileWriter
+        action: JsonWriter
         with:
-          format: json
           output: |
             env.get("outputFilePath")
 

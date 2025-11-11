@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 4da19dc4-1ebd-4762-8250-2a4bc8043501
+name: "CSV Round-trip with WKT Geometry Example"
+entryGraphId: 4e3450c8-2344-4728-afa9-5fdb81eec441
+with:
+  inputCsv: !include ./sample-input-wkt.csv
+graphs:
+  - id: 4e3450c8-2344-4728-afa9-5fdb81eec441
+    name: main
+    nodes:
+      - id: a0f40a3e-61d3-48e2-a328-e7226c2ad2a1
+        name: CsvReader
+        type: action
+        action: CsvReader
+        with:
+          format: csv
+          inline: |
+            env.get("inputCsv")
+          geometry:
+            geometryMode: wkt
+            column: geometry
+            epsg: 4326
+
+      - id: b5e66920-24c0-4c70-ae16-6be1ed3b917a
+        name: CsvWriter
+        type: action
+        action: CsvWriter
+        with:
+          format: csv
+          output: ./output-roundtrip-wkt.csv
+          geometry:
+            geometryMode: wkt
+            column: geometry
+
+    edges:
+      - id: d064cf52-705f-443a-b2de-6795266c541a
+        from: a0f40a3e-61d3-48e2-a328-e7226c2ad2a1
+        to: b5e66920-24c0-4c70-ae16-6be1ed3b917a
+        fromPort: default
+        toPort: default

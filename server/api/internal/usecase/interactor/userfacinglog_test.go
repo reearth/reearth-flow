@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter"
+	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/graph"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
@@ -37,6 +38,14 @@ func (m *mockUserFacingLogGateway) GetNodeExecution(ctx context.Context, jobID i
 
 func (m *mockUserFacingLogGateway) GetNodeExecutions(ctx context.Context, jobID id.JobID) ([]*graph.NodeExecution, error) {
 	return nil, nil
+}
+
+func (m *mockUserFacingLogGateway) GetJobCompleteEvent(ctx context.Context, jobID id.JobID) (*gateway.JobCompleteEvent, error) {
+	return nil, nil
+}
+
+func (m *mockUserFacingLogGateway) DeleteJobCompleteEvent(ctx context.Context, jobID id.JobID) error {
+	return nil
 }
 
 func TestNewUserFacingLogInteractor(t *testing.T) {
