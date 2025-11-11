@@ -77,6 +77,7 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
                 .map_err(|e| FeatureProcessorError::FileCityGmlReaderFactory(format!("{e:?}")))?,
             original_dataset: params.dataset.clone(),
             flatten: params.flatten,
+            resolve_code: params.resolve_code,
         };
         let threads_num = {
             let size = (num_cpus::get() as f32 / 4_f32).trunc() as usize;
@@ -122,6 +123,7 @@ pub struct FeatureCityGmlReaderParam {
     /// # Flatten
     /// Whether to flatten the hierarchical structure of the CityGML data
     flatten: Option<bool>,
+    resolve_code: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -129,6 +131,7 @@ struct CompiledFeatureCityGmlReaderParam {
     dataset: rhai::AST,
     original_dataset: Expr,
     flatten: Option<bool>,
+    resolve_code: Option<bool>,
 }
 
 impl Processor for FeatureCityGmlReader {
@@ -148,6 +151,7 @@ impl Processor for FeatureCityGmlReader {
         let dataset = self.params.dataset.clone();
         let original_dataset = self.params.original_dataset.clone();
         let flatten = self.params.flatten;
+        let resolve_code = self.params.resolve_code;
         let pool = self.thread_pool.lock();
         let (tx, rx) = std::sync::mpsc::channel();
         self.join_handles
@@ -160,6 +164,7 @@ impl Processor for FeatureCityGmlReader {
                 dataset,
                 original_dataset,
                 flatten,
+                resolve_code,
                 global_params.clone(),
             );
             tx.send(result).unwrap();
