@@ -60,6 +60,8 @@ pub enum ShapefileError {
     DirectBytesNotSupported,
     #[error("UTF-16 encoding is not supported. DBF files with UTF-16 require different byte-level decoding. Please convert the shapefile to UTF-8 encoding using a tool like ogr2ogr: ogr2ogr -f \"ESRI Shapefile\" output.shp input.shp -lco ENCODING=UTF-8")]
     Utf16NotSupported,
+    #[error("Unsupported encoding: {0}. Supported encodings include: UTF-8, Windows-1250 through Windows-1258, ISO-8859-1 through ISO-8859-16, Shift-JIS, EUC-JP, EUC-KR, Big5, GBK, GB18030, KOI8-R, KOI8-U, IBM866, Macintosh, and others")]
+    UnsupportedEncoding(String),
     #[error("Unsupported shape type: {0}")]
     UnsupportedShapeType(String),
     #[error("Polygon has no rings")]

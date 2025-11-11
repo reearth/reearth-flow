@@ -34,6 +34,53 @@ use crate::{
     file::reader::runner::{get_content, FileReaderCommonParam},
 };
 
+/// Character encoding for shapefile DBF files
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ShapefileEncoding {
+    /// UTF-8 and Unicode variants
+    Utf8,
+    /// encoding_rs supported encoding (100+ encodings)
+    EncodingRs(&'static encoding_rs::Encoding),
+}
+
+impl ShapefileEncoding {
+    /// Parse encoding name string into typed enum
+    ///
+    /// Returns error for unsupported encodings (e.g., UTF-16)
+    fn from_name(name: &str) -> Result<Self, ShapefileError> {
+        let name_upper = name.to_uppercase();
+
+        // Handle UTF-8/Unicode variants
+        if matches!(name_upper.as_str(), "UTF-8" | "UTF8" | "UNICODE" | "UTF_8") {
+            return Ok(Self::Utf8);
+        }
+
+        // Reject UTF-16 early
+        if matches!(
+            name_upper.as_str(),
+            "UTF-16" | "UTF16" | "UTF-16LE" | "UTF-16BE" | "UTF_16"
+        ) {
+            return Err(ShapefileError::Utf16NotSupported);
+        }
+
+        // Try encoding_rs for all other encodings
+        if let Some(encoding) = encoding_rs::Encoding::for_label(name.as_bytes()) {
+            return Ok(Self::EncodingRs(encoding));
+        }
+
+        // Unrecognized encoding - fail fast
+        Err(ShapefileError::UnsupportedEncoding(name.to_string()))
+    }
+
+    /// Get the encoding name for logging
+    fn name(&self) -> &str {
+        match self {
+            Self::Utf8 => "UTF-8",
+            Self::EncodingRs(enc) => enc.name(),
+        }
+    }
+}
+
 #[derive(Default)]
 struct ShapefileComponents {
     shp: Option<Vec<u8>>,
@@ -207,9 +254,14 @@ fn is_zip_file(content: &Bytes) -> bool {
 }
 
 /// Parse encoding string from .cpg file content
+///
+/// .cpg files contain only the encoding name, typically on the first line.
+/// We extract only the first line to handle files with additional content.
 fn parse_cpg_encoding(cpg_data: &[u8]) -> Option<String> {
     let s = String::from_utf8_lossy(cpg_data);
-    let trimmed = s.trim();
+    // Take only the first line and trim whitespace
+    let first_line = s.lines().next()?;
+    let trimmed = first_line.trim();
     if trimmed.is_empty() {
         None
     } else {
@@ -218,12 +270,17 @@ fn parse_cpg_encoding(cpg_data: &[u8]) -> Option<String> {
 }
 
 /// Resolve the encoding to use, with priority: parameter > .cpg file > default
-fn resolve_encoding(encoding_param: &Option<String>, cpg_data: Option<&Vec<u8>>) -> String {
+///
+/// Converts string encoding name to type-safe enum early, failing fast if unsupported.
+fn resolve_encoding(
+    encoding_param: &Option<String>,
+    cpg_data: Option<&Vec<u8>>,
+) -> Result<ShapefileEncoding, ShapefileError> {
     // Priority 1: Explicit encoding parameter
     if let Some(enc) = encoding_param {
         if !enc.is_empty() {
             tracing::debug!("Using encoding from parameter: {}", enc);
-            return enc.clone();
+            return ShapefileEncoding::from_name(enc);
         }
     }
 
@@ -231,104 +288,44 @@ fn resolve_encoding(encoding_param: &Option<String>, cpg_data: Option<&Vec<u8>>)
     if let Some(cpg) = cpg_data {
         if let Some(enc) = parse_cpg_encoding(cpg) {
             tracing::debug!("Using encoding from .cpg file: {}", enc);
-            return enc;
+            return ShapefileEncoding::from_name(&enc);
         }
     }
 
     // Priority 3: Default to UTF-8
     tracing::debug!("Using default encoding: UTF-8");
-    "UTF-8".to_string()
+    Ok(ShapefileEncoding::Utf8)
 }
 
 /// Create a dbase Reader with the appropriate encoding
 ///
-/// Supports a wide range of encodings via the `encoding_rs` crate, matching industry-standard
-/// GIS software (GDAL, ArcGIS, QGIS) capabilities:
-///
-/// # Supported Encodings
-/// - **UTF-8** and variants (UTF8, UNICODE)
-/// - **Windows Code Pages**: Windows-1250 through Windows-1258, Windows-874
-/// - **ISO-8859 family**: ISO-8859-1 through ISO-8859-16 (Latin-1, Latin-2, etc.)
-/// - **Asian encodings**: Shift-JIS, EUC-JP, EUC-KR, Big5, GBK, GB18030
-/// - **Other legacy encodings**: KOI8-R, KOI8-U, IBM866, Macintosh
-///
-/// # Error Handling
-/// - UTF-16 encodings return a clear error with conversion instructions
-/// - Unrecognized encodings fall back to UTF-8 with a warning
-/// - encoding_rs::Encoding::for_label() handles case-insensitive matching and common variations
-///
-/// # Examples
-/// - "Windows-1252" → Full support for Western European legacy data
-/// - "ISO-8859-1" → Latin-1 encoding commonly used in shapefiles
-/// - "Shift-JIS" → Japanese encoding support
-/// - "UTF-8" → Modern standard encoding
+/// Takes a type-safe ShapefileEncoding enum (already validated) and creates
+/// the appropriate dbase reader.
 fn create_dbase_reader<T: std::io::Read + std::io::Seek>(
     source: T,
-    encoding_name: &str,
+    encoding: ShapefileEncoding,
 ) -> Result<shapefile::dbase::Reader<T>, crate::errors::SourceError> {
-    let encoding_upper = encoding_name.to_uppercase();
+    tracing::debug!("Creating dbase reader with {} encoding", encoding.name());
 
-    // Handle UTF-8/Unicode variants with UnicodeLossy
-    if matches!(
-        encoding_upper.as_str(),
-        "UTF-8" | "UTF8" | "UNICODE" | "UTF_8"
-    ) {
-        tracing::debug!("Using UnicodeLossy encoding for: {}", encoding_name);
-        return shapefile::dbase::Reader::new_with_encoding(
+    match encoding {
+        ShapefileEncoding::Utf8 => shapefile::dbase::Reader::new_with_encoding(
             source,
             shapefile::dbase::encoding::UnicodeLossy,
         )
         .map_err(|e| {
             SourceError::shapefile_reader(format!(
-                "Failed to create dbase reader with UnicodeLossy encoding: {e}"
+                "Failed to create dbase reader with UTF-8 encoding: {e}"
             ))
-        });
-    }
-
-    // UTF-16 requires different byte-level handling and is not supported by encoding_rs in DBF context
-    if matches!(
-        encoding_upper.as_str(),
-        "UTF-16" | "UTF16" | "UTF-16LE" | "UTF-16BE" | "UTF_16"
-    ) {
-        return Err(ShapefileError::Utf16NotSupported.into());
-    }
-
-    // Try to use encoding_rs for all other encodings
-    // encoding_rs::Encoding::for_label() supports case-insensitive matching and common variations
-    if let Some(encoding) = encoding_rs::Encoding::for_label(encoding_name.as_bytes()) {
-        tracing::debug!(
-            "Using encoding_rs with {} encoding for: {}",
-            encoding.name(),
-            encoding_name
-        );
-
-        // Wrap the encoding_rs Encoding in the dbase EncodingRs wrapper
-        let dbase_encoding = shapefile::dbase::encoding::EncodingRs::from(encoding);
-
-        shapefile::dbase::Reader::new_with_encoding(source, dbase_encoding).map_err(|e| {
-            SourceError::shapefile_reader(format!(
-                "Failed to create dbase reader with {} encoding: {e}",
-                encoding.name()
-            ))
-        })
-    } else {
-        // Encoding not recognized by encoding_rs, fall back to UnicodeLossy
-        tracing::warn!(
-            "Unrecognized encoding '{}', falling back to UnicodeLossy (UTF-8). \
-            This may result in incorrect character decoding. \
-            Supported encodings include: Windows-1252, ISO-8859-1, Shift-JIS, GBK, etc.",
-            encoding_name
-        );
-
-        shapefile::dbase::Reader::new_with_encoding(
-            source,
-            shapefile::dbase::encoding::UnicodeLossy,
-        )
-        .map_err(|e| {
-            SourceError::shapefile_reader(format!(
-                "Failed to create dbase reader with fallback UnicodeLossy encoding (from unrecognized '{encoding_name}'): {e}"
-            ))
-        })
+        }),
+        ShapefileEncoding::EncodingRs(encoding_rs_encoding) => {
+            let dbase_encoding = shapefile::dbase::encoding::EncodingRs::from(encoding_rs_encoding);
+            shapefile::dbase::Reader::new_with_encoding(source, dbase_encoding).map_err(|e| {
+                SourceError::shapefile_reader(format!(
+                    "Failed to create dbase reader with {} encoding: {e}",
+                    encoding_rs_encoding.name()
+                ))
+            })
+        }
     }
 }
 
@@ -410,8 +407,8 @@ fn read_shapefile_from_zip(
 
     tracing::info!("Processing shapefile: {}", base_name);
 
-    // Resolve encoding from parameter, .cpg file, or default
-    let encoding = resolve_encoding(encoding_param, components.cpg.as_ref());
+    // Resolve encoding from parameter, .cpg file, or default (fail fast if unsupported)
+    let encoding = resolve_encoding(encoding_param, components.cpg.as_ref())?;
 
     let shp_data = components.shp.unwrap();
     let dbf_data = components.dbf.unwrap();
@@ -422,8 +419,8 @@ fn read_shapefile_from_zip(
         SourceError::shapefile_reader(format!("Failed to create shape reader: {e}"))
     })?;
 
-    // Create dbase reader with resolved encoding
-    let dbase_reader = create_dbase_reader(dbf_cursor, &encoding)?;
+    // Create dbase reader with type-safe encoding enum
+    let dbase_reader = create_dbase_reader(dbf_cursor, encoding)?;
 
     let mut reader = shapefile::Reader::new(shape_reader, dbase_reader);
 
