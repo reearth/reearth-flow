@@ -123,6 +123,8 @@ pub struct FeatureCityGmlReaderParam {
     /// # Flatten
     /// Whether to flatten the hierarchical structure of the CityGML data
     flatten: Option<bool>,
+    /// # Resolve Code
+    /// Whether to resolve code values using codelists
     resolve_code: Option<bool>,
 }
 
