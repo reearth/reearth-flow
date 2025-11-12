@@ -61,7 +61,7 @@ const DeployPopover: React.FC<Props> = ({
       <div className="flex flex-row items-center px-4">
         <Label>{t("Deployment Version: ")}</Label>
         <div className="flex items-center gap-2">
-          <p className="dark:font-thin">{currentVersion}</p>
+          <p className="pl-1 dark:font-thin">{currentVersion}</p>
           <CaretRightIcon />
           <p className="font-semibold">
             {currentVersion ? currentVersion + 1 : 1}
@@ -80,8 +80,12 @@ const DeployPopover: React.FC<Props> = ({
         <p className="dark:font-light">
           {t("Are you sure you want to proceed?")}
         </p>
-        <div className="flex items-center gap-2 pb-2">
+        <div className="flex items-center justify-between gap-2 pb-2">
+          <Button variant="outline" size="sm" onClick={onDialogClose}>
+            {t("Cancel")}
+          </Button>
           <Button
+            size="sm"
             disabled={!description.trim()}
             onClick={handleWorkflowDeployment}>
             {deployment ? t("Update") : t("Deploy")}
