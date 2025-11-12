@@ -148,7 +148,7 @@ const StartButton: React.FC<{
               <PlayIcon weight="thin" size={18} />
             )
           }
-          onClick={() => onShowDebugStartPopover()}
+          onClick={onShowDebugStartPopover}
         />
       </PopoverTrigger>
       <PopoverContent
@@ -197,7 +197,7 @@ const StopButton: React.FC<{
           tooltipText={t("Stop debug run of workflow")}
           tooltipOffset={tooltipOffset}
           icon={<StopIcon weight="thin" size={18} />}
-          onClick={() => onShowDebugStopPopover()}
+          onClick={onShowDebugStopPopover}
         />
       </PopoverTrigger>
       <PopoverContent
