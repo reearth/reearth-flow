@@ -43,6 +43,7 @@ impl Attribute {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(untagged)]
 pub enum AttributeValue {
     Null,
     Bool(bool),
@@ -50,8 +51,8 @@ pub enum AttributeValue {
     String(String),
     DateTime(DateTime),
     Array(Vec<AttributeValue>),
-    Bytes(Bytes),
     Map(HashMap<String, AttributeValue>),
+    Bytes(Bytes),
 }
 
 impl AttributeValue {
