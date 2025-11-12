@@ -1,16 +1,16 @@
-id: b9ca5efa-c20d-4587-891c-5bda5c869db4
+id: 00b3bdbe-4dab-4413-bf40-6a67d42a03f6
 name: "PLATEAU4-quality-check-08-dem"
-entryGraphId: 742b6f3e-2a63-490a-aec2-829b10fea5f2
+entryGraphId: 79dc8232-d5dd-4c60-be2c-85ca1409619c
 with:
   cityGmlPath:
   schemas:
   codelists:
   outputPath:
 graphs:
-  - id: 742b6f3e-2a63-490a-aec2-829b10fea5f2
+  - id: 79dc8232-d5dd-4c60-be2c-85ca1409619c
     name: entry_point
     nodes:
-      - id: f9248705-3024-40b0-b729-66507ca6640d
+      - id: 6da8eb15-70c8-4f4a-bce6-b700d90d51e4
         name: FeatureCreator
         type: action
         action: FeatureCreator
@@ -26,7 +26,7 @@ graphs:
               },
             ]
 
-      - id: 613c6d22-bf1c-4bbb-ba97-d85dd78d81ce
+      - id: 624d1039-4317-4699-8e0e-0b749abeb033
         name: DirectoryDecompressor
         type: action
         action: DirectoryDecompressor
@@ -35,7 +35,7 @@ graphs:
             - codelists
             - schemas
 
-      - id: 01c49595-446f-482f-94db-5027f390b6cd
+      - id: 3c4dc9be-6fb0-48e5-8d32-0eda4fdd5069
         name: FeatureFilePathExtractor
         type: action
         action: FeatureFilePathExtractor
@@ -45,7 +45,7 @@ graphs:
             env.get("__value")["cityGmlPath"]
           extractArchive: true
 
-      - id: 24286bb9-1c30-49b7-afd8-e8dc73c85ed0
+      - id: 35779453-0f57-44fb-bca8-0e21b286cbbd
         name: FeatureFilterByGml
         type: action
         action: FeatureFilter
@@ -55,7 +55,7 @@ graphs:
                 env.get("__value").extension == "gml"
               outputPort: default
 
-      - id: c29be788-be8d-43a2-97bf-3e15228a72a1
+      - id: 6a08f964-a46d-4226-a4dc-2c283136e157
         name: FeatureCounterFileIndex
         type: action
         action: FeatureCounter
@@ -63,7 +63,7 @@ graphs:
           countStart: 1
           outputAttribute: fileIndex
 
-      - id: 33cb26b6-bba2-4600-ae1b-df5d7c0b4678
+      - id: 3c272f2e-a301-4d39-9a1e-6fd3bc09f6b9
         name: PLATEAU4.UDXFolderExtractor
         type: action
         action: PLATEAU4.UDXFolderExtractor
@@ -73,7 +73,7 @@ graphs:
           codelistsPath: codelists
           schemasPath: schemas
 
-      - id: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
+      - id: 7568f48a-0858-4244-b473-2a8a63909341
         name: PLATEAU4.CityGmlMeshBuilder
         type: action
         action: PLATEAU4.CityGmlMeshBuilder
@@ -82,7 +82,7 @@ graphs:
           rejectInvalid: false
 
       # Branch 1: Incorrect number of vertices
-      - id: 2c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+      - id: 21bb4a5e-5975-443b-8a38-6332789681dd
         name: AttributeMapperIncorrectNumVertices
         type: action
         action: AttributeMapper
@@ -98,7 +98,7 @@ graphs:
               expr: |
                 env.get("__value")._relief_index ?? ""
 
-      - id: 3d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
+      - id: 27619dc0-ace9-490a-a63d-57b2ecb4f326
         name: ShapefileWriterIncorrectNumVertices
         type: action
         action: ShapefileWriter
@@ -106,7 +106,7 @@ graphs:
           output: |
             file::join_path(env.get("outputPath"), "08_地形_不正な頂点の数.shp")
 
-      - id: a6c01ab1-af4a-41df-8173-4e40fa210cc1
+      - id: 02c49104-bf18-40de-9ffe-4fbaef2165f9
         name: StatisticsCalculatorForIncorrectNumVertices
         type: action
         action: StatisticsCalculator
@@ -120,7 +120,7 @@ graphs:
               expr: "1"
 
       # Branch 2: Triangle not closed
-      - id: 4e5f6a7b-8c9d-0e1f-2a3b-4c5d6e7f8a9b
+      - id: b66b8ba8-f685-4d01-83ef-2aaddebbc9eb
         name: AttributeMapperNotClosed
         type: action
         action: AttributeMapper
@@ -136,7 +136,7 @@ graphs:
               expr: |
                 env.get("__value")._relief_index ?? ""
 
-      - id: 5f6a7b8c-9d0e-1f2a-3b4c-5d6e7f8a9b0c
+      - id: 090638b2-4923-4bd8-8b9c-4e1869612694
         name: ShapefileWriterNotClosed
         type: action
         action: ShapefileWriter
@@ -144,7 +144,7 @@ graphs:
           output: |
             file::join_path(env.get("outputPath"), "08_地形_閉じていない三角形.shp")
       
-      - id: a6c01ab1-af4a-41df-8173-4e40fa210cc0
+      - id: 06bb5316-b980-497c-8ba1-d83953b6f6b8
         name: StatisticsCalculatorForNotClosedErrors
         type: action
         action: StatisticsCalculator
@@ -158,7 +158,7 @@ graphs:
               expr: "1"
 
       # Branch 3: Wrong orientation
-      - id: 33da38fb-277d-4ab4-a912-a30f5ffc4b33
+      - id: 17f4fa99-a555-4d8a-b705-8b951c324d8d
         name: AttributeMapperWrongOrientation
         type: action
         action: AttributeMapper
@@ -174,7 +174,7 @@ graphs:
               expr: |
                 env.get("__value")._relief_index ?? ""
 
-      - id: f18df02b-d7f1-42c4-9136-e6001115e3a7
+      - id: f364a079-e834-47f8-a53f-530a0fee07d4
         name: ShapefileWriterWrongOrientation
         type: action
         action: ShapefileWriter
@@ -182,7 +182,7 @@ graphs:
           output: |
             file::join_path(env.get("outputPath"), "08_地形_三角形の向き不正.shp")
 
-      - id: f3cf5b89-de83-43c9-bc87-0a9630a750a2
+      - id: 21bf6d61-9924-4f74-8eca-224ad4207c3c
         name: StatisticsCalculatorForWrongOrientation
         type: action
         action: StatisticsCalculator
@@ -196,7 +196,7 @@ graphs:
               expr: "1"
 
       # GeometryValidator for valid triangular meshes
-      - id: f6f21bd1-4291-419e-aae6-f0be940ddd17
+      - id: 793402b8-8abc-4a86-b92d-873d6072f76e
         name: GeometryValidator
         type: action
         action: GeometryValidator
@@ -205,7 +205,7 @@ graphs:
             - corruptGeometry
 
       # Branch 3: Corrupt geometry (degenerate triangles)
-      - id: 7b8c9d0e-1f2a-3b4c-5d6e-7f8a9b0c1d2e
+      - id: 38b40d0a-42a8-43e5-8978-898a723fddc8
         name: AttributeMapperCorruptGeometry
         type: action
         action: AttributeMapper
@@ -221,7 +221,7 @@ graphs:
               expr: |
                 env.get("__value")._relief_index ?? ""
 
-      - id: 8c9d0e1f-2a3b-4c5d-6e7f-8a9b0c1d2e3f
+      - id: 961aadd4-8178-4c26-8c15-b326b0d39573
         name: ShapefileWriterCorruptGeometry
         type: action
         action: ShapefileWriter
@@ -229,7 +229,7 @@ graphs:
           output: |
             file::join_path(env.get("outputPath"), "08_地形_潰れた三角形.shp")
 
-      - id: 8faf17e5-9e1f-438d-9748-73a2347c5c4c
+      - id: ab08b17d-d8a8-4185-a9f0-454432765edd
         name: StatisticsCalculatorForCorruptGeometry
         type: action
         action: StatisticsCalculator
@@ -243,24 +243,24 @@ graphs:
               expr: "1"
 
       # New pipeline nodes: Process valid geometries through boundary extraction and analysis
-      - id: b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e
+      - id: ee6d9226-6ff1-4deb-ba68-55d9a6b0429a
         name: BoundaryExtractor
         type: action
         action: BoundaryExtractor
 
-      - id: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f
+      - id: 1e969309-8ff7-46d2-bb7a-7b3666ac7a4e
         name: GeometrySplitter
         type: action
         action: GeometrySplitter
 
-      - id: d5e6f7a8-b9c0-1d2e-3f4a-5b6c7d8e9f0a
+      - id: 78ae3a54-822a-468d-9265-b60667b802ba
         name: VertexCounter
         type: action
         action: VertexCounter
         with:
           outputAttribute: vertexCount
 
-      - id: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2b
+      - id: c17052ea-528b-4277-ad85-fbca4aa5755d
         name: FeatureSorter
         type: action
         action: FeatureSorter
@@ -269,7 +269,7 @@ graphs:
             - vertexCount
           order: descending
 
-      - id: f9a0b1c2-d3e4-5f6a-7b8c-9d0e1f2a3b4c
+      - id: c4d87d82-e83b-4c14-b16e-4d9ae7752bd0
         name: FeatureCounterBoundaryIndex
         type: action
         action: FeatureCounter
@@ -277,7 +277,7 @@ graphs:
           countStart: 1
           outputAttribute: boundaryIndex
 
-      - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6e
+      - id: f3bafcc7-addb-4b6b-b30f-f2acf0da3044
         name: FeatureFilterInvalidBoundaries
         type: action
         action: FeatureFilter
@@ -287,7 +287,7 @@ graphs:
                 env.get("__value").boundaryIndex != 1 && env.get("__value").vertexCount < 50
               outputPort: default
 
-      - id: b3c4d5e6-f7a8-9b0c-1d2e-3f4a5b6c7d8e
+      - id: 057a1995-8af0-4a8e-8699-cbb77e1ed374
         name: AttributeMapperInvalidBoundaries
         type: action
         action: AttributeMapper
@@ -303,7 +303,7 @@ graphs:
               expr: |
                 env.get("__value")._relief_index ?? ""
 
-      - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e0f
+      - id: b4f15900-e2e3-4df0-a3a4-6cbf2d3eefaf
         name: ShapefileWriterInvalidBoundaries
         type: action
         action: ShapefileWriter
@@ -311,7 +311,7 @@ graphs:
           output: |
             file::join_path(env.get("outputPath"), "08_地形_不正な穴.shp")
 
-      - id: d9f1910a-dba9-46ce-adb3-4db1f07e3da1
+      - id: e0ebe5cc-8666-4a24-8516-91454d781892
         name: StatisticsCalculatorForInvalidBoundaries
         type: action
         action: StatisticsCalculator
@@ -325,7 +325,7 @@ graphs:
               expr: "1"
 
       # FeatureMerger for aggregating error counts
-      - id: e1f2a3b4-c5d6-e7f8-a9b0-c1d2e3f4a5b6
+      - id: fb152eb6-3a92-403f-96ce-bf38a420ec51
         name: ErrorSummaryMerger
         type: action
         action: FeatureMerger
@@ -336,7 +336,7 @@ graphs:
             env.get("__value").name
 
       # AttributeMapper for CSV formatting
-      - id: f2a3b4c5-d6e7-f8a9-b0c1-d2e3f4a5b6c7
+      - id: 6fac13ad-7487-4441-afd9-0812922bd4b8
         name: SummaryAttributeMapper
         type: action
         action: AttributeMapper
@@ -368,7 +368,7 @@ graphs:
                 env.get("__value")._num_invalid_boundaries ?? 0
 
       # CSV output
-      - id: a3b4c5d6-e7f8-a9b0-c1d2-e3f4a5b6c7d8
+      - id: 12bbb254-4ff2-4b51-92bb-60d0a9d2d48d
         name: CSVSummaryWriter
         type: action
         action: FeatureWriter
@@ -378,7 +378,7 @@ graphs:
             file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "08_地形_検査結果一覧.csv")
 
       # StatisticsCalculator for JSON aggregation
-      - id: b4c5d6e7-f8a9-b0c1-d2e3-f4a5b6c7d8e9
+      - id: 9fad8d36-c64d-47c2-9221-43e86524c8e5
         name: StatisticsCalculatorJSON
         type: action
         action: StatisticsCalculator
@@ -409,7 +409,7 @@ graphs:
                 total
 
       # JSON output with converter
-      - id: c5d6e7f8-a9b0-c1d2-e3f4-a5b6c7d8e9f0
+      - id: 617888e7-5fea-4fcf-a1cd-34861d65be0a
         name: JSONSummaryWriter
         type: action
         action: FeatureWriter
@@ -433,7 +433,7 @@ graphs:
             file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_dem.json")
 
       # Calculate total errors for no-error check
-      - id: d6e7f8a9-b0c1-d2e3-f4a5-b6c7d8e9f0a1
+      - id: 5225b8e5-71db-4945-a23b-cc98ae4c0e1b
         name: StatisticsCalculatorTotalErrors
         type: action
         action: StatisticsCalculator
@@ -444,7 +444,7 @@ graphs:
                 env.get("__value")["totalErrorCount"] ?? 0
 
       # Filter for no errors
-      - id: e7f8a9b0-c1d2-e3f4-a5b6-c7d8e9f0a1b2
+      - id: 51c9e2d8-5bdc-4fce-9177-d2e650c011b0
         name: FeatureFilterNoErrors
         type: action
         action: FeatureFilter
@@ -455,7 +455,7 @@ graphs:
               outputPort: default
 
       # Write qc_result_ok file
-      - id: f8a9b0c1-d2e3-f4a5-b6c7-d8e9f0a1b2c3
+      - id: fc5b71bd-e34b-4381-b8f4-83919b5966df
         name: JsonWriterQcResultOk
         type: action
         action: JsonWriter
@@ -467,7 +467,7 @@ graphs:
             file::join_path(dirname, filename)
 
       # ZipFileWriter - Bundle all output files
-      - id: a9b0c1d2-e3f4-a5b6-c7d8-e9f0a1b2c3d4
+      - id: b65d1e91-37a8-489a-87e3-fed91e5de294
         name: ZipFileWriter
         type: action
         action: ZipFileWriter
@@ -478,253 +478,237 @@ graphs:
             file::join_path(dirname, filename)
 
     edges:
-      - id: 7613b326-d3d7-4fdc-b7e1-9821e120ac49
-        from: f9248705-3024-40b0-b729-66507ca6640d
-        to: 613c6d22-bf1c-4bbb-ba97-d85dd78d81ce
+      - id: 99b6e8cc-1cba-489a-bc83-9966d3e5fabc
+        from: 6da8eb15-70c8-4f4a-bce6-b700d90d51e4
+        to: 624d1039-4317-4699-8e0e-0b749abeb033
         fromPort: default
         toPort: default
-      - id: 110ccc6a-0412-41f0-9e71-0ad6ee2e53c0
-        from: 613c6d22-bf1c-4bbb-ba97-d85dd78d81ce
-        to: 01c49595-446f-482f-94db-5027f390b6cd
+      - id: 2832dcf1-341e-4a00-9746-e7ba0ad01295
+        from: 624d1039-4317-4699-8e0e-0b749abeb033
+        to: 3c4dc9be-6fb0-48e5-8d32-0eda4fdd5069
         fromPort: default
         toPort: default
-      - id: ecc67084-2d61-47f5-94c4-1ea30df4f6d1
-        from: 01c49595-446f-482f-94db-5027f390b6cd
-        to: 24286bb9-1c30-49b7-afd8-e8dc73c85ed0
+      - id: e575c558-69c3-4815-887a-db0fd4b776fb
+        from: 3c4dc9be-6fb0-48e5-8d32-0eda4fdd5069
+        to: 35779453-0f57-44fb-bca8-0e21b286cbbd
         fromPort: default
         toPort: default
-      - id: 9f39e824-4dd8-4adc-b2c8-ccad2979c359
-        from: 24286bb9-1c30-49b7-afd8-e8dc73c85ed0
-        to: c29be788-be8d-43a2-97bf-3e15228a72a1
+      - id: 03ce9254-a883-4511-a7b3-bbd60d041a96
+        from: 35779453-0f57-44fb-bca8-0e21b286cbbd
+        to: 6a08f964-a46d-4226-a4dc-2c283136e157
         fromPort: default
         toPort: default
-      - id: aace82c7-f1cd-4130-aeda-d21e22d97c4a
-        from: c29be788-be8d-43a2-97bf-3e15228a72a1
-        to: 33cb26b6-bba2-4600-ae1b-df5d7c0b4678
+      - id: 0bb40a4c-1e5d-44e6-9de4-602756988f45
+        from: 6a08f964-a46d-4226-a4dc-2c283136e157
+        to: 3c272f2e-a301-4d39-9a1e-6fd3bc09f6b9
         fromPort: default
         toPort: default
-      - id: 31d8d432-82c6-47e4-9cf2-4acafc87a848
-        from: 33cb26b6-bba2-4600-ae1b-df5d7c0b4678
-        to: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
+      - id: c7309009-b155-4aa5-9a1a-7218b385876e
+        from: 3c272f2e-a301-4d39-9a1e-6fd3bc09f6b9
+        to: 7568f48a-0858-4244-b473-2a8a63909341
         fromPort: default
         toPort: default
-      - id: 0c1d2e3f-4a5b-6c7d-8e9f-0a1b2c3d4e5f
-        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
-        to: 2c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+      - id: f4ba5a49-d341-4564-bfa7-c2518a40e7cd
+        from: 7568f48a-0858-4244-b473-2a8a63909341
+        to: 21bb4a5e-5975-443b-8a38-6332789681dd
         fromPort: incorrect_vertices
         toPort: default
-      - id: 1d2e3f4a-5b6c-7d8e-9f0a-1b2c3d4e5f6a
-        from: 2c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
-        to: 3d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
+      - id: 078eb78e-d9dc-4e99-a250-78a354118fcd
+        from: 21bb4a5e-5975-443b-8a38-6332789681dd
+        to: 27619dc0-ace9-490a-a63d-57b2ecb4f326
         fromPort: default
         toPort: default
-      - id: 2e3f4a5b-6c7d-8e9f-0a1b-2c3d4e5f6a7b
-        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
-        to: 4e5f6a7b-8c9d-0e1f-2a3b-4c5d6e7f8a9b
+      - id: a04f0080-072c-4267-be76-50cc7fd6b24e
+        from: 7568f48a-0858-4244-b473-2a8a63909341
+        to: b66b8ba8-f685-4d01-83ef-2aaddebbc9eb
         fromPort: not_closed
         toPort: default
-      - id: 3f4a5b6c-7d8e-9f0a-1b2c-3d4e5f6a7b8c
-        from: 4e5f6a7b-8c9d-0e1f-2a3b-4c5d6e7f8a9b
-        to: 5f6a7b8c-9d0e-1f2a-3b4c-5d6e7f8a9b0c
+      - id: e7d05d16-c412-43d5-a1af-3e754eb10b02
+        from: b66b8ba8-f685-4d01-83ef-2aaddebbc9eb
+        to: 090638b2-4923-4bd8-8b9c-4e1869612694
         fromPort: default
         toPort: default
-      # Branch 3 edges: wrong_orientation -> AttributeMapper -> ShapefileWriter
-      - id: 10168ed9-bb0e-4cd8-922c-c5af4e6f2b90
-        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
-        to: 33da38fb-277d-4ab4-a912-a30f5ffc4b33
+      - id: 9e9fb52e-8fa7-4db9-965b-fb72c949d557
+        from: 7568f48a-0858-4244-b473-2a8a63909341
+        to: 17f4fa99-a555-4d8a-b705-8b951c324d8d
         fromPort: wrong_orientation
         toPort: default
-      - id: 23b295ca-e0e8-4843-a750-ce4d093825a1
-        from: 33da38fb-277d-4ab4-a912-a30f5ffc4b33
-        to: f18df02b-d7f1-42c4-9136-e6001115e3a7
+      - id: 94146a90-4765-4656-ad45-d81a2fc3fc4f
+        from: 17f4fa99-a555-4d8a-b705-8b951c324d8d
+        to: f364a079-e834-47f8-a53f-530a0fee07d4
         fromPort: default
         toPort: default
-      # Branch 4 edges: degenerate_triangle
-      - id: 4a5b6c7d-8e9f-0a1b-2c3d-4e5f6a7b8c9d
-        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
-        to: 7b8c9d0e-1f2a-3b4c-5d6e-7f8a9b0c1d2e
+      - id: 7c28c1e1-94f8-4b4e-9051-3a4357e1f1c2
+        from: 7568f48a-0858-4244-b473-2a8a63909341
+        to: 38b40d0a-42a8-43e5-8978-898a723fddc8
         fromPort: degenerate_triangle
         toPort: default
-      - id: 6c7d8e9f-0a1b-2c3d-4e5f-6a7b8c9d0e1f
-        from: 7b8c9d0e-1f2a-3b4c-5d6e-7f8a9b0c1d2e
-        to: 8c9d0e1f-2a3b-4c5d-6e7f-8a9b0c1d2e3f
+      - id: 8306cf85-439b-4af1-8a2a-7f0cae0aba81
+        from: 38b40d0a-42a8-43e5-8978-898a723fddc8
+        to: 961aadd4-8178-4c26-8c15-b326b0d39573
         fromPort: default
         toPort: default
-      # Holes: BoundaryExtractor -> GeometrySplitter -> VertexCounter -> FeatureSorter -> FeatureCounter -> FeatureFilter -> AttributeMapper -> ShapefileWriter
-      - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
-        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
-        to: b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e
-        fromPort: success
-        toPort: default
-      - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e
-        from: b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e
-        to: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f
+      # Hole detection flow: BoundaryExtractor -> GeometrySplitter -> VertexCounter -> FeatureSorter -> FeatureCounter -> FeatureFilter -> AttributeMapper -> ShapefileWriter
+      - id: e845c516-8448-4a2c-8316-cb6e1faaddcf
+        from: 7568f48a-0858-4244-b473-2a8a63909341
+        to: ee6d9226-6ff1-4deb-ba68-55d9a6b0429a
         fromPort: default
         toPort: default
-      - id: c4d5e6f7-a8b9-0c1d-2e3f-4a5b6c7d8e9f
-        from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f
-        to: d5e6f7a8-b9c0-1d2e-3f4a-5b6c7d8e9f0a
+      - id: 0457d126-6700-481c-8847-707fb2d9c739
+        from: ee6d9226-6ff1-4deb-ba68-55d9a6b0429a
+        to: 1e969309-8ff7-46d2-bb7a-7b3666ac7a4e
         fromPort: default
         toPort: default
-      - id: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1a
-        from: d5e6f7a8-b9c0-1d2e-3f4a-5b6c7d8e9f0a
-        to: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2b
+      - id: 268b55bf-aa4e-48b5-8a9f-338ae6194165
+        from: 1e969309-8ff7-46d2-bb7a-7b3666ac7a4e
+        to: 78ae3a54-822a-468d-9265-b60667b802ba
         fromPort: default
         toPort: default
-      - id: e8f9a0b1-c2d3-4e5f-6a7b-8c9d0e1f2a3b
-        from: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2b
-        to: f9a0b1c2-d3e4-5f6a-7b8c-9d0e1f2a3b4c
+      - id: b8ece7b4-be68-44cb-b3fd-2c516acf7b1c
+        from: 78ae3a54-822a-468d-9265-b60667b802ba
+        to: c17052ea-528b-4277-ad85-fbca4aa5755d
         fromPort: default
         toPort: default
-      - id: f0a1b2c3-d4e5-6f7a-8b9c-0d1e2f3a4b5c
-        from: f9a0b1c2-d3e4-5f6a-7b8c-9d0e1f2a3b4c
-        to: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6e
+      - id: 1467cd4e-b72e-4f5e-9daa-7c7acd99edbc
+        from: c17052ea-528b-4277-ad85-fbca4aa5755d
+        to: c4d87d82-e83b-4c14-b16e-4d9ae7752bd0
         fromPort: default
         toPort: default
-      - id: a2b3c4d5-e6f7-8a9b-0c1d-2e3f4a5b6c7d
-        from: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6e
-        to: b3c4d5e6-f7a8-9b0c-1d2e-3f4a5b6c7d8e
+      - id: c1db1468-d172-4ed3-92f8-68faf922e59a
+        from: c4d87d82-e83b-4c14-b16e-4d9ae7752bd0
+        to: f3bafcc7-addb-4b6b-b30f-f2acf0da3044
         fromPort: default
         toPort: default
-      - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9e
-        from: b3c4d5e6-f7a8-9b0c-1d2e-3f4a5b6c7d8e
-        to: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e0f
+      - id: ad739e55-ca58-4de8-b1ae-456661698780
+        from: f3bafcc7-addb-4b6b-b30f-f2acf0da3044
+        to: 057a1995-8af0-4a8e-8699-cbb77e1ed374
+        fromPort: default
+        toPort: default
+      - id: 0e624ddf-8600-496e-b3e7-7ed51c0357c5
+        from: 057a1995-8af0-4a8e-8699-cbb77e1ed374
+        to: b4f15900-e2e3-4df0-a3a4-6cbf2d3eefaf
         fromPort: default
         toPort: default
       # Connect StatisticsCalculator nodes to their inspection sources
-      # Branch 1: Incorrect vertices - from CityGmlMeshBuilder
-      - id: 51a0e1f2-a3b4-c5d6-e7f8-a9b0c1d2e3f4
-        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
-        to: a6c01ab1-af4a-41df-8173-4e40fa210cc1
+      - id: 8bd1e388-4e09-4acb-8f80-5caa0d0f527e
+        from: 7568f48a-0858-4244-b473-2a8a63909341
+        to: 02c49104-bf18-40de-9ffe-4fbaef2165f9
         fromPort: incorrect_vertices
         toPort: default
-      # Branch 2: Not closed - from CityGmlMeshBuilder
-      - id: 62b1f2a3-b4c5-d6e7-f8a9-b0c1d2e3f4a5
-        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
-        to: a6c01ab1-af4a-41df-8173-4e40fa210cc0
+      - id: 49910fe3-4b61-4a56-8ea5-71e60c30e791
+        from: 7568f48a-0858-4244-b473-2a8a63909341
+        to: 06bb5316-b980-497c-8ba1-d83953b6f6b8
         fromPort: not_closed
         toPort: default
-      # Branch 3: Wrong orientation - from CityGmlMeshBuilder
-      - id: 73c2a3b4-c5d6-e7f8-a9b0-c1d2e3f4a5b6
-        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
-        to: f3cf5b89-de83-43c9-bc87-0a9630a750a2
+      - id: 2eb15af9-2cfc-4a0b-8b09-5b98b22c04ea
+        from: 7568f48a-0858-4244-b473-2a8a63909341
+        to: 21bf6d61-9924-4f74-8eca-224ad4207c3c
         fromPort: wrong_orientation
         toPort: default
-      # Branch 4: Corrupt geometry - from CityGmlMeshBuilder
-      - id: 84d3b4c5-d6e7-f8a9-b0c1-d2e3f4a5b6c7
-        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
-        to: 8faf17e5-9e1f-438d-9748-73a2347c5c4c
+      - id: cdde07ea-cef3-4791-98a9-1b955860c210
+        from: 7568f48a-0858-4244-b473-2a8a63909341
+        to: ab08b17d-d8a8-4185-a9f0-454432765edd
         fromPort: degenerate_triangle
         toPort: default
-      # Branch 5: Invalid boundaries - from FeatureFilter
-      - id: 95e4c5d6-e7f8-a9b0-c1d2-e3f4a5b6c7d8
-        from: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6e
-        to: d9f1910a-dba9-46ce-adb3-4db1f07e3da1
+      - id: c5206919-f88c-442a-a070-f34ca0cacdd7
+        from: f3bafcc7-addb-4b6b-b30f-f2acf0da3044
+        to: e0ebe5cc-8666-4a24-8516-91454d781892
         fromPort: default
         toPort: default
 
       # Error aggregation flow
-      # Connect summary port to FeatureMerger requestor
-      - id: a6e5f4d3-c2b1-f0a9-8e7d-6c5b4a3f2e1d
-        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f  # CityGmlMeshBuilder
-        to: e1f2a3b4-c5d6-e7f8-a9b0-c1d2e3f4a5b6    # ErrorSummaryMerger
+      - id: 2ebab2eb-f710-4d3d-8ec1-f7288c8e222b
+        from: 7568f48a-0858-4244-b473-2a8a63909341  # CityGmlMeshBuilder
+        to: fb152eb6-3a92-403f-96ce-bf38a420ec51    # ErrorSummaryMerger
         fromPort: summary
         toPort: requestor
 
-      # Connect all StatisticsCalculators to FeatureMerger supplier
-      - id: b7f6a5e4-d3c2-a1f0-9e8d-7c6b5a4f3e2d
-        from: a6c01ab1-af4a-41df-8173-4e40fa210cc1  # StatisticsCalculatorForIncorrectNumVertices
-        to: e1f2a3b4-c5d6-e7f8-a9b0-c1d2e3f4a5b6    # ErrorSummaryMerger
+      - id: 0fd550f5-27e0-4aa3-9fd0-7dae1104ee4c
+        from: 02c49104-bf18-40de-9ffe-4fbaef2165f9  # StatisticsCalculatorForIncorrectNumVertices
+        to: fb152eb6-3a92-403f-96ce-bf38a420ec51    # ErrorSummaryMerger
         fromPort: default
         toPort: supplier
 
-      - id: c8a7b6f5-e4d3-b2a1-0f9e-8d7c6b5a4f3e
-        from: a6c01ab1-af4a-41df-8173-4e40fa210cc0  # StatisticsCalculatorForNotClosedErrors
-        to: e1f2a3b4-c5d6-e7f8-a9b0-c1d2e3f4a5b6    # ErrorSummaryMerger
+      - id: f2b478ba-b11a-4475-8ba1-6a8cfd4bea21
+        from: 06bb5316-b980-497c-8ba1-d83953b6f6b8  # StatisticsCalculatorForNotClosedErrors
+        to: fb152eb6-3a92-403f-96ce-bf38a420ec51    # ErrorSummaryMerger
         fromPort: default
         toPort: supplier
 
-      - id: d9b8c7a6-f5e4-c3d2-1a0f-9e8d7c6b5a4f
-        from: f3cf5b89-de83-43c9-bc87-0a9630a750a2  # StatisticsCalculatorForWrongOrientation
-        to: e1f2a3b4-c5d6-e7f8-a9b0-c1d2e3f4a5b6    # ErrorSummaryMerger
+      - id: 9c2f2a1d-dab8-4aad-995d-25d03737714b
+        from: 21bf6d61-9924-4f74-8eca-224ad4207c3c  # StatisticsCalculatorForWrongOrientation
+        to: fb152eb6-3a92-403f-96ce-bf38a420ec51    # ErrorSummaryMerger
         fromPort: default
         toPort: supplier
 
-      - id: e0c9d8b7-a6f5-d4e3-2b1a-0f9e8d7c6b5a
-        from: 8faf17e5-9e1f-438d-9748-73a2347c5c4c  # StatisticsCalculatorForCorruptGeometry
-        to: e1f2a3b4-c5d6-e7f8-a9b0-c1d2e3f4a5b6    # ErrorSummaryMerger
+      - id: 41b8dca7-8c5d-4887-9a9c-b95f5111bc4c
+        from: ab08b17d-d8a8-4185-a9f0-454432765edd  # StatisticsCalculatorForCorruptGeometry
+        to: fb152eb6-3a92-403f-96ce-bf38a420ec51    # ErrorSummaryMerger
         fromPort: default
         toPort: supplier
 
-      - id: f1d0e9c8-b7a6-e5f4-3c2d-1a0f9e8d7c6b
-        from: d9f1910a-dba9-46ce-adb3-4db1f07e3da1  # StatisticsCalculatorForInvalidBoundaries
-        to: e1f2a3b4-c5d6-e7f8-a9b0-c1d2e3f4a5b6    # ErrorSummaryMerger
+      - id: 91612d01-eec3-45f8-adf8-8e58b9d6ef7e
+        from: e0ebe5cc-8666-4a24-8516-91454d781892  # StatisticsCalculatorForInvalidBoundaries
+        to: fb152eb6-3a92-403f-96ce-bf38a420ec51    # ErrorSummaryMerger
         fromPort: default
         toPort: supplier
 
-      # Connect FeatureMerger to AttributeMapper
-      - id: a2e1f0d9-c8b7-f6a5-4d3e-2b1a0f9e8d7c
-        from: e1f2a3b4-c5d6-e7f8-a9b0-c1d2e3f4a5b6  # ErrorSummaryMerger
-        to: f2a3b4c5-d6e7-f8a9-b0c1-d2e3f4a5b6c7    # SummaryAttributeMapper
+      - id: 859b36c4-fab8-4747-82fe-9fbfed8578c3
+        from: fb152eb6-3a92-403f-96ce-bf38a420ec51  # ErrorSummaryMerger
+        to: 6fac13ad-7487-4441-afd9-0812922bd4b8    # SummaryAttributeMapper
         fromPort: merged
         toPort: default
 
-      - id: b3f2a1e0-d9c8-a7b6-5e4f-3c2d1a0f9e8d
-        from: e1f2a3b4-c5d6-e7f8-a9b0-c1d2e3f4a5b6  # ErrorSummaryMerger
-        to: f2a3b4c5-d6e7-f8a9-b0c1-d2e3f4a5b6c7    # SummaryAttributeMapper
+      - id: f29d805a-2c6a-4787-975e-a190f12c0a12
+        from: fb152eb6-3a92-403f-96ce-bf38a420ec51  # ErrorSummaryMerger
+        to: 6fac13ad-7487-4441-afd9-0812922bd4b8    # SummaryAttributeMapper
         fromPort: unmerged
         toPort: default
 
-      # Connect AttributeMapper to CSV writer
-      - id: c4a3b2f1-e0d9-b8c7-6f5a-4d3e2b1a0f9e
-        from: f2a3b4c5-d6e7-f8a9-b0c1-d2e3f4a5b6c7  # SummaryAttributeMapper
-        to: a3b4c5d6-e7f8-a9b0-c1d2-e3f4a5b6c7d8    # CSVSummaryWriter
+      - id: 76dccba3-94de-4c86-b58f-f845ae0dad2a
+        from: 6fac13ad-7487-4441-afd9-0812922bd4b8  # SummaryAttributeMapper
+        to: 12bbb254-4ff2-4b51-92bb-60d0a9d2d48d    # CSVSummaryWriter
         fromPort: default
         toPort: default
 
-      # Connect to JSON aggregation
-      - id: d5b4c3a2-f1e0-c9d8-7a6b-5e4f3c2d1a0f
-        from: f2a3b4c5-d6e7-f8a9-b0c1-d2e3f4a5b6c7  # SummaryAttributeMapper
-        to: b4c5d6e7-f8a9-b0c1-d2e3-f4a5b6c7d8e9    # StatisticsCalculatorJSON
+      - id: 398d7f1c-f865-46a1-9c85-a064ca94e60f
+        from: 6fac13ad-7487-4441-afd9-0812922bd4b8  # SummaryAttributeMapper
+        to: 9fad8d36-c64d-47c2-9221-43e86524c8e5    # StatisticsCalculatorJSON
         fromPort: default
         toPort: default
 
-      # Connect JSON aggregation to JSON writer
-      - id: e6c5d4b3-a2f1-d0e9-8b7c-6f5a4d3e2b1a
-        from: b4c5d6e7-f8a9-b0c1-d2e3-f4a5b6c7d8e9  # StatisticsCalculatorJSON
-        to: c5d6e7f8-a9b0-c1d2-e3f4-a5b6c7d8e9f0    # JSONSummaryWriter
+      - id: 0b1db77e-ef1f-4842-9f6b-de033ad33e22
+        from: 9fad8d36-c64d-47c2-9221-43e86524c8e5  # StatisticsCalculatorJSON
+        to: 617888e7-5fea-4fcf-a1cd-34861d65be0a    # JSONSummaryWriter
         fromPort: default
         toPort: default
 
-      # Connect to total error calculator
-      - id: f7d6e5c4-b3a2-e1f0-9c8d-7a6b5e4f3c2d
-        from: b4c5d6e7-f8a9-b0c1-d2e3-f4a5b6c7d8e9  # StatisticsCalculatorJSON
-        to: d6e7f8a9-b0c1-d2e3-f4a5-b6c7d8e9f0a1    # StatisticsCalculatorTotalErrors
+      - id: 1ffa691f-8520-4849-8bfd-fdfce6600b49
+        from: 9fad8d36-c64d-47c2-9221-43e86524c8e5  # StatisticsCalculatorJSON
+        to: 5225b8e5-71db-4945-a23b-cc98ae4c0e1b    # StatisticsCalculatorTotalErrors
         fromPort: default
         toPort: default
 
-      # Connect to no-error filter
-      - id: a8e7f6d5-c4b3-f2a1-0d9e-8c7d6f5a4d3e
-        from: d6e7f8a9-b0c1-d2e3-f4a5-b6c7d8e9f0a1  # StatisticsCalculatorTotalErrors
-        to: e7f8a9b0-c1d2-e3f4-a5b6-c7d8e9f0a1b2    # FeatureFilterNoErrors
+      - id: c536ab2c-a495-4c61-aab6-631b66413302
+        from: 5225b8e5-71db-4945-a23b-cc98ae4c0e1b  # StatisticsCalculatorTotalErrors
+        to: 51c9e2d8-5bdc-4fce-9177-d2e650c011b0    # FeatureFilterNoErrors
         fromPort: default
         toPort: default
 
-      - id: d1b0c9a8-f7e6-c5d4-3a2b-1f0e9f8d7c6f
-        from: c5d6e7f8-a9b0-c1d2-e3f4-a5b6c7d8e9f0  # JSONSummaryWriter
-        to: a9b0c1d2-e3f4-a5b6-c7d8-e9f0a1b2c3d4    # ZipFileWriter
+      - id: 78f1886a-4348-42d9-95af-08b8cab1bc58
+        from: 617888e7-5fea-4fcf-a1cd-34861d65be0a  # JSONSummaryWriter
+        to: b65d1e91-37a8-489a-87e3-fed91e5de294    # ZipFileWriter
         fromPort: default
         toPort: default
 
-      - id: e2c1d0b9-a8f7-d6e5-4b3c-2a1f0e9f8d7c
-        from: a3b4c5d6-e7f8-a9b0-c1d2-e3f4a5b6c7d8  # CSVSummaryWriter
-        to: a9b0c1d2-e3f4-a5b6-c7d8-e9f0a1b2c3d4    # ZipFileWriter
+      - id: 8798e79e-6e0e-42ac-a95a-95809aae4e20
+        from: 12bbb254-4ff2-4b51-92bb-60d0a9d2d48d  # CSVSummaryWriter
+        to: b65d1e91-37a8-489a-87e3-fed91e5de294    # ZipFileWriter
         fromPort: default
         toPort: default
 
-      # Connect to qc_result_ok file writer
-      - id: b9f8a7e6-d5c4-a3b2-1e0f-9d8e7c6f5a4d
-        from: e7f8a9b0-c1d2-e3f4-a5b6-c7d8e9f0a1b2  # FeatureFilterNoErrors
-        to: f8a9b0c1-d2e3-f4a5-b6c7-d8e9f0a1b2c3    # JsonWriterQcResultOk
+      - id: f97acbc3-3e6f-4762-a968-8c62c2fab615
+        from: 51c9e2d8-5bdc-4fce-9177-d2e650c011b0  # FeatureFilterNoErrors
+        to: fc5b71bd-e34b-4381-b8f4-83919b5966df    # JsonWriterQcResultOk
         fromPort: default
         toPort: default

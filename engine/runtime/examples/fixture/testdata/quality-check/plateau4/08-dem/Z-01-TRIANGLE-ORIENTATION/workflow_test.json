@@ -3,7 +3,7 @@
   "description": "Test for plateau4 08 triangle orientation error.",
   "intermediateAssertions": [
     {
-      "edgeId": "23b295ca-e0e8-4843-a750-ce4d093825a1",
+      "edgeId": "94146a90-4765-4656-ad45-d81a2fc3fc4f",
       "expectedFile": "intermediate_orientation.jsonl",
       "jsonFilter": "{attributes}"
     }

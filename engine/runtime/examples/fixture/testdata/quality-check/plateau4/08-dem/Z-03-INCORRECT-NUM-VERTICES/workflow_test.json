@@ -3,7 +3,7 @@
   "description": "Test for plateau4 08 incorrect number of vertices.",
   "intermediateAssertions": [
     {
-      "edgeId": "1d2e3f4a-5b6c-7d8e-9f0a-1b2c3d4e5f6a",
+      "edgeId": "078eb78e-d9dc-4e99-a250-78a354118fcd",
       "expectedFile": "intermediate_incorrect_num_vertices.jsonl",
       "jsonFilter": "{attributes}"
     }

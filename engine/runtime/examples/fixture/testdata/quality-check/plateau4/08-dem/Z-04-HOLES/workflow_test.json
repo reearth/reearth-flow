@@ -3,7 +3,7 @@
   "description": "Test for plateau4 08 holes error.",
   "intermediateAssertions": [
     {
-      "edgeId": "b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9e",
+      "edgeId": "0e624ddf-8600-496e-b3e7-7ed51c0357c5",
       "expectedFile": "intermediate_holes.jsonl",
       "jsonFilter": "{attributes}"
     }

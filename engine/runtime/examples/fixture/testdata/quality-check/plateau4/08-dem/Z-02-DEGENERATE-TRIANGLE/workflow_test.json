@@ -3,7 +3,7 @@
   "description": "Test for plateau4 08 degenerate triangles.",
   "intermediateAssertions": [
     {
-      "edgeId": "6c7d8e9f-0a1b-2c3d-4e5f-6a7b8c9d0e1f",
+      "edgeId": "8306cf85-439b-4af1-8a2a-7f0cae0aba81",
       "expectedFile": "intermediate_incorrect_num_vertices.jsonl",
       "jsonFilter": "{attributes}"
     }

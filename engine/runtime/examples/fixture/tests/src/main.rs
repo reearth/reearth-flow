@@ -5,7 +5,6 @@ use pretty_assertions::assert_eq;
 use reearth_flow_runner::runner::Runner;
 use reearth_flow_types::Workflow;
 use serde::{Deserialize, Serialize};
-use shapefile::Reader as ShapefileReader;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::Cursor;
@@ -433,13 +432,11 @@ impl TestContext {
             self.verify_csv_file(output, file_name, b',')?;
         } else if file_name.ends_with(".tsv") {
             self.verify_csv_file(output, file_name, b'\t')?;
-        } else if file_name.ends_with(".shp") {
-            self.verify_shapefile(file_name)?;
         } else {
             // Extract extension for error message
             let extension = file_name.rsplit('.').next().unwrap_or("unknown");
             anyhow::bail!(
-                "Unsupported file format '.{extension}'. Only json, jsonl, csv, tsv, and shp files are supported."
+                "Unsupported file format '.{extension}'. Only json, jsonl, csv, and tsv files are supported."
             );
         }
         Ok(())
@@ -777,96 +774,6 @@ impl TestContext {
             self.test_name
         );
         Ok(())
-    }
-
-    fn verify_shapefile(&self, file_name: &str) -> Result<()> {
-        let expected_file = self.test_dir.join(file_name);
-        let actual_file = self.actual_output_dir.join(file_name);
-
-        if !actual_file.exists() {
-            anyhow::bail!("Shapefile not found at {actual_file:?}");
-        }
-
-        if !expected_file.exists() {
-            anyhow::bail!("Expected shapefile not found at {expected_file:?}");
-        }
-
-        // Check for required shapefile components (.shp, .shx, .dbf)
-        let base_name = file_name.trim_end_matches(".shp");
-        let actual_shx = self.actual_output_dir.join(format!("{base_name}.shx"));
-        let actual_dbf = self.actual_output_dir.join(format!("{base_name}.dbf"));
-
-        if !actual_shx.exists() {
-            anyhow::bail!("Shapefile index (.shx) not found at {actual_shx:?}");
-        }
-        if !actual_dbf.exists() {
-            anyhow::bail!("Shapefile database (.dbf) not found at {actual_dbf:?}");
-        }
-
-        // Read both shapefiles and compare
-        let expected_data = self.read_shapefile_data(&expected_file)?;
-        let actual_data = self.read_shapefile_data(&actual_file)?;
-
-        // Compare record count
-        assert_eq!(
-            actual_data.len(),
-            expected_data.len(),
-            "Shapefile record count mismatch for {}: expected {} records, got {}",
-            self.test_name,
-            expected_data.len(),
-            actual_data.len()
-        );
-
-        // Compare each record's attributes (geometry comparison is handled by intermediate assertions)
-        for (i, (actual_attrs, expected_attrs)) in
-            actual_data.iter().zip(expected_data.iter()).enumerate()
-        {
-            for (field_name, expected_value) in expected_attrs {
-                let actual_value = actual_attrs.get(field_name).ok_or_else(|| {
-                    anyhow::anyhow!("Field '{field_name}' not found in actual record {i}")
-                })?;
-
-                assert_eq!(
-                    actual_value, expected_value,
-                    "Shapefile attribute '{}' mismatch at record {} for {}",
-                    field_name, i, self.test_name
-                );
-            }
-        }
-
-        Ok(())
-    }
-
-    fn read_shapefile_data(&self, path: &PathBuf) -> Result<Vec<HashMap<String, String>>> {
-        use shapefile::dbase::FieldValue;
-
-        let mut reader = ShapefileReader::from_path(path)
-            .with_context(|| format!("Failed to read shapefile: {path:?}"))?;
-
-        let mut records_data = Vec::new();
-
-        for result in reader.iter_shapes_and_records() {
-            let (_shape, record) = result
-                .with_context(|| format!("Failed to read shape and record from: {path:?}"))?;
-
-            let mut attrs = HashMap::new();
-            for (field_name, field_value) in record {
-                let value_str = match field_value {
-                    FieldValue::Character(Some(s)) => s,
-                    FieldValue::Numeric(Some(n)) => n.to_string(),
-                    FieldValue::Logical(Some(b)) => b.to_string(),
-                    FieldValue::Date(Some(d)) => format!("{d:?}"),
-                    FieldValue::Float(Some(f)) => f.to_string(),
-                    FieldValue::Integer(i) => i.to_string(),
-                    FieldValue::Double(d) => d.to_string(),
-                    _ => "null".to_string(),
-                };
-                attrs.insert(field_name, value_str);
-            }
-            records_data.push(attrs);
-        }
-
-        Ok(records_data)
     }
 
     fn determine_comparison_method(&self, file_name: &str) -> Result<FileComparisonMethod> {

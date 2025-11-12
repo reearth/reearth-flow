@@ -193,6 +193,13 @@ impl Processor for CityGmlMeshBuilder {
             triangular_mesh,
             epsg_code,
         } = validation_result;
+
+        // Create and send summary feature
+        // This contains file metadata with a null geometry for aggregation
+        let mut summary_feature = feature.clone();
+        summary_feature.geometry = FlowGeometry::default(); // Null geometry
+
+        fw.send(ctx.new_with_feature_and_port(summary_feature, Port::new("summary")));
         if let Some(triangular_mesh) = triangular_mesh {
             let geometry_value =
                 GeometryValue::FlowGeometry3D(Geometry3D::TriangularMesh(triangular_mesh));
@@ -206,12 +213,6 @@ impl Processor for CityGmlMeshBuilder {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
             return Ok(());
         }
-
-        // Create and send summary feature
-        // This contains file metadata with a null geometry for aggregation
-        let mut summary_feature = feature.clone();
-        summary_feature.geometry = FlowGeometry::default(); // Null geometry
-        fw.send(ctx.new_with_feature_and_port(summary_feature, Port::new("summary")));
 
         // Handle validation results - route to appropriate ports
         for error in errors {
