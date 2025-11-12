@@ -425,16 +425,15 @@ fn create_dbase_reader<T: std::io::Read + std::io::Seek>(
     }
 }
 
+type ShapefileData = (
+    Vec<(shapefile::Shape, shapefile::dbase::Record)>,
+    Option<EpsgCode>,
+);
+
 fn read_shapefile_from_zip(
     content: &Bytes,
     encoding_param: &Option<String>,
-) -> Result<
-    (
-        Vec<(shapefile::Shape, shapefile::dbase::Record)>,
-        Option<EpsgCode>,
-    ),
-    crate::errors::SourceError,
-> {
+) -> Result<ShapefileData, crate::errors::SourceError> {
     let cursor = Cursor::new(content.as_ref());
     let mut archive = zip::ZipArchive::new(cursor)
         .map_err(|e| SourceError::shapefile_reader(format!("Failed to read ZIP archive: {e}")))?;
