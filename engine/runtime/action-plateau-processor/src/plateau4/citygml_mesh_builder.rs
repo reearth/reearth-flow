@@ -6,7 +6,8 @@ use approx::AbsDiffEq;
 use quick_xml::events::Event;
 use quick_xml::Reader;
 use reearth_flow_geometry::types::{
-    coordinate::Coordinate3D, geometry::Geometry3D, line_string::LineString3D, point::Point3D, triangular_mesh::TriangularMesh
+    coordinate::Coordinate3D, geometry::Geometry3D, line_string::LineString3D, point::Point3D,
+    triangular_mesh::TriangularMesh,
 };
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -187,11 +188,14 @@ impl Processor for CityGmlMeshBuilder {
             AttributeValue::Number(self.relief_feature_counter.into()),
         );
 
-        let ValidationResult { errors, triangular_mesh, epsg_code } = validation_result;
+        let ValidationResult {
+            errors,
+            triangular_mesh,
+            epsg_code,
+        } = validation_result;
         if let Some(triangular_mesh) = triangular_mesh {
-            let geometry_value = GeometryValue::FlowGeometry3D(Geometry3D::TriangularMesh(
-                triangular_mesh,
-            ));
+            let geometry_value =
+                GeometryValue::FlowGeometry3D(Geometry3D::TriangularMesh(triangular_mesh));
             let geometry = FlowGeometry {
                 epsg: epsg_code,
                 value: geometry_value,
@@ -212,18 +216,21 @@ impl Processor for CityGmlMeshBuilder {
         // Handle validation results - route to appropriate ports
         for error in errors {
             let mut error_feature = feature.clone();
-            let Error { error_type, geometry } = error;
-            error_feature.geometry = FlowGeometry { epsg: epsg_code, value: geometry };
+            let Error {
+                error_type,
+                geometry,
+            } = error;
+            error_feature.geometry = FlowGeometry {
+                epsg: epsg_code,
+                value: geometry,
+            };
             let port_name = match error_type {
                 ErrorType::NotClosed => "not_closed",
                 ErrorType::IncorrectNumVertices => "incorrect_vertices",
                 ErrorType::WrongOrientation => "wrong_orientation",
                 ErrorType::DegenerateTriangle => "degenerate_triangle",
             };
-            fw.send(ctx.new_with_feature_and_port(
-                error_feature,
-                Port::new(port_name),
-            ));
+            fw.send(ctx.new_with_feature_and_port(error_feature, Port::new(port_name)));
         }
 
         Ok(())
@@ -250,7 +257,7 @@ struct ValidationResult {
 #[derive(Debug)]
 struct Error {
     pub error_type: ErrorType,
-    pub geometry: GeometryValue
+    pub geometry: GeometryValue,
 }
 
 #[derive(Debug)]
@@ -325,11 +332,9 @@ impl CityGmlMeshBuilder {
                     if values.len() % 3 != 0 {
                         let error = Error {
                             error_type: ErrorType::IncorrectNumVertices,
-                            geometry: GeometryValue::FlowGeometry3D(Geometry3D::Point(Point3D::new(
-                                values[0],
-                                values[1],
-                                values[2],
-                            ))),
+                            geometry: GeometryValue::FlowGeometry3D(Geometry3D::Point(
+                                Point3D::new(values[0], values[1], values[2]),
+                            )),
                         };
                         errors.push(error);
                     } else {
@@ -350,9 +355,9 @@ impl CityGmlMeshBuilder {
                             has_error = true;
                             let error = Error {
                                 error_type: ErrorType::IncorrectNumVertices,
-                                geometry: GeometryValue::FlowGeometry3D(Geometry3D::LineString(LineString3D::new(
-                                    coords.clone()
-                                )))
+                                geometry: GeometryValue::FlowGeometry3D(Geometry3D::LineString(
+                                    LineString3D::new(coords.clone()),
+                                )),
                             };
                             errors.push(error);
                         } else {
@@ -373,9 +378,9 @@ impl CityGmlMeshBuilder {
                                 has_error = true;
                                 let error = Error {
                                     error_type: ErrorType::NotClosed,
-                                    geometry: GeometryValue::FlowGeometry3D(Geometry3D::LineString(LineString3D::new(
-                                        coords.clone()
-                                    )))
+                                    geometry: GeometryValue::FlowGeometry3D(
+                                        Geometry3D::LineString(LineString3D::new(coords.clone())),
+                                    ),
                                 };
                                 errors.push(error);
                             }
@@ -401,9 +406,11 @@ impl CityGmlMeshBuilder {
                                     has_error = true;
                                     let error = Error {
                                         error_type: ErrorType::WrongOrientation,
-                                        geometry: GeometryValue::FlowGeometry3D(Geometry3D::LineString(LineString3D::new(
-                                            coords.clone()
-                                        )))
+                                        geometry: GeometryValue::FlowGeometry3D(
+                                            Geometry3D::LineString(LineString3D::new(
+                                                coords.clone(),
+                                            )),
+                                        ),
                                     };
                                     errors.push(error);
                                 }
@@ -433,9 +440,9 @@ impl CityGmlMeshBuilder {
                                 has_error = true;
                                 let error = Error {
                                     error_type: ErrorType::DegenerateTriangle,
-                                    geometry: GeometryValue::FlowGeometry3D(Geometry3D::LineString(LineString3D::new(
-                                        coords.clone()
-                                    )))
+                                    geometry: GeometryValue::FlowGeometry3D(
+                                        Geometry3D::LineString(LineString3D::new(coords.clone())),
+                                    ),
                                 };
                                 errors.push(error);
                             }
