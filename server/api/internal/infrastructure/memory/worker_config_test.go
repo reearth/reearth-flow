@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/reearth/reearth-flow/api/pkg/workerconfig"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/workerconfig"
 )
 
 func TestWorkerConfigMemory(t *testing.T) {

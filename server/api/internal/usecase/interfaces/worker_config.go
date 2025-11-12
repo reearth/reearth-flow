@@ -3,8 +3,8 @@ package interfaces
 import (
 	"context"
 
-	"github.com/reearth/reearth-flow/api/pkg/workerconfig"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/workerconfig"
 )
 
 type WorkerConfig interface {

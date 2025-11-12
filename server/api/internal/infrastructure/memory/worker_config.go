@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
-	"github.com/reearth/reearth-flow/api/pkg/workerconfig"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/workerconfig"
 )
 
 type WorkerConfig struct {
