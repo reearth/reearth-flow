@@ -42,9 +42,8 @@ The HorizontalReprojector transforms geometry coordinates between different coor
 **Common EPSG Codes:**
 
 - `4326` - WGS 84 (GPS coordinates, latitude/longitude)
-- `3857` - Web Mercator (web mapping services)
+- `3857` - Web Mercator / Pseudo-Mercator (Google Maps, OpenStreetMap, web mapping services)
 - `2193` - NZTM2000 (New Zealand Transverse Mercator)
-- `3857` - Pseudo-Mercator (Google Maps, OpenStreetMap)
 - `32601-32660` - WGS 84 UTM zones (Northern Hemisphere)
 - `32701-32760` - WGS 84 UTM zones (Southern Hemisphere)
 
