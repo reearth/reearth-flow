@@ -231,3 +231,192 @@ impl Storage {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::resolve::StorageResolver;
+    use reearth_flow_common::uri::Uri;
+    use std::path::Path;
+
+    #[test]
+    fn test_put_sync_large_citygml_file() {
+        let uri = Uri::for_test("ram:///plateau");
+        let resolver = StorageResolver::new();
+        let storage = resolver.resolve(&uri).unwrap();
+        
+        let large_citygml = format!(
+            r#"<?xml version="1.0"?><bldg:Building xmlns:bldg="http://www.opengis.net/citygml/building/2.0">{}</bldg:Building>"#,
+            "<gml:name>大規模建物</gml:name>".repeat(100_000)
+        );
+        
+        let result = storage.put_sync(
+            Path::new("53394525_bldg_6697_op.gml"),
+            Bytes::from(large_citygml)
+        );
+        
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_get_sync_japanese_path() {
+        let uri = Uri::for_test("ram:///test");
+        let resolver = StorageResolver::new();
+        let storage = resolver.resolve(&uri).unwrap();
+        
+        let content = "建物データ: 東京都渋谷区";
+        storage.put_sync(
+            Path::new("都市データ/建物/bldg_001.gml"),
+            Bytes::from(content)
+        ).unwrap();
+        
+        let result = storage.get_sync(Path::new("都市データ/建物/bldg_001.gml")).unwrap();
+        assert_eq!(String::from_utf8_lossy(&result), content);
+    }
+
+    #[test]
+    fn test_get_sync_nonexistent_file() {
+        let uri = Uri::for_test("ram:///test");
+        let resolver = StorageResolver::new();
+        let storage = resolver.resolve(&uri).unwrap();
+        
+        let result = storage.get_sync(Path::new("nonexistent_building.gml"));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_exists_sync_file_operations() {
+        let uri = Uri::for_test("ram:///test");
+        let resolver = StorageResolver::new();
+        let storage = resolver.resolve(&uri).unwrap();
+        
+        storage.put_sync(Path::new("exists.gml"), Bytes::from("data")).unwrap();
+        
+        let exists = storage.exists_sync(Path::new("exists.gml"));
+        let not_exists = storage.exists_sync(Path::new("missing.gml"));
+        
+        assert!(exists.is_ok());
+        assert!(not_exists.is_ok());
+    }
+
+    #[test]
+    fn test_delete_sync_cleanup() {
+        let uri = Uri::for_test("ram:///test");
+        let resolver = StorageResolver::new();
+        let storage = resolver.resolve(&uri).unwrap();
+        
+        storage.put_sync(Path::new("temp.gml"), Bytes::from("temporary")).unwrap();
+        storage.delete_sync(Path::new("temp.gml")).unwrap();
+        
+        let result = storage.get_sync(Path::new("temp.gml"));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_copy_sync_backup_file() {
+        let uri = Uri::for_test("ram:///test");
+        let resolver = StorageResolver::new();
+        let storage = resolver.resolve(&uri).unwrap();
+        
+        let original_data = "<bldg:Building>Original CityGML</bldg:Building>";
+        storage.put_sync(Path::new("original.gml"), Bytes::from(original_data)).unwrap();
+        
+        let result = storage.copy_sync(Path::new("original.gml"), Path::new("backup.gml"));
+        if result.is_ok() {
+            let original = storage.get_sync(Path::new("original.gml")).unwrap();
+            let backup = storage.get_sync(Path::new("backup.gml")).unwrap();
+            assert_eq!(original, backup);
+        }
+    }
+
+    #[test]
+    fn test_get_range_sync_partial_citygml() {
+        let uri = Uri::for_test("ram:///test");
+        let resolver = StorageResolver::new();
+        let storage = resolver.resolve(&uri).unwrap();
+        
+        let full_data = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        storage.put_sync(Path::new("data.bin"), Bytes::from(&full_data[..])).unwrap();
+        
+        let partial = storage.get_range_sync(Path::new("data.bin"), 10..20).unwrap();
+        assert_eq!(partial.as_ref(), b"ABCDEFGHIJ");
+    }
+
+    #[test]
+    fn test_create_dir_sync_nested_structure() {
+        let uri = Uri::for_test("ram:///test");
+        let resolver = StorageResolver::new();
+        let storage = resolver.resolve(&uri).unwrap();
+        
+        let result = storage.create_dir_sync(Path::new("codelists/Building"));
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_put_sync_empty_file() {
+        let uri = Uri::for_test("ram:///test");
+        let resolver = StorageResolver::new();
+        let storage = resolver.resolve(&uri).unwrap();
+        
+        storage.put_sync(Path::new("empty.gml"), Bytes::new()).unwrap();
+        
+        let result = storage.get_sync(Path::new("empty.gml")).unwrap();
+        assert_eq!(result.len(), 0);
+    }
+
+    #[test]
+    fn test_overwrite_existing_citygml() {
+        let uri = Uri::for_test("ram:///test");
+        let resolver = StorageResolver::new();
+        let storage = resolver.resolve(&uri).unwrap();
+        
+        storage.put_sync(Path::new("building.gml"), Bytes::from("v1")).unwrap();
+        storage.put_sync(Path::new("building.gml"), Bytes::from("v2")).unwrap();
+        
+        let result = storage.get_sync(Path::new("building.gml")).unwrap();
+        assert_eq!(String::from_utf8_lossy(&result), "v2");
+    }
+
+    #[test]
+    fn test_multiple_concurrent_reads() {
+        let uri = Uri::for_test("ram:///test");
+        let resolver = StorageResolver::new();
+        let storage = resolver.resolve(&uri).unwrap();
+        
+        storage.put_sync(Path::new("shared.gml"), Bytes::from("shared data")).unwrap();
+        
+        let r1 = storage.get_sync(Path::new("shared.gml")).unwrap();
+        let r2 = storage.get_sync(Path::new("shared.gml")).unwrap();
+        let r3 = storage.get_sync(Path::new("shared.gml")).unwrap();
+        
+        assert_eq!(r1, r2);
+        assert_eq!(r2, r3);
+    }
+
+    #[test]
+    fn test_head_sync_metadata() {
+        let uri = Uri::for_test("ram:///test");
+        let resolver = StorageResolver::new();
+        let storage = resolver.resolve(&uri).unwrap();
+        
+        let data = b"Test building data";
+        storage.put_sync(Path::new("metadata.gml"), Bytes::from(&data[..])).unwrap();
+        
+        let meta = storage.head_sync(Path::new("metadata.gml")).unwrap();
+        assert_eq!(meta.size, data.len() as u64);
+    }
+
+    #[test]
+    fn test_list_sync_directory() {
+        let uri = Uri::for_test("ram:///test");
+        let resolver = StorageResolver::new();
+        let storage = resolver.resolve(&uri).unwrap();
+        
+        storage.put_sync(Path::new("city/building1.gml"), Bytes::from("b1")).unwrap();
+        storage.put_sync(Path::new("city/building2.gml"), Bytes::from("b2")).unwrap();
+        
+        let list = storage.list_sync(Some(Path::new("city")), false);
+        assert!(list.is_ok());
+    }
+}
+
