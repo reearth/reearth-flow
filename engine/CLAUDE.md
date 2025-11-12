@@ -32,10 +32,12 @@ cargo run --package reearth-flow-cli -- doc-action
 ```
 
 ### Development Dependencies
-- **Linux/Debian**: `libxml2-dev`, `pkg-config`
-- **macOS**: `brew install libxml2 pkg-config`
-- **Windows**: vcpkg with libxml2
+- **Linux/Debian**: `apt-get install libxml2-dev pkg-config libproj-dev`
+- **macOS**: `brew install libxml2 pkg-config proj`
+- **Windows**: vcpkg with libxml2 and proj
 - **Optional WASM support**: Python 3.11 + `pip install py2wasm`
+
+**Note**: PROJ library is required for coordinate system transformations in the HorizontalReprojector action.
 
 ## Architecture Overview
 

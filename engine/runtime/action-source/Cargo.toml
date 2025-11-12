@@ -40,6 +40,7 @@ gltf.workspace = true
 indexmap.workspace = true
 once_cell.workspace = true
 petgraph.workspace = true
+proj.workspace = true
 quick-xml.workspace = true
 regex.workspace = true
 rhai.workspace = true
