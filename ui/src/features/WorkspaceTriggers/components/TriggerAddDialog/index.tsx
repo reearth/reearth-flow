@@ -103,7 +103,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
                 <div
                   className="flex min-h-8 w-full cursor-pointer items-center rounded-md border bg-transparent px-3 py-1 text-sm"
                   onClick={() => setOpenTriggerProjectVariablesDialog(true)}>
-                  <span className=" pr-2 whitespace-nowrap text-muted-foreground">
+                  <span className="pr-2 whitespace-nowrap text-muted-foreground">
                     {t("Edit Variables")} (
                     {pendingWorkflowData.variables.length})
                   </span>

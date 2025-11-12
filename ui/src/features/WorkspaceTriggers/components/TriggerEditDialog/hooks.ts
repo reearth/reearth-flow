@@ -106,9 +106,12 @@ export default ({
     getVariablesToSave,
   ]);
 
+  const normalizeVariables = (vars: Record<string, any> | undefined) =>
+    vars && Object.keys(vars).length > 0 ? vars : {};
+
   const variablesChanged = !isEqual(
-    getVariablesToSave() || {},
-    selectedTrigger.variables || {},
+    normalizeVariables(getVariablesToSave()),
+    normalizeVariables(selectedTrigger.variables),
   );
 
   const hasVariables =

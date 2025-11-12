@@ -148,7 +148,6 @@ export default ({
     setSelectedDeployment(selectedDeployment || null);
     setDeploymentId(deploymentId);
     handleWorkflowFetch(selectedDeployment?.workflowUrl);
-    setOpenTriggerProjectVariablesDialog(true);
   };
 
   const handleSelectEventSource = (eventSource: string) => {
