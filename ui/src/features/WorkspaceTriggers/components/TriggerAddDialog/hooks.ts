@@ -129,6 +129,7 @@ export default ({
     setOpenTriggerProjectVariablesDialog,
     handleWorkflowFetch,
     handleVariablesConfirm,
+    getVariablesToSave,
   } = useDeploymentWorkflowVariables();
 
   useEffect(() => {
@@ -183,13 +184,16 @@ export default ({
       return;
     }
 
+    // Only save variables if they differ from deployment defaults
+    const variablesToSave = getVariablesToSave();
+
     const { trigger: createdTrigger } = await createTrigger(
       workspaceId,
       deploymentId,
       description,
       eventSource === "TIME_DRIVEN" ? timeInterval : undefined,
       eventSource === "API_DRIVEN" ? authToken : undefined,
-      workflowVariablesObject,
+      variablesToSave,
     );
 
     setCreatedTrigger(createdTrigger);
@@ -206,7 +210,7 @@ export default ({
     setShowDialog,
     createTrigger,
     description,
-    workflowVariablesObject,
+    getVariablesToSave,
   ]);
 
   const handleCopyToClipboard = useCallback(

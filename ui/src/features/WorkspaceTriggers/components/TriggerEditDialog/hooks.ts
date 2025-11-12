@@ -1,5 +1,5 @@
 import { isEqual } from "lodash-es";
-import { ChangeEvent, useCallback, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useState } from "react";
 
 import { useTrigger } from "@flow/lib/gql";
 import { Trigger, TimeInterval, EventSourceType } from "@flow/types";
@@ -60,18 +60,38 @@ export default ({
     openTriggerProjectVariablesDialog,
     setOpenTriggerProjectVariablesDialog,
     handleVariablesConfirm,
-    initializeVariables,
+    getVariablesToSave,
+    handleWorkflowFetch,
   } = useDeploymentWorkflowVariables(selectedTrigger.variables);
+
+  // Fetch deployment workflow to get default variables for comparison
+  useEffect(() => {
+    if (selectedTrigger.deployment.workflowUrl) {
+      // Pass true if trigger has custom variables (don't overwrite them)
+      const hasCustomVariables = !!selectedTrigger.variables;
+      handleWorkflowFetch(
+        selectedTrigger.deployment.workflowUrl,
+        hasCustomVariables,
+      );
+    }
+  }, [
+    selectedTrigger.deployment.workflowUrl,
+    selectedTrigger.variables,
+    handleWorkflowFetch,
+  ]);
 
   const handleTriggerUpdate = useCallback(async () => {
     if (!selectedTrigger) return;
+
+    // Only save variables if they differ from deployment defaults
+    const variablesToSave = getVariablesToSave();
 
     await useUpdateTrigger(
       selectedTrigger.id,
       updatedEventSource === "TIME_DRIVEN" ? updatedTimeInterval : undefined,
       updatedEventSource === "API_DRIVEN" ? updatedAuthToken : undefined,
       updatedDescription,
-      workflowVariablesObject,
+      variablesToSave,
     );
 
     onDialogClose();
@@ -83,15 +103,19 @@ export default ({
     onDialogClose,
     useUpdateTrigger,
     updatedDescription,
-    workflowVariablesObject,
+    getVariablesToSave,
   ]);
 
-  // Check if variables have changed by comparing JSON strings
-
   const variablesChanged = !isEqual(
-    workflowVariablesObject || {},
+    getVariablesToSave() || {},
     selectedTrigger.variables || {},
   );
+
+  const hasVariables =
+    workflowVariablesObject && Object.keys(workflowVariablesObject).length > 0;
+  const variableCount = workflowVariablesObject
+    ? Object.keys(workflowVariablesObject).length
+    : 0;
 
   return {
     updatedEventSource,
@@ -109,6 +133,7 @@ export default ({
     openTriggerProjectVariablesDialog,
     setOpenTriggerProjectVariablesDialog,
     handleVariablesConfirm,
-    initializeVariables,
+    hasVariables,
+    variableCount,
   };
 };

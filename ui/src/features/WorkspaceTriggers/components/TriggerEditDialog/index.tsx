@@ -47,6 +47,8 @@ const TriggerEditDialog: React.FC<Props> = ({
     openTriggerProjectVariablesDialog,
     setOpenTriggerProjectVariablesDialog,
     handleVariablesConfirm,
+    hasVariables,
+    variableCount,
   } = useHooks({ selectedTrigger, onDialogClose });
 
   const eventSources: Record<string, string> = {
@@ -74,15 +76,14 @@ const TriggerEditDialog: React.FC<Props> = ({
               placeholder={t("Give your trigger a meaningful description...")}
             />
           </DialogContentSection>
-          {selectedTrigger.variables && (
+          {hasVariables && (
             <DialogContentSection className="flex flex-col">
               <Label>{t("Workflow Variables")}</Label>
               <div
                 className="flex min-h-8 w-full cursor-pointer items-center rounded-md border bg-transparent px-3 py-1 text-sm"
                 onClick={() => setOpenTriggerProjectVariablesDialog(true)}>
                 <span className=" pr-2 whitespace-nowrap text-muted-foreground">
-                  {t("Edit Variables")} (
-                  {Object.keys(selectedTrigger.variables).length})
+                  {t("Edit Variables")} ({variableCount})
                 </span>
               </div>
             </DialogContentSection>
