@@ -107,6 +107,12 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 		t = t.AuthToken(param.AuthToken)
 	}
 
+	if param.Enabled != nil {
+		t = t.Enabled(*param.Enabled)
+	} else {
+		t = t.Enabled(true)
+	}
+
 	if len(param.Variables) > 0 {
 		t = t.Variables(param.Variables)
 	}
@@ -151,6 +157,10 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	trigger, err := i.triggerRepo.FindByID(ctx, p.TriggerID)
 	if err != nil {
 		return nil, err
+	}
+
+	if !trigger.Enabled() {
+		return nil, fmt.Errorf("trigger is disabled")
 	}
 
 	if trigger.EventSource() == "API_DRIVEN" {
@@ -255,6 +265,10 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	trigger, err := i.triggerRepo.FindByID(ctx, p.TriggerID)
 	if err != nil {
 		return nil, err
+	}
+
+	if !trigger.Enabled() {
+		return nil, fmt.Errorf("trigger is disabled")
 	}
 
 	if trigger.EventSource() != "TIME_DRIVEN" {
@@ -387,6 +401,10 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 		t.SetEventSource(trigger.EventSourceType(param.EventSource))
 		t.SetTimeInterval("")
 		t.SetAuthToken(param.AuthToken)
+	}
+
+	if param.Enabled != nil {
+		t.SetEnabled(*param.Enabled)
 	}
 
 	if param.Variables != nil {

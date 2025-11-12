@@ -24,6 +24,7 @@ func (r *mutationResolver) CreateTrigger(ctx context.Context, input gqlmodel.Cre
 	param.DeploymentID = did
 
 	param.Description = input.Description
+	param.Enabled = input.Enabled
 
 	if input.Variables != nil {
 		param.Variables, err = gqlmodel.FromVariables(input.Variables)
@@ -57,6 +58,7 @@ func (r *mutationResolver) UpdateTrigger(ctx context.Context, input gqlmodel.Upd
 	param := interfaces.UpdateTriggerParam{
 		ID:          tid,
 		Description: input.Description,
+		Enabled:     input.Enabled,
 	}
 
 	if input.DeploymentID != nil {
