@@ -86,6 +86,11 @@ func (b *Builder) TimeInterval(interval TimeInterval) *Builder {
 	return b
 }
 
+func (b *Builder) Enabled(enabled bool) *Builder {
+	b.t.enabled = enabled
+	return b
+}
+
 func (b *Builder) Variables(variables map[string]string) *Builder {
 	b.t.variables = variables
 	return b
