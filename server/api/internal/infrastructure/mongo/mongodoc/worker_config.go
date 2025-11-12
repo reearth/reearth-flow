@@ -3,7 +3,7 @@ package mongodoc
 import (
 	"time"
 
-	"github.com/reearth/reearth-flow/api/pkg/batchconfig"
+	"github.com/reearth/reearth-flow/api/pkg/workerconfig"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 )
 
@@ -23,7 +23,7 @@ type WorkerConfigDocument struct {
 	Workspace             string    `bson:"workspace"`
 }
 
-func NewWorkerConfig(cfg *batchconfig.WorkerConfig) (*WorkerConfigDocument, string) {
+func NewWorkerConfig(cfg *workerconfig.WorkerConfig) (*WorkerConfigDocument, string) {
 	if cfg == nil {
 		return nil, ""
 	}
@@ -46,15 +46,15 @@ func NewWorkerConfig(cfg *batchconfig.WorkerConfig) (*WorkerConfigDocument, stri
 	return d, cfg.Workspace().String()
 }
 
-type WorkerConfigConsumer = Consumer[*WorkerConfigDocument, *batchconfig.WorkerConfig]
+type WorkerConfigConsumer = Consumer[*WorkerConfigDocument, *workerconfig.WorkerConfig]
 
 func NewWorkerConfigConsumer() *WorkerConfigConsumer {
-	return NewConsumer[*WorkerConfigDocument](func(a *batchconfig.WorkerConfig) bool {
+	return NewConsumer[*WorkerConfigDocument](func(a *workerconfig.WorkerConfig) bool {
 		return true
 	})
 }
 
-func (d *WorkerConfigDocument) Model() (*batchconfig.WorkerConfig, error) {
+func (d *WorkerConfigDocument) Model() (*workerconfig.WorkerConfig, error) {
 	if d == nil {
 		return nil, nil
 	}
@@ -62,7 +62,7 @@ func (d *WorkerConfigDocument) Model() (*batchconfig.WorkerConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfg := batchconfig.New(ws)
+	cfg := workerconfig.New(ws)
 	cfg.SetMachineType(d.MachineType)
 	cfg.SetComputeCpuMilli(d.ComputeCpuMilli)
 	cfg.SetComputeMemoryMib(d.ComputeMemoryMib)

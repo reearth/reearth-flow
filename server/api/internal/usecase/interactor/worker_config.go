@@ -9,7 +9,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
-	"github.com/reearth/reearth-flow/api/pkg/batchconfig"
+	"github.com/reearth/reearth-flow/api/pkg/workerconfig"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/workspace"
 	"github.com/reearth/reearthx/account/accountdomain"
@@ -37,7 +37,7 @@ func (i *WorkerConfig) checkPermission(ctx context.Context, action string) error
 	return checkPermission(ctx, i.permissionChecker, rbac.ResourceWorkspace, action)
 }
 
-func (i *WorkerConfig) FindByWorkspace(ctx context.Context, workspace id.WorkspaceID) (*batchconfig.WorkerConfig, error) {
+func (i *WorkerConfig) FindByWorkspace(ctx context.Context, workspace id.WorkspaceID) (*workerconfig.WorkerConfig, error) {
 	if err := i.checkPermission(ctx, rbac.ActionRead); err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (i *WorkerConfig) Update(
 	channelBufferSize *int,
 	featureFlushThreshold *int,
 	nodeStatusDelayMilli *int,
-) (*batchconfig.WorkerConfig, error) {
+) (*workerconfig.WorkerConfig, error) {
 	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func (i *WorkerConfig) Update(
 	}
 
 	if cfg == nil {
-		cfg = batchconfig.New(workspaceID)
+		cfg = workerconfig.New(workspaceID)
 	}
 
 	if machineType != nil {

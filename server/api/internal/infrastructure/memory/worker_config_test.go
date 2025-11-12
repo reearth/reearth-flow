@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/reearth/reearth-flow/api/pkg/batchconfig"
+	"github.com/reearth/reearth-flow/api/pkg/workerconfig"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 )
 
@@ -13,7 +13,7 @@ func TestWorkerConfigMemory(t *testing.T) {
 	ctx := context.Background()
 	ws := id.NewWorkspaceID()
 
-	cfg := batchconfig.New(ws)
+	cfg := workerconfig.New(ws)
 	cpu := 2500
 	cfg.SetComputeCpuMilli(&cpu)
 

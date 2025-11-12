@@ -217,16 +217,11 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		projectID = *deployment.Project()
 	}
 
-	workerCfg, err := i.workerConfigRepo.FindByWorkspace(ctx, deployment.Workspace())
-	if err != nil {
-		workerCfg = nil
-	}
-
 	if i.batch == nil {
 		return nil, fmt.Errorf("batch gateway not configured")
 	}
 
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), finalVars, projectID, deployment.Workspace(), workerCfg)
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), finalVars, projectID, deployment.Workspace())
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Job submission failed: %v\n", err)
 		return nil, interfaces.ErrJobCreationFailed
@@ -327,13 +322,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		projectID = *deployment.Project()
 	}
 
-	workerCfg, err := i.workerConfigRepo.FindByWorkspace(ctx, deployment.Workspace())
-	if err != nil {
-		log.Debugfc(ctx, "[Trigger] Failed to fetch worker config: %v\n", err)
-		workerCfg = nil
-	}
-
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), finalVars, projectID, deployment.Workspace(), workerCfg)
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), finalVars, projectID, deployment.Workspace())
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Time-driven job submission failed: %v\n", err)
 		return nil, interfaces.ErrJobCreationFailed

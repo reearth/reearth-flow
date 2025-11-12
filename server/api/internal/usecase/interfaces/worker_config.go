@@ -3,12 +3,12 @@ package interfaces
 import (
 	"context"
 
-	"github.com/reearth/reearth-flow/api/pkg/batchconfig"
+	"github.com/reearth/reearth-flow/api/pkg/workerconfig"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 )
 
 type WorkerConfig interface {
-	FindByWorkspace(context.Context, id.WorkspaceID) (*batchconfig.WorkerConfig, error)
+	FindByWorkspace(context.Context, id.WorkspaceID) (*workerconfig.WorkerConfig, error)
 	Update(
 		ctx context.Context,
 		workspace id.WorkspaceID,
@@ -22,6 +22,6 @@ type WorkerConfig interface {
 		channelBufferSize *int,
 		featureFlushThreshold *int,
 		nodeStatusDelayMilli *int,
-	) (*batchconfig.WorkerConfig, error)
+	) (*workerconfig.WorkerConfig, error)
 	Delete(context.Context, id.WorkspaceID) error
 }

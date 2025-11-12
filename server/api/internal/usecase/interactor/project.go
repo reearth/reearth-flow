@@ -260,12 +260,7 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 		return nil, err
 	}
 
-	workerCfg, err := i.workerConfigRepo.FindByWorkspace(ctx, prj.Workspace())
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch worker config: %v", err)
-	}
-
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURL.String(), j.MetadataURL(), nil, p.ProjectID, prj.Workspace(), workerCfg)
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURL.String(), j.MetadataURL(), nil, p.ProjectID, prj.Workspace())
 	if err != nil {
 		return nil, fmt.Errorf("failed to submit job: %v", err)
 	}

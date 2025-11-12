@@ -362,12 +362,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		projectID = *d.Project()
 	}
 
-	workerCfg, err := i.workerConfigRepo.FindByWorkspace(ctx, d.Workspace())
-	if err != nil {
-		workerCfg = nil
-	}
-
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), nil, projectID, d.Workspace(), workerCfg)
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), nil, projectID, d.Workspace())
 	if err != nil {
 		return nil, interfaces.ErrJobCreationFailed
 	}

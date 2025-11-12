@@ -1,4 +1,4 @@
-package batchconfig
+package workerconfig
 
 import (
 	"errors"

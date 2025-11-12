@@ -13,20 +13,22 @@ import (
 	batchpb "cloud.google.com/go/batch/apiv1/batchpb"
 	"github.com/googleapis/gax-go/v2"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
-	"github.com/reearth/reearth-flow/api/pkg/batchconfig"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/log"
 	"google.golang.org/api/iterator"
 )
 
 type BatchConfig struct {
+	AllowedLocations                []string
 	BinaryPath                      string
+	BootDiskSizeGB                  int
 	BootDiskType                    string
 	ChannelBufferSize               string
+	ComputeCpuMilli                 int
+	ComputeMemoryMib                int
 	FeatureFlushThreshold           string
 	ImageURI                        string
 	MachineType                     string
-	MaxConcurrency                  string
 	NodeStatusPropagationDelayMS    string
 	PubSubEdgePassThroughEventTopic string
 	PubSubLogStreamTopic            string
@@ -37,12 +39,8 @@ type BatchConfig struct {
 	Region                          string
 	RustLog                         string
 	SAEmail                         string
-	ThreadPoolSize                  string
-	AllowedLocations                []string
-	BootDiskSizeGB                  int
-	ComputeCpuMilli                 int
-	ComputeMemoryMib                int
 	TaskCount                       int
+	ThreadPoolSize                  string
 	CompressIntermediateData        bool
 }
 
@@ -94,10 +92,7 @@ func (b *BatchRepo) SubmitJob(
 	variables map[string]string,
 	projectID id.ProjectID,
 	workspaceID id.WorkspaceID,
-	workerConfig *batchconfig.WorkerConfig,
 ) (string, error) {
-	effectiveConfig := b.mergeConfig(workerConfig)
-
 	formattedJobID := formatJobID(jobID.String())
 
 	jobName := fmt.Sprintf(
@@ -151,9 +146,9 @@ func (b *BatchRepo) SubmitJob(
 	}
 
 	computeResource := &batchpb.ComputeResource{
-		BootDiskMib: int64(effectiveConfig.BootDiskSizeGB * 1024),
-		CpuMilli:    int64(effectiveConfig.ComputeCpuMilli),
-		MemoryMib:   int64(effectiveConfig.ComputeMemoryMib),
+		BootDiskMib: int64(b.config.BootDiskSizeGB * 1024),
+		CpuMilli:    int64(b.config.ComputeCpuMilli),
+		MemoryMib:   int64(b.config.ComputeMemoryMib),
 	}
 
 	taskSpec := &batchpb.TaskSpec{
@@ -178,20 +173,18 @@ func (b *BatchRepo) SubmitJob(
 					"RUST_BACKTRACE":                            "1",
 				}
 
-				if effectiveConfig.NodeStatusPropagationDelayMS != "" {
-					vars["FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS"] = effectiveConfig.NodeStatusPropagationDelayMS
+				// Only set runtime config if values are provided
+				if b.config.NodeStatusPropagationDelayMS != "" {
+					vars["FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS"] = b.config.NodeStatusPropagationDelayMS
 				}
-				if effectiveConfig.ChannelBufferSize != "" {
-					vars["FLOW_RUNTIME_CHANNEL_BUFFER_SIZE"] = effectiveConfig.ChannelBufferSize
+				if b.config.ChannelBufferSize != "" {
+					vars["FLOW_RUNTIME_CHANNEL_BUFFER_SIZE"] = b.config.ChannelBufferSize
 				}
-				if effectiveConfig.ThreadPoolSize != "" {
-					vars["FLOW_RUNTIME_THREAD_POOL_SIZE"] = effectiveConfig.ThreadPoolSize
+				if b.config.ThreadPoolSize != "" {
+					vars["FLOW_RUNTIME_THREAD_POOL_SIZE"] = b.config.ThreadPoolSize
 				}
-				if effectiveConfig.FeatureFlushThreshold != "" {
-					vars["FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD"] = effectiveConfig.FeatureFlushThreshold
-				}
-				if effectiveConfig.MaxConcurrency != "" {
-					vars["FLOW_RUNTIME_MAX_CONCURRENCY"] = effectiveConfig.MaxConcurrency
+				if b.config.FeatureFlushThreshold != "" {
+					vars["FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD"] = b.config.FeatureFlushThreshold
 				}
 				if b.config.CompressIntermediateData {
 					vars["FLOW_RUNTIME_COMPRESS_INTERMEDIATE_DATA"] = strconv.FormatBool(b.config.CompressIntermediateData)
@@ -203,18 +196,18 @@ func (b *BatchRepo) SubmitJob(
 	}
 
 	taskGroup := &batchpb.TaskGroup{
-		TaskCount: int64(effectiveConfig.TaskCount),
+		TaskCount: int64(b.config.TaskCount),
 		TaskSpec:  taskSpec,
 	}
 
 	bootDisk := &batchpb.AllocationPolicy_Disk{
-		Type:   effectiveConfig.BootDiskType,
-		SizeGb: int64(effectiveConfig.BootDiskSizeGB),
+		Type:   b.config.BootDiskType,
+		SizeGb: int64(b.config.BootDiskSizeGB),
 	}
 
 	instancePolicy := &batchpb.AllocationPolicy_InstancePolicy{
 		ProvisioningModel: batchpb.AllocationPolicy_STANDARD,
-		MachineType:       effectiveConfig.MachineType,
+		MachineType:       b.config.MachineType,
 		BootDisk:          bootDisk,
 	}
 
@@ -421,69 +414,4 @@ func formatJobID(jobID string) string {
 	}
 
 	return jobID
-}
-
-type effectiveConfig struct {
-	MachineType                  string
-	BootDiskType                 string
-	MaxConcurrency               string
-	ThreadPoolSize               string
-	ChannelBufferSize            string
-	FeatureFlushThreshold        string
-	NodeStatusPropagationDelayMS string
-	ComputeCpuMilli              int
-	ComputeMemoryMib             int
-	BootDiskSizeGB               int
-	TaskCount                    int
-}
-
-func (b *BatchRepo) mergeConfig(workspaceConfig *batchconfig.WorkerConfig) *effectiveConfig {
-	cfg := &effectiveConfig{
-		MachineType:                  b.config.MachineType,
-		ComputeCpuMilli:              b.config.ComputeCpuMilli,
-		ComputeMemoryMib:             b.config.ComputeMemoryMib,
-		BootDiskSizeGB:               b.config.BootDiskSizeGB,
-		BootDiskType:                 b.config.BootDiskType,
-		TaskCount:                    b.config.TaskCount,
-		MaxConcurrency:               b.config.MaxConcurrency,
-		ThreadPoolSize:               b.config.ThreadPoolSize,
-		ChannelBufferSize:            b.config.ChannelBufferSize,
-		FeatureFlushThreshold:        b.config.FeatureFlushThreshold,
-		NodeStatusPropagationDelayMS: b.config.NodeStatusPropagationDelayMS,
-	}
-
-	if workspaceConfig != nil {
-		if machineType := workspaceConfig.MachineType(); machineType != nil {
-			cfg.MachineType = *machineType
-		}
-		if cpuMilli := workspaceConfig.ComputeCpuMilli(); cpuMilli != nil {
-			cfg.ComputeCpuMilli = *cpuMilli
-		}
-		if memoryMib := workspaceConfig.ComputeMemoryMib(); memoryMib != nil {
-			cfg.ComputeMemoryMib = *memoryMib
-		}
-		if diskGB := workspaceConfig.BootDiskSizeGB(); diskGB != nil {
-			cfg.BootDiskSizeGB = *diskGB
-		}
-		if taskCount := workspaceConfig.TaskCount(); taskCount != nil {
-			cfg.TaskCount = *taskCount
-		}
-		if maxConcurrency := workspaceConfig.MaxConcurrency(); maxConcurrency != nil {
-			cfg.MaxConcurrency = strconv.Itoa(*maxConcurrency)
-		}
-		if threadPoolSize := workspaceConfig.ThreadPoolSize(); threadPoolSize != nil {
-			cfg.ThreadPoolSize = strconv.Itoa(*threadPoolSize)
-		}
-		if channelBufferSize := workspaceConfig.ChannelBufferSize(); channelBufferSize != nil {
-			cfg.ChannelBufferSize = strconv.Itoa(*channelBufferSize)
-		}
-		if featureFlush := workspaceConfig.FeatureFlushThreshold(); featureFlush != nil {
-			cfg.FeatureFlushThreshold = strconv.Itoa(*featureFlush)
-		}
-		if nodeStatusDelay := workspaceConfig.NodeStatusPropagationDelayMilli(); nodeStatusDelay != nil {
-			cfg.NodeStatusPropagationDelayMS = strconv.Itoa(*nodeStatusDelay)
-		}
-	}
-
-	return cfg
 }

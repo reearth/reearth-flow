@@ -1,10 +1,10 @@
 package gqlmodel
 
 import (
-	"github.com/reearth/reearth-flow/api/pkg/batchconfig"
+	"github.com/reearth/reearth-flow/api/pkg/workerconfig"
 )
 
-func ToWorkerConfig(cfg *batchconfig.WorkerConfig) *WorkerConfig {
+func ToWorkerConfig(cfg *workerconfig.WorkerConfig) *WorkerConfig {
 	if cfg == nil {
 		return nil
 	}
