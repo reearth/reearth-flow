@@ -77,7 +77,6 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
                 .map_err(|e| FeatureProcessorError::FileCityGmlReaderFactory(format!("{e:?}")))?,
             original_dataset: params.dataset.clone(),
             flatten: params.flatten,
-            resolve_code: params.resolve_code,
             lossless_mode: params.lossless_mode,
         };
         let threads_num = {
@@ -124,11 +123,8 @@ pub struct FeatureCityGmlReaderParam {
     /// # Flatten
     /// Whether to flatten the hierarchical structure of the CityGML data
     flatten: Option<bool>,
-    /// # Resolve Code
-    /// Whether to resolve code values using codelists
-    resolve_code: Option<bool>,
-    /// # Parse String
-    /// Ignore schema and parse lossy types (Date, Measure, f64) as Strings
+    /// # Lossless mode
+    /// Preserve original strings of Measure and Date
     lossless_mode: Option<bool>,
 }
 
@@ -137,7 +133,6 @@ struct CompiledFeatureCityGmlReaderParam {
     dataset: rhai::AST,
     original_dataset: Expr,
     flatten: Option<bool>,
-    resolve_code: Option<bool>,
     lossless_mode: Option<bool>,
 }
 
@@ -158,7 +153,6 @@ impl Processor for FeatureCityGmlReader {
         let dataset = self.params.dataset.clone();
         let original_dataset = self.params.original_dataset.clone();
         let flatten = self.params.flatten;
-        let resolve_code = self.params.resolve_code;
         let lossless_mode = self.params.lossless_mode;
         let pool = self.thread_pool.lock();
         let (tx, rx) = std::sync::mpsc::channel();
@@ -172,7 +166,6 @@ impl Processor for FeatureCityGmlReader {
                 dataset,
                 original_dataset,
                 flatten,
-                resolve_code,
                 lossless_mode,
                 global_params.clone(),
             );
