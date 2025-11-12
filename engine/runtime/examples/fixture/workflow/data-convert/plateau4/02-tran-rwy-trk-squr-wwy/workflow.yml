@@ -43,10 +43,29 @@ graphs:
         action: FeatureCityGmlReader
         with:
           format: citygml
-          resolveCode: false
+          # resolveCode: false
           losslessMode: true
           dataset: |
             env.get("__value")["path"]
+
+      - id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e
+        name: AttributeManagerPreFlattener
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: meshcode
+              method: create
+              value: |
+                let file = file::extract_filename(env.get("__value")["path"]);
+                file.split("_")[0]
+            - attribute: gml_id
+              method: create
+              value: |
+                env.get("__feature_id")
+            - attribute: gmlName
+              method: rename
+              value: feature_type
 
       - id: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         name: AttributeFlattener
@@ -104,10 +123,6 @@ graphs:
               method: convert
               value: |
                 env.get("__value").cityName
-            - attribute: feature_type
-              method: convert
-              value: |
-                env.get("__value").gmlName
             - attribute: gml_id
               method: create
               value: |
@@ -140,28 +155,17 @@ graphs:
         action: AttributeManager
         with:
           operations:
-            - attribute: meshcode
-              method: create
-              value: |
-                let file = file::extract_filename(env.get("__value")["path"]);
-                file.split("_")[0]
             - attribute: cityCode
               method: rename
               value: city_code
             - attribute: cityName
               method: rename
               value: city_name
-            - attribute: gmlName
-              method: remove
-            - attribute: gml_id
-              method: create
-              value: |
-                env.get("__feature_id")
-            - attribute: gmlId
-              method: remove
             - attribute: lod
               method: rename
               value: _lod
+            - attribute: gmlId
+              method: remove
             - attribute: fileIndex
               method: remove
             - attribute: root
@@ -185,8 +189,6 @@ graphs:
             - attribute: dirSchemas
               method: remove
             - attribute: dirCodelists
-              method: remove
-            - attribute: gml:name_code
               method: remove
             - attribute: path
               method: remove
@@ -269,6 +271,11 @@ graphs:
         toPort: default
       - id: cf845867-6ffc-4b83-9fd5-e376a22470e2
         from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+        to: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e
+        fromPort: default
+        toPort: default
+      - id: 7e8f9a0b-1c2d-3e4f-5a6b-7c8d9e0f1a2b
+        from: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e
         to: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         fromPort: default
         toPort: default

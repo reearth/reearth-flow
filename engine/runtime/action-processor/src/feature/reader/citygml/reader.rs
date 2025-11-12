@@ -162,11 +162,6 @@ fn parse_tree_reader<R: BufRead>(
             });
         }
         let attributes = AttributeValue::from_nusamai_cityml_value(&entity.root);
-        for (k, v) in attributes.iter() {
-        if let AttributeValue::Map(map) = &v {
-            let json_value = serde_json::Value::from(AttributeValue::Map(map.clone()));
-            eprintln!("DEBUG: cityGmlAttributes JSON = {}", serde_json::to_string_pretty(&json_value).unwrap());
-        }}
         let attributes = AttributeValue::convert_array_attributes(&attributes);
         let mut city_gml_attributes = match attributes.len() {
             0 => AttributeValue::Null,

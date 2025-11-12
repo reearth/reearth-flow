@@ -220,6 +220,22 @@ impl AttributeValue {
                     AttributeValue::String(v.code().to_owned()),
                 );
             }
+            nusamai_citygml::Value::Measure(v) => {
+                // Convert the numeric value
+                let numeric_value = if let Some(text) = v.original_text() {
+                    AttributeValue::Number(serde_json::Number::from_string_unchecked(
+                        text.to_string(),
+                    ))
+                } else {
+                    AttributeValue::Number(serde_json::Number::from_f64(v.value()).unwrap())
+                };
+                result.insert(key.to_string(), numeric_value);
+
+                // If uom exists, create a companion _uom attribute (FME compatible)
+                if let Some(uom) = v.uom() {
+                    result.insert(format!("{key}_uom"), AttributeValue::String(uom.to_owned()));
+                }
+            }
             nusamai_citygml::Value::Array(arr) => {
                 Self::process_array_attribute(&mut result, key, arr);
             }
@@ -270,6 +286,7 @@ impl AttributeValue {
     ) -> HashMap<String, AttributeValue> {
         let mut result = HashMap::new();
         if let Some(key) = key {
+            eprintln!("Handling simple value for key: {key}, value: {:?}", value);
             result.insert(key, AttributeValue::from(value.clone()));
         }
         result

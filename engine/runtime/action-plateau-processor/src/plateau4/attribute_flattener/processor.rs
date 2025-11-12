@@ -39,6 +39,14 @@ static BASE_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
         ),
     ]
 });
+static COMMON_ATTRIBUTES: Lazy<HashMap<String, String>> = Lazy::new(|| {
+    vec![
+        ("meshcode".to_string(), "meshcode".to_string()),
+        ("gml_id".to_string(), "gml:id".to_string()),
+        ("feature_type".to_string(), "feature_type".to_string()),
+    ].into_iter().collect::<HashMap<String, String>>()
+});
+
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct AttributeFlattenerFactory;
@@ -142,9 +150,19 @@ impl Processor for AttributeFlattener {
             .map(|(k, v)| (k.to_string(), v))
             .collect::<HashMap<String, AttributeValue>>();
 
+        let mut inner_attributes = city_gml_attribute.clone();
+        // add common attributes by copying from feature attributes
+        for (key, value) in COMMON_ATTRIBUTES.iter() {
+            if let Some(attr_value) = feature.get(&Attribute::new(key.clone())) {
+                inner_attributes.insert(
+                    value.clone(),
+                    attr_value.clone(),
+                );
+            }
+        }
         // save the whole `city_gml_attribute` values as `attributes`
         let attributes_value =
-            serde_json::Value::from(AttributeValue::Map(city_gml_attribute.clone()));
+            serde_json::Value::from(AttributeValue::Map(inner_attributes));
         let attributes_json = serde_json::to_string(&attributes_value).unwrap();
         new_city_gml_attribute.insert(
             Attribute::new("attributes".to_string()),
