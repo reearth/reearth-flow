@@ -32,6 +32,7 @@ pub(super) fn read_citygml(
     original_dataset: reearth_flow_types::Expr,
     flatten: Option<bool>,
     resolve_code: Option<bool>,
+    lossless_mode: Option<bool>,
     global_params: Option<HashMap<String, serde_json::Value>>,
 ) -> Result<(), crate::feature::errors::FeatureProcessorError> {
     let code_resolver: Box<dyn CodeResolver> = if resolve_code.unwrap_or(true) {
@@ -59,7 +60,7 @@ pub(super) fn read_citygml(
 
     let base_url: Url = input_path.into();
     let mut xml_reader = NsReader::from_reader(buf_reader);
-    let context = nusamai_citygml::ParseContext::new(base_url.clone(), code_resolver.as_ref());
+    let context = nusamai_citygml::ParseContext::new(base_url.clone(), code_resolver.as_ref(), lossless_mode.unwrap_or(false));
     let mut citygml_reader = CityGmlReader::new(context);
     let mut st = citygml_reader.start_root(&mut xml_reader).map_err(|e| {
         crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
@@ -161,13 +162,21 @@ fn parse_tree_reader<R: BufRead>(
             });
         }
         let attributes = AttributeValue::from_nusamai_cityml_value(&entity.root);
+        for (k, v) in attributes.iter() {
+        if let AttributeValue::Map(map) = &v {
+            let json_value = serde_json::Value::from(AttributeValue::Map(map.clone()));
+            eprintln!("DEBUG: cityGmlAttributes JSON = {}", serde_json::to_string_pretty(&json_value).unwrap());
+        }}
         let attributes = AttributeValue::convert_array_attributes(&attributes);
-        let city_gml_attributes = match attributes.len() {
+        let mut city_gml_attributes = match attributes.len() {
             0 => AttributeValue::Null,
             1 => attributes.values().next().unwrap().clone(),
             _ => AttributeValue::Map(attributes),
         };
-        let city_gml_attributes = city_gml_attributes.flatten();
+        // Debug: Dump cityGmlAttributes as JSON
+        if flatten {
+            city_gml_attributes = city_gml_attributes.flatten();
+        }
         let city_gml_attributes = if let AttributeValue::Map(map) = &city_gml_attributes {
             AttributeValue::Map(AttributeValue::convert_array_attributes(map))
         } else {

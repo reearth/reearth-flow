@@ -43,7 +43,8 @@ graphs:
         action: FeatureCityGmlReader
         with:
           format: citygml
-          resolve_code: false
+          resolveCode: false
+          losslessMode: true
           dataset: |
             env.get("__value")["path"]
 
@@ -94,7 +95,7 @@ graphs:
               method: create
               value: |
                 let file = file::extract_filename(env.get("__value")["path"]);
-                file[0..8]
+                file.split("_")[0]
             - attribute: city_code
               method: convert
               value: |
@@ -143,7 +144,7 @@ graphs:
               method: create
               value: |
                 let file = file::extract_filename(env.get("__value")["path"]);
-                file[0..8]
+                file.split("_")[0]
             - attribute: cityCode
               method: rename
               value: city_code
@@ -194,10 +195,6 @@ graphs:
             - attribute: udxDirs
               method: rename
               value: _udxDirs
-            - attribute: uro:StationSquareAttribute_uro:areaPlanned
-              method: convert
-              value:
-                env.get("__value")["uro:StationSquareAttribute_uro:areaPlanned"].to_string()
 
       - id: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
         name: FeatureSorter

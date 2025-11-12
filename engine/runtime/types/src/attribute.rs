@@ -325,12 +325,18 @@ impl From<nusamai_citygml::Value> for AttributeValue {
                 AttributeValue::Number(Number::from_f64(v).unwrap())
             }
             nusamai_citygml::Value::Measure(v) => {
-                AttributeValue::Number(Number::from_f64(v.value()).unwrap())
+                if let Some(text) = v.original_text() {
+                    AttributeValue::Number(Number::from_string_unchecked(text.to_string()))
+                } else {
+                    AttributeValue::Number(Number::from_f64(v.value()).unwrap())
+                }
             }
             nusamai_citygml::Value::Boolean(v) => AttributeValue::Bool(v),
             nusamai_citygml::Value::Uri(v) => AttributeValue::String(v.value().to_string()),
             nusamai_citygml::Value::Date(v) => {
-                if let Ok(v) = DateTime::try_from(v.to_string()) {
+                if let Some(text) = v.original_text() {
+                    AttributeValue::String(text.to_string())
+                } else if let Ok(v) = DateTime::try_from(v.to_string()) {
                     AttributeValue::DateTime(v)
                 } else {
                     AttributeValue::String(v.to_string())
@@ -562,20 +568,6 @@ impl AttributeValue {
         let mut result = HashMap::new();
         for (k, v) in attributes.iter() {
             match v {
-                AttributeValue::Array(arr) if arr.len() == 1 => {
-                    let value = arr.first().cloned().unwrap_or(AttributeValue::Null);
-                    match value {
-                        AttributeValue::Map(map) => {
-                            result.insert(
-                                k.clone(),
-                                AttributeValue::Map(Self::convert_array_attributes(&map)),
-                            );
-                        }
-                        _ => {
-                            result.insert(k.clone(), value);
-                        }
-                    }
-                }
                 AttributeValue::Array(arr) => {
                     let mut new_arr = Vec::new();
                     for item in arr.iter() {
