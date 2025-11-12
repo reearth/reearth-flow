@@ -389,7 +389,9 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 		t.SetAuthToken(param.AuthToken)
 	}
 
-	t.SetVariables(param.Variables)
+	if param.Variables != nil {
+		t.SetVariables(param.Variables)
+	}
 
 	if err := i.triggerRepo.Save(ctx, t); err != nil {
 		return nil, err
