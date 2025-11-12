@@ -6,7 +6,7 @@ use std::{
 };
 
 use indexmap::IndexMap;
-use nusamai_citygml::{CityGmlElement, CityGmlReader, Envelope, ParseError, SubTreeReader, codelist::CodeResolver};
+use nusamai_citygml::{CityGmlElement, CityGmlReader, Envelope, ParseError, SubTreeReader};
 use nusamai_plateau::{
     appearance::AppearanceStore, models, Entity, FlattenTreeTransform, GeometricMergedownTransform,
 };
@@ -31,15 +31,10 @@ pub(super) fn read_citygml(
     dataset: rhai::AST,
     original_dataset: reearth_flow_types::Expr,
     flatten: Option<bool>,
-    resolve_code: Option<bool>,
     lossless_mode: Option<bool>,
     global_params: Option<HashMap<String, serde_json::Value>>,
 ) -> Result<(), crate::feature::errors::FeatureProcessorError> {
-    let code_resolver: Box<dyn CodeResolver> = if resolve_code.unwrap_or(true) {
-        Box::new(nusamai_plateau::codelist::Resolver::new())
-    } else {
-        Box::new(nusamai_citygml::codelist::NoopResolver {})
-    };
+    let code_resolver = Box::new(nusamai_plateau::codelist::Resolver::new());
     let expr_engine = Arc::clone(&ctx.expr_engine);
     let scope = feature.new_scope(expr_engine.clone(), &global_params);
     let city_gml_path = scope
