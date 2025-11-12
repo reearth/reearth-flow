@@ -58,7 +58,6 @@ export default function TriggerProjectVariablesMappingDialog({
           name: variable.name,
           type: inferredType,
           defaultValue: getDefaultValue(variable.value, inferredType),
-          required: variable.value !== null && variable.value !== undefined,
         };
       }),
   );
@@ -169,7 +168,7 @@ export default function TriggerProjectVariablesMappingDialog({
             </div>
           ))}
         </DialogContentWrapper>
-        <DialogFooter className=" mt-2">
+        <DialogFooter className="mt-2">
           <Button variant="outline" onClick={handleCancel}>
             {t("Cancel")}
           </Button>

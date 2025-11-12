@@ -122,6 +122,25 @@ export default ({
     }
   }, [eventSource]);
 
+  const {
+    pendingWorkflowData,
+    workflowVariablesObject,
+    openTriggerProjectVariablesDialog,
+    setOpenTriggerProjectVariablesDialog,
+    handleWorkflowFetch,
+    handleVariablesConfirm,
+  } = useDeploymentWorkflowVariables();
+
+  useEffect(() => {
+    if (
+      pendingWorkflowData &&
+      pendingWorkflowData.variables &&
+      pendingWorkflowData.variables.length > 0
+    ) {
+      setOpenTriggerProjectVariablesDialog(true);
+    }
+  }, [pendingWorkflowData, setOpenTriggerProjectVariablesDialog]);
+
   const handleSelectDeployment = (deployment: Deployment) => {
     const deploymentId = deployment.id;
     const selectedDeployment = deployments?.find((d) => d.id === deploymentId);
@@ -155,15 +174,6 @@ export default ({
     EVERY_WEEK: t("Every Week"),
     EVERY_MONTH: t("Every Month"),
   };
-
-  const {
-    pendingWorkflowData,
-    workflowVariablesObject,
-    openTriggerProjectVariablesDialog,
-    setOpenTriggerProjectVariablesDialog,
-    handleWorkflowFetch,
-    handleVariablesConfirm,
-  } = useDeploymentWorkflowVariables();
 
   const handleTriggerCreation = useCallback(async () => {
     const workspaceId = currentWorkspace?.id;

@@ -1,3 +1,4 @@
+import { isEqual } from "lodash-es";
 import { ChangeEvent, useCallback, useState } from "react";
 
 import { useTrigger } from "@flow/lib/gql";
@@ -86,9 +87,11 @@ export default ({
   ]);
 
   // Check if variables have changed by comparing JSON strings
-  const variablesChanged =
-    JSON.stringify(workflowVariablesObject || {}) !==
-    JSON.stringify(selectedTrigger.variables || {});
+
+  const variablesChanged = !isEqual(
+    workflowVariablesObject || {},
+    selectedTrigger.variables || {},
+  );
 
   return {
     updatedEventSource,

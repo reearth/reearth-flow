@@ -749,7 +749,7 @@
   "Update Trigger": "Mettre à jour le déclencheur",
   "Trigger Details": "Détails du déclencheur",
   "Configure Project Variables": "Configurer les variables de projet",
-  "The deployment contains {{count}} variables. Configure how they should be set as Project Variables._one": "La déploiement contient {{count}} variable. Configurez comment elles doivent être définies en tant que variables de projet.",
+  "The deployment contains {{count}} variables. Configure how they should be set as Project Variables._one": "Le déploiement contient {{count}} variable. Configurez comment elles doivent être définies en tant que variables de projet.",
   "The deployment contains {{count}} variables. Configure how they should be set as Project Variables._many": "Le déploiement contient {{count}} variables. Configurez comment elles doivent être définies en tant que variables de projet.",
   "The deployment contains {{count}} variables. Configure how they should be set as Project Variables._other": "Le déploiement contient {{count}} variables. Configurez comment elles doivent être définies en tant que variables de projet.",
   "Confirm Variables": "Confirmer les variables",

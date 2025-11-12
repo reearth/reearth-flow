@@ -77,12 +77,14 @@ const TriggerEditDialog: React.FC<Props> = ({
           {selectedTrigger.variables && (
             <DialogContentSection className="flex flex-col">
               <Label>{t("Workflow Variables")}</Label>
-              <Button
-                variant="outline"
+              <div
+                className="flex min-h-8 w-full cursor-pointer items-center rounded-md border bg-transparent px-3 py-1 text-sm"
                 onClick={() => setOpenTriggerProjectVariablesDialog(true)}>
-                {t("Edit Variables")} (
-                {Object.keys(selectedTrigger.variables).length})
-              </Button>
+                <span className=" pr-2 whitespace-nowrap text-muted-foreground">
+                  {t("Edit Variables")} (
+                  {Object.keys(selectedTrigger.variables).length})
+                </span>
+              </div>
             </DialogContentSection>
           )}
           <DialogContentSection className="flex-1">

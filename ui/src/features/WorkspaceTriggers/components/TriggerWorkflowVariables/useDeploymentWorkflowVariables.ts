@@ -40,28 +40,33 @@ export const useDeploymentWorkflowVariables = (
 
   const handleWorkflowFetch = useCallback(async (workflowUrl?: string) => {
     if (!workflowUrl) return;
-    const response = await fetch(workflowUrl);
-
-    const jsonData = await response.json();
-
-    const variablesObj = jsonData.with || {};
-
-    setWorkflowVariablesObject(variablesObj);
-    const variablesArray: WorkflowVariable[] = Object.entries(variablesObj).map(
-      ([name, value]) => ({
+    try {
+      const response = await fetch(workflowUrl);
+      if (!response.ok) {
+        return;
+      }
+      const jsonData = await response.json();
+      const variablesObj = jsonData.with || {};
+      setWorkflowVariablesObject(variablesObj);
+      const variablesArray: WorkflowVariable[] = Object.entries(
+        variablesObj,
+      ).map(([name, value]) => ({
         name,
         value,
-      }),
-    );
-    // Return early if there are no variables
-    if (variablesArray.length === 0) {
+      }));
+
+      // Return early if there are no variables
+      if (variablesArray.length === 0) {
+        return;
+      }
+      setPendingWorkflowData({
+        variables: variablesArray,
+        workflowName: jsonData.name,
+      });
+    } catch (error) {
+      console.error("Failed to fetch workflow:", error);
       return;
     }
-
-    setPendingWorkflowData({
-      variables: variablesArray,
-      workflowName: jsonData.name,
-    });
   }, []);
 
   const handleVariablesConfirm = useCallback((projectVariables: any[]) => {
