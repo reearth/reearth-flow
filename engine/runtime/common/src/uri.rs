@@ -666,4 +666,102 @@ mod tests {
         let url: url::Url = uri.into();
         assert_eq!(url.as_str(), "gs://bucket/key");
     }
+
+    #[test]
+    fn test_uri_japanese_city_path() {
+        let uri = Uri::for_test("file:///plateau/08220_筑波市/bldg/53394525_bldg_6697_op.gml");
+        assert_eq!(uri.protocol(), Protocol::File);
+        assert!(uri.to_string().contains("筑波市"));
+    }
+
+    #[test]
+    fn test_uri_japanese_codelists_path() {
+        let uri = Uri::for_test("file:///codelists/Common_localPublicAuthorities.xml");
+        let joined = uri.join("../Building_usage.xml").unwrap();
+        assert!(joined.to_string().contains("Building_usage.xml"));
+    }
+
+    #[test]
+    fn test_uri_plateau_mesh_code_pattern() {
+        let uri = Uri::for_test("file:///data/53394525_bldg_6697_op.gml");
+        let file_name = uri.file_name().unwrap();
+        assert_eq!(file_name, Path::new("53394525_bldg_6697_op.gml"));
+    }
+
+    #[test]
+    fn test_uri_with_spaces() {
+        let uri = Uri::for_test("file:///path/with spaces/file.gml");
+        assert!(uri.to_string().contains("with spaces"));
+    }
+
+    #[test]
+    fn test_uri_nested_relative_paths() {
+        let base = Uri::for_test("file:///plateau/schemas/");
+        let result = base.join("../../codelists/Building.xml").unwrap();
+        assert!(result.to_string().contains("codelists"));
+    }
+
+    #[test]
+    fn test_uri_windows_path_conversion() {
+        let uri = Uri::from_str("file:///C:/plateau/data/building.gml");
+        assert!(uri.is_ok());
+    }
+
+    #[test]
+    fn test_uri_http_plateau_download() {
+        let uri = Uri::for_test("https://plateau.example.com/data/13101_tokyo/bldg.gml");
+        assert_eq!(uri.protocol(), Protocol::Https);
+        assert!(uri.to_string().contains("13101_tokyo"));
+    }
+
+    #[test]
+    fn test_uri_special_characters_in_filename() {
+        let uri = Uri::for_test("file:///data/building(1).gml");
+        assert!(uri.to_string().contains("building(1)"));
+    }
+
+    #[test]
+    fn test_uri_very_long_path() {
+        let long_path = "a/".repeat(100);
+        let uri_str = format!("file:///{long_path}file.gml");
+        let uri = Uri::from_str(&uri_str);
+        assert!(uri.is_ok());
+    }
+
+    #[test]
+    fn test_uri_extension_plateau_files() {
+        assert_eq!(
+            Uri::for_test("file:///building.gml").extension().unwrap(),
+            "gml"
+        );
+        assert_eq!(
+            Uri::for_test("file:///codelist.xml").extension().unwrap(),
+            "xml"
+        );
+        assert_eq!(
+            Uri::for_test("file:///archive.7z").extension().unwrap(),
+            "7z"
+        );
+    }
+
+    #[test]
+    fn test_uri_root_plateau_structure() {
+        let uri = Uri::for_test("file:///08220_tsukuba-shi/udx/bldg/codelists/Building_class.xml");
+        let parent = uri.parent().unwrap();
+        assert!(parent.to_string().contains("codelists"));
+    }
+
+    #[test]
+    fn test_uri_join_with_query_params() {
+        let base = Uri::for_test("https://api.plateau.com/data");
+        let result = base.join("buildings?city=tokyo");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_uri_multiple_dots_in_path() {
+        let uri = Uri::for_test("file:///data/file.backup.gml");
+        assert_eq!(uri.extension().unwrap(), "gml");
+    }
 }
+
