@@ -14,7 +14,7 @@ import {
 import { OrderDirection } from "@flow/types/paginationOptions";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
-import { useDeploymentWorkflowVariables } from "../TriggerWorkflowVariables/useDeploymentWorkflowVariables";
+import { useTriggerWorkflowVariables } from "../TriggerWorkflowVariables/useTriggerWorkflowVariables";
 
 export default ({
   setShowDialog,
@@ -130,7 +130,7 @@ export default ({
     handleWorkflowFetch,
     handleVariablesConfirm,
     getVariablesToSave,
-  } = useDeploymentWorkflowVariables();
+  } = useTriggerWorkflowVariables();
 
   useEffect(() => {
     if (

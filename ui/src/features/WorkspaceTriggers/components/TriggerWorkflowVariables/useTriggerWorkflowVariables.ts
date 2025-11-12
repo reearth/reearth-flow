@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 
 import { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
 
-export const useDeploymentWorkflowVariables = (
+export const useTriggerWorkflowVariables = (
   initialVariables?: Record<string, any>,
 ) => {
   const [

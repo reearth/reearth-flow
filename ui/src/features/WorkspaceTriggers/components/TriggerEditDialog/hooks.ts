@@ -4,7 +4,7 @@ import { ChangeEvent, useCallback, useEffect, useState } from "react";
 import { useTrigger } from "@flow/lib/gql";
 import { Trigger, TimeInterval, EventSourceType } from "@flow/types";
 
-import { useDeploymentWorkflowVariables } from "../TriggerWorkflowVariables/useDeploymentWorkflowVariables";
+import { useTriggerWorkflowVariables } from "../TriggerWorkflowVariables/useTriggerWorkflowVariables";
 
 export default ({
   selectedTrigger,
@@ -62,7 +62,7 @@ export default ({
     handleVariablesConfirm,
     getVariablesToSave,
     handleWorkflowFetch,
-  } = useDeploymentWorkflowVariables(selectedTrigger.variables);
+  } = useTriggerWorkflowVariables(selectedTrigger.variables);
 
   // Fetch deployment workflow to get default variables for comparison
   useEffect(() => {
