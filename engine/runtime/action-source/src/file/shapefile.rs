@@ -320,10 +320,8 @@ fn parse_prj_epsg(prj_data: &[u8]) -> Option<EpsgCode> {
                 ("GCS_WGS_1984", 4326),
                 ("WGS_1984", 4326),
                 ("WGS_84", 4326),
-                // NAD83 zones (US)
-                ("NAD_1983_UTM_Zone_", 0), // Requires zone number parsing
-                // Common European systems
-                ("ETRS_1989_UTM_Zone_", 0), // Requires zone number parsing
+                // Note: UTM zones require zone number parsing - not implemented yet
+                // Examples: NAD_1983_UTM_Zone_NN, ETRS_1989_UTM_Zone_NN
             ];
 
             for (name_pattern, epsg) in esri_name_mapping {
