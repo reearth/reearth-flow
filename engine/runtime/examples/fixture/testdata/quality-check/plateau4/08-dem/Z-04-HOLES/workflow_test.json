@@ -8,6 +8,16 @@
       "jsonFilter": "{attributes}"
     }
   ],
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_dem.json",
+      "includeFields": ["不正な穴"]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "08_地形_検査結果一覧.csv",
+      "includeColumns": ["不正な穴"]
+    }
+  },
   "cityGmlPath": "udx/dem/input.gml",
   "codelists": "codelists",
   "schemas": "schemas",

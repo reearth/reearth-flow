@@ -83,7 +83,7 @@ graphs:
 
       # Branch 1: Incorrect number of vertices
       - id: 2c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
-        name: AttributeMapperIncorrectVertices
+        name: AttributeMapperIncorrectNumVertices
         type: action
         action: AttributeMapper
         with:
@@ -99,13 +99,25 @@ graphs:
                 env.get("__value")._relief_index ?? ""
 
       - id: 3d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
-        name: CsvWriterIncorrectVertices
+        name: ShapefileWriterIncorrectNumVertices
         type: action
-        action: FeatureWriter
+        action: ShapefileWriter
         with:
-          format: csv
           output: |
-            file::join_path(env.get("outputPath"), "08_地形_不正な頂点の数.csv")
+            file::join_path(env.get("outputPath"), "08_地形_不正な頂点の数.shp")
+
+      - id: a6c01ab1-af4a-41df-8173-4e40fa210cc1
+        name: StatisticsCalculatorForIncorrectNumVertices
+        type: action
+        action: StatisticsCalculator
+        with:
+          groupBy:
+            - fileIndex
+            - name
+            - _relief_index
+          calculations:
+            - newAttribute: _num_incorrect_num_vertices
+              expr: "1"
 
       # Branch 2: Triangle not closed
       - id: 4e5f6a7b-8c9d-0e1f-2a3b-4c5d6e7f8a9b
@@ -124,7 +136,6 @@ graphs:
               expr: |
                 env.get("__value")._relief_index ?? ""
 
-
       - id: 5f6a7b8c-9d0e-1f2a-3b4c-5d6e7f8a9b0c
         name: ShapefileWriterNotClosed
         type: action
@@ -132,6 +143,19 @@ graphs:
         with:
           output: |
             file::join_path(env.get("outputPath"), "08_地形_閉じていない三角形.shp")
+      
+      - id: a6c01ab1-af4a-41df-8173-4e40fa210cc0
+        name: StatisticsCalculatorForNotClosedErrors
+        type: action
+        action: StatisticsCalculator
+        with:
+          groupBy:
+            - fileIndex
+            - name
+            - _relief_index
+          calculations:
+            - newAttribute: _num_not_closed
+              expr: "1"
 
       # Branch 3: Wrong orientation
       - id: 33da38fb-277d-4ab4-a912-a30f5ffc4b33
@@ -156,7 +180,20 @@ graphs:
         action: ShapefileWriter
         with:
           output: |
-            file::join_path(env.get("outputPath"), "08_地形_反転した三角形.shp")
+            file::join_path(env.get("outputPath"), "08_地形_三角形の向き不正.shp")
+
+      - id: f3cf5b89-de83-43c9-bc87-0a9630a750a2
+        name: StatisticsCalculatorForWrongOrientation
+        type: action
+        action: StatisticsCalculator
+        with:
+          groupBy:
+            - fileIndex
+            - name
+            - _relief_index
+          calculations:
+            - newAttribute: _num_wrong_orientation
+              expr: "1"
 
       # GeometryValidator for valid triangular meshes
       - id: f6f21bd1-4291-419e-aae6-f0be940ddd17
@@ -190,7 +227,20 @@ graphs:
         action: ShapefileWriter
         with:
           output: |
-            file::join_path(env.get("outputPath"), "08_地形_退化した三角形.shp")
+            file::join_path(env.get("outputPath"), "08_地形_潰れた三角形.shp")
+
+      - id: 8faf17e5-9e1f-438d-9748-73a2347c5c4c
+        name: StatisticsCalculatorForCorruptGeometry
+        type: action
+        action: StatisticsCalculator
+        with:
+          groupBy:
+            - fileIndex
+            - name
+            - _relief_index
+          calculations:
+            - newAttribute: _num_corrupt_geometry
+              expr: "1"
 
       # New pipeline nodes: Process valid geometries through boundary extraction and analysis
       - id: b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e
@@ -259,7 +309,173 @@ graphs:
         action: ShapefileWriter
         with:
           output: |
-            file::join_path(env.get("outputPath"), "08_地形_有効な境界.shp")
+            file::join_path(env.get("outputPath"), "08_地形_不正な穴.shp")
+
+      - id: d9f1910a-dba9-46ce-adb3-4db1f07e3da1
+        name: StatisticsCalculatorForInvalidBoundaries
+        type: action
+        action: StatisticsCalculator
+        with:
+          groupBy:
+            - fileIndex
+            - name
+            - _relief_index
+          calculations:
+            - newAttribute: _num_invalid_boundaries
+              expr: "1"
+
+      # FeatureMerger for aggregating error counts
+      - id: e1f2a3b4-c5d6-e7f8-a9b0-c1d2e3f4a5b6
+        name: ErrorSummaryMerger
+        type: action
+        action: FeatureMerger
+        with:
+          requestorAttributeValue: |
+            env.get("__value").name
+          supplierAttributeValue: |
+            env.get("__value").name
+
+      # AttributeMapper for CSV formatting
+      - id: f2a3b4c5-d6e7-f8a9-b0c1-d2e3f4a5b6c7
+        name: SummaryAttributeMapper
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").fileIndex
+            - attribute: Filename
+              expr: |
+                env.get("__value").name
+            - attribute: "Relief Index"
+              expr: |
+                env.get("__value")._relief_index ?? ""
+            - attribute: "不正な頂点の数"
+              expr: |
+                env.get("__value")._num_incorrect_num_vertices ?? 0
+            - attribute: "閉じていない三角形"
+              expr: |
+                env.get("__value")._num_not_closed ?? 0
+            - attribute: "三角形の向き不正"
+              expr: |
+                env.get("__value")._num_wrong_orientation ?? 0
+            - attribute: "潰れた三角形"
+              expr: |
+                env.get("__value")._num_corrupt_geometry ?? 0
+            - attribute: "不正な穴"
+              expr: |
+                env.get("__value")._num_invalid_boundaries ?? 0
+
+      # CSV output
+      - id: a3b4c5d6-e7f8-a9b0-c1d2-e3f4a5b6c7d8
+        name: CSVSummaryWriter
+        type: action
+        action: FeatureWriter
+        with:
+          format: csv
+          output: |
+            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "08_地形_検査結果一覧.csv")
+
+      # StatisticsCalculator for JSON aggregation
+      - id: b4c5d6e7-f8a9-b0c1-d2e3-f4a5b6c7d8e9
+        name: StatisticsCalculatorJSON
+        type: action
+        action: StatisticsCalculator
+        with:
+          calculations:
+            - newAttribute: "不正な頂点の数"
+              expr: |
+                env.get("__value")["不正な頂点の数"] ?? 0
+            - newAttribute: "閉じていない三角形"
+              expr: |
+                env.get("__value")["閉じていない三角形"] ?? 0
+            - newAttribute: "三角形の向き不正"
+              expr: |
+                env.get("__value")["三角形の向き不正"] ?? 0
+            - newAttribute: "潰れた三角形"
+              expr: |
+                env.get("__value")["潰れた三角形"] ?? 0
+            - newAttribute: "不正な穴"
+              expr: |
+                env.get("__value")["不正な穴"] ?? 0
+            - newAttribute: totalErrorCount
+              expr: |
+                let total = 0;
+                let keys = ["不正な頂点の数","閉じていない三角形","三角形の向き不正","潰れた三角形","不正な穴"];
+                for key in keys {
+                  total += env.get("__value")[key] ?? 0;
+                }
+                total
+
+      # JSON output with converter
+      - id: c5d6e7f8-a9b0-c1d2-e3f4-a5b6c7d8e9f0
+        name: JSONSummaryWriter
+        type: action
+        action: FeatureWriter
+        with:
+          format: json
+          converter: |
+            if env.get("__features").is_empty() {
+              []
+            } else {
+              let result = [];
+              let feature = env.get("__features")[0];
+              for key in feature.keys() {
+                result.push(#{
+                  name: key,
+                  count: feature[key],
+                });
+              }
+              result
+            }
+          output: |
+            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_dem.json")
+
+      # Calculate total errors for no-error check
+      - id: d6e7f8a9-b0c1-d2e3-f4a5-b6c7d8e9f0a1
+        name: StatisticsCalculatorTotalErrors
+        type: action
+        action: StatisticsCalculator
+        with:
+          calculations:
+            - newAttribute: totalErrorCount
+              expr: |
+                env.get("__value")["totalErrorCount"] ?? 0
+
+      # Filter for no errors
+      - id: e7f8a9b0-c1d2-e3f4-a5b6-c7d8e9f0a1b2
+        name: FeatureFilterNoErrors
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value")["totalErrorCount"] == 0
+              outputPort: default
+
+      # Write qc_result_ok file
+      - id: f8a9b0c1-d2e3-f4a5-b6c7-d8e9f0a1b2c3
+        name: JsonWriterQcResultOk
+        type: action
+        action: JsonWriter
+        with:
+          converter: '[]'
+          output: |
+            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
+            let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+            file::join_path(dirname, filename)
+
+      # ZipFileWriter - Bundle all output files
+      - id: a9b0c1d2-e3f4-a5b6-c7d8-e9f0a1b2c3d4
+        name: ZipFileWriter
+        type: action
+        action: ZipFileWriter
+        with:
+          output: |
+            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
+            let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+            file::join_path(dirname, filename)
 
     edges:
       - id: 7613b326-d3d7-4fdc-b7e1-9821e120ac49
@@ -290,12 +506,6 @@ graphs:
       - id: 31d8d432-82c6-47e4-9cf2-4acafc87a848
         from: 33cb26b6-bba2-4600-ae1b-df5d7c0b4678
         to: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
-        fromPort: default
-        toPort: default
-      # Connect default port (valid meshes) to GeometryValidator
-      - id: a66871fe-2cd7-48d8-ac53-1bfa274c6c67
-        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
-        to: f6f21bd1-4291-419e-aae6-f0be940ddd17
         fromPort: default
         toPort: default
       - id: 0c1d2e3f-4a5b-6c7d-8e9f-0a1b2c3d4e5f
@@ -329,20 +539,20 @@ graphs:
         to: f18df02b-d7f1-42c4-9136-e6001115e3a7
         fromPort: default
         toPort: default
-      # Branch 4 edges: GeometryValidator -> AttributeMapper -> ShapefileWriter
+      # Branch 4 edges: degenerate_triangle
       - id: 4a5b6c7d-8e9f-0a1b-2c3d-4e5f6a7b8c9d
-        from: f6f21bd1-4291-419e-aae6-f0be940ddd17
+        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
         to: 7b8c9d0e-1f2a-3b4c-5d6e-7f8a9b0c1d2e
-        fromPort: failed
+        fromPort: degenerate_triangle
         toPort: default
       - id: 6c7d8e9f-0a1b-2c3d-4e5f-6a7b8c9d0e1f
         from: 7b8c9d0e-1f2a-3b4c-5d6e-7f8a9b0c1d2e
         to: 8c9d0e1f-2a3b-4c5d-6e7f-8a9b0c1d2e3f
         fromPort: default
         toPort: default
-      # New pipeline: success port -> BoundaryExtractor -> GeometrySplitter -> VertexCounter -> FeatureSorter -> FeatureCounter -> FeatureFilter -> AttributeMapper -> ShapefileWriter
+      # Holes: BoundaryExtractor -> GeometrySplitter -> VertexCounter -> FeatureSorter -> FeatureCounter -> FeatureFilter -> AttributeMapper -> ShapefileWriter
       - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
-        from: f6f21bd1-4291-419e-aae6-f0be940ddd17
+        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
         to: b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e
         fromPort: success
         toPort: default
@@ -379,5 +589,142 @@ graphs:
       - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9e
         from: b3c4d5e6-f7a8-9b0c-1d2e-3f4a5b6c7d8e
         to: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e0f
+        fromPort: default
+        toPort: default
+      # Connect StatisticsCalculator nodes to their inspection sources
+      # Branch 1: Incorrect vertices - from CityGmlMeshBuilder
+      - id: 51a0e1f2-a3b4-c5d6-e7f8-a9b0c1d2e3f4
+        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
+        to: a6c01ab1-af4a-41df-8173-4e40fa210cc1
+        fromPort: incorrect_vertices
+        toPort: default
+      # Branch 2: Not closed - from CityGmlMeshBuilder
+      - id: 62b1f2a3-b4c5-d6e7-f8a9-b0c1d2e3f4a5
+        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
+        to: a6c01ab1-af4a-41df-8173-4e40fa210cc0
+        fromPort: not_closed
+        toPort: default
+      # Branch 3: Wrong orientation - from CityGmlMeshBuilder
+      - id: 73c2a3b4-c5d6-e7f8-a9b0-c1d2e3f4a5b6
+        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
+        to: f3cf5b89-de83-43c9-bc87-0a9630a750a2
+        fromPort: wrong_orientation
+        toPort: default
+      # Branch 4: Corrupt geometry - from CityGmlMeshBuilder
+      - id: 84d3b4c5-d6e7-f8a9-b0c1-d2e3f4a5b6c7
+        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
+        to: 8faf17e5-9e1f-438d-9748-73a2347c5c4c
+        fromPort: degenerate_triangle
+        toPort: default
+      # Branch 5: Invalid boundaries - from FeatureFilter
+      - id: 95e4c5d6-e7f8-a9b0-c1d2-e3f4a5b6c7d8
+        from: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6e
+        to: d9f1910a-dba9-46ce-adb3-4db1f07e3da1
+        fromPort: default
+        toPort: default
+
+      # Error aggregation flow
+      # Connect summary port to FeatureMerger requestor
+      - id: a6e5f4d3-c2b1-f0a9-8e7d-6c5b4a3f2e1d
+        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f  # CityGmlMeshBuilder
+        to: e1f2a3b4-c5d6-e7f8-a9b0-c1d2e3f4a5b6    # ErrorSummaryMerger
+        fromPort: summary
+        toPort: requestor
+
+      # Connect all StatisticsCalculators to FeatureMerger supplier
+      - id: b7f6a5e4-d3c2-a1f0-9e8d-7c6b5a4f3e2d
+        from: a6c01ab1-af4a-41df-8173-4e40fa210cc1  # StatisticsCalculatorForIncorrectNumVertices
+        to: e1f2a3b4-c5d6-e7f8-a9b0-c1d2e3f4a5b6    # ErrorSummaryMerger
+        fromPort: default
+        toPort: supplier
+
+      - id: c8a7b6f5-e4d3-b2a1-0f9e-8d7c6b5a4f3e
+        from: a6c01ab1-af4a-41df-8173-4e40fa210cc0  # StatisticsCalculatorForNotClosedErrors
+        to: e1f2a3b4-c5d6-e7f8-a9b0-c1d2e3f4a5b6    # ErrorSummaryMerger
+        fromPort: default
+        toPort: supplier
+
+      - id: d9b8c7a6-f5e4-c3d2-1a0f-9e8d7c6b5a4f
+        from: f3cf5b89-de83-43c9-bc87-0a9630a750a2  # StatisticsCalculatorForWrongOrientation
+        to: e1f2a3b4-c5d6-e7f8-a9b0-c1d2e3f4a5b6    # ErrorSummaryMerger
+        fromPort: default
+        toPort: supplier
+
+      - id: e0c9d8b7-a6f5-d4e3-2b1a-0f9e8d7c6b5a
+        from: 8faf17e5-9e1f-438d-9748-73a2347c5c4c  # StatisticsCalculatorForCorruptGeometry
+        to: e1f2a3b4-c5d6-e7f8-a9b0-c1d2e3f4a5b6    # ErrorSummaryMerger
+        fromPort: default
+        toPort: supplier
+
+      - id: f1d0e9c8-b7a6-e5f4-3c2d-1a0f9e8d7c6b
+        from: d9f1910a-dba9-46ce-adb3-4db1f07e3da1  # StatisticsCalculatorForInvalidBoundaries
+        to: e1f2a3b4-c5d6-e7f8-a9b0-c1d2e3f4a5b6    # ErrorSummaryMerger
+        fromPort: default
+        toPort: supplier
+
+      # Connect FeatureMerger to AttributeMapper
+      - id: a2e1f0d9-c8b7-f6a5-4d3e-2b1a0f9e8d7c
+        from: e1f2a3b4-c5d6-e7f8-a9b0-c1d2e3f4a5b6  # ErrorSummaryMerger
+        to: f2a3b4c5-d6e7-f8a9-b0c1-d2e3f4a5b6c7    # SummaryAttributeMapper
+        fromPort: merged
+        toPort: default
+
+      - id: b3f2a1e0-d9c8-a7b6-5e4f-3c2d1a0f9e8d
+        from: e1f2a3b4-c5d6-e7f8-a9b0-c1d2e3f4a5b6  # ErrorSummaryMerger
+        to: f2a3b4c5-d6e7-f8a9-b0c1-d2e3f4a5b6c7    # SummaryAttributeMapper
+        fromPort: unmerged
+        toPort: default
+
+      # Connect AttributeMapper to CSV writer
+      - id: c4a3b2f1-e0d9-b8c7-6f5a-4d3e2b1a0f9e
+        from: f2a3b4c5-d6e7-f8a9-b0c1-d2e3f4a5b6c7  # SummaryAttributeMapper
+        to: a3b4c5d6-e7f8-a9b0-c1d2-e3f4a5b6c7d8    # CSVSummaryWriter
+        fromPort: default
+        toPort: default
+
+      # Connect to JSON aggregation
+      - id: d5b4c3a2-f1e0-c9d8-7a6b-5e4f3c2d1a0f
+        from: f2a3b4c5-d6e7-f8a9-b0c1-d2e3f4a5b6c7  # SummaryAttributeMapper
+        to: b4c5d6e7-f8a9-b0c1-d2e3-f4a5b6c7d8e9    # StatisticsCalculatorJSON
+        fromPort: default
+        toPort: default
+
+      # Connect JSON aggregation to JSON writer
+      - id: e6c5d4b3-a2f1-d0e9-8b7c-6f5a4d3e2b1a
+        from: b4c5d6e7-f8a9-b0c1-d2e3-f4a5b6c7d8e9  # StatisticsCalculatorJSON
+        to: c5d6e7f8-a9b0-c1d2-e3f4-a5b6c7d8e9f0    # JSONSummaryWriter
+        fromPort: default
+        toPort: default
+
+      # Connect to total error calculator
+      - id: f7d6e5c4-b3a2-e1f0-9c8d-7a6b5e4f3c2d
+        from: b4c5d6e7-f8a9-b0c1-d2e3-f4a5b6c7d8e9  # StatisticsCalculatorJSON
+        to: d6e7f8a9-b0c1-d2e3-f4a5-b6c7d8e9f0a1    # StatisticsCalculatorTotalErrors
+        fromPort: default
+        toPort: default
+
+      # Connect to no-error filter
+      - id: a8e7f6d5-c4b3-f2a1-0d9e-8c7d6f5a4d3e
+        from: d6e7f8a9-b0c1-d2e3-f4a5-b6c7d8e9f0a1  # StatisticsCalculatorTotalErrors
+        to: e7f8a9b0-c1d2-e3f4-a5b6-c7d8e9f0a1b2    # FeatureFilterNoErrors
+        fromPort: default
+        toPort: default
+
+      - id: d1b0c9a8-f7e6-c5d4-3a2b-1f0e9f8d7c6f
+        from: c5d6e7f8-a9b0-c1d2-e3f4-a5b6c7d8e9f0  # JSONSummaryWriter
+        to: a9b0c1d2-e3f4-a5b6-c7d8-e9f0a1b2c3d4    # ZipFileWriter
+        fromPort: default
+        toPort: default
+
+      - id: e2c1d0b9-a8f7-d6e5-4b3c-2a1f0e9f8d7c
+        from: a3b4c5d6-e7f8-a9b0-c1d2-e3f4a5b6c7d8  # CSVSummaryWriter
+        to: a9b0c1d2-e3f4-a5b6-c7d8-e9f0a1b2c3d4    # ZipFileWriter
+        fromPort: default
+        toPort: default
+
+      # Connect to qc_result_ok file writer
+      - id: b9f8a7e6-d5c4-a3b2-1e0f-9d8e7c6f5a4d
+        from: e7f8a9b0-c1d2-e3f4-a5b6-c7d8e9f0a1b2  # FeatureFilterNoErrors
+        to: f8a9b0c1-d2e3-f4a5-b6c7-d8e9f0a1b2c3    # JsonWriterQcResultOk
         fromPort: default
         toPort: default

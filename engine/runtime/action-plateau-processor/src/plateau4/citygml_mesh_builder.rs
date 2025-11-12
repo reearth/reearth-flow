@@ -2,10 +2,11 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 
+use approx::AbsDiffEq;
 use quick_xml::events::Event;
 use quick_xml::Reader;
 use reearth_flow_geometry::types::{
-    coordinate::Coordinate3D, geometry::Geometry, point::Point3D, triangular_mesh::TriangularMesh,
+    coordinate::Coordinate3D, geometry::Geometry3D, line_string::LineString3D, point::Point3D, triangular_mesh::TriangularMesh
 };
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -14,7 +15,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Geometry as FlowGeometry};
+use reearth_flow_types::{Attribute, AttributeValue, Geometry as FlowGeometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -51,6 +52,8 @@ impl ProcessorFactory for CityGmlMeshBuilderFactory {
             Port::new("not_closed"),
             Port::new("incorrect_vertices"),
             Port::new("wrong_orientation"),
+            Port::new("degenerate_triangle"),
+            Port::new("summary"),
             REJECTED_PORT.clone(),
         ]
     }
@@ -143,7 +146,15 @@ impl Processor for CityGmlMeshBuilder {
             }
             _ => {
                 // No path attribute, pass through unchanged
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                // Also send summary feature for consistency
+                let mut summary_feature = feature.clone();
+                summary_feature.geometry = FlowGeometry::default();
+                summary_feature.attributes.insert(
+                    Attribute::new("_relief_index"),
+                    AttributeValue::Number(self.relief_feature_counter.into()),
+                );
+                fw.send(ctx.new_with_feature_and_port(summary_feature, Port::new("summary")));
                 return Ok(());
             }
         };
@@ -157,7 +168,15 @@ impl Processor for CityGmlMeshBuilder {
                     self.params.error_attribute.clone(),
                     AttributeValue::String(format!("Failed to parse CityGML: {e}")),
                 );
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                // Also send summary feature for consistency
+                let mut summary_feature = feature.clone();
+                summary_feature.geometry = FlowGeometry::default();
+                summary_feature.attributes.insert(
+                    Attribute::new("_relief_index"),
+                    AttributeValue::Number(self.relief_feature_counter.into()),
+                );
+                fw.send(ctx.new_with_feature_and_port(summary_feature, Port::new("summary")));
                 return Ok(());
             }
         };
@@ -168,160 +187,43 @@ impl Processor for CityGmlMeshBuilder {
             AttributeValue::Number(self.relief_feature_counter.into()),
         );
 
+        let ValidationResult { errors, triangular_mesh, epsg_code } = validation_result;
+        if let Some(triangular_mesh) = triangular_mesh {
+            let geometry_value = GeometryValue::FlowGeometry3D(Geometry3D::TriangularMesh(
+                triangular_mesh,
+            ));
+            let geometry = FlowGeometry {
+                epsg: epsg_code,
+                value: geometry_value,
+            };
+            feature.geometry = geometry;
+
+            // Send to default port
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+            return Ok(());
+        }
+
+        // Create and send summary feature
+        // This contains file metadata with a null geometry for aggregation
+        let mut summary_feature = feature.clone();
+        summary_feature.geometry = FlowGeometry::default(); // Null geometry
+        fw.send(ctx.new_with_feature_and_port(summary_feature, Port::new("summary")));
+
         // Handle validation results - route to appropriate ports
-        if validation_result.has_not_closed_errors {
-            // Features with "not closed" errors
-            let error_message = validation_result
-                .errors
-                .iter()
-                .filter(|e| e.contains("not closed"))
-                .cloned()
-                .collect::<Vec<_>>()
-                .join("; ");
-
-            feature.attributes.insert(
-                self.params.error_attribute.clone(),
-                AttributeValue::String(error_message),
-            );
-
-            // Add error points as geometry if available
-            if !validation_result.error_points.is_empty() {
-                for error_point in validation_result.error_points {
-                    let flow_geom = Geometry::Point(error_point);
-                    let mut geom = FlowGeometry::with_value(
-                        reearth_flow_types::geometry::GeometryValue::FlowGeometry3D(flow_geom),
-                    );
-                    // Use EPSG code from CityGML if parsed, otherwise preserve from original feature
-                    geom.epsg = validation_result
-                        .epsg_code
-                        .or(feature.geometry.epsg);
-                    feature.geometry = geom;
-                    fw.send(
-                        ctx.new_with_feature_and_port(feature.clone(), Port::new("not_closed")),
-                    );
-                }
-            } else {
-                fw.send(ctx.new_with_feature_and_port(feature, Port::new("not_closed")));
-            }
-        } else if validation_result.has_incorrect_vertices_errors {
-            // Features with incorrect vertex count errors
-            let error_message = validation_result
-                .errors
-                .iter()
-                .filter(|e| e.contains("vertices"))
-                .cloned()
-                .collect::<Vec<_>>()
-                .join("; ");
-
-            feature.attributes.insert(
-                self.params.error_attribute.clone(),
-                AttributeValue::String(error_message),
-            );
-
-            // Add error points as geometry if available
-            if !validation_result.error_points.is_empty() {
-                for error_point in validation_result.error_points {
-                    let flow_geom = Geometry::Point(error_point);
-                    let mut geom = FlowGeometry::with_value(
-                        reearth_flow_types::geometry::GeometryValue::FlowGeometry3D(flow_geom),
-                    );
-                    // Use EPSG code from CityGML if parsed, otherwise preserve from original feature
-                    geom.epsg = validation_result
-                        .epsg_code
-                        .or(feature.geometry.epsg);
-                    feature.geometry = geom;
-                    fw.send(ctx.new_with_feature_and_port(
-                        feature.clone(),
-                        Port::new("incorrect_vertices"),
-                    ));
-                }
-            } else {
-                fw.send(ctx.new_with_feature_and_port(feature, Port::new("incorrect_vertices")));
-            }
-        } else if validation_result.has_wrong_orientation_errors {
-            // Features with wrong orientation errors (negative z-component in normal)
-            let error_message = validation_result
-                .errors
-                .iter()
-                .filter(|e| e.contains("wrong orientation"))
-                .cloned()
-                .collect::<Vec<_>>()
-                .join("; ");
-
-            feature.attributes.insert(
-                self.params.error_attribute.clone(),
-                AttributeValue::String(error_message),
-            );
-
-            // Add error points as geometry if available
-            if !validation_result.error_points.is_empty() {
-                for error_point in validation_result.error_points {
-                    let flow_geom = Geometry::Point(error_point);
-                    let mut geom = FlowGeometry::with_value(
-                        reearth_flow_types::geometry::GeometryValue::FlowGeometry3D(flow_geom),
-                    );
-                    // Use EPSG code from CityGML if parsed, otherwise preserve from original feature
-                    geom.epsg = validation_result
-                        .epsg_code
-                        .or(feature.geometry.epsg);
-                    feature.geometry = geom;
-                    fw.send(ctx.new_with_feature_and_port(
-                        feature.clone(),
-                        Port::new("wrong_orientation"),
-                    ));
-                }
-            } else {
-                fw.send(ctx.new_with_feature_and_port(feature, Port::new("wrong_orientation")));
-            }
-        } else if validation_result.errors.is_empty() {
-            // Valid feature - add triangular mesh if available and send to default port
-            if let Some(mesh) = validation_result.triangular_mesh {
-                let flow_geom = Geometry::TriangularMesh(mesh);
-                let mut geom = FlowGeometry::with_value(
-                    reearth_flow_types::geometry::GeometryValue::FlowGeometry3D(flow_geom),
-                );
-                // Use EPSG code from CityGML if parsed, otherwise preserve from original feature
-                geom.epsg = validation_result
-                    .epsg_code
-                    .or(feature.geometry.epsg);
-                feature.geometry = geom;
-            }
-            fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
-        } else {
-            // Other errors - use rejected port if configured
-            let error_message = validation_result.errors.join("; ");
-            feature.attributes.insert(
-                self.params.error_attribute.clone(),
-                AttributeValue::String(error_message),
-            );
-
-            // Add error points as geometry if available
-            if !validation_result.error_points.is_empty() {
-                for error_point in validation_result.error_points {
-                    let flow_geom = Geometry::Point(error_point);
-                    let mut geom = FlowGeometry::with_value(
-                        reearth_flow_types::geometry::GeometryValue::FlowGeometry3D(flow_geom),
-                    );
-                    // Use EPSG code from CityGML if parsed, otherwise preserve from original feature
-                    geom.epsg = validation_result
-                        .epsg_code
-                        .or(feature.geometry.epsg);
-                    feature.geometry = geom;
-                    let output_port = if self.params.reject_invalid {
-                        REJECTED_PORT.clone()
-                    } else {
-                        DEFAULT_PORT.clone()
-                    };
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), output_port));
-                }
-            } else {
-                let output_port = if self.params.reject_invalid {
-                    REJECTED_PORT.clone()
-                } else {
-                    DEFAULT_PORT.clone()
-                };
-                fw.send(ctx.new_with_feature_and_port(feature, output_port));
-            }
+        for error in errors {
+            let mut error_feature = feature.clone();
+            let Error { error_type, geometry } = error;
+            error_feature.geometry = FlowGeometry { epsg: epsg_code, value: geometry };
+            let port_name = match error_type {
+                ErrorType::NotClosed => "not_closed",
+                ErrorType::IncorrectNumVertices => "incorrect_vertices",
+                ErrorType::WrongOrientation => "wrong_orientation",
+                ErrorType::DegenerateTriangle => "degenerate_triangle",
+            };
+            fw.send(ctx.new_with_feature_and_port(
+                error_feature,
+                Port::new(port_name),
+            ));
         }
 
         Ok(())
@@ -339,14 +241,24 @@ impl Processor for CityGmlMeshBuilder {
 /// Validation result with categorized errors and geometry data
 #[derive(Debug)]
 struct ValidationResult {
-    errors: Vec<String>,
-    has_not_closed_errors: bool,
-    has_incorrect_vertices_errors: bool,
-    has_wrong_orientation_errors: bool,
+    errors: Vec<Error>,
     // Geometry data
     triangular_mesh: Option<TriangularMesh<f64>>,
-    error_points: Vec<Point3D<f64>>,
     epsg_code: Option<nusamai_projection::crs::EpsgCode>,
+}
+
+#[derive(Debug)]
+struct Error {
+    pub error_type: ErrorType,
+    pub geometry: GeometryValue
+}
+
+#[derive(Debug)]
+enum ErrorType {
+    NotClosed,
+    IncorrectNumVertices,
+    WrongOrientation,
+    DegenerateTriangle,
 }
 
 impl CityGmlMeshBuilder {
@@ -361,18 +273,13 @@ impl CityGmlMeshBuilder {
         reader.config_mut().trim_text(true);
 
         let mut errors = Vec::new();
-        let mut has_not_closed_errors = false;
-        let mut has_incorrect_vertices_errors = false;
-        let mut has_wrong_orientation_errors = false;
         let mut buf = Vec::new();
-        let mut triangle_idx = 0;
         let mut inside_triangle = false;
         let mut inside_pos_list = false;
         let mut epsg_code: Option<nusamai_projection::crs::EpsgCode> = None;
 
         // Collect triangle faces for TriangularMesh
         let mut valid_faces: Vec<[Coordinate3D<f64>; 3]> = Vec::new();
-        let mut error_points: Vec<Point3D<f64>> = Vec::new();
 
         loop {
             match reader.read_event_into(&mut buf) {
@@ -416,15 +323,15 @@ impl CityGmlMeshBuilder {
 
                     // Values come in groups of 3 (x, y, z)
                     if values.len() % 3 != 0 {
-                        errors.push(format!(
-                            "Triangle[gml_idx={}] has invalid coordinate count: {} (not divisible by 3)",
-                            triangle_idx,
-                            values.len()
-                        ));
-                        // Add error point at first coordinate if available
-                        if values.len() >= 3 {
-                            error_points.push(Point3D::new(values[0], values[1], values[2]));
-                        }
+                        let error = Error {
+                            error_type: ErrorType::IncorrectNumVertices,
+                            geometry: GeometryValue::FlowGeometry3D(Geometry3D::Point(Point3D::new(
+                                values[0],
+                                values[1],
+                                values[2],
+                            ))),
+                        };
+                        errors.push(error);
                     } else {
                         let num_vertices = values.len() / 3;
                         let mut has_error = false;
@@ -440,21 +347,14 @@ impl CityGmlMeshBuilder {
 
                         // Validation 1: Check vertex count
                         if num_vertices != 4 {
-                            errors.push(format!(
-                                "Triangle[gml_idx={triangle_idx}] has {num_vertices} vertices, expected 4"
-                            ));
-                            has_incorrect_vertices_errors = true;
                             has_error = true;
-                            // Add error point at centroid of available points
-                            if !coords.is_empty() {
-                                let centroid_x =
-                                    coords.iter().map(|c| c.x).sum::<f64>() / coords.len() as f64;
-                                let centroid_y =
-                                    coords.iter().map(|c| c.y).sum::<f64>() / coords.len() as f64;
-                                let centroid_z =
-                                    coords.iter().map(|c| c.z).sum::<f64>() / coords.len() as f64;
-                                error_points.push(Point3D::new(centroid_x, centroid_y, centroid_z));
-                            }
+                            let error = Error {
+                                error_type: ErrorType::IncorrectNumVertices,
+                                geometry: GeometryValue::FlowGeometry3D(Geometry3D::LineString(LineString3D::new(
+                                    coords.clone()
+                                )))
+                            };
+                            errors.push(error);
                         } else {
                             // Validation 2: Check if triangle is closed (first == last)
                             let first_x = values[0];
@@ -470,13 +370,14 @@ impl CityGmlMeshBuilder {
                                 && (first_z - last_z).abs() < EPSILON;
 
                             if !is_closed {
-                                errors.push(format!(
-                                    "Triangle[gml_idx={triangle_idx}] is not closed"
-                                ));
-                                has_not_closed_errors = true;
                                 has_error = true;
-                                // Add error point at the last vertex
-                                error_points.push(Point3D::new(last_x, last_y, last_z));
+                                let error = Error {
+                                    error_type: ErrorType::NotClosed,
+                                    geometry: GeometryValue::FlowGeometry3D(Geometry3D::LineString(LineString3D::new(
+                                        coords.clone()
+                                    )))
+                                };
+                                errors.push(error);
                             }
 
                             // Validation 3: Check triangle orientation via normal vector
@@ -497,18 +398,46 @@ impl CityGmlMeshBuilder {
 
                                 // Check if z-component is negative
                                 if normal_z > 0.0 {
-                                    errors.push(format!(
-                                        "Triangle[gml_idx={triangle_idx}] has wrong orientation (normal z-component: {normal_z})"
-                                    ));
-                                    has_wrong_orientation_errors = true;
                                     has_error = true;
-                                    // Add error point at triangle centroid
-                                    let centroid_x = (v0.x + v1.x + v2.x) / 3.0;
-                                    let centroid_y = (v0.y + v1.y + v2.y) / 3.0;
-                                    let centroid_z = (v0.z + v1.z + v2.z) / 3.0;
-                                    error_points
-                                        .push(Point3D::new(centroid_x, centroid_y, centroid_z));
+                                    let error = Error {
+                                        error_type: ErrorType::WrongOrientation,
+                                        geometry: GeometryValue::FlowGeometry3D(Geometry3D::LineString(LineString3D::new(
+                                            coords.clone()
+                                        )))
+                                    };
+                                    errors.push(error);
                                 }
+                            }
+
+                            // Validation 4: Check for degenerate triangle (area zero)
+                            let a = coords[0];
+                            let b = coords[1];
+                            let c = coords[2];
+
+                            let (a, b, c) = {
+                                let mean = (a + b + c) / 3.0;
+                                let a = a - mean;
+                                let b = b - mean;
+                                let c = c - mean;
+                                (a.normalize(), b.normalize(), c.normalize())
+                            };
+
+                            let ab = (b - a).norm();
+                            let ac = (c - a).norm();
+                            let bc = (c - b).norm();
+                            let epsilon: f64 = (ab + bc + ac) / (3.0 * 1e5);
+                            let is_degenerate = (ab + ac).abs_diff_eq(&bc, epsilon)
+                                || (ab + bc).abs_diff_eq(&ac, epsilon)
+                                || (ac + bc).abs_diff_eq(&ab, epsilon);
+                            if is_degenerate {
+                                has_error = true;
+                                let error = Error {
+                                    error_type: ErrorType::DegenerateTriangle,
+                                    geometry: GeometryValue::FlowGeometry3D(Geometry3D::LineString(LineString3D::new(
+                                        coords.clone()
+                                    )))
+                                };
+                                errors.push(error);
                             }
                         }
 
@@ -524,7 +453,6 @@ impl CityGmlMeshBuilder {
                     let name = e.name();
                     if name.as_ref() == b"gml:Triangle" {
                         inside_triangle = false;
-                        triangle_idx += 1;
                     }
                 }
                 Ok(Event::Eof) => break,
@@ -550,11 +478,7 @@ impl CityGmlMeshBuilder {
 
         Ok(ValidationResult {
             errors,
-            has_not_closed_errors,
-            has_incorrect_vertices_errors,
-            has_wrong_orientation_errors,
             triangular_mesh,
-            error_points,
             epsg_code,
         })
     }

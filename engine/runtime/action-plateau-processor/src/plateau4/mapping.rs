@@ -9,7 +9,7 @@ use super::{
     building_part_connectivity_checker::BuildingPartConnectivityCheckerFactory,
     building_usage_attribute_validator::BuildingUsageAttributeValidatorFactory,
     city_code_extractor::CityCodeExtractorFactory,
-    citygml_mesh_prevalidator::CityGmlMeshBuilderFactory,
+    citygml_mesh_builder::CityGmlMeshBuilderFactory,
     destination_mesh_code_extractor::DestinationMeshCodeExtractorFactory,
     domain_of_definition_validator::DomainOfDefinitionValidatorFactory,
     max_lod_extractor::MaxLodExtractorFactory,

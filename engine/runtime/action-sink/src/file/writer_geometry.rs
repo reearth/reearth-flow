@@ -214,9 +214,10 @@ fn geometry_2d_to_wkt(geom: &Geometry2D) -> Result<String, GeometryExportError> 
         | Geometry2D::Rect(_)
         | Geometry2D::Triangle(_)
         | Geometry2D::Solid(_)
-        | Geometry2D::CSG(_) => Err(GeometryExportError::UnsupportedGeometryType(format!(
-            "{geom:?}"
-        ))),
+        | Geometry2D::CSG(_)
+        | Geometry2D::TriangularMesh(_) => Err(GeometryExportError::UnsupportedGeometryType(
+            format!("{geom:?}"),
+        )),
     }
 }
 
@@ -326,9 +327,10 @@ fn geometry_3d_to_wkt(geom: &Geometry3D) -> Result<String, GeometryExportError> 
         | Geometry3D::Rect(_)
         | Geometry3D::Triangle(_)
         | Geometry3D::Solid(_)
-        | Geometry3D::CSG(_) => Err(GeometryExportError::UnsupportedGeometryType(format!(
-            "{geom:?}"
-        ))),
+        | Geometry3D::CSG(_)
+        | Geometry3D::TriangularMesh(_) => Err(GeometryExportError::UnsupportedGeometryType(
+            format!("{geom:?}"),
+        )),
     }
 }
 
