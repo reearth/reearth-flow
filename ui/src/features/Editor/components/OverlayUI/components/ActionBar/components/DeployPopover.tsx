@@ -52,14 +52,14 @@ const DeployPopover: React.FC<Props> = ({
   ]);
 
   return (
-    <div className="flex flex-col">
-      <div className="flex h-[61px] justify-between gap-2 p-4">
+    <div className="flex flex-col gap-2 p-4">
+      <div className="flex justify-between gap-2">
         <h4 className="text-md self-center rounded-t-lg leading-none tracking-tight dark:font-thin">
           {t("Deploy Project")}
         </h4>
       </div>
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-row items-center px-4">
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-row items-center">
           <Label>{t("Deployment Version: ")}</Label>
           <div className="flex items-center gap-2">
             <p className="pl-1 dark:font-thin">{currentVersion}</p>
@@ -69,7 +69,7 @@ const DeployPopover: React.FC<Props> = ({
             </p>
           </div>
         </div>
-        <div className="flex flex-col gap-2 px-4">
+        <div className="flex flex-col gap-2">
           <Label>{t("Description")}</Label>
           <Input
             value={description}
@@ -77,7 +77,7 @@ const DeployPopover: React.FC<Props> = ({
             placeholder={t("Give your deployment a meaningful description...")}
           />
         </div>
-        <div className="flex flex-col gap-4 px-4 pt-0 pb-4">
+        <div className="flex flex-col gap-4">
           <p className="text-sm dark:font-light">
             {t("Are you sure you want to proceed?")}
           </p>

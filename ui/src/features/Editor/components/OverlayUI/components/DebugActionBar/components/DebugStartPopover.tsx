@@ -20,17 +20,17 @@ const DebugStartPopover: React.FC<Props> = ({
   };
 
   return (
-    <div className="flex flex-col">
-      <div className="flex h-[61px] justify-between gap-2 p-4">
+    <div className="flex flex-col gap-2 p-4">
+      <div className="flex justify-between gap-2">
         <h4 className="text-md self-center rounded-t-lg leading-none tracking-tight dark:font-thin">
           {t("Start Debug Run")}
         </h4>
       </div>
-      <div className="flex flex-col gap-2 px-4 pt-0">
+      <div className="flex flex-col gap-2">
         <p className="text-sm dark:font-light">
           {t("Are you sure you want to start a debug run of this workflow?")}
         </p>
-        <div className="flex items-center justify-end pb-4">
+        <div className="flex items-center justify-end">
           <Button
             variant="outline"
             onClick={handleDebugRunStart}
