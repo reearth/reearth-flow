@@ -633,3 +633,126 @@ impl<T: CoordFloat + From<Z>, Z: CoordFloat> LineString<T, Z> {
         self.0.iter_mut().collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::coord;
+
+    #[test]
+    fn test_linestring_is_closed() {
+        let ls = LineString2D::new(vec![
+            coord! { x: 0.0, y: 0.0 },
+            coord! { x: 10.0, y: 0.0 },
+            coord! { x: 10.0, y: 10.0 },
+            coord! { x: 0.0, y: 10.0 },
+            coord! { x: 0.0, y: 0.0 },
+        ]);
+        
+        assert!(ls.is_closed());
+    }
+
+    #[test]
+    fn test_linestring_is_not_closed() {
+        let ls = LineString2D::new(vec![
+            coord! { x: 0.0, y: 0.0 },
+            coord! { x: 10.0, y: 0.0 },
+            coord! { x: 10.0, y: 10.0 },
+        ]);
+        
+        assert!(!ls.is_closed());
+    }
+
+    #[test]
+    fn test_linestring_close() {
+        let mut ls = LineString2D::new(vec![
+            coord! { x: 0.0, y: 0.0 },
+            coord! { x: 10.0, y: 0.0 },
+            coord! { x: 10.0, y: 10.0 },
+        ]);
+        
+        ls.close();
+        assert!(ls.is_closed());
+    }
+
+    #[test]
+    fn test_linestring_epsilon_closure() {
+        let epsilon = f64::EPSILON;
+        let ls = LineString2D::new(vec![
+            coord! { x: 0.0, y: 0.0 },
+            coord! { x: 10.0, y: 0.0 },
+            coord! { x: 0.0, y: 0.0 },
+        ]);
+        
+        assert!(ls.is_closed());
+        
+        let ls_open = LineString2D::new(vec![
+            coord! { x: 0.0, y: 0.0 },
+            coord! { x: 10.0, y: 0.0 },
+            coord! { x: 0.0 + epsilon * 10.0, y: 0.0 },
+        ]);
+        
+        assert!(!ls_open.is_closed());
+    }
+
+    #[test]
+    fn test_linestring_len() {
+        let ls = LineString2D::new(vec![
+            coord! { x: 0.0, y: 0.0 },
+            coord! { x: 10.0, y: 0.0 },
+            coord! { x: 10.0, y: 10.0 },
+        ]);
+        
+        assert_eq!(ls.len(), 3);
+    }
+
+    #[test]
+    fn test_linestring_empty() {
+        let ls: LineString2D<f64> = LineString2D::new(vec![]);
+        assert!(ls.is_empty());
+        assert_eq!(ls.len(), 0);
+    }
+
+    #[test]
+    fn test_linestring_single_point() {
+        let ls = LineString2D::new(vec![coord! { x: 139.7503, y: 35.6851 }]);
+        assert_eq!(ls.len(), 1);
+    }
+
+    #[test]
+    fn test_linestring_from_vec() {
+        let coords = vec![
+            coord! { x: 139.7503, y: 35.6851 },
+            coord! { x: 139.7506, y: 35.6854 },
+        ];
+        
+        let ls = LineString2D::new(coords.clone());
+        assert_eq!(ls.len(), 2);
+    }
+
+    #[test]
+    fn test_linestring_3d_heights() {
+        let ls = LineString3D::new(vec![
+            Coordinate::new__(139.7503, 35.6851, 0.0),
+            Coordinate::new__(139.7503, 35.6851, 15.5),
+            Coordinate::new__(139.7503, 35.6851, 30.0),
+        ]);
+        
+        assert_eq!(ls.len(), 3);
+        assert_eq!(ls.0[2].z, 30.0);
+    }
+
+    #[test]
+    fn test_linestring_iter() {
+        let ls = LineString2D::new(vec![
+            coord! { x: 1.0, y: 2.0 },
+            coord! { x: 3.0, y: 4.0 },
+        ]);
+        
+        let mut iter = ls.iter();
+        assert_eq!(iter.next().unwrap().x, 1.0);
+        assert_eq!(iter.next().unwrap().x, 3.0);
+        assert!(iter.next().is_none());
+    }
+}
+

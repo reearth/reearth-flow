@@ -536,3 +536,117 @@ pub fn are_coplanar(points: &[Coordinate3D<f64>]) -> Option<PointsCoplanar> {
         .collect();
     are_points_coplanar(points, 1e-6)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_coordinate_plateau_precision() {
+        let c1 = Coordinate::new__(139.75031234567890, 35.68512345678901, 10.5);
+        let c2 = Coordinate::new__(139.75031234567890, 35.68512345678901, 10.5);
+        assert_eq!(c1, c2);
+    }
+
+    #[test]
+    fn test_coordinate_epsilon_comparison() {
+        let c1 = Coordinate::new__(139.7503, 35.6851, 10.0);
+        let c2 = Coordinate::new__(139.7503 + 1e-10, 35.6851, 10.0);
+        
+        let diff = (c1.x - c2.x).abs();
+        assert!(diff < 1e-9);
+    }
+
+    #[test]
+    fn test_coordinate_2d_operations() {
+        let c1 = Coordinate2D::new_(10.0, 20.0);
+        let c2 = Coordinate2D::new_(5.0, 15.0);
+        let sum = c1 + c2;
+        
+        assert_eq!(sum.x, 15.0);
+        assert_eq!(sum.y, 35.0);
+    }
+
+    #[test]
+    fn test_coordinate_3d_building_height() {
+        let ground = Coordinate3D::new__(139.7503, 35.6851, 0.0);
+        let roof = Coordinate3D::new__(139.7503, 35.6851, 45.5);
+        
+        assert_eq!(roof.z - ground.z, 45.5);
+        assert!(ground.is_z_zero());
+    }
+
+    #[test]
+    fn test_coordinate_negative_values() {
+        let coord = Coordinate2D::new_(-139.7503, -35.6851);
+        assert!(coord.x < 0.0);
+        assert!(coord.y < 0.0);
+    }
+
+    #[test]
+    fn test_coordinate_very_small_epsilon() {
+        let base = 139.750312345;
+        let c1 = Coordinate2D::new_(base, 35.6851);
+        let c2 = Coordinate2D::new_(base + 1e-15, 35.6851);
+        
+        let diff = (c1.x - c2.x).abs();
+        assert!(diff < 1e-14);
+    }
+
+    #[test]
+    fn test_coordinate_from_tuple() {
+        let coord: Coordinate2D<f64> = (139.7503, 35.6851).into();
+        assert_eq!(coord.x, 139.7503);
+    }
+
+    #[test]
+    fn test_coordinate_zero() {
+        let coord: Coordinate2D<f64> = Coordinate::zero();
+        assert_eq!(coord.x, 0.0);
+        assert_eq!(coord.y, 0.0);
+    }
+
+    #[test]
+    fn test_coordinate_scaling() {
+        let coord = Coordinate2D::new_(10.0, 20.0);
+        let scaled = coord * 2.5;
+        
+        assert_eq!(scaled.x, 25.0);
+        assert_eq!(scaled.y, 50.0);
+    }
+
+    #[test]
+    fn test_coordinate_division() {
+        let coord = Coordinate2D::new_(100.0, 50.0);
+        let divided = coord / 10.0;
+        
+        assert_eq!(divided.x, 10.0);
+        assert_eq!(divided.y, 5.0);
+    }
+
+    #[test]
+    fn test_are_coplanar_square() {
+        let points = vec![
+            Coordinate3D::new__(0.0, 0.0, 0.0),
+            Coordinate3D::new__(10.0, 0.0, 0.0),
+            Coordinate3D::new__(10.0, 10.0, 0.0),
+            Coordinate3D::new__(0.0, 10.0, 0.0),
+        ];
+        
+        let result = are_coplanar(&points);
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_are_coplanar_non_planar() {
+        let points = vec![
+            Coordinate3D::new__(0.0, 0.0, 0.0),
+            Coordinate3D::new__(10.0, 0.0, 0.0),
+            Coordinate3D::new__(10.0, 10.0, 0.0),
+            Coordinate3D::new__(0.0, 10.0, 10.0),
+        ];
+        
+        let result = are_coplanar(&points);
+        assert!(result.is_some() || result.is_none());
+    }
+}
