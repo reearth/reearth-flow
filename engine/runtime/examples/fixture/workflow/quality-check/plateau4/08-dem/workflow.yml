@@ -1,0 +1,383 @@
+id: b9ca5efa-c20d-4587-891c-5bda5c869db4
+name: "PLATEAU4-quality-check-08-dem"
+entryGraphId: 742b6f3e-2a63-490a-aec2-829b10fea5f2
+with:
+  cityGmlPath:
+  schemas:
+  codelists:
+  outputPath:
+graphs:
+  - id: 742b6f3e-2a63-490a-aec2-829b10fea5f2
+    name: entry_point
+    nodes:
+      - id: f9248705-3024-40b0-b729-66507ca6640d
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                cityGmlPath: env.get("cityGmlPath"),
+                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                schemas: env.get("schemas"),
+                codelists: env.get("codelists"),
+              },
+            ]
+
+      - id: 613c6d22-bf1c-4bbb-ba97-d85dd78d81ce
+        name: DirectoryDecompressor
+        type: action
+        action: DirectoryDecompressor
+        with:
+          archiveAttributes:
+            - codelists
+            - schemas
+
+      - id: 01c49595-446f-482f-94db-5027f390b6cd
+        name: FeatureFilePathExtractor
+        type: action
+        action: FeatureFilePathExtractor
+        with:
+          destPrefix: "udx"
+          sourceDataset: |
+            env.get("__value")["cityGmlPath"]
+          extractArchive: true
+
+      - id: 24286bb9-1c30-49b7-afd8-e8dc73c85ed0
+        name: FeatureFilterByGml
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").extension == "gml"
+              outputPort: default
+
+      - id: c29be788-be8d-43a2-97bf-3e15228a72a1
+        name: FeatureCounterFileIndex
+        type: action
+        action: FeatureCounter
+        with:
+          countStart: 1
+          outputAttribute: fileIndex
+
+      - id: 33cb26b6-bba2-4600-ae1b-df5d7c0b4678
+        name: PLATEAU4.UDXFolderExtractor
+        type: action
+        action: PLATEAU4.UDXFolderExtractor
+        with:
+          cityGmlPath: |
+            env.get("__value")["path"]
+          codelistsPath: codelists
+          schemasPath: schemas
+
+      - id: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
+        name: PLATEAU4.CityGmlMeshBuilder
+        type: action
+        action: PLATEAU4.CityGmlMeshBuilder
+        with:
+          errorAttribute: _validation_error
+          rejectInvalid: false
+
+      # Branch 1: Incorrect number of vertices
+      - id: 2c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+        name: AttributeMapperIncorrectVertices
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").fileIndex
+            - attribute: Filename
+              expr: |
+                env.get("__value").name
+            - attribute: "Relief Index"
+              expr: |
+                env.get("__value")._relief_index ?? ""
+
+      - id: 3d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
+        name: CsvWriterIncorrectVertices
+        type: action
+        action: FeatureWriter
+        with:
+          format: csv
+          output: |
+            file::join_path(env.get("outputPath"), "08_地形_不正な頂点の数.csv")
+
+      # Branch 2: Triangle not closed
+      - id: 4e5f6a7b-8c9d-0e1f-2a3b-4c5d6e7f8a9b
+        name: AttributeMapperNotClosed
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").fileIndex
+            - attribute: Filename
+              expr: |
+                env.get("__value").name
+            - attribute: "Relief Index"
+              expr: |
+                env.get("__value")._relief_index ?? ""
+
+
+      - id: 5f6a7b8c-9d0e-1f2a-3b4c-5d6e7f8a9b0c
+        name: ShapefileWriterNotClosed
+        type: action
+        action: ShapefileWriter
+        with:
+          output: |
+            file::join_path(env.get("outputPath"), "08_地形_閉じていない三角形.shp")
+
+      # Branch 3: Wrong orientation
+      - id: 33da38fb-277d-4ab4-a912-a30f5ffc4b33
+        name: AttributeMapperWrongOrientation
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").fileIndex
+            - attribute: Filename
+              expr: |
+                env.get("__value").name
+            - attribute: "Relief Index"
+              expr: |
+                env.get("__value")._relief_index ?? ""
+
+      - id: f18df02b-d7f1-42c4-9136-e6001115e3a7
+        name: ShapefileWriterWrongOrientation
+        type: action
+        action: ShapefileWriter
+        with:
+          output: |
+            file::join_path(env.get("outputPath"), "08_地形_反転した三角形.shp")
+
+      # GeometryValidator for valid triangular meshes
+      - id: f6f21bd1-4291-419e-aae6-f0be940ddd17
+        name: GeometryValidator
+        type: action
+        action: GeometryValidator
+        with:
+          validationTypes:
+            - corruptGeometry
+
+      # Branch 3: Corrupt geometry (degenerate triangles)
+      - id: 7b8c9d0e-1f2a-3b4c-5d6e-7f8a9b0c1d2e
+        name: AttributeMapperCorruptGeometry
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").fileIndex
+            - attribute: Filename
+              expr: |
+                env.get("__value").name
+            - attribute: "Relief Index"
+              expr: |
+                env.get("__value")._relief_index ?? ""
+
+      - id: 8c9d0e1f-2a3b-4c5d-6e7f-8a9b0c1d2e3f
+        name: ShapefileWriterCorruptGeometry
+        type: action
+        action: ShapefileWriter
+        with:
+          output: |
+            file::join_path(env.get("outputPath"), "08_地形_退化した三角形.shp")
+
+      # New pipeline nodes: Process valid geometries through boundary extraction and analysis
+      - id: b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e
+        name: BoundaryExtractor
+        type: action
+        action: BoundaryExtractor
+
+      - id: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f
+        name: GeometrySplitter
+        type: action
+        action: GeometrySplitter
+
+      - id: d5e6f7a8-b9c0-1d2e-3f4a-5b6c7d8e9f0a
+        name: VertexCounter
+        type: action
+        action: VertexCounter
+        with:
+          outputAttribute: vertexCount
+
+      - id: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2b
+        name: FeatureSorter
+        type: action
+        action: FeatureSorter
+        with:
+          attributes:
+            - vertexCount
+          order: descending
+
+      - id: f9a0b1c2-d3e4-5f6a-7b8c-9d0e1f2a3b4c
+        name: FeatureCounterBoundaryIndex
+        type: action
+        action: FeatureCounter
+        with:
+          countStart: 1
+          outputAttribute: boundaryIndex
+
+      - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6e
+        name: FeatureFilterInvalidBoundaries
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").boundaryIndex != 1 && env.get("__value").vertexCount < 50
+              outputPort: default
+
+      - id: b3c4d5e6-f7a8-9b0c-1d2e-3f4a5b6c7d8e
+        name: AttributeMapperInvalidBoundaries
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").fileIndex
+            - attribute: Filename
+              expr: |
+                env.get("__value").name
+            - attribute: "Relief Index"
+              expr: |
+                env.get("__value")._relief_index ?? ""
+
+      - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e0f
+        name: ShapefileWriterInvalidBoundaries
+        type: action
+        action: ShapefileWriter
+        with:
+          output: |
+            file::join_path(env.get("outputPath"), "08_地形_有効な境界.shp")
+
+    edges:
+      - id: 7613b326-d3d7-4fdc-b7e1-9821e120ac49
+        from: f9248705-3024-40b0-b729-66507ca6640d
+        to: 613c6d22-bf1c-4bbb-ba97-d85dd78d81ce
+        fromPort: default
+        toPort: default
+      - id: 110ccc6a-0412-41f0-9e71-0ad6ee2e53c0
+        from: 613c6d22-bf1c-4bbb-ba97-d85dd78d81ce
+        to: 01c49595-446f-482f-94db-5027f390b6cd
+        fromPort: default
+        toPort: default
+      - id: ecc67084-2d61-47f5-94c4-1ea30df4f6d1
+        from: 01c49595-446f-482f-94db-5027f390b6cd
+        to: 24286bb9-1c30-49b7-afd8-e8dc73c85ed0
+        fromPort: default
+        toPort: default
+      - id: 9f39e824-4dd8-4adc-b2c8-ccad2979c359
+        from: 24286bb9-1c30-49b7-afd8-e8dc73c85ed0
+        to: c29be788-be8d-43a2-97bf-3e15228a72a1
+        fromPort: default
+        toPort: default
+      - id: aace82c7-f1cd-4130-aeda-d21e22d97c4a
+        from: c29be788-be8d-43a2-97bf-3e15228a72a1
+        to: 33cb26b6-bba2-4600-ae1b-df5d7c0b4678
+        fromPort: default
+        toPort: default
+      - id: 31d8d432-82c6-47e4-9cf2-4acafc87a848
+        from: 33cb26b6-bba2-4600-ae1b-df5d7c0b4678
+        to: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
+        fromPort: default
+        toPort: default
+      # Connect default port (valid meshes) to GeometryValidator
+      - id: a66871fe-2cd7-48d8-ac53-1bfa274c6c67
+        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
+        to: f6f21bd1-4291-419e-aae6-f0be940ddd17
+        fromPort: default
+        toPort: default
+      - id: 0c1d2e3f-4a5b-6c7d-8e9f-0a1b2c3d4e5f
+        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
+        to: 2c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+        fromPort: incorrect_vertices
+        toPort: default
+      - id: 1d2e3f4a-5b6c-7d8e-9f0a-1b2c3d4e5f6a
+        from: 2c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+        to: 3d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
+        fromPort: default
+        toPort: default
+      - id: 2e3f4a5b-6c7d-8e9f-0a1b-2c3d4e5f6a7b
+        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
+        to: 4e5f6a7b-8c9d-0e1f-2a3b-4c5d6e7f8a9b
+        fromPort: not_closed
+        toPort: default
+      - id: 3f4a5b6c-7d8e-9f0a-1b2c-3d4e5f6a7b8c
+        from: 4e5f6a7b-8c9d-0e1f-2a3b-4c5d6e7f8a9b
+        to: 5f6a7b8c-9d0e-1f2a-3b4c-5d6e7f8a9b0c
+        fromPort: default
+        toPort: default
+      # Branch 3 edges: wrong_orientation -> AttributeMapper -> ShapefileWriter
+      - id: 10168ed9-bb0e-4cd8-922c-c5af4e6f2b90
+        from: 9a8c4d5e-6f7b-8c9d-0e1f-2a3b4c5d6e7f
+        to: 33da38fb-277d-4ab4-a912-a30f5ffc4b33
+        fromPort: wrong_orientation
+        toPort: default
+      - id: 23b295ca-e0e8-4843-a750-ce4d093825a1
+        from: 33da38fb-277d-4ab4-a912-a30f5ffc4b33
+        to: f18df02b-d7f1-42c4-9136-e6001115e3a7
+        fromPort: default
+        toPort: default
+      # Branch 4 edges: GeometryValidator -> AttributeMapper -> ShapefileWriter
+      - id: 4a5b6c7d-8e9f-0a1b-2c3d-4e5f6a7b8c9d
+        from: f6f21bd1-4291-419e-aae6-f0be940ddd17
+        to: 7b8c9d0e-1f2a-3b4c-5d6e-7f8a9b0c1d2e
+        fromPort: failed
+        toPort: default
+      - id: 6c7d8e9f-0a1b-2c3d-4e5f-6a7b8c9d0e1f
+        from: 7b8c9d0e-1f2a-3b4c-5d6e-7f8a9b0c1d2e
+        to: 8c9d0e1f-2a3b-4c5d-6e7f-8a9b0c1d2e3f
+        fromPort: default
+        toPort: default
+      # New pipeline: success port -> BoundaryExtractor -> GeometrySplitter -> VertexCounter -> FeatureSorter -> FeatureCounter -> FeatureFilter -> AttributeMapper -> ShapefileWriter
+      - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
+        from: f6f21bd1-4291-419e-aae6-f0be940ddd17
+        to: b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e
+        fromPort: success
+        toPort: default
+      - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e
+        from: b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e
+        to: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f
+        fromPort: default
+        toPort: default
+      - id: c4d5e6f7-a8b9-0c1d-2e3f-4a5b6c7d8e9f
+        from: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f
+        to: d5e6f7a8-b9c0-1d2e-3f4a-5b6c7d8e9f0a
+        fromPort: default
+        toPort: default
+      - id: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1a
+        from: d5e6f7a8-b9c0-1d2e-3f4a-5b6c7d8e9f0a
+        to: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2b
+        fromPort: default
+        toPort: default
+      - id: e8f9a0b1-c2d3-4e5f-6a7b-8c9d0e1f2a3b
+        from: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2b
+        to: f9a0b1c2-d3e4-5f6a-7b8c-9d0e1f2a3b4c
+        fromPort: default
+        toPort: default
+      - id: f0a1b2c3-d4e5-6f7a-8b9c-0d1e2f3a4b5c
+        from: f9a0b1c2-d3e4-5f6a-7b8c-9d0e1f2a3b4c
+        to: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6e
+        fromPort: default
+        toPort: default
+      - id: a2b3c4d5-e6f7-8a9b-0c1d-2e3f4a5b6c7d
+        from: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6e
+        to: b3c4d5e6-f7a8-9b0c-1d2e-3f4a5b6c7d8e
+        fromPort: default
+        toPort: default
+      - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9e
+        from: b3c4d5e6-f7a8-9b0c-1d2e-3f4a5b6c7d8e
+        to: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e0f
+        fromPort: default
+        toPort: default

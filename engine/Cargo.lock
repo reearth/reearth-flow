@@ -10345,6 +10345,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "shapefile 0.7.0",
  "tempfile",
  "tokio",
  "uuid",

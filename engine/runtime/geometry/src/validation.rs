@@ -100,6 +100,8 @@ pub enum ValidationProblem {
     ElementsTouchOnALine,
     /// Two Polygons of a MultiPolygon are identical
     ElementsAreIdentical,
+    /// Degenerate Geometry
+    DegenerateGeometry,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -274,6 +276,9 @@ impl Display for ValidationProblemReport {
                     }
                     ValidationProblem::ElementsAreIdentical => {
                         str_buffer.push("Two Polygons of MultiPolygons are identical".to_string())
+                    }
+                    ValidationProblem::DegenerateGeometry => {
+                        str_buffer.push("Degenerate Geometry".to_string())
                     }
                 };
                 str_buffer.into_iter().rev().collect::<Vec<_>>().join("")
@@ -811,7 +816,7 @@ impl<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat + From<Z>,
         Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
     > Validator<T, Z> for Geometry<T, Z>
 {
@@ -827,6 +832,7 @@ impl<
             Geometry::MultiPolygon(mp) => mp.validate(valid_type),
             Geometry::Rect(rect) => rect.validate(valid_type),
             Geometry::Triangle(_) => unimplemented!(),
+            Geometry::TriangularMesh(tm) => tm.validate(valid_type),
             Geometry::Solid(s) => s.validate(valid_type),
             Geometry::GeometryCollection(gc) => {
                 let mut reason = Vec::new();

@@ -1,0 +1,16 @@
+{
+  "workflowPath": "quality-check/plateau4/08-dem/workflow.yml",
+  "description": "Test for plateau4 08 degenerate triangles.",
+  "intermediateAssertions": [
+    {
+      "edgeId": "6c7d8e9f-0a1b-2c3d-4e5f-6a7b8c9d0e1f",
+      "expectedFile": "intermediate_incorrect_num_vertices.jsonl",
+      "jsonFilter": "{attributes}"
+    }
+  ],
+  "cityGmlPath": "udx/dem/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectResultOkFile": false,
+  "skip": false
+}

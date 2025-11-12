@@ -285,7 +285,7 @@ graphs:
         type: action
         action: GeometryCoercer
         with:
-          coercerType: lineString
+          targetType: lineString
 
       - id: 5b958746-a54b-4e0f-ad26-5c7388167943
         name: FeatureFilterByLod

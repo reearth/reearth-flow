@@ -431,7 +431,7 @@ nodes:
     type: action
     action: GeometryCoercer
     with:
-      coercerType: lineString
+      targetType: lineString
 
   - id: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1aa
     name: TwoDimensionForcer

@@ -1,0 +1,16 @@
+{
+  "workflowPath": "quality-check/plateau4/08-dem/workflow.yml",
+  "description": "Test for plateau4 08 not-closed triangle error.",
+  "intermediateAssertions": [
+    {
+      "edgeId": "3f4a5b6c-7d8e-9f0a-1b2c-3d4e5f6a7b8c",
+      "expectedFile": "intermediate_not_closed.jsonl",
+      "jsonFilter": "{attributes}"
+    }
+  ],
+  "cityGmlPath": "udx/dem/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectResultOkFile": false,
+  "skip": false
+}

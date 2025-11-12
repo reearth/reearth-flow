@@ -242,7 +242,7 @@ graphs:
     type: action
     action: GeometryCoercer
     with:
-      coercerType: lineString
+      targetType: lineString
   - id: 9c1e4a7b-6f2d-4e5c-a8b1-3f6c9e1a4b7d
     name: ClosedCurveFilter
     type: action
@@ -268,13 +268,13 @@ graphs:
     type: action
     action: GeometryCoercer
     with:
-      coercerType: lineString
+      targetType: lineString
   - id: 1c4f7a2e-5b8d-4a3c-f9e6-4c1f8a7e2b5d
     name: GeometryCoercerHole
     type: action
     action: GeometryCoercer
     with:
-      coercerType: lineString
+      targetType: lineString
   - id: 3f5a8c1d-7e4b-4c9f-a2e7-6f3a8c1d4e7b
     name: FeatureCounterHole
     type: action
@@ -2242,7 +2242,7 @@ graphs:
     type: action
     action: GeometryCoercer
     with:
-      coercerType: lineString
+      targetType: lineString
   - id: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1aa
     name: TwoDimensionForcer
     type: action
