@@ -308,11 +308,6 @@ pub(super) static FLATTEN_ATTRIBUTES: Lazy<HashMap<String, Vec<AttributePath>>> 
                     "json_path": "gml:name"
                 },
                 {
-                    "attribute": "gml:name_code",
-                    "data_type": "string",
-                    "json_path": "gml:name_code"
-                },
-                {
                     "attribute": "core:creationDate",
                     "data_type": "string",
                     "json_path": "core:creationDate"
@@ -390,7 +385,7 @@ pub(super) static FLATTEN_ATTRIBUTES: Lazy<HashMap<String, Vec<AttributePath>>> 
                 {
                     "attribute": "uro:geometrySrcDescLod1",
                     "data_type": "string",
-                    "json_path": "uro:tranDataQualityAttribute uro:geometrySrcDescLod1"
+                    "json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
                 }
             ],
             "tran/tran:Road": [
@@ -398,11 +393,6 @@ pub(super) static FLATTEN_ATTRIBUTES: Lazy<HashMap<String, Vec<AttributePath>>> 
                     "attribute": "gml:name",
                     "data_type": "string",
                     "json_path": "gml:name"
-                },
-                {
-                    "attribute": "gml:name_code",
-                    "data_type": "string",
-                    "json_path": "gml:name_code"
                 },
                 {
                     "attribute": "core:creationDate",
@@ -422,12 +412,12 @@ pub(super) static FLATTEN_ATTRIBUTES: Lazy<HashMap<String, Vec<AttributePath>>> 
                 {
                     "attribute": "uro:thematicSrcDesc",
                     "data_type": "string",
-                    "json_path": "uro:tranDataQualityAttribute uro:thematicSrcDesc"
+                    "json_path": "uro:DataQualityAttribute uro:thematicSrcDesc"
                 },
                 {
                     "attribute": "uro:geometrySrcDescLod1",
                     "data_type": "string",
-                    "json_path": "uro:tranDataQualityAttribute uro:geometrySrcDescLod1"
+                    "json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
                 }
             ],
             "rwy/tran:Railway": [
@@ -435,11 +425,6 @@ pub(super) static FLATTEN_ATTRIBUTES: Lazy<HashMap<String, Vec<AttributePath>>> 
                     "attribute": "gml:name",
                     "data_type": "string",
                     "json_path": "gml:name"
-                },
-                {
-                    "attribute": "gml:name_code",
-                    "data_type": "string",
-                    "json_path": "gml:name_code"
                 },
                 {
                     "attribute": "core:creationDate",
@@ -459,12 +444,12 @@ pub(super) static FLATTEN_ATTRIBUTES: Lazy<HashMap<String, Vec<AttributePath>>> 
                 {
                     "attribute": "uro:thematicSrcDesc",
                     "data_type": "string",
-                    "json_path": "uro:tranDataQualityAttribute uro:thematicSrcDesc"
+                    "json_path": "uro:DataQualityAttribute uro:thematicSrcDesc"
                 },
                 {
                     "attribute": "uro:geometrySrcDescLod1",
                     "data_type": "string",
-                    "json_path": "uro:tranDataQualityAttribute uro:geometrySrcDescLod1"
+                    "json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
                 }
             ],
             "trk/tran:Track": [
@@ -472,11 +457,6 @@ pub(super) static FLATTEN_ATTRIBUTES: Lazy<HashMap<String, Vec<AttributePath>>> 
                     "attribute": "gml:name",
                     "data_type": "string",
                     "json_path": "gml:name"
-                },
-                {
-                    "attribute": "gml:name_code",
-                    "data_type": "string",
-                    "json_path": "gml:name_code"
                 },
                 {
                     "attribute": "core:creationDate",
@@ -496,12 +476,12 @@ pub(super) static FLATTEN_ATTRIBUTES: Lazy<HashMap<String, Vec<AttributePath>>> 
                 {
                     "attribute": "uro:thematicSrcDesc",
                     "data_type": "string",
-                    "json_path": "uro:tranDataQualityAttribute uro:thematicSrcDesc"
+                    "json_path": "uro:DataQualityAttribute uro:thematicSrcDesc"
                 },
                 {
                     "attribute": "uro:geometrySrcDescLod1",
                     "data_type": "string",
-                    "json_path": "uro:tranDataQualityAttribute uro:geometrySrcDescLod1"
+                    "json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
                 }
             ],
             "wwy/tran:Waterway": [
@@ -509,11 +489,6 @@ pub(super) static FLATTEN_ATTRIBUTES: Lazy<HashMap<String, Vec<AttributePath>>> 
                     "attribute": "gml:name",
                     "data_type": "string",
                     "json_path": "gml:name"
-                },
-                {
-                    "attribute": "gml:name_code",
-                    "data_type": "string",
-                    "json_path": "gml:name_code"
                 },
                 {
                     "attribute": "core:creationDate",
@@ -533,12 +508,12 @@ pub(super) static FLATTEN_ATTRIBUTES: Lazy<HashMap<String, Vec<AttributePath>>> 
                 {
                     "attribute": "uro:thematicSrcDesc",
                     "data_type": "string",
-                    "json_path": "uro:tranDataQualityAttribute uro:thematicSrcDesc"
+                    "json_path": "uro:DataQualityAttribute uro:thematicSrcDesc"
                 },
                 {
                     "attribute": "uro:geometrySrcDescLod1",
                     "data_type": "string",
-                    "json_path": "uro:tranDataQualityAttribute uro:geometrySrcDescLod1"
+                    "json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
                 }
             ]
         }
