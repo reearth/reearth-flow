@@ -18,9 +18,9 @@ pub fn metadata<P: AsRef<Path>>(path: &P) -> std::io::Result<Metadata> {
         use std::os::unix::fs::MetadataExt;
         Ok(Metadata {
             size: metadata.len() as i64,
-            atime: metadata.atime() as i64,
-            mtime: metadata.mtime() as i64,
-            ctime: metadata.ctime() as i64,
+            atime: metadata.atime(),
+            mtime: metadata.mtime(),
+            ctime: metadata.ctime(),
             is_dir: metadata.is_dir(),
         })
     }
