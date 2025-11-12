@@ -242,7 +242,9 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 		d.SetDescription(*dp.Description)
 	}
 
-	d.SetVariables(dp.Variables)
+	if dp.Variables != nil {
+		d.SetVariables(dp.Variables)
+	}
 
 	if err := i.deploymentRepo.Save(ctx, d); err != nil {
 		return nil, err
