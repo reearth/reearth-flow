@@ -364,13 +364,12 @@ impl Processor for HorizontalReprojector {
         })?;
 
         // Create projection for this transformation
-        let from_crs = format!("EPSG:{}", source_epsg);
+        let from_crs = format!("EPSG:{source_epsg}");
         let to_crs = format!("EPSG:{}", self.target_epsg_code);
 
         let proj_transform = proj::Proj::new_known_crs(&from_crs, &to_crs, None).map_err(|e| {
             GeometryProcessorError::HorizontalReprojector(format!(
-                "Failed to create PROJ transformation from {} to {}: {}",
-                from_crs, to_crs, e
+                "Failed to create PROJ transformation from {from_crs} to {to_crs}: {e}"
             ))
         })?;
 
