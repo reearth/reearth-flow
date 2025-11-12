@@ -3,12 +3,12 @@ use std::collections::HashMap;
 use nusamai_projection::crs::EpsgCode;
 use reearth_flow_geometry::types::{
     geometry::{Geometry2D, Geometry3D},
-    point::{Point2D, Point3D},
     line_string::{LineString2D, LineString3D},
-    polygon::{Polygon2D, Polygon3D},
-    multi_point::{MultiPoint2D, MultiPoint3D},
     multi_line_string::{MultiLineString2D, MultiLineString3D},
+    multi_point::{MultiPoint2D, MultiPoint3D},
     multi_polygon::{MultiPolygon2D, MultiPolygon3D},
+    point::{Point2D, Point3D},
+    polygon::{Polygon2D, Polygon3D},
 };
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -39,11 +39,15 @@ fn transform_point_3d(point: &Point3D<f64>, proj: &proj::Proj) -> Result<Point3D
 }
 
 /// Transform a 2D geometry using proj
-fn transform_geometry_2d(geom: &Geometry2D<f64>, proj: &proj::Proj) -> Result<Geometry2D<f64>, BoxedError> {
+fn transform_geometry_2d(
+    geom: &Geometry2D<f64>,
+    proj: &proj::Proj,
+) -> Result<Geometry2D<f64>, BoxedError> {
     match geom {
         Geometry2D::Point(p) => Ok(Geometry2D::Point(transform_point_2d(p, proj)?)),
         Geometry2D::LineString(ls) => {
-            let coords: Result<Vec<_>, BoxedError> = ls.coords()
+            let coords: Result<Vec<_>, BoxedError> = ls
+                .coords()
                 .map(|c| {
                     let p = Point2D::from([c.x, c.y]);
                     transform_point_2d(&p, proj).map(|tp| tp.0)
@@ -52,7 +56,9 @@ fn transform_geometry_2d(geom: &Geometry2D<f64>, proj: &proj::Proj) -> Result<Ge
             Ok(Geometry2D::LineString(LineString2D::new(coords?)))
         }
         Geometry2D::Polygon(poly) => {
-            let exterior_coords: Result<Vec<_>, BoxedError> = poly.exterior().coords()
+            let exterior_coords: Result<Vec<_>, BoxedError> = poly
+                .exterior()
+                .coords()
                 .map(|c| {
                     let p = Point2D::from([c.x, c.y]);
                     transform_point_2d(&p, proj).map(|tp| tp.0)
@@ -60,9 +66,12 @@ fn transform_geometry_2d(geom: &Geometry2D<f64>, proj: &proj::Proj) -> Result<Ge
                 .collect();
             let exterior = LineString2D::new(exterior_coords?);
 
-            let interiors: Result<Vec<_>, BoxedError> = poly.interiors().iter()
+            let interiors: Result<Vec<_>, BoxedError> = poly
+                .interiors()
+                .iter()
                 .map(|interior| {
-                    let coords: Result<Vec<_>, BoxedError> = interior.coords()
+                    let coords: Result<Vec<_>, BoxedError> = interior
+                        .coords()
                         .map(|c| {
                             let p = Point2D::from([c.x, c.y]);
                             transform_point_2d(&p, proj).map(|tp| tp.0)
@@ -75,15 +84,16 @@ fn transform_geometry_2d(geom: &Geometry2D<f64>, proj: &proj::Proj) -> Result<Ge
             Ok(Geometry2D::Polygon(Polygon2D::new(exterior, interiors?)))
         }
         Geometry2D::MultiPoint(mp) => {
-            let points: Result<Vec<_>, BoxedError> = mp.iter()
-                .map(|p| transform_point_2d(p, proj))
-                .collect();
+            let points: Result<Vec<_>, BoxedError> =
+                mp.iter().map(|p| transform_point_2d(p, proj)).collect();
             Ok(Geometry2D::MultiPoint(MultiPoint2D::new(points?)))
         }
         Geometry2D::MultiLineString(mls) => {
-            let line_strings: Result<Vec<_>, BoxedError> = mls.iter()
+            let line_strings: Result<Vec<_>, BoxedError> = mls
+                .iter()
                 .map(|ls| {
-                    let coords: Result<Vec<_>, BoxedError> = ls.coords()
+                    let coords: Result<Vec<_>, BoxedError> = ls
+                        .coords()
                         .map(|c| {
                             let p = Point2D::from([c.x, c.y]);
                             transform_point_2d(&p, proj).map(|tp| tp.0)
@@ -92,12 +102,17 @@ fn transform_geometry_2d(geom: &Geometry2D<f64>, proj: &proj::Proj) -> Result<Ge
                     Ok(LineString2D::new(coords?))
                 })
                 .collect();
-            Ok(Geometry2D::MultiLineString(MultiLineString2D::new(line_strings?)))
+            Ok(Geometry2D::MultiLineString(MultiLineString2D::new(
+                line_strings?,
+            )))
         }
         Geometry2D::MultiPolygon(mpoly) => {
-            let polygons: Result<Vec<_>, BoxedError> = mpoly.iter()
+            let polygons: Result<Vec<_>, BoxedError> = mpoly
+                .iter()
                 .map(|poly| {
-                    let exterior_coords: Result<Vec<_>, BoxedError> = poly.exterior().coords()
+                    let exterior_coords: Result<Vec<_>, BoxedError> = poly
+                        .exterior()
+                        .coords()
                         .map(|c| {
                             let p = Point2D::from([c.x, c.y]);
                             transform_point_2d(&p, proj).map(|tp| tp.0)
@@ -105,9 +120,12 @@ fn transform_geometry_2d(geom: &Geometry2D<f64>, proj: &proj::Proj) -> Result<Ge
                         .collect();
                     let exterior = LineString2D::new(exterior_coords?);
 
-                    let interiors: Result<Vec<_>, BoxedError> = poly.interiors().iter()
+                    let interiors: Result<Vec<_>, BoxedError> = poly
+                        .interiors()
+                        .iter()
                         .map(|interior| {
-                            let coords: Result<Vec<_>, BoxedError> = interior.coords()
+                            let coords: Result<Vec<_>, BoxedError> = interior
+                                .coords()
                                 .map(|c| {
                                     let p = Point2D::from([c.x, c.y]);
                                     transform_point_2d(&p, proj).map(|tp| tp.0)
@@ -125,18 +143,20 @@ fn transform_geometry_2d(geom: &Geometry2D<f64>, proj: &proj::Proj) -> Result<Ge
         Geometry2D::GeometryCollection(_) => {
             Err("GeometryCollection transformation not yet implemented".into())
         }
-        _ => {
-            Err("Unsupported 2D geometry type for transformation".into())
-        }
+        _ => Err("Unsupported 2D geometry type for transformation".into()),
     }
 }
 
 /// Transform a 3D geometry using proj
-fn transform_geometry_3d(geom: &Geometry3D<f64>, proj: &proj::Proj) -> Result<Geometry3D<f64>, BoxedError> {
+fn transform_geometry_3d(
+    geom: &Geometry3D<f64>,
+    proj: &proj::Proj,
+) -> Result<Geometry3D<f64>, BoxedError> {
     match geom {
         Geometry3D::Point(p) => Ok(Geometry3D::Point(transform_point_3d(p, proj)?)),
         Geometry3D::LineString(ls) => {
-            let coords: Result<Vec<_>, BoxedError> = ls.coords()
+            let coords: Result<Vec<_>, BoxedError> = ls
+                .coords()
                 .map(|c| {
                     let p = Point3D::from([c.x, c.y, c.z]);
                     transform_point_3d(&p, proj).map(|tp| tp.0)
@@ -145,7 +165,9 @@ fn transform_geometry_3d(geom: &Geometry3D<f64>, proj: &proj::Proj) -> Result<Ge
             Ok(Geometry3D::LineString(LineString3D::new(coords?)))
         }
         Geometry3D::Polygon(poly) => {
-            let exterior_coords: Result<Vec<_>, BoxedError> = poly.exterior().coords()
+            let exterior_coords: Result<Vec<_>, BoxedError> = poly
+                .exterior()
+                .coords()
                 .map(|c| {
                     let p = Point3D::from([c.x, c.y, c.z]);
                     transform_point_3d(&p, proj).map(|tp| tp.0)
@@ -153,9 +175,12 @@ fn transform_geometry_3d(geom: &Geometry3D<f64>, proj: &proj::Proj) -> Result<Ge
                 .collect();
             let exterior = LineString3D::new(exterior_coords?);
 
-            let interiors: Result<Vec<_>, BoxedError> = poly.interiors().iter()
+            let interiors: Result<Vec<_>, BoxedError> = poly
+                .interiors()
+                .iter()
                 .map(|interior| {
-                    let coords: Result<Vec<_>, BoxedError> = interior.coords()
+                    let coords: Result<Vec<_>, BoxedError> = interior
+                        .coords()
                         .map(|c| {
                             let p = Point3D::from([c.x, c.y, c.z]);
                             transform_point_3d(&p, proj).map(|tp| tp.0)
@@ -168,15 +193,16 @@ fn transform_geometry_3d(geom: &Geometry3D<f64>, proj: &proj::Proj) -> Result<Ge
             Ok(Geometry3D::Polygon(Polygon3D::new(exterior, interiors?)))
         }
         Geometry3D::MultiPoint(mp) => {
-            let points: Result<Vec<_>, BoxedError> = mp.iter()
-                .map(|p| transform_point_3d(p, proj))
-                .collect();
+            let points: Result<Vec<_>, BoxedError> =
+                mp.iter().map(|p| transform_point_3d(p, proj)).collect();
             Ok(Geometry3D::MultiPoint(MultiPoint3D::new(points?)))
         }
         Geometry3D::MultiLineString(mls) => {
-            let line_strings: Result<Vec<_>, BoxedError> = mls.iter()
+            let line_strings: Result<Vec<_>, BoxedError> = mls
+                .iter()
                 .map(|ls| {
-                    let coords: Result<Vec<_>, BoxedError> = ls.coords()
+                    let coords: Result<Vec<_>, BoxedError> = ls
+                        .coords()
                         .map(|c| {
                             let p = Point3D::from([c.x, c.y, c.z]);
                             transform_point_3d(&p, proj).map(|tp| tp.0)
@@ -185,12 +211,17 @@ fn transform_geometry_3d(geom: &Geometry3D<f64>, proj: &proj::Proj) -> Result<Ge
                     Ok(LineString3D::new(coords?))
                 })
                 .collect();
-            Ok(Geometry3D::MultiLineString(MultiLineString3D::new(line_strings?)))
+            Ok(Geometry3D::MultiLineString(MultiLineString3D::new(
+                line_strings?,
+            )))
         }
         Geometry3D::MultiPolygon(mpoly) => {
-            let polygons: Result<Vec<_>, BoxedError> = mpoly.iter()
+            let polygons: Result<Vec<_>, BoxedError> = mpoly
+                .iter()
                 .map(|poly| {
-                    let exterior_coords: Result<Vec<_>, BoxedError> = poly.exterior().coords()
+                    let exterior_coords: Result<Vec<_>, BoxedError> = poly
+                        .exterior()
+                        .coords()
                         .map(|c| {
                             let p = Point3D::from([c.x, c.y, c.z]);
                             transform_point_3d(&p, proj).map(|tp| tp.0)
@@ -198,9 +229,12 @@ fn transform_geometry_3d(geom: &Geometry3D<f64>, proj: &proj::Proj) -> Result<Ge
                         .collect();
                     let exterior = LineString3D::new(exterior_coords?);
 
-                    let interiors: Result<Vec<_>, BoxedError> = poly.interiors().iter()
+                    let interiors: Result<Vec<_>, BoxedError> = poly
+                        .interiors()
+                        .iter()
                         .map(|interior| {
-                            let coords: Result<Vec<_>, BoxedError> = interior.coords()
+                            let coords: Result<Vec<_>, BoxedError> = interior
+                                .coords()
                                 .map(|c| {
                                     let p = Point3D::from([c.x, c.y, c.z]);
                                     transform_point_3d(&p, proj).map(|tp| tp.0)
@@ -218,9 +252,7 @@ fn transform_geometry_3d(geom: &Geometry3D<f64>, proj: &proj::Proj) -> Result<Ge
         Geometry3D::GeometryCollection(_) => {
             Err("GeometryCollection transformation not yet implemented".into())
         }
-        _ => {
-            Err("Unsupported 3D geometry type for transformation".into())
-        }
+        _ => Err("Unsupported 3D geometry type for transformation".into()),
     }
 }
 
@@ -335,14 +367,12 @@ impl Processor for HorizontalReprojector {
         let from_crs = format!("EPSG:{}", source_epsg);
         let to_crs = format!("EPSG:{}", self.target_epsg_code);
 
-        let proj_transform = proj::Proj::new_known_crs(&from_crs, &to_crs, None).map_err(
-            |e| {
-                GeometryProcessorError::HorizontalReprojector(format!(
-                    "Failed to create PROJ transformation from {} to {}: {}",
-                    from_crs, to_crs, e
-                ))
-            },
-        )?;
+        let proj_transform = proj::Proj::new_known_crs(&from_crs, &to_crs, None).map_err(|e| {
+            GeometryProcessorError::HorizontalReprojector(format!(
+                "Failed to create PROJ transformation from {} to {}: {}",
+                from_crs, to_crs, e
+            ))
+        })?;
 
         match &geometry.value {
             GeometryValue::FlowGeometry2D(geom) => {
