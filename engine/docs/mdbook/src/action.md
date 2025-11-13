@@ -4922,6 +4922,46 @@ Validates domain of definition of CityGML features
 ### Category
 * PLATEAU
 
+## PLATEAU4.FaceExtractor
+### Type
+* processor
+### Description
+Validates individual surfaces of WaterBody features for TIN mesh quality
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FaceExtractor Parameters",
+  "description": "Configuration for validating individual surfaces of WaterBody features. Always checks vertex count, closure, and orientation of polygons in TIN meshes.",
+  "type": "object",
+  "properties": {
+    "cityGmlPathAttribute": {
+      "description": "Attribute name for city_gml_path (default: \"_gml_path\")",
+      "default": "_gml_path",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* error
+* summary
+* passed
+* all
+### Category
+* PLATEAU
+
 ## PLATEAU4.MaxLodExtractor
 ### Type
 * processor
@@ -5168,6 +5208,35 @@ Detect unmatched Xlinks for PLATEAU
 * summary
 * unMatchedXlinkFrom
 * unMatchedXlinkTo
+### Category
+* PLATEAU
+
+## PLATEAU4.UnsharedEdgeDetector
+### Type
+* processor
+### Description
+Detect unshared edges in triangular meshes - edges that appear only once. REQUIRES: Input geometries must be in a projected coordinate system (meters). Use HorizontalReprojector before this action if input is in geographic coordinates.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UnsharedEdgeDetector Parameters",
+  "description": "Configure unshared edge detection behavior",
+  "type": "object",
+  "properties": {
+    "tolerance": {
+      "description": "Tolerance for edge matching in meters (default: 0.1) Edges within this distance are considered the same edge",
+      "default": 0.1,
+      "type": "number",
+      "format": "double"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* unshared
 ### Category
 * PLATEAU
 

@@ -4950,6 +4950,46 @@
       ]
     },
     {
+      "name": "PLATEAU4.FaceExtractor",
+      "type": "processor",
+      "description": "Validates individual surfaces of WaterBody features for TIN mesh quality",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FaceExtractor Parameters",
+        "description": "Configuration for validating individual surfaces of WaterBody features. Always checks vertex count, closure, and orientation of polygons in TIN meshes.",
+        "type": "object",
+        "properties": {
+          "cityGmlPathAttribute": {
+            "description": "Attribute name for city_gml_path (default: \"_gml_path\")",
+            "default": "_gml_path",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "error",
+        "summary",
+        "passed",
+        "all"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
       "name": "PLATEAU4.MaxLodExtractor",
       "type": "processor",
       "description": "PLATEAU4の最大詳細レベルを抽出する",
@@ -5195,6 +5235,35 @@
         "summary",
         "unMatchedXlinkFrom",
         "unMatchedXlinkTo"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU4.UnsharedEdgeDetector",
+      "type": "processor",
+      "description": "Detect unshared edges in triangular meshes - edges that appear only once. REQUIRES: Input geometries must be in a projected coordinate system (meters). Use HorizontalReprojector before this action if input is in geographic coordinates.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "UnsharedEdgeDetector Parameters",
+        "description": "Configure unshared edge detection behavior",
+        "type": "object",
+        "properties": {
+          "tolerance": {
+            "description": "Tolerance for edge matching in meters (default: 0.1) Edges within this distance are considered the same edge",
+            "default": 0.1,
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "unshared"
       ],
       "categories": [
         "PLATEAU"
