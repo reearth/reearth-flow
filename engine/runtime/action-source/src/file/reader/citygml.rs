@@ -46,7 +46,7 @@ pub(crate) async fn read_citygml(
             .map_err(|e| crate::errors::SourceError::CityGmlFileReader(format!("{e:?}")))?
     };
     let mut xml_reader = NsReader::from_reader(buf_reader);
-    let context = nusamai_citygml::ParseContext::new(base_url.clone(), &code_resolver, false);
+    let context = nusamai_citygml::ParseContext::new(base_url.clone(), &code_resolver);
     let mut citygml_reader = CityGmlReader::new(context);
     let mut st = citygml_reader
         .start_root(&mut xml_reader)

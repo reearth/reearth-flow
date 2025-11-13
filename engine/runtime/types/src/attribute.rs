@@ -325,18 +325,12 @@ impl From<nusamai_citygml::Value> for AttributeValue {
                 AttributeValue::Number(Number::from_f64(v).unwrap())
             }
             nusamai_citygml::Value::Measure(v) => {
-                if let Some(text) = v.original_text() {
-                    AttributeValue::Number(Number::from_string_unchecked(text.to_string()))
-                } else {
-                    AttributeValue::Number(Number::from_f64(v.value()).unwrap())
-                }
+                AttributeValue::Number(Number::from_string_unchecked(v.value().to_string()))
             }
             nusamai_citygml::Value::Boolean(v) => AttributeValue::Bool(v),
             nusamai_citygml::Value::Uri(v) => AttributeValue::String(v.value().to_string()),
             nusamai_citygml::Value::Date(v) => {
-                if let Some(text) = v.original_text() {
-                    AttributeValue::String(text.to_string())
-                } else if let Ok(v) = DateTime::try_from(v.to_string()) {
+                if let Ok(v) = DateTime::try_from(v.to_string()) {
                     AttributeValue::DateTime(v)
                 } else {
                     AttributeValue::String(v.to_string())

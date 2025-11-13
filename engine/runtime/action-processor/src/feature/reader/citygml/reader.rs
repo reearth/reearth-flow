@@ -31,7 +31,6 @@ pub(super) fn read_citygml(
     dataset: rhai::AST,
     original_dataset: reearth_flow_types::Expr,
     flatten: Option<bool>,
-    lossless_mode: Option<bool>,
     global_params: Option<HashMap<String, serde_json::Value>>,
 ) -> Result<(), crate::feature::errors::FeatureProcessorError> {
     let code_resolver = Box::new(nusamai_plateau::codelist::Resolver::new());
@@ -55,7 +54,7 @@ pub(super) fn read_citygml(
 
     let base_url: Url = input_path.into();
     let mut xml_reader = NsReader::from_reader(buf_reader);
-    let context = nusamai_citygml::ParseContext::new(base_url.clone(), code_resolver.as_ref(), lossless_mode.unwrap_or(false));
+    let context = nusamai_citygml::ParseContext::new(base_url.clone(), code_resolver.as_ref());
     let mut citygml_reader = CityGmlReader::new(context);
     let mut st = citygml_reader.start_root(&mut xml_reader).map_err(|e| {
         crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
@@ -156,7 +155,9 @@ fn parse_tree_reader<R: BufRead>(
                 (v[0], v[1], v[2]) = (v[1], v[0], v[2]);
             });
         }
+        eprintln!("BEFORE: {:?}", entity.root); // --- IGNORE ---
         let attributes = AttributeValue::from_nusamai_cityml_value(&entity.root);
+        eprintln!("CONVERTED: {:?}", attributes); // --- IGNORE ---
         let attributes = AttributeValue::convert_array_attributes(&attributes);
         let mut city_gml_attributes = match attributes.len() {
             0 => AttributeValue::Null,
