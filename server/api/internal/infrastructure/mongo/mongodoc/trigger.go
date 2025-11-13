@@ -91,6 +91,7 @@ func (d *TriggerDocument) Model() (*trigger.Trigger, error) {
 		EventSource(eventSource).
 		TimeInterval(timeInterval).
 		AuthToken(d.AuthToken).
+		CreatedAt(d.CreatedAt).
 		UpdatedAt(d.UpdatedAt).
 		LastTriggered(d.LastTriggered)
 
