@@ -213,6 +213,11 @@ impl AttributeValue {
                     result.insert(format!("{key}_uom"), AttributeValue::String(uom.to_owned()));
                 }
             }
+            nusamai_citygml::Value::Date(v) => {
+                // preserve plateau date format
+                let string = v.format("%Y-%m-%d").to_string();
+                result.insert(key.to_string(), AttributeValue::String(string));
+            }
             nusamai_citygml::Value::Array(arr) => {
                 Self::process_array_attribute(&mut result, key, arr);
             }
@@ -235,7 +240,7 @@ impl AttributeValue {
             let nested = Self::process_attribute(key, &arr[0]);
             result.extend(nested);
         } else if let Some(nusamai_citygml::Value::Object(obj)) = arr.first() {
-            // Python: child = node[0], use child.tag
+            // child = node[0] and use child.tag
             Self::process_object_value(result, obj);
         }
     }
@@ -244,10 +249,8 @@ impl AttributeValue {
         result: &mut HashMap<String, AttributeValue>,
         obj: &nusamai_citygml::object::Object,
     ) {
-        // Python: self.collect_attributes(kv, child, num_lods) - RECURSIVE
+        // recursive process
         let attrs = Self::process_object_attributes(&obj.attributes);
-
-        // Python: keyToValues.setdefault(tag, []).append(kv)
         result.insert(
             obj.typename.to_string(),
             AttributeValue::Array(vec![AttributeValue::Map(attrs)])
