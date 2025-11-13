@@ -842,6 +842,7 @@
   "There was an error updating workflow variables.": "Une erreur s'est produite lors de la mise à jour des variables de flux de travail.",
   "Workflow Variables Deleted": "Variables de flux de travail supprimées",
   "Workflow variables have been deleted successfully.": "Les variables de flux de travail ont été supprimées avec succès.",
+  "Workflow Variables Deletion Failed": "Échec de la suppression des variables de flux de travail",
   "There was an error deleting workflow variables.": "Une erreur s'est produite lors de la suppression des variables de flux de travail.",
   "Project Shared": "Projet partagé",
   "Project has been successfully shared.": "Le projet a été partagé avec succès.",

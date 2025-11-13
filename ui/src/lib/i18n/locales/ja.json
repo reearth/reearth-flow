@@ -838,6 +838,7 @@
   "There was an error updating workflow variables.": "ワークフロー変数の更新時にエラーが発生しました。",
   "Workflow Variables Deleted": "ワークフロー変数削除完了",
   "Workflow variables have been deleted successfully.": "ワークフロー変数が正常に削除されました。",
+  "Workflow Variables Deletion Failed": "ワークフロー変数削除失敗",
   "There was an error deleting workflow variables.": "ワークフロー変数の削除時にエラーが発生しました。",
   "Project Shared": "プロジェクト共有",
   "Project has been successfully shared.": "プロジェクトが正常に共有されました。",

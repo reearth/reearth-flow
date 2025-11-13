@@ -157,7 +157,7 @@ export const useProjectVariables = () => {
     } catch (err) {
       console.error("Error deleting workflow variables:", err);
       toast({
-        title: t("Workflow Variable Deletion Failed"),
+        title: t("Workflow Variables Deletion Failed"),
         description: t("There was an error deleting workflow variables."),
         variant: "warning",
       });

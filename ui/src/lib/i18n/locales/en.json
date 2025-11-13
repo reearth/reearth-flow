@@ -840,6 +840,7 @@
   "There was an error updating workflow variables.": "",
   "Workflow Variables Deleted": "",
   "Workflow variables have been deleted successfully.": "",
+  "Workflow Variables Deletion Failed": "",
   "There was an error deleting workflow variables.": "",
   "Project Shared": "",
   "Project has been successfully shared.": "",
