@@ -1,4 +1,5 @@
 pub(crate) mod area_on_area_overlayer;
+pub(crate) mod boundary_extractor;
 pub(crate) mod bounds_extractor;
 pub(crate) mod bufferer;
 pub(crate) mod center_point_replacer;
@@ -36,5 +37,6 @@ pub(crate) mod three_dimension_rotator;
 pub(crate) mod two_dimension_forcer;
 pub mod validator;
 pub(crate) mod value_filter;
+pub(crate) mod vertex_counter;
 pub(crate) mod vertex_remover;
 pub(crate) mod vertical_reprojector;

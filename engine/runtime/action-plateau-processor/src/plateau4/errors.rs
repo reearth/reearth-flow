@@ -49,6 +49,10 @@ pub(super) enum PlateauProcessorError {
     TranXlinkDetector(String),
     #[error("TranXlinkDetector Factory error: {0}")]
     TranXlinkDetectorFactory(String),
+    #[error("CityGmlMeshBuilder error: {0}")]
+    CityGmlMeshBuilder(String),
+    #[error("CityGmlMeshBuilder Factory error: {0}")]
+    CityGmlMeshBuilderFactory(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;
