@@ -148,3 +148,73 @@ impl Source for FeatureCreator {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reearth_flow_runtime::node::SourceFactory;
+
+    #[test]
+    fn test_factory_name() {
+        let factory = FeatureCreatorFactory::default();
+        assert_eq!(factory.name(), "FeatureCreator");
+    }
+
+    #[test]
+    fn test_factory_description() {
+        let factory = FeatureCreatorFactory::default();
+        assert!(!factory.description().is_empty());
+        assert!(factory.description().contains("Custom Features"));
+    }
+
+    #[test]
+    fn test_factory_categories() {
+        let factory = FeatureCreatorFactory::default();
+        assert!(factory.categories().contains(&"Feature"));
+    }
+
+    #[test]
+    fn test_factory_output_ports() {
+        let factory = FeatureCreatorFactory::default();
+        assert_eq!(factory.get_output_ports().len(), 1);
+    }
+
+    #[test]
+    fn test_factory_parameter_schema() {
+        let factory = FeatureCreatorFactory::default();
+        assert!(factory.parameter_schema().is_some());
+    }
+
+    #[test]
+    fn test_factory_build_without_params() {
+        let factory = FeatureCreatorFactory::default();
+        let node_ctx = NodeContext::default();
+        let event_hub = EventHub::new(30);
+        
+        let result = factory.build(node_ctx, event_hub, "test".to_string(), None, None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_factory_build_with_params() {
+        let factory = FeatureCreatorFactory::default();
+        let node_ctx = NodeContext::default();
+        let event_hub = EventHub::new(30);
+        
+        let mut params = HashMap::new();
+        params.insert("creator".to_string(), serde_json::json!("#{name: 'test'}"));
+        
+        let result = factory.build(node_ctx, event_hub, "test".to_string(), Some(params), None);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_feature_creator_name() {
+        let creator = FeatureCreator {
+            creator: Expr::new("#{name: 'test'}"),
+        };
+        
+        assert_eq!(creator.name(), "FeatureCreator");
+    }
+}
+
