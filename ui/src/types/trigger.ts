@@ -18,6 +18,9 @@ export enum TimeIntervalEnum {
 
 export type TimeInterval = keyof typeof TimeIntervalEnum;
 
+// At a later date, we will need to expand this to support typed variable like in ProjectVariables
+type TriggerVariables = Record<string, any>;
+
 export type Trigger = {
   id: string;
   createdAt: string;
@@ -30,7 +33,7 @@ export type Trigger = {
   authToken?: string;
   timeInterval?: TimeInterval;
   description?: string;
-  variables?: Record<string, any>;
+  variables?: TriggerVariables;
 };
 
 export type GetTriggers = {

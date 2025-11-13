@@ -50,6 +50,17 @@ const TriggerManager: React.FC = () => {
     {
       accessorKey: "deployment.description",
       header: t("Deployment Description"),
+      cell: ({ row }) => {
+        const trigger = row.original;
+        return (
+          <span>
+            {trigger.deployment.description}
+            {trigger.variables && Object.keys(trigger.variables).length > 0 && (
+              <span className="ml-2 text-xs">{t("[defaults overridden]")}</span>
+            )}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "eventSource",
