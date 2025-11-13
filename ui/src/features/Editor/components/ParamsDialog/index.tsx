@@ -107,7 +107,7 @@ const ParamsDialog: React.FC<Props> = ({
             <DialogTitle>
               <div className="flex items-center gap-2">
                 <GearFineIcon weight="thin" />
-                {t("Node Editor")}
+                {t("Action Editor")}
               </div>
             </DialogTitle>
           </DialogHeader>
