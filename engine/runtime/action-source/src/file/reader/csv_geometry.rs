@@ -74,21 +74,29 @@ impl JsonSchema for GeometryMode {
             instance_type: Some(InstanceType::Object.into()),
             metadata: Some(Box::new(Metadata {
                 title: Some("WKT Column".to_string()),
-                description: Some("Geometry stored as Well-Known Text in a single column".to_string()),
+                description: Some(
+                    "Geometry stored as Well-Known Text in a single column".to_string(),
+                ),
                 ..Default::default()
             })),
             object: Some(Box::new(ObjectValidation {
                 properties: {
                     let mut props = schemars::Map::new();
-                    props.insert("column".to_string(), SchemaObject {
-                        instance_type: Some(InstanceType::String.into()),
-                        metadata: Some(Box::new(Metadata {
-                            title: Some("WKT Column Name".to_string()),
-                            description: Some("Name of the column containing WKT geometry".to_string()),
+                    props.insert(
+                        "column".to_string(),
+                        SchemaObject {
+                            instance_type: Some(InstanceType::String.into()),
+                            metadata: Some(Box::new(Metadata {
+                                title: Some("WKT Column Name".to_string()),
+                                description: Some(
+                                    "Name of the column containing WKT geometry".to_string(),
+                                ),
+                                ..Default::default()
+                            })),
                             ..Default::default()
-                        })),
-                        ..Default::default()
-                    }.into());
+                        }
+                        .into(),
+                    );
                     props
                 },
                 required: ["column".to_string()].into_iter().collect(),
@@ -102,30 +110,46 @@ impl JsonSchema for GeometryMode {
             instance_type: Some(InstanceType::Object.into()),
             metadata: Some(Box::new(Metadata {
                 title: Some("Coordinate Columns".to_string()),
-                description: Some("Geometry stored as separate X, Y, (optional Z) columns".to_string()),
+                description: Some(
+                    "Geometry stored as separate X, Y, (optional Z) columns".to_string(),
+                ),
                 ..Default::default()
             })),
             object: Some(Box::new(ObjectValidation {
                 properties: {
                     let mut props = schemars::Map::new();
-                    props.insert("xColumn".to_string(), SchemaObject {
-                        instance_type: Some(InstanceType::String.into()),
-                        metadata: Some(Box::new(Metadata {
-                            title: Some("X Column Name".to_string()),
-                            description: Some("Name of the column containing X coordinate (longitude)".to_string()),
+                    props.insert(
+                        "xColumn".to_string(),
+                        SchemaObject {
+                            instance_type: Some(InstanceType::String.into()),
+                            metadata: Some(Box::new(Metadata {
+                                title: Some("X Column Name".to_string()),
+                                description: Some(
+                                    "Name of the column containing X coordinate (longitude)"
+                                        .to_string(),
+                                ),
+                                ..Default::default()
+                            })),
                             ..Default::default()
-                        })),
-                        ..Default::default()
-                    }.into());
-                    props.insert("yColumn".to_string(), SchemaObject {
-                        instance_type: Some(InstanceType::String.into()),
-                        metadata: Some(Box::new(Metadata {
-                            title: Some("Y Column Name".to_string()),
-                            description: Some("Name of the column containing Y coordinate (latitude)".to_string()),
+                        }
+                        .into(),
+                    );
+                    props.insert(
+                        "yColumn".to_string(),
+                        SchemaObject {
+                            instance_type: Some(InstanceType::String.into()),
+                            metadata: Some(Box::new(Metadata {
+                                title: Some("Y Column Name".to_string()),
+                                description: Some(
+                                    "Name of the column containing Y coordinate (latitude)"
+                                        .to_string(),
+                                ),
+                                ..Default::default()
+                            })),
                             ..Default::default()
-                        })),
-                        ..Default::default()
-                    }.into());
+                        }
+                        .into(),
+                    );
                     props.insert("zColumn".to_string(), SchemaObject {
                         instance_type: Some(vec![InstanceType::String, InstanceType::Null].into()),
                         metadata: Some(Box::new(Metadata {
@@ -137,7 +161,9 @@ impl JsonSchema for GeometryMode {
                     }.into());
                     props
                 },
-                required: ["xColumn".to_string(), "yColumn".to_string()].into_iter().collect(),
+                required: ["xColumn".to_string(), "yColumn".to_string()]
+                    .into_iter()
+                    .collect(),
                 ..Default::default()
             })),
             ..Default::default()
@@ -150,7 +176,8 @@ impl JsonSchema for GeometryMode {
                 ..Default::default()
             })),
             ..Default::default()
-        }.into()
+        }
+        .into()
     }
 }
 

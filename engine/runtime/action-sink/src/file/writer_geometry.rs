@@ -63,21 +63,29 @@ impl JsonSchema for GeometryExportMode {
             instance_type: Some(InstanceType::Object.into()),
             metadata: Some(Box::new(Metadata {
                 title: Some("WKT Column".to_string()),
-                description: Some("Write geometry as Well-Known Text in a single column".to_string()),
+                description: Some(
+                    "Write geometry as Well-Known Text in a single column".to_string(),
+                ),
                 ..Default::default()
             })),
             object: Some(Box::new(ObjectValidation {
                 properties: {
                     let mut props = schemars::Map::new();
-                    props.insert("column".to_string(), SchemaObject {
-                        instance_type: Some(InstanceType::String.into()),
-                        metadata: Some(Box::new(Metadata {
-                            title: Some("WKT Column Name".to_string()),
-                            description: Some("Name of the column to write WKT geometry".to_string()),
+                    props.insert(
+                        "column".to_string(),
+                        SchemaObject {
+                            instance_type: Some(InstanceType::String.into()),
+                            metadata: Some(Box::new(Metadata {
+                                title: Some("WKT Column Name".to_string()),
+                                description: Some(
+                                    "Name of the column to write WKT geometry".to_string(),
+                                ),
+                                ..Default::default()
+                            })),
                             ..Default::default()
-                        })),
-                        ..Default::default()
-                    }.into());
+                        }
+                        .into(),
+                    );
                     props
                 },
                 required: ["column".to_string()].into_iter().collect(),
@@ -139,7 +147,8 @@ impl JsonSchema for GeometryExportMode {
                 ..Default::default()
             })),
             ..Default::default()
-        }.into()
+        }
+        .into()
     }
 }
 
