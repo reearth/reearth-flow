@@ -742,6 +742,7 @@
   "Unknown or deleted trigger": "Disparador desconocido o eliminado",
   "Trigger Description": "Descripción del disparador",
   "Deployment Id": "ID del despliegue",
+  "[defaults overridden]": "[valores predeterminados anulados]",
   "Event Source": "Fuente del evento",
   "Time Interval": "Intervalo de tiempo",
   "Last Triggered": "Última activación",
