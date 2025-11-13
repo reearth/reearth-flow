@@ -155,9 +155,7 @@ fn parse_tree_reader<R: BufRead>(
                 (v[0], v[1], v[2]) = (v[1], v[0], v[2]);
             });
         }
-        eprintln!("BEFORE: {:?}", entity.root); // --- IGNORE ---
-        let attributes = AttributeValue::from_nusamai_cityml_value(&entity.root);
-        eprintln!("CONVERTED: {:?}", attributes); // --- IGNORE ---
+        let attributes = AttributeValue::from_nusamai_citygml_value(&entity.root);
         let attributes = AttributeValue::convert_array_attributes(&attributes);
         let mut city_gml_attributes = match attributes.len() {
             0 => AttributeValue::Null,
