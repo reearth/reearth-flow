@@ -67,8 +67,8 @@ export default ({
           ...Array.from(allProps).map(
             (prop) =>
               ({
-                accessorKey: `properties${prop}`,
-                header: `properties.${prop}`,
+                accessorKey: `attributes${prop}`,
+                header: `attributes.${prop}`,
                 size: 200,
                 maxSize: 400,
                 minSize: 100,
@@ -107,7 +107,7 @@ export default ({
           ),
           ...Object.fromEntries(
             Array.from(allProps).map((prop) => [
-              `properties${prop}`,
+              `attributes${prop}`,
               formatCellValue(feature.properties?.[prop] ?? null),
             ]),
           ),
