@@ -6,7 +6,7 @@ import { Polygon, PolygonCoordinateRing } from "@flow/types/gisTypes/geoJSON";
 
 // Helper function to format cell values with truncation
 function formatCellValue(value: any): string {
-  if (value == null) return "-";
+  if (value === undefined) return "-";
 
   const formatted = JSON.stringify(value);
 
@@ -27,7 +27,6 @@ export default ({
     if (type === "geojson") {
       // Extract features and their properties from GeoJSON
       const features = parsedData.features || [];
-
       if (features.length > 0) {
         // Get unique properties from all geometries
         const allGeometry = new Set<string>();
@@ -109,7 +108,7 @@ export default ({
           ...Object.fromEntries(
             Array.from(allProps).map((prop) => [
               `attributes${prop}`,
-              formatCellValue(feature.properties?.[prop] || null),
+              formatCellValue(feature.properties?.[prop] ?? null),
             ]),
           ),
         }));
