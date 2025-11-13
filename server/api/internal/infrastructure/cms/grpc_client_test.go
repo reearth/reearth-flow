@@ -496,6 +496,7 @@ func (m *MockReEarthCMSClient) GetModelExportURL(ctx context.Context, req *cmspb
 	return args.Get(0).(*cmspb.ExportURLResponse), args.Error(1)
 }
 
+// nolint:staticcheck // SA1019: Deprecated in proto; required only to satisfy generated interface in tests.
 func (m *MockReEarthCMSClient) GetModelGeoJSONExportURL(ctx context.Context, req *cmspb.ExportRequest, opts ...grpc.CallOption) (*cmspb.ExportURLResponse, error) {
 	args := m.Called(ctx, req)
 	if args.Get(0) == nil {

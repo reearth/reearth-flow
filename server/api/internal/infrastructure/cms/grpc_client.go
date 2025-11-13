@@ -448,9 +448,10 @@ func (c *grpcClient) GetModelExportURL(ctx context.Context, input cms.ModelExpor
 }
 
 func (c *grpcClient) GetModelGeoJSONExportURL(ctx context.Context, input cms.ExportInput) (*cms.ExportOutput, error) {
-	resp, err := c.client.GetModelGeoJSONExportURL(ctx, &cmspb.ExportRequest{
-		ProjectId: input.ProjectID,
-		ModelId:   input.ModelID,
+	resp, err := c.client.GetModelExportURL(ctx, &cmspb.ModelExportRequest{
+		ProjectId:  input.ProjectID,
+		ModelId:    input.ModelID,
+		ExportType: cmspb.ModelExportRequest_GEOJSON,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get export URL: %w", err)
