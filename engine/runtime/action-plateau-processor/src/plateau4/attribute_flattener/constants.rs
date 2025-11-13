@@ -432,6 +432,41 @@ pub(super) static FLATTEN_ATTRIBUTES: Lazy<HashMap<String, Vec<AttributePath>>> 
                     "json_path": "core:creationDate"
                 },
                 {
+                    "attribute": "tran_class",
+                    "data_type": "string",
+                    "json_path": "tran:class"
+                },
+                {
+                    "attribute": "tran_function",
+                    "data_type": "string",
+                    "json_path": "tran:function"
+                },
+                {
+                    "attribute": "uro:operatorType",
+                    "data_type": "string",
+                    "json_path": "uro:RailwayRouteAttribute uro:operatorType"
+                },
+                {
+                    "attribute": "uro:operator",
+                    "data_type": "string",
+                    "json_path": "uro:RailwayRouteAttribute uro:operator"
+                },
+                {
+                    "attribute": "uro:railwayType",
+                    "data_type": "string",
+                    "json_path": "uro:RailwayRouteAttribute uro:railwayType"
+                },
+                {
+                    "attribute": "uro:startStation",
+                    "data_type": "string",
+                    "json_path": "uro:RailwayRouteAttribute uro:startStation"
+                },
+                {
+                    "attribute": "uro:endStation",
+                    "data_type": "string",
+                    "json_path": "uro:RailwayRouteAttribute uro:endStation"
+                },
+                {
                     "attribute": "uro:TransportationRailwayIDAttribute_uro:prefecture",
                     "data_type": "string",
                     "json_path": "uro:TransportationRailwayIDAttribute uro:prefecture"
@@ -440,11 +475,6 @@ pub(super) static FLATTEN_ATTRIBUTES: Lazy<HashMap<String, Vec<AttributePath>>> 
                     "attribute": "uro:TransportationRailwayIDAttribute_uro:city",
                     "data_type": "string",
                     "json_path": "uro:TransportationRailwayIDAttribute uro:city"
-                },
-                {
-                    "attribute": "uro:thematicSrcDesc",
-                    "data_type": "string",
-                    "json_path": "uro:DataQualityAttribute uro:thematicSrcDesc"
                 },
                 {
                     "attribute": "uro:geometrySrcDescLod1",
