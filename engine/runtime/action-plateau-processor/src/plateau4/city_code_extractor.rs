@@ -153,3 +153,76 @@ impl Processor for CityCodeExtractor {
         "CityCodeExtractor"
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reearth_flow_runtime::node::ProcessorFactory;
+
+    #[test]
+    fn test_factory_name() {
+        let factory = CityCodeExtractorFactory::default();
+        assert_eq!(factory.name(), "PLATEAU4.CityCodeExtractor");
+    }
+
+    #[test]
+    fn test_factory_description() {
+        let factory = CityCodeExtractorFactory::default();
+        assert!(!factory.description().is_empty());
+        assert!(factory.description().contains("city code"));
+    }
+
+    #[test]
+    fn test_factory_categories() {
+        let factory = CityCodeExtractorFactory::default();
+        assert!(factory.categories().contains(&"PLATEAU"));
+    }
+
+    #[test]
+    fn test_factory_ports() {
+        let factory = CityCodeExtractorFactory::default();
+        assert_eq!(factory.get_input_ports().len(), 1);
+        assert_eq!(factory.get_output_ports().len(), 1);
+    }
+
+    #[test]
+    fn test_factory_parameter_schema() {
+        let factory = CityCodeExtractorFactory::default();
+        assert!(factory.parameter_schema().is_some());
+    }
+
+    #[test]
+    fn test_factory_build_without_params() {
+        let factory = CityCodeExtractorFactory::default();
+        let node_ctx = NodeContext::default();
+        let event_hub = EventHub::new(30);
+        
+        let result = factory.build(node_ctx, event_hub, "test".to_string(), None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_factory_build_with_params() {
+        let factory = CityCodeExtractorFactory::default();
+        let node_ctx = NodeContext::default();
+        let event_hub = EventHub::new(30);
+        
+        let mut params = HashMap::new();
+        params.insert("cityCodeAttribute".to_string(), serde_json::json!("cityCode"));
+        params.insert("codelistsPathAttribute".to_string(), serde_json::json!("codelistsPath"));
+        
+        let result = factory.build(node_ctx, event_hub, "test".to_string(), Some(params));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_processor_name() {
+        let processor = CityCodeExtractor {
+            city_code_attribute: Attribute::new("cityCode"),
+            codelists_path_attribute: Attribute::new("codelistsPath"),
+        };
+        
+        assert_eq!(processor.name(), "CityCodeExtractor");
+    }
+}
+
