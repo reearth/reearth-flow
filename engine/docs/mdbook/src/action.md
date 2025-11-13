@@ -3604,15 +3604,26 @@ Reproject Geometry to Different Coordinate System
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Horizontal Reprojector Parameters",
-  "description": "Configure the target coordinate system for geometry reprojection",
+  "description": "Configure the source and target coordinate systems for geometry reprojection",
   "type": "object",
   "required": [
-    "epsgCode"
+    "targetEpsgCode"
   ],
   "properties": {
-    "epsgCode": {
-      "title": "EPSG Code",
-      "description": "Target coordinate system EPSG code for the reprojection",
+    "sourceEpsgCode": {
+      "title": "Source EPSG Code",
+      "description": "Source coordinate system EPSG code. If not provided, will use the EPSG code from the geometry. This is optional to maintain backward compatibility but recommended to be explicit.",
+      "default": null,
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint16",
+      "minimum": 0.0
+    },
+    "targetEpsgCode": {
+      "title": "Target EPSG Code",
+      "description": "Target coordinate system EPSG code for the reprojection. Supports any valid EPSG code (e.g., 4326 for WGS84, 2193 for NZTM2000, 3857 for Web Mercator).",
       "type": "integer",
       "format": "uint16",
       "minimum": 0.0
