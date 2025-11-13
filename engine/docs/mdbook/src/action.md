@@ -671,6 +671,39 @@ Transform Feature Attributes Using Expressions and Mappings
 ### Category
 * Attribute
 
+## BoundaryExtractor
+### Type
+* processor
+### Description
+Extracts the boundary of geometries. For solids/meshes returns bounding surfaces, for surfaces returns boundary edges, for closed surfaces returns empty geometry
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BoundaryExtractor Parameters",
+  "description": "Configuration for extracting boundaries from geometries.",
+  "type": "object",
+  "properties": {
+    "exteriorOnly": {
+      "description": "Whether to extract only exterior boundaries (ignoring holes) for polygons (default: false)",
+      "default": false,
+      "type": "boolean"
+    },
+    "keepEmptyBoundaries": {
+      "description": "Whether to keep features with empty boundaries (default: false)",
+      "default": false,
+      "type": "boolean"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
+
 ## BoundsExtractor
 ### Type
 * processor
@@ -3068,23 +3101,24 @@ Coerces and converts feature geometries to specified target geometry types
   "description": "Configuration for coercing geometries to specific target types.",
   "type": "object",
   "required": [
-    "coercerType"
+    "targetType"
   ],
   "properties": {
-    "coercerType": {
+    "targetType": {
       "description": "Target geometry type to coerce features to (e.g., LineString)",
       "allOf": [
         {
-          "$ref": "#/definitions/CoercerType"
+          "$ref": "#/definitions/CoerceTarget"
         }
       ]
     }
   },
   "definitions": {
-    "CoercerType": {
+    "CoerceTarget": {
       "type": "string",
       "enum": [
-        "lineString"
+        "lineString",
+        "triangularMesh"
       ]
     }
   }
@@ -4740,6 +4774,57 @@ Extracts city code information from PLATEAU4 codelists for local public authorit
 ### Category
 * PLATEAU
 
+## PLATEAU4.CityGmlMeshBuilder
+### Type
+* processor
+### Description
+Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exactly 4 vertices, (2) each triangle is closed (first vertex equals last vertex)
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CityGML Mesh Builder Parameters",
+  "description": "Configure validation rules for CityGML mesh triangles",
+  "type": "object",
+  "properties": {
+    "errorAttribute": {
+      "title": "Error Attribute Name",
+      "description": "Attribute name to store validation error messages (default: \"_validation_error\")",
+      "default": "_validation_error",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "rejectInvalid": {
+      "title": "Reject Invalid Features",
+      "description": "If true, send invalid features to rejected port; if false, send all features to default port with error attributes",
+      "default": false,
+      "type": "boolean"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* not_closed
+* incorrect_vertices
+* wrong_orientation
+* degenerate_triangle
+* summary
+* rejected
+### Category
+* PLATEAU
+* Geometry
+
 ## PLATEAU4.DestinationMeshCodeExtractor
 ### Type
 * processor
@@ -4806,6 +4891,46 @@ Validates domain of definition of CityGML features
 * default
 * rejected
 * duplicateGmlIdStats
+### Category
+* PLATEAU
+
+## PLATEAU4.FaceExtractor
+### Type
+* processor
+### Description
+Validates individual surfaces of WaterBody features for TIN mesh quality
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FaceExtractor Parameters",
+  "description": "Configuration for validating individual surfaces of WaterBody features. Always checks vertex count, closure, and orientation of polygons in TIN meshes.",
+  "type": "object",
+  "properties": {
+    "cityGmlPathAttribute": {
+      "description": "Attribute name for city_gml_path (default: \"_gml_path\")",
+      "default": "_gml_path",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* error
+* summary
+* passed
+* all
 ### Category
 * PLATEAU
 
@@ -5055,6 +5180,35 @@ Detect unmatched Xlinks for PLATEAU
 * summary
 * unMatchedXlinkFrom
 * unMatchedXlinkTo
+### Category
+* PLATEAU
+
+## PLATEAU4.UnsharedEdgeDetector
+### Type
+* processor
+### Description
+Detect unshared edges in triangular meshes - edges that appear only once. REQUIRES: Input geometries must be in a projected coordinate system (meters). Use HorizontalReprojector before this action if input is in geographic coordinates.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UnsharedEdgeDetector Parameters",
+  "description": "Configure unshared edge detection behavior",
+  "type": "object",
+  "properties": {
+    "tolerance": {
+      "description": "Tolerance for edge matching in meters (default: 0.1) Edges within this distance are considered the same edge",
+      "default": 0.1,
+      "type": "number",
+      "format": "double"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* unshared
 ### Category
 * PLATEAU
 
@@ -5785,6 +5939,46 @@ Rotate 3D Geometry Around Arbitrary Axis
 Force 3D Geometry to 2D by Removing Z-Coordinates
 ### Parameters
 * No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
+
+## VertexCounter
+### Type
+* processor
+### Description
+Count Geometry Vertices to Attribute
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Vertex Counter Parameters",
+  "description": "Configure where to store the count of vertices found in geometries",
+  "type": "object",
+  "required": [
+    "outputAttribute"
+  ],
+  "properties": {
+    "outputAttribute": {
+      "title": "Output Attribute",
+      "description": "Name of the attribute where the vertex count will be stored as a number",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
 ### Input Ports
 * default
 ### Output Ports

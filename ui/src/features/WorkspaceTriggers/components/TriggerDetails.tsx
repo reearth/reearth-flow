@@ -49,41 +49,45 @@ const TriggerDetails: React.FC<Props> = ({
             {
               id: "id",
               name: t("ID"),
-              value: selectedTrigger.id || t("Unknown or deleted trigger"),
+              value: selectedTrigger.id ?? t("Unknown or deleted trigger"),
             },
             {
               id: "triggerId",
               name: t("Trigger Description"),
-              value: selectedTrigger.description || t("N/A"),
+              value: selectedTrigger.description ?? t("N/A"),
             },
             {
               id: "deploymentId",
               name: t("Deployment Id"),
-              value: selectedTrigger.deploymentId || t("N/A"),
+              value: selectedTrigger.deploymentId ?? t("N/A"),
             },
             {
               id: "projectName",
               name: t("Project Name"),
               value:
-                selectedTrigger.deployment.projectName ||
+                selectedTrigger.deployment.projectName ??
                 t("Unknown or deleted project"),
             },
             {
               id: "deploymentDescription",
               name: t("Deployment Description"),
-              value: selectedTrigger.deployment.description || t("N/A"),
+              value: selectedTrigger.deployment.description
+                ? selectedTrigger.variables
+                  ? `${selectedTrigger.deployment.description} ${t("[defaults overridden]")}`
+                  : selectedTrigger.deployment.description
+                : t("N/A"),
             },
             {
               id: "eventSource",
               name: t("Event Source"),
-              value: selectedTrigger.eventSource,
+              value: selectedTrigger.eventSource ?? t("N/A"),
             },
             ...(selectedTrigger.eventSource === "API_DRIVEN"
               ? [
                   {
                     id: "authToken",
                     name: t("Auth Token"),
-                    value: selectedTrigger.authToken || t("N/A"),
+                    value: selectedTrigger.authToken ?? t("N/A"),
                   },
                 ]
               : []),
@@ -92,31 +96,29 @@ const TriggerDetails: React.FC<Props> = ({
                   {
                     id: "timeInterval",
                     name: t("Time Interval"),
-                    value: selectedTrigger.timeInterval || t("N/A"),
+                    value: selectedTrigger.timeInterval ?? t("N/A"),
                   },
                 ]
               : []),
             {
               id: "lastTriggered",
               name: t("Last Triggered"),
-              value: selectedTrigger.lastTriggered || t("Never"),
+              value: selectedTrigger.lastTriggered ?? t("Never"),
             },
             {
               id: "createdAt",
               name: t("Created At"),
-              value:
-                formatTimestamp(selectedTrigger.createdAt) || t("Never") || "",
+              value: formatTimestamp(selectedTrigger.createdAt) ?? t("Never"),
             },
             {
               id: "updatedAt",
               name: t("Updated At"),
-              value:
-                formatTimestamp(selectedTrigger.updatedAt) || t("Never") || "",
+              value: formatTimestamp(selectedTrigger.updatedAt) ?? t("Never"),
             },
             {
               id: "workflowUrl",
               name: t("Workflow Url"),
-              value: selectedTrigger.deployment.workflowUrl || t("N/A"),
+              value: selectedTrigger.deployment.workflowUrl ?? t("N/A"),
             },
           ]
         : undefined,

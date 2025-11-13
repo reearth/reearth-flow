@@ -262,7 +262,7 @@ export default function WorkflowImportVariablesMappingDialog({
             </div>
           ))}
         </DialogContentWrapper>
-        <DialogFooter className=" mt-2">
+        <DialogFooter className="mt-2">
           <Button variant="outline" onClick={handleCancel}>
             {t("Cancel")}
           </Button>

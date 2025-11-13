@@ -135,6 +135,7 @@ impl ExceptFields {
 enum FileComparisonMethod {
     Text,
     Json,
+    Jsonl,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -776,7 +777,9 @@ impl TestContext {
     }
 
     fn determine_comparison_method(&self, file_name: &str) -> Result<FileComparisonMethod> {
-        if file_name.ends_with(".json") || file_name.ends_with(".jsonl") {
+        if file_name.ends_with(".jsonl") {
+            Ok(FileComparisonMethod::Jsonl)
+        } else if file_name.ends_with(".json") {
             Ok(FileComparisonMethod::Json)
         } else if file_name.ends_with(".csv") || file_name.ends_with(".tsv") {
             Ok(FileComparisonMethod::Text)
@@ -810,6 +813,47 @@ impl TestContext {
                 }
 
                 assert_eq!(actual_json, expected_json);
+            }
+            FileComparisonMethod::Jsonl => {
+                // Parse each line as JSON and compare
+                let actual_lines: Vec<&str> =
+                    actual.lines().filter(|l| !l.trim().is_empty()).collect();
+                let expected_lines: Vec<&str> =
+                    expected.lines().filter(|l| !l.trim().is_empty()).collect();
+
+                assert_eq!(
+                    actual_lines.len(),
+                    expected_lines.len(),
+                    "Number of lines differs: actual={}, expected={}",
+                    actual_lines.len(),
+                    expected_lines.len()
+                );
+
+                for (i, (actual_line, expected_line)) in
+                    actual_lines.iter().zip(expected_lines.iter()).enumerate()
+                {
+                    let mut actual_json: serde_json::Value = serde_json::from_str(actual_line)
+                        .with_context(|| {
+                            format!("Failed to parse actual line {}: {}", i + 1, actual_line)
+                        })?;
+                    let mut expected_json: serde_json::Value = serde_json::from_str(expected_line)
+                        .with_context(|| {
+                            format!("Failed to parse expected line {}: {}", i + 1, expected_line)
+                        })?;
+
+                    // Remove excluded fields if specified
+                    if let Some(except_fields) = except {
+                        Self::remove_json_fields(&mut actual_json, except_fields);
+                        Self::remove_json_fields(&mut expected_json, except_fields);
+                    }
+
+                    assert_eq!(
+                        actual_json,
+                        expected_json,
+                        "JSON mismatch at line {}",
+                        i + 1
+                    );
+                }
             }
         }
         Ok(())

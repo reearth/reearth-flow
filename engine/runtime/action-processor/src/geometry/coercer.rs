@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use reearth_flow_geometry::types::geometry::Geometry2D;
 use reearth_flow_geometry::types::geometry::Geometry3D;
 use reearth_flow_geometry::types::multi_line_string::{MultiLineString2D, MultiLineString3D};
+use reearth_flow_geometry::types::triangular_mesh::TriangularMesh;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -74,8 +75,9 @@ impl ProcessorFactory for GeometryCoercerFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-enum CoercerType {
+enum CoerceTarget {
     LineString,
+    TriangularMesh,
 }
 
 /// # GeometryCoercer Parameters
@@ -85,7 +87,7 @@ enum CoercerType {
 #[serde(rename_all = "camelCase")]
 struct GeometryCoercer {
     /// Target geometry type to coerce features to (e.g., LineString)
-    coercer_type: CoercerType,
+    target_type: CoerceTarget,
 }
 
 impl Processor for GeometryCoercer {
@@ -105,13 +107,13 @@ impl Processor for GeometryCoercer {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
             }
             GeometryValue::FlowGeometry2D(geos) => {
-                self.handle_2d_geometry(geos, feature, geometry, &ctx, fw);
+                self.handle_2d_geometry(geos, feature, geometry, &ctx, fw)?;
             }
             GeometryValue::FlowGeometry3D(geos) => {
-                self.handle_3d_geometry(geos, feature, geometry, &ctx, fw);
+                self.handle_3d_geometry(geos, feature, geometry, &ctx, fw)?;
             }
             GeometryValue::CityGmlGeometry(geos) => {
-                self.handle_city_gml_geometry(geos, feature, geometry, &ctx, fw);
+                self.handle_city_gml_geometry(geos, feature, geometry, &ctx, fw)?;
             }
         }
         Ok(())
@@ -134,12 +136,12 @@ impl GeometryCoercer {
         geometry: &Geometry,
         ctx: &ExecutorContext,
         fw: &ProcessorChannelForwarder,
-    ) {
+    ) -> Result<(), String> {
         match geos {
             Geometry2D::Polygon(polygon) => {
                 let mut feature = feature.clone();
-                match self.coercer_type {
-                    CoercerType::LineString => {
+                match self.target_type {
+                    CoerceTarget::LineString => {
                         let line_strings = polygon.rings().to_vec();
                         let geo = if let Some(first) = line_strings.first() {
                             if line_strings.len() == 1 {
@@ -148,19 +150,20 @@ impl GeometryCoercer {
                                 Geometry2D::MultiLineString(MultiLineString2D::new(line_strings))
                             }
                         } else {
-                            return;
+                            return Ok(());
                         };
                         let mut geometry = geometry.clone();
                         geometry.value = GeometryValue::FlowGeometry2D(geo);
                         feature.geometry = geometry;
                     }
+                    CoerceTarget::TriangularMesh => Err("Not supported".to_string())?,
                 }
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
             Geometry2D::MultiPolygon(polygons) => {
                 let mut feature = feature.clone();
-                match self.coercer_type {
-                    CoercerType::LineString => {
+                match self.target_type {
+                    CoerceTarget::LineString => {
                         let mut geometries = Vec::<Geometry2D>::new();
                         for polygon in polygons.iter() {
                             let line_strings = polygon.rings().to_vec();
@@ -182,17 +185,19 @@ impl GeometryCoercer {
                                 Geometry2D::GeometryCollection(geometries)
                             }
                         } else {
-                            return;
+                            return Ok(());
                         };
                         let mut geometry = geometry.clone();
                         geometry.value = GeometryValue::FlowGeometry2D(geo);
                         feature.geometry = geometry;
                     }
+                    CoerceTarget::TriangularMesh => Err("Not supported".to_string())?,
                 }
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
-            _ => unimplemented!(),
+            _ => return Err("Not supported".to_string()), // Not supported
         }
+        Ok(())
     }
 
     fn handle_3d_geometry(
@@ -202,12 +207,12 @@ impl GeometryCoercer {
         geometry: &Geometry,
         ctx: &ExecutorContext,
         fw: &ProcessorChannelForwarder,
-    ) {
+    ) -> Result<(), String> {
         match geos {
             Geometry3D::Polygon(polygon) => {
                 let mut feature = feature.clone();
-                match self.coercer_type {
-                    CoercerType::LineString => {
+                match self.target_type {
+                    CoerceTarget::LineString => {
                         let line_strings = polygon.rings().to_vec();
                         let geo = if let Some(first) = line_strings.first() {
                             if line_strings.len() == 1 {
@@ -216,10 +221,19 @@ impl GeometryCoercer {
                                 Geometry3D::MultiLineString(MultiLineString3D::new(line_strings))
                             }
                         } else {
-                            return;
+                            return Ok(());
                         };
                         let mut geometry = geometry.clone();
                         geometry.value = GeometryValue::FlowGeometry3D(geo);
+                        feature.geometry = geometry;
+                    }
+                    CoerceTarget::TriangularMesh => {
+                        let triangular_mesh =
+                            TriangularMesh::<f64, f64>::try_from(vec![polygon.clone()])?;
+                        let mut geometry = geometry.clone();
+                        geometry.value = GeometryValue::FlowGeometry3D(Geometry3D::TriangularMesh(
+                            triangular_mesh,
+                        ));
                         feature.geometry = geometry;
                     }
                 }
@@ -227,8 +241,8 @@ impl GeometryCoercer {
             }
             Geometry3D::MultiPolygon(polygons) => {
                 let mut feature = feature.clone();
-                match self.coercer_type {
-                    CoercerType::LineString => {
+                match self.target_type {
+                    CoerceTarget::LineString => {
                         let mut geometries = Vec::<Geometry3D>::new();
                         for polygon in polygons.iter() {
                             let line_strings = polygon.rings().to_vec();
@@ -250,17 +264,27 @@ impl GeometryCoercer {
                                 Geometry3D::GeometryCollection(geometries)
                             }
                         } else {
-                            return;
+                            return Ok(());
                         };
                         let mut geometry = geometry.clone();
                         geometry.value = GeometryValue::FlowGeometry3D(geo);
                         feature.geometry = geometry;
                     }
+                    CoerceTarget::TriangularMesh => {
+                        let triangular_mesh =
+                            TriangularMesh::<f64, f64>::try_from(polygons.clone().0)?;
+                        let mut geometry = geometry.clone();
+                        geometry.value = GeometryValue::FlowGeometry3D(Geometry3D::TriangularMesh(
+                            triangular_mesh,
+                        ));
+                        feature.geometry = geometry;
+                    }
                 }
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
-            _ => unimplemented!(),
-        }
+            _ => return Err("Not supported".to_string()), // Not supported
+        };
+        Ok(())
     }
 
     fn handle_city_gml_geometry(
@@ -270,11 +294,11 @@ impl GeometryCoercer {
         geometry: &Geometry,
         ctx: &ExecutorContext,
         fw: &ProcessorChannelForwarder,
-    ) {
-        geos.gml_geometries.iter().for_each(|geo_feature| {
+    ) -> Result<(), String> {
+        for geo_feature in geos.gml_geometries.iter() {
             let mut geometries = Vec::<Geometry3D>::new();
-            match &self.coercer_type {
-                CoercerType::LineString => {
+            match &self.target_type {
+                CoerceTarget::LineString => {
                     for polygon in geo_feature.polygons.iter() {
                         let line_strings = polygon.rings().to_vec();
                         if let Some(first) = line_strings.first() {
@@ -293,7 +317,29 @@ impl GeometryCoercer {
                             Geometry3D::GeometryCollection(geometries)
                         }
                     } else {
-                        return;
+                        return Ok(());
+                    };
+                    let mut geometry = geometry.clone();
+                    geometry.value = GeometryValue::FlowGeometry3D(geo);
+                    let mut feature = feature.clone();
+                    feature.refresh_id();
+                    feature.geometry = geometry;
+                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                }
+                CoerceTarget::TriangularMesh => {
+                    for polygon in geo_feature.polygons.iter() {
+                        let triangular_mesh =
+                            TriangularMesh::<f64, f64>::try_from(vec![polygon.clone()])?;
+                        geometries.push(Geometry3D::TriangularMesh(triangular_mesh));
+                    }
+                    let geo = if let Some(first) = geometries.first() {
+                        if geometries.len() == 1 {
+                            first.clone()
+                        } else {
+                            Geometry3D::GeometryCollection(geometries)
+                        }
+                    } else {
+                        return Ok(());
                     };
                     let mut geometry = geometry.clone();
                     geometry.value = GeometryValue::FlowGeometry3D(geo);
@@ -303,6 +349,7 @@ impl GeometryCoercer {
                     fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
                 }
             }
-        });
+        }
+        Ok(())
     }
 }

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -227,7 +228,16 @@ impl Processor for GeometrySplitter {
                     ));
                 }
             }
-            _ => unimplemented!(),
+            GeometryValue::FlowGeometry2D(geometry) => {
+                self.process_flow_geometry_2d(geometry, &ctx, fw)?;
+            }
+            GeometryValue::FlowGeometry3D(geometry) => {
+                self.process_flow_geometry_3d(geometry, &ctx, fw)?;
+            }
+            GeometryValue::None => {
+                // Pass through empty geometry
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+            }
         }
         Ok(())
     }
@@ -238,5 +248,97 @@ impl Processor for GeometrySplitter {
 
     fn name(&self) -> &str {
         "GeometrySplitter"
+    }
+}
+
+impl GeometrySplitter {
+    fn process_flow_geometry_2d(
+        &self,
+        geometry: &Geometry2D,
+        ctx: &ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        match geometry {
+            Geometry2D::MultiPolygon(multi_polygon) => {
+                // Split MultiPolygon into individual Polygon features
+                let polygons: Vec<_> = multi_polygon.iter().cloned().collect();
+                // Multiple polygons - split into separate features
+                for (index, polygon) in polygons.into_iter().enumerate() {
+                    let mut new_feature = ctx.feature.clone();
+                    new_feature.insert(
+                        Attribute::new("_split_index"),
+                        AttributeValue::Number((index + 1).into()),
+                    );
+                    new_feature.geometry.value =
+                        GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon));
+                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                }
+            }
+            Geometry2D::MultiLineString(multi_line_string) => {
+                // Split MultiLineString into individual LineString features
+                let line_strings: Vec<_> = multi_line_string.iter().cloned().collect();
+                // Multiple line strings - split into separate features
+                for (index, line_string) in line_strings.into_iter().enumerate() {
+                    let mut new_feature = ctx.feature.clone();
+                    new_feature.insert(
+                        Attribute::new("_split_index"),
+                        AttributeValue::Number((index + 1).into()),
+                    );
+                    new_feature.geometry.value =
+                        GeometryValue::FlowGeometry2D(Geometry2D::LineString(line_string));
+                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                }
+            }
+            _ => {
+                // For non-multi geometries, pass through unchanged
+                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), DEFAULT_PORT.clone()));
+            }
+        }
+        Ok(())
+    }
+
+    fn process_flow_geometry_3d(
+        &self,
+        geometry: &Geometry3D,
+        ctx: &ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        match geometry {
+            Geometry3D::MultiPolygon(multi_polygon) => {
+                // Split MultiPolygon into individual Polygon features
+                let polygons: Vec<_> = multi_polygon.iter().cloned().collect();
+                // Multiple polygons - split into separate features
+                for (index, polygon) in polygons.into_iter().enumerate() {
+                    let mut new_feature = ctx.feature.clone();
+                    new_feature.insert(
+                        Attribute::new("_split_index"),
+                        AttributeValue::Number((index + 1).into()),
+                    );
+                    new_feature.geometry.value =
+                        GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon));
+                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                }
+            }
+            Geometry3D::MultiLineString(multi_line_string) => {
+                // Split MultiLineString into individual LineString features
+                let line_strings: Vec<_> = multi_line_string.iter().cloned().collect();
+                // Multiple line strings - split into separate features
+                for (index, line_string) in line_strings.into_iter().enumerate() {
+                    let mut new_feature = ctx.feature.clone();
+                    new_feature.insert(
+                        Attribute::new("_split_index"),
+                        AttributeValue::Number((index + 1).into()),
+                    );
+                    new_feature.geometry.value =
+                        GeometryValue::FlowGeometry3D(Geometry3D::LineString(line_string));
+                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                }
+            }
+            _ => {
+                // For non-multi geometries, pass through unchanged
+                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), DEFAULT_PORT.clone()));
+            }
+        }
+        Ok(())
     }
 }

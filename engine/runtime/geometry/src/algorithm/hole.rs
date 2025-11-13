@@ -60,6 +60,7 @@ impl<T: CoordNum, Z: CoordNum> HoleCounter<T, Z> for Geometry<T, Z> {
             Geometry::MultiPolygon(mp) => mp.hole_count(),
             Geometry::Rect(rect) => rect.hole_count(),
             Geometry::Triangle(_) => unimplemented!(),
+            Geometry::TriangularMesh(_) => unimplemented!(),
             Geometry::Solid(s) => s.hole_count(),
             Geometry::GeometryCollection(gc) => gc.iter().map(|g| g.hole_count()).sum(),
         }
