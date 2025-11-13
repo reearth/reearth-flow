@@ -21,6 +21,26 @@ export enum TriggerQueryKeys {
 
 export const TRIGGERS_FETCH_RATE = 15;
 
+// Helper function to convert all variable values to strings for the backend
+const convertVariablesToStrings = (
+  variables?: Record<string, any>,
+): Record<string, string> | undefined => {
+  if (!variables || Object.keys(variables).length === 0) return undefined;
+
+  const stringifiedVars: Record<string, string> = {};
+  Object.entries(variables).forEach(([key, value]) => {
+    if (typeof value === "string") {
+      stringifiedVars[key] = value;
+    } else if (typeof value === "object") {
+      stringifiedVars[key] = JSON.stringify(value);
+    } else {
+      stringifiedVars[key] = String(value);
+    }
+  });
+
+  return stringifiedVars;
+};
+
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
@@ -48,7 +68,7 @@ export const useQueries = () => {
           timeDriverInput,
           apiDriverInput,
           description,
-          variables,
+          variables: convertVariablesToStrings(variables),
         },
       });
 
@@ -84,7 +104,7 @@ export const useQueries = () => {
         apiDriverInput,
         timeDriverInput,
         description,
-        variables,
+        variables: convertVariablesToStrings(variables),
       };
 
       const data = await graphQLContext?.UpdateTrigger({

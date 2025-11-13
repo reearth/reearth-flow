@@ -95,6 +95,40 @@ export const toDeployment = (deployment: DeploymentFragment): Deployment => ({
   updatedAt: formatDate(deployment.updatedAt),
 });
 
+// Helper to parse string variables back to their proper types
+const parseVariableValue = (value: any): any => {
+  if (typeof value !== "string") return value;
+  if (value.startsWith("{") || value.startsWith("[")) {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  }
+
+  // Try to parse as number
+  if (value !== "" && !isNaN(Number(value))) {
+    return Number(value);
+  }
+
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return value;
+};
+
+const parseVariables = (
+  variables?: Record<string, any>,
+): Record<string, any> | undefined => {
+  if (!variables) return undefined;
+
+  const parsed: Record<string, any> = {};
+  Object.entries(variables).forEach(([key, value]) => {
+    parsed[key] = parseVariableValue(value);
+  });
+
+  return parsed;
+};
+
 export const toTrigger = (trigger: TriggerFragment): Trigger => ({
   id: trigger.id,
   deploymentId: trigger.deploymentId,
@@ -106,7 +140,7 @@ export const toTrigger = (trigger: TriggerFragment): Trigger => ({
   authToken: trigger.authToken ?? undefined,
   timeInterval: trigger.timeInterval ?? undefined,
   description: trigger.description ?? undefined,
-  variables: trigger.variables ?? undefined,
+  variables: parseVariables(trigger.variables),
 });
 
 export const toNodeExecution = (
