@@ -99,6 +99,7 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 		Deployment(param.DeploymentID).
 		Description(param.Description).
 		EventSource(param.EventSource).
+		CreatedAt(time.Now()).
 		UpdatedAt(time.Now())
 
 	if param.EventSource == "TIME_DRIVEN" {
