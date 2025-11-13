@@ -12,13 +12,13 @@ export default ({
 }) => {
   const [currentProject] = useCurrentProject();
 
-  const [showDialog, setShowDialog] = useState<
-    "deploy" | "share" | "debugStart" | "debugStop" | undefined
+  const [showPopover, setShowPopover] = useState<
+    "debugStart" | "debugStop" | undefined
   >(undefined);
 
-  const handleShowDebugStartDialog = () => setShowDialog("debugStart");
-  const handleShowDebugStopDialog = () => setShowDialog("debugStop");
-  const handleDialogClose = () => setShowDialog(undefined);
+  const handleShowDebugStartPopover = () => setShowPopover("debugStart");
+  const handleShowDebugStopPopover = () => setShowPopover("debugStop");
+  const handlePopoverClose = () => setShowPopover(undefined);
   const [debugRunStarted, setDebugRunStarted] = useState(false);
 
   const { useGetJob } = useJob();
@@ -76,14 +76,14 @@ export default ({
   };
 
   return {
-    showDialog,
+    showPopover,
     debugRunStarted,
     jobStatus,
     debugJob,
     handleDebugRunStart,
-    handleShowDebugStartDialog,
-    handleShowDebugStopDialog,
-    handleDialogClose,
+    handleShowDebugStartPopover,
+    handleShowDebugStopPopover,
+    handlePopoverClose,
     handleDebugRunReset,
   };
 };

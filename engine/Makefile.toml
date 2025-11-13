@@ -155,6 +155,7 @@ WORKFLOW_QC=(
   "02-bldg"
   "03-tran"
   "05-luse-urf-area"
+  "06-fld"
 )
 
 process_workflows() {

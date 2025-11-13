@@ -1,0 +1,17 @@
+{
+  "workflowPath": "quality-check/plateau4/06-fld/workflow.yml",
+  "description": "Test quality check for degenerate triangles (pref/river_b)",
+  "cityGmlPath": "udx/fld/pref/river_b/49300101_fld_6697_l2_op.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_fld_pref_river_b.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "06_浸水想定区域_fld/pref/river_b.csv"
+    }
+  },
+  "expectResultOkFile": false,
+  "skip": false
+}

@@ -1,0 +1,8 @@
+{
+  "workflowPath": "quality-check/plateau4/06-fld/workflow.yml",
+  "description": "Verify output files for quality check with no errors",
+  "cityGmlPath": "udx/fld/natl/1_1_kikuchigawa_kikuchigawa/49300000_fld_6697_l1_op.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectResultOkFile": true
+}
