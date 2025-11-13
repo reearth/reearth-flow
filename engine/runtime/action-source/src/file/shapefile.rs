@@ -533,7 +533,9 @@ fn read_shapefile_from_zip(
             SourceError::shapefile_reader(format!("Failed to create shape reader with index: {e}"))
         })?
     } else {
-        tracing::warn!("No .shx index file found, parsing without index (may be slower or less accurate)");
+        tracing::warn!(
+            "No .shx index file found, parsing without index (may be slower or less accurate)"
+        );
         shapefile::ShapeReader::new(shp_cursor).map_err(|e| {
             SourceError::shapefile_reader(format!("Failed to create shape reader: {e}"))
         })?
