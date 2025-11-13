@@ -66,7 +66,7 @@ const TriggerApiDrivenDetails: React.FC<Props> = ({
               <TooltipContent side="top" align="end" className="bg-primary">
                 <div className="max-w-[300px] text-xs text-muted-foreground">
                   {t(
-                    'Pass {"with": {"key": "value"}} in body to inject dynamic parameters into workflow execution. These variables override/supplement default workflow values and are accessible in nodes.',
+                    'Pass {"with": {"key": "value"}} in body to inject dynamic parameters into workflow execution. These variables override/supplement default workflow values and are accessible in actions.',
                   )}
                 </div>
               </TooltipContent>
