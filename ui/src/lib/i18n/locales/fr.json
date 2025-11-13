@@ -742,7 +742,6 @@
   "Unknown or deleted trigger": "Déclencheur inconnu ou supprimé",
   "Trigger Description": "Description du déclencheur",
   "Deployment Id": "ID de déploiement",
-  "[defaults overridden]": "[valeurs par défaut remplacées]",
   "Event Source": "Source de l'événement",
   "Time Interval": "Intervalle de temps",
   "Last Triggered": "Dernier déclenchement",

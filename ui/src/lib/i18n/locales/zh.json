@@ -740,7 +740,6 @@
   "Unknown or deleted trigger": "未知或已删除的触发器",
   "Trigger Description": "触发器描述",
   "Deployment Id": "部署ID",
-  "[defaults overridden]": "[覆盖默认值]",
   "Event Source": "事件源",
   "Time Interval": "时间间隔",
   "Last Triggered": "最后触发时间",

@@ -740,7 +740,6 @@
   "Unknown or deleted trigger": "不明または削除されたトリガー",
   "Trigger Description": "トリガーの説明",
   "Deployment Id": "デプロイメントID",
-  "[defaults overridden]": "[デフォルトが上書きされました]",
   "Event Source": "イベントソース",
   "Time Interval": "タイムインターバル",
   "Last Triggered": "最終トリガー",
