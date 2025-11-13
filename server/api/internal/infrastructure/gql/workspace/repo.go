@@ -63,7 +63,10 @@ func (r *workspaceRepo) FindByUser(ctx context.Context, uid id.UserID) (workspac
 }
 
 func (r *workspaceRepo) Create(ctx context.Context, name string) (*workspace.Workspace, error) {
-	in := CreateWorkspaceInput{Name: graphql.String(name)}
+	in := CreateWorkspaceInput{
+		Alias: graphql.String(name),
+		Name:  graphql.String(name),
+	}
 
 	var m createWorkspaceMutation
 	vars := map[string]interface{}{
