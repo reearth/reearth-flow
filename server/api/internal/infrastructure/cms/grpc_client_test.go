@@ -223,7 +223,7 @@ func TestConvertProtoToProject(t *testing.T) {
 	assert.Equal(t, "workspace-456", result.WorkspaceID)
 	assert.Equal(t, cms.VisibilityPublic, result.Visibility)
 	assert.Equal(t, []string{"geospatial", "data"}, result.Topics)
-	assert.Equal(t, int32(42), result.StarCount)
+	assert.Equal(t, int64(42), result.StarCount)
 	assert.Equal(t, now.Unix(), result.CreatedAt.Unix())
 	assert.Equal(t, now.Unix(), result.UpdatedAt.Unix())
 

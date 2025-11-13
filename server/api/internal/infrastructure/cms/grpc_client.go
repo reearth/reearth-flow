@@ -476,7 +476,7 @@ func convertProtoToProject(p *cmspb.Project) *cms.Project {
 		WorkspaceID: p.WorkspaceId,
 		Visibility:  convertProtoToVisibility(p.Visibility),
 		Topics:      p.Topics,
-		StarCount:   int32(p.StarCount),
+		StarCount:   p.StarCount,
 		CreatedAt:   p.CreatedAt.AsTime(),
 		UpdatedAt:   p.UpdatedAt.AsTime(),
 	}
