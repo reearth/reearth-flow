@@ -105,7 +105,7 @@ const Homebar: React.FC<Props> = ({
             <DropdownMenuItem
               onClick={() => handleDialogOpen("projectVariables")}>
               <ChalkboardTeacherIcon weight="thin" size={18} />
-              <p>{t("Project Variables")}</p>
+              <p>{t("Workflow Variables")}</p>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleDialogOpen("assets")}>
               <FileIcon weight="thin" size={18} />

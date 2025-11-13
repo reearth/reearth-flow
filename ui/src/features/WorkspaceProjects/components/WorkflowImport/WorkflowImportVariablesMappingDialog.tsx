@@ -150,7 +150,7 @@ export default function WorkflowImportVariablesMappingDialog({
           <DialogTitle>{t("Configure Workflow Variables")}</DialogTitle>
           <DialogDescription>
             {t(
-              "The workflow '{{workflowName}}' contains {{count}} variables. Configure how they should be imported as Project Variables.",
+              "The workflow '{{workflowName}}' contains {{count}} variables. Configure how they should be imported as Workflow Variables.",
               {
                 workflowName,
                 count: variables.length,

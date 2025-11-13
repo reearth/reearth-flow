@@ -103,7 +103,7 @@ export default () => {
       try {
         await deleteProjectVariable(id, currentProject.id);
       } catch (error) {
-        console.error("Failed to delete project variable:", error);
+        console.error("Failed to delete workflow variable:", error);
       }
     },
     [deleteProjectVariable, currentProject],
@@ -116,7 +116,7 @@ export default () => {
       try {
         await deleteProjectVariables(currentProject.id, ids);
       } catch (error) {
-        console.error("Failed to delete project variables:", error);
+        console.error("Failed to delete workflow variables:", error);
       }
     },
     [deleteProjectVariables, currentProject],
