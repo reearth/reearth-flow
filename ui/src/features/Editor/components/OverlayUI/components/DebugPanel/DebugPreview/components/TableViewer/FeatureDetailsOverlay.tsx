@@ -106,7 +106,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
           {Object.keys(processedFeature.properties).length > 0 && (
             <div>
               <h4 className="mb-3 text-sm font-medium text-muted-foreground">
-                {t("Properties")}
+                {t("Attributes")}
               </h4>
               <div className="space-y-3">
                 {Object.entries(processedFeature.properties).map(
@@ -115,7 +115,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-medium text-muted-foreground">
                           {key
-                            .replace(/^properties/, "")
+                            .replace(/^attributes/, "")
                             .replace(/^geometry/, "")}
                         </span>
                         {typeof value === "object" && (
