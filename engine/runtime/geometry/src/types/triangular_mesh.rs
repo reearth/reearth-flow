@@ -1,12 +1,17 @@
 use crate::algorithm::contains::Contains;
 use crate::algorithm::triangle_intersection::{triangles_intersect, triangles_intersection};
 use crate::algorithm::utils::{denormalize_vertices, normalize_vertices};
+use crate::algorithm::{GeoFloat, GeoNum};
 use crate::types::coordinate::{are_coplanar, Coordinate};
 use crate::types::line_string::LineString3D;
 use crate::types::polygon::Polygon3D;
 use crate::types::triangle::Triangle;
 use crate::types::{coordinate::Coordinate3D, coordnum::CoordNum, line::Line3D};
-use num_traits::Float;
+use crate::validation::{
+    ValidationProblem, ValidationProblemAtPosition, ValidationProblemPosition,
+    ValidationProblemReport, ValidationType,
+};
+use num_traits::{Float, FromPrimitive, NumCast};
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 use std::vec;
@@ -35,6 +40,147 @@ impl<T: CoordNum, Z: CoordNum> TriangularMesh<T, Z> {
 
     pub fn get_triangles(&self) -> &[[usize; 3]] {
         &self.triangles
+    }
+
+    pub fn from_triangles(trinangles: Vec<[Coordinate<T, Z>; 3]>) -> Self {
+        let mut mesh = Self::default();
+        for triangle in trinangles {
+            let mut tri_indices = [0usize; 3];
+            for (i, &vertex) in triangle.iter().enumerate() {
+                // Get or insert vertex index
+                let vertex_index = match mesh.vertices.iter().position(|&v| v == vertex) {
+                    Some(idx) => idx,
+                    None => {
+                        let idx = mesh.vertices.len();
+                        mesh.vertices.push(vertex);
+                        idx
+                    }
+                };
+
+                tri_indices[i] = vertex_index;
+            }
+
+            // Add triangle
+            tri_indices.sort_unstable();
+            mesh.triangles.push(tri_indices);
+        }
+        mesh.edges_with_multiplicity = Self::compute_edges_with_multiplicity(&mesh.triangles);
+
+        // Sort triangles for consistent representation
+        mesh.triangles.sort_unstable();
+        mesh.triangles.dedup();
+        mesh
+    }
+
+    fn compute_edges_with_multiplicity(triangles: &[[usize; 3]]) -> Vec<([usize; 2], usize)> {
+        let mut edges: Vec<[usize; 2]> = Vec::new();
+        for triangle in triangles {
+            for [i, j] in [[0, 1], [1, 2], [0, 2]] {
+                let edge = if triangle[i] < triangle[j] {
+                    [triangle[i], triangle[j]]
+                } else {
+                    [triangle[j], triangle[i]]
+                };
+                edges.push(edge);
+            }
+        }
+        edges.sort_unstable();
+        if edges.is_empty() {
+            return Vec::new();
+        }
+        let mut edges_with_multiplicity = vec![(edges[0], 1)];
+        edges_with_multiplicity.reserve(edges.len());
+
+        for edge in edges.into_iter().skip(1) {
+            let (last_edge, count) = edges_with_multiplicity.last_mut().unwrap();
+            if *last_edge == edge {
+                *count += 1;
+            } else {
+                edges_with_multiplicity.push((edge, 1));
+            }
+        }
+        edges_with_multiplicity
+    }
+}
+
+impl TriangularMesh<f64> {
+    pub fn elevation(&self) -> f64 {
+        self.vertices.first().map(|c| c.z).unwrap_or(0.0)
+    }
+
+    pub fn is_elevation_zero(&self) -> bool {
+        self.vertices.iter().all(|c| c.z == 0.0)
+    }
+}
+
+impl<
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat + From<Z>,
+        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+    > TriangularMesh<T, Z>
+{
+    pub fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
+        match valid_type {
+            ValidationType::CorruptGeometry => {
+                // Check for degenerate triangles
+                let mut problem_reports = Vec::new();
+                for triangle_indices in self.triangles.iter() {
+                    let a = self.vertices[triangle_indices[0]];
+                    let b = self.vertices[triangle_indices[1]];
+                    let c = self.vertices[triangle_indices[2]];
+
+                    // TODO: use normalize_vertices function here. Currently it is not possible to use this function for 'Coordinate<T, Z>'.
+                    // Need to wait refactoring of geometry types.
+                    let (a, b, c) = {
+                        let mean = Coordinate {
+                            x: (a.x + b.x + c.x) / <T as NumCast>::from(3.0).unwrap(),
+                            y: (a.y + b.y + c.y) / <T as NumCast>::from(3.0).unwrap(),
+                            z: (a.z + b.z + c.z) / <Z as NumCast>::from(3.0).unwrap(),
+                        };
+                        let a = a - mean;
+                        let b = b - mean;
+                        let c = c - mean;
+                        let a = Coordinate {
+                            x: a.x / a.norm(),
+                            y: a.y / a.norm(),
+                            z: a.z / Z::from(a.norm()).unwrap(),
+                        };
+                        let b = Coordinate {
+                            x: b.x / b.norm(),
+                            y: b.y / b.norm(),
+                            z: b.z / Z::from(b.norm()).unwrap(),
+                        };
+                        let c = Coordinate {
+                            x: c.x / c.norm(),
+                            y: c.y / c.norm(),
+                            z: c.z / Z::from(c.norm()).unwrap(),
+                        };
+                        (a, b, c)
+                    };
+
+                    let ab = (b - a).norm();
+                    let ac = (c - a).norm();
+                    let bc = (c - b).norm();
+                    let epsilon: f64 = <f64 as NumCast>::from(ab + bc + ac).unwrap() / (3.0 * 1e5);
+                    let is_degenerate = (ab + ac).abs_diff_eq(&bc, epsilon)
+                        || (ab + bc).abs_diff_eq(&ac, epsilon)
+                        || (ac + bc).abs_diff_eq(&ab, epsilon);
+                    if is_degenerate {
+                        let report = ValidationProblemAtPosition(
+                            ValidationProblem::DegenerateGeometry,
+                            ValidationProblemPosition::Point,
+                        );
+                        problem_reports.push(report);
+                    }
+                }
+
+                if problem_reports.is_empty() {
+                    None
+                } else {
+                    Some(ValidationProblemReport(problem_reports))
+                }
+            }
+            _ => unimplemented!(),
+        }
     }
 }
 
@@ -263,36 +409,6 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
         }
 
         Ok(triangles)
-    }
-
-    fn compute_edges_with_multiplicity(triangles: &[[usize; 3]]) -> Vec<([usize; 2], usize)> {
-        let mut edges: Vec<[usize; 2]> = Vec::new();
-        for triangle in triangles {
-            for [i, j] in [[0, 1], [1, 2], [0, 2]] {
-                let edge = if triangle[i] < triangle[j] {
-                    [triangle[i], triangle[j]]
-                } else {
-                    [triangle[j], triangle[i]]
-                };
-                edges.push(edge);
-            }
-        }
-        edges.sort_unstable();
-        if edges.is_empty() {
-            return Vec::new();
-        }
-        let mut edges_with_multiplicity = vec![(edges[0], 1)];
-        edges_with_multiplicity.reserve(edges.len());
-
-        for edge in edges.into_iter().skip(1) {
-            let (last_edge, count) = edges_with_multiplicity.last_mut().unwrap();
-            if *last_edge == edge {
-                *count += 1;
-            } else {
-                edges_with_multiplicity.push((edge, 1));
-            }
-        }
-        edges_with_multiplicity
     }
 
     pub fn edges_violating_manifold_condition(&self) -> Vec<Line3D<T>> {

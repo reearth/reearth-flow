@@ -672,6 +672,39 @@
       ]
     },
     {
+      "name": "BoundaryExtractor",
+      "type": "processor",
+      "description": "Extracts the boundary of geometries. For solids/meshes returns bounding surfaces, for surfaces returns boundary edges, for closed surfaces returns empty geometry",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "BoundaryExtractor Parameters",
+        "description": "Configuration for extracting boundaries from geometries.",
+        "type": "object",
+        "properties": {
+          "exteriorOnly": {
+            "description": "Whether to extract only exterior boundaries (ignoring holes) for polygons (default: false)",
+            "default": false,
+            "type": "boolean"
+          },
+          "keepEmptyBoundaries": {
+            "description": "Whether to keep features with empty boundaries (default: false)",
+            "default": false,
+            "type": "boolean"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "BoundsExtractor",
       "type": "processor",
       "description": "Extract Bounding Box Coordinates from Feature Geometry",
@@ -3096,23 +3129,24 @@
         "description": "Configuration for coercing geometries to specific target types.",
         "type": "object",
         "required": [
-          "coercerType"
+          "targetType"
         ],
         "properties": {
-          "coercerType": {
+          "targetType": {
             "description": "Target geometry type to coerce features to (e.g., LineString)",
             "allOf": [
               {
-                "$ref": "#/definitions/CoercerType"
+                "$ref": "#/definitions/CoerceTarget"
               }
             ]
           }
         },
         "definitions": {
-          "CoercerType": {
+          "CoerceTarget": {
             "type": "string",
             "enum": [
-              "lineString"
+              "lineString",
+              "triangularMesh"
             ]
           }
         }
@@ -3608,15 +3642,26 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Horizontal Reprojector Parameters",
-        "description": "Configure the target coordinate system for geometry reprojection",
+        "description": "Configure the source and target coordinate systems for geometry reprojection",
         "type": "object",
         "required": [
-          "epsgCode"
+          "targetEpsgCode"
         ],
         "properties": {
-          "epsgCode": {
-            "title": "EPSG Code",
-            "description": "Target coordinate system EPSG code for the reprojection",
+          "sourceEpsgCode": {
+            "title": "Source EPSG Code",
+            "description": "Source coordinate system EPSG code. If not provided, will use the EPSG code from the geometry. This is optional to maintain backward compatibility but recommended to be explicit.",
+            "default": null,
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint16",
+            "minimum": 0.0
+          },
+          "targetEpsgCode": {
+            "title": "Target EPSG Code",
+            "description": "Target coordinate system EPSG code for the reprojection. Supports any valid EPSG code (e.g., 4326 for WGS84, 2193 for NZTM2000, 3857 for Web Mercator).",
             "type": "integer",
             "format": "uint16",
             "minimum": 0.0
@@ -4783,6 +4828,57 @@
       ]
     },
     {
+      "name": "PLATEAU4.CityGmlMeshBuilder",
+      "type": "processor",
+      "description": "Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exactly 4 vertices, (2) each triangle is closed (first vertex equals last vertex)",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CityGML Mesh Builder Parameters",
+        "description": "Configure validation rules for CityGML mesh triangles",
+        "type": "object",
+        "properties": {
+          "errorAttribute": {
+            "title": "Error Attribute Name",
+            "description": "Attribute name to store validation error messages (default: \"_validation_error\")",
+            "default": "_validation_error",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "rejectInvalid": {
+            "title": "Reject Invalid Features",
+            "description": "If true, send invalid features to rejected port; if false, send all features to default port with error attributes",
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "not_closed",
+        "incorrect_vertices",
+        "wrong_orientation",
+        "degenerate_triangle",
+        "summary",
+        "rejected"
+      ],
+      "categories": [
+        "PLATEAU",
+        "Geometry"
+      ]
+    },
+    {
       "name": "PLATEAU4.DestinationMeshCodeExtractor",
       "type": "processor",
       "description": "Extract Japanese standard regional mesh code for PLATEAU destination files and add as attribute",
@@ -5834,6 +5930,46 @@
       "type": "processor",
       "description": "Force 3D Geometry to 2D by Removing Z-Coordinates",
       "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "VertexCounter",
+      "type": "processor",
+      "description": "Count Geometry Vertices to Attribute",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Vertex Counter Parameters",
+        "description": "Configure where to store the count of vertices found in geometries",
+        "type": "object",
+        "required": [
+          "outputAttribute"
+        ],
+        "properties": {
+          "outputAttribute": {
+            "title": "Output Attribute",
+            "description": "Name of the attribute where the vertex count will be stored as a number",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "default"

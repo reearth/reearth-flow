@@ -57,7 +57,7 @@ input CreateTriggerInput {
 input UpdateTriggerInput {
     triggerId: ID!
     description: String
-    deploymentId: ID 
+    deploymentId: ID
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
     variables: JSON

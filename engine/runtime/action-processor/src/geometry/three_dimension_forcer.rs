@@ -310,5 +310,9 @@ fn convert_2d_to_3d(geom: Geometry2D, z: f64) -> Geometry3D {
             // CSG in 2D doesn't exist, unreachable
             unreachable!("2D CSG should not exist")
         }
+        Geometry2D::TriangularMesh(_) => {
+            // TriangularMesh in 2D doesn't exist, unreachable
+            unreachable!("2D TriangularMesh should not exist")
+        }
     }
 }
