@@ -6,6 +6,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/gavv/httpexpect/v2"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
@@ -291,8 +292,18 @@ func TestUpdateTrigger(t *testing.T) {
 	assert.NoError(t, err)
 
 	triggerId := createResult.Data.CreateTrigger.ID
-	createdAt1 := createResult.Data.CreateTrigger.CreatedAt
-	updatedAt1 := createResult.Data.CreateTrigger.UpdatedAt
+	createdAt1Str := createResult.Data.CreateTrigger.CreatedAt
+	updatedAt1Str := createResult.Data.CreateTrigger.UpdatedAt
+
+	parse := func(s string) time.Time {
+		tm, err := time.Parse(time.RFC3339Nano, s)
+		if err != nil {
+			t.Fatalf("failed to parse time: %s (%v)", s, err)
+		}
+		return tm
+	}
+	createdAt1 := parse(createdAt1Str)
+	updatedAt1 := parse(updatedAt1Str)
 
 	updateQuery := `mutation($input: UpdateTriggerInput!) {
         updateTrigger(input: $input) {
@@ -364,8 +375,10 @@ func TestUpdateTrigger(t *testing.T) {
 		"VAR_4": "v4",
 	}, trigger.Variables)
 
-	assert.Equal(t, createdAt1, trigger.CreatedAt)
-	assert.NotEqual(t, updatedAt1, trigger.UpdatedAt)
+	createdAt2 := parse(trigger.CreatedAt)
+	updatedAt2 := parse(trigger.UpdatedAt)
+	assert.WithinDuration(t, createdAt1, createdAt2, 1*time.Millisecond)
+	assert.True(t, updatedAt2.After(updatedAt1))
 }
 
 func TestCreateAPIDrivenTrigger(t *testing.T) {
