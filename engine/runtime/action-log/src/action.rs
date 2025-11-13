@@ -28,3 +28,43 @@ pub(crate) fn action_logger(root_path: PathBuf, action: &str) -> Logger {
             .unwrap()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+
+    #[test]
+    fn test_action_logger_with_disable_flag() {
+        env::set_var("FLOW_RUNTIME_ACTION_LOG_DISABLE", "true");
+        let temp_dir = env::temp_dir();
+        let logger = action_logger(temp_dir, "test_action");
+        
+        slog::info!(logger, "test message");
+        
+        env::remove_var("FLOW_RUNTIME_ACTION_LOG_DISABLE");
+    }
+
+    #[test]
+    fn test_action_logger_path_creation() {
+        let temp_dir = env::temp_dir();
+        let action_name = "plateau_processor";
+        
+        env::set_var("FLOW_RUNTIME_ACTION_LOG_DISABLE", "true");
+        let logger = action_logger(temp_dir.clone(), action_name);
+        slog::debug!(logger, "debug log");
+        env::remove_var("FLOW_RUNTIME_ACTION_LOG_DISABLE");
+    }
+
+    #[test]
+    fn test_action_logger_with_japanese_action_name() {
+        env::set_var("FLOW_RUNTIME_ACTION_LOG_DISABLE", "true");
+        let temp_dir = env::temp_dir();
+        let logger = action_logger(temp_dir, "建物処理");
+        
+        slog::info!(logger, "Japanese action name test");
+        
+        env::remove_var("FLOW_RUNTIME_ACTION_LOG_DISABLE");
+    }
+}
+

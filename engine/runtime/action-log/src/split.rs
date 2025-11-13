@@ -67,3 +67,32 @@ where
         .fuse();
     Logger::root(async_drain, o!())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use slog::{Discard, Fuse};
+
+    #[test]
+    fn test_split_logger_creation() {
+        let drain1 = Discard;
+        let drain2 = Discard;
+        let logger = split_logger(drain1, drain2);
+        
+        slog::info!(logger, "test message");
+    }
+
+    #[test]
+    fn test_split_logger_multiple_levels() {
+        let drain1 = Discard;
+        let drain2 = Discard;
+        let logger = split_logger(drain1, drain2);
+        
+        slog::trace!(logger, "trace level");
+        slog::debug!(logger, "debug level");
+        slog::info!(logger, "info level");
+        slog::warn!(logger, "warn level");
+        slog::error!(logger, "error level");
+    }
+}
+
