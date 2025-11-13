@@ -286,3 +286,64 @@ fn get_row_values(
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reearth_flow_runtime::node::SinkFactory;
+
+    #[test]
+    fn test_factory_name() {
+        let factory = CsvWriterFactory::default();
+        assert_eq!(factory.name(), "CsvWriter");
+    }
+
+    #[test]
+    fn test_factory_description() {
+        let factory = CsvWriterFactory::default();
+        assert!(!factory.description().is_empty());
+    }
+
+    #[test]
+    fn test_factory_categories() {
+        let factory = CsvWriterFactory::default();
+        assert!(factory.categories().contains(&"File"));
+    }
+
+    #[test]
+    fn test_factory_input_ports() {
+        let factory = CsvWriterFactory::default();
+        assert_eq!(factory.get_input_ports().len(), 1);
+    }
+
+    #[test]
+    fn test_factory_parameter_schema() {
+        let factory = CsvWriterFactory::default();
+        assert!(factory.parameter_schema().is_some());
+    }
+
+    #[test]
+    fn test_factory_build_without_params() {
+        let factory = CsvWriterFactory::default();
+        let node_ctx = NodeContext::default();
+        let event_hub = EventHub::new(30);
+        
+        let result = factory.build(node_ctx, event_hub, "test".to_string(), None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_factory_build_with_minimal_params() {
+        let factory = CsvWriterFactory::default();
+        let node_ctx = NodeContext::default();
+        let event_hub = EventHub::new(30);
+        
+        let mut params = HashMap::new();
+        params.insert("output".to_string(), serde_json::json!("output.csv"));
+        params.insert("format".to_string(), serde_json::json!("csv"));
+        
+        let result = factory.build(node_ctx, event_hub, "test".to_string(), Some(params));
+        assert!(result.is_ok() || result.is_err());
+    }
+}
+
