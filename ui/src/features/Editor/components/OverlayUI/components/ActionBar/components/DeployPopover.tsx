@@ -1,17 +1,7 @@
-import { CaretRightIcon } from "@phosphor-icons/react";
+import { CaretRightIcon, RocketIcon } from "@phosphor-icons/react";
 import { useCallback, useMemo, useState } from "react";
 
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogContentSection,
-  DialogContentWrapper,
-  DialogTitle,
-  Label,
-  DialogFooter,
-  Input,
-} from "@flow/components";
+import { Button, Input, Label } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
 
@@ -24,7 +14,7 @@ type Props = {
   onDialogClose: () => void;
 };
 
-const DeployDialog: React.FC<Props> = ({
+const DeployPopover: React.FC<Props> = ({
   allowedToDeploy,
   onWorkflowDeployment,
   onDialogClose,
@@ -62,28 +52,26 @@ const DeployDialog: React.FC<Props> = ({
   ]);
 
   return (
-    <Dialog open={true} onOpenChange={onDialogClose}>
-      <DialogContent size="sm">
-        <DialogTitle>{t("Deploy Project")}</DialogTitle>
-        <DialogContentWrapper>
-          <DialogContentSection className="flex flex-row items-center">
-            <Label>{t("Project to Deploy: ")}</Label>
-            <p className="truncate dark:font-thin">
-              {currentProject?.name ?? t("N/A")}
-            </p>
-          </DialogContentSection>
-          <DialogContentSection className="flex flex-row items-center">
+    <div className="flex flex-col gap-4 p-4">
+      <div className="flex justify-between gap-2">
+        <h4 className="text-md flex items-center gap-2 self-center rounded-t-lg leading-none tracking-tight dark:font-thin">
+          <RocketIcon weight="thin" size={18} />
+          {t("Deploy Project")}
+        </h4>
+      </div>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-row items-center">
             <Label>{t("Deployment Version: ")}</Label>
             <div className="flex items-center gap-2">
-              <p className="dark:font-thin">{currentVersion}</p>
+              <p className="pl-1 dark:font-thin">{currentVersion}</p>
               <CaretRightIcon />
               <p className="font-semibold">
                 {currentVersion ? currentVersion + 1 : 1}
               </p>
             </div>
-          </DialogContentSection>
-          <div className="border-t border-primary" />
-          <DialogContentSection className="flex flex-col">
+          </div>
+          <div className="flex flex-col gap-2">
             <Label>{t("Description")}</Label>
             <Input
               value={description}
@@ -92,23 +80,24 @@ const DeployDialog: React.FC<Props> = ({
                 "Give your deployment a meaningful description...",
               )}
             />
-          </DialogContentSection>
-          <DialogContentSection>
-            <p className="dark:font-light">
-              {t("Are you sure you want to proceed?")}
-            </p>
-          </DialogContentSection>
-        </DialogContentWrapper>
-        <DialogFooter>
-          <Button
-            disabled={!description.trim()}
-            onClick={handleWorkflowDeployment}>
-            {deployment ? t("Update") : t("Deploy")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </div>
+        </div>
+        <div className="flex flex-col gap-4">
+          <p className="text-sm dark:font-light">
+            {t("Are you sure you want to proceed?")}
+          </p>
+          <div className="flex items-center justify-end">
+            <Button
+              variant="outline"
+              disabled={!description.trim()}
+              onClick={handleWorkflowDeployment}>
+              {deployment ? t("Update") : t("Deploy")}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
-export default DeployDialog;
+export default DeployPopover;
