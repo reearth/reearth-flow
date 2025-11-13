@@ -1378,20 +1378,13 @@ Read Features from CSV or TSV File
           "description": "Geometry stored as Well-Known Text in a single column",
           "type": "object",
           "required": [
-            "column",
-            "geometryMode"
+            "column"
           ],
           "properties": {
             "column": {
               "title": "WKT Column Name",
               "description": "Name of the column containing WKT geometry",
               "type": "string"
-            },
-            "geometryMode": {
-              "type": "string",
-              "enum": [
-                "wkt"
-              ]
             }
           }
         },
@@ -1400,17 +1393,10 @@ Read Features from CSV or TSV File
           "description": "Geometry stored as separate X, Y, (optional Z) columns",
           "type": "object",
           "required": [
-            "geometryMode",
             "xColumn",
             "yColumn"
           ],
           "properties": {
-            "geometryMode": {
-              "type": "string",
-              "enum": [
-                "coordinates"
-              ]
-            },
             "xColumn": {
               "title": "X Column Name",
               "description": "Name of the column containing X coordinate (longitude)",
@@ -1534,39 +1520,25 @@ Writes features to CSV or TSV files.
           "description": "Write geometry as Well-Known Text in a single column",
           "type": "object",
           "required": [
-            "column",
-            "geometryMode"
+            "column"
           ],
           "properties": {
             "column": {
               "title": "WKT Column Name",
               "description": "Name of the column to write WKT geometry",
               "type": "string"
-            },
-            "geometryMode": {
-              "type": "string",
-              "enum": [
-                "wkt"
-              ]
             }
           }
         },
         {
           "title": "Coordinate Columns",
-          "description": "Write geometry as separate X, Y, (optional Z) columns Note: Only supports Point geometries. Non-point geometries will be skipped with a warning.",
+          "description": "Write geometry as separate X, Y, (optional Z) columns\nNote: Only supports Point geometries. Non-point geometries will be skipped with a warning.",
           "type": "object",
           "required": [
-            "geometryMode",
             "xColumn",
             "yColumn"
           ],
           "properties": {
-            "geometryMode": {
-              "type": "string",
-              "enum": [
-                "coordinates"
-              ]
-            },
             "xColumn": {
               "title": "X Column Name",
               "description": "Name of the column for X coordinate (longitude)",
