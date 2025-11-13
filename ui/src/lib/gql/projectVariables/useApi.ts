@@ -48,9 +48,9 @@ export const useProjectVariables = () => {
       });
 
       toast({
-        title: t("Project Variable Created"),
+        title: t("Workflow Variable Created"),
         description: t(
-          "Project variable {{name}} has been created successfully.",
+          "Workflow variable {{name}} has been created successfully.",
           { name },
         ),
       });
@@ -58,8 +58,8 @@ export const useProjectVariables = () => {
       return { projectVariable, ...rest };
     } catch (_err) {
       toast({
-        title: t("Project Variable Creation Failed"),
-        description: t("There was an error creating a project variable."),
+        title: t("Workflow Variable Creation Failed"),
+        description: t("There was an error creating a workflow variable."),
         variant: "warning",
       });
 
@@ -73,18 +73,18 @@ export const useProjectVariables = () => {
       const result = await mutateAsync({ paramId, projectId });
       if (result?.success) {
         toast({
-          title: t("Project Variable Deleted"),
-          description: t("Project variable has been deleted successfully."),
+          title: t("Workflow Variable Deleted"),
+          description: t("Workflow variable has been deleted successfully."),
         });
         return { success: true, ...rest };
       } else {
         throw new Error("Delete operation returned false");
       }
     } catch (err) {
-      console.error("Error deleting project variable:", err);
+      console.error("Error deleting workflow variable:", err);
       toast({
-        title: t("Project Variable Deletion Failed"),
-        description: t("There was an error deleting a project variable."),
+        title: t("Workflow Variable Deletion Failed"),
+        description: t("There was an error deleting a workflow variable."),
         variant: "warning",
       });
       return { success: false, ...rest };
@@ -122,16 +122,16 @@ export const useProjectVariables = () => {
       const projectVariables = await mutateAsync(input);
 
       toast({
-        title: t("Project Variables Updated"),
-        description: t("Project variables have been updated successfully."),
+        title: t("Workflow Variables Updated"),
+        description: t("Workflow variables have been updated successfully."),
       });
 
       return { projectVariables, ...rest };
     } catch (err) {
-      console.error("Error updating project variables:", err);
+      console.error("Error updating workflow variables:", err);
       toast({
-        title: t("Project Variables Update Failed"),
-        description: t("There was an error updating project variables."),
+        title: t("Workflow Variables Update Failed"),
+        description: t("There was an error updating workflow variables."),
         variant: "warning",
       });
       return { projectVariables: [], ...rest };
@@ -147,18 +147,18 @@ export const useProjectVariables = () => {
       const result = await mutateAsync({ paramIds, projectId });
       if (result?.success) {
         toast({
-          title: t("Project Variables Deleted"),
-          description: t("Project variables have been deleted successfully."),
+          title: t("Workflow Variables Deleted"),
+          description: t("Workflow variables have been deleted successfully."),
         });
         return { success: true, ...rest };
       } else {
         throw new Error("Batch delete operation returned false");
       }
     } catch (err) {
-      console.error("Error deleting project variables:", err);
+      console.error("Error deleting workflow variables:", err);
       toast({
-        title: t("Project Variable Deletion Failed"),
-        description: t("There was an error deleting project variables."),
+        title: t("Workflow Variable Deletion Failed"),
+        description: t("There was an error deleting workflow variables."),
         variant: "warning",
       });
       return { success: false, ...rest };
