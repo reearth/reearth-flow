@@ -86,6 +86,7 @@ impl DateTime {
 
 impl Display for DateTime {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        Display::fmt(&self.to_raw(), f)
+        // yyyy-mm-dd, date only
+        self.0.format("%Y-%m-%d").fmt(f)
     }
 }

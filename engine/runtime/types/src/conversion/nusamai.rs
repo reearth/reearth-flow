@@ -221,14 +221,9 @@ impl AttributeValue {
                 );
             }
             nusamai_citygml::Value::Measure(v) => {
-                // Convert the numeric value
-                let numeric_value = if let Some(text) = v.original_text() {
-                    AttributeValue::Number(serde_json::Number::from_string_unchecked(
-                        text.to_string(),
-                    ))
-                } else {
-                    AttributeValue::Number(serde_json::Number::from_f64(v.value()).unwrap())
-                };
+                // Convert the value losslessly
+                let value = serde_json::Number::from_string_unchecked(v.value().to_string());
+                let numeric_value = AttributeValue::Number(value);
                 result.insert(key.to_string(), numeric_value);
 
                 // If uom exists, create a companion _uom attribute (FME compatible)
@@ -286,7 +281,6 @@ impl AttributeValue {
     ) -> HashMap<String, AttributeValue> {
         let mut result = HashMap::new();
         if let Some(key) = key {
-            eprintln!("Handling simple value for key: {key}, value: {:?}", value);
             result.insert(key, AttributeValue::from(value.clone()));
         }
         result
