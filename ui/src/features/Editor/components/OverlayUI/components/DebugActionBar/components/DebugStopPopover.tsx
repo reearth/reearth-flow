@@ -1,3 +1,5 @@
+import { StopIcon } from "@phosphor-icons/react";
+
 import { Button } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 
@@ -20,7 +22,8 @@ const DebugStopPopover: React.FC<Props> = ({
   return (
     <div className="flex flex-col gap-2 p-4">
       <div className="flex justify-between gap-2">
-        <h4 className="text-md self-center rounded-t-lg leading-none tracking-tight dark:font-thin">
+        <h4 className="text-md flex items-center gap-2 self-center rounded-t-lg leading-none tracking-tight dark:font-thin">
+          <StopIcon weight="thin" size={18} />
           {t("Stop Workflow")}
         </h4>
       </div>

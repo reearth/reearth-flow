@@ -1,4 +1,4 @@
-import { CaretRightIcon } from "@phosphor-icons/react";
+import { CaretRightIcon, RocketIcon } from "@phosphor-icons/react";
 import { useCallback, useMemo, useState } from "react";
 
 import { Button, Input, Label } from "@flow/components";
@@ -52,30 +52,35 @@ const DeployPopover: React.FC<Props> = ({
   ]);
 
   return (
-    <div className="flex flex-col gap-2 p-4">
+    <div className="flex flex-col gap-4 p-4">
       <div className="flex justify-between gap-2">
-        <h4 className="text-md self-center rounded-t-lg leading-none tracking-tight dark:font-thin">
+        <h4 className="text-md flex items-center gap-2 self-center rounded-t-lg leading-none tracking-tight dark:font-thin">
+          <RocketIcon weight="thin" size={18} />
           {t("Deploy Project")}
         </h4>
       </div>
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-row items-center">
-          <Label>{t("Deployment Version: ")}</Label>
-          <div className="flex items-center gap-2">
-            <p className="pl-1 dark:font-thin">{currentVersion}</p>
-            <CaretRightIcon />
-            <p className="font-semibold">
-              {currentVersion ? currentVersion + 1 : 1}
-            </p>
-          </div>
-        </div>
+      <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <Label>{t("Description")}</Label>
-          <Input
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder={t("Give your deployment a meaningful description...")}
-          />
+          <div className="flex flex-row items-center">
+            <Label>{t("Deployment Version: ")}</Label>
+            <div className="flex items-center gap-2">
+              <p className="pl-1 dark:font-thin">{currentVersion}</p>
+              <CaretRightIcon />
+              <p className="font-semibold">
+                {currentVersion ? currentVersion + 1 : 1}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>{t("Description")}</Label>
+            <Input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={t(
+                "Give your deployment a meaningful description...",
+              )}
+            />
+          </div>
         </div>
         <div className="flex flex-col gap-4">
           <p className="text-sm dark:font-light">
