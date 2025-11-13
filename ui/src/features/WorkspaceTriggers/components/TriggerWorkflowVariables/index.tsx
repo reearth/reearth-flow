@@ -1,3 +1,4 @@
+import { ArrowUDownLeftIcon } from "@phosphor-icons/react";
 import { useState } from "react";
 
 import {
@@ -12,6 +13,10 @@ import {
   Input,
   Label,
   TextArea,
+  IconButton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@flow/components";
 import {
   getDefaultValue,
@@ -26,6 +31,7 @@ type VariableMapping = {
   name: string;
   type: VarType;
   defaultValue: any;
+  deploymentDefault: any;
 };
 
 type TriggerProjectVariablesMappingDialogProps = {
@@ -33,6 +39,7 @@ type TriggerProjectVariablesMappingDialogProps = {
   onOpenChange: (open: boolean) => void;
   variables: WorkflowVariable[] | Record<string, any>[];
   workflowName: string;
+  deploymentDefaults?: Record<string, any>; // Optional deployment defaults for reset functionality
   onConfirm: (projectVariables: any[]) => void;
   onCancel: () => void;
 };
@@ -42,6 +49,7 @@ export default function TriggerProjectVariablesMappingDialog({
   onOpenChange,
   variables,
   workflowName,
+  deploymentDefaults,
   onConfirm,
   onCancel,
 }: TriggerProjectVariablesMappingDialogProps) {
@@ -54,10 +62,12 @@ export default function TriggerProjectVariablesMappingDialog({
           variable.value,
           variable.name,
         );
+        const deploymentDefault = deploymentDefaults?.[variable.name];
         return {
           name: variable.name,
           type: inferredType,
           defaultValue: getDefaultValue(variable.value, inferredType),
+          deploymentDefault: deploymentDefault,
         };
       }),
   );
@@ -69,6 +79,26 @@ export default function TriggerProjectVariablesMappingDialog({
       ),
     );
   };
+
+  const handleResetToDefault = (index: number) => {
+    setVariableMappings((prev) =>
+      prev.map((mapping, i) => {
+        if (i === index && mapping.deploymentDefault !== undefined) {
+          return { ...mapping, defaultValue: mapping.deploymentDefault };
+        }
+        return mapping;
+      }),
+    );
+  };
+
+  const isAtDefault = (mapping: VariableMapping): boolean => {
+    if (mapping.deploymentDefault === undefined) return true;
+    return (
+      JSON.stringify(mapping.defaultValue) ===
+      JSON.stringify(mapping.deploymentDefault)
+    );
+  };
+
   const handleConfirm = () => {
     const projectVariables = variableMappings.map((mapping) => ({
       name: mapping.name,
@@ -118,9 +148,27 @@ export default function TriggerProjectVariablesMappingDialog({
                   </span>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor={`default-${index}`}>
-                    <span>{t("Default Value")}</span>
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor={`default-${index}`}>
+                      <span>{t("Default Value")}</span>
+                    </Label>
+                    {mapping.deploymentDefault !== undefined && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <IconButton
+                            size="sm"
+                            variant="ghost"
+                            icon={<ArrowUDownLeftIcon />}
+                            onClick={() => handleResetToDefault(index)}
+                            disabled={isAtDefault(mapping)}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {t("Reset to workflow default")}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
                   {mapping.type === "array" ? (
                     <SimpleArrayInput
                       value={

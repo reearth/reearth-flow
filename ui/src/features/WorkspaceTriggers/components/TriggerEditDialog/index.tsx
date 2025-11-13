@@ -47,6 +47,7 @@ const TriggerEditDialog: React.FC<Props> = ({
     openTriggerProjectVariablesDialog,
     setOpenTriggerProjectVariablesDialog,
     handleVariablesConfirm,
+    deploymentDefaultVariables,
     hasVariables,
     variableCount,
   } = useHooks({ selectedTrigger, onDialogClose });
@@ -162,6 +163,7 @@ const TriggerEditDialog: React.FC<Props> = ({
           isOpen={openTriggerProjectVariablesDialog}
           onOpenChange={setOpenTriggerProjectVariablesDialog}
           variables={pendingWorkflowData.variables}
+          deploymentDefaults={deploymentDefaultVariables}
           workflowName={selectedTrigger.deployment.projectName || ""}
           onConfirm={handleVariablesConfirm}
           onCancel={() => setOpenTriggerProjectVariablesDialog(false)}

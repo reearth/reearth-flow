@@ -62,6 +62,7 @@ export default ({
     handleVariablesConfirm,
     getVariablesToSave,
     handleWorkflowFetch,
+    deploymentDefaultVariables,
   } = useTriggerWorkflowVariables(selectedTrigger.variables);
 
   // Fetch deployment workflow to get default variables for comparison
@@ -138,5 +139,6 @@ export default ({
     handleVariablesConfirm,
     hasVariables,
     variableCount,
+    deploymentDefaultVariables,
   };
 };

@@ -130,6 +130,7 @@ export default ({
     handleWorkflowFetch,
     handleVariablesConfirm,
     getVariablesToSave,
+    deploymentDefaultVariables,
   } = useTriggerWorkflowVariables();
 
   useEffect(() => {
@@ -259,6 +260,7 @@ export default ({
     pendingWorkflowData,
     workflowVariablesObject,
     openTriggerProjectVariablesDialog,
+    deploymentDefaultVariables,
     setOpenTriggerProjectVariablesDialog,
   };
 };

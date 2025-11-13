@@ -59,6 +59,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     handleSortChange,
     pendingWorkflowData,
     openTriggerProjectVariablesDialog,
+    deploymentDefaultVariables,
     setOpenTriggerProjectVariablesDialog,
     handleVariablesConfirm,
   } = useHooks({ setShowDialog });
@@ -209,6 +210,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
           onOpenChange={setOpenTriggerProjectVariablesDialog}
           variables={pendingWorkflowData?.variables || []}
           workflowName={pendingWorkflowData?.workflowName || ""}
+          deploymentDefaults={deploymentDefaultVariables}
           onConfirm={handleVariablesConfirm}
           onCancel={() => setOpenTriggerProjectVariablesDialog(false)}
         />
