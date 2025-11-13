@@ -27,7 +27,8 @@ RUN  \
     pkg-config \
     clang \
     libdbus-1-dev \
-    libproj-dev
+    libproj-dev \
+    sqlite3
 
 RUN echo "ja_JP UTF-8" > /etc/locale.gen && locale-gen
 

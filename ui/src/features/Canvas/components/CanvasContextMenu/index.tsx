@@ -209,7 +209,7 @@ const CanvasContextMenu: React.FC<Props> = ({
               ? [node]
               : nodes?.filter((n) => n.selected) || [];
             const anyEnabled = selectedNodes.some((n) => !n.data?.isDisabled);
-            return anyEnabled ? t("Disable Node") : t("Enable Node");
+            return anyEnabled ? t("Disable Action") : t("Enable Action");
           })(),
           icon: (() => {
             const selectedNodes = node
@@ -236,7 +236,7 @@ const CanvasContextMenu: React.FC<Props> = ({
             {
               type: "action" as const,
               props: {
-                label: t("Node Settings"),
+                label: t("Action Settings"),
                 icon: <GearFineIcon weight="light" />,
                 onCallback: wrapWithClose(() => handleNodeSettingsOpen(node)),
               },
@@ -256,7 +256,7 @@ const CanvasContextMenu: React.FC<Props> = ({
             {
               type: "action" as const,
               props: {
-                label: node ? t("Delete Node") : t("Delete Selection"),
+                label: node ? t("Delete Action") : t("Delete Selection"),
                 icon: <TrashIcon weight="light" />,
                 destructive: true,
                 disabled: !onNodesChange || !onEdgesChange,

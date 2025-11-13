@@ -41,7 +41,7 @@ const CanvasActionBar = () => {
           />
           <IconButton
             className="rounded-[4px]"
-            tooltipText={t("All nodes in viewport")}
+            tooltipText={t("All actions in viewport")}
             tooltipOffset={tooltipOffset}
             tooltipPosition="left"
             icon={<FrameCornersIcon weight="thin" size={18} />}

@@ -260,7 +260,7 @@ const ParamEditor: React.FC<Props> = ({
               <div className="space-y-4">
                 <div className="rounded-md ">
                   <h4 className="border-b text-sm font-medium">
-                    {t("Node Details")}
+                    {t("Action Details")}
                   </h4>
                   <div className="my-4 flex w-full flex-col gap-4">
                     <div className="flex items-center text-sm">
