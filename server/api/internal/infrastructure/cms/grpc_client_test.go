@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	cmspb "github.com/eukarya-inc/reearth-proto/gen/go/cms/v1"
 	"github.com/reearth/reearth-flow/api/pkg/cms"
-	proto "github.com/reearth/reearth-flow/api/pkg/cms/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/grpc"
@@ -162,22 +162,22 @@ func TestTrimPort(t *testing.T) {
 func TestConvertProtoToVisibility(t *testing.T) {
 	tests := []struct {
 		name  string
-		input proto.Visibility
+		input cmspb.Visibility
 		want  cms.Visibility
 	}{
 		{
 			name:  "public visibility",
-			input: proto.Visibility_PUBLIC,
+			input: cmspb.Visibility_PUBLIC,
 			want:  cms.VisibilityPublic,
 		},
 		{
 			name:  "private visibility",
-			input: proto.Visibility_PRIVATE,
+			input: cmspb.Visibility_PRIVATE,
 			want:  cms.VisibilityPrivate,
 		},
 		{
 			name:  "unknown visibility defaults to private",
-			input: proto.Visibility(999),
+			input: cmspb.Visibility(999),
 			want:  cms.VisibilityPrivate,
 		},
 	}
@@ -196,7 +196,7 @@ func TestConvertProtoToProject(t *testing.T) {
 	license := "MIT"
 	readme := "# Test README"
 
-	protoProject := &proto.Project{
+	protoProject := &cmspb.Project{
 		Id:          "project-123",
 		Name:        "Test Project",
 		Alias:       "test-project",
@@ -204,7 +204,7 @@ func TestConvertProtoToProject(t *testing.T) {
 		License:     &license,
 		Readme:      &readme,
 		WorkspaceId: "workspace-456",
-		Visibility:  proto.Visibility_PUBLIC,
+		Visibility:  cmspb.Visibility_PUBLIC,
 		Topics:      []string{"geospatial", "data"},
 		StarCount:   42,
 		CreatedAt:   timestamppb.New(now),
@@ -236,7 +236,7 @@ func TestConvertProtoToAsset(t *testing.T) {
 	previewType := "image"
 	archiveStatus := "extracted"
 
-	protoAsset := &proto.Asset{
+	protoAsset := &cmspb.Asset{
 		Id:                      "asset-123",
 		Uuid:                    "uuid-456",
 		ProjectId:               "project-789",
@@ -270,19 +270,19 @@ func TestConvertProtoToAsset(t *testing.T) {
 func TestConvertProtoToModel(t *testing.T) {
 	now := time.Now()
 
-	protoModel := &proto.Model{
+	protoModel := &cmspb.Model{
 		Id:          "model-123",
 		ProjectId:   "project-456",
 		Name:        "Test Model",
 		Description: "Test model description",
 		Key:         "test_model",
-		Schema: &proto.Schema{
+		Schema: &cmspb.Schema{
 			SchemaId: "schema-789",
-			Fields: []*proto.SchemaField{
+			Fields: []*cmspb.SchemaField{
 				{
 					FieldId:     "field-1",
 					Name:        "Title",
-					Type:        proto.SchemaField_Text,
+					Type:        cmspb.SchemaField_Text,
 					Key:         "title",
 					Description: ptr("Title field"),
 				},
@@ -432,108 +432,116 @@ type MockReEarthCMSClient struct {
 	mock.Mock
 }
 
-func (m *MockReEarthCMSClient) GetProject(ctx context.Context, req *proto.ProjectRequest, opts ...grpc.CallOption) (*proto.ProjectResponse, error) {
+func (m *MockReEarthCMSClient) GetProject(ctx context.Context, req *cmspb.ProjectRequest, opts ...grpc.CallOption) (*cmspb.ProjectResponse, error) {
 	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*proto.ProjectResponse), args.Error(1)
+	return args.Get(0).(*cmspb.ProjectResponse), args.Error(1)
 }
 
-func (m *MockReEarthCMSClient) ListProjects(ctx context.Context, req *proto.ListProjectsRequest, opts ...grpc.CallOption) (*proto.ListProjectsResponse, error) {
+func (m *MockReEarthCMSClient) ListProjects(ctx context.Context, req *cmspb.ListProjectsRequest, opts ...grpc.CallOption) (*cmspb.ListProjectsResponse, error) {
 	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*proto.ListProjectsResponse), args.Error(1)
+	return args.Get(0).(*cmspb.ListProjectsResponse), args.Error(1)
 }
 
-func (m *MockReEarthCMSClient) GetAsset(ctx context.Context, req *proto.AssetRequest, opts ...grpc.CallOption) (*proto.AssetResponse, error) {
+func (m *MockReEarthCMSClient) GetAsset(ctx context.Context, req *cmspb.AssetRequest, opts ...grpc.CallOption) (*cmspb.AssetResponse, error) {
 	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*proto.AssetResponse), args.Error(1)
+	return args.Get(0).(*cmspb.AssetResponse), args.Error(1)
 }
 
-func (m *MockReEarthCMSClient) ListAssets(ctx context.Context, req *proto.ListAssetsRequest, opts ...grpc.CallOption) (*proto.ListAssetsResponse, error) {
+func (m *MockReEarthCMSClient) ListAssets(ctx context.Context, req *cmspb.ListAssetsRequest, opts ...grpc.CallOption) (*cmspb.ListAssetsResponse, error) {
 	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*proto.ListAssetsResponse), args.Error(1)
+	return args.Get(0).(*cmspb.ListAssetsResponse), args.Error(1)
 }
 
-func (m *MockReEarthCMSClient) GetModel(ctx context.Context, req *proto.ModelRequest, opts ...grpc.CallOption) (*proto.ModelResponse, error) {
+func (m *MockReEarthCMSClient) GetModel(ctx context.Context, req *cmspb.ModelRequest, opts ...grpc.CallOption) (*cmspb.ModelResponse, error) {
 	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*proto.ModelResponse), args.Error(1)
+	return args.Get(0).(*cmspb.ModelResponse), args.Error(1)
 }
 
-func (m *MockReEarthCMSClient) ListModels(ctx context.Context, req *proto.ListModelsRequest, opts ...grpc.CallOption) (*proto.ListModelsResponse, error) {
+func (m *MockReEarthCMSClient) ListModels(ctx context.Context, req *cmspb.ListModelsRequest, opts ...grpc.CallOption) (*cmspb.ListModelsResponse, error) {
 	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*proto.ListModelsResponse), args.Error(1)
+	return args.Get(0).(*cmspb.ListModelsResponse), args.Error(1)
 }
 
-func (m *MockReEarthCMSClient) ListItems(ctx context.Context, req *proto.ListItemsRequest, opts ...grpc.CallOption) (*proto.ListItemsResponse, error) {
+func (m *MockReEarthCMSClient) ListItems(ctx context.Context, req *cmspb.ListItemsRequest, opts ...grpc.CallOption) (*cmspb.ListItemsResponse, error) {
 	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*proto.ListItemsResponse), args.Error(1)
+	return args.Get(0).(*cmspb.ListItemsResponse), args.Error(1)
 }
 
-func (m *MockReEarthCMSClient) GetModelExportURL(ctx context.Context, req *proto.ModelExportRequest, opts ...grpc.CallOption) (*proto.ExportURLResponse, error) {
+func (m *MockReEarthCMSClient) GetModelExportURL(ctx context.Context, req *cmspb.ModelExportRequest, opts ...grpc.CallOption) (*cmspb.ExportURLResponse, error) {
 	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*proto.ExportURLResponse), args.Error(1)
+	return args.Get(0).(*cmspb.ExportURLResponse), args.Error(1)
 }
 
-func (m *MockReEarthCMSClient) GetModelGeoJSONExportURL(ctx context.Context, req *proto.ExportRequest, opts ...grpc.CallOption) (*proto.ExportURLResponse, error) {
+func (m *MockReEarthCMSClient) GetModelGeoJSONExportURL(ctx context.Context, req *cmspb.ExportRequest, opts ...grpc.CallOption) (*cmspb.ExportURLResponse, error) {
 	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*proto.ExportURLResponse), args.Error(1)
+	return args.Get(0).(*cmspb.ExportURLResponse), args.Error(1)
 }
 
-func (m *MockReEarthCMSClient) CreateProject(ctx context.Context, req *proto.CreateProjectRequest, opts ...grpc.CallOption) (*proto.ProjectResponse, error) {
+func (m *MockReEarthCMSClient) CreateProject(ctx context.Context, req *cmspb.CreateProjectRequest, opts ...grpc.CallOption) (*cmspb.ProjectResponse, error) {
 	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*proto.ProjectResponse), args.Error(1)
+	return args.Get(0).(*cmspb.ProjectResponse), args.Error(1)
 }
 
-func (m *MockReEarthCMSClient) UpdateProject(ctx context.Context, req *proto.UpdateProjectRequest, opts ...grpc.CallOption) (*proto.ProjectResponse, error) {
+func (m *MockReEarthCMSClient) UpdateProject(ctx context.Context, req *cmspb.UpdateProjectRequest, opts ...grpc.CallOption) (*cmspb.ProjectResponse, error) {
 	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*proto.ProjectResponse), args.Error(1)
+	return args.Get(0).(*cmspb.ProjectResponse), args.Error(1)
 }
 
-func (m *MockReEarthCMSClient) DeleteProject(ctx context.Context, req *proto.DeleteProjectRequest, opts ...grpc.CallOption) (*proto.DeleteProjectResponse, error) {
+func (m *MockReEarthCMSClient) DeleteProject(ctx context.Context, req *cmspb.DeleteProjectRequest, opts ...grpc.CallOption) (*cmspb.DeleteProjectResponse, error) {
 	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*proto.DeleteProjectResponse), args.Error(1)
+	return args.Get(0).(*cmspb.DeleteProjectResponse), args.Error(1)
 }
 
-func (m *MockReEarthCMSClient) CheckAliasAvailability(ctx context.Context, req *proto.AliasAvailabilityRequest, opts ...grpc.CallOption) (*proto.AliasAvailabilityResponse, error) {
+func (m *MockReEarthCMSClient) CheckAliasAvailability(ctx context.Context, req *cmspb.AliasAvailabilityRequest, opts ...grpc.CallOption) (*cmspb.AliasAvailabilityResponse, error) {
 	args := m.Called(ctx, req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*proto.AliasAvailabilityResponse), args.Error(1)
+	return args.Get(0).(*cmspb.AliasAvailabilityResponse), args.Error(1)
+}
+
+func (m *MockReEarthCMSClient) StarProject(ctx context.Context, req *cmspb.StarRequest, opts ...grpc.CallOption) (*cmspb.StarResponse, error) {
+	args := m.Called(ctx, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*cmspb.StarResponse), args.Error(1)
 }
 
 func TestGrpcClient_GetAsset(t *testing.T) {
@@ -546,12 +554,12 @@ func TestGrpcClient_GetAsset(t *testing.T) {
 		now := time.Now()
 		previewType := "image"
 
-		expectedReq := &proto.AssetRequest{
+		expectedReq := &cmspb.AssetRequest{
 			AssetId: "asset-123",
 		}
 
-		mockResponse := &proto.AssetResponse{
-			Asset: &proto.Asset{
+		mockResponse := &cmspb.AssetResponse{
+			Asset: &cmspb.Asset{
 				Id:          "asset-123",
 				Uuid:        "uuid-456",
 				ProjectId:   "project-789",
@@ -586,7 +594,7 @@ func TestGrpcClient_GetAsset(t *testing.T) {
 
 	t.Run("error getting asset", func(t *testing.T) {
 		mockClient.ExpectedCalls = nil
-		expectedReq := &proto.AssetRequest{
+		expectedReq := &cmspb.AssetRequest{
 			AssetId: "asset-404",
 		}
 
@@ -613,33 +621,33 @@ func TestGrpcClient_ListModels(t *testing.T) {
 	t.Run("successful list models", func(t *testing.T) {
 		now := time.Now()
 
-		expectedReq := &proto.ListModelsRequest{
+		expectedReq := &cmspb.ListModelsRequest{
 			ProjectId: "project-123",
-			PageInfo: &proto.PageInfo{
+			PageInfo: &cmspb.PageInfo{
 				Page:     1,
 				PageSize: 10,
 			},
-			SortInfo: &proto.SortInfo{
+			SortInfo: &cmspb.SortInfo{
 				Key:      "name",
 				Reverted: false,
 			},
 		}
 
-		mockResponse := &proto.ListModelsResponse{
-			Models: []*proto.Model{
+		mockResponse := &cmspb.ListModelsResponse{
+			Models: []*cmspb.Model{
 				{
 					Id:          "model-1",
 					ProjectId:   "project-123",
 					Name:        "Test Model 1",
 					Description: "Description 1",
 					Key:         "test_model_1",
-					Schema: &proto.Schema{
+					Schema: &cmspb.Schema{
 						SchemaId: "schema-1",
-						Fields: []*proto.SchemaField{
+						Fields: []*cmspb.SchemaField{
 							{
 								FieldId:     "field-1",
 								Name:        "Title",
-								Type:        proto.SchemaField_Text,
+								Type:        cmspb.SchemaField_Text,
 								Key:         "title",
 								Description: ptr("Title field"),
 							},
@@ -652,7 +660,7 @@ func TestGrpcClient_ListModels(t *testing.T) {
 				},
 			},
 			TotalCount: 1,
-			PageInfo: &proto.PageInfo{
+			PageInfo: &cmspb.PageInfo{
 				Page:     1,
 				PageSize: 10,
 			},
@@ -687,12 +695,12 @@ func TestGrpcClient_ListModels(t *testing.T) {
 
 	t.Run("list models without pagination", func(t *testing.T) {
 		mockClient.ExpectedCalls = nil
-		expectedReq := &proto.ListModelsRequest{
+		expectedReq := &cmspb.ListModelsRequest{
 			ProjectId: "project-456",
 		}
 
-		mockResponse := &proto.ListModelsResponse{
-			Models:     []*proto.Model{},
+		mockResponse := &cmspb.ListModelsResponse{
+			Models:     []*cmspb.Model{},
 			TotalCount: 0,
 		}
 
@@ -713,7 +721,7 @@ func TestGrpcClient_ListModels(t *testing.T) {
 
 	t.Run("error listing models", func(t *testing.T) {
 		mockClient.ExpectedCalls = nil // Reset mock
-		expectedReq := &proto.ListModelsRequest{
+		expectedReq := &cmspb.ListModelsRequest{
 			ProjectId: "project-error",
 		}
 
@@ -744,22 +752,22 @@ func TestGrpcClient_ListItems(t *testing.T) {
 		titleAny, _ := anypb.New(&wrapperspb.StringValue{Value: "Item Title"})
 		countAny, _ := anypb.New(&wrapperspb.Int32Value{Value: 42})
 
-		expectedReq := &proto.ListItemsRequest{
+		expectedReq := &cmspb.ListItemsRequest{
 			ModelId:   "model-123",
 			ProjectId: "project-456",
 			Keyword:   &keyword,
-			PageInfo: &proto.PageInfo{
+			PageInfo: &cmspb.PageInfo{
 				Page:     1,
 				PageSize: 20,
 			},
-			SortInfo: &proto.SortInfo{
+			SortInfo: &cmspb.SortInfo{
 				Key:      "createdAt",
 				Reverted: true,
 			},
 		}
 
-		mockResponse := &proto.ListItemsResponse{
-			Items: []*proto.Item{
+		mockResponse := &cmspb.ListItemsResponse{
+			Items: []*cmspb.Item{
 				{
 					Id: "item-1",
 					Fields: map[string]*anypb.Any{
@@ -771,7 +779,7 @@ func TestGrpcClient_ListItems(t *testing.T) {
 				},
 			},
 			TotalCount: 1,
-			PageInfo: &proto.PageInfo{
+			PageInfo: &cmspb.PageInfo{
 				Page:     1,
 				PageSize: 20,
 			},
@@ -809,13 +817,13 @@ func TestGrpcClient_ListItems(t *testing.T) {
 
 	t.Run("list items without keyword and pagination", func(t *testing.T) {
 		mockClient.ExpectedCalls = nil
-		expectedReq := &proto.ListItemsRequest{
+		expectedReq := &cmspb.ListItemsRequest{
 			ModelId:   "model-789",
 			ProjectId: "project-101",
 		}
 
-		mockResponse := &proto.ListItemsResponse{
-			Items:      []*proto.Item{},
+		mockResponse := &cmspb.ListItemsResponse{
+			Items:      []*cmspb.Item{},
 			TotalCount: 0,
 		}
 
@@ -837,7 +845,7 @@ func TestGrpcClient_ListItems(t *testing.T) {
 
 	t.Run("error listing items", func(t *testing.T) {
 		mockClient.ExpectedCalls = nil
-		expectedReq := &proto.ListItemsRequest{
+		expectedReq := &cmspb.ListItemsRequest{
 			ModelId:   "model-invalid",
 			ProjectId: "project-invalid",
 		}
