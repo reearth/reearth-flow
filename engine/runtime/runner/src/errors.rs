@@ -38,3 +38,77 @@ pub enum Error {
     #[error("Runtime Error: {0}")]
     RuntimeError(String),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_error_no_build_found() {
+        let error = Error::NoBuildFound;
+        assert_eq!(error.to_string(), "Failed to find any build");
+    }
+
+    #[test]
+    fn test_error_missing_security_config() {
+        let error = Error::MissingSecurityConfig;
+        assert_eq!(error.to_string(), "Missing api config or security input");
+    }
+
+    #[test]
+    fn test_error_cache_full() {
+        let error = Error::CacheFull("test_cache".to_string());
+        assert!(error.to_string().contains("test_cache"));
+        assert!(error.to_string().contains("maximum size"));
+    }
+
+    #[test]
+    fn test_error_connection_not_found() {
+        let error = Error::ConnectionNotFound("db_connection".to_string());
+        assert!(error.to_string().contains("db_connection"));
+    }
+
+    #[test]
+    fn test_error_pipeline_validation() {
+        let error = Error::PipelineValidationError;
+        assert_eq!(error.to_string(), "Pipeline validation failed");
+    }
+
+    #[test]
+    fn test_error_output_table_not_used() {
+        let error = Error::OutputTableNotUsed("plateau_buildings".to_string());
+        assert!(error.to_string().contains("plateau_buildings"));
+    }
+
+    #[test]
+    fn test_error_sink_table_not_found() {
+        let error = Error::SinkTableNotFound("output_table".to_string());
+        assert!(error.to_string().contains("output_table"));
+    }
+
+    #[test]
+    fn test_error_empty_sinks() {
+        let error = Error::EmptySinks;
+        assert!(error.to_string().contains("No sinks"));
+    }
+
+    #[test]
+    fn test_error_aborted() {
+        let error = Error::Aborted;
+        assert_eq!(error.to_string(), "Command was aborted");
+    }
+
+    #[test]
+    fn test_error_unsupported_feature() {
+        let error = Error::UnsupportedFeature("advanced_analytics".to_string());
+        assert!(error.to_string().contains("enterprise"));
+        assert!(error.to_string().contains("advanced_analytics"));
+    }
+
+    #[test]
+    fn test_error_runtime_error() {
+        let error = Error::RuntimeError("Unexpected failure".to_string());
+        assert!(error.to_string().contains("Unexpected failure"));
+    }
+}
+
