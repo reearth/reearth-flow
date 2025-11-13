@@ -1,0 +1,88 @@
+type Trigger implements Node {
+    id: ID!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    lastTriggered: DateTime
+    workspaceId: ID!
+    workspace: Workspace
+    deployment: Deployment!
+    deploymentId: ID!
+    eventSource: EventSourceType!
+    description: String!
+    authToken: String
+    timeInterval: TimeInterval
+    variables: JSON
+}
+
+# Enums
+
+enum EventSourceType {
+    TIME_DRIVEN
+    API_DRIVEN
+}
+
+enum TimeInterval {
+    EVERY_DAY
+    EVERY_HOUR
+    EVERY_MONTH
+    EVERY_WEEK
+}
+
+enum TriggerSortField {
+    DESCRIPTION
+    CREATED_AT
+    UPDATED_AT
+    LAST_TRIGGERED
+}
+
+# InputType
+
+input TimeDriverInput {
+    interval: TimeInterval!
+}
+
+input APIDriverInput {
+    token: String!
+}
+
+input CreateTriggerInput {
+    workspaceId: ID!
+    deploymentId: ID!
+    description: String!
+    timeDriverInput: TimeDriverInput
+    apiDriverInput: APIDriverInput
+    variables: JSON
+}
+
+input UpdateTriggerInput {
+    triggerId: ID!
+    description: String
+    deploymentId: ID
+    timeDriverInput: TimeDriverInput
+    apiDriverInput: APIDriverInput
+    variables: JSON
+}
+
+# Connection
+
+type TriggerConnection {
+  nodes: [Trigger]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+# Query and Mutation
+
+extend type Query {
+    triggers(
+      workspaceId: ID!
+      keyword: String
+      pagination: PageBasedPagination!
+    ): TriggerConnection!
+}
+
+extend type Mutation {
+    createTrigger(input: CreateTriggerInput!): Trigger!
+    updateTrigger(input: UpdateTriggerInput!): Trigger!
+    deleteTrigger(triggerId: ID!): Boolean!
+}
