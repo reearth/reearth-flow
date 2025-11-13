@@ -42,7 +42,7 @@ const EnvironmentVariableBuilder: React.FC<Props> = ({
   const accessTypes = [
     {
       value: "project_variable" as const,
-      label: t("Project Variables"),
+      label: t("Workflow Variables"),
       description: t("Access variables defined in the project"),
       icon: <CircleIcon weight="thin" className="h-4 w-4" />,
       example: 'env.get("outputPath")',
@@ -116,7 +116,7 @@ const EnvironmentVariableBuilder: React.FC<Props> = ({
       <div className="flex-shrink-0">
         <h4 className="text-sm font-medium">{t("Environment Variables")}</h4>
         <p className="text-xs text-muted-foreground">
-          {t("Access project variables and workflow parameters")}
+          {t("Access workflow variables and workflow parameters")}
         </p>
       </div>
 
@@ -171,7 +171,7 @@ const EnvironmentVariableBuilder: React.FC<Props> = ({
         <div className="space-y-4">
           {accessType === "project_variable" && (
             <div className="space-y-3">
-              <Label className="text-xs">{t("Project Variables")}</Label>
+              <Label className="text-xs">{t("Workflow Variables")}</Label>
               {projectVariables && projectVariables.length > 0 ? (
                 <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 xl:grid-cols-3">
                   {projectVariables.map((variable) => (
@@ -197,7 +197,7 @@ const EnvironmentVariableBuilder: React.FC<Props> = ({
                 </div>
               ) : (
                 <div className="py-8 text-center text-sm text-muted-foreground">
-                  {t("No project variables found")}
+                  {t("No workflow variables found")}
                 </div>
               )}
             </div>

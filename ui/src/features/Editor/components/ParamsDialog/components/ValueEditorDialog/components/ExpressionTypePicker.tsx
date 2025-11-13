@@ -98,7 +98,7 @@ const ExpressionTypePicker: React.FC<Props> = ({
     {
       type: "environment-variable",
       title: t("Environment Variables"),
-      description: t("Access project variables and workflow parameters"),
+      description: t("Access workflow variables and workflow parameters"),
       icon: <CircleIcon weight="thin" className="h-6 w-6" />,
       examples: [
         'env.get("outputPath")',
