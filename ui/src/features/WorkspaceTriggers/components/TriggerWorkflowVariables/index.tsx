@@ -1,8 +1,8 @@
+import { ArrowUDownLeftIcon } from "@phosphor-icons/react";
 import { useState } from "react";
 
 import {
   Button,
-  Checkbox,
   Dialog,
   DialogContent,
   DialogContentWrapper,
@@ -13,49 +13,48 @@ import {
   Input,
   Label,
   TextArea,
+  IconButton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@flow/components";
+import {
+  getDefaultValue,
+  inferProjectVariableType,
+} from "@flow/features/WorkspaceProjects/components/WorkflowImport/inferVariableType";
+import SimpleArrayInput from "@flow/features/WorkspaceProjects/components/WorkflowImport/SimpleArrayInput";
 import { useT } from "@flow/lib/i18n";
-import { AnyProjectVariable, VarType } from "@flow/types";
+import { VarType } from "@flow/types";
 import type { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
-
-import { getDefaultValue, inferProjectVariableType } from "./inferVariableType";
-import SimpleArrayInput from "./SimpleArrayInput";
-import VariableTypeSelector from "./VariableTypeSelector";
 
 type VariableMapping = {
   name: string;
-  originalValue: any;
   type: VarType;
   defaultValue: any;
-  required: boolean;
-  public: boolean;
+  deploymentDefault: any;
 };
 
-type WorkflowImportVariablesMappingDialogProps = {
+type TriggerProjectVariablesMappingDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  variables: WorkflowVariable[];
+  variables: WorkflowVariable[] | Record<string, any>[];
   workflowName: string;
-  onConfirm: (
-    projectVariables: Omit<
-      AnyProjectVariable,
-      "id" | "createdAt" | "updatedAt" | "projectId"
-    >[],
-  ) => void;
+  deploymentDefaults?: Record<string, any>; // Optional deployment defaults for reset functionality
+  onConfirm: (projectVariables: any[]) => void;
   onCancel: () => void;
 };
 
-export default function WorkflowImportVariablesMappingDialog({
+export default function TriggerProjectVariablesMappingDialog({
   isOpen,
   onOpenChange,
   variables,
   workflowName,
+  deploymentDefaults,
   onConfirm,
   onCancel,
-}: WorkflowImportVariablesMappingDialogProps) {
+}: TriggerProjectVariablesMappingDialogProps) {
   const t = useT();
 
-  // Initialize variable mappings with inferred types
   const [variableMappings, setVariableMappings] = useState<VariableMapping[]>(
     () =>
       variables.map((variable) => {
@@ -63,30 +62,15 @@ export default function WorkflowImportVariablesMappingDialog({
           variable.value,
           variable.name,
         );
+        const deploymentDefault = deploymentDefaults?.[variable.name];
         return {
           name: variable.name,
-          originalValue: variable.value,
           type: inferredType,
           defaultValue: getDefaultValue(variable.value, inferredType),
-          required: variable.value !== null && variable.value !== undefined,
-          public: false,
+          deploymentDefault: deploymentDefault,
         };
       }),
   );
-
-  const handleTypeChange = (index: number, newType: VarType) => {
-    setVariableMappings((prev) =>
-      prev.map((mapping, i) =>
-        i === index
-          ? {
-              ...mapping,
-              type: newType,
-              defaultValue: getDefaultValue(mapping.originalValue, newType),
-            }
-          : mapping,
-      ),
-    );
-  };
 
   const handleDefaultValueChange = (index: number, newValue: any) => {
     setVariableMappings((prev) =>
@@ -96,19 +80,22 @@ export default function WorkflowImportVariablesMappingDialog({
     );
   };
 
-  const handleRequiredChange = (index: number, required: boolean) => {
+  const handleResetToDefault = (index: number) => {
     setVariableMappings((prev) =>
-      prev.map((mapping, i) =>
-        i === index ? { ...mapping, required } : mapping,
-      ),
+      prev.map((mapping, i) => {
+        if (i === index && mapping.deploymentDefault !== undefined) {
+          return { ...mapping, defaultValue: mapping.deploymentDefault };
+        }
+        return mapping;
+      }),
     );
   };
 
-  const handlePublicChange = (index: number, isPublic: boolean) => {
-    setVariableMappings((prev) =>
-      prev.map((mapping, i) =>
-        i === index ? { ...mapping, public: isPublic } : mapping,
-      ),
+  const isAtDefault = (mapping: VariableMapping): boolean => {
+    if (mapping.deploymentDefault === undefined) return true;
+    return (
+      JSON.stringify(mapping.defaultValue) ===
+      JSON.stringify(mapping.deploymentDefault)
     );
   };
 
@@ -117,9 +104,6 @@ export default function WorkflowImportVariablesMappingDialog({
       name: mapping.name,
       type: mapping.type,
       defaultValue: mapping.defaultValue,
-      required: mapping.required,
-      public: mapping.public,
-      config: undefined, // Basic implementation without specific config
     }));
 
     onConfirm(projectVariables);
@@ -130,27 +114,14 @@ export default function WorkflowImportVariablesMappingDialog({
     onOpenChange(false);
   };
 
-  const renderValuePreview = (value: any) => {
-    if (value === null || value === undefined) {
-      return <span className="text-muted-foreground italic">null</span>;
-    }
-    if (Array.isArray(value)) {
-      return <span className="font-mono text-xs">[{value.join(", ")}]</span>;
-    }
-    if (typeof value === "object") {
-      return <span className="font-mono text-xs">{JSON.stringify(value)}</span>;
-    }
-    return <span className="font-mono text-xs">{String(value)}</span>;
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent size="xl">
         <DialogHeader>
-          <DialogTitle>{t("Configure Workflow Variables")}</DialogTitle>
+          <DialogTitle>{t("Configure Project Variables")}</DialogTitle>
           <DialogDescription>
             {t(
-              "The workflow '{{workflowName}}' contains {{count}} variables. Configure how they should be imported as Project Variables.",
+              "The deployment contains {{count}} variables. Configure how they should be set as Project Variables.",
               {
                 workflowName,
                 count: variables.length,
@@ -166,55 +137,38 @@ export default function WorkflowImportVariablesMappingDialog({
                   <Label className="text-sm font-semibold">
                     {mapping.name}
                   </Label>
-                  <div className="text-xs text-muted-foreground">
-                    {t("Original value: ")}{" "}
-                    {renderValuePreview(mapping.originalValue)}
-                  </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`required-${index}`}
-                      checked={mapping.required}
-                      onCheckedChange={(checked) =>
-                        handleRequiredChange(index, checked as boolean)
-                      }
-                    />
-                    <Label htmlFor={`required-${index}`} className="text-sm">
-                      {t("Required")}
-                    </Label>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`public-${index}`}
-                      checked={mapping.public}
-                      onCheckedChange={(checked) =>
-                        handlePublicChange(index, checked as boolean)
-                      }
-                    />
-                    <Label htmlFor={`public-${index}`} className="text-sm">
-                      {t("Public")}
-                    </Label>
-                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2">
+                <div className="flex flex-col justify-center space-y-2">
                   <Label htmlFor={`type-${index}`}>{t("Variable Type")}</Label>
-                  <VariableTypeSelector
-                    value={mapping.type}
-                    onValueChange={(newType) =>
-                      handleTypeChange(index, newType)
-                    }
-                  />
+                  <span className="flex h-8 w-fit items-center gap-1 rounded-md bg-primary px-2 py-0.5 text-sm">
+                    {mapping.type}
+                  </span>
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor={`default-${index}`}>
-                    {t("Default Value")}
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor={`default-${index}`}>
+                      <span>{t("Default Value")}</span>
+                    </Label>
+                    {mapping.deploymentDefault !== undefined && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <IconButton
+                            size="sm"
+                            variant="ghost"
+                            icon={<ArrowUDownLeftIcon />}
+                            onClick={() => handleResetToDefault(index)}
+                            disabled={isAtDefault(mapping)}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {t("Reset to workflow default")}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
                   {mapping.type === "array" ? (
                     <SimpleArrayInput
                       value={
@@ -266,7 +220,7 @@ export default function WorkflowImportVariablesMappingDialog({
           <Button variant="outline" onClick={handleCancel}>
             {t("Cancel")}
           </Button>
-          <Button onClick={handleConfirm}>{t("Import with Variables")}</Button>
+          <Button onClick={handleConfirm}>{t("Confirm Variables")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
