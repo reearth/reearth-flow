@@ -53,6 +53,14 @@ pub(super) enum PlateauProcessorError {
     CityGmlMeshBuilder(String),
     #[error("CityGmlMeshBuilder Factory error: {0}")]
     CityGmlMeshBuilderFactory(String),
+    #[error("FaceExtractor Factory error: {0}")]
+    FaceExtractorFactory(String),
+    #[error("FaceExtractor error: {0}")]
+    FaceExtractor(String),
+    #[error("UnsharedEdgeDetector Factory error: {0}")]
+    UnsharedEdgeDetectorFactory(String),
+    #[error("UnsharedEdgeDetector error: {0}")]
+    UnsharedEdgeDetector(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;
