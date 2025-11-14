@@ -22,15 +22,8 @@ pub struct GeometryExportConfig {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase", tag = "geometryMode")]
+#[serde(rename_all = "camelCase", untagged)]
 pub enum GeometryExportMode {
-    /// # WKT Column
-    /// Write geometry as Well-Known Text in a single column
-    Wkt {
-        /// # WKT Column Name
-        /// Name of the column to write WKT geometry
-        column: String,
-    },
     /// # Coordinate Columns
     /// Write geometry as separate X, Y, (optional Z) columns
     /// Note: Only supports Point geometries. Non-point geometries will be skipped with a warning.
@@ -48,6 +41,13 @@ pub enum GeometryExportMode {
         #[serde(rename = "zColumn")]
         #[serde(skip_serializing_if = "Option::is_none")]
         z_column: Option<String>,
+    },
+    /// # WKT Column
+    /// Write geometry as Well-Known Text in a single column
+    Wkt {
+        /// # WKT Column Name
+        /// Name of the column to write WKT geometry
+        column: String,
     },
 }
 
