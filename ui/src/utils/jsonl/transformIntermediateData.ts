@@ -302,10 +302,26 @@ function handle3DGeometry(geometry: any) {
       // Convert each triangle to a polygon
       const coordinates = triangles.map((triangle: number[]) => {
         const triangleCoords = [
-          [vertices[triangle[0]].x, vertices[triangle[0]].y, vertices[triangle[0]].z || 0],
-          [vertices[triangle[1]].x, vertices[triangle[1]].y, vertices[triangle[1]].z || 0],
-          [vertices[triangle[2]].x, vertices[triangle[2]].y, vertices[triangle[2]].z || 0],
-          [vertices[triangle[0]].x, vertices[triangle[0]].y, vertices[triangle[0]].z || 0], // Close the triangle
+          [
+            vertices[triangle[0]].x,
+            vertices[triangle[0]].y,
+            vertices[triangle[0]].z || 0,
+          ],
+          [
+            vertices[triangle[1]].x,
+            vertices[triangle[1]].y,
+            vertices[triangle[1]].z || 0,
+          ],
+          [
+            vertices[triangle[2]].x,
+            vertices[triangle[2]].y,
+            vertices[triangle[2]].z || 0,
+          ],
+          [
+            vertices[triangle[0]].x,
+            vertices[triangle[0]].y,
+            vertices[triangle[0]].z || 0,
+          ], // Close the triangle
         ];
 
         return [triangleCoords];
