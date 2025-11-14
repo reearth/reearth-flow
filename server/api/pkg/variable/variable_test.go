@@ -214,8 +214,12 @@ func TestToWorkerMap(t *testing.T) {
 				assert.Len(t, got, len(tt.want))
 				for k, v := range got {
 					var gotJSON, wantJSON interface{}
-					json.Unmarshal([]byte(v), &gotJSON)
-					json.Unmarshal([]byte(tt.want[k]), &wantJSON)
+					if err := json.Unmarshal([]byte(v), &gotJSON); err != nil {
+						t.Fatalf("failed to unmarshal got value for key %s: %v", k, err)
+					}
+					if err := json.Unmarshal([]byte(tt.want[k]), &wantJSON); err != nil {
+						t.Fatalf("failed to unmarshal want value for key %s: %v", k, err)
+					}
 					assert.Equal(t, wantJSON, gotJSON)
 				}
 			} else {
