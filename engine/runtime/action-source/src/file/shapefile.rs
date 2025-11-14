@@ -525,9 +525,21 @@ fn read_shapefile_from_zip(
 
     let shp_cursor = Cursor::new(shp_data);
     let dbf_cursor = Cursor::new(dbf_data);
-    let shape_reader = shapefile::ShapeReader::new(shp_cursor).map_err(|e| {
-        SourceError::shapefile_reader(format!("Failed to create shape reader: {e}"))
-    })?;
+
+    // Use .shx index file if available to ensure correct shape parsing
+    let shape_reader = if let Some(shx_data) = components.shx {
+        let shx_cursor = Cursor::new(shx_data);
+        shapefile::ShapeReader::with_shx(shp_cursor, shx_cursor).map_err(|e| {
+            SourceError::shapefile_reader(format!("Failed to create shape reader with index: {e}"))
+        })?
+    } else {
+        tracing::warn!(
+            "No .shx index file found, parsing without index (may be slower or less accurate)"
+        );
+        shapefile::ShapeReader::new(shp_cursor).map_err(|e| {
+            SourceError::shapefile_reader(format!("Failed to create shape reader: {e}"))
+        })?
+    };
 
     // Create dbase reader with type-safe encoding enum
     let dbase_reader = create_dbase_reader(dbf_cursor, encoding)?;
