@@ -319,9 +319,17 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                     if self.incoming_is_reader[index] {
                         let file_id = self.incoming_edge_ids[index].to_string();
                         if let Err(e) = self.feature_state.append_sync(&ctx.feature, &file_id) {
-                            tracing::warn!("reader-intermediate-append failed: edge_id={} err={:?}", file_id, e);
+                            tracing::warn!(
+                                "reader-intermediate-append failed: edge_id={} err={:?}",
+                                file_id,
+                                e
+                            );
                         } else {
-                            tracing::debug!("reader-intermediate-append: edge_id={} feature_id={}", file_id, ctx.feature.id);
+                            tracing::debug!(
+                                "reader-intermediate-append: edge_id={} feature_id={}",
+                                file_id,
+                                ctx.feature.id
+                            );
                         }
                     }
 
