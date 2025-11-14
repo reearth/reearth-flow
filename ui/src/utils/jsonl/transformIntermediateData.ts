@@ -252,6 +252,88 @@ function handle3DGeometry(geometry: any) {
     };
   }
 
+  if ("solid" in geometry) {
+    // Extract boundary surface from solid
+    const boundarySurface = geometry.solid.boundary_surface;
+
+    // Handle Faces variant
+    if ("Faces" in boundarySurface) {
+      const faces = boundarySurface.Faces;
+
+      // Convert each face to a polygon and create a MultiPolygon
+      const coordinates = faces.map((face: any) => {
+        // Each face is an array of coordinates
+        const faceCoords = face.map((coord: any) => [
+          coord.x,
+          coord.y,
+          coord.z || 0,
+        ]);
+
+        // Ensure the face is closed (first point === last point)
+        if (faceCoords.length > 0) {
+          const firstPoint = faceCoords[0];
+          const lastPoint = faceCoords[faceCoords.length - 1];
+
+          if (
+            firstPoint[0] !== lastPoint[0] ||
+            firstPoint[1] !== lastPoint[1] ||
+            firstPoint[2] !== lastPoint[2]
+          ) {
+            faceCoords.push(firstPoint);
+          }
+        }
+
+        // Return as a polygon with a single exterior ring (no holes)
+        return [faceCoords];
+      });
+
+      return {
+        type: "MultiPolygon",
+        coordinates,
+      };
+    }
+
+    // Handle TriangularMesh variant
+    if ("TriangularMesh" in boundarySurface) {
+      const mesh = boundarySurface.TriangularMesh;
+      const vertices = mesh.vertices;
+      const triangles = mesh.triangles;
+
+      // Convert each triangle to a polygon
+      const coordinates = triangles.map((triangle: number[]) => {
+        const triangleCoords = [
+          [
+            vertices[triangle[0]].x,
+            vertices[triangle[0]].y,
+            vertices[triangle[0]].z || 0,
+          ],
+          [
+            vertices[triangle[1]].x,
+            vertices[triangle[1]].y,
+            vertices[triangle[1]].z || 0,
+          ],
+          [
+            vertices[triangle[2]].x,
+            vertices[triangle[2]].y,
+            vertices[triangle[2]].z || 0,
+          ],
+          [
+            vertices[triangle[0]].x,
+            vertices[triangle[0]].y,
+            vertices[triangle[0]].z || 0,
+          ], // Close the triangle
+        ];
+
+        return [triangleCoords];
+      });
+
+      return {
+        type: "MultiPolygon",
+        coordinates,
+      };
+    }
+  }
+
   // For any 3D geometry types not handled above, return the raw structure
   return {
     type: "FlowGeometry3D",
