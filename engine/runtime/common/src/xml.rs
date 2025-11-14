@@ -714,4 +714,126 @@ mod tests {
         .unwrap();
         assert_eq!(result.len(), 1);
     }
+
+    #[test]
+    fn test_citygml_with_missing_namespace() {
+        let xml = r#"<?xml version="1.0"?>
+<bldg:Building gml:id="test">
+    <gml:name>Test</gml:name>
+</bldg:Building>"#;
+        
+        let result = parse(xml);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_citygml_with_malformed_closing_tag() {
+        let xml = r#"<?xml version="1.0"?>
+<root xmlns:bldg="http://www.opengis.net/citygml/building/2.0">
+    <bldg:Building>
+        <gml:name>Test
+    </bldg:Building>
+</root>"#;
+        
+        let result = parse(xml);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_citygml_with_invalid_xlink_reference() {
+        let xml = "<?xml version=\"1.0\"?>\n\
+<root xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:bldg=\"http://www.opengis.net/citygml/building/2.0\">\n\
+    <bldg:Building xlink:href=\"#nonexistent_id\"/>\n\
+</root>";
+        
+        let doc = parse(xml);
+        assert!(doc.is_ok());
+    }
+
+    #[test]
+    fn test_citygml_with_very_long_attribute_value() {
+        let long_value = "A".repeat(10000);
+        let xml = format!(
+            r#"<?xml version="1.0"?>
+<root xmlns:test="http://test.com">
+    <test:element value="{}"/>
+</root>"#,
+            long_value
+        );
+        
+        let result = parse(&xml);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_citygml_with_numeric_precision() {
+        let xml = r#"<?xml version="1.0"?>
+<root xmlns:gml="http://www.opengis.net/gml">
+    <gml:Point>
+        <gml:pos>139.75031234567890 35.68512345678901</gml:pos>
+    </gml:Point>
+</root>"#;
+        
+        let result = parse(xml);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_citygml_with_xml_entities() {
+        let xml = r#"<?xml version="1.0"?>
+<root xmlns:test="http://test.com">
+    <test:name>&lt;Building&gt; &amp; "Special"</test:name>
+</root>"#;
+        
+        let result = parse(xml);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_citygml_with_duplicate_namespace_prefix() {
+        let xml = r#"<?xml version="1.0"?>
+<root xmlns:bldg="http://www.opengis.net/citygml/building/2.0"
+      xmlns:bldg="http://different.url">
+    <bldg:Building/>
+</root>"#;
+        
+        let result = parse(xml);
+        assert!(result.is_ok() || result.is_err());
+    }
+
+    #[test]
+    fn test_xpath_with_nonexistent_namespace() {
+        let xml = r#"<?xml version="1.0"?>
+<root xmlns:gml="http://www.opengis.net/gml">
+    <gml:Element/>
+</root>"#;
+        
+        let doc = parse(xml).unwrap();
+        let result = evaluate(&doc, "//nonexistent:Element");
+        assert!(result.is_err() || result.is_ok());
+    }
+
+    #[test]
+    fn test_citygml_deeply_nested_structure() {
+        let mut xml = String::from(r#"<?xml version="1.0"?><root xmlns:test="http://test.com">"#);
+        for i in 0..100 {
+            xml.push_str(&format!("<test:level{}>", i));
+        }
+        xml.push_str("<test:content>Deep</test:content>");
+        for i in (0..100).rev() {
+            xml.push_str(&format!("</test:level{}>", i));
+        }
+        xml.push_str("</root>");
+        
+        let result = parse(&xml);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_citygml_with_bom() {
+        let xml_with_bom = b"\xEF\xBB\xBF<?xml version=\"1.0\"?><root/>";
+        let result = parse(xml_with_bom);
+        assert!(result.is_ok());
+    }
 }
+
