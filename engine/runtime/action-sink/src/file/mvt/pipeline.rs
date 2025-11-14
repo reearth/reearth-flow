@@ -232,7 +232,12 @@ pub(super) fn tile_writing_stage(
                 .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
             for detail in (min_detail..=default_detail).rev() {
                 // Make a MVT tile binary
-                let bytes = make_tile(detail, &serialized_feats, skip_underscore_prefix, colon_to_underscore)?;
+                let bytes = make_tile(
+                    detail,
+                    &serialized_feats,
+                    skip_underscore_prefix,
+                    colon_to_underscore,
+                )?;
 
                 // Retry with a lower detail level if the compressed tile size is too large
                 let compressed_size = {
