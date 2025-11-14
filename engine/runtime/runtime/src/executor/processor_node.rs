@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::env;
 use std::fmt::Debug;
 use std::sync::atomic::{AtomicU32, AtomicU64};
@@ -9,7 +10,10 @@ use crossbeam::channel::Receiver;
 use futures::Future;
 use once_cell::sync::Lazy;
 use petgraph::graph::NodeIndex;
+use petgraph::visit::EdgeRef;
+use petgraph::Direction;
 use reearth_flow_eval_expr::engine::Engine;
+use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::runtime::Handle;
 use tracing::{info_span, Span};
@@ -18,7 +22,7 @@ use crate::event::{Event, EventHub};
 use crate::executor_operation::{ExecutorContext, ExecutorOperation, NodeContext};
 use crate::forwarder::ProcessorChannelForwarder;
 use crate::kvs::KvStore;
-use crate::node::NodeStatus;
+use crate::node::{EdgeId, NodeStatus};
 use crate::{
     builder_dag::NodeKind,
     errors::ExecutionError,
@@ -74,6 +78,12 @@ pub struct ProcessorNode<F> {
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
     event_hub: EventHub,
+    /// Track incoming edge IDs for reader intermediate data
+    incoming_edge_ids: Vec<EdgeId>,
+    /// Track which upstream nodes are readers
+    incoming_is_reader: Vec<bool>,
+    /// State for writing reader intermediate data
+    feature_state: Arc<State>,
 }
 
 impl<F: Future + Unpin + Debug> ProcessorNode<F> {
@@ -121,6 +131,30 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         let kv_store = Arc::clone(&ctx.kv_store);
         let num_threads = processor.num_threads();
 
+        // Collect edge metadata for reader intermediate data
+        let mut meta_map: HashMap<String, (EdgeId, bool)> = HashMap::new();
+        for e in dag.graph().edges_directed(node_index, Direction::Incoming) {
+            let src = e.source();
+            let w = e.weight();
+            let from_handle = &dag.graph()[src].handle;
+            let is_reader = dag.graph()[src].is_source;
+            meta_map.insert(from_handle.id.to_string(), (w.edge_id.clone(), is_reader));
+        }
+
+        let mut incoming_edge_ids = Vec::new();
+        let mut incoming_is_reader = Vec::new();
+        for nh in &node_handles {
+            if let Some((edge_id, is_reader)) = meta_map.get(&nh.id.to_string()) {
+                incoming_edge_ids.push(edge_id.clone());
+                incoming_is_reader.push(*is_reader);
+            } else {
+                incoming_edge_ids.push(EdgeId::new(uuid::Uuid::new_v4().to_string()));
+                incoming_is_reader.push(false);
+            }
+        }
+
+        let feature_state = dag.feature_state();
+
         Self {
             node_handle,
             node_name,
@@ -141,6 +175,9 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             storage_resolver,
             kv_store,
             event_hub: dag.event_hub().clone(),
+            incoming_edge_ids,
+            incoming_is_reader,
+            feature_state,
         }
     }
 
@@ -278,6 +315,16 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                 .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{e:?}")))?;
             match op {
                 ExecutorOperation::Op { ctx } => {
+                    // Write reader intermediate data if this is from a reader
+                    if self.incoming_is_reader[index] {
+                        let file_id = self.incoming_edge_ids[index].to_string();
+                        if let Err(e) = self.feature_state.append_sync(&ctx.feature, &file_id) {
+                            tracing::warn!("reader-intermediate-append failed: edge_id={} err={:?}", file_id, e);
+                        } else {
+                            tracing::debug!("reader-intermediate-append: edge_id={} feature_id={}", file_id, ctx.feature.id);
+                        }
+                    }
+
                     let has_failed_clone = has_failed.clone();
                     self.on_op_with_failure_tracking(ctx, has_failed_clone)?;
                 }

@@ -181,6 +181,10 @@ impl ExecutionDag {
         &self.event_hub
     }
 
+    pub fn feature_state(&self) -> Arc<State> {
+        Arc::clone(&self.ingress_state)
+    }
+
     pub fn ingress_state(&self) -> &Arc<State> {
         &self.ingress_state
     }
@@ -224,6 +228,8 @@ impl ExecutionDag {
         let mut feature_writers = HashMap::<FeatureWriterKey, Vec<Box<dyn FeatureWriter>>>::new();
         for edge in self.graph.edges(node_index) {
             let weight = edge.weight();
+            // Note: Despite the confusing names, weight.input_port is actually the SOURCE output port
+            // and weight.output_port is actually the DOWNSTREAM input port (see lines 91-92 where they're swapped)
             let writer_key =
                 FeatureWriterKey(weight.input_port.clone(), weight.output_port.clone());
             let edge_type = self
