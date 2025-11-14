@@ -13,7 +13,7 @@ type DynamicAuthTransport struct {
 
 func NewDynamicAuthTransport() *DynamicAuthTransport {
 	return &DynamicAuthTransport{
-		transport: gqlclient.NewAccountsTransport(http.DefaultTransport, gqlclient.InternalServiceDashboardAPI),
+		transport: gqlclient.NewAccountsTransport(http.DefaultTransport, gqlclient.InternalServiceFlowAPI),
 	}
 }
 
