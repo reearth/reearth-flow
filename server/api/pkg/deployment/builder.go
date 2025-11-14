@@ -2,6 +2,8 @@ package deployment
 
 import (
 	"time"
+
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 )
 
 type DeploymentBuilder struct {
@@ -81,7 +83,7 @@ func (b *DeploymentBuilder) IsHead(isHead bool) *DeploymentBuilder {
 	return b
 }
 
-func (b *DeploymentBuilder) Variables(variables map[string]string) *DeploymentBuilder {
+func (b *DeploymentBuilder) Variables(variables []variable.Variable) *DeploymentBuilder {
 	b.d.variables = variables
 	return b
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 )
 
 func (r *mutationResolver) CreateDeployment(ctx context.Context, input gqlmodel.CreateDeploymentInput) (*gqlmodel.DeploymentPayload, error) {
@@ -23,7 +24,7 @@ func (r *mutationResolver) CreateDeployment(ctx context.Context, input gqlmodel.
 		return nil, err
 	}
 
-	var variables map[string]string
+	var variables []variable.Variable
 	if input.Variables != nil {
 		variables, err = gqlmodel.FromVariables(input.Variables)
 		if err != nil {
@@ -50,7 +51,7 @@ func (r *mutationResolver) UpdateDeployment(ctx context.Context, input gqlmodel.
 		return nil, err
 	}
 
-	var variables map[string]string
+	var variables []variable.Variable
 	if input.Variables != nil {
 		variables, err = gqlmodel.FromVariables(input.Variables)
 		if err != nil {
@@ -90,7 +91,7 @@ func (r *mutationResolver) ExecuteDeployment(ctx context.Context, input gqlmodel
 		return nil, err
 	}
 
-	var variables map[string]string
+	var variables []variable.Variable
 	if input.Variables != nil {
 		variables, err = gqlmodel.FromVariables(input.Variables)
 		if err != nil {
