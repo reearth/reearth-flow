@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
+	cmspb "github.com/eukarya-inc/reearth-proto/gen/go/cms/v1"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/cms"
-	proto "github.com/reearth/reearth-flow/api/pkg/cms/proto"
 	"github.com/reearth/reearthx/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -170,7 +170,7 @@ func (t *tokenAuth) RequireTransportSecurity() bool {
 }
 
 type grpcClient struct {
-	client   proto.ReEarthCMSClient
+	client   cmspb.ReEarthCMSClient
 	conn     *grpc.ClientConn
 	endpoint string
 	token    string
@@ -188,7 +188,7 @@ func NewGRPCClient(endpoint, token string, use_tls bool) (gateway.CMS, error) {
 		return nil, err
 	}
 
-	client := proto.NewReEarthCMSClient(conn)
+	client := cmspb.NewReEarthCMSClient(conn)
 	return &grpcClient{
 		client:   client,
 		conn:     conn,
@@ -209,7 +209,7 @@ func trimPort(endpoint string) string {
 }
 
 func (c *grpcClient) GetProject(ctx context.Context, projectIDOrAlias string) (*cms.Project, error) {
-	resp, err := c.client.GetProject(ctx, &proto.ProjectRequest{
+	resp, err := c.client.GetProject(ctx, &cmspb.ProjectRequest{
 		ProjectIdOrAlias: projectIDOrAlias,
 	})
 	if err != nil {
@@ -220,21 +220,21 @@ func (c *grpcClient) GetProject(ctx context.Context, projectIDOrAlias string) (*
 }
 
 func (c *grpcClient) ListProjects(ctx context.Context, input cms.ListProjectsInput) (*cms.ListProjectsOutput, error) {
-	req := &proto.ListProjectsRequest{
+	req := &cmspb.ListProjectsRequest{
 		WorkspaceIds: input.WorkspaceIDs,
 		Keyword:      input.Keyword,
 		PublicOnly:   input.PublicOnly,
 	}
 
 	if input.PageInfo != nil {
-		req.PageInfo = &proto.PageInfo{
+		req.PageInfo = &cmspb.PageInfo{
 			Page:     input.PageInfo.Page,
 			PageSize: input.PageInfo.PageSize,
 		}
 	}
 
 	if input.SortInfo != nil {
-		req.SortInfo = &proto.SortInfo{
+		req.SortInfo = &cmspb.SortInfo{
 			Key:      input.SortInfo.Key,
 			Reverted: input.SortInfo.Reverted,
 		}
@@ -266,7 +266,7 @@ func (c *grpcClient) ListProjects(ctx context.Context, input cms.ListProjectsInp
 }
 
 func (c *grpcClient) GetAsset(ctx context.Context, input cms.GetAssetInput) (*cms.Asset, error) {
-	resp, err := c.client.GetAsset(ctx, &proto.AssetRequest{
+	resp, err := c.client.GetAsset(ctx, &cmspb.AssetRequest{
 		AssetId: input.AssetID,
 	})
 	if err != nil {
@@ -277,19 +277,19 @@ func (c *grpcClient) GetAsset(ctx context.Context, input cms.GetAssetInput) (*cm
 }
 
 func (c *grpcClient) ListAssets(ctx context.Context, input cms.ListAssetsInput) (*cms.ListAssetsOutput, error) {
-	req := &proto.ListAssetsRequest{
+	req := &cmspb.ListAssetsRequest{
 		ProjectId: input.ProjectID,
 	}
 
 	if input.PageInfo != nil {
-		req.PageInfo = &proto.PageInfo{
+		req.PageInfo = &cmspb.PageInfo{
 			Page:     input.PageInfo.Page,
 			PageSize: input.PageInfo.PageSize,
 		}
 	}
 
 	if input.SortInfo != nil {
-		req.SortInfo = &proto.SortInfo{
+		req.SortInfo = &cmspb.SortInfo{
 			Key:      input.SortInfo.Key,
 			Reverted: input.SortInfo.Reverted,
 		}
@@ -321,7 +321,7 @@ func (c *grpcClient) ListAssets(ctx context.Context, input cms.ListAssetsInput) 
 }
 
 func (c *grpcClient) GetModel(ctx context.Context, input cms.GetModelInput) (*cms.Model, error) {
-	resp, err := c.client.GetModel(ctx, &proto.ModelRequest{
+	resp, err := c.client.GetModel(ctx, &cmspb.ModelRequest{
 		ProjectIdOrAlias: input.ProjectIDOrAlias,
 		ModelIdOrAlias:   input.ModelIDOrAlias,
 	})
@@ -333,19 +333,19 @@ func (c *grpcClient) GetModel(ctx context.Context, input cms.GetModelInput) (*cm
 }
 
 func (c *grpcClient) ListModels(ctx context.Context, input cms.ListModelsInput) (*cms.ListModelsOutput, error) {
-	req := &proto.ListModelsRequest{
+	req := &cmspb.ListModelsRequest{
 		ProjectId: input.ProjectID,
 	}
 
 	if input.PageInfo != nil {
-		req.PageInfo = &proto.PageInfo{
+		req.PageInfo = &cmspb.PageInfo{
 			Page:     input.PageInfo.Page,
 			PageSize: input.PageInfo.PageSize,
 		}
 	}
 
 	if input.SortInfo != nil {
-		req.SortInfo = &proto.SortInfo{
+		req.SortInfo = &cmspb.SortInfo{
 			Key:      input.SortInfo.Key,
 			Reverted: input.SortInfo.Reverted,
 		}
@@ -377,21 +377,21 @@ func (c *grpcClient) ListModels(ctx context.Context, input cms.ListModelsInput) 
 }
 
 func (c *grpcClient) ListItems(ctx context.Context, input cms.ListItemsInput) (*cms.ListItemsOutput, error) {
-	req := &proto.ListItemsRequest{
+	req := &cmspb.ListItemsRequest{
 		ModelId:   input.ModelID,
 		ProjectId: input.ProjectID,
 		Keyword:   input.Keyword,
 	}
 
 	if input.PageInfo != nil {
-		req.PageInfo = &proto.PageInfo{
+		req.PageInfo = &cmspb.PageInfo{
 			Page:     input.PageInfo.Page,
 			PageSize: input.PageInfo.PageSize,
 		}
 	}
 
 	if input.SortInfo != nil {
-		req.SortInfo = &proto.SortInfo{
+		req.SortInfo = &cmspb.SortInfo{
 			Key:      input.SortInfo.Key,
 			Reverted: input.SortInfo.Reverted,
 		}
@@ -423,17 +423,17 @@ func (c *grpcClient) ListItems(ctx context.Context, input cms.ListItemsInput) (*
 }
 
 func (c *grpcClient) GetModelExportURL(ctx context.Context, input cms.ModelExportInput) (*cms.ExportOutput, error) {
-	var exportType proto.ModelExportRequest_Type
+	var exportType cmspb.ModelExportRequest_Type
 	switch input.ExportType {
 	case cms.ExportTypeJSON:
-		exportType = proto.ModelExportRequest_JSON
+		exportType = cmspb.ModelExportRequest_JSON
 	case cms.ExportTypeGeoJSON:
-		exportType = proto.ModelExportRequest_GEOJSON
+		exportType = cmspb.ModelExportRequest_GEOJSON
 	default:
-		exportType = proto.ModelExportRequest_JSON
+		exportType = cmspb.ModelExportRequest_JSON
 	}
 
-	resp, err := c.client.GetModelExportURL(ctx, &proto.ModelExportRequest{
+	resp, err := c.client.GetModelExportURL(ctx, &cmspb.ModelExportRequest{
 		ProjectId:  input.ProjectID,
 		ModelId:    input.ModelID,
 		ExportType: exportType,
@@ -448,9 +448,10 @@ func (c *grpcClient) GetModelExportURL(ctx context.Context, input cms.ModelExpor
 }
 
 func (c *grpcClient) GetModelGeoJSONExportURL(ctx context.Context, input cms.ExportInput) (*cms.ExportOutput, error) {
-	resp, err := c.client.GetModelGeoJSONExportURL(ctx, &proto.ExportRequest{
-		ProjectId: input.ProjectID,
-		ModelId:   input.ModelID,
+	resp, err := c.client.GetModelExportURL(ctx, &cmspb.ModelExportRequest{
+		ProjectId:  input.ProjectID,
+		ModelId:    input.ModelID,
+		ExportType: cmspb.ModelExportRequest_GEOJSON,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get export URL: %w", err)
@@ -461,7 +462,7 @@ func (c *grpcClient) GetModelGeoJSONExportURL(ctx context.Context, input cms.Exp
 	}, nil
 }
 
-func convertProtoToProject(p *proto.Project) *cms.Project {
+func convertProtoToProject(p *cmspb.Project) *cms.Project {
 	if p == nil {
 		return nil
 	}
@@ -481,18 +482,18 @@ func convertProtoToProject(p *proto.Project) *cms.Project {
 	}
 }
 
-func convertProtoToVisibility(v proto.Visibility) cms.Visibility {
+func convertProtoToVisibility(v cmspb.Visibility) cms.Visibility {
 	switch v {
-	case proto.Visibility_PUBLIC:
+	case cmspb.Visibility_PUBLIC:
 		return cms.VisibilityPublic
-	case proto.Visibility_PRIVATE:
+	case cmspb.Visibility_PRIVATE:
 		return cms.VisibilityPrivate
 	default:
 		return cms.VisibilityPrivate
 	}
 }
 
-func convertProtoToAsset(a *proto.Asset) *cms.Asset {
+func convertProtoToAsset(a *cmspb.Asset) *cms.Asset {
 	if a == nil {
 		return nil
 	}
@@ -510,7 +511,7 @@ func convertProtoToAsset(a *proto.Asset) *cms.Asset {
 	}
 }
 
-func convertProtoToModel(m *proto.Model) *cms.Model {
+func convertProtoToModel(m *cmspb.Model) *cms.Model {
 	if m == nil {
 		return nil
 	}
@@ -528,7 +529,7 @@ func convertProtoToModel(m *proto.Model) *cms.Model {
 	}
 }
 
-func convertProtoToSchema(s *proto.Schema) cms.Schema {
+func convertProtoToSchema(s *cmspb.Schema) cms.Schema {
 	if s == nil {
 		return cms.Schema{}
 	}
@@ -542,7 +543,7 @@ func convertProtoToSchema(s *proto.Schema) cms.Schema {
 	}
 }
 
-func convertProtoToSchemaField(f *proto.SchemaField) cms.SchemaField {
+func convertProtoToSchemaField(f *cmspb.SchemaField) cms.SchemaField {
 	if f == nil {
 		return cms.SchemaField{}
 	}
@@ -555,11 +556,11 @@ func convertProtoToSchemaField(f *proto.SchemaField) cms.SchemaField {
 	}
 }
 
-func convertProtoToSchemaFieldType(t proto.SchemaField_Type) cms.SchemaFieldType {
+func convertProtoToSchemaFieldType(t cmspb.SchemaField_Type) cms.SchemaFieldType {
 	return cms.SchemaFieldType(t)
 }
 
-func convertProtoToItem(i *proto.Item) *cms.Item {
+func convertProtoToItem(i *cmspb.Item) *cms.Item {
 	if i == nil {
 		return nil
 	}
