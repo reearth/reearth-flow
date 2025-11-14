@@ -47,8 +47,8 @@ func NewScheduler(ctx context.Context, config SchedulerConfig) (gateway.Schedule
 }
 
 type scheduledPayload struct {
-	TriggerID string            `json:"triggerID"`
 	With      map[string]string `json:"with,omitempty"`
+	TriggerID string            `json:"triggerID"`
 }
 
 func (s *SchedulerRepo) CreateScheduledJob(ctx context.Context, t *trigger.Trigger) error {

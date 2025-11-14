@@ -8,8 +8,8 @@ type User struct {
 	name          string
 	alias         string
 	email         string
-	myWorkspace   workspace.Workspace
 	auths         []string
+	myWorkspace   workspace.Workspace
 	id            ID
 	myWorkspaceID WorkspaceID
 }
