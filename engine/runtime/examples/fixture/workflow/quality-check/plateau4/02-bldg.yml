@@ -1162,7 +1162,7 @@ graphs:
       conditions:
       - expr: |
           let attributes = env.get("__value").cityGmlAttributes ?? #{};
-          let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
+          let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
           let building_id = building_id_attribute["uro:buildingID"] ?? "";
           let branch_id = building_id_attribute["uro:branchID"]  ?? "";
           let part_id = building_id_attribute["uro:partID"] ?? "";
@@ -1202,17 +1202,17 @@ graphs:
       - attribute: uro:buildingID
         expr: |
           let attributes = env.get("__value").cityGmlAttributes ?? #{};
-          let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
+          let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
           building_id_attribute["uro:buildingID"] ?? ""
       - attribute: uro:branchID
         expr: |
           let attributes = env.get("__value").cityGmlAttributes ?? #{};
-          let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
+          let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
           building_id_attribute["uro:branchID"] ?? "（なし）"
       - attribute: uro:partID
         expr: |
           let attributes = env.get("__value").cityGmlAttributes ?? #{};
-          let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
+          let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
           building_id_attribute["uro:partID"] ?? "（なし）"
   - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
     name: FeatureWriter-invalid-building-id-format
@@ -1231,17 +1231,17 @@ graphs:
       - newAttribute: uroBuildingId
         attributeValue: |
           let attributes = env.get("__value").cityGmlAttributes ?? #{};
-          let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? [];
+          let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
           building_id_attribute["uro:buildingID"] ?? ""
       - newAttribute: uroBranchId
         attributeValue: |
           let attributes = env.get("__value").cityGmlAttributes ?? #{};
-          let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? [];
+          let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
           building_id_attribute["uro:branchID"] ?? ""
       - newAttribute: uroPartId
         attributeValue: |
           let attributes = env.get("__value").cityGmlAttributes ?? #{};
-          let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? [];
+          let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
           building_id_attribute["uro:partID"] ?? ""
       calculation: |
         1
@@ -1255,7 +1255,7 @@ graphs:
     with:
       requestorAttributeValue: |
         let attributes = env.get("__value").cityGmlAttributes ?? #{};
-        let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? [];
+        let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
         (building_id_attribute["uro:buildingID"] ?? "") + "-" + (building_id_attribute["uro:branchID"] ?? "") + "-" + (building_id_attribute["uro:partID"] ?? "")
       supplierAttributeValue: |
         (env.get("__value").uroBuildingId ?? "") + "-" + (env.get("__value").uroBranchId ?? "") + "-" + (env.get("__value").uroPartId ?? "")
@@ -1286,12 +1286,12 @@ graphs:
       - attribute: UroBuildingId
         expr: |
           let city_gml_attrs = env.get("__value").cityGmlAttributes ?? #{};
-          let bldg_id_attr = city_gml_attrs["uro:BuildingIDAttribute"];
+          let bldg_id_attr = (city_gml_attrs["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
           bldg_id_attr["uro:buildingID"] ?? ""
       - attribute: UroBranchId
         expr: |
           let city_gml_attrs = env.get("__value").cityGmlAttributes ?? #{};
-          let bldg_id_attr = city_gml_attrs["uro:BuildingIDAttribute"];
+          let bldg_id_attr = (city_gml_attrs["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
           let branch_id = bldg_id_attr["uro:branchID"] ?? "";
           if (branch_id == "") {
             "（なし）"
@@ -1301,7 +1301,7 @@ graphs:
       - attribute: UroPartId
         expr: |
           let city_gml_attrs = env.get("__value").cityGmlAttributes ?? #{};
-          let bldg_id_attr = city_gml_attrs["uro:BuildingIDAttribute"] ?? #{};
+          let bldg_id_attr = (city_gml_attrs["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
           let part_id = bldg_id_attr["uro:partID"] ?? "";
           if (part_id == "") {
             "（なし）"
