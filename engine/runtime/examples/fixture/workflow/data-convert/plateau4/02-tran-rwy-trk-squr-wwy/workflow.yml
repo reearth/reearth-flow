@@ -257,6 +257,8 @@ graphs:
           maxZoom: 16
           output: |
             file::join_path(env.get("outputPath"), env.get("__value")._udxDirs + "_lod" + env.get("__value")._lod)
+          skipUnderscorePrefix: true
+          colonToUnderscore: true
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
