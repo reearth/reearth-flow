@@ -2,11 +2,11 @@ package interactor
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/reearth/reearthx/appx"
 	"github.com/stretchr/testify/assert"
 )
@@ -29,18 +29,44 @@ func (m *mockPermissionChecker) CheckPermission(ctx context.Context, authInfo *a
 }
 
 func TestResolveVariables(t *testing.T) {
-	pp := map[string]string{"A": "pA", "B": "pB", "D": "pD"}
-	dv := map[string]string{"B": "dB", "C": "dC"}
-	tv := map[string]string{"C": "tC", "D": "tD"}
-	rv := map[string]string{"D": "rD", "E": "rE"}
+	pp := map[string]variable.Variable{
+		"A": {Key: "A", Type: parameter.TypeText, Value: "pA"},
+		"B": {Key: "B", Type: parameter.TypeText, Value: "pB"},
+		"D": {Key: "D", Type: parameter.TypeText, Value: "pD"},
+	}
+	dv := map[string]variable.Variable{
+		"B": {Key: "B", Type: parameter.TypeText, Value: "dB"},
+		"C": {Key: "C", Type: parameter.TypeText, Value: "dC"},
+	}
+	tv := map[string]variable.Variable{
+		"C": {Key: "C", Type: parameter.TypeText, Value: "tC"},
+		"D": {Key: "D", Type: parameter.TypeText, Value: "tD"},
+	}
+	rv := map[string]variable.Variable{
+		"D": {Key: "D", Type: parameter.TypeText, Value: "rD"},
+		"E": {Key: "E", Type: parameter.TypeText, Value: "rE"},
+	}
+
+	toStringMap := func(m map[string]variable.Variable) map[string]string {
+		if m == nil {
+			return nil
+		}
+		out := make(map[string]string, len(m))
+		for k, v := range m {
+			if s, ok := v.Value.(string); ok {
+				out[k] = s
+			}
+		}
+		return out
+	}
 
 	tests := []struct {
 		name           string
 		mode           VariablesMode
-		projectParams  map[string]string
-		deploymentVars map[string]string
-		triggerVars    map[string]string
-		requestVars    map[string]string
+		projectParams  map[string]variable.Variable
+		deploymentVars map[string]variable.Variable
+		triggerVars    map[string]variable.Variable
+		requestVars    map[string]variable.Variable
 		expected       map[string]string
 	}{
 		{
@@ -101,21 +127,21 @@ func TestResolveVariables(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			actual := resolveVariables(tc.mode, tc.projectParams, tc.deploymentVars, tc.triggerVars, tc.requestVars)
-			assert.Equal(t, tc.expected, actual)
+			actual, err := resolveVariables(tc.mode, tc.projectParams, tc.deploymentVars, tc.triggerVars, tc.requestVars)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, toStringMap(actual))
 		})
 	}
 }
 
 func TestProjectParametersToMap(t *testing.T) {
 	mockArray := []string{"item1", "item2"}
-	arrayJSONBytes, _ := json.Marshal(mockArray)
 	mockTime := time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)
 
 	tests := []struct {
-		name          string
-		params        []map[string]interface{}
-		expectedValue map[string]string
+		name     string
+		params   []map[string]interface{}
+		expected map[string]variable.Variable
 	}{
 		{
 			name: "Simple Types Conversion",
@@ -125,31 +151,59 @@ func TestProjectParametersToMap(t *testing.T) {
 				{"name": "text", "type": parameter.TypeText, "defaultValue": "hello"},
 				{"name": "color", "type": parameter.TypeColor, "defaultValue": "#ff0000"},
 			},
-			expectedValue: map[string]string{
-				"num":   "42.5",
-				"bool":  "true",
-				"text":  "hello",
-				"color": "#ff0000",
+			expected: map[string]variable.Variable{
+				"num": {
+					Key:   "num",
+					Type:  parameter.TypeNumber,
+					Value: 42.5,
+				},
+				"bool": {
+					Key:   "bool",
+					Type:  parameter.TypeYesNo,
+					Value: true,
+				},
+				"text": {
+					Key:   "text",
+					Type:  parameter.TypeText,
+					Value: "hello",
+				},
+				"color": {
+					Key:   "color",
+					Type:  parameter.TypeColor,
+					Value: "#ff0000",
+				},
 			},
 		},
 		{
-			name: "Complex Types (JSON Marshal)",
+			name: "Complex Types (JSON Marshal before, now raw value)",
 			params: []map[string]interface{}{
 				{"name": "arr", "type": parameter.TypeArray, "defaultValue": mockArray},
 				{"name": "choice", "type": parameter.TypeChoice, "defaultValue": mockArray},
 			},
-			expectedValue: map[string]string{
-				"arr":    string(arrayJSONBytes),
-				"choice": string(arrayJSONBytes),
+			expected: map[string]variable.Variable{
+				"arr": {
+					Key:   "arr",
+					Type:  parameter.TypeArray,
+					Value: mockArray,
+				},
+				"choice": {
+					Key:   "choice",
+					Type:  parameter.TypeChoice,
+					Value: mockArray,
+				},
 			},
 		},
 		{
-			name: "Go Time Conversion (Marshal)",
+			name: "Go Time Conversion (kept as time.Time)",
 			params: []map[string]interface{}{
 				{"name": "datetime", "type": parameter.TypeDatetime, "defaultValue": mockTime},
 			},
-			expectedValue: map[string]string{
-				"datetime": "\"" + mockTime.Format(time.RFC3339Nano) + "\"",
+			expected: map[string]variable.Variable{
+				"datetime": {
+					Key:   "datetime",
+					Type:  parameter.TypeDatetime,
+					Value: mockTime,
+				},
 			},
 		},
 		{
@@ -158,8 +212,12 @@ func TestProjectParametersToMap(t *testing.T) {
 				{"name": "emptyStr", "type": parameter.TypeText, "defaultValue": ""},
 				{"name": "nilVal", "type": parameter.TypeText, "defaultValue": nil},
 			},
-			expectedValue: map[string]string{
-				"emptyStr": "",
+			expected: map[string]variable.Variable{
+				"emptyStr": {
+					Key:   "emptyStr",
+					Type:  parameter.TypeText,
+					Value: "",
+				},
 			},
 		},
 	}
@@ -168,7 +226,14 @@ func TestProjectParametersToMap(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			pl := buildParameterList(t, tc.params)
 			actual := projectParametersToMap(pl)
-			assert.Equal(t, tc.expectedValue, actual)
+
+			assert.Equal(t, len(tc.expected), len(actual))
+			for k, ev := range tc.expected {
+				av, ok := actual[k]
+				assert.True(t, ok, "key %s should exist", k)
+				assert.Equal(t, ev.Type, av.Type, "type mismatch for key %s", k)
+				assert.Equal(t, ev.Value, av.Value, "value mismatch for key %s", k)
+			}
 		})
 	}
 }
@@ -209,13 +274,10 @@ func TestNormalizeRequestVars(t *testing.T) {
 	arr := []interface{}{"a", "b"}
 	obj := map[string]interface{}{"k": "v"}
 
-	arrJSON, _ := json.Marshal(arr)
-	objJSON, _ := json.Marshal(obj)
-
 	tests := []struct {
 		name     string
 		input    map[string]interface{}
-		expected map[string]string
+		expected map[string]variable.Variable
 	}{
 		{
 			name:     "nil input returns nil",
@@ -240,32 +302,96 @@ func TestNormalizeRequestVars(t *testing.T) {
 				"u64": uint64(9),
 				"b":   true,
 			},
-			expected: map[string]string{
-				"s":   "str",
-				"f64": "1.5",
-				"f32": "2.5",
-				"i":   "10",
-				"i8":  "1",
-				"i16": "2",
-				"i32": "3",
-				"i64": "4",
-				"u":   "5",
-				"u8":  "6",
-				"u16": "7",
-				"u32": "8",
-				"u64": "9",
-				"b":   "true",
+			expected: map[string]variable.Variable{
+				"s": {
+					Key:   "s",
+					Type:  parameter.TypeText,
+					Value: "str",
+				},
+				"f64": {
+					Key:   "f64",
+					Type:  parameter.TypeNumber,
+					Value: float64(1.5),
+				},
+				"f32": {
+					Key:   "f32",
+					Type:  parameter.TypeNumber,
+					Value: float32(2.5),
+				},
+				"i": {
+					Key:   "i",
+					Type:  parameter.TypeNumber,
+					Value: int(10),
+				},
+				"i8": {
+					Key:   "i8",
+					Type:  parameter.TypeNumber,
+					Value: int8(1),
+				},
+				"i16": {
+					Key:   "i16",
+					Type:  parameter.TypeNumber,
+					Value: int16(2),
+				},
+				"i32": {
+					Key:   "i32",
+					Type:  parameter.TypeNumber,
+					Value: int32(3),
+				},
+				"i64": {
+					Key:   "i64",
+					Type:  parameter.TypeNumber,
+					Value: int64(4),
+				},
+				"u": {
+					Key:   "u",
+					Type:  parameter.TypeNumber,
+					Value: uint(5),
+				},
+				"u8": {
+					Key:   "u8",
+					Type:  parameter.TypeNumber,
+					Value: uint8(6),
+				},
+				"u16": {
+					Key:   "u16",
+					Type:  parameter.TypeNumber,
+					Value: uint16(7),
+				},
+				"u32": {
+					Key:   "u32",
+					Type:  parameter.TypeNumber,
+					Value: uint32(8),
+				},
+				"u64": {
+					Key:   "u64",
+					Type:  parameter.TypeNumber,
+					Value: uint64(9),
+				},
+				"b": {
+					Key:   "b",
+					Type:  parameter.TypeYesNo,
+					Value: true,
+				},
 			},
 		},
 		{
-			name: "complex types marshalled as JSON",
+			name: "complex types marshalled as ARRAY type",
 			input: map[string]interface{}{
 				"arr": arr,
 				"obj": obj,
 			},
-			expected: map[string]string{
-				"arr": string(arrJSON),
-				"obj": string(objJSON),
+			expected: map[string]variable.Variable{
+				"arr": {
+					Key:   "arr",
+					Type:  parameter.TypeArray,
+					Value: arr,
+				},
+				"obj": {
+					Key:   "obj",
+					Type:  parameter.TypeArray,
+					Value: obj,
+				},
 			},
 		},
 		{
@@ -274,8 +400,12 @@ func TestNormalizeRequestVars(t *testing.T) {
 				"a": nil,
 				"b": "value",
 			},
-			expected: map[string]string{
-				"b": "value",
+			expected: map[string]variable.Variable{
+				"b": {
+					Key:   "b",
+					Type:  parameter.TypeText,
+					Value: "value",
+				},
 			},
 		},
 		{
@@ -285,10 +415,24 @@ func TestNormalizeRequestVars(t *testing.T) {
 		},
 	}
 
+	eqVarMap := func(expected, actual map[string]variable.Variable) {
+		if expected == nil {
+			assert.Nil(t, actual)
+			return
+		}
+		assert.Equal(t, len(expected), len(actual))
+		for k, ev := range expected {
+			av, ok := actual[k]
+			assert.True(t, ok, "key %s should exist", k)
+			assert.Equal(t, ev.Type, av.Type, "type mismatch for key %s", k)
+			assert.Equal(t, ev.Value, av.Value, "value mismatch for key %s", k)
+		}
+	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			actual := normalizeRequestVars(tc.input)
-			assert.Equal(t, tc.expected, actual)
+			eqVarMap(tc.expected, actual)
 		})
 	}
 }
