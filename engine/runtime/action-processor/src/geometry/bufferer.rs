@@ -146,6 +146,16 @@ impl Bufferer {
     ) {
         match self.buffer_type {
             BufferType::Area2D => match geos {
+                Geometry2D::Point(point) => {
+                    let mut feature = feature.clone();
+                    let mut geometry = geometry.clone();
+                    let coord = point.0;
+                    geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
+                        coord.to_polygon(self.distance, self.interpolation_angle),
+                    ));
+                    feature.geometry = geometry;
+                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                }
                 Geometry2D::LineString(line_string) => {
                     let mut feature = feature.clone();
                     let mut geometry = geometry.clone();
@@ -181,6 +191,22 @@ impl Bufferer {
     ) {
         match self.buffer_type {
             BufferType::Area2D => match geos {
+                Geometry3D::Point(point) => {
+                    let mut feature = feature.clone();
+                    let mut geometry = geometry.clone();
+                    let coord = point.0;
+                    // Convert 3D coordinate to 2D for buffering
+                    let coord_2d = reearth_flow_geometry::types::coordinate::Coordinate2D {
+                        x: coord.x,
+                        y: coord.y,
+                        z: reearth_flow_geometry::types::no_value::NoValue,
+                    };
+                    geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
+                        coord_2d.to_polygon(self.distance, self.interpolation_angle),
+                    ));
+                    feature.geometry = geometry;
+                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                }
                 Geometry3D::LineString(line_string) => {
                     let mut feature = feature.clone();
                     let mut geometry = geometry.clone();
