@@ -144,7 +144,7 @@ pub struct MVTWriterParam {
     /// Optional expression to determine whether to compress the output tiles
     pub(super) compress_output: Option<Expr>,
     /// # Skip Underscore Prefix
-    /// Kkip attributes with underscore prefix
+    /// Skip attributes with underscore prefix
     pub(super) skip_underscore_prefix: bool,
     /// # Colon to Underscore
     /// Replace colons in attribute keys (e.g., from XML Namespaces) with underscores
