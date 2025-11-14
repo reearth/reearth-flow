@@ -94,7 +94,7 @@ export default ({
       const tempId = `temp_${generateUUID()}`;
       const newVariable: ProjectVariable = {
         id: tempId,
-        name: t("New Project Variable"),
+        name: t("New Workflow Variable"),
         defaultValue: getDefaultValueForProjectVar(type),
         config: getDefaultConfigForProjectVar(type),
         type,
@@ -315,7 +315,7 @@ export default ({
       setPendingChanges([]);
       onClose();
     } catch (error) {
-      console.error("Failed to submit project variable changes:", error);
+      console.error("Failed to submit workflow variable changes:", error);
     } finally {
       setIsSubmitting(false);
     }

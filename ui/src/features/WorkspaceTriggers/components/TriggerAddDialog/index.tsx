@@ -64,6 +64,9 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     handleVariablesConfirm,
   } = useHooks({ setShowDialog });
 
+  // Currently hiding the workflow variables dialog until Phase 2 is ready
+  const showProjectVariablesDialog = false;
+
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(false)}>
       {!createdTrigger && (
@@ -98,7 +101,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
                 )}
               </div>
             </DialogContentSection>
-            {pendingWorkflowData?.variables && (
+            {pendingWorkflowData?.variables && showProjectVariablesDialog && (
               <DialogContentSection className="flex flex-col">
                 <Label>{t("Workflow Variables")}</Label>
                 <div
@@ -204,7 +207,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
         />
       )}
 
-      {pendingWorkflowData?.variables && (
+      {pendingWorkflowData?.variables && showProjectVariablesDialog && (
         <TriggerProjectVariablesMappingDialog
           isOpen={openTriggerProjectVariablesDialog}
           onOpenChange={setOpenTriggerProjectVariablesDialog}
