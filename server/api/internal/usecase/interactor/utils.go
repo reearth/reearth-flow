@@ -29,9 +29,8 @@ func resolveVariables(
 
 	apply := func(src map[string]variable.Variable) error {
 		for k, v := range src {
-			cur := variable.Variable{}
-			ok := false
-			if cur, ok = out[k]; !ok {
+			cur, ok := out[k]
+			if !ok {
 				out[k] = v
 				continue
 			}
