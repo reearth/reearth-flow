@@ -8,6 +8,7 @@ type Workspace implements Node {
     includeArchived: Boolean
     pagination: Pagination
   ): ProjectConnection!
+  workerConfig: WorkerConfig
 }
 
 type WorkspaceMember {

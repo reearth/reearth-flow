@@ -564,12 +564,13 @@ type ComplexityRoot struct {
 	}
 
 	Workspace struct {
-		Assets   func(childComplexity int, pagination *gqlmodel.Pagination) int
-		ID       func(childComplexity int) int
-		Members  func(childComplexity int) int
-		Name     func(childComplexity int) int
-		Personal func(childComplexity int) int
-		Projects func(childComplexity int, includeArchived *bool, pagination *gqlmodel.Pagination) int
+		Assets       func(childComplexity int, pagination *gqlmodel.Pagination) int
+		ID           func(childComplexity int) int
+		Members      func(childComplexity int) int
+		Name         func(childComplexity int) int
+		Personal     func(childComplexity int) int
+		Projects     func(childComplexity int, includeArchived *bool, pagination *gqlmodel.Pagination) int
+		WorkerConfig func(childComplexity int) int
 	}
 
 	WorkspaceMember struct {
@@ -694,6 +695,7 @@ type WorkspaceResolver interface {
 	Assets(ctx context.Context, obj *gqlmodel.Workspace, pagination *gqlmodel.Pagination) (*gqlmodel.AssetConnection, error)
 
 	Projects(ctx context.Context, obj *gqlmodel.Workspace, includeArchived *bool, pagination *gqlmodel.Pagination) (*gqlmodel.ProjectConnection, error)
+	WorkerConfig(ctx context.Context, obj *gqlmodel.Workspace) (*gqlmodel.WorkerConfig, error)
 }
 type WorkspaceMemberResolver interface {
 	User(ctx context.Context, obj *gqlmodel.WorkspaceMember) (*gqlmodel.User, error)
@@ -3116,6 +3118,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Workspace.Projects(childComplexity, args["includeArchived"].(*bool), args["pagination"].(*gqlmodel.Pagination)), true
+	case "Workspace.workerConfig":
+		if e.complexity.Workspace.WorkerConfig == nil {
+			break
+		}
+
+		return e.complexity.Workspace.WorkerConfig(childComplexity), true
 
 	case "WorkspaceMember.role":
 		if e.complexity.WorkspaceMember.Role == nil {
@@ -4324,6 +4332,7 @@ extend type Subscription {
     includeArchived: Boolean
     pagination: Pagination
   ): ProjectConnection!
+  workerConfig: WorkerConfig
 }
 
 type WorkspaceMember {
@@ -5612,6 +5621,8 @@ func (ec *executionContext) fieldContext_AddMemberToWorkspacePayload_workspace(_
 				return ec.fieldContext_Workspace_personal(ctx, field)
 			case "projects":
 				return ec.fieldContext_Workspace_projects(ctx, field)
+			case "workerConfig":
+				return ec.fieldContext_Workspace_workerConfig(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Workspace", field.Name)
 		},
@@ -6003,6 +6014,8 @@ func (ec *executionContext) fieldContext_Asset_Workspace(_ context.Context, fiel
 				return ec.fieldContext_Workspace_personal(ctx, field)
 			case "projects":
 				return ec.fieldContext_Workspace_projects(ctx, field)
+			case "workerConfig":
+				return ec.fieldContext_Workspace_workerConfig(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Workspace", field.Name)
 		},
@@ -8080,6 +8093,8 @@ func (ec *executionContext) fieldContext_CreateWorkspacePayload_workspace(_ cont
 				return ec.fieldContext_Workspace_personal(ctx, field)
 			case "projects":
 				return ec.fieldContext_Workspace_projects(ctx, field)
+			case "workerConfig":
+				return ec.fieldContext_Workspace_workerConfig(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Workspace", field.Name)
 		},
@@ -8619,6 +8634,8 @@ func (ec *executionContext) fieldContext_Deployment_workspace(_ context.Context,
 				return ec.fieldContext_Workspace_personal(ctx, field)
 			case "projects":
 				return ec.fieldContext_Workspace_projects(ctx, field)
+			case "workerConfig":
+				return ec.fieldContext_Workspace_workerConfig(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Workspace", field.Name)
 		},
@@ -9212,6 +9229,8 @@ func (ec *executionContext) fieldContext_Job_workspace(_ context.Context, field 
 				return ec.fieldContext_Workspace_personal(ctx, field)
 			case "projects":
 				return ec.fieldContext_Workspace_projects(ctx, field)
+			case "workerConfig":
+				return ec.fieldContext_Workspace_workerConfig(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Workspace", field.Name)
 		},
@@ -9782,6 +9801,8 @@ func (ec *executionContext) fieldContext_Me_myWorkspace(_ context.Context, field
 				return ec.fieldContext_Workspace_personal(ctx, field)
 			case "projects":
 				return ec.fieldContext_Workspace_projects(ctx, field)
+			case "workerConfig":
+				return ec.fieldContext_Workspace_workerConfig(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Workspace", field.Name)
 		},
@@ -9883,6 +9904,8 @@ func (ec *executionContext) fieldContext_Me_workspaces(_ context.Context, field 
 				return ec.fieldContext_Workspace_personal(ctx, field)
 			case "projects":
 				return ec.fieldContext_Workspace_projects(ctx, field)
+			case "workerConfig":
+				return ec.fieldContext_Workspace_workerConfig(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Workspace", field.Name)
 		},
@@ -13082,6 +13105,8 @@ func (ec *executionContext) fieldContext_Project_workspace(_ context.Context, fi
 				return ec.fieldContext_Workspace_personal(ctx, field)
 			case "projects":
 				return ec.fieldContext_Workspace_projects(ctx, field)
+			case "workerConfig":
+				return ec.fieldContext_Workspace_workerConfig(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Workspace", field.Name)
 		},
@@ -15344,6 +15369,8 @@ func (ec *executionContext) fieldContext_RemoveMemberFromWorkspacePayload_worksp
 				return ec.fieldContext_Workspace_personal(ctx, field)
 			case "projects":
 				return ec.fieldContext_Workspace_projects(ctx, field)
+			case "workerConfig":
+				return ec.fieldContext_Workspace_workerConfig(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Workspace", field.Name)
 		},
@@ -15943,6 +15970,8 @@ func (ec *executionContext) fieldContext_Trigger_workspace(_ context.Context, fi
 				return ec.fieldContext_Workspace_personal(ctx, field)
 			case "projects":
 				return ec.fieldContext_Workspace_projects(ctx, field)
+			case "workerConfig":
+				return ec.fieldContext_Workspace_workerConfig(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Workspace", field.Name)
 		},
@@ -16471,6 +16500,8 @@ func (ec *executionContext) fieldContext_UpdateMemberOfWorkspacePayload_workspac
 				return ec.fieldContext_Workspace_personal(ctx, field)
 			case "projects":
 				return ec.fieldContext_Workspace_projects(ctx, field)
+			case "workerConfig":
+				return ec.fieldContext_Workspace_workerConfig(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Workspace", field.Name)
 		},
@@ -16571,6 +16602,8 @@ func (ec *executionContext) fieldContext_UpdateWorkspacePayload_workspace(_ cont
 				return ec.fieldContext_Workspace_personal(ctx, field)
 			case "projects":
 				return ec.fieldContext_Workspace_projects(ctx, field)
+			case "workerConfig":
+				return ec.fieldContext_Workspace_workerConfig(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Workspace", field.Name)
 		},
@@ -17678,6 +17711,63 @@ func (ec *executionContext) fieldContext_Workspace_projects(ctx context.Context,
 	if fc.Args, err = ec.field_Workspace_projects_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Workspace_workerConfig(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Workspace) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Workspace_workerConfig,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Workspace().WorkerConfig(ctx, obj)
+		},
+		nil,
+		ec.marshalOWorkerConfig2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐWorkerConfig,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Workspace_workerConfig(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Workspace",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "workspace":
+				return ec.fieldContext_WorkerConfig_workspace(ctx, field)
+			case "machineType":
+				return ec.fieldContext_WorkerConfig_machineType(ctx, field)
+			case "computeCpuMilli":
+				return ec.fieldContext_WorkerConfig_computeCpuMilli(ctx, field)
+			case "computeMemoryMib":
+				return ec.fieldContext_WorkerConfig_computeMemoryMib(ctx, field)
+			case "bootDiskSizeGB":
+				return ec.fieldContext_WorkerConfig_bootDiskSizeGB(ctx, field)
+			case "taskCount":
+				return ec.fieldContext_WorkerConfig_taskCount(ctx, field)
+			case "maxConcurrency":
+				return ec.fieldContext_WorkerConfig_maxConcurrency(ctx, field)
+			case "threadPoolSize":
+				return ec.fieldContext_WorkerConfig_threadPoolSize(ctx, field)
+			case "channelBufferSize":
+				return ec.fieldContext_WorkerConfig_channelBufferSize(ctx, field)
+			case "featureFlushThreshold":
+				return ec.fieldContext_WorkerConfig_featureFlushThreshold(ctx, field)
+			case "nodeStatusPropagationDelayMilli":
+				return ec.fieldContext_WorkerConfig_nodeStatusPropagationDelayMilli(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_WorkerConfig_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_WorkerConfig_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WorkerConfig", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -25519,6 +25609,39 @@ func (ec *executionContext) _Workspace(ctx context.Context, sel ast.SelectionSet
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "workerConfig":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Workspace_workerConfig(ctx, field, obj)
 				return res
 			}
 
