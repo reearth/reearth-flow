@@ -195,36 +195,5 @@ impl State {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use serde::{Deserialize, Serialize};
-
-    #[derive(Serialize, Deserialize, Debug, PartialEq)]
-    struct Data {
-        x: i32,
-    }
-
-    #[tokio::test]
-    async fn test_write_and_read() {
-        let storage_resolver = Arc::new(StorageResolver::new());
-
-        let state = State::new(&Uri::for_test("ram:///workflows"), &storage_resolver).unwrap();
-        let data = Data { x: 42 };
-        state.save(&data, "test").await.unwrap();
-        let result: Data = state.get("test").await.unwrap();
-        assert_eq!(result, data);
-    }
-
-    #[tokio::test]
-    async fn test_state_write_read_zstd_enabled() {
-        let storage_resolver = Arc::new(StorageResolver::new());
-
-        let state =
-            State::new_for_test(&Uri::for_test("ram:///workflows"), &storage_resolver, true)
-                .unwrap();
-        let data = Data { x: 42 };
-        state.save(&data, "test").await.unwrap();
-        let result: Data = state.get("test").await.unwrap();
-        assert_eq!(result, data);
-    }
-}
+#[path = "state_test.rs"]
+mod state_test;

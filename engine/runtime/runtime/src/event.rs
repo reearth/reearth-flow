@@ -258,3 +258,7 @@ pub async fn subscribe_event(
         }
     }
 }
+
+#[cfg(test)]
+#[path = "event_test.rs"]
+mod event_test;
