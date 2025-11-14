@@ -3,6 +3,8 @@ package trigger
 import (
 	"errors"
 	"time"
+
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 )
 
 type Builder struct {
@@ -91,7 +93,7 @@ func (b *Builder) Enabled(enabled bool) *Builder {
 	return b
 }
 
-func (b *Builder) Variables(variables map[string]string) *Builder {
+func (b *Builder) Variables(variables []variable.Variable) *Builder {
 	b.t.variables = variables
 	return b
 }

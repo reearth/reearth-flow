@@ -60,9 +60,17 @@ func TestDeploymentsPagination(t *testing.T) {
 					"workspaceId": wId1.String(),
 					"description": fmt.Sprintf("Test Deployment %d", i),
 					"file":        nil,
-					"variables": map[string]any{
-						"DEPLOYMENT_VAR_1": fmt.Sprintf("deployment_value_1_%d", i),
-						"DEPLOYMENT_VAR_2": "deployment_value_2",
+					"variables": []map[string]any{
+						{
+							"key":   "DEPLOYMENT_VAR_1",
+							"type":  "TEXT",
+							"value": fmt.Sprintf("deployment_value_1_%d", i),
+						},
+						{
+							"key":   "DEPLOYMENT_VAR_2",
+							"type":  "TEXT",
+							"value": "deployment_value_2",
+						},
 					},
 				},
 			},
@@ -149,7 +157,11 @@ func TestDeploymentsPagination(t *testing.T) {
 					id
 					description
 					workflowUrl
-					variables
+					variables {
+						key
+						type
+						value
+					}
 				}
 				pageInfo {
 					totalCount
@@ -178,10 +190,14 @@ func TestDeploymentsPagination(t *testing.T) {
 			Data struct {
 				Deployments struct {
 					Nodes []struct {
-						ID          string            `json:"id"`
-						Description string            `json:"description"`
-						WorkflowURL string            `json:"workflowUrl"`
-						Variables   map[string]string `json:"variables"`
+						ID          string `json:"id"`
+						Description string `json:"description"`
+						WorkflowURL string `json:"workflowUrl"`
+						Variables   []struct {
+							Key   string      `json:"key"`
+							Type  string      `json:"type"`
+							Value interface{} `json:"value"`
+						} `json:"variables"`
 					} `json:"nodes"`
 					PageInfo struct {
 						TotalCount  int `json:"totalCount"`

@@ -2,6 +2,8 @@ package deployment
 
 import (
 	"time"
+
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 )
 
 type Deployment struct {
@@ -14,7 +16,7 @@ type Deployment struct {
 	updatedAt   time.Time
 	headId      *ID
 	isHead      bool
-	variables   map[string]string
+	variables   []variable.Variable
 }
 
 func (d *Deployment) ID() ID {
@@ -57,7 +59,7 @@ func (d *Deployment) IsHead() bool {
 	return d.isHead
 }
 
-func (d *Deployment) Variables() map[string]string {
+func (d *Deployment) Variables() []variable.Variable {
 	return d.variables
 }
 
@@ -100,7 +102,7 @@ func (d *Deployment) SetIsHead(isHead bool) {
 	d.updatedAt = time.Now()
 }
 
-func (d *Deployment) SetVariables(variables map[string]string) {
+func (d *Deployment) SetVariables(variables []variable.Variable) {
 	d.variables = variables
 	d.updatedAt = time.Now()
 }

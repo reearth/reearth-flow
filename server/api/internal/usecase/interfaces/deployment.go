@@ -8,6 +8,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 )
 
 type CreateDeploymentParam struct {
@@ -15,19 +16,19 @@ type CreateDeploymentParam struct {
 	Workspace   id.WorkspaceID
 	Workflow    *file.File
 	Description string
-	Variables   map[string]string
+	Variables   []variable.Variable
 }
 
 type UpdateDeploymentParam struct {
 	ID          id.DeploymentID
 	Workflow    *file.File
 	Description *string
-	Variables   map[string]string
+	Variables   []variable.Variable
 }
 
 type ExecuteDeploymentParam struct {
 	DeploymentID id.DeploymentID
-	Variables    map[string]string
+	Variables    []variable.Variable
 }
 
 var (

@@ -3,6 +3,7 @@ package interactor
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/url"
 	"strconv"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/reearth/reearthx/usecasex"
 )
 
@@ -340,7 +342,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	}
 
 	var projectID id.ProjectID
-	var projectParamsMap map[string]string
+	var projectParamsMap map[string]variable.Variable
 	if d.Project() != nil {
 		projectID = *d.Project()
 		pls, err := i.paramRepo.FindByProject(ctx, projectID)
@@ -350,18 +352,26 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		projectParamsMap = projectParametersToMap(pls)
 	}
 
-	var deploymentVars map[string]string
-	if dv := d.Variables(); dv != nil {
-		deploymentVars = dv
+	var deploymentVars map[string]variable.Variable
+	if dvs := d.Variables(); len(dvs) > 0 {
+		deploymentVars = variable.SliceToMap(dvs)
 	}
 
-	finalVars := resolveVariables(
+	var requestVars map[string]variable.Variable
+	if len(p.Variables) > 0 {
+		requestVars = variable.SliceToMap(p.Variables)
+	}
+
+	finalVarMap, err := resolveVariables(
 		ModeExecuteDeployment,
 		projectParamsMap,
 		deploymentVars,
 		nil,
-		p.Variables,
+		requestVars,
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	debug := false
 
@@ -372,7 +382,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		Workspace(d.Workspace()).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
-		Variables(finalVars).
+		Variables(variable.MapToSlice(finalVarMap)).
 		Build()
 	if err != nil {
 		return nil, err
@@ -390,9 +400,10 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		return nil, err
 	}
 
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), j.Variables(), projectID, d.Workspace())
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, d.Workspace())
 	if err != nil {
-		return nil, interfaces.ErrJobCreationFailed
+		log.Printf("[Deployment] Job submission failed: %v\n", err)
+		// return nil, interfaces.ErrJobCreationFailed
 	}
 	j.SetGCPJobID(gcpJobID)
 

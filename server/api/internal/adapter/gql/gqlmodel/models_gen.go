@@ -177,11 +177,11 @@ type CreateAssetUploadPayload struct {
 }
 
 type CreateDeploymentInput struct {
-	WorkspaceID ID             `json:"workspaceId"`
-	File        graphql.Upload `json:"file"`
-	ProjectID   *ID            `json:"projectId,omitempty"`
-	Description string         `json:"description"`
-	Variables   JSON           `json:"variables,omitempty"`
+	WorkspaceID ID               `json:"workspaceId"`
+	File        graphql.Upload   `json:"file"`
+	ProjectID   *ID              `json:"projectId,omitempty"`
+	Description string           `json:"description"`
+	Variables   []*VariableInput `json:"variables,omitempty"`
 }
 
 type CreateProjectInput struct {
@@ -198,7 +198,7 @@ type CreateTriggerInput struct {
 	TimeDriverInput *TimeDriverInput `json:"timeDriverInput,omitempty"`
 	APIDriverInput  *APIDriverInput  `json:"apiDriverInput,omitempty"`
 	Enabled         *bool            `json:"enabled,omitempty"`
-	Variables       JSON             `json:"variables,omitempty"`
+	Variables       []*VariableInput `json:"variables,omitempty"`
 }
 
 type CreateWorkspaceInput struct {
@@ -260,19 +260,19 @@ type DeleteWorkspacePayload struct {
 }
 
 type Deployment struct {
-	CreatedAt   time.Time  `json:"createdAt"`
-	Description string     `json:"description"`
-	HeadID      *ID        `json:"headId,omitempty"`
-	IsHead      bool       `json:"isHead"`
-	ID          ID         `json:"id"`
-	Project     *Project   `json:"project,omitempty"`
-	ProjectID   *ID        `json:"projectId,omitempty"`
-	UpdatedAt   time.Time  `json:"updatedAt"`
-	Version     string     `json:"version"`
-	WorkflowURL string     `json:"workflowUrl"`
-	Workspace   *Workspace `json:"workspace,omitempty"`
-	WorkspaceID ID         `json:"workspaceId"`
-	Variables   JSON       `json:"variables,omitempty"`
+	CreatedAt   time.Time   `json:"createdAt"`
+	Description string      `json:"description"`
+	HeadID      *ID         `json:"headId,omitempty"`
+	IsHead      bool        `json:"isHead"`
+	ID          ID          `json:"id"`
+	Project     *Project    `json:"project,omitempty"`
+	ProjectID   *ID         `json:"projectId,omitempty"`
+	UpdatedAt   time.Time   `json:"updatedAt"`
+	Version     string      `json:"version"`
+	WorkflowURL string      `json:"workflowUrl"`
+	Workspace   *Workspace  `json:"workspace,omitempty"`
+	WorkspaceID ID          `json:"workspaceId"`
+	Variables   []*Variable `json:"variables"`
 }
 
 func (Deployment) IsNode()        {}
@@ -289,8 +289,8 @@ type DeploymentPayload struct {
 }
 
 type ExecuteDeploymentInput struct {
-	DeploymentID ID   `json:"deploymentId"`
-	Variables    JSON `json:"variables,omitempty"`
+	DeploymentID ID               `json:"deploymentId"`
+	Variables    []*VariableInput `json:"variables,omitempty"`
 }
 
 type GetByVersionInput struct {
@@ -319,7 +319,7 @@ type Job struct {
 	Workspace         *Workspace  `json:"workspace,omitempty"`
 	WorkspaceID       ID          `json:"workspaceId"`
 	Logs              []*Log      `json:"logs,omitempty"`
-	Variables         JSON        `json:"variables,omitempty"`
+	Variables         []*Variable `json:"variables"`
 }
 
 func (Job) IsNode()        {}
@@ -566,7 +566,7 @@ type Trigger struct {
 	AuthToken     *string         `json:"authToken,omitempty"`
 	TimeInterval  *TimeInterval   `json:"timeInterval,omitempty"`
 	Enabled       *bool           `json:"enabled,omitempty"`
-	Variables     JSON            `json:"variables,omitempty"`
+	Variables     []*Variable     `json:"variables"`
 }
 
 func (Trigger) IsNode()        {}
@@ -596,10 +596,10 @@ type UpdateAssetPayload struct {
 }
 
 type UpdateDeploymentInput struct {
-	DeploymentID ID              `json:"deploymentId"`
-	File         *graphql.Upload `json:"file,omitempty"`
-	Description  *string         `json:"description,omitempty"`
-	Variables    JSON            `json:"variables,omitempty"`
+	DeploymentID ID               `json:"deploymentId"`
+	File         *graphql.Upload  `json:"file,omitempty"`
+	Description  *string          `json:"description,omitempty"`
+	Variables    []*VariableInput `json:"variables,omitempty"`
 }
 
 type UpdateMeInput struct {
@@ -655,7 +655,7 @@ type UpdateTriggerInput struct {
 	TimeDriverInput *TimeDriverInput `json:"timeDriverInput,omitempty"`
 	APIDriverInput  *APIDriverInput  `json:"apiDriverInput,omitempty"`
 	Enabled         *bool            `json:"enabled,omitempty"`
-	Variables       JSON             `json:"variables,omitempty"`
+	Variables       []*VariableInput `json:"variables,omitempty"`
 }
 
 type UpdateWorkspaceInput struct {
@@ -694,6 +694,18 @@ type UserMetadata struct {
 	PhotoURL    *string      `json:"photoURL,omitempty"`
 	Theme       Theme        `json:"theme"`
 	Lang        language.Tag `json:"lang"`
+}
+
+type Variable struct {
+	Key   string        `json:"key"`
+	Type  ParameterType `json:"type"`
+	Value any           `json:"value"`
+}
+
+type VariableInput struct {
+	Key   string        `json:"key"`
+	Type  ParameterType `json:"type"`
+	Value any           `json:"value"`
 }
 
 type Workspace struct {
