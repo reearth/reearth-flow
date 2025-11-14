@@ -26,22 +26,22 @@ var (
 )
 
 type IssueUploadAssetParam struct {
+	ExpiresAt       time.Time
 	UUID            string
 	Filename        string
-	ContentLength   int64
 	ContentType     string
 	ContentEncoding string
-	ExpiresAt       time.Time
 	Cursor          string
 	Workspace       string
+	ContentLength   int64
 }
 
 type UploadAssetLink struct {
 	URL             string
 	ContentType     string
-	ContentLength   int64
 	ContentEncoding string
 	Next            string
+	ContentLength   int64
 }
 
 func (p IssueUploadAssetParam) GetOrGuessContentType() string {

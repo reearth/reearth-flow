@@ -14,9 +14,9 @@ import (
 )
 
 type Project struct {
-	lock sync.Mutex
 	data map[id.ProjectID]*project.Project
 	f    repo.WorkspaceFilter
+	lock sync.Mutex
 }
 
 func NewProject() repo.Project {

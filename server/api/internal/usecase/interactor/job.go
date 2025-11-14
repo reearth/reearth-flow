@@ -27,14 +27,14 @@ type Job struct {
 	file              gateway.File
 	batch             gateway.Batch
 	redis             gateway.Redis
-	monitor           *monitor.Monitor
-	subscriptions     *subscription.JobManager
 	notifier          notification.Notifier
 	permissionChecker gateway.PermissionChecker
-	watchersMu        sync.Mutex
+	monitor           *monitor.Monitor
+	subscriptions     *subscription.JobManager
 	activeWatchers    map[string]bool
-	jobLocksMu        sync.RWMutex
 	jobLocks          map[string]*sync.Mutex
+	jobLocksMu        sync.RWMutex
+	watchersMu        sync.Mutex
 }
 
 type NotificationPayload struct {

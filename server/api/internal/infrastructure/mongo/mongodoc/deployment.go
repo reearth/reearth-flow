@@ -10,14 +10,14 @@ import (
 )
 
 type DeploymentDocument struct {
-	ID          string    `bson:"id"`
+	UpdatedAt   time.Time `bson:"updatedat"`
 	ProjectID   *string   `bson:"projectid,omitempty"`
+	HeadID      *string   `bson:"headid,omitempty"`
+	ID          string    `bson:"id"`
 	WorkspaceID string    `bson:"workspaceid"`
 	WorkflowURL string    `bson:"workflowurl"`
 	Description string    `bson:"description"`
 	Version     string    `bson:"version"`
-	UpdatedAt   time.Time `bson:"updatedat"`
-	HeadID      *string   `bson:"headid,omitempty"`
 	IsHead      bool      `bson:"ishead"`
 }
 

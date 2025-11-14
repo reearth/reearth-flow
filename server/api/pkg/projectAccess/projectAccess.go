@@ -17,10 +17,10 @@ var (
 )
 
 type ProjectAccess struct {
+	token    string
 	id       ID
 	project  ProjectID
 	isPublic bool
-	token    string
 }
 
 func (pa *ProjectAccess) ID() ID {

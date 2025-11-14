@@ -13,10 +13,10 @@ type Timestamp struct {
 }
 
 type Metadata struct {
-	ArtifactBaseUrl string    `json:"artifactBaseUrl"`
-	Assets          Asset     `json:"assets"`
-	JobID           string    `json:"jobId"`
-	Tags            []string  `json:"tags,omitempty"`
 	Timestamps      Timestamp `json:"timestamps"`
 	Version         *string   `json:"version,omitempty"`
+	ArtifactBaseUrl string    `json:"artifactBaseUrl"`
+	JobID           string    `json:"jobId"`
+	Assets          Asset     `json:"assets"`
+	Tags            []string  `json:"tags,omitempty"`
 }
