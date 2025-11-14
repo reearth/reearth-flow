@@ -148,6 +148,10 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
                 incoming_edge_ids.push(edge_id.clone());
                 incoming_is_reader.push(*is_reader);
             } else {
+                tracing::warn!(
+                    "ProcessorNode: No edge metadata found for upstream node {}. This may indicate a graph structure issue.",
+                    nh.id
+                );
                 incoming_edge_ids.push(EdgeId::new(uuid::Uuid::new_v4().to_string()));
                 incoming_is_reader.push(false);
             }
