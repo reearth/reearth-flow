@@ -210,6 +210,8 @@ pub(super) fn tile_writing_stage(
     output_path: &Uri,
     receiver_sorted: std::sync::mpsc::Receiver<(u64, Vec<Vec<u8>>)>,
     tile_id_conv: TileIdMethod,
+    skip_underscore_prefix: bool,
+    colon_to_underscore: bool,
 ) -> crate::errors::Result<()> {
     let default_detail = 12;
     let min_detail = 9;
@@ -230,7 +232,7 @@ pub(super) fn tile_writing_stage(
                 .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
             for detail in (min_detail..=default_detail).rev() {
                 // Make a MVT tile binary
-                let bytes = make_tile(detail, &serialized_feats)?;
+                let bytes = make_tile(detail, &serialized_feats, skip_underscore_prefix, colon_to_underscore)?;
 
                 // Retry with a lower detail level if the compressed tile size is too large
                 let compressed_size = {
@@ -260,6 +262,8 @@ pub(super) fn tile_writing_stage(
 pub(super) fn make_tile(
     default_detail: i32,
     serialized_feats: &[Vec<u8>],
+    skip_underscore_prefix: bool,
+    colon_to_underscore: bool,
 ) -> crate::errors::Result<Vec<u8>> {
     let mut layers: HashMap<String, LayerData> = HashMap::new();
     let mut int_ring_buf = Vec::new();
@@ -373,11 +377,15 @@ pub(super) fn make_tile(
             // Encode attributes as MVT tags
             for (key, value) in &feature.properties {
                 // skip keys starting with "_"
-                if key.as_ref().starts_with("_") {
+                if skip_underscore_prefix && key.as_ref().starts_with("_") {
                     continue;
                 }
-                let normalized_key = key.inner().replace(":", "_");
-                convert_properties(&mut layer.tags_enc, &normalized_key, value);
+                let key_string = if colon_to_underscore {
+                    key.inner().replace(":", "_")
+                } else {
+                    key.inner().to_string()
+                };
+                convert_properties(&mut layer.tags_enc, &key_string, value);
             }
             layer
         };
