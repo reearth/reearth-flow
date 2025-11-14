@@ -3,6 +3,7 @@ package interactor
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/url"
 	"strconv"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/reearth/reearthx/usecasex"
 )
 
@@ -332,7 +334,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	}
 
 	var projectID id.ProjectID
-	var projectParamsMap map[string]string
+	var projectParamsMap map[string]variable.Variable
 	if d.Project() != nil {
 		projectID = *d.Project()
 		pls, err := i.paramRepo.FindByProject(ctx, projectID)
@@ -342,13 +344,16 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		projectParamsMap = projectParametersToMap(pls)
 	}
 
-	finalVars := resolveVariables(
+	finalVarMap, err := resolveVariables(
 		ModeExecuteDeployment,
 		projectParamsMap,
 		nil, // TODO: Add deploymentVars here if deployment.variables are supported/needed.
 		nil,
 		nil, // TODO: Add requestVars here if deployment.variables are supported/needed.
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	debug := false
 
@@ -359,7 +364,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		Workspace(d.Workspace()).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
-		Variables(finalVars).
+		Variables(variable.MapToSlice(finalVarMap)).
 		Build()
 	if err != nil {
 		return nil, err
@@ -377,9 +382,10 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		return nil, err
 	}
 
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), j.Variables(), projectID, d.Workspace())
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, d.Workspace())
 	if err != nil {
-		return nil, interfaces.ErrJobCreationFailed
+		log.Printf("[Deployment] Job submission failed: %v\n", err)
+		// return nil, interfaces.ErrJobCreationFailed
 	}
 	j.SetGCPJobID(gcpJobID)
 

@@ -275,9 +275,9 @@ func createTriggerForDeployment(t *testing.T, e *httpexpect.Expect, deploymentID
 				"timeDriverInput": map[string]interface{}{
 					"interval": "EVERY_DAY",
 				},
-				"variables": map[string]interface{}{
-					"TRIGGER_VAR_1": "trigger_value_1",
-					"TRIGGER_VAR_2": "trigger_value_2",
+				"variables": []map[string]interface{}{
+					{"key": "TRIGGER_VAR_1", "type": "TEXT", "value": "trigger_value_1"},
+					{"key": "TRIGGER_VAR_2", "type": "TEXT", "value": "trigger_value_2"},
 				},
 			},
 		},

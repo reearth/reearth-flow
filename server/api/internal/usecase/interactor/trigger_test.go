@@ -11,8 +11,10 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearth-flow/api/pkg/user"
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/mongox/mongotest"
@@ -36,9 +38,9 @@ func TestTrigger_Create(t *testing.T) {
 	wid := id.NewWorkspaceID()
 	did := id.NewDeploymentID()
 
-	testVars := map[string]string{
-		"VAR_1": "test_val_1",
-		"VAR_2": "test_val_2",
+	testVars := []variable.Variable{
+		{Key: "VAR_1", Type: parameter.TypeText, Value: "test_val_1"},
+		{Key: "VAR_2", Type: parameter.TypeText, Value: "test_val_2"},
 	}
 
 	_, _ = c.Collection("deployment").InsertOne(ctx, bson.M{
@@ -79,7 +81,7 @@ func TestTrigger_Create(t *testing.T) {
 	assert.Equal(t, trigger.EventSourceTypeTimeDriven, got.EventSource())
 	assert.Equal(t, trigger.TimeIntervalEveryDay, *got.TimeInterval())
 	assert.True(t, got.Enabled())
-	assert.Equal(t, testVars, got.Variables())
+	assert.Equal(t, variablesToSimpleMap(testVars), variablesToSimpleMap(got.Variables()))
 	assert.False(t, got.CreatedAt().IsZero())
 	assert.False(t, got.UpdatedAt().IsZero())
 
@@ -99,7 +101,7 @@ func TestTrigger_Create(t *testing.T) {
 	assert.Equal(t, "API trigger", got.Description())
 	assert.Equal(t, trigger.EventSourceTypeAPIDriven, got.EventSource())
 	assert.Equal(t, "token123", *got.AuthToken())
-	assert.Equal(t, testVars, got.Variables())
+	assert.Equal(t, variablesToSimpleMap(testVars), variablesToSimpleMap(got.Variables()))
 	assert.False(t, got.Enabled())
 
 	param.DeploymentID = id.NewDeploymentID()
@@ -124,7 +126,14 @@ func TestTrigger_Update(t *testing.T) {
 	wid := id.NewWorkspaceID()
 	did := id.NewDeploymentID()
 	newDid := id.NewDeploymentID()
-	initialVars := map[string]string{"INIT_KEY": "initial_value"}
+
+	initialVarsDoc := []bson.M{
+		{
+			"key":   "INIT_KEY",
+			"type":  string(parameter.TypeText),
+			"value": "initial_value",
+		},
+	}
 
 	createdTime := time.Now()
 	_, _ = c.Collection("trigger").InsertOne(ctx, bson.M{
@@ -135,7 +144,7 @@ func TestTrigger_Update(t *testing.T) {
 		"eventsource":  "TIME_DRIVEN",
 		"timeinterval": "EVERY_DAY",
 		"enabled":      true,
-		"variables":    initialVars,
+		"variables":    initialVarsDoc,
 		"createdat":    createdTime,
 		"updatedat":    createdTime,
 	})
@@ -170,7 +179,9 @@ func TestTrigger_Update(t *testing.T) {
 
 	// Test updating description and event source
 	newDesc := "Updated trigger"
-	updateVars := map[string]string{"NEW_VAR": "updated"}
+	updateVars := []variable.Variable{
+		{Key: "NEW_VAR", Type: parameter.TypeText, Value: "updated"},
+	}
 	param := interfaces.UpdateTriggerParam{
 		ID:          tid,
 		Description: &newDesc,
@@ -186,7 +197,7 @@ func TestTrigger_Update(t *testing.T) {
 	assert.Equal(t, "newtoken", *got.AuthToken())
 	assert.Nil(t, got.TimeInterval())
 	assert.True(t, got.Enabled())
-	assert.Equal(t, updateVars, got.Variables())
+	assert.Equal(t, variablesToSimpleMap(updateVars), variablesToSimpleMap(got.Variables()))
 	assert.Equal(t, createdTime, got.CreatedAt())
 	assert.True(t, got.UpdatedAt().After(createdTime))
 
@@ -205,7 +216,7 @@ func TestTrigger_Update(t *testing.T) {
 	assert.Equal(t, newDid, got.Deployment())
 	assert.Equal(t, trigger.TimeIntervalEveryHour, *got.TimeInterval())
 	assert.False(t, got.Enabled())
-	assert.Equal(t, updateVars, got.Variables())
+	assert.Equal(t, variablesToSimpleMap(updateVars), variablesToSimpleMap(got.Variables()))
 	assert.Equal(t, createdTime, got.CreatedAt())
 	assert.True(t, got.UpdatedAt().After(createdTime))
 
@@ -241,7 +252,13 @@ func TestTrigger_Fetch(t *testing.T) {
 	tid2 := id.NewTriggerID()
 	wid := id.NewWorkspaceID()
 	did := id.NewDeploymentID()
-	testVars := map[string]string{"FETCH_VAR": "fetched_value"}
+	testVarsDoc := []bson.M{
+		{
+			"key":   "FETCH_VAR",
+			"type":  string(parameter.TypeText),
+			"value": "fetched_value",
+		},
+	}
 	createdTime := time.Now()
 
 	_, _ = c.Collection("trigger").InsertMany(ctx, []any{
@@ -255,7 +272,7 @@ func TestTrigger_Fetch(t *testing.T) {
 			"createdat":    createdTime,
 			"updatedat":    createdTime,
 			"enabled":      true,
-			"variables":    testVars,
+			"variables":    testVarsDoc,
 		},
 		bson.M{
 			"id":           tid2.String(),
@@ -267,7 +284,7 @@ func TestTrigger_Fetch(t *testing.T) {
 			"createdat":    createdTime,
 			"updatedat":    createdTime,
 			"enabled":      false,
-			"variables":    testVars,
+			"variables":    testVarsDoc,
 		},
 	})
 
@@ -287,13 +304,16 @@ func TestTrigger_Fetch(t *testing.T) {
 	assert.Equal(t, tid1, got[0].ID())
 	assert.Equal(t, "Daily trigger", got[0].Description())
 	assert.True(t, got[0].Enabled())
-	assert.Equal(t, testVars, got[0].Variables())
+	vars0 := variablesToSimpleMap(got[0].Variables())
+	assert.Equal(t, map[string]interface{}{"FETCH_VAR": "fetched_value"}, vars0)
 	assert.Equal(t, createdTime, got[0].CreatedAt())
 	assert.Equal(t, createdTime, got[0].UpdatedAt())
+
 	assert.Equal(t, tid2, got[1].ID())
 	assert.Equal(t, "API trigger", got[1].Description())
 	assert.False(t, got[1].Enabled())
-	assert.Equal(t, testVars, got[1].Variables())
+	vars1 := variablesToSimpleMap(got[1].Variables())
+	assert.Equal(t, map[string]interface{}{"FETCH_VAR": "fetched_value"}, vars1)
 	assert.Equal(t, createdTime, got[1].CreatedAt())
 	assert.Equal(t, createdTime, got[1].UpdatedAt())
 }
@@ -321,7 +341,6 @@ func TestTrigger_Delete(t *testing.T) {
 		"eventsource":  "TIME_DRIVEN",
 		"timeinterval": "EVERY_DAY",
 		"createdat":    time.Now(),
-		"variables":    map[string]string{"del_var": "test"},
 	})
 
 	repo := repo.Container{
@@ -436,12 +455,20 @@ func TestTrigger_ExecuteTimeDrivenTrigger_Disabled(t *testing.T) {
 
 	res, err := i.ExecuteTimeDrivenTrigger(ctx, interfaces.ExecuteTimeDrivenTriggerParam{
 		TriggerID: tid,
-		Variables: map[string]string{
-			"FOO": "bar",
-		},
 	})
 
 	assert.Error(t, err)
 	assert.Nil(t, res)
 	assert.Contains(t, err.Error(), "disabled")
+}
+
+func variablesToSimpleMap(vars []variable.Variable) map[string]interface{} {
+	if len(vars) == 0 {
+		return nil
+	}
+	out := make(map[string]interface{}, len(vars))
+	for _, v := range vars {
+		out[v.Key] = v.Value
+	}
+	return out
 }

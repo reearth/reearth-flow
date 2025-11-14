@@ -2,6 +2,8 @@ package job
 
 import (
 	"time"
+
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 )
 
 type JobBuilder struct {
@@ -107,7 +109,7 @@ func (b *JobBuilder) WorkerStatus(workerStatus *Status) *JobBuilder {
 	return b
 }
 
-func (b *JobBuilder) Variables(variables map[string]string) *JobBuilder {
+func (b *JobBuilder) Variables(variables []variable.Variable) *JobBuilder {
 	b.j.variables = variables
 	return b
 }
