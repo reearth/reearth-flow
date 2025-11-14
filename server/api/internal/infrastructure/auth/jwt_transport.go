@@ -3,10 +3,19 @@ package auth
 import (
 	"net/http"
 
+	"github.com/reearth/reearth-accounts/server/pkg/gqlclient"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 )
 
-type DynamicAuthTransport struct{}
+type DynamicAuthTransport struct {
+	transport *gqlclient.AccountsTransport
+}
+
+func NewDynamicAuthTransport() *DynamicAuthTransport {
+	return &DynamicAuthTransport{
+		transport: gqlclient.NewAccountsTransport(http.DefaultTransport, gqlclient.InternalServiceDashboardAPI),
+	}
+}
 
 func (t DynamicAuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	var token string
@@ -25,5 +34,5 @@ func (t DynamicAuthTransport) RoundTrip(req *http.Request) (*http.Response, erro
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
-	return http.DefaultTransport.RoundTrip(req)
+	return t.transport.RoundTrip(req)
 }
