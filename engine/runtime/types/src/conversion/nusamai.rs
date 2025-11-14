@@ -203,8 +203,14 @@ impl AttributeValue {
         let mut result = HashMap::new();
         match value {
             nusamai_citygml::Value::Code(v) => {
-                result.insert(key.to_string(), AttributeValue::String(v.value().to_owned()));
-                result.insert(format!("{key}_code"), AttributeValue::String(v.code().to_owned()));
+                result.insert(
+                    key.to_string(),
+                    AttributeValue::String(v.value().to_owned()),
+                );
+                result.insert(
+                    format!("{key}_code"),
+                    AttributeValue::String(v.code().to_owned()),
+                );
             }
             nusamai_citygml::Value::Measure(v) => {
                 let value = serde_json::Number::from_string_unchecked(v.value().to_string());
@@ -260,14 +266,14 @@ impl AttributeValue {
             let generic_attrs = Self::convert_generic_attributes(&obj.attributes);
             result.insert(
                 obj.typename.to_string(),
-                AttributeValue::Array(generic_attrs)
+                AttributeValue::Array(generic_attrs),
             );
         } else {
             // recursive process for other objects
             let attrs = Self::process_object_attributes(&obj.attributes);
             result.insert(
                 obj.typename.to_string(),
-                AttributeValue::Array(vec![AttributeValue::Map(attrs)])
+                AttributeValue::Array(vec![AttributeValue::Map(attrs)]),
             );
         }
     }
@@ -283,9 +289,7 @@ impl AttributeValue {
 
             // Determine type and value based on the Value discriminant
             let (type_str, value_attr) = match value {
-                nusamai_citygml::Value::String(v) => {
-                    ("string", AttributeValue::String(v.clone()))
-                }
+                nusamai_citygml::Value::String(v) => ("string", AttributeValue::String(v.clone())),
                 nusamai_citygml::Value::Integer(v) => {
                     ("integer", AttributeValue::String(v.to_string()))
                 }
@@ -295,9 +299,10 @@ impl AttributeValue {
                 nusamai_citygml::Value::Measure(m) => {
                     ("measure", AttributeValue::String(m.value().to_string()))
                 }
-                nusamai_citygml::Value::Date(d) => {
-                    ("date", AttributeValue::String(d.format("%Y-%m-%d").to_string()))
-                }
+                nusamai_citygml::Value::Date(d) => (
+                    "date",
+                    AttributeValue::String(d.format("%Y-%m-%d").to_string()),
+                ),
                 nusamai_citygml::Value::Uri(u) => {
                     ("uri", AttributeValue::String(u.value().to_string()))
                 }
@@ -311,11 +316,14 @@ impl AttributeValue {
                 }
                 _ => {
                     // Fallback for any other types
-                    ("string", AttributeValue::String(format!("{:?}", value)))
+                    ("string", AttributeValue::String(format!("{value:?}")))
                 }
             };
 
-            attr_map.insert("type".to_string(), AttributeValue::String(type_str.to_string()));
+            attr_map.insert(
+                "type".to_string(),
+                AttributeValue::String(type_str.to_string()),
+            );
             attr_map.insert("value".to_string(), value_attr);
 
             result.push(AttributeValue::Map(attr_map));

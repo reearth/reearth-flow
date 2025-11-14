@@ -46,9 +46,10 @@ static COMMON_ATTRIBUTES: Lazy<HashMap<String, String>> = Lazy::new(|| {
         ("meshcode".to_string(), "meshcode".to_string()),
         ("gml_id".to_string(), "gml:id".to_string()),
         ("feature_type".to_string(), "feature_type".to_string()),
-    ].into_iter().collect::<HashMap<String, String>>()
+    ]
+    .into_iter()
+    .collect::<HashMap<String, String>>()
 });
-
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct AttributeFlattenerFactory;
@@ -120,18 +121,18 @@ impl Processor for AttributeFlattener {
         let lookup_key = if let (Some(AttributeValue::String(package)), Some(feature_type)) =
             (feature.get(&"package"), &feature.metadata.feature_type)
         {
-            format!("{}/{}", package, feature_type)
+            format!("{package}/{feature_type}")
         } else {
-            // fallback to building
-            "bldg/bldg:Building".to_string()
+            return Err(PlateauProcessorError::AttributeFlattener(
+                "Cannot build lookup key for flatten attributes".to_string(),
+            )
+            .into());
         };
 
         // Track encountered feature type
         self.encountered_feature_types.insert(lookup_key.clone());
 
-        if let Some(flatten_attributes) =
-            super::constants::FLATTEN_ATTRIBUTES.get(&lookup_key)
-        {
+        if let Some(flatten_attributes) = super::constants::FLATTEN_ATTRIBUTES.get(&lookup_key) {
             for attribute in flatten_attributes {
                 let mut json_path: Vec<&str> = vec![];
                 json_path.extend(attribute.json_path.split(" "));
@@ -156,15 +157,11 @@ impl Processor for AttributeFlattener {
         // add common attributes by copying from feature attributes
         for (key, value) in COMMON_ATTRIBUTES.iter() {
             if let Some(attr_value) = feature.get(&Attribute::new(key.clone())) {
-                inner_attributes.insert(
-                    value.clone(),
-                    attr_value.clone(),
-                );
+                inner_attributes.insert(value.clone(), attr_value.clone());
             }
         }
         // save the whole `city_gml_attribute` values as `attributes`
-        let attributes_value =
-            serde_json::Value::from(AttributeValue::Map(inner_attributes));
+        let attributes_value = serde_json::Value::from(AttributeValue::Map(inner_attributes));
         let attributes_json = serde_json::to_string(&attributes_value).unwrap();
         new_city_gml_attribute.insert(
             Attribute::new("attributes".to_string()),
