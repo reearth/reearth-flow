@@ -38,7 +38,6 @@ pub(super) fn geometry_slicing_stage(
     min_zoom: u8,
     max_zoom: u8,
 ) -> crate::errors::Result<()> {
-    let bincode_config = bincode::config::standard();
     let tile_contents = Arc::new(Mutex::new(Vec::new()));
     let storage = ctx
         .storage_resolver
@@ -66,12 +65,11 @@ pub(super) fn geometry_slicing_stage(
                         multi_line_strings: MultiLineString2::new(),
                         properties: feature.attributes.clone(),
                     };
-                    let bytes =
-                        bincode::serde::encode_to_vec(&feature, bincode_config).map_err(|err| {
-                            crate::errors::SinkError::MvtWriter(format!(
-                                "Failed to serialize a sliced feature: {err:?}"
-                            ))
-                        })?;
+                    let bytes = serde_json::to_vec(&feature).map_err(|err| {
+                        crate::errors::SinkError::MvtWriter(format!(
+                            "Failed to serialize a sliced feature: {err:?}"
+                        ))
+                    })?;
                     let tile_id = tile_id_conv.zxy_to_id(z, x, y);
                     if sender_sliced.send((tile_id, bytes)).is_err() {
                         return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
@@ -85,12 +83,11 @@ pub(super) fn geometry_slicing_stage(
                         multi_line_strings: line_strings,
                         properties: feature.attributes.clone(),
                     };
-                    let bytes =
-                        bincode::serde::encode_to_vec(&feature, bincode_config).map_err(|err| {
-                            crate::errors::SinkError::MvtWriter(format!(
-                                "Failed to serialize a sliced feature: {err:?}"
-                            ))
-                        })?;
+                    let bytes = serde_json::to_vec(&feature).map_err(|err| {
+                        crate::errors::SinkError::MvtWriter(format!(
+                            "Failed to serialize a sliced feature: {err:?}"
+                        ))
+                    })?;
                     let tile_id = tile_id_conv.zxy_to_id(z, x, y);
                     if sender_sliced.send((tile_id, bytes)).is_err() {
                         return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
@@ -213,6 +210,8 @@ pub(super) fn tile_writing_stage(
     output_path: &Uri,
     receiver_sorted: std::sync::mpsc::Receiver<(u64, Vec<Vec<u8>>)>,
     tile_id_conv: TileIdMethod,
+    skip_underscore_prefix: bool,
+    colon_to_underscore: bool,
 ) -> crate::errors::Result<()> {
     let default_detail = 12;
     let min_detail = 9;
@@ -233,7 +232,12 @@ pub(super) fn tile_writing_stage(
                 .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
             for detail in (min_detail..=default_detail).rev() {
                 // Make a MVT tile binary
-                let bytes = make_tile(detail, &serialized_feats)?;
+                let bytes = make_tile(
+                    detail,
+                    &serialized_feats,
+                    skip_underscore_prefix,
+                    colon_to_underscore,
+                )?;
 
                 // Retry with a lower detail level if the compressed tile size is too large
                 let compressed_size = {
@@ -247,6 +251,7 @@ pub(super) fn tile_writing_stage(
                 };
                 if detail != min_detail && compressed_size > 500_000 {
                     // If the tile is too large, try a lower detail level
+                    tracing::warn!("Large tile skipped, retry unimplemented");
                     continue;
                 }
                 storage
@@ -262,16 +267,17 @@ pub(super) fn tile_writing_stage(
 pub(super) fn make_tile(
     default_detail: i32,
     serialized_feats: &[Vec<u8>],
+    skip_underscore_prefix: bool,
+    colon_to_underscore: bool,
 ) -> crate::errors::Result<Vec<u8>> {
     let mut layers: HashMap<String, LayerData> = HashMap::new();
     let mut int_ring_buf = Vec::new();
     let mut int_ring_buf2 = Vec::new();
     let extent = 1 << default_detail;
-    let bincode_config = bincode::config::standard();
 
     for serialized_feat in serialized_feats {
-        let (feature, _): (super::slice::SlicedFeature, _) =
-            bincode::serde::decode_from_slice(serialized_feat, bincode_config).map_err(|err| {
+        let feature: super::slice::SlicedFeature = serde_json::from_slice(serialized_feat)
+            .map_err(|err| {
                 crate::errors::SinkError::MvtWriter(format!(
                     "Failed to deserialize a sliced feature: {err:?}"
                 ))
@@ -375,7 +381,16 @@ pub(super) fn make_tile(
 
             // Encode attributes as MVT tags
             for (key, value) in &feature.properties {
-                convert_properties(&mut layer.tags_enc, key.as_ref(), value);
+                // skip keys starting with "_"
+                if skip_underscore_prefix && key.as_ref().starts_with("_") {
+                    continue;
+                }
+                let key_string = if colon_to_underscore {
+                    key.inner().replace(":", "_")
+                } else {
+                    key.inner().to_string()
+                };
+                convert_properties(&mut layer.tags_enc, &key_string, value);
             }
             layer
         };

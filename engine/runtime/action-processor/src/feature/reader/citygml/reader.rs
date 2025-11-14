@@ -33,7 +33,7 @@ pub(super) fn read_citygml(
     flatten: Option<bool>,
     global_params: Option<HashMap<String, serde_json::Value>>,
 ) -> Result<(), crate::feature::errors::FeatureProcessorError> {
-    let code_resolver = nusamai_plateau::codelist::Resolver::new();
+    let code_resolver = Box::new(nusamai_plateau::codelist::Resolver::new());
     let expr_engine = Arc::clone(&ctx.expr_engine);
     let scope = feature.new_scope(expr_engine.clone(), &global_params);
     let city_gml_path = scope
@@ -54,7 +54,7 @@ pub(super) fn read_citygml(
 
     let base_url: Url = input_path.into();
     let mut xml_reader = NsReader::from_reader(buf_reader);
-    let context = nusamai_citygml::ParseContext::new(base_url.clone(), &code_resolver);
+    let context = nusamai_citygml::ParseContext::new(base_url.clone(), code_resolver.as_ref());
     let mut citygml_reader = CityGmlReader::new(context);
     let mut st = citygml_reader.start_root(&mut xml_reader).map_err(|e| {
         crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
@@ -155,14 +155,13 @@ fn parse_tree_reader<R: BufRead>(
                 (v[0], v[1], v[2]) = (v[1], v[0], v[2]);
             });
         }
-        let attributes = AttributeValue::from_nusamai_cityml_value(&entity.root);
+        let attributes = AttributeValue::from_nusamai_citygml_value(&entity.root);
         let attributes = AttributeValue::convert_array_attributes(&attributes);
         let city_gml_attributes = match attributes.len() {
             0 => AttributeValue::Null,
             1 => attributes.values().next().unwrap().clone(),
             _ => AttributeValue::Map(attributes),
         };
-        let city_gml_attributes = city_gml_attributes.flatten();
         let city_gml_attributes = if let AttributeValue::Map(map) = &city_gml_attributes {
             AttributeValue::Map(AttributeValue::convert_array_attributes(map))
         } else {
