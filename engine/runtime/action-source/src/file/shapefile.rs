@@ -766,13 +766,9 @@ fn convert_shape_to_geometry(
 
     let geometry_value = match shape {
         Shape::Point(point) => {
-            if force_2d {
-                let p = Point2D::from([point.x, point.y]);
-                GeometryValue::FlowGeometry2D(Geometry2D::Point(p))
-            } else {
-                let p = Point3D::from([point.x, point.y, 0.0]);
-                GeometryValue::FlowGeometry3D(Geometry3D::Point(p))
-            }
+            // 2D shapefile points should always create 2D geometry
+            let p = Point2D::from([point.x, point.y]);
+            GeometryValue::FlowGeometry2D(Geometry2D::Point(p))
         }
         Shape::PointZ(point) => {
             if force_2d {
@@ -784,48 +780,24 @@ fn convert_shape_to_geometry(
             }
         }
         Shape::Polyline(polyline) => {
-            if force_2d {
-                let lines: Vec<LineString2D<f64>> = polyline
-                    .parts()
-                    .iter()
-                    .map(|part| {
-                        let coords: Vec<_> =
-                            part.iter().map(|p| Point2D::from([p.x, p.y]).0).collect();
-                        LineString2D::new(coords)
-                    })
-                    .collect();
+            // 2D shapefile polylines should always create 2D geometry
+            let lines: Vec<LineString2D<f64>> = polyline
+                .parts()
+                .iter()
+                .map(|part| {
+                    let coords: Vec<_> = part.iter().map(|p| Point2D::from([p.x, p.y]).0).collect();
+                    LineString2D::new(coords)
+                })
+                .collect();
 
-                if lines.len() == 1 {
-                    GeometryValue::FlowGeometry2D(Geometry2D::LineString(
-                        lines.into_iter().next().unwrap(),
-                    ))
-                } else {
-                    GeometryValue::FlowGeometry2D(Geometry2D::MultiLineString(
-                        MultiLineString2D::new(lines),
-                    ))
-                }
+            if lines.len() == 1 {
+                GeometryValue::FlowGeometry2D(Geometry2D::LineString(
+                    lines.into_iter().next().unwrap(),
+                ))
             } else {
-                let lines: Vec<LineString3D<f64>> = polyline
-                    .parts()
-                    .iter()
-                    .map(|part| {
-                        let coords: Vec<_> = part
-                            .iter()
-                            .map(|p| Point3D::from([p.x, p.y, 0.0]).0)
-                            .collect();
-                        LineString3D::new(coords)
-                    })
-                    .collect();
-
-                if lines.len() == 1 {
-                    GeometryValue::FlowGeometry3D(Geometry3D::LineString(
-                        lines.into_iter().next().unwrap(),
-                    ))
-                } else {
-                    GeometryValue::FlowGeometry3D(Geometry3D::MultiLineString(
-                        MultiLineString3D::new(lines),
-                    ))
-                }
+                GeometryValue::FlowGeometry2D(Geometry2D::MultiLineString(MultiLineString2D::new(
+                    lines,
+                )))
             }
         }
         Shape::PolylineZ(polyline) => {
@@ -876,21 +848,13 @@ fn convert_shape_to_geometry(
         Shape::Polygon(polygon) => convert_polygon_to_geometry(polygon)?,
         Shape::PolygonZ(polygon) => convert_polygonz_to_geometry(polygon, force_2d)?,
         Shape::Multipoint(multipoint) => {
-            if force_2d {
-                let points: Vec<Point2D<f64>> = multipoint
-                    .points()
-                    .iter()
-                    .map(|p| Point2D::from([p.x, p.y]))
-                    .collect();
-                GeometryValue::FlowGeometry2D(Geometry2D::MultiPoint(MultiPoint2D::new(points)))
-            } else {
-                let points: Vec<Point3D<f64>> = multipoint
-                    .points()
-                    .iter()
-                    .map(|p| Point3D::from([p.x, p.y, 0.0]))
-                    .collect();
-                GeometryValue::FlowGeometry3D(Geometry3D::MultiPoint(MultiPoint3D::new(points)))
-            }
+            // 2D shapefile multipoints should always create 2D geometry
+            let points: Vec<Point2D<f64>> = multipoint
+                .points()
+                .iter()
+                .map(|p| Point2D::from([p.x, p.y]))
+                .collect();
+            GeometryValue::FlowGeometry2D(Geometry2D::MultiPoint(MultiPoint2D::new(points)))
         }
         Shape::MultipointZ(multipoint) => {
             if force_2d {
