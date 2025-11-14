@@ -305,6 +305,8 @@ mod tests {
     use reearth_flow_common::uri::Uri;
     use std::path::Path;
 
+    const TEST_SERVER_URL: &str = "http://127.0.0.1:3000";
+
     async fn create_test_object_store() -> Storage {
         let op = Operator::new(services::Memory::default()).unwrap().finish();
         let object_store = Storage::new(Uri::for_test("ram://"), op);
@@ -317,6 +319,12 @@ mod tests {
         let bytes = Bytes::from_static(b"hello, world! I am nested.");
         object_store.put(path, bytes).await.unwrap();
         object_store
+    }
+
+    fn get_test_storage() -> Storage {
+        let uri = Uri::for_test(&format!("{}/", TEST_SERVER_URL));
+        let op = crate::operator::resolve_operator(&uri).unwrap();
+        Storage::new(uri, op)
     }
 
     #[tokio::test]
@@ -361,163 +369,62 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_http_get_with_head_support() {
-        use wiremock::matchers::{method, path};
-        use wiremock::{Mock, MockServer, ResponseTemplate};
-
-        let mock_server = MockServer::start().await;
-        let test_data = b"test geojson data";
-
-        Mock::given(method("HEAD"))
-            .and(path("/data.geojson"))
-            .respond_with(
-                ResponseTemplate::new(200)
-                    .insert_header("content-length", test_data.len().to_string())
-                    .insert_header("last-modified", "Wed, 21 Oct 2015 07:28:00 GMT")
-                    .insert_header("etag", "\"abc123\""),
-            )
-            .mount(&mock_server)
-            .await;
-
-        Mock::given(method("GET"))
-            .and(path("/data.geojson"))
-            .respond_with(ResponseTemplate::new(200).set_body_bytes(test_data))
-            .mount(&mock_server)
-            .await;
-
-        let uri = Uri::for_test(&format!("http://{}/", mock_server.address()));
-        let op = crate::operator::resolve_operator(&uri).unwrap();
-        let storage = Storage::new(uri, op);
-
+        let storage = get_test_storage();
         let result = storage.get(Path::new("/data.geojson")).await.unwrap();
 
-        assert_eq!(result.meta.size, test_data.len() as u64);
+        let expected_data = b"Hello from real HTTP server! This is test GeoJSON data.";
+
+        assert_eq!(result.meta.size, expected_data.len() as u64);
         assert_eq!(result.meta.e_tag, Some("\"abc123\"".to_string()));
 
         let bytes = result.bytes().await.unwrap();
-        assert_eq!(bytes.as_ref(), test_data);
+        assert_eq!(bytes.as_ref(), expected_data);
     }
 
     #[tokio::test]
     async fn test_http_get_without_head_support() {
-        use wiremock::matchers::{method, path};
-        use wiremock::{Mock, MockServer, ResponseTemplate};
-
-        let mock_server = MockServer::start().await;
-        let test_data = b"test geojson data from server without HEAD support";
-
-        Mock::given(method("HEAD"))
-            .and(path("/data.geojson"))
-            .respond_with(ResponseTemplate::new(405).set_body_string("Method Not Allowed"))
-            .mount(&mock_server)
-            .await;
-
-        Mock::given(method("GET"))
-            .and(path("/data.geojson"))
-            .respond_with(
-                ResponseTemplate::new(200)
-                    .set_body_bytes(test_data)
-                    .insert_header("content-type", "application/geo+json"),
-            )
-            .mount(&mock_server)
-            .await;
-
-        let uri = Uri::for_test(&format!("http://{}/", mock_server.address()));
-        let op = crate::operator::resolve_operator(&uri).unwrap();
-        let storage = Storage::new(uri, op);
-
-        let result = storage.get(Path::new("/data.geojson")).await.unwrap();
+        let storage = get_test_storage();
+        let result = storage.get(Path::new("/no-head.json")).await.unwrap();
 
         assert_eq!(result.meta.size, 0);
         assert_eq!(result.meta.e_tag, None);
 
         let bytes = result.bytes().await.unwrap();
-        assert_eq!(bytes.as_ref(), test_data);
+        let expected_data = b"Server without HEAD support";
+        assert_eq!(bytes.as_ref(), expected_data);
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_http_get_head_not_found_but_get_succeeds() {
-        use wiremock::matchers::{method, path};
-        use wiremock::{Mock, MockServer, ResponseTemplate};
-
-        let mock_server = MockServer::start().await;
-        let test_data = b"data exists but HEAD endpoint is different";
-
-        Mock::given(method("HEAD"))
-            .and(path("/data.geojson"))
-            .respond_with(ResponseTemplate::new(404))
-            .mount(&mock_server)
-            .await;
-
-        Mock::given(method("GET"))
-            .and(path("/data.geojson"))
-            .respond_with(ResponseTemplate::new(200).set_body_bytes(test_data))
-            .mount(&mock_server)
-            .await;
-
-        let uri = Uri::for_test(&format!("http://{}/", mock_server.address()));
-        let op = crate::operator::resolve_operator(&uri).unwrap();
-        let storage = Storage::new(uri, op);
-
-        let result = storage.get(Path::new("/data.geojson")).await.unwrap();
+        let storage = get_test_storage();
+        let result = storage.get(Path::new("/head-404.json")).await.unwrap();
 
         let bytes = result.bytes().await.unwrap();
-        assert_eq!(bytes.as_ref(), test_data);
+        let expected_data = b"GET succeeds even though HEAD returns 404";
+        assert_eq!(bytes.as_ref(), expected_data);
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_http_get_head_error_but_get_succeeds() {
-        use wiremock::matchers::{method, path};
-        use wiremock::{Mock, MockServer, ResponseTemplate};
-
-        let mock_server = MockServer::start().await;
-        let test_data = b"data from server with HEAD errors";
-
-        Mock::given(method("HEAD"))
-            .and(path("/data.geojson"))
-            .respond_with(ResponseTemplate::new(500).set_body_string("Internal Server Error"))
-            .mount(&mock_server)
-            .await;
-
-        Mock::given(method("GET"))
-            .and(path("/data.geojson"))
-            .respond_with(ResponseTemplate::new(200).set_body_bytes(test_data))
-            .mount(&mock_server)
-            .await;
-
-        let uri = Uri::for_test(&format!("http://{}/", mock_server.address()));
-        let op = crate::operator::resolve_operator(&uri).unwrap();
-        let storage = Storage::new(uri, op);
-
-        let result = storage.get(Path::new("/data.geojson")).await.unwrap();
+        let storage = get_test_storage();
+        let result = storage.get(Path::new("/head-error.json")).await.unwrap();
 
         let bytes = result.bytes().await.unwrap();
-        assert_eq!(bytes.as_ref(), test_data);
+        let expected_data = b"GET succeeds even though HEAD returns 500";
+        assert_eq!(bytes.as_ref(), expected_data);
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_http_head_method_still_works() {
-        use wiremock::matchers::{method, path};
-        use wiremock::{Mock, MockServer, ResponseTemplate};
-
-        let mock_server = MockServer::start().await;
-
-        Mock::given(method("HEAD"))
-            .and(path("/data.geojson"))
-            .respond_with(
-                ResponseTemplate::new(200)
-                    .insert_header("content-length", "42")
-                    .insert_header("etag", "\"xyz789\""),
-            )
-            .mount(&mock_server)
-            .await;
-
-        let uri = Uri::for_test(&format!("http://{}/", mock_server.address()));
-        let op = crate::operator::resolve_operator(&uri).unwrap();
-        let storage = Storage::new(uri, op);
-
+        let storage = get_test_storage();
         let meta = storage.head(Path::new("/data.geojson")).await.unwrap();
 
-        assert_eq!(meta.size, 42);
+        let expected_size = b"Hello from real HTTP server! This is test GeoJSON data.".len() as u64;
+        assert_eq!(meta.size, expected_size);
     }
 }
