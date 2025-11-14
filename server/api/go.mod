@@ -15,7 +15,7 @@ require (
 	github.com/go-faker/faker/v4 v4.7.0
 	github.com/go-redis/redismock/v9 v9.2.0
 	github.com/google/uuid v1.6.0
-	github.com/hasura/go-graphql-client v0.14.4
+	github.com/hasura/go-graphql-client v0.14.5
 	github.com/jarcoal/httpmock v1.4.0
 	github.com/joho/godotenv v1.5.1
 	github.com/k0kubun/pp/v3 v3.5.0
@@ -24,6 +24,7 @@ require (
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/ravilushqa/otelgqlgen v0.19.0
 	github.com/redis/go-redis/v9 v9.14.0
+	github.com/reearth/reearth-accounts/server v0.0.0-20251114040111-9b5f5f67a6c7
 	github.com/reearth/reearthx v0.0.0-20250923165051-5bd6f1c10f7a
 	github.com/samber/lo v1.51.0
 	github.com/spf13/afero v1.15.0
@@ -68,7 +69,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
-	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
+	github.com/planetscale/vtprotobuf v0.6.1-0.20241121165744-79df5c4772f2 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.6.0 // indirect
 	github.com/zitadel/oidc v1.13.5 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect

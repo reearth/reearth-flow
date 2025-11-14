@@ -65,7 +65,7 @@ func Start(debug bool, version string) {
 	}
 
 	// AccountGQLClient
-	accountGQLClient := gql.NewClient(conf.AccountsApiHost, authserver.DynamicAuthTransport{})
+	accountGQLClient := gql.NewClient(conf.AccountsApiHost, authserver.NewDynamicAuthTransport())
 
 	serverCfg := &ServerConfig{
 		Config:            conf,
