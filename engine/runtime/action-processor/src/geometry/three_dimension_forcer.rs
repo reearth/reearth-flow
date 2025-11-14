@@ -54,7 +54,7 @@ impl ProcessorFactory for ThreeDimensionForcerFactory {
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: ThreeDimensionForcerParam = if let Some(with) = with.clone() {
-            let value: Value = serde_json::to_value(with).map_err(|e| {
+            let value: Value = serde_json::to_value(with.clone()).map_err(|e| {
                 GeometryProcessorError::ThreeDimensionForcerFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
                 ))
@@ -72,7 +72,9 @@ impl ProcessorFactory for ThreeDimensionForcerFactory {
         let elevation_ast = if let Some(ref elevation_expr) = params.elevation {
             Some(expr_engine.compile(elevation_expr.as_ref()).map_err(|e| {
                 GeometryProcessorError::ThreeDimensionForcerFactory(format!(
-                    "Failed to compile elevation expression: {e:?}"
+                    "Failed to compile elevation expression '{}': {:?}",
+                    elevation_expr.as_ref(),
+                    e
                 ))
             })?)
         } else {
@@ -128,11 +130,21 @@ impl Processor for ThreeDimensionForcer {
         // Calculate the elevation value to use
         let elevation_value = if let Some(ref elevation_ast) = self.elevation {
             let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
-            scope.eval_ast::<f64>(elevation_ast).map_err(|e| {
-                GeometryProcessorError::ThreeDimensionForcer(format!(
-                    "Failed to evaluate elevation expression: {e:?}"
-                ))
-            })?
+            // Try to evaluate as f64 first, if that fails try i64 and convert
+            match scope.eval_ast::<f64>(elevation_ast) {
+                Ok(val) => val,
+                Err(_) => {
+                    // If f64 evaluation fails, try i64 and convert to f64
+                    scope
+                        .eval_ast::<i64>(elevation_ast)
+                        .map(|i| i as f64)
+                        .map_err(|e| {
+                            GeometryProcessorError::ThreeDimensionForcer(format!(
+                                "Failed to evaluate elevation expression: {e:?}"
+                            ))
+                        })?
+                }
+            }
         } else {
             0.0
         };
@@ -297,9 +309,8 @@ fn convert_2d_to_3d(geom: Geometry2D, z: f64) -> Geometry3D {
             ))
         }
         Geometry2D::Solid(_solid) => {
-            // Solids in 2D don't really make sense, and there's no conversion
-            // So we'll just skip this case
-            unreachable!("2D Solid should not exist")
+            // Solids in 2D don't really make sense, return empty collection
+            Geometry3D::GeometryCollection(vec![])
         }
         Geometry2D::GeometryCollection(gc) => {
             let geometries: Vec<Geometry3D> =
@@ -308,11 +319,11 @@ fn convert_2d_to_3d(geom: Geometry2D, z: f64) -> Geometry3D {
         }
         Geometry2D::CSG(_) => {
             // CSG in 2D doesn't exist, unreachable
-            unreachable!("2D CSG should not exist")
+            Geometry3D::GeometryCollection(vec![])
         }
         Geometry2D::TriangularMesh(_) => {
             // TriangularMesh in 2D doesn't exist, unreachable
-            unreachable!("2D TriangularMesh should not exist")
+            Geometry3D::GeometryCollection(vec![])
         }
     }
 }
