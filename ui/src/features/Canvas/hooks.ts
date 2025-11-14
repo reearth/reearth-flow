@@ -64,7 +64,7 @@ export default ({
   onCopy,
   onCut,
   onPaste,
-  onNodesDisable,
+  // onNodesDisable,
 }: Props) => {
   const {
     handleNodesChange,
@@ -184,9 +184,9 @@ export default ({
       case "v":
         if (hasModifier) onPaste?.();
         break;
-      case "e":
-        if (hasModifier) onNodesDisable?.();
-        break;
+      // case "e":
+      //   if (hasModifier) onNodesDisable?.();
+      //   break;
     }
   });
 

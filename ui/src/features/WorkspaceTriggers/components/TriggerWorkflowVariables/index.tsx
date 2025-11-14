@@ -118,10 +118,10 @@ export default function TriggerProjectVariablesMappingDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent size="xl">
         <DialogHeader>
-          <DialogTitle>{t("Configure Project Variables")}</DialogTitle>
+          <DialogTitle>{t("Configure Workflow Variables")}</DialogTitle>
           <DialogDescription>
             {t(
-              "The deployment contains {{count}} variables. Configure how they should be set as Project Variables.",
+              "The deployment contains {{count}} variables. Configure how they should be set as Workflow Variables.",
               {
                 workflowName,
                 count: variables.length,

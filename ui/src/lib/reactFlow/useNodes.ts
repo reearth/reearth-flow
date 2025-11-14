@@ -83,15 +83,18 @@ export default ({
               .flatMap(({ id: source }) =>
                 outgoers
                   .filter(({ id }) => !deletedIds.has(id))
-                  .map(({ id: target }) => ({
-                    id: `${source}->${target}`,
-                    type: "add" as const,
-                    item: {
-                      id: `${source}->${target}`,
-                      source,
-                      target,
-                    },
-                  })),
+                  .map(({ id: target }) => {
+                    const edgeId = generateUUID();
+                    return {
+                      id: edgeId,
+                      type: "add" as const,
+                      item: {
+                        id: edgeId,
+                        source,
+                        target,
+                      },
+                    };
+                  }),
               )
           : [];
 
