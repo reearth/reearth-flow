@@ -34,15 +34,8 @@ pub struct GeometryConfig {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase", tag = "geometryMode")]
+#[serde(rename_all = "camelCase", untagged)]
 pub enum GeometryMode {
-    /// # WKT Column
-    /// Geometry stored as Well-Known Text in a single column
-    Wkt {
-        /// # WKT Column Name
-        /// Name of the column containing WKT geometry
-        column: String,
-    },
     /// # Coordinate Columns
     /// Geometry stored as separate X, Y, (optional Z) columns
     Coordinates {
@@ -59,6 +52,13 @@ pub enum GeometryMode {
         #[serde(rename = "zColumn")]
         #[serde(skip_serializing_if = "Option::is_none")]
         z_column: Option<String>,
+    },
+    /// # WKT Column
+    /// Geometry stored as Well-Known Text in a single column
+    Wkt {
+        /// # WKT Column Name
+        /// Name of the column containing WKT geometry
+        column: String,
     },
 }
 
