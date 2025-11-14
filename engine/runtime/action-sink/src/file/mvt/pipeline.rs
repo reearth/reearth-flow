@@ -65,12 +65,11 @@ pub(super) fn geometry_slicing_stage(
                         multi_line_strings: MultiLineString2::new(),
                         properties: feature.attributes.clone(),
                     };
-                    let bytes =
-                        serde_json::to_vec(&feature).map_err(|err| {
-                            crate::errors::SinkError::MvtWriter(format!(
-                                "Failed to serialize a sliced feature: {err:?}"
-                            ))
-                        })?;
+                    let bytes = serde_json::to_vec(&feature).map_err(|err| {
+                        crate::errors::SinkError::MvtWriter(format!(
+                            "Failed to serialize a sliced feature: {err:?}"
+                        ))
+                    })?;
                     let tile_id = tile_id_conv.zxy_to_id(z, x, y);
                     if sender_sliced.send((tile_id, bytes)).is_err() {
                         return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
@@ -84,12 +83,11 @@ pub(super) fn geometry_slicing_stage(
                         multi_line_strings: line_strings,
                         properties: feature.attributes.clone(),
                     };
-                    let bytes =
-                        serde_json::to_vec(&feature).map_err(|err| {
-                            crate::errors::SinkError::MvtWriter(format!(
-                                "Failed to serialize a sliced feature: {err:?}"
-                            ))
-                        })?;
+                    let bytes = serde_json::to_vec(&feature).map_err(|err| {
+                        crate::errors::SinkError::MvtWriter(format!(
+                            "Failed to serialize a sliced feature: {err:?}"
+                        ))
+                    })?;
                     let tile_id = tile_id_conv.zxy_to_id(z, x, y);
                     if sender_sliced.send((tile_id, bytes)).is_err() {
                         return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
@@ -269,8 +267,8 @@ pub(super) fn make_tile(
     let extent = 1 << default_detail;
 
     for serialized_feat in serialized_feats {
-        let feature: super::slice::SlicedFeature =
-            serde_json::from_slice(serialized_feat).map_err(|err| {
+        let feature: super::slice::SlicedFeature = serde_json::from_slice(serialized_feat)
+            .map_err(|err| {
                 crate::errors::SinkError::MvtWriter(format!(
                     "Failed to deserialize a sliced feature: {err:?}"
                 ))
@@ -375,7 +373,9 @@ pub(super) fn make_tile(
             // Encode attributes as MVT tags
             for (key, value) in &feature.properties {
                 // skip keys starting with "_"
-                if key.as_ref().starts_with("_") { continue; }
+                if key.as_ref().starts_with("_") {
+                    continue;
+                }
                 let normalized_key = key.inner().replace(":", "_");
                 convert_properties(&mut layer.tags_enc, &normalized_key, value);
             }
