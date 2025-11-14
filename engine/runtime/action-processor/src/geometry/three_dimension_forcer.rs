@@ -54,7 +54,7 @@ impl ProcessorFactory for ThreeDimensionForcerFactory {
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: ThreeDimensionForcerParam = if let Some(with) = with.clone() {
-            let value: Value = serde_json::to_value(with.clone()).map_err(|e| {
+            let value: Value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::ThreeDimensionForcerFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
                 ))
