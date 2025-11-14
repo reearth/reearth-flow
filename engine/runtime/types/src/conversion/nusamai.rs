@@ -239,9 +239,15 @@ impl AttributeValue {
         if arr.len() == 1 && !matches!(arr[0], nusamai_citygml::Value::Object(_)) {
             let nested = Self::process_attribute(key, &arr[0]);
             result.extend(nested);
-        } else if let Some(nusamai_citygml::Value::Object(obj)) = arr.first() {
-            // child = node[0] and use child.tag
-            Self::process_object_value(result, obj);
+        } else {
+            for attr in arr.iter() {
+                if let nusamai_citygml::Value::Object(obj) = attr {
+                    Self::process_object_value(result, obj);
+                } else {
+                    // more skip logic to be implemented
+                    // tracing::warn!("Skip non-object in array for key: {} {:?}", key, attr);
+                }
+            }
         }
     }
 
@@ -249,11 +255,72 @@ impl AttributeValue {
         result: &mut HashMap<String, AttributeValue>,
         obj: &nusamai_citygml::object::Object,
     ) {
-        // recursive process
-        let attrs = Self::process_object_attributes(&obj.attributes);
-        result.insert(
-            obj.typename.to_string(),
-            AttributeValue::Array(vec![AttributeValue::Map(attrs)])
-        );
+        // Special handling for gen:genericAttribute to match reference implementation format
+        if obj.typename == "gen:genericAttribute" {
+            let generic_attrs = Self::convert_generic_attributes(&obj.attributes);
+            result.insert(
+                obj.typename.to_string(),
+                AttributeValue::Array(generic_attrs)
+            );
+        } else {
+            // recursive process for other objects
+            let attrs = Self::process_object_attributes(&obj.attributes);
+            result.insert(
+                obj.typename.to_string(),
+                AttributeValue::Array(vec![AttributeValue::Map(attrs)])
+            );
+        }
+    }
+
+    fn convert_generic_attributes(
+        attributes: &nusamai_citygml::object::Map,
+    ) -> Vec<AttributeValue> {
+        let mut result = Vec::new();
+
+        for (name, value) in attributes {
+            let mut attr_map = HashMap::new();
+            attr_map.insert("name".to_string(), AttributeValue::String(name.clone()));
+
+            // Determine type and value based on the Value discriminant
+            let (type_str, value_attr) = match value {
+                nusamai_citygml::Value::String(v) => {
+                    ("string", AttributeValue::String(v.clone()))
+                }
+                nusamai_citygml::Value::Integer(v) => {
+                    ("integer", AttributeValue::String(v.to_string()))
+                }
+                nusamai_citygml::Value::Double(v) => {
+                    ("double", AttributeValue::String(v.to_string()))
+                }
+                nusamai_citygml::Value::Measure(m) => {
+                    ("measure", AttributeValue::String(m.value().to_string()))
+                }
+                nusamai_citygml::Value::Date(d) => {
+                    ("date", AttributeValue::String(d.format("%Y-%m-%d").to_string()))
+                }
+                nusamai_citygml::Value::Uri(u) => {
+                    ("uri", AttributeValue::String(u.value().to_string()))
+                }
+                nusamai_citygml::Value::Code(c) => {
+                    ("code", AttributeValue::String(c.value().to_string()))
+                }
+                nusamai_citygml::Value::Object(obj) => {
+                    // Nested generic attribute set
+                    let nested_attrs = Self::convert_generic_attributes(&obj.attributes);
+                    ("genericAttributeSet", AttributeValue::Array(nested_attrs))
+                }
+                _ => {
+                    // Fallback for any other types
+                    ("string", AttributeValue::String(format!("{:?}", value)))
+                }
+            };
+
+            attr_map.insert("type".to_string(), AttributeValue::String(type_str.to_string()));
+            attr_map.insert("value".to_string(), value_attr);
+
+            result.push(AttributeValue::Map(attr_map));
+        }
+
+        result
     }
 }

@@ -39,6 +39,8 @@ static BASE_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
         ),
     ]
 });
+
+// outer attribute key used to construct inner attributes to be serialized as JSON
 static COMMON_ATTRIBUTES: Lazy<HashMap<String, String>> = Lazy::new(|| {
     vec![
         ("meshcode".to_string(), "meshcode".to_string()),
