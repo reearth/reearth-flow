@@ -1,10 +1,12 @@
 name: Release
 on:
   workflow_dispatch:
+    branches:
+      - release
     inputs:
       version:
         required: false
-        description: 'Next version (Use "custom" for specific versions like alpha/beta)(NOTE: Switch the branch to "release"!)'
+        description: 'Next version (patch/minor/major for stable, "custom" for alpha/beta)'
         type: choice
         default: minor
         options:
@@ -14,14 +16,21 @@ on:
           - custom
       custom_version:
         required: false
-        description: 'Custom version (e.g., 0.1.0-alpha.1) - Only used when version is set to "custom"'
+        description: 'Custom version (e.g., 0.1.0-alpha.1) - Only used when version is "custom"'
         type: string
 jobs:
   release:
-    name: Release
+    name: Release (⚠️ MUST run from release branch)
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/release'
     steps:
+      - name: ⚠️ Verify release branch
+        run: |
+          if [ "${{ github.ref }}" != "refs/heads/release" ]; then
+            echo "::error::This workflow must be run from the 'release' branch!"
+            exit 1
+          fi
+          echo "✅ Running from release branch"
       - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
         id: app-token
         with:
