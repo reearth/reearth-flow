@@ -1,0 +1,92 @@
+name: Release
+on:
+  workflow_dispatch:
+    branches:
+      - release
+    inputs:
+      version:
+        required: false
+        description: 'Next version (patch/minor/major for stable, "custom" for alpha/beta)'
+        type: choice
+        default: minor
+        options:
+          - patch
+          - minor
+          - major
+          - custom
+      custom_version:
+        required: false
+        description: 'Custom version (e.g., 0.1.0-alpha.1) - Only used when version is "custom"'
+        type: string
+jobs:
+  release:
+    name: Release (⚠️ MUST run from release branch)
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/release'
+    steps:
+      - name: ⚠️ Verify release branch
+        run: |
+          if [ "${{ github.ref }}" != "refs/heads/release" ]; then
+            echo "::error::This workflow must be run from the 'release' branch!"
+            exit 1
+          fi
+          echo "✅ Running from release branch"
+      - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1.12.0
+        id: app-token
+        with:
+          app-id: ${{ vars.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+      - name: Set up git config
+        run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+          git config --global pull.rebase false
+      - id: changelog
+        name: Generate CHANGELOG
+        uses: reearth/changelog-action@main
+        with:
+          version: ${{ github.event.inputs.version == 'custom' && github.event.inputs.custom_version || github.event.inputs.version }}
+          repo: ${{ github.repository }}
+          latest: CHANGELOG_latest.md
+      - name: Upload latest CHANGELOG
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: changelog-${{ steps.changelog.outputs.version }}
+          path: CHANGELOG_latest.md
+      - name: Commit & push to release
+        env:
+          TAG: v${{ github.event.inputs.version == 'custom' && github.event.inputs.custom_version || steps.changelog.outputs.version }}
+        run: |
+          rm CHANGELOG_latest.md
+          git add CHANGELOG.md
+          git commit -am "$TAG"
+          git tag $TAG
+          git push --atomic origin release $TAG
+      - name: Get commit SHA
+        id: get_sha
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      - name: Commit & push to main
+        run: git switch main && git cherry-pick release && git push
+    outputs:
+      new_tag: v${{ github.event.inputs.version == 'custom' && github.event.inputs.custom_version || steps.changelog.outputs.version }}
+      version: ${{ steps.changelog.outputs.version }}
+      sha: ${{ steps.get_sha.outputs.sha }}
+      sha_short: ${{ steps.get_sha.outputs.sha_short }}
+
+  build:
+    name: Build and Release
+    needs: release
+    uses: ./.github/workflows/build_release.yml
+    with:
+      sha_short: ${{ needs.release.outputs.sha_short }}
+      new_tag: ${{ needs.release.outputs.new_tag }}
+      new_tag_short: ${{ needs.release.outputs.version }}
+      name: ''
+      sha: ${{ needs.release.outputs.sha }}
