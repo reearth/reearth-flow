@@ -58,5 +58,26 @@ jobs:
           git commit -am "$TAG"
           git tag $TAG
           git push --atomic origin release $TAG
+      - name: Get commit SHA
+        id: get_sha
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
       - name: Commit & push to main
         run: git switch main && git cherry-pick release && git push
+    outputs:
+      new_tag: v${{ github.event.inputs.version == 'custom' && github.event.inputs.custom_version || steps.changelog.outputs.version }}
+      version: ${{ steps.changelog.outputs.version }}
+      sha: ${{ steps.get_sha.outputs.sha }}
+      sha_short: ${{ steps.get_sha.outputs.sha_short }}
+
+  build:
+    name: Build and Release
+    needs: release
+    uses: ./.github/workflows/build_release.yml
+    with:
+      sha_short: ${{ needs.release.outputs.sha_short }}
+      new_tag: ${{ needs.release.outputs.new_tag }}
+      new_tag_short: ${{ needs.release.outputs.version }}
+      name: ''
+      sha: ${{ needs.release.outputs.sha }}
