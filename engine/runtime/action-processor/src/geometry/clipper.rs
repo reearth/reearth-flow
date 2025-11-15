@@ -382,38 +382,90 @@ fn forward_polygon3d(
 /// (~1.1mm precision at equator) is more than adequate.
 const CLIPPER_SCALE_FACTOR: f64 = 100_000_000.0; // 10^8
 
+/// Creates a unified 2D clip boundary from multiple clip regions.
+/// Returns None for single region (optimization), Some(MultiPolygon2D) for multiple regions.
+fn create_unified_clip_2d(clip_regions: &[Polygon2D<f64>]) -> Option<MultiPolygon2D<f64>> {
+    if clip_regions.len() <= 1 {
+        return None;
+    }
+
+    let mut unified = MultiPolygon2D::new(vec![clip_regions[0].clone()]);
+    for clip in &clip_regions[1..] {
+        unified = unified.union2d(clip, CLIPPER_SCALE_FACTOR);
+    }
+    Some(unified)
+}
+
+/// Creates a unified 3D clip boundary from multiple clip regions.
+/// Returns None for single region (optimization), Some(MultiPolygon3D) for multiple regions.
+fn create_unified_clip_3d(clip_regions: &[Polygon3D<f64>]) -> Option<MultiPolygon3D<f64>> {
+    if clip_regions.len() <= 1 {
+        return None;
+    }
+
+    let mut unified = MultiPolygon3D::new(vec![clip_regions[0].clone()]);
+    for clip in &clip_regions[1..] {
+        unified = unified.union3d(clip, CLIPPER_SCALE_FACTOR);
+    }
+    Some(unified)
+}
+
 fn clip_polygon2d(
     polygon: &Polygon2D<f64>,
     clip_regions: &[Polygon2D<f64>],
 ) -> (Vec<Polygon2D<f64>>, Vec<Polygon2D<f64>>) {
-    let mut inside = MultiPolygon2D::new(vec![polygon.clone()]);
-    let mut outside = MultiPolygon2D::new(vec![polygon.clone()]);
-    for clip in clip_regions {
-        // Use scaling factor to preserve decimal precision
-        inside = inside.intersection2d(clip, CLIPPER_SCALE_FACTOR);
-        outside = outside.difference2d(clip, CLIPPER_SCALE_FACTOR);
+    if clip_regions.is_empty() {
+        return (vec![], vec![polygon.clone()]);
     }
-    (
-        inside.iter().cloned().collect(),
-        outside.iter().cloned().collect(),
-    )
+
+    let polygon_multi = MultiPolygon2D::new(vec![polygon.clone()]);
+
+    // Optimize for single clip region to avoid unnecessary union operation
+    if let Some(unified_clip) = create_unified_clip_2d(clip_regions) {
+        // Multiple clip regions - clip against unified boundary
+        let inside = polygon_multi.intersection2d(&unified_clip, CLIPPER_SCALE_FACTOR);
+        let outside = polygon_multi.difference2d(&unified_clip, CLIPPER_SCALE_FACTOR);
+        (
+            inside.iter().cloned().collect(),
+            outside.iter().cloned().collect(),
+        )
+    } else {
+        // Single clip region - clip directly
+        let inside = polygon_multi.intersection2d(&clip_regions[0], CLIPPER_SCALE_FACTOR);
+        let outside = polygon_multi.difference2d(&clip_regions[0], CLIPPER_SCALE_FACTOR);
+        (
+            inside.iter().cloned().collect(),
+            outside.iter().cloned().collect(),
+        )
+    }
 }
 
 fn clip_mpolygon2d(
     mpolygon: &MultiPolygon2D<f64>,
     clip_regions: &[Polygon2D<f64>],
 ) -> (Vec<Polygon2D<f64>>, Vec<Polygon2D<f64>>) {
-    let mut inside = mpolygon.clone();
-    let mut outside = mpolygon.clone();
-    for clip in clip_regions {
-        // Use scaling factor to preserve decimal precision
-        inside = inside.intersection2d(clip, CLIPPER_SCALE_FACTOR);
-        outside = outside.difference2d(clip, CLIPPER_SCALE_FACTOR);
+    if clip_regions.is_empty() {
+        return (vec![], mpolygon.iter().cloned().collect());
     }
-    (
-        inside.iter().cloned().collect(),
-        outside.iter().cloned().collect(),
-    )
+
+    // Optimize for single clip region to avoid unnecessary union operation
+    if let Some(unified_clip) = create_unified_clip_2d(clip_regions) {
+        // Multiple clip regions - clip against unified boundary
+        let inside = mpolygon.intersection2d(&unified_clip, CLIPPER_SCALE_FACTOR);
+        let outside = mpolygon.difference2d(&unified_clip, CLIPPER_SCALE_FACTOR);
+        (
+            inside.iter().cloned().collect(),
+            outside.iter().cloned().collect(),
+        )
+    } else {
+        // Single clip region - clip directly
+        let inside = mpolygon.intersection2d(&clip_regions[0], CLIPPER_SCALE_FACTOR);
+        let outside = mpolygon.difference2d(&clip_regions[0], CLIPPER_SCALE_FACTOR);
+        (
+            inside.iter().cloned().collect(),
+            outside.iter().cloned().collect(),
+        )
+    }
 }
 
 /// Clips a 3D polygon against multiple clip regions.
@@ -438,17 +490,30 @@ fn clip_polygon3d(
     polygon: &Polygon3D<f64>,
     clip_regions: &[Polygon3D<f64>],
 ) -> (Vec<Polygon3D<f64>>, Vec<Polygon3D<f64>>) {
-    let mut inside = MultiPolygon3D::new(vec![polygon.clone()]);
-    let mut outside = MultiPolygon3D::new(vec![polygon.clone()]);
-    for clip in clip_regions {
-        // Use scaling factor to preserve decimal precision
-        inside = inside.intersection3d(clip, CLIPPER_SCALE_FACTOR);
-        outside = outside.difference3d(clip, CLIPPER_SCALE_FACTOR);
+    if clip_regions.is_empty() {
+        return (vec![], vec![polygon.clone()]);
     }
-    (
-        inside.iter().cloned().collect(),
-        outside.iter().cloned().collect(),
-    )
+
+    let polygon_multi = MultiPolygon3D::new(vec![polygon.clone()]);
+
+    // Optimize for single clip region to avoid unnecessary union operation
+    if let Some(unified_clip) = create_unified_clip_3d(clip_regions) {
+        // Multiple clip regions - clip against unified boundary
+        let inside = polygon_multi.intersection3d(&unified_clip, CLIPPER_SCALE_FACTOR);
+        let outside = polygon_multi.difference3d(&unified_clip, CLIPPER_SCALE_FACTOR);
+        (
+            inside.iter().cloned().collect(),
+            outside.iter().cloned().collect(),
+        )
+    } else {
+        // Single clip region - clip directly
+        let inside = polygon_multi.intersection3d(&clip_regions[0], CLIPPER_SCALE_FACTOR);
+        let outside = polygon_multi.difference3d(&clip_regions[0], CLIPPER_SCALE_FACTOR);
+        (
+            inside.iter().cloned().collect(),
+            outside.iter().cloned().collect(),
+        )
+    }
 }
 
 /// Clips a 3D multi-polygon against multiple clip regions.
@@ -459,17 +524,28 @@ fn clip_mpolygon3d(
     mpolygon: &MultiPolygon3D<f64>,
     clip_regions: &[Polygon3D<f64>],
 ) -> (Vec<Polygon3D<f64>>, Vec<Polygon3D<f64>>) {
-    let mut inside = mpolygon.clone();
-    let mut outside = mpolygon.clone();
-    for clip in clip_regions {
-        // Use scaling factor to preserve decimal precision
-        inside = inside.intersection3d(clip, CLIPPER_SCALE_FACTOR);
-        outside = outside.difference3d(clip, CLIPPER_SCALE_FACTOR);
+    if clip_regions.is_empty() {
+        return (vec![], mpolygon.iter().cloned().collect());
     }
-    (
-        inside.iter().cloned().collect(),
-        outside.iter().cloned().collect(),
-    )
+
+    // Optimize for single clip region to avoid unnecessary union operation
+    if let Some(unified_clip) = create_unified_clip_3d(clip_regions) {
+        // Multiple clip regions - clip against unified boundary
+        let inside = mpolygon.intersection3d(&unified_clip, CLIPPER_SCALE_FACTOR);
+        let outside = mpolygon.difference3d(&unified_clip, CLIPPER_SCALE_FACTOR);
+        (
+            inside.iter().cloned().collect(),
+            outside.iter().cloned().collect(),
+        )
+    } else {
+        // Single clip region - clip directly
+        let inside = mpolygon.intersection3d(&clip_regions[0], CLIPPER_SCALE_FACTOR);
+        let outside = mpolygon.difference3d(&clip_regions[0], CLIPPER_SCALE_FACTOR);
+        (
+            inside.iter().cloned().collect(),
+            outside.iter().cloned().collect(),
+        )
+    }
 }
 
 fn process_gml_geometry(
@@ -1013,10 +1089,66 @@ mod tests {
 
         let (insides, outsides) = clip_polygon2d(&polygon, &[clip_region1, clip_region2]);
 
-        // With multiple clip regions, the result should be their intersection
+        // With multiple clip regions unioned, features overlapping ANY region go to inside
         assert!(
             !insides.is_empty() || !outsides.is_empty(),
             "Should have some results"
+        );
+    }
+
+    #[test]
+    fn test_clipper_with_multiple_separate_buffers() {
+        // Test case: Park overlapping with ONE of multiple school buffers
+        // This simulates the real-world scenario of parks near schools
+
+        // Park at (15, 5) to (25, 15) - overlaps with buffer2 but not buffer1
+        let park = Polygon2D::new(
+            LineString2D::new(vec![
+                Coordinate2D::new_(15.0, 5.0),
+                Coordinate2D::new_(25.0, 5.0),
+                Coordinate2D::new_(25.0, 15.0),
+                Coordinate2D::new_(15.0, 15.0),
+                Coordinate2D::new_(15.0, 5.0),
+            ]),
+            vec![],
+        );
+
+        // Buffer 1: (0, 0) to (10, 10) - does NOT overlap with park
+        let buffer1 = Polygon2D::new(
+            LineString2D::new(vec![
+                Coordinate2D::new_(0.0, 0.0),
+                Coordinate2D::new_(10.0, 0.0),
+                Coordinate2D::new_(10.0, 10.0),
+                Coordinate2D::new_(0.0, 10.0),
+                Coordinate2D::new_(0.0, 0.0),
+            ]),
+            vec![],
+        );
+
+        // Buffer 2: (10, 0) to (20, 10) - DOES overlap with park
+        let buffer2 = Polygon2D::new(
+            LineString2D::new(vec![
+                Coordinate2D::new_(10.0, 0.0),
+                Coordinate2D::new_(20.0, 0.0),
+                Coordinate2D::new_(20.0, 10.0),
+                Coordinate2D::new_(10.0, 10.0),
+                Coordinate2D::new_(10.0, 0.0),
+            ]),
+            vec![],
+        );
+
+        let (insides, outsides) = clip_polygon2d(&park, &[buffer1, buffer2]);
+
+        // Park overlaps with buffer2, so should have results in INSIDE port
+        assert!(
+            !insides.is_empty(),
+            "Park overlapping with ANY buffer should produce inside results"
+        );
+
+        // There should also be parts outside the buffers
+        assert!(
+            !outsides.is_empty(),
+            "Park should have parts outside the buffers"
         );
     }
 
