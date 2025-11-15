@@ -382,6 +382,34 @@ fn forward_polygon3d(
 /// (~1.1mm precision at equator) is more than adequate.
 const CLIPPER_SCALE_FACTOR: f64 = 100_000_000.0; // 10^8
 
+/// Creates a unified 2D clip boundary from multiple clip regions.
+/// Returns None for single region (optimization), Some(MultiPolygon2D) for multiple regions.
+fn create_unified_clip_2d(clip_regions: &[Polygon2D<f64>]) -> Option<MultiPolygon2D<f64>> {
+    if clip_regions.len() <= 1 {
+        return None;
+    }
+
+    let mut unified = MultiPolygon2D::new(vec![clip_regions[0].clone()]);
+    for clip in &clip_regions[1..] {
+        unified = unified.union2d(clip, CLIPPER_SCALE_FACTOR);
+    }
+    Some(unified)
+}
+
+/// Creates a unified 3D clip boundary from multiple clip regions.
+/// Returns None for single region (optimization), Some(MultiPolygon3D) for multiple regions.
+fn create_unified_clip_3d(clip_regions: &[Polygon3D<f64>]) -> Option<MultiPolygon3D<f64>> {
+    if clip_regions.len() <= 1 {
+        return None;
+    }
+
+    let mut unified = MultiPolygon3D::new(vec![clip_regions[0].clone()]);
+    for clip in &clip_regions[1..] {
+        unified = unified.union3d(clip, CLIPPER_SCALE_FACTOR);
+    }
+    Some(unified)
+}
+
 fn clip_polygon2d(
     polygon: &Polygon2D<f64>,
     clip_regions: &[Polygon2D<f64>],
@@ -390,27 +418,26 @@ fn clip_polygon2d(
         return (vec![], vec![polygon.clone()]);
     }
 
-    // Union all clip regions into a single boundary (standard GIS clipper behavior)
-    // This ensures features overlapping with ANY clip region go to "inside"
-    let unified_clip = if clip_regions.len() == 1 {
-        MultiPolygon2D::new(vec![clip_regions[0].clone()])
-    } else {
-        let mut unified = MultiPolygon2D::new(vec![clip_regions[0].clone()]);
-        for clip in &clip_regions[1..] {
-            unified = unified.union2d(clip, CLIPPER_SCALE_FACTOR);
-        }
-        unified
-    };
-
-    // Clip the polygon against the unified boundary
     let polygon_multi = MultiPolygon2D::new(vec![polygon.clone()]);
-    let inside = polygon_multi.intersection2d(&unified_clip, CLIPPER_SCALE_FACTOR);
-    let outside = polygon_multi.difference2d(&unified_clip, CLIPPER_SCALE_FACTOR);
 
-    (
-        inside.iter().cloned().collect(),
-        outside.iter().cloned().collect(),
-    )
+    // Optimize for single clip region to avoid unnecessary union operation
+    if let Some(unified_clip) = create_unified_clip_2d(clip_regions) {
+        // Multiple clip regions - clip against unified boundary
+        let inside = polygon_multi.intersection2d(&unified_clip, CLIPPER_SCALE_FACTOR);
+        let outside = polygon_multi.difference2d(&unified_clip, CLIPPER_SCALE_FACTOR);
+        (
+            inside.iter().cloned().collect(),
+            outside.iter().cloned().collect(),
+        )
+    } else {
+        // Single clip region - clip directly
+        let inside = polygon_multi.intersection2d(&clip_regions[0], CLIPPER_SCALE_FACTOR);
+        let outside = polygon_multi.difference2d(&clip_regions[0], CLIPPER_SCALE_FACTOR);
+        (
+            inside.iter().cloned().collect(),
+            outside.iter().cloned().collect(),
+        )
+    }
 }
 
 fn clip_mpolygon2d(
@@ -421,26 +448,24 @@ fn clip_mpolygon2d(
         return (vec![], mpolygon.iter().cloned().collect());
     }
 
-    // Union all clip regions into a single boundary (standard GIS clipper behavior)
-    // This ensures features overlapping with ANY clip region go to "inside"
-    let unified_clip = if clip_regions.len() == 1 {
-        MultiPolygon2D::new(vec![clip_regions[0].clone()])
+    // Optimize for single clip region to avoid unnecessary union operation
+    if let Some(unified_clip) = create_unified_clip_2d(clip_regions) {
+        // Multiple clip regions - clip against unified boundary
+        let inside = mpolygon.intersection2d(&unified_clip, CLIPPER_SCALE_FACTOR);
+        let outside = mpolygon.difference2d(&unified_clip, CLIPPER_SCALE_FACTOR);
+        (
+            inside.iter().cloned().collect(),
+            outside.iter().cloned().collect(),
+        )
     } else {
-        let mut unified = MultiPolygon2D::new(vec![clip_regions[0].clone()]);
-        for clip in &clip_regions[1..] {
-            unified = unified.union2d(clip, CLIPPER_SCALE_FACTOR);
-        }
-        unified
-    };
-
-    // Clip the multi-polygon against the unified boundary
-    let inside = mpolygon.intersection2d(&unified_clip, CLIPPER_SCALE_FACTOR);
-    let outside = mpolygon.difference2d(&unified_clip, CLIPPER_SCALE_FACTOR);
-
-    (
-        inside.iter().cloned().collect(),
-        outside.iter().cloned().collect(),
-    )
+        // Single clip region - clip directly
+        let inside = mpolygon.intersection2d(&clip_regions[0], CLIPPER_SCALE_FACTOR);
+        let outside = mpolygon.difference2d(&clip_regions[0], CLIPPER_SCALE_FACTOR);
+        (
+            inside.iter().cloned().collect(),
+            outside.iter().cloned().collect(),
+        )
+    }
 }
 
 /// Clips a 3D polygon against multiple clip regions.
@@ -469,27 +494,26 @@ fn clip_polygon3d(
         return (vec![], vec![polygon.clone()]);
     }
 
-    // Union all clip regions into a single boundary (standard GIS clipper behavior)
-    // This ensures features overlapping with ANY clip region go to "inside"
-    let unified_clip = if clip_regions.len() == 1 {
-        MultiPolygon3D::new(vec![clip_regions[0].clone()])
-    } else {
-        let mut unified = MultiPolygon3D::new(vec![clip_regions[0].clone()]);
-        for clip in &clip_regions[1..] {
-            unified = unified.union3d(clip, CLIPPER_SCALE_FACTOR);
-        }
-        unified
-    };
-
-    // Clip the polygon against the unified boundary
     let polygon_multi = MultiPolygon3D::new(vec![polygon.clone()]);
-    let inside = polygon_multi.intersection3d(&unified_clip, CLIPPER_SCALE_FACTOR);
-    let outside = polygon_multi.difference3d(&unified_clip, CLIPPER_SCALE_FACTOR);
 
-    (
-        inside.iter().cloned().collect(),
-        outside.iter().cloned().collect(),
-    )
+    // Optimize for single clip region to avoid unnecessary union operation
+    if let Some(unified_clip) = create_unified_clip_3d(clip_regions) {
+        // Multiple clip regions - clip against unified boundary
+        let inside = polygon_multi.intersection3d(&unified_clip, CLIPPER_SCALE_FACTOR);
+        let outside = polygon_multi.difference3d(&unified_clip, CLIPPER_SCALE_FACTOR);
+        (
+            inside.iter().cloned().collect(),
+            outside.iter().cloned().collect(),
+        )
+    } else {
+        // Single clip region - clip directly
+        let inside = polygon_multi.intersection3d(&clip_regions[0], CLIPPER_SCALE_FACTOR);
+        let outside = polygon_multi.difference3d(&clip_regions[0], CLIPPER_SCALE_FACTOR);
+        (
+            inside.iter().cloned().collect(),
+            outside.iter().cloned().collect(),
+        )
+    }
 }
 
 /// Clips a 3D multi-polygon against multiple clip regions.
@@ -504,26 +528,24 @@ fn clip_mpolygon3d(
         return (vec![], mpolygon.iter().cloned().collect());
     }
 
-    // Union all clip regions into a single boundary (standard GIS clipper behavior)
-    // This ensures features overlapping with ANY clip region go to "inside"
-    let unified_clip = if clip_regions.len() == 1 {
-        MultiPolygon3D::new(vec![clip_regions[0].clone()])
+    // Optimize for single clip region to avoid unnecessary union operation
+    if let Some(unified_clip) = create_unified_clip_3d(clip_regions) {
+        // Multiple clip regions - clip against unified boundary
+        let inside = mpolygon.intersection3d(&unified_clip, CLIPPER_SCALE_FACTOR);
+        let outside = mpolygon.difference3d(&unified_clip, CLIPPER_SCALE_FACTOR);
+        (
+            inside.iter().cloned().collect(),
+            outside.iter().cloned().collect(),
+        )
     } else {
-        let mut unified = MultiPolygon3D::new(vec![clip_regions[0].clone()]);
-        for clip in &clip_regions[1..] {
-            unified = unified.union3d(clip, CLIPPER_SCALE_FACTOR);
-        }
-        unified
-    };
-
-    // Clip the multi-polygon against the unified boundary
-    let inside = mpolygon.intersection3d(&unified_clip, CLIPPER_SCALE_FACTOR);
-    let outside = mpolygon.difference3d(&unified_clip, CLIPPER_SCALE_FACTOR);
-
-    (
-        inside.iter().cloned().collect(),
-        outside.iter().cloned().collect(),
-    )
+        // Single clip region - clip directly
+        let inside = mpolygon.intersection3d(&clip_regions[0], CLIPPER_SCALE_FACTOR);
+        let outside = mpolygon.difference3d(&clip_regions[0], CLIPPER_SCALE_FACTOR);
+        (
+            inside.iter().cloned().collect(),
+            outside.iter().cloned().collect(),
+        )
+    }
 }
 
 fn process_gml_geometry(
