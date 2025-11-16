@@ -133,7 +133,6 @@ pub enum SpatialPredicate {
     Covers,
 }
 
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct SpatialFilter {
     params: SpatialFilterParams,
@@ -423,18 +422,8 @@ fn test_citygml_geometry(
 
 /// Tests spatial predicates between 2D geometries using the DE-9IM (Dimensionally Extended 9-Intersection Model).
 ///
-/// # Important Limitation with Pure 2D Geometries
-/// This function uses the `Relate` trait which currently has a bug with pure 2D geometries that lack Z coordinates
-/// (Geometry<T, NoValue>). The relate implementation attempts 3D orient operations that panic on NoValue Z coords.
-///
-/// **Workaround:** If you need to use this action with pure 2D GeoJSON/Shapefile data, first convert to 3D with Z=0
-/// using the **ThreeDimensionForcer** action. This is the recommended workflow:
-/// ```
-/// GeoJSONReader -> ThreeDimensionForcer -> SpatialFilter
-/// ```
-///
-/// **Note:** This is a known issue in the underlying geometry library and does not affect 3D geometries or
-/// geometries that already have Z coordinates.
+/// This function works with both pure 2D geometries (no Z coordinates) and 2D geometries with Z coordinates.
+/// Pure 2D geometries are projected to the Z=0 plane for internal orientation calculations.
 fn test_predicate_2d(
     candidate: &Geometry2D,
     filter: &Geometry2D,
