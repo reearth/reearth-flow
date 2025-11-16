@@ -881,6 +881,8 @@
   "Member's Role has been successfully updated.": "メンバーの役割が正常に更新されました。",
   "Member's Role Could Not Be Updated": "メンバーの役割を更新できませんでした",
   "There was an error when trying to update the members persmissons.": "メンバーの権限を更新しようとした際にエラーが発生しました。",
+  "unknown": "不明",
+  " port": " ポート",
   "Multiple": "複数",
   "Please check the shared URL is correct.": "共有URLが正しいか確認してください。",
   "Project or version is corrupted.": "プロジェクトまたはバージョンが破損しています。",
