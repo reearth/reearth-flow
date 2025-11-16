@@ -2,6 +2,7 @@ import { useNodes } from "@xyflow/react";
 import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import { config } from "@flow/config";
+import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import {
   DebugRunState,
@@ -13,14 +14,17 @@ import { NodeCustomizations } from "@flow/types";
 export default ({
   id,
   source,
+  sourceHandleId,
   target,
   selected,
 }: {
   id: string;
   source: string;
+  sourceHandleId?: string | null;
   target: string;
   selected?: boolean;
 }) => {
+  const t = useT();
   const [currentProject] = useCurrentProject();
   const { api } = config();
 
@@ -132,7 +136,7 @@ export default ({
                 targetNode?.data?.officialName ||
                 targetNode?.type ||
                 `Node ${target}`) as string;
-              const edgeDisplayName = `${sourceName} → ${targetName}`;
+              const edgeDisplayName = `${sourceName} → ${targetName}(${sourceHandleId ?? t("unknown")} ${t(" port")})`;
 
               // Add the item (initialize array if undefined)
               newSelectedIntermediateData = [
@@ -156,6 +160,7 @@ export default ({
       await updateValue(newDebugRunState);
     },
     [
+      t,
       selected,
       intermediateDataUrl,
       debugRunState,
@@ -165,6 +170,7 @@ export default ({
       sourceNode,
       targetNode,
       source,
+      sourceHandleId,
       target,
     ],
   );
