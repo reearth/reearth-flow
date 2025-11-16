@@ -110,12 +110,14 @@ impl Default for SpatialFilterParams {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub enum SpatialPredicate {
     /// Filter geometry completely contains candidate
     Contains,
     /// Candidate completely within filter geometry
     Within,
     /// Geometries have any intersection
+    #[default]
     Intersects,
     /// Geometries have no spatial relationship
     Disjoint,
@@ -131,11 +133,6 @@ pub enum SpatialPredicate {
     Covers,
 }
 
-impl Default for SpatialPredicate {
-    fn default() -> Self {
-        SpatialPredicate::Intersects
-    }
-}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct SpatialFilter {
