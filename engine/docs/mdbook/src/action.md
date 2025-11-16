@@ -5501,7 +5501,8 @@ Filter Features by Spatial Relationship
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "SpatialFilterParams",
+  "title": "SpatialFilter Parameters",
+  "description": "Configure spatial relationship testing between filter and candidate geometries",
   "type": "object",
   "properties": {
     "outputMatchCountAttribute": {
