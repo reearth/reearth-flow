@@ -136,7 +136,7 @@ export default ({
                 targetNode?.data?.officialName ||
                 targetNode?.type ||
                 `Node ${target}`) as string;
-              const edgeDisplayName = `${sourceName} → ${targetName}(${sourceHandleId ?? t("unknown")} ${t(" port")})`;
+              const edgeDisplayName = `${sourceName} → ${targetName} (${sourceHandleId ?? t("default")} ${t("port")})`;
 
               // Add the item (initialize array if undefined)
               newSelectedIntermediateData = [
