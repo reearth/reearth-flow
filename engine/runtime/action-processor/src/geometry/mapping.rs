@@ -32,6 +32,7 @@ use super::{
     refiner::RefinerFactory,
     replacer::GeometryReplacerFactory,
     solid_boundary_validator::SolidBoundaryValidatorFactory,
+    spatial_filter::SpatialFilterFactory,
     splitter::GeometrySplitterFactory,
     surface_footprint_replacer::SurfaceFootprintReplacerFactory,
     three_dimension_box_replacer::ThreeDimensionBoxReplacerFactory,
@@ -90,6 +91,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<CSGBuilderFactory>::default(),
         Box::<CSGEvaluatorFactory>::default(),
         Box::<VertexCounterFactory>::default(),
+        Box::<SpatialFilterFactory>::default(),
     ];
     factories
         .into_iter()
