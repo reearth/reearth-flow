@@ -167,7 +167,9 @@ impl Processor for SpatialFilter {
                     port if port == &*FILTER_PORT => self.filters.push(feature.clone()),
                     port if port == &*CANDIDATE_PORT => self.candidates.push(feature.clone()),
                     _ => {
-                        fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+                        fw.send(
+                            ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()),
+                        );
                     }
                 }
             }
@@ -199,27 +201,15 @@ impl Processor for SpatialFilter {
         for candidate in &self.candidates {
             match &candidate.geometry.value {
                 GeometryValue::FlowGeometry2D(candidate_geo) => {
-                    let result = test_2d_geometry(
-                        candidate_geo,
-                        &self.filters,
-                        &self.params,
-                    );
+                    let result = test_2d_geometry(candidate_geo, &self.filters, &self.params);
                     forward_result(result, candidate, &self.params, &ctx, fw);
                 }
                 GeometryValue::FlowGeometry3D(candidate_geo) => {
-                    let result = test_3d_geometry(
-                        candidate_geo,
-                        &self.filters,
-                        &self.params,
-                    );
+                    let result = test_3d_geometry(candidate_geo, &self.filters, &self.params);
                     forward_result(result, candidate, &self.params, &ctx, fw);
                 }
                 GeometryValue::CityGmlGeometry(candidate_geo) => {
-                    let result = test_citygml_geometry(
-                        candidate_geo,
-                        &self.filters,
-                        &self.params,
-                    );
+                    let result = test_citygml_geometry(candidate_geo, &self.filters, &self.params);
                     forward_result(result, candidate, &self.params, &ctx, fw);
                 }
                 _ => {
@@ -268,9 +258,7 @@ fn forward_result(
     };
 
     fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-        ctx,
-        feature,
-        port,
+        ctx, feature, port,
     ));
 }
 
@@ -330,9 +318,9 @@ fn test_3d_geometry(
             GeometryValue::CityGmlGeometry(citygml) => {
                 // Test against CityGML polygons
                 citygml.gml_geometries.iter().any(|gml| {
-                    gml.polygons.iter().any(|poly| {
-                        test_predicate_3d_poly(candidate, poly, &params.predicate)
-                    })
+                    gml.polygons
+                        .iter()
+                        .any(|poly| test_predicate_3d_poly(candidate, poly, &params.predicate))
                 })
             }
             _ => false,
@@ -389,9 +377,9 @@ fn test_citygml_geometry(
         let matches = match &filter.geometry.value {
             GeometryValue::FlowGeometry3D(filter_geo) => {
                 // Test if any candidate polygon matches the filter
-                candidate_polygons.iter().any(|poly| {
-                    test_predicate_3d_poly_reverse(filter_geo, poly, &params.predicate)
-                })
+                candidate_polygons
+                    .iter()
+                    .any(|poly| test_predicate_3d_poly_reverse(filter_geo, poly, &params.predicate))
             }
             GeometryValue::CityGmlGeometry(filter_citygml) => {
                 // Test CityGML against CityGML
@@ -577,7 +565,9 @@ mod tests {
 
         let filter_feature = Feature {
             geometry: Geometry {
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(create_filter_polygon_2d())),
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
+                    create_filter_polygon_2d(),
+                )),
                 ..Default::default()
             },
             ..Default::default()
@@ -624,7 +614,9 @@ mod tests {
 
         let filter_feature = Feature {
             geometry: Geometry {
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(create_filter_polygon_2d())),
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
+                    create_filter_polygon_2d(),
+                )),
                 ..Default::default()
             },
             ..Default::default()
@@ -632,7 +624,9 @@ mod tests {
 
         let candidate_feature = Feature {
             geometry: Geometry {
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(create_disjoint_polygon_2d())),
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(
+                    create_disjoint_polygon_2d(),
+                )),
                 ..Default::default()
             },
             ..Default::default()
@@ -655,8 +649,16 @@ mod tests {
         assert!(result.is_ok());
 
         // Verify both were added
-        assert_eq!(filter.filters.len(), 1, "Filter should have 1 filter geometry");
-        assert_eq!(filter.candidates.len(), 1, "Filter should have 1 candidate geometry");
+        assert_eq!(
+            filter.filters.len(),
+            1,
+            "Filter should have 1 filter geometry"
+        );
+        assert_eq!(
+            filter.candidates.len(),
+            1,
+            "Filter should have 1 candidate geometry"
+        );
     }
 
     #[test]
@@ -675,7 +677,10 @@ mod tests {
         if let ProcessorChannelForwarder::Noop(noop) = fw {
             let ports = noop.send_ports.lock().unwrap();
             assert_eq!(ports.len(), 1);
-            assert_eq!(ports[0], *REJECTED_PORT, "No filters should reject candidates");
+            assert_eq!(
+                ports[0], *REJECTED_PORT,
+                "No filters should reject candidates"
+            );
         }
     }
 }
