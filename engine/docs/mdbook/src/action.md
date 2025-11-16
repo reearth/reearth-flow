@@ -5492,6 +5492,132 @@ Validates the Solid Boundary Geometry
 ### Category
 * Geometry
 
+## SpatialFilter
+### Type
+* processor
+### Description
+Filter Features by Spatial Relationship
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SpatialFilterParams",
+  "type": "object",
+  "properties": {
+    "outputMatchCountAttribute": {
+      "title": "Output Match Count Attribute",
+      "description": "Optional attribute name to store the number of matching filters",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "passOnMultipleMatches": {
+      "title": "Pass on Multiple Matches",
+      "description": "If true, pass if ANY filter matches (OR logic). If false, pass only if ALL filters match (AND logic).",
+      "default": true,
+      "type": "boolean"
+    },
+    "predicate": {
+      "title": "Spatial Predicate",
+      "description": "The spatial relationship to test between filter and candidate geometries",
+      "default": "intersects",
+      "allOf": [
+        {
+          "$ref": "#/definitions/SpatialPredicate"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "SpatialPredicate": {
+      "oneOf": [
+        {
+          "description": "Filter geometry completely contains candidate",
+          "type": "string",
+          "enum": [
+            "contains"
+          ]
+        },
+        {
+          "description": "Candidate completely within filter geometry",
+          "type": "string",
+          "enum": [
+            "within"
+          ]
+        },
+        {
+          "description": "Geometries have any intersection",
+          "type": "string",
+          "enum": [
+            "intersects"
+          ]
+        },
+        {
+          "description": "Geometries have no spatial relationship",
+          "type": "string",
+          "enum": [
+            "disjoint"
+          ]
+        },
+        {
+          "description": "Geometries touch at boundaries but don't overlap",
+          "type": "string",
+          "enum": [
+            "touches"
+          ]
+        },
+        {
+          "description": "Geometries cross each other",
+          "type": "string",
+          "enum": [
+            "crosses"
+          ]
+        },
+        {
+          "description": "Geometries overlap partially",
+          "type": "string",
+          "enum": [
+            "overlaps"
+          ]
+        },
+        {
+          "description": "Candidate is covered by filter geometry",
+          "type": "string",
+          "enum": [
+            "coveredBy"
+          ]
+        },
+        {
+          "description": "Filter geometry covers candidate",
+          "type": "string",
+          "enum": [
+            "covers"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* filter
+* candidate
+### Output Ports
+* passed
+* failed
+* rejected
+### Category
+* Geometry
+
 ## SqlReader
 ### Type
 * source
