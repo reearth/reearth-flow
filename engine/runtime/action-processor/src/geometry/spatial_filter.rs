@@ -77,7 +77,10 @@ impl ProcessorFactory for SpatialFilterFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[schemars(title = "SpatialFilter Parameters", description = "Configure spatial relationship testing between filter and candidate geometries")]
+#[schemars(
+    title = "SpatialFilter Parameters",
+    description = "Configure spatial relationship testing between filter and candidate geometries"
+)]
 pub struct SpatialFilterParams {
     /// # Spatial Predicate
     /// The spatial relationship to test between filter and candidate geometries
