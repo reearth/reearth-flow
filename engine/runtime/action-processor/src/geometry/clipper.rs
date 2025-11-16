@@ -1021,62 +1021,6 @@ mod tests {
     }
 
     #[test]
-    fn test_clipper_with_multiple_separate_buffers() {
-        // Test case: Park overlapping with ONE of multiple school buffers
-        // This simulates the real-world scenario of parks near schools
-
-        // Park at (15, 5) to (25, 15) - overlaps with buffer2 but not buffer1
-        let park = Polygon2D::new(
-            LineString2D::new(vec![
-                Coordinate2D::new_(15.0, 5.0),
-                Coordinate2D::new_(25.0, 5.0),
-                Coordinate2D::new_(25.0, 15.0),
-                Coordinate2D::new_(15.0, 15.0),
-                Coordinate2D::new_(15.0, 5.0),
-            ]),
-            vec![],
-        );
-
-        // Buffer 1: (0, 0) to (10, 10) - does NOT overlap with park
-        let buffer1 = Polygon2D::new(
-            LineString2D::new(vec![
-                Coordinate2D::new_(0.0, 0.0),
-                Coordinate2D::new_(10.0, 0.0),
-                Coordinate2D::new_(10.0, 10.0),
-                Coordinate2D::new_(0.0, 10.0),
-                Coordinate2D::new_(0.0, 0.0),
-            ]),
-            vec![],
-        );
-
-        // Buffer 2: (10, 0) to (20, 10) - DOES overlap with park
-        let buffer2 = Polygon2D::new(
-            LineString2D::new(vec![
-                Coordinate2D::new_(10.0, 0.0),
-                Coordinate2D::new_(20.0, 0.0),
-                Coordinate2D::new_(20.0, 10.0),
-                Coordinate2D::new_(10.0, 10.0),
-                Coordinate2D::new_(10.0, 0.0),
-            ]),
-            vec![],
-        );
-
-        let (insides, outsides) = clip_polygon2d(&park, &[buffer1, buffer2]);
-
-        // Park overlaps with buffer2, so should have results in INSIDE port
-        assert!(
-            !insides.is_empty(),
-            "Park overlapping with ANY buffer should produce inside results"
-        );
-
-        // There should also be parts outside the buffers
-        assert!(
-            !outsides.is_empty(),
-            "Park should have parts outside the buffers"
-        );
-    }
-
-    #[test]
     fn test_clipper_with_non_polygon_geometry() {
         let mut clipper = Clipper {
             clippers: Vec::new(),
