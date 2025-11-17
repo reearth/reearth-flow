@@ -555,38 +555,6 @@ impl AttributeValue {
         }
         values
     }
-
-    pub fn convert_array_attributes(
-        attributes: &HashMap<String, AttributeValue>,
-    ) -> HashMap<String, AttributeValue> {
-        let mut result = HashMap::new();
-        for (k, v) in attributes.iter() {
-            match v {
-                AttributeValue::Array(arr) => {
-                    let mut new_arr = Vec::new();
-                    for item in arr.iter() {
-                        new_arr.push(match item {
-                            AttributeValue::Map(map) => {
-                                AttributeValue::Map(Self::convert_array_attributes(map))
-                            }
-                            _ => item.clone(),
-                        });
-                    }
-                    result.insert(k.clone(), AttributeValue::Array(new_arr));
-                }
-                AttributeValue::Map(map) => {
-                    result.insert(
-                        k.clone(),
-                        AttributeValue::Map(Self::convert_array_attributes(map)),
-                    );
-                }
-                _ => {
-                    result.insert(k.clone(), v.clone());
-                }
-            }
-        }
-        result
-    }
 }
 
 #[cfg(test)]
