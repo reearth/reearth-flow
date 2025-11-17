@@ -43,8 +43,7 @@ graphs:
         action: FeatureCityGmlReader
         with:
           format: citygml
-          # resolveCode: false
-          losslessMode: true
+          flatten: true
           dataset: |
             env.get("__value")["path"]
 
@@ -63,9 +62,10 @@ graphs:
               method: create
               value: |
                 env.get("__feature_id")
-            - attribute: gmlName
-              method: rename
-              value: feature_type
+            # use featureType created by FeatureCityGmlReader's flatten option, fallback to gmlName
+            - attribute: feature_type
+              method: create
+              value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
 
       - id: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         name: AttributeFlattener
@@ -110,33 +110,52 @@ graphs:
         action: AttributeManager
         with:
           operations:
-            - attribute: meshcode
-              method: create
-              value: |
-                let file = file::extract_filename(env.get("__value")["path"]);
-                file.split("_")[0]
-            - attribute: city_code
-              method: convert
-              value: |
-                env.get("__value").cityCode
-            - attribute: city_name
-              method: convert
-              value: |
-                env.get("__value").cityName
-            - attribute: gml_id
-              method: create
-              value: |
-                env.get("__feature_id")
-            - attribute: _lod
-              method: create
-              value: |
-                env.get("__lod")
+            - attribute: cityCode
+              method: rename
+              value: city_code
+            - attribute: cityName
+              method: rename
+              value: city_name
+            - attribute: lod
+              method: rename
+              value: _lod
+            - attribute: gmlId
+              method: remove
             - attribute: fileIndex
               method: remove
-            - attribute: uro:StationSquareAttribute_uro:areaPlanned
-              method: convert
-              value: |
-                env.get("__value")["uro:StationSquareAttribute_uro:areaPlanned"].to_string()
+            - attribute: root
+              method: remove
+            - attribute: cityGmlPath
+              method: remove
+            - attribute: admin
+              method: remove
+            - attribute: area
+              method: remove
+            - attribute: package
+              method: remove
+            - attribute: extension
+              method: remove
+            - attribute: dirRoot
+              method: remove
+            - attribute: gmlRootId
+              method: remove
+            - attribute: maxLod
+              method: remove
+            - attribute: dirSchemas
+              method: remove
+            - attribute: dirCodelists
+              method: remove
+            - attribute: path
+              method: remove
+            - attribute: name
+              method: remove
+            - attribute: udxDirs
+              method: rename
+              value: _udxDirs
+            - attribute: featureType
+              method: remove
+            - attribute: gmlName
+              method: remove
 
       - id: 4f5a6b7c-8d9e-0f1a-2b3c-4d5e6f7a8b9c
         name: Cesium3DTilesWriterLod3
@@ -146,6 +165,7 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: false
+          skipUnderscorePrefix: true
           output: |
             file::join_path(env.get("outputPath"), "tran_lod3")
 
@@ -197,6 +217,10 @@ graphs:
             - attribute: udxDirs
               method: rename
               value: _udxDirs
+            - attribute: featureType
+              method: remove
+            - attribute: gmlName
+              method: remove
 
       - id: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
         name: FeatureSorter

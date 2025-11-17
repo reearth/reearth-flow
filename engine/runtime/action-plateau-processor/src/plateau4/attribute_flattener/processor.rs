@@ -45,7 +45,7 @@ static COMMON_ATTRIBUTES: Lazy<HashMap<String, String>> = Lazy::new(|| {
     vec![
         ("meshcode".to_string(), "meshcode".to_string()),
         ("gml_id".to_string(), "gml:id".to_string()),
-        ("feature_type".to_string(), "feature_type".to_string()),
+        ("featureType".to_string(), "feature_type".to_string()),
     ]
     .into_iter()
     .collect::<HashMap<String, String>>()
