@@ -228,6 +228,13 @@ nodes:
             } else {
               "Wrong"
             }
+        - attribute: "L05CRS識別子エラー数"
+          expr: |
+            if env.get("__value").isCorrectSrsName {
+              0
+            } else {
+              1
+            }
         - attribute: "不正なCRS識別子"
           expr: |
             if env.get("__value").isCorrectSrsName {
@@ -290,7 +297,7 @@ nodes:
 
         - newAttribute: "L05CRS識別子"
           expr: |
-            env.get("__value")["L05CRS識別子"] ?? 0
+            env.get("__value")["L05CRS識別子エラー数"] ?? 0
 
         - newAttribute: "L06エラー"
           expr: |
