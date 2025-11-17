@@ -1,0 +1,9 @@
+{
+  "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
+  "description": "Test quality check",
+  "cityGmlPath": "udx/bldg/dummy.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectResultOkFile": false,
+  "skip": true
+}
