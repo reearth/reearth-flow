@@ -155,14 +155,13 @@ fn parse_tree_reader<R: BufRead>(
                 (v[0], v[1], v[2]) = (v[1], v[0], v[2]);
             });
         }
-        let attributes = AttributeValue::from_nusamai_cityml_value(&entity.root);
+        let attributes = AttributeValue::from_nusamai_citygml_value(&entity.root);
         let attributes = AttributeValue::convert_array_attributes(&attributes);
         let city_gml_attributes = match attributes.len() {
             0 => AttributeValue::Null,
             1 => attributes.values().next().unwrap().clone(),
             _ => AttributeValue::Map(attributes),
         };
-        let city_gml_attributes = city_gml_attributes.flatten();
         let city_gml_attributes = if let AttributeValue::Map(map) = &city_gml_attributes {
             AttributeValue::Map(AttributeValue::convert_array_attributes(map))
         } else {

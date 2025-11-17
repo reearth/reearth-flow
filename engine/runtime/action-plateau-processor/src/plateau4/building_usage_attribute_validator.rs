@@ -207,50 +207,71 @@ impl Processor for BuildingUsageAttributeValidator {
                 // No BuildingDetailAttribute means no usage attributes, so no error.
                 return Ok(());
             };
-            if let AttributeValue::Map(attr) = attr {
-                let Some(year_attr) = attr.get("uro:surveyYear") else {
-                    return Err(PlateauProcessorError::BuildingUsageAttributeValidator(
-                        "uro:surveyYear must be specified as per cityGML specification, but it is not.".to_string(),
-                    ))?;
-                };
-                if let AttributeValue::String(year) = year_attr {
-                    year
+            // attr is an array of a single element containing the inner map
+            if let AttributeValue::Array(attr_array) = attr {
+                if let Some(AttributeValue::Map(attr)) = attr_array.first() {
+                    let Some(year_attr) = attr.get("uro:surveyYear") else {
+                        return Err(PlateauProcessorError::BuildingUsageAttributeValidator(
+                            "uro:surveyYear must be specified as per cityGML specification, but it is not.".to_string(),
+                        ))?;
+                    };
+                    if let AttributeValue::String(year) = year_attr {
+                        year
+                    } else {
+                        return Err(PlateauProcessorError::BuildingUsageAttributeValidator(
+                            "uro:surveyYear must be a string, but it is not".to_string(),
+                        ))?;
+                    }
                 } else {
                     return Err(PlateauProcessorError::BuildingUsageAttributeValidator(
-                        "uro:surveyYear must be a string, but it is not".to_string(),
+                        "uro:BuildingDetailAttribute must be an array with a map element, but it is not".to_string(),
                     ))?;
                 }
             } else {
                 return Err(PlateauProcessorError::BuildingUsageAttributeValidator(
-                    "uro:BuildingDetailAttribute must be a map, but it is not".to_string(),
+                    "uro:BuildingDetailAttribute must be an array, but it is not".to_string(),
                 ))?;
             }
         };
         let mut error_messages = Vec::<String>::new();
         // Check usage attributes only inside uro:BuildingDetailAttribute
-        if let Some(AttributeValue::Map(building_detail_attr)) =
+        if let Some(AttributeValue::Array(attr_array)) =
             gml_attributes.get("uro:BuildingDetailAttribute")
         {
-            let detail_keys: Vec<String> = building_detail_attr
-                .keys()
-                .map(|key| key.to_string())
-                .collect();
+            if let Some(AttributeValue::Map(building_detail_attr)) = attr_array.first() {
+                let detail_keys: Vec<String> = building_detail_attr
+                    .keys()
+                    .map(|key| key.to_string())
+                    .collect();
 
-            for (key, value) in USAGE_ATTRIBUTES.iter() {
-                if detail_keys.contains(&key.to_string())
-                    && !detail_keys.contains(&value.to_string())
-                {
-                    error_messages.push(format!(
-                        "{survey_year}年建物利用現況: '{key}' が存在しますが '{value}' が存在しません。"
-                    ));
+                for (key, value) in USAGE_ATTRIBUTES.iter() {
+                    if detail_keys.contains(&key.to_string())
+                        && !detail_keys.contains(&value.to_string())
+                    {
+                        error_messages.push(format!(
+                            "{survey_year}年建物利用現況: '{key}' が存在しますが '{value}' が存在しません。"
+                        ));
+                    }
                 }
             }
         }
-        let Some(AttributeValue::Map(id_attr)) = gml_attributes.get("uro:BuildingIDAttribute")
-        else {
-            Err(PlateauProcessorError::BuildingUsageAttributeValidator(
+        let id_attr = if let Some(AttributeValue::Array(attr_array)) =
+            gml_attributes.get("uro:BuildingIDAttribute")
+        {
+            if let Some(AttributeValue::Map(id_attr)) = attr_array.first() {
+                id_attr
+            } else {
+                return Err(PlateauProcessorError::BuildingUsageAttributeValidator(
+                    "uro:BuildingIDAttribute must be an array with a map element, but it is not"
+                        .to_string(),
+                )
+                .into());
+            }
+        } else {
+            return Err(PlateauProcessorError::BuildingUsageAttributeValidator(
                 "uro:BuildingIDAttribute must be specified as per cityGML specification, but it is not.".to_string()
-            ))?
+            )
+            .into());
         };
 
         let city_code_error = if let Some(city_code) = id_attr.get("uro:city_code") {
