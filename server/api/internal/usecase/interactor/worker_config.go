@@ -45,6 +45,14 @@ func (i *WorkerConfig) FindByWorkspace(ctx context.Context, workspace id.Workspa
 	return i.repo.FindByWorkspace(ctx, workspace)
 }
 
+func (i *WorkerConfig) FindByWorkspaces(ctx context.Context, workspaces []id.WorkspaceID) ([]*workerconfig.WorkerConfig, error) {
+	if err := i.checkPermission(ctx, rbac.ActionRead); err != nil {
+		return nil, err
+	}
+
+	return i.repo.FindByWorkspaces(ctx, workspaces)
+}
+
 func (i *WorkerConfig) Update(
 	ctx context.Context,
 	workspaceID id.WorkspaceID,

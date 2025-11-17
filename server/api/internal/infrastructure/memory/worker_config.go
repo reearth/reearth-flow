@@ -30,6 +30,19 @@ func (r *WorkerConfig) FindByWorkspace(_ context.Context, workspace id.Workspace
 	return nil, nil
 }
 
+func (r *WorkerConfig) FindByWorkspaces(_ context.Context, workspaces []id.WorkspaceID) ([]*workerconfig.WorkerConfig, error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	result := make([]*workerconfig.WorkerConfig, 0, len(workspaces))
+	for _, workspace := range workspaces {
+		if cfg, ok := r.data[workspace]; ok {
+			result = append(result, workerconfig.Clone(cfg))
+		}
+	}
+	return result, nil
+}
+
 func (r *WorkerConfig) Save(_ context.Context, config *workerconfig.WorkerConfig) error {
 	if config == nil {
 		return nil

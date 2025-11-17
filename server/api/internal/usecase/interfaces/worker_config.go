@@ -9,6 +9,7 @@ import (
 
 type WorkerConfig interface {
 	FindByWorkspace(context.Context, id.WorkspaceID) (*workerconfig.WorkerConfig, error)
+	FindByWorkspaces(context.Context, []id.WorkspaceID) ([]*workerconfig.WorkerConfig, error)
 	Update(
 		ctx context.Context,
 		workspace id.WorkspaceID,

@@ -25,6 +25,30 @@ func (r *WorkerConfig) FindByWorkspace(ctx context.Context, workspace id.Workspa
 	return r.findOne(ctx, bson.M{"workspace": workspace.String()})
 }
 
+func (r *WorkerConfig) FindByWorkspaces(ctx context.Context, workspaces []id.WorkspaceID) ([]*workerconfig.WorkerConfig, error) {
+	if len(workspaces) == 0 {
+		return nil, nil
+	}
+
+	workspaceStrs := make([]string, len(workspaces))
+	for i, w := range workspaces {
+		workspaceStrs[i] = w.String()
+	}
+
+	filter := bson.M{
+		"workspace": bson.M{
+			"$in": workspaceStrs,
+		},
+	}
+
+	c := mongodoc.NewWorkerConfigConsumer()
+	if err := r.client.Find(ctx, filter, c); err != nil {
+		return nil, err
+	}
+
+	return c.Result, nil
+}
+
 func (r *WorkerConfig) Save(ctx context.Context, cfg *workerconfig.WorkerConfig) error {
 	d, id := mongodoc.NewWorkerConfig(cfg)
 	if d == nil {
