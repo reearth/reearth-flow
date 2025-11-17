@@ -604,7 +604,8 @@ nodes:
         - attribute: Filename
           expr: env.get("__value").name
         - attribute: FeatureType
-          expr: env.get("__value").featureType
+          expr: |
+            env.get("__value").parentTag ?? env.get("__value").featureType
         - attribute: gml:id
           expr: env.get("__value").gmlId
         - attribute: InvalidGeometry

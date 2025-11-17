@@ -4,19 +4,18 @@
   "cityGmlPath": "udx/bldg/49303415_bldg_6697_op.gml",
   "codelists": "codelists",
   "schemas": "schemas",
+  "objectLists": "43206_city_2024_objectlist_op.xlsx",
   "expectedOutput": {
-    "expectedFile": "02_建築物_C-bldg-01エラー.csv"
+    "expectedFile": "01_共通_L-frn-01エラー.csv"
   },
   "summaryOutput": {
     "errorCountSummary": {
-      "expectedFile": "summary_bldg.json",
-      "includeFields": ["C-bldg-01 エラー"]
+      "expectedFile": "summary_common.json"
     },
     "fileErrorSummary": {
-      "expectedFile": "02_建築物_検査結果一覧.csv",
-      "includeColumns": ["C-bldg-01 エラー"]
+      "expectedFile": "01_共通.csv"
     }
   },
   "expectResultOkFile": false,
-  "skip": true
+  "skip": false
 }
