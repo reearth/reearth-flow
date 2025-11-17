@@ -54,6 +54,10 @@ pub struct WorkflowTestProfile {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub schemas: Option<String>,
 
+    /// Path to object lists file (relative to test folder, optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub object_lists: Option<String>,
+
     /// Intermediate data assertions (edge_id -> expected file)
     #[serde(default)]
     pub intermediate_assertions: Vec<IntermediateAssertion>,
@@ -295,6 +299,12 @@ impl TestContext {
             let schemas_path = self.test_dir.join(schemas);
             let schemas_url = format!("file://{}", schemas_path.display());
             test_variables.insert("schemas".to_string(), schemas_url);
+        }
+
+        if let Some(object_lists) = &self.profile.object_lists {
+            let object_lists_path = self.test_dir.join(object_lists);
+            let object_lists_url = format!("file://{}", object_lists_path.display());
+            test_variables.insert("objectLists".to_string(), object_lists_url);
         }
 
         test_variables.insert(
@@ -1175,6 +1185,7 @@ mod tests {
             city_gml_path: "dummy".to_string(),
             codelists: None,
             schemas: None,
+            object_lists: None,
             intermediate_assertions: vec![],
             summary_output: None,
             expect_result_ok_file: None,
@@ -1242,6 +1253,7 @@ mod tests {
             city_gml_path: "dummy".to_string(),
             codelists: None,
             schemas: None,
+            object_lists: None,
             intermediate_assertions: vec![],
             summary_output: None,
             expect_result_ok_file: None,
