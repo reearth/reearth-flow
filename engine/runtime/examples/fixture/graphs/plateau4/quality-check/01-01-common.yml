@@ -224,7 +224,7 @@ nodes:
         - attribute: "L05CRS識別子"
           expr: |
             if env.get("__value").isCorrectSrsName {
-              "Ok"
+              "OK"
             } else {
               "Wrong"
             }
