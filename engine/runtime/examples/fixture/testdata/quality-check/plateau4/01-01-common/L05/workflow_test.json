@@ -1,9 +1,17 @@
 {
   "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
-  "description": "Test quality check",
-  "cityGmlPath": "udx/bldg/dummy.gml",
+  "description": "Test quality check for L05",
+  "cityGmlPath": "udx/bldg/54377074_bldg_6697_op.gml",
   "codelists": "codelists",
   "schemas": "schemas",
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_common.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "01_共通.csv"
+    }
+  },
   "expectResultOkFile": false,
-  "skip": true
+  "skip": false
 }
