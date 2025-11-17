@@ -4015,18 +4015,19 @@ Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping
   "description": "Configuration for writing features to Mapbox Vector Tiles (MVT) format.",
   "type": "object",
   "required": [
-    "colonToUnderscore",
     "layerName",
     "maxZoom",
     "minZoom",
-    "output",
-    "skipUnderscorePrefix"
+    "output"
   ],
   "properties": {
     "colonToUnderscore": {
       "title": "Colon to Underscore",
       "description": "Replace colons in attribute keys (e.g., from XML Namespaces) with underscores",
-      "type": "boolean"
+      "type": [
+        "boolean",
+        "null"
+      ]
     },
     "compressOutput": {
       "title": "Compress Output",
@@ -4075,7 +4076,10 @@ Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping
     "skipUnderscorePrefix": {
       "title": "Skip Underscore Prefix",
       "description": "Skip attributes with underscore prefix",
-      "type": "boolean"
+      "type": [
+        "boolean",
+        "null"
+      ]
     }
   },
   "definitions": {

@@ -100,8 +100,8 @@ impl SinkFactory for MVTSinkFactory {
                 min_zoom: params.min_zoom,
                 max_zoom: params.max_zoom,
                 compress_output,
-                skip_underscore_prefix: params.skip_underscore_prefix,
-                colon_to_underscore: params.colon_to_underscore,
+                skip_underscore_prefix: params.skip_underscore_prefix.unwrap_or(false),
+                colon_to_underscore: params.colon_to_underscore.unwrap_or(false),
             },
             join_handles: Vec::new(),
         };
@@ -145,10 +145,10 @@ pub struct MVTWriterParam {
     pub(super) compress_output: Option<Expr>,
     /// # Skip Underscore Prefix
     /// Skip attributes with underscore prefix
-    pub(super) skip_underscore_prefix: bool,
+    pub(super) skip_underscore_prefix: Option<bool>,
     /// # Colon to Underscore
     /// Replace colons in attribute keys (e.g., from XML Namespaces) with underscores
-    pub(super) colon_to_underscore: bool,
+    pub(super) colon_to_underscore: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
