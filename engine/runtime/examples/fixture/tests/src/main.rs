@@ -30,6 +30,39 @@ impl ExpectedFiles {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum CityGmlPath {
+    /// Shorthand: single GML file path
+    GmlFile(String),
+
+    /// Object notation
+    Config(CityGmlPathConfig),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CityGmlPathConfig {
+    /// Single file
+    File(FileSource),
+
+    /// ZIP generation
+    Zip(ZipSource),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileSource {
+    pub source: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ZipSource {
+    pub source: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkflowTestProfile {
     /// Path to the workflow file (relative to fixture/workflow/)
@@ -44,7 +77,7 @@ pub struct WorkflowTestProfile {
     pub expected_output: Option<TestOutput>,
 
     /// Path to the CityGML file (relative to test folder)
-    pub city_gml_path: String,
+    pub city_gml_path: CityGmlPath,
 
     /// Path to codelists directory (relative to test folder, optional)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -273,6 +306,71 @@ impl TestContext {
         Ok(workflow)
     }
 
+    fn resolve_city_gml_path(&self) -> Result<PathBuf> {
+        match &self.profile.city_gml_path {
+            CityGmlPath::GmlFile(path) => Ok(self.test_dir.join(path)),
+            CityGmlPath::Config(config) => self.resolve_config(config),
+        }
+    }
+
+    fn resolve_config(&self, config: &CityGmlPathConfig) -> Result<PathBuf> {
+        match config {
+            CityGmlPathConfig::File(file_src) => Ok(self.test_dir.join(&file_src.source)),
+            CityGmlPathConfig::Zip(zip_src) => {
+                self.create_zip_from_directory(&zip_src.name, &zip_src.source)
+            }
+        }
+    }
+
+    fn create_zip_from_directory(
+        &self,
+        zip_file_name: &str,
+        source_dir_name: &str,
+    ) -> Result<PathBuf> {
+        use std::fs::File;
+        use walkdir::WalkDir;
+        use zip::write::SimpleFileOptions;
+        use zip::ZipWriter;
+
+        let source_dir = self.test_dir.join(source_dir_name);
+        if !source_dir.exists() {
+            anyhow::bail!("Source directory does not exist: {}", source_dir.display());
+        }
+
+        let zip_path = self.test_dir.join(zip_file_name);
+
+        let file = File::create(&zip_path)
+            .with_context(|| format!("Failed to create ZIP file: {}", zip_path.display()))?;
+        let mut zip = ZipWriter::new(file);
+        let options =
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+
+        for entry in WalkDir::new(&source_dir) {
+            let entry = entry?;
+            let path = entry.path();
+            let relative_path = path.strip_prefix(&source_dir)?;
+
+            if relative_path.as_os_str().is_empty() {
+                continue;
+            }
+
+            let relative_path_str = relative_path.to_string_lossy();
+
+            if path.is_file() {
+                zip.start_file(relative_path_str.as_ref(), options)?;
+                let mut f = File::open(path)?;
+                std::io::copy(&mut f, &mut zip)?;
+            } else if path.is_dir() {
+                let dir_path = format!("{relative_path_str}/");
+                zip.add_directory(dir_path, options)?;
+            }
+        }
+
+        zip.finish()?;
+
+        Ok(zip_path)
+    }
+
     pub fn run_workflow(&mut self, mut workflow: Workflow) -> Result<()> {
         use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
         use reearth_flow_action_plateau_processor::mapping::ACTION_FACTORY_MAPPINGS as PLATEAU_MAPPINGS;
@@ -285,7 +383,8 @@ impl TestContext {
         // Inject test-specific variables directly into workflow instead of using environment variables
         let mut test_variables = HashMap::new();
 
-        let city_gml_path = self.test_dir.join(&self.profile.city_gml_path);
+        // Resolve cityGmlPath (handles both single file and ZIP generation)
+        let city_gml_path = self.resolve_city_gml_path()?;
         let city_gml_url = format!("file://{}", city_gml_path.display());
         test_variables.insert("cityGmlPath".to_string(), city_gml_url);
 
@@ -1182,7 +1281,7 @@ mod tests {
             workflow_path: "dummy".to_string(),
             description: None,
             expected_output: None,
-            city_gml_path: "dummy".to_string(),
+            city_gml_path: CityGmlPath::GmlFile("dummy".to_string()),
             codelists: None,
             schemas: None,
             object_lists: None,
@@ -1250,7 +1349,7 @@ mod tests {
             workflow_path: "dummy".to_string(),
             description: None,
             expected_output: None,
-            city_gml_path: "dummy".to_string(),
+            city_gml_path: CityGmlPath::GmlFile("dummy".to_string()),
             codelists: None,
             schemas: None,
             object_lists: None,
