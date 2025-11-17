@@ -52,7 +52,6 @@ pub(super) fn geometry_slicing_stage(
     max_zoom: u8,
     attach_texture: bool,
 ) -> crate::errors::Result<()> {
-    let bincode_config = bincode::config::standard();
     upstream.iter().par_bridge().try_for_each(|parcel| {
         slice_to_tiles(
             parcel,
@@ -61,7 +60,7 @@ pub(super) fn geometry_slicing_stage(
             max_zoom,
             attach_texture,
             |(z, x, y), feature| {
-                let bytes = bincode::serde::encode_to_vec(&feature, bincode_config)
+                let bytes = serde_json::to_vec(&feature)
                     .map_err(|e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()))?;
                 let Some(feature_type) = parcel.feature_type() else {
                     return Err(crate::errors::SinkError::cesium3dtiles_writer(
@@ -153,10 +152,10 @@ pub(super) fn tile_writing_stage(
     schema: &Schema,
     limit_texture_resolution: Option<bool>,
     draco_compression: bool,
+    skip_underscore_prefix: bool,
 ) -> crate::errors::Result<()> {
     let ellipsoid = nusamai_projection::ellipsoid::wgs84();
     let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
-    let bincode_config = bincode::config::standard();
 
     // Texture cache
     // use default cache size
@@ -230,8 +229,8 @@ pub(super) fn tile_writing_stage(
                 let mut features = Vec::new();
                 for serialized_feat in feats.into_iter() {
                     let feature = {
-                        let (mut feature, _): (SlicedFeature, _) =
-                            bincode::serde::decode_from_slice(&serialized_feat, bincode_config)
+                        let mut feature: SlicedFeature =
+                            serde_json::from_slice(&serialized_feat)
                                 .map_err(|e| {
                                     crate::errors::SinkError::cesium3dtiles_writer(format!(
                                         "Failed to decode_from_slice with {e:?}"
@@ -276,7 +275,14 @@ pub(super) fn tile_writing_stage(
             let features = features
                 .iter()
                 .filter(|feature| {
-                    let result = metadata_encoder.add_feature(&typename, &feature.attributes);
+                    let attributes = feature.attributes.iter().filter_map(|(k, v)|
+                        if skip_underscore_prefix && k.starts_with('_') {
+                            None
+                        } else {
+                            Some((k.clone(), v.clone()))
+                        }
+                    ).collect();
+                    let result = metadata_encoder.add_feature(&typename, &attributes);
                     if let Err(e) = result {
                         ctx.event_hub
                             .error_log(None, format!("Failed to add feature with error = {e:?}"));
