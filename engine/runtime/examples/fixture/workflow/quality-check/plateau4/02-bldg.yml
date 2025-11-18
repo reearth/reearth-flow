@@ -1818,7 +1818,7 @@ graphs:
     toPort: default
   - id: 77a7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
     from: 690f9475-1821-4f50-8315-f00f53251a00
-    fromPort: unfiltered
+    fromPort: default
     to: 99a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     toPort: default
   - id: 66b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d

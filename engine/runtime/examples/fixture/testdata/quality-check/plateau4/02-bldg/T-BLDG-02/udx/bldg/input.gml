@@ -61,21 +61,6 @@
 
 			<!-- Should fail -->
 			<bldg:outerBuildingInstallation>
-				<bldg:BuildingInstallation gml:id="bldg_b39af966-aa43-4c24-b656-0165e8e041a1_BuildingInstallation_1060">
-					<bldg:lod2Geometry>
-						<gml:MultiCurve srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
-							<gml:curveMember>
-								<gml:LineString>
-									<gml:posList>35.61663291490302 139.72781608187077 135.77 35.6166244539514 139.72781952606968 135.77 35.616611260350794 139.72777106072488 135.77 35.616619712287225 139.72776761653327 135.77 35.61663291490302 139.72781608187077 135.77</gml:posList>
-								</gml:LineString>
-							</gml:curveMember>
-						</gml:MultiCurve>
-					</bldg:lod2Geometry>
-				</bldg:BuildingInstallation>
-			</bldg:outerBuildingInstallation>
-
-			<!-- Should fail -->
-			<bldg:outerBuildingInstallation>
 				<bldg:BuildingInstallation gml:id="bldg_b39af966-aa43-4c24-b656-0165e8e041a1_BuildingInstallation_1061">
 					<bldg:lod2Geometry>
 						<gml:CompositeSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
