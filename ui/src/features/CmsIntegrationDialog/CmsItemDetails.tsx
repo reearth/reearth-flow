@@ -128,7 +128,8 @@ const AssetDetail: React.FC<{
   if (
     field.type === "asset" &&
     typeof value === "string" &&
-    value.includes("[")
+    value.startsWith("[") &&
+    value.endsWith("]")
   ) {
     const cleanedArray = value
       .split(",")
