@@ -503,7 +503,7 @@ graphs:
       - attribute: L05CRS識別子
         expr: |
           if env.get("__value").isCorrectSrsName {
-            "Ok"
+            "OK"
           } else {
             "Wrong"
           }
@@ -561,6 +561,13 @@ graphs:
       - newAttribute: 不正なcodeSpace数
         expr: |
           env.get("__value")["不正なcodeSpace数"] ?? 0
+      - newAttribute: L05CRS識別子
+        expr: |
+          if env.get("__value")["L05CRS識別子"] == "Wrong" {
+            1
+          } else {
+            0
+          }
       - newAttribute: L06エラー
         expr: |
           env.get("__value")["L06エラー"] ?? 0
@@ -840,7 +847,8 @@ graphs:
       - attribute: Filename
         expr: env.get("__value").name
       - attribute: FeatureType
-        expr: env.get("__value").featureType
+        expr: |
+          env.get("__value").parentTag ?? env.get("__value").featureType
       - attribute: gml:id
         expr: env.get("__value").gmlId
       - attribute: InvalidGeometry
@@ -1369,10 +1377,12 @@ graphs:
           let total = 0;
           let data = env.get("__value")["dataFileData"];
           if data != () {
-            for key in data.keys() {
-              let val = data[key];
-              if val.type_of() == "i64" {
-                total += val;
+            for item in data {
+              if item.type_of() == "map" {
+                let count = item["count"];
+                if count != () && count.type_of() == "i64" {
+                  total += count;
+                }
               }
             }
           }

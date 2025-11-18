@@ -1053,6 +1053,16 @@ graphs:
         method: remove
       - attribute: lod
         method: remove
+      - attribute: baseCityCode
+        method: remove
+      - attribute: cityCode
+        method: remove
+      - attribute: codelists
+        method: remove
+      - attribute: objectListPath
+        method: remove
+      - attribute: schemas
+        method: remove
   - id: 72b70428-0bb9-401b-a295-881556adc526
     name: FileTSVWriterLBDLG04-05
     type: action
@@ -1113,6 +1123,16 @@ graphs:
       - attribute: extension
         method: remove
       - attribute: lod
+        method: remove
+      - attribute: baseCityCode
+        method: remove
+      - attribute: cityCode
+        method: remove
+      - attribute: codelists
+        method: remove
+      - attribute: objectListPath
+        method: remove
+      - attribute: schemas
         method: remove
   - id: ab3505ad-4e89-4442-ab36-c52ac29c332e
     name: FileTSVWriterCityCodeError
@@ -2492,6 +2512,16 @@ graphs:
         method: remove
       - attribute: gmlPath
         method: remove
+      - attribute: cityCode
+        method: remove
+      - attribute: baseCityCode
+        method: remove
+      - attribute: codelists
+        method: remove
+      - attribute: objectListPath
+        method: remove
+      - attribute: schemas
+        method: remove
   - id: 89712e8f-e0ac-4bb3-a92f-c5ff06fe4c96
     name: FeatureWriterL14-BoundaryNotClosed
     type: action
@@ -2588,6 +2618,16 @@ graphs:
       - attribute: filename
         method: remove
       - attribute: gmlPath
+        method: remove
+      - attribute: cityCode
+        method: remove
+      - attribute: baseCityCode
+        method: remove
+      - attribute: codelists
+        method: remove
+      - attribute: objectListPath
+        method: remove
+      - attribute: schemas
         method: remove
   - id: 527087b4-0411-49bd-ae5f-c1c7f9a5ccb8
     name: FeatureWriterL14-BoundaryOtherIssues
@@ -3373,6 +3413,14 @@ graphs:
         method: rename
         value: gmlFilename
       - attribute: cityGmlPath
+        method: remove
+      - attribute: baseCityCode
+        method: remove
+      - attribute: objectListPath
+        method: remove
+      - attribute: codelists
+        method: remove
+      - attribute: schemas
         method: remove
   - id: a8a7e7f8-8d73-4078-9cff-4476924f2ad7
     name: FeatureSorter
