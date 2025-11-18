@@ -81,7 +81,9 @@ const CmsItemDetails: React.FC<Props> = ({
                   );
                 } else {
                   return (
-                    <div className="flex justify-between space-y-2 rounded border p-4">
+                    <div
+                      key={field.fieldId}
+                      className="flex justify-between space-y-2 rounded border p-4">
                       <div className="flex flex-col gap-2">
                         <div className="flex items-center justify-between">
                           <div>
@@ -123,10 +125,15 @@ const AssetDetail: React.FC<{
   onCmsItemValue?: (value: string) => void;
 }> = ({ field, value, renderFieldValue, onCmsItemValue }) => {
   let arrayValue;
-  if (field.type === "asset" && value?.includes("[")) {
+  if (
+    field.type === "asset" &&
+    typeof value === "string" &&
+    value.includes("[")
+  ) {
     const cleanedArray = value
       .split(",")
-      .map((v: string) => v?.replace(/[[\]\s"]/g, ""));
+      .map((v: string) => v?.replace(/[[\]\s"]/g, ""))
+      .filter(Boolean);
     arrayValue = cleanedArray;
   }
 
@@ -154,7 +161,11 @@ const AssetDetail: React.FC<{
       {field.type === "asset" && arrayValue && (
         <div className="flex flex-col justify-center gap-2">
           {arrayValue.map((assetId: string) => (
-            <AssetButton assetId={assetId} onSelect={onCmsItemValue} />
+            <AssetButton
+              key={assetId}
+              assetId={assetId}
+              onSelect={onCmsItemValue}
+            />
           ))}
         </div>
       )}
@@ -177,7 +188,7 @@ const AssetButton: React.FC<{
   };
 
   return (
-    <div key={assetId} className="flex items-center gap-2">
+    <div className="flex items-center gap-2">
       <span className="break-words">{cmsAsset?.filename}</span>
       <Button
         className="self-center"
