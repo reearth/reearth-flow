@@ -3,7 +3,11 @@ import { useCallback } from "react";
 import { Button, ScrollArea } from "@flow/components";
 import { useCms } from "@flow/lib/gql/cms";
 import { useT } from "@flow/lib/i18n";
-import type { CmsItem, CmsModel } from "@flow/types/cmsIntegration";
+import type {
+  CmsItem,
+  CmsModel,
+  CmsSchemaField,
+} from "@flow/types/cmsIntegration";
 
 type Props = {
   cmsItem: CmsItem;
@@ -64,43 +68,96 @@ const CmsItemDetails: React.FC<Props> = ({
             <div className="space-y-4">
               {cmsModel.schema.fields.map((field) => {
                 const value = cmsItem.fields[field.key];
-                return (
-                  <div
-                    key={field.fieldId}
-                    className="flex justify-between space-y-2 rounded border p-4">
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <label className="font-medium">{field.name}</label>
-                          <div className="text-sm text-muted-foreground">
-                            {field.key} • {field.type}
+
+                if (field.type === "asset") {
+                  return (
+                    <AssetDetail
+                      key={field.fieldId}
+                      field={field}
+                      value={value}
+                      renderFieldValue={renderFieldValue}
+                      onCmsItemValue={onCmsItemValue}
+                    />
+                  );
+                } else {
+                  return (
+                    <div className="flex justify-between space-y-2 rounded border p-4">
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <label className="font-medium">{field.name}</label>
+                            <div className="text-sm text-muted-foreground">
+                              {field.key} • {field.type}
+                            </div>
                           </div>
                         </div>
+                        {field.description && (
+                          <div className="text-sm text-muted-foreground">
+                            {field.description}
+                          </div>
+                        )}
+                        <div>{renderFieldValue(value)}</div>
                       </div>
-                      {field.description && (
-                        <div className="text-sm text-muted-foreground">
-                          {field.description}
-                        </div>
+                      {field.type === "url" && value && (
+                        <Button
+                          className="self-center"
+                          onClick={() => onCmsItemValue?.(value)}>
+                          {t("Select")}
+                        </Button>
                       )}
-                      <div>{renderFieldValue(value)}</div>
                     </div>
-                    {field.type === "url" && value && (
-                      <Button
-                        className="self-center"
-                        onClick={() => onCmsItemValue?.(value)}>
-                        {t("Select")}
-                      </Button>
-                    )}
-                    {field.type === "asset" && value && (
-                      <AssetButton assetId={value} onSelect={onCmsItemValue} />
-                    )}
-                  </div>
-                );
+                  );
+                }
               })}
             </div>
           </div>
         </div>
       </ScrollArea>
+    </div>
+  );
+};
+const AssetDetail: React.FC<{
+  field: CmsSchemaField;
+  value: any;
+  renderFieldValue: (value: any) => React.ReactNode;
+  onCmsItemValue?: (value: string) => void;
+}> = ({ field, value, renderFieldValue, onCmsItemValue }) => {
+  let arrayValue;
+  if (field.type === "asset" && value?.includes("[")) {
+    const cleanedArray = value
+      .split(",")
+      .map((v: string) => v?.replace(/[[\]\s"]/g, ""));
+    arrayValue = cleanedArray;
+  }
+
+  return (
+    <div className="flex justify-between space-y-2 rounded border p-4">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <label className="font-medium">{field.name}</label>
+            <div className="text-sm text-muted-foreground">
+              {field.key} • {field.type}
+            </div>
+          </div>
+        </div>
+        {field.description && (
+          <div className="text-sm text-muted-foreground">
+            {field.description}
+          </div>
+        )}
+        <div>{renderFieldValue(value)}</div>
+      </div>
+      {field.type === "asset" && value && !arrayValue && (
+        <AssetButton assetId={value} onSelect={onCmsItemValue} />
+      )}
+      {field.type === "asset" && arrayValue && (
+        <div className="flex flex-col justify-center gap-2">
+          {arrayValue.map((assetId: string) => (
+            <AssetButton assetId={assetId} onSelect={onCmsItemValue} />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -120,12 +177,15 @@ const AssetButton: React.FC<{
   };
 
   return (
-    <Button
-      className="self-center"
-      onClick={handleClick}
-      disabled={isLoading || !cmsAsset?.url}>
-      {t("Select")}
-    </Button>
+    <div key={assetId} className="flex items-center gap-2">
+      <span className="break-words">{cmsAsset?.filename}</span>
+      <Button
+        className="self-center"
+        onClick={handleClick}
+        disabled={isLoading || !cmsAsset?.url}>
+        {t("Select")}
+      </Button>
+    </div>
   );
 };
 
