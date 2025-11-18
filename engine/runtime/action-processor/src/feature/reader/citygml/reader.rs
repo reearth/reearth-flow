@@ -192,42 +192,50 @@ fn parse_tree_reader<R: BufRead>(
             );
         }
         attributes.extend(base_attributes.clone());
-        let entities = if flatten {
+        let mut entities = if flatten {
             FlattenTreeTransform::transform(entity)
         } else {
             vec![entity]
         };
+        // process parent before children
+        entities.reverse();
+        let mut parent_lookup: HashMap<String, (Option<String>, AttributeValue)> = HashMap::new();
         for mut ent in entities {
-            // Calculate child LOD from GeometryRefs in geometry_store that match this child entity
-            // Also extract parent feature_id from GeometryRef if child doesn't have gml:id
-            let mut child_lod = LodMask::default();
-            let mut parent_feature_id: Option<String> = None;
-            if let nusamai_citygml::Value::Object(obj) = &ent.root {
-                if let nusamai_citygml::object::ObjectStereotype::Feature { geometries, .. } =
-                    &obj.stereotype
-                {
-                    for geom in geometries {
-                        child_lod.add_lod(geom.lod);
-                        // If child has no gml:id (None or empty string), use parent's feature_id from GeometryRef
-                        let has_id = ent.id.as_ref().is_some_and(|id| !id.is_empty());
-                        if !has_id && parent_feature_id.is_none() {
-                            parent_feature_id = geom.feature_id.clone();
-                        }
-                    }
-                }
-            }
-            transformer.transform(&mut ent);
             let nusamai_citygml::Value::Object(obj) = &ent.root else {
                 continue;
             };
-            let nusamai_citygml::object::ObjectStereotype::Feature { .. } = &obj.stereotype else {
+            let parent_feature_id = obj.attributes.get("parentId").and_then(|v| {
+                if let nusamai_citygml::Value::String(s) = v {
+                    Some(s.to_string())
+                } else {
+                    None
+                }
+            });
+            // Calculate child LOD from GeometryRefs in geometry_store that match this child entity
+            // Also extract geom feature_id from GeometryRef if child doesn't have gml:id
+            let mut child_lod = LodMask::default();
+            let mut geom_feature_id: Option<String> = None;
+            if let nusamai_citygml::object::ObjectStereotype::Feature { geometries, .. } =
+                &obj.stereotype
+            {
+                for geom in geometries {
+                    child_lod.add_lod(geom.lod);
+                    // If child has no gml:id (None or empty string), use parent's feature_id from GeometryRef
+                    let has_id = ent.id.as_ref().is_some_and(|id| !id.is_empty());
+                    if !has_id && geom_feature_id.is_none() {
+                        geom_feature_id = geom.feature_id.clone();
+                    }
+                }
+            } else {
                 continue;
-            };
+            }
+            eprintln!("ent {:?}", &ent.root);
+            transformer.transform(&mut ent);
 
-            // Use entity's own gml:id if it has one (and not empty), otherwise use parent's feature_id from GeometryRef
+            // Use entity's own non-empty gml:id, otherwise use geometry id
             let child_id = match &ent.id {
                 Some(id) if !id.is_empty() => Some(id.clone()),
-                _ => parent_feature_id,
+                _ => geom_feature_id.clone(),
             };
             let child_typename = ent.typename.clone();
             let mut attributes = attributes.clone();
@@ -254,13 +262,32 @@ fn parse_tree_reader<R: BufRead>(
                 }
             }
 
-            // Extract cityGmlAttributes from child entity's own data
-            let child_attributes = AttributeValue::from_nusamai_citygml_value(&ent.root);
-            let child_city_gml_attributes = match child_attributes.len() {
-                0 => AttributeValue::default_map(), // Empty map as fallback
-                1 => child_attributes.values().next().unwrap().clone(),
-                _ => AttributeValue::Map(child_attributes),
-            };
+            eprintln!("parent feature id: {:?}", parent_feature_id);
+            let citygml_attributes = AttributeValue::from_nusamai_citygml_value(&ent.root);
+            let mut citygml_attributes = AttributeValue::Map(citygml_attributes);
+            let mut parent_id = parent_feature_id.clone();
+            let mut ancestors = Vec::new();
+            while let Some(pid) = parent_id {
+                if let Some((ppid, attributes)) = parent_lookup.get(&pid) {
+                    eprintln!("Found parent id {} in lookup", pid);
+                    parent_id = ppid.clone();
+                    ancestors.push(attributes.clone());
+                } else {
+                    eprintln!("Parent id {} not found in lookup", pid);
+                    break;
+                }
+            }
+            // save original citygml attributes before inserting ancestors
+            if let Some(ent_id) = ent.id.as_ref() {
+                parent_lookup.insert(ent_id.clone(), (parent_feature_id.clone(), citygml_attributes.clone()));
+            }
+            eprintln!("len of ancestors: {}", ancestors.len());
+            if let AttributeValue::Map(ref mut citygml_attributes_map) = citygml_attributes {
+                citygml_attributes_map.insert(
+                    "ancestors".to_string(),
+                    AttributeValue::Array(ancestors),
+                );
+            }
 
             let geometry: Geometry = ent.try_into().map_err(|e| {
                 crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
@@ -270,7 +297,7 @@ fn parse_tree_reader<R: BufRead>(
             // Insert child's own cityGmlAttributes
             feature.insert(
                 "cityGmlAttributes",
-                child_city_gml_attributes,
+                citygml_attributes,
             );
             // When flatten is true, each child entity should have its own LOD and feature_type/feature_id
             // calculated from its geometries instead of inheriting from the parent
