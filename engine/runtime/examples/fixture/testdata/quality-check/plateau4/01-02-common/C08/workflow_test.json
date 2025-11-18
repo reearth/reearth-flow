@@ -1,9 +1,18 @@
 {
   "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
-  "description": "Test quality check",
-  "cityGmlPath": "udx/bldg/dummy.gml",
+  "description": "Test quality check for C08",
+  "cityGmlPath": "udx/bldg/54377074_bldg_6697_op.gml",
   "codelists": "codelists",
   "schemas": "schemas",
+  "objectLists": "16211_city_2024_objectlist_op.xlsx",
+  "expectedOutput": {
+    "expectedFile": "01-2_必須属性等_C08公共測量品質属性_bldg.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_common2-bldg.json"
+    }
+  },
   "expectResultOkFile": false,
-  "skip": true
+  "skip": false
 }
