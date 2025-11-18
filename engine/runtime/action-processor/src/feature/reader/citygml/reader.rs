@@ -170,12 +170,6 @@ fn parse_tree_reader<R: BufRead>(
                     .unwrap_or(AttributeValue::Null),
             ),
             (
-                Attribute::new("gmlId"),
-                gml_id
-                    .map(|s| AttributeValue::String(s.to_string()))
-                    .unwrap_or(AttributeValue::Null),
-            ),
-            (
                 Attribute::new("gmlRootId"),
                 AttributeValue::String(format!("root_{}", to_hash(base_url.as_str()))),
             ),
@@ -199,18 +193,10 @@ fn parse_tree_reader<R: BufRead>(
         };
         // process parent before children
         entities.reverse();
-        let mut parent_lookup: HashMap<String, (Option<String>, AttributeValue)> = HashMap::new();
         for mut ent in entities {
             let nusamai_citygml::Value::Object(obj) = &ent.root else {
                 continue;
             };
-            let parent_feature_id = obj.attributes.get("parentId").and_then(|v| {
-                if let nusamai_citygml::Value::String(s) = v {
-                    Some(s.to_string())
-                } else {
-                    None
-                }
-            });
             // Calculate child LOD from GeometryRefs in geometry_store that match this child entity
             // Also extract geom feature_id from GeometryRef if child doesn't have gml:id
             let mut child_lod = LodMask::default();
@@ -238,6 +224,12 @@ fn parse_tree_reader<R: BufRead>(
             };
             let child_typename = ent.typename.clone();
             let mut attributes = attributes.clone();
+            if let Some(child_id) = &child_id {
+                attributes.insert(
+                    Attribute::new("gmlId"),
+                    AttributeValue::String(child_id.to_string()),
+                );
+            }
             if flatten {
                 if let Some(typename) = &child_typename {
                     attributes.insert(
@@ -261,34 +253,8 @@ fn parse_tree_reader<R: BufRead>(
                 }
             }
 
-            eprintln!("parent feature id: {:?}", parent_feature_id);
             let citygml_attributes = AttributeValue::from_nusamai_citygml_value(&ent.root);
-            eprintln!("attributes {:?}", &citygml_attributes);
-            let mut citygml_attributes = AttributeValue::Map(citygml_attributes);
-            let mut parent_id = parent_feature_id.clone();
-            let mut ancestors = Vec::new();
-            while let Some(pid) = parent_id {
-                if let Some((ppid, attributes)) = parent_lookup.get(&pid) {
-                    eprintln!("Found parent id {} in lookup", pid);
-                    parent_id = ppid.clone();
-                    ancestors.push(attributes.clone());
-                } else {
-                    eprintln!("Parent id {} not found in lookup", pid);
-                    break;
-                }
-            }
-            // save original citygml attributes before inserting ancestors
-            if let Some(ent_id) = ent.id.as_ref() {
-                parent_lookup.insert(ent_id.clone(), (parent_feature_id.clone(), citygml_attributes.clone()));
-            }
-            eprintln!("len of ancestors: {}", ancestors.len());
-            if let AttributeValue::Map(ref mut citygml_attributes_map) = citygml_attributes {
-                citygml_attributes_map.insert(
-                    "ancestors".to_string(),
-                    AttributeValue::Array(ancestors),
-                );
-            }
-
+            let citygml_attributes = AttributeValue::Map(citygml_attributes);
             let geometry: Geometry = ent.try_into().map_err(|e| {
                 crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
             })?;

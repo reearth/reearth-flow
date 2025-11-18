@@ -97,6 +97,43 @@ pub(super) struct AttributeFlattener {
     encountered_feature_types: HashSet<String>,
     flattener: super::flattener::Flattener,
     common_attribute_processor: super::flattener::CommonAttributeProcessor,
+    // store citygml attributes to build the `ancestors` attribute
+    gmlid_to_citygml_attributes: HashMap<String, AttributeValue>,
+}
+
+// remove parentId and parentType created by FeatureCitygmlReader's FlattenTreeTransform
+fn strip_parent_info(attr: &mut AttributeValue) {
+    if let AttributeValue::Map(ref mut map) = attr {
+        map.remove("parentId");
+        map.remove("parentType");
+    }
+}
+
+impl AttributeFlattener {
+    fn get_parent_id(attr: &AttributeValue) -> Option<String> {
+        if let AttributeValue::Map(map) = attr {
+            if let Some(AttributeValue::String(parent_id)) = map.get("parentId") {
+                return Some(parent_id.clone());
+            }
+        }
+        None
+    }
+
+    fn build_ancestors_attribute(&self, attr: &AttributeValue) -> Vec<AttributeValue> {
+        let mut ancestors = Vec::new();
+        let mut parent_id: Option<String> = Self::get_parent_id(attr);
+        while let Some(id) = parent_id {
+            let Some(attr) = self.gmlid_to_citygml_attributes.get(&id) else {
+                tracing::warn!("Parent ID {id} not found. Children sent before parents?");
+                break;
+            };
+            parent_id = Self::get_parent_id(attr);
+            let mut attr = attr.clone();
+            strip_parent_info(&mut attr);
+            ancestors.push(attr);
+        }
+        ancestors
+    }
 }
 
 impl Processor for AttributeFlattener {
@@ -132,27 +169,6 @@ impl Processor for AttributeFlattener {
         // Track encountered feature type
         self.encountered_feature_types.insert(lookup_key.clone());
 
-        if let Some(flatten_attributes) = super::constants::FLATTEN_ATTRIBUTES.get(&lookup_key) {
-            for attribute in flatten_attributes {
-                let mut json_path: Vec<&str> = vec![];
-                json_path.extend(attribute.json_path.split(" "));
-                let Some(new_attribute) =
-                    super::flattener::get_value_from_json_path(&json_path, city_gml_attribute)
-                else {
-                    continue;
-                };
-                self.existing_flatten_attributes
-                    .insert(attribute.attribute.clone());
-                new_city_gml_attribute
-                    .insert(Attribute::new(attribute.attribute.clone()), new_attribute);
-            }
-        }
-        let edit_city_gml_attribute = city_gml_attribute
-            .clone()
-            .into_iter()
-            .map(|(k, v)| (k.to_string(), v))
-            .collect::<HashMap<String, AttributeValue>>();
-
         let mut inner_attributes = city_gml_attribute.clone();
         // add common attributes by copying from feature attributes
         for (key, value) in COMMON_ATTRIBUTES.iter() {
@@ -160,12 +176,47 @@ impl Processor for AttributeFlattener {
                 inner_attributes.insert(value.clone(), attr_value.clone());
             }
         }
+        let mut inner_attributes_value = AttributeValue::Map(inner_attributes);
+        // attribute must be cached BEFORE inserting ancestors
+        if let Some(feature_id) = feature.feature_id() {
+            self.gmlid_to_citygml_attributes.insert(
+                feature_id,
+                inner_attributes_value.clone(),
+            );
+        }
+        let ancestors = self.build_ancestors_attribute(&inner_attributes_value);
+        strip_parent_info(&mut inner_attributes_value);
+        if let AttributeValue::Map(ref mut map) = inner_attributes_value {
+            map.insert("ancestors".to_string(), AttributeValue::Array(ancestors));
+            // json path must be extracted AFTER building ancestors attribute
+            if let Some(flatten_attributes) = super::constants::FLATTEN_ATTRIBUTES.get(&lookup_key) {
+                for attribute in flatten_attributes {
+                    let mut json_path: Vec<&str> = vec![];
+                    json_path.extend(attribute.json_path.split(" "));
+                    let Some(new_attribute) =
+                        super::flattener::get_value_from_json_path(&json_path, map)
+                    else {
+                        continue;
+                    };
+                    self.existing_flatten_attributes
+                        .insert(attribute.attribute.clone());
+                    new_city_gml_attribute
+                        .insert(Attribute::new(attribute.attribute.clone()), new_attribute);
+                }
+            }
+        }
         // save the whole `city_gml_attribute` values as `attributes`
-        let attributes_value = serde_json::Value::from(AttributeValue::Map(inner_attributes));
-        let attributes_json = serde_json::to_string(&attributes_value).unwrap();
+        let inner_attributes_json = serde_json::to_string(&serde_json::Value::from(inner_attributes_value)).unwrap();
+
+        let edit_city_gml_attribute = city_gml_attribute
+            .clone()
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v))
+            .collect::<HashMap<String, AttributeValue>>();
+
         new_city_gml_attribute.insert(
             Attribute::new("attributes".to_string()),
-            AttributeValue::String(attributes_json),
+            AttributeValue::String(inner_attributes_json),
         );
 
         new_city_gml_attribute.extend(
