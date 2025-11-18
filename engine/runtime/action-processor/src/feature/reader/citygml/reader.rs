@@ -229,7 +229,6 @@ fn parse_tree_reader<R: BufRead>(
             } else {
                 continue;
             }
-            eprintln!("ent {:?}", &ent.root);
             transformer.transform(&mut ent);
 
             // Use entity's own non-empty gml:id, otherwise use geometry id
@@ -264,6 +263,7 @@ fn parse_tree_reader<R: BufRead>(
 
             eprintln!("parent feature id: {:?}", parent_feature_id);
             let citygml_attributes = AttributeValue::from_nusamai_citygml_value(&ent.root);
+            eprintln!("attributes {:?}", &citygml_attributes);
             let mut citygml_attributes = AttributeValue::Map(citygml_attributes);
             let mut parent_id = parent_feature_id.clone();
             let mut ancestors = Vec::new();
