@@ -66,6 +66,31 @@ pub struct HttpCallerParam {
     /// Maximum time to wait for the entire request/response cycle
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transfer_timeout: Option<u64>,
+
+    /// # Authentication
+    /// Authentication method to use for the request
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authentication: Option<Authentication>,
+
+    /// # User-Agent
+    /// Custom User-Agent header value (default: "reearth-flow-http-caller/1.0")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_agent: Option<String>,
+
+    /// # Verify SSL/TLS Certificates
+    /// Whether to verify HTTPS certificates (default: true)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub verify_ssl: Option<bool>,
+
+    /// # Follow Redirects
+    /// Whether to automatically follow HTTP redirects (default: true)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub follow_redirects: Option<bool>,
+
+    /// # Maximum Redirects
+    /// Maximum number of redirects to follow (default: 10)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_redirects: Option<u8>,
 }
 
 fn default_method() -> HttpMethod {
@@ -141,6 +166,60 @@ pub struct QueryParam {
     pub value: Expr,
 }
 
+/// Authentication methods supported by HTTPCaller
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum Authentication {
+    /// # Basic Authentication
+    /// Username and password authentication
+    #[serde(rename_all = "camelCase")]
+    Basic {
+        /// # Username
+        /// Username for basic authentication. Supports expressions.
+        username: Expr,
+        /// # Password
+        /// Password for basic authentication. Supports expressions.
+        password: Expr,
+    },
+    /// # Bearer Token Authentication
+    /// Token-based authentication (e.g., OAuth 2.0)
+    #[serde(rename_all = "camelCase")]
+    Bearer {
+        /// # Token
+        /// Bearer token value. Supports expressions.
+        token: Expr,
+    },
+    /// # API Key Authentication
+    /// API key in header or query parameter
+    #[serde(rename_all = "camelCase")]
+    ApiKey {
+        /// # Key Name
+        /// Name of the header or query parameter
+        key_name: String,
+        /// # Key Value
+        /// API key value. Supports expressions.
+        key_value: Expr,
+        /// # Location
+        /// Where to send the API key (header or query)
+        #[serde(default = "default_api_key_location")]
+        location: ApiKeyLocation,
+    },
+}
+
+/// Location for API key authentication
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum ApiKeyLocation {
+    /// Send API key as HTTP header
+    Header,
+    /// Send API key as query parameter
+    Query,
+}
+
+fn default_api_key_location() -> ApiKeyLocation {
+    ApiKeyLocation::Header
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -191,10 +270,48 @@ mod tests {
             error_attribute: "_http_error".to_string(),
             connection_timeout: Some(60),
             transfer_timeout: Some(90),
+            authentication: None,
+            user_agent: None,
+            verify_ssl: None,
+            follow_redirects: None,
+            max_redirects: None,
         };
 
         let json = serde_json::to_string(&params).unwrap();
         assert!(json.contains("https://example.com"));
         assert!(json.contains("POST"));
+    }
+
+    #[test]
+    fn test_basic_auth() {
+        let auth = Authentication::Basic {
+            username: Expr::new("user123"),
+            password: Expr::new("pass456"),
+        };
+        let json = serde_json::to_string(&auth).unwrap();
+        assert!(json.contains("basic"));
+        assert!(json.contains("user123"));
+    }
+
+    #[test]
+    fn test_bearer_auth() {
+        let auth = Authentication::Bearer {
+            token: Expr::new("token123"),
+        };
+        let json = serde_json::to_string(&auth).unwrap();
+        assert!(json.contains("bearer"));
+        assert!(json.contains("token123"));
+    }
+
+    #[test]
+    fn test_api_key_auth() {
+        let auth = Authentication::ApiKey {
+            key_name: "X-API-Key".to_string(),
+            key_value: Expr::new("key123"),
+            location: ApiKeyLocation::Header,
+        };
+        let json = serde_json::to_string(&auth).unwrap();
+        assert!(json.contains("apiKey"));
+        assert!(json.contains("X-API-Key"));
     }
 }

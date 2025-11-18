@@ -6066,6 +6066,7 @@ dependencies = [
  "Inflector",
  "approx",
  "async-trait",
+ "base64 0.22.1",
  "bytes",
  "chrono",
  "csv",

@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
 };
 use serde_json::Value;
 
-use super::client::ReqwestHttpClient;
+use super::client::{ClientConfig, ReqwestHttpClient};
 use super::errors::{HttpProcessorError, Result};
 use super::expression::ExpressionCompiler;
 use super::params::HttpCallerParam;
@@ -56,11 +56,16 @@ impl ProcessorFactory for HttpCallerFactory {
         // Validate parameters
         self.validate_parameters(&params)?;
 
-        // Create HTTP client
-        let client = ReqwestHttpClient::new(
-            params.connection_timeout.unwrap_or(60),
-            params.transfer_timeout.unwrap_or(90),
-        )?;
+        // Create HTTP client with configuration
+        let client_config = ClientConfig {
+            connection_timeout: params.connection_timeout.unwrap_or(60),
+            transfer_timeout: params.transfer_timeout.unwrap_or(90),
+            user_agent: params.user_agent.clone(),
+            verify_ssl: params.verify_ssl.unwrap_or(true),
+            follow_redirects: params.follow_redirects.unwrap_or(true),
+            max_redirects: params.max_redirects.unwrap_or(10),
+        };
+        let client = ReqwestHttpClient::with_config(client_config)?;
 
         // Compile expressions
         let expr_engine = Arc::clone(&ctx.expr_engine);
@@ -177,6 +182,11 @@ mod tests {
             error_attribute: "_http_error".to_string(),
             connection_timeout: None,
             transfer_timeout: None,
+            authentication: None,
+            user_agent: None,
+            verify_ssl: None,
+            follow_redirects: None,
+            max_redirects: None,
         };
 
         let result = factory.validate_parameters(&params);

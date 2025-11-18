@@ -31,17 +31,62 @@ pub(crate) struct ReqwestHttpClient {
     client: Client,
 }
 
+/// Configuration for creating an HTTP client
+pub(crate) struct ClientConfig {
+    pub connection_timeout: u64,
+    pub transfer_timeout: u64,
+    pub user_agent: Option<String>,
+    pub verify_ssl: bool,
+    pub follow_redirects: bool,
+    pub max_redirects: u8,
+}
+
+impl Default for ClientConfig {
+    fn default() -> Self {
+        Self {
+            connection_timeout: 60,
+            transfer_timeout: 90,
+            user_agent: None,
+            verify_ssl: true,
+            follow_redirects: true,
+            max_redirects: 10,
+        }
+    }
+}
+
 impl ReqwestHttpClient {
     pub fn new(connection_timeout: u64, transfer_timeout: u64) -> Result<Self> {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(transfer_timeout))
-            .connect_timeout(Duration::from_secs(connection_timeout))
-            .redirect(reqwest::redirect::Policy::limited(10))
-            .user_agent("reearth-flow-http-caller/1.0")
-            .build()
-            .map_err(|e| {
-                HttpProcessorError::CallerFactory(format!("Failed to create HTTP client: {e}"))
-            })?;
+        Self::with_config(ClientConfig {
+            connection_timeout,
+            transfer_timeout,
+            ..Default::default()
+        })
+    }
+
+    pub fn with_config(config: ClientConfig) -> Result<Self> {
+        let mut builder = Client::builder()
+            .timeout(Duration::from_secs(config.transfer_timeout))
+            .connect_timeout(Duration::from_secs(config.connection_timeout))
+            .danger_accept_invalid_certs(!config.verify_ssl);
+
+        // Configure redirects
+        if config.follow_redirects {
+            builder = builder.redirect(reqwest::redirect::Policy::limited(
+                config.max_redirects as usize,
+            ));
+        } else {
+            builder = builder.redirect(reqwest::redirect::Policy::none());
+        }
+
+        // Configure user agent
+        let user_agent = config
+            .user_agent
+            .unwrap_or_else(|| "reearth-flow-http-caller/1.0".to_string());
+        builder = builder.user_agent(user_agent);
+
+        let client = builder.build().map_err(|e| {
+            HttpProcessorError::CallerFactory(format!("Failed to create HTTP client: {e}"))
+        })?;
 
         Ok(Self { client })
     }

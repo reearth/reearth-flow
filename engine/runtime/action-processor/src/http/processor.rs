@@ -81,7 +81,7 @@ impl HttpCallerProcessor {
     ) -> Result<(), BoxedError> {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let feature = &ctx.feature;
-        let scope = feature.new_scope(expr_engine, &self.global_params);
+        let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
 
         // Evaluate URL
         let url = match scope.eval_ast::<String>(&self.url_ast) {
@@ -110,7 +110,15 @@ impl HttpCallerProcessor {
             }
         };
 
-        let (method, url, headers, query_params, body) = builder.build();
+        let (method, url, mut headers, mut query_params, body) = builder.build();
+
+        // Apply authentication if configured
+        if let Some(auth) = &self.params.authentication {
+            if let Err(e) = super::auth::apply_authentication(auth, &expr_engine, &scope, &mut headers, &mut query_params) {
+                self.send_rejected_feature(ctx, fw, &e.to_string());
+                return Ok(());
+            }
+        }
 
         // Send HTTP request
         match self
@@ -234,6 +242,11 @@ mod tests {
             error_attribute: "_http_error".to_string(),
             connection_timeout: Some(60),
             transfer_timeout: Some(90),
+            authentication: None,
+            user_agent: None,
+            verify_ssl: None,
+            follow_redirects: None,
+            max_redirects: None,
         };
 
         let engine = Engine::new();
@@ -260,6 +273,11 @@ mod tests {
             error_attribute: "_http_error".to_string(),
             connection_timeout: None,
             transfer_timeout: None,
+            authentication: None,
+            user_agent: None,
+            verify_ssl: None,
+            follow_redirects: None,
+            max_redirects: None,
         };
 
         let engine = Engine::new();
