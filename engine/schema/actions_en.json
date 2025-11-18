@@ -6412,6 +6412,204 @@
       "categories": [
         "File"
       ]
+    },
+    {
+      "name": "HTTPCaller",
+      "type": "processor",
+      "description": "Make HTTP/HTTPS requests and enrich features with response data",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "HTTP Caller Parameters",
+        "description": "Configure HTTP/HTTPS requests with dynamic values from feature attributes",
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "connectionTimeout": {
+            "title": "Connection Timeout (seconds)",
+            "description": "Maximum time to wait for connection establishment",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "contentType": {
+            "title": "Content-Type Header",
+            "description": "The Content-Type header value for the request body",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customHeaders": {
+            "title": "Custom Headers",
+            "description": "List of custom HTTP headers to include in the request. Values support expressions.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/HeaderParam"
+            }
+          },
+          "errorAttribute": {
+            "title": "Error Attribute Name",
+            "description": "Name of the attribute to store error messages in (for rejected features)",
+            "default": "_http_error",
+            "type": "string"
+          },
+          "headersAttribute": {
+            "title": "Headers Attribute Name",
+            "description": "Name of the attribute to store response headers in (as JSON string)",
+            "default": "_headers",
+            "type": "string"
+          },
+          "method": {
+            "title": "HTTP Method",
+            "description": "The HTTP method to use for the request",
+            "default": "GET",
+            "allOf": [
+              {
+                "$ref": "#/definitions/HttpMethod"
+              }
+            ]
+          },
+          "queryParameters": {
+            "title": "Query Parameters",
+            "description": "URL query parameters to append to the request. Values support expressions.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/QueryParam"
+            }
+          },
+          "requestBody": {
+            "title": "Request Body",
+            "description": "The request body content (for POST, PUT, PATCH methods). Supports expressions.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "responseBodyAttribute": {
+            "title": "Response Body Attribute Name",
+            "description": "Name of the attribute to store the response body in",
+            "default": "_response_body",
+            "type": "string"
+          },
+          "statusCodeAttribute": {
+            "title": "Status Code Attribute Name",
+            "description": "Name of the attribute to store the HTTP status code in",
+            "default": "_http_status_code",
+            "type": "string"
+          },
+          "transferTimeout": {
+            "title": "Transfer Timeout (seconds)",
+            "description": "Maximum time to wait for the entire request/response cycle",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "url": {
+            "title": "Request URL",
+            "description": "The URL to send the request to. Supports expressions to reference feature attributes (e.g., \"https://api.example.com/data/${id}\")",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          },
+          "HeaderParam": {
+            "description": "Custom HTTP header parameter",
+            "type": "object",
+            "required": [
+              "name",
+              "value"
+            ],
+            "properties": {
+              "name": {
+                "title": "Header Name",
+                "description": "The name of the HTTP header",
+                "type": "string"
+              },
+              "value": {
+                "title": "Header Value",
+                "description": "The value of the HTTP header. Supports expressions.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
+              }
+            }
+          },
+          "HttpMethod": {
+            "description": "HTTP methods supported by the HTTPCaller",
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PUT",
+              "DELETE",
+              "PATCH",
+              "HEAD",
+              "OPTIONS"
+            ]
+          },
+          "QueryParam": {
+            "description": "URL query parameter",
+            "type": "object",
+            "required": [
+              "name",
+              "value"
+            ],
+            "properties": {
+              "name": {
+                "title": "Parameter Name",
+                "description": "The name of the query parameter",
+                "type": "string"
+              },
+              "value": {
+                "title": "Parameter Value",
+                "description": "The value of the query parameter. Supports expressions.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Web"
+      ]
     }
   ]
 }

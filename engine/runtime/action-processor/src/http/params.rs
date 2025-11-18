@@ -1,0 +1,200 @@
+use reearth_flow_types::Expr;
+use reqwest::Method;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
+/// # HTTP Caller Parameters
+/// Configure HTTP/HTTPS requests with dynamic values from feature attributes
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct HttpCallerParam {
+    /// # Request URL
+    /// The URL to send the request to. Supports expressions to reference feature attributes (e.g., "https://api.example.com/data/${id}")
+    pub url: Expr,
+
+    /// # HTTP Method
+    /// The HTTP method to use for the request
+    #[serde(default = "default_method")]
+    pub method: HttpMethod,
+
+    /// # Custom Headers
+    /// List of custom HTTP headers to include in the request. Values support expressions.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub custom_headers: Option<Vec<HeaderParam>>,
+
+    /// # Query Parameters
+    /// URL query parameters to append to the request. Values support expressions.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub query_parameters: Option<Vec<QueryParam>>,
+
+    /// # Request Body
+    /// The request body content (for POST, PUT, PATCH methods). Supports expressions.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub request_body: Option<Expr>,
+
+    /// # Content-Type Header
+    /// The Content-Type header value for the request body
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content_type: Option<String>,
+
+    /// # Response Body Attribute Name
+    /// Name of the attribute to store the response body in
+    #[serde(default = "default_response_body_attr")]
+    pub response_body_attribute: String,
+
+    /// # Status Code Attribute Name
+    /// Name of the attribute to store the HTTP status code in
+    #[serde(default = "default_status_code_attr")]
+    pub status_code_attribute: String,
+
+    /// # Headers Attribute Name
+    /// Name of the attribute to store response headers in (as JSON string)
+    #[serde(default = "default_headers_attr")]
+    pub headers_attribute: String,
+
+    /// # Error Attribute Name
+    /// Name of the attribute to store error messages in (for rejected features)
+    #[serde(default = "default_error_attr")]
+    pub error_attribute: String,
+
+    /// # Connection Timeout (seconds)
+    /// Maximum time to wait for connection establishment
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub connection_timeout: Option<u64>,
+
+    /// # Transfer Timeout (seconds)
+    /// Maximum time to wait for the entire request/response cycle
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transfer_timeout: Option<u64>,
+}
+
+fn default_method() -> HttpMethod {
+    HttpMethod::Get
+}
+
+fn default_response_body_attr() -> String {
+    "_response_body".to_string()
+}
+
+fn default_status_code_attr() -> String {
+    "_http_status_code".to_string()
+}
+
+fn default_headers_attr() -> String {
+    "_headers".to_string()
+}
+
+fn default_error_attr() -> String {
+    "_http_error".to_string()
+}
+
+/// HTTP methods supported by the HTTPCaller
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum HttpMethod {
+    Get,
+    Post,
+    Put,
+    Delete,
+    Patch,
+    Head,
+    Options,
+}
+
+impl From<HttpMethod> for Method {
+    fn from(method: HttpMethod) -> Self {
+        match method {
+            HttpMethod::Get => Method::GET,
+            HttpMethod::Post => Method::POST,
+            HttpMethod::Put => Method::PUT,
+            HttpMethod::Delete => Method::DELETE,
+            HttpMethod::Patch => Method::PATCH,
+            HttpMethod::Head => Method::HEAD,
+            HttpMethod::Options => Method::OPTIONS,
+        }
+    }
+}
+
+/// Custom HTTP header parameter
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct HeaderParam {
+    /// # Header Name
+    /// The name of the HTTP header
+    pub name: String,
+
+    /// # Header Value
+    /// The value of the HTTP header. Supports expressions.
+    pub value: Expr,
+}
+
+/// URL query parameter
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct QueryParam {
+    /// # Parameter Name
+    /// The name of the query parameter
+    pub name: String,
+
+    /// # Parameter Value
+    /// The value of the query parameter. Supports expressions.
+    pub value: Expr,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_http_method_conversion() {
+        assert_eq!(Method::from(HttpMethod::Get), Method::GET);
+        assert_eq!(Method::from(HttpMethod::Post), Method::POST);
+        assert_eq!(Method::from(HttpMethod::Put), Method::PUT);
+        assert_eq!(Method::from(HttpMethod::Delete), Method::DELETE);
+        assert_eq!(Method::from(HttpMethod::Patch), Method::PATCH);
+        assert_eq!(Method::from(HttpMethod::Head), Method::HEAD);
+        assert_eq!(Method::from(HttpMethod::Options), Method::OPTIONS);
+    }
+
+    #[test]
+    fn test_default_attribute_names() {
+        assert_eq!(default_response_body_attr(), "_response_body");
+        assert_eq!(default_status_code_attr(), "_http_status_code");
+        assert_eq!(default_headers_attr(), "_headers");
+        assert_eq!(default_error_attr(), "_http_error");
+    }
+
+    #[test]
+    fn test_default_method() {
+        let method = default_method();
+        assert!(matches!(method, HttpMethod::Get));
+    }
+
+    #[test]
+    fn test_param_serialization() {
+        let params = HttpCallerParam {
+            url: Expr::new("https://example.com"),
+            method: HttpMethod::Post,
+            custom_headers: Some(vec![HeaderParam {
+                name: "Authorization".to_string(),
+                value: Expr::new("Bearer ${token}"),
+            }]),
+            query_parameters: Some(vec![QueryParam {
+                name: "id".to_string(),
+                value: Expr::new("${feature_id}"),
+            }]),
+            request_body: Some(Expr::new(r#"{"data": "${value}"}"#)),
+            content_type: Some("application/json".to_string()),
+            response_body_attribute: "_response_body".to_string(),
+            status_code_attribute: "_http_status_code".to_string(),
+            headers_attribute: "_headers".to_string(),
+            error_attribute: "_http_error".to_string(),
+            connection_timeout: Some(60),
+            transfer_timeout: Some(90),
+        };
+
+        let json = serde_json::to_string(&params).unwrap();
+        assert!(json.contains("https://example.com"));
+        assert!(json.contains("POST"));
+    }
+}

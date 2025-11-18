@@ -1,0 +1,23 @@
+[
+  {
+    "id": "feature1",
+    "type": "Feature",
+    "geometry": null,
+    "properties": {
+      "api_endpoint": "users/1",
+      "auth_token": "test-token-123",
+      "user_id": "1"
+    }
+  },
+  {
+    "id": "feature2",
+    "type": "Feature",
+    "geometry": null,
+    "properties": {
+      "api_endpoint": "users/2",
+      "auth_token": "test-token-456",
+      "user_id": "2"
+    }
+  }
+]
+

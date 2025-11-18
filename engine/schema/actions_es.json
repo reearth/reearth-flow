@@ -6412,6 +6412,204 @@
       "categories": [
         "File"
       ]
+    },
+    {
+      "name": "HTTPCaller",
+      "type": "processor",
+      "description": "Realizar solicitudes HTTP/HTTPS y enriquecer entidades con datos de respuesta",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Parámetros de HTTP Caller",
+        "description": "Configurar solicitudes HTTP/HTTPS con valores dinámicos de los atributos de las entidades",
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "connectionTimeout": {
+            "title": "Tiempo de espera de conexión (segundos)",
+            "description": "Tiempo máximo de espera para establecer la conexión",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "contentType": {
+            "title": "Encabezado Content-Type",
+            "description": "Valor del encabezado Content-Type para el cuerpo de la solicitud",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customHeaders": {
+            "title": "Encabezados personalizados",
+            "description": "Lista de encabezados HTTP personalizados para incluir en la solicitud. Los valores admiten expresiones.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/HeaderParam"
+            }
+          },
+          "errorAttribute": {
+            "title": "Nombre del atributo de error",
+            "description": "Nombre del atributo para almacenar mensajes de error (para entidades rechazadas)",
+            "default": "_http_error",
+            "type": "string"
+          },
+          "headersAttribute": {
+            "title": "Nombre del atributo de encabezados",
+            "description": "Nombre del atributo para almacenar encabezados de respuesta (como cadena JSON)",
+            "default": "_headers",
+            "type": "string"
+          },
+          "method": {
+            "title": "Método HTTP",
+            "description": "Método HTTP a utilizar para la solicitud",
+            "default": "GET",
+            "allOf": [
+              {
+                "$ref": "#/definitions/HttpMethod"
+              }
+            ]
+          },
+          "queryParameters": {
+            "title": "Parámetros de consulta",
+            "description": "Parámetros de consulta de URL para agregar a la solicitud. Los valores admiten expresiones.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/QueryParam"
+            }
+          },
+          "requestBody": {
+            "title": "Cuerpo de la solicitud",
+            "description": "Contenido del cuerpo de la solicitud (para métodos POST, PUT, PATCH). Admite expresiones.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "responseBodyAttribute": {
+            "title": "Nombre del atributo del cuerpo de respuesta",
+            "description": "Nombre del atributo para almacenar el cuerpo de la respuesta",
+            "default": "_response_body",
+            "type": "string"
+          },
+          "statusCodeAttribute": {
+            "title": "Nombre del atributo del código de estado",
+            "description": "Nombre del atributo para almacenar el código de estado HTTP",
+            "default": "_http_status_code",
+            "type": "string"
+          },
+          "transferTimeout": {
+            "title": "Tiempo de espera de transferencia (segundos)",
+            "description": "Tiempo máximo de espera para el ciclo completo de solicitud/respuesta",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "url": {
+            "title": "URL de la solicitud",
+            "description": "URL a la que enviar la solicitud. Admite expresiones para hacer referencia a atributos de entidades (por ejemplo: \"https://api.example.com/data/${id}\")",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          },
+          "HeaderParam": {
+            "description": "Parámetro de encabezado HTTP personalizado",
+            "type": "object",
+            "required": [
+              "name",
+              "value"
+            ],
+            "properties": {
+              "name": {
+                "title": "Nombre del encabezado",
+                "description": "Nombre del encabezado HTTP",
+                "type": "string"
+              },
+              "value": {
+                "title": "Valor del encabezado",
+                "description": "Valor del encabezado HTTP. Admite expresiones.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
+              }
+            }
+          },
+          "HttpMethod": {
+            "description": "Métodos HTTP admitidos por HTTPCaller",
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PUT",
+              "DELETE",
+              "PATCH",
+              "HEAD",
+              "OPTIONS"
+            ]
+          },
+          "QueryParam": {
+            "description": "Parámetro de consulta de URL",
+            "type": "object",
+            "required": [
+              "name",
+              "value"
+            ],
+            "properties": {
+              "name": {
+                "title": "Nombre del parámetro",
+                "description": "Nombre del parámetro de consulta",
+                "type": "string"
+              },
+              "value": {
+                "title": "Valor del parámetro",
+                "description": "Valor del parámetro de consulta. Admite expresiones.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Web"
+      ]
     }
   ]
 }

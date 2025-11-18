@@ -6412,6 +6412,204 @@
       "categories": [
         "File"
       ]
+    },
+    {
+      "name": "HTTPCaller",
+      "type": "processor",
+      "description": "Effectuer des requêtes HTTP/HTTPS et enrichir les entités avec les données de réponse",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Paramètres HTTP Caller",
+        "description": "Configurer les requêtes HTTP/HTTPS avec des valeurs dynamiques issues des attributs des entités",
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "connectionTimeout": {
+            "title": "Délai de connexion (secondes)",
+            "description": "Temps d'attente maximum pour l'établissement de la connexion",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "contentType": {
+            "title": "En-tête Content-Type",
+            "description": "Valeur de l'en-tête Content-Type pour le corps de la requête",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customHeaders": {
+            "title": "En-têtes personnalisés",
+            "description": "Liste des en-têtes HTTP personnalisés à inclure dans la requête. Les valeurs prennent en charge les expressions.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/HeaderParam"
+            }
+          },
+          "errorAttribute": {
+            "title": "Nom de l'attribut d'erreur",
+            "description": "Nom de l'attribut pour stocker les messages d'erreur (pour les entités rejetées)",
+            "default": "_http_error",
+            "type": "string"
+          },
+          "headersAttribute": {
+            "title": "Nom de l'attribut des en-têtes",
+            "description": "Nom de l'attribut pour stocker les en-têtes de réponse (sous forme de chaîne JSON)",
+            "default": "_headers",
+            "type": "string"
+          },
+          "method": {
+            "title": "Méthode HTTP",
+            "description": "Méthode HTTP à utiliser pour la requête",
+            "default": "GET",
+            "allOf": [
+              {
+                "$ref": "#/definitions/HttpMethod"
+              }
+            ]
+          },
+          "queryParameters": {
+            "title": "Paramètres de requête",
+            "description": "Paramètres de requête URL à ajouter à la requête. Les valeurs prennent en charge les expressions.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/QueryParam"
+            }
+          },
+          "requestBody": {
+            "title": "Corps de la requête",
+            "description": "Contenu du corps de la requête (pour les méthodes POST, PUT, PATCH). Prend en charge les expressions.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "responseBodyAttribute": {
+            "title": "Nom de l'attribut du corps de réponse",
+            "description": "Nom de l'attribut pour stocker le corps de la réponse",
+            "default": "_response_body",
+            "type": "string"
+          },
+          "statusCodeAttribute": {
+            "title": "Nom de l'attribut du code d'état",
+            "description": "Nom de l'attribut pour stocker le code d'état HTTP",
+            "default": "_http_status_code",
+            "type": "string"
+          },
+          "transferTimeout": {
+            "title": "Délai de transfert (secondes)",
+            "description": "Temps d'attente maximum pour le cycle complet de requête/réponse",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "url": {
+            "title": "URL de la requête",
+            "description": "URL vers laquelle envoyer la requête. Prend en charge les expressions pour référencer les attributs des entités (par exemple: \"https://api.example.com/data/${id}\")",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          },
+          "HeaderParam": {
+            "description": "Paramètre d'en-tête HTTP personnalisé",
+            "type": "object",
+            "required": [
+              "name",
+              "value"
+            ],
+            "properties": {
+              "name": {
+                "title": "Nom de l'en-tête",
+                "description": "Nom de l'en-tête HTTP",
+                "type": "string"
+              },
+              "value": {
+                "title": "Valeur de l'en-tête",
+                "description": "Valeur de l'en-tête HTTP. Prend en charge les expressions.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
+              }
+            }
+          },
+          "HttpMethod": {
+            "description": "Méthodes HTTP prises en charge par HTTPCaller",
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PUT",
+              "DELETE",
+              "PATCH",
+              "HEAD",
+              "OPTIONS"
+            ]
+          },
+          "QueryParam": {
+            "description": "Paramètre de requête URL",
+            "type": "object",
+            "required": [
+              "name",
+              "value"
+            ],
+            "properties": {
+              "name": {
+                "title": "Nom du paramètre",
+                "description": "Nom du paramètre de requête",
+                "type": "string"
+              },
+              "value": {
+                "title": "Valeur du paramètre",
+                "description": "Valeur du paramètre de requête. Prend en charge les expressions.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Web"
+      ]
     }
   ]
 }

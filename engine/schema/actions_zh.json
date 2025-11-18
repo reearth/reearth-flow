@@ -6412,6 +6412,204 @@
       "categories": [
         "File"
       ]
+    },
+    {
+      "name": "HTTPCaller",
+      "type": "processor",
+      "description": "发起HTTP/HTTPS请求并使用响应数据丰富要素",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "HTTP Caller 参数",
+        "description": "使用要素属性的动态值配置HTTP/HTTPS请求",
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "connectionTimeout": {
+            "title": "连接超时（秒）",
+            "description": "等待建立连接的最长时间",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "contentType": {
+            "title": "Content-Type 标头",
+            "description": "请求体的 Content-Type 标头值",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customHeaders": {
+            "title": "自定义标头",
+            "description": "要包含在请求中的自定义HTTP标头列表。值支持表达式。",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/HeaderParam"
+            }
+          },
+          "errorAttribute": {
+            "title": "错误属性名称",
+            "description": "存储错误消息的属性名称（用于被拒绝的要素）",
+            "default": "_http_error",
+            "type": "string"
+          },
+          "headersAttribute": {
+            "title": "标头属性名称",
+            "description": "存储响应标头的属性名称（作为JSON字符串）",
+            "default": "_headers",
+            "type": "string"
+          },
+          "method": {
+            "title": "HTTP 方法",
+            "description": "用于请求的HTTP方法",
+            "default": "GET",
+            "allOf": [
+              {
+                "$ref": "#/definitions/HttpMethod"
+              }
+            ]
+          },
+          "queryParameters": {
+            "title": "查询参数",
+            "description": "要附加到请求的URL查询参数。值支持表达式。",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/QueryParam"
+            }
+          },
+          "requestBody": {
+            "title": "请求体",
+            "description": "请求体内容（用于POST、PUT、PATCH方法）。支持表达式。",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "responseBodyAttribute": {
+            "title": "响应体属性名称",
+            "description": "存储响应体的属性名称",
+            "default": "_response_body",
+            "type": "string"
+          },
+          "statusCodeAttribute": {
+            "title": "状态码属性名称",
+            "description": "存储HTTP状态码的属性名称",
+            "default": "_http_status_code",
+            "type": "string"
+          },
+          "transferTimeout": {
+            "title": "传输超时（秒）",
+            "description": "等待整个请求/响应周期的最长时间",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "url": {
+            "title": "请求URL",
+            "description": "要发送请求的URL。支持表达式以引用要素属性（例如：\"https://api.example.com/data/${id}\"）",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          },
+          "HeaderParam": {
+            "description": "自定义HTTP标头参数",
+            "type": "object",
+            "required": [
+              "name",
+              "value"
+            ],
+            "properties": {
+              "name": {
+                "title": "标头名称",
+                "description": "HTTP标头的名称",
+                "type": "string"
+              },
+              "value": {
+                "title": "标头值",
+                "description": "HTTP标头的值。支持表达式。",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
+              }
+            }
+          },
+          "HttpMethod": {
+            "description": "HTTPCaller支持的HTTP方法",
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PUT",
+              "DELETE",
+              "PATCH",
+              "HEAD",
+              "OPTIONS"
+            ]
+          },
+          "QueryParam": {
+            "description": "URL查询参数",
+            "type": "object",
+            "required": [
+              "name",
+              "value"
+            ],
+            "properties": {
+              "name": {
+                "title": "参数名称",
+                "description": "查询参数的名称",
+                "type": "string"
+              },
+              "value": {
+                "title": "参数值",
+                "description": "查询参数的值。支持表达式。",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Web"
+      ]
     }
   ]
 }

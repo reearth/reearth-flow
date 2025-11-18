@@ -6412,6 +6412,204 @@
       "categories": [
         "File"
       ]
+    },
+    {
+      "name": "HTTPCaller",
+      "type": "processor",
+      "description": "HTTP/HTTPSリクエストを実行し、レスポンスデータでフィーチャーを拡張します",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "HTTP Caller パラメータ",
+        "description": "フィーチャー属性の動的な値を使用してHTTP/HTTPSリクエストを設定します",
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "connectionTimeout": {
+            "title": "接続タイムアウト（秒）",
+            "description": "接続確立の最大待機時間",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "contentType": {
+            "title": "Content-Typeヘッダー",
+            "description": "リクエストボディのContent-Typeヘッダー値",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customHeaders": {
+            "title": "カスタムヘッダー",
+            "description": "リクエストに含めるカスタムHTTPヘッダーのリスト。値は式をサポートします。",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/HeaderParam"
+            }
+          },
+          "errorAttribute": {
+            "title": "エラー属性名",
+            "description": "エラーメッセージを格納する属性名（拒否されたフィーチャー用）",
+            "default": "_http_error",
+            "type": "string"
+          },
+          "headersAttribute": {
+            "title": "ヘッダー属性名",
+            "description": "レスポンスヘッダーを格納する属性名（JSON文字列として）",
+            "default": "_headers",
+            "type": "string"
+          },
+          "method": {
+            "title": "HTTPメソッド",
+            "description": "リクエストに使用するHTTPメソッド",
+            "default": "GET",
+            "allOf": [
+              {
+                "$ref": "#/definitions/HttpMethod"
+              }
+            ]
+          },
+          "queryParameters": {
+            "title": "クエリパラメータ",
+            "description": "リクエストに追加するURLクエリパラメータ。値は式をサポートします。",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/QueryParam"
+            }
+          },
+          "requestBody": {
+            "title": "リクエストボディ",
+            "description": "リクエストボディの内容（POST、PUT、PATCHメソッド用）。式をサポートします。",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "responseBodyAttribute": {
+            "title": "レスポンスボディ属性名",
+            "description": "レスポンスボディを格納する属性名",
+            "default": "_response_body",
+            "type": "string"
+          },
+          "statusCodeAttribute": {
+            "title": "ステータスコード属性名",
+            "description": "HTTPステータスコードを格納する属性名",
+            "default": "_http_status_code",
+            "type": "string"
+          },
+          "transferTimeout": {
+            "title": "転送タイムアウト（秒）",
+            "description": "リクエスト/レスポンスサイクル全体の最大待機時間",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "url": {
+            "title": "リクエストURL",
+            "description": "リクエストを送信するURL。式をサポートし、フィーチャー属性を参照できます（例：\"https://api.example.com/data/${id}\"）",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          },
+          "HeaderParam": {
+            "description": "カスタムHTTPヘッダーパラメータ",
+            "type": "object",
+            "required": [
+              "name",
+              "value"
+            ],
+            "properties": {
+              "name": {
+                "title": "ヘッダー名",
+                "description": "HTTPヘッダーの名前",
+                "type": "string"
+              },
+              "value": {
+                "title": "ヘッダー値",
+                "description": "HTTPヘッダーの値。式をサポートします。",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
+              }
+            }
+          },
+          "HttpMethod": {
+            "description": "HTTPCallerがサポートするHTTPメソッド",
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PUT",
+              "DELETE",
+              "PATCH",
+              "HEAD",
+              "OPTIONS"
+            ]
+          },
+          "QueryParam": {
+            "description": "URLクエリパラメータ",
+            "type": "object",
+            "required": [
+              "name",
+              "value"
+            ],
+            "properties": {
+              "name": {
+                "title": "パラメータ名",
+                "description": "クエリパラメータの名前",
+                "type": "string"
+              },
+              "value": {
+                "title": "パラメータ値",
+                "description": "クエリパラメータの値。式をサポートします。",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Web"
+      ]
     }
   ]
 }
