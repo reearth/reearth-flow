@@ -334,6 +334,14 @@ graphs:
       - expr: |
           env.get("__value").extension == "gml"
         outputPort: default
+  - id: 4b5c6d7e-8f9a-4b5c-9d0e-1f2a3b4c5d6e
+    name: FeatureSorterByName
+    type: action
+    action: FeatureSorter
+    with:
+      attributes:
+      - name
+      order: ascending
   - id: 151fbadf-1b40-4264-a003-f6f11f6af2d6
     name: FeatureCounterIndex
     type: action
@@ -917,6 +925,11 @@ graphs:
     toPort: default
   - id: f23b1f56-c5d8-4311-9239-6dd205b538ab
     from: 0daf7972-4d58-4ccd-a576-f3dfc418f749
+    to: 4b5c6d7e-8f9a-4b5c-9d0e-1f2a3b4c5d6e
+    fromPort: default
+    toPort: default
+  - id: 7c8d9e0f-1a2b-4c5d-8e9f-2a3b4c5d6e7f
+    from: 4b5c6d7e-8f9a-4b5c-9d0e-1f2a3b4c5d6e
     to: 151fbadf-1b40-4264-a003-f6f11f6af2d6
     fromPort: default
     toPort: default
