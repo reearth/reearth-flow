@@ -178,7 +178,7 @@ export default ({
         if (
           isNodeIntersecting(
             droppedNode,
-            { x: labelX - 30, y: labelY - 30, width: 60, height: 60 },
+            { x: labelX, y: labelY, width: 60, height: 60 },
             true,
           )
         ) {
