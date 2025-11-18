@@ -9,21 +9,22 @@ import (
 )
 
 type JobDocument struct {
-	ID                string     `bson:"id"`
-	Debug             *bool      `bson:"debug"`
-	DeploymentID      string     `bson:"deploymentid"`
-	WorkspaceID       string     `bson:"workspaceid"`
-	GCPJobID          string     `bson:"gcpjobid"`
-	LogsURL           string     `bson:"logsurl"`
-	WorkerLogsURL     string     `bson:"workerlogsurl"`
-	UserFacingLogsURL string     `bson:"userfacinglogsurl"`
-	Status            string     `bson:"status"`
-	BatchStatus       *string    `bson:"batchstatus,omitempty"`
-	WorkerStatus      *string    `bson:"workerstatus,omitempty"`
-	StartedAt         time.Time  `bson:"startedat"`
-	CompletedAt       *time.Time `bson:"completedat"`
-	MetadataURL       string     `bson:"metadataurl"`
-	OutputURLs        []string   `bson:"outputurls"`
+	ID                string            `bson:"id"`
+	Debug             *bool             `bson:"debug"`
+	DeploymentID      string            `bson:"deploymentid"`
+	WorkspaceID       string            `bson:"workspaceid"`
+	GCPJobID          string            `bson:"gcpjobid"`
+	LogsURL           string            `bson:"logsurl"`
+	WorkerLogsURL     string            `bson:"workerlogsurl"`
+	UserFacingLogsURL string            `bson:"userfacinglogsurl"`
+	Status            string            `bson:"status"`
+	BatchStatus       *string           `bson:"batchstatus,omitempty"`
+	WorkerStatus      *string           `bson:"workerstatus,omitempty"`
+	StartedAt         time.Time         `bson:"startedat"`
+	CompletedAt       *time.Time        `bson:"completedat"`
+	MetadataURL       string            `bson:"metadataurl"`
+	OutputURLs        []string          `bson:"outputurls"`
+	Variables         map[string]string `bson:"variables,omitempty"`
 }
 
 type JobConsumer = Consumer[*JobDocument, *job.Job]
@@ -70,6 +71,10 @@ func NewJob(j *job.Job) (*JobDocument, string) {
 		CompletedAt:       j.CompletedAt(),
 		MetadataURL:       j.MetadataURL(),
 		OutputURLs:        j.OutputURLs(),
+	}
+
+	if v := j.Variables(); v != nil {
+		doc.Variables = v
 	}
 
 	return doc, jid
@@ -125,6 +130,10 @@ func (d *JobDocument) Model() (*job.Job, error) {
 
 	if d.CompletedAt != nil {
 		j = j.CompletedAt(d.CompletedAt)
+	}
+
+	if len(d.Variables) > 0 {
+		j = j.Variables(d.Variables)
 	}
 
 	jobModel, err := j.Build()

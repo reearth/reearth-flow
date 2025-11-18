@@ -106,3 +106,8 @@ func (b *JobBuilder) WorkerStatus(workerStatus *Status) *JobBuilder {
 	b.j.workerStatus = workerStatus
 	return b
 }
+
+func (b *JobBuilder) Variables(variables map[string]string) *JobBuilder {
+	b.j.variables = variables
+	return b
+}
