@@ -165,6 +165,12 @@ fn parse_tree_reader<R: BufRead>(
         };
         let mut attributes = HashMap::<Attribute, AttributeValue>::from([
             (
+                Attribute::new("gmlId"),
+                gml_id
+                    .map(|s| AttributeValue::String(s.to_string()))
+                    .unwrap_or(AttributeValue::Null),
+            ),
+            (
                 Attribute::new("gmlName"),
                 name.map(|s| AttributeValue::String(s.to_string()))
                     .unwrap_or(AttributeValue::Null),
@@ -224,12 +230,6 @@ fn parse_tree_reader<R: BufRead>(
             };
             let child_typename = ent.typename.clone();
             let mut attributes = attributes.clone();
-            if let Some(child_id) = &child_id {
-                attributes.insert(
-                    Attribute::new("gmlId"),
-                    AttributeValue::String(child_id.to_string()),
-                );
-            }
             if flatten {
                 if let Some(typename) = &child_typename {
                     attributes.insert(

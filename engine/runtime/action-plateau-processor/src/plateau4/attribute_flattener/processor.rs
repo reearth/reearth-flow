@@ -187,7 +187,9 @@ impl Processor for AttributeFlattener {
         let ancestors = self.build_ancestors_attribute(&inner_attributes_value);
         strip_parent_info(&mut inner_attributes_value);
         if let AttributeValue::Map(ref mut map) = inner_attributes_value {
-            map.insert("ancestors".to_string(), AttributeValue::Array(ancestors));
+            if !ancestors.is_empty() {
+                map.insert("ancestors".to_string(), AttributeValue::Array(ancestors));
+            }
             // json path must be extracted AFTER building ancestors attribute
             if let Some(flatten_attributes) = super::constants::FLATTEN_ATTRIBUTES.get(&lookup_key) {
                 for attribute in flatten_attributes {
