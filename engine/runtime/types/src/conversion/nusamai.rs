@@ -272,7 +272,7 @@ impl AttributeValue {
             // If we collected any Code values, add them to result
             if has_codes {
                 result.insert(key.to_string(), AttributeValue::Array(values));
-                result.insert(format!("{}_code", key), AttributeValue::Array(codes));
+                result.insert(format!("{key}_code"), AttributeValue::Array(codes));
             }
         }
     }

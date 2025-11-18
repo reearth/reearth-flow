@@ -144,6 +144,7 @@ pub(super) fn feature_sorting_stage(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn tile_writing_stage(
     ctx: Context,
     output_path: Uri,
@@ -229,13 +230,12 @@ pub(super) fn tile_writing_stage(
                 let mut features = Vec::new();
                 for serialized_feat in feats.into_iter() {
                     let feature = {
-                        let mut feature: SlicedFeature =
-                            serde_json::from_slice(&serialized_feat)
-                                .map_err(|e| {
-                                    crate::errors::SinkError::cesium3dtiles_writer(format!(
-                                        "Failed to decode_from_slice with {e:?}"
-                                    ))
-                                })?;
+                        let mut feature: SlicedFeature = serde_json::from_slice(&serialized_feat)
+                            .map_err(|e| {
+                            crate::errors::SinkError::cesium3dtiles_writer(format!(
+                                "Failed to decode_from_slice with {e:?}"
+                            ))
+                        })?;
 
                         feature
                             .polygons
@@ -275,13 +275,17 @@ pub(super) fn tile_writing_stage(
             let features = features
                 .iter()
                 .filter(|feature| {
-                    let attributes = feature.attributes.iter().filter_map(|(k, v)|
-                        if skip_underscore_prefix && k.starts_with('_') {
-                            None
-                        } else {
-                            Some((k.clone(), v.clone()))
-                        }
-                    ).collect();
+                    let attributes = feature
+                        .attributes
+                        .iter()
+                        .filter_map(|(k, v)| {
+                            if skip_underscore_prefix && k.starts_with('_') {
+                                None
+                            } else {
+                                Some((k.clone(), v.clone()))
+                            }
+                        })
+                        .collect();
                     let result = metadata_encoder.add_feature(&typename, &attributes);
                     if let Err(e) = result {
                         ctx.event_hub

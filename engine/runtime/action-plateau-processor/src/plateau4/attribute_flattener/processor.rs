@@ -179,10 +179,8 @@ impl Processor for AttributeFlattener {
         let mut inner_attributes_value = AttributeValue::Map(inner_attributes);
         // attribute must be cached BEFORE inserting ancestors
         if let Some(feature_id) = feature.feature_id() {
-            self.gmlid_to_citygml_attributes.insert(
-                feature_id,
-                inner_attributes_value.clone(),
-            );
+            self.gmlid_to_citygml_attributes
+                .insert(feature_id, inner_attributes_value.clone());
         }
         let ancestors = self.build_ancestors_attribute(&inner_attributes_value);
         strip_parent_info(&mut inner_attributes_value);
@@ -191,7 +189,8 @@ impl Processor for AttributeFlattener {
                 map.insert("ancestors".to_string(), AttributeValue::Array(ancestors));
             }
             // json path must be extracted AFTER building ancestors attribute
-            if let Some(flatten_attributes) = super::constants::FLATTEN_ATTRIBUTES.get(&lookup_key) {
+            if let Some(flatten_attributes) = super::constants::FLATTEN_ATTRIBUTES.get(&lookup_key)
+            {
                 for attribute in flatten_attributes {
                     let mut json_path: Vec<&str> = vec![];
                     json_path.extend(attribute.json_path.split(" "));
@@ -208,7 +207,8 @@ impl Processor for AttributeFlattener {
             }
         }
         // save the whole `city_gml_attribute` values as `attributes`
-        let inner_attributes_json = serde_json::to_string(&serde_json::Value::from(inner_attributes_value)).unwrap();
+        let inner_attributes_json =
+            serde_json::to_string(&serde_json::Value::from(inner_attributes_value)).unwrap();
 
         let edit_city_gml_attribute = city_gml_attribute
             .clone()

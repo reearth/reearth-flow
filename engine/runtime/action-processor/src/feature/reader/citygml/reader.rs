@@ -261,10 +261,7 @@ fn parse_tree_reader<R: BufRead>(
             let mut feature: Feature = geometry.into();
             feature.extend(attributes);
             // Insert child's own cityGmlAttributes
-            feature.insert(
-                "cityGmlAttributes",
-                citygml_attributes,
-            );
+            feature.insert("cityGmlAttributes", citygml_attributes);
             // When flatten is true, each child entity should have its own LOD and feature_type/feature_id
             // calculated from its geometries instead of inheriting from the parent
             let mut child_metadata = metadata.clone();
