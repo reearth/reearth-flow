@@ -113,6 +113,14 @@ graphs:
             # remove
             - attribute: cityGmlPath
               method: remove
+            - attribute: baseCityCode
+              method: remove
+            - attribute: objectListPath
+              method: remove
+            - attribute: codelists
+              method: remove
+            - attribute: schemas
+              method: remove
 
       - id: a8a7e7f8-8d73-4078-9cff-4476924f2ad7
         name: FeatureSorter
