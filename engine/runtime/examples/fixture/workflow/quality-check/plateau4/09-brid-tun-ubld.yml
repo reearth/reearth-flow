@@ -1600,9 +1600,6 @@ graphs:
     - id: errorCountLod4InvalidSurface
       nodeId: aabacbdc-3ede-4f5a-6b7c-8d9e0f1a2b3c
       port: default
-    - id: errorCountIncorrectMeshcode
-      nodeId: 22d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
-      port: default
     - id: errorCountLod2NotClosedSolid
       nodeId: 77c7d8e9-0f1a-2b3c-4d5e-6f7a8b9c0d1e
       port: default
@@ -1620,9 +1617,6 @@ graphs:
       port: default
     - id: errorCountLod4SolidIssues
       nodeId: ccf2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
-      port: default
-    - id: fileOutput
-      nodeId: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
       port: default
 - id: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
   name: entry_point
@@ -2280,11 +2274,6 @@ graphs:
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
     to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
     fromPort: errorCountLod4SolidIssues
-    toPort: supplier
-  - id: f2a3b4c5-7d8e-9f0a-1b2c-3d4e5f6a7b8c
-    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
-    fromPort: errorCountIncorrectMeshcode
     toPort: supplier
   - id: e0f1a2b3-4c5d-6e7f-8a9b-0c1d2e3f4a5b
     from: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f

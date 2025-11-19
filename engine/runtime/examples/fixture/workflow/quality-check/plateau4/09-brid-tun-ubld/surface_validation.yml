@@ -1006,9 +1006,6 @@ ports:
   - id: errorCountLod4InvalidSurface
     nodeId: aabacbdc-3ede-4f5a-6b7c-8d9e0f1a2b3c
     port: default
-  - id: errorCountIncorrectMeshcode
-    nodeId: 22d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
-    port: default
   - id: errorCountLod2NotClosedSolid
     nodeId: 77c7d8e9-0f1a-2b3c-4d5e-6f7a8b9c0d1e
     port: default
@@ -1026,7 +1023,4 @@ ports:
     port: default
   - id: errorCountLod4SolidIssues
     nodeId: ccf2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
-    port: default
-  - id: fileOutput
-    nodeId: 5e2c9b7a-8d4f-4b1e-9c6a-3f5d8b2e7c4a
     port: default

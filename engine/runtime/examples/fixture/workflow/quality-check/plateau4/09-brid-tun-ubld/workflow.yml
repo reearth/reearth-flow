@@ -668,11 +668,6 @@ graphs:
     to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
     fromPort: errorCountLod4SolidIssues
     toPort: supplier
-  - id: f2a3b4c5-7d8e-9f0a-1b2c-3d4e5f6a7b8c
-    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
-    fromPort: errorCountIncorrectMeshcode
-    toPort: supplier
   - id: e0f1a2b3-4c5d-6e7f-8a9b-0c1d2e3f4a5b
     from: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
     to: d3e4f5a6-7b8c-9d0e-1f2a-3b4c5d6e7f8a
