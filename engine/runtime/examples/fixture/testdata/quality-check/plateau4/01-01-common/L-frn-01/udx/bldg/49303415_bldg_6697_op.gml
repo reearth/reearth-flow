@@ -200,18 +200,18 @@
       <bldg:outerBuildingInstallation>
         <bldg:BuildingInstallation gml:id="gml_f2829dde-9a8e-44aa-9845-c3747c6c909d">
 
-<bldg:lod3Geometry>
-  <!-- TEST: L-frn-01違反: LOD3では gml:MultiSurface または gml:Solid を使用すべきだが、
-       ここでは不正な gml:LineString を使用している -->
-  <gml:LineString gml:id="line_001">
-    <gml:posList srsDimension="3">
-      130.56500000 32.92600000 5.0
-      130.56600000 32.92700000 5.0
-      130.56700000 32.92800000 12.5
-      130.56800000 32.92900000 12.5
-    </gml:posList>
-  </gml:LineString>
-</bldg:lod3Geometry>
+          <bldg:lod3Geometry>
+            <!-- TEST: L-frn-01違反: LOD3では gml:MultiSurface または gml:Solid を使用すべきだが、
+                ここでは不正な gml:LineString を使用している -->
+            <gml:LineString gml:id="line_001">
+                <gml:posList srsDimension="3">
+                130.56500000 32.92600000 5.0
+                130.56600000 32.92700000 5.0
+                130.56700000 32.92800000 12.5
+                130.56800000 32.92900000 12.5
+                </gml:posList>
+            </gml:LineString>
+          </bldg:lod3Geometry>
 
         </bldg:BuildingInstallation>
       </bldg:outerBuildingInstallation>
