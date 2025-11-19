@@ -276,7 +276,7 @@ pub(super) fn tile_writing_stage(
                     let attributes = feature
                         .attributes
                         .iter()
-                        .filter_map(|(k, v)| Some((k.clone(), v.clone())))
+                        .map(|(k, v)| (k.clone(), v.clone()))
                         .collect();
                     let result = metadata_encoder.add_feature(&typename, &attributes);
                     if let Err(e) = result {
