@@ -147,17 +147,17 @@ export default ({
       };
 
       // Used to determine the size of the node hitbox
-      const NODE_RADIUS = 50;
+      const nodeRadius = 50;
 
       const nodeRect = {
-        x: nodeCenter.x - NODE_RADIUS,
-        y: nodeCenter.y - NODE_RADIUS,
-        width: NODE_RADIUS * 2,
-        height: NODE_RADIUS * 2,
+        x: nodeCenter.x - nodeRadius,
+        y: nodeCenter.y - nodeRadius,
+        width: nodeRadius * 2,
+        height: nodeRadius * 2,
       };
 
       // Used to determine the size of the edge hitbox
-      const EDGE_RADIUS = 10;
+      const edgeRadius = 10;
 
       for (const edge of edges) {
         // Stop loop if an edge was created already after node drop
@@ -204,10 +204,10 @@ export default ({
 
         // build a small rect around the midpoint
         const edgeRect = {
-          x: labelX - EDGE_RADIUS,
-          y: labelY - EDGE_RADIUS,
-          width: EDGE_RADIUS * 2,
-          height: EDGE_RADIUS * 2,
+          x: labelX - edgeRadius,
+          y: labelY - edgeRadius,
+          width: edgeRadius * 2,
+          height: edgeRadius * 2,
         };
 
         // Check if dropped node is intersecting with edge's middle
