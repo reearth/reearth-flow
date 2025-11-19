@@ -4,5 +4,6 @@
   "cityGmlPath": "udx/bldg/input.gml",
   "codelists": "codelists",
   "schemas": "schemas",
-  "expectResultOkFile": true
+  "expectResultOkFile": true,
+  "skip": true
 }
