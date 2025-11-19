@@ -260,6 +260,16 @@ nodes:
           method: remove
         - attribute: lod
           method: remove
+        - attribute: baseCityCode
+          method: remove
+        - attribute: cityCode
+          method: remove
+        - attribute: codelists
+          method: remove
+        - attribute: objectListPath
+          method: remove
+        - attribute: schemas
+          method: remove
 
   - id: 72b70428-0bb9-401b-a295-881556adc526
     name: FileTSVWriterLBDLG04-05
@@ -322,6 +332,16 @@ nodes:
         - attribute: extension
           method: remove
         - attribute: lod
+          method: remove
+        - attribute: baseCityCode
+          method: remove
+        - attribute: cityCode
+          method: remove
+        - attribute: codelists
+          method: remove
+        - attribute: objectListPath
+          method: remove
+        - attribute: schemas
           method: remove
 
   - id: ab3505ad-4e89-4442-ab36-c52ac29c332e

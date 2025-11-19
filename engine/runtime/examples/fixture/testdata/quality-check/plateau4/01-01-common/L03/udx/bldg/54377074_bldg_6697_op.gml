@@ -19,7 +19,7 @@ http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml
 	</gml:boundedBy>
 	<core:cityObjectMember>
         <!-- TEST -->
-        <veg:PlantCover gml:id="vegetation_001">
+        <veg:PlantCover gml:id="bldg_812ec0a5-70a6-4db5-9539-5b1ff5a4aecc">
             <veg:class codeSpace="../../codelists/Vegetation_class.xml">1000</veg:class>
             <veg:lod1MultiSurface>
                 <gml:MultiSurface></gml:MultiSurface>
