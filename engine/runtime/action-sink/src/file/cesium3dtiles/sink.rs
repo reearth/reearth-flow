@@ -102,7 +102,6 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 attach_texture: params.attach_texture,
                 compress_output,
                 draco_compression: params.draco_compression,
-                skip_underscore_prefix: params.skip_underscore_prefix.unwrap_or(false),
             },
         };
         Ok(Box::new(sink))
@@ -141,9 +140,6 @@ pub struct Cesium3DTilesWriterParam {
     /// # Draco Compression
     /// Use draco compression. Defaults to true.
     pub(super) draco_compression: Option<bool>,
-    /// # Skip underscore prefix
-    /// Whether to skip the underscore prefix in the generated tile names
-    pub(super) skip_underscore_prefix: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -154,7 +150,6 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) attach_texture: Option<bool>,
     pub(super) compress_output: Option<rhai::AST>,
     pub(super) draco_compression: Option<bool>, // Draco compression. Defaults to true.
-    pub(super) skip_underscore_prefix: bool,
 }
 
 impl Sink for Cesium3DTilesWriter {
@@ -359,7 +354,6 @@ impl Cesium3DTilesWriter {
                             &schema,
                             None,
                             self.params.draco_compression.unwrap_or(true), // On by default
-                            self.params.skip_underscore_prefix,
                         );
                         if let Err(e) = &result {
                             let ctx = ctx.clone();

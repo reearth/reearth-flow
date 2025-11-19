@@ -117,8 +117,7 @@ graphs:
               method: rename
               value: city_name
             - attribute: lod
-              method: rename
-              value: _lod
+              method: remove
             - attribute: gmlId
               method: remove
             - attribute: fileIndex
@@ -150,8 +149,7 @@ graphs:
             - attribute: name
               method: remove
             - attribute: udxDirs
-              method: rename
-              value: _udxDirs
+              method: remove
             - attribute: featureType
               method: remove
             - attribute: gmlName
@@ -166,7 +164,6 @@ graphs:
           maxZoom: 18
           attachTexture: false
           dracoCompression: false
-          skipUnderscorePrefix: true
           output: |
             file::join_path(env.get("outputPath"), "tran_lod3")
 

@@ -144,7 +144,6 @@ pub(super) fn feature_sorting_stage(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(super) fn tile_writing_stage(
     ctx: Context,
     output_path: Uri,
@@ -153,7 +152,6 @@ pub(super) fn tile_writing_stage(
     schema: &Schema,
     limit_texture_resolution: Option<bool>,
     draco_compression: bool,
-    skip_underscore_prefix: bool,
 ) -> crate::errors::Result<()> {
     let ellipsoid = nusamai_projection::ellipsoid::wgs84();
     let contents: Arc<Mutex<Vec<TileContent>>> = Default::default();
@@ -278,13 +276,7 @@ pub(super) fn tile_writing_stage(
                     let attributes = feature
                         .attributes
                         .iter()
-                        .filter_map(|(k, v)| {
-                            if skip_underscore_prefix && k.starts_with('_') {
-                                None
-                            } else {
-                                Some((k.clone(), v.clone()))
-                            }
-                        })
+                        .filter_map(|(k, v)| Some((k.clone(), v.clone())))
                         .collect();
                     let result = metadata_encoder.add_feature(&typename, &attributes);
                     if let Err(e) = result {
