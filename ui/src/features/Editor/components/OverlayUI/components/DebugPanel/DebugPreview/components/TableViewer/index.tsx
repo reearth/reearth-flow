@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
@@ -31,12 +31,27 @@ const TableViewer: React.FC<Props> = memo(
     const t = useT();
     const [detailsOverlayOpen, setDetailsOverlayOpen] = useState(false);
     const [detailsFeature, setDetailsFeature] = useState<any>(null);
+    const previousSelectedFeature = useRef<any>(null);
 
     // Use traditional columnizer for all data (streaming is now pre-transformed)
     const columnizer = useDataColumnizer({
       parsedData: fileContent,
       type: fileType,
     });
+
+    // Create a Map for O(1) feature lookup by ID
+    const featureIdMap = useMemo(() => {
+      if (!columnizer.tableData) return null;
+
+      const map = new Map<string | number, any>();
+      columnizer.tableData.forEach((row: any) => {
+        const id = row.id ?? row.properties?._originalId ?? row.properties?.id;
+        if (id !== null && id !== undefined) {
+          map.set(id, row);
+        }
+      });
+      return map;
+    }, [columnizer.tableData]);
 
     // Handle showing feature details
     const handleShowFeatureDetails = useCallback((feature: any) => {
@@ -66,6 +81,28 @@ const TableViewer: React.FC<Props> = memo(
       },
       [onDoubleClick, handleShowFeatureDetails],
     );
+
+    useEffect(() => {
+      if (!selectedFeature || !detailsOverlayOpen || !featureIdMap) {
+        return;
+      }
+
+      if (
+        selectedFeature.id !== null &&
+        selectedFeature.id !== previousSelectedFeature.current.id
+      ) {
+        const matchingRow = featureIdMap.get(
+          JSON.stringify(selectedFeature.id),
+        );
+        previousSelectedFeature.current = selectedFeature;
+        handleShowFeatureDetails(matchingRow);
+      }
+    }, [
+      handleShowFeatureDetails,
+      selectedFeature,
+      detailsOverlayOpen,
+      featureIdMap,
+    ]);
 
     // Loading state
     if (!fileContent || !columnizer.tableData) {
