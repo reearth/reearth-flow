@@ -1,0 +1,12 @@
+{
+  "workflowPath": "quality-check/plateau4/09-brid-tun-ubld/workflow.yml",
+  "description": "Test C02 histogram creation.",
+  "expectedOutput": {
+    "expectedFile": "09_橋梁_トンネル_地下街_C02_橋梁.csv"
+  },
+  "cityGmlPath": "udx/brid/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectResultOkFile": true,
+  "skip": false
+}
