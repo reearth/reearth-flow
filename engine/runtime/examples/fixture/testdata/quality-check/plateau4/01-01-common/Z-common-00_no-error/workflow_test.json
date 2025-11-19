@@ -5,5 +5,5 @@
   "codelists": "codelists",
   "schemas": "schemas",
   "expectResultOkFile": true,
-  "skip": true
+  "skip": false
 }

@@ -17,5 +17,5 @@
     }
   },
   "expectResultOkFile": false,
-  "skip": true
+  "skip": false
 }

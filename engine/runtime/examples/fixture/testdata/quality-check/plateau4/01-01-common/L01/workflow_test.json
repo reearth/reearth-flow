@@ -9,5 +9,5 @@
     "expectedFile": "01_共通_L01エラー.csv"
   },
   "expectResultOkFile": false,
-  "skip": true
+  "skip": false
 }
