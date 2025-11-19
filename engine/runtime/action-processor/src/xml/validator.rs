@@ -96,7 +96,10 @@ impl ProcessorFactory for XmlValidatorFactory {
 
         // TODO: replace it with node_cache in ctx
         // let schema_cache = create_schema_cache(ctx.node_cache());
-        let cache_dir = std::env::temp_dir().join("reearth-flow-xmlvalidator-schema");
+        // Use a unique directory per validator instance to avoid race conditions in parallel tests
+        let cache_dir = std::env::temp_dir()
+            .join("reearth-flow-xmlvalidator-schema")
+            .join(uuid::Uuid::new_v4().to_string());
         let schema_cache = create_filesystem_cache(cache_dir)?;
         let schema_rewriter = SchemaRewriter::new(schema_cache.clone());
         let process = XmlValidator {
