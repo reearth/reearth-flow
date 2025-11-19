@@ -15,7 +15,9 @@ import type { YWorkflow } from "./types";
 declare global {
   // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
   interface Window {
-    ydoc?: Y.Doc;
+    yDoc?: {
+      getJSON: () => Record<string, any>;
+    };
   }
 }
 
@@ -102,7 +104,19 @@ export default ({
     }
 
     setYDocState(yDoc);
-    window.ydoc = yDoc;
+
+    // Read-only debugging helper
+    Object.defineProperty(window, "yDoc", {
+      value: {
+        getJSON: () => ({
+          workflows: yDoc.getMap("workflows").toJSON(),
+          metadata: yDoc.getMap("metadata").toJSON(),
+        }),
+      },
+      writable: false,
+      configurable: true,
+    });
+
     return () => {
       setIsSynced(false);
       // Clear awareness state before destroying
@@ -139,7 +153,6 @@ export default ({
       return () => {
         manager.destroy(); // Clean up UndoManager on component unmount
         setUndoManager(null);
-        delete window.ydoc;
       };
     }
   }, [yWorkflows, currentUserClientId]);
