@@ -100,7 +100,7 @@ impl ProcessorFactory for XmlValidatorFactory {
         let cache_dir = std::env::temp_dir()
             .join("reearth-flow-xmlvalidator-schema")
             .join(uuid::Uuid::new_v4().to_string());
-        let schema_cache = create_filesystem_cache(cache_dir)?;
+        let schema_cache = create_filesystem_cache(cache_dir.clone())?;
         let schema_rewriter = SchemaRewriter::new(schema_cache.clone());
         let process = XmlValidator {
             params,
@@ -108,6 +108,7 @@ impl ProcessorFactory for XmlValidatorFactory {
             schema_fetcher,
             schema_cache,
             schema_rewriter,
+            cache_dir: Some(cache_dir),
         };
         Ok(Box::new(process))
     }
@@ -120,6 +121,7 @@ pub struct XmlValidator {
     schema_fetcher: Arc<dyn SchemaFetcher>,
     schema_cache: Arc<dyn SchemaCache>,
     schema_rewriter: SchemaRewriter,
+    cache_dir: Option<std::path::PathBuf>,
 }
 
 impl Debug for XmlValidator {
@@ -149,6 +151,14 @@ impl Processor for XmlValidator {
     }
 
     fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+        // Clean up cache directory if it was created
+        if let Some(cache_dir) = &self.cache_dir {
+            if cache_dir.exists() {
+                if let Err(e) = std::fs::remove_dir_all(cache_dir) {
+                    tracing::warn!("Failed to clean up cache directory {:?}: {}", cache_dir, e);
+                }
+            }
+        }
         Ok(())
     }
 
@@ -555,13 +565,14 @@ mod tests {
         let schema_fetcher = Arc::new(HttpSchemaFetcher::new());
 
         // Use filesystem cache for schema validation tests
-        let schema_cache = match validation_type {
+        let (schema_cache, cache_dir) = match validation_type {
             ValidationType::SyntaxAndSchema => {
                 let temp_dir =
                     env::temp_dir().join(format!("xml_validator_test_{}", uuid::Uuid::new_v4()));
-                create_filesystem_cache(temp_dir).unwrap()
+                let cache = create_filesystem_cache(temp_dir.clone()).unwrap();
+                (cache, Some(temp_dir))
             }
-            _ => Arc::new(NoOpSchemaCache),
+            _ => (Arc::new(NoOpSchemaCache) as Arc<dyn SchemaCache>, None),
         };
         let schema_rewriter = SchemaRewriter::new(schema_cache.clone());
 
@@ -571,6 +582,7 @@ mod tests {
             schema_fetcher,
             schema_cache,
             schema_rewriter,
+            cache_dir,
         }
     }
 
@@ -585,13 +597,14 @@ mod tests {
         };
 
         // Use filesystem cache for schema validation tests
-        let schema_cache = match validation_type {
+        let (schema_cache, cache_dir) = match validation_type {
             ValidationType::SyntaxAndSchema => {
                 let temp_dir =
                     env::temp_dir().join(format!("xml_validator_test_{}", uuid::Uuid::new_v4()));
-                create_filesystem_cache(temp_dir).unwrap()
+                let cache = create_filesystem_cache(temp_dir.clone()).unwrap();
+                (cache, Some(temp_dir))
             }
-            _ => Arc::new(NoOpSchemaCache),
+            _ => (Arc::new(NoOpSchemaCache) as Arc<dyn SchemaCache>, None),
         };
         let schema_rewriter = SchemaRewriter::new(schema_cache.clone());
 
@@ -601,6 +614,7 @@ mod tests {
             schema_fetcher: fetcher,
             schema_cache,
             schema_rewriter,
+            cache_dir,
         }
     }
 
