@@ -146,10 +146,9 @@ impl AttributeFlattener {
         if let Some(children) = self.children_buffer.remove(parent_id) {
             for child in children {
                 let flattened_child = self.flatten_feature(child)?;
-                fw.send(ctx.new_with_feature_and_port(
-                    flattened_child.clone(),
-                    DEFAULT_PORT.clone(),
-                ));
+                fw.send(
+                    ctx.new_with_feature_and_port(flattened_child.clone(), DEFAULT_PORT.clone()),
+                );
 
                 // Recursively process this child's buffered children
                 if let Some(child_id) = flattened_child.feature_id() {
@@ -167,8 +166,7 @@ impl AttributeFlattener {
         }
 
         // Add attributes specific to this feature type that were actually used
-        if let Some(flatten_attributes) =
-            super::constants::FLATTEN_ATTRIBUTES.get(feature_type_key)
+        if let Some(flatten_attributes) = super::constants::FLATTEN_ATTRIBUTES.get(feature_type_key)
         {
             for attribute in flatten_attributes {
                 if !self
@@ -209,10 +207,7 @@ impl AttributeFlattener {
         feature
     }
 
-    fn flatten_feature(
-        &mut self,
-        feature: Feature,
-    ) -> Result<Feature, BoxedError> {
+    fn flatten_feature(&mut self, feature: Feature) -> Result<Feature, BoxedError> {
         let mut feature = feature;
 
         let Some(AttributeValue::Map(city_gml_attribute)) = feature.get(&"cityGmlAttributes")
@@ -383,10 +378,7 @@ impl Processor for AttributeFlattener {
 
         // Process this feature immediately
         let flattened_feature = self.flatten_feature(feature)?;
-        fw.send(ctx.new_with_feature_and_port(
-            flattened_feature.clone(),
-            DEFAULT_PORT.clone(),
-        ));
+        fw.send(ctx.new_with_feature_and_port(flattened_feature.clone(), DEFAULT_PORT.clone()));
 
         // Check if this feature has any buffered children and process them recursively
         if let Some(feature_id) = flattened_feature.feature_id() {
@@ -401,7 +393,10 @@ impl Processor for AttributeFlattener {
         if !self.children_buffer.is_empty() {
             tracing::warn!(
                 "Found {} orphaned features without parents in buffer",
-                self.children_buffer.values().map(|v| v.len()).sum::<usize>()
+                self.children_buffer
+                    .values()
+                    .map(|v| v.len())
+                    .sum::<usize>()
             );
             for (parent_id, children) in &self.children_buffer {
                 tracing::warn!(
