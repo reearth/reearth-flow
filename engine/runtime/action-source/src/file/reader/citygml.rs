@@ -139,11 +139,6 @@ async fn parse_tree_reader<R: BufRead>(
             _ => AttributeValue::Map(attributes),
         };
         let city_gml_attributes = city_gml_attributes.flatten();
-        let city_gml_attributes = if let AttributeValue::Map(map) = &city_gml_attributes {
-            AttributeValue::Map(AttributeValue::convert_array_attributes(map))
-        } else {
-            city_gml_attributes
-        };
         let gml_id = entity.root.id();
         let name = entity.root.typename();
         let attributes = HashMap::<Attribute, AttributeValue>::from([
