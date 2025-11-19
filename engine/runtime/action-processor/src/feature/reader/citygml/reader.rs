@@ -192,14 +192,11 @@ fn parse_tree_reader<R: BufRead>(
             );
         }
         attributes.extend(base_attributes.clone());
-        let mut entities = if flatten {
+        let entities = if flatten {
             FlattenTreeTransform::transform(entity)
         } else {
             vec![entity]
         };
-        // send parents before children, so later processors like PLATEAU4.attribute_flattener
-        // can cache the parent ID before children referring them with attributes.parentId
-        entities.reverse();
         for mut ent in entities {
             let nusamai_citygml::Value::Object(obj) = &ent.root else {
                 continue;

@@ -99,6 +99,8 @@ pub(super) struct AttributeFlattener {
     common_attribute_processor: super::flattener::CommonAttributeProcessor,
     // store citygml attributes to build the `ancestors` attribute
     gmlid_to_citygml_attributes: HashMap<String, AttributeValue>,
+    // buffer to store children features that arrive before their parents
+    children_buffer: HashMap<String, Vec<Feature>>,
 }
 
 // remove parentId and parentType created by FeatureCitygmlReader's FlattenTreeTransform
@@ -134,15 +136,85 @@ impl AttributeFlattener {
         }
         ancestors
     }
-}
 
-impl Processor for AttributeFlattener {
-    fn process(
+    fn process_buffered_children(
         &mut self,
-        ctx: ExecutorContext,
+        ctx: &ExecutorContext,
         fw: &ProcessorChannelForwarder,
+        parent_id: &str,
     ) -> Result<(), BoxedError> {
-        let mut feature = ctx.feature.clone();
+        if let Some(children) = self.children_buffer.remove(parent_id) {
+            for child in children {
+                let flattened_child = self.flatten_feature(child)?;
+                fw.send(ctx.new_with_feature_and_port(
+                    flattened_child.clone(),
+                    DEFAULT_PORT.clone(),
+                ));
+
+                // Recursively process this child's buffered children
+                if let Some(child_id) = flattened_child.feature_id() {
+                    self.process_buffered_children(ctx, fw, &child_id)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn generate_schema_feature(&self, feature_type_key: &str) -> Feature {
+        let mut feature = Feature::new();
+        for (key, value) in BASE_SCHEMA_KEYS.clone().into_iter() {
+            feature.attributes.insert(Attribute::new(key), value);
+        }
+
+        // Add attributes specific to this feature type that were actually used
+        if let Some(flatten_attributes) =
+            super::constants::FLATTEN_ATTRIBUTES.get(feature_type_key)
+        {
+            for attribute in flatten_attributes {
+                if !self
+                    .existing_flatten_attributes
+                    .contains(&attribute.attribute)
+                {
+                    continue;
+                }
+                let data_type = match attribute.data_type.as_str() {
+                    "string" | "date" => AttributeValue::default_string(),
+                    "int" | "double" | "measure" => AttributeValue::default_number(),
+                    _ => continue,
+                };
+                feature
+                    .attributes
+                    .insert(Attribute::new(attribute.attribute.clone()), data_type);
+            }
+        }
+        let generic_schema = self.common_attribute_processor.get_generic_schema();
+        feature.extend(generic_schema);
+
+        for typ in ["fld", "tnm", "htd", "ifld", "rfld", "lsld"] {
+            if let Some(definition) = self.flattener.risk_to_attribute_definitions.get(typ) {
+                feature.extend(
+                    definition
+                        .clone()
+                        .into_iter()
+                        .map(|(k, v)| (Attribute::new(k), v))
+                        .collect::<HashMap<Attribute, AttributeValue>>(),
+                );
+            }
+        }
+        feature.metadata = Metadata {
+            feature_id: None,
+            feature_type: Some(feature_type_key.to_string()),
+            lod: None,
+        };
+        feature
+    }
+
+    fn flatten_feature(
+        &mut self,
+        feature: Feature,
+    ) -> Result<Feature, BoxedError> {
+        let mut feature = feature;
+
         let Some(AttributeValue::Map(city_gml_attribute)) = feature.get(&"cityGmlAttributes")
         else {
             return Err(PlateauProcessorError::AttributeFlattener(format!(
@@ -269,58 +341,80 @@ impl Processor for AttributeFlattener {
                 attributes.swap_remove(key);
             }
         }
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        Ok(feature)
+    }
+}
+
+impl Processor for AttributeFlattener {
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let feature = ctx.feature.clone();
+
+        // Get cityGmlAttributes to check for parent
+        let Some(AttributeValue::Map(city_gml_attribute)) = feature.get(&"cityGmlAttributes")
+        else {
+            return Err(PlateauProcessorError::AttributeFlattener(format!(
+                "No cityGmlAttributes found with feature id = {:?}",
+                feature.id
+            ))
+            .into());
+        };
+
+        // Check if this feature has a parent and if the parent exists in cache
+        let parent_id = Self::get_parent_id(&AttributeValue::Map(city_gml_attribute.clone()));
+        let parent_exists = parent_id
+            .as_ref()
+            .map(|id| self.gmlid_to_citygml_attributes.contains_key(id))
+            .unwrap_or(true); // No parent means it's a root feature
+
+        if !parent_exists {
+            // Buffer this child feature until its parent arrives
+            if let Some(parent_id) = parent_id {
+                self.children_buffer
+                    .entry(parent_id)
+                    .or_default()
+                    .push(feature);
+            }
+            return Ok(());
+        }
+
+        // Process this feature immediately
+        let flattened_feature = self.flatten_feature(feature)?;
+        fw.send(ctx.new_with_feature_and_port(
+            flattened_feature.clone(),
+            DEFAULT_PORT.clone(),
+        ));
+
+        // Check if this feature has any buffered children and process them recursively
+        if let Some(feature_id) = flattened_feature.feature_id() {
+            self.process_buffered_children(&ctx, fw, &feature_id)?;
+        }
+
         Ok(())
     }
 
     fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+        // Warn about any remaining buffered children (orphans without parents)
+        if !self.children_buffer.is_empty() {
+            tracing::warn!(
+                "Found {} orphaned features without parents in buffer",
+                self.children_buffer.values().map(|v| v.len()).sum::<usize>()
+            );
+            for (parent_id, children) in &self.children_buffer {
+                tracing::warn!(
+                    "Parent ID {} has {} orphaned children",
+                    parent_id,
+                    children.len()
+                );
+            }
+        }
+
         // Generate a schema feature for each encountered feature type
         for feature_type_key in &self.encountered_feature_types {
-            let mut feature = Feature::new();
-            for (key, value) in BASE_SCHEMA_KEYS.clone().into_iter() {
-                feature.attributes.insert(Attribute::new(key), value);
-            }
-
-            // Add attributes specific to this feature type that were actually used
-            if let Some(flatten_attributes) =
-                super::constants::FLATTEN_ATTRIBUTES.get(feature_type_key.as_str())
-            {
-                for attribute in flatten_attributes {
-                    if !self
-                        .existing_flatten_attributes
-                        .contains(&attribute.attribute)
-                    {
-                        continue;
-                    }
-                    let data_type = match attribute.data_type.as_str() {
-                        "string" | "date" => AttributeValue::default_string(),
-                        "int" | "double" | "measure" => AttributeValue::default_number(),
-                        _ => continue,
-                    };
-                    feature
-                        .attributes
-                        .insert(Attribute::new(attribute.attribute.clone()), data_type);
-                }
-            }
-            let generic_schema = self.common_attribute_processor.get_generic_schema();
-            feature.extend(generic_schema);
-
-            for typ in ["fld", "tnm", "htd", "ifld", "rfld", "lsld"] {
-                if let Some(definition) = self.flattener.risk_to_attribute_definitions.get(typ) {
-                    feature.extend(
-                        definition
-                            .clone()
-                            .into_iter()
-                            .map(|(k, v)| (Attribute::new(k), v))
-                            .collect::<HashMap<Attribute, AttributeValue>>(),
-                    );
-                }
-            }
-            feature.metadata = Metadata {
-                feature_id: None,
-                feature_type: Some(feature_type_key.clone()),
-                lod: None,
-            };
+            let feature = self.generate_schema_feature(feature_type_key);
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
                 feature,
