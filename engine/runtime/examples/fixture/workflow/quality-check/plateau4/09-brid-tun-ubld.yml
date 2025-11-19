@@ -1875,7 +1875,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "09_橋梁_トンネル_地下街_C02_橋梁.csv")
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "09_橋梁_トンネル_地下街_地物インスタンス数_橋梁.csv")
   - id: 9fbefdbd-ec67-4e76-aa89-9f74e99ba219
     name: CsvWriterTunnelInstanceCounts
     type: action
@@ -1883,7 +1883,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "09_橋梁_トンネル_地下街_C02_トンネル.csv")
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "09_橋梁_トンネル_地下街_地物インスタンス数_トンネル.csv")
   - id: 2c4f5e6d-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: CsvWriterUndergroundBuildingInstanceCounts
     type: action
@@ -1891,7 +1891,7 @@ graphs:
     with:
       format: csv
       output: |
-        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "09_橋梁_トンネル_地下街_C02_地下街.csv")
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "09_橋梁_トンネル_地下街_地物インスタンス数_地下街.csv")
   - id: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
     name: SurfaceValidation
     type: subGraph
