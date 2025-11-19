@@ -12,15 +12,6 @@ import { useUser } from "../gql";
 import { yWorkflowConstructor } from "./conversions";
 import type { YWorkflow } from "./types";
 
-declare global {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
-  interface Window {
-    yDoc?: {
-      getJSON: () => Record<string, any>;
-    };
-  }
-}
-
 export default ({
   workflowId,
   projectId,
