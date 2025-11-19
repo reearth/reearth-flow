@@ -13,7 +13,7 @@ import { yWorkflowConstructor } from "./conversions";
 import type { YWorkflow } from "./types";
 
 declare global {
-  // eslint-disable-next-line
+  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
   interface Window {
     ydoc?: Y.Doc;
   }
