@@ -139,6 +139,7 @@ export default ({
       return () => {
         manager.destroy(); // Clean up UndoManager on component unmount
         setUndoManager(null);
+        delete window.ydoc;
       };
     }
   }, [yWorkflows, currentUserClientId]);
