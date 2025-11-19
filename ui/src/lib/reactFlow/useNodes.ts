@@ -129,6 +129,35 @@ export default ({
       );
 
       if (connectedEdges && connectedEdges.length > 0) return;
+      let droppedNodePos: XYPosition = droppedNode.position;
+
+      if (droppedNode.parentId) {
+        const parentNode = nodes.find((n) => n.id === droppedNode.parentId);
+        if (parentNode) {
+          droppedNodePos = {
+            x: parentNode.position.x + droppedNode.position.x,
+            y: parentNode.position.y + droppedNode.position.y,
+          };
+        }
+      }
+
+      const nodeCenter: XYPosition = {
+        x: droppedNodePos.x + (droppedNode.width ?? 0) / 2,
+        y: droppedNodePos.y + (droppedNode.height ?? 0) / 2,
+      };
+
+      // Used to determine the size of the node hitbox
+      const nodeRadius = 50;
+
+      const nodeRect = {
+        x: nodeCenter.x - nodeRadius,
+        y: nodeCenter.y - nodeRadius,
+        width: nodeRadius * 2,
+        height: nodeRadius * 2,
+      };
+
+      // Used to determine the size of the edge hitbox
+      const edgeRadius = 10;
 
       for (const edge of edges) {
         // Stop loop if an edge was created already after node drop
@@ -163,7 +192,6 @@ export default ({
             };
           }
         }
-
         // Get middle of edge
         const [, labelX, labelY] = getBezierPath({
           sourceX: sourceNodeXYPosition.x,
@@ -174,14 +202,16 @@ export default ({
           targetPosition: targetNode.targetPosition,
         });
 
+        // build a small rect around the midpoint
+        const edgeRect = {
+          x: labelX - edgeRadius,
+          y: labelY - edgeRadius,
+          width: edgeRadius * 2,
+          height: edgeRadius * 2,
+        };
+
         // Check if dropped node is intersecting with edge's middle
-        if (
-          isNodeIntersecting(
-            droppedNode,
-            { x: labelX - 30, y: labelY - 30, width: 60, height: 60 },
-            true,
-          )
-        ) {
+        if (isNodeIntersecting(nodeRect, edgeRect, true)) {
           const removeChanges: EdgeChange[] = [
             {
               id: edge.id,
