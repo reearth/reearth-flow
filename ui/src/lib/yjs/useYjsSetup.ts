@@ -12,6 +12,13 @@ import { useUser } from "../gql";
 import { yWorkflowConstructor } from "./conversions";
 import type { YWorkflow } from "./types";
 
+declare global {
+  // eslint-disable-next-line
+  interface Window {
+    ydoc?: Y.Doc;
+  }
+}
+
 export default ({
   workflowId,
   projectId,
@@ -95,7 +102,7 @@ export default ({
     }
 
     setYDocState(yDoc);
-
+    window.ydoc = yDoc;
     return () => {
       setIsSynced(false);
       // Clear awareness state before destroying
