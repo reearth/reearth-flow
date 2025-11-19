@@ -165,14 +165,14 @@ fn parse_tree_reader<R: BufRead>(
         };
         let mut attributes = HashMap::<Attribute, AttributeValue>::from([
             (
-                Attribute::new("gmlId"),
-                gml_id
-                    .map(|s| AttributeValue::String(s.to_string()))
+                Attribute::new("gmlName"),
+                name.map(|s| AttributeValue::String(s.to_string()))
                     .unwrap_or(AttributeValue::Null),
             ),
             (
-                Attribute::new("gmlName"),
-                name.map(|s| AttributeValue::String(s.to_string()))
+                Attribute::new("gmlId"),
+                gml_id
+                    .map(|s| AttributeValue::String(s.to_string()))
                     .unwrap_or(AttributeValue::Null),
             ),
             (
@@ -197,7 +197,8 @@ fn parse_tree_reader<R: BufRead>(
         } else {
             vec![entity]
         };
-        // process parent before children
+        // send parents before children, so later processors like PLATEAU4.attribute_flattener
+        // can cache the parent ID before children referring them with attributes.parentId
         entities.reverse();
         for mut ent in entities {
             let nusamai_citygml::Value::Object(obj) = &ent.root else {
