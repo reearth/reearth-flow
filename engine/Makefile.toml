@@ -32,13 +32,13 @@ cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-qual
 [tasks.test]
 script = ['''
 #!/usr/bin/env bash -eux
-cargo test --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
+cargo nextest run --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
 ''']
 
 [tasks.test-wf]
 script = ['''
 #!/usr/bin/env bash -eux
-cargo test -p workflow-tests ${@:-}
+cargo nextest run -p workflow-tests ${@:-}
 ''']
 
 [tasks.doc]
@@ -58,7 +58,7 @@ export RUSTFLAGS="-Zinstrument-coverage"
 export LLVM_PROFILE_FILE="${PROJ_NAME}-%p-%m.profraw"
 
 cargo build --workspace --verbose
-cargo test --workspace --verbose
+cargo nextest run --workspace --verbose
 
 grcov . -s . --binary-path ./target/debug/ -t lcov --branch --ignore-not-existing -o lcov.info
 ''']

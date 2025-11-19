@@ -11,6 +11,7 @@
 ```console
 cargo install cargo-make
 cargo install cargo-watch
+cargo install cargo-nextest
 ```
 
 ### Linux/Debian
