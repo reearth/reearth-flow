@@ -97,9 +97,10 @@ pub(super) struct AttributeFlattener {
     encountered_feature_types: HashSet<String>,
     flattener: super::flattener::Flattener,
     common_attribute_processor: super::flattener::CommonAttributeProcessor,
-    // store citygml attributes to build the `ancestors` attribute
+    // storing processed features' citygml attributes for ancestor lookup
+    // does not include pending features in children_buffer
     gmlid_to_citygml_attributes: HashMap<String, AttributeValue>,
-    // buffer to store children features that arrive before their parents
+    // blocking ancestor gml_id -> children features
     children_buffer: HashMap<String, Vec<Feature>>,
 }
 
@@ -360,13 +361,13 @@ impl Processor for AttributeFlattener {
 
         // Check if this feature has a parent and if the parent exists in cache
         let parent_id = Self::get_parent_id(&AttributeValue::Map(city_gml_attribute.clone()));
-        let parent_exists = parent_id
+        let parent_ready = parent_id
             .as_ref()
             .map(|id| self.gmlid_to_citygml_attributes.contains_key(id))
             .unwrap_or(true); // No parent means it's a root feature
 
-        if !parent_exists {
-            // Buffer this child feature until its parent arrives
+        if !parent_ready {
+            // Buffer this child feature until its parent is processed
             if let Some(parent_id) = parent_id {
                 self.children_buffer
                     .entry(parent_id)

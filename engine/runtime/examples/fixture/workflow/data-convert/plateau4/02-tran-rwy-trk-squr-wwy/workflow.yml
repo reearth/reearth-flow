@@ -165,6 +165,7 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: false
+          dracoCompression: false
           skipUnderscorePrefix: true
           output: |
             file::join_path(env.get("outputPath"), "tran_lod3")
