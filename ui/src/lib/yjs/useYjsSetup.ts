@@ -112,6 +112,10 @@ export default ({
           workflows: yDoc.getMap("workflows").toJSON(),
           metadata: yDoc.getMap("metadata").toJSON(),
         }),
+        getUpdateBase64: () => {
+          const update = Y.encodeStateAsUpdate(yDoc);
+          return btoa(String.fromCharCode(...update));
+        },
       },
       writable: false,
       configurable: true,
