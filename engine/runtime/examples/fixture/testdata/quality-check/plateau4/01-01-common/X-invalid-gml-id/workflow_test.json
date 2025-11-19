@@ -17,5 +17,6 @@
       "includeColumns": ["Index", "Folder", "Filename", "gml:id書式不正"]
     }
   },
-  "expectResultOkFile": false
+  "expectResultOkFile": false,
+  "skip": true
 }

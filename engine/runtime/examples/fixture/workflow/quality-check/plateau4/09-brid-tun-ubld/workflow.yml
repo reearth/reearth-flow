@@ -1,0 +1,725 @@
+id: f2e8a945-7b3c-4d1e-9a8f-3c5b7e9d2f84
+name: PLATEAU4-quality-check-09-brid-tun-ubld-workflow
+entryGraphId: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
+with:
+  cityGmlPath: null
+  codelists: null
+  schemas: null
+  objectLists: null
+  outputPath: null
+graphs:
+- !include ../../../../graphs/lod_splitter_with_dm.yml
+- !include ../../../../graphs/surface_validator.yml
+- !include surface_validation.yml
+- id: 8a6c4f2e-9b1d-4e7a-b3c5-6f8e2a4b9d7c
+  name: entry_point
+  nodes:
+  - id: 4d7b9e2a-5c8f-41d6-b9a3-7e1c5f8d2b9a
+    name: FeatureCreator
+    type: action
+    action: FeatureCreator
+    with:
+      creator: |
+        [
+          #{
+            cityGmlPath: env.get("cityGmlPath"),
+            cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+            baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+            objectListPath: env.get("objectLists"),
+            codelists: env.get("codelists"),
+            schemas: env.get("schemas"),
+          },
+        ]
+  - id: c7315341-26b3-4405-9d02-039d721cd225
+    name: DirectoryDecompressor
+    type: action
+    action: DirectoryDecompressor
+    with:
+      archiveAttributes:
+      - codelists
+      - schemas
+  - id: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
+    name: FeatureFilePathExtractor
+    type: action
+    action: FeatureFilePathExtractor
+    with:
+      destPrefix: udx
+      sourceDataset: |
+        env.get("__value")["cityGmlPath"]
+      extractArchive: true
+  - id: 0daf7972-4d58-4ccd-a576-f3dfc418f749
+    name: FeatureFilterByGml
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value").extension == "gml"
+        outputPort: default
+  - id: 151fbadf-1b40-4264-a003-f6f11f6af2d6
+    name: FeatureCounterFileIndex
+    type: action
+    action: FeatureCounter
+    with:
+      countStart: 1
+      outputAttribute: fileIndex
+  - id: 7e833060-f8c4-458b-a8cc-8c817527f25b
+    name: PLATEAU4.UDXFolderExtractor
+    type: action
+    action: PLATEAU4.UDXFolderExtractor
+    with:
+      cityGmlPath: |
+        env.get("__value")["path"]
+      codelistsPath: codelists
+      schemasPath: schemas
+  - id: 3f7b2a9d-1c8e-4a6f-b5d3-9e2c7a4f8b1d
+    name: FeatureCityGmlReader
+    type: action
+    action: FeatureCityGmlReader
+    with:
+      format: citygml
+      flatten: true
+      dataset: |
+        env.get("__value")["gmlPath"]
+  - id: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
+    name: AttributeManager
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: path
+        method: rename
+        value: gmlPath
+      - attribute: name
+        method: rename
+        value: gmlFilename
+      - attribute: cityGmlPath
+        method: remove
+  - id: a8a7e7f8-8d73-4078-9cff-4476924f2ad7
+    name: FeatureSorter
+    type: action
+    action: FeatureSorter
+    with:
+      attributes:
+      - fileIndex
+      order: ascending
+  - id: 5a7b1469-217a-4d4b-bb01-971a9f9140d8
+    name: FeatureCounterFeatureIndex
+    type: action
+    action: FeatureCounter
+    with:
+      countStart: 0
+      outputAttribute: featureIndex
+  - id: 793ebebf-6903-4691-bed5-5913d3062a39
+    name: InstanceCountC02
+    type: action
+    action: StatisticsCalculator
+    with:
+      groupBy:
+      - gmlFilename
+      - udxDirs
+      - fileIndex
+      calculations:
+      - newAttribute: Bridge
+        expr: |
+          if env.get("__value").featureType == env.get("__value").udxDirs + ":Bridge" {
+            1
+          } else {
+            0
+          }
+      - newAttribute: BridgePart
+        expr: |
+          if env.get("__value").featureType == env.get("__value").udxDirs + ":BridgePart" {
+            1
+          } else {
+            0
+          }
+      - newAttribute: RoofSurface
+        expr: |
+          if env.get("__value").featureType == env.get("__value").udxDirs + ":RoofSurface" {
+            1
+          } else {
+            0
+          }
+      - newAttribute: GroundSurface
+        expr: |
+          if env.get("__value").featureType == env.get("__value").udxDirs + ":GroundSurface" {
+            1
+          } else {
+            0
+          }
+      - newAttribute: WallSurface
+        expr: |
+          if env.get("__value").featureType == env.get("__value").udxDirs + ":WallSurface" {
+            1
+          } else {
+            0
+          }
+      - newAttribute: ClosureSurface
+        expr: |
+          if env.get("__value").featureType == env.get("__value").udxDirs + ":ClosureSurface" {
+            1
+          } else {
+            0
+          }
+      - newAttribute: OuterCeilingSurface
+        expr: |
+          if env.get("__value").featureType == env.get("__value").udxDirs + ":OuterCeilingSurface" {
+            1
+          } else {
+            0
+          }
+      - newAttribute: OuterFloorSurface
+        expr: |
+          if env.get("__value").featureType == env.get("__value").udxDirs + ":OuterFloorSurface" {
+            1
+          } else {
+            0
+          }
+      - newAttribute: BridgeConstructionElement
+        expr: |
+          if env.get("__value").featureType == env.get("__value").udxDirs + ":BridgeConstructionElement" {
+            1
+          } else {
+            0
+          }
+      - newAttribute: BridgeInstallation
+        expr: |
+          if env.get("__value").featureType == env.get("__value").udxDirs + ":BridgeInstallation" {
+            1
+          } else {
+            0
+          }
+      - newAttribute: Door
+        expr: |
+          if env.get("__value").featureType == env.get("__value").udxDirs + ":Door" {
+            1
+          } else {
+            0
+          }
+      - newAttribute: Window
+        expr: |
+          if env.get("__value").featureType == env.get("__value").udxDirs + ":Window" {
+            1
+          } else {
+            0
+          }
+      - newAttribute: BridgeRoom
+        expr: |
+          if env.get("__value").featureType == env.get("__value").udxDirs + ":BridgeRoom" {
+            1
+          } else {
+            0
+          }
+      - newAttribute: CeilingSurface
+        expr: |
+          if env.get("__value").featureType == env.get("__value").udxDirs + ":CeilingSurface" {
+            1
+          } else {
+            0
+          }
+      - newAttribute: InteriorWallSurface
+        expr: |
+          if env.get("__value").featureType == env.get("__value").udxDirs + ":InteriorWallSurface" {
+            1
+          } else {
+            0
+          }
+      - newAttribute: FloorSurface
+        expr: |
+          if env.get("__value").featureType == env.get("__value").udxDirs + ":FloorSurface" {
+            1
+          } else {
+            0
+          }
+      - newAttribute: IntBridgeInstallation
+        expr: |
+          if env.get("__value").featureType == env.get("__value").udxDirs + ":IntBridgeInstallation" {
+            1
+          } else {
+            0
+          }
+      - newAttribute: BridgeFurniture
+        expr: |
+          if env.get("__value").featureType == env.get("__value").udxDirs + ":BridgeFurniture" {
+            1
+          } else {
+            0
+          }
+  - id: f834d8fd-91da-4177-a1a0-1b2c9abe79c0
+    name: FeatureFilter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value").udxDirs == "brid"
+        outputPort: brid
+      - expr: |
+          env.get("__value").udxDirs == "tun"
+        outputPort: tun
+      - expr: |
+          env.get("__value").udxDirs == "ubld"
+        outputPort: ubld
+  - id: 5cd2bea0-0723-4123-9df8-bc663f493744
+    name: CsvWriterBridgeInstanceCounts
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "09_橋梁_トンネル_地下街_地物インスタンス数_橋梁.csv")
+  - id: 9fbefdbd-ec67-4e76-aa89-9f74e99ba219
+    name: CsvWriterTunnelInstanceCounts
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "09_橋梁_トンネル_地下街_地物インスタンス数_トンネル.csv")
+  - id: 2c4f5e6d-7a8b-9c0d-1e2f-3a4b5c6d7e8f
+    name: CsvWriterUndergroundBuildingInstanceCounts
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "09_橋梁_トンネル_地下街_地物インスタンス数_地下街.csv")
+  - id: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    name: SurfaceValidation
+    type: subGraph
+    subGraphId: a9952b0d-e085-4a0b-bb76-fa36b969c96b
+  - id: b1c2d3e4-5f6a-7b8c-9d0e-1f2a3b4c5d6e
+    name: FileInfoExtractor
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+      - attribute: index
+        expr: |
+          env.get("__value").fileIndex
+      - attribute: filename
+        expr: |
+          env.get("__value").gmlFilename
+  - id: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    name: ErrorSummaryMerger
+    type: action
+    action: FeatureMerger
+    with:
+      requestorAttributeValue: |
+        env.get("__value").filename
+      supplierAttributeValue: |
+        env.get("__value").gmlFilename
+  - id: d3e4f5a6-7b8c-9d0e-1f2a-3b4c5d6e7f8a
+    name: SummaryAttributeMapper
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+      - attribute: Index
+        expr: |
+          env.get("__value").index
+      - attribute: Filename
+        expr: |
+          env.get("__value").filename
+      - attribute: LOD0 面のエラー
+        expr: |
+          env.get("__value")._num_lod0_invalid_surface ?? 0
+      - attribute: LOD0 面の向きエラー
+        expr: |
+          env.get("__value")._num_lod0_incorrect_orientation ?? 0
+      - attribute: LOD0 面の交差
+        expr: |
+          env.get("__value")._num_lod0_surface_intersection ?? 0
+      - attribute: LOD1 境界面のエラー
+        expr: |
+          env.get("__value")._num_lod1_invalid_surface ?? 0
+      - attribute: LOD1 非水密立体
+        expr: |
+          env.get("__value")._num_lod1_not_closed_solid ?? 0
+      - attribute: LOD1 立体のエラー
+        expr: |
+          env.get("__value")._num_lod1_solid_issues ?? 0
+      - attribute: LOD2 境界面のエラー
+        expr: |
+          env.get("__value")._num_lod2_invalid_surface ?? 0
+      - attribute: LOD3 境界面のエラー
+        expr: |
+          env.get("__value")._num_lod3_invalid_surface ?? 0
+      - attribute: LOD4 境界面のエラー
+        expr: |
+          env.get("__value")._num_lod4_invalid_surface ?? 0
+      - attribute: LOD2 非水密立体
+        expr: |
+          env.get("__value")._num_lod2_not_closed_solid ?? 0
+      - attribute: LOD3 非水密立体
+        expr: |
+          env.get("__value")._num_lod3_not_closed_solid ?? 0
+      - attribute: LOD4 非水密立体
+        expr: |
+          env.get("__value")._num_lod4_not_closed_solid ?? 0
+      - attribute: LOD2 立体のエラー
+        expr: |
+          env.get("__value")._num_lod2_solid_issues ?? 0
+      - attribute: LOD3 立体のエラー
+        expr: |
+          env.get("__value")._num_lod3_solid_issues ?? 0
+      - attribute: LOD4 立体のエラー
+        expr: |
+          env.get("__value")._num_lod4_solid_issues ?? 0
+  - id: e4f5a6b7-8c9d-0e1f-2a3b-4c5d6e7f8a9b
+    name: CSVSummaryWriter
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "09_橋梁_トンネル_地下街_検査結果一覧.csv")
+  - id: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c
+    name: StatisticsCalculator
+    type: action
+    action: StatisticsCalculator
+    with:
+      calculations:
+      - newAttribute: LOD0 面のエラー
+        expr: |
+          env.get("__value")["LOD0 面のエラー"] ?? 0
+      - newAttribute: LOD0 面の向きエラー
+        expr: |
+          env.get("__value")["LOD0 面の向きエラー"] ?? 0
+      - newAttribute: LOD0 面の交差
+        expr: |
+          env.get("__value")["LOD0 面の交差"] ?? 0
+      - newAttribute: LOD1 境界面のエラー
+        expr: |
+          env.get("__value")["LOD1 境界面のエラー"] ?? 0
+      - newAttribute: LOD1 非水密立体
+        expr: |
+          env.get("__value")["LOD1 非水密立体"] ?? 0
+      - newAttribute: LOD1 立体のエラー
+        expr: |
+          env.get("__value")["LOD1 立体のエラー"] ?? 0
+      - newAttribute: LOD2 境界面のエラー
+        expr: |
+          env.get("__value")["LOD2 境界面のエラー"] ?? 0
+      - newAttribute: LOD2 非水密立体
+        expr: |
+          env.get("__value")["LOD2 非水密立体"] ?? 0
+      - newAttribute: LOD2 立体のエラー
+        expr: |
+          env.get("__value")["LOD2 立体のエラー"] ?? 0
+      - newAttribute: LOD3 境界面のエラー
+        expr: |
+          env.get("__value")["LOD3 境界面のエラー"] ?? 0
+      - newAttribute: LOD3 非水密立体
+        expr: |
+          env.get("__value")["LOD3 非水密立体"] ?? 0
+      - newAttribute: LOD3 立体のエラー
+        expr: |
+          env.get("__value")["LOD3 立体のエラー"] ?? 0
+      - newAttribute: LOD4 境界面のエラー
+        expr: |
+          env.get("__value")["LOD4 境界面のエラー"] ?? 0
+      - newAttribute: LOD4 非水密立体
+        expr: |
+          env.get("__value")["LOD4 非水密立体"] ?? 0
+      - newAttribute: LOD4 立体のエラー
+        expr: |
+          env.get("__value")["LOD4 立体のエラー"] ?? 0
+      - newAttribute: totalErrorCount
+        expr: |
+          let total = 0;
+          let keys = ["LOD0 面のエラー", "LOD0 面の向きエラー", "LOD0 面の交差",
+                      "LOD1 境界面のエラー", "LOD1 非水密立体", "LOD1 立体のエラー",
+                      "LOD2 境界面のエラー", "LOD2 非水密立体", "LOD2 立体のエラー",
+                      "LOD3 境界面のエラー", "LOD3 非水密立体", "LOD3 立体のエラー",
+                      "LOD4 境界面のエラー", "LOD4 非水密立体", "LOD4 立体のエラー"];
+          for key in keys {
+            total += env.get("__value")[key] ?? 0;
+          }
+          total
+  - id: a6b7c8d9-0e1f-2a3b-4c5d-6e7f8a9b0c1d
+    name: JSONSummaryWriter
+    type: action
+    action: FeatureWriter
+    with:
+      format: json
+      converter: |
+        if env.get("__features").is_empty() {
+          []
+        } else {
+          let result = [];
+          let feature = env.get("__features")[0];
+          for key in feature.keys() {
+            result.push(#{
+              name: key,
+              count: feature[key],
+            });
+          }
+          result
+        }
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_brid_tun_ubld.json")
+  - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
+    name: StatisticsCalculatorTotalErrors
+    type: action
+    action: StatisticsCalculator
+    with:
+      calculations:
+      - newAttribute: totalErrorCount
+        expr: |
+          env.get("__value")["totalErrorCount"] ?? 0
+  - id: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+    name: FeatureFilterNoErrors
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value")["totalErrorCount"] == 0
+        outputPort: default
+  - id: b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
+    name: FileWriterQcResultOk
+    type: action
+    action: JsonWriter
+    with:
+      converter: '[]'
+      output: |
+        let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
+        let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+        file::join_path(dirname, filename)
+  - id: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
+    name: ZipFileWriter
+    type: action
+    action: ZipFileWriter
+    with:
+      output: |
+        let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
+        let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+        file::join_path(dirname, filename)
+  edges:
+  - id: 8c9e2f4a-7b1d-4e5c-a3f2-9d8b6c4e1a7f
+    from: 4d7b9e2a-5c8f-41d6-b9a3-7e1c5f8d2b9a
+    to: c7315341-26b3-4405-9d02-039d721cd225
+    fromPort: default
+    toPort: default
+  - id: f3a7b2e5-4c8d-4f9a-bce2-5f1a8d3b9c6e
+    from: c7315341-26b3-4405-9d02-039d721cd225
+    to: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
+    fromPort: default
+    toPort: default
+  - id: 2d6e9b4c-a5f8-4e2d-b7c3-8a1f4e7b2d5c
+    from: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
+    to: 0daf7972-4d58-4ccd-a576-f3dfc418f749
+    fromPort: default
+    toPort: default
+  - id: 7a2e5c8f-3b9d-4c6a-e5f1-2d8c7b4a9e3f
+    from: 0daf7972-4d58-4ccd-a576-f3dfc418f749
+    to: 151fbadf-1b40-4264-a003-f6f11f6af2d6
+    fromPort: default
+    toPort: default
+  - id: 9f4c7a2e-6b1d-4f8c-a2e5-3d9f6c8a1e4b
+    from: 151fbadf-1b40-4264-a003-f6f11f6af2d6
+    to: 7e833060-f8c4-458b-a8cc-8c817527f25b
+    fromPort: default
+    toPort: default
+  - id: 4b7e2a9c-5f1d-4a8e-f2c6-7b4a1e8d5c9f
+    from: 7e833060-f8c4-458b-a8cc-8c817527f25b
+    to: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
+    fromPort: default
+    toPort: default
+  - id: 3c8f1a5e-6b2d-4e9c-a7f4-1b8e5d2c9a6f
+    from: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
+    to: 3f7b2a9d-1c8e-4a6f-b5d3-9e2c7a4f8b1d
+    fromPort: default
+    toPort: default
+  - id: 7f34f420-3b27-44a8-b83f-0ef80a86045e
+    from: 3f7b2a9d-1c8e-4a6f-b5d3-9e2c7a4f8b1d
+    to: a8a7e7f8-8d73-4078-9cff-4476924f2ad7
+    fromPort: default
+    toPort: default
+  - id: 1cc52f00-2a52-4d4e-bc6a-c83629276766
+    from: a8a7e7f8-8d73-4078-9cff-4476924f2ad7
+    to: 5a7b1469-217a-4d4b-bb01-971a9f9140d8
+    fromPort: default
+    toPort: default
+  - id: 06a77abc-f599-4f25-9b6d-89cf3e662e5e
+    from: 5a7b1469-217a-4d4b-bb01-971a9f9140d8
+    to: 793ebebf-6903-4691-bed5-5913d3062a39
+    fromPort: default
+    toPort: default
+  - id: 94c89e64-0eb9-4f26-abba-6997e51268b8
+    from: 793ebebf-6903-4691-bed5-5913d3062a39
+    to: f834d8fd-91da-4177-a1a0-1b2c9abe79c0
+    fromPort: default
+    toPort: default
+  - id: 5d691e9b-8e58-4835-9cb8-b03fce5d14c4
+    from: f834d8fd-91da-4177-a1a0-1b2c9abe79c0
+    to: 5cd2bea0-0723-4123-9df8-bc663f493744
+    fromPort: brid
+    toPort: default
+  - id: 556b9321-ccee-4837-aaa7-1cda86d86721
+    from: 5cd2bea0-0723-4123-9df8-bc663f493744
+    to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
+    fromPort: default
+    toPort: default
+  - id: 7328253c-2253-46e4-831c-3d85a373cc5c
+    from: f834d8fd-91da-4177-a1a0-1b2c9abe79c0
+    to: 9fbefdbd-ec67-4e76-aa89-9f74e99ba219
+    fromPort: tun
+    toPort: default
+  - id: 7849e561-aa2d-4d0b-846b-023fc5916f08
+    from: 9fbefdbd-ec67-4e76-aa89-9f74e99ba219
+    to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
+    fromPort: default
+    toPort: default
+  - id: 29d06556-b184-4a28-b952-5a94afc6132a
+    from: f834d8fd-91da-4177-a1a0-1b2c9abe79c0
+    to: 2c4f5e6d-7a8b-9c0d-1e2f-3a4b5c6d7e8f
+    fromPort: ubld
+    toPort: default
+  - id: 42f00b65-8560-4430-bb36-cd4c4ea912b6
+    from: 2c4f5e6d-7a8b-9c0d-1e2f-3a4b5c6d7e8f
+    to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
+    fromPort: default
+    toPort: default
+  - id: b7c8d9e0-1f2a-3b4c-5d6e-7f8a9b0c1d2e
+    from: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
+    to: b1c2d3e4-5f6a-7b8c-9d0e-1f2a3b4c5d6e
+    fromPort: default
+    toPort: default
+  - id: c8d9e0f1-2a3b-4c5d-6e7f-8a9b0c1d2e3f
+    from: b1c2d3e4-5f6a-7b8c-9d0e-1f2a3b4c5d6e
+    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    fromPort: default
+    toPort: requestor
+  - id: e5f6a7b8-0c1d-2e3f-4a5b-6c7d8e9f0a1b
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    fromPort: errorCountLod0IncorrectOrientation
+    toPort: supplier
+  - id: f6a7b8c9-1d2e-3f4a-5b6c-7d8e9f0a1b2c
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    fromPort: errorCountLod0InvalidSurface
+    toPort: supplier
+  - id: a7b8c9d0-2e3f-4a5b-6c7d-8e9f0a1b2c3d
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    fromPort: errorCountLod0SurfaceIntersection
+    toPort: supplier
+  - id: b8c9d0e1-3f4a-5b6c-7d8e-9f0a1b2c3d4e
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    fromPort: errorCountLod1InvalidSurface
+    toPort: supplier
+  - id: c9d0e1f2-4a5b-6c7d-8e9f-0a1b2c3d4e5f
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    fromPort: errorCountLod1NotClosedSolid
+    toPort: supplier
+  - id: d0e1f2a3-5b6c-7d8e-9f0a-1b2c3d4e5f6a
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    fromPort: errorCountLod1SolidIssues
+    toPort: supplier
+  - id: e1f2a3b4-6c7d-8e9f-0a1b-2c3d4e5f6a7b
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    fromPort: errorCountLod2InvalidSurface
+    toPort: supplier
+  - id: e2f3a4b5-7c8d-9e0f-1a2b-3c4d5e6f7a8b
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    fromPort: errorCountLod3InvalidSurface
+    toPort: supplier
+  - id: e3f4a5b6-8c9d-0e1f-2a3b-4c5d6e7f8a9b
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    fromPort: errorCountLod4InvalidSurface
+    toPort: supplier
+  - id: f3a4b5c6-8d9e-0f1a-2b3c-4d5e6f7a8b9c
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    fromPort: errorCountLod2NotClosedSolid
+    toPort: supplier
+  - id: f4a5b6c7-9d0e-1f2a-3b4c-5d6e7f8a9b0c
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    fromPort: errorCountLod3NotClosedSolid
+    toPort: supplier
+  - id: f5a6b7c8-0e1f-2a3b-4c5d-6e7f8a9b0c1d
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    fromPort: errorCountLod4NotClosedSolid
+    toPort: supplier
+  - id: f6a7b8c9-1f2a-3b4c-5d6e-7f8a9b0c1d2e
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    fromPort: errorCountLod2SolidIssues
+    toPort: supplier
+  - id: f7a8b9c0-2f3a-4b5c-6d7e-8f9a0b1c2d3e
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    fromPort: errorCountLod3SolidIssues
+    toPort: supplier
+  - id: f8a9b0c1-3f4a-5b6c-7d8e-9f0a1b2c3d4e
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    fromPort: errorCountLod4SolidIssues
+    toPort: supplier
+  - id: e0f1a2b3-4c5d-6e7f-8a9b-0c1d2e3f4a5b
+    from: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: d3e4f5a6-7b8c-9d0e-1f2a-3b4c5d6e7f8a
+    fromPort: merged
+    toPort: default
+  - id: f0a1b2c3-5d6e-7f8a-9b0c-1d2e3f4a5b6c
+    from: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: d3e4f5a6-7b8c-9d0e-1f2a-3b4c5d6e7f8a
+    fromPort: unmerged
+    toPort: default
+  - id: f1a2b3c4-5d6e-7f8a-9b0c-1d2e3f4a5b6c
+    from: d3e4f5a6-7b8c-9d0e-1f2a-3b4c5d6e7f8a
+    to: e4f5a6b7-8c9d-0e1f-2a3b-4c5d6e7f8a9b
+    fromPort: default
+    toPort: default
+  - id: a2b3c4d5-6e7f-8a9b-0c1d-2e3f4a5b6c7d
+    from: d3e4f5a6-7b8c-9d0e-1f2a-3b4c5d6e7f8a
+    to: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c
+    fromPort: default
+    toPort: default
+  - id: b3c4d5e6-7f8a-9b0c-1d2e-3f4a5b6c7d8e
+    from: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c
+    to: a6b7c8d9-0e1f-2a3b-4c5d-6e7f8a9b0c1d
+    fromPort: default
+    toPort: default
+  - id: c4d5e6f7-8a9b-0c1d-2e3f-4a5b6c7d8e9f
+    from: e4f5a6b7-8c9d-0e1f-2a3b-4c5d6e7f8a9b
+    to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
+    fromPort: default
+    toPort: default
+  - id: d5e6f7a8-9b0c-1d2e-3f4a-5b6c7d8e9f0a
+    from: a6b7c8d9-0e1f-2a3b-4c5d-6e7f8a9b0c1d
+    to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
+    fromPort: default
+    toPort: default
+  - id: a8b9c0d1-2e3f-4a5b-6c7d-8e9f0a1b2c3d
+    from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
+    to: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
+    fromPort: fileOutput
+    toPort: default
+  - id: c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
+    from: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c
+    to: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
+    fromPort: default
+    toPort: default
+  - id: e5f6a7b8-9c0d-1e2f-3a4b-5c6d7e8f9a0b
+    from: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
+    to: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+    fromPort: default
+    toPort: default
+  - id: f6a7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
+    from: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+    to: b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
+    fromPort: default
+    toPort: default
