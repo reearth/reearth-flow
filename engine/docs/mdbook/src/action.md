@@ -1133,6 +1133,8 @@ Export Features as Cesium 3D Tiles for Web Visualization
       ]
     },
     "dracoCompression": {
+      "title": "Draco Compression",
+      "description": "Use draco compression. Defaults to true.",
       "type": [
         "boolean",
         "null"
