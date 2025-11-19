@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Install required tools
 cargo install cargo-make
 cargo install cargo-watch
+cargo install cargo-nextest
 
 # Format code
 cargo make format
@@ -19,7 +20,7 @@ cargo make check
 # Run linting with clippy
 cargo make clippy
 
-# Run tests
+# Run tests (using cargo-nextest)
 cargo make test
 
 # Generate documentation
