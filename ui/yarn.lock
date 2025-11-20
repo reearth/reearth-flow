@@ -5586,7 +5586,6 @@ __metadata:
     "@rjsf/validator-ajv8": "npm:6.1.1"
     "@storybook/addon-links": "npm:10.0.8"
     "@storybook/addon-onboarding": "npm:10.0.8"
-    "@storybook/react": "npm:10.0.8"
     "@storybook/react-vite": "npm:10.0.8"
     "@tailwindcss/vite": "npm:4.1.17"
     "@tanstack/react-query": "npm:5.90.10"
