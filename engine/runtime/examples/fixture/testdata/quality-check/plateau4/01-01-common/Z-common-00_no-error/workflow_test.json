@@ -4,6 +4,7 @@
   "cityGmlPath": "udx/bldg/input.gml",
   "codelists": "codelists",
   "schemas": "schemas",
+  "objectLists": "16211_city_2024_objectlist_op.xlsx",
   "expectResultOkFile": true,
   "skip": false
 }
