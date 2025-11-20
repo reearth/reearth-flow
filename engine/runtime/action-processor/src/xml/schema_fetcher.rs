@@ -122,12 +122,6 @@ impl HttpSchemaFetcherWithFallback {
             inner: HttpSchemaFetcher::new(),
         }
     }
-
-    #[cfg(test)]
-    pub fn with_retry_config(mut self, max_retries: usize, retry_delay: Duration) -> Self {
-        self.inner = self.inner.with_retry_config(max_retries, retry_delay);
-        self
-    }
 }
 
 impl SchemaFetcher for HttpSchemaFetcherWithFallback {
