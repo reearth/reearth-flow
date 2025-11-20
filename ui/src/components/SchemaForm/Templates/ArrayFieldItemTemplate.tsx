@@ -1,5 +1,5 @@
 import {
-  ArrayFieldTemplateItemType,
+  ArrayFieldItemTemplateProps,
   FormContextType,
   RJSFSchema,
   StrictRJSFSchema,
@@ -10,25 +10,30 @@ const ArrayFieldItemTemplate = <
   S extends StrictRJSFSchema = RJSFSchema,
   F extends FormContextType = FormContextType,
 >(
-  props: ArrayFieldTemplateItemType<T, S, F>,
+  props: ArrayFieldItemTemplateProps<T, S, F>,
 ) => {
   const {
     children,
     disabled,
     hasToolbar,
-    hasCopy,
-    hasMoveDown,
-    hasMoveUp,
-    hasRemove,
-    index,
-    onCopyIndexClick,
-    onDropIndexClick,
-    onReorderClick,
+    buttonsProps,
     readonly,
     registry,
     schema,
     uiSchema,
   } = props;
+
+  const {
+    hasCopy,
+    hasMoveDown,
+    hasMoveUp,
+    hasRemove,
+    index,
+    onCopyItem,
+    onRemoveItem,
+    onMoveUpItem,
+    onMoveDownItem,
+  } = buttonsProps;
 
   const { CopyButton, MoveDownButton, MoveUpButton, RemoveButton } =
     registry.templates.ButtonTemplates;
@@ -44,7 +49,7 @@ const ArrayFieldItemTemplate = <
             {(hasMoveUp || hasMoveDown) && (
               <MoveUpButton
                 disabled={readonly || disabled || !hasMoveUp}
-                onClick={onReorderClick(index, index - 1)}
+                onClick={() => onMoveUpItem(index)}
                 uiSchema={uiSchema}
                 registry={registry}
               />
@@ -52,7 +57,7 @@ const ArrayFieldItemTemplate = <
             {(hasMoveUp || hasMoveDown) && (
               <MoveDownButton
                 disabled={readonly || disabled || !hasMoveDown}
-                onClick={onReorderClick(index, index + 1)}
+                onClick={() => onMoveDownItem(index)}
                 uiSchema={uiSchema}
                 registry={registry}
               />
@@ -60,7 +65,7 @@ const ArrayFieldItemTemplate = <
             {hasCopy && (
               <CopyButton
                 disabled={readonly || disabled}
-                onClick={onCopyIndexClick(index)}
+                onClick={() => onCopyItem(index)}
                 uiSchema={uiSchema}
                 registry={registry}
               />
@@ -68,7 +73,7 @@ const ArrayFieldItemTemplate = <
             {hasRemove && (
               <RemoveButton
                 disabled={readonly || disabled}
-                onClick={onDropIndexClick(index)}
+                onClick={() => onRemoveItem(index)}
                 uiSchema={uiSchema}
                 registry={registry}
               />
