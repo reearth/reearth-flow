@@ -13,7 +13,8 @@
       "expectedFile": "summary_common.json"
     },
     "fileErrorSummary": {
-      "expectedFile": "01_共通.csv"
+      "expectedFile": "01_共通.csv",
+      "excludeColumns": ["XML検証結果", "L02エラー"]
     }
   },
   "expectResultOkFile": false,

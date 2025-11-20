@@ -250,6 +250,11 @@ pub struct FileErrorSummaryValidation {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_columns: Option<Vec<String>>,
 
+    /// Columns to exclude from comparison
+    /// These columns will be ignored when comparing CSV files
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exclude_columns: Option<Vec<String>>,
+
     /// Key columns used to identify rows (e.g., ["Filename", "Index"])
     /// Default: ["Filename"]
     #[serde(default = "default_key_columns")]
@@ -790,7 +795,14 @@ impl TestContext {
             cols
         } else {
             // Check all columns
-            expected_headers.iter().map(|s| s.to_string()).collect()
+            let mut cols: Vec<String> = expected_headers.iter().map(|s| s.to_string()).collect();
+
+            // Remove excluded columns if specified
+            if let Some(exclude_cols) = &config.exclude_columns {
+                cols.retain(|col| !exclude_cols.contains(col));
+            }
+
+            cols
         };
 
         // Verify columns exist
