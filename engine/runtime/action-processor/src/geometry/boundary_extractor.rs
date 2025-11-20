@@ -117,12 +117,12 @@ impl Processor for BoundaryExtractor {
                 }
             }
             GeometryValue::FlowGeometry2D(geo) => self.extract_2d_boundary(geo).map(|g| {
-                let mut new_geo = geometry.clone();
+                let mut new_geo = Geometry::default();
                 new_geo.value = GeometryValue::FlowGeometry2D(g);
                 new_geo
             }),
             GeometryValue::FlowGeometry3D(geo) => self.extract_3d_boundary(geo).map(|g| {
-                let mut new_geo = geometry.clone();
+                let mut new_geo = Geometry::default();
                 new_geo.value = GeometryValue::FlowGeometry3D(g);
                 new_geo
             }),
@@ -469,6 +469,10 @@ impl BoundaryExtractor {
             adjacency[*v2].push(*v1);
         }
 
+        {
+            let _ = edge_count;
+        }
+
         // Chain boundary edges into connected linestrings
         let mut used_edges = vec![false; edges.len()];
         let mut chains = Vec::new();
@@ -503,6 +507,9 @@ impl BoundaryExtractor {
                         prev_vertex.max(current_vertex),
                     ))
                     .unwrap();
+                if used_edges[*edge_idx] {
+                    break;
+                }
                 used_edges[*edge_idx] = true;
             }
 
@@ -527,6 +534,9 @@ impl BoundaryExtractor {
                         prev_vertex.max(current_vertex),
                     ))
                     .unwrap();
+                if used_edges[*edge_idx] {
+                    break;
+                }
                 used_edges[*edge_idx] = true;
             }
 
