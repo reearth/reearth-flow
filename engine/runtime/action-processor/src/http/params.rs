@@ -124,6 +124,13 @@ pub enum HttpMethod {
     Patch,
     Head,
     Options,
+    Copy,
+    Lock,
+    Mkcol,
+    Move,
+    Propfind,
+    Proppatch,
+    Unlock,
 }
 
 impl From<HttpMethod> for Method {
@@ -136,6 +143,13 @@ impl From<HttpMethod> for Method {
             HttpMethod::Patch => Method::PATCH,
             HttpMethod::Head => Method::HEAD,
             HttpMethod::Options => Method::OPTIONS,
+            HttpMethod::Copy => Method::from_bytes(b"COPY").unwrap(),
+            HttpMethod::Lock => Method::from_bytes(b"LOCK").unwrap(),
+            HttpMethod::Mkcol => Method::from_bytes(b"MKCOL").unwrap(),
+            HttpMethod::Move => Method::from_bytes(b"MOVE").unwrap(),
+            HttpMethod::Propfind => Method::from_bytes(b"PROPFIND").unwrap(),
+            HttpMethod::Proppatch => Method::from_bytes(b"PROPPATCH").unwrap(),
+            HttpMethod::Unlock => Method::from_bytes(b"UNLOCK").unwrap(),
         }
     }
 }
@@ -233,6 +247,34 @@ mod tests {
         assert_eq!(Method::from(HttpMethod::Patch), Method::PATCH);
         assert_eq!(Method::from(HttpMethod::Head), Method::HEAD);
         assert_eq!(Method::from(HttpMethod::Options), Method::OPTIONS);
+        assert_eq!(
+            Method::from(HttpMethod::Copy),
+            Method::from_bytes(b"COPY").unwrap()
+        );
+        assert_eq!(
+            Method::from(HttpMethod::Lock),
+            Method::from_bytes(b"LOCK").unwrap()
+        );
+        assert_eq!(
+            Method::from(HttpMethod::Mkcol),
+            Method::from_bytes(b"MKCOL").unwrap()
+        );
+        assert_eq!(
+            Method::from(HttpMethod::Move),
+            Method::from_bytes(b"MOVE").unwrap()
+        );
+        assert_eq!(
+            Method::from(HttpMethod::Propfind),
+            Method::from_bytes(b"PROPFIND").unwrap()
+        );
+        assert_eq!(
+            Method::from(HttpMethod::Proppatch),
+            Method::from_bytes(b"PROPPATCH").unwrap()
+        );
+        assert_eq!(
+            Method::from(HttpMethod::Unlock),
+            Method::from_bytes(b"UNLOCK").unwrap()
+        );
     }
 
     #[test]
