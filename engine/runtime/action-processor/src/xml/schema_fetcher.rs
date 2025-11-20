@@ -100,7 +100,18 @@ impl HttpSchemaFetcher {
 
 impl SchemaFetcher for HttpSchemaFetcher {
     fn fetch_schema(&self, url: &str) -> Result<String> {
-        self.fetch_with_retry(url)
+        // Try HTTP fetch first
+        match self.fetch_with_retry(url) {
+            Ok(content) => Ok(content),
+            Err(e) => {
+                // Fallback to bundled schema if HTTP fails
+                if let Some(bundled_content) = super::bundled_schemas::get(url) {
+                    Ok(bundled_content.to_string())
+                } else {
+                    Err(e)
+                }
+            }
+        }
     }
 }
 

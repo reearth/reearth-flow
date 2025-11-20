@@ -426,12 +426,22 @@ impl XmlValidator {
                         {
                             Ok(cached_path) => {
                                 cached_paths.insert(location.clone(), cached_path.clone());
-                                all_mappings.insert(target.clone(), cached_path);
+                                all_mappings.insert(target.clone(), cached_path.clone());
+
+                                // Also add all resolved dependencies to all_mappings
+                                for dep_url in resolution.schemas.keys() {
+                                    if dep_url != &target {
+                                        let dep_cache_key =
+                                            super::schema_rewriter::generate_cache_key(dep_url);
+                                        if let Ok(dep_path) =
+                                            self.schema_cache.get_schema_path(&dep_cache_key)
+                                        {
+                                            all_mappings.insert(dep_url.clone(), dep_path);
+                                        }
+                                    }
+                                }
                             }
-                            Err(e) => {
-                                tracing::warn!("Failed to cache schema {}: {}", target, e);
-                                continue;
-                            }
+                            Err(_) => continue,
                         }
                     }
                     Err(e) => {
@@ -453,25 +463,19 @@ impl XmlValidator {
             let catalog_content = generate_catalog(&all_mappings);
             let catalog_cache_key = generate_catalog_cache_key(&all_mappings);
 
-            match self
+            if let Ok(()) = self
                 .schema_cache
                 .put_schema(&catalog_cache_key, catalog_content.as_bytes())
             {
-                Ok(()) => {
-                    if let Ok(catalog_path) = self.schema_cache.get_schema_path(&catalog_cache_key)
-                    {
-                        tracing::debug!("Created XML catalog at: {:?}", catalog_path);
-                        std::env::set_var("XML_CATALOG_FILES", &catalog_path);
-                    }
-                }
-                Err(e) => {
-                    tracing::warn!("Failed to create catalog: {}", e);
+                if let Ok(catalog_path) = self.schema_cache.get_schema_path(&catalog_cache_key) {
+                    std::env::set_var("XML_CATALOG_FILES", &catalog_path);
                 }
             }
         }
 
         // Generate wrapper schema
-        let wrapper_content = generate_wrapper_schema(schema_locations, &cached_paths);
+        let wrapper_content =
+            generate_wrapper_schema(schema_locations, &cached_paths, &all_mappings);
 
         // Save wrapper schema and create context
         let wrapper_cache_key = generate_composite_cache_key(schema_locations);

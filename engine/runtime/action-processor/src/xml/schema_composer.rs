@@ -5,15 +5,18 @@ use std::path::PathBuf;
 pub fn generate_wrapper_schema(
     schema_locations: &[(String, String)],
     cached_paths: &HashMap<String, PathBuf>,
+    all_mappings: &HashMap<String, PathBuf>,
 ) -> String {
     let imports = schema_locations
         .iter()
         .filter_map(|(namespace, location)| {
-            // Use cached path if available, otherwise use original location
+            // Try cached_paths first (by location), then all_mappings (by location as URL), then original
             let resolved_location = cached_paths
                 .get(location)
+                .or_else(|| all_mappings.get(location))
                 .and_then(|p| p.to_str())
-                .unwrap_or(location);
+                .map(|path| format!("file://{path}")) // Add file:// prefix for libxml2
+                .unwrap_or_else(|| location.to_string());
 
             // Skip empty namespaces
             if namespace.is_empty() {
@@ -116,8 +119,9 @@ mod tests {
         ];
 
         let cached_paths = HashMap::new();
+        let all_mappings = HashMap::new();
 
-        let wrapper = generate_wrapper_schema(&schema_locations, &cached_paths);
+        let wrapper = generate_wrapper_schema(&schema_locations, &cached_paths, &all_mappings);
 
         assert!(wrapper.contains(r#"namespace="http://example.com/ns1""#));
         assert!(wrapper.contains(r#"namespace="http://example.com/ns2""#));

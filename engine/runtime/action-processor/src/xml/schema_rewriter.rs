@@ -51,9 +51,15 @@ impl SchemaRewriter {
 
             let cache_key = generate_cache_key(url);
 
-            // Log original imports/includes
+            // Log rewritten imports/includes for debugging
             if content.contains("schemaLocation") {
                 tracing::debug!("Schema {} contains schemaLocation references", url);
+                // Log all schemaLocation values for debugging
+                for line in content.lines() {
+                    if line.contains("schemaLocation") {
+                        tracing::debug!("  {}", line.trim());
+                    }
+                }
             }
 
             // Remove XML declaration from non-root schemas to prevent
