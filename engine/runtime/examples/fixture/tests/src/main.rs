@@ -488,7 +488,14 @@ impl TestContext {
 
     pub fn verify_output(&mut self) -> Result<()> {
         // Ensure zip is extracted if it exists
-        self.ensure_extracted()?;
+        if let Err(e) = self.ensure_extracted() {
+            tracing::error!(
+                test_name = %self.test_name,
+                error = %e,
+                "Failed to extract output zip"
+            );
+            return Err(e);
+        }
 
         if let Some(output) = &self.profile.expected_output {
             // Check if expected file(s) exist, fail test if not
@@ -497,11 +504,25 @@ impl TestContext {
                 for expected_file_name in &files {
                     let expected_file = self.test_dir.join(expected_file_name);
                     if !expected_file.exists() {
+                        tracing::error!(
+                            test_name = %self.test_name,
+                            expected_file = ?expected_file,
+                            "Expected output file does not exist"
+                        );
                         anyhow::bail!("Expected output file does not exist: {expected_file:?}");
                     }
 
                     // Validate file format and route to appropriate verification method
-                    self.verify_file_based_on_extension(output, expected_file_name)?;
+                    if let Err(e) = self.verify_file_based_on_extension(output, expected_file_name)
+                    {
+                        tracing::error!(
+                            test_name = %self.test_name,
+                            file_name = %expected_file_name,
+                            error = %e,
+                            "Failed to verify output file"
+                        );
+                        return Err(e);
+                    }
                 }
             }
         }
@@ -574,6 +595,11 @@ impl TestContext {
             // Check if expected file exists, fail test if not
             let expected_path = self.test_dir.join(&assertion.expected_file);
             if !expected_path.exists() {
+                tracing::error!(
+                    test_name = %self.test_name,
+                    expected_path = ?expected_path,
+                    "Expected intermediate data file does not exist"
+                );
                 anyhow::bail!("Expected intermediate data file does not exist: {expected_path:?}");
             }
 
@@ -581,6 +607,10 @@ impl TestContext {
             let working_dir = if let Ok(work_dir) = std::env::var("FLOW_RUNTIME_WORKING_DIRECTORY")
             {
                 let job_id = self.last_job_id.ok_or_else(|| {
+                    tracing::error!(
+                        test_name = %self.test_name,
+                        "No job_id available - run_workflow must be called first"
+                    );
                     anyhow::anyhow!("No job_id available - run_workflow must be called first")
                 })?;
                 PathBuf::from(work_dir)
@@ -595,6 +625,12 @@ impl TestContext {
                 .join(format!("{}.jsonl", assertion.edge_id));
 
             if !edge_data_path.exists() {
+                tracing::error!(
+                    test_name = %self.test_name,
+                    edge_id = %assertion.edge_id,
+                    edge_data_path = ?edge_data_path,
+                    "Intermediate data not found for edge"
+                );
                 anyhow::bail!(
                     "Intermediate data not found for edge {}: {:?}",
                     assertion.edge_id,
@@ -613,29 +649,58 @@ impl TestContext {
 
             // Determine comparison method based on file extension
             let comparison_method = self.determine_comparison_method(&assertion.expected_file)?;
-            self.compare_data(
+            if let Err(e) = self.compare_data(
                 &actual_data,
                 &expected_data,
                 &comparison_method,
                 assertion.except.as_ref(),
-            )?;
+            ) {
+                tracing::error!(
+                    test_name = %self.test_name,
+                    edge_id = %assertion.edge_id,
+                    error = %e,
+                    "Failed to compare intermediate data"
+                );
+                return Err(e);
+            }
         }
         Ok(())
     }
 
     pub fn verify_summary_output(&mut self) -> Result<()> {
         // Ensure zip is extracted if it exists
-        self.ensure_extracted()?;
+        if let Err(e) = self.ensure_extracted() {
+            tracing::error!(
+                test_name = %self.test_name,
+                error = %e,
+                "Failed to extract output zip for summary verification"
+            );
+            return Err(e);
+        }
 
         if let Some(summary) = &self.profile.summary_output {
             // Error count summary validation
             if let Some(error_count) = &summary.error_count_summary {
-                self.verify_error_count_summary(error_count)?;
+                if let Err(e) = self.verify_error_count_summary(error_count) {
+                    tracing::error!(
+                        test_name = %self.test_name,
+                        error = %e,
+                        "Failed to verify error count summary"
+                    );
+                    return Err(e);
+                }
             }
 
             // File error summary validation
             if let Some(file_error) = &summary.file_error_summary {
-                self.verify_file_error_summary(file_error)?;
+                if let Err(e) = self.verify_file_error_summary(file_error) {
+                    tracing::error!(
+                        test_name = %self.test_name,
+                        error = %e,
+                        "Failed to verify file error summary"
+                    );
+                    return Err(e);
+                }
             }
         }
         Ok(())
@@ -1266,12 +1331,22 @@ impl TestContext {
         }
 
         if expect_exists && !file_exists {
+            tracing::error!(
+                test_name = %self.test_name,
+                temp_dir = ?self.temp_dir,
+                "Expected qc_result_ok file (suffix match) was not found in output directory"
+            );
             anyhow::bail!(
                 "Expected qc_result_ok file (suffix match) was not found in output directory"
             );
         }
 
         if !expect_exists && file_exists {
+            tracing::error!(
+                test_name = %self.test_name,
+                temp_dir = ?self.temp_dir,
+                "qc_result_ok file should not exist but was found in output directory"
+            );
             anyhow::bail!("qc_result_ok file should not exist but was found in output directory");
         }
 
