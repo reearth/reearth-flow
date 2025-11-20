@@ -1,0 +1,22 @@
+{
+  "workflowPath": "quality-check/plateau4/04-frn-veg/workflow.yml",
+  "description": "Test for plateau4 surface errors.",
+  "expectedOutput": {
+    "expectedFile": "04_都市設備_植生__面のエラー.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_frn_veg.json",
+      "includeFields": ["面のエラー"]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "04_都市設備_植生_検査結果一覧.csv",
+      "includeColumns": ["面のエラー"]
+    }
+  },
+  "cityGmlPath": "udx/frn/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectResultOkFile": false,
+  "skip": false
+}
