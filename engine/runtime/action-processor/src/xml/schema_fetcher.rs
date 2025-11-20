@@ -100,8 +100,39 @@ impl HttpSchemaFetcher {
 
 impl SchemaFetcher for HttpSchemaFetcher {
     fn fetch_schema(&self, url: &str) -> Result<String> {
-        // Try HTTP fetch first
-        match self.fetch_with_retry(url) {
+        self.fetch_with_retry(url)
+    }
+}
+
+impl Default for HttpSchemaFetcher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// HTTP/HTTPS schema fetcher with bundled schema fallback
+#[derive(Clone)]
+pub(crate) struct HttpSchemaFetcherWithFallback {
+    inner: HttpSchemaFetcher,
+}
+
+impl HttpSchemaFetcherWithFallback {
+    pub fn new() -> Self {
+        Self {
+            inner: HttpSchemaFetcher::new(),
+        }
+    }
+
+    #[cfg(test)]
+    pub fn with_retry_config(mut self, max_retries: usize, retry_delay: Duration) -> Self {
+        self.inner = self.inner.with_retry_config(max_retries, retry_delay);
+        self
+    }
+}
+
+impl SchemaFetcher for HttpSchemaFetcherWithFallback {
+    fn fetch_schema(&self, url: &str) -> Result<String> {
+        match self.inner.fetch_with_retry(url) {
             Ok(content) => Ok(content),
             Err(e) => {
                 // Fallback to bundled schema if HTTP fails
@@ -115,7 +146,7 @@ impl SchemaFetcher for HttpSchemaFetcher {
     }
 }
 
-impl Default for HttpSchemaFetcher {
+impl Default for HttpSchemaFetcherWithFallback {
     fn default() -> Self {
         Self::new()
     }
