@@ -18,14 +18,14 @@ type UpdateMeParam struct {
 }
 
 type SignupParam struct {
-	Email       string
-	Name        string
-	Password    string
 	Secret      *string
 	Lang        *language.Tag
 	Theme       *user.Theme
 	UserID      *user.ID
 	WorkspaceID *workspace.ID
+	Email       string
+	Name        string
+	Password    string
 	MockAuth    bool
 }
 

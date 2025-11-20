@@ -19,10 +19,10 @@ import (
 type NodeExecution struct {
 	nodeRepo          repo.NodeExecution
 	redisGateway      gateway.Redis
+	permissionChecker gateway.PermissionChecker
 	subscriptions     *subscription.NodeManager
 	watchers          map[string]context.CancelFunc
 	mu                sync.Mutex
-	permissionChecker gateway.PermissionChecker
 }
 
 func NewNodeExecution(nodeRepo repo.NodeExecution, redisGateway gateway.Redis, permissionChecker gateway.PermissionChecker) interfaces.NodeExecution {

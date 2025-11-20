@@ -14,9 +14,9 @@ import (
 )
 
 type Deployment struct {
-	lock sync.Mutex
 	data map[id.DeploymentID]*deployment.Deployment
 	f    repo.WorkspaceFilter
+	lock sync.Mutex
 }
 
 func NewDeployment() *Deployment {

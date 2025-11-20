@@ -59,12 +59,12 @@ func (r *workspaceResolver) DeploymentsPage(ctx context.Context, obj *gqlmodel.W
 	return loaders(ctx).Deployment.FindByWorkspacePage(ctx, obj.ID, nil, pagination)
 }
 
+func (r *workspaceResolver) WorkerConfig(ctx context.Context, obj *gqlmodel.Workspace) (*gqlmodel.WorkerConfig, error) {
+	return dataloaders(ctx).WorkerConfig.Load(obj.ID)
+}
+
 type workspaceMemberResolver struct{ *Resolver }
 
 func (r *workspaceMemberResolver) User(ctx context.Context, obj *gqlmodel.WorkspaceMember) (*gqlmodel.User, error) {
 	return dataloaders(ctx).User.Load(obj.UserID)
-}
-
-func intPtr(i int) *int {
-	return &i
 }
