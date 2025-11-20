@@ -86,14 +86,12 @@ const TableViewer: React.FC<Props> = memo(
       if (!selectedFeature || !detailsOverlayOpen || !featureIdMap) {
         return;
       }
+      const prevId = previousSelectedFeature.current?.id;
+      const currId = selectedFeature.id;
 
-      if (
-        selectedFeature.id !== null &&
-        selectedFeature.id !== previousSelectedFeature.current.id
-      ) {
-        const matchingRow = featureIdMap.get(
-          JSON.stringify(selectedFeature.id),
-        );
+      if (prevId !== currId) {
+        const matchingRow =
+          featureIdMap.get(JSON.stringify(currId)) ?? selectedFeature;
         previousSelectedFeature.current = selectedFeature;
         handleShowFeatureDetails(matchingRow);
       }
