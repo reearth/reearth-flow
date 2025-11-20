@@ -19,6 +19,7 @@ reearth-flow-action-log.workspace = true
 reearth-flow-state.workspace = true
 reearth-flow-storage.workspace = true
 tokio.workspace = true
+tracing-subscriber.workspace = true
 anyhow = "1.0"
 pretty_assertions.workspace = true
 uuid.workspace = true

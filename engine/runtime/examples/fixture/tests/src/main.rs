@@ -10,8 +10,23 @@ use std::fs;
 use std::io::Cursor;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::Arc;
+use std::sync::{Arc, Once};
 use tempfile::TempDir;
+
+static INIT: Once = Once::new();
+
+/// Initialize tracing subscriber once for all tests
+fn init_tracing() {
+    INIT.call_once(|| {
+        use tracing_subscriber::prelude::*;
+        use tracing_subscriber::EnvFilter;
+
+        tracing_subscriber::registry()
+            .with(EnvFilter::from_default_env())
+            .with(tracing_subscriber::fmt::layer())
+            .init();
+    });
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -263,6 +278,9 @@ impl TestContext {
         fixture_dir: PathBuf,
         profile: WorkflowTestProfile,
     ) -> Result<Self> {
+        // Initialize tracing subscriber for logging
+        init_tracing();
+
         let temp_base = TempDir::new()?;
         let temp_dir = temp_base.path().join(&test_name);
 
