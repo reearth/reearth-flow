@@ -399,7 +399,7 @@ impl Feature {
             .contains_key(&Attribute::new(key.to_string()))
     }
 
-    pub fn get<T: AsRef<str> + std::fmt::Display>(&self, key: &T) -> Option<&AttributeValue> {
+    pub fn get<T: AsRef<str> + std::fmt::Display>(&self, key: T) -> Option<&AttributeValue> {
         self.attributes.get(&Attribute::new(key.to_string()))
     }
 
@@ -467,7 +467,11 @@ impl Feature {
         );
         scope.set(
             "__feature_id",
-            serde_json::Value::String(self.feature_id().unwrap_or_default()),
+            if let Some(id) = self.feature_id() {
+                serde_json::Value::String(id)
+            } else {
+                serde_json::Value::Null
+            },
         );
         scope.set(
             "__lod",

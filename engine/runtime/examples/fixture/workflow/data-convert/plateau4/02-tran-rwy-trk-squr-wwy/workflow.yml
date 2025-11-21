@@ -16,6 +16,132 @@ with:
   outputPath:
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
+  - id: 2bb6aed2-b4eb-4192-8d2a-d1f1f4dbf878
+    name: PLATEAU4.LodSplitterWithDM
+    nodes:
+      - id: ac4d1c78-d41e-42f0-add9-257546b9f7f3
+        name: InputRouter
+        type: action
+        action: InputRouter
+        with:
+          routingPort: default
+      
+      - id: e619bb44-2002-48a1-9913-7759967ebb71
+        name: DmSplit
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__feature_type") == "uro:DmGeometricAttribute"
+              outputPort: DmGeometricAttribute
+
+      - id: 074348e3-37b3-402a-8d71-ba3c14f70cde
+        name: FeatureFilterByLod
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").lod == "0"
+              outputPort: lod0
+            - expr: |
+                env.get("__value").lod == "1"
+              outputPort: lod1
+            - expr: |
+                env.get("__value").lod == "2"
+              outputPort: lod2
+            - expr: |
+                env.get("__value").lod == "3"
+              outputPort: lod3
+            - expr: |
+                env.get("__value").lod == "4"
+              outputPort: lod4
+
+      - id: 99d63efa-503b-460d-aa03-3ee64b7cb8c6
+        name: DmGeometricAttributeRouter
+        type: action
+        action: OutputRouter
+        with:
+          routingPort: DmGeometricAttribute
+
+      - id: 817bd315-ed17-463d-8e1d-dd73ee580038
+        name: Lod0Router
+        type: action
+        action: OutputRouter
+        with:
+          routingPort: lod0
+
+      - id: 5f41eaa6-ec16-4779-a0bb-3125c7f5b64e
+        name: Lod1Router
+        type: action
+        action: OutputRouter
+        with:
+          routingPort: lod1
+
+      - id: 9404228a-2385-437f-b3df-82717685b003
+        name: Lod2Router
+        type: action
+        action: OutputRouter
+        with:
+          routingPort: lod2
+
+      - id: 54ae1ee3-c3d1-4f8b-9f7c-1a98e04d87f3
+        name: Lod3Router
+        type: action
+        action: OutputRouter
+        with:
+          routingPort: lod3
+
+      - id: dcbcf260-4eb9-438d-99f5-5452926604ee
+        name: Lod4Router
+        type: action
+        action: OutputRouter
+        with:
+          routingPort: lod4
+
+    edges:
+      - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
+        from: ac4d1c78-d41e-42f0-add9-257546b9f7f3
+        to: e619bb44-2002-48a1-9913-7759967ebb71
+        fromPort: default
+        toPort: default
+      - id: a07d260b-46c8-4660-b6d7-b8e9b9db1291
+        from: e619bb44-2002-48a1-9913-7759967ebb71
+        to: 074348e3-37b3-402a-8d71-ba3c14f70cde
+        fromPort: unfiltered
+        toPort: default
+      - id: aae790c3-bdf3-4a97-a5ff-d665d82474c4
+        from: e619bb44-2002-48a1-9913-7759967ebb71
+        to: 99d63efa-503b-460d-aa03-3ee64b7cb8c6
+        fromPort: DmGeometricAttribute
+        toPort: default
+      - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e
+        from: 074348e3-37b3-402a-8d71-ba3c14f70cde
+        to: 817bd315-ed17-463d-8e1d-dd73ee580038
+        fromPort: lod0
+        toPort: default
+      - id: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f
+        from: 074348e3-37b3-402a-8d71-ba3c14f70cde
+        to: 5f41eaa6-ec16-4779-a0bb-3125c7f5b64e
+        fromPort: lod1
+        toPort: default
+      - id: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9a
+        from: 074348e3-37b3-402a-8d71-ba3c14f70cde
+        to: 9404228a-2385-437f-b3df-82717685b003
+        fromPort: lod2
+        toPort: default
+      - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b
+        from: 074348e3-37b3-402a-8d71-ba3c14f70cde
+        to: 54ae1ee3-c3d1-4f8b-9f7c-1a98e04d87f3
+        fromPort: lod3
+        toPort: default
+      - id: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1c
+        from: 074348e3-37b3-402a-8d71-ba3c14f70cde
+        to: dcbcf260-4eb9-438d-99f5-5452926604ee
+        fromPort: lod4
+        toPort: default
+
   - id: 34bf873b-3364-46b0-8153-efeb9568bb3c
     name: entry_point
     nodes:
@@ -61,8 +187,7 @@ graphs:
             - attribute: gml_id
               method: create
               value: |
-                env.get("__feature_id")
-            # use featureType created by FeatureCityGmlReader's flatten option, fallback to gmlName
+                env.get("__feature_id") ?? env.get("__value")["gmlId"]
             - attribute: feature_type
               method: create
               value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
@@ -73,11 +198,9 @@ graphs:
         action: PLATEAU4.AttributeFlattener
 
       - id: c32a279d-97be-4584-b282-4d65627b1132
-        name: FeatureLodFilter
-        type: action
-        action: FeatureLodFilter
-        with:
-          filterKey: path
+        name: LodSplitterWithDM
+        type: subGraph
+        subGraphId: 2bb6aed2-b4eb-4192-8d2a-d1f1f4dbf878
 
       - id: 8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
         name: FeatureTypeFilterTrafficArea
@@ -246,16 +369,17 @@ graphs:
         with:
           filterType: geometryType
 
-      - id: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
-        name: Dissolver
-        type: action
-        action: Dissolver
-        with:
-          groupBy:
-            - gml_id
-            - _udxDirs
-            - _lod
-          attributeAccumulationMode: useOne
+      # Dissolve polygons in MultiPolygon, due to the bug it is temporarily disabled
+      # - id: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
+      #   name: Dissolver
+      #   type: action
+      #   action: Dissolver
+      #   with:
+      #     groupBy:
+      #       - gml_id
+      #       - _udxDirs
+      #       - _lod
+      #     attributeAccumulationMode: useOne
 
       - id: b4c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
         name: FeatureSorterPreMVT
@@ -279,6 +403,86 @@ graphs:
           maxZoom: 16
           output: |
             file::join_path(env.get("outputPath"), env.get("__value")._udxDirs + "_lod" + env.get("__value")._lod)
+          skipUnderscorePrefix: true
+          colonToUnderscore: true
+
+      - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        name: AttributeManagerByDmGeometricAttribute
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: cityCode
+              method: rename
+              value: city_code
+            - attribute: cityName
+              method: rename
+              value: city_name
+            - attribute: lod
+              method: remove
+            - attribute: gmlId
+              method: remove
+            - attribute: fileIndex
+              method: remove
+            - attribute: root
+              method: remove
+            - attribute: cityGmlPath
+              method: remove
+            - attribute: admin
+              method: remove
+            - attribute: area
+              method: remove
+            - attribute: package
+              method: remove
+            - attribute: extension
+              method: remove
+            - attribute: dirRoot
+              method: remove
+            - attribute: gmlRootId
+              method: remove
+            - attribute: maxLod
+              method: remove
+            - attribute: dirSchemas
+              method: remove
+            - attribute: dirCodelists
+              method: remove
+            - attribute: path
+              method: remove
+            - attribute: name
+              method: remove
+            - attribute: udxDirs
+              method: rename
+              value: _udxDirs
+            - attribute: featureType
+              method: remove
+            - attribute: gmlName
+              method: remove
+
+      - id: b2c3d4e5-f6a7-8901-bcde-f12345678901
+        name: FeatureSorterDmGeometricAttribute
+        type: action
+        action: FeatureSorter
+        with:
+          attributes:
+            - _udxDirs
+          order: ascending
+
+      - id: c3d4e5f6-a7b8-9012-cdef-123456789012
+        name: TwoDimensionForcerDmGeometricAttribute
+        type: action
+        action: TwoDimensionForcer
+
+      - id: d4e5f6a7-b8c9-0123-def1-234567890123
+        name: MVTWriterDmGeometricAttribute
+        type: action
+        action: MVTWriter
+        with:
+          layerName: |
+            env.get("__value").feature_type.split(":")[1]
+          minZoom: 8
+          maxZoom: 16
+          output: |
+            file::join_path(env.get("outputPath"), env.get("__value")._udxDirs + "_dm_geometric_attributes")
           skipUnderscorePrefix: true
           colonToUnderscore: true
 
@@ -311,17 +515,17 @@ graphs:
       - id: 90f518e2-3ca0-404f-821c-5dffe4e57597
         from: c32a279d-97be-4584-b282-4d65627b1132
         to: 2ccf7b99-4123-446e-8ff7-049be1c604c7
-        fromPort: up_to_lod0
+        fromPort: lod0
         toPort: default
       - id: 83c68df9-a61b-4cad-8f64-ea20186e9db1
         from: c32a279d-97be-4584-b282-4d65627b1132
         to: 2ccf7b99-4123-446e-8ff7-049be1c604c7
-        fromPort: up_to_lod1
+        fromPort: lod1
         toPort: default
       - id: 7303c673-ccf3-4075-9eec-97176ced4b86
         from: c32a279d-97be-4584-b282-4d65627b1132
         to: 8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
-        fromPort: up_to_lod2
+        fromPort: lod2
         toPort: default
       - id: 9a8b7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d
         from: 8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
@@ -331,7 +535,7 @@ graphs:
       - id: 2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e
         from: c32a279d-97be-4584-b282-4d65627b1132
         to: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
-        fromPort: up_to_lod3
+        fromPort: lod3
         toPort: default
       - id: 7d8e9f0a-1b2c-3d4e-5f6a-7b8c9d0e1f2a
         from: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
@@ -364,17 +568,17 @@ graphs:
         to: 6f7a8b9c-0d1e-2f3a-4b5c-6d7e8f9a0b1c
         fromPort: default
         toPort: default
-      # GeometryFilter (polygon) -> Dissolver
+      # GeometryFilter (polygon) -> Dissolver (temporarily disabled)
       - id: 8d9e0f1a-2b3c-4d5e-6f7a-8b9c0d1e2f3a
         from: 6f7a8b9c-0d1e-2f3a-4b5c-6d7e8f9a0b1c
-        to: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
+      #   to: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
         fromPort: surface
-        toPort: default
-      # Dissolver -> FeatureSorterPreMVT
-      - id: 4d5e6f7a-8b9c-0d1e-2f3a-4b5c6d7e8f9a
-        from: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
+      #   toPort: default
+      # # Dissolver -> FeatureSorterPreMVT
+      # - id: 4d5e6f7a-8b9c-0d1e-2f3a-4b5c6d7e8f9a
+      #   from: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
         to: b4c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
-        fromPort: area
+      #  fromPort: area
         toPort: default
       # GeometryFilter (linestrings) -> FeatureSorterPreMVT
       - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
@@ -386,5 +590,29 @@ graphs:
       - id: c1d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
         from: b4c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
         to: 7a17c4f9-dd4d-44b0-936c-50c394272016
+        fromPort: default
+        toPort: default
+      # DmGeometricAttribute flow: LodSplitterWithDM -> AttributeManagerByDmGeometricAttribute
+      - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
+        from: c32a279d-97be-4584-b282-4d65627b1132
+        to: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        fromPort: DmGeometricAttribute
+        toPort: default
+      # AttributeManagerByDmGeometricAttribute -> FeatureSorterDmGeometricAttribute
+      - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7c
+        from: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        to: b2c3d4e5-f6a7-8901-bcde-f12345678901
+        fromPort: default
+        toPort: default
+      # FeatureSorterDmGeometricAttribute -> TwoDimensionForcerDmGeometricAttribute
+      - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
+        from: b2c3d4e5-f6a7-8901-bcde-f12345678901
+        to: c3d4e5f6-a7b8-9012-cdef-123456789012
+        fromPort: default
+        toPort: default
+      # TwoDimensionForcerDmGeometricAttribute -> MVTWriterDmGeometricAttribute
+      - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9e
+        from: c3d4e5f6-a7b8-9012-cdef-123456789012
+        to: d4e5f6a7-b8c9-0123-def1-234567890123
         fromPort: default
         toPort: default
