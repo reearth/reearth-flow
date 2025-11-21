@@ -1,4 +1,5 @@
 pub(crate) mod auth;
+pub(crate) mod body;
 pub(crate) mod client;
 pub(crate) mod errors;
 pub(crate) mod expression;

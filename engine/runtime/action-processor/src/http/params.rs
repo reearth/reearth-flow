@@ -28,9 +28,9 @@ pub struct HttpCallerParam {
     pub query_parameters: Option<Vec<QueryParam>>,
 
     /// # Request Body
-    /// The request body content (for POST, PUT, PATCH methods). Supports expressions.
+    /// The request body configuration (text, binary, form, or multipart)
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub request_body: Option<Expr>,
+    pub request_body: Option<RequestBody>,
 
     /// # Content-Type Header
     /// The Content-Type header value for the request body
@@ -234,6 +234,122 @@ fn default_api_key_location() -> ApiKeyLocation {
     ApiKeyLocation::Header
 }
 
+/// Request body types
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum RequestBody {
+    /// # Text Body
+    /// Plain text or JSON body (supports expressions)
+    #[serde(rename_all = "camelCase")]
+    Text {
+        /// # Content
+        /// Text content. Supports expressions.
+        content: Expr,
+        /// # Content-Type
+        /// MIME type (e.g., "application/json", "text/plain")
+        #[serde(skip_serializing_if = "Option::is_none")]
+        content_type: Option<String>,
+    },
+    /// # Binary Body
+    /// Binary data from base64-encoded string or file
+    #[serde(rename_all = "camelCase")]
+    Binary {
+        /// # Source
+        /// Binary data source
+        source: BinarySource,
+        /// # Content-Type
+        /// MIME type (e.g., "application/octet-stream")
+        #[serde(skip_serializing_if = "Option::is_none")]
+        content_type: Option<String>,
+    },
+    /// # Form URL-Encoded
+    /// application/x-www-form-urlencoded
+    #[serde(rename_all = "camelCase")]
+    FormUrlEncoded {
+        /// # Fields
+        /// Form fields (name/value pairs)
+        fields: Vec<FormField>,
+    },
+    /// # Multipart Form Data
+    /// multipart/form-data with mixed text and file parts
+    #[serde(rename_all = "camelCase")]
+    Multipart {
+        /// # Parts
+        /// Multipart form parts
+        parts: Vec<MultipartPart>,
+    },
+}
+
+/// Binary data source
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum BinarySource {
+    /// # Base64 Encoded String
+    /// Binary data encoded as base64 string
+    #[serde(rename_all = "camelCase")]
+    Base64 {
+        /// # Data
+        /// Base64-encoded binary data. Supports expressions.
+        data: Expr,
+    },
+    /// # File Path
+    /// Load binary data from a file
+    #[serde(rename_all = "camelCase")]
+    File {
+        /// # Path
+        /// File path (supports storage URLs like "ram://", "s3://"). Supports expressions.
+        path: Expr,
+    },
+}
+
+/// Form field for URL-encoded forms
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct FormField {
+    /// # Field Name
+    /// Name of the form field
+    pub name: String,
+    /// # Field Value
+    /// Value of the form field. Supports expressions.
+    pub value: Expr,
+}
+
+/// Multipart form part
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum MultipartPart {
+    /// # Text Part
+    /// Text field in multipart form
+    #[serde(rename_all = "camelCase")]
+    Text {
+        /// # Field Name
+        /// Name of the form field
+        name: String,
+        /// # Value
+        /// Text value. Supports expressions.
+        value: Expr,
+    },
+    /// # File Part
+    /// File upload in multipart form
+    #[serde(rename_all = "camelCase")]
+    File {
+        /// # Field Name
+        /// Name of the form field
+        name: String,
+        /// # File Source
+        /// Source of the file data
+        source: BinarySource,
+        /// # File Name
+        /// Name of the file to send (optional)
+        #[serde(skip_serializing_if = "Option::is_none")]
+        filename: Option<String>,
+        /// # Content-Type
+        /// MIME type of the file (optional)
+        #[serde(skip_serializing_if = "Option::is_none")]
+        content_type: Option<String>,
+    },
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -304,7 +420,10 @@ mod tests {
                 name: "id".to_string(),
                 value: Expr::new("${feature_id}"),
             }]),
-            request_body: Some(Expr::new(r#"{"data": "${value}"}"#)),
+            request_body: Some(RequestBody::Text {
+                content: Expr::new(r#"`{"data": "${value}"}`"#),
+                content_type: Some("application/json".to_string()),
+            }),
             content_type: Some("application/json".to_string()),
             response_body_attribute: "_response_body".to_string(),
             status_code_attribute: "_http_status_code".to_string(),
@@ -355,5 +474,67 @@ mod tests {
         let json = serde_json::to_string(&auth).unwrap();
         assert!(json.contains("apiKey"));
         assert!(json.contains("X-API-Key"));
+    }
+
+    #[test]
+    fn test_webdav_methods() {
+        // Test all WebDAV methods convert correctly
+        assert!(matches!(Method::from(HttpMethod::Copy), _));
+        assert!(matches!(Method::from(HttpMethod::Lock), _));
+        assert!(matches!(Method::from(HttpMethod::Mkcol), _));
+        assert!(matches!(Method::from(HttpMethod::Move), _));
+        assert!(matches!(Method::from(HttpMethod::Propfind), _));
+        assert!(matches!(Method::from(HttpMethod::Proppatch), _));
+        assert!(matches!(Method::from(HttpMethod::Unlock), _));
+    }
+
+    #[test]
+    fn test_text_body_serialization() {
+        let body = RequestBody::Text {
+            content: Expr::new(r#"{"test": "value"}"#),
+            content_type: Some("application/json".to_string()),
+        };
+        let json = serde_json::to_string(&body).unwrap();
+        assert!(json.contains("text"));
+        assert!(json.contains("application/json"));
+    }
+
+    #[test]
+    fn test_binary_body_serialization() {
+        let body = RequestBody::Binary {
+            source: BinarySource::Base64 {
+                data: Expr::new("SGVsbG8="),
+            },
+            content_type: Some("application/octet-stream".to_string()),
+        };
+        let json = serde_json::to_string(&body).unwrap();
+        assert!(json.contains("binary"));
+        assert!(json.contains("base64"));
+    }
+
+    #[test]
+    fn test_form_body_serialization() {
+        let body = RequestBody::FormUrlEncoded {
+            fields: vec![FormField {
+                name: "field1".to_string(),
+                value: Expr::new("value1"),
+            }],
+        };
+        let json = serde_json::to_string(&body).unwrap();
+        assert!(json.contains("formUrlEncoded"));
+        assert!(json.contains("field1"));
+    }
+
+    #[test]
+    fn test_multipart_body_serialization() {
+        let body = RequestBody::Multipart {
+            parts: vec![MultipartPart::Text {
+                name: "field1".to_string(),
+                value: Expr::new("value1"),
+            }],
+        };
+        let json = serde_json::to_string(&body).unwrap();
+        assert!(json.contains("multipart"));
+        assert!(json.contains("field1"));
     }
 }

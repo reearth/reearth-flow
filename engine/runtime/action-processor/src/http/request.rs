@@ -1,6 +1,7 @@
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use reqwest::Method;
 
+use super::body::BodyContent;
 use super::errors::{HttpProcessorError, Result};
 use super::expression::{CompiledHeader, CompiledQueryParam};
 
@@ -10,7 +11,7 @@ pub(crate) struct RequestBuilder {
     url: String,
     headers: HeaderMap,
     query_params: Vec<(String, String)>,
-    body: Option<String>,
+    body: Option<BodyContent>,
 }
 
 impl RequestBuilder {
@@ -92,17 +93,8 @@ impl RequestBuilder {
     }
 
     /// Set request body if provided
-    pub fn with_body(
-        mut self,
-        body_ast: Option<&rhai::AST>,
-        scope: &reearth_flow_eval_expr::scope::Scope,
-    ) -> Result<Self> {
-        if let Some(ast) = body_ast {
-            let body = scope.eval_ast::<String>(ast).map_err(|e| {
-                HttpProcessorError::Request(format!("Failed to evaluate request body: {e:?}"))
-            })?;
-            self.body = Some(body);
-        }
+    pub fn with_body(mut self, body: Option<BodyContent>) -> Result<Self> {
+        self.body = body;
         Ok(self)
     }
 
@@ -114,7 +106,7 @@ impl RequestBuilder {
         String,
         HeaderMap,
         Vec<(String, String)>,
-        Option<String>,
+        Option<BodyContent>,
     ) {
         (
             self.method,

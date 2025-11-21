@@ -23,7 +23,6 @@ pub struct HttpCallerProcessor {
     url_ast: rhai::AST,
     compiled_headers: Vec<CompiledHeader>,
     compiled_query_params: Vec<CompiledQueryParam>,
-    compiled_body: Option<rhai::AST>,
 }
 
 impl std::fmt::Debug for HttpCallerProcessor {
@@ -43,7 +42,6 @@ impl HttpCallerProcessor {
         url_ast: rhai::AST,
         compiled_headers: Vec<CompiledHeader>,
         compiled_query_params: Vec<CompiledQueryParam>,
-        compiled_body: Option<rhai::AST>,
     ) -> Self {
         Self {
             global_params,
@@ -52,7 +50,6 @@ impl HttpCallerProcessor {
             url_ast,
             compiled_headers,
             compiled_query_params,
-            compiled_body,
         }
     }
 
@@ -69,7 +66,6 @@ impl HttpCallerProcessor {
             url_ast,
             compiled_headers: Vec::new(),
             compiled_query_params: Vec::new(),
-            compiled_body: None,
         }
     }
 
@@ -97,11 +93,36 @@ impl HttpCallerProcessor {
         let method = self.params.method.clone().into();
         let builder = RequestBuilder::new(method, url);
 
+        // Build request body if configured
+        let built_body = if let Some(body_config) = &self.params.request_body {
+            match super::body::build_request_body(
+                body_config,
+                &expr_engine,
+                &scope,
+                &ctx.storage_resolver,
+            ) {
+                Ok(body) => Some(body),
+                Err(e) => {
+                    self.send_rejected_feature(ctx, fw, &e.to_string());
+                    return Ok(());
+                }
+            }
+        } else {
+            None
+        };
+
         let builder = match builder
             .with_headers(&self.compiled_headers, &scope)
-            .and_then(|b| b.with_content_type(self.params.content_type.as_deref()))
+            .and_then(|b| {
+                b.with_content_type(
+                    built_body
+                        .as_ref()
+                        .and_then(|b| b.content_type.as_deref())
+                        .or(self.params.content_type.as_deref()),
+                )
+            })
             .and_then(|b| b.with_query_params(&self.compiled_query_params, &scope))
-            .and_then(|b| b.with_body(self.compiled_body.as_ref(), &scope))
+            .and_then(|b| b.with_body(built_body.map(|b| b.content)))
         {
             Ok(builder) => builder,
             Err(e) => {

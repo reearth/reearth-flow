@@ -4,6 +4,7 @@ use reqwest::blocking::Client;
 use reqwest::header::HeaderMap;
 use reqwest::Method;
 
+use super::body::BodyContent;
 use super::errors::{HttpProcessorError, Result};
 
 pub(crate) trait HttpClient: Send + Sync {
@@ -14,7 +15,7 @@ pub(crate) trait HttpClient: Send + Sync {
         url: &str,
         headers: HeaderMap,
         query_params: Vec<(String, String)>,
-        body: Option<String>,
+        body: Option<BodyContent>,
     ) -> Result<HttpResponse>;
 }
 
@@ -105,7 +106,7 @@ impl HttpClient for ReqwestHttpClient {
         url: &str,
         headers: HeaderMap,
         query_params: Vec<(String, String)>,
-        body: Option<String>,
+        body: Option<BodyContent>,
     ) -> Result<HttpResponse> {
         let mut request_builder = self.client.request(method, url);
         request_builder = request_builder.headers(headers);
@@ -114,8 +115,14 @@ impl HttpClient for ReqwestHttpClient {
             request_builder = request_builder.query(&query_params);
         }
 
+        // Handle different body types
         if let Some(body_content) = body {
-            request_builder = request_builder.body(body_content);
+            request_builder = match body_content {
+                BodyContent::Text(text) => request_builder.body(text),
+                BodyContent::Binary(data) => request_builder.body(data),
+                BodyContent::Form(fields) => request_builder.form(&fields),
+                BodyContent::Multipart(form) => request_builder.multipart(form),
+            };
         }
 
         let response = request_builder
@@ -171,7 +178,7 @@ impl HttpClient for MockHttpClient {
         url: &str,
         _headers: HeaderMap,
         _query_params: Vec<(String, String)>,
-        _body: Option<String>,
+        _body: Option<BodyContent>,
     ) -> Result<HttpResponse> {
         self.responses.get(url).cloned().unwrap_or_else(|| {
             Err(HttpProcessorError::Request(format!(

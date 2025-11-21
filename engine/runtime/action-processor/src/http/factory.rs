@@ -85,12 +85,6 @@ impl ProcessorFactory for HttpCallerFactory {
             Vec::new()
         };
 
-        let compiled_body = if let Some(body) = &params.request_body {
-            Some(compiler.compile_body(body.as_ref())?)
-        } else {
-            None
-        };
-
         // Create processor
         let processor = HttpCallerProcessor::new(
             with,
@@ -99,7 +93,6 @@ impl ProcessorFactory for HttpCallerFactory {
             url_ast,
             compiled_headers,
             compiled_query_params,
-            compiled_body,
         );
 
         Ok(Box::new(processor))
