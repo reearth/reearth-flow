@@ -1,0 +1,72 @@
+OASIS eXtensible Address Language (xAL) Schema License
+
+Copyright Notice
+----------------
+
+Copyright (c) 2000-2002, OASIS Open
+All Rights Reserved
+
+Original Source
+---------------
+
+Schema: xAL (eXtensible Address Language)
+Version: 2.0
+Date: 24 July 2002
+Committee: OASIS Customer Information Quality (CIQ) Technical Committee
+URL: https://www.oasis-open.org/committees/ciq
+
+License Terms
+-------------
+
+This schema is provided by OASIS under the OASIS IPR Policy. The schema may be
+used, copied, and distributed subject to the following conditions:
+
+1. Redistributions in source form must retain the copyright notice and this
+   license information.
+
+2. Redistributions in binary form must reproduce the copyright notice and
+   this license information in the documentation and/or other materials
+   provided with the distribution.
+
+3. The name "OASIS" and "Customer Information Quality" must not be used to
+   endorse or promote products derived from this schema without prior written
+   permission. For written permission, please contact the OASIS CIQ TC.
+
+OASIS IPR Policy
+----------------
+
+This schema is subject to the OASIS Intellectual Property Rights (IPR) Policy,
+which can be found at:
+https://www.oasis-open.org/policies-guidelines/ipr/
+
+For questions about OASIS IPR policy or licensing, contact:
+OASIS Open
+Email: tc-admin@oasis-open.org
+Web: https://www.oasis-open.org/
+
+Disclaimer
+----------
+
+THIS SCHEMA IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL OASIS OR
+ITS CONTRIBUTORS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING
+FROM, OUT OF, OR IN CONNECTION WITH THE SCHEMA OR THE USE OR OTHER DEALINGS
+IN THE SCHEMA.
+
+Modifications
+-------------
+
+This schema has been bundled for offline use to avoid network dependencies
+during XML validation. The schema content remains unchanged from the original
+OASIS publication. Only this LICENSE file has been added for clarity.
+
+Contact
+-------
+
+For technical questions about xAL:
+OASIS Customer Information Quality TC
+https://www.oasis-open.org/committees/ciq
+
+For licensing questions:
+tc-admin@oasis-open.org
