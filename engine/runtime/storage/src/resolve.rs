@@ -29,3 +29,7 @@ impl StorageResolver {
         Ok(storage)
     }
 }
+
+#[cfg(test)]
+#[path = "resolve_test.rs"]
+mod resolve_test;

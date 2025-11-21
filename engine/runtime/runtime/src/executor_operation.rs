@@ -202,6 +202,10 @@ impl ExecutorContext {
     }
 }
 
+#[cfg(test)]
+#[path = "executor_operation_test.rs"]
+mod executor_operation_test;
+
 #[derive(Debug, Clone)]
 pub struct NodeContext {
     pub expr_engine: Arc<Engine>,
