@@ -20,10 +20,10 @@ const ObjectFieldTemplate = <
   properties,
   required,
   uiSchema,
-  idSchema,
+  fieldPathId,
   schema,
   formData,
-  onAddClick,
+  onAddProperty,
   disabled,
   readonly,
   registry,
@@ -48,7 +48,7 @@ const ObjectFieldTemplate = <
     <>
       {title && (
         <TitleFieldTemplate
-          id={titleId<T>(idSchema)}
+          id={titleId(fieldPathId)}
           title={title}
           required={required}
           schema={schema}
@@ -58,7 +58,7 @@ const ObjectFieldTemplate = <
       )}
       {description && (
         <DescriptionFieldTemplate
-          id={descriptionId<T>(idSchema)}
+          id={descriptionId(fieldPathId)}
           description={description}
           schema={schema}
           uiSchema={uiSchema}
@@ -75,7 +75,7 @@ const ObjectFieldTemplate = <
           <div>
             <div className="py-4">
               <AddButton
-                onClick={onAddClick(schema)}
+                onClick={() => onAddProperty()}
                 disabled={readonly || disabled}
                 uiSchema={uiSchema}
                 registry={registry}
