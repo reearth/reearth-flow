@@ -83,7 +83,7 @@ const ProjectCard: React.FC<Props> = ({
 
   return (
     <Card
-      className="group relative cursor-pointer rounded-xl border bg-secondary shadow-md shadow-secondary backdrop-blur-xs"
+      className="group relative cursor-pointer rounded-xl border border-transparent bg-secondary shadow-md shadow-secondary backdrop-blur-xs hover:border-border"
       key={id}
       onClick={() => onProjectSelect(project)}>
       <CardContent className="relative flex h-[120px] items-center justify-center p-0">
@@ -105,7 +105,7 @@ const ProjectCard: React.FC<Props> = ({
         <CardTitle className="truncate dark:font-extralight">{name}</CardTitle>
       </CardHeader>
       <CardFooter className="flex px-2 pb-1">
-        <p className="text-xs text-zinc-400 dark:font-thin">
+        <p className="text-xs text-zinc-800 dark:font-thin dark:text-zinc-400">
           {t("Last modified:")} {updatedAt}
         </p>
       </CardFooter>

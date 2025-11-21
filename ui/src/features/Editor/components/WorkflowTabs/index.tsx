@@ -39,10 +39,10 @@ const WorkflowTabs: React.FC<Props> = ({
   return (
     <div className="flex h-full w-full flex-1 items-end overflow-hidden">
       <div
-        className={`group flex h-4/5 w-[135px] shrink-0 cursor-pointer items-center justify-center rounded-t px-[6px] ${isMainWorkflow ? "border-x border-t bg-card" : "border-b border-node-subworkflow bg-card/70 hover:bg-card"}`}
+        className={`group flex h-4/5 w-[135px] shrink-0 cursor-pointer items-center justify-center rounded-t px-[6px] ${isMainWorkflow ? "border-x border-t bg-card" : "border-b border-node-subworkflow bg-border/20 hover:bg-border/40 dark:bg-card/70 dark:hover:bg-card"}`}
         onClick={() => onWorkflowChange(DEFAULT_ENTRY_GRAPH_ID)}>
         <p
-          className={`truncate text-center text-xs select-none group-hover:text-white dark:font-extralight ${isMainWorkflow && "text-accent-foreground"}`}>
+          className={`truncate text-center text-xs select-none dark:font-extralight dark:group-hover:text-white ${isMainWorkflow && "text-accent-foreground"}`}>
           {t("Main Workflow")}
         </p>
       </div>
