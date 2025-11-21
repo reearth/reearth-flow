@@ -12,12 +12,14 @@ export default ({
 }) => {
   const [currentProject] = useCurrentProject();
 
-  const [showDialog, setShowDialog] = useState<
-    "deploy" | "share" | "debugStop" | undefined
+  const [showPopover, setShowPopover] = useState<
+    "debugStart" | "debugStop" | undefined
   >(undefined);
 
-  const handleShowDebugStopDialog = () => setShowDialog("debugStop");
-  const handleDialogClose = () => setShowDialog(undefined);
+  const handleShowDebugStartPopover = () => setShowPopover("debugStart");
+  const handleShowDebugStopPopover = () => setShowPopover("debugStop");
+  const handlePopoverClose = () => setShowPopover(undefined);
+  const [debugRunStarted, setDebugRunStarted] = useState(false);
 
   const { useGetJob } = useJob();
 
@@ -47,8 +49,6 @@ export default ({
     [realTimeJobStatus, debugJob],
   );
 
-  const [debugRunStarted, setDebugRunStarted] = useState(false);
-
   useEffect(() => {
     if (
       debugRunStarted &&
@@ -76,13 +76,14 @@ export default ({
   };
 
   return {
-    showDialog,
+    showPopover,
     debugRunStarted,
     jobStatus,
     debugJob,
     handleDebugRunStart,
-    handleShowDebugStopDialog,
-    handleDialogClose,
+    handleShowDebugStartPopover,
+    handleShowDebugStopPopover,
+    handlePopoverClose,
     handleDebugRunReset,
   };
 };

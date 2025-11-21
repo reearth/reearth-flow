@@ -45,6 +45,22 @@ pub(super) enum PlateauProcessorError {
     SolidIntersectionTestPairCreator(String),
     #[error("SolidIntersectionTestPairCreator Factory error: {0}")]
     SolidIntersectionTestPairCreatorFactory(String),
+    #[error("TranXlinkDetector error: {0}")]
+    TranXlinkDetector(String),
+    #[error("TranXlinkDetector Factory error: {0}")]
+    TranXlinkDetectorFactory(String),
+    #[error("CityGmlMeshBuilder error: {0}")]
+    CityGmlMeshBuilder(String),
+    #[error("CityGmlMeshBuilder Factory error: {0}")]
+    CityGmlMeshBuilderFactory(String),
+    #[error("FaceExtractor Factory error: {0}")]
+    FaceExtractorFactory(String),
+    #[error("FaceExtractor error: {0}")]
+    FaceExtractor(String),
+    #[error("UnsharedEdgeDetector Factory error: {0}")]
+    UnsharedEdgeDetectorFactory(String),
+    #[error("UnsharedEdgeDetector error: {0}")]
+    UnsharedEdgeDetector(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;

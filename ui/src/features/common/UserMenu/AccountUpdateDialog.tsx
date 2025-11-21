@@ -89,19 +89,9 @@ const AccountUpdateDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
       }
     }
 
-    if (selectedLang) {
-      const input = { name, lang: selectedLang };
-      const { me: user } = await updateMe(input);
-      if (!user) {
-        setShowError("langUpdateFailed");
-        setLoading(false);
-        return;
-      }
-    }
-
+    const input = { name, email, lang: selectedLang };
     setTheme(selectedTheme);
 
-    const input = { name, email };
     const { me: user } = await updateMe(input);
     if (!user) {
       setShowError("failed");

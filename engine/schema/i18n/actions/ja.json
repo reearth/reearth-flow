@@ -173,14 +173,6 @@
       "description": "ファイルからプロパティを抽出する"
     },
     {
-      "name": "FileReader",
-      "description": "ファイルから地物を読み込む"
-    },
-    {
-      "name": "FileWriter",
-      "description": "地物をファイルに書き出す"
-    },
-    {
       "name": "GeoJsonReader",
       "description": "GeoJSONファイルから地物を読み取る"
     },

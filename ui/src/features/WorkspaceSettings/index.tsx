@@ -43,7 +43,7 @@ const WorkspaceSettings: React.FC = () => {
 
   return (
     <div className="flex h-full flex-1 flex-col">
-      <div className="flex flex-1 flex-col gap-4 px-6 pt-4 pb-2">
+      <div className="flex flex-1 flex-col pt-4 pr-3 pb-2 pl-2">
         {content.find((c) => c.id === selectedTab)?.component}
       </div>
     </div>

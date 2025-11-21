@@ -14,8 +14,8 @@ nodes:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
         - newAttribute: Building
           expr: |
@@ -260,6 +260,16 @@ nodes:
           method: remove
         - attribute: lod
           method: remove
+        - attribute: baseCityCode
+          method: remove
+        - attribute: cityCode
+          method: remove
+        - attribute: codelists
+          method: remove
+        - attribute: objectListPath
+          method: remove
+        - attribute: schemas
+          method: remove
 
   - id: 72b70428-0bb9-401b-a295-881556adc526
     name: FileTSVWriterLBDLG04-05
@@ -323,6 +333,16 @@ nodes:
           method: remove
         - attribute: lod
           method: remove
+        - attribute: baseCityCode
+          method: remove
+        - attribute: cityCode
+          method: remove
+        - attribute: codelists
+          method: remove
+        - attribute: objectListPath
+          method: remove
+        - attribute: schemas
+          method: remove
 
   - id: ab3505ad-4e89-4442-ab36-c52ac29c332e
     name: FileTSVWriterCityCodeError
@@ -338,8 +358,8 @@ nodes:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
         - newAttribute: _num_incorrect_city_code
           expr: "1"
@@ -356,8 +376,8 @@ nodes:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
         - newAttribute: _num_incorrect_usage_attribute
           expr: "1"
@@ -379,7 +399,7 @@ nodes:
       conditions:
         - expr: |
             let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
+            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
             let building_id = building_id_attribute["uro:buildingID"] ?? "";
             let branch_id = building_id_attribute["uro:branchID"]  ?? "";
             let part_id = building_id_attribute["uro:partID"] ?? "";
@@ -420,21 +440,21 @@ nodes:
         - attribute: "uro:buildingID"
           expr: |
             let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
+            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
             building_id_attribute["uro:buildingID"] ?? ""
         - attribute: "uro:branchID"
           expr: |
             let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
+            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
             building_id_attribute["uro:branchID"] ?? "（なし）"
         - attribute: "uro:partID"
           expr: |
             let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
+            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
             building_id_attribute["uro:partID"] ?? "（なし）"
 
   - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
-    name: FileWriter-invalid-building-id-format
+    name: FeatureWriter-invalid-building-id-format
     type: action
     action: FeatureWriter
     with:
@@ -451,17 +471,17 @@ nodes:
         - newAttribute: uroBuildingId
           attributeValue: |
             let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? [];
+            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
             building_id_attribute["uro:buildingID"] ?? ""
         - newAttribute: uroBranchId
           attributeValue: |
             let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? [];
+            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
             building_id_attribute["uro:branchID"] ?? ""
         - newAttribute: uroPartId
           attributeValue: |
             let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? [];
+            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
             building_id_attribute["uro:partID"] ?? ""
       calculation: |
         1
@@ -476,7 +496,7 @@ nodes:
     with:
       requestorAttributeValue: |
         let attributes = env.get("__value").cityGmlAttributes ?? #{};
-        let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? [];
+        let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
         (building_id_attribute["uro:buildingID"] ?? "") + "-" + (building_id_attribute["uro:branchID"] ?? "") + "-" + (building_id_attribute["uro:partID"] ?? "")
       supplierAttributeValue: |
         (env.get("__value").uroBuildingId ?? "") + "-" + (env.get("__value").uroBranchId ?? "") + "-" + (env.get("__value").uroPartId ?? "")
@@ -509,12 +529,12 @@ nodes:
         - attribute: UroBuildingId
           expr: |
             let city_gml_attrs = env.get("__value").cityGmlAttributes ?? #{};
-            let bldg_id_attr = city_gml_attrs["uro:BuildingIDAttribute"];
+            let bldg_id_attr = (city_gml_attrs["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
             bldg_id_attr["uro:buildingID"] ?? ""
         - attribute: UroBranchId
           expr: |
             let city_gml_attrs = env.get("__value").cityGmlAttributes ?? #{};
-            let bldg_id_attr = city_gml_attrs["uro:BuildingIDAttribute"];
+            let bldg_id_attr = (city_gml_attrs["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
             let branch_id = bldg_id_attr["uro:branchID"] ?? "";
             if (branch_id == "") {
               "（なし）"
@@ -525,7 +545,7 @@ nodes:
         - attribute: UroPartId
           expr: |
             let city_gml_attrs = env.get("__value").cityGmlAttributes ?? #{};
-            let bldg_id_attr = city_gml_attrs["uro:BuildingIDAttribute"] ?? #{};
+            let bldg_id_attr = (city_gml_attrs["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
             let part_id = bldg_id_attr["uro:partID"] ?? "";
             if (part_id == "") {
               "（なし）"
@@ -534,7 +554,7 @@ nodes:
             }
 
   - id: bba483d0-9813-499e-a0f6-22874646450d
-    name: FileWriterTsv-c-bldg-01
+    name: FeatureWriterCsv-c-bldg-01
     type: action
     action: FeatureWriter
     with:
@@ -547,8 +567,8 @@ nodes:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
         - newAttribute: _num_duplicate_building_id
           expr: "1"
@@ -565,8 +585,8 @@ nodes:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
         - newAttribute: _num_missing_building_id
           expr: "1"
@@ -782,13 +802,13 @@ edges:
     toPort: default
 
   - id: 3d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
-    from: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f  # FileWriter-invalid-building-id-format
+    from: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f  # FeatureWriter-invalid-building-id-format
     fromPort: default
     to: 9a0b1c2d-3e4f-5a6b-7c8d-9e0f1a2b3c4d  # FileOutputRouter
     toPort: default
 
   - id: 4e5f6a7b-8c9d-0e1f-2a3b-4c5d6e7f8a9b
-    from: bba483d0-9813-499e-a0f6-22874646450d  # FileWriterTsv-c-bldg-01
+    from: bba483d0-9813-499e-a0f6-22874646450d  # FeatureWriterCsv-c-bldg-01
     fromPort: default
     to: 9a0b1c2d-3e4f-5a6b-7c8d-9e0f1a2b3c4d  # FileOutputRouter
     toPort: default

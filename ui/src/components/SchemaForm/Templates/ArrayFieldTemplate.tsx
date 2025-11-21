@@ -1,5 +1,4 @@
 import {
-  ArrayFieldTemplateItemType,
   ArrayFieldTemplateProps,
   FormContextType,
   getTemplate,
@@ -18,7 +17,7 @@ const ArrayFieldTemplate = <
   const {
     canAdd,
     disabled,
-    idSchema,
+    fieldPathId,
     uiSchema,
     items,
     onAddClick,
@@ -35,11 +34,6 @@ const ArrayFieldTemplate = <
     S,
     F
   >("ArrayFieldDescriptionTemplate", registry, uiOptions);
-  const ArrayFieldItemTemplate = getTemplate<"ArrayFieldItemTemplate", T, S, F>(
-    "ArrayFieldItemTemplate",
-    registry,
-    uiOptions,
-  );
   const ArrayFieldTitleTemplate = getTemplate<
     "ArrayFieldTitleTemplate",
     T,
@@ -53,7 +47,7 @@ const ArrayFieldTemplate = <
   return (
     <div>
       <ArrayFieldTitleTemplate
-        idSchema={idSchema}
+        fieldPathId={fieldPathId}
         title={uiOptions.title || title}
         schema={schema}
         uiSchema={uiSchema}
@@ -61,18 +55,14 @@ const ArrayFieldTemplate = <
         registry={registry}
       />
       <ArrayFieldDescriptionTemplate
-        idSchema={idSchema}
+        fieldPathId={fieldPathId}
         description={uiOptions.description || schema.description}
         schema={schema}
         uiSchema={uiSchema}
         registry={registry}
       />
-      <div key={`array-item-list-${idSchema.$id}`}>
-        {items?.map(
-          ({ key, ...itemProps }: ArrayFieldTemplateItemType<T, S, F>) => (
-            <ArrayFieldItemTemplate key={key} {...itemProps} />
-          ),
-        )}
+      <div key={`array-item-list-${fieldPathId.$id}`}>
+        {items}
         {canAdd && (
           <AddButton
             onClick={onAddClick}

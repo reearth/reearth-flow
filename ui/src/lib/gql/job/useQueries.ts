@@ -25,6 +25,7 @@ export const useQueries = () => {
 
   const useGetJobsQuery = (
     workspaceId?: string,
+    keyword?: string,
     paginationOptions?: PaginationOptions,
   ) =>
     useQuery({
@@ -32,6 +33,7 @@ export const useQueries = () => {
       queryFn: async () => {
         const data = await graphQLContext?.GetJobs({
           workspaceId: workspaceId ?? "",
+          keyword,
           pagination: {
             page: paginationOptions?.page ?? 1,
             pageSize: JOBS_FETCH_RATE,

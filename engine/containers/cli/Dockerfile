@@ -26,7 +26,8 @@ RUN  \
     libxml2-dev \
     pkg-config \
     clang \
-    libdbus-1-dev
+    libdbus-1-dev \
+    libproj-dev
 
 RUN echo "ja_JP UTF-8" > /etc/locale.gen && locale-gen
 
@@ -50,12 +51,9 @@ RUN \
     apt-get install -y \
     ca-certificates \
     libxml2 \
-    python3.11 \
-    python3.11-distutils \
-    python3-pip && \
+    python3 \
+    libproj25 && \
     rm -rf /var/lib/apt/lists/*
-
-RUN python3.11 -m pip install --upgrade pip && pip install py2wasm
 
 COPY --chmod=0755 --from=builder /tmp/reearth-flow /bin
 

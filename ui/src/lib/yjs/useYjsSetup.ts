@@ -96,6 +96,18 @@ export default ({
 
     setYDocState(yDoc);
 
+    // Read-only debugging helper
+    Object.defineProperty(window, "yDoc", {
+      value: {
+        getJSON: () => ({
+          workflows: yDoc.getMap("workflows").toJSON(),
+          metadata: yDoc.getMap("metadata").toJSON(),
+        }),
+      },
+      writable: false,
+      configurable: true,
+    });
+
     return () => {
       setIsSynced(false);
       // Clear awareness state before destroying

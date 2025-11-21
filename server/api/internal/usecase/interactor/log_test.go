@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter"
+	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/graph"
@@ -42,6 +43,14 @@ func (m *mockLogGateway) GetUserFacingLogs(ctx context.Context, since time.Time,
 	return []*userfacinglog.UserFacingLog{}, nil
 }
 
+func (m *mockLogGateway) GetJobCompleteEvent(ctx context.Context, jobID id.JobID) (*gateway.JobCompleteEvent, error) {
+	return nil, nil
+}
+
+func (m *mockLogGateway) DeleteJobCompleteEvent(ctx context.Context, jobID id.JobID) error {
+	return nil
+}
+
 type mockJobRepo struct {
 	job *job.Job
 	err error
@@ -55,7 +64,7 @@ func (m *mockJobRepo) FindByIDs(ctx context.Context, jobIDs id.JobIDList) ([]*jo
 	panic("unimplemented")
 }
 
-func (m *mockJobRepo) FindByWorkspace(ctx context.Context, workspaceID id.WorkspaceID, p *interfaces.PaginationParam) ([]*job.Job, *interfaces.PageBasedInfo, error) {
+func (m *mockJobRepo) FindByWorkspace(ctx context.Context, workspaceID id.WorkspaceID, p *interfaces.PaginationParam, keyword *string) ([]*job.Job, *interfaces.PageBasedInfo, error) {
 	panic("unimplemented")
 }
 

@@ -9,6 +9,6 @@ pub(super) mod json;
 pub(super) mod mvt;
 pub(super) mod obj;
 pub(super) mod shapefile;
-pub(crate) mod writer;
+pub(super) mod writer_geometry;
 pub(super) mod xml;
 pub(super) mod zip;

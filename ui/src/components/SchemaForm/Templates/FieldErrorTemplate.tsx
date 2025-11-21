@@ -17,11 +17,11 @@ const FieldErrorTemplate = <
 >(
   props: FieldErrorProps<T, S, F>,
 ) => {
-  const { errors = [], idSchema } = props;
+  const { errors = [], fieldPathId } = props;
   if (errors.length === 0) {
     return null;
   }
-  const id = errorId<T>(idSchema);
+  const id = errorId(fieldPathId);
 
   return (
     <div id={id}>

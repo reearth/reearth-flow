@@ -74,26 +74,32 @@ impl RobustKernel {
         r: Coordinate<T, Z>,
         d: Coordinate<T, Z>,
     ) -> Orientation {
+        // For NoValue Z coordinates (pure 2D geometries), NumCast::from returns None.
+        // In this case, we use 0.0 as the Z value (projecting to the Z=0 plane).
+        // This is safe because:
+        // 1. It only affects the internal orientation calculation for edge sorting
+        // 2. The actual geometry coordinates are never modified
+        // 3. All 2D geometries effectively lie on the Z=0 plane anyway
         let orientation = orient3d(
             Coord3D {
                 x: <f64 as NumCast>::from(p.x).unwrap(),
                 y: <f64 as NumCast>::from(p.y).unwrap(),
-                z: <f64 as NumCast>::from(p.z).unwrap(),
+                z: <f64 as NumCast>::from(p.z).unwrap_or(0.0),
             },
             Coord3D {
                 x: <f64 as NumCast>::from(q.x).unwrap(),
                 y: <f64 as NumCast>::from(q.y).unwrap(),
-                z: <f64 as NumCast>::from(q.z).unwrap(),
+                z: <f64 as NumCast>::from(q.z).unwrap_or(0.0),
             },
             Coord3D {
                 x: <f64 as NumCast>::from(r.x).unwrap(),
                 y: <f64 as NumCast>::from(r.y).unwrap(),
-                z: <f64 as NumCast>::from(r.z).unwrap(),
+                z: <f64 as NumCast>::from(r.z).unwrap_or(0.0),
             },
             Coord3D {
                 x: <f64 as NumCast>::from(d.x).unwrap(),
                 y: <f64 as NumCast>::from(d.y).unwrap(),
-                z: <f64 as NumCast>::from(d.z).unwrap(),
+                z: <f64 as NumCast>::from(d.z).unwrap_or(0.0),
             },
         );
 

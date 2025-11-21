@@ -59,6 +59,7 @@ const DialogContent = forwardRef<
       <DialogOverlay overlayBgClass={overlayBgClass} />
       <DialogPrimitive.Content
         ref={ref}
+        id="dialog-content"
         className={cn(
           "fixed top-[50%] left-[50%] z-50 grid w-full max-w-xl translate-x-[-50%] gap-4 border border-primary bg-secondary/85 shadow-lg backdrop-blur duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:rounded-lg dark:bg-card/50",
           size === "xs"

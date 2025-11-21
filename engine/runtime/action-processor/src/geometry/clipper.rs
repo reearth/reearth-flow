@@ -1013,7 +1013,7 @@ mod tests {
 
         let (insides, outsides) = clip_polygon2d(&polygon, &[clip_region1, clip_region2]);
 
-        // With multiple clip regions, the result should be their intersection
+        // With multiple clip regions unioned, features overlapping ANY region go to inside
         assert!(
             !insides.is_empty() || !outsides.is_empty(),
             "Should have some results"

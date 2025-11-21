@@ -87,14 +87,14 @@ impl CSG<f64, f64> {
         let mut right = right.as_triangle_mesh()?;
         let mut left = left.as_triangle_mesh()?;
         let mut union = left.clone().union(right.clone())?;
-        let (avg, norm) = normalize_vertices(union.get_vertices_mut());
+        let norm = normalize_vertices(union.get_vertices_mut());
         right
             .get_vertices_mut()
             .iter_mut()
-            .for_each(|v| *v = (*v - avg) / norm);
+            .for_each(|v| *v = (*v - norm.translation) / norm.scale);
         left.get_vertices_mut()
             .iter_mut()
-            .for_each(|v| *v = (*v - avg) / norm);
+            .for_each(|v| *v = (*v - norm.translation) / norm.scale);
         let two_manifolds = union.into_2_manifolds_with_boundaries();
         let mut result_faces = Vec::new();
         // quick rejection for the intersection
@@ -212,7 +212,7 @@ impl CSG<f64, f64> {
         }
 
         union.retain_faces(&result_faces);
-        denormalize_vertices(union.get_vertices_mut(), avg, norm);
+        denormalize_vertices(union.get_vertices_mut(), norm);
         Ok(Solid3D::new_with_triangular_mesh(union))
     }
 }

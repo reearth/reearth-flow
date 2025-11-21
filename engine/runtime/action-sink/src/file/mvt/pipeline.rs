@@ -31,15 +31,13 @@ use super::tiling::TileMetadata;
 #[allow(clippy::too_many_arguments)]
 pub(super) fn geometry_slicing_stage(
     ctx: Context,
-    upstream: &[Feature],
+    upstream: &[(Feature, String)],
     tile_id_conv: TileIdMethod,
     sender_sliced: std::sync::mpsc::SyncSender<(u64, Vec<u8>)>,
     output_path: &Uri,
-    layer_name: &str,
     min_zoom: u8,
     max_zoom: u8,
 ) -> crate::errors::Result<()> {
-    let bincode_config = bincode::config::standard();
     let tile_contents = Arc::new(Mutex::new(Vec::new()));
     let storage = ctx
         .storage_resolver
@@ -47,61 +45,62 @@ pub(super) fn geometry_slicing_stage(
         .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
 
     // Convert CityObjects to sliced features
-    upstream.iter().par_bridge().try_for_each(|feature| {
-        let max_detail = 12; // 4096
-        let buffer_pixels = 5;
-        let tile_content = slice_cityobj_geoms(
-            feature,
-            layer_name,
-            min_zoom,
-            max_zoom,
-            max_detail,
-            buffer_pixels,
-            |(z, x, y, typename), mpoly| {
-                let feature = super::slice::SlicedFeature {
-                    typename,
-                    multi_polygons: mpoly,
-                    multi_line_strings: MultiLineString2::new(),
-                    properties: feature.attributes.clone(),
-                };
-                let bytes =
-                    bincode::serde::encode_to_vec(&feature, bincode_config).map_err(|err| {
+    upstream
+        .iter()
+        .par_bridge()
+        .try_for_each(|(feature, layer_name)| {
+            let max_detail = 12; // 4096
+            let buffer_pixels = 5;
+            let tile_content = slice_cityobj_geoms(
+                feature,
+                layer_name,
+                min_zoom,
+                max_zoom,
+                max_detail,
+                buffer_pixels,
+                |(z, x, y, typename), mpoly| {
+                    let feature = super::slice::SlicedFeature {
+                        typename,
+                        multi_polygons: mpoly,
+                        multi_line_strings: MultiLineString2::new(),
+                        properties: feature.attributes.clone(),
+                    };
+                    let bytes = serde_json::to_vec(&feature).map_err(|err| {
                         crate::errors::SinkError::MvtWriter(format!(
                             "Failed to serialize a sliced feature: {err:?}"
                         ))
                     })?;
-                let tile_id = tile_id_conv.zxy_to_id(z, x, y);
-                if sender_sliced.send((tile_id, bytes)).is_err() {
-                    return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
-                };
-                Ok(())
-            },
-            |(z, x, y, typename), line_strings| {
-                let feature = super::slice::SlicedFeature {
-                    typename,
-                    multi_polygons: MultiPolygon2::new(),
-                    multi_line_strings: line_strings,
-                    properties: feature.attributes.clone(),
-                };
-                let bytes =
-                    bincode::serde::encode_to_vec(&feature, bincode_config).map_err(|err| {
+                    let tile_id = tile_id_conv.zxy_to_id(z, x, y);
+                    if sender_sliced.send((tile_id, bytes)).is_err() {
+                        return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
+                    };
+                    Ok(())
+                },
+                |(z, x, y, typename), line_strings| {
+                    let feature = super::slice::SlicedFeature {
+                        typename,
+                        multi_polygons: MultiPolygon2::new(),
+                        multi_line_strings: line_strings,
+                        properties: feature.attributes.clone(),
+                    };
+                    let bytes = serde_json::to_vec(&feature).map_err(|err| {
                         crate::errors::SinkError::MvtWriter(format!(
                             "Failed to serialize a sliced feature: {err:?}"
                         ))
                     })?;
-                let tile_id = tile_id_conv.zxy_to_id(z, x, y);
-                if sender_sliced.send((tile_id, bytes)).is_err() {
-                    return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
-                };
-                Ok(())
-            },
-        )?;
-        tile_contents
-            .lock()
-            .map_err(|e| crate::errors::SinkError::MvtWriter(format!("Mutex poisoned: {e}")))?
-            .push(tile_content);
-        Ok::<(), crate::errors::SinkError>(())
-    })?;
+                    let tile_id = tile_id_conv.zxy_to_id(z, x, y);
+                    if sender_sliced.send((tile_id, bytes)).is_err() {
+                        return Err(crate::errors::SinkError::MvtWriter("Canceled".to_string()));
+                    };
+                    Ok(())
+                },
+            )?;
+            tile_contents
+                .lock()
+                .map_err(|e| crate::errors::SinkError::MvtWriter(format!("Mutex poisoned: {e}")))?
+                .push(tile_content);
+            Ok::<(), crate::errors::SinkError>(())
+        })?;
 
     let mut tile_content = TileContent::default();
     for content in tile_contents
@@ -114,8 +113,24 @@ pub(super) fn geometry_slicing_stage(
         tile_content.min_lat = tile_content.min_lat.min(content.min_lat);
         tile_content.max_lat = tile_content.max_lat.max(content.max_lat);
     }
+
+    // Using output path basename as tileset name. Fallback to "unnamed_tileset".
+    let mut basename = "unnamed_tileset";
+    if let Some(path) = output_path.file_name() {
+        if let Some(path_str) = path.to_str() {
+            basename = path_str;
+        } else {
+            tracing::warn!("Failed to parse output path basename {:?} as UTF-8.", path);
+        }
+    } else {
+        tracing::warn!(
+            "Failed to get tileset name from output path {:?}",
+            output_path
+        );
+    }
+
     let metadata = TileMetadata::from_tile_content(
-        layer_name.to_string(),
+        basename.to_string(),
         min_zoom,
         max_zoom,
         &TileContent {
@@ -195,6 +210,8 @@ pub(super) fn tile_writing_stage(
     output_path: &Uri,
     receiver_sorted: std::sync::mpsc::Receiver<(u64, Vec<Vec<u8>>)>,
     tile_id_conv: TileIdMethod,
+    skip_underscore_prefix: bool,
+    colon_to_underscore: bool,
 ) -> crate::errors::Result<()> {
     let default_detail = 12;
     let min_detail = 9;
@@ -215,7 +232,12 @@ pub(super) fn tile_writing_stage(
                 .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
             for detail in (min_detail..=default_detail).rev() {
                 // Make a MVT tile binary
-                let bytes = make_tile(detail, &serialized_feats)?;
+                let bytes = make_tile(
+                    detail,
+                    &serialized_feats,
+                    skip_underscore_prefix,
+                    colon_to_underscore,
+                )?;
 
                 // Retry with a lower detail level if the compressed tile size is too large
                 let compressed_size = {
@@ -229,6 +251,7 @@ pub(super) fn tile_writing_stage(
                 };
                 if detail != min_detail && compressed_size > 500_000 {
                     // If the tile is too large, try a lower detail level
+                    tracing::warn!("Large tile skipped, retry unimplemented");
                     continue;
                 }
                 storage
@@ -244,16 +267,17 @@ pub(super) fn tile_writing_stage(
 pub(super) fn make_tile(
     default_detail: i32,
     serialized_feats: &[Vec<u8>],
+    skip_underscore_prefix: bool,
+    colon_to_underscore: bool,
 ) -> crate::errors::Result<Vec<u8>> {
     let mut layers: HashMap<String, LayerData> = HashMap::new();
     let mut int_ring_buf = Vec::new();
     let mut int_ring_buf2 = Vec::new();
     let extent = 1 << default_detail;
-    let bincode_config = bincode::config::standard();
 
     for serialized_feat in serialized_feats {
-        let (feature, _): (super::slice::SlicedFeature, _) =
-            bincode::serde::decode_from_slice(serialized_feat, bincode_config).map_err(|err| {
+        let feature: super::slice::SlicedFeature = serde_json::from_slice(serialized_feat)
+            .map_err(|err| {
                 crate::errors::SinkError::MvtWriter(format!(
                     "Failed to deserialize a sliced feature: {err:?}"
                 ))
@@ -328,6 +352,7 @@ pub(super) fn make_tile(
 
         // encode geometry
         let mut geom_enc = GeometryEncoder::new();
+        let has_polygons = !int_mpoly.is_empty();
         for poly in &int_mpoly {
             let exterior = poly.exterior();
             if exterior.signed_ring_area() > 0.0 {
@@ -340,9 +365,9 @@ pub(super) fn make_tile(
             }
         }
 
+        let has_linestrings = !int_line_string.is_empty();
         for line_string in &int_line_string {
-            let area = line_string.signed_ring_area();
-            if area as i32 != 0 {
+            if line_string.len() >= 2 {
                 geom_enc.add_linestring(&line_string);
             }
         }
@@ -356,17 +381,42 @@ pub(super) fn make_tile(
 
             // Encode attributes as MVT tags
             for (key, value) in &feature.properties {
-                convert_properties(&mut layer.tags_enc, key.as_ref(), value);
+                // skip keys starting with "_"
+                if skip_underscore_prefix && key.as_ref().starts_with("_") {
+                    continue;
+                }
+                let key_string = if colon_to_underscore {
+                    key.inner().replace(":", "_")
+                } else {
+                    key.inner().to_string()
+                };
+                convert_properties(&mut layer.tags_enc, &key_string, value);
             }
             layer
         };
 
-        layer.features.push(vector_tile::tile::Feature {
-            id: None,
-            tags: layer.tags_enc.take_tags(),
-            r#type: Some(vector_tile::tile::GeomType::Polygon as i32),
-            geometry,
-        });
+        // Currently tile::Feature only supports one geometry type per feature.
+        // When both polygon and linestring are present, mark as polygon and report a warning.
+        if has_polygons {
+            if has_linestrings {
+                tracing::warn!("Feature has mixed geometry types, defaulting to polygons.");
+            }
+            layer.features.push(vector_tile::tile::Feature {
+                id: None,
+                tags: layer.tags_enc.take_tags(),
+                r#type: Some(vector_tile::tile::GeomType::Polygon as i32),
+                geometry,
+            });
+        } else if has_linestrings {
+            layer.features.push(vector_tile::tile::Feature {
+                id: None,
+                tags: layer.tags_enc.take_tags(),
+                r#type: Some(vector_tile::tile::GeomType::Linestring as i32),
+                geometry,
+            });
+        } else {
+            tracing::warn!("Feature has unknown geometry type, skipping.");
+        }
     }
 
     let layers = layers

@@ -36,6 +36,10 @@ export default () => {
         description: t("Toggle Fullscreen Mode"),
       },
       {
+        keyBinding: EditorKeyBindings["writerDialog"],
+        description: t("Open the Writer Dialog"),
+      },
+      {
         keyBinding: EditorKeyBindings["readerDialog"],
         description: t("Open the Reader Dialog"),
       },
@@ -44,8 +48,8 @@ export default () => {
         description: t("Open the Transformer Dialog"),
       },
       {
-        keyBinding: EditorKeyBindings["writerDialog"],
-        description: t("Open the Writer Dialog"),
+        keyBinding: EditorKeyBindings["groupToSubWorkFlow"],
+        description: t("Group Selected Actions into a Sub-Workflow"),
       },
     ],
   };
@@ -55,15 +59,15 @@ export default () => {
     shortcuts: [
       {
         keyBinding: CanvasKeyBindings["copy"],
-        description: t("Copy the Selected Nodes"),
+        description: t("Copy the Selected Actions"),
       },
       {
         keyBinding: CanvasKeyBindings["cut"],
-        description: t("Cut the Selected Nodes"),
+        description: t("Cut the Selected Actions"),
       },
       {
         keyBinding: CanvasKeyBindings["paste"],
-        description: t("Paste the Copied Nodes"),
+        description: t("Paste the Copied Actions"),
       },
       {
         keyBinding: CanvasKeyBindings["undo"],
@@ -75,7 +79,7 @@ export default () => {
       },
       {
         keyBinding: CanvasKeyBindings["disableNode"],
-        description: t("Disable/Enable the Selected Node"),
+        description: t("Disable/Enable the Selected Actions"),
       },
       {
         keyBinding: CanvasKeyBindings["zoomIn"],

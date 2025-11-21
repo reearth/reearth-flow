@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use nusamai_citygml::GeometryRef;
 use nusamai_citygml::{object::ObjectStereotype, GeometryType, Value};
 use nusamai_plateau::Entity;
+use reearth_flow_geometry::types::coordinate::Coordinate3D;
 use reearth_flow_geometry::types::line_string::LineString3D;
 use reearth_flow_geometry::types::polygon::Polygon3D;
 
@@ -53,7 +54,14 @@ impl TryFrom<Entity> for Geometry {
                         .iter_range(geometry.pos as usize..(geometry.pos + geometry.len) as usize)
                     {
                         let linestring = idx_linestring.transform(|c| geoms.vertices[*c as usize]);
-                        linestrings.push(linestring.into());
+                        // manually collect coordinates instead of using line_string.into()
+                        // This avoids iter_closed() which would incorrectly close the linestring
+                        linestrings.push(
+                            linestring
+                                .iter()
+                                .map(|a| Coordinate3D::new__(a[0], a[1], a[2]))
+                                .collect(),
+                        );
                     }
                     let mut geometry_feature = GmlGeometry::from(geometry.clone());
                     geometry_feature.line_strings.extend(linestrings);
@@ -162,38 +170,30 @@ impl TryFrom<Entity> for Geometry {
 }
 
 impl AttributeValue {
-    pub fn from_nusamai_cityml_value(
-        value: &nusamai_citygml::object::Value,
-    ) -> HashMap<String, AttributeValue> {
-        Self::from_key_and_nusamai_cityml_value(None, value)
-    }
-
-    pub(crate) fn from_key_and_nusamai_cityml_value(
-        key: Option<String>,
+    pub fn from_nusamai_citygml_value(
         value: &nusamai_citygml::object::Value,
     ) -> HashMap<String, AttributeValue> {
         match value {
-            nusamai_citygml::object::Value::Object(obj) => Self::handle_object(obj),
-            nusamai_citygml::object::Value::Array(arr) => Self::handle_array(arr),
-            nusamai_citygml::object::Value::Code(code) => Self::handle_code(key, code),
-            _ => Self::handle_simple_value(key, value),
+            nusamai_citygml::object::Value::Object(obj) => {
+                Self::process_object_attributes(&obj.attributes)
+            }
+            nusamai_citygml::object::Value::Array(_arr) => {
+                // Arrays at top level are not expected in typical CityGML
+                HashMap::new()
+            }
+            _ => HashMap::new(),
         }
-    }
-
-    fn handle_object(obj: &nusamai_citygml::object::Object) -> HashMap<String, AttributeValue> {
-        let mut result = HashMap::new();
-        let value = Self::process_object_attributes(&obj.attributes);
-        Self::merge_into_result(&mut result, &obj.typename, AttributeValue::Map(value));
-        result
     }
 
     fn process_object_attributes(
         attributes: &nusamai_citygml::object::Map,
     ) -> HashMap<String, AttributeValue> {
-        attributes
-            .iter()
-            .map(|(k, v)| Self::process_attribute(k, v))
-            .fold(HashMap::new(), Self::merge_attribute_maps)
+        let mut result = HashMap::new();
+        for (key, value) in attributes {
+            let attrs = Self::process_attribute(key, value);
+            result.extend(attrs);
+        }
+        result
     }
 
     fn process_attribute(
@@ -212,8 +212,23 @@ impl AttributeValue {
                     AttributeValue::String(v.code().to_owned()),
                 );
             }
+            nusamai_citygml::Value::Measure(v) => {
+                let value = serde_json::Number::from_string_unchecked(v.value().to_string());
+                result.insert(key.to_string(), AttributeValue::Number(value));
+                if let Some(uom) = v.uom() {
+                    result.insert(format!("{key}_uom"), AttributeValue::String(uom.to_owned()));
+                }
+            }
+            nusamai_citygml::Value::Date(v) => {
+                // preserve plateau date format
+                let string = v.format("%Y-%m-%d").to_string();
+                result.insert(key.to_string(), AttributeValue::String(string));
+            }
             nusamai_citygml::Value::Array(arr) => {
                 Self::process_array_attribute(&mut result, key, arr);
+            }
+            nusamai_citygml::Value::Object(obj) => {
+                Self::process_object_value(&mut result, obj);
             }
             _ => {
                 result.insert(key.to_string(), AttributeValue::from(value.clone()));
@@ -227,89 +242,113 @@ impl AttributeValue {
         key: &str,
         arr: &[nusamai_citygml::object::Value],
     ) {
-        for value in arr {
-            let target = Self::from_key_and_nusamai_cityml_value(Some(key.to_string()), value);
-            for (key, value) in target {
-                Self::merge_into_result(result, &key, value);
+        if arr.len() == 1 && !matches!(arr[0], nusamai_citygml::Value::Object(_)) {
+            let nested = Self::process_attribute(key, &arr[0]);
+            result.extend(nested);
+        } else {
+            // Process each element individually, accumulating values
+            let mut values = Vec::new();
+            let mut codes = Vec::new();
+            let mut has_codes = false;
+
+            for attr in arr.iter() {
+                match attr {
+                    nusamai_citygml::Value::Code(code) => {
+                        // Unzip Code types: collect values and codes separately
+                        values.push(AttributeValue::String(code.value().to_owned()));
+                        codes.push(AttributeValue::String(code.code().to_owned()));
+                        has_codes = true;
+                    }
+                    nusamai_citygml::Value::Object(obj) => {
+                        Self::process_object_value(result, obj);
+                    }
+                    _ => {
+                        // Skip non-object, non-code types in array
+                        tracing::warn!("Skip non-object in array for key: {} {:?}", key, attr);
+                    }
+                }
+            }
+
+            // If we collected any Code values, add them to result
+            if has_codes {
+                result.insert(key.to_string(), AttributeValue::Array(values));
+                result.insert(format!("{key}_code"), AttributeValue::Array(codes));
             }
         }
     }
 
-    fn handle_array(arr: &[nusamai_citygml::object::Value]) -> HashMap<String, AttributeValue> {
-        arr.iter()
-            .map(Self::from_nusamai_cityml_value)
-            .fold(HashMap::new(), Self::merge_attribute_maps)
-    }
-
-    fn handle_code(
-        key: Option<String>,
-        code: &nusamai_citygml::Code,
-    ) -> HashMap<String, AttributeValue> {
-        let mut result = HashMap::new();
-        if let Some(key) = key {
-            result.insert(key.clone(), AttributeValue::String(code.value().to_owned()));
+    fn process_object_value(
+        result: &mut HashMap<String, AttributeValue>,
+        obj: &nusamai_citygml::object::Object,
+    ) {
+        // Special handling for gen:genericAttribute to match reference implementation format
+        if obj.typename == "gen:genericAttribute" {
+            let generic_attrs = Self::convert_generic_attributes(&obj.attributes);
             result.insert(
-                format!("{key}_code"),
-                AttributeValue::String(code.code().to_owned()),
+                obj.typename.to_string(),
+                AttributeValue::Array(generic_attrs),
+            );
+        } else {
+            // recursive process for other objects
+            let attrs = Self::process_object_attributes(&obj.attributes);
+            result.insert(
+                obj.typename.to_string(),
+                AttributeValue::Array(vec![AttributeValue::Map(attrs)]),
             );
         }
-        result
     }
 
-    fn handle_simple_value(
-        key: Option<String>,
-        value: &nusamai_citygml::object::Value,
-    ) -> HashMap<String, AttributeValue> {
-        let mut result = HashMap::new();
-        if let Some(key) = key {
-            result.insert(key, AttributeValue::from(value.clone()));
-        }
-        result
-    }
+    fn convert_generic_attributes(
+        attributes: &nusamai_citygml::object::Map,
+    ) -> Vec<AttributeValue> {
+        let mut result = Vec::new();
 
-    fn merge_attribute_maps(
-        mut result: HashMap<String, AttributeValue>,
-        new_map: HashMap<String, AttributeValue>,
-    ) -> HashMap<String, AttributeValue> {
-        for (key, value) in new_map {
-            Self::merge_into_result(&mut result, &key, value);
-        }
-        result
-    }
+        for (name, value) in attributes {
+            let mut attr_map = HashMap::new();
+            attr_map.insert("name".to_string(), AttributeValue::String(name.clone()));
 
-    fn merge_into_result(
-        result: &mut HashMap<String, AttributeValue>,
-        key: &str,
-        value: AttributeValue,
-    ) {
-        match result.get(key) {
-            Some(AttributeValue::Array(existing_arr)) => {
-                let mut new_arr = existing_arr.clone();
-                match value {
-                    AttributeValue::Array(arr) => new_arr.extend(arr),
-                    _ => new_arr.push(value),
+            // Determine type and value based on the Value discriminant
+            let (type_str, value_attr) = match value {
+                nusamai_citygml::Value::String(v) => ("string", AttributeValue::String(v.clone())),
+                nusamai_citygml::Value::Integer(v) => {
+                    ("integer", AttributeValue::String(v.to_string()))
                 }
-                result.insert(key.to_string(), AttributeValue::Array(new_arr));
-            }
-            Some(AttributeValue::Map(existing_map)) => match value {
-                AttributeValue::Map(_) => {
-                    result.insert(
-                        key.to_string(),
-                        AttributeValue::Array(vec![
-                            AttributeValue::Map(existing_map.clone()),
-                            value,
-                        ]),
-                    );
+                nusamai_citygml::Value::Double(v) => {
+                    ("double", AttributeValue::String(v.to_string()))
+                }
+                nusamai_citygml::Value::Measure(m) => {
+                    ("measure", AttributeValue::String(m.value().to_string()))
+                }
+                nusamai_citygml::Value::Date(d) => (
+                    "date",
+                    AttributeValue::String(d.format("%Y-%m-%d").to_string()),
+                ),
+                nusamai_citygml::Value::Uri(u) => {
+                    ("uri", AttributeValue::String(u.value().to_string()))
+                }
+                nusamai_citygml::Value::Code(c) => {
+                    ("code", AttributeValue::String(c.value().to_string()))
+                }
+                nusamai_citygml::Value::Object(obj) => {
+                    // Nested generic attribute set
+                    let nested_attrs = Self::convert_generic_attributes(&obj.attributes);
+                    ("genericAttributeSet", AttributeValue::Array(nested_attrs))
                 }
                 _ => {
-                    let mut new_map = existing_map.clone();
-                    new_map.insert(key.to_string(), value);
-                    result.insert(key.to_string(), AttributeValue::Map(new_map));
+                    // Fallback for any other types
+                    ("string", AttributeValue::String(format!("{value:?}")))
                 }
-            },
-            _ => {
-                result.insert(key.to_string(), value);
-            }
+            };
+
+            attr_map.insert(
+                "type".to_string(),
+                AttributeValue::String(type_str.to_string()),
+            );
+            attr_map.insert("value".to_string(), value_attr);
+
+            result.push(AttributeValue::Map(attr_map));
         }
+
+        result
     }
 }

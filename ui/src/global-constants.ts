@@ -37,6 +37,8 @@ export const EDITOR_HOT_KEYS = [
   "ctrl+z", // undo win
   "meta+s", // save mac
   "ctrl+s", // save win
+  "shift+meta+s", // add subworkflow from selection mac
+  "shift+ctrl+s", // add subworkflow from selection win
 ];
 
 export const CURSOR_COLORS = [
@@ -59,6 +61,3 @@ export const CURSOR_COLORS = [
   "#365314", // Olive - natural tone
   "#92400e", // Burnt orange - warm earth
 ];
-
-// For Asset uploading optimization
-export const MAX_DIRECT_UPLOAD_SIZE_BYTES = 30;

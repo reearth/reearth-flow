@@ -1,0 +1,320 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+name: "Solar Radiation and Power Generation Calculation"
+entryGraphId: 10203040-5060-7080-90a0-b0c0d0e0f010
+with:
+  # Solar parameters (adjust per location/date)
+  solar_altitude_degrees: 54.1
+  panel_capacity_factor: 0.167
+  panel_efficiency: 0.8
+  unit_adjustment: 0.01
+graphs:
+  - id: 10203040-5060-7080-90a0-b0c0d0e0f010
+    name: SolarRadiationCalculation
+    nodes:
+      # Source: Create test data with solar parameters
+      - id: 11111111-1111-1111-1111-111111111111
+        name: CreateSolarInputData
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                building_id: "bldg-001",
+                sunrise_hour: 6,
+                sunrise_minute: 15,
+                sunset_hour: 18,
+                sunset_minute: 45,
+                solar_noon_hour: 12,
+                solar_noon_minute: 30,
+                solar_noon_second: 15,
+                solar_altitude_deg: 54.1,
+                roof_slope_degrees: 30.0,
+                roof_azimuth_degrees: 180.0,
+                roof_area_m2: 100.0,
+                shadow_impact_score: 0.2,
+                reflection_intensity: 0.1
+              },
+              #{
+                building_id: "bldg-002",
+                sunrise_hour: 6,
+                sunrise_minute: 20,
+                sunset_hour: 18,
+                sunset_minute: 40,
+                solar_noon_hour: 12,
+                solar_noon_minute: 30,
+                solar_noon_second: 0,
+                solar_altitude_deg: 54.1,
+                roof_slope_degrees: 20.0,
+                roof_azimuth_degrees: 165.0,
+                roof_area_m2: 150.0,
+                shadow_impact_score: 0.15,
+                reflection_intensity: 0.05
+              }
+            ]
+
+      # Single AttributeMapper: Calculate all solar radiation expressions
+      - id: 22222222-2222-2222-2222-222222222222
+        name: SolarCalculations
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            # Expression 1: Sunrise time to TIMEVALUE
+            - attribute: sunrise_seconds
+              expr: |
+                (env.get("__value").sunrise_hour * 3600) + (env.get("__value").sunrise_minute * 60)
+
+            # Expression 2: Sunset time to TIMEVALUE
+            - attribute: sunset_seconds
+              expr: |
+                (env.get("__value").sunset_hour * 3600) + (env.get("__value").sunset_minute * 60)
+
+            # Expression 3: Solar noon time to TIMEVALUE
+            - attribute: solar_noon_seconds
+              expr: |
+                (env.get("__value").solar_noon_hour * 3600)
+                + (env.get("__value").solar_noon_minute * 60)
+                + env.get("__value").solar_noon_second
+
+            # Expression 4: Planar solar radiation calculation
+            - attribute: planar_radiation_rate
+              expr: |
+                let sunrise = (env.get("__value").sunrise_hour * 3600) + (env.get("__value").sunrise_minute * 60);
+                let sunset = (env.get("__value").sunset_hour * 3600) + (env.get("__value").sunset_minute * 60);
+                let altitude = env.get("__value").solar_altitude_deg;
+
+                let daylight_fraction = (sunset / 86400.0) - (sunrise / 86400.0);
+                let radiation = daylight_fraction * 24.0
+                  * math::sin(math::to_radians(altitude))
+                  * (2.0 / math::pi());
+
+                radiation
+
+            # Expression 5: Incidence angle calculation (cosine)
+            - attribute: cos_incidence_angle
+              expr: |
+                let solar_alt = env.get("__value").solar_altitude_deg;
+                let roof_slope = env.get("__value").roof_slope_degrees;
+                let roof_azimuth = env.get("__value").roof_azimuth_degrees;
+
+                let solar_alt_rad = math::to_radians(solar_alt);
+                let slope_rad = math::to_radians(roof_slope);
+                let azimuth_diff_rad = math::to_radians(180.0 - roof_azimuth);
+
+                let cos_angle = math::sin(solar_alt_rad) * math::cos(slope_rad)
+                  + math::cos(solar_alt_rad) * math::sin(slope_rad) * math::cos(azimuth_diff_rad);
+
+                cos_angle
+
+            # Expression 6: Solar radiation on surface
+            - attribute: surface_solar_radiation
+              expr: |
+                let sunrise = (env.get("__value").sunrise_hour * 3600) + (env.get("__value").sunrise_minute * 60);
+                let sunset = (env.get("__value").sunset_hour * 3600) + (env.get("__value").sunset_minute * 60);
+                let altitude = env.get("__value").solar_altitude_deg;
+                let daylight_fraction = (sunset / 86400.0) - (sunrise / 86400.0);
+                let radiation_rate = daylight_fraction * 24.0 * math::sin(math::to_radians(altitude)) * (2.0 / math::pi());
+
+                let solar_alt = env.get("__value").solar_altitude_deg;
+                let roof_slope = env.get("__value").roof_slope_degrees;
+                let roof_azimuth = env.get("__value").roof_azimuth_degrees;
+                let solar_alt_rad = math::to_radians(solar_alt);
+                let slope_rad = math::to_radians(roof_slope);
+                let azimuth_diff_rad = math::to_radians(180.0 - roof_azimuth);
+                let cos_angle = math::sin(solar_alt_rad) * math::cos(slope_rad) + math::cos(solar_alt_rad) * math::sin(slope_rad) * math::cos(azimuth_diff_rad);
+
+                let area_m2 = env.get("__value").roof_area_m2;
+                let effective_cos = math::max(cos_angle, 0.0);
+                let total_radiation = radiation_rate * effective_cos * area_m2;
+
+                total_radiation
+
+            # Expression 7: Daily power generation
+            - attribute: daily_power_generation_kwh
+              expr: |
+                let sunrise = (env.get("__value").sunrise_hour * 3600) + (env.get("__value").sunrise_minute * 60);
+                let sunset = (env.get("__value").sunset_hour * 3600) + (env.get("__value").sunset_minute * 60);
+                let altitude = env.get("__value").solar_altitude_deg;
+                let daylight_fraction = (sunset / 86400.0) - (sunrise / 86400.0);
+                let radiation_rate = daylight_fraction * 24.0 * math::sin(math::to_radians(altitude)) * (2.0 / math::pi());
+
+                let solar_alt = env.get("__value").solar_altitude_deg;
+                let roof_slope = env.get("__value").roof_slope_degrees;
+                let roof_azimuth = env.get("__value").roof_azimuth_degrees;
+                let solar_alt_rad = math::to_radians(solar_alt);
+                let slope_rad = math::to_radians(roof_slope);
+                let azimuth_diff_rad = math::to_radians(180.0 - roof_azimuth);
+                let cos_angle = math::sin(solar_alt_rad) * math::cos(slope_rad) + math::cos(solar_alt_rad) * math::sin(slope_rad) * math::cos(azimuth_diff_rad);
+
+                let area_m2 = env.get("__value").roof_area_m2;
+                let effective_cos = math::max(cos_angle, 0.0);
+                let surface_radiation = radiation_rate * effective_cos * area_m2;
+
+                let capacity = env.get("panel_capacity_factor");
+                let efficiency = env.get("panel_efficiency");
+                let adjustment = env.get("unit_adjustment");
+                let power_kwh = surface_radiation * capacity * efficiency * adjustment;
+
+                power_kwh
+
+            # Expression 8: Final solar potential with shadow/reflection
+            - attribute: adjusted_solar_potential_kwh
+              expr: |
+                let sunrise = (env.get("__value").sunrise_hour * 3600) + (env.get("__value").sunrise_minute * 60);
+                let sunset = (env.get("__value").sunset_hour * 3600) + (env.get("__value").sunset_minute * 60);
+                let altitude = env.get("__value").solar_altitude_deg;
+                let daylight_fraction = (sunset / 86400.0) - (sunrise / 86400.0);
+                let radiation_rate = daylight_fraction * 24.0 * math::sin(math::to_radians(altitude)) * (2.0 / math::pi());
+
+                let solar_alt = env.get("__value").solar_altitude_deg;
+                let roof_slope = env.get("__value").roof_slope_degrees;
+                let roof_azimuth = env.get("__value").roof_azimuth_degrees;
+                let solar_alt_rad = math::to_radians(solar_alt);
+                let slope_rad = math::to_radians(roof_slope);
+                let azimuth_diff_rad = math::to_radians(180.0 - roof_azimuth);
+                let cos_angle = math::sin(solar_alt_rad) * math::cos(slope_rad) + math::cos(solar_alt_rad) * math::sin(slope_rad) * math::cos(azimuth_diff_rad);
+
+                let area_m2 = env.get("__value").roof_area_m2;
+                let effective_cos = math::max(cos_angle, 0.0);
+                let surface_radiation = radiation_rate * effective_cos * area_m2;
+
+                let capacity = env.get("panel_capacity_factor");
+                let efficiency = env.get("panel_efficiency");
+                let adjustment = env.get("unit_adjustment");
+                let base_power = surface_radiation * capacity * efficiency * adjustment;
+
+                let shadow_loss = env.get("__value").shadow_impact_score;
+                let reflection_gain = env.get("__value").reflection_intensity;
+                let adjusted = base_power * (1.0 - shadow_loss) * (1.0 + reflection_gain);
+
+                adjusted
+
+            # Additional useful metrics
+            - attribute: annual_potential_kwh
+              expr: |
+                let sunrise = (env.get("__value").sunrise_hour * 3600) + (env.get("__value").sunrise_minute * 60);
+                let sunset = (env.get("__value").sunset_hour * 3600) + (env.get("__value").sunset_minute * 60);
+                let altitude = env.get("__value").solar_altitude_deg;
+                let daylight_fraction = (sunset / 86400.0) - (sunrise / 86400.0);
+                let radiation_rate = daylight_fraction * 24.0 * math::sin(math::to_radians(altitude)) * (2.0 / math::pi());
+
+                let solar_alt = env.get("__value").solar_altitude_deg;
+                let roof_slope = env.get("__value").roof_slope_degrees;
+                let roof_azimuth = env.get("__value").roof_azimuth_degrees;
+                let solar_alt_rad = math::to_radians(solar_alt);
+                let slope_rad = math::to_radians(roof_slope);
+                let azimuth_diff_rad = math::to_radians(180.0 - roof_azimuth);
+                let cos_angle = math::sin(solar_alt_rad) * math::cos(slope_rad) + math::cos(solar_alt_rad) * math::sin(slope_rad) * math::cos(azimuth_diff_rad);
+
+                let area_m2 = env.get("__value").roof_area_m2;
+                let effective_cos = math::max(cos_angle, 0.0);
+                let surface_radiation = radiation_rate * effective_cos * area_m2;
+
+                let capacity = env.get("panel_capacity_factor");
+                let efficiency = env.get("panel_efficiency");
+                let adjustment = env.get("unit_adjustment");
+                let base_power = surface_radiation * capacity * efficiency * adjustment;
+
+                let shadow_loss = env.get("__value").shadow_impact_score;
+                let reflection_gain = env.get("__value").reflection_intensity;
+                let daily = base_power * (1.0 - shadow_loss) * (1.0 + reflection_gain);
+
+                daily * 365.0
+
+            - attribute: is_viable_for_panels
+              expr: |
+                let sunrise = (env.get("__value").sunrise_hour * 3600) + (env.get("__value").sunrise_minute * 60);
+                let sunset = (env.get("__value").sunset_hour * 3600) + (env.get("__value").sunset_minute * 60);
+                let altitude = env.get("__value").solar_altitude_deg;
+                let daylight_fraction = (sunset / 86400.0) - (sunrise / 86400.0);
+                let radiation_rate = daylight_fraction * 24.0 * math::sin(math::to_radians(altitude)) * (2.0 / math::pi());
+
+                let solar_alt = env.get("__value").solar_altitude_deg;
+                let roof_slope = env.get("__value").roof_slope_degrees;
+                let roof_azimuth = env.get("__value").roof_azimuth_degrees;
+                let solar_alt_rad = math::to_radians(solar_alt);
+                let slope_rad = math::to_radians(roof_slope);
+                let azimuth_diff_rad = math::to_radians(180.0 - roof_azimuth);
+                let cos_angle = math::sin(solar_alt_rad) * math::cos(slope_rad) + math::cos(solar_alt_rad) * math::sin(slope_rad) * math::cos(azimuth_diff_rad);
+
+                let area_m2 = env.get("__value").roof_area_m2;
+                let effective_cos = math::max(cos_angle, 0.0);
+                let surface_radiation = radiation_rate * effective_cos * area_m2;
+
+                let capacity = env.get("panel_capacity_factor");
+                let efficiency = env.get("panel_efficiency");
+                let adjustment = env.get("unit_adjustment");
+                let base_power = surface_radiation * capacity * efficiency * adjustment;
+
+                let shadow_loss = env.get("__value").shadow_impact_score;
+                let reflection_gain = env.get("__value").reflection_intensity;
+                let potential = base_power * (1.0 - shadow_loss) * (1.0 + reflection_gain);
+
+                let min_threshold = 1.0;
+                potential >= min_threshold
+
+            - attribute: panel_priority
+              expr: |
+                let sunrise = (env.get("__value").sunrise_hour * 3600) + (env.get("__value").sunrise_minute * 60);
+                let sunset = (env.get("__value").sunset_hour * 3600) + (env.get("__value").sunset_minute * 60);
+                let altitude = env.get("__value").solar_altitude_deg;
+                let daylight_fraction = (sunset / 86400.0) - (sunrise / 86400.0);
+                let radiation_rate = daylight_fraction * 24.0 * math::sin(math::to_radians(altitude)) * (2.0 / math::pi());
+
+                let solar_alt = env.get("__value").solar_altitude_deg;
+                let roof_slope = env.get("__value").roof_slope_degrees;
+                let roof_azimuth = env.get("__value").roof_azimuth_degrees;
+                let solar_alt_rad = math::to_radians(solar_alt);
+                let slope_rad = math::to_radians(roof_slope);
+                let azimuth_diff_rad = math::to_radians(180.0 - roof_azimuth);
+                let cos_angle = math::sin(solar_alt_rad) * math::cos(slope_rad) + math::cos(solar_alt_rad) * math::sin(slope_rad) * math::cos(azimuth_diff_rad);
+
+                let area_m2 = env.get("__value").roof_area_m2;
+                let effective_cos = math::max(cos_angle, 0.0);
+                let surface_radiation = radiation_rate * effective_cos * area_m2;
+
+                let capacity = env.get("panel_capacity_factor");
+                let efficiency = env.get("panel_efficiency");
+                let adjustment = env.get("unit_adjustment");
+                let base_power = surface_radiation * capacity * efficiency * adjustment;
+
+                let shadow_loss = env.get("__value").shadow_impact_score;
+                let reflection_gain = env.get("__value").reflection_intensity;
+                let potential = base_power * (1.0 - shadow_loss) * (1.0 + reflection_gain);
+
+                if potential >= 10.0 {
+                  "high"
+                } else if potential >= 5.0 {
+                  "medium"
+                } else if potential >= 1.0 {
+                  "low"
+                } else {
+                  "not-viable"
+                }
+
+      # Sink: Write results to CSV
+      - id: 88888888-8888-8888-8888-888888888888
+        name: WriteResultsCSV
+        type: action
+        action: CsvWriter
+        with:
+          format: csv
+          output: |
+            "solar-radiation-results.csv"
+
+    edges:
+      # Source -> AttributeMapper
+      - id: e1111111-1111-1111-1111-111111111111
+        from: 11111111-1111-1111-1111-111111111111
+        to: 22222222-2222-2222-2222-222222222222
+        fromPort: default
+        toPort: default
+
+      # AttributeMapper -> CsvWriter
+      - id: e2222222-2222-2222-2222-222222222222
+        from: 22222222-2222-2222-2222-222222222222
+        to: 88888888-8888-8888-8888-888888888888
+        fromPort: default
+        toPort: default

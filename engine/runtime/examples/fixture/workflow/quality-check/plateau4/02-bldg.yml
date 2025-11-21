@@ -242,7 +242,7 @@ graphs:
     type: action
     action: GeometryCoercer
     with:
-      coercerType: lineString
+      targetType: lineString
   - id: 9c1e4a7b-6f2d-4e5c-a8b1-3f6c9e1a4b7d
     name: ClosedCurveFilter
     type: action
@@ -268,13 +268,13 @@ graphs:
     type: action
     action: GeometryCoercer
     with:
-      coercerType: lineString
+      targetType: lineString
   - id: 1c4f7a2e-5b8d-4a3c-f9e6-4c1f8a7e2b5d
     name: GeometryCoercerHole
     type: action
     action: GeometryCoercer
     with:
-      coercerType: lineString
+      targetType: lineString
   - id: 3f5a8c1d-7e4b-4c9f-a2e7-6f3a8c1d4e7b
     name: FeatureCounterHole
     type: action
@@ -634,8 +634,8 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
       - newAttribute: _num_lod0_1_buildingpart
         expr: '1'
@@ -672,8 +672,8 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
       - newAttribute: _num_lbldg02_error
         expr: '1'
@@ -830,8 +830,8 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
       - newAttribute: Building
         expr: |
@@ -1053,6 +1053,16 @@ graphs:
         method: remove
       - attribute: lod
         method: remove
+      - attribute: baseCityCode
+        method: remove
+      - attribute: cityCode
+        method: remove
+      - attribute: codelists
+        method: remove
+      - attribute: objectListPath
+        method: remove
+      - attribute: schemas
+        method: remove
   - id: 72b70428-0bb9-401b-a295-881556adc526
     name: FileTSVWriterLBDLG04-05
     type: action
@@ -1114,6 +1124,16 @@ graphs:
         method: remove
       - attribute: lod
         method: remove
+      - attribute: baseCityCode
+        method: remove
+      - attribute: cityCode
+        method: remove
+      - attribute: codelists
+        method: remove
+      - attribute: objectListPath
+        method: remove
+      - attribute: schemas
+        method: remove
   - id: ab3505ad-4e89-4442-ab36-c52ac29c332e
     name: FileTSVWriterCityCodeError
     type: action
@@ -1127,8 +1147,8 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
       - newAttribute: _num_incorrect_city_code
         expr: '1'
@@ -1143,8 +1163,8 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
       - newAttribute: _num_incorrect_usage_attribute
         expr: '1'
@@ -1162,7 +1182,7 @@ graphs:
       conditions:
       - expr: |
           let attributes = env.get("__value").cityGmlAttributes ?? #{};
-          let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
+          let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
           let building_id = building_id_attribute["uro:buildingID"] ?? "";
           let branch_id = building_id_attribute["uro:branchID"]  ?? "";
           let part_id = building_id_attribute["uro:partID"] ?? "";
@@ -1202,20 +1222,20 @@ graphs:
       - attribute: uro:buildingID
         expr: |
           let attributes = env.get("__value").cityGmlAttributes ?? #{};
-          let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
+          let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
           building_id_attribute["uro:buildingID"] ?? ""
       - attribute: uro:branchID
         expr: |
           let attributes = env.get("__value").cityGmlAttributes ?? #{};
-          let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
+          let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
           building_id_attribute["uro:branchID"] ?? "（なし）"
       - attribute: uro:partID
         expr: |
           let attributes = env.get("__value").cityGmlAttributes ?? #{};
-          let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
+          let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
           building_id_attribute["uro:partID"] ?? "（なし）"
   - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
-    name: FileWriter-invalid-building-id-format
+    name: FeatureWriter-invalid-building-id-format
     type: action
     action: FeatureWriter
     with:
@@ -1231,17 +1251,17 @@ graphs:
       - newAttribute: uroBuildingId
         attributeValue: |
           let attributes = env.get("__value").cityGmlAttributes ?? #{};
-          let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? [];
+          let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
           building_id_attribute["uro:buildingID"] ?? ""
       - newAttribute: uroBranchId
         attributeValue: |
           let attributes = env.get("__value").cityGmlAttributes ?? #{};
-          let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? [];
+          let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
           building_id_attribute["uro:branchID"] ?? ""
       - newAttribute: uroPartId
         attributeValue: |
           let attributes = env.get("__value").cityGmlAttributes ?? #{};
-          let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? [];
+          let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
           building_id_attribute["uro:partID"] ?? ""
       calculation: |
         1
@@ -1255,7 +1275,7 @@ graphs:
     with:
       requestorAttributeValue: |
         let attributes = env.get("__value").cityGmlAttributes ?? #{};
-        let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? [];
+        let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
         (building_id_attribute["uro:buildingID"] ?? "") + "-" + (building_id_attribute["uro:branchID"] ?? "") + "-" + (building_id_attribute["uro:partID"] ?? "")
       supplierAttributeValue: |
         (env.get("__value").uroBuildingId ?? "") + "-" + (env.get("__value").uroBranchId ?? "") + "-" + (env.get("__value").uroPartId ?? "")
@@ -1286,12 +1306,12 @@ graphs:
       - attribute: UroBuildingId
         expr: |
           let city_gml_attrs = env.get("__value").cityGmlAttributes ?? #{};
-          let bldg_id_attr = city_gml_attrs["uro:BuildingIDAttribute"];
+          let bldg_id_attr = (city_gml_attrs["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
           bldg_id_attr["uro:buildingID"] ?? ""
       - attribute: UroBranchId
         expr: |
           let city_gml_attrs = env.get("__value").cityGmlAttributes ?? #{};
-          let bldg_id_attr = city_gml_attrs["uro:BuildingIDAttribute"];
+          let bldg_id_attr = (city_gml_attrs["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
           let branch_id = bldg_id_attr["uro:branchID"] ?? "";
           if (branch_id == "") {
             "（なし）"
@@ -1301,7 +1321,7 @@ graphs:
       - attribute: UroPartId
         expr: |
           let city_gml_attrs = env.get("__value").cityGmlAttributes ?? #{};
-          let bldg_id_attr = city_gml_attrs["uro:BuildingIDAttribute"] ?? #{};
+          let bldg_id_attr = (city_gml_attrs["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
           let part_id = bldg_id_attr["uro:partID"] ?? "";
           if (part_id == "") {
             "（なし）"
@@ -1309,7 +1329,7 @@ graphs:
             part_id
           }
   - id: bba483d0-9813-499e-a0f6-22874646450d
-    name: FileWriterTsv-c-bldg-01
+    name: FeatureWriterCsv-c-bldg-01
     type: action
     action: FeatureWriter
     with:
@@ -1321,8 +1341,8 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
       - newAttribute: _num_duplicate_building_id
         expr: '1'
@@ -1337,8 +1357,8 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
       - newAttribute: _num_missing_building_id
         expr: '1'
@@ -1640,8 +1660,8 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
       - newAttribute: _num_lbldg06_error
         expr: '1'
@@ -1698,8 +1718,8 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: cityGmlPath
-      aggregateAttribute: cityGmlPath
+      groupBy:
+      - cityGmlPath
       calculations:
       - newAttribute: instGmlIdTotalCount
         expr: |
@@ -1718,8 +1738,8 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
       - newAttribute: _num_invalid_bldginst_geom_type
         expr: '1'
@@ -1818,7 +1838,7 @@ graphs:
     toPort: default
   - id: 77a7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
     from: 690f9475-1821-4f50-8315-f00f53251a00
-    fromPort: unfiltered
+    fromPort: default
     to: 99a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     toPort: default
   - id: 66b6c7d8-9e0f-1a2b-3c4d-5e6f7a8b9c0d
@@ -1959,8 +1979,8 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
       - newAttribute: _num_lod0_incorrect_orientation
         expr: '1'
@@ -1983,8 +2003,8 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
       - newAttribute: _num_lod0_invalid_surface
         expr: '1'
@@ -2093,8 +2113,8 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
       - newAttribute: _num_lod1_invalid_surface
         expr: '1'
@@ -2117,8 +2137,8 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
       - newAttribute: _num_lod2_invalid_surface
         expr: |
@@ -2242,7 +2262,7 @@ graphs:
     type: action
     action: GeometryCoercer
     with:
-      coercerType: lineString
+      targetType: lineString
   - id: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1aa
     name: TwoDimensionForcer
     type: action
@@ -2318,8 +2338,9 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: filename_a
+      groupId: gmlFilename
+      groupBy:
+      - filename_a
       calculations:
       - newAttribute: _num_lod0_surface_intersection
         expr: '1'
@@ -2397,8 +2418,8 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
       - newAttribute: _num_incorrect_meshcode
         expr: '1'
@@ -2491,6 +2512,16 @@ graphs:
         method: remove
       - attribute: gmlPath
         method: remove
+      - attribute: cityCode
+        method: remove
+      - attribute: baseCityCode
+        method: remove
+      - attribute: codelists
+        method: remove
+      - attribute: objectListPath
+        method: remove
+      - attribute: schemas
+        method: remove
   - id: 89712e8f-e0ac-4bb3-a92f-c5ff06fe4c96
     name: FeatureWriterL14-BoundaryNotClosed
     type: action
@@ -2504,8 +2535,8 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
       - newAttribute: _num_lod1_not_closed_solid
         expr: |
@@ -2588,6 +2619,16 @@ graphs:
         method: remove
       - attribute: gmlPath
         method: remove
+      - attribute: cityCode
+        method: remove
+      - attribute: baseCityCode
+        method: remove
+      - attribute: codelists
+        method: remove
+      - attribute: objectListPath
+        method: remove
+      - attribute: schemas
+        method: remove
   - id: 527087b4-0411-49bd-ae5f-c1c7f9a5ccb8
     name: FeatureWriterL14-BoundaryOtherIssues
     type: action
@@ -2601,8 +2642,8 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilename
+      groupBy:
+      - gmlFilename
       calculations:
       - newAttribute: _num_lod1_solid_issues
         expr: |
@@ -2663,8 +2704,9 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: filename
+      groupId: gmlFilename
+      groupBy:
+      - filename
       calculations:
       - newAttribute: _num_lod1_not_closed_solid
         expr: '1'
@@ -2679,8 +2721,9 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: filename
+      groupId: gmlFilename
+      groupBy:
+      - filename
       calculations:
       - newAttribute: _num_lod1_solid_issues
         expr: '1'
@@ -2757,8 +2800,9 @@ graphs:
     type: action
     action: StatisticsCalculator
     with:
-      aggregateName: gmlFilename
-      aggregateAttribute: gmlFilenameA
+      groupId: gmlFilename
+      groupBy:
+      - gmlFilenameA
       calculations:
       - newAttribute: _num_lod1_solid_intersection
         expr: |
@@ -3370,6 +3414,14 @@ graphs:
         value: gmlFilename
       - attribute: cityGmlPath
         method: remove
+      - attribute: baseCityCode
+        method: remove
+      - attribute: objectListPath
+        method: remove
+      - attribute: codelists
+        method: remove
+      - attribute: schemas
+        method: remove
   - id: a8a7e7f8-8d73-4078-9cff-4476924f2ad7
     name: FeatureSorter
     type: action
@@ -3729,9 +3781,8 @@ graphs:
   - id: b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
     name: FileWriterQcResultOk
     type: action
-    action: FileWriter
+    action: JsonWriter
     with:
-      format: json
       converter: '[]'
       output: |
         let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";

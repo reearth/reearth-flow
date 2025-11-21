@@ -36,7 +36,6 @@ export default function Editor({
     users,
     nodes,
     edges,
-    selectedEdgeIds,
     openNode,
     nodePickerOpen,
     canUndo,
@@ -69,6 +68,7 @@ export default function Editor({
     handleWorkflowRedo,
     handleWorkflowUndo,
     handleWorkflowRename,
+    handleWorkflowAddFromSelection,
     handleDebugRunStart,
     handleDebugRunStop,
     handleLayoutChange,
@@ -142,12 +142,13 @@ export default function Editor({
             <Canvas
               nodes={nodes}
               edges={edges}
-              selectedEdgeIds={selectedEdgeIds}
               yDoc={yDoc}
               users={users}
               currentWorkflowId={currentWorkflowId}
+              isMainWorkflow={isMainWorkflow}
               onWorkflowAdd={handleWorkflowAdd}
               onWorkflowOpen={handleWorkflowOpen}
+              onWorkflowAddFromSelection={handleWorkflowAddFromSelection}
               onNodesAdd={handleNodesAdd}
               onBeforeDelete={handleBeforeDeleteNodes}
               onNodesChange={handleNodesChange}

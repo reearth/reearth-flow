@@ -239,7 +239,7 @@ impl GeometryValidator {
     }
 
     fn process_flow_geometry<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat + From<Z>,
         Z: CoordNum + GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
     >(
         &self,

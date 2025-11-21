@@ -16,6 +16,7 @@ type CreateTriggerParam struct {
 	EventSource  trigger.EventSourceType
 	TimeInterval trigger.TimeInterval
 	AuthToken    string
+	Variables    map[string]string
 }
 
 type ExecuteAPITriggerParam struct {
@@ -27,6 +28,7 @@ type ExecuteAPITriggerParam struct {
 
 type ExecuteTimeDrivenTriggerParam struct {
 	TriggerID id.TriggerID
+	Variables map[string]string
 }
 
 type UpdateTriggerParam struct {
@@ -36,6 +38,7 @@ type UpdateTriggerParam struct {
 	EventSource  trigger.EventSourceType
 	TimeInterval trigger.TimeInterval
 	AuthToken    string
+	Variables    map[string]string
 }
 
 var (
@@ -50,7 +53,7 @@ type Trigger interface {
 	ExecuteTimeDrivenTrigger(context.Context, ExecuteTimeDrivenTriggerParam) (*job.Job, error)
 	Fetch(context.Context, []id.TriggerID) ([]*trigger.Trigger, error)
 	FindByID(context.Context, id.TriggerID) (*trigger.Trigger, error)
-	FindByWorkspace(context.Context, id.WorkspaceID, *PaginationParam) ([]*trigger.Trigger, *PageBasedInfo, error)
+	FindByWorkspace(context.Context, id.WorkspaceID, *PaginationParam, *string) ([]*trigger.Trigger, *PageBasedInfo, error)
 	Create(context.Context, CreateTriggerParam) (*trigger.Trigger, error)
 	Update(context.Context, UpdateTriggerParam) (*trigger.Trigger, error)
 	Delete(context.Context, id.TriggerID) error

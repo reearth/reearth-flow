@@ -25,10 +25,13 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
+  LoadingSkeleton,
+  FlowLogo,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { OrderDirection } from "@flow/types/paginationOptions";
 
+import BasicBoiler from "../BasicBoiler";
 import {
   Table,
   TableBody,
@@ -52,11 +55,13 @@ type DataTableProps<TData, TValue> = {
   currentOrder?: OrderDirection;
   sortOptions?: { value: string; label: string }[];
   currentSortValue?: string;
+  isFetching?: boolean;
+  noResultsMessage?: string;
   onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
-  setCurrentPage?: (page: number) => void;
-  setCurrentOrder?: (order: OrderDirection) => void;
   onSortChange?: (value: string) => void;
+  setCurrentPage?: (page: number) => void;
+  setCurrentOrderDir?: (order: OrderDirection) => void;
   setSearchTerm?: (term: string) => void;
 };
 
@@ -74,10 +79,12 @@ function DataTable<TData, TValue>({
   currentOrder = OrderDirection.Desc,
   sortOptions,
   currentSortValue,
+  isFetching,
+  noResultsMessage,
   onRowClick,
   onRowDoubleClick,
   setCurrentPage,
-  setCurrentOrder,
+  setCurrentOrderDir,
   onSortChange,
   setSearchTerm,
 }: DataTableProps<TData, TValue>) {
@@ -130,7 +137,7 @@ function DataTable<TData, TValue>({
   });
 
   const handleOrderChange = () => {
-    setCurrentOrder?.(
+    setCurrentOrderDir?.(
       currentOrder === OrderDirection.Asc
         ? OrderDirection.Desc
         : OrderDirection.Asc,
@@ -148,7 +155,7 @@ function DataTable<TData, TValue>({
     <div className="flex h-full flex-col justify-between">
       {(showOrdering || showFiltering || selectColumns) && (
         <div
-          className={`flex items-center gap-4 ${condensed ? "py-1" : "py-3"}`}>
+          className={`flex items-center gap-2 ${condensed ? "py-1" : "py-3"}`}>
           {showFiltering && (
             <Input
               placeholder={t("Search") + "..."}
@@ -157,12 +164,12 @@ function DataTable<TData, TValue>({
                 const value = String(e.target.value);
                 handleSearch(value);
               }}
-              className="max-w-sm"
+              className="h-[36px] max-w-[220px]"
             />
           )}
           {showOrdering && sortOptions && onSortChange ? (
             <Select value={currentSortValue} onValueChange={onSortChange}>
-              <SelectTrigger className="h-[32px] w-[150px]">
+              <SelectTrigger className="h-[36px] w-[150px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -177,7 +184,7 @@ function DataTable<TData, TValue>({
             <Select
               value={currentOrder || "DESC"}
               onValueChange={handleOrderChange}>
-              <SelectTrigger className="h-[32px] w-[100px]">
+              <SelectTrigger className="h-[36px] w-[150px]">
                 <SelectValue placeholder={orderDirections.ASC} />
               </SelectTrigger>
               <SelectContent>
@@ -219,75 +226,76 @@ function DataTable<TData, TValue>({
           )}
         </div>
       )}
-      <div className="flex-1 overflow-auto">
-        <div
-          className="overflow-auto rounded-md border"
-          style={{ contain: "paint", willChange: "transform" }}>
-          <Table>
-            <TableHeader className="sticky top-0 z-10 bg-card/50 backdrop-blur-2xl dark:bg-background/50">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow
-                  key={headerGroup.id}
-                  className="bg-card/50 backdrop-blur-2xl  dark:bg-background/50">
-                  {headerGroup.headers.map((header) => {
+      {isFetching ? (
+        <LoadingSkeleton />
+      ) : rows.length ? (
+        <div className="flex-1 overflow-auto">
+          <div
+            className="overflow-auto rounded-md border"
+            style={{ contain: "paint", willChange: "transform" }}>
+            <Table>
+              <TableHeader className="sticky top-0 z-10 bg-card/50 backdrop-blur-2xl dark:bg-background/50">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow
+                    key={headerGroup.id}
+                    className="bg-card/50 backdrop-blur-2xl dark:bg-background/50">
+                    {headerGroup.headers.map((header) => {
+                      return (
+                        <TableHead
+                          key={header.id}
+                          className={`${condensed ? "h-8" : "h-10"}`}>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext(),
+                              )}
+                        </TableHead>
+                      );
+                    })}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {rows.length &&
+                  rows.map((row) => {
                     return (
-                      <TableHead
-                        key={header.id}
-                        className={`${condensed ? "h-8" : "h-10"}`}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
+                      <TableRow
+                        key={row.id}
+                        className="bg-secondary"
+                        data-state={
+                          row.getIsSelected() ? "selected" : undefined
+                        }
+                        onClick={() => {
+                          row.toggleSelected();
+                          onRowClick?.(row.original);
+                        }}
+                        onDoubleClick={() => {
+                          onRowDoubleClick?.(row.original);
+                        }}>
+                        {row.getVisibleCells().map((cell: any) => (
+                          <TableCell
+                            key={cell.id}
+                            className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext(),
                             )}
-                      </TableHead>
+                          </TableCell>
+                        ))}
+                      </TableRow>
                     );
                   })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {rows.length ? (
-                rows.map((row) => {
-                  return (
-                    <TableRow
-                      key={row.id}
-                      // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
-                      data-state={row.getIsSelected() ? "selected" : undefined}
-                      onClick={() => {
-                        row.toggleSelected();
-                        onRowClick?.(row.original);
-                      }}
-                      onDoubleClick={() => {
-                        onRowDoubleClick?.(row.original);
-                      }}>
-                      {row.getVisibleCells().map((cell: any) => (
-                        <TableCell
-                          key={cell.id}
-                          className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  );
-                })
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center">
-                    {t("No Results")}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableBody>
+            </Table>
+          </div>
         </div>
-      </div>
-
+      ) : (
+        <BasicBoiler
+          text={noResultsMessage || t("No Results")}
+          icon={<FlowLogo className="size-16 text-accent" />}
+        />
+      )}
       {enablePagination && rows.length > 0 && (
         <Pagination
           currentPage={currentPage}

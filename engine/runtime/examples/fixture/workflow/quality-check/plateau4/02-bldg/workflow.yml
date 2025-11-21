@@ -113,6 +113,14 @@ graphs:
             # remove
             - attribute: cityGmlPath
               method: remove
+            - attribute: baseCityCode
+              method: remove
+            - attribute: objectListPath
+              method: remove
+            - attribute: codelists
+              method: remove
+            - attribute: schemas
+              method: remove
 
       - id: a8a7e7f8-8d73-4078-9cff-4476924f2ad7
         name: FeatureSorter
@@ -505,9 +513,8 @@ graphs:
       - id: b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
         name: FileWriterQcResultOk
         type: action
-        action: FileWriter
+        action: JsonWriter
         with:
-          format: json
           converter: '[]'
           output: |
             let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";

@@ -2,6 +2,7 @@ package gcpscheduler
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -45,6 +46,11 @@ func NewScheduler(ctx context.Context, config SchedulerConfig) (gateway.Schedule
 	}, nil
 }
 
+type scheduledPayload struct {
+	TriggerID string            `json:"triggerID"`
+	With      map[string]string `json:"with,omitempty"`
+}
+
 func (s *SchedulerRepo) CreateScheduledJob(ctx context.Context, t *trigger.Trigger) error {
 	if t.EventSource() != "TIME_DRIVEN" {
 		return fmt.Errorf("trigger is not time-driven")
@@ -65,6 +71,14 @@ func (s *SchedulerRepo) CreateScheduledJob(ctx context.Context, t *trigger.Trigg
 
 	targetURL := fmt.Sprintf("%s/api/triggers/%s/execute-scheduled", s.config.Host, t.ID().String())
 
+	body, err := json.Marshal(scheduledPayload{
+		TriggerID: t.ID().String(),
+		With:      t.Variables(),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to marshal scheduled job payload: %w", err)
+	}
+
 	job := &schedulerpb.Job{
 		Name:        name,
 		Description: fmt.Sprintf("Scheduled trigger for deployment %s", t.Deployment().String()),
@@ -77,7 +91,7 @@ func (s *SchedulerRepo) CreateScheduledJob(ctx context.Context, t *trigger.Trigg
 				Headers: map[string]string{
 					"Content-Type": "application/json",
 				},
-				Body: []byte(fmt.Sprintf(`{"triggerID": "%s"}`, t.ID().String())),
+				Body: body,
 			},
 		},
 	}
@@ -117,6 +131,14 @@ func (s *SchedulerRepo) UpdateScheduledJob(ctx context.Context, t *trigger.Trigg
 
 	targetURL := fmt.Sprintf("%s/api/triggers/%s/execute-scheduled", s.config.Host, t.ID().String())
 
+	body, err := json.Marshal(scheduledPayload{
+		TriggerID: t.ID().String(),
+		With:      t.Variables(),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to marshal scheduled job payload: %w", err)
+	}
+
 	job := &schedulerpb.Job{
 		Name:        name,
 		Description: fmt.Sprintf("Scheduled trigger for deployment %s", t.Deployment().String()),
@@ -129,7 +151,7 @@ func (s *SchedulerRepo) UpdateScheduledJob(ctx context.Context, t *trigger.Trigg
 				Headers: map[string]string{
 					"Content-Type": "application/json",
 				},
-				Body: []byte(fmt.Sprintf(`{"triggerID": "%s"}`, t.ID().String())),
+				Body: body,
 			},
 		},
 	}

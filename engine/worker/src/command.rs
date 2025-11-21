@@ -2,7 +2,10 @@ use std::{collections::HashMap, io, str::FromStr, sync::Arc};
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
-use reearth_flow_common::{dir::setup_job_directory, uri::Uri};
+use reearth_flow_common::{
+    dir::setup_job_directory,
+    uri::{Protocol, Uri},
+};
 use reearth_flow_runner::runner::AsyncRunner;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::{self, StorageResolver};
@@ -187,7 +190,7 @@ impl RunWorkerCommand {
             }
         };
 
-        let (state, logger_factory) = self
+        let (ingress_state, feature_state, logger_factory) = self
             .prepare_workflow(&storage_resolver, &meta, &mut workflow)
             .await?;
 
@@ -204,7 +207,8 @@ impl RunWorkerCommand {
             ALL_ACTION_FACTORIES.clone(),
             logger_factory,
             storage_resolver.clone(),
-            state,
+            ingress_state,
+            feature_state,
             vec![handler, node_failure_handler.clone()],
         )
         .await;
@@ -275,10 +279,19 @@ impl RunWorkerCommand {
         &self,
         storage_resolver: &Arc<StorageResolver>,
     ) -> crate::errors::Result<String> {
-        let json = if self.workflow == "-" {
-            io::read_to_string(io::stdin()).map_err(crate::errors::Error::init)?
+        let (yaml_content, base_dir) = if self.workflow == "-" {
+            let content = io::read_to_string(io::stdin()).map_err(crate::errors::Error::init)?;
+            (content, None)
         } else {
             let path = Uri::from_str(self.workflow.as_str()).map_err(crate::errors::Error::init)?;
+
+            // Extract base directory for !include resolution
+            let base_dir = if path.protocol() == Protocol::File {
+                path.path().parent().map(|p| p.to_path_buf())
+            } else {
+                None
+            };
+
             let storage = storage_resolver
                 .resolve(&path)
                 .map_err(crate::errors::Error::init)?;
@@ -290,9 +303,20 @@ impl RunWorkerCommand {
                 .bytes()
                 .await
                 .map_err(crate::errors::Error::FailedToDownloadWorkflow)?;
-            String::from_utf8(bytes.to_vec()).map_err(crate::errors::Error::init)?
+            let content = String::from_utf8(bytes.to_vec()).map_err(crate::errors::Error::init)?;
+            (content, base_dir)
         };
-        Ok(json)
+
+        // Expand !include directives if we have a base directory
+        let expanded = if let Some(base) = base_dir.as_ref() {
+            reearth_flow_common::serde::expand_yaml_includes(&yaml_content, Some(base))
+                .map_err(crate::errors::Error::init)?
+        } else {
+            reearth_flow_common::serde::expand_yaml_includes(&yaml_content, None)
+                .map_err(crate::errors::Error::init)?
+        };
+
+        Ok(expanded)
     }
 
     fn extract_workflow_info(yaml: &str) -> (Option<Uuid>, Option<String>) {
@@ -317,7 +341,7 @@ impl RunWorkerCommand {
         storage_resolver: &Arc<StorageResolver>,
         meta: &Metadata,
         workflow: &mut Workflow,
-    ) -> crate::errors::Result<(Arc<State>, Arc<LoggerFactory>)> {
+    ) -> crate::errors::Result<(Arc<State>, Arc<State>, Arc<LoggerFactory>)> {
         let job_id = meta.job_id;
         let asset_path =
             setup_job_directory("workers", "assets", job_id).map_err(crate::errors::Error::init)?;
@@ -345,16 +369,18 @@ impl RunWorkerCommand {
 
         let action_log_uri = setup_job_directory("workers", "action-log", job_id)
             .map_err(crate::errors::Error::init)?;
-        let state_uri = setup_job_directory("workers", "feature-store", job_id)
+        let feature_state_uri = setup_job_directory("workers", "feature-store", job_id)
             .map_err(crate::errors::Error::init)?;
-        let state =
-            Arc::new(State::new(&state_uri, storage_resolver).map_err(crate::errors::Error::init)?);
+        let feature_state = Arc::new(
+            State::new(&feature_state_uri, storage_resolver).map_err(crate::errors::Error::init)?,
+        );
+        let ingress_state = Arc::clone(&feature_state);
 
         let logger_factory = Arc::new(LoggerFactory::new(
             create_root_logger(action_log_uri.path()),
             action_log_uri.path(),
         ));
-        Ok((state, logger_factory))
+        Ok((ingress_state, feature_state, logger_factory))
     }
 
     async fn cleanup(

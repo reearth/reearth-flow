@@ -64,15 +64,15 @@ impl SourceFactory for ObjReaderFactory {
     ) -> Result<Box<dyn Source>, BoxedError> {
         let params = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                SourceError::FileReaderFactory(format!("Failed to serialize `with` parameter: {e}"))
+                SourceError::ObjReaderFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                SourceError::FileReaderFactory(format!(
+                SourceError::ObjReaderFactory(format!(
                     "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
-            return Err(SourceError::FileReaderFactory(
+            return Err(SourceError::ObjReaderFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
@@ -438,7 +438,7 @@ async fn read_obj(
                 IngestionMessage::OperationEvent { feature },
             ))
             .await
-            .map_err(|e| SourceError::FileReader(format!("Failed to send feature: {e}")))?;
+            .map_err(|e| SourceError::ObjReader(format!("Failed to send feature: {e}")))?;
     } else {
         let mut face_groups: HashMap<String, Vec<&Face>> = HashMap::new();
 
@@ -515,7 +515,7 @@ async fn read_obj(
                     IngestionMessage::OperationEvent { feature },
                 ))
                 .await
-                .map_err(|e| SourceError::FileReader(format!("Failed to send feature: {e}")))?;
+                .map_err(|e| SourceError::ObjReader(format!("Failed to send feature: {e}")))?;
         }
     }
 
@@ -533,7 +533,7 @@ fn parse_obj_content(content: &Bytes) -> Result<ObjData, SourceError> {
 
     for (line_num, line) in reader.lines().enumerate() {
         let line = line.map_err(|e| {
-            SourceError::FileReader(format!(
+            SourceError::ObjReader(format!(
                 "Error reading OBJ file at line {}: {e}",
                 line_num + 1
             ))
@@ -557,19 +557,19 @@ fn parse_obj_content(content: &Bytes) -> Result<ObjData, SourceError> {
         match parts[0] {
             "v" if parts.len() >= 4 => {
                 let x = parts[1].parse::<f64>().map_err(|e| {
-                    SourceError::FileReader(format!(
+                    SourceError::ObjReader(format!(
                         "Invalid vertex X at line {}: {e}",
                         line_num + 1
                     ))
                 })?;
                 let y = parts[2].parse::<f64>().map_err(|e| {
-                    SourceError::FileReader(format!(
+                    SourceError::ObjReader(format!(
                         "Invalid vertex Y at line {}: {e}",
                         line_num + 1
                     ))
                 })?;
                 let z = parts[3].parse::<f64>().map_err(|e| {
-                    SourceError::FileReader(format!(
+                    SourceError::ObjReader(format!(
                         "Invalid vertex Z at line {}: {e}",
                         line_num + 1
                     ))
@@ -578,19 +578,19 @@ fn parse_obj_content(content: &Bytes) -> Result<ObjData, SourceError> {
             }
             "vn" if parts.len() >= 4 => {
                 let nx = parts[1].parse::<f64>().map_err(|e| {
-                    SourceError::FileReader(format!(
+                    SourceError::ObjReader(format!(
                         "Invalid normal X at line {}: {e}",
                         line_num + 1
                     ))
                 })?;
                 let ny = parts[2].parse::<f64>().map_err(|e| {
-                    SourceError::FileReader(format!(
+                    SourceError::ObjReader(format!(
                         "Invalid normal Y at line {}: {e}",
                         line_num + 1
                     ))
                 })?;
                 let nz = parts[3].parse::<f64>().map_err(|e| {
-                    SourceError::FileReader(format!(
+                    SourceError::ObjReader(format!(
                         "Invalid normal Z at line {}: {e}",
                         line_num + 1
                     ))
@@ -599,14 +599,14 @@ fn parse_obj_content(content: &Bytes) -> Result<ObjData, SourceError> {
             }
             "vt" if parts.len() >= 2 => {
                 let u = parts[1].parse::<f64>().map_err(|e| {
-                    SourceError::FileReader(format!(
+                    SourceError::ObjReader(format!(
                         "Invalid texture U at line {}: {e}",
                         line_num + 1
                     ))
                 })?;
                 let v = if parts.len() >= 3 {
                     parts[2].parse::<f64>().map_err(|e| {
-                        SourceError::FileReader(format!(
+                        SourceError::ObjReader(format!(
                             "Invalid texture V at line {}: {e}",
                             line_num + 1
                         ))
@@ -616,7 +616,7 @@ fn parse_obj_content(content: &Bytes) -> Result<ObjData, SourceError> {
                 };
                 let w = if parts.len() >= 4 {
                     parts[3].parse::<f64>().map_err(|e| {
-                        SourceError::FileReader(format!(
+                        SourceError::ObjReader(format!(
                             "Invalid texture W at line {}: {e}",
                             line_num + 1
                         ))
@@ -630,7 +630,7 @@ fn parse_obj_content(content: &Bytes) -> Result<ObjData, SourceError> {
                 let mut face_vertices = Vec::new();
                 for part in &parts[1..] {
                     let vertex = parse_face_vertex(part).map_err(|e| {
-                        SourceError::FileReader(format!(
+                        SourceError::ObjReader(format!(
                             "Invalid face vertex at line {}: {}",
                             line_num + 1,
                             e
@@ -730,7 +730,7 @@ async fn resolve_material_path(
     if let Ok(uri) = Uri::from_str(mtl_lib) {
         let storage = storage_resolver
             .resolve(&uri)
-            .map_err(|e| SourceError::FileReader(format!("Failed to resolve MTL storage: {e}")))?;
+            .map_err(|e| SourceError::ObjReader(format!("Failed to resolve MTL storage: {e}")))?;
 
         if storage.get(&uri.path()).await.is_ok() {
             return Ok(Some(uri));
@@ -766,15 +766,15 @@ async fn parse_mtl(
 ) -> Result<HashMap<String, Material>, SourceError> {
     let storage = storage_resolver
         .resolve(mtl_uri)
-        .map_err(|e| SourceError::FileReader(format!("Failed to resolve MTL storage: {e}")))?;
+        .map_err(|e| SourceError::ObjReader(format!("Failed to resolve MTL storage: {e}")))?;
     let result = storage
         .get(&mtl_uri.path())
         .await
-        .map_err(|e| SourceError::FileReader(format!("Failed to read MTL file: {e}")))?;
+        .map_err(|e| SourceError::ObjReader(format!("Failed to read MTL file: {e}")))?;
     let content = result
         .bytes()
         .await
-        .map_err(|e| SourceError::FileReader(format!("Failed to read MTL file content: {e}")))?;
+        .map_err(|e| SourceError::ObjReader(format!("Failed to read MTL file content: {e}")))?;
     let content = content.to_vec();
     let reader = BufReader::new(&content[..]);
     let mut materials = HashMap::new();
@@ -782,7 +782,7 @@ async fn parse_mtl(
 
     for line in reader.lines() {
         let line =
-            line.map_err(|e| SourceError::FileReader(format!("Error reading MTL file: {e}")))?;
+            line.map_err(|e| SourceError::ObjReader(format!("Error reading MTL file: {e}")))?;
 
         let line = line.trim();
         if line.is_empty() || line.starts_with('#') {
@@ -895,7 +895,7 @@ fn create_geometry_from_faces(
             };
 
             if v_idx >= obj_data.vertices.len() {
-                return Err(SourceError::FileReader(format!(
+                return Err(SourceError::ObjReader(format!(
                     "Vertex index {} out of bounds",
                     vertex.vertex_index
                 )));

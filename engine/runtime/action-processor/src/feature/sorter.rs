@@ -116,6 +116,7 @@ impl Processor for FeatureSorter {
             .flat_map(|attribute| feature.get(attribute))
             .cloned()
             .collect_vec();
+
         self.buffer
             .entry(AttributeValue::Array(key))
             .or_default()
@@ -126,7 +127,7 @@ impl Processor for FeatureSorter {
     fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         let mut sorted = self.buffer.keys().collect_vec();
         if self.params.order == Order::Desc {
-            sorted.reverse();
+            sorted.sort_by(|a, b| b.cmp(a));
         } else {
             sorted.sort();
         }

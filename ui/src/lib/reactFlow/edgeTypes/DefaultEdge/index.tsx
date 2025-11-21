@@ -19,6 +19,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
   sourceX,
   sourceY,
   sourcePosition,
+  sourceHandleId,
   targetX,
   targetY,
   targetPosition,
@@ -44,6 +45,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
   } = useHooks({
     id,
     source,
+    sourceHandleId,
     target,
     selected,
   });

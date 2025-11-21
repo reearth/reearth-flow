@@ -46,6 +46,15 @@
               "string",
               "null"
             ]
+          },
+          "tolerance": {
+            "title": "Tolerance",
+            "description": "Geometric tolerance. Vertices closer than this distance will be considered identical during the overlay operation.",
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
           }
         },
         "definitions": {
@@ -663,6 +672,39 @@
       ]
     },
     {
+      "name": "BoundaryExtractor",
+      "type": "processor",
+      "description": "Extracts the boundary of geometries. For solids/meshes returns bounding surfaces, for surfaces returns boundary edges, for closed surfaces returns empty geometry",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "BoundaryExtractor Parameters",
+        "description": "Configuration for extracting boundaries from geometries.",
+        "type": "object",
+        "properties": {
+          "exteriorOnly": {
+            "description": "Whether to extract only exterior boundaries (ignoring holes) for polygons (default: false)",
+            "default": false,
+            "type": "boolean"
+          },
+          "keepEmptyBoundaries": {
+            "description": "Whether to keep features with empty boundaries (default: false)",
+            "default": false,
+            "type": "boolean"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "BoundsExtractor",
       "type": "processor",
       "description": "境界を抽出する",
@@ -1091,7 +1133,9 @@
               }
             ]
           },
-          "dracoCompressionEnabled": {
+          "dracoCompression": {
+            "title": "Draco Compression",
+            "description": "Use draco compression. Defaults to true.",
             "type": [
               "boolean",
               "null"
@@ -1303,6 +1347,18 @@
               }
             ]
           },
+          "geometry": {
+            "title": "Geometry Configuration",
+            "description": "Optional configuration for parsing geometry from CSV columns",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/GeometryConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "inline": {
             "title": "Inline Content",
             "description": "Expression that returns the file content as text instead of reading from a file path",
@@ -1349,6 +1405,69 @@
           },
           "Expr": {
             "type": "string"
+          },
+          "GeometryConfig": {
+            "title": "Geometry Configuration",
+            "description": "Configure how geometry data is extracted from CSV columns",
+            "type": "object",
+            "oneOf": [
+              {
+                "title": "WKT Column",
+                "description": "Geometry stored as Well-Known Text in a single column",
+                "type": "object",
+                "required": [
+                  "column"
+                ],
+                "properties": {
+                  "column": {
+                    "title": "WKT Column Name",
+                    "description": "Name of the column containing WKT geometry",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "title": "Coordinate Columns",
+                "description": "Geometry stored as separate X, Y, (optional Z) columns",
+                "type": "object",
+                "required": [
+                  "xColumn",
+                  "yColumn"
+                ],
+                "properties": {
+                  "xColumn": {
+                    "title": "X Column Name",
+                    "description": "Name of the column containing X coordinate (longitude)",
+                    "type": "string"
+                  },
+                  "yColumn": {
+                    "title": "Y Column Name",
+                    "description": "Name of the column containing Y coordinate (latitude)",
+                    "type": "string"
+                  },
+                  "zColumn": {
+                    "title": "Z Column Name",
+                    "description": "Optional name of the column containing Z coordinate (elevation)",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            ],
+            "properties": {
+              "epsg": {
+                "title": "EPSG Code",
+                "description": "Coordinate Reference System code (e.g., 4326 for WGS84)",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint16",
+                "minimum": 0.0
+              }
+            }
           }
         }
       },
@@ -1380,6 +1499,18 @@
             "allOf": [
               {
                 "$ref": "#/definitions/CsvFormat"
+              }
+            ]
+          },
+          "geometry": {
+            "title": "Geometry Configuration",
+            "description": "Optional configuration for exporting geometry to CSV columns",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/GeometryExportConfig"
+              },
+              {
+                "type": "null"
               }
             ]
           },
@@ -1415,6 +1546,57 @@
           },
           "Expr": {
             "type": "string"
+          },
+          "GeometryExportConfig": {
+            "title": "Geometry Export Configuration",
+            "description": "Configure how geometry data is written to CSV columns",
+            "type": "object",
+            "oneOf": [
+              {
+                "title": "WKT Column",
+                "description": "Write geometry as Well-Known Text in a single column",
+                "type": "object",
+                "required": [
+                  "column"
+                ],
+                "properties": {
+                  "column": {
+                    "title": "WKT Column Name",
+                    "description": "Name of the column to write WKT geometry",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "title": "Coordinate Columns",
+                "description": "Write geometry as separate X, Y, (optional Z) columns\nNote: Only supports Point geometries. Non-point geometries will be skipped with a warning.",
+                "type": "object",
+                "required": [
+                  "xColumn",
+                  "yColumn"
+                ],
+                "properties": {
+                  "xColumn": {
+                    "title": "X Column Name",
+                    "description": "Name of the column for X coordinate (longitude)",
+                    "type": "string"
+                  },
+                  "yColumn": {
+                    "title": "Y Column Name",
+                    "description": "Name of the column for Y coordinate (latitude)",
+                    "type": "string"
+                  },
+                  "zColumn": {
+                    "title": "Z Column Name",
+                    "description": "Optional name of the column for Z coordinate (elevation)",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            ]
           }
         }
       },
@@ -1603,9 +1785,19 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Dissolver Parameters",
-        "description": "Configure how to dissolve features by grouping them based on shared attributes # Dissolver Parameters Configure how to dissolve features by grouping them based on shared attributes",
+        "description": "Configure how to dissolve features by grouping them based on shared attributes",
         "type": "object",
         "properties": {
+          "attributeAccumulation": {
+            "title": "Attribute Accumulation",
+            "description": "Strategy for handling attributes when dissolving features",
+            "default": "useOneFeature",
+            "allOf": [
+              {
+                "$ref": "#/definitions/AttributeAccumulationStrategy"
+              }
+            ]
+          },
           "groupBy": {
             "title": "Group By Attributes",
             "description": "List of attribute names to group features by before dissolving. Features with the same values for these attributes will be dissolved together",
@@ -1616,11 +1808,50 @@
             "items": {
               "$ref": "#/definitions/Attribute"
             }
+          },
+          "tolerance": {
+            "title": "Tolerance",
+            "description": "Geometric tolerance. Vertices closer than this distance will be considered identical during the dissolve operation.",
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
           }
         },
         "definitions": {
           "Attribute": {
             "type": "string"
+          },
+          "AttributeAccumulationStrategy": {
+            "title": "Attribute Accumulation Strategy",
+            "description": "Defines how attributes should be handled when dissolving multiple features into one",
+            "oneOf": [
+              {
+                "title": "Drop Incoming Attributes",
+                "description": "No attributes from any incoming features will be preserved in the output (except group_by attributes if specified)",
+                "type": "string",
+                "enum": [
+                  "dropAttributes"
+                ]
+              },
+              {
+                "title": "Merge Incoming Attributes",
+                "description": "The output feature will merge all input attributes. When multiple features have the same attribute with different values, all values are collected into an array",
+                "type": "string",
+                "enum": [
+                  "mergeAttributes"
+                ]
+              },
+              {
+                "title": "Use Attributes From One Feature",
+                "description": "The output inherits the attributes of one representative feature (the last feature in the group)",
+                "type": "string",
+                "enum": [
+                  "useOneFeature"
+                ]
+              }
+            ]
           }
         }
       },
@@ -2102,6 +2333,7 @@
         "default"
       ],
       "outputPorts": [
+        "up_to_lod0",
         "up_to_lod1",
         "up_to_lod2",
         "up_to_lod3",
@@ -2642,423 +2874,6 @@
       ]
     },
     {
-      "name": "FileReader",
-      "type": "source",
-      "description": "ファイルから地物を読み込む",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FileReader",
-        "oneOf": [
-          {
-            "title": "CSV",
-            "type": "object",
-            "required": [
-              "format"
-            ],
-            "properties": {
-              "dataset": {
-                "title": "File Path",
-                "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "format": {
-                "type": "string",
-                "enum": [
-                  "csv"
-                ]
-              },
-              "inline": {
-                "title": "Inline Content",
-                "description": "Expression that returns the file content as text instead of reading from a file path",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "offset": {
-                "title": "Header Row Offset",
-                "description": "Skip this many rows from the beginning to find the header row (0 = first row is header)",
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint",
-                "minimum": 0.0
-              }
-            }
-          },
-          {
-            "title": "TSV",
-            "type": "object",
-            "required": [
-              "format"
-            ],
-            "properties": {
-              "dataset": {
-                "title": "File Path",
-                "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "format": {
-                "type": "string",
-                "enum": [
-                  "tsv"
-                ]
-              },
-              "inline": {
-                "title": "Inline Content",
-                "description": "Expression that returns the file content as text instead of reading from a file path",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "offset": {
-                "title": "Header Row Offset",
-                "description": "Skip this many rows from the beginning to find the header row (0 = first row is header)",
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint",
-                "minimum": 0.0
-              }
-            }
-          },
-          {
-            "title": "JSON",
-            "type": "object",
-            "required": [
-              "format"
-            ],
-            "properties": {
-              "dataset": {
-                "title": "File Path",
-                "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "format": {
-                "type": "string",
-                "enum": [
-                  "json"
-                ]
-              },
-              "inline": {
-                "title": "Inline Content",
-                "description": "Expression that returns the file content as text instead of reading from a file path",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            }
-          },
-          {
-            "title": "CityGML",
-            "description": "Configuration for reading CityGML files as a data source.",
-            "type": "object",
-            "required": [
-              "format"
-            ],
-            "properties": {
-              "dataset": {
-                "title": "File Path",
-                "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "flatten": {
-                "type": [
-                  "boolean",
-                  "null"
-                ]
-              },
-              "format": {
-                "type": "string",
-                "enum": [
-                  "citygml"
-                ]
-              },
-              "inline": {
-                "title": "Inline Content",
-                "description": "Expression that returns the file content as text instead of reading from a file path",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            }
-          },
-          {
-            "title": "GeoJSON",
-            "type": "object",
-            "required": [
-              "format"
-            ],
-            "properties": {
-              "dataset": {
-                "title": "File Path",
-                "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "format": {
-                "type": "string",
-                "enum": [
-                  "geojson"
-                ]
-              },
-              "inline": {
-                "title": "Inline Content",
-                "description": "Expression that returns the file content as text instead of reading from a file path",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            }
-          }
-        ],
-        "definitions": {
-          "Expr": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [],
-      "outputPorts": [
-        "default"
-      ],
-      "categories": [
-        "File"
-      ]
-    },
-    {
-      "name": "FileWriter",
-      "type": "sink",
-      "description": "地物をファイルに書き出す",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "File Writer Parameters",
-        "description": "Configure the output file format and destination for writing features",
-        "oneOf": [
-          {
-            "title": "File Writer Common Parameters",
-            "description": "Common parameters shared across all file format types",
-            "type": "object",
-            "required": [
-              "format",
-              "output"
-            ],
-            "properties": {
-              "format": {
-                "type": "string",
-                "enum": [
-                  "csv"
-                ]
-              },
-              "output": {
-                "title": "Output Path",
-                "description": "Expression for the output file path where features will be written",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  }
-                ]
-              }
-            }
-          },
-          {
-            "title": "File Writer Common Parameters",
-            "description": "Common parameters shared across all file format types",
-            "type": "object",
-            "required": [
-              "format",
-              "output"
-            ],
-            "properties": {
-              "format": {
-                "type": "string",
-                "enum": [
-                  "tsv"
-                ]
-              },
-              "output": {
-                "title": "Output Path",
-                "description": "Expression for the output file path where features will be written",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  }
-                ]
-              }
-            }
-          },
-          {
-            "title": "File Writer Common Parameters",
-            "description": "Common parameters shared across all file format types",
-            "type": "object",
-            "required": [
-              "format",
-              "output"
-            ],
-            "properties": {
-              "format": {
-                "type": "string",
-                "enum": [
-                  "xml"
-                ]
-              },
-              "output": {
-                "title": "Output Path",
-                "description": "Expression for the output file path where features will be written",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  }
-                ]
-              }
-            }
-          },
-          {
-            "title": "File Writer Common Parameters",
-            "description": "Common parameters shared across all file format types",
-            "type": "object",
-            "required": [
-              "format",
-              "output"
-            ],
-            "properties": {
-              "converter": {
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "format": {
-                "type": "string",
-                "enum": [
-                  "json"
-                ]
-              },
-              "output": {
-                "title": "Output Path",
-                "description": "Expression for the output file path where features will be written",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  }
-                ]
-              }
-            }
-          },
-          {
-            "title": "File Writer Common Parameters",
-            "description": "Common parameters shared across all file format types",
-            "type": "object",
-            "required": [
-              "format",
-              "output"
-            ],
-            "properties": {
-              "format": {
-                "type": "string",
-                "enum": [
-                  "excel"
-                ]
-              },
-              "output": {
-                "title": "Output Path",
-                "description": "Expression for the output file path where features will be written",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  }
-                ]
-              },
-              "sheetName": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            }
-          }
-        ],
-        "definitions": {
-          "Expr": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [],
-      "categories": [
-        "File"
-      ]
-    },
-    {
       "name": "GeoJsonReader",
       "type": "source",
       "description": "GeoJSONファイルから地物を読み取る",
@@ -3288,23 +3103,24 @@
         "description": "Configuration for coercing geometries to specific target types.",
         "type": "object",
         "required": [
-          "coercerType"
+          "targetType"
         ],
         "properties": {
-          "coercerType": {
+          "targetType": {
             "description": "Target geometry type to coerce features to (e.g., LineString)",
             "allOf": [
               {
-                "$ref": "#/definitions/CoercerType"
+                "$ref": "#/definitions/CoerceTarget"
               }
             ]
           }
         },
         "definitions": {
-          "CoercerType": {
+          "CoerceTarget": {
             "type": "string",
             "enum": [
-              "lineString"
+              "lineString",
+              "triangularMesh"
             ]
           }
         }
@@ -3800,15 +3616,26 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Horizontal Reprojector Parameters",
-        "description": "Configure the target coordinate system for geometry reprojection",
+        "description": "Configure the source and target coordinate systems for geometry reprojection",
         "type": "object",
         "required": [
-          "epsgCode"
+          "targetEpsgCode"
         ],
         "properties": {
-          "epsgCode": {
-            "title": "EPSG Code",
-            "description": "Target coordinate system EPSG code for the reprojection",
+          "sourceEpsgCode": {
+            "title": "Source EPSG Code",
+            "description": "Source coordinate system EPSG code. If not provided, will use the EPSG code from the geometry. This is optional to maintain backward compatibility but recommended to be explicit.",
+            "default": null,
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint16",
+            "minimum": 0.0
+          },
+          "targetEpsgCode": {
+            "title": "Target EPSG Code",
+            "description": "Target coordinate system EPSG code for the reprojection. Supports any valid EPSG code (e.g., 4326 for WGS84, 2193 for NZTM2000, 3857 for Web Mercator).",
             "type": "integer",
             "format": "uint16",
             "minimum": 0.0
@@ -3989,6 +3816,13 @@
               "$ref": "#/definitions/Attribute"
             }
           },
+          "overlaidListsAttrName": {
+            "description": "Name of the attribute to store the overlaid lists. Defaults to \"overlaidLists\".",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "tolerance": {
             "type": "number",
             "format": "double"
@@ -4011,6 +3845,68 @@
       ],
       "categories": [
         "Geometry"
+      ]
+    },
+    {
+      "name": "ListConcatenator",
+      "type": "processor",
+      "description": "Extracts a specific attribute from each element in a list and concatenates them into a single string",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ListConcatenator Parameters",
+        "description": "Configuration for concatenating a specific attribute from list elements.",
+        "type": "object",
+        "required": [
+          "attribute",
+          "list",
+          "outputAttributeName",
+          "separateCharacter"
+        ],
+        "properties": {
+          "attribute": {
+            "description": "Attribute name to extract from each list element",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "list": {
+            "description": "List attribute to read from",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "outputAttributeName": {
+            "description": "Name of the attribute to store the concatenated result",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "separateCharacter": {
+            "description": "Character(s) to use as separator between concatenated values",
+            "type": "string"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
       ]
     },
     {
@@ -4130,6 +4026,14 @@
           "output"
         ],
         "properties": {
+          "colonToUnderscore": {
+            "title": "Colon to Underscore",
+            "description": "Replace colons in attribute keys (e.g., from XML Namespaces) with underscores",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "compressOutput": {
             "title": "Compress Output",
             "description": "Optional expression to determine whether to compress the output tiles",
@@ -4172,6 +4076,14 @@
               {
                 "$ref": "#/definitions/Expr"
               }
+            ]
+          },
+          "skipUnderscorePrefix": {
+            "title": "Skip Underscore Prefix",
+            "description": "Skip attributes with underscore prefix",
+            "type": [
+              "boolean",
+              "null"
             ]
           }
         },
@@ -4906,6 +4818,57 @@
       ]
     },
     {
+      "name": "PLATEAU4.CityGmlMeshBuilder",
+      "type": "processor",
+      "description": "Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exactly 4 vertices, (2) each triangle is closed (first vertex equals last vertex)",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CityGML Mesh Builder Parameters",
+        "description": "Configure validation rules for CityGML mesh triangles",
+        "type": "object",
+        "properties": {
+          "errorAttribute": {
+            "title": "Error Attribute Name",
+            "description": "Attribute name to store validation error messages (default: \"_validation_error\")",
+            "default": "_validation_error",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "rejectInvalid": {
+            "title": "Reject Invalid Features",
+            "description": "If true, send invalid features to rejected port; if false, send all features to default port with error attributes",
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "not_closed",
+        "incorrect_vertices",
+        "wrong_orientation",
+        "degenerate_triangle",
+        "summary",
+        "rejected"
+      ],
+      "categories": [
+        "PLATEAU",
+        "Geometry"
+      ]
+    },
+    {
       "name": "PLATEAU4.DestinationMeshCodeExtractor",
       "type": "processor",
       "description": "Extract Japanese standard regional mesh code for PLATEAU destination files and add as attribute",
@@ -4971,6 +4934,46 @@
         "default",
         "rejected",
         "duplicateGmlIdStats"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU4.FaceExtractor",
+      "type": "processor",
+      "description": "Validates individual surfaces of WaterBody features for TIN mesh quality",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FaceExtractor Parameters",
+        "description": "Configuration for validating individual surfaces of WaterBody features. Always checks vertex count, closure, and orientation of polygons in TIN meshes.",
+        "type": "object",
+        "properties": {
+          "cityGmlPathAttribute": {
+            "description": "Attribute name for city_gml_path (default: \"_gml_path\")",
+            "default": "_gml_path",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "error",
+        "summary",
+        "passed",
+        "all"
       ],
       "categories": [
         "PLATEAU"
@@ -5118,6 +5121,40 @@
       ]
     },
     {
+      "name": "PLATEAU4.TransportationXlinkDetector",
+      "type": "processor",
+      "description": "Detect unreferenced surfaces in PLATEAU transportation models (L-TRAN-03)",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "TransportationXlinkDetectorParam",
+        "type": "object",
+        "required": [
+          "cityGmlPath"
+        ],
+        "properties": {
+          "cityGmlPath": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "passed",
+        "failed"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
       "name": "PLATEAU4.UDXFolderExtractor",
       "type": "processor",
       "description": "PLATEAU4データからUDXフォルダを抽出する",
@@ -5194,6 +5231,35 @@
       ]
     },
     {
+      "name": "PLATEAU4.UnsharedEdgeDetector",
+      "type": "processor",
+      "description": "Detect unshared edges in triangular meshes - edges that appear only once. REQUIRES: Input geometries must be in a projected coordinate system (meters). Use HorizontalReprojector before this action if input is in geographic coordinates.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "UnsharedEdgeDetector Parameters",
+        "description": "Configure unshared edge detection behavior",
+        "type": "object",
+        "properties": {
+          "tolerance": {
+            "description": "Tolerance for edge matching in meters (default: 0.1) Edges within this distance are considered the same edge",
+            "default": 0.1,
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "unshared"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
       "name": "PlanarityFilter",
       "type": "processor",
       "description": "タイプに基づいてジオメトリをフィルタリングする",
@@ -5232,6 +5298,8 @@
             ]
           },
           "pythonPath": {
+            "title": "Python Path",
+            "description": "Path to Python interpreter executable (default: python3)",
             "type": [
               "string",
               "null"
@@ -5250,6 +5318,8 @@
             ]
           },
           "timeoutSeconds": {
+            "title": "Timeout Seconds",
+            "description": "Maximum execution time for the Python script in seconds (default: 30)",
             "type": [
               "integer",
               "null"
@@ -5365,7 +5435,7 @@
           },
           "encoding": {
             "title": "Character Encoding",
-            "description": "Character encoding for attribute data in the DBF file (e.g., \"UTF-8\", \"Shift_JIS\")",
+            "description": "Character encoding for attribute data in the DBF file. If not specified, encoding is determined from the .cpg file (if present), otherwise defaults to UTF-8.\n\nSupported encodings include: - **UTF-8** - Unicode UTF-8 (default, recommended for all new shapefiles) - **Windows Code Pages** - Windows-1250 through Windows-1258, Windows-874 - **ISO-8859 family** - ISO-8859-1 (Latin-1) through ISO-8859-16 - **Asian encodings** - Shift-JIS, EUC-JP, EUC-KR, Big5, GBK, GB18030 - **Other legacy encodings** - KOI8-R, KOI8-U, IBM866, Macintosh\n\nAll encoding labels are case-insensitive and support common variations (e.g., \"UTF-8\", \"UTF8\", \"utf8\" all work).\n\nUTF-16 is not supported due to byte-level handling requirements. If a UTF-16 shapefile is encountered, an error with conversion instructions is returned.\n\nExamples: - `\"UTF-8\"` - Modern standard - `\"Windows-1252\"` - Common for Western European legacy data - `\"ISO-8859-1\"` - Latin-1, common in older shapefiles - `\"Shift-JIS\"` - Japanese data\n\nPriority order: encoding parameter > .cpg file > UTF-8 default",
             "type": [
               "string",
               "null"
@@ -5474,6 +5544,133 @@
       ]
     },
     {
+      "name": "SpatialFilter",
+      "type": "processor",
+      "description": "Filter Features by Spatial Relationship",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "SpatialFilter Parameters",
+        "description": "Configure spatial relationship testing between filter and candidate geometries",
+        "type": "object",
+        "properties": {
+          "outputMatchCountAttribute": {
+            "title": "Output Match Count Attribute",
+            "description": "Optional attribute name to store the number of matching filters",
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "passOnMultipleMatches": {
+            "title": "Pass on Multiple Matches",
+            "description": "If true, pass if ANY filter matches (OR logic). If false, pass only if ALL filters match (AND logic).",
+            "default": true,
+            "type": "boolean"
+          },
+          "predicate": {
+            "title": "Spatial Predicate",
+            "description": "The spatial relationship to test between filter and candidate geometries",
+            "default": "intersects",
+            "allOf": [
+              {
+                "$ref": "#/definitions/SpatialPredicate"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "SpatialPredicate": {
+            "oneOf": [
+              {
+                "description": "Filter geometry completely contains candidate",
+                "type": "string",
+                "enum": [
+                  "contains"
+                ]
+              },
+              {
+                "description": "Candidate completely within filter geometry",
+                "type": "string",
+                "enum": [
+                  "within"
+                ]
+              },
+              {
+                "description": "Geometries have any intersection",
+                "type": "string",
+                "enum": [
+                  "intersects"
+                ]
+              },
+              {
+                "description": "Geometries have no spatial relationship",
+                "type": "string",
+                "enum": [
+                  "disjoint"
+                ]
+              },
+              {
+                "description": "Geometries touch at boundaries but don't overlap",
+                "type": "string",
+                "enum": [
+                  "touches"
+                ]
+              },
+              {
+                "description": "Geometries cross each other",
+                "type": "string",
+                "enum": [
+                  "crosses"
+                ]
+              },
+              {
+                "description": "Geometries overlap partially",
+                "type": "string",
+                "enum": [
+                  "overlaps"
+                ]
+              },
+              {
+                "description": "Candidate is covered by filter geometry",
+                "type": "string",
+                "enum": [
+                  "coveredBy"
+                ]
+              },
+              {
+                "description": "Filter geometry covers candidate",
+                "type": "string",
+                "enum": [
+                  "covers"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "filter",
+        "candidate"
+      ],
+      "outputPorts": [
+        "passed",
+        "failed",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "SqlReader",
       "type": "source",
       "description": "SQLデータベースから地物を読み取る",
@@ -5534,34 +5731,36 @@
           "calculations"
         ],
         "properties": {
-          "aggregateAttribute": {
-            "description": "Attribute to group features by for aggregation",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "aggregateName": {
-            "description": "Name of the attribute containing the aggregate group name",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "calculations": {
+            "title": "Calculations",
             "description": "List of statistical calculations to perform on grouped features",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Calculation"
             }
+          },
+          "groupBy": {
+            "title": "Group by",
+            "description": "Attributes to group features by for aggregation. All of the inputs will be grouped if not specified.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "groupId": {
+            "title": "Group id",
+            "description": "Optional attribute to store the group identifier. The ID will be formed by concatenating the values of the group_by attributes separated by '|'.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "definitions": {
@@ -5750,6 +5949,52 @@
       ]
     },
     {
+      "name": "ThreeDimensionForcer",
+      "type": "processor",
+      "description": "Convert 2D Geometry to 3D by Adding Z-Coordinates",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ThreeDimensionForcer Parameters",
+        "description": "Configure how to convert 2D geometries to 3D by adding Z-coordinates",
+        "type": "object",
+        "properties": {
+          "elevation": {
+            "title": "Elevation",
+            "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "preserveExistingZ": {
+            "title": "Preserve Existing Z Values",
+            "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false.",
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "ThreeDimensionPlanarityRotator",
       "type": "processor",
       "description": "3Dで平面を回転させる",
@@ -5871,6 +6116,46 @@
       "type": "processor",
       "description": "ジオメトリを2次元に強制する",
       "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "VertexCounter",
+      "type": "processor",
+      "description": "Count Geometry Vertices to Attribute",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Vertex Counter Parameters",
+        "description": "Configure where to store the count of vertices found in geometries",
+        "type": "object",
+        "required": [
+          "outputAttribute"
+        ],
+        "properties": {
+          "outputAttribute": {
+            "title": "Output Attribute",
+            "description": "Name of the attribute where the vertex count will be stored as a number",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "default"

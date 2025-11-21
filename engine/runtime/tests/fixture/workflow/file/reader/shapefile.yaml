@@ -19,11 +19,10 @@ graphs:
       - id: 01234567-0000-0000-0000-000000000004
         name: WriteToFile
         type: action
-        action: FileWriter
+        action: JsonWriter
         with:
           output: |
             env.get("outputFilePath")
-          format: json
 
     edges:
       - id: 01234567-0000-0000-0000-000000000005

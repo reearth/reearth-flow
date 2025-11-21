@@ -108,7 +108,7 @@ graphs:
         type: action
         action: GeometryCoercer
         with:
-          coercerType: lineString
+          targetType: lineString
 
       - id: 0e2c9f7b-bf42-4edd-8276-341e34604438
         name: ClosedCurveFilter
@@ -137,14 +137,14 @@ graphs:
         type: action
         action: GeometryCoercer
         with:
-          coercerType: lineString
+          targetType: lineString
 
       - id: ba7c5dd4-5333-4477-b1e8-f85905ac2d60
         name: GeometryCoercer_Hole
         type: action
         action: GeometryCoercer
         with:
-          coercerType: lineString
+          targetType: lineString
 
       - id: 3ef3e5e2-aa64-497b-b9d3-4acd58077225
         name: FeatureCounter01

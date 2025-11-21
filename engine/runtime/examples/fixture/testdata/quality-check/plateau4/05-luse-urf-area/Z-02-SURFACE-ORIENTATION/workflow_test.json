@@ -1,0 +1,22 @@
+{
+  "workflowPath": "quality-check/plateau4/05-luse-urf-area/workflow.yml",
+  "description": "Test for plateau4 05 surface orientation error.",
+  "expectedOutput": {
+    "expectedFile": "05_土地利用_都市決定情報_区域_面の向き不正.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_luse_urf_area.json",
+      "includeFields": ["面の向き不正"]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "05_土地利用_都市決定情報_区域_検査結果一覧.csv",
+      "includeColumns": ["面の向き不正"]
+    }
+  },
+  "cityGmlPath": "udx/luse/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectResultOkFile": false,
+  "skip": false
+}

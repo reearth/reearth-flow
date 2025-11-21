@@ -1,5 +1,6 @@
-import { CaretDownIcon, PlusIcon, UserIcon } from "@phosphor-icons/react";
-import { useState } from "react";
+import { CaretDownIcon, PlusIcon } from "@phosphor-icons/react";
+import { ColumnDef } from "@tanstack/react-table";
+import { useCallback, useState } from "react";
 
 import {
   Button,
@@ -7,18 +8,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  FlowLogo,
-  Input,
+  DataTable as Table,
 } from "@flow/components";
-import BasicBoiler from "@flow/components/BasicBoiler";
 import { useUser, useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Role, UserMember } from "@flow/types";
 
 import { MemberAddDialog } from "./components";
-
-type Filter = "all" | Role;
 
 const roles: Role[] = Object.values(Role);
 
@@ -33,26 +30,39 @@ const MembersSettings: React.FC = () => {
   const { searchUser, useGetMe } = useUser();
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [email, setEmail] = useState<string>("");
-  const [currentFilter, setFilter] = useState<Filter>("all");
+  const [currentFilter, setFilter] = useState<string>("all");
   const [error, setError] = useState<string | undefined>();
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const handleSortChange = useCallback((newSortValue: string) => {
+    setFilter(newSortValue);
+  }, []);
 
   const { me } = useGetMe();
 
-  const filters: { id: Filter; title: string }[] = [
-    { id: "all", title: t("All") },
-    { id: Role.Owner, title: t("Owner") },
-    { id: Role.Reader, title: t("Reader") },
-    { id: Role.Maintainer, title: t("Maintainer") },
-    { id: Role.Writer, title: t("Writer") },
+  const filters: { value: string; label: string }[] = [
+    { value: "all", label: t("All") },
+    { value: Role.Owner, label: t("Owner") },
+    { value: Role.Reader, label: t("Reader") },
+    { value: Role.Maintainer, label: t("Maintainer") },
+    { value: Role.Writer, label: t("Writer") },
   ];
 
-  const members = currentWorkspace?.members?.filter(
-    (m) =>
-      "userId" in m &&
-      (currentFilter === "all" || m.role === currentFilter) &&
-      (m.user?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        m.user?.email.toLowerCase().includes(searchTerm.toLowerCase())),
-  ) as UserMember[];
+  const filteredMembers =
+    (currentWorkspace?.members?.filter(
+      (m) =>
+        "userId" in m &&
+        (currentFilter === "all" || m.role === currentFilter) &&
+        (m.user?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          m.user?.email.toLowerCase().includes(searchTerm.toLowerCase())),
+    ) as UserMember[]) || [];
+
+  const resultsPerPage = 12;
+  const totalPages = Math.ceil(filteredMembers.length / resultsPerPage);
+
+  const members = filteredMembers.slice(
+    (currentPage - 1) * resultsPerPage,
+    currentPage * resultsPerPage,
+  );
 
   const [openMemberAddDialog, setOpenMemberAddDialog] =
     useState<boolean>(false);
@@ -109,97 +119,88 @@ const MembersSettings: React.FC = () => {
     }
   };
 
+  const columns: ColumnDef<UserMember>[] = [
+    {
+      accessorKey: "user.name",
+      header: t("Name"),
+    },
+    {
+      accessorKey: "role",
+      header: t("Role"),
+    },
+    {
+      accessorKey: "actions",
+      header: t("Actions"),
+      cell: (row) => (
+        <div className="flex items-center gap-8">
+          <div key={row.row.original.userId} className="flex gap-4 py-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                disabled={row.row.original.userId === me?.id}
+                className={`flex flex-1 items-center gap-1 ${row.row.original.userId === me?.id ? "opacity-50" : ""}`}>
+                <p className="text-sm">{t("Change role")}</p>
+                <CaretDownIcon className="size-2" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="min-w-[70px]">
+                {roles.map((role, idx) => (
+                  <DropdownMenuItem
+                    key={idx}
+                    onClick={() =>
+                      handleChangeRole(row.row.original.userId, role)
+                    }>
+                    {role}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <Button
+            className="h-[25px]"
+            size="sm"
+            variant="outline"
+            disabled={row.row.original.userId === me?.id}
+            onClick={() => handleRemoveMembers(row.row.original.userId)}>
+            {t("Remove")}
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <>
-      <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
-        <p className="text-lg font-light dark:font-extralight">
-          {t("Members Settings")}
-        </p>
-        {!currentWorkspace?.personal && (
-          <Button
-            className="flex gap-2"
-            onClick={() => setOpenMemberAddDialog(true)}>
-            <PlusIcon weight="thin" />
-            <p className="text-xs dark:font-light"> {t("Add Member")}</p>
-          </Button>
-        )}
-      </div>
-      <div className="mt-4 flex max-w-[900px] flex-col gap-6">
-        <div className="rounded border dark:font-extralight">
-          <div className="flex h-[42px] items-center justify-between gap-2 border-b p-2">
-            <div className="flex items-center gap-8">
-              <Input
-                className="w-[250px]"
-                placeholder={t("Search...")}
-                autoFocus
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger className="flex items-center gap-2">
-                    <p>{filters.find((f) => f.id === currentFilter)?.title}</p>
-                    <CaretDownIcon className="size-3" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="min-w-[70px]">
-                    {filters.map((filter, idx) => (
-                      <DropdownMenuItem
-                        key={idx}
-                        className={`h-[25px] justify-center ${filter.id === currentFilter ? "bg-accent" : undefined}`}
-                        onClick={() => setFilter(filter.id)}>
-                        {filter.title}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <UserIcon weight="thin" />
-              <p>{`${members?.length} ${t("Members")}`}</p>
-            </div>
-          </div>
-          <div className="max-h-[50vh] overflow-auto">
-            {members?.map((m) => (
-              <div key={m.userId} className="flex gap-4 px-4 py-2">
-                <p className="flex-1">{m.user?.name}</p>
-                <p className="flex-1 px-4 text-sm capitalize dark:font-thin">
-                  {m.role}
-                </p>
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    disabled={m.userId === me?.id}
-                    className={`flex flex-1 items-center gap-1 ${m.userId === me?.id ? "opacity-50" : ""}`}>
-                    <p className="text-sm">{t("Change role")}</p>
-                    <CaretDownIcon className="size-2" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="min-w-[70px]">
-                    {roles.map((role, idx) => (
-                      <DropdownMenuItem
-                        key={idx}
-                        onClick={() => handleChangeRole(m.userId, role)}>
-                        {role}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Button
-                  className="h-[25px] flex-1"
-                  size="sm"
-                  variant="outline"
-                  disabled={m.userId === me?.id}
-                  onClick={() => handleRemoveMembers(m.userId)}>
-                  {t("Remove")}
-                </Button>
-              </div>
-            ))}
-          </div>
-          {members?.length === 0 && (
-            <BasicBoiler
-              className="p-8"
-              text={t("No Members")}
-              icon={<FlowLogo className="size-16 text-accent" />}
-            />
+      <div className="flex flex-1 flex-col gap-1">
+        <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
+          <p className="text-lg dark:font-extralight">
+            {t("Members Settings")}
+          </p>
+          {!currentWorkspace?.personal && (
+            <Button
+              className="flex gap-2"
+              onClick={() => setOpenMemberAddDialog(true)}>
+              <PlusIcon weight="thin" />
+              <p className="text-xs dark:font-light"> {t("Add Member")}</p>
+            </Button>
           )}
+        </div>
+
+        <div className="h-full flex-1 overflow-hidden">
+          <Table
+            columns={columns}
+            data={members}
+            selectColumns
+            enablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            resultsPerPage={resultsPerPage}
+            showFiltering
+            showOrdering
+            currentSortValue={currentFilter}
+            sortOptions={filters}
+            onSortChange={handleSortChange}
+            setCurrentPage={setCurrentPage}
+            setSearchTerm={setSearchTerm}
+          />
         </div>
       </div>
       {openMemberAddDialog && (

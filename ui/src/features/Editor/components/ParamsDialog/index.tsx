@@ -88,16 +88,14 @@ const ParamsDialog: React.FC<Props> = ({
   };
 
   const handleValueChange = (value: any) => {
-    if (currentFieldContext && openNode) {
-      // Update the node's params with the new value
-      const currentParams = openNode.data.params || {};
-      const updatedParams = setValueAtPath(
+    if (currentFieldContext) {
+      const currentParams = updatedParams || {};
+      const newParams = setValueAtPath(
         currentParams,
         currentFieldContext.path,
         value,
       );
-      // Update the local state with the new params
-      handleParamChange?.(updatedParams);
+      handleParamChange(newParams);
     }
   };
 
@@ -109,7 +107,7 @@ const ParamsDialog: React.FC<Props> = ({
             <DialogTitle>
               <div className="flex items-center gap-2">
                 <GearFineIcon weight="thin" />
-                {t("Node Editor")}
+                {t("Action Editor")}
               </div>
             </DialogTitle>
           </DialogHeader>

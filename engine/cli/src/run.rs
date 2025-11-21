@@ -112,18 +112,34 @@ impl RunCliCommand {
     pub fn execute(&self) -> crate::Result<()> {
         debug!(args = ?self, "run-workflow");
         let storage_resolver = Arc::new(resolve::StorageResolver::new());
-        let json = if self.workflow_path == "-" {
-            io::read_to_string(io::stdin()).map_err(crate::errors::Error::init)?
+        let (yaml_content, base_dir) = if self.workflow_path == "-" {
+            let content = io::read_to_string(io::stdin()).map_err(crate::errors::Error::init)?;
+            (content, None)
         } else {
             let path = Uri::for_test(self.workflow_path.as_str());
+
+            // Extract base directory for !include resolution
+            let base_dir = path.path().parent().map(|p| p.to_path_buf());
+
             let storage = storage_resolver
                 .resolve(&path)
                 .map_err(crate::errors::Error::init)?;
             let bytes = storage
                 .get_sync(path.path().as_path())
                 .map_err(crate::errors::Error::init)?;
-            String::from_utf8(bytes.to_vec()).map_err(crate::errors::Error::init)?
+            let content = String::from_utf8(bytes.to_vec()).map_err(crate::errors::Error::init)?;
+            (content, base_dir)
         };
+
+        // Expand !include directives
+        let json = if let Some(base) = base_dir.as_ref() {
+            reearth_flow_common::serde::expand_yaml_includes(&yaml_content, Some(base))
+                .map_err(crate::errors::Error::init)?
+        } else {
+            reearth_flow_common::serde::expand_yaml_includes(&yaml_content, None)
+                .map_err(crate::errors::Error::init)?
+        };
+
         let mut workflow = Workflow::try_from(json.as_str()).map_err(crate::errors::Error::init)?;
         workflow
             .merge_with(self.vars.clone())
@@ -139,11 +155,13 @@ impl RunCliCommand {
             None => setup_job_directory("engine", "action-log", job_id)
                 .map_err(crate::errors::Error::init)?,
         };
-        let state_uri = setup_job_directory("engine", "feature-store", job_id)
+        let feature_state_uri = setup_job_directory("engine", "feature-store", job_id)
             .map_err(crate::errors::Error::init)?;
-        let state = Arc::new(
-            State::new(&state_uri, &storage_resolver).map_err(crate::errors::Error::init)?,
+        let feature_state = Arc::new(
+            State::new(&feature_state_uri, &storage_resolver)
+                .map_err(crate::errors::Error::init)?,
         );
+        let ingress_state = Arc::clone(&feature_state);
 
         let logger_factory = Arc::new(LoggerFactory::new(
             create_root_logger(action_log_uri.path()),
@@ -155,7 +173,8 @@ impl RunCliCommand {
             ALL_ACTION_FACTORIES.clone(),
             logger_factory,
             storage_resolver,
-            state,
+            ingress_state,
+            feature_state,
         )
         .map_err(|e| crate::errors::Error::Run(format!("Failed to run workflow: {e}")))
     }

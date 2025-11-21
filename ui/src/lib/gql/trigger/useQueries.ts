@@ -32,12 +32,14 @@ export const useQueries = () => {
       timeDriverInput,
       apiDriverInput,
       description,
+      variables,
     }: {
       workspaceId: string;
       deploymentId: string;
       timeDriverInput?: TimeDriverInput;
       apiDriverInput?: ApiDriverInput;
       description: string;
+      variables?: Record<string, any>;
     }) => {
       const data = await graphQLContext?.CreateTrigger({
         input: {
@@ -46,6 +48,7 @@ export const useQueries = () => {
           timeDriverInput,
           apiDriverInput,
           description,
+          variables,
         },
       });
 
@@ -68,17 +71,20 @@ export const useQueries = () => {
       apiDriverInput,
       timeDriverInput,
       description,
+      variables,
     }: {
       triggerId: string;
       apiDriverInput?: ApiDriverInput;
       timeDriverInput?: TimeDriverInput;
       description?: string;
+      variables?: Record<string, any>;
     }) => {
       const input: UpdateTriggerInput = {
         triggerId,
         apiDriverInput,
         timeDriverInput,
         description,
+        variables,
       };
 
       const data = await graphQLContext?.UpdateTrigger({
@@ -119,6 +125,7 @@ export const useQueries = () => {
 
   const useGetTriggersQuery = (
     workspaceId?: string,
+    keyword?: string,
     paginationOptions?: PaginationOptions,
   ) =>
     useQuery({
@@ -126,6 +133,7 @@ export const useQueries = () => {
       queryFn: async () => {
         const data = await graphQLContext?.GetTriggers({
           workspaceId: workspaceId ?? "",
+          keyword,
           pagination: {
             page: paginationOptions?.page ?? 1,
             pageSize: TRIGGERS_FETCH_RATE,

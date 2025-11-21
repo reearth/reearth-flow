@@ -259,6 +259,7 @@ export type CreateTriggerInput = {
   deploymentId: Scalars['ID']['input'];
   description: Scalars['String']['input'];
   timeDriverInput?: InputMaybe<TimeDriverInput>;
+  variables?: InputMaybe<Scalars['JSON']['input']>;
   workspaceId: Scalars['ID']['input'];
 };
 
@@ -354,6 +355,12 @@ export type DeploymentPayload = {
   deployment: Deployment;
 };
 
+export enum DeploymentSortField {
+  Description = 'DESCRIPTION',
+  UpdatedAt = 'UPDATED_AT',
+  Version = 'VERSION'
+}
+
 export enum EventSourceType {
   ApiDriven = 'API_DRIVEN',
   TimeDriven = 'TIME_DRIVEN'
@@ -408,6 +415,12 @@ export type JobPayload = {
   __typename?: 'JobPayload';
   job: Job;
 };
+
+export enum JobSortField {
+  CompletedAt = 'COMPLETED_AT',
+  StartedAt = 'STARTED_AT',
+  Status = 'STATUS'
+}
 
 export enum JobStatus {
   Cancelled = 'CANCELLED',
@@ -859,6 +872,12 @@ export type ProjectSnapshotMetadata = {
   version: Scalars['Int']['output'];
 };
 
+export enum ProjectSortField {
+  CreatedAt = 'CREATED_AT',
+  Name = 'NAME',
+  UpdatedAt = 'UPDATED_AT'
+}
+
 export type Query = {
   __typename?: 'Query';
   assets: AssetConnection;
@@ -972,6 +991,7 @@ export type QueryDeploymentVersionsArgs = {
 
 
 export type QueryDeploymentsArgs = {
+  keyword?: InputMaybe<Scalars['String']['input']>;
   pagination: PageBasedPagination;
   workspaceId: Scalars['ID']['input'];
 };
@@ -983,6 +1003,7 @@ export type QueryJobArgs = {
 
 
 export type QueryJobsArgs = {
+  keyword?: InputMaybe<Scalars['String']['input']>;
   pagination: PageBasedPagination;
   workspaceId: Scalars['ID']['input'];
 };
@@ -1034,6 +1055,7 @@ export type QueryProjectSnapshotArgs = {
 
 export type QueryProjectsArgs = {
   includeArchived?: InputMaybe<Scalars['Boolean']['input']>;
+  keyword?: InputMaybe<Scalars['String']['input']>;
   pagination: PageBasedPagination;
   workspaceId: Scalars['ID']['input'];
 };
@@ -1050,6 +1072,7 @@ export type QuerySharedProjectArgs = {
 
 
 export type QueryTriggersArgs = {
+  keyword?: InputMaybe<Scalars['String']['input']>;
   pagination: PageBasedPagination;
   workspaceId: Scalars['ID']['input'];
 };
@@ -1179,6 +1202,7 @@ export type Trigger = Node & {
   lastTriggered?: Maybe<Scalars['DateTime']['output']>;
   timeInterval?: Maybe<TimeInterval>;
   updatedAt: Scalars['DateTime']['output'];
+  variables?: Maybe<Scalars['JSON']['output']>;
   workspace?: Maybe<Workspace>;
   workspaceId: Scalars['ID']['output'];
 };
@@ -1189,6 +1213,13 @@ export type TriggerConnection = {
   pageInfo: PageInfo;
   totalCount: Scalars['Int']['output'];
 };
+
+export enum TriggerSortField {
+  CreatedAt = 'CREATED_AT',
+  Description = 'DESCRIPTION',
+  LastTriggered = 'LAST_TRIGGERED',
+  UpdatedAt = 'UPDATED_AT'
+}
 
 export type UnshareProjectInput = {
   projectId: Scalars['ID']['input'];
@@ -1269,6 +1300,7 @@ export type UpdateTriggerInput = {
   description?: InputMaybe<Scalars['String']['input']>;
   timeDriverInput?: InputMaybe<TimeDriverInput>;
   triggerId: Scalars['ID']['input'];
+  variables?: InputMaybe<Scalars['JSON']['input']>;
 };
 
 export type UpdateWorkspaceInput = {
@@ -1465,6 +1497,7 @@ export type ExecuteDeploymentMutation = { __typename?: 'Mutation', executeDeploy
 
 export type GetDeploymentsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
+  keyword?: InputMaybe<Scalars['String']['input']>;
   pagination: PageBasedPagination;
 }>;
 
@@ -1531,7 +1564,7 @@ export type ParameterFragment = { __typename?: 'Parameter', id: string, projectI
 
 export type DeploymentFragment = { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null };
 
-export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } };
+export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, variables?: any | null, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } };
 
 export type NodeExecutionFragment = { __typename?: 'NodeExecution', id: string, nodeId: string, jobId: string, status: NodeStatus, createdAt?: any | null, startedAt?: any | null, completedAt?: any | null };
 
@@ -1557,6 +1590,7 @@ export type CmsAssetFragment = { __typename?: 'CMSAsset', id: string, uuid: stri
 
 export type GetJobsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
+  keyword?: InputMaybe<Scalars['String']['input']>;
   pagination: PageBasedPagination;
 }>;
 
@@ -1594,6 +1628,7 @@ export type CreateProjectMutation = { __typename?: 'Mutation', createProject?: {
 
 export type GetProjectsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
+  keyword?: InputMaybe<Scalars['String']['input']>;
   pagination: PageBasedPagination;
 }>;
 
@@ -1753,14 +1788,14 @@ export type CreateTriggerMutationVariables = Exact<{
 }>;
 
 
-export type CreateTriggerMutation = { __typename?: 'Mutation', createTrigger: { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } } };
+export type CreateTriggerMutation = { __typename?: 'Mutation', createTrigger: { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, variables?: any | null, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } } };
 
 export type UpdateTriggerMutationVariables = Exact<{
   input: UpdateTriggerInput;
 }>;
 
 
-export type UpdateTriggerMutation = { __typename?: 'Mutation', updateTrigger: { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } } };
+export type UpdateTriggerMutation = { __typename?: 'Mutation', updateTrigger: { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, variables?: any | null, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } } };
 
 export type DeleteTriggerMutationVariables = Exact<{
   triggerId: Scalars['ID']['input'];
@@ -1771,11 +1806,12 @@ export type DeleteTriggerMutation = { __typename?: 'Mutation', deleteTrigger: bo
 
 export type GetTriggersQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
+  keyword?: InputMaybe<Scalars['String']['input']>;
   pagination: PageBasedPagination;
 }>;
 
 
-export type GetTriggersQuery = { __typename?: 'Query', triggers: { __typename?: 'TriggerConnection', totalCount: number, nodes: Array<{ __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
+export type GetTriggersQuery = { __typename?: 'Query', triggers: { __typename?: 'TriggerConnection', totalCount: number, nodes: Array<{ __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, variables?: any | null, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
 
 export type GetMeQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1940,6 +1976,7 @@ export const TriggerFragmentDoc = gql`
   authToken
   timeInterval
   description
+  variables
 }
     ${DeploymentFragmentDoc}`;
 export const NodeExecutionFragmentDoc = gql`
@@ -2226,8 +2263,12 @@ export const ExecuteDeploymentDocument = gql`
 }
     ${JobFragmentDoc}`;
 export const GetDeploymentsDocument = gql`
-    query GetDeployments($workspaceId: ID!, $pagination: PageBasedPagination!) {
-  deployments(workspaceId: $workspaceId, pagination: $pagination) {
+    query GetDeployments($workspaceId: ID!, $keyword: String, $pagination: PageBasedPagination!) {
+  deployments(
+    workspaceId: $workspaceId
+    keyword: $keyword
+    pagination: $pagination
+  ) {
     totalCount
     nodes {
       ...Deployment
@@ -2300,8 +2341,8 @@ export const SaveSnapshotDocument = gql`
 }
     `;
 export const GetJobsDocument = gql`
-    query GetJobs($workspaceId: ID!, $pagination: PageBasedPagination!) {
-  jobs(workspaceId: $workspaceId, pagination: $pagination) {
+    query GetJobs($workspaceId: ID!, $keyword: String, $pagination: PageBasedPagination!) {
+  jobs(workspaceId: $workspaceId, keyword: $keyword, pagination: $pagination) {
     totalCount
     nodes {
       ...Job
@@ -2347,8 +2388,8 @@ export const CreateProjectDocument = gql`
 }
     ${ProjectFragmentDoc}`;
 export const GetProjectsDocument = gql`
-    query GetProjects($workspaceId: ID!, $pagination: PageBasedPagination!) {
-  projects(workspaceId: $workspaceId, pagination: $pagination) {
+    query GetProjects($workspaceId: ID!, $keyword: String, $pagination: PageBasedPagination!) {
+  projects(workspaceId: $workspaceId, keyword: $keyword, pagination: $pagination) {
     totalCount
     nodes {
       ...Project
@@ -2516,8 +2557,8 @@ export const DeleteTriggerDocument = gql`
 }
     `;
 export const GetTriggersDocument = gql`
-    query GetTriggers($workspaceId: ID!, $pagination: PageBasedPagination!) {
-  triggers(workspaceId: $workspaceId, pagination: $pagination) {
+    query GetTriggers($workspaceId: ID!, $keyword: String, $pagination: PageBasedPagination!) {
+  triggers(workspaceId: $workspaceId, keyword: $keyword, pagination: $pagination) {
     totalCount
     nodes {
       ...Trigger

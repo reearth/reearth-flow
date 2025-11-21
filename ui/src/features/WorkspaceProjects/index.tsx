@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   FlowLogo,
+  Input,
   LoadingSkeleton,
   Pagination,
   Select,
@@ -55,8 +56,11 @@ const ProjectsManager: React.FC = () => {
     totalPages,
     isFetching,
     isDuplicating,
-    currentOrder,
-    orderDirections,
+    currentSortValue,
+    searchTerm,
+    sortOptions,
+    isDebouncingSearch,
+    setSearchTerm,
     setOpenProjectAddDialog,
     setEditProject,
     setDuplicateProject,
@@ -67,7 +71,7 @@ const ProjectsManager: React.FC = () => {
     handleDeleteProject,
     handleUpdateValue,
     handleUpdateProject,
-    handleOrderChange,
+    handleSortChange,
   } = useHooks();
 
   const {
@@ -92,7 +96,7 @@ const ProjectsManager: React.FC = () => {
 
   return (
     <div className="flex h-full flex-1 flex-col">
-      <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pt-4 pb-2">
+      <div className="flex flex-1 flex-col gap-4 overflow-scroll pt-4 pr-3 pb-2 pl-2">
         <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
           <p className="text-lg font-light dark:font-extralight">
             {t("Projects")}
@@ -134,23 +138,32 @@ const ProjectsManager: React.FC = () => {
             </Button>
           </div>
         </div>
-        {currentOrder && (
-          <Select
-            value={currentOrder || "DESC"}
-            onValueChange={handleOrderChange}>
-            <SelectTrigger className="h-[32px] w-[100px]">
-              <SelectValue placeholder={orderDirections.ASC} />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(orderDirections).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        {isFetching || isProjectImporting || isDuplicating ? (
+        <div className="flex items-center">
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder={t("Search") + "..."}
+              value={searchTerm ?? ""}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="h-[36px] max-w-sm"
+            />
+            <Select value={currentSortValue} onValueChange={handleSortChange}>
+              <SelectTrigger className="h-[36px] w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {sortOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        {isDebouncingSearch ||
+        isFetching ||
+        isProjectImporting ||
+        isDuplicating ? (
           <LoadingSkeleton />
         ) : projects && projects.length > 0 ? (
           <div

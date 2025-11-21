@@ -45,12 +45,19 @@ const WorkspaceMenu: React.FC = () => {
         open={openDropdown}
         onOpenChange={(o) => setOpenDropdown(o)}>
         <DropdownMenuTrigger
-          className={`mx-2 flex items-center justify-between gap-2 overflow-auto rounded-md p-3 ${openDropdown ? "bg-background" : undefined} hover:bg-primary`}>
-          <p className="line-clamp-2 text-sm dark:font-extralight">
-            {currentWorkspace?.name}
-          </p>
-          <div className="shrink-0">
-            <CaretDownIcon size="12px" weight="thin" />
+          className={`group flex gap-2 overflow-auto rounded-md p-2 ${openDropdown ? "bg-background" : undefined} hover:bg-primary`}>
+          <div className="relative flex w-full gap-1">
+            <div className="flex w-full flex-col gap-1">
+              <p className="self-start text-xs font-thin">
+                {t("Current workspace:")}
+              </p>
+              <p className="line-clamp-2 w-full px-4 text-start text-sm font-light italic dark:font-extralight">
+                {currentWorkspace?.name}
+              </p>
+            </div>
+            <div className="absolute right-1 bottom-1/2 flex shrink-0 translate-1/2 items-center justify-center opacity-0 group-hover:opacity-100">
+              <CaretDownIcon size="12px" weight="thin" />
+            </div>
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent

@@ -33,12 +33,13 @@ type Props = {
   readonly?: boolean;
   nodes: Node[];
   edges: Edge[];
-  selectedEdgeIds?: string[];
   yDoc?: Doc | null;
   users?: Record<string, AwarenessUser>;
   currentWorkflowId?: string;
+  isMainWorkflow: boolean;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onWorkflowOpen?: (workflowId: string) => void;
+  onWorkflowAddFromSelection?: (nodes: Node[], edges: Edge[]) => Promise<void>;
   onNodesAdd?: (newNode: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onBeforeDelete?: (args: { nodes: Node[] }) => Promise<boolean>;
@@ -62,11 +63,12 @@ const Canvas: React.FC<Props> = ({
   readonly,
   nodes,
   edges,
-  selectedEdgeIds,
   users,
   currentWorkflowId,
+  isMainWorkflow,
   onWorkflowAdd,
   onWorkflowOpen,
+  onWorkflowAddFromSelection,
   onNodesAdd,
   onNodesChange,
   onBeforeDelete,
@@ -82,7 +84,7 @@ const Canvas: React.FC<Props> = ({
   onPaneClick,
 }) => {
   const {
-    handleNodesDelete,
+    handleNodesDeleteCleanup,
     handleNodeDragOver,
     handleNodeDragStop,
     handleNodeDrop,
@@ -98,6 +100,7 @@ const Canvas: React.FC<Props> = ({
   } = useHooks({
     nodes,
     edges,
+    isMainWorkflow,
     onWorkflowAdd,
     onNodesAdd,
     onNodesChange,
@@ -138,7 +141,7 @@ const Canvas: React.FC<Props> = ({
       onNodeDoubleClick={handleNodeSettings}
       onNodeDragStart={handleCloseContextmenu}
       onNodeDragStop={handleNodeDragStop}
-      onNodesDelete={handleNodesDelete}
+      onNodesDelete={handleNodesDeleteCleanup}
       onNodeContextMenu={handleNodeContextMenu}
       onSelectionContextMenu={handleSelectionContextMenu}
       onPaneContextMenu={handlePaneContextMenu}
@@ -162,14 +165,17 @@ const Canvas: React.FC<Props> = ({
       {contextMenu && (
         <CanvasContextMenu
           data={contextMenu.data}
+          edges={edges}
           allNodes={nodes}
-          selectedEdgeIds={selectedEdgeIds}
+          isMainWorkflow={isMainWorkflow}
           contextMenu={contextMenu}
           onBeforeDelete={onBeforeDelete}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onWorkflowOpen={onWorkflowOpen}
+          onWorkflowAddFromSelection={onWorkflowAddFromSelection}
           onNodeSettings={onNodeSettings}
+          onNodesDeleteCleanup={handleNodesDeleteCleanup}
           onCopy={onCopy}
           onCut={onCut}
           onPaste={onPaste}

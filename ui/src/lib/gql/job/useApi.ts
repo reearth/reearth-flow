@@ -16,9 +16,14 @@ export const useJob = () => {
   const t = useT();
   const useGetJobs = (
     workspaceId?: string,
+    keyword?: string,
     paginationOptions?: PaginationOptions,
   ) => {
-    const { data, ...rest } = useGetJobsQuery(workspaceId, paginationOptions);
+    const { data, ...rest } = useGetJobsQuery(
+      workspaceId,
+      keyword,
+      paginationOptions,
+    );
     return {
       page: data,
       ...rest,

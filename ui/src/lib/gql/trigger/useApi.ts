@@ -30,6 +30,7 @@ export const useTrigger = () => {
     description: string,
     timeInterval?: TimeInterval,
     authToken?: string,
+    variables?: Record<string, any>,
   ): Promise<CreateTrigger> => {
     const { mutateAsync, ...rest } = createTriggerMutation;
 
@@ -41,6 +42,7 @@ export const useTrigger = () => {
           ? { interval: timeInterval as TimeDriverInput["interval"] }
           : undefined,
         apiDriverInput: authToken ? { token: authToken } : undefined,
+        variables,
         description,
       });
       toast({
@@ -63,6 +65,7 @@ export const useTrigger = () => {
     timeInterval?: TimeInterval,
     authToken?: string,
     description?: string,
+    variables?: Record<string, any>,
   ): Promise<UpdateTrigger> => {
     const { mutateAsync, ...rest } = updateTriggerMutation;
     try {
@@ -73,6 +76,7 @@ export const useTrigger = () => {
           : undefined,
         apiDriverInput: authToken ? { token: authToken } : undefined,
         description,
+        variables,
       });
       toast({
         title: t("Trigger Updated"),
@@ -115,10 +119,12 @@ export const useTrigger = () => {
 
   const useGetTriggers = (
     workspaceId?: string,
+    keyword?: string,
     paginationOptions?: PaginationOptions,
   ) => {
     const { data, ...rest } = useGetTriggersQuery(
       workspaceId,
+      keyword,
       paginationOptions,
     );
     return {

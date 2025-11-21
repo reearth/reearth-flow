@@ -61,7 +61,7 @@ const CheckboxWidget = <
         onBlur={_onBlur}
         onFocus={_onFocus}
         onClick={() => onChange(!value)}
-        aria-describedby={ariaDescribedByIds<T>(id)}
+        aria-describedby={ariaDescribedByIds(id)}
       />
       {!hideLabel && <p className="text-xs">{label}</p>}
     </div>

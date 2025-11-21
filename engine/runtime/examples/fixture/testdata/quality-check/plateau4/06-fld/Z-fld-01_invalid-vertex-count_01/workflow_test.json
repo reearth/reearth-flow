@@ -1,0 +1,17 @@
+{
+  "workflowPath": "quality-check/plateau4/06-fld/workflow.yml",
+  "description": "Test quality check for invalid vertex count in triangles (natl/kikuchigawa)",
+  "cityGmlPath": "udx/fld/natl/1_1_kikuchigawa_kikuchigawa/49300000_fld_6697_l1_op.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_fld_natl_1_1_kikuchigawa_kikuchigawa.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "06_浸水想定区域_fld/natl/1_1_kikuchigawa_kikuchigawa.csv"
+    }
+  },
+  "expectResultOkFile": false,
+  "skip": false
+}

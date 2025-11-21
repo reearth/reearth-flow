@@ -11,6 +11,7 @@ type Trigger implements Node {
     description: String!
     authToken: String
     timeInterval: TimeInterval
+    variables: JSON
 }
 
 # Enums
@@ -25,6 +26,13 @@ enum TimeInterval {
     EVERY_HOUR
     EVERY_MONTH
     EVERY_WEEK
+}
+
+enum TriggerSortField {
+    DESCRIPTION
+    CREATED_AT
+    UPDATED_AT
+    LAST_TRIGGERED
 }
 
 # InputType
@@ -43,14 +51,16 @@ input CreateTriggerInput {
     description: String!
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
+    variables: JSON
 }
 
 input UpdateTriggerInput {
     triggerId: ID!
     description: String
-    deploymentId: ID 
+    deploymentId: ID
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
+    variables: JSON
 }
 
 # Connection
@@ -64,7 +74,11 @@ type TriggerConnection {
 # Query and Mutation
 
 extend type Query {
-    triggers(workspaceId: ID!, pagination: PageBasedPagination!): TriggerConnection!
+    triggers(
+      workspaceId: ID!
+      keyword: String
+      pagination: PageBasedPagination!
+    ): TriggerConnection!
 }
 
 extend type Mutation {

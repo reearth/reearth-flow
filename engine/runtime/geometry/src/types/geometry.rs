@@ -26,6 +26,7 @@ use super::traits::Elevation;
 use super::triangle::Triangle;
 use crate::error::Error;
 use crate::types::csg::CSG;
+use crate::types::triangular_mesh::TriangularMesh;
 use crate::utils::PointsCoplanar;
 
 static EPSILON: f64 = 1e-10;
@@ -43,6 +44,7 @@ pub enum Geometry<T: CoordNum = f64, Z: CoordNum = f64> {
     MultiPolygon(MultiPolygon<T, Z>),
     Rect(Rect<T, Z>),
     Triangle(Triangle<T, Z>),
+    TriangularMesh(TriangularMesh<T, Z>),
     Solid(Solid<T, Z>),
     GeometryCollection(Vec<Geometry<T, Z>>),
 }
@@ -63,6 +65,7 @@ impl<T: CoordNum, Z: CoordNum> Geometry<T, Z> {
             Geometry::MultiPolygon(_) => "MultiPolygon",
             Geometry::Rect(_) => "Rect",
             Geometry::Triangle(_) => "Triangle",
+            Geometry::TriangularMesh(_) => "TriangularMesh",
             Geometry::Solid(_) => "Solid",
             Geometry::GeometryCollection(_) => "GeometryCollection",
         }
@@ -184,6 +187,7 @@ impl<T: CoordNum, Z: CoordNum> Geometry<T, Z> {
             Geometry::Triangle(triangle) => {
                 vec![triangle.0, triangle.1, triangle.2]
             }
+            Geometry::TriangularMesh(triangular_mesh) => triangular_mesh.get_vertices().to_vec(),
             Geometry::Solid(solid) => solid.get_all_vertex_coordinates(),
             Geometry::GeometryCollection(gc) => {
                 let mut coords = Vec::new();
@@ -308,6 +312,7 @@ impl Geometry3D<f64> {
             Self::Rect(rect) => rect.min.z,
             Self::Triangle(triangle) => triangle.0.z,
             Self::Solid(solid) => solid.elevation(),
+            Self::TriangularMesh(triangular_mesh) => triangular_mesh.elevation(),
             Self::GeometryCollection(gc) => gc.first().map(|g| g.elevation()).unwrap_or(0.0),
         }
     }
@@ -325,6 +330,7 @@ impl Geometry3D<f64> {
             Geometry::MultiPolygon(mp) => mp.is_elevation_zero(),
             Geometry::Rect(rect) => rect.is_elevation_zero(),
             Geometry::Triangle(triangle) => triangle.is_elevation_zero(),
+            Geometry::TriangularMesh(triangular_mesh) => triangular_mesh.is_elevation_zero(),
             Geometry::Solid(solid) => solid.is_elevation_zero(),
             Geometry::GeometryCollection(gc) => gc.iter().all(|g| g.is_elevation_zero()),
         }
@@ -342,6 +348,7 @@ impl Geometry3D<f64> {
             Self::MultiPolygon(mpoly) => mpoly.transform_inplace(jgd2wgs),
             Self::Rect(rect) => rect.transform_inplace(jgd2wgs),
             Self::Triangle(triangle) => triangle.transform_inplace(jgd2wgs),
+            Self::TriangularMesh(triangular_mesh) => triangular_mesh.transform_inplace(jgd2wgs),
             Self::Solid(solid) => solid.transform_inplace(jgd2wgs),
             Self::GeometryCollection(gc) => {
                 for g in gc {
@@ -363,6 +370,7 @@ impl Geometry3D<f64> {
             Self::MultiPolygon(mpoly) => mpoly.transform_offset(x, y, z),
             Self::Rect(rect) => rect.transform_offset(x, y, z),
             Self::Triangle(triangle) => triangle.transform_offset(x, y, z),
+            Self::TriangularMesh(triangular_mesh) => triangular_mesh.transform_offset(x, y, z),
             Self::Solid(solid) => solid.transform_offset(x, y, z),
             Self::GeometryCollection(gc) => {
                 for g in gc {
@@ -386,6 +394,7 @@ impl From<Geometry3D<f64>> for Geometry2D<f64> {
             Geometry3D::MultiPolygon(mp) => Geometry2D::MultiPolygon(mp.into()),
             Geometry3D::Rect(rect) => Geometry2D::Rect(rect.into()),
             Geometry3D::Triangle(triangle) => Geometry2D::Triangle(triangle.into()),
+            Geometry3D::TriangularMesh(_triangular_mesh) => unimplemented!(),
             Geometry3D::Solid(solid) => Geometry2D::Solid(solid.into()),
             Geometry3D::GeometryCollection(gc) => {
                 let mut new_gc = Vec::new();
@@ -514,6 +523,7 @@ impl Geometry3D<f64> {
             }
             Geometry::Rect(rect) => crate::utils::are_points_coplanar((*rect).into(), EPSILON),
             Geometry::Triangle(_) => unimplemented!(),
+            Geometry::TriangularMesh(_) => unimplemented!(),
             Geometry::Solid(_) => unimplemented!(),
             Geometry::GeometryCollection(_) => unimplemented!(),
         }
@@ -532,6 +542,7 @@ fn inner_type_name<T: CoordNum, Z: CoordNum>(geometry: Geometry<T, Z>) -> &'stat
         Geometry::MultiPolygon(_) => type_name::<MultiPolygon<T, Z>>(),
         Geometry::Rect(_) => type_name::<Rect<T, Z>>(),
         Geometry::Triangle(_) => type_name::<Triangle<T, Z>>(),
+        Geometry::TriangularMesh(_) => type_name::<TriangularMesh<T, Z>>(),
         Geometry::Solid(_) => type_name::<Solid<T, Z>>(),
         Geometry::GeometryCollection(_) => type_name::<Vec<Geometry<T, Z>>>(),
     }

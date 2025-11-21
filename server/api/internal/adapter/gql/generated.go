@@ -422,9 +422,9 @@ type ComplexityRoot struct {
 		DeploymentByVersion   func(childComplexity int, input gqlmodel.GetByVersionInput) int
 		DeploymentHead        func(childComplexity int, input gqlmodel.GetHeadInput) int
 		DeploymentVersions    func(childComplexity int, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) int
-		Deployments           func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
+		Deployments           func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) int
 		Job                   func(childComplexity int, id gqlmodel.ID) int
-		Jobs                  func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
+		Jobs                  func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) int
 		LatestProjectSnapshot func(childComplexity int, projectID gqlmodel.ID) int
 		Me                    func(childComplexity int) int
 		Node                  func(childComplexity int, id gqlmodel.ID, typeArg gqlmodel.NodeType) int
@@ -434,10 +434,10 @@ type ComplexityRoot struct {
 		ProjectHistory        func(childComplexity int, projectID gqlmodel.ID) int
 		ProjectSharingInfo    func(childComplexity int, projectID gqlmodel.ID) int
 		ProjectSnapshot       func(childComplexity int, projectID gqlmodel.ID, version int) int
-		Projects              func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) int
+		Projects              func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, pagination gqlmodel.PageBasedPagination) int
 		SearchUser            func(childComplexity int, nameOrEmail string) int
 		SharedProject         func(childComplexity int, token string) int
-		Triggers              func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
+		Triggers              func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) int
 	}
 
 	RemoveMemberFromWorkspacePayload struct {
@@ -479,6 +479,7 @@ type ComplexityRoot struct {
 		LastTriggered func(childComplexity int) int
 		TimeInterval  func(childComplexity int) int
 		UpdatedAt     func(childComplexity int) int
+		Variables     func(childComplexity int) int
 		Workspace     func(childComplexity int) int
 		WorkspaceID   func(childComplexity int) int
 	}
@@ -631,21 +632,21 @@ type QueryResolver interface {
 	CmsModels(ctx context.Context, projectID gqlmodel.ID, page *int, pageSize *int) (*gqlmodel.CMSModelsConnection, error)
 	CmsItems(ctx context.Context, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) (*gqlmodel.CMSItemsConnection, error)
 	CmsModelExportURL(ctx context.Context, projectID gqlmodel.ID, modelID gqlmodel.ID, exportType *gqlmodel.CMSExportType) (string, error)
-	Deployments(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error)
+	Deployments(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error)
 	DeploymentByVersion(ctx context.Context, input gqlmodel.GetByVersionInput) (*gqlmodel.Deployment, error)
 	DeploymentHead(ctx context.Context, input gqlmodel.GetHeadInput) (*gqlmodel.Deployment, error)
 	DeploymentVersions(ctx context.Context, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) ([]*gqlmodel.Deployment, error)
 	LatestProjectSnapshot(ctx context.Context, projectID gqlmodel.ID) (*gqlmodel.ProjectDocument, error)
 	ProjectHistory(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.ProjectSnapshotMetadata, error)
 	ProjectSnapshot(ctx context.Context, projectID gqlmodel.ID, version int) (*gqlmodel.ProjectSnapshot, error)
-	Jobs(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error)
+	Jobs(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error)
 	Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error)
 	NodeExecution(ctx context.Context, jobID gqlmodel.ID, nodeID string) (*gqlmodel.NodeExecution, error)
 	Parameters(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.Parameter, error)
-	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error)
+	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error)
 	SharedProject(ctx context.Context, token string) (*gqlmodel.SharedProjectPayload, error)
 	ProjectSharingInfo(ctx context.Context, projectID gqlmodel.ID) (*gqlmodel.ProjectSharingInfoPayload, error)
-	Triggers(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.TriggerConnection, error)
+	Triggers(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.TriggerConnection, error)
 	Me(ctx context.Context) (*gqlmodel.Me, error)
 	SearchUser(ctx context.Context, nameOrEmail string) (*gqlmodel.User, error)
 }
@@ -2427,7 +2428,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Deployments(childComplexity, args["workspaceId"].(gqlmodel.ID), args["pagination"].(gqlmodel.PageBasedPagination)), true
+		return e.complexity.Query.Deployments(childComplexity, args["workspaceId"].(gqlmodel.ID), args["keyword"].(*string), args["pagination"].(gqlmodel.PageBasedPagination)), true
 	case "Query.job":
 		if e.complexity.Query.Job == nil {
 			break
@@ -2449,7 +2450,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Jobs(childComplexity, args["workspaceId"].(gqlmodel.ID), args["pagination"].(gqlmodel.PageBasedPagination)), true
+		return e.complexity.Query.Jobs(childComplexity, args["workspaceId"].(gqlmodel.ID), args["keyword"].(*string), args["pagination"].(gqlmodel.PageBasedPagination)), true
 	case "Query.latestProjectSnapshot":
 		if e.complexity.Query.LatestProjectSnapshot == nil {
 			break
@@ -2554,7 +2555,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Projects(childComplexity, args["workspaceId"].(gqlmodel.ID), args["includeArchived"].(*bool), args["pagination"].(gqlmodel.PageBasedPagination)), true
+		return e.complexity.Query.Projects(childComplexity, args["workspaceId"].(gqlmodel.ID), args["includeArchived"].(*bool), args["keyword"].(*string), args["pagination"].(gqlmodel.PageBasedPagination)), true
 	case "Query.searchUser":
 		if e.complexity.Query.SearchUser == nil {
 			break
@@ -2587,7 +2588,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Triggers(childComplexity, args["workspaceId"].(gqlmodel.ID), args["pagination"].(gqlmodel.PageBasedPagination)), true
+		return e.complexity.Query.Triggers(childComplexity, args["workspaceId"].(gqlmodel.ID), args["keyword"].(*string), args["pagination"].(gqlmodel.PageBasedPagination)), true
 
 	case "RemoveMemberFromWorkspacePayload.workspace":
 		if e.complexity.RemoveMemberFromWorkspacePayload.Workspace == nil {
@@ -2735,6 +2736,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Trigger.UpdatedAt(childComplexity), true
+	case "Trigger.variables":
+		if e.complexity.Trigger.Variables == nil {
+			break
+		}
+
+		return e.complexity.Trigger.Variables(childComplexity), true
 	case "Trigger.workspace":
 		if e.complexity.Trigger.Workspace == nil {
 			break
@@ -3465,6 +3472,13 @@ extend type Query {
   workspaceId: ID!
 }
 
+
+enum DeploymentSortField {
+  VERSION
+  UPDATED_AT
+  DESCRIPTION
+}
+
 # Input Types
 
 input CreateDeploymentInput {
@@ -3480,6 +3494,7 @@ input DeleteDeploymentInput {
 
 input ExecuteDeploymentInput {
   deploymentId: ID!
+  # variables: JSON
 }
 
 input GetHeadInput {
@@ -3524,7 +3539,11 @@ type DeploymentConnection {
 # Query and Mutation
 
 extend type Query {
-  deployments(workspaceId: ID!, pagination: PageBasedPagination!): DeploymentConnection!
+  deployments(
+    workspaceId: ID!
+    keyword: String
+    pagination: PageBasedPagination!
+  ): DeploymentConnection!
   deploymentByVersion(input: GetByVersionInput!): Deployment
   deploymentHead(input: GetHeadInput!): Deployment
   deploymentVersions(workspaceId: ID!, projectId: ID): [Deployment!]!
@@ -3609,6 +3628,12 @@ enum JobStatus {
   RUNNING
 }
 
+enum JobSortField {
+  STARTED_AT
+  COMPLETED_AT
+  STATUS
+}
+
 # InputType
 input CancelJobInput {
   jobId: ID!
@@ -3636,7 +3661,11 @@ extend type Subscription {
 # Query and Mutation
 
 extend type Query {
-  jobs(workspaceId: ID!, pagination: PageBasedPagination!): JobConnection!
+  jobs(
+    workspaceId: ID!
+    keyword: String
+    pagination: PageBasedPagination!
+  ): JobConnection!
   job(id: ID!): Job
 }
 
@@ -3815,6 +3844,12 @@ extend type Mutation {
   workspaceId: ID!
 }
 
+enum ProjectSortField {
+  NAME
+  CREATED_AT
+  UPDATED_AT
+}
+
 # InputType
 
 input CreateProjectInput {
@@ -3872,6 +3907,7 @@ extend type Query {
   projects(
     workspaceId: ID!
     includeArchived: Boolean
+    keyword: String
     pagination: PageBasedPagination!
   ): ProjectConnection!
 }
@@ -3938,6 +3974,8 @@ extend type Mutation {
     description: String!
     authToken: String
     timeInterval: TimeInterval
+    variables: JSON
+    # enabled: Boolean
 }
 
 # Enums
@@ -3952,6 +3990,13 @@ enum TimeInterval {
     EVERY_HOUR
     EVERY_MONTH
     EVERY_WEEK
+}
+
+enum TriggerSortField {
+    DESCRIPTION
+    CREATED_AT
+    UPDATED_AT
+    LAST_TRIGGERED
 }
 
 # InputType
@@ -3970,6 +4015,8 @@ input CreateTriggerInput {
     description: String!
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
+    variables: JSON
+    # enabled: Boolean
 }
 
 input UpdateTriggerInput {
@@ -3978,6 +4025,8 @@ input UpdateTriggerInput {
     deploymentId: ID 
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
+    variables: JSON
+    # enabled: Boolean
 }
 
 # Connection
@@ -3991,7 +4040,11 @@ type TriggerConnection {
 # Query and Mutation
 
 extend type Query {
-    triggers(workspaceId: ID!, pagination: PageBasedPagination!): TriggerConnection!
+    triggers(
+      workspaceId: ID!
+      keyword: String
+      pagination: PageBasedPagination!
+    ): TriggerConnection!
 }
 
 extend type Mutation {
@@ -4016,6 +4069,7 @@ type Me {
   myWorkspace: Workspace
   myWorkspaceId: ID!
   name: String!
+  # Kept for backward compatibility.
   workspaces: [Workspace!]!
 }
 
@@ -4937,11 +4991,16 @@ func (ec *executionContext) field_Query_deployments_args(ctx context.Context, ra
 		return nil, err
 	}
 	args["workspaceId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "keyword", ec.unmarshalOString2ᚖstring)
 	if err != nil {
 		return nil, err
 	}
-	args["pagination"] = arg1
+	args["keyword"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	if err != nil {
+		return nil, err
+	}
+	args["pagination"] = arg2
 	return args, nil
 }
 
@@ -4964,11 +5023,16 @@ func (ec *executionContext) field_Query_jobs_args(ctx context.Context, rawArgs m
 		return nil, err
 	}
 	args["workspaceId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "keyword", ec.unmarshalOString2ᚖstring)
 	if err != nil {
 		return nil, err
 	}
-	args["pagination"] = arg1
+	args["keyword"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	if err != nil {
+		return nil, err
+	}
+	args["pagination"] = arg2
 	return args, nil
 }
 
@@ -5093,11 +5157,16 @@ func (ec *executionContext) field_Query_projects_args(ctx context.Context, rawAr
 		return nil, err
 	}
 	args["includeArchived"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "keyword", ec.unmarshalOString2ᚖstring)
 	if err != nil {
 		return nil, err
 	}
-	args["pagination"] = arg2
+	args["keyword"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	if err != nil {
+		return nil, err
+	}
+	args["pagination"] = arg3
 	return args, nil
 }
 
@@ -5131,11 +5200,16 @@ func (ec *executionContext) field_Query_triggers_args(ctx context.Context, rawAr
 		return nil, err
 	}
 	args["workspaceId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "keyword", ec.unmarshalOString2ᚖstring)
 	if err != nil {
 		return nil, err
 	}
-	args["pagination"] = arg1
+	args["keyword"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	if err != nil {
+		return nil, err
+	}
+	args["pagination"] = arg2
 	return args, nil
 }
 
@@ -10857,6 +10931,8 @@ func (ec *executionContext) fieldContext_Mutation_createTrigger(ctx context.Cont
 				return ec.fieldContext_Trigger_authToken(ctx, field)
 			case "timeInterval":
 				return ec.fieldContext_Trigger_timeInterval(ctx, field)
+			case "variables":
+				return ec.fieldContext_Trigger_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Trigger", field.Name)
 		},
@@ -10924,6 +11000,8 @@ func (ec *executionContext) fieldContext_Mutation_updateTrigger(ctx context.Cont
 				return ec.fieldContext_Trigger_authToken(ctx, field)
 			case "timeInterval":
 				return ec.fieldContext_Trigger_timeInterval(ctx, field)
+			case "variables":
+				return ec.fieldContext_Trigger_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Trigger", field.Name)
 		},
@@ -13778,7 +13856,7 @@ func (ec *executionContext) _Query_deployments(ctx context.Context, field graphq
 		ec.fieldContext_Query_deployments,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().Deployments(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
+			return ec.resolvers.Query().Deployments(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["keyword"].(*string), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
 		},
 		nil,
 		ec.marshalNDeploymentConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDeploymentConnection,
@@ -14175,7 +14253,7 @@ func (ec *executionContext) _Query_jobs(ctx context.Context, field graphql.Colle
 		ec.fieldContext_Query_jobs,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().Jobs(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
+			return ec.resolvers.Query().Jobs(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["keyword"].(*string), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
 		},
 		nil,
 		ec.marshalNJobConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJobConnection,
@@ -14417,7 +14495,7 @@ func (ec *executionContext) _Query_projects(ctx context.Context, field graphql.C
 		ec.fieldContext_Query_projects,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().Projects(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["includeArchived"].(*bool), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
+			return ec.resolvers.Query().Projects(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["includeArchived"].(*bool), fc.Args["keyword"].(*string), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
 		},
 		nil,
 		ec.marshalNProjectConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectConnection,
@@ -14558,7 +14636,7 @@ func (ec *executionContext) _Query_triggers(ctx context.Context, field graphql.C
 		ec.fieldContext_Query_triggers,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().Triggers(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
+			return ec.resolvers.Query().Triggers(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["keyword"].(*string), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
 		},
 		nil,
 		ec.marshalNTriggerConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTriggerConnection,
@@ -15649,6 +15727,35 @@ func (ec *executionContext) fieldContext_Trigger_timeInterval(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _Trigger_variables(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Trigger) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Trigger_variables,
+		func(ctx context.Context) (any, error) {
+			return obj.Variables, nil
+		},
+		nil,
+		ec.marshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Trigger_variables(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Trigger",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type JSON does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TriggerConnection_nodes(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.TriggerConnection) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -15697,6 +15804,8 @@ func (ec *executionContext) fieldContext_TriggerConnection_nodes(_ context.Conte
 				return ec.fieldContext_Trigger_authToken(ctx, field)
 			case "timeInterval":
 				return ec.fieldContext_Trigger_timeInterval(ctx, field)
+			case "variables":
+				return ec.fieldContext_Trigger_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Trigger", field.Name)
 		},
@@ -18562,7 +18671,7 @@ func (ec *executionContext) unmarshalInputCreateTriggerInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceId", "deploymentId", "description", "timeDriverInput", "apiDriverInput"}
+	fieldsInOrder := [...]string{"workspaceId", "deploymentId", "description", "timeDriverInput", "apiDriverInput", "variables"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -18604,6 +18713,13 @@ func (ec *executionContext) unmarshalInputCreateTriggerInput(ctx context.Context
 				return it, err
 			}
 			it.APIDriverInput = data
+		case "variables":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variables"))
+			data, err := ec.unmarshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Variables = data
 		}
 	}
 
@@ -19791,7 +19907,7 @@ func (ec *executionContext) unmarshalInputUpdateTriggerInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"triggerId", "description", "deploymentId", "timeDriverInput", "apiDriverInput"}
+	fieldsInOrder := [...]string{"triggerId", "description", "deploymentId", "timeDriverInput", "apiDriverInput", "variables"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -19833,6 +19949,13 @@ func (ec *executionContext) unmarshalInputUpdateTriggerInput(ctx context.Context
 				return it, err
 			}
 			it.APIDriverInput = data
+		case "variables":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variables"))
+			data, err := ec.unmarshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Variables = data
 		}
 	}
 
@@ -23726,6 +23849,8 @@ func (ec *executionContext) _Trigger(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Trigger_authToken(ctx, field, obj)
 		case "timeInterval":
 			out.Values[i] = ec._Trigger_timeInterval(ctx, field, obj)
+		case "variables":
+			out.Values[i] = ec._Trigger_variables(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
