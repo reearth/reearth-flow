@@ -28,7 +28,6 @@ const ArrayFieldItemTemplate = <
     hasMoveDown,
     hasMoveUp,
     hasRemove,
-    index,
     onCopyItem,
     onRemoveItem,
     onMoveUpItem,
@@ -49,7 +48,7 @@ const ArrayFieldItemTemplate = <
             {(hasMoveUp || hasMoveDown) && (
               <MoveUpButton
                 disabled={readonly || disabled || !hasMoveUp}
-                onClick={() => onMoveUpItem(index)}
+                onClick={onMoveUpItem}
                 uiSchema={uiSchema}
                 registry={registry}
               />
@@ -57,7 +56,7 @@ const ArrayFieldItemTemplate = <
             {(hasMoveUp || hasMoveDown) && (
               <MoveDownButton
                 disabled={readonly || disabled || !hasMoveDown}
-                onClick={() => onMoveDownItem(index)}
+                onClick={onMoveDownItem}
                 uiSchema={uiSchema}
                 registry={registry}
               />
@@ -65,7 +64,7 @@ const ArrayFieldItemTemplate = <
             {hasCopy && (
               <CopyButton
                 disabled={readonly || disabled}
-                onClick={() => onCopyItem(index)}
+                onClick={onCopyItem}
                 uiSchema={uiSchema}
                 registry={registry}
               />
@@ -73,7 +72,7 @@ const ArrayFieldItemTemplate = <
             {hasRemove && (
               <RemoveButton
                 disabled={readonly || disabled}
-                onClick={() => onRemoveItem(index)}
+                onClick={onRemoveItem}
                 uiSchema={uiSchema}
                 registry={registry}
               />
