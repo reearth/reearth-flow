@@ -280,7 +280,7 @@ impl FaceExtractor {
                 PlateauProcessorError::FaceExtractor(format!("Failed to parse coordinate: {e}"))
             })?;
 
-        if values.len() % 3 != 0 {
+        if !values.len().is_multiple_of(3) {
             return Err(PlateauProcessorError::FaceExtractor(
                 "posList length must be multiple of 3".to_string(),
             )
