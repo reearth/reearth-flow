@@ -1,8 +1,6 @@
 module github.com/reearth/reearth-flow/api
 
-go 1.24.2
-
-toolchain go1.24.4
+go 1.24.5
 
 require (
 	cloud.google.com/go/profiler v0.4.3
@@ -11,6 +9,7 @@ require (
 	github.com/99designs/gqlgen v0.17.81
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.30.0
 	github.com/avast/retry-go/v4 v4.6.1
+	github.com/eukarya-inc/reearth-proto v1.0.0-dev.20251112032057
 	github.com/gavv/httpexpect/v2 v2.17.0
 	github.com/go-faker/faker/v4 v4.7.0
 	github.com/go-redis/redismock/v9 v9.2.0
