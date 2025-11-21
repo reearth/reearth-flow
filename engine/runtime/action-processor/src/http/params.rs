@@ -91,6 +91,26 @@ pub struct HttpCallerParam {
     /// Maximum number of redirects to follow (default: 10)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_redirects: Option<u8>,
+
+    /// # Response Handling
+    /// Configuration for how to handle the response
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_handling: Option<ResponseHandling>,
+
+    /// # Maximum Response Size (bytes)
+    /// Maximum size of response body to accept (default: unlimited)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_response_size: Option<u64>,
+
+    /// # Response Encoding
+    /// How to encode the response body
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_encoding: Option<ResponseEncoding>,
+
+    /// # Auto Detect Encoding
+    /// Automatically detect encoding from Content-Type header (default: true)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auto_detect_encoding: Option<bool>,
 }
 
 fn default_method() -> HttpMethod {
@@ -232,6 +252,44 @@ pub enum ApiKeyLocation {
 
 fn default_api_key_location() -> ApiKeyLocation {
     ApiKeyLocation::Header
+}
+
+/// Response handling configuration
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum ResponseHandling {
+    /// # Store in Attribute
+    /// Store response in feature attribute (default behavior)
+    #[serde(rename_all = "camelCase")]
+    Attribute,
+    /// # Save to File
+    /// Save response to a file in storage
+    #[serde(rename_all = "camelCase")]
+    File {
+        /// # Output Path
+        /// File path to save response to. Supports expressions.
+        path: Expr,
+        /// # Store Path in Attribute
+        /// Whether to store the file path in an attribute (default: true)
+        #[serde(skip_serializing_if = "Option::is_none")]
+        store_path_in_attribute: Option<bool>,
+        /// # Path Attribute Name
+        /// Name of attribute to store file path (default: "_response_file_path")
+        #[serde(skip_serializing_if = "Option::is_none")]
+        path_attribute: Option<String>,
+    },
+}
+
+/// Response encoding options
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum ResponseEncoding {
+    /// Text encoding (UTF-8 string)
+    Text,
+    /// Base64 encoding (for binary data)
+    Base64,
+    /// Raw bytes (binary)
+    Binary,
 }
 
 /// Request body types
@@ -436,6 +494,10 @@ mod tests {
             verify_ssl: None,
             follow_redirects: None,
             max_redirects: None,
+            response_handling: None,
+            max_response_size: None,
+            response_encoding: None,
+            auto_detect_encoding: None,
         };
 
         let json = serde_json::to_string(&params).unwrap();
@@ -536,5 +598,66 @@ mod tests {
         let json = serde_json::to_string(&body).unwrap();
         assert!(json.contains("multipart"));
         assert!(json.contains("field1"));
+    }
+
+    #[test]
+    fn test_response_handling_attribute() {
+        let handling = ResponseHandling::Attribute;
+        let json = serde_json::to_string(&handling).unwrap();
+        assert!(json.contains("attribute"));
+    }
+
+    #[test]
+    fn test_response_handling_file() {
+        let handling = ResponseHandling::File {
+            path: Expr::new("ram:///output/response.json"),
+            store_path_in_attribute: Some(true),
+            path_attribute: Some("_file_path".to_string()),
+        };
+        let json = serde_json::to_string(&handling).unwrap();
+        assert!(json.contains("file"));
+        assert!(json.contains("ram:///output/response.json"));
+    }
+
+    #[test]
+    fn test_response_encoding() {
+        let encoding = ResponseEncoding::Base64;
+        let json = serde_json::to_string(&encoding).unwrap();
+        assert!(json.contains("base64"));
+    }
+
+    #[test]
+    fn test_full_param_with_response_handling() {
+        let params = HttpCallerParam {
+            url: Expr::new("https://example.com"),
+            method: HttpMethod::Get,
+            custom_headers: None,
+            query_parameters: None,
+            request_body: None,
+            content_type: None,
+            response_body_attribute: "_response".to_string(),
+            status_code_attribute: "_status".to_string(),
+            headers_attribute: "_headers".to_string(),
+            error_attribute: "_error".to_string(),
+            connection_timeout: None,
+            transfer_timeout: None,
+            authentication: None,
+            user_agent: None,
+            verify_ssl: None,
+            follow_redirects: None,
+            max_redirects: None,
+            response_handling: Some(ResponseHandling::File {
+                path: Expr::new("ram:///output.dat"),
+                store_path_in_attribute: Some(true),
+                path_attribute: None,
+            }),
+            max_response_size: Some(1048576), // 1MB
+            response_encoding: Some(ResponseEncoding::Base64),
+            auto_detect_encoding: Some(false),
+        };
+
+        let json = serde_json::to_string(&params).unwrap();
+        assert!(json.contains("https://example.com"));
+        assert!(json.contains("1048576"));
     }
 }

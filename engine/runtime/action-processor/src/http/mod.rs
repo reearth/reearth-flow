@@ -8,6 +8,7 @@ pub(crate) mod mapping;
 pub(crate) mod params;
 pub(crate) mod processor;
 pub(crate) mod request;
+pub(crate) mod response;
 
 #[cfg(test)]
 mod schema_gen;

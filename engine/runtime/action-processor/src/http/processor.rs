@@ -166,28 +166,34 @@ impl HttpCallerProcessor {
         response: HttpResponse,
     ) {
         let mut new_feature = ctx.feature.clone();
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let scope = new_feature.new_scope(expr_engine.clone(), &self.global_params);
 
-        // Add response body
-        new_feature.attributes.insert(
-            Attribute::new(self.params.response_body_attribute.clone()),
-            AttributeValue::String(response.body),
+        // Process response with advanced handling
+        let result = super::response::process_response(
+            response,
+            &self.params.response_handling,
+            &self.params.response_encoding,
+            self.params.auto_detect_encoding.unwrap_or(true),
+            self.params.max_response_size,
+            &expr_engine,
+            &scope,
+            &ctx.storage_resolver,
+            &mut new_feature.attributes,
+            &self.params.response_body_attribute,
+            &self.params.status_code_attribute,
+            &self.params.headers_attribute,
         );
 
-        // Add status code
-        new_feature.attributes.insert(
-            Attribute::new(self.params.status_code_attribute.clone()),
-            AttributeValue::Number(response.status_code.into()),
-        );
-
-        // Add headers as JSON string
-        if let Ok(headers_json) = serde_json::to_string(&response.headers) {
-            new_feature.attributes.insert(
-                Attribute::new(self.params.headers_attribute.clone()),
-                AttributeValue::String(headers_json),
-            );
+        match result {
+            Ok(()) => {
+                fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+            }
+            Err(e) => {
+                let error_msg = format!("Failed to process response: {e}");
+                self.send_rejected_feature(ctx, fw, &error_msg);
+            }
         }
-
-        fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
     }
 
     /// Send feature to rejected port with error message
@@ -268,6 +274,10 @@ mod tests {
             verify_ssl: None,
             follow_redirects: None,
             max_redirects: None,
+            response_handling: None,
+            max_response_size: None,
+            response_encoding: None,
+            auto_detect_encoding: None,
         };
 
         let engine = Engine::new();
@@ -299,6 +309,10 @@ mod tests {
             verify_ssl: None,
             follow_redirects: None,
             max_redirects: None,
+            response_handling: None,
+            max_response_size: None,
+            response_encoding: None,
+            auto_detect_encoding: None,
         };
 
         let engine = Engine::new();

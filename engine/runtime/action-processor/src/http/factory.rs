@@ -180,6 +180,10 @@ mod tests {
             verify_ssl: None,
             follow_redirects: None,
             max_redirects: None,
+            response_handling: None,
+            max_response_size: None,
+            response_encoding: None,
+            auto_detect_encoding: None,
         };
 
         let result = factory.validate_parameters(&params);
