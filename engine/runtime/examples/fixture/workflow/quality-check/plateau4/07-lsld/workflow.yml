@@ -1,0 +1,610 @@
+id: efb10562-9fec-4d8b-8348-1714751f03cf
+name: "PLATEAU4-quality-check-07-lsld"
+entryGraphId: 5ebbb775-f99a-45b3-9aa2-3a0c7e909d90
+with:
+  cityGmlPath:
+  schemas:
+  codelists:
+  outputPath:
+graphs:
+  - !include ../../../../graphs/lod_splitter_with_dm.yml
+  - !include ../../../../graphs/surface_validator.yml
+  - id: 5ebbb775-f99a-45b3-9aa2-3a0c7e909d90
+    name: entry_point
+    nodes:
+      - id: bc9b77cd-ad61-4ccb-b2eb-4e9536f07873
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                cityGmlPath: env.get("cityGmlPath"),
+                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                schemas: env.get("schemas"),
+                codelists: env.get("codelists"),
+              },
+            ]
+
+      - id: a018fcb3-0f1d-4ba1-b96c-242fb8f002a4
+        name: DirectoryDecompressor
+        type: action
+        action: DirectoryDecompressor
+        with:
+          archiveAttributes:
+            - codelists
+            - schemas
+
+      - id: e275d299-2cd1-4e26-9d91-4d63921a29c7
+        name: FeatureFilePathExtractor
+        type: action
+        action: FeatureFilePathExtractor
+        with:
+          destPrefix: "udx"
+          sourceDataset: |
+            env.get("__value")["cityGmlPath"]
+          extractArchive: true
+
+      - id: 151fa081-4606-4493-8808-35d75f063159
+        name: FeatureFilterByGml
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").extension == "gml"
+              outputPort: default
+
+      - id: 55c98a8e-b785-4e42-8217-b26610aa243f
+        name: FeatureCounterFileIndex
+        type: action
+        action: FeatureCounter
+        with:
+          countStart: 1
+          outputAttribute: fileIndex
+
+      - id: 55767a5d-6d94-471b-af4a-09e20ae5f024
+        name: PLATEAU4.UDXFolderExtractor
+        type: action
+        action: PLATEAU4.UDXFolderExtractor
+        with:
+          cityGmlPath: |
+            env.get("__value")["path"]
+          codelistsPath: codelists
+          schemasPath: schemas
+
+      - id: 80f7b3d8-201b-4985-b512-c4b94690c16d
+        name: FeatureCityGmlReader
+        type: action
+        action: FeatureCityGmlReader
+        with:
+          format: citygml
+          flatten: true
+          dataset: |
+            env.get("__value")["path"]
+
+      - id: 89d41d5e-1a17-4d00-bc1d-8150eb6f79ec
+        name: FilterNotCityModel
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").featureType != "CityModel"
+              outputPort: default
+
+      - id: 52f504c2-5c79-421c-b14d-8ac661b3b15f
+        name: PLATEAU3.LodSplitterWithDM
+        type: subGraph
+        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
+
+      - id: 8cb3a0a3-4527-466a-a362-6fedddf6a15f
+        name: FeatureSorter
+        type: action
+        action: FeatureSorter
+        with:
+          attributes: ["featureType"]
+          order: ascending
+
+      - id: e6a9d5f8-943f-4783-aabd-754dcc6b307d
+        name: InstanceCounter
+        type: action
+        action: StatisticsCalculator
+        with:
+          groupBy:
+            - fileIndex
+            - featureType
+            - gmlName
+            - name
+            - udxDirs
+          calculations:
+            - newAttribute: _num_instances
+              expr: "1"
+      
+      - id: 22641726-fc4a-4d8a-a375-91b5ac6aac28
+        name: AttributeMapperForInstanceCount
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Folder
+              expr: |
+                env.get("__value")["udxDirs"] ?? ""
+            - attribute: Filename
+              expr: |
+                env.get("__value")["name"] ?? ""
+            - attribute: フィーチャータイプ
+              expr: |
+                env.get("__value")["featureType"] ?? ""
+            - attribute: インスタンス数
+              expr: |
+                env.get("__value")["_num_instances"] ?? 0
+            - attribute: Index
+              expr: |
+                env.get("__value")["fileIndex"] ?? ""
+      
+      - id: a453192e-603c-417e-9f65-f57b8e15f7d3
+        name: CsvWriterInstanceCount
+        type: action
+        action: FeatureWriter
+        with:
+          format: csv
+          output: |
+            file::join_path(env.get("outputPath"), "07_土砂災害警戒区域_地物インスタンス数.csv")
+
+      # Surface inspection flow
+      - id: 7ccbb722-d0cc-4843-a42e-179576530340
+        name: FileInfoExtractor
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").fileIndex
+            - attribute: Filename
+              expr: |
+                env.get("__value").name
+
+      - id: 2b79c18c-2d61-4d6f-83fb-d766451dbf44
+        name: PLATEAU3.SurfaceValidator2D
+        type: subGraph
+        subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
+
+      - id: 3f92e6bb-e63d-4b4e-b4e4-3c0caa55f7c4
+        name: AttributeMapperForSurfaceOrientationErrors
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Folder
+              expr: |
+                env.get("__value")["udxDirs"] ?? ""
+            - attribute: Index
+              expr: |
+                env.get("__value")["fileIndex"] ?? ""
+            - attribute: Filename
+              expr: |
+                env.get("__value")["name"] ?? ""
+            - attribute: FeatureType
+              expr: |
+                env.get("__value")["featureType"] ?? ""
+            - attribute: エラー数
+              expr: |
+                1
+            - attribute: "gml:id"
+              expr: |
+                env.get("__value")["featureId"] ?? ""
+            - attribute: 面の向き
+              # It is okay to hardcode here since this mapper is connected to the surface orientation error port of surface validator.
+              expr: |
+                "right_hand_rule" 
+
+      - id: f0fc0309-6d76-4a6b-9fdf-84c433b615f2
+        name: CsvWriterSurfaceOrientationErrors
+        type: action
+        action: FeatureWriter
+        with:
+          format: csv
+          output: |
+            file::join_path(env.get("outputPath"), "07_土砂災害警戒区域_面の向き不正.csv")
+
+      - id: 26751290-4ac7-4884-908a-7c231b5f820a
+        name: SurfaceOrientationErrorCounter
+        type: action
+        action: StatisticsCalculator
+        with:
+          groupBy:
+            - name
+          calculations:
+            - newAttribute: _num_incorrect_orientation
+              expr: "1"
+
+      - id: ba747af8-c4fb-4481-9406-e14f1d4c7f57
+        name: AttributeMapperForSurfaceErrors
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Folder
+              expr: |
+                env.get("__value")["udxDirs"] ?? ""
+            - attribute: Index
+              expr: |
+                env.get("__value")["fileIndex"] ?? ""
+            - attribute: Filename
+              expr: |
+                env.get("__value")["name"] ?? ""
+            - attribute: FeatureType
+              expr: |
+                env.get("__value")["featureType"] ?? ""
+            - attribute: エラー数
+              expr: |
+                1
+            - attribute: "gml:id"
+              expr: |
+                env.get("__value")["featureId"] ?? ""
+            - attribute: エラー内容
+              expr: |
+                env.get("__value")["issue"] ?? ""
+
+      - id: eb34119b-592f-4140-b9b9-f3712a805c47
+        name: CsvWriterSurfaceErrors
+        type: action
+        action: FeatureWriter
+        with:
+          format: csv
+          output: |
+            file::join_path(env.get("outputPath"), "07_土砂災害警戒区域_面のエラー.csv")
+
+      - id: 667c37eb-2b19-4a86-8aa4-70679f7787b5
+        name: SurfaceErrorCounter
+        type: action
+        action: StatisticsCalculator
+        with:
+          groupBy:
+            - name
+          calculations:
+            - newAttribute: _num_surface_issues
+              expr: "1"
+
+
+      # FeatureMerger for aggregating error counts
+      - id: 92119eb6-9343-49b7-b6c2-e2142374c52c
+        name: ErrorSummaryMerger
+        type: action
+        action: FeatureMerger
+        with:
+          requestorAttributeValue: |
+            env.get("__value").Filename
+          supplierAttributeValue: |
+            env.get("__value").name
+
+      # AttributeMapper for CSV formatting
+      - id: f58eeb2c-9187-4880-8c1f-7da2f9388069
+        name: SummaryAttributeMapper
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: Index
+              expr: |
+                env.get("__value").Index
+            - attribute: Filename
+              expr: |
+                env.get("__value").Filename
+            - attribute: "面の向き不正"
+              expr: |
+                env.get("__value")._num_incorrect_orientation ?? 0
+            - attribute: "面のエラー"
+              expr: |
+                env.get("__value")._num_surface_issues ?? 0
+
+      # CSV output
+      - id: f38c754b-98cd-48e1-bfa7-adbf7c390899
+        name: CSVSummaryWriter
+        type: action
+        action: FeatureWriter
+        with:
+          format: csv
+          output: |
+            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "07_土砂災害警戒区域_検査結果一覧.csv")
+
+      # StatisticsCalculator for JSON aggregation
+      - id: 521b2dea-51af-460f-9eb5-672917768692
+        name: StatisticsCalculator
+        type: action
+        action: StatisticsCalculator
+        with:
+          calculations:
+            - newAttribute: "面の向き不正"
+              expr: |
+                env.get("__value")["面の向き不正"] ?? 0
+            - newAttribute: "面のエラー"
+              expr: |
+                env.get("__value")["面のエラー"] ?? 0
+            - newAttribute: totalErrorCount
+              expr: |
+                let total = 0;
+                let keys = ["面の向き不正","面のエラー"];
+                for key in keys {
+                  total += env.get("__value")[key] ?? 0;
+                }
+                total
+
+      # JSON output with converter
+      - id: 4ed9ffc0-9509-4037-bcb6-117829aab7d5
+        name: JSONSummaryWriter
+        type: action
+        action: FeatureWriter
+        with:
+          format: json
+          converter: |
+            if env.get("__features").is_empty() {
+              []
+            } else {
+              let result = [];
+              let feature = env.get("__features")[0];
+              for key in feature.keys() {
+                result.push(#{
+                  name: key,
+                  count: feature[key],
+                });
+              }
+              result
+            }
+          output: |
+            file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_lsld.json")
+
+      # Calculate total errors for no-error check
+      - id: 27350bec-6220-4d6e-8fd1-1bd5d01716d3
+        name: StatisticsCalculatorTotalErrors
+        type: action
+        action: StatisticsCalculator
+        with:
+          calculations:
+            - newAttribute: totalErrorCount
+              expr: |
+                env.get("__value")["totalErrorCount"] ?? 0
+
+      # Filter for no errors
+      - id: 020bac31-10f6-4a00-8426-630d03970c0f
+        name: FeatureFilterNoErrors
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value")["totalErrorCount"] == 0
+              outputPort: default
+
+      # Write qc_result_ok file
+      - id: 734ebb2a-c2b0-429e-9363-5ccdd2a5b2ae
+        name: JsonWriterQcResultOk
+        type: action
+        action: JsonWriter
+        with:
+          converter: '[]'
+          output: |
+            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result_ok";
+            let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+            file::join_path(dirname, filename)
+
+      # ZipFileWriter - Bundle all output files
+      - id: be482ba8-ca60-40fb-8e52-8b15460b17cc
+        name: ZipFileWriter
+        type: action
+        action: ZipFileWriter
+        with:
+          output: |
+            let filename = file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip";
+            let dirname = env.get("workerArtifactPath") ?? env.get("outputPath");
+            file::join_path(dirname, filename)
+
+    edges:
+      # Data preparation flow
+      - id: 235074db-bbc0-484e-bd7e-3af7d707f2fc
+        from: bc9b77cd-ad61-4ccb-b2eb-4e9536f07873
+        to: a018fcb3-0f1d-4ba1-b96c-242fb8f002a4
+        fromPort: default
+        toPort: default
+      - id: e24c990c-4c60-461c-9ac3-a8b05f01af86
+        from: a018fcb3-0f1d-4ba1-b96c-242fb8f002a4
+        to: e275d299-2cd1-4e26-9d91-4d63921a29c7
+        fromPort: default
+        toPort: default
+      - id: c9d3e589-4e51-47ff-86dc-0e915b368072
+        from: e275d299-2cd1-4e26-9d91-4d63921a29c7
+        to: 151fa081-4606-4493-8808-35d75f063159
+        fromPort: default
+        toPort: default
+      - id: 2fc1b488-3688-4cfd-8b65-d4d6d327c38f
+        from: 151fa081-4606-4493-8808-35d75f063159
+        to: 55c98a8e-b785-4e42-8217-b26610aa243f
+        fromPort: default
+        toPort: default
+      - id: f5dcdbfa-3bac-414f-8829-dd1af4f981e7
+        from: 55c98a8e-b785-4e42-8217-b26610aa243f
+        to: 55767a5d-6d94-471b-af4a-09e20ae5f024
+        fromPort: default
+        toPort: default
+      - id: 17912650-d822-45a9-b31a-81d9bd9932ee
+        from: 55767a5d-6d94-471b-af4a-09e20ae5f024
+        to: 80f7b3d8-201b-4985-b512-c4b94690c16d
+        fromPort: default
+        toPort: default
+      - id: 4f90c136-9ee8-44ce-b0f5-a70e1c8dc38a
+        from: 80f7b3d8-201b-4985-b512-c4b94690c16d
+        to: 89d41d5e-1a17-4d00-bc1d-8150eb6f79ec
+        fromPort: default
+        toPort: default
+      - id: bc1dd787-c39b-4fec-8fbc-a7f9911088f3
+        from: 89d41d5e-1a17-4d00-bc1d-8150eb6f79ec
+        to: 52f504c2-5c79-421c-b14d-8ac661b3b15f
+        fromPort: default
+        toPort: default
+
+      # Instance counting flow
+      - id: cf5deb77-5b1a-4a03-88fe-cd3ae2785f7e
+        from: 52f504c2-5c79-421c-b14d-8ac661b3b15f
+        to: 8cb3a0a3-4527-466a-a362-6fedddf6a15f
+        fromPort: lod1
+        toPort: default
+      - id: b749f31f-3fb8-4c95-b6ea-fb80e6f1b28e
+        from: 8cb3a0a3-4527-466a-a362-6fedddf6a15f
+        to: e6a9d5f8-943f-4783-aabd-754dcc6b307d
+        fromPort: default
+        toPort: default
+      - id: 1b7e97f5-05b9-4d13-92e7-86d03a7e0975
+        from: e6a9d5f8-943f-4783-aabd-754dcc6b307d
+        to: 22641726-fc4a-4d8a-a375-91b5ac6aac28
+        fromPort: default
+        toPort: default
+      - id: 9af0a9d4-30b8-4ef8-942e-cbcaac65562a
+        from: 22641726-fc4a-4d8a-a375-91b5ac6aac28
+        to: a453192e-603c-417e-9f65-f57b8e15f7d3
+        fromPort: default
+        toPort: default
+
+
+      - id: 35446d3a-13bd-488c-a15e-24a185fa64bc
+        from: 52f504c2-5c79-421c-b14d-8ac661b3b15f
+        to: 2b79c18c-2d61-4d6f-83fb-d766451dbf44
+        fromPort: lod1
+        toPort: default
+      - id: 3bc60cc8-2b85-4912-9c9a-be697af8c98e
+        from: 2b79c18c-2d61-4d6f-83fb-d766451dbf44
+        to: 3f92e6bb-e63d-4b4e-b4e4-3c0caa55f7c4
+        fromPort: inCorrectOrientation
+        toPort: default
+      - id: fb63cbbf-f2c2-4be4-9d2d-5fbf1949d41c
+        from: 3f92e6bb-e63d-4b4e-b4e4-3c0caa55f7c4
+        to: f0fc0309-6d76-4a6b-9fdf-84c433b615f2
+        fromPort: default
+        toPort: default
+      - id: 0b9b516b-cd3c-466c-8bbe-494dafff2e64
+        from: 2b79c18c-2d61-4d6f-83fb-d766451dbf44
+        to: ba747af8-c4fb-4481-9406-e14f1d4c7f57
+        fromPort: invalidSurface
+        toPort: default
+      - id: 03533a65-b64e-41a9-a8d7-8df66866f57b
+        from: ba747af8-c4fb-4481-9406-e14f1d4c7f57
+        to: eb34119b-592f-4140-b9b9-f3712a805c47
+        fromPort: default
+        toPort: default
+      - id: df71e174-5ad7-40e1-9bc2-989014b0880f
+        from: 2b79c18c-2d61-4d6f-83fb-d766451dbf44
+        to: 26751290-4ac7-4884-908a-7c231b5f820a
+        fromPort: inCorrectOrientation
+        toPort: default
+      - id: fde37f13-ef96-4ab7-907b-140a4f0ef1b5
+        from: 2b79c18c-2d61-4d6f-83fb-d766451dbf44
+        to: 667c37eb-2b19-4a86-8aa4-70679f7787b5
+        fromPort: invalidSurface
+        toPort: default
+
+
+      # Error aggregation flow
+      - id: 4ff8a685-06c9-4227-b33e-0dc21b07fc12
+        from: 55767a5d-6d94-471b-af4a-09e20ae5f024 # UDXFolderExtractor
+        to: 7ccbb722-d0cc-4843-a42e-179576530340  # FileInfoExtractor
+        fromPort: default
+        toPort: default
+
+      - id: 803d0888-212c-4219-93e2-be0b1a9918f0
+        from: 7ccbb722-d0cc-4843-a42e-179576530340  # FileInfoExtractor
+        to: 92119eb6-9343-49b7-b6c2-e2142374c52c    # ErrorSummaryMerger (requestor)
+        fromPort: default
+        toPort: requestor
+
+      - id: 0780d4c5-8446-47ee-8609-d880677f49e0
+        from: 26751290-4ac7-4884-908a-7c231b5f820a  # SurfaceOrientationErrorCounter
+        to: 92119eb6-9343-49b7-b6c2-e2142374c52c    # ErrorSummaryMerger
+        fromPort: default
+        toPort: supplier
+
+      - id: dc7a2185-04b0-4e59-8e9a-7731a28fd50a
+        from: 667c37eb-2b19-4a86-8aa4-70679f7787b5  # SurfaceErrorCounter
+        to: 92119eb6-9343-49b7-b6c2-e2142374c52c    # ErrorSummaryMerger
+        fromPort: default
+        toPort: supplier
+
+      - id: cd72aac5-c44c-4195-a881-6dd12406b360
+        from: 92119eb6-9343-49b7-b6c2-e2142374c52c  # ErrorSummaryMerger
+        to: f58eeb2c-9187-4880-8c1f-7da2f9388069    # SummaryAttributeMapper
+        fromPort: merged
+        toPort: default
+
+      - id: ca661de4-3521-4920-ba92-6154c822d64a
+        from: 92119eb6-9343-49b7-b6c2-e2142374c52c  # ErrorSummaryMerger
+        to: f58eeb2c-9187-4880-8c1f-7da2f9388069    # SummaryAttributeMapper
+        fromPort: unmerged
+        toPort: default
+
+      - id: e579e69e-6f24-47be-8bb2-642d48d9fe6d
+        from: f58eeb2c-9187-4880-8c1f-7da2f9388069  # SummaryAttributeMapper
+        to: f38c754b-98cd-48e1-bfa7-adbf7c390899    # CSVSummaryWriter
+        fromPort: default
+        toPort: default
+
+      - id: c5d7057d-b240-4493-9141-6b26faaf03ba
+        from: f58eeb2c-9187-4880-8c1f-7da2f9388069  # SummaryAttributeMapper
+        to: 521b2dea-51af-460f-9eb5-672917768692    # StatisticsCalculator
+        fromPort: default
+        toPort: default
+
+      - id: b51cd2a6-7885-4b2f-9234-2dd759fe47dc
+        from: 521b2dea-51af-460f-9eb5-672917768692  # StatisticsCalculator
+        to: 4ed9ffc0-9509-4037-bcb6-117829aab7d5    # JSONSummaryWriter
+        fromPort: default
+        toPort: default
+
+      - id: 16f040ee-6f4b-4c66-bdd8-cd03dcc4fb9a
+        from: 521b2dea-51af-460f-9eb5-672917768692  # StatisticsCalculator
+        to: 27350bec-6220-4d6e-8fd1-1bd5d01716d3    # StatisticsCalculatorTotalErrors
+        fromPort: default
+        toPort: default
+
+      - id: 3054b3f1-24b0-45d8-a3e7-7938409c900d
+        from: 27350bec-6220-4d6e-8fd1-1bd5d01716d3  # StatisticsCalculatorTotalErrors
+        to: 020bac31-10f6-4a00-8426-630d03970c0f    # FeatureFilterNoErrors
+        fromPort: default
+        toPort: default
+
+      - id: 83f795ad-d183-4bbd-b7a5-e9da5497fe16
+        from: 020bac31-10f6-4a00-8426-630d03970c0f  # FeatureFilterNoErrors
+        to: 734ebb2a-c2b0-429e-9363-5ccdd2a5b2ae    # FileWriterQcResultOk
+        fromPort: default
+        toPort: default
+
+      - id: b4a13b04-9c9c-4152-a221-7c74947b59b3
+        from: f38c754b-98cd-48e1-bfa7-adbf7c390899  # CSVSummaryWriter
+        to: be482ba8-ca60-40fb-8e52-8b15460b17cc    # ZipFileWriter
+        fromPort: default
+        toPort: default
+
+      - id: ed977dcd-0d9d-4b25-9e84-7293c16a23fb
+        from: a453192e-603c-417e-9f65-f57b8e15f7d3  # CsvWriterInstanceCount
+        to: be482ba8-ca60-40fb-8e52-8b15460b17cc    # ZipFileWriter
+        fromPort: default
+        toPort: default
+
+      - id: 5acd4c49-d2ec-45fa-a23a-78eee8fca01c
+        from: 4ed9ffc0-9509-4037-bcb6-117829aab7d5  # JSONSummaryWriter
+        to: be482ba8-ca60-40fb-8e52-8b15460b17cc    # ZipFileWriter
+        fromPort: default
+        toPort: default
+
+      - id: 3556fbd8-fce4-490a-a455-2503ca11e5ae
+        from: f0fc0309-6d76-4a6b-9fdf-84c433b615f2  # orientation error CsvWriter
+        to: be482ba8-ca60-40fb-8e52-8b15460b17cc    # ZipFileWriter
+        fromPort: default
+        toPort: default
+
+      - id: 5c237b4e-c960-4a87-a7a2-e9633aa5e093
+        from: eb34119b-592f-4140-b9b9-f3712a805c47  # surface error CsvWriter
+        to: be482ba8-ca60-40fb-8e52-8b15460b17cc    # ZipFileWriter
+        fromPort: default
+        toPort: default

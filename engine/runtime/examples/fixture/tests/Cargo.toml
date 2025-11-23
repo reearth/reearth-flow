@@ -1,6 +1,6 @@
 [package]
 name = "workflow-tests"
-version = "0.1.78"
+version = "0.1.84"
 edition = "2021"
 
 [dependencies]
@@ -19,6 +19,8 @@ reearth-flow-action-log.workspace = true
 reearth-flow-state.workspace = true
 reearth-flow-storage.workspace = true
 tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
 anyhow = "1.0"
 pretty_assertions.workspace = true
 uuid.workspace = true
@@ -26,8 +28,9 @@ yaml-include = "0.7"
 tempfile.workspace = true
 jsonpath_lib.workspace = true
 csv.workspace = true
-zip = "5.1"
+zip.workspace = true
 glob = "0.3"
+walkdir.workspace = true
 
 [build-dependencies]
 serde.workspace = true

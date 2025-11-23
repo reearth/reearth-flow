@@ -1134,6 +1134,8 @@
             ]
           },
           "dracoCompression": {
+            "title": "Draco Compression",
+            "description": "Use draco compression. Defaults to true.",
             "type": [
               "boolean",
               "null"

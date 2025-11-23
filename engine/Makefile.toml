@@ -32,12 +32,14 @@ cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-qual
 [tasks.test]
 script = ['''
 #!/usr/bin/env bash -eux
+export FLOW_XML_SCHEMA_FETCHER_FALLBACK=true
 cargo test --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
 ''']
 
 [tasks.test-wf]
 script = ['''
 #!/usr/bin/env bash -eux
+export FLOW_XML_SCHEMA_FETCHER_FALLBACK=true
 cargo test -p workflow-tests ${@:-}
 ''']
 
@@ -56,6 +58,7 @@ rm -rf target/debug/deps/${PROJ_NAME}-*
 export CARGO_INCREMENTAL=0
 export RUSTFLAGS="-Zinstrument-coverage"
 export LLVM_PROFILE_FILE="${PROJ_NAME}-%p-%m.profraw"
+export FLOW_XML_SCHEMA_FETCHER_FALLBACK=true
 
 cargo build --workspace --verbose
 cargo test --workspace --verbose
@@ -156,6 +159,9 @@ WORKFLOW_QC=(
   "03-tran"
   "05-luse-urf-area"
   "06-fld"
+  "07-lsld"
+  "08-dem"
+  "09-brid-tun-ubld"
 )
 
 process_workflows() {

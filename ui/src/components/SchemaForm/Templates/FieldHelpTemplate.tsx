@@ -17,11 +17,11 @@ const FieldHelpTemplate = <
 >(
   props: FieldHelpProps<T, S, F>,
 ) => {
-  const { idSchema, help, hasErrors } = props;
+  const { fieldPathId, help, hasErrors } = props;
   if (!help) {
     return null;
   }
-  const id = helpId<T>(idSchema);
+  const id = helpId(fieldPathId);
   return (
     <div className={hasErrors ? "text-destructive" : "text-muted"} id={id}>
       {help}

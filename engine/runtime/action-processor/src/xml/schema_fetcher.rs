@@ -110,6 +110,42 @@ impl Default for HttpSchemaFetcher {
     }
 }
 
+/// HTTP/HTTPS schema fetcher with bundled schema fallback
+#[derive(Clone)]
+pub(crate) struct HttpSchemaFetcherWithFallback {
+    inner: HttpSchemaFetcher,
+}
+
+impl HttpSchemaFetcherWithFallback {
+    pub fn new() -> Self {
+        Self {
+            inner: HttpSchemaFetcher::new(),
+        }
+    }
+}
+
+impl SchemaFetcher for HttpSchemaFetcherWithFallback {
+    fn fetch_schema(&self, url: &str) -> Result<String> {
+        match self.inner.fetch_with_retry(url) {
+            Ok(content) => Ok(content),
+            Err(e) => {
+                // Fallback to bundled schema if HTTP fails
+                if let Some(bundled_content) = super::bundled_schemas::get(url) {
+                    Ok(bundled_content.to_string())
+                } else {
+                    Err(e)
+                }
+            }
+        }
+    }
+}
+
+impl Default for HttpSchemaFetcherWithFallback {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Mock implementation for testing
 #[cfg(test)]
 #[derive(Clone)]

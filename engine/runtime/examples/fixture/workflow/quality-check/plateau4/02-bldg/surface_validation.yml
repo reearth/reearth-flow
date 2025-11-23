@@ -707,6 +707,16 @@ nodes:
           method: remove
         - attribute: gmlPath
           method: remove
+        - attribute: cityCode
+          method: remove
+        - attribute: baseCityCode
+          method: remove
+        - attribute: codelists
+          method: remove
+        - attribute: objectListPath
+          method: remove
+        - attribute: schemas
+          method: remove
 
   - id: 89712e8f-e0ac-4bb3-a92f-c5ff06fe4c96
     name: FeatureWriterL14-BoundaryNotClosed
@@ -808,6 +818,16 @@ nodes:
         - attribute: filename
           method: remove
         - attribute: gmlPath
+          method: remove
+        - attribute: cityCode
+          method: remove
+        - attribute: baseCityCode
+          method: remove
+        - attribute: codelists
+          method: remove
+        - attribute: objectListPath
+          method: remove
+        - attribute: schemas
           method: remove
 
   - id: 527087b4-0411-49bd-ae5f-c1c7f9a5ccb8

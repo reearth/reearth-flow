@@ -15,6 +15,33 @@ enum ExpectedFiles {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+enum CityGmlPath {
+    GmlFile(String),
+    Config(CityGmlPathConfig),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+enum CityGmlPathConfig {
+    File(FileSource),
+    Zip(ZipSource),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FileSource {
+    source: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ZipSource {
+    source: String,
+    name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct WorkflowTestProfile {
     workflow_path: String,
@@ -22,7 +49,7 @@ struct WorkflowTestProfile {
     description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     expected_output: Option<TestOutput>,
-    city_gml_path: String,
+    city_gml_path: CityGmlPath,
     #[serde(skip_serializing_if = "Option::is_none")]
     codelists: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
