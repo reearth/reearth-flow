@@ -3552,6 +3552,1014 @@
       ]
     },
     {
+      "name": "HTTPCaller",
+      "type": "processor",
+      "description": "Make HTTP/HTTPS requests and enrich features with response data",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "HTTP Caller Parameters",
+        "description": "Configure HTTP/HTTPS requests with dynamic values from feature attributes",
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "authentication": {
+            "title": "Authentication",
+            "description": "Authentication method to use for the request",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Authentication"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "autoDetectEncoding": {
+            "title": "Auto Detect Encoding",
+            "description": "Automatically detect encoding from Content-Type header (default: true)",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "connectionTimeout": {
+            "title": "Connection Timeout (seconds)",
+            "description": "Maximum time to wait for connection establishment",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "contentType": {
+            "title": "Content-Type Header",
+            "description": "The Content-Type header value for the request body",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customHeaders": {
+            "title": "Custom Headers",
+            "description": "List of custom HTTP headers to include in the request. Values support expressions.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/HeaderParam"
+            }
+          },
+          "errorAttribute": {
+            "title": "Error Attribute Name",
+            "description": "Name of the attribute to store error messages in (for rejected features)",
+            "default": "_http_error",
+            "type": "string"
+          },
+          "followRedirects": {
+            "title": "Follow Redirects",
+            "description": "Whether to automatically follow HTTP redirects (default: true)",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "headersAttribute": {
+            "title": "Headers Attribute Name",
+            "description": "Name of the attribute to store response headers in (as JSON string)",
+            "default": "_headers",
+            "type": "string"
+          },
+          "maxRedirects": {
+            "title": "Maximum Redirects",
+            "description": "Maximum number of redirects to follow (default: 10)",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint8",
+            "minimum": 0.0
+          },
+          "maxResponseSize": {
+            "title": "Maximum Response Size (bytes)",
+            "description": "Maximum size of response body to accept (default: unlimited)",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "method": {
+            "title": "HTTP Method",
+            "description": "The HTTP method to use for the request",
+            "default": "GET",
+            "allOf": [
+              {
+                "$ref": "#/definitions/HttpMethod"
+              }
+            ]
+          },
+          "observability": {
+            "title": "Observability",
+            "description": "Collect and store request metrics",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/ObservabilityConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "queryParameters": {
+            "title": "Query Parameters",
+            "description": "URL query parameters to append to the request. Values support expressions.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/QueryParam"
+            }
+          },
+          "rateLimit": {
+            "title": "Rate Limiting",
+            "description": "Limit request rate to avoid overwhelming servers",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/RateLimitConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requestBody": {
+            "title": "Request Body",
+            "description": "The request body configuration (text, binary, form, or multipart)",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/RequestBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "responseBodyAttribute": {
+            "title": "Response Body Attribute Name",
+            "description": "Name of the attribute to store the response body in",
+            "default": "_response_body",
+            "type": "string"
+          },
+          "responseEncoding": {
+            "title": "Response Encoding",
+            "description": "How to encode the response body",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/ResponseEncoding"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "responseHandling": {
+            "title": "Response Handling",
+            "description": "Configuration for how to handle the response",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/ResponseHandling"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "retry": {
+            "title": "Retry Configuration",
+            "description": "Retry failed requests with exponential backoff",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/RetryConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "statusCodeAttribute": {
+            "title": "Status Code Attribute Name",
+            "description": "Name of the attribute to store the HTTP status code in",
+            "default": "_http_status_code",
+            "type": "string"
+          },
+          "transferTimeout": {
+            "title": "Transfer Timeout (seconds)",
+            "description": "Maximum time to wait for the entire request/response cycle",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "url": {
+            "title": "Request URL",
+            "description": "The URL to send the request to. Supports expressions to reference feature attributes (e.g., \"https://api.example.com/data/${id}\")",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          },
+          "userAgent": {
+            "title": "User-Agent",
+            "description": "Custom User-Agent header value (default: \"reearth-flow-http-caller/1.0\")",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "verifySsl": {
+            "title": "Verify SSL/TLS Certificates",
+            "description": "Whether to verify HTTPS certificates (default: true)",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "definitions": {
+          "ApiKeyLocation": {
+            "description": "Location for API key authentication",
+            "oneOf": [
+              {
+                "description": "Send API key as HTTP header",
+                "type": "string",
+                "enum": [
+                  "header"
+                ]
+              },
+              {
+                "description": "Send API key as query parameter",
+                "type": "string",
+                "enum": [
+                  "query"
+                ]
+              }
+            ]
+          },
+          "Authentication": {
+            "description": "Authentication methods supported by HTTPCaller",
+            "oneOf": [
+              {
+                "title": "Basic Authentication",
+                "description": "Username and password authentication",
+                "type": "object",
+                "required": [
+                  "password",
+                  "type",
+                  "username"
+                ],
+                "properties": {
+                  "password": {
+                    "title": "Password",
+                    "description": "Password for basic authentication. Supports expressions.",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Expr"
+                      }
+                    ]
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "basic"
+                    ]
+                  },
+                  "username": {
+                    "title": "Username",
+                    "description": "Username for basic authentication. Supports expressions.",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Expr"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Bearer Token Authentication",
+                "description": "Token-based authentication (e.g., OAuth 2.0)",
+                "type": "object",
+                "required": [
+                  "token",
+                  "type"
+                ],
+                "properties": {
+                  "token": {
+                    "title": "Token",
+                    "description": "Bearer token value. Supports expressions.",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Expr"
+                      }
+                    ]
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "bearer"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "API Key Authentication",
+                "description": "API key in header or query parameter",
+                "type": "object",
+                "required": [
+                  "keyName",
+                  "keyValue",
+                  "type"
+                ],
+                "properties": {
+                  "keyName": {
+                    "title": "Key Name",
+                    "description": "Name of the header or query parameter",
+                    "type": "string"
+                  },
+                  "keyValue": {
+                    "title": "Key Value",
+                    "description": "API key value. Supports expressions.",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Expr"
+                      }
+                    ]
+                  },
+                  "location": {
+                    "title": "Location",
+                    "description": "Where to send the API key (header or query)",
+                    "default": "header",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/ApiKeyLocation"
+                      }
+                    ]
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "apiKey"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "BinarySource": {
+            "description": "Binary data source",
+            "oneOf": [
+              {
+                "title": "Base64 Encoded String",
+                "description": "Binary data encoded as base64 string",
+                "type": "object",
+                "required": [
+                  "data",
+                  "type"
+                ],
+                "properties": {
+                  "data": {
+                    "title": "Data",
+                    "description": "Base64-encoded binary data. Supports expressions.",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Expr"
+                      }
+                    ]
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "base64"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "File Path",
+                "description": "Load binary data from a file",
+                "type": "object",
+                "required": [
+                  "path",
+                  "type"
+                ],
+                "properties": {
+                  "path": {
+                    "title": "Path",
+                    "description": "File path (supports storage URLs like \"ram://\", \"s3://\"). Supports expressions.",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Expr"
+                      }
+                    ]
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "file"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "Expr": {
+            "type": "string"
+          },
+          "FormField": {
+            "description": "Form field for URL-encoded forms",
+            "type": "object",
+            "required": [
+              "name",
+              "value"
+            ],
+            "properties": {
+              "name": {
+                "title": "Field Name",
+                "description": "Name of the form field",
+                "type": "string"
+              },
+              "value": {
+                "title": "Field Value",
+                "description": "Value of the form field. Supports expressions.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
+              }
+            }
+          },
+          "HeaderParam": {
+            "description": "Custom HTTP header parameter",
+            "type": "object",
+            "required": [
+              "name",
+              "value"
+            ],
+            "properties": {
+              "name": {
+                "title": "Header Name",
+                "description": "The name of the HTTP header",
+                "type": "string"
+              },
+              "value": {
+                "title": "Header Value",
+                "description": "The value of the HTTP header. Supports expressions.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
+              }
+            }
+          },
+          "HttpMethod": {
+            "description": "HTTP methods supported by the HTTPCaller",
+            "type": "string",
+            "enum": [
+              "GET",
+              "POST",
+              "PUT",
+              "DELETE",
+              "PATCH",
+              "HEAD",
+              "OPTIONS",
+              "COPY",
+              "LOCK",
+              "MKCOL",
+              "MOVE",
+              "PROPFIND",
+              "PROPPATCH",
+              "UNLOCK"
+            ]
+          },
+          "MultipartPart": {
+            "description": "Multipart form part",
+            "oneOf": [
+              {
+                "title": "Text Part",
+                "description": "Text field in multipart form",
+                "type": "object",
+                "required": [
+                  "name",
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "name": {
+                    "title": "Field Name",
+                    "description": "Name of the form field",
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "text"
+                    ]
+                  },
+                  "value": {
+                    "title": "Value",
+                    "description": "Text value. Supports expressions.",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Expr"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "File Part",
+                "description": "File upload in multipart form",
+                "type": "object",
+                "required": [
+                  "name",
+                  "source",
+                  "type"
+                ],
+                "properties": {
+                  "contentType": {
+                    "title": "Content-Type",
+                    "description": "MIME type of the file (optional)",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "filename": {
+                    "title": "File Name",
+                    "description": "Name of the file to send (optional)",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "title": "Field Name",
+                    "description": "Name of the form field",
+                    "type": "string"
+                  },
+                  "source": {
+                    "title": "File Source",
+                    "description": "Source of the file data",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/BinarySource"
+                      }
+                    ]
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "file"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "ObservabilityConfig": {
+            "description": "Observability configuration",
+            "type": "object",
+            "properties": {
+              "bytesAttribute": {
+                "title": "Bytes Attribute Name",
+                "description": "Name of attribute to store bytes transferred (default: \"_bytes_transferred\")",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "durationAttribute": {
+                "title": "Duration Attribute Name",
+                "description": "Name of attribute to store request duration (default: \"_request_duration_ms\")",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "finalUrlAttribute": {
+                "title": "Final URL Attribute Name",
+                "description": "Name of attribute to store final URL (default: \"_final_url\")",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "retryCountAttribute": {
+                "title": "Retry Count Attribute Name",
+                "description": "Name of attribute to store retry count (default: \"_retry_count\")",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "trackBytes": {
+                "title": "Track Bytes Transferred",
+                "description": "Store response body size in bytes (default: false)",
+                "default": false,
+                "type": "boolean"
+              },
+              "trackDuration": {
+                "title": "Track Request Duration",
+                "description": "Store request duration in milliseconds (default: true)",
+                "default": true,
+                "type": "boolean"
+              },
+              "trackFinalUrl": {
+                "title": "Track Final URL",
+                "description": "Store final URL after redirects (default: false)",
+                "default": false,
+                "type": "boolean"
+              },
+              "trackRetryCount": {
+                "title": "Track Retry Count",
+                "description": "Store number of retries performed (default: true when retry enabled)",
+                "default": true,
+                "type": "boolean"
+              }
+            }
+          },
+          "QueryParam": {
+            "description": "URL query parameter",
+            "type": "object",
+            "required": [
+              "name",
+              "value"
+            ],
+            "properties": {
+              "name": {
+                "title": "Parameter Name",
+                "description": "The name of the query parameter",
+                "type": "string"
+              },
+              "value": {
+                "title": "Parameter Value",
+                "description": "The value of the query parameter. Supports expressions.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
+              }
+            }
+          },
+          "RateLimitConfig": {
+            "description": "Rate limiting configuration",
+            "type": "object",
+            "required": [
+              "requests"
+            ],
+            "properties": {
+              "intervalMs": {
+                "title": "Interval (milliseconds)",
+                "description": "Time window for rate limit (default: 1000ms = 1 second)",
+                "default": 1000,
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "requests": {
+                "title": "Requests Per Interval",
+                "description": "Maximum number of requests allowed per interval",
+                "type": "integer",
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "timing": {
+                "title": "Timing Strategy",
+                "description": "How to distribute requests within the interval",
+                "default": "burst",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/TimingStrategy"
+                  }
+                ]
+              }
+            }
+          },
+          "RequestBody": {
+            "description": "Request body types",
+            "oneOf": [
+              {
+                "title": "Text Body",
+                "description": "Plain text or JSON body (supports expressions)",
+                "type": "object",
+                "required": [
+                  "content",
+                  "type"
+                ],
+                "properties": {
+                  "content": {
+                    "title": "Content",
+                    "description": "Text content. Supports expressions.",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Expr"
+                      }
+                    ]
+                  },
+                  "contentType": {
+                    "title": "Content-Type",
+                    "description": "MIME type (e.g., \"application/json\", \"text/plain\")",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "text"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Binary Body",
+                "description": "Binary data from base64-encoded string or file",
+                "type": "object",
+                "required": [
+                  "source",
+                  "type"
+                ],
+                "properties": {
+                  "contentType": {
+                    "title": "Content-Type",
+                    "description": "MIME type (e.g., \"application/octet-stream\")",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "source": {
+                    "title": "Source",
+                    "description": "Binary data source",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/BinarySource"
+                      }
+                    ]
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "binary"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Form URL-Encoded",
+                "description": "application/x-www-form-urlencoded",
+                "type": "object",
+                "required": [
+                  "fields",
+                  "type"
+                ],
+                "properties": {
+                  "fields": {
+                    "title": "Fields",
+                    "description": "Form fields (name/value pairs)",
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/FormField"
+                    }
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "formUrlEncoded"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Multipart Form Data",
+                "description": "multipart/form-data with mixed text and file parts",
+                "type": "object",
+                "required": [
+                  "parts",
+                  "type"
+                ],
+                "properties": {
+                  "parts": {
+                    "title": "Parts",
+                    "description": "Multipart form parts",
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/definitions/MultipartPart"
+                    }
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "multipart"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "ResponseEncoding": {
+            "description": "Response encoding options",
+            "oneOf": [
+              {
+                "description": "Text encoding (UTF-8 string)",
+                "type": "string",
+                "enum": [
+                  "text"
+                ]
+              },
+              {
+                "description": "Base64 encoding (for binary data)",
+                "type": "string",
+                "enum": [
+                  "base64"
+                ]
+              },
+              {
+                "description": "Raw bytes (binary)",
+                "type": "string",
+                "enum": [
+                  "binary"
+                ]
+              }
+            ]
+          },
+          "ResponseHandling": {
+            "description": "Response handling configuration",
+            "oneOf": [
+              {
+                "title": "Store in Attribute",
+                "description": "Store response in feature attribute (default behavior)",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "attribute"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Save to File",
+                "description": "Save response to a file in storage",
+                "type": "object",
+                "required": [
+                  "path",
+                  "type"
+                ],
+                "properties": {
+                  "path": {
+                    "title": "Output Path",
+                    "description": "File path to save response to. Supports expressions.",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/Expr"
+                      }
+                    ]
+                  },
+                  "pathAttribute": {
+                    "title": "Path Attribute Name",
+                    "description": "Name of attribute to store file path (default: \"_response_file_path\")",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "storePathInAttribute": {
+                    "title": "Store Path in Attribute",
+                    "description": "Whether to store the file path in an attribute (default: true)",
+                    "type": [
+                      "boolean",
+                      "null"
+                    ]
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "file"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "RetryConfig": {
+            "description": "Retry configuration",
+            "type": "object",
+            "properties": {
+              "backoffMultiplier": {
+                "title": "Backoff Multiplier",
+                "description": "Multiplier for exponential backoff (default: 2.0)",
+                "default": 2.0,
+                "type": "number",
+                "format": "double"
+              },
+              "honorRetryAfter": {
+                "title": "Honor Retry-After Header",
+                "description": "Respect Retry-After header from server (default: true)",
+                "default": true,
+                "type": "boolean"
+              },
+              "initialDelayMs": {
+                "title": "Initial Delay (milliseconds)",
+                "description": "Initial delay before first retry (default: 100ms)",
+                "default": 100,
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "maxAttempts": {
+                "title": "Maximum Attempts",
+                "description": "Maximum number of retry attempts (default: 3)",
+                "default": 3,
+                "type": "integer",
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "maxDelayMs": {
+                "title": "Maximum Delay (milliseconds)",
+                "description": "Maximum delay between retries (default: 10000ms = 10s)",
+                "default": 10000,
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "retryOnStatus": {
+                "title": "Retry On Status Codes",
+                "description": "HTTP status codes to retry (default: 5xx)",
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "integer",
+                  "format": "uint16",
+                  "minimum": 0.0
+                }
+              }
+            }
+          },
+          "TimingStrategy": {
+            "description": "Request timing strategy",
+            "oneOf": [
+              {
+                "title": "Burst",
+                "description": "Send all requests as fast as possible until limit reached",
+                "type": "string",
+                "enum": [
+                  "burst"
+                ]
+              },
+              {
+                "title": "Distributed",
+                "description": "Distribute requests evenly across the interval",
+                "type": "string",
+                "enum": [
+                  "distributed"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Web"
+      ]
+    },
+    {
       "name": "HoleCounter",
       "type": "processor",
       "description": "Counts the number of holes in a geometry and adds it as an attribute.",
@@ -6413,204 +7421,6 @@
       "outputPorts": [],
       "categories": [
         "File"
-      ]
-    },
-    {
-      "name": "HTTPCaller",
-      "type": "processor",
-      "description": "Make HTTP/HTTPS requests and enrich features with response data",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "HTTP Caller Parameters",
-        "description": "Configure HTTP/HTTPS requests with dynamic values from feature attributes",
-        "type": "object",
-        "required": [
-          "url"
-        ],
-        "properties": {
-          "connectionTimeout": {
-            "title": "Connection Timeout (seconds)",
-            "description": "Maximum time to wait for connection establishment",
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint64",
-            "minimum": 0.0
-          },
-          "contentType": {
-            "title": "Content-Type Header",
-            "description": "The Content-Type header value for the request body",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "customHeaders": {
-            "title": "Custom Headers",
-            "description": "List of custom HTTP headers to include in the request. Values support expressions.",
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/definitions/HeaderParam"
-            }
-          },
-          "errorAttribute": {
-            "title": "Error Attribute Name",
-            "description": "Name of the attribute to store error messages in (for rejected features)",
-            "default": "_http_error",
-            "type": "string"
-          },
-          "headersAttribute": {
-            "title": "Headers Attribute Name",
-            "description": "Name of the attribute to store response headers in (as JSON string)",
-            "default": "_headers",
-            "type": "string"
-          },
-          "method": {
-            "title": "HTTP Method",
-            "description": "The HTTP method to use for the request",
-            "default": "GET",
-            "allOf": [
-              {
-                "$ref": "#/definitions/HttpMethod"
-              }
-            ]
-          },
-          "queryParameters": {
-            "title": "Query Parameters",
-            "description": "URL query parameters to append to the request. Values support expressions.",
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/definitions/QueryParam"
-            }
-          },
-          "requestBody": {
-            "title": "Request Body",
-            "description": "The request body content (for POST, PUT, PATCH methods). Supports expressions.",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Expr"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "responseBodyAttribute": {
-            "title": "Response Body Attribute Name",
-            "description": "Name of the attribute to store the response body in",
-            "default": "_response_body",
-            "type": "string"
-          },
-          "statusCodeAttribute": {
-            "title": "Status Code Attribute Name",
-            "description": "Name of the attribute to store the HTTP status code in",
-            "default": "_http_status_code",
-            "type": "string"
-          },
-          "transferTimeout": {
-            "title": "Transfer Timeout (seconds)",
-            "description": "Maximum time to wait for the entire request/response cycle",
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint64",
-            "minimum": 0.0
-          },
-          "url": {
-            "title": "Request URL",
-            "description": "The URL to send the request to. Supports expressions to reference feature attributes (e.g., \"https://api.example.com/data/${id}\")",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Expr"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Expr": {
-            "type": "string"
-          },
-          "HeaderParam": {
-            "description": "Custom HTTP header parameter",
-            "type": "object",
-            "required": [
-              "name",
-              "value"
-            ],
-            "properties": {
-              "name": {
-                "title": "Header Name",
-                "description": "The name of the HTTP header",
-                "type": "string"
-              },
-              "value": {
-                "title": "Header Value",
-                "description": "The value of the HTTP header. Supports expressions.",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  }
-                ]
-              }
-            }
-          },
-          "HttpMethod": {
-            "description": "HTTP methods supported by the HTTPCaller",
-            "type": "string",
-            "enum": [
-              "GET",
-              "POST",
-              "PUT",
-              "DELETE",
-              "PATCH",
-              "HEAD",
-              "OPTIONS"
-            ]
-          },
-          "QueryParam": {
-            "description": "URL query parameter",
-            "type": "object",
-            "required": [
-              "name",
-              "value"
-            ],
-            "properties": {
-              "name": {
-                "title": "Parameter Name",
-                "description": "The name of the query parameter",
-                "type": "string"
-              },
-              "value": {
-                "title": "Parameter Value",
-                "description": "The value of the query parameter. Supports expressions.",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  }
-                ]
-              }
-            }
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "default",
-        "rejected"
-      ],
-      "categories": [
-        "Web"
       ]
     }
   ]
