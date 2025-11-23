@@ -154,9 +154,7 @@ fn load_binary_source(
             let storage_path = std::path::Path::new(&path_string);
 
             let bytes = storage.get_sync(storage_path).map_err(|e| {
-                HttpProcessorError::Request(format!(
-                    "Failed to read file '{file_path_str}': {e}"
-                ))
+                HttpProcessorError::Request(format!("Failed to read file '{file_path_str}': {e}"))
             })?;
 
             Ok(bytes.to_vec())
