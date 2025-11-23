@@ -66,7 +66,7 @@ impl ExpressionCompiler {
         Ok(compiled)
     }
 
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn compile_body(&self, body_expr: &str) -> Result<rhai::AST> {
         self.engine.compile(body_expr).map_err(|e| {
             HttpProcessorError::CallerFactory(format!(

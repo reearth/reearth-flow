@@ -37,7 +37,7 @@ pub(crate) fn execute_with_retry(
         let method_clone = method.clone();
         let headers_clone = headers.clone();
         let query_clone = query_params.clone();
-        let body_clone = clone_body_content(&body);
+        let body_clone = clone_body_content(&body)?;
 
         match client.send_request(method_clone, &url, headers_clone, query_clone, body_clone) {
             Ok(response) => {
@@ -82,15 +82,20 @@ pub(crate) fn execute_with_retry(
     ))
 }
 
-fn clone_body_content(body: &Option<BodyContent>) -> Option<BodyContent> {
-    body.as_ref().map(|b| match b {
-        BodyContent::Text(s) => BodyContent::Text(s.clone()),
-        BodyContent::Binary(b) => BodyContent::Binary(b.clone()),
-        BodyContent::Form(f) => BodyContent::Form(f.clone()),
-        BodyContent::Multipart(_) => {
-            panic!("Retry is not supported for multipart requests")
-        }
-    })
+fn clone_body_content(body: &Option<BodyContent>) -> Result<Option<BodyContent>> {
+    match body {
+        None => Ok(None),
+        Some(b) => match b {
+            BodyContent::Text(s) => Ok(Some(BodyContent::Text(s.clone()))),
+            BodyContent::Binary(b) => Ok(Some(BodyContent::Binary(b.clone()))),
+            BodyContent::Form(f) => Ok(Some(BodyContent::Form(f.clone()))),
+            BodyContent::Multipart(_) => Err(HttpProcessorError::Request(
+                "Retry is not supported for multipart requests. \
+                 Please disable retry configuration when using multipart form data."
+                    .to_string(),
+            )),
+        },
+    }
 }
 
 fn should_retry_status(status: u16, config: &RetryConfig) -> bool {
@@ -205,5 +210,51 @@ mod tests {
 
         let delay = parse_retry_after_header(&headers);
         assert_eq!(delay, Some(Duration::from_secs(5)));
+    }
+
+    #[test]
+    fn test_multipart_retry_returns_error() {
+        use reqwest::blocking::multipart::Form;
+
+        let multipart_body = Some(BodyContent::Multipart(Form::new()));
+
+        let result = clone_body_content(&multipart_body);
+        assert!(result.is_err());
+
+        if let Err(e) = result {
+            let error_msg = e.to_string();
+            assert!(error_msg.contains("Retry is not supported for multipart"));
+        }
+    }
+
+    #[test]
+    fn test_clone_body_content_text() {
+        let text_body = Some(BodyContent::Text("test".to_string()));
+        let result = clone_body_content(&text_body);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_clone_body_content_binary() {
+        let binary_body = Some(BodyContent::Binary(vec![1, 2, 3]));
+        let result = clone_body_content(&binary_body);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_clone_body_content_form() {
+        let form_body = Some(BodyContent::Form(vec![(
+            "key".to_string(),
+            "value".to_string(),
+        )]));
+        let result = clone_body_content(&form_body);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_clone_body_content_none() {
+        let result = clone_body_content(&None);
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_none());
     }
 }
