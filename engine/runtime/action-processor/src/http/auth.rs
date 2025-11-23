@@ -35,9 +35,9 @@ pub(crate) fn apply_authentication(
                 HttpProcessorError::Request(format!("Failed to evaluate password: {e:?}"))
             })?;
 
-            let credentials = format!("{}:{}", username_val, password_val);
+            let credentials = format!("{username_val}:{password_val}");
             let encoded = general_purpose::STANDARD.encode(credentials.as_bytes());
-            let auth_value = format!("Basic {}", encoded);
+            let auth_value = format!("Basic {encoded}");
 
             headers.insert(
                 AUTHORIZATION,
@@ -57,7 +57,7 @@ pub(crate) fn apply_authentication(
                 HttpProcessorError::Request(format!("Failed to evaluate token: {e:?}"))
             })?;
 
-            let auth_value = format!("Bearer {}", token_val);
+            let auth_value = format!("Bearer {token_val}");
             headers.insert(
                 AUTHORIZATION,
                 HeaderValue::from_str(&auth_value).map_err(|e| {

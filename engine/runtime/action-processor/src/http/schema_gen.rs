@@ -11,7 +11,7 @@ mod tests {
         let factory = HttpCallerFactory;
         if let Some(schema) = factory.parameter_schema() {
             let json = serde_json::to_string_pretty(&schema).unwrap();
-            println!("\n{}\n", json);
+            println!("\n{json}\n");
             println!("Name: {}", factory.name());
             println!("Description: {}", factory.description());
             println!("Categories: {:?}", factory.categories());

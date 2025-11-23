@@ -363,7 +363,7 @@ mod tests {
 
         let processor = HttpCallerProcessor::with_client(Arc::new(mock_client), params, url_ast);
 
-        let debug_str = format!("{:?}", processor);
+        let debug_str = format!("{processor:?}");
         assert!(debug_str.contains("HttpCallerProcessor"));
     }
 }

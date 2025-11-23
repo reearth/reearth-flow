@@ -32,8 +32,7 @@ pub(crate) fn process_response(
         let body_size = response.body.len() as u64;
         if body_size > max_size {
             return Err(HttpProcessorError::Response(format!(
-                "Response body size ({} bytes) exceeds maximum allowed size ({} bytes)",
-                body_size, max_size
+                "Response body size ({body_size} bytes) exceeds maximum allowed size ({max_size} bytes)"
             )));
         }
     }
@@ -153,7 +152,7 @@ fn save_response_to_file(
 ) -> Result<()> {
     let uri = reearth_flow_common::uri::Uri::for_test(path);
     let storage = storage_resolver.resolve(&uri).map_err(|e| {
-        HttpProcessorError::Response(format!("Failed to resolve storage path '{}': {}", path, e))
+        HttpProcessorError::Response(format!("Failed to resolve storage path '{path}': {e}"))
     })?;
 
     let path_string = uri.path().as_path().display().to_string();
@@ -162,7 +161,7 @@ fn save_response_to_file(
     let bytes = Bytes::from(body.as_bytes().to_vec());
 
     storage.put_sync(storage_path, bytes).map_err(|e| {
-        HttpProcessorError::Response(format!("Failed to save response to file '{}': {}", path, e))
+        HttpProcessorError::Response(format!("Failed to save response to file '{path}': {e}"))
     })?;
 
     Ok(())

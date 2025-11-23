@@ -145,8 +145,7 @@ fn load_binary_source(
             let uri = reearth_flow_common::uri::Uri::for_test(&file_path_str);
             let storage = storage_resolver.resolve(&uri).map_err(|e| {
                 HttpProcessorError::Request(format!(
-                    "Failed to resolve storage path '{}': {}",
-                    file_path_str, e
+                    "Failed to resolve storage path '{file_path_str}': {e}"
                 ))
             })?;
 
@@ -156,8 +155,7 @@ fn load_binary_source(
 
             let bytes = storage.get_sync(storage_path).map_err(|e| {
                 HttpProcessorError::Request(format!(
-                    "Failed to read file '{}': {}",
-                    file_path_str, e
+                    "Failed to read file '{file_path_str}': {e}"
                 ))
             })?;
 
@@ -178,15 +176,13 @@ fn add_multipart_part(
         MultipartPart::Text { name, value } => {
             let value_ast = engine.compile(value.as_ref()).map_err(|e| {
                 HttpProcessorError::CallerFactory(format!(
-                    "Failed to compile multipart text field '{}' expression: {e:?}",
-                    name
+                    "Failed to compile multipart text field '{name}' expression: {e:?}"
                 ))
             })?;
 
             let text_value = scope.eval_ast::<String>(&value_ast).map_err(|e| {
                 HttpProcessorError::Request(format!(
-                    "Failed to evaluate multipart text field '{}': {e:?}",
-                    name
+                    "Failed to evaluate multipart text field '{name}': {e:?}"
                 ))
             })?;
 
@@ -209,7 +205,7 @@ fn add_multipart_part(
 
             if let Some(ct) = content_type {
                 part = part.mime_str(ct).map_err(|e| {
-                    HttpProcessorError::Request(format!("Invalid MIME type '{}': {e}", ct))
+                    HttpProcessorError::Request(format!("Invalid MIME type '{ct}': {e}"))
                 })?;
             }
 
