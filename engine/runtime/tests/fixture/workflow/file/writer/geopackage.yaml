@@ -1,0 +1,66 @@
+id: 01234567-0000-0000-0000-000000000101
+name: GeoPackageWriter Test
+entryGraphId: 01234567-0000-0000-0000-000000000102
+with:
+  outputFilePath:
+
+graphs:
+  - id: 01234567-0000-0000-0000-000000000102
+    name: Main
+    nodes:
+      - id: 01234567-0000-0000-0000-000000000103
+        name: ReadGeoPackage
+        type: action
+        action: GeoPackageReader
+        with:
+          dataset: ram:///fixture/testdata/file/reader/geopackage/test_geopackage.gpkg
+          readMode: all
+
+      - id: 01234567-0000-0000-0000-000000000104
+        name: WriteGeoPackage
+        type: action
+        action: GeoPackageWriter
+        with:
+          output: ram:///output_test.gpkg
+          tableName: test_features
+          geometryColumn: geom
+          srsId: 4326
+          geometryType: GEOMETRY
+          createSpatialIndex: true
+          overwrite: true
+
+      - id: 01234567-0000-0000-0000-000000000105
+        name: ReadBackGeoPackage
+        type: action
+        action: GeoPackageReader
+        with:
+          dataset: ram:///output_test.gpkg
+          readMode: all
+
+      - id: 01234567-0000-0000-0000-000000000106
+        name: WriteToFile
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            env.get("outputFilePath")
+
+    edges:
+      - id: 01234567-0000-0000-0000-000000000107
+        from: 01234567-0000-0000-0000-000000000103
+        to: 01234567-0000-0000-0000-000000000104
+        fromPort: default
+        toPort: default
+
+      - id: 01234567-0000-0000-0000-000000000108
+        from: 01234567-0000-0000-0000-000000000104
+        to: 01234567-0000-0000-0000-000000000105
+        fromPort: default
+        toPort: default
+
+      - id: 01234567-0000-0000-0000-000000000109
+        from: 01234567-0000-0000-0000-000000000105
+        to: 01234567-0000-0000-0000-000000000106
+        fromPort: default
+        toPort: default
+
