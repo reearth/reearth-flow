@@ -11,11 +11,11 @@ use serde_json::Value;
 
 use super::client::{HttpClient, HttpResponse};
 use super::expression::{CompiledHeader, CompiledQueryParam};
+use super::metrics::{RequestMetrics, RequestTimer};
 use super::params::HttpCallerParam;
+use super::rate_limit::RateLimiter;
 use super::request::RequestBuilder;
 
-/// HTTP Caller processor that executes HTTP requests and enriches features
-#[derive(Clone)]
 pub struct HttpCallerProcessor {
     global_params: Option<HashMap<String, Value>>,
     client: Arc<dyn HttpClient>,
@@ -23,6 +23,21 @@ pub struct HttpCallerProcessor {
     url_ast: rhai::AST,
     compiled_headers: Vec<CompiledHeader>,
     compiled_query_params: Vec<CompiledQueryParam>,
+    rate_limiter: Option<Arc<RateLimiter>>,
+}
+
+impl Clone for HttpCallerProcessor {
+    fn clone(&self) -> Self {
+        Self {
+            global_params: self.global_params.clone(),
+            client: self.client.clone(),
+            params: self.params.clone(),
+            url_ast: self.url_ast.clone(),
+            compiled_headers: self.compiled_headers.clone(),
+            compiled_query_params: self.compiled_query_params.clone(),
+            rate_limiter: self.rate_limiter.clone(),
+        }
+    }
 }
 
 impl std::fmt::Debug for HttpCallerProcessor {
@@ -34,7 +49,6 @@ impl std::fmt::Debug for HttpCallerProcessor {
 }
 
 impl HttpCallerProcessor {
-    /// Create a new HttpCallerProcessor instance
     pub fn new(
         global_params: Option<HashMap<String, Value>>,
         client: Arc<dyn HttpClient>,
@@ -43,6 +57,11 @@ impl HttpCallerProcessor {
         compiled_headers: Vec<CompiledHeader>,
         compiled_query_params: Vec<CompiledQueryParam>,
     ) -> Self {
+        let rate_limiter = params
+            .rate_limit
+            .as_ref()
+            .map(|config| Arc::new(RateLimiter::new(config.clone())));
+
         Self {
             global_params,
             client,
@@ -50,6 +69,7 @@ impl HttpCallerProcessor {
             url_ast,
             compiled_headers,
             compiled_query_params,
+            rate_limiter,
         }
     }
 
@@ -66,10 +86,10 @@ impl HttpCallerProcessor {
             url_ast,
             compiled_headers: Vec::new(),
             compiled_query_params: Vec::new(),
+            rate_limiter: None,
         }
     }
 
-    /// Send HTTP request and enrich feature with response
     fn execute_request(
         &self,
         ctx: &ExecutorContext,
@@ -79,7 +99,6 @@ impl HttpCallerProcessor {
         let feature = &ctx.feature;
         let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
 
-        // Evaluate URL
         let url = match scope.eval_ast::<String>(&self.url_ast) {
             Ok(url) => url,
             Err(e) => {
@@ -89,11 +108,9 @@ impl HttpCallerProcessor {
             }
         };
 
-        // Build request
         let method = self.params.method.clone().into();
         let builder = RequestBuilder::new(method, url);
 
-        // Build request body if configured
         let built_body = if let Some(body_config) = &self.params.request_body {
             match super::body::build_request_body(
                 body_config,
@@ -133,24 +150,44 @@ impl HttpCallerProcessor {
 
         let (method, url, mut headers, mut query_params, body) = builder.build();
 
-        // Apply authentication if configured
         if let Some(auth) = &self.params.authentication {
-            if let Err(e) = super::auth::apply_authentication(auth, &expr_engine, &scope, &mut headers, &mut query_params) {
+            if let Err(e) = super::auth::apply_authentication(
+                auth,
+                &expr_engine,
+                &scope,
+                &mut headers,
+                &mut query_params,
+            ) {
                 self.send_rejected_feature(ctx, fw, &e.to_string());
                 return Ok(());
             }
         }
 
-        // Send HTTP request
-        match self
-            .client
-            .send_request(method, &url, headers, query_params, body)
-        {
-            Ok(response) => {
-                self.handle_success_response(ctx, fw, response);
+        if let Some(rate_limiter) = &self.rate_limiter {
+            rate_limiter.acquire();
+        }
+
+        let timer = RequestTimer::new();
+
+        let result = super::retry::execute_with_retry(
+            self.client.as_ref(),
+            method,
+            url,
+            headers,
+            query_params,
+            body,
+            &self.params.retry,
+        );
+
+        match result {
+            Ok((response, retry_ctx)) => {
+                let metrics = RequestMetrics::new(timer.elapsed(), &response, &retry_ctx);
+                self.handle_success_response(ctx, fw, response, metrics);
             }
             Err(e) => {
-                let error_msg = format!("HTTP request failed: {e}");
+                let error_msg = format!("HTTP request failed after retries: {e}");
+                ctx.event_hub
+                    .error_log(Some(ctx.error_span()), error_msg.clone());
                 self.send_rejected_feature(ctx, fw, &error_msg);
             }
         }
@@ -158,45 +195,48 @@ impl HttpCallerProcessor {
         Ok(())
     }
 
-    /// Handle successful HTTP response
     fn handle_success_response(
         &self,
         ctx: &ExecutorContext,
         fw: &ProcessorChannelForwarder,
         response: HttpResponse,
+        metrics: RequestMetrics,
     ) {
         let mut new_feature = ctx.feature.clone();
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let scope = new_feature.new_scope(expr_engine.clone(), &self.global_params);
 
-        // Process response with advanced handling
-        let result = super::response::process_response(
-            response,
-            &self.params.response_handling,
-            &self.params.response_encoding,
-            self.params.auto_detect_encoding.unwrap_or(true),
-            self.params.max_response_size,
-            &expr_engine,
-            &scope,
-            &ctx.storage_resolver,
-            &mut new_feature.attributes,
-            &self.params.response_body_attribute,
-            &self.params.status_code_attribute,
-            &self.params.headers_attribute,
-        );
+        let config = super::response::ResponseProcessorConfig {
+            handling: &self.params.response_handling,
+            encoding: &self.params.response_encoding,
+            auto_detect: self.params.auto_detect_encoding.unwrap_or(true),
+            max_size: self.params.max_response_size,
+            engine: &expr_engine,
+            scope: &scope,
+            storage_resolver: &ctx.storage_resolver,
+            response_body_attr: &self.params.response_body_attribute,
+            status_code_attr: &self.params.status_code_attribute,
+            headers_attr: &self.params.headers_attribute,
+        };
+
+        let result =
+            super::response::process_response(response, &config, &mut new_feature.attributes);
 
         match result {
             Ok(()) => {
+                metrics.add_to_attributes(&mut new_feature.attributes, &self.params.observability);
+
                 fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
             }
             Err(e) => {
                 let error_msg = format!("Failed to process response: {e}");
+                ctx.event_hub
+                    .error_log(Some(ctx.error_span()), error_msg.clone());
                 self.send_rejected_feature(ctx, fw, &error_msg);
             }
         }
     }
 
-    /// Send feature to rejected port with error message
     fn send_rejected_feature(
         &self,
         ctx: &ExecutorContext,
@@ -212,10 +252,7 @@ impl HttpCallerProcessor {
             AttributeValue::String(error_msg.to_string()),
         );
 
-        fw.send(ctx.new_with_feature_and_port(
-            rejected_feature,
-            REJECTED_PORT.clone(),
-        ));
+        fw.send(ctx.new_with_feature_and_port(rejected_feature, REJECTED_PORT.clone()));
     }
 }
 
@@ -278,6 +315,9 @@ mod tests {
             max_response_size: None,
             response_encoding: None,
             auto_detect_encoding: None,
+            retry: None,
+            rate_limit: None,
+            observability: None,
         };
 
         let engine = Engine::new();
@@ -313,6 +353,9 @@ mod tests {
             max_response_size: None,
             response_encoding: None,
             auto_detect_encoding: None,
+            retry: None,
+            rate_limit: None,
+            observability: None,
         };
 
         let engine = Engine::new();
@@ -324,4 +367,3 @@ mod tests {
         assert!(debug_str.contains("HttpCallerProcessor"));
     }
 }
-

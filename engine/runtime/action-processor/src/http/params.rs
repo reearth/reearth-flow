@@ -111,6 +111,21 @@ pub struct HttpCallerParam {
     /// Automatically detect encoding from Content-Type header (default: true)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub auto_detect_encoding: Option<bool>,
+
+    /// # Retry Configuration
+    /// Retry failed requests with exponential backoff
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub retry: Option<RetryConfig>,
+
+    /// # Rate Limiting
+    /// Limit request rate to avoid overwhelming servers
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rate_limit: Option<RateLimitConfig>,
+
+    /// # Observability
+    /// Collect and store request metrics
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub observability: Option<ObservabilityConfig>,
 }
 
 fn default_method() -> HttpMethod {
@@ -290,6 +305,161 @@ pub enum ResponseEncoding {
     Base64,
     /// Raw bytes (binary)
     Binary,
+}
+
+/// Retry configuration
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct RetryConfig {
+    /// # Maximum Attempts
+    /// Maximum number of retry attempts (default: 3)
+    #[serde(default = "default_max_attempts")]
+    pub max_attempts: u32,
+
+    /// # Initial Delay (milliseconds)
+    /// Initial delay before first retry (default: 100ms)
+    #[serde(default = "default_initial_delay")]
+    pub initial_delay_ms: u64,
+
+    /// # Backoff Multiplier
+    /// Multiplier for exponential backoff (default: 2.0)
+    #[serde(default = "default_backoff_multiplier")]
+    pub backoff_multiplier: f64,
+
+    /// # Maximum Delay (milliseconds)
+    /// Maximum delay between retries (default: 10000ms = 10s)
+    #[serde(default = "default_max_delay")]
+    pub max_delay_ms: u64,
+
+    /// # Retry On Status Codes
+    /// HTTP status codes to retry (default: 5xx)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub retry_on_status: Option<Vec<u16>>,
+
+    /// # Honor Retry-After Header
+    /// Respect Retry-After header from server (default: true)
+    #[serde(default = "default_honor_retry_after")]
+    pub honor_retry_after: bool,
+}
+
+fn default_max_attempts() -> u32 {
+    3
+}
+
+fn default_initial_delay() -> u64 {
+    100
+}
+
+fn default_backoff_multiplier() -> f64 {
+    2.0
+}
+
+fn default_max_delay() -> u64 {
+    10000
+}
+
+fn default_honor_retry_after() -> bool {
+    true
+}
+
+/// Rate limiting configuration
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct RateLimitConfig {
+    /// # Requests Per Interval
+    /// Maximum number of requests allowed per interval
+    pub requests: u32,
+
+    /// # Interval (milliseconds)
+    /// Time window for rate limit (default: 1000ms = 1 second)
+    #[serde(default = "default_rate_interval")]
+    pub interval_ms: u64,
+
+    /// # Timing Strategy
+    /// How to distribute requests within the interval
+    #[serde(default = "default_timing_strategy")]
+    pub timing: TimingStrategy,
+}
+
+fn default_rate_interval() -> u64 {
+    1000
+}
+
+fn default_timing_strategy() -> TimingStrategy {
+    TimingStrategy::Burst
+}
+
+/// Request timing strategy
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum TimingStrategy {
+    /// # Burst
+    /// Send all requests as fast as possible until limit reached
+    Burst,
+    /// # Distributed
+    /// Distribute requests evenly across the interval
+    Distributed,
+}
+
+/// Observability configuration
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ObservabilityConfig {
+    /// # Track Request Duration
+    /// Store request duration in milliseconds (default: true)
+    #[serde(default = "default_track_duration")]
+    pub track_duration: bool,
+
+    /// # Duration Attribute Name
+    /// Name of attribute to store request duration (default: "_request_duration_ms")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub duration_attribute: Option<String>,
+
+    /// # Track Final URL
+    /// Store final URL after redirects (default: false)
+    #[serde(default = "default_track_final_url")]
+    pub track_final_url: bool,
+
+    /// # Final URL Attribute Name
+    /// Name of attribute to store final URL (default: "_final_url")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub final_url_attribute: Option<String>,
+
+    /// # Track Retry Count
+    /// Store number of retries performed (default: true when retry enabled)
+    #[serde(default = "default_track_retry_count")]
+    pub track_retry_count: bool,
+
+    /// # Retry Count Attribute Name
+    /// Name of attribute to store retry count (default: "_retry_count")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub retry_count_attribute: Option<String>,
+
+    /// # Track Bytes Transferred
+    /// Store response body size in bytes (default: false)
+    #[serde(default = "default_track_bytes")]
+    pub track_bytes: bool,
+
+    /// # Bytes Attribute Name
+    /// Name of attribute to store bytes transferred (default: "_bytes_transferred")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bytes_attribute: Option<String>,
+}
+
+fn default_track_duration() -> bool {
+    true
+}
+
+fn default_track_final_url() -> bool {
+    false
+}
+
+fn default_track_retry_count() -> bool {
+    true
+}
+
+fn default_track_bytes() -> bool {
+    false
 }
 
 /// Request body types
@@ -498,6 +668,9 @@ mod tests {
             max_response_size: None,
             response_encoding: None,
             auto_detect_encoding: None,
+            retry: None,
+            rate_limit: None,
+            observability: None,
         };
 
         let json = serde_json::to_string(&params).unwrap();
@@ -654,10 +827,61 @@ mod tests {
             max_response_size: Some(1048576), // 1MB
             response_encoding: Some(ResponseEncoding::Base64),
             auto_detect_encoding: Some(false),
+            retry: None,
+            rate_limit: None,
+            observability: None,
         };
 
         let json = serde_json::to_string(&params).unwrap();
         assert!(json.contains("https://example.com"));
         assert!(json.contains("1048576"));
+    }
+
+    #[test]
+    fn test_retry_config() {
+        let config = RetryConfig {
+            max_attempts: 5,
+            initial_delay_ms: 200,
+            backoff_multiplier: 3.0,
+            max_delay_ms: 5000,
+            retry_on_status: Some(vec![429, 503]),
+            honor_retry_after: false,
+        };
+
+        let json = serde_json::to_string(&config).unwrap();
+        assert!(json.contains("maxAttempts"));
+        assert!(json.contains("5"));
+    }
+
+    #[test]
+    fn test_rate_limit_config() {
+        let config = RateLimitConfig {
+            requests: 10,
+            interval_ms: 1000,
+            timing: TimingStrategy::Distributed,
+        };
+
+        let json = serde_json::to_string(&config).unwrap();
+        assert!(json.contains("requests"));
+        assert!(json.contains("10"));
+        assert!(json.contains("distributed"));
+    }
+
+    #[test]
+    fn test_observability_config() {
+        let config = ObservabilityConfig {
+            track_duration: true,
+            duration_attribute: Some("_time".to_string()),
+            track_final_url: true,
+            final_url_attribute: Some("_url".to_string()),
+            track_retry_count: true,
+            retry_count_attribute: None,
+            track_bytes: true,
+            bytes_attribute: None,
+        };
+
+        let json = serde_json::to_string(&config).unwrap();
+        assert!(json.contains("trackDuration"));
+        assert!(json.contains("_time"));
     }
 }

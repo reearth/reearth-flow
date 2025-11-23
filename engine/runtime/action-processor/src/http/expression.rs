@@ -5,21 +5,18 @@ use reearth_flow_eval_expr::engine::Engine;
 use super::errors::{HttpProcessorError, Result};
 use super::params::{HeaderParam, QueryParam};
 
-/// Compiled header with evaluated AST
 #[derive(Debug, Clone)]
 pub(crate) struct CompiledHeader {
     pub name: String,
     pub value_ast: rhai::AST,
 }
 
-/// Compiled query parameter with evaluated AST
 #[derive(Debug, Clone)]
 pub(crate) struct CompiledQueryParam {
     pub name: String,
     pub value_ast: rhai::AST,
 }
 
-/// Expression compiler for HTTP request components
 pub(crate) struct ExpressionCompiler {
     engine: Arc<Engine>,
 }
@@ -29,14 +26,12 @@ impl ExpressionCompiler {
         Self { engine }
     }
 
-    /// Compile URL expression
     pub fn compile_url(&self, url_expr: &str) -> Result<rhai::AST> {
         self.engine.compile(url_expr).map_err(|e| {
             HttpProcessorError::CallerFactory(format!("Failed to compile URL expression: {e:?}"))
         })
     }
 
-    /// Compile custom headers expressions
     pub fn compile_headers(&self, headers: &[HeaderParam]) -> Result<Vec<CompiledHeader>> {
         let mut compiled = Vec::new();
         for header in headers {
@@ -54,7 +49,6 @@ impl ExpressionCompiler {
         Ok(compiled)
     }
 
-    /// Compile query parameters expressions
     pub fn compile_query_params(&self, params: &[QueryParam]) -> Result<Vec<CompiledQueryParam>> {
         let mut compiled = Vec::new();
         for param in params {
@@ -72,7 +66,7 @@ impl ExpressionCompiler {
         Ok(compiled)
     }
 
-    /// Compile request body expression
+    #[allow(dead_code)]
     pub fn compile_body(&self, body_expr: &str) -> Result<rhai::AST> {
         self.engine.compile(body_expr).map_err(|e| {
             HttpProcessorError::CallerFactory(format!(

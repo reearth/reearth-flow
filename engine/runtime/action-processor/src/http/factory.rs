@@ -14,7 +14,6 @@ use super::expression::ExpressionCompiler;
 use super::params::HttpCallerParam;
 use super::processor::HttpCallerProcessor;
 
-/// Factory for creating HTTPCaller processor instances
 #[derive(Debug, Clone, Default)]
 pub struct HttpCallerFactory;
 
@@ -100,7 +99,6 @@ impl ProcessorFactory for HttpCallerFactory {
 }
 
 impl HttpCallerFactory {
-    /// Parse and validate parameters from with clause
     fn parse_parameters(&self, with: Option<HashMap<String, Value>>) -> Result<HttpCallerParam> {
         let with = with.ok_or_else(|| {
             HttpProcessorError::CallerFactory("Missing required parameter `with`".to_string())
@@ -117,7 +115,6 @@ impl HttpCallerFactory {
         })
     }
 
-    /// Validate required parameters
     fn validate_parameters(&self, params: &HttpCallerParam) -> Result<()> {
         if params.url.as_ref().is_empty() {
             return Err(HttpProcessorError::CallerFactory(
@@ -184,10 +181,12 @@ mod tests {
             max_response_size: None,
             response_encoding: None,
             auto_detect_encoding: None,
+            retry: None,
+            rate_limit: None,
+            observability: None,
         };
 
         let result = factory.validate_parameters(&params);
         assert!(result.is_err());
     }
 }
-

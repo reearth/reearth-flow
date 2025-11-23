@@ -5,7 +5,6 @@ use super::body::BodyContent;
 use super::errors::{HttpProcessorError, Result};
 use super::expression::{CompiledHeader, CompiledQueryParam};
 
-/// HTTP request builder that evaluates expressions and constructs the request
 pub(crate) struct RequestBuilder {
     method: Method,
     url: String,
@@ -25,7 +24,6 @@ impl RequestBuilder {
         }
     }
 
-    /// Add evaluated headers from compiled headers
     pub fn with_headers(
         mut self,
         compiled_headers: &[CompiledHeader],
@@ -61,7 +59,6 @@ impl RequestBuilder {
         Ok(self)
     }
 
-    /// Set Content-Type header if provided
     pub fn with_content_type(mut self, content_type: Option<&str>) -> Result<Self> {
         if let Some(content_type) = content_type {
             let value = HeaderValue::from_str(content_type).map_err(|e| {
@@ -72,7 +69,6 @@ impl RequestBuilder {
         Ok(self)
     }
 
-    /// Add evaluated query parameters from compiled parameters
     pub fn with_query_params(
         mut self,
         compiled_params: &[CompiledQueryParam],
@@ -92,13 +88,11 @@ impl RequestBuilder {
         Ok(self)
     }
 
-    /// Set request body if provided
     pub fn with_body(mut self, body: Option<BodyContent>) -> Result<Self> {
         self.body = body;
         Ok(self)
     }
 
-    /// Build and return the components
     pub fn build(
         self,
     ) -> (

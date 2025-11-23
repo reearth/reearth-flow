@@ -6,15 +6,15 @@ use reearth_flow_eval_expr::engine::Engine as ExprEngine;
 use reearth_flow_storage::resolve::StorageResolver;
 
 use super::errors::{HttpProcessorError, Result};
-use super::params::{BinarySource, FormField, MultipartPart, RequestBody};
+#[allow(unused_imports)]
+use super::params::FormField;
+use super::params::{BinarySource, MultipartPart, RequestBody};
 
-/// Built request body with content type
 pub(crate) struct BuiltBody {
     pub content: BodyContent,
     pub content_type: Option<String>,
 }
 
-/// Body content types
 pub(crate) enum BodyContent {
     Text(String),
     Binary(Vec<u8>),
@@ -22,7 +22,6 @@ pub(crate) enum BodyContent {
     Multipart(Form),
 }
 
-/// Build request body from configuration
 pub(crate) fn build_request_body(
     body: &RequestBody,
     engine: &Arc<ExprEngine>,
@@ -106,7 +105,6 @@ pub(crate) fn build_request_body(
     }
 }
 
-/// Load binary data from source
 fn load_binary_source(
     source: &BinarySource,
     engine: &Arc<ExprEngine>,
@@ -145,22 +143,23 @@ fn load_binary_source(
 
             // Parse and resolve storage path
             let uri = reearth_flow_common::uri::Uri::for_test(&file_path_str);
-            let storage = storage_resolver
-                .resolve(&uri)
-                .map_err(|e| HttpProcessorError::Request(format!("Failed to resolve storage path '{}': {}", file_path_str, e)))?;
+            let storage = storage_resolver.resolve(&uri).map_err(|e| {
+                HttpProcessorError::Request(format!(
+                    "Failed to resolve storage path '{}': {}",
+                    file_path_str, e
+                ))
+            })?;
 
             // Get path from URI
             let path_string = uri.path().as_path().display().to_string();
             let storage_path = std::path::Path::new(&path_string);
 
-            let bytes = storage
-                .get_sync(storage_path)
-                .map_err(|e| {
-                    HttpProcessorError::Request(format!(
-                        "Failed to read file '{}': {}",
-                        file_path_str, e
-                    ))
-                })?;
+            let bytes = storage.get_sync(storage_path).map_err(|e| {
+                HttpProcessorError::Request(format!(
+                    "Failed to read file '{}': {}",
+                    file_path_str, e
+                ))
+            })?;
 
             Ok(bytes.to_vec())
         }
@@ -333,4 +332,3 @@ mod tests {
         // Can't easily test Form internals, but we verify it doesn't error
     }
 }
-

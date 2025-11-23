@@ -2,11 +2,10 @@ use base64::{engine::general_purpose, Engine as _};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue, AUTHORIZATION};
 use std::sync::Arc;
 
-use reearth_flow_eval_expr::engine::Engine as ExprEngine;
 use super::errors::{HttpProcessorError, Result};
 use super::params::{ApiKeyLocation, Authentication};
+use reearth_flow_eval_expr::engine::Engine as ExprEngine;
 
-/// Apply authentication to HTTP headers or query parameters
 pub(crate) fn apply_authentication(
     auth: &Authentication,
     engine: &Arc<ExprEngine>,
@@ -16,31 +15,25 @@ pub(crate) fn apply_authentication(
 ) -> Result<()> {
     match auth {
         Authentication::Basic { username, password } => {
-            let username_ast = engine
-                .compile(username.as_ref())
-                .map_err(|e| {
-                    HttpProcessorError::CallerFactory(format!(
-                        "Failed to compile username expression: {e:?}"
-                    ))
-                })?;
+            let username_ast = engine.compile(username.as_ref()).map_err(|e| {
+                HttpProcessorError::CallerFactory(format!(
+                    "Failed to compile username expression: {e:?}"
+                ))
+            })?;
 
-            let username_val = scope.eval_ast::<String>(&username_ast)
-                .map_err(|e| {
-                    HttpProcessorError::Request(format!("Failed to evaluate username: {e:?}"))
-                })?;
+            let username_val = scope.eval_ast::<String>(&username_ast).map_err(|e| {
+                HttpProcessorError::Request(format!("Failed to evaluate username: {e:?}"))
+            })?;
 
-            let password_ast = engine
-                .compile(password.as_ref())
-                .map_err(|e| {
-                    HttpProcessorError::CallerFactory(format!(
-                        "Failed to compile password expression: {e:?}"
-                    ))
-                })?;
+            let password_ast = engine.compile(password.as_ref()).map_err(|e| {
+                HttpProcessorError::CallerFactory(format!(
+                    "Failed to compile password expression: {e:?}"
+                ))
+            })?;
 
-            let password_val = scope.eval_ast::<String>(&password_ast)
-                .map_err(|e| {
-                    HttpProcessorError::Request(format!("Failed to evaluate password: {e:?}"))
-                })?;
+            let password_val = scope.eval_ast::<String>(&password_ast).map_err(|e| {
+                HttpProcessorError::Request(format!("Failed to evaluate password: {e:?}"))
+            })?;
 
             let credentials = format!("{}:{}", username_val, password_val);
             let encoded = general_purpose::STANDARD.encode(credentials.as_bytes());
@@ -54,18 +47,15 @@ pub(crate) fn apply_authentication(
             );
         }
         Authentication::Bearer { token } => {
-            let token_ast = engine
-                .compile(token.as_ref())
-                .map_err(|e| {
-                    HttpProcessorError::CallerFactory(format!(
-                        "Failed to compile token expression: {e:?}"
-                    ))
-                })?;
+            let token_ast = engine.compile(token.as_ref()).map_err(|e| {
+                HttpProcessorError::CallerFactory(format!(
+                    "Failed to compile token expression: {e:?}"
+                ))
+            })?;
 
-            let token_val = scope.eval_ast::<String>(&token_ast)
-                .map_err(|e| {
-                    HttpProcessorError::Request(format!("Failed to evaluate token: {e:?}"))
-                })?;
+            let token_val = scope.eval_ast::<String>(&token_ast).map_err(|e| {
+                HttpProcessorError::Request(format!("Failed to evaluate token: {e:?}"))
+            })?;
 
             let auth_value = format!("Bearer {}", token_val);
             headers.insert(
@@ -80,18 +70,15 @@ pub(crate) fn apply_authentication(
             key_value,
             location,
         } => {
-            let key_ast = engine
-                .compile(key_value.as_ref())
-                .map_err(|e| {
-                    HttpProcessorError::CallerFactory(format!(
-                        "Failed to compile API key expression: {e:?}"
-                    ))
-                })?;
+            let key_ast = engine.compile(key_value.as_ref()).map_err(|e| {
+                HttpProcessorError::CallerFactory(format!(
+                    "Failed to compile API key expression: {e:?}"
+                ))
+            })?;
 
-            let key_val = scope.eval_ast::<String>(&key_ast)
-                .map_err(|e| {
-                    HttpProcessorError::Request(format!("Failed to evaluate API key: {e:?}"))
-                })?;
+            let key_val = scope.eval_ast::<String>(&key_ast).map_err(|e| {
+                HttpProcessorError::Request(format!("Failed to evaluate API key: {e:?}"))
+            })?;
 
             match location {
                 ApiKeyLocation::Header => {
@@ -210,4 +197,3 @@ mod tests {
         assert_eq!(query_params[0].1, "key456");
     }
 }
-

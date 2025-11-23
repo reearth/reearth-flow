@@ -8,7 +8,6 @@ use super::body::BodyContent;
 use super::errors::{HttpProcessorError, Result};
 
 pub(crate) trait HttpClient: Send + Sync {
-    /// Send an HTTP request
     fn send_request(
         &self,
         method: Method,
@@ -19,7 +18,6 @@ pub(crate) trait HttpClient: Send + Sync {
     ) -> Result<HttpResponse>;
 }
 
-/// HTTP response data
 #[derive(Debug, Clone)]
 pub(crate) struct HttpResponse {
     pub status_code: u16,
@@ -32,7 +30,6 @@ pub(crate) struct ReqwestHttpClient {
     client: Client,
 }
 
-/// Configuration for creating an HTTP client
 pub(crate) struct ClientConfig {
     pub connection_timeout: u64,
     pub transfer_timeout: u64,
@@ -56,6 +53,7 @@ impl Default for ClientConfig {
 }
 
 impl ReqwestHttpClient {
+    #[allow(dead_code)]
     pub fn new(connection_timeout: u64, transfer_timeout: u64) -> Result<Self> {
         Self::with_config(ClientConfig {
             connection_timeout,
@@ -70,7 +68,6 @@ impl ReqwestHttpClient {
             .connect_timeout(Duration::from_secs(config.connection_timeout))
             .danger_accept_invalid_certs(!config.verify_ssl);
 
-        // Configure redirects
         if config.follow_redirects {
             builder = builder.redirect(reqwest::redirect::Policy::limited(
                 config.max_redirects as usize,
@@ -79,7 +76,6 @@ impl ReqwestHttpClient {
             builder = builder.redirect(reqwest::redirect::Policy::none());
         }
 
-        // Configure user agent
         let user_agent = config
             .user_agent
             .unwrap_or_else(|| "reearth-flow-http-caller/1.0".to_string());

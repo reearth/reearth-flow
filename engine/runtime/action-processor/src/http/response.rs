@@ -10,23 +10,25 @@ use super::client::HttpResponse;
 use super::errors::{HttpProcessorError, Result};
 use super::params::{ResponseEncoding, ResponseHandling};
 
-/// Process and store HTTP response
+pub(crate) struct ResponseProcessorConfig<'a> {
+    pub handling: &'a Option<ResponseHandling>,
+    pub encoding: &'a Option<ResponseEncoding>,
+    pub auto_detect: bool,
+    pub max_size: Option<u64>,
+    pub engine: &'a Arc<ExprEngine>,
+    pub scope: &'a reearth_flow_eval_expr::scope::Scope,
+    pub storage_resolver: &'a Arc<StorageResolver>,
+    pub response_body_attr: &'a str,
+    pub status_code_attr: &'a str,
+    pub headers_attr: &'a str,
+}
+
 pub(crate) fn process_response(
     response: HttpResponse,
-    handling: &Option<ResponseHandling>,
-    encoding: &Option<ResponseEncoding>,
-    auto_detect: bool,
-    max_size: Option<u64>,
-    engine: &Arc<ExprEngine>,
-    scope: &reearth_flow_eval_expr::scope::Scope,
-    storage_resolver: &Arc<StorageResolver>,
+    config: &ResponseProcessorConfig,
     attributes: &mut indexmap::IndexMap<Attribute, AttributeValue>,
-    response_body_attr: &str,
-    status_code_attr: &str,
-    headers_attr: &str,
 ) -> Result<()> {
-    // Check response size limit
-    if let Some(max_size) = max_size {
+    if let Some(max_size) = config.max_size {
         let body_size = response.body.len() as u64;
         if body_size > max_size {
             return Err(HttpProcessorError::Response(format!(
@@ -36,35 +38,34 @@ pub(crate) fn process_response(
         }
     }
 
-    // Add status code
     attributes.insert(
-        Attribute::new(status_code_attr.to_string()),
+        Attribute::new(config.status_code_attr.to_string()),
         AttributeValue::Number(response.status_code.into()),
     );
 
-    // Add headers as JSON string
     if let Ok(headers_json) = serde_json::to_string(&response.headers) {
         attributes.insert(
-            Attribute::new(headers_attr.to_string()),
+            Attribute::new(config.headers_attr.to_string()),
             AttributeValue::String(headers_json),
         );
     }
 
-    // Determine encoding
-    let effective_encoding = if auto_detect {
-        detect_encoding_from_headers(&response.headers).or(encoding.clone())
+    let effective_encoding = if config.auto_detect {
+        detect_encoding_from_headers(&response.headers).or(config.encoding.clone())
     } else {
-        encoding.clone()
+        config.encoding.clone()
     }
     .unwrap_or(ResponseEncoding::Text);
 
-    // Handle response based on configuration
-    match handling.as_ref().unwrap_or(&ResponseHandling::Attribute) {
+    match config
+        .handling
+        .as_ref()
+        .unwrap_or(&ResponseHandling::Attribute)
+    {
         ResponseHandling::Attribute => {
-            // Store in attribute (default behavior)
             let encoded_body = encode_response_body(&response.body, &effective_encoding);
             attributes.insert(
-                Attribute::new(response_body_attr.to_string()),
+                Attribute::new(config.response_body_attr.to_string()),
                 AttributeValue::String(encoded_body),
             );
         }
@@ -73,19 +74,18 @@ pub(crate) fn process_response(
             store_path_in_attribute,
             path_attribute,
         } => {
-            // Evaluate output path
-            let path_ast = engine.compile(path.as_ref()).map_err(|e| {
-                HttpProcessorError::Request(format!("Failed to compile output path expression: {e:?}"))
+            let path_ast = config.engine.compile(path.as_ref()).map_err(|e| {
+                HttpProcessorError::Request(format!(
+                    "Failed to compile output path expression: {e:?}"
+                ))
             })?;
 
-            let output_path = scope.eval_ast::<String>(&path_ast).map_err(|e| {
+            let output_path = config.scope.eval_ast::<String>(&path_ast).map_err(|e| {
                 HttpProcessorError::Response(format!("Failed to evaluate output path: {e:?}"))
             })?;
 
-            // Save response to file
-            save_response_to_file(&response.body, &output_path, storage_resolver)?;
+            save_response_to_file(&response.body, &output_path, config.storage_resolver)?;
 
-            // Optionally store path in attribute
             if store_path_in_attribute.unwrap_or(true) {
                 let attr_name = path_attribute
                     .clone()
@@ -103,7 +103,7 @@ pub(crate) fn process_response(
                 "size_bytes": response.body.len(),
             });
             attributes.insert(
-                Attribute::new(response_body_attr.to_string()),
+                Attribute::new(config.response_body_attr.to_string()),
                 AttributeValue::String(metadata.to_string()),
             );
         }
@@ -112,19 +112,14 @@ pub(crate) fn process_response(
     Ok(())
 }
 
-/// Encode response body according to encoding type
 fn encode_response_body(body: &str, encoding: &ResponseEncoding) -> String {
     match encoding {
         ResponseEncoding::Text => body.to_string(),
         ResponseEncoding::Base64 => general_purpose::STANDARD.encode(body.as_bytes()),
-        ResponseEncoding::Binary => {
-            // Store as base64 for binary data to preserve in JSON
-            general_purpose::STANDARD.encode(body.as_bytes())
-        }
+        ResponseEncoding::Binary => general_purpose::STANDARD.encode(body.as_bytes()),
     }
 }
 
-/// Detect encoding from Content-Type header
 fn detect_encoding_from_headers(
     headers: &std::collections::HashMap<String, String>,
 ) -> Option<ResponseEncoding> {
@@ -151,27 +146,24 @@ fn detect_encoding_from_headers(
     }
 }
 
-/// Save response body to file using storage
 fn save_response_to_file(
     body: &str,
     path: &str,
     storage_resolver: &Arc<StorageResolver>,
 ) -> Result<()> {
     let uri = reearth_flow_common::uri::Uri::for_test(path);
-    let storage = storage_resolver
-        .resolve(&uri)
-        .map_err(|e| HttpProcessorError::Response(format!("Failed to resolve storage path '{}': {}", path, e)))?;
+    let storage = storage_resolver.resolve(&uri).map_err(|e| {
+        HttpProcessorError::Response(format!("Failed to resolve storage path '{}': {}", path, e))
+    })?;
 
     let path_string = uri.path().as_path().display().to_string();
     let storage_path = std::path::Path::new(&path_string);
 
     let bytes = Bytes::from(body.as_bytes().to_vec());
 
-    storage
-        .put_sync(storage_path, bytes)
-        .map_err(|e| {
-            HttpProcessorError::Response(format!("Failed to save response to file '{}': {}", path, e))
-        })?;
+    storage.put_sync(storage_path, bytes).map_err(|e| {
+        HttpProcessorError::Response(format!("Failed to save response to file '{}': {}", path, e))
+    })?;
 
     Ok(())
 }
@@ -234,21 +226,21 @@ mod tests {
         let storage_resolver = Arc::new(StorageResolver::new());
         let mut attributes = indexmap::IndexMap::new();
 
+        let config = ResponseProcessorConfig {
+            handling: &None,
+            encoding: &None,
+            auto_detect: true,
+            max_size: Some(500), // Max 500 bytes
+            engine: &engine,
+            scope: &scope,
+            storage_resolver: &storage_resolver,
+            response_body_attr: "_response",
+            status_code_attr: "_status",
+            headers_attr: "_headers",
+        };
+
         // Should fail with size limit
-        let result = process_response(
-            response.clone(),
-            &None,
-            &None,
-            true,
-            Some(500), // Max 500 bytes
-            &engine,
-            &scope,
-            &storage_resolver,
-            &mut attributes,
-            "_response",
-            "_status",
-            "_headers",
-        );
+        let result = process_response(response.clone(), &config, &mut attributes);
 
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("exceeds maximum"));
@@ -270,20 +262,21 @@ mod tests {
         let storage_resolver = Arc::new(StorageResolver::new());
         let mut attributes = indexmap::IndexMap::new();
 
-        let result = process_response(
-            response,
-            &None,
-            &Some(ResponseEncoding::Text),
-            false,
-            None,
-            &engine,
-            &scope,
-            &storage_resolver,
-            &mut attributes,
-            "_response",
-            "_status",
-            "_headers",
-        );
+        let encoding = Some(ResponseEncoding::Text);
+        let config = ResponseProcessorConfig {
+            handling: &None,
+            encoding: &encoding,
+            auto_detect: false,
+            max_size: None,
+            engine: &engine,
+            scope: &scope,
+            storage_resolver: &storage_resolver,
+            response_body_attr: "_response",
+            status_code_attr: "_status",
+            headers_attr: "_headers",
+        };
+
+        let result = process_response(response, &config, &mut attributes);
 
         assert!(result.is_ok());
         assert_eq!(attributes.len(), 3); // status, headers, body
@@ -291,4 +284,3 @@ mod tests {
         assert!(attributes.contains_key(&Attribute::new("_response".to_string())));
     }
 }
-
