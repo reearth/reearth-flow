@@ -496,9 +496,9 @@ impl GeoPackageWriter {
         let has_z = self
             .buffer
             .first()
-            .and_then(|f| match &f.geometry.value {
-                GeometryValue::FlowGeometry3D(_) => Some(true),
-                _ => Some(false),
+            .map(|f| match &f.geometry.value {
+                GeometryValue::FlowGeometry3D(_) => true,
+                _ => false,
             })
             .unwrap_or(false);
 
