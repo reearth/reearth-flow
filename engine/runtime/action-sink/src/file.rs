@@ -3,6 +3,7 @@ pub(super) mod csv;
 pub(super) mod czml;
 pub(super) mod excel;
 pub(super) mod excel_writer;
+pub(super) mod geopackage;
 pub(super) mod geojson;
 pub(super) mod gltf;
 pub(super) mod json;

@@ -6,15 +6,7 @@ use byteorder::{LittleEndian, WriteBytesExt};
 use bytes::Bytes;
 use indexmap::IndexMap;
 use reearth_flow_common::uri::Uri;
-use reearth_flow_geometry::types::{
-    geometry::{Geometry2D, Geometry3D},
-    line_string::{LineString2D, LineString3D},
-    multi_line_string::{MultiLineString2D, MultiLineString3D},
-    multi_point::{MultiPoint2D, MultiPoint3D},
-    multi_polygon::{MultiPolygon2D, MultiPolygon3D},
-    point::{Point2D, Point3D},
-    polygon::{Polygon2D, Polygon3D},
-};
+use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
@@ -24,7 +16,6 @@ use reearth_flow_types::{AttributeValue, Expr, Feature, Geometry, GeometryValue}
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::Row;
 
 use crate::errors::SinkError;
 
@@ -146,7 +137,7 @@ fn default_create_spatial_index() -> bool {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum AttributeType {
+pub(super) enum AttributeType {
     Integer,
     Real,
     Text,
@@ -177,6 +168,8 @@ impl AttributeType {
             }
             AttributeValue::String(_) => AttributeType::Text,
             AttributeValue::Array(_) | AttributeValue::Map(_) => AttributeType::Text,
+            AttributeValue::DateTime(_) => AttributeType::Text,
+            AttributeValue::Bytes(_) => AttributeType::Blob,
             AttributeValue::Null => AttributeType::Text,
         }
     }
@@ -190,12 +183,16 @@ impl Sink for GeoPackageWriter {
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
 
-        // Infer schema from first feature
-        if self.schema.is_empty() {
-            for (key, value) in feature.attributes.iter() {
-                if key != &self.params.geometry_column {
+        // Infer schema from ALL features to avoid data loss
+        // Merge schema from each feature to capture all possible attributes
+        for (key, value) in feature.attributes.iter() {
+            let key_str = key.to_string();
+            // Skip geometry column and common GeoPackage system columns
+            if key_str != self.params.geometry_column && key_str != "fid" && key_str != "id" {
+                // Only add if not already in schema, or update type if needed
+                if !self.schema.contains_key(&key_str) {
                     let attr_type = AttributeType::from_attribute_value(value);
-                    self.schema.insert(key.clone(), attr_type);
+                    self.schema.insert(key_str, attr_type);
                 }
             }
         }
@@ -257,7 +254,7 @@ impl GeoPackageWriter {
             .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to create runtime: {e}")))?;
 
         rt.block_on(async {
-            let adapter = SqlAdapter::connect(&format!("sqlite://{db_path}"))
+            let adapter = SqlAdapter::new(&format!("sqlite://{db_path}"), 1)
                 .await
                 .map_err(|e| {
                     SinkError::GeoPackageWriter(format!("Failed to connect to database: {e}"))
@@ -281,9 +278,8 @@ impl GeoPackageWriter {
         })?;
 
         // Read the file content
-        let content = std::fs::read(temp_file.path()).map_err(|e| {
-            SinkError::GeoPackageWriter(format!("Failed to read temp file: {e}"))
-        })?;
+        let content = std::fs::read(temp_file.path())
+            .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to read temp file: {e}")))?;
 
         Ok(content)
     }
@@ -291,7 +287,7 @@ impl GeoPackageWriter {
     async fn init_geopackage_structure(&self, adapter: &SqlAdapter) -> Result<(), BoxedError> {
         // Set application_id for GeoPackage
         adapter
-            .execute_raw("PRAGMA application_id = 0x47503130")
+            .execute("PRAGMA application_id = 0x47503130")
             .await
             .map_err(|e| {
                 SinkError::GeoPackageWriter(format!("Failed to set application_id: {e}"))
@@ -299,7 +295,7 @@ impl GeoPackageWriter {
 
         // Create gpkg_spatial_ref_sys table
         adapter
-            .execute_raw(
+            .execute(
                 r#"
                 CREATE TABLE gpkg_spatial_ref_sys (
                     srs_name TEXT NOT NULL,
@@ -321,7 +317,7 @@ impl GeoPackageWriter {
 
         // Create gpkg_contents table
         adapter
-            .execute_raw(
+            .execute(
                 r#"
                 CREATE TABLE gpkg_contents (
                     table_name TEXT NOT NULL PRIMARY KEY,
@@ -345,7 +341,7 @@ impl GeoPackageWriter {
 
         // Create gpkg_geometry_columns table
         adapter
-            .execute_raw(
+            .execute(
                 r#"
                 CREATE TABLE gpkg_geometry_columns (
                     table_name TEXT NOT NULL,
@@ -369,7 +365,7 @@ impl GeoPackageWriter {
 
         // Create gpkg_extensions table (required for spatial index)
         adapter
-            .execute_raw(
+            .execute(
                 r#"
                 CREATE TABLE gpkg_extensions (
                     table_name TEXT,
@@ -392,7 +388,7 @@ impl GeoPackageWriter {
     async fn insert_standard_srs(&self, adapter: &SqlAdapter) -> Result<(), BoxedError> {
         // Insert EPSG:4326 (WGS84)
         adapter
-            .execute_raw(
+            .execute(
                 r#"
                 INSERT INTO gpkg_spatial_ref_sys (srs_name, srs_id, organization, organization_coordsys_id, definition, description)
                 VALUES ('WGS 84', 4326, 'EPSG', 4326, 
@@ -407,7 +403,7 @@ impl GeoPackageWriter {
 
         // Insert undefined geographic SRS (-1)
         adapter
-            .execute_raw(
+            .execute(
                 r#"
                 INSERT INTO gpkg_spatial_ref_sys (srs_name, srs_id, organization, organization_coordsys_id, definition, description)
                 VALUES ('Undefined geographic SRS', -1, 'NONE', -1, 'undefined', 'undefined geographic coordinate reference system')
@@ -420,7 +416,7 @@ impl GeoPackageWriter {
 
         // Insert undefined Cartesian SRS (0)
         adapter
-            .execute_raw(
+            .execute(
                 r#"
                 INSERT INTO gpkg_spatial_ref_sys (srs_name, srs_id, organization, organization_coordsys_id, definition, description)
                 VALUES ('Undefined Cartesian SRS', 0, 'NONE', 0, 'undefined', 'undefined Cartesian coordinate reference system')
@@ -440,7 +436,7 @@ impl GeoPackageWriter {
                 "#,
                 self.params.srs_id, self.params.srs_id
             );
-            adapter.execute_raw(&query).await.map_err(|e| {
+            adapter.execute(&query).await.map_err(|e| {
                 SinkError::GeoPackageWriter(format!("Failed to insert custom SRS: {e}"))
             })?;
         }
@@ -449,23 +445,27 @@ impl GeoPackageWriter {
     }
 
     async fn create_feature_table(&self, adapter: &SqlAdapter) -> Result<(), BoxedError> {
-        // Build column definitions
+        // Build column definitions with proper SQL identifier quoting
         let mut columns = vec![
             "fid INTEGER PRIMARY KEY AUTOINCREMENT".to_string(),
-            format!("{} BLOB", self.params.geometry_column),
+            format!("{} BLOB", quote_identifier(&self.params.geometry_column)),
         ];
 
         for (name, attr_type) in &self.schema {
-            columns.push(format!("{} {}", name, attr_type.to_sql_type()));
+            columns.push(format!(
+                "{} {}",
+                quote_identifier(name),
+                attr_type.to_sql_type()
+            ));
         }
 
         let create_table = format!(
             "CREATE TABLE {} ({})",
-            self.params.table_name,
+            quote_identifier(&self.params.table_name),
             columns.join(", ")
         );
 
-        adapter.execute_raw(&create_table).await.map_err(|e| {
+        adapter.execute(&create_table).await.map_err(|e| {
             SinkError::GeoPackageWriter(format!("Failed to create feature table: {e}"))
         })?;
 
@@ -473,13 +473,14 @@ impl GeoPackageWriter {
         let (min_x, min_y, max_x, max_y) = self.calculate_bbox();
 
         // Insert into gpkg_contents
+        // Note: table_name in gpkg_contents should be stored as-is (not quoted) as it's data, not an identifier
         let insert_contents = format!(
             r#"
             INSERT INTO gpkg_contents (table_name, data_type, identifier, description, srs_id, min_x, min_y, max_x, max_y)
             VALUES ('{}', 'features', '{}', '', {}, {}, {}, {}, {})
             "#,
-            self.params.table_name,
-            self.params.table_name,
+            self.params.table_name.replace('\'', "''"), // Escape single quotes for string value
+            self.params.table_name.replace('\'', "''"),
             self.params.srs_id,
             min_x,
             min_y,
@@ -487,7 +488,7 @@ impl GeoPackageWriter {
             max_y
         );
 
-        adapter.execute_raw(&insert_contents).await.map_err(|e| {
+        adapter.execute(&insert_contents).await.map_err(|e| {
             SinkError::GeoPackageWriter(format!("Failed to insert into gpkg_contents: {e}"))
         })?;
 
@@ -502,19 +503,20 @@ impl GeoPackageWriter {
             .unwrap_or(false);
 
         // Insert into gpkg_geometry_columns
+        // Note: table_name and column_name are stored as data values, so escape single quotes
         let insert_geom_cols = format!(
             r#"
             INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m)
             VALUES ('{}', '{}', '{}', {}, {}, 0)
             "#,
-            self.params.table_name,
-            self.params.geometry_column,
-            self.params.geometry_type.to_uppercase(),
+            self.params.table_name.replace('\'', "''"),
+            self.params.geometry_column.replace('\'', "''"),
+            self.params.geometry_type.to_uppercase().replace('\'', "''"),
             self.params.srs_id,
             if has_z { 1 } else { 0 }
         );
 
-        adapter.execute_raw(&insert_geom_cols).await.map_err(|e| {
+        adapter.execute(&insert_geom_cols).await.map_err(|e| {
             SinkError::GeoPackageWriter(format!("Failed to insert into gpkg_geometry_columns: {e}"))
         })?;
 
@@ -526,35 +528,10 @@ impl GeoPackageWriter {
             // Convert geometry to GeoPackage Binary
             let geom_blob = geometry_to_gpkg_wkb(&feature.geometry, self.params.srs_id)?;
 
-            // Build column names and values
-            let mut column_names = vec![self.params.geometry_column.clone()];
-            let mut placeholders = vec!["?".to_string()];
-            let mut values: Vec<Box<dyn sqlx::Encode<'_, sqlx::Any> + Send>> = vec![];
-
-            // Add geometry
-            values.push(Box::new(geom_blob));
-
-            // Add attributes
-            for (name, _) in &self.schema {
-                if let Some(value) = feature.attributes.get(name) {
-                    column_names.push(name.clone());
-                    placeholders.push("?".to_string());
-                    values.push(attribute_value_to_sql(value));
-                }
-            }
-
-            let insert_query = format!(
-                "INSERT INTO {} ({}) VALUES ({})",
-                self.params.table_name,
-                column_names.join(", "),
-                placeholders.join(", ")
-            );
-
-            // For simplicity, we'll use raw SQL with string interpolation for values
-            // In production, you'd want to use parameterized queries
+            // Build insert query with values
             let insert_query_with_values = self.build_insert_query(feature, &geom_blob)?;
             adapter
-                .execute_raw(&insert_query_with_values)
+                .execute(&insert_query_with_values)
                 .await
                 .map_err(|e| {
                     SinkError::GeoPackageWriter(format!("Failed to insert feature: {e}"))
@@ -564,27 +541,51 @@ impl GeoPackageWriter {
         Ok(())
     }
 
-    fn build_insert_query(&self, feature: &Feature, geom_blob: &[u8]) -> Result<String, BoxedError> {
-        let mut column_names = vec![self.params.geometry_column.clone()];
+    fn build_insert_query(
+        &self,
+        feature: &Feature,
+        geom_blob: &[u8],
+    ) -> Result<String, BoxedError> {
+        let mut column_names = vec![quote_identifier(&self.params.geometry_column)];
         let mut values = vec![format!("X'{}'", hex::encode(geom_blob))];
 
         for (name, _) in &self.schema {
-            if let Some(value) = feature.attributes.get(name) {
-                column_names.push(name.clone());
+            // Find the attribute by comparing string representations
+            let value = feature
+                .attributes
+                .iter()
+                .find(|(k, _)| k.to_string() == *name)
+                .map(|(_, v)| v);
+
+            if let Some(value) = value {
+                column_names.push(quote_identifier(name));
                 values.push(attribute_value_to_sql_string(value)?);
+            } else {
+                // If attribute is missing in this feature, insert NULL
+                column_names.push(quote_identifier(name));
+                values.push("NULL".to_string());
             }
         }
 
         Ok(format!(
             "INSERT INTO {} ({}) VALUES ({})",
-            self.params.table_name,
+            quote_identifier(&self.params.table_name),
             column_names.join(", "),
             values.join(", ")
         ))
     }
 
     async fn create_spatial_index(&self, adapter: &SqlAdapter) -> Result<(), BoxedError> {
-        let rtree_table = format!("rtree_{}_{}", self.params.table_name, self.params.geometry_column);
+        // Create safe rtree table name (sanitize to avoid SQL injection)
+        let rtree_table = format!(
+            "rtree_{}_{}",
+            self.params
+                .table_name
+                .replace(|c: char| !c.is_alphanumeric() && c != '_', "_"),
+            self.params
+                .geometry_column
+                .replace(|c: char| !c.is_alphanumeric() && c != '_', "_")
+        );
 
         // Create RTree spatial index
         let create_rtree = format!(
@@ -595,10 +596,10 @@ impl GeoPackageWriter {
                 miny, maxy
             )
             "#,
-            rtree_table
+            quote_identifier(&rtree_table)
         );
 
-        adapter.execute_raw(&create_rtree).await.map_err(|e| {
+        adapter.execute(&create_rtree).await.map_err(|e| {
             SinkError::GeoPackageWriter(format!("Failed to create spatial index: {e}"))
         })?;
 
@@ -608,29 +609,31 @@ impl GeoPackageWriter {
             if let Some((min_x, min_y, max_x, max_y)) = bbox {
                 let insert_rtree = format!(
                     "INSERT INTO {} VALUES ({}, {}, {}, {}, {})",
-                    rtree_table,
+                    quote_identifier(&rtree_table),
                     idx + 1,
                     min_x,
                     max_x,
                     min_y,
                     max_y
                 );
-                adapter.execute_raw(&insert_rtree).await.map_err(|e| {
+                adapter.execute(&insert_rtree).await.map_err(|e| {
                     SinkError::GeoPackageWriter(format!("Failed to populate spatial index: {e}"))
                 })?;
             }
         }
 
         // Register extension
+        // Note: table_name and column_name are data values here, so escape single quotes
         let register_ext = format!(
             r#"
             INSERT INTO gpkg_extensions (table_name, column_name, extension_name, definition, scope)
             VALUES ('{}', '{}', 'gpkg_rtree_index', 'http://www.geopackage.org/spec120/#extension_rtree', 'write-only')
             "#,
-            self.params.table_name, self.params.geometry_column
+            self.params.table_name.replace('\'', "''"),
+            self.params.geometry_column.replace('\'', "''")
         );
 
-        adapter.execute_raw(&register_ext).await.map_err(|e| {
+        adapter.execute(&register_ext).await.map_err(|e| {
             SinkError::GeoPackageWriter(format!("Failed to register rtree extension: {e}"))
         })?;
 
@@ -774,12 +777,12 @@ fn geometry_to_gpkg_wkb(geometry: &Geometry, srs_id: i32) -> Result<Vec<u8>, Box
 
         if is_3d {
             // For 3D, add min_z and max_z (we'll use 0 for now as we don't track Z in bbox)
-            buffer
-                .write_f64::<LittleEndian>(0.0)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write envelope: {e}")))?;
-            buffer
-                .write_f64::<LittleEndian>(0.0)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write envelope: {e}")))?;
+            buffer.write_f64::<LittleEndian>(0.0).map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to write envelope: {e}"))
+            })?;
+            buffer.write_f64::<LittleEndian>(0.0).map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to write envelope: {e}"))
+            })?;
         }
     }
 
@@ -807,43 +810,47 @@ fn geometry_2d_to_wkb(geom: &Geometry2D) -> Result<Vec<u8>, BoxedError> {
     match geom {
         Geometry2D::Point(pt) => {
             // WKB type for Point (1)
-            buffer
-                .write_u32::<LittleEndian>(1)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}")))?;
-            buffer
-                .write_f64::<LittleEndian>(pt.x())
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}")))?;
-            buffer
-                .write_f64::<LittleEndian>(pt.y())
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}")))?;
+            buffer.write_u32::<LittleEndian>(1).map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}"))
+            })?;
+            buffer.write_f64::<LittleEndian>(pt.x()).map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}"))
+            })?;
+            buffer.write_f64::<LittleEndian>(pt.y()).map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}"))
+            })?;
         }
         Geometry2D::LineString(ls) => {
             // WKB type for LineString (2)
-            buffer
-                .write_u32::<LittleEndian>(2)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}")))?;
+            buffer.write_u32::<LittleEndian>(2).map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}"))
+            })?;
             let coords: Vec<_> = ls.coords().collect();
             buffer
                 .write_u32::<LittleEndian>(coords.len() as u32)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write point count: {e}")))?;
+                .map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write point count: {e}"))
+                })?;
             for coord in coords {
-                buffer
-                    .write_f64::<LittleEndian>(coord.x)
-                    .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}")))?;
-                buffer
-                    .write_f64::<LittleEndian>(coord.y)
-                    .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}")))?;
+                buffer.write_f64::<LittleEndian>(coord.x).map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}"))
+                })?;
+                buffer.write_f64::<LittleEndian>(coord.y).map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}"))
+                })?;
             }
         }
         Geometry2D::Polygon(poly) => {
             // WKB type for Polygon (3)
-            buffer
-                .write_u32::<LittleEndian>(3)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}")))?;
+            buffer.write_u32::<LittleEndian>(3).map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}"))
+            })?;
             // Number of rings
             buffer
                 .write_u32::<LittleEndian>(1 + poly.interiors().len() as u32)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write ring count: {e}")))?;
+                .map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write ring count: {e}"))
+                })?;
             // Exterior ring
             write_linestring_coords_2d(&mut buffer, poly.exterior())?;
             // Interior rings
@@ -853,57 +860,65 @@ fn geometry_2d_to_wkb(geom: &Geometry2D) -> Result<Vec<u8>, BoxedError> {
         }
         Geometry2D::MultiPoint(mp) => {
             // WKB type for MultiPoint (4)
-            buffer
-                .write_u32::<LittleEndian>(4)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}")))?;
+            buffer.write_u32::<LittleEndian>(4).map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}"))
+            })?;
             buffer
                 .write_u32::<LittleEndian>(mp.0.len() as u32)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write point count: {e}")))?;
+                .map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write point count: {e}"))
+                })?;
             for pt in mp.iter() {
                 buffer.push(0x01); // byte order
-                buffer
-                    .write_u32::<LittleEndian>(1)
-                    .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}")))?; // Point type
-                buffer
-                    .write_f64::<LittleEndian>(pt.x())
-                    .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}")))?;
-                buffer
-                    .write_f64::<LittleEndian>(pt.y())
-                    .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}")))?;
+                buffer.write_u32::<LittleEndian>(1).map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}"))
+                })?; // Point type
+                buffer.write_f64::<LittleEndian>(pt.x()).map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}"))
+                })?;
+                buffer.write_f64::<LittleEndian>(pt.y()).map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}"))
+                })?;
             }
         }
         Geometry2D::MultiLineString(mls) => {
             // WKB type for MultiLineString (5)
-            buffer
-                .write_u32::<LittleEndian>(5)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}")))?;
+            buffer.write_u32::<LittleEndian>(5).map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}"))
+            })?;
             buffer
                 .write_u32::<LittleEndian>(mls.0.len() as u32)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write linestring count: {e}")))?;
+                .map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write linestring count: {e}"))
+                })?;
             for ls in mls.iter() {
                 buffer.push(0x01); // byte order
-                buffer
-                    .write_u32::<LittleEndian>(2)
-                    .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}")))?; // LineString type
+                buffer.write_u32::<LittleEndian>(2).map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}"))
+                })?; // LineString type
                 write_linestring_coords_2d(&mut buffer, ls)?;
             }
         }
         Geometry2D::MultiPolygon(mpoly) => {
             // WKB type for MultiPolygon (6)
-            buffer
-                .write_u32::<LittleEndian>(6)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}")))?;
+            buffer.write_u32::<LittleEndian>(6).map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}"))
+            })?;
             buffer
                 .write_u32::<LittleEndian>(mpoly.0.len() as u32)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write polygon count: {e}")))?;
+                .map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write polygon count: {e}"))
+                })?;
             for poly in mpoly.iter() {
                 buffer.push(0x01); // byte order
-                buffer
-                    .write_u32::<LittleEndian>(3)
-                    .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}")))?; // Polygon type
+                buffer.write_u32::<LittleEndian>(3).map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}"))
+                })?; // Polygon type
                 buffer
                     .write_u32::<LittleEndian>(1 + poly.interiors().len() as u32)
-                    .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write ring count: {e}")))?;
+                    .map_err(|e| {
+                        SinkError::GeoPackageWriter(format!("Failed to write ring count: {e}"))
+                    })?;
                 write_linestring_coords_2d(&mut buffer, poly.exterior())?;
                 for interior in poly.interiors() {
                     write_linestring_coords_2d(&mut buffer, interior)?;
@@ -929,48 +944,52 @@ fn geometry_3d_to_wkb(geom: &Geometry3D) -> Result<Vec<u8>, BoxedError> {
     match geom {
         Geometry3D::Point(pt) => {
             // WKB type for Point Z (0x80000001)
-            buffer
-                .write_u32::<LittleEndian>(0x80000001)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}")))?;
-            buffer
-                .write_f64::<LittleEndian>(pt.x())
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}")))?;
-            buffer
-                .write_f64::<LittleEndian>(pt.y())
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}")))?;
-            buffer
-                .write_f64::<LittleEndian>(pt.z())
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}")))?;
+            buffer.write_u32::<LittleEndian>(0x80000001).map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}"))
+            })?;
+            buffer.write_f64::<LittleEndian>(pt.x()).map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}"))
+            })?;
+            buffer.write_f64::<LittleEndian>(pt.y()).map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}"))
+            })?;
+            buffer.write_f64::<LittleEndian>(pt.z()).map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}"))
+            })?;
         }
         Geometry3D::LineString(ls) => {
             // WKB type for LineString Z (0x80000002)
-            buffer
-                .write_u32::<LittleEndian>(0x80000002)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}")))?;
+            buffer.write_u32::<LittleEndian>(0x80000002).map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}"))
+            })?;
             let coords: Vec<_> = ls.coords().collect();
             buffer
                 .write_u32::<LittleEndian>(coords.len() as u32)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write point count: {e}")))?;
+                .map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write point count: {e}"))
+                })?;
             for coord in coords {
-                buffer
-                    .write_f64::<LittleEndian>(coord.x)
-                    .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}")))?;
-                buffer
-                    .write_f64::<LittleEndian>(coord.y)
-                    .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}")))?;
-                buffer
-                    .write_f64::<LittleEndian>(coord.z)
-                    .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}")))?;
+                buffer.write_f64::<LittleEndian>(coord.x).map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}"))
+                })?;
+                buffer.write_f64::<LittleEndian>(coord.y).map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}"))
+                })?;
+                buffer.write_f64::<LittleEndian>(coord.z).map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}"))
+                })?;
             }
         }
         Geometry3D::Polygon(poly) => {
             // WKB type for Polygon Z (0x80000003)
-            buffer
-                .write_u32::<LittleEndian>(0x80000003)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}")))?;
+            buffer.write_u32::<LittleEndian>(0x80000003).map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}"))
+            })?;
             buffer
                 .write_u32::<LittleEndian>(1 + poly.interiors().len() as u32)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write ring count: {e}")))?;
+                .map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write ring count: {e}"))
+                })?;
             write_linestring_coords_3d(&mut buffer, poly.exterior())?;
             for interior in poly.interiors() {
                 write_linestring_coords_3d(&mut buffer, interior)?;
@@ -978,60 +997,68 @@ fn geometry_3d_to_wkb(geom: &Geometry3D) -> Result<Vec<u8>, BoxedError> {
         }
         Geometry3D::MultiPoint(mp) => {
             // WKB type for MultiPoint Z (0x80000004)
-            buffer
-                .write_u32::<LittleEndian>(0x80000004)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}")))?;
+            buffer.write_u32::<LittleEndian>(0x80000004).map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}"))
+            })?;
             buffer
                 .write_u32::<LittleEndian>(mp.0.len() as u32)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write point count: {e}")))?;
+                .map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write point count: {e}"))
+                })?;
             for pt in mp.iter() {
                 buffer.push(0x01); // byte order
-                buffer
-                    .write_u32::<LittleEndian>(0x80000001)
-                    .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}")))?; // Point Z type
-                buffer
-                    .write_f64::<LittleEndian>(pt.x())
-                    .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}")))?;
-                buffer
-                    .write_f64::<LittleEndian>(pt.y())
-                    .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}")))?;
-                buffer
-                    .write_f64::<LittleEndian>(pt.z())
-                    .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}")))?;
+                buffer.write_u32::<LittleEndian>(0x80000001).map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}"))
+                })?; // Point Z type
+                buffer.write_f64::<LittleEndian>(pt.x()).map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}"))
+                })?;
+                buffer.write_f64::<LittleEndian>(pt.y()).map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}"))
+                })?;
+                buffer.write_f64::<LittleEndian>(pt.z()).map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write coordinate: {e}"))
+                })?;
             }
         }
         Geometry3D::MultiLineString(mls) => {
             // WKB type for MultiLineString Z (0x80000005)
-            buffer
-                .write_u32::<LittleEndian>(0x80000005)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}")))?;
+            buffer.write_u32::<LittleEndian>(0x80000005).map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}"))
+            })?;
             buffer
                 .write_u32::<LittleEndian>(mls.0.len() as u32)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write linestring count: {e}")))?;
+                .map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write linestring count: {e}"))
+                })?;
             for ls in mls.iter() {
                 buffer.push(0x01); // byte order
-                buffer
-                    .write_u32::<LittleEndian>(0x80000002)
-                    .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}")))?; // LineString Z type
+                buffer.write_u32::<LittleEndian>(0x80000002).map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}"))
+                })?; // LineString Z type
                 write_linestring_coords_3d(&mut buffer, ls)?;
             }
         }
         Geometry3D::MultiPolygon(mpoly) => {
             // WKB type for MultiPolygon Z (0x80000006)
-            buffer
-                .write_u32::<LittleEndian>(0x80000006)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}")))?;
+            buffer.write_u32::<LittleEndian>(0x80000006).map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}"))
+            })?;
             buffer
                 .write_u32::<LittleEndian>(mpoly.0.len() as u32)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write polygon count: {e}")))?;
+                .map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write polygon count: {e}"))
+                })?;
             for poly in mpoly.iter() {
                 buffer.push(0x01); // byte order
-                buffer
-                    .write_u32::<LittleEndian>(0x80000003)
-                    .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}")))?; // Polygon Z type
+                buffer.write_u32::<LittleEndian>(0x80000003).map_err(|e| {
+                    SinkError::GeoPackageWriter(format!("Failed to write WKB type: {e}"))
+                })?; // Polygon Z type
                 buffer
                     .write_u32::<LittleEndian>(1 + poly.interiors().len() as u32)
-                    .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to write ring count: {e}")))?;
+                    .map_err(|e| {
+                        SinkError::GeoPackageWriter(format!("Failed to write ring count: {e}"))
+                    })?;
                 write_linestring_coords_3d(&mut buffer, poly.exterior())?;
                 for interior in poly.interiors() {
                     write_linestring_coords_3d(&mut buffer, interior)?;
@@ -1050,7 +1077,7 @@ fn geometry_3d_to_wkb(geom: &Geometry3D) -> Result<Vec<u8>, BoxedError> {
 
 fn write_linestring_coords_2d(
     buffer: &mut Vec<u8>,
-    ls: &LineString2D,
+    ls: &reearth_flow_geometry::types::line_string::LineString2D<f64>,
 ) -> Result<(), BoxedError> {
     let coords: Vec<_> = ls.coords().collect();
     buffer
@@ -1069,7 +1096,7 @@ fn write_linestring_coords_2d(
 
 fn write_linestring_coords_3d(
     buffer: &mut Vec<u8>,
-    ls: &LineString3D,
+    ls: &reearth_flow_geometry::types::line_string::LineString3D<f64>,
 ) -> Result<(), BoxedError> {
     let coords: Vec<_> = ls.coords().collect();
     buffer
@@ -1089,11 +1116,22 @@ fn write_linestring_coords_3d(
     Ok(())
 }
 
-fn attribute_value_to_sql(
-    _value: &AttributeValue,
-) -> Box<dyn sqlx::Encode<'_, sqlx::Any> + Send> {
-    // This is a placeholder - we'll use string interpolation instead
-    Box::new(())
+/// Quote SQL identifier to prevent SQL injection
+/// SQLite uses double quotes for identifiers
+fn quote_identifier(name: &str) -> String {
+    // Validate identifier: only allow alphanumeric, underscore, and some safe chars
+    // This prevents SQL injection attacks
+    if name.is_empty() {
+        return "\"\"".to_string();
+    }
+
+    // Check for dangerous characters
+    if name.contains(|c: char| !c.is_alphanumeric() && c != '_' && c != '-' && c != '.') {
+        // If contains dangerous chars, escape them by doubling quotes
+        format!("\"{}\"", name.replace('"', "\"\""))
+    } else {
+        format!("\"{}\"", name)
+    }
 }
 
 fn attribute_value_to_sql_string(value: &AttributeValue) -> Result<String, BoxedError> {
@@ -1101,17 +1139,20 @@ fn attribute_value_to_sql_string(value: &AttributeValue) -> Result<String, Boxed
         AttributeValue::Bool(b) => Ok(if *b { "1".to_string() } else { "0".to_string() }),
         AttributeValue::Number(n) => Ok(n.to_string()),
         AttributeValue::String(s) => Ok(format!("'{}'", s.replace('\'', "''"))),
+        AttributeValue::DateTime(dt) => Ok(format!("'{}'", dt.to_rfc3339().replace('\'', "''"))),
+        AttributeValue::Bytes(b) => Ok(format!("X'{}'", hex::encode(b))),
         AttributeValue::Array(arr) => {
-            let json = serde_json::to_string(arr)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to serialize array: {e}")))?;
+            let json = serde_json::to_string(arr).map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to serialize array: {e}"))
+            })?;
             Ok(format!("'{}'", json.replace('\'', "''")))
         }
         AttributeValue::Map(map) => {
-            let json = serde_json::to_string(map)
-                .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to serialize map: {e}")))?;
+            let json = serde_json::to_string(map).map_err(|e| {
+                SinkError::GeoPackageWriter(format!("Failed to serialize map: {e}"))
+            })?;
             Ok(format!("'{}'", json.replace('\'', "''")))
         }
         AttributeValue::Null => Ok("NULL".to_string()),
     }
 }
-

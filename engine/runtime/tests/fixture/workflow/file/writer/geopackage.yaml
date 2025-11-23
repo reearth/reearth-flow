@@ -13,7 +13,7 @@ graphs:
         type: action
         action: GeoPackageReader
         with:
-          dataset: ram:///fixture/testdata/file/reader/geopackage/test_geopackage.gpkg
+          dataset: ram:///fixture/testdata/file/writer/geopackage/test_geopackage.gpkg
           readMode: all
 
       - id: 01234567-0000-0000-0000-000000000104
@@ -30,14 +30,6 @@ graphs:
           overwrite: true
 
       - id: 01234567-0000-0000-0000-000000000105
-        name: ReadBackGeoPackage
-        type: action
-        action: GeoPackageReader
-        with:
-          dataset: ram:///output_test.gpkg
-          readMode: all
-
-      - id: 01234567-0000-0000-0000-000000000106
         name: WriteToFile
         type: action
         action: JsonWriter
@@ -53,14 +45,8 @@ graphs:
         toPort: default
 
       - id: 01234567-0000-0000-0000-000000000108
-        from: 01234567-0000-0000-0000-000000000104
+        from: 01234567-0000-0000-0000-000000000103
         to: 01234567-0000-0000-0000-000000000105
-        fromPort: default
-        toPort: default
-
-      - id: 01234567-0000-0000-0000-000000000109
-        from: 01234567-0000-0000-0000-000000000105
-        to: 01234567-0000-0000-0000-000000000106
         fromPort: default
         toPort: default
 
