@@ -288,7 +288,9 @@ impl ConfigBuilder {
             },
             ws_port: self.ws_port.unwrap_or_else(|| DEFAULT_WS_PORT.to_string()),
             tracing: TracingConfig {
-                enable_cloud_trace: self.enable_cloud_trace.unwrap_or(DEFAULT_ENABLE_CLOUD_TRACE),
+                enable_cloud_trace: self
+                    .enable_cloud_trace
+                    .unwrap_or(DEFAULT_ENABLE_CLOUD_TRACE),
                 gcp_project_id: self.gcp_project_id,
                 service_name: self
                     .service_name

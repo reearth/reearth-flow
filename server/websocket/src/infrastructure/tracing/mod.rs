@@ -53,10 +53,12 @@ static TRACER_PROVIDER: std::sync::OnceLock<TracerProvider> = std::sync::OnceLoc
 /// # Returns
 ///
 /// Returns `Ok(())` if initialization succeeds, or an error if it fails.
-pub async fn init_tracing(config: &TracingConfig) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn init_tracing(
+    config: &TracingConfig,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Create environment filter
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(&config.log_level));
+    let env_filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(&config.log_level));
 
     // Create fmt layer for console output
     let fmt_layer = fmt::layer()
@@ -66,7 +68,9 @@ pub async fn init_tracing(config: &TracingConfig) -> Result<(), Box<dyn std::err
         .with_level(true);
 
     if config.enable_cloud_trace {
-        let project_id = config.gcp_project_id.as_ref()
+        let project_id = config
+            .gcp_project_id
+            .as_ref()
             .ok_or("GCP project ID is required when cloud trace is enabled")?;
 
         // Create GCP authorizer
@@ -152,4 +156,3 @@ pub fn init_tracing_simple() {
         .with_line_number(true)
         .init();
 }
-
