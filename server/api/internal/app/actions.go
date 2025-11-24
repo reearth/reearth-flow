@@ -21,14 +21,14 @@ const (
 )
 
 type Action struct {
+	Parameter   map[string]interface{} `json:"parameter"`
 	Name        string                 `json:"name"`
 	Type        ActionType             `json:"type"`
 	Description string                 `json:"description"`
-	Parameter   map[string]interface{} `json:"parameter"`
-	Builtin     bool                   `json:"builtin"`
 	InputPorts  []string               `json:"inputPorts"`
 	OutputPorts []string               `json:"outputPorts"`
 	Categories  []string               `json:"categories"`
+	Builtin     bool                   `json:"builtin"`
 }
 
 func (a *Action) Validate() error {

@@ -8,14 +8,14 @@ import (
 )
 
 type DeclareParameterParam struct {
+	DefaultValue any
+	Config       any
 	Index        *int
 	Name         string
+	Type         parameter.Type
 	ProjectID    id.ProjectID
 	Required     bool
 	Public       bool
-	Type         parameter.Type
-	DefaultValue any
-	Config       any
 }
 
 type UpdateParameterOrderParam struct {
@@ -25,31 +25,31 @@ type UpdateParameterOrderParam struct {
 }
 
 type UpdateParameterParam struct {
-	ParamID       id.ParameterID
 	DefaultValue  any
+	Config        any
 	NameValue     string
+	TypeValue     parameter.Type
+	ParamID       id.ParameterID
 	RequiredValue bool
 	PublicValue   bool
-	TypeValue     parameter.Type
-	Config        any
 }
 
 type UpdateParameterBatchItemParam struct {
-	ParamID       id.ParameterID
 	DefaultValue  any
+	Config        any
 	NameValue     *string
 	RequiredValue *bool
 	PublicValue   *bool
 	TypeValue     *parameter.Type
-	Config        any
+	ParamID       id.ParameterID
 }
 
 type UpdateParametersParam struct {
-	ProjectID id.ProjectID
 	Creates   []DeclareParameterParam
 	Updates   []UpdateParameterBatchItemParam
 	Deletes   id.ParameterIDList
 	Reorders  []UpdateParameterOrderParam
+	ProjectID id.ProjectID
 }
 
 type Parameter interface {

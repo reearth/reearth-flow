@@ -6,24 +6,24 @@ type Member interface {
 }
 
 type User struct {
-	ID    UserID
 	Name  string
 	Email string
+	ID    UserID
 }
 
 type UserMember struct {
-	UserID UserID
-	Role   Role
 	Host   *string
 	User   *User
+	Role   Role
+	UserID UserID
 }
 
 type IntegrationMember struct {
-	IntegrationID IntegrationID
-	Role          Role
-	Active        bool
-	InvitedByID   UserID
 	InvitedBy     *User
+	Role          Role
+	IntegrationID IntegrationID
+	InvitedByID   UserID
+	Active        bool
 }
 
 func (m UserMember) GetRole() Role         { return m.Role }

@@ -127,9 +127,9 @@ func StartServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Containe
 }
 
 type GraphQLRequest struct {
+	Variables     map[string]any `json:"variables"`
 	OperationName string         `json:"operationName"`
 	Query         string         `json:"query"`
-	Variables     map[string]any `json:"variables"`
 }
 
 func StartGQLServer(t *testing.T, cfg *config.Config, useMongo bool, allowPermission bool, mock *TestMocks) (*httpexpect.Expect, *accountrepo.Container) {

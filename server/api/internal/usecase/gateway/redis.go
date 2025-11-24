@@ -11,10 +11,10 @@ import (
 )
 
 type JobCompleteEvent struct {
+	Timestamp  time.Time
 	WorkflowID string
 	JobID      string
 	Result     string // "success" or "failed"
-	Timestamp  time.Time
 }
 
 type Redis interface {

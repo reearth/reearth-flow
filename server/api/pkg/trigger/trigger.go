@@ -24,17 +24,17 @@ const (
 )
 
 type Trigger struct {
-	id            ID
 	createdAt     time.Time
 	updatedAt     time.Time
 	lastTriggered *time.Time
-	workspaceId   WorkspaceID
-	deploymentId  DeploymentID
-	description   string
-	eventSource   EventSourceType
 	authToken     *string
 	timeInterval  *TimeInterval
 	variables     map[string]string
+	description   string
+	eventSource   EventSourceType
+	id            ID
+	workspaceId   WorkspaceID
+	deploymentId  DeploymentID
 }
 
 func (t *Trigger) ID() ID {

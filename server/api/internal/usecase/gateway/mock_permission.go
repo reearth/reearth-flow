@@ -7,8 +7,8 @@ import (
 )
 
 type MockPermissionChecker struct {
-	Allow bool
 	Error error
+	Allow bool
 }
 
 var _ PermissionChecker = (*MockPermissionChecker)(nil)
