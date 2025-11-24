@@ -330,7 +330,7 @@ impl MissingAttributeDetector {
         feature: &Feature,
     ) -> super::errors::Result<(Vec<Feature>, Vec<Feature>, Vec<Feature>)> {
         let object_list: ObjectListMap = feature
-            .get(&"objectList".to_string())
+            .get("objectList")
             .ok_or(PlateauProcessorError::MissingAttributeDetector(
                 "object list attribute empty".to_string(),
             ))?
@@ -348,7 +348,7 @@ impl MissingAttributeDetector {
                 .ok_or(PlateauProcessorError::MissingAttributeDetector(
                     "Failed to get buffer".to_string(),
                 ))?;
-        let AttributeValue::String(xml_content) = feature.get(&"xmlFragment".to_string()).ok_or(
+        let AttributeValue::String(xml_content) = feature.get("xmlFragment").ok_or(
             PlateauProcessorError::MissingAttributeDetector(
                 "xml fragment attribute empty".to_string(),
             ),

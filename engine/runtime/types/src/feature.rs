@@ -394,7 +394,7 @@ impl Feature {
         }
     }
 
-    pub fn contains_key<T: AsRef<str> + std::fmt::Display>(&self, key: &T) -> bool {
+    pub fn contains_key<T: AsRef<str> + std::fmt::Display>(&self, key: T) -> bool {
         self.attributes
             .contains_key(&Attribute::new(key.to_string()))
     }
@@ -409,7 +409,7 @@ impl Feature {
     ) -> Option<AttributeValue> {
         let mut result = Vec::new();
         for key in keys {
-            if let Some(v) = self.get(&Attribute::new(key.to_string())) {
+            if let Some(v) = self.get(Attribute::new(key.to_string())) {
                 result.push(v.clone());
             }
         }
@@ -438,7 +438,7 @@ impl Feature {
             .extend(attributes.into_iter().map(|(k, v)| (Attribute::new(k), v)));
     }
 
-    pub fn remove<T: AsRef<str> + std::fmt::Display>(&mut self, key: &T) -> Option<AttributeValue> {
+    pub fn remove<T: AsRef<str> + std::fmt::Display>(&mut self, key: T) -> Option<AttributeValue> {
         self.attributes
             .swap_remove(&Attribute::new(key.to_string()))
     }

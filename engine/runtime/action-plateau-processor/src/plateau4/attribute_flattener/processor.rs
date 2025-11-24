@@ -40,7 +40,6 @@ static BASE_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
     ]
 });
 
-
 #[derive(Debug, Clone, Default)]
 pub(crate) struct AttributeFlattenerFactory;
 
@@ -169,44 +168,51 @@ impl AttributeFlattener {
         lookup_key: &str,
     ) {
         let mut ancestors = vec![];
-        let mut citygml_attributes = if feature.feature_type().as_deref() == Some("uro:DmGeometricAttribute") {
-            let parent_attr = self.get_parent_attr(&citygml_attributes);
-            strip_parent_info(&mut citygml_attributes);
-            // extract attributes to toplevel
-            for (key, value) in citygml_attributes.iter() {
-                let key = key.replace("uro:", "dm_");
-                feature
-                    .attributes
-                    .insert(Attribute::new(key.clone()), value.clone());
-            }
-            let dm_attributes_value = AttributeValue::Map(citygml_attributes);
-            let json_string = serde_json::to_string(&serde_json::Value::from(dm_attributes_value)).unwrap();
-            feature.attributes.insert(
-                Attribute::new("dm_attributes".to_string()),
-                AttributeValue::String(json_string),
-            );
-            if let Some(feature_type) = feature.metadata.feature_type.as_ref(){
+        let mut citygml_attributes =
+            if feature.feature_type().as_deref() == Some("uro:DmGeometricAttribute") {
+                let parent_attr = self.get_parent_attr(&citygml_attributes);
+                strip_parent_info(&mut citygml_attributes);
+                // extract attributes to toplevel
+                for (key, value) in citygml_attributes.iter() {
+                    let key = key.replace("uro:", "dm_");
+                    feature
+                        .attributes
+                        .insert(Attribute::new(key.clone()), value.clone());
+                }
+                let dm_attributes_value = AttributeValue::Map(citygml_attributes);
+                let json_string =
+                    serde_json::to_string(&serde_json::Value::from(dm_attributes_value)).unwrap();
                 feature.attributes.insert(
-                    Attribute::new("dm_feature_type".to_string()),
-                    AttributeValue::String(feature_type.strip_prefix("uro:").unwrap_or(feature_type).to_string()),
+                    Attribute::new("dm_attributes".to_string()),
+                    AttributeValue::String(json_string),
                 );
-            }
-            // DmGeometricAttribute uses parent attributes (the real feature) as inner attributes
-            // add common attributes AFTER swapping with parent attributes
-            let mut parent_attr = parent_attr;
-            Self::insert_common_attributes(feature, &mut parent_attr);
-            parent_attr
-        } else {
-            // add common attributes BEFORE caching and building ancestors
-            Self::insert_common_attributes(feature, &mut citygml_attributes);
-            // attribute must be cached BEFORE inserting ancestors, AFTER inserting common attributes
-            if let Some(feature_id) = feature.feature_id() {
-                self.gmlid_to_citygml_attributes
-                    .insert(feature_id, citygml_attributes.clone());
-            }
-            ancestors = self.build_ancestors_attribute(&citygml_attributes);
-            citygml_attributes
-        };
+                if let Some(feature_type) = feature.metadata.feature_type.as_ref() {
+                    feature.attributes.insert(
+                        Attribute::new("dm_feature_type".to_string()),
+                        AttributeValue::String(
+                            feature_type
+                                .strip_prefix("uro:")
+                                .unwrap_or(feature_type)
+                                .to_string(),
+                        ),
+                    );
+                }
+                // DmGeometricAttribute uses parent attributes (the real feature) as inner attributes
+                // add common attributes AFTER swapping with parent attributes
+                let mut parent_attr = parent_attr;
+                Self::insert_common_attributes(feature, &mut parent_attr);
+                parent_attr
+            } else {
+                // add common attributes BEFORE caching and building ancestors
+                Self::insert_common_attributes(feature, &mut citygml_attributes);
+                // attribute must be cached BEFORE inserting ancestors, AFTER inserting common attributes
+                if let Some(feature_id) = feature.feature_id() {
+                    self.gmlid_to_citygml_attributes
+                        .insert(feature_id, citygml_attributes.clone());
+                }
+                ancestors = self.build_ancestors_attribute(&citygml_attributes);
+                citygml_attributes
+            };
         strip_parent_info(&mut citygml_attributes);
 
         if !ancestors.is_empty() {
@@ -231,8 +237,10 @@ impl AttributeFlattener {
         }
 
         // save the whole `citygml_attributes` values as `attributes`
-        let citygml_attributes_json =
-            serde_json::to_string(&serde_json::Value::from(AttributeValue::Map(citygml_attributes))).unwrap();
+        let citygml_attributes_json = serde_json::to_string(&serde_json::Value::from(
+            AttributeValue::Map(citygml_attributes),
+        ))
+        .unwrap();
 
         feature.attributes.insert(
             Attribute::new("attributes".to_string()),
@@ -253,7 +261,9 @@ impl AttributeFlattener {
         let mut seen_ids = HashSet::new();
         while let Some(id) = parent_id {
             if seen_ids.contains(&id) {
-                tracing::warn!("Detected cyclic ancestor reference for ID {id}. Stopping ancestor building.");
+                tracing::warn!(
+                    "Detected cyclic ancestor reference for ID {id}. Stopping ancestor building."
+                );
                 break;
             }
             seen_ids.insert(id.clone());
@@ -340,7 +350,7 @@ impl AttributeFlattener {
     }
 
     fn flatten_feature(&mut self, mut feature: Feature) -> Result<Feature, BoxedError> {
-        let Some(AttributeValue::Map(citygml_attributes)) = feature.remove(&"cityGmlAttributes")
+        let Some(AttributeValue::Map(citygml_attributes)) = feature.remove("cityGmlAttributes")
         else {
             return Err(PlateauProcessorError::AttributeFlattener(format!(
                 "No cityGmlAttributes found with feature id = {:?}",
@@ -351,10 +361,11 @@ impl AttributeFlattener {
 
         // Build lookup key from package and attribute feature type
         // for example dmGeometricAttribute should find attributes from their parent feature type
-        let lookup_key = feature.get("featureType")
+        let lookup_key = feature
+            .get("featureType")
             .and_then(|v| v.as_string())
             .and_then(|feature_type| {
-                if let Some(AttributeValue::String(package)) = feature.get(&"package") {
+                if let Some(AttributeValue::String(package)) = feature.get("package") {
                     Some(format!("{package}/{feature_type}"))
                 } else {
                     None
@@ -402,7 +413,7 @@ impl Processor for AttributeFlattener {
         let feature = ctx.feature.clone();
 
         // Get cityGmlAttributes to check for parent
-        let Some(AttributeValue::Map(citygml_attributes)) = feature.get(&"cityGmlAttributes")
+        let Some(AttributeValue::Map(citygml_attributes)) = feature.get("cityGmlAttributes")
         else {
             return Err(PlateauProcessorError::AttributeFlattener(format!(
                 "No cityGmlAttributes found with feature id = {:?}",
@@ -412,7 +423,7 @@ impl Processor for AttributeFlattener {
         };
 
         // Check if this feature has a parent and if the parent exists in cache
-        let parent_id = Self::get_parent_id(&citygml_attributes);
+        let parent_id = Self::get_parent_id(citygml_attributes);
         let parent_ready = parent_id
             .as_ref()
             .map(|id| self.gmlid_to_citygml_attributes.contains_key(id))
