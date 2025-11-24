@@ -330,7 +330,7 @@ impl CityGmlMeshBuilder {
                         .collect();
 
                     // Values come in groups of 3 (x, y, z)
-                    if values.len() % 3 != 0 {
+                    if !values.len().is_multiple_of(3) {
                         let error = Error {
                             error_type: ErrorType::IncorrectNumVertices,
                             geometry: GeometryValue::FlowGeometry3D(Geometry3D::Point(
