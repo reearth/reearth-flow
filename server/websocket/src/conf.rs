@@ -1,9 +1,10 @@
 #[cfg(feature = "auth")]
 use crate::domain::value_objects::conf::DEFAULT_AUTH_URL;
 use crate::domain::value_objects::conf::{
-    DEFAULT_APP_ENV, DEFAULT_GCS_BUCKET, DEFAULT_ORIGINS, DEFAULT_REDIS_STREAM_MAX_LENGTH,
-    DEFAULT_REDIS_STREAM_MAX_MESSAGE_AGE, DEFAULT_REDIS_STREAM_TRIM_INTERVAL, DEFAULT_REDIS_TTL,
-    DEFAULT_REDIS_URL, DEFAULT_WS_PORT,
+    DEFAULT_APP_ENV, DEFAULT_ENABLE_CLOUD_TRACE, DEFAULT_GCS_BUCKET, DEFAULT_LOG_LEVEL,
+    DEFAULT_ORIGINS, DEFAULT_REDIS_STREAM_MAX_LENGTH, DEFAULT_REDIS_STREAM_MAX_MESSAGE_AGE,
+    DEFAULT_REDIS_STREAM_TRIM_INTERVAL, DEFAULT_REDIS_TTL, DEFAULT_REDIS_URL, DEFAULT_SERVICE_NAME,
+    DEFAULT_WS_PORT,
 };
 use dotenv;
 use serde::Deserialize;
@@ -12,6 +13,7 @@ use std::path::Path;
 use thiserror::Error;
 use tracing::{info, warn};
 
+use crate::infrastructure::tracing::TracingConfig;
 use crate::{infrastructure::gcs::GcsConfig, RedisConfig};
 
 #[derive(Debug, Error)]
@@ -41,6 +43,7 @@ pub struct Config {
     pub auth: AuthConfig,
     pub app: AppConfig,
     pub ws_port: String,
+    pub tracing: TracingConfig,
 }
 
 impl Config {
@@ -106,6 +109,21 @@ impl Config {
             }
         }
 
+        // Tracing configuration
+        if let Ok(enable) = env::var("REEARTH_FLOW_ENABLE_CLOUD_TRACE") {
+            let enabled = enable.to_lowercase() == "true" || enable == "1";
+            builder = builder.enable_cloud_trace(enabled);
+        }
+        if let Ok(project_id) = env::var("REEARTH_FLOW_GCP_PROJECT_ID") {
+            builder = builder.gcp_project_id(Some(project_id));
+        }
+        if let Ok(service_name) = env::var("REEARTH_FLOW_SERVICE_NAME") {
+            builder = builder.service_name(service_name);
+        }
+        if let Ok(log_level) = env::var("REEARTH_FLOW_LOG_LEVEL") {
+            builder = builder.log_level(log_level);
+        }
+
         let config = builder.build();
 
         info!("Final configuration:");
@@ -113,6 +131,7 @@ impl Config {
         info!("GCS: {:?}", config.gcs);
         info!("App: {:?}", config.app);
         info!("WebSocket Port: {}", config.ws_port);
+        info!("Tracing: {:?}", config.tracing);
         #[cfg(feature = "auth")]
         info!("Auth: {:?}", config.auth);
 
@@ -137,6 +156,11 @@ pub struct ConfigBuilder {
     app_origins: Option<Vec<String>>,
     ws_port: Option<String>,
     grpc_port: Option<String>,
+    // Tracing configuration
+    enable_cloud_trace: Option<bool>,
+    gcp_project_id: Option<String>,
+    service_name: Option<String>,
+    log_level: Option<String>,
 }
 
 impl ConfigBuilder {
@@ -207,6 +231,26 @@ impl ConfigBuilder {
         self
     }
 
+    pub fn enable_cloud_trace(mut self, enable: bool) -> Self {
+        self.enable_cloud_trace = Some(enable);
+        self
+    }
+
+    pub fn gcp_project_id(mut self, project_id: Option<String>) -> Self {
+        self.gcp_project_id = project_id;
+        self
+    }
+
+    pub fn service_name(mut self, name: String) -> Self {
+        self.service_name = Some(name);
+        self
+    }
+
+    pub fn log_level(mut self, level: String) -> Self {
+        self.log_level = Some(level);
+        self
+    }
+
     pub fn build(self) -> Config {
         Config {
             redis: RedisConfig {
@@ -243,6 +287,16 @@ impl ConfigBuilder {
                     .unwrap_or_else(|| DEFAULT_ORIGINS.iter().map(|s| s.to_string()).collect()),
             },
             ws_port: self.ws_port.unwrap_or_else(|| DEFAULT_WS_PORT.to_string()),
+            tracing: TracingConfig {
+                enable_cloud_trace: self.enable_cloud_trace.unwrap_or(DEFAULT_ENABLE_CLOUD_TRACE),
+                gcp_project_id: self.gcp_project_id,
+                service_name: self
+                    .service_name
+                    .unwrap_or_else(|| DEFAULT_SERVICE_NAME.to_string()),
+                log_level: self
+                    .log_level
+                    .unwrap_or_else(|| DEFAULT_LOG_LEVEL.to_string()),
+            },
         }
     }
 }
