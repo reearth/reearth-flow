@@ -17,6 +17,15 @@ graphs:
     action: InputRouter
     with:
       routingPort: default
+  - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    name: DmGeometricAttributeFilter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__feature_type") == "uro:DmGeometricAttribute"
+        outputPort: DmGeometricAttribute
   - id: 278ab965-ce22-473d-98c6-c7b381c38679
     name: GeometryFilter
     type: action
@@ -57,6 +66,12 @@ graphs:
       - expr: |
           env.get("__value").lod == "4"
         outputPort: lod4
+  - id: b1c2d3e4-f5a6-7890-bcde-f12345678901
+    name: DmGeometricAttributeRouter
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: DmGeometricAttribute
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3320
     name: Lod0Router
     type: action
@@ -90,8 +105,18 @@ graphs:
   edges:
   - id: fcc0d596-9169-4289-9f35-07c8cbec6f10
     from: 5848465e-828f-4646-874e-e2f182b73714
-    to: 278ab965-ce22-473d-98c6-c7b381c38679
+    to: a1b2c3d4-e5f6-7890-abcd-ef1234567890
     fromPort: default
+    toPort: default
+  - id: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6f
+    from: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    to: 278ab965-ce22-473d-98c6-c7b381c38679
+    fromPort: unfiltered
+    toPort: default
+  - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a
+    from: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+    to: b1c2d3e4-f5a6-7890-bcde-f12345678901
+    fromPort: DmGeometricAttribute
     toPort: default
   - id: 1386a662-cf02-4475-a5d2-3668a50a56b7
     from: 278ab965-ce22-473d-98c6-c7b381c38679
@@ -752,9 +777,10 @@ graphs:
       - attribute: gmlFilename
         method: rename
         value: filename
-      - attribute: featureType
-        method: rename
-        value: feature_type
+      - attribute: feature_type
+        method: create
+        value: |
+          env.get("__feature_type")
       - attribute: gmlId
         method: rename
         value: gml_id

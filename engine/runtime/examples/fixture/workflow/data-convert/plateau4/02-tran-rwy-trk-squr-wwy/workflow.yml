@@ -16,131 +16,7 @@ with:
   outputPath:
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
-  - id: 2bb6aed2-b4eb-4192-8d2a-d1f1f4dbf878
-    name: PLATEAU4.LodSplitterWithDM
-    nodes:
-      - id: ac4d1c78-d41e-42f0-add9-257546b9f7f3
-        name: InputRouter
-        type: action
-        action: InputRouter
-        with:
-          routingPort: default
-      
-      - id: e619bb44-2002-48a1-9913-7759967ebb71
-        name: DmSplit
-        type: action
-        action: FeatureFilter
-        with:
-          conditions:
-            - expr: |
-                env.get("__feature_type") == "uro:DmGeometricAttribute"
-              outputPort: DmGeometricAttribute
-
-      - id: 074348e3-37b3-402a-8d71-ba3c14f70cde
-        name: FeatureFilterByLod
-        type: action
-        action: FeatureFilter
-        with:
-          conditions:
-            - expr: |
-                env.get("__value").lod == "0"
-              outputPort: lod0
-            - expr: |
-                env.get("__value").lod == "1"
-              outputPort: lod1
-            - expr: |
-                env.get("__value").lod == "2"
-              outputPort: lod2
-            - expr: |
-                env.get("__value").lod == "3"
-              outputPort: lod3
-            - expr: |
-                env.get("__value").lod == "4"
-              outputPort: lod4
-
-      - id: 99d63efa-503b-460d-aa03-3ee64b7cb8c6
-        name: DmGeometricAttributeRouter
-        type: action
-        action: OutputRouter
-        with:
-          routingPort: DmGeometricAttribute
-
-      - id: 817bd315-ed17-463d-8e1d-dd73ee580038
-        name: Lod0Router
-        type: action
-        action: OutputRouter
-        with:
-          routingPort: lod0
-
-      - id: 5f41eaa6-ec16-4779-a0bb-3125c7f5b64e
-        name: Lod1Router
-        type: action
-        action: OutputRouter
-        with:
-          routingPort: lod1
-
-      - id: 9404228a-2385-437f-b3df-82717685b003
-        name: Lod2Router
-        type: action
-        action: OutputRouter
-        with:
-          routingPort: lod2
-
-      - id: 54ae1ee3-c3d1-4f8b-9f7c-1a98e04d87f3
-        name: Lod3Router
-        type: action
-        action: OutputRouter
-        with:
-          routingPort: lod3
-
-      - id: dcbcf260-4eb9-438d-99f5-5452926604ee
-        name: Lod4Router
-        type: action
-        action: OutputRouter
-        with:
-          routingPort: lod4
-
-    edges:
-      - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
-        from: ac4d1c78-d41e-42f0-add9-257546b9f7f3
-        to: e619bb44-2002-48a1-9913-7759967ebb71
-        fromPort: default
-        toPort: default
-      - id: a07d260b-46c8-4660-b6d7-b8e9b9db1291
-        from: e619bb44-2002-48a1-9913-7759967ebb71
-        to: 074348e3-37b3-402a-8d71-ba3c14f70cde
-        fromPort: unfiltered
-        toPort: default
-      - id: aae790c3-bdf3-4a97-a5ff-d665d82474c4
-        from: e619bb44-2002-48a1-9913-7759967ebb71
-        to: 99d63efa-503b-460d-aa03-3ee64b7cb8c6
-        fromPort: DmGeometricAttribute
-        toPort: default
-      - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e
-        from: 074348e3-37b3-402a-8d71-ba3c14f70cde
-        to: 817bd315-ed17-463d-8e1d-dd73ee580038
-        fromPort: lod0
-        toPort: default
-      - id: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f
-        from: 074348e3-37b3-402a-8d71-ba3c14f70cde
-        to: 5f41eaa6-ec16-4779-a0bb-3125c7f5b64e
-        fromPort: lod1
-        toPort: default
-      - id: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9a
-        from: 074348e3-37b3-402a-8d71-ba3c14f70cde
-        to: 9404228a-2385-437f-b3df-82717685b003
-        fromPort: lod2
-        toPort: default
-      - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b
-        from: 074348e3-37b3-402a-8d71-ba3c14f70cde
-        to: 54ae1ee3-c3d1-4f8b-9f7c-1a98e04d87f3
-        fromPort: lod3
-        toPort: default
-      - id: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1c
-        from: 074348e3-37b3-402a-8d71-ba3c14f70cde
-        to: dcbcf260-4eb9-438d-99f5-5452926604ee
-        fromPort: lod4
-        toPort: default
+  - !include ../../../../graphs/lod_splitter_with_dm.yml
 
   - id: 34bf873b-3364-46b0-8153-efeb9568bb3c
     name: entry_point
@@ -190,7 +66,7 @@ graphs:
                 env.get("__feature_id") ?? env.get("__value")["gmlId"]
             - attribute: feature_type
               method: create
-              value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+              value: env.get("__value")["featureType"] ?? env.get("__value")["featureType"]
 
       - id: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         name: AttributeFlattener
@@ -200,7 +76,7 @@ graphs:
       - id: c32a279d-97be-4584-b282-4d65627b1132
         name: LodSplitterWithDM
         type: subGraph
-        subGraphId: 2bb6aed2-b4eb-4192-8d2a-d1f1f4dbf878
+        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
 
       - id: 8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
         name: FeatureTypeFilterTrafficArea
@@ -233,6 +109,12 @@ graphs:
         action: AttributeManager
         with:
           operations:
+            - attribute: featureId
+              method: remove
+            - attribute: featureParentId
+              method: remove
+            - attribute: geometryName
+              method: remove
             - attribute: cityCode
               method: rename
               value: city_code
@@ -296,6 +178,12 @@ graphs:
         action: AttributeManager
         with:
           operations:
+            - attribute: featureId
+              method: remove
+            - attribute: featureParentId
+              method: remove
+            - attribute: geometryName
+              method: remove
             - attribute: cityCode
               method: rename
               value: city_code
