@@ -777,10 +777,9 @@ graphs:
       - attribute: gmlFilename
         method: rename
         value: filename
-      - attribute: feature_type
-        method: create
-        value: |
-          env.get("__feature_type")
+      - attribute: featureType
+        method: rename
+        value: feature_type
       - attribute: gmlId
         method: rename
         value: gml_id
@@ -1755,126 +1754,126 @@ graphs:
       calculations:
       - newAttribute: Bridge
         expr: |
-          if env.get("__value").featureType == env.get("__value").udxDirs + ":Bridge" {
+          if env.get("__feature_type") == env.get("__value").udxDirs + ":Bridge" {
             1
           } else {
             0
           }
       - newAttribute: BridgePart
         expr: |
-          if env.get("__value").featureType == env.get("__value").udxDirs + ":BridgePart" {
+          if env.get("__feature_type") == env.get("__value").udxDirs + ":BridgePart" {
             1
           } else {
             0
           }
       - newAttribute: RoofSurface
         expr: |
-          if env.get("__value").featureType == env.get("__value").udxDirs + ":RoofSurface" {
+          if env.get("__feature_type") == env.get("__value").udxDirs + ":RoofSurface" {
             1
           } else {
             0
           }
       - newAttribute: GroundSurface
         expr: |
-          if env.get("__value").featureType == env.get("__value").udxDirs + ":GroundSurface" {
+          if env.get("__feature_type") == env.get("__value").udxDirs + ":GroundSurface" {
             1
           } else {
             0
           }
       - newAttribute: WallSurface
         expr: |
-          if env.get("__value").featureType == env.get("__value").udxDirs + ":WallSurface" {
+          if env.get("__feature_type") == env.get("__value").udxDirs + ":WallSurface" {
             1
           } else {
             0
           }
       - newAttribute: ClosureSurface
         expr: |
-          if env.get("__value").featureType == env.get("__value").udxDirs + ":ClosureSurface" {
+          if env.get("__feature_type") == env.get("__value").udxDirs + ":ClosureSurface" {
             1
           } else {
             0
           }
       - newAttribute: OuterCeilingSurface
         expr: |
-          if env.get("__value").featureType == env.get("__value").udxDirs + ":OuterCeilingSurface" {
+          if env.get("__feature_type") == env.get("__value").udxDirs + ":OuterCeilingSurface" {
             1
           } else {
             0
           }
       - newAttribute: OuterFloorSurface
         expr: |
-          if env.get("__value").featureType == env.get("__value").udxDirs + ":OuterFloorSurface" {
+          if env.get("__feature_type") == env.get("__value").udxDirs + ":OuterFloorSurface" {
             1
           } else {
             0
           }
       - newAttribute: BridgeConstructionElement
         expr: |
-          if env.get("__value").featureType == env.get("__value").udxDirs + ":BridgeConstructionElement" {
+          if env.get("__feature_type") == env.get("__value").udxDirs + ":BridgeConstructionElement" {
             1
           } else {
             0
           }
       - newAttribute: BridgeInstallation
         expr: |
-          if env.get("__value").featureType == env.get("__value").udxDirs + ":BridgeInstallation" {
+          if env.get("__feature_type") == env.get("__value").udxDirs + ":BridgeInstallation" {
             1
           } else {
             0
           }
       - newAttribute: Door
         expr: |
-          if env.get("__value").featureType == env.get("__value").udxDirs + ":Door" {
+          if env.get("__feature_type") == env.get("__value").udxDirs + ":Door" {
             1
           } else {
             0
           }
       - newAttribute: Window
         expr: |
-          if env.get("__value").featureType == env.get("__value").udxDirs + ":Window" {
+          if env.get("__feature_type") == env.get("__value").udxDirs + ":Window" {
             1
           } else {
             0
           }
       - newAttribute: BridgeRoom
         expr: |
-          if env.get("__value").featureType == env.get("__value").udxDirs + ":BridgeRoom" {
+          if env.get("__feature_type") == env.get("__value").udxDirs + ":BridgeRoom" {
             1
           } else {
             0
           }
       - newAttribute: CeilingSurface
         expr: |
-          if env.get("__value").featureType == env.get("__value").udxDirs + ":CeilingSurface" {
+          if env.get("__feature_type") == env.get("__value").udxDirs + ":CeilingSurface" {
             1
           } else {
             0
           }
       - newAttribute: InteriorWallSurface
         expr: |
-          if env.get("__value").featureType == env.get("__value").udxDirs + ":InteriorWallSurface" {
+          if env.get("__feature_type") == env.get("__value").udxDirs + ":InteriorWallSurface" {
             1
           } else {
             0
           }
       - newAttribute: FloorSurface
         expr: |
-          if env.get("__value").featureType == env.get("__value").udxDirs + ":FloorSurface" {
+          if env.get("__feature_type") == env.get("__value").udxDirs + ":FloorSurface" {
             1
           } else {
             0
           }
       - newAttribute: IntBridgeInstallation
         expr: |
-          if env.get("__value").featureType == env.get("__value").udxDirs + ":IntBridgeInstallation" {
+          if env.get("__feature_type") == env.get("__value").udxDirs + ":IntBridgeInstallation" {
             1
           } else {
             0
           }
       - newAttribute: BridgeFurniture
         expr: |
-          if env.get("__value").featureType == env.get("__value").udxDirs + ":BridgeFurniture" {
+          if env.get("__feature_type") == env.get("__value").udxDirs + ":BridgeFurniture" {
             1
           } else {
             0
