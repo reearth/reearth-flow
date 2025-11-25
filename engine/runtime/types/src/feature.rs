@@ -463,19 +463,21 @@ impl Feature {
         scope.set("__value", value);
         scope.set(
             "__feature_type",
-            serde_json::Value::String(self.feature_type().unwrap_or_default()),
+            self.feature_type().map_or(serde_json::Value::Null, |_| {
+                serde_json::Value::String(self.feature_type().unwrap_or_default())
+            }),
         );
         scope.set(
             "__feature_id",
-            if let Some(id) = self.feature_id() {
-                serde_json::Value::String(id)
-            } else {
-                serde_json::Value::Null
-            },
+            self.feature_id().map_or(serde_json::Value::Null, |_| {
+                serde_json::Value::String(self.feature_id().unwrap_or_default())
+            }),
         );
         scope.set(
             "__lod",
-            serde_json::Value::String(self.lod().unwrap_or_default()),
+            self.lod().map_or(serde_json::Value::Null, |_| {
+                serde_json::Value::String(self.lod().unwrap_or_default())
+            }),
         );
         if let Some(with) = with {
             for (k, v) in with {

@@ -351,7 +351,7 @@ pub(super) fn get_value_from_json_path(
         if let Some(AttributeValue::Map(map)) = &array.first() {
             get_value_from_json_path(&paths[1..], map)
         } else if *key == "uro:lodType" {
-            // FIXME: this should be list joining with comma
+            // NOTE: reference implementation uses list joining with comma, maybe fix later
             Some(AttributeValue::String(value.to_string()))
         } else {
             // take first element

@@ -170,7 +170,8 @@ impl AttributeFlattener {
         let mut ancestors = vec![];
         let mut citygml_attributes =
             if feature.feature_type().as_deref() == Some("uro:DmGeometricAttribute") {
-                let parent_attr = self.get_parent_attr(&citygml_attributes);
+                // get parent attributes before stripping parent info
+                let mut parent_attr = self.get_parent_attr(&citygml_attributes);
                 strip_parent_info(&mut citygml_attributes);
                 // extract attributes to toplevel
                 for (key, value) in citygml_attributes.iter() {
@@ -199,7 +200,6 @@ impl AttributeFlattener {
                 }
                 // DmGeometricAttribute uses parent attributes (the real feature) as inner attributes
                 // add common attributes AFTER swapping with parent attributes
-                let mut parent_attr = parent_attr;
                 Self::insert_common_attributes(feature, &mut parent_attr);
                 parent_attr
             } else {

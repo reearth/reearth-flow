@@ -66,7 +66,7 @@ graphs:
                 env.get("__feature_id") ?? env.get("__value")["gmlId"]
             - attribute: feature_type
               method: create
-              value: env.get("__value")["featureType"] ?? env.get("__value")["featureType"]
+              value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
 
       - id: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         name: AttributeFlattener
