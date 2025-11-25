@@ -348,11 +348,12 @@ impl MissingAttributeDetector {
                 .ok_or(PlateauProcessorError::MissingAttributeDetector(
                     "Failed to get buffer".to_string(),
                 ))?;
-        let AttributeValue::String(xml_content) = feature.get("xmlFragment").ok_or(
-            PlateauProcessorError::MissingAttributeDetector(
-                "xml fragment attribute empty".to_string(),
-            ),
-        )?
+        let AttributeValue::String(xml_content) =
+            feature
+                .get("xmlFragment")
+                .ok_or(PlateauProcessorError::MissingAttributeDetector(
+                    "xml fragment attribute empty".to_string(),
+                ))?
         else {
             return Err(PlateauProcessorError::MissingAttributeDetector(
                 "xml fragment attribute empty".to_string(),

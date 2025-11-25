@@ -413,8 +413,7 @@ impl Processor for AttributeFlattener {
         let feature = ctx.feature.clone();
 
         // Get cityGmlAttributes to check for parent
-        let Some(AttributeValue::Map(citygml_attributes)) = feature.get("cityGmlAttributes")
-        else {
+        let Some(AttributeValue::Map(citygml_attributes)) = feature.get("cityGmlAttributes") else {
             return Err(PlateauProcessorError::AttributeFlattener(format!(
                 "No cityGmlAttributes found with feature id = {:?}",
                 feature.id

@@ -451,8 +451,7 @@ impl Processor for AttributeFlattener {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let Some(AttributeValue::Map(city_gml_attribute)) = feature.get("cityGmlAttributes")
-        else {
+        let Some(AttributeValue::Map(city_gml_attribute)) = feature.get("cityGmlAttributes") else {
             return Err(PlateauProcessorError::AttributeFlattener(format!(
                 "No cityGmlAttributes found with feature id = {:?}",
                 feature.id
