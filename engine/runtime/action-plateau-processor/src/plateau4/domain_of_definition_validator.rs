@@ -1584,10 +1584,8 @@ mod tests {
                         if let (
                             Some(AttributeValue::String(filename)),
                             Some(AttributeValue::Number(count)),
-                        ) = (
-                            feature.get("filename"),
-                            feature.get("duplicateGmlIdCount"),
-                        ) {
+                        ) = (feature.get("filename"), feature.get("duplicateGmlIdCount"))
+                        {
                             Some((filename.clone(), count.as_u64().unwrap_or(0)))
                         } else {
                             None
