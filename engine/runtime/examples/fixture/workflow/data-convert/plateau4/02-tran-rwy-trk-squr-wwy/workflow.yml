@@ -13,7 +13,7 @@ with:
     - trk
     - squr
     - wwy
-  outputPath:
+  workerArtifactPath:
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
   - !include ../../../../graphs/lod_splitter_with_dm.yml
@@ -170,7 +170,7 @@ graphs:
           attachTexture: false
           dracoCompression: false
           output: |
-            file::join_path(env.get("outputPath"), "tran_lod3")
+            file::join_path(env.get("workerArtifactPath"), "tran_lod3")
 
       - id: 2ccf7b99-4123-446e-8ff7-049be1c604c7
         name: AttributeManagerByLod0-2
@@ -290,7 +290,7 @@ graphs:
           minZoom: 8
           maxZoom: 16
           output: |
-            file::join_path(env.get("outputPath"), env.get("__value")._udxDirs + "_lod" + env.get("__value")._lod)
+            file::join_path(env.get("workerArtifactPath"), env.get("__value")._udxDirs + "_lod" + env.get("__value")._lod)
           skipUnderscorePrefix: true
           colonToUnderscore: true
 
@@ -370,7 +370,7 @@ graphs:
           minZoom: 8
           maxZoom: 16
           output: |
-            file::join_path(env.get("outputPath"), env.get("__value")._udxDirs + "_dm_geometric_attributes")
+            file::join_path(env.get("workerArtifactPath"), env.get("__value")._udxDirs + "_dm_geometric_attributes")
           skipUnderscorePrefix: true
           colonToUnderscore: true
 
