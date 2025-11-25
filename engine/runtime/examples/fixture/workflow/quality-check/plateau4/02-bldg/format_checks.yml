@@ -220,7 +220,7 @@ nodes:
         - attribute: gml_id
           expr: |
             env.get("__value").gmlId
-        - attribute: BuildingUsageAttributeError
+        - attribute: Building Usage Attribute Error
           expr: |
             env.get("__value").errors
         - attribute: Feature Type

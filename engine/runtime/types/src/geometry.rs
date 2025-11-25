@@ -414,7 +414,10 @@ impl From<nusamai_citygml::geometry::GeometryRef> for GmlGeometry {
         Self {
             id,
             ty: geometry.ty.into(),
-            gml_trait: GmlGeometryTrait::maybe_new(geometry.property_name, geometry.gml_geometry_type),
+            gml_trait: GmlGeometryTrait::maybe_new(
+                geometry.property_name,
+                geometry.gml_geometry_type,
+            ),
             lod: Some(geometry.lod),
             pos: geometry.pos,
             len: geometry.len,

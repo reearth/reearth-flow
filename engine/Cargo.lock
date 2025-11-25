@@ -3959,6 +3959,7 @@ checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
 [[package]]
 name = "macros"
 version = "0.1.0"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.10#833dbaa013b9f34a9be685981547ed32b4318fb6"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4462,6 +4463,7 @@ dependencies = [
 [[package]]
 name = "nusamai-citygml"
 version = "0.8.0"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.10#833dbaa013b9f34a9be685981547ed32b4318fb6"
 dependencies = [
  "ahash 0.8.12",
  "chrono",
@@ -4482,6 +4484,7 @@ dependencies = [
 [[package]]
 name = "nusamai-czml"
 version = "0.1.0"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.10#833dbaa013b9f34a9be685981547ed32b4318fb6"
 dependencies = [
  "chrono",
  "flatgeom",
@@ -4492,6 +4495,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf"
 version = "0.1.0"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.10#833dbaa013b9f34a9be685981547ed32b4318fb6"
 dependencies = [
  "byteorder",
  "nusamai-gltf-json",
@@ -4501,6 +4505,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf-json"
 version = "0.1.0"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.10#833dbaa013b9f34a9be685981547ed32b4318fb6"
 dependencies = [
  "cesiumtiles",
  "serde",
@@ -4511,6 +4516,7 @@ dependencies = [
 [[package]]
 name = "nusamai-plateau"
 version = "0.8.0"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.10#833dbaa013b9f34a9be685981547ed32b4318fb6"
 dependencies = [
  "chrono",
  "flatgeom",
@@ -4528,6 +4534,7 @@ dependencies = [
 [[package]]
 name = "nusamai-projection"
 version = "0.1.0"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.10#833dbaa013b9f34a9be685981547ed32b4318fb6"
 dependencies = [
  "japan-geoid",
  "thiserror 2.0.17",
@@ -4536,6 +4543,7 @@ dependencies = [
 [[package]]
 name = "nusamai-shapefile"
 version = "0.1.0"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.10#833dbaa013b9f34a9be685981547ed32b4318fb6"
 dependencies = [
  "flatgeom",
  "shapefile 0.6.0",
@@ -5949,7 +5957,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-log"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "futures",
  "once_cell",
@@ -5969,7 +5981,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-plateau-processor"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "approx",
  "async-trait",
@@ -6012,7 +6028,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-processor"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "Inflector",
  "approx",
@@ -6059,7 +6079,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-python-processor"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "indexmap 2.12.0",
  "once_cell",
@@ -6080,7 +6104,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-sink"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "ahash 0.8.12",
  "async-trait",
@@ -6145,7 +6173,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-source"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "async-trait",
  "async_zip",
@@ -6195,7 +6227,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-cli"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "bytes",
  "clap",
@@ -6233,7 +6269,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-common"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "approx",
  "async-recursion",
@@ -6270,7 +6310,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-eval-expr"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "chrono",
  "futures",
@@ -6284,7 +6328,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-examples"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "async-trait",
  "bytes",
@@ -6313,7 +6361,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-geometry"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "approx",
  "bytes",
@@ -6338,7 +6390,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-gltf"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "ahash 0.8.12",
  "byteorder",
@@ -6367,7 +6423,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-macros"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6376,7 +6436,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runner"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "async-trait",
  "bytes",
@@ -6406,7 +6470,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runtime"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "async-stream",
  "async-trait",
@@ -6439,7 +6507,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sevenz"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "bit-set",
  "byteorder",
@@ -6456,7 +6528,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sql"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "futures-util",
  "once_cell",
@@ -6468,7 +6544,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-state"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "bytes",
  "reearth-flow-common",
@@ -6483,7 +6563,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-storage"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "bytes",
  "futures",
@@ -6501,7 +6585,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-telemetry"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "once_cell",
  "opentelemetry",
@@ -6515,7 +6603,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-tests"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "bytes",
  "directories",
@@ -6543,7 +6635,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-types"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "ahash 0.8.12",
  "bytes",
@@ -6580,7 +6676,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-worker"
+<<<<<<< HEAD
 version = "0.0.188"
+=======
+version = "0.0.186"
+>>>>>>> 01399839 (bump version. fmt fix. clippy fix)
 dependencies = [
  "async-trait",
  "backon",

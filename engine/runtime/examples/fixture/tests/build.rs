@@ -117,6 +117,8 @@ struct FileErrorSummaryValidation {
     expected_file: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     include_columns: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    exclude_columns: Option<Vec<String>>,
     #[serde(default = "default_key_columns")]
     key_columns: Vec<String>,
 }
