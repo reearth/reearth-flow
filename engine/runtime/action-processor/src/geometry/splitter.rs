@@ -92,11 +92,11 @@ impl Processor for GeometrySplitter {
                     }
                     let feature_id = feature_geometry.feature_id.clone();
                     let parent_id = if let Some(feature_id) = feature_id {
-                        if let Some(AttributeValue::String(gml_id)) = feature.get(&"gmlId") {
+                        if let Some(AttributeValue::String(gml_id)) = feature.get("gmlId") {
                             let gml_id = gml_id.to_string();
                             if gml_id == feature_id {
                                 if let Some(AttributeValue::String(gml_root_id)) =
-                                    feature.get(&"gmlRootId")
+                                    feature.get("gmlRootId")
                                 {
                                     Some(gml_root_id.to_string())
                                 } else {
@@ -106,7 +106,7 @@ impl Processor for GeometrySplitter {
                                 Some(gml_id)
                             }
                         } else if let Some(AttributeValue::String(gml_root_id)) =
-                            feature.get(&"gmlRootId")
+                            feature.get("gmlRootId")
                         {
                             Some(gml_root_id.to_string())
                         } else {
@@ -131,7 +131,7 @@ impl Processor for GeometrySplitter {
                     );
                     // Only set featureType from geometry if it's not already set
                     // (reader.rs may have already set it to the child typename for flatten=true)
-                    if !feature.contains_key(&"featureType") {
+                    if !feature.contains_key("featureType") {
                         feature.insert(
                             Attribute::new("featureType"),
                             feature_geometry
@@ -188,11 +188,11 @@ impl Processor for GeometrySplitter {
                     }
 
                     let parent_id = if let Some(feature_id) = &geometry_feature.feature_id {
-                        if let Some(AttributeValue::String(gml_id)) = feature.get(&"gmlId") {
+                        if let Some(AttributeValue::String(gml_id)) = feature.get("gmlId") {
                             let gml_id = gml_id.to_string();
                             if gml_id == feature_id.clone() {
                                 if let Some(AttributeValue::String(gml_root_id)) =
-                                    feature.get(&"gmlRootId")
+                                    feature.get("gmlRootId")
                                 {
                                     Some(gml_root_id.to_string())
                                 } else {
@@ -202,7 +202,7 @@ impl Processor for GeometrySplitter {
                                 Some(gml_id)
                             }
                         } else if let Some(AttributeValue::String(gml_root_id)) =
-                            feature.get(&"gmlRootId")
+                            feature.get("gmlRootId")
                         {
                             Some(gml_root_id.to_string())
                         } else {
