@@ -409,7 +409,7 @@ impl Feature {
     ) -> Option<AttributeValue> {
         let mut result = Vec::new();
         for key in keys {
-            if let Some(v) = self.get(Attribute::new(key.to_string())) {
+            if let Some(v) = self.get(key) {
                 result.push(v.clone());
             }
         }

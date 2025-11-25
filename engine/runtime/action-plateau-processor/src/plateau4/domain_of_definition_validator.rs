@@ -1585,8 +1585,8 @@ mod tests {
                             Some(AttributeValue::String(filename)),
                             Some(AttributeValue::Number(count)),
                         ) = (
-                            feature.get(&Attribute::new("filename")),
-                            feature.get(&Attribute::new("duplicateGmlIdCount")),
+                            feature.get("filename"),
+                            feature.get("duplicateGmlIdCount"),
                         ) {
                             Some((filename.clone(), count.as_u64().unwrap_or(0)))
                         } else {
