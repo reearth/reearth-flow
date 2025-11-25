@@ -1,8 +1,8 @@
 {
-  "workflowPath": "quality-check/plateau4/05-luse-urf-area/workflow.yml",
+  "workflowPath": "quality-check/plateau4/04-frn-veg/workflow.yml",
   "description": "Test for plateau4 instance counts inspection.",
   "expectedOutput": {
-    "expectedFile": "05_土地利用_都市決定情報_区域_地物インスタンス数.csv"
+    "expectedFile": "04_都市設備_植生_地物インスタンス数.csv"
   },
   "cityGmlPath": "udx.zip",
   "codelists": "codelists",

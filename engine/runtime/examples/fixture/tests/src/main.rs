@@ -55,7 +55,7 @@ pub enum CityGmlPath {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub enum CityGmlPathConfig {
     /// Single file
     File(FileSource),
@@ -65,20 +65,20 @@ pub enum CityGmlPathConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct FileSource {
     pub source: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ZipSource {
     pub source: String,
     pub name: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct WorkflowTestProfile {
     /// Path to the workflow file (relative to fixture/workflow/)
     pub workflow_path: String,
@@ -131,7 +131,7 @@ pub struct WorkflowTestProfile {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct TestOutput {
     /// Path(s) to expected output file(s) (relative to test folder) - treated as answer data for the file with same name in output
     /// Can be either a single file (String) or multiple files (Vec<String>)
@@ -191,7 +191,7 @@ enum FileComparisonMethod {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct IntermediateAssertion {
     /// Edge ID to check
     pub edge_id: String,
@@ -214,7 +214,7 @@ pub struct IntermediateAssertion {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct SummaryOutput {
     /// Global error count summary (e.g., summary_bldg.json)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -226,7 +226,7 @@ pub struct SummaryOutput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ErrorCountSummaryValidation {
     /// Expected output file name (relative to test directory)
     /// The actual output file will have the same name in the temp output directory
@@ -239,7 +239,7 @@ pub struct ErrorCountSummaryValidation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct FileErrorSummaryValidation {
     /// Expected output file name (relative to test directory)
     /// The actual output file will have the same name in the temp output directory

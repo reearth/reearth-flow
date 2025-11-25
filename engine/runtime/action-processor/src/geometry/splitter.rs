@@ -80,7 +80,13 @@ impl Processor for GeometrySplitter {
                     let mut feature = ctx.feature.clone();
                     feature.insert(
                         Attribute::new("geometryName"),
-                        AttributeValue::String(feature_geometry.name().to_string()),
+                        AttributeValue::String(
+                            feature_geometry.gml_trait.as_ref().map(|trait_| trait_.gml_geometry_type.to_string()).unwrap_or("Unknown".to_string())),
+                    );
+                    feature.insert(
+                        Attribute::new("gmlPropertyName"),
+                        AttributeValue::String(
+                            feature_geometry.gml_trait.as_ref().map(|trait_| trait_.property.to_string()).unwrap_or("Unknown".to_string())),
                     );
                     // Only set lod if feature_geometry has a lod value
                     // If feature_geometry.lod is None, preserve existing lod attribute from reader.rs
@@ -154,7 +160,11 @@ impl Processor for GeometrySplitter {
                     };
                     attributes.insert(
                         Attribute::new("geometryName"),
-                        AttributeValue::String(geometry_feature.name().to_string()),
+                        AttributeValue::String(geometry_feature.gml_trait.as_ref().map(|trait_| trait_.gml_geometry_type.to_string()).unwrap_or("Unknown".to_string())),
+                    );
+                    attributes.insert(
+                        Attribute::new("gmlPropertyName"),
+                        AttributeValue::String(geometry_feature.gml_trait.as_ref().map(|trait_| trait_.property.to_string()).unwrap_or("Unknown".to_string())),
                     );
                     // Only set lod if geometry_feature has a lod value
                     // If geometry_feature.lod is None, preserve existing lod attribute from reader.rs
