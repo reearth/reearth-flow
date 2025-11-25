@@ -83,7 +83,7 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
             if size < 1 {
                 1
             } else {
-                std::cmp::min(size, 4) as usize
+                std::cmp::min(size, 4)
             }
         };
         let pool = rayon::ThreadPoolBuilder::new()
