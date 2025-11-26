@@ -106,7 +106,8 @@ jobs:
       - name: run plateau-tiles-test
         working-directory: engine/plateau-tiles-test
         env:
-          CLEANUP_AFTER_TESTS: "1"
+          CLEANUP_AFTER_TEST: "1"
+          PLATEAU_TILES_TEST_VERBOSITY: "info"
         run: |
           sh setup.sh
           uv run python3 -m plateau-tiles-test

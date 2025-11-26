@@ -1,14 +1,10 @@
-import os, shutil
-import tomllib
-import subprocess
-import zipfile
-import time
+import os, shutil, subprocess, time
+import tomllib, zipfile
 from pathlib import Path
-from . import BASE_PATH, ENGINE_PATH, reset_dir
+from . import BASE_PATH, ENGINE_PATH, reset_dir, cleanup, log
 from .filter import filter_zip
 from .align_mvt import test_mvt_attributes
 from .align_3dtiles import test_3dtiles_attributes
-from . import log
 
 def extract_fme_output(fme_zip_path, fme_dir):
     fme_dir.parent.mkdir(parents=True, exist_ok=True)
@@ -44,7 +40,15 @@ def run_workflow(profile, output_dir, citygml_path):
             d = d.parent
         else:
             raise FileNotFoundError("codelists and schemas directories not found")
-    env['FLOW_EXAMPLE_TARGET_WORKFLOW'] = str(ENGINE_PATH / profile["workflow_path"])
+    workflow_path = ENGINE_PATH / profile["workflow_path"]
+    if not cleanup:
+        # save current workflow as JSON for reference
+        import yaml, json
+        result = subprocess.run(["yaml-include", str(workflow_path)], capture_output=True, text=True, check=True)
+        workflow_json = json.dumps(yaml.safe_load(result.stdout), indent=2)
+        with open(output_dir / "workflow.json", "w") as wf:
+            wf.write(workflow_json)
+    env['FLOW_EXAMPLE_TARGET_WORKFLOW'] = str(workflow_path)
     flow_dir = reset_dir(output_dir / "flow")
     env['FLOW_VAR_workerArtifactPath'] = str(flow_dir)
     runtime_dir = reset_dir(output_dir / "runtime")
