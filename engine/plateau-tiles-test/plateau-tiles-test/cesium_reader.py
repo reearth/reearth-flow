@@ -3,7 +3,6 @@ from pathlib import Path
 import trimesh
 import numpy as np
 from shapely.geometry import Polygon
-from pprint import pprint
 
 def extract_strings(binary_blob, buffer_views, values_idx, offsets_idx, count):
     # Get offsets from the OFFSETS buffer
