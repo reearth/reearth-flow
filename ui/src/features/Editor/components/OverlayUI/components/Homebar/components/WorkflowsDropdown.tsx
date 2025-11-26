@@ -52,8 +52,8 @@ const WorkflowsDropdown: React.FC<Props> = ({
     <DropdownMenu>
       <DropdownMenuTrigger asChild disabled={noOpenSubworkflows}>
         <div
-          className={`flex max-w-[300px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary/70 px-2 py-0.5 ${noOpenSubworkflows ? "" : "hover:bg-primary"}`}>
-          <p className="truncate pr-[1px] text-sm font-extralight italic">
+          className={`flex max-w-[300px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl bg-border/70 px-2 py-0.5 dark:bg-primary/70 ${noOpenSubworkflows ? "" : "hover:bg-border dark:hover:bg-primary"}`}>
+          <p className="truncate pr-[1px] text-sm font-light italic dark:font-extralight">
             {currentWorkflow?.name || "-"}
           </p>
           {!noOpenSubworkflows && (

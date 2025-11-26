@@ -48,7 +48,7 @@ const WorkspaceMenu: React.FC = () => {
           className={`group flex gap-2 overflow-auto rounded-md p-2 ${openDropdown ? "bg-background" : undefined} hover:bg-primary`}>
           <div className="relative flex w-full gap-1">
             <div className="flex w-full flex-col gap-1">
-              <p className="self-start text-xs font-thin">
+              <p className="self-start text-xs font-light dark:font-thin">
                 {t("Current workspace:")}
               </p>
               <p className="line-clamp-2 w-full px-4 text-start text-sm font-light italic dark:font-extralight">
