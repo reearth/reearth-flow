@@ -80,8 +80,3 @@ func (b *DeploymentBuilder) IsHead(isHead bool) *DeploymentBuilder {
 	b.d.isHead = isHead
 	return b
 }
-
-func (b *DeploymentBuilder) Variables(variables map[string]string) *DeploymentBuilder {
-	b.d.variables = variables
-	return b
-}

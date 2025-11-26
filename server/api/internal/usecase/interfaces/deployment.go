@@ -15,19 +15,16 @@ type CreateDeploymentParam struct {
 	Workspace   id.WorkspaceID
 	Workflow    *file.File
 	Description string
-	Variables   map[string]string
 }
 
 type UpdateDeploymentParam struct {
 	ID          id.DeploymentID
 	Workflow    *file.File
 	Description *string
-	Variables   map[string]string
 }
 
 type ExecuteDeploymentParam struct {
 	DeploymentID id.DeploymentID
-	Variables    map[string]string
 }
 
 var (

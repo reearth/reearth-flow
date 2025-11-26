@@ -243,7 +243,6 @@ export type CreateDeploymentInput = {
   description: Scalars['String']['input'];
   file: Scalars['Upload']['input'];
   projectId?: InputMaybe<Scalars['ID']['input']>;
-  variables?: InputMaybe<Scalars['JSON']['input']>;
   workspaceId: Scalars['ID']['input'];
 };
 
@@ -337,7 +336,6 @@ export type Deployment = Node & {
   project?: Maybe<Project>;
   projectId?: Maybe<Scalars['ID']['output']>;
   updatedAt: Scalars['DateTime']['output'];
-  variables?: Maybe<Scalars['JSON']['output']>;
   version: Scalars['String']['output'];
   workflowUrl: Scalars['String']['output'];
   workspace?: Maybe<Workspace>;
@@ -369,7 +367,6 @@ export enum EventSourceType {
 
 export type ExecuteDeploymentInput = {
   deploymentId: Scalars['ID']['input'];
-  variables?: InputMaybe<Scalars['JSON']['input']>;
 };
 
 export type GetByVersionInput = {
@@ -1247,7 +1244,6 @@ export type UpdateDeploymentInput = {
   deploymentId: Scalars['ID']['input'];
   description?: InputMaybe<Scalars['String']['input']>;
   file?: InputMaybe<Scalars['Upload']['input']>;
-  variables?: InputMaybe<Scalars['JSON']['input']>;
 };
 
 export type UpdateMeInput = {

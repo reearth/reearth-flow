@@ -10,16 +10,15 @@ import (
 )
 
 type DeploymentDocument struct {
-	ID          string            `bson:"id"`
-	ProjectID   *string           `bson:"projectid,omitempty"`
-	WorkspaceID string            `bson:"workspaceid"`
-	WorkflowURL string            `bson:"workflowurl"`
-	Description string            `bson:"description"`
-	Version     string            `bson:"version"`
-	UpdatedAt   time.Time         `bson:"updatedat"`
-	HeadID      *string           `bson:"headid,omitempty"`
-	IsHead      bool              `bson:"ishead"`
-	Variables   map[string]string `bson:"variables,omitempty"`
+	ID          string    `bson:"id"`
+	ProjectID   *string   `bson:"projectid,omitempty"`
+	WorkspaceID string    `bson:"workspaceid"`
+	WorkflowURL string    `bson:"workflowurl"`
+	Description string    `bson:"description"`
+	Version     string    `bson:"version"`
+	UpdatedAt   time.Time `bson:"updatedat"`
+	HeadID      *string   `bson:"headid,omitempty"`
+	IsHead      bool      `bson:"ishead"`
 }
 
 type DeploymentConsumer = Consumer[*DeploymentDocument, *deployment.Deployment]
@@ -52,11 +51,6 @@ func NewDeployment(d *deployment.Deployment) (*DeploymentDocument, error) {
 		hid = &hs
 	}
 
-	var variables map[string]string
-	if v := d.Variables(); v != nil {
-		variables = v
-	}
-
 	return &DeploymentDocument{
 		ID:          did,
 		ProjectID:   pid,
@@ -67,7 +61,6 @@ func NewDeployment(d *deployment.Deployment) (*DeploymentDocument, error) {
 		UpdatedAt:   d.UpdatedAt(),
 		HeadID:      hid,
 		IsHead:      d.IsHead(),
-		Variables:   variables,
 	}, nil
 }
 
@@ -104,10 +97,6 @@ func (d *DeploymentDocument) Model() (*deployment.Deployment, error) {
 			return nil, err
 		}
 		builder = builder.HeadID(&hid)
-	}
-
-	if len(d.Variables) > 0 {
-		builder = builder.Variables(d.Variables)
 	}
 
 	return builder.Build()

@@ -173,18 +173,13 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		projectParamsMap = projectParametersToMap(pls)
 	}
 
-	var deploymentVars map[string]string
-	if dv := deployment.Variables(); dv != nil {
-		deploymentVars = dv
-	}
-
 	triggerVars := trigger.Variables()
 	requestVars := normalizeRequestVars(p.Variables)
 
 	finalVars := resolveVariables(
 		ModeAPIDriven,
 		projectParamsMap,
-		deploymentVars,
+		nil, // TODO: Add deploymentVars here if deployment.variables are supported/needed.
 		triggerVars,
 		requestVars,
 	)
@@ -275,17 +270,12 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		projectParamsMap = projectParametersToMap(pls)
 	}
 
-	var deploymentVars map[string]string
-	if dv := deployment.Variables(); dv != nil {
-		deploymentVars = dv
-	}
-
 	triggerVars := trigger.Variables()
 
 	finalVars := resolveVariables(
 		ModeTimeDriven,
 		projectParamsMap,
-		deploymentVars,
+		nil, // TODO: Add deploymentVars here if deployment.variables are supported/needed.
 		triggerVars,
 		nil,
 	)

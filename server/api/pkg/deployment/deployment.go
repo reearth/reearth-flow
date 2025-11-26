@@ -14,7 +14,6 @@ type Deployment struct {
 	updatedAt   time.Time
 	headId      *ID
 	isHead      bool
-	variables   map[string]string
 }
 
 func (d *Deployment) ID() ID {
@@ -57,10 +56,6 @@ func (d *Deployment) IsHead() bool {
 	return d.isHead
 }
 
-func (d *Deployment) Variables() map[string]string {
-	return d.variables
-}
-
 func (d *Deployment) SetID(id ID) {
 	d.id = id
 }
@@ -97,10 +92,5 @@ func (d *Deployment) SetHeadID(headId ID) {
 
 func (d *Deployment) SetIsHead(isHead bool) {
 	d.isHead = isHead
-	d.updatedAt = time.Now()
-}
-
-func (d *Deployment) SetVariables(variables map[string]string) {
-	d.variables = variables
 	d.updatedAt = time.Now()
 }

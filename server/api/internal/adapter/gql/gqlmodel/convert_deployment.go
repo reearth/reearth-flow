@@ -21,7 +21,6 @@ func ToDeployment(d *deployment.Deployment) *Deployment {
 		ProjectID:   IDFromRef(d.Project()),
 		HeadID:      IDFromRef(d.HeadID()),
 		IsHead:      d.IsHead(),
-		Variables:   ToVariables(d.Variables()),
 	}
 }
 

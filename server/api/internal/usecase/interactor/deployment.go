@@ -168,10 +168,6 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 		d = d.IsHead(false)
 	}
 
-	if len(dp.Variables) > 0 {
-		d = d.Variables(dp.Variables)
-	}
-
 	dep, err := d.Build()
 	if err != nil {
 		return nil, err
@@ -240,10 +236,6 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 
 	if dp.Description != nil {
 		d.SetDescription(*dp.Description)
-	}
-
-	if dp.Variables != nil {
-		d.SetVariables(dp.Variables)
 	}
 
 	if err := i.deploymentRepo.Save(ctx, d); err != nil {
@@ -350,17 +342,12 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		projectParamsMap = projectParametersToMap(pls)
 	}
 
-	var deploymentVars map[string]string
-	if dv := d.Variables(); dv != nil {
-		deploymentVars = dv
-	}
-
 	finalVars := resolveVariables(
 		ModeExecuteDeployment,
 		projectParamsMap,
-		deploymentVars,
+		nil, // TODO: Add deploymentVars here if deployment.variables are supported/needed.
 		nil,
-		p.Variables,
+		nil, // TODO: Add requestVars here if deployment.variables are supported/needed.
 	)
 
 	debug := false

@@ -199,10 +199,6 @@ func createDeploymentForTest(t *testing.T, e *httpexpect.Expect) string {
 				"workspaceId": wId1.String(),
 				"description": "Test deployment for deletion",
 				"file":        nil,
-				"variables": map[string]interface{}{
-					"DEPLOYMENT_VAR_1": "deployment_value_1",
-					"DEPLOYMENT_VAR_2": "deployment_value_2",
-				},
 			},
 		},
 	}

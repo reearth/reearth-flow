@@ -23,20 +23,11 @@ func (r *mutationResolver) CreateDeployment(ctx context.Context, input gqlmodel.
 		return nil, err
 	}
 
-	var variables map[string]string
-	if input.Variables != nil {
-		variables, err = gqlmodel.FromVariables(input.Variables)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	res, err := usecases(ctx).Deployment.Create(ctx, interfaces.CreateDeploymentParam{
 		Project:     pid,
 		Workspace:   wsid,
 		Workflow:    gqlmodel.FromFile(&input.File),
 		Description: input.Description,
-		Variables:   variables,
 	})
 	if err != nil {
 		return nil, err
@@ -50,19 +41,10 @@ func (r *mutationResolver) UpdateDeployment(ctx context.Context, input gqlmodel.
 		return nil, err
 	}
 
-	var variables map[string]string
-	if input.Variables != nil {
-		variables, err = gqlmodel.FromVariables(input.Variables)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	res, err := usecases(ctx).Deployment.Update(ctx, interfaces.UpdateDeploymentParam{
 		ID:          did,
 		Workflow:    gqlmodel.FromFile(input.File),
 		Description: input.Description,
-		Variables:   variables,
 	})
 	if err != nil {
 		return nil, err
@@ -90,17 +72,8 @@ func (r *mutationResolver) ExecuteDeployment(ctx context.Context, input gqlmodel
 		return nil, err
 	}
 
-	var variables map[string]string
-	if input.Variables != nil {
-		variables, err = gqlmodel.FromVariables(input.Variables)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	res, err := usecases(ctx).Deployment.Execute(ctx, interfaces.ExecuteDeploymentParam{
 		DeploymentID: did,
-		Variables:    variables,
 	})
 	if err != nil {
 		return nil, err
