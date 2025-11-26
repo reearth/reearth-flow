@@ -114,9 +114,9 @@ def align_3dtiles(d1, d2):
         yield (gml_id, f1, f2)
 
 def test_3dtiles_attributes(d1, d2, cfg):
-	casts = cfg.get("casts", {})
-	for gid, f1, f2 in align_3dtiles(d1 / "export.json", d2 / "tran_lod3"):
-		props1 = f1[1] if f1 else None
-		props2 = f2[1] if f2 else None
-		analyze_attributes(gid, props1, props2, casts)
-	return []
+    casts = cfg.get("casts", {})
+    for gid, f1, f2 in align_3dtiles(d1 / "export.json", d2 / "tran_lod3"):
+        props1 = f1[1] if f1 else None
+        props2 = f2[1] if f2 else None
+        analyze_attributes(gid, props1, props2, casts)
+    return []
