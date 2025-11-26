@@ -18,7 +18,6 @@ if len(sys.argv) > 1:
     path = BASE_PATH / "testcases" / name
     run_testcase(path, stages)
 else:
-    quiet()
     for name in default_tests:
         path = BASE_PATH / "testcases" / name
         output_dir = run_testcase(path, default_stages)
