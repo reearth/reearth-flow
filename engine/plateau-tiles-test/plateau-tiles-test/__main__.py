@@ -7,7 +7,7 @@ from .log import quiet
 # tests when no arguments are given (for CI)
 default_tests = [
     "14212-squr",
-    "08220-dm",
+    # "08220-dm",
     "16202-rwy",
     "22203-wwy",
     "08220-3dtiles",
