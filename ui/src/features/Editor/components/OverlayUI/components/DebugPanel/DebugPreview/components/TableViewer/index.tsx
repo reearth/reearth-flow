@@ -86,8 +86,14 @@ const TableViewer: React.FC<Props> = memo(
       if (!selectedFeature || !detailsOverlayOpen || !featureIdMap) {
         return;
       }
-      const prevId = previousSelectedFeature.current?.id;
-      const currId = selectedFeature.id;
+      const currId =
+        selectedFeature.id ??
+        selectedFeature.properties?._originalId ??
+        selectedFeature.properties?.id;
+
+      const prevId = previousSelectedFeature.current
+        ? previousSelectedFeature.current.id
+        : null;
 
       if (prevId !== currId) {
         const matchingRow =
