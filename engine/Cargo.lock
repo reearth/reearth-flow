@@ -848,7 +848,7 @@ dependencies = [
  "log",
  "quick-xml 0.31.0",
  "serde",
- "zip",
+ "zip 2.4.2",
 ]
 
 [[package]]
@@ -2007,6 +2007,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bfe33edd8e85a12a67454e37f8c75e730830d83e313556ab9ebf9ee7fbeb3bfb"
 dependencies = [
  "crc32fast",
+ "libz-rs-sys",
  "miniz_oxide",
 ]
 
@@ -3869,6 +3870,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "libz-rs-sys"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "840db8cf39d9ec4dd794376f38acc40d0fc65eec2a8f484f7fd375b84602becd"
+dependencies = [
+ "zlib-rs",
+]
+
+[[package]]
 name = "linked-hash-map"
 version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5260,7 +5270,7 @@ checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 
 [[package]]
 name = "plateau-gis-quality-checker"
-version = "0.0.183"
+version = "0.0.184"
 dependencies = [
  "directories",
  "log",
@@ -6115,7 +6125,7 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
- "zip",
+ "zip 2.4.2",
 ]
 
 [[package]]
@@ -6251,7 +6261,7 @@ dependencies = [
  "url",
  "uuid",
  "wkt",
- "zip",
+ "zip 2.4.2",
 ]
 
 [[package]]
@@ -6325,7 +6335,7 @@ dependencies = [
  "url",
  "uuid",
  "walkdir",
- "zip",
+ "zip 2.4.2",
  "zstd",
 ]
 
@@ -7063,11 +7073,11 @@ dependencies = [
 
 [[package]]
 name = "rust_xlsxwriter"
-version = "0.84.1"
+version = "0.92.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a844d972bb19f538ccf0f26383b70d8aa14ff97854f0558d1cd822d611e7da5f"
+checksum = "ca8b9faf2c68874f865272c92493e9bb811e5fdff197a56ecc4748885ec5a874"
 dependencies = [
- "zip",
+ "zip 6.0.0",
 ]
 
 [[package]]
@@ -10320,7 +10330,7 @@ dependencies = [
 
 [[package]]
 name = "workflow-tests"
-version = "0.1.87"
+version = "0.1.88"
 dependencies = [
  "anyhow",
  "csv",
@@ -10350,7 +10360,7 @@ dependencies = [
  "uuid",
  "walkdir",
  "yaml-include",
- "zip",
+ "zip 2.4.2",
 ]
 
 [[package]]
@@ -10633,6 +10643,26 @@ dependencies = [
  "zopfli",
  "zstd",
 ]
+
+[[package]]
+name = "zip"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb2a05c7c36fde6c09b08576c9f7fb4cda705990f73b58fe011abf7dfb24168b"
+dependencies = [
+ "arbitrary",
+ "crc32fast",
+ "flate2",
+ "indexmap 2.12.1",
+ "memchr",
+ "zopfli",
+]
+
+[[package]]
+name = "zlib-rs"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f06ae92f42f5e5c42443fd094f245eb656abf56dd7cce9b8b263236565e00f2"
 
 [[package]]
 name = "zopfli"
