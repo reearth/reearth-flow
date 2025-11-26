@@ -2,6 +2,7 @@ import os, shutil
 import tomllib
 import subprocess
 import zipfile
+import time
 from pathlib import Path
 from . import BASE_PATH, ENGINE_PATH, reset_dir
 from .filter import filter_zip
@@ -75,20 +76,26 @@ def run_testcase(path, stages):
         filter_zip(citygml_srcdir / citygml_zip_name, citygml_path, profile.get("filter", {}).get("tree", {}))
     fme_output_path = path / "fme.zip"
     if "r" in stages:
-        log.info("running:", path.name)
+        log.info(f"Starting run: {name}")
         reset_dir(output_dir / "flow")
         reset_dir(output_dir / "runtime")
+        start_time = time.time()
         run_workflow(profile, output_dir, citygml_path)
+        elapsed = time.time() - start_time
+        log.info(f"Completed run: {name} ({elapsed:.2f}s)")
     if "e" in stages:
-        log.info("evaluating:", name, "tests:", [key for key in profile.get("tests", {})])
         assert fme_output_path.exists(), "FME output file not found in testcase"
         fme_dir = output_dir / "fme"
         extract_fme_output(fme_output_path, fme_dir)
-        for test, cfg in profile.get("tests", {}).items():
-            if test == "mvt_attributes":
+        for test_name, cfg in profile.get("tests", {}).items():
+            log.info(f"Starting test: {name}/{test_name}")
+            start_time = time.time()
+            if test_name == "mvt_attributes":
                 test_mvt_attributes(fme_dir, output_dir / "flow", cfg)
-            elif test == "3dtiles_attributes":
+            elif test_name == "3dtiles_attributes":
                 test_3dtiles_attributes(fme_dir, output_dir / "flow", cfg)
             else:
-                raise ValueError(f"Unknown test type: {test}")
+                raise ValueError(f"Unknown test type: {test_name}")
+            elapsed = time.time() - start_time
+            log.info(f"Completed test: {name}/{test_name} ({elapsed:.2f}s)")
     return output_dir
