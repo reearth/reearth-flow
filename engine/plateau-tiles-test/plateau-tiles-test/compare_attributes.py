@@ -25,7 +25,7 @@ def compare_recurse(key, v1, v2, gid, bads, casts):
     v1 = cast_attr(key, v1, casts)
     v2 = cast_attr(key, v2, casts)
 
-    if type(v1) != type(v2):
+    if type(v1) is not type(v2):
         if isinstance(v2, bool) and bool(v1) == v2:
             return
         if isinstance(v2, str) and str(v1) == v2:
