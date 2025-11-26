@@ -32,12 +32,14 @@ cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-qual
 [tasks.test]
 script = ['''
 #!/usr/bin/env bash -eux
+export FLOW_XML_SCHEMA_FETCHER_FALLBACK=true
 cargo test --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
 ''']
 
 [tasks.test-wf]
 script = ['''
 #!/usr/bin/env bash -eux
+export FLOW_XML_SCHEMA_FETCHER_FALLBACK=true
 cargo test -p workflow-tests ${@:-}
 ''']
 
@@ -56,6 +58,7 @@ rm -rf target/debug/deps/${PROJ_NAME}-*
 export CARGO_INCREMENTAL=0
 export RUSTFLAGS="-Zinstrument-coverage"
 export LLVM_PROFILE_FILE="${PROJ_NAME}-%p-%m.profraw"
+export FLOW_XML_SCHEMA_FETCHER_FALLBACK=true
 
 cargo build --workspace --verbose
 cargo test --workspace --verbose
@@ -147,6 +150,7 @@ script = ['''
 BASEPATH_CONV=./runtime/examples/fixture/workflow/data-convert/plateau4/
 WORKFLOW_CONV=(
   "01-bldg"
+  "02-tran-rwy-trk-squr-wwy"
 )
 
 BASEPATH_QC=./runtime/examples/fixture/workflow/quality-check/plateau4/
@@ -154,6 +158,7 @@ WORKFLOW_QC=(
   "01-common"
   "02-bldg"
   "03-tran"
+  "04-frn-veg"
   "05-luse-urf-area"
   "06-fld"
   "07-lsld"
