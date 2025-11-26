@@ -1,6 +1,4 @@
-import sys
 import mapbox_vector_tile
-from pathlib import Path
 from shapely.geometry import shape
 from .compare_attributes import dict_zip, analyze_attributes
 from . import log
@@ -38,21 +36,13 @@ def align_mvt_layer(l1, l2, path=None):
         g2 = normalize_geometry(shape(f2['geometry']), e2) if f2 else None
         yield (path, gid, g1, g2)
 
-def z_from_path(p):
-    try:
-        return int(p.split('/')[1])
-    except:
-        return None
-
 def align_mvt(d1, d2, zmin=None, zmax=None):
     r1 = [p.relative_to(d1) for p in d1.rglob("*.pbf")]
     r2 = [p.relative_to(d2) for p in d2.rglob("*.pbf")]
 
     if zmin is not None or zmax is not None:
         def filt(p):
-            z = z_from_path(str(p))
-            if z is None:
-                return True
+            z = int(p.split("/")[1])
             if zmin is not None and z < zmin:
                 return False
             if zmax is not None and z > zmax:

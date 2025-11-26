@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-import json, tomllib
-import os, sys
+import json
 import subprocess
 from pathlib import Path
 import yaml
@@ -41,7 +40,8 @@ def collect_edge_data(jobs_dir):
 
 def generate_html_report(output_dir, workflow_path):
 	template_path = Path(__file__).parent / "workflow_template.html"
-	html = open(template_path).read()
+	with open(template_path) as f:
+		html = f.read()
 
 	workflow_json = resolve_workflow_to_json(workflow_path)
 	open(output_dir / "workflow.json", "w").write(workflow_json)
@@ -51,5 +51,6 @@ def generate_html_report(output_dir, workflow_path):
 	edge_data = collect_edge_data(jobs_dir)
 	html = html.replace("{{EDGE_DATA}}", json.dumps(edge_data).replace("\\", "\\\\").replace("`", "\\`"))
 
-	open(output_dir / "workflow.html", "w").write(html)
+	with open(output_dir / "workflow.html", "w") as f:
+		f.write(html)
 	print(f"HTML report:", output_dir / "workflow.html")

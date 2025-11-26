@@ -1,7 +1,6 @@
 import sys
-from pathlib import Path
 from .runner import run_testcase
-from . import BASE_PATH
+from . import BASE_PATH, reset_dir
 from .log import quiet
 
 # tests when no arguments are given (for CI)
@@ -23,4 +22,5 @@ else:
     quiet()
     for test in default_tests:
         path = BASE_PATH / "testcases" / test
-        run_testcase(path, default_stages)
+        output_dir = run_testcase(path, default_stages)
+        reset_dir(output_dir, create=False)  # clean up after test runs

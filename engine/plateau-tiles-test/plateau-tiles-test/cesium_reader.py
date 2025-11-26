@@ -1,5 +1,4 @@
 import json, struct
-from pathlib import Path
 import trimesh
 import numpy as np
 from shapely.geometry import Polygon
@@ -26,8 +25,8 @@ def extract_strings(binary_blob, buffer_views, values_idx, offsets_idx, count):
 def read_glb_json(filepath):
     with open(filepath, 'rb') as f:
         assert f.read(4) == b'glTF', "Not a valid GLB file"
-        version = struct.unpack('<I', f.read(4))[0]
-        length = struct.unpack('<I', f.read(4))[0]
+        _version = struct.unpack('<I', f.read(4))[0]
+        _length = struct.unpack('<I', f.read(4))[0]
         json_chunk_length = struct.unpack('<I', f.read(4))[0]
         assert f.read(4) == b'JSON', "Expected JSON chunk"
         json_data = f.read(json_chunk_length).decode('utf-8')

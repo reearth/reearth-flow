@@ -1,7 +1,4 @@
 import json
-import tempfile
-from pathlib import Path
-import numpy as np
 from .cesium_reader import read_glb_tile
 from .compare_attributes import dict_zip, analyze_attributes
 
@@ -31,7 +28,6 @@ def collect_features_hierarchical(directory):
     assert tileset["asset"]["version"].startswith('1.1'), "Only 3D Tiles version 1.1 is supported"
     tile_hierarchy = build_tile_hierarchy_v11(tileset['root'], directory)
 
-    max_depth = max(depth for depth, _, _ in tile_hierarchy) if tile_hierarchy else 0
     feature_data = {}
 
     for depth, tile_uri, geometric_error in tile_hierarchy:
