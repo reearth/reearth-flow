@@ -33,7 +33,7 @@ def extract_fme_output(fme_zip_path, fme_dir):
 
     if needs_extract:
         rmrf(fme_dir)
-        print(f"Extracting FME output: {fme_zip_path} -> {fme_dir}")
+        log.debug("Extracting FME output:", fme_zip_path, "->", fme_dir)
         with zipfile.ZipFile(fme_zip_path, 'r') as zip_ref:
             zip_ref.extractall(fme_dir)
         for mvt_file in fme_dir.rglob("*.mvt"):
@@ -67,7 +67,7 @@ def run_workflow(profile, output_dir, citygml_path):
         text=True,
     )
     for line in process.stdout:
-        log.info(line.rstrip())
+        log.debug(line.rstrip())
     process.wait()
     if process.returncode != 0:
         raise subprocess.CalledProcessError(process.returncode, process.args)
@@ -85,12 +85,12 @@ def run_testcase(path, stages):
         filter_zip(citygml_srcdir / citygml_zip_name, citygml_path, profile.get("filter", {}).get("tree", {}))
     fme_output_path = path / "fme.zip"
     if "r" in stages:
-        print("running:", path.name)
+        log.info("running:", path.name)
         rmrf(output_dir / "flow")
         rmrf(output_dir / "runtime")
         run_workflow(profile, output_dir, citygml_path)
     if "e" in stages:
-        print("evaluating:", name, "tests:", [key for key in profile.get("tests", {})])
+        log.info("evaluating:", name, "tests:", [key for key in profile.get("tests", {})])
         assert fme_output_path.exists(), "FME output file not found in testcase"
         fme_dir = output_dir / "fme"
         extract_fme_output(fme_output_path, fme_dir)

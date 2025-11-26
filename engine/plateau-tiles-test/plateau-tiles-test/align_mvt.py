@@ -89,7 +89,7 @@ def load_mvt_attr(d):
 def align_mvt_attr(d1, d2):
     map1 = load_mvt_attr(d1)
     map2 = load_mvt_attr(d2)
-    log.info(f"Loaded MVT attributes: {len(map1)} from {d1}, {len(map2)} from {d2}")
+    log.debug(f"Loaded MVT attributes: {len(map1)} from {d1}, {len(map2)} from {d2}")
     yield from dict_zip(map1, map2)
 
 def test_mvt_attributes(fme_path, flow_path, cfg):
