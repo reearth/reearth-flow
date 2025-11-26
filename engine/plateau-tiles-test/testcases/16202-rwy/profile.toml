@@ -12,9 +12,8 @@ workflow_path = "runtime/examples/fixture/workflow/data-convert/plateau4/02-tran
 ".attributes" = "json"
 
 [filter.tree]
-"+" = ["udx", "codelists", "schemas"]
-"+udx" = ["rwy"]
-"+udx/rwy" = [
+"" = ["codelists/", "schemas/"]
+"udx/rwy/" = [
   "55360718_rwy_6697.gml",
   "55360728_rwy_6697.gml",
   "55360733_rwy_6697.gml",

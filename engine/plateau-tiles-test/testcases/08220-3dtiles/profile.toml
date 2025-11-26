@@ -7,6 +7,5 @@ workflow_path = "runtime/examples/fixture/workflow/data-convert/plateau4/02-tran
 ".attributes" = "json"
 
 [filter.tree]
-"+" = ["udx", "codelists", "schemas"]
-"+udx" = ["tran"]
-"+udx/tran" = ["54401008_tran_6697_op.gml", "54401018_tran_6697_op.gml"]
+"" = ["codelists/", "schemas/"]
+"udx/tran/" = ["54401008_tran_6697_op.gml", "54401018_tran_6697_op.gml"]

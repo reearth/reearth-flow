@@ -5,12 +5,8 @@ workflow_path = "runtime/examples/fixture/workflow/data-convert/plateau4/02-tran
 ".attributes" = "json"
 
 [filter.tree]
-"+" = ["udx", "codelists", "schemas"]
-"+udx" = ["squr"]
-"+udx/squr" = ["squr/533912_squr_6697_op.gml"]
-"+udx/squr/533912_squr_6697_op.gml" = [
+"" = ["codelists/", "schemas/"]
+"udx/squr/533912_squr_6697_op.gml" = [
   "squr_e899eb74-d5ec-498e-8268-634c0222aaa0",
   "squr_20151e0d-cca1-4baa-a8be-b81e5ebad749",
-  "squr_4891bc2f-815b-4134-bed5-dd5eb66b9748",
-  "squr_22a7a7fc-0e42-478f-b7a1-7d945b48aae0",
 ]
