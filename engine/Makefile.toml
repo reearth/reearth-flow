@@ -158,6 +158,7 @@ WORKFLOW_QC=(
   "01-common"
   "02-bldg"
   "03-tran"
+  "04-frn-veg"
   "05-luse-urf-area"
   "06-fld"
   "07-lsld"
