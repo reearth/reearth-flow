@@ -44,7 +44,8 @@ def generate_html_report(output_dir, workflow_path):
 		html = f.read()
 
 	workflow_json = resolve_workflow_to_json(workflow_path)
-	open(output_dir / "workflow.json", "w").write(workflow_json)
+	with open(output_dir / "workflow.json", "w") as f:
+		f.write(workflow_json)
 
 	html = html.replace("{{WORKFLOW_JSON}}", workflow_json.replace("\\", "\\\\").replace("`", "\\`"))
 	jobs_dir = output_dir / "runtime/projects/engine/jobs"

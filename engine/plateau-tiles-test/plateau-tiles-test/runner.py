@@ -96,6 +96,3 @@ def run_testcase(path, stages):
     if "v" in stages:
         generate_html_report(output_dir, ENGINE_PATH / profile["workflow_path"])
     return output_dir
-
-if __name__ == "__main__":
-    run_workflow(sys.argv[1])

@@ -1,6 +1,6 @@
-import sys
+import sys, os, shutil
 from .runner import run_testcase
-from . import BASE_PATH, reset_dir
+from . import BASE_PATH
 from .log import quiet
 
 # tests when no arguments are given (for CI)
@@ -23,4 +23,6 @@ else:
     for test in default_tests:
         path = BASE_PATH / "testcases" / test
         output_dir = run_testcase(path, default_stages)
-        reset_dir(output_dir, create=False)  # clean up after test runs
+        if os.environ.get("CLEANUP_AFTER_TESTS", "0") == "1":
+            # output_dir must exist or we should fail the test
+            shutil.rmtree(output_dir)

@@ -1,5 +1,6 @@
 import zipfile
 import re
+from . import log
 
 class FilterNode:
     def __init__(self, inclusive):
@@ -100,7 +101,7 @@ def filter_zip(src_zip, dst_zip, tree):
                 child = node.get_child_node(part)
                 node = child if child else node
             if include:
-                print(f"Including: {item.filename}")
+                log.debug(f"Including: {item.filename}")
                 content = src.read(item)
                 filtered_content = node.process(content)
                 dst.writestr(item, filtered_content)

@@ -105,6 +105,8 @@ jobs:
         run: cargo make test
       - name: run plateau-tiles-test
         working-directory: engine/plateau-tiles-test
+        env:
+          CLEANUP_AFTER_TESTS: "1"
         run: |
           sh setup.sh
           uv run python3 -m plateau-tiles-test

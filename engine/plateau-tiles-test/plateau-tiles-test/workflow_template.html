@@ -103,6 +103,8 @@ function applyFilter(){
   }
 
   try {
+    // Eval is required to provide flexibility of any filter function but can be dangerous.
+    // The generated HTML is for localhost debugging purpose only and should not be deployed publicly.
     const filterFn = filterCode.includes('=>') ? eval(`(${filterCode})`) : eval(`(f => ${filterCode})`);
     displayEdgeData(currentEdgeId, indexed.filter(item => filterFn(item.feature)));
   } catch(err) {
