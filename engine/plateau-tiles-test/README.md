@@ -4,12 +4,11 @@ Testing framework for aligning flow outputs containing tile files, with FME outp
 
 ## Install and run
 
-- cd to this directory
-- install python3, uv
-- init venv: `uv venv`
-- install dependencies: `uv pip install -r requirements.txt`
-- run `uv run python3 -m plateau-tiles-test`
-- run individual tests with `uv run python3 -m plateau-tiles-test <test_name> [stages]`
+1. install python3 (>=3.11), uv
+2. cd into this directory
+3. init venv: `uv venv`, it creates a `.venv` under this directory
+4. install dependencies: `uv pip install -r requirements.txt`
+5. run `uv run python3 -m plateau-tiles-test`
 
 ## Directory structure
 
