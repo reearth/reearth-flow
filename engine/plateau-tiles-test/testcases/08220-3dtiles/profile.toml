@@ -1,0 +1,12 @@
+citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op.zip"
+workflow_path = "runtime/examples/fixture/workflow/data-convert/plateau4/02-tran-rwy-trk-squr-wwy/workflow.yml"
+
+# [tests.3d_lines]
+
+[tests.3dtiles_attributes.casts]
+".attributes" = "json"
+
+[filter.tree]
+"+" = ["udx", "codelists", "schemas"]
+"+udx" = ["tran"]
+"+udx/tran" = ["54401008_tran_6697_op.gml", "54401018_tran_6697_op.gml"]

@@ -1,0 +1,12 @@
+# test dm geometric attributes
+citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op.zip"
+workflow_path = "runtime/examples/fixture/workflow/data-convert/plateau4/02-tran-rwy-trk-squr-wwy/workflow.yml"
+
+[tests.mvt_attributes.casts]
+".attributes" = "json"
+".dm_attributes" = "json"
+
+[filter.tree]
+"+" = ["udx", "codelists", "schemas"]
+"+udx" = ["trk"]
+"+udx/trk" = ["54401008_trk_6697_op.gml"]
