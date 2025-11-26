@@ -17,7 +17,7 @@ use crate::plateau4::errors::PlateauProcessorError;
 static SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("schema"));
 static BASE_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
     vec![
-        ("_lod".to_string(), AttributeValue::default_string()),
+        ("_lod".to_string(), AttributeValue::default_number()),
         ("_lod_type".to_string(), AttributeValue::default_string()),
         ("_x".to_string(), AttributeValue::default_float()),
         ("_y".to_string(), AttributeValue::default_float()),
@@ -101,16 +101,64 @@ fn strip_parent_info(map: &mut HashMap<String, AttributeValue>) {
     map.remove("parentType");
 }
 
+// GYear fields that should be converted from string to number
+static GYEAR_FIELDS: &[&str] = &[
+    "uro:surveyYear",
+    "bldg:yearOfConstruction",
+    "bldg:yearOfDemolition",
+    "uro:yearOpened",
+    "uro:yearClosed",
+    "uro:enactmentFiscalYear",
+    "uro:expirationFiscalYear",
+    "uro:fiscalYearOfPublication",
+];
+
+/// Convert GYear string fields to numbers recursively in the attribute map
+fn convert_gyear_fields(
+    mut map: HashMap<String, AttributeValue>,
+) -> HashMap<String, AttributeValue> {
+    for (key, value) in map.iter_mut() {
+        *value = convert_gyear_value(key, std::mem::take(value));
+    }
+    map
+}
+
+fn convert_gyear_value(key: &str, value: AttributeValue) -> AttributeValue {
+    match value {
+        AttributeValue::String(s) if GYEAR_FIELDS.contains(&key) => {
+            if let Ok(n) = s.parse::<i64>() {
+                AttributeValue::Number(serde_json::Number::from(n))
+            } else {
+                AttributeValue::String(s)
+            }
+        }
+        AttributeValue::Array(arr) => AttributeValue::Array(
+            arr.into_iter()
+                .map(|v| convert_gyear_value(key, v))
+                .collect(),
+        ),
+        AttributeValue::Map(inner_map) => AttributeValue::Map(convert_gyear_fields(inner_map)),
+        other => other,
+    }
+}
+
 impl AttributeFlattener {
     fn process_and_add_risk_attributes(
         &mut self,
         feature: &mut Feature,
         citygml_attributes: &HashMap<String, AttributeValue>,
     ) {
-        let edit_citygml_attributes = citygml_attributes
+        let mut edit_citygml_attributes = citygml_attributes
             .iter()
             .map(|(k, v)| (k.to_string(), v.clone()))
             .collect::<HashMap<String, AttributeValue>>();
+
+        // Extract bldg:address from core:Address nested structure
+        if let Some(address) =
+            super::flattener::Flattener::extract_address(&edit_citygml_attributes)
+        {
+            edit_citygml_attributes.insert("bldg:address".to_string(), address);
+        }
 
         feature.attributes.extend(
             self.common_attribute_processor
@@ -149,13 +197,24 @@ impl AttributeFlattener {
         feature: &Feature,
         citygml_attributes: &mut HashMap<String, AttributeValue>,
     ) {
-        // Copy common attributes from feature to citygml_attributes
-        if let Some(meshcode) = feature.get("meshcode") {
-            citygml_attributes.insert("meshcode".to_string(), meshcode.clone());
-        }
-        if let Some(gml_id) = feature.get("gml_id") {
+        // gml:id: use "gmlId" attribute (gml_id renaming happens after AttributeFlattener)
+        if let Some(gml_id) = feature.get("gmlId") {
             citygml_attributes.insert("gml:id".to_string(), gml_id.clone());
         }
+
+        // meshcode: extract from path attribute (e.g., "55371111_bldg_6697_op.gml" -> 55371111)
+        if let Some(AttributeValue::String(path)) = feature.get("path") {
+            if let Some(filename) = path.rsplit('/').next() {
+                if let Some(meshcode_str) = filename.split('_').next() {
+                    citygml_attributes.insert(
+                        "meshcode".to_string(),
+                        AttributeValue::String(meshcode_str.to_string()),
+                    );
+                }
+            }
+        }
+
+        // feature_type
         if let Some(feature_type) = feature.get("featureType") {
             citygml_attributes.insert("feature_type".to_string(), feature_type.clone());
         }
@@ -218,6 +277,15 @@ impl AttributeFlattener {
         if !ancestors.is_empty() {
             citygml_attributes.insert("ancestors".to_string(), AttributeValue::Array(ancestors));
         }
+
+        // Extract bldg:address from core:Address nested structure if not present
+        if !citygml_attributes.contains_key("bldg:address") {
+            if let Some(address) = super::flattener::Flattener::extract_address(&citygml_attributes)
+            {
+                citygml_attributes.insert("bldg:address".to_string(), address);
+            }
+        }
+
         // json path must be extracted AFTER building ancestors attribute
         if let Some(flatten_attributes) = super::constants::FLATTEN_ATTRIBUTES.get(lookup_key) {
             for attribute in flatten_attributes {
@@ -228,6 +296,21 @@ impl AttributeFlattener {
                 else {
                     continue;
                 };
+                // Convert string to number if data_type is "int" or "int16"
+                let new_attribute = match attribute.data_type.as_str() {
+                    "int" | "int16" => {
+                        if let AttributeValue::String(s) = &new_attribute {
+                            if let Ok(n) = s.parse::<i64>() {
+                                AttributeValue::Number(serde_json::Number::from(n))
+                            } else {
+                                new_attribute
+                            }
+                        } else {
+                            new_attribute
+                        }
+                    }
+                    _ => new_attribute,
+                };
                 self.existing_flatten_attributes
                     .insert(attribute.attribute.clone());
                 feature
@@ -235,6 +318,9 @@ impl AttributeFlattener {
                     .insert(Attribute::new(attribute.attribute.clone()), new_attribute);
             }
         }
+
+        // Convert GYear string fields to numbers in citygml_attributes before serialization
+        let citygml_attributes = convert_gyear_fields(citygml_attributes);
 
         // save the whole `citygml_attributes` values as `attributes`
         let citygml_attributes_json = serde_json::to_string(&serde_json::Value::from(
@@ -319,7 +405,8 @@ impl AttributeFlattener {
                 }
                 let data_type = match attribute.data_type.as_str() {
                     "string" | "date" => AttributeValue::default_string(),
-                    "int" | "double" | "measure" => AttributeValue::default_number(),
+                    "int" => AttributeValue::default_number(),
+                    "double" | "measure" => AttributeValue::default_float(),
                     _ => continue,
                 };
                 feature
@@ -341,9 +428,17 @@ impl AttributeFlattener {
                 );
             }
         }
+        // Extract the feature_type without package prefix to match actual feature metadata
+        // feature_type_key is "{package}/{feature_type}" e.g., "bldg/bldg:Building"
+        // but actual features have metadata.feature_type = "bldg:Building"
+        let schema_feature_type = feature_type_key
+            .split('/')
+            .nth(1)
+            .unwrap_or(feature_type_key)
+            .to_string();
         feature.metadata = Metadata {
             feature_id: None,
-            feature_type: Some(feature_type_key.to_string()),
+            feature_type: Some(schema_feature_type),
             lod: None,
         };
         feature

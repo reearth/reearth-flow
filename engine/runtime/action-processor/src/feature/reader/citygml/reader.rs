@@ -183,12 +183,12 @@ fn parse_tree_reader<R: BufRead>(
         if let Some(max_lod) = lod.highest_lod() {
             attributes.insert(
                 Attribute::new("maxLod"),
-                AttributeValue::String(max_lod.to_string()),
+                AttributeValue::Number(serde_json::Number::from(max_lod)),
             );
             // Also add as "lod" attribute for StatisticsCalculator to use
             attributes.insert(
                 Attribute::new("lod"),
-                AttributeValue::String(max_lod.to_string()),
+                AttributeValue::Number(serde_json::Number::from(max_lod)),
             );
         }
         attributes.extend(base_attributes.clone());
@@ -245,7 +245,7 @@ fn parse_tree_reader<R: BufRead>(
                 if let Some(max_lod) = effective_lod {
                     attributes.insert(
                         Attribute::new("lod"),
-                        AttributeValue::String(max_lod.to_string()),
+                        AttributeValue::Number(serde_json::Number::from(max_lod)),
                     );
                 }
             }
