@@ -112,7 +112,7 @@ impl Sink for CzmlWriter {
         let key = if let Some(group_by) = &self.params.group_by {
             let key = group_by
                 .iter()
-                .map(|k| feature.get(&k).cloned().unwrap_or(AttributeValue::Null))
+                .map(|k| feature.get(k).cloned().unwrap_or(AttributeValue::Null))
                 .collect::<Vec<_>>();
             AttributeValue::Array(key)
         } else {

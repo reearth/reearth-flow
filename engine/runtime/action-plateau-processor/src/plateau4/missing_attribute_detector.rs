@@ -330,7 +330,7 @@ impl MissingAttributeDetector {
         feature: &Feature,
     ) -> super::errors::Result<(Vec<Feature>, Vec<Feature>, Vec<Feature>)> {
         let object_list: ObjectListMap = feature
-            .get(&"objectList".to_string())
+            .get("objectList")
             .ok_or(PlateauProcessorError::MissingAttributeDetector(
                 "object list attribute empty".to_string(),
             ))?
@@ -348,11 +348,12 @@ impl MissingAttributeDetector {
                 .ok_or(PlateauProcessorError::MissingAttributeDetector(
                     "Failed to get buffer".to_string(),
                 ))?;
-        let AttributeValue::String(xml_content) = feature.get(&"xmlFragment".to_string()).ok_or(
-            PlateauProcessorError::MissingAttributeDetector(
-                "xml fragment attribute empty".to_string(),
-            ),
-        )?
+        let AttributeValue::String(xml_content) =
+            feature
+                .get("xmlFragment")
+                .ok_or(PlateauProcessorError::MissingAttributeDetector(
+                    "xml fragment attribute empty".to_string(),
+                ))?
         else {
             return Err(PlateauProcessorError::MissingAttributeDetector(
                 "xml fragment attribute empty".to_string(),
@@ -1011,19 +1012,19 @@ mod tests {
 
         let error_output = &required_outputs[0];
         assert_eq!(
-            error_output.get(&Attribute::new("missing")),
+            error_output.get("missing"),
             Some(&AttributeValue::String("core:creationDate".to_string())),
             "Expected missing attribute to be core:creationDate"
         );
 
         assert_eq!(
-            error_output.get(&Attribute::new("featureType")),
+            error_output.get("featureType"),
             Some(&AttributeValue::String("bldg:Building".to_string())),
             "Expected feature type to be bldg:Building"
         );
 
         assert_eq!(
-            error_output.get(&Attribute::new("severity")),
+            error_output.get("severity"),
             Some(&AttributeValue::String("Error".to_string())),
             "Expected severity to be Error"
         );
@@ -1048,7 +1049,7 @@ mod tests {
         );
 
         let summary = &summary_outputs[0];
-        let data_file_data = match summary.get(&Attribute::new("dataFileData")).unwrap() {
+        let data_file_data = match summary.get("dataFileData").unwrap() {
             AttributeValue::Array(arr) => arr,
             _ => panic!("Expected dataFileData to be an array"),
         };
@@ -1085,13 +1086,13 @@ mod tests {
 
         let c07_output = &c07_outputs[0];
         assert_eq!(
-            c07_output.get(&Attribute::new("lod")),
+            c07_output.get("lod"),
             Some(&AttributeValue::String("LOD1".to_string())),
             "Expected LOD to be LOD1"
         );
 
         assert_eq!(
-            c07_output.get(&Attribute::new("missing")),
+            c07_output.get("missing"),
             Some(&AttributeValue::String(
                 "uro:DataQualityAttribute/uro:geometrySrcDescLod1".to_string()
             )),
@@ -1099,7 +1100,7 @@ mod tests {
         );
 
         assert_eq!(
-            c07_output.get(&Attribute::new("featureType")),
+            c07_output.get("featureType"),
             Some(&AttributeValue::String("bldg:Building".to_string())),
             "Expected feature type to be bldg:Building"
         );
@@ -1123,7 +1124,7 @@ mod tests {
             .iter()
             .find(|output| {
                 matches!(
-                    output.get(&Attribute::new("missing")),
+                    output.get("missing"),
                     Some(AttributeValue::String(missing))
                     if missing == "uro:PublicSurveyDataQualityAttribute/uro:srcScaleLod1"
                 )
@@ -1134,7 +1135,7 @@ mod tests {
             .iter()
             .find(|output| {
                 matches!(
-                    output.get(&Attribute::new("missing")),
+                    output.get("missing"),
                     Some(AttributeValue::String(missing))
                     if missing == "uro:PublicSurveyDataQualityAttribute/uro:publicSurveySrcDescLod1"
                 )

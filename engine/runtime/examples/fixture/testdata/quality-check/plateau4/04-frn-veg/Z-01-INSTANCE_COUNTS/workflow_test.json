@@ -1,0 +1,12 @@
+{
+  "workflowPath": "quality-check/plateau4/04-frn-veg/workflow.yml",
+  "description": "Test for plateau4 instance counts inspection.",
+  "expectedOutput": {
+    "expectedFile": "04_都市設備_植生_地物インスタンス数.csv"
+  },
+  "cityGmlPath": "udx.zip",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectResultOkFile": true,
+  "skip": false
+}

@@ -129,7 +129,7 @@ impl Processor for DictionariesInitiator {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         // Codelist dictionary creation
-        let dir_codelists = match feature.get(&Attribute::new("dirCodelists")) {
+        let dir_codelists = match feature.get("dirCodelists") {
             Some(AttributeValue::String(dir)) => dir,
             v => {
                 return Err(PlateauProcessorError::DictionariesInitiator(format!(

@@ -160,7 +160,7 @@ impl Storage {
         Ok(ObjectMeta {
             location: object_store::path::Path::parse(p)?,
             last_modified: meta.last_modified().unwrap_or_default(),
-            size: meta.content_length() as u64,
+            size: meta.content_length(),
             e_tag: None,
             version: None,
         })
