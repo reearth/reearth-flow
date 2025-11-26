@@ -47,7 +47,7 @@ jobs:
       - name: install required tools
         uses: taiki-e/install-action@v2
         with:
-          tool: taplo-cli,cargo-make,cargo-edit
+          tool: taplo-cli,cargo-make,cargo-edit,uv
       - name: install yaml-include
         run: cargo install yaml-include
       - name: Compare version with previous commit
@@ -103,15 +103,8 @@ jobs:
         run: cargo make check-generate-examples-cms-workflow
       - name: run tests
         run: cargo make test
-      - name: setup python for plateau-tiles-test
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      - name: install uv
-        uses: astral-sh/setup-uv@v5
       - name: run plateau-tiles-test
         working-directory: engine/plateau-tiles-test
         run: |
-          uv venv
-          uv pip install -r requirements.txt
+          sh setup.sh
           uv run python3 -m plateau-tiles-test
