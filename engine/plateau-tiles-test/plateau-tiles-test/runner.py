@@ -8,7 +8,6 @@ from . import BASE_PATH, ENGINE_PATH, reset_dir
 from .filter import filter_zip
 from .align_mvt import test_mvt_attributes
 from .align_3dtiles import test_3dtiles_attributes
-from .generate_html_report import generate_html_report
 from . import log
 
 def extract_fme_output(fme_zip_path, fme_dir):
@@ -93,6 +92,4 @@ def run_testcase(path, stages):
                 test_3dtiles_attributes(fme_dir, output_dir / "flow", cfg)
             else:
                 raise ValueError(f"Unknown test type: {test}")
-    if "v" in stages:
-        generate_html_report(output_dir, ENGINE_PATH / profile["workflow_path"])
     return output_dir

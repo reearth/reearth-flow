@@ -1,6 +1,6 @@
 import sys
 
-def stderrLog(prefix, *args, **kwargs):
+def stderrLog(prefix):
     return lambda *args, **kwargs: print(prefix, *args, **kwargs, file=sys.stderr)
 
 info = stderrLog("[INFO]")

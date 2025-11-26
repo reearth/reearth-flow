@@ -15,7 +15,7 @@ def extract_strings(binary_blob, buffer_views, values_idx, offsets_idx, count):
     
     # Extract strings
     strings = []
-    assert len(offsets) - 1 == count, "Offsets length does not match count"
+    assert len(offsets) - 1 == count, f"Offsets length mismatch: {len(offsets)-1} vs {count}"
     for i in range(count):
         start = offsets[i]
         end = offsets[i + 1]
