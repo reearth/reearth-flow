@@ -1,0 +1,24 @@
+{
+  "workflowPath": "quality-check/plateau4/04-frn-veg/workflow.yml",
+  "description": "Test for plateau4 geometry type errors.",
+  "expectedOutput": {
+    "expectedFile": [
+      "04_都市設備_植生_不正なジオメトリ型.csv"
+    ]
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_frn_veg.json",
+      "includeFields": ["不正なジオメトリ型"]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "04_都市設備_植生_検査結果一覧.csv",
+      "includeColumns": ["不正なジオメトリ型"]
+    }
+  },
+  "cityGmlPath": "udx/frn/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectResultOkFile": false,
+  "skip": false
+}
