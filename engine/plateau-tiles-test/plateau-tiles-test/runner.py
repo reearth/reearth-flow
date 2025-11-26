@@ -1,7 +1,6 @@
-import sys, os
+import os, shutil
 import tomllib
 import subprocess
-import shutil
 import zipfile
 from pathlib import Path
 from . import BASE_PATH, ENGINE_PATH, reset_dir

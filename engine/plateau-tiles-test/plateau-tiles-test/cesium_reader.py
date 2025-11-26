@@ -25,7 +25,8 @@ def extract_strings(binary_blob, buffer_views, values_idx, offsets_idx, count):
 def read_glb_json(filepath):
     with open(filepath, 'rb') as f:
         assert f.read(4) == b'glTF', "Not a valid GLB file"
-        _version = struct.unpack('<I', f.read(4))[0]
+        version = struct.unpack('<I', f.read(4))[0]
+        assert version == 2, "Only GLB version 2 supported"
         _length = struct.unpack('<I', f.read(4))[0]
         json_chunk_length = struct.unpack('<I', f.read(4))[0]
         assert f.read(4) == b'JSON', "Expected JSON chunk"
