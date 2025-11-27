@@ -7,6 +7,8 @@ use crate::types::{coordnum::CoordNum, point::Point};
 pub mod area2d;
 pub mod area3d;
 pub mod bool_ops;
+// the old bool_ops module is kept for reference
+// pub mod bool_ops_old;
 pub mod bounding_rect;
 pub mod bufferable;
 pub mod centroid;
