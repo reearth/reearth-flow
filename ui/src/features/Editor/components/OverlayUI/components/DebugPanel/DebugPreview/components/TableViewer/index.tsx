@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
@@ -82,28 +82,9 @@ const TableViewer: React.FC<Props> = memo(
       [onDoubleClick, handleShowFeatureDetails],
     );
 
-    useEffect(() => {
-      if (!selectedFeature || !detailsOverlayOpen || !featureIdMap) {
-        return;
-      }
-      const currId = selectedFeature.id;
-
-      const prevId = previousSelectedFeature.current
-        ? previousSelectedFeature.current.id
-        : null;
-
-      if (prevId !== currId) {
-        const matchingRow =
-          featureIdMap.get(JSON.stringify(currId)) ?? selectedFeature;
-        previousSelectedFeature.current = selectedFeature;
-        handleShowFeatureDetails(matchingRow);
-      }
-    }, [
-      handleShowFeatureDetails,
-      selectedFeature,
-      detailsOverlayOpen,
-      featureIdMap,
-    ]);
+    const handlePreviousSelectedFeature = useCallback((feature: any) => {
+      previousSelectedFeature.current = feature;
+    }, []);
 
     // Loading state
     if (!fileContent || !columnizer.tableData) {
@@ -163,9 +144,14 @@ const TableViewer: React.FC<Props> = memo(
         {/* Feature Details Overlay */}
         <FeatureDetailsOverlay
           feature={detailsFeature}
+          selectedFeature={selectedFeature}
+          previousSelectedFeature={previousSelectedFeature}
+          featureIdMap={featureIdMap}
           isOpen={detailsOverlayOpen}
-          onClose={handleCloseFeatureDetails}
           detectedGeometryType={detectedGeometryType}
+          setDetailsFeature={setDetailsFeature}
+          onPreviousSelectedFeature={handlePreviousSelectedFeature}
+          onClose={handleCloseFeatureDetails}
         />
       </div>
     );

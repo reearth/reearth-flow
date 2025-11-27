@@ -1,5 +1,5 @@
 import { ArrowLeftIcon } from "@phosphor-icons/react";
-import { memo, useMemo } from "react";
+import { memo, RefObject, useEffect, useMemo } from "react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -7,14 +7,25 @@ import { useT } from "@flow/lib/i18n";
 type Props = {
   feature: any;
   isOpen: boolean;
+  selectedFeature?: any;
+  featureIdMap: Map<string | number, any> | null;
+  previousSelectedFeature: RefObject<any>;
   onClose: () => void;
+  handleShowFeatureDetails?: (feature: any) => void;
+  onPreviousSelectedFeature: (feature: any) => void;
+  setDetailsFeature: (feature: any) => void;
   detectedGeometryType?: string | null;
 };
 
 const FeatureDetailsOverlay: React.FC<Props> = ({
   feature,
   isOpen,
+  selectedFeature,
+  previousSelectedFeature,
+  onPreviousSelectedFeature,
+  featureIdMap,
   onClose,
+  setDetailsFeature,
   detectedGeometryType,
 }) => {
   const t = useT();
@@ -39,6 +50,29 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
       geometry,
     };
   }, [feature]);
+
+  useEffect(() => {
+    if (!selectedFeature || !featureIdMap) {
+      return;
+    }
+    const currId = selectedFeature.id;
+    const prevId = previousSelectedFeature.current
+      ? previousSelectedFeature.current.id
+      : null;
+
+    if (prevId !== currId) {
+      const matchingRow =
+        featureIdMap.get(JSON.stringify(currId)) ?? selectedFeature;
+      onPreviousSelectedFeature(selectedFeature);
+      setDetailsFeature(matchingRow);
+    }
+  }, [
+    selectedFeature,
+    featureIdMap,
+    previousSelectedFeature,
+    setDetailsFeature,
+    onPreviousSelectedFeature,
+  ]);
 
   if (!isOpen || !feature || !processedFeature) {
     return null;
