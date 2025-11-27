@@ -108,9 +108,8 @@ jobs:
       - name: List artifacts
         run: ls -l server/api/dist
       - name: Download latest changelog
-        uses: dawidd6/action-download-artifact@268677152d06ba59fcec7a7f0b5d961b6ccd7e1e # v2.28.0
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
-          workflow: release.yml
           name: changelog-${{ needs.release.outputs.version }}
       - name: Create GitHub release
         uses: ncipollo/release-action@440c8c1cb0ed28b9f43e4d1d670870f059653174 # v1.16.0
