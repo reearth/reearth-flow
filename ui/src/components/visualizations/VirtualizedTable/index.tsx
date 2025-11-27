@@ -135,7 +135,7 @@ function VirtualizedTable<TData, TValue>({
   }, [selectedRow, data]);
 
   useEffect(() => {
-    if (selectedRowIndex !== -1 && selectedRow.properties?._originalId) {
+    if (selectedRowIndex !== -1 && selectedRow.id) {
       virtualizer.scrollToIndex(selectedRowIndex, {
         align: "start",
         behavior: "auto",

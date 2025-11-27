@@ -158,8 +158,7 @@ export default () => {
             return;
           }
 
-          const featureId =
-            selectedFeature.id || selectedFeature.properties?._originalId;
+          const featureId = selectedFeature.id;
           if (!featureId) {
             console.warn("No feature ID found for Cesium zoom");
             return;
@@ -212,7 +211,7 @@ export default () => {
                 const entityProps = entity.properties?.getValue();
                 if (entityProps) {
                   // Check if this entity has original GeoJSON feature data
-                  const originalId = entityProps._originalId || entityProps.id;
+                  const originalId = entityProps.id;
                   if (
                     originalId === featureId ||
                     JSON.stringify(originalId) === JSON.stringify(featureId)

@@ -45,7 +45,7 @@ const TableViewer: React.FC<Props> = memo(
 
       const map = new Map<string | number, any>();
       columnizer.tableData.forEach((row: any) => {
-        const id = row.id ?? row.properties?._originalId ?? row.properties?.id;
+        const id = row.id;
         if (id !== null && id !== undefined) {
           map.set(id, row);
         }
@@ -86,10 +86,7 @@ const TableViewer: React.FC<Props> = memo(
       if (!selectedFeature || !detailsOverlayOpen || !featureIdMap) {
         return;
       }
-      const currId =
-        selectedFeature.id ??
-        selectedFeature.properties?._originalId ??
-        selectedFeature.properties?.id;
+      const currId = selectedFeature.id;
 
       const prevId = previousSelectedFeature.current
         ? previousSelectedFeature.current.id
