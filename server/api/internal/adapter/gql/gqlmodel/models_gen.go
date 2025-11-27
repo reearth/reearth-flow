@@ -315,6 +315,7 @@ type Job struct {
 	Workspace         *Workspace  `json:"workspace,omitempty"`
 	WorkspaceID       ID          `json:"workspaceId"`
 	Logs              []*Log      `json:"logs,omitempty"`
+	Variables         JSON        `json:"variables,omitempty"`
 }
 
 func (Job) IsNode()        {}

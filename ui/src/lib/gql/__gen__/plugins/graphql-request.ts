@@ -394,6 +394,7 @@ export type Job = Node & {
   startedAt: Scalars['DateTime']['output'];
   status: JobStatus;
   userFacingLogsURL?: Maybe<Scalars['String']['output']>;
+  variables?: Maybe<Scalars['JSON']['output']>;
   workerLogsURL?: Maybe<Scalars['String']['output']>;
   workspace?: Maybe<Workspace>;
   workspaceId: Scalars['ID']['output'];

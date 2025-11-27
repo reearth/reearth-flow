@@ -244,6 +244,7 @@ type ComplexityRoot struct {
 		StartedAt         func(childComplexity int) int
 		Status            func(childComplexity int) int
 		UserFacingLogsURL func(childComplexity int) int
+		Variables         func(childComplexity int) int
 		WorkerLogsURL     func(childComplexity int) int
 		Workspace         func(childComplexity int) int
 		WorkspaceID       func(childComplexity int) int
@@ -1384,6 +1385,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Job.UserFacingLogsURL(childComplexity), true
+	case "Job.variables":
+		if e.complexity.Job.Variables == nil {
+			break
+		}
+
+		return e.complexity.Job.Variables(childComplexity), true
 	case "Job.workerLogsURL":
 		if e.complexity.Job.WorkerLogsURL == nil {
 			break
@@ -3494,7 +3501,6 @@ input DeleteDeploymentInput {
 
 input ExecuteDeploymentInput {
   deploymentId: ID!
-  # variables: JSON
 }
 
 input GetHeadInput {
@@ -3618,6 +3624,7 @@ extend type Query {
   workspace: Workspace
   workspaceId: ID!
   logs(since: DateTime!): [Log]
+  variables: JSON
 }
 
 enum JobStatus {
@@ -3975,7 +3982,6 @@ extend type Mutation {
     authToken: String
     timeInterval: TimeInterval
     variables: JSON
-    # enabled: Boolean
 }
 
 # Enums
@@ -4016,7 +4022,6 @@ input CreateTriggerInput {
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
     variables: JSON
-    # enabled: Boolean
 }
 
 input UpdateTriggerInput {
@@ -4026,7 +4031,6 @@ input UpdateTriggerInput {
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
     variables: JSON
-    # enabled: Boolean
 }
 
 # Connection
@@ -7571,6 +7575,8 @@ func (ec *executionContext) fieldContext_CancelJobPayload_job(_ context.Context,
 				return ec.fieldContext_Job_workspaceId(ctx, field)
 			case "logs":
 				return ec.fieldContext_Job_logs(ctx, field)
+			case "variables":
+				return ec.fieldContext_Job_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -9037,6 +9043,35 @@ func (ec *executionContext) fieldContext_Job_logs(ctx context.Context, field gra
 	return fc, nil
 }
 
+func (ec *executionContext) _Job_variables(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Job_variables,
+		func(ctx context.Context) (any, error) {
+			return obj.Variables, nil
+		},
+		nil,
+		ec.marshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Job_variables(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Job",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type JSON does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _JobConnection_nodes(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.JobConnection) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -9089,6 +9124,8 @@ func (ec *executionContext) fieldContext_JobConnection_nodes(_ context.Context, 
 				return ec.fieldContext_Job_workspaceId(ctx, field)
 			case "logs":
 				return ec.fieldContext_Job_logs(ctx, field)
+			case "variables":
+				return ec.fieldContext_Job_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -9214,6 +9251,8 @@ func (ec *executionContext) fieldContext_JobPayload_job(_ context.Context, field
 				return ec.fieldContext_Job_workspaceId(ctx, field)
 			case "logs":
 				return ec.fieldContext_Job_logs(ctx, field)
+			case "variables":
+				return ec.fieldContext_Job_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -14347,6 +14386,8 @@ func (ec *executionContext) fieldContext_Query_job(ctx context.Context, field gr
 				return ec.fieldContext_Job_workspaceId(ctx, field)
 			case "logs":
 				return ec.fieldContext_Job_logs(ctx, field)
+			case "variables":
+				return ec.fieldContext_Job_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -14980,6 +15021,8 @@ func (ec *executionContext) fieldContext_RunProjectPayload_job(_ context.Context
 				return ec.fieldContext_Job_workspaceId(ctx, field)
 			case "logs":
 				return ec.fieldContext_Job_logs(ctx, field)
+			case "variables":
+				return ec.fieldContext_Job_variables(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -21587,6 +21630,8 @@ func (ec *executionContext) _Job(ctx context.Context, sel ast.SelectionSet, obj 
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "variables":
+			out.Values[i] = ec._Job_variables(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
