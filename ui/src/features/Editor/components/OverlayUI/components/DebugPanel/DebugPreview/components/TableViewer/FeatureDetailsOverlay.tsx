@@ -30,7 +30,6 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
         ([key]) => !key.startsWith("_") && key !== "id",
       ),
     );
-    console.log("LOCAL FEATURE DETAILS:", filteredProperties);
 
     return {
       id: feature.id,
