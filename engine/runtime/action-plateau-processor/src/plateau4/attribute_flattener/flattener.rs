@@ -4,6 +4,7 @@ use indexmap::IndexMap;
 use reearth_flow_types::{Attribute, AttributeValue};
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(super) struct Flattener {
     pub(super) risk_to_attribute_definitions: HashMap<String, IndexMap<String, AttributeValue>>,
 }
@@ -257,6 +258,7 @@ impl Flattener {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(super) struct CommonAttributeProcessor {
     max_lod: i64,
     gml_path_to_max_lod: HashMap<String, i64>,

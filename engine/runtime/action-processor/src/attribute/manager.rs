@@ -82,6 +82,7 @@ impl ProcessorFactory for AttributeManagerFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct AttributeManager {
     global_params: Option<HashMap<String, serde_json::Value>>,
     operations: Vec<Operate>,
@@ -118,6 +119,7 @@ enum Method {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 enum Operate {
     Convert {
         expr: Option<rhai::AST>,

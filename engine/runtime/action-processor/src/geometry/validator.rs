@@ -26,6 +26,7 @@ static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
 static REJECTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("rejected"));
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct GeometryValidatorFactory;
 
 impl ProcessorFactory for GeometryValidatorFactory {
@@ -85,6 +86,7 @@ impl ProcessorFactory for GeometryValidatorFactory {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub enum ValidationType {
     #[serde(rename = "duplicatePoints")]
     DuplicatePoints,
@@ -118,6 +120,7 @@ impl From<ValidationType> for reearth_flow_geometry::validation::ValidationType 
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct ValidationResult {
     error_count: usize,
     details: Vec<serde_json::Value>,
@@ -154,6 +157,7 @@ impl From<ValidationProblemReport> for ValidationResult {
 /// Configure which validation checks to perform on feature geometries
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct GeometryValidator {
     /// # Validation Types
     /// List of validation checks to perform on the geometry (duplicate points, corrupt geometry, self-intersection)

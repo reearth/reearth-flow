@@ -16,6 +16,7 @@ use serde_json::Value;
 use super::errors::PlateauProcessorError;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct BuildingInstallationGeometryTypeExtractorFactory;
 
 impl ProcessorFactory for BuildingInstallationGeometryTypeExtractorFactory {
@@ -56,6 +57,7 @@ impl ProcessorFactory for BuildingInstallationGeometryTypeExtractorFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct BuildingInstallationGeometryTypeExtractor;
 
 impl Processor for BuildingInstallationGeometryTypeExtractor {

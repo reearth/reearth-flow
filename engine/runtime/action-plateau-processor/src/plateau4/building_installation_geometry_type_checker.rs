@@ -39,6 +39,7 @@ impl From<Error> for PlateauProcessorError {
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct BuildingInstallationGeometryTypeCheckerFactory;
 
 impl ProcessorFactory for BuildingInstallationGeometryTypeCheckerFactory {
@@ -79,6 +80,7 @@ impl ProcessorFactory for BuildingInstallationGeometryTypeCheckerFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct BuildingInstallationGeometryTypeChecker;
 
 impl Processor for BuildingInstallationGeometryTypeChecker {

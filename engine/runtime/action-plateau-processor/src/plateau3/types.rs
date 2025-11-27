@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct SchemaFeature {
     pub(crate) name: String,
     pub(crate) r#type: String,
@@ -15,6 +16,7 @@ pub(crate) struct SchemaFeature {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct Schema {
     pub(crate) features: HashMap<String, Vec<SchemaFeature>>,
     pub(crate) complex_types: HashMap<String, Vec<SchemaFeature>>,

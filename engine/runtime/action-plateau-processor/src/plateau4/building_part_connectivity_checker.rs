@@ -17,6 +17,7 @@ use serde_json::Value;
 use super::errors::PlateauProcessorError;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct BuildingPartConnectivityCheckerFactory;
 
 impl ProcessorFactory for BuildingPartConnectivityCheckerFactory {
@@ -77,6 +78,7 @@ impl ProcessorFactory for BuildingPartConnectivityCheckerFactory {
 /// Configure how to check connectivity between BuildingParts
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct BuildingPartConnectivityCheckerParam {
     /// # Building ID Attribute
     /// Attribute containing the parent Building ID (default: "gmlId")
@@ -127,6 +129,7 @@ impl Default for BuildingPartConnectivityCheckerParam {
 }
 
 #[derive(Debug)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct BuildingPartConnectivityChecker {
     params: BuildingPartConnectivityCheckerParam,
     buffer: Mutex<HashMap<GroupKey, Vec<BuildingPartInfo>>>,
@@ -142,6 +145,7 @@ impl Clone for BuildingPartConnectivityChecker {
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct GroupKey {
     building_id: String,
     lod: String,
@@ -149,6 +153,7 @@ struct GroupKey {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct BuildingPartInfo {
     part_id: String,
     geometry: reearth_flow_types::Geometry,

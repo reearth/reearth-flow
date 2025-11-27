@@ -1,6 +1,8 @@
 [workspace]
 exclude = ["runtime/action-wasm-processor"]
 members = [
+  "analyzer",
+  "analyzer/src-tauri",
   "cli",
   "plateau-gis-quality-checker/src-tauri",
   "plateau-tiles-test",
@@ -54,6 +56,9 @@ reearth-flow-action-processor = { path = "runtime/action-processor" }
 reearth-flow-action-python-processor = { path = "runtime/action-python-processor" }
 reearth-flow-action-sink = { path = "runtime/action-sink" }
 reearth-flow-action-source = { path = "runtime/action-source" }
+reearth-flow-analyzer = { path = "analyzer" }
+reearth-flow-analyzer-core = { path = "runtime/analyzer-core" }
+reearth-flow-analyzer-core-derive = { path = "runtime/analyzer-core-derive" }
 reearth-flow-common = { path = "runtime/common" }
 reearth-flow-eval-expr = { path = "runtime/eval-expr" }
 reearth-flow-geometry = { path = "runtime/geometry" }
@@ -108,6 +113,7 @@ crossbeam = "0.8.4"
 crossbeam-channel = "0.5.15"
 crossbeam-utils = "0.8.21"
 csv = "1.4.0"
+datasize = "0.2.15"
 directories = "6.0.0"
 draco-oxide = "0.1.0-alpha.2"
 earcut = "0.4.4"

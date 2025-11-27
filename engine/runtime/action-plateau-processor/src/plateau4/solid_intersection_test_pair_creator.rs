@@ -17,6 +17,7 @@ static PORT_A: Lazy<Port> = Lazy::new(|| Port::new("A"));
 static PORT_B: Lazy<Port> = Lazy::new(|| Port::new("B"));
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct SolidIntersectionTestPairCreatorFactory;
 
 impl ProcessorFactory for SolidIntersectionTestPairCreatorFactory {
@@ -79,6 +80,7 @@ impl ProcessorFactory for SolidIntersectionTestPairCreatorFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct SolidIntersectionTestPairCreatorParam {
     /// Attribute name to store the pair ID (default: "pair_id")
     #[serde(default = "default_pair_id_attribute")]
@@ -130,6 +132,7 @@ impl GmlIdPair {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct SolidIntersectionTestPairCreator {
     pair_id_attribute: String,
     list_attribute: String,

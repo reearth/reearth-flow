@@ -28,6 +28,7 @@ pub(crate) const ATTR_IS_NOT_CLOSED: &str = "__is_not_closed";
 pub(crate) const ATTR_IS_WRONG_ORIENTATION: &str = "__is_wrong_orientation";
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct FaceExtractorFactory;
 
 impl ProcessorFactory for FaceExtractorFactory {
@@ -96,6 +97,7 @@ impl ProcessorFactory for FaceExtractorFactory {
 /// Always checks vertex count, closure, and orientation of polygons in TIN meshes.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct FaceExtractorParam {
     /// Attribute name for city_gml_path (default: "_gml_path")
     #[serde(default = "default_gml_path_attribute")]
@@ -128,6 +130,7 @@ impl ValidationResult {
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct FileStatistics {
     num_instances: usize,
     num_incorrect_num_vertices: usize,
@@ -138,6 +141,7 @@ struct FileStatistics {
 type BufferResult = (String, FileStatistics, Vec<Feature>, Vec<Feature>, Feature);
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct FileBuffer {
     current_file: Option<String>,
     stats: FileStatistics,
@@ -199,6 +203,7 @@ impl FileBuffer {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct FaceExtractor {
     params: FaceExtractorParam,
     buffer: FileBuffer,

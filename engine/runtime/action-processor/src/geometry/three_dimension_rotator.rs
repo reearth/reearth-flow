@@ -19,6 +19,7 @@ use serde_json::Value;
 use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ThreeDimensionRotatorFactory;
 
 impl ProcessorFactory for ThreeDimensionRotatorFactory {
@@ -109,6 +110,7 @@ impl ProcessorFactory for ThreeDimensionRotatorFactory {
 /// Configure the 3D rotation parameters including axis, origin point, and angle
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ThreeDimensionRotatorParam {
     /// # Angle in Degrees
     /// Rotation angle in degrees around the specified axis
@@ -134,6 +136,7 @@ pub struct ThreeDimensionRotatorParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ThreeDimensionRotator {
     global_params: Option<HashMap<String, serde_json::Value>>,
     angle_degree: rhai::AST,

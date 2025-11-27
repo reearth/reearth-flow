@@ -25,6 +25,7 @@ pub trait SchemaCache: Send + Sync {
 
 /// No-op implementation when cache is not available
 #[allow(dead_code)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct NoOpSchemaCache;
 
 impl SchemaCache for NoOpSchemaCache {
@@ -52,6 +53,7 @@ impl SchemaCache for NoOpSchemaCache {
 }
 
 /// Filesystem-based implementation of SchemaCache
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct FileSystemSchemaCache {
     root_path: PathBuf,
 }

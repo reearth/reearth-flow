@@ -18,3 +18,10 @@ use nutype::nutype;
     )
 )]
 pub struct Expr(String);
+
+#[cfg(feature = "analyzer")]
+impl reearth_flow_analyzer_core::DataSize for Expr {
+    fn data_size(&self) -> usize {
+        self.as_ref().len()
+    }
+}

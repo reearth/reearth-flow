@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 use std::vec;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct TriangularMesh<T: CoordNum, Z: CoordNum = T> {
     // Vertices of the solid boundary. No duplicate vertices.
     vertices: Vec<Coordinate<T, Z>>,

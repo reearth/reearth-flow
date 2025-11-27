@@ -16,6 +16,7 @@ use serde_json::Value;
 use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct VertexCounterFactory;
 
 impl ProcessorFactory for VertexCounterFactory {
@@ -76,6 +77,7 @@ impl ProcessorFactory for VertexCounterFactory {
 /// Configure where to store the count of vertices found in geometries
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct VertexCounterParam {
     /// # Output Attribute
     /// Name of the attribute where the vertex count will be stored as a number
@@ -83,6 +85,7 @@ pub struct VertexCounterParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct VertexCounter {
     output_attribute: Attribute,
 }

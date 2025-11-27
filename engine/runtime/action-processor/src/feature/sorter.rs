@@ -77,6 +77,7 @@ impl ProcessorFactory for FeatureSorterFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct FeatureSorter {
     params: FeatureSorterParam,
     buffer: HashMap<AttributeValue, Vec<Feature>>,
@@ -87,6 +88,7 @@ struct FeatureSorter {
 /// Configuration for sorting features based on attribute values.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct FeatureSorterParam {
     /// Attributes to use for sorting features (sort order based on attribute order)
     attributes: Vec<Attribute>,
@@ -95,6 +97,7 @@ struct FeatureSorterParam {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, JsonSchema)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 enum Order {
     #[serde(rename = "ascending")]
     Asc,

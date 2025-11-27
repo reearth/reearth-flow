@@ -19,8 +19,10 @@ use serde_json::Value;
 use super::errors::FeatureProcessorError;
 
 #[derive(Debug)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct AtomicCounterMap {
     start: i64,
+    #[cfg_attr(feature = "analyzer", data_size(skip))]
     inner: parking_lot::Mutex<HashMap<String, AtomicUsize>>,
 }
 
@@ -118,6 +120,7 @@ impl ProcessorFactory for FeatureCounterFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct FeatureCounter {
     counter: AtomicCounterMap,
     params: FeatureCounterParam,
@@ -127,6 +130,7 @@ struct FeatureCounter {
 /// Configure how features are counted and grouped, and where to store the count
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct FeatureCounterParam {
     /// # Start Count
     /// Starting value for the counter

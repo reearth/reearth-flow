@@ -17,6 +17,7 @@ use super::polygon::Polygon;
 use super::traits::{Elevation, Surface};
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, Hash, Eq, PartialEq)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct Triangle<T: CoordNum = f64, Z: CoordNum = f64>(
     pub(crate) Coordinate<T, Z>,
     pub(crate) Coordinate<T, Z>,

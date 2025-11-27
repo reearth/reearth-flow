@@ -85,6 +85,7 @@ impl ProcessorFactory for RhaiCallerFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct RhaiCaller {
     global_params: Option<HashMap<String, serde_json::Value>>,
     is_target: rhai::AST,

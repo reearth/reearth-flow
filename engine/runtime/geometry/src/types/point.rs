@@ -19,6 +19,7 @@ use super::coordnum::{CoordFloat, CoordNum, CoordNumT};
 use super::no_value::NoValue;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Debug, Hash, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct Point<T: CoordNum = f64, Z: CoordNum = f64>(pub Coordinate<T, Z>);
 
 pub type Point2D<T> = Point<T, NoValue>;

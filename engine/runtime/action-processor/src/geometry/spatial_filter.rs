@@ -81,6 +81,7 @@ impl ProcessorFactory for SpatialFilterFactory {
     title = "SpatialFilter Parameters",
     description = "Configure spatial relationship testing between filter and candidate geometries"
 )]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct SpatialFilterParams {
     /// # Spatial Predicate
     /// The spatial relationship to test between filter and candidate geometries
@@ -114,6 +115,7 @@ impl Default for SpatialFilterParams {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub enum SpatialPredicate {
     /// Filter geometry completely contains candidate
     Contains,
@@ -137,6 +139,7 @@ pub enum SpatialPredicate {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct SpatialFilter {
     params: SpatialFilterParams,
     filters: Vec<Feature>,

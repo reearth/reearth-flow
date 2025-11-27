@@ -12,6 +12,14 @@ mod utils;
 
 use std::env;
 
+// When analyzer feature is enabled, use the custom allocator that tracks memory usage
+#[cfg(feature = "analyzer")]
+use reearth_flow_analyzer::AnalyzerAllocator;
+
+#[cfg(feature = "analyzer")]
+#[global_allocator]
+static GLOBAL: AnalyzerAllocator = AnalyzerAllocator::new(std::alloc::System);
+
 use colored::{Color, Colorize};
 
 use crate::cli::{build_cli, CliCommand};

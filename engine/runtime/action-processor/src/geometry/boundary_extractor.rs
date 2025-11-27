@@ -77,6 +77,7 @@ impl ProcessorFactory for BoundaryExtractorFactory {
 /// Configuration for extracting boundaries from geometries.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct BoundaryExtractorParams {
     /// Whether to keep features with empty boundaries (default: false)
     #[serde(default)]
@@ -88,6 +89,7 @@ pub struct BoundaryExtractorParams {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct BoundaryExtractor {
     params: BoundaryExtractorParams,
 }

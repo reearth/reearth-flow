@@ -87,6 +87,7 @@ impl ProcessorFactory for FeatureTransformerFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct FeatureTransformer {
     global_params: Option<HashMap<String, serde_json::Value>>,
     transformers: Vec<CompiledTransform>,
@@ -110,6 +111,7 @@ struct Transform {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct CompiledTransform {
     expr: rhai::AST,
 }

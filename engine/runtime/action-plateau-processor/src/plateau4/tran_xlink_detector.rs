@@ -40,6 +40,7 @@ enum Error {
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct TransportationXlinkDetectorFactory;
 
 impl ProcessorFactory for TransportationXlinkDetectorFactory {
@@ -108,11 +109,13 @@ impl ProcessorFactory for TransportationXlinkDetectorFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct TransportationXlinkDetectorParam {
     city_gml_path: Expr,
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct TransportationXlinkDetector {
     city_gml_path: rhai::AST,
 }

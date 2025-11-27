@@ -10,8 +10,14 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[features]
+default = []
+analyzer = ["reearth-flow-analyzer", "reearth-flow-analyzer-core", "reearth-flow-types/analyzer"]
+
 [dependencies]
 reearth-flow-action-log.workspace = true
+reearth-flow-analyzer = { workspace = true, optional = true }
+reearth-flow-analyzer-core = { workspace = true, optional = true }
 reearth-flow-common.workspace = true
 reearth-flow-eval-expr.workspace = true
 reearth-flow-state.workspace = true

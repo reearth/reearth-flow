@@ -1,3 +1,4 @@
+pub mod analyzer;
 pub mod builder_dag;
 pub mod dag_schemas;
 pub mod epoch;

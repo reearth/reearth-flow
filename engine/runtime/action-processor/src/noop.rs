@@ -10,6 +10,7 @@ use reearth_flow_runtime::{
 use serde_json::Value;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct NoopProcessorFactory;
 
 impl ProcessorFactory for NoopProcessorFactory {
@@ -49,6 +50,7 @@ impl ProcessorFactory for NoopProcessorFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct NoopProcessor;
 
 impl Processor for NoopProcessor {

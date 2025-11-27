@@ -14,6 +14,15 @@ version.workspace = true
 name = "reearth-flow"
 path = "src/main.rs"
 
+[features]
+default = []
+analyzer = [
+    "reearth-flow-runtime/analyzer",
+    "reearth-flow-runner/analyzer",
+    "reearth-flow-action-processor/analyzer",
+    "dep:reearth-flow-analyzer",
+]
+
 [dependencies]
 reearth-flow-action-log.workspace = true
 reearth-flow-action-plateau-processor.workspace = true
@@ -21,6 +30,7 @@ reearth-flow-action-processor.workspace = true
 reearth-flow-action-python-processor.workspace = true
 reearth-flow-action-sink.workspace = true
 reearth-flow-action-source.workspace = true
+reearth-flow-analyzer = { workspace = true, optional = true }
 reearth-flow-common.workspace = true
 reearth-flow-runner.workspace = true
 reearth-flow-runtime.workspace = true

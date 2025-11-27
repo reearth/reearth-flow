@@ -24,6 +24,7 @@ use crate::material::{Texture, X3DMaterial};
 static EPSILON: f64 = 1e-10;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 #[serde(rename_all = "camelCase")]
 pub enum GeometryValue {
     None,
@@ -56,6 +57,7 @@ impl GeometryValue {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct Geometry {
     pub epsg: Option<EpsgCode>,
     pub value: GeometryValue,
@@ -93,6 +95,7 @@ impl Geometry {
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct CityGmlGeometry {
     pub gml_geometries: Vec<GmlGeometry>,
     pub materials: Vec<X3DMaterial>,
@@ -299,6 +302,7 @@ impl From<CityGmlGeometry> for FlowGeometry2D {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct GmlGeometry {
     pub id: Option<String>,
     #[serde(rename = "type")]
@@ -358,6 +362,7 @@ impl GmlGeometry {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub enum GeometryType {
     /// Polygons (solids)
     Solid,

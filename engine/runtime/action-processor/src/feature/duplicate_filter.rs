@@ -53,6 +53,7 @@ impl ProcessorFactory for FeatureDuplicateFilterFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct FeatureDuplicateFilter {
     buffer: HashSet<Feature>,
 }

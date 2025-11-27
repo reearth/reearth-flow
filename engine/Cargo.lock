@@ -6138,6 +6138,7 @@ dependencies = [
  "quick-xml 0.37.5",
  "rayon",
  "reearth-flow-action-log",
+ "reearth-flow-analyzer-core",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-geometry",
@@ -6183,6 +6184,7 @@ dependencies = [
  "quick-xml 0.37.5",
  "rayon",
  "reearth-flow-action-log",
+ "reearth-flow-analyzer-core",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-geometry",
@@ -6212,6 +6214,7 @@ version = "0.0.217"
 dependencies = [
  "indexmap 2.12.1",
  "once_cell",
+ "reearth-flow-analyzer-core",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-geometry",
@@ -6346,6 +6349,65 @@ dependencies = [
 ]
 
 [[package]]
+name = "reearth-flow-analyzer"
+version = "0.0.199"
+dependencies = [
+ "chrono",
+ "crossbeam-channel",
+ "directories",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.17",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "reearth-flow-analyzer-app"
+version = "0.0.1"
+dependencies = [
+ "directories",
+ "log",
+ "reearth-flow-analyzer",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-log",
+ "thiserror 2.0.17",
+ "uuid",
+]
+
+[[package]]
+name = "reearth-flow-analyzer-core"
+version = "0.0.199"
+dependencies = [
+ "bytes",
+ "chrono",
+ "flatgeom",
+ "indexmap 2.12.1",
+ "nusamai-citygml",
+ "parking_lot",
+ "reearth-flow-analyzer-core-derive",
+ "regex",
+ "rhai",
+ "serde_json",
+ "url",
+ "uuid",
+]
+
+[[package]]
+name = "reearth-flow-analyzer-core-derive"
+version = "0.0.199"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.111",
+]
+
+[[package]]
 name = "reearth-flow-cli"
 version = "0.0.217"
 dependencies = [
@@ -6365,6 +6427,7 @@ dependencies = [
  "reearth-flow-action-python-processor",
  "reearth-flow-action-sink",
  "reearth-flow-action-source",
+ "reearth-flow-analyzer",
  "reearth-flow-common",
  "reearth-flow-runner",
  "reearth-flow-runtime",
@@ -6403,6 +6466,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "rayon",
+ "reearth-flow-analyzer-core",
  "regex",
  "serde",
  "serde_json",
@@ -6480,6 +6544,7 @@ dependencies = [
  "num-traits",
  "nusamai-projection",
  "parking_lot",
+ "reearth-flow-analyzer-core",
  "reearth-flow-common",
  "robust 1.2.0",
  "rstar 0.12.2",
@@ -6578,6 +6643,8 @@ dependencies = [
  "petgraph 0.6.5",
  "rayon",
  "reearth-flow-action-log",
+ "reearth-flow-analyzer",
+ "reearth-flow-analyzer-core",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-state",
@@ -6719,6 +6786,7 @@ dependencies = [
  "nusamai-projection",
  "nutype",
  "once_cell",
+ "reearth-flow-analyzer-core",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-geometry",

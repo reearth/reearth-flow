@@ -76,6 +76,7 @@ impl ProcessorFactory for BuffererFactory {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 enum BufferType {
     /// # 2D Area Buffer
     /// Creates a 2D polygon buffer around the input geometry
@@ -87,6 +88,7 @@ enum BufferType {
 /// Configure how to create buffers around input geometries
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct Bufferer {
     /// # Buffer Type
     /// The type of buffer to create around the input geometry

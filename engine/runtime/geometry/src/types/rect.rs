@@ -18,6 +18,7 @@ use super::{
 };
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Debug, Hash)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct Rect<T: CoordNum = f64, Z: CoordNum = f64> {
     pub(crate) min: Coordinate<T, Z>,
     pub(crate) max: Coordinate<T, Z>,

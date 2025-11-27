@@ -15,6 +15,7 @@ use serde_json::Value;
 use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ElevationExtractorFactory;
 
 impl ProcessorFactory for ElevationExtractorFactory {
@@ -75,6 +76,7 @@ impl ProcessorFactory for ElevationExtractorFactory {
 /// Configure where to store the extracted elevation value from geometry coordinates
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ElevationExtractorParam {
     /// # Output Attribute
     /// Name of the attribute where the extracted elevation value will be stored
@@ -82,6 +84,7 @@ pub struct ElevationExtractorParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ElevationExtractor {
     output_attribute: Attribute,
 }

@@ -141,6 +141,7 @@ impl ProcessorFactory for AttributeConversionTableFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct AttributeConversionTable {
     rules: Vec<AttributeConversionTableRule>,
     conversion_table: HashMap<uuid::Uuid, HashMap<String, AttributeValue>>,
@@ -167,6 +168,7 @@ struct AttributeConversionTableParam {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub enum ConversionTableFormat {
     Csv,
     Tsv,
@@ -175,6 +177,7 @@ pub enum ConversionTableFormat {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct AttributeConversionTableRule {
     /// # Attributes to convert from
     feature_froms: Vec<Attribute>,

@@ -55,6 +55,7 @@ impl From<Response> for IndexMap<Attribute, AttributeValue> {
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct UdxFolderExtractorFactory;
 
 impl ProcessorFactory for UdxFolderExtractorFactory {
@@ -126,6 +127,7 @@ impl ProcessorFactory for UdxFolderExtractorFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct UdxFolderExtractor {
     global_params: Option<HashMap<String, serde_json::Value>>,
     city_gml_path: rhai::AST,
@@ -135,6 +137,7 @@ pub struct UdxFolderExtractor {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct UdxFolderExtractorParam {
     city_gml_path: Expr,
     codelists_path: Option<String>,

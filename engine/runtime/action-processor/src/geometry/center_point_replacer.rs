@@ -56,6 +56,7 @@ impl ProcessorFactory for CenterPointReplacerFactory {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct CenterPointReplacer;
 
 impl Processor for CenterPointReplacer {

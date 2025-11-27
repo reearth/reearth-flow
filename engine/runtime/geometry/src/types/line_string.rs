@@ -35,6 +35,7 @@ use super::{no_value::NoValue, point::Point};
 use crate::point;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct LineString<T: CoordNum = f64, Z: CoordNum = f64>(pub Vec<Coordinate<T, Z>>);
 
 pub type LineString2D<T> = LineString<T, NoValue>;

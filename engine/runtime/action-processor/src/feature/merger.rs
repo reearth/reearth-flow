@@ -139,6 +139,7 @@ impl ProcessorFactory for FeatureMergerFactory {
 /// Configuration for merging requestor and supplier features based on matching attributes or expressions.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct FeatureMergerParam {
     /// Attributes from requestor features to use for matching (alternative to requestor_attribute_value)
     requestor_attribute: Option<Vec<Attribute>>,
@@ -153,6 +154,7 @@ pub struct FeatureMergerParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct FeatureMerger {
     global_params: Option<HashMap<String, serde_json::Value>>,
     params: CompiledParam,
@@ -163,6 +165,7 @@ pub struct FeatureMerger {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct CompiledParam {
     requestor_attribute: Option<Vec<Attribute>>,
     supplier_attribute: Option<Vec<Attribute>>,

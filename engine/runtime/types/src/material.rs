@@ -8,6 +8,7 @@ use url::Url;
 
 /// (CityGML's X3DMaterial)
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct X3DMaterial {
     pub diffuse_color: Color,
     pub specular_color: Color,
@@ -45,6 +46,7 @@ impl Default for X3DMaterial {
 }
 
 #[derive(Debug, Serialize, Clone, PartialEq, Deserialize)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct Material {
     pub base_color: [f32; 4],
     pub base_texture: Option<Texture>,
@@ -99,6 +101,7 @@ impl Material {
 }
 
 #[derive(Debug, Serialize, Clone, Hash, PartialEq, Eq, Deserialize)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct Texture {
     pub uri: Url,
 }
@@ -153,6 +156,7 @@ impl From<nusamai_plateau::appearance::Texture> for Texture {
 }
 
 #[derive(Debug, Serialize, Clone, Hash, PartialEq, Eq, Deserialize)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct Image {
     pub uri: Url,
 }

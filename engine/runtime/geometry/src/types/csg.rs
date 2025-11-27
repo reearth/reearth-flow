@@ -13,6 +13,7 @@ use crate::{
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct CSG<T: CoordNum = f64, Z: CoordNum = f64> {
     left: CSGChild<T, Z>,
     right: CSGChild<T, Z>,
@@ -21,6 +22,7 @@ pub struct CSG<T: CoordNum = f64, Z: CoordNum = f64> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub enum CSGChild<T: CoordNum = f64, Z: CoordNum = f64> {
     Solid(Solid<T, Z>),
     CSG(Box<CSG<T, Z>>),
@@ -28,6 +30,7 @@ pub enum CSGChild<T: CoordNum = f64, Z: CoordNum = f64> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub enum CSGOperation {
     Union,
     Intersection,

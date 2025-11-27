@@ -51,6 +51,7 @@ static MUTABLE_PREFIXES: Lazy<HashMap<&str, (&str, &str)>> = Lazy::new(|| {
 });
 
 #[derive(Error, Debug)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) enum Error {
     #[error("Parse error: {0}")]
     Parse(String),
@@ -58,6 +59,7 @@ pub(crate) enum Error {
 
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct Record {
     pub(crate) feature_prefix: String,
     pub(crate) feature_type: String,
@@ -115,6 +117,7 @@ impl From<Vec<String>> for Record {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct FeatureTypes(HashMap<String, Vec<String>>);
 
 impl FeatureTypes {
@@ -152,6 +155,7 @@ impl From<FeatureTypes> for AttributeValue {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct ObjectListMap(HashMap<String, ObjectList>);
 
 impl ObjectListMap {
@@ -191,6 +195,7 @@ impl From<AttributeValue> for ObjectListMap {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct ObjectList(HashMap<String, ObjectListValue>);
 
 impl ObjectList {
@@ -241,6 +246,7 @@ impl From<ObjectList> for AttributeValue {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct ObjectListValue {
     pub(crate) required: Vec<String>,
     pub(crate) target: Vec<String>,

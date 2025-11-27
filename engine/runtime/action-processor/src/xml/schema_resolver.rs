@@ -9,6 +9,7 @@ use crate::xml::schema_fetcher::SchemaFetcher;
 
 /// Resolved schema with its content and dependencies
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ResolvedSchema {
     #[allow(dead_code)]
     pub url: String,
@@ -19,13 +20,16 @@ pub struct ResolvedSchema {
 
 /// Result of schema resolution containing all schemas and their relationships
 #[derive(Debug)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct SchemaResolutionResult {
     pub schemas: HashMap<String, ResolvedSchema>,
 }
 
 /// Resolves XML Schema dependencies by recursively fetching and processing
 /// import/include directives
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct XmlSchemaResolver {
+    #[cfg_attr(feature = "analyzer", data_size(skip))]
     fetcher: Arc<dyn SchemaFetcher>,
     cache: Arc<parking_lot::Mutex<HashMap<String, String>>>,
 }

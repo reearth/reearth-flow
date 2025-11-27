@@ -17,6 +17,7 @@ use super::point::Point;
 use super::traits::Elevation;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct MultiPoint<T: CoordNum = f64, Z: CoordNum = f64>(pub Vec<Point<T, Z>>);
 
 pub type MultiPoint2D<T> = MultiPoint<T, NoValue>;

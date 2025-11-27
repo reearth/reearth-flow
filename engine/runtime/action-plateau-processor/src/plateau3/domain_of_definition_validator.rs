@@ -275,6 +275,7 @@ struct Envelope {
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct DomainOfDefinitionValidatorFactory;
 
 impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
@@ -320,6 +321,7 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
 type FeatureBuffer = Vec<(Vec<Feature>, HashMap<String, Vec<HashMap<String, String>>>)>;
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct DomainOfDefinitionValidator {
     feature_buffer: FeatureBuffer,
     codelists: Option<HashMap<String, HashMap<String, String>>>,
@@ -328,6 +330,7 @@ pub struct DomainOfDefinitionValidator {
 #[allow(dead_code)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct DomainOfDefinitionValidatorParam {
     city_gml_path: Expr,
     codelists_path: Option<String>,

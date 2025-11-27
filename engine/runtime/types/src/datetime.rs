@@ -6,6 +6,7 @@ use std::str;
 use std::str::FromStr;
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize, Hash)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct DateTime(pub ChronoDateTime<Utc>);
 
 impl Default for DateTime {

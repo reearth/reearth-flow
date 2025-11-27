@@ -1,6 +1,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) enum FileProcessorError {
     #[error("Property Extractor Factory error: {0}")]
     PropertyExtractorFactory(String),

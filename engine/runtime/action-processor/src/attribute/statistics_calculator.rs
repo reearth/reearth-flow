@@ -94,6 +94,7 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct StatisticsCalculator {
     group_id: Option<Attribute>,
     group_by: Option<Vec<Attribute>>,
@@ -103,6 +104,7 @@ struct StatisticsCalculator {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct CompiledCalculation {
     new_attribute: Attribute,
     expr: rhai::AST,

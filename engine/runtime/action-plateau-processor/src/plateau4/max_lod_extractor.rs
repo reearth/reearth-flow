@@ -13,6 +13,7 @@ use serde_json::Value;
 use std::collections::{hash_map::Entry, HashMap};
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct MaxLodExtractorFactory;
 
 impl ProcessorFactory for MaxLodExtractorFactory {
@@ -78,18 +79,21 @@ impl ProcessorFactory for MaxLodExtractorFactory {
 /// Configuration for extracting maximum LOD (Level of Detail) information from PLATEAU4 CityGML files.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct MaxLodExtractorParam {
     city_gml_path_attribute: Attribute,
     max_lod_attribute: Attribute,
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct MaxLodBuffer {
     features: Vec<Feature>,
     max_lod: u8,
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct MaxLodExtractor {
     city_gml_path_attribute: Attribute,
     max_lod_attribute: Attribute,

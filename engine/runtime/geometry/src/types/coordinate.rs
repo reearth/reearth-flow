@@ -18,6 +18,7 @@ use crate::coord;
 use crate::utils::{are_points_coplanar, PointsCoplanar};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Debug, Hash, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct Coordinate<T: CoordNum = f64, Z: CoordNum = f64> {
     pub x: T,
     pub y: T,

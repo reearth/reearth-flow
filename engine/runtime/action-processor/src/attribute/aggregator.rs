@@ -115,6 +115,7 @@ impl ProcessorFactory for AttributeAggregatorFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct AttributeAggregator {
     global_params: Option<HashMap<String, serde_json::Value>>,
     aggregate_attributes: Vec<CompliledAggregateAttribute>,
@@ -129,6 +130,7 @@ struct AttributeAggregator {
 /// Configure how features are grouped and aggregated based on attribute values
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct AttributeAggregatorParam {
     /// # List of attributes to aggregate
     aggregate_attributes: Vec<AggregateAttribute>,
@@ -144,6 +146,7 @@ struct AttributeAggregatorParam {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct AggregateAttribute {
     /// # New attribute to create
     new_attribute: Attribute,
@@ -154,6 +157,7 @@ struct AggregateAttribute {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct CompliledAggregateAttribute {
     new_attribute: Attribute,
     attribute: Option<Attribute>,
@@ -161,6 +165,7 @@ struct CompliledAggregateAttribute {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 enum Method {
     /// # Maximum Value
     /// Find the maximum value in the group

@@ -24,6 +24,7 @@ use serde_json::Value;
 use super::errors::PlateauProcessorError;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct CityGmlMeshBuilderFactory;
 
 impl ProcessorFactory for CityGmlMeshBuilderFactory {
@@ -92,6 +93,7 @@ impl ProcessorFactory for CityGmlMeshBuilderFactory {
 /// Configure validation rules for CityGML mesh triangles
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct CityGmlMeshBuilderParam {
     /// # Error Attribute Name
     /// Attribute name to store validation error messages (default: "_validation_error")
@@ -122,6 +124,7 @@ impl Default for CityGmlMeshBuilderParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct CityGmlMeshBuilder {
     params: CityGmlMeshBuilderParam,
     relief_feature_counter: u64,

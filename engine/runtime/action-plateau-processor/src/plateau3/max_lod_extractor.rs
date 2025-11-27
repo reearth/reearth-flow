@@ -17,6 +17,7 @@ use std::str::FromStr;
 static DIGITS_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\d+").unwrap());
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct MaxLodExtractorFactory;
 
 impl ProcessorFactory for MaxLodExtractorFactory {
@@ -57,6 +58,7 @@ impl ProcessorFactory for MaxLodExtractorFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct MaxLodExtractor {}
 
 impl Processor for MaxLodExtractor {

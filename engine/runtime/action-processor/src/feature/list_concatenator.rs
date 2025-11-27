@@ -75,6 +75,7 @@ impl ProcessorFactory for ListConcatenatorFactory {
 /// Configuration for concatenating a specific attribute from list elements.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct ListConcatenator {
     /// List attribute to read from
     list: Attribute,

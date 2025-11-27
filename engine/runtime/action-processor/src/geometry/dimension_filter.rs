@@ -15,6 +15,7 @@ pub static TWO_DIMENSION_PORT: Lazy<Port> = Lazy::new(|| Port::new("2d"));
 pub static THREE_DIMENSION_PORT: Lazy<Port> = Lazy::new(|| Port::new("3d"));
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct DimensionFilterFactory;
 
 impl ProcessorFactory for DimensionFilterFactory {
@@ -57,6 +58,7 @@ impl ProcessorFactory for DimensionFilterFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct DimensionFilter;
 
 impl Processor for DimensionFilter {

@@ -287,6 +287,29 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             let op = receivers[index]
                 .recv()
                 .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{e:?}")))?;
+
+            // Track queue depth if analyzer feature is enabled
+            #[cfg(feature = "analyzer")]
+            {
+                let features_waiting: u64 = receivers.iter().map(|r| r.len() as u64).sum();
+                let features_processing =
+                    self.thread_counter
+                        .load(std::sync::atomic::Ordering::Relaxed) as u64;
+                self.event_hub.send(Event::NodeQueueDepth {
+                    node_id: self
+                        .node_handle
+                        .id
+                        .clone()
+                        .into_inner()
+                        .parse()
+                        .unwrap_or_default(),
+                    node_name: self.node_name.clone(),
+                    features_waiting,
+                    features_processing,
+                    bytes_waiting: 0, // TODO: track actual bytes
+                });
+            }
+
             match op {
                 ExecutorOperation::Op { ctx } => {
                     self.source_intermediate_recorder.record_if_from_source(
@@ -401,8 +424,40 @@ fn process(
     let channel_manager: &ProcessorChannelForwarder = &channel_manager_guard;
     let processor: &mut Box<dyn Processor> = &mut processor_guard;
     let now = time::Instant::now();
+
+    // Start memory tracking for peak allocation during this process() call
+    #[cfg(feature = "analyzer")]
+    crate::analyzer::start_tracking();
+
     let result = processor.process(ctx, channel_manager);
     let elapsed = now.elapsed();
+
+    // Stop memory tracking and send event if analyzer feature is enabled
+    #[cfg(feature = "analyzer")]
+    {
+        // Get peak memory from allocation tracking (peak NEW allocations during this process() call)
+        let (_alloc_current, peak_memory) = crate::analyzer::stop_tracking();
+        // Get current memory from the processor's data_size() method
+        // This gives us the actual size of data structures like buffers
+        let current_memory = processor.data_size();
+        event_hub.send(Event::ActionMemory {
+            node_id: node_handle
+                .id
+                .clone()
+                .into_inner()
+                .parse()
+                .unwrap_or_default(),
+            node_name: node_name.clone(),
+            thread_name: std::thread::current()
+                .name()
+                .unwrap_or("unknown")
+                .to_string(),
+            current_memory_bytes: current_memory,
+            peak_memory_bytes: peak_memory,
+            processing_time_ms: elapsed.as_millis() as u64,
+        });
+    }
+
     let name = processor.name();
 
     if elapsed >= *SLOW_ACTION_THRESHOLD {

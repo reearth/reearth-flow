@@ -132,6 +132,7 @@ impl ProcessorFactory for FeatureReaderFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct FeatureReader {
     global_params: Option<HashMap<String, serde_json::Value>>,
     params: CompiledFeatureReaderParam,
@@ -173,13 +174,16 @@ enum FeatureReaderParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 enum CompiledFeatureReaderParam {
     Csv {
         common_param: CompiledCommonReaderParam,
+        #[cfg_attr(feature = "analyzer", data_size(skip))]
         param: csv::CsvReaderParam,
     },
     Tsv {
         common_param: CompiledCommonReaderParam,
+        #[cfg_attr(feature = "analyzer", data_size(skip))]
         param: csv::CsvReaderParam,
     },
     Json {
@@ -188,6 +192,7 @@ enum CompiledFeatureReaderParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct CompiledCommonReaderParam {
     expr: rhai::AST,
     original_expr: reearth_flow_types::Expr,

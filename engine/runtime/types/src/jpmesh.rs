@@ -4,6 +4,7 @@ use reearth_flow_geometry::types::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub enum JPMeshType {
     /// 第1次地域区画
     Mesh80km,

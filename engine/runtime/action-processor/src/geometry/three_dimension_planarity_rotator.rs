@@ -21,6 +21,7 @@ use reearth_flow_types::GeometryValue;
 use serde_json::Value;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ThreeDimensionPlanarityRotatorFactory;
 
 impl ProcessorFactory for ThreeDimensionPlanarityRotatorFactory {
@@ -60,6 +61,7 @@ impl ProcessorFactory for ThreeDimensionPlanarityRotatorFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ThreeDimensionPlanarityRotator;
 
 impl Processor for ThreeDimensionPlanarityRotator {

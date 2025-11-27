@@ -40,6 +40,7 @@ static MAJOR_CITY_CODES: Lazy<Vec<&'static str>> = Lazy::new(|| {
 });
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct BuildingUsageAttributeValidatorFactory;
 
 impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
@@ -176,11 +177,13 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct BuildingUsageAttributeValidatorParam {
     codelists_path: Option<String>,
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct BuildingUsageAttributeValidator {
     city_name_to_code: HashMap<String, String>,
 }

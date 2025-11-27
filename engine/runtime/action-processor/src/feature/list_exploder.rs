@@ -75,6 +75,7 @@ impl ProcessorFactory for ListExploderFactory {
 /// Configuration for exploding array attributes into individual features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct ListExploder {
     /// Attribute containing the array to explode (each element becomes a separate feature)
     source_attribute: Attribute,

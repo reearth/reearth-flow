@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ObjectListExtractorFactory;
 
 impl ProcessorFactory for ObjectListExtractorFactory {
@@ -78,11 +79,13 @@ impl ProcessorFactory for ObjectListExtractorFactory {
 /// Configuration for extracting object lists from PLATEAU4 data.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct ObjectListExtractorParam {
     object_list_path_attribute: Attribute,
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct ObjectListExtractor {
     object_list_path_attribute: Attribute,
 }

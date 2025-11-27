@@ -21,6 +21,7 @@ pub(super) struct JsonWriterParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(super) struct CompiledJsonWriterParam {
     pub(super) converter: Option<rhai::AST>,
 }

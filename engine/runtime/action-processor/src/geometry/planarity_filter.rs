@@ -15,6 +15,7 @@ pub static PLANARITY_PORT: Lazy<Port> = Lazy::new(|| Port::new("planarity"));
 pub static NOT_PLANARITY_PORT: Lazy<Port> = Lazy::new(|| Port::new("notplanarity"));
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct PlanarityFilterFactory;
 
 impl ProcessorFactory for PlanarityFilterFactory {
@@ -55,6 +56,7 @@ impl ProcessorFactory for PlanarityFilterFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct PlanarityFilter;
 
 impl Processor for PlanarityFilter {

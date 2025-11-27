@@ -23,6 +23,7 @@ static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
 static REJECTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("rejected"));
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct SolidBoundaryValidatorFactory;
 
 impl ProcessorFactory for SolidBoundaryValidatorFactory {
@@ -83,6 +84,7 @@ enum IssueType {
 /// # Solid Boundary Validator
 /// Configure which validation checks to perform on feature geometries
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct SolidBoundaryValidator {}
 
 impl Processor for SolidBoundaryValidator {
