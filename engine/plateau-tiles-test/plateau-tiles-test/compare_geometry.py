@@ -30,10 +30,7 @@ def extract_lines(geom):
 def clip_geometry(geom):
     if geom is None or geom.is_empty:
         return None
-    try:
-        clipped = geom.intersection(CLIP_BOUNDS)
-    except:
-        return None
+    clipped = geom.intersection(CLIP_BOUNDS)
     return clipped if not clipped.is_empty else None
 
 def compare_polygons(geom1, geom2):
@@ -48,11 +45,8 @@ def compare_polygons(geom1, geom2):
     if geom1 is None or geom2 is None:
         single = geom2 if geom1 is None else geom1
         return ("only2" if geom1 is None else "only1", single.area)
-    try:
-        sym_diff = geom1.symmetric_difference(geom2)
-        return ("compared", sym_diff.area if not sym_diff.is_empty else 0.0)
-    except:
-        return ("error", float('inf'))
+    sym_diff = geom1.symmetric_difference(geom2)
+    return ("compared", sym_diff.area if not sym_diff.is_empty else 0.0)
 
 def compare_lines(geom1, geom2):
     lines1 = clip_geometry(extract_lines(geom1))
@@ -62,10 +56,7 @@ def compare_lines(geom1, geom2):
     if lines1 is None or lines2 is None:
         single = lines2 if lines1 is None else lines1
         return ("only2" if lines1 is None else "only1", single.length)
-    try:
-        return ("compared", shapely.hausdorff_distance(lines1, lines2, densify=0.01))
-    except:
-        return ("error", float('inf'))
+    return ("compared", shapely.hausdorff_distance(lines1, lines2, densify=0.01))
 
 def compare_3d_lines(geom1, geom2):
     """Compare 3D lines without clipping (for union geometries)."""
@@ -76,7 +67,4 @@ def compare_3d_lines(geom1, geom2):
     if lines1 is None or lines2 is None:
         single = lines2 if lines1 is None else lines1
         return ("only2" if lines1 is None else "only1", single.length)
-    try:
-        return ("compared", shapely.hausdorff_distance(lines1, lines2, densify=0.01))
-    except:
-        return ("error", float('inf'))
+    return ("compared", shapely.hausdorff_distance(lines1, lines2, densify=0.01))
