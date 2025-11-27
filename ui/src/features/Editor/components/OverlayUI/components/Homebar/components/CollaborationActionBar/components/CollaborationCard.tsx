@@ -33,9 +33,9 @@ const CollaborationCard: React.FC<Props> = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}>
       <div
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-2 ring-secondary/20 "
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-2 ring-secondary/20"
         style={{ backgroundColor: color }}>
-        <span className="text-sm font-medium select-none">
+        <span className="text-sm font-medium text-white select-none">
           {userName.charAt(0).toUpperCase()}
           {userName.charAt(1)}
         </span>
