@@ -720,6 +720,7 @@ All notable changes to this project will be documented in this file.
 
 #### 🔧 Bug Fixes
 
+- Fix boolean operations by replacing sweep algorithm with iOverlay ([#1692](https://github.com/reearth/reearth-flow/pull/1692)) [`1ccca1`](https://github.com/reearth/reearth-flow/commit/1ccca1)
 - Remove duplicate &[#39](https://github.com/reearth/reearth-flow/pull/39);bldg&[#39](https://github.com/reearth/reearth-flow/pull/39); from output filename in conv-bldg workflow ([#1687](https://github.com/reearth/reearth-flow/pull/1687)) [`5b0c4f`](https://github.com/reearth/reearth-flow/commit/5b0c4f)
 - Plateau-gis-converter update, feature reader fix, feature sorter fix ([#1669](https://github.com/reearth/reearth-flow/pull/1669)) [`62e523`](https://github.com/reearth/reearth-flow/commit/62e523)
 - Clipper inside checking if a feature overlaps ALL boundaries ([#1663](https://github.com/reearth/reearth-flow/pull/1663)) [`95b6b7`](https://github.com/reearth/reearth-flow/commit/95b6b7)
@@ -960,6 +961,9 @@ All notable changes to this project will be documented in this file.
 #### 🔧 Bug Fixes
 
 - Remove infobox and adjust map zoom ([#1287](https://github.com/reearth/reearth-flow/pull/1287)) [`1b61e6`](https://github.com/reearth/reearth-flow/commit/1b61e6)
+
+### release
+
 
 ### runtime
 
