@@ -1,5 +1,6 @@
 import { ArrowLeftIcon } from "@phosphor-icons/react";
-import { memo, RefObject, useEffect, useMemo } from "react";
+import { ColumnDef } from "@tanstack/react-table";
+import { memo, useEffect, useMemo } from "react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -8,11 +9,12 @@ type Props = {
   feature: any;
   isOpen: boolean;
   selectedFeature?: any;
-  featureIdMap: Map<string | number, any> | null;
-  previousSelectedFeature: RefObject<any>;
+  columnizer: {
+    tableData: any;
+    tableColumns: ColumnDef<any>[];
+  };
   onClose: () => void;
   handleShowFeatureDetails?: (feature: any) => void;
-  onPreviousSelectedFeature: (feature: any) => void;
   setDetailsFeature: (feature: any) => void;
   detectedGeometryType?: string | null;
 };
@@ -21,9 +23,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
   feature,
   isOpen,
   selectedFeature,
-  previousSelectedFeature,
-  onPreviousSelectedFeature,
-  featureIdMap,
+  columnizer,
   onClose,
   setDetailsFeature,
   detectedGeometryType,
@@ -51,28 +51,28 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
     };
   }, [feature]);
 
+  // Create a Map for O(1) feature lookup by ID
+  const featureIdMap = useMemo(() => {
+    if (!columnizer.tableData) return null;
+
+    const map = new Map<string | number, any>();
+    columnizer.tableData.forEach((row: any) => {
+      const id = row.id;
+      if (id !== null && id !== undefined) {
+        map.set(id, row);
+      }
+    });
+    return map;
+  }, [columnizer.tableData]);
+
   useEffect(() => {
     if (!selectedFeature || !featureIdMap) {
       return;
     }
-    const currId = selectedFeature.id;
-    const prevId = previousSelectedFeature.current
-      ? previousSelectedFeature.current.id
-      : null;
-
-    if (prevId !== currId) {
-      const matchingRow =
-        featureIdMap.get(JSON.stringify(currId)) ?? selectedFeature;
-      onPreviousSelectedFeature(selectedFeature);
-      setDetailsFeature(matchingRow);
-    }
-  }, [
-    selectedFeature,
-    featureIdMap,
-    previousSelectedFeature,
-    setDetailsFeature,
-    onPreviousSelectedFeature,
-  ]);
+    const matchingRow =
+      featureIdMap.get(JSON.stringify(selectedFeature.id)) ?? selectedFeature;
+    setDetailsFeature(matchingRow);
+  }, [selectedFeature, featureIdMap, setDetailsFeature]);
 
   if (!isOpen || !feature || !processedFeature) {
     return null;

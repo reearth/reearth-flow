@@ -19,8 +19,28 @@ export default () => {
   const [fullscreenDebug, setFullscreenDebug] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [minimized, setMinimized] = useState(false);
+  const previousSelectedFeature = useRef<any>(null);
+
   // const [enableClustering, setEnableClustering] = useState<boolean>(true);
   const [selectedFeature, setSelectedFeature] = useState<any>(null);
+  const handlePreviousSelectedFeature = useCallback((feature: any) => {
+    previousSelectedFeature.current = feature;
+  }, []);
+
+  const handleSelectedFeature = useCallback(
+    (feature: any) => {
+      const currId = selectedFeature?.id;
+      const prevId = previousSelectedFeature.current?.id;
+      if (currId !== feature?.id) {
+        setSelectedFeature(feature);
+      }
+      if (currId !== prevId) {
+        handlePreviousSelectedFeature(selectedFeature);
+      }
+    },
+    [selectedFeature, handlePreviousSelectedFeature],
+  );
+
   const [convertedSelectedFeature, setConvertedSelectedFeature] =
     useState(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -405,18 +425,22 @@ export default () => {
   const handleRowSingleClick = useCallback(
     (value: any) => {
       // setEnableClustering(false);
-      setSelectedFeature(value);
+      handleSelectedFeature(value);
     },
-    [setSelectedFeature],
+    [handleSelectedFeature],
   );
 
   const handleRowDoubleClick = useCallback(
     (value: any) => {
       // setEnableClustering(false);
-      setSelectedFeature(value);
+      handleSelectedFeature(value);
       handleFlyToSelectedFeature(convertedSelectedFeature);
     },
-    [convertedSelectedFeature, handleFlyToSelectedFeature, setSelectedFeature],
+    [
+      convertedSelectedFeature,
+      handleFlyToSelectedFeature,
+      handleSelectedFeature,
+    ],
   );
 
   return {
@@ -434,7 +458,8 @@ export default () => {
     selectedOutputData,
     // enableClustering,
     selectedFeature,
-    setSelectedFeature,
+    previousSelectedFeature,
+    handleSelectedFeature,
     setConvertedSelectedFeature,
     // setEnableClustering,
     handleFullscreenExpand,

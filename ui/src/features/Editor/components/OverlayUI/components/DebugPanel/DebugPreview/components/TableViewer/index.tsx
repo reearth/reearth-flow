@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useState } from "react";
 
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
@@ -31,27 +31,12 @@ const TableViewer: React.FC<Props> = memo(
     const t = useT();
     const [detailsOverlayOpen, setDetailsOverlayOpen] = useState(false);
     const [detailsFeature, setDetailsFeature] = useState<any>(null);
-    const previousSelectedFeature = useRef<any>(null);
 
     // Use traditional columnizer for all data (streaming is now pre-transformed)
     const columnizer = useDataColumnizer({
       parsedData: fileContent,
       type: fileType,
     });
-
-    // Create a Map for O(1) feature lookup by ID
-    const featureIdMap = useMemo(() => {
-      if (!columnizer.tableData) return null;
-
-      const map = new Map<string | number, any>();
-      columnizer.tableData.forEach((row: any) => {
-        const id = row.id;
-        if (id !== null && id !== undefined) {
-          map.set(id, row);
-        }
-      });
-      return map;
-    }, [columnizer.tableData]);
 
     // Handle showing feature details
     const handleShowFeatureDetails = useCallback((feature: any) => {
@@ -82,15 +67,10 @@ const TableViewer: React.FC<Props> = memo(
       [onDoubleClick, handleShowFeatureDetails],
     );
 
-    const handlePreviousSelectedFeature = useCallback((feature: any) => {
-      previousSelectedFeature.current = feature;
-    }, []);
-
     // Loading state
     if (!fileContent || !columnizer.tableData) {
       return <BasicBoiler text={t("Loading data...")} className="h-full" />;
     }
-
     // No data state
     if (!columnizer.tableData || columnizer.tableData.length === 0) {
       return (
@@ -142,15 +122,14 @@ const TableViewer: React.FC<Props> = memo(
         </div>
 
         {/* Feature Details Overlay */}
+
         <FeatureDetailsOverlay
           feature={detailsFeature}
           selectedFeature={selectedFeature}
-          previousSelectedFeature={previousSelectedFeature}
-          featureIdMap={featureIdMap}
+          columnizer={columnizer}
           isOpen={detailsOverlayOpen}
           detectedGeometryType={detectedGeometryType}
           setDetailsFeature={setDetailsFeature}
-          onPreviousSelectedFeature={handlePreviousSelectedFeature}
           onClose={handleCloseFeatureDetails}
         />
       </div>
