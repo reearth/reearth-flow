@@ -334,6 +334,14 @@ func TestTrigger_Delete(t *testing.T) {
 	wid := id.NewWorkspaceID()
 	did := id.NewDeploymentID()
 
+	initialVarsDoc := []bson.M{
+		{
+			"key":   "INIT_KEY",
+			"type":  string(parameter.TypeText),
+			"value": "initial_value",
+		},
+	}
+
 	_, _ = c.Collection("trigger").InsertOne(ctx, bson.M{
 		"id":           tid.String(),
 		"workspaceid":  wid.String(),
@@ -341,6 +349,7 @@ func TestTrigger_Delete(t *testing.T) {
 		"eventsource":  "TIME_DRIVEN",
 		"timeinterval": "EVERY_DAY",
 		"createdat":    time.Now(),
+		"variables":    initialVarsDoc,
 	})
 
 	repo := repo.Container{

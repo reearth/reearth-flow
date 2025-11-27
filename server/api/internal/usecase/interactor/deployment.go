@@ -3,7 +3,6 @@ package interactor
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/url"
 	"strconv"
 	"strings"
@@ -384,8 +383,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, d.Workspace())
 	if err != nil {
-		log.Printf("[Deployment] Job submission failed: %v\n", err)
-		// return nil, interfaces.ErrJobCreationFailed
+		return nil, interfaces.ErrJobCreationFailed
 	}
 	j.SetGCPJobID(gcpJobID)
 
