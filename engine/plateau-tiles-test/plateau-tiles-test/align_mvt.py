@@ -1,6 +1,7 @@
 import mapbox_vector_tile
 from shapely.geometry import shape
 from .compare_attributes import dict_zip, analyze_attributes
+from .compare_geometry import compare_polygons, compare_lines
 from . import log
 
 def load_mvt(path):
@@ -92,3 +93,58 @@ def test_mvt_attributes(fme_path, flow_path, cfg):
     for top_dir in sorted(fme_tops.union(flow_tops)):
         for gml_id, attr1, attr2 in align_mvt_attr(fme_path / top_dir, flow_path / top_dir):
             analyze_attributes(gml_id, attr1, attr2, casts)
+
+def test_mvt_lines(fme_path, flow_path, cfg):
+    threshold = cfg.get('threshold', 0.0)
+    zoom = cfg.get('zoom')
+    zmin = zoom[0] if zoom else None
+    zmax = zoom[1] if zoom else None
+
+    failures = []
+    total = 0
+    worst_score = 0.0
+
+    for path, gid, g1, g2 in align_mvt(fme_path, flow_path, zmin, zmax):
+        total += 1
+        status, score = compare_lines(g1, g2)
+        worst_score = max(worst_score, score)
+
+        if score > threshold:
+            failures.append((score, path, gid, status))
+
+    log.info(f"MVT lines: {total} total, {len(failures)} failures, worst={worst_score:.6f}, threshold={threshold}")
+    if failures:
+        log.info("Worst 5 failures:")
+        for score, path, gid, status in sorted(failures, reverse=True)[:5]:
+            log.info(f"  {path} | {gid} | {score:.6f} | {status}")
+        raise AssertionError(f"MVT line comparison failed: {len(failures)}/{total} exceeded threshold {threshold}")
+
+def test_mvt_polygons(fme_path, flow_path, cfg):
+    threshold = cfg.get('threshold', 0.0)
+    zoom = cfg.get('zoom')
+    zmin = zoom[0] if zoom else None
+    zmax = zoom[1] if zoom else None
+
+    failures = []
+    total = 0
+    worst_score = 0.0
+
+    for path, gid, g1, g2 in align_mvt(fme_path, flow_path, zmin, zmax):
+        # Only test polygons
+        is_poly = (g1 or g2) and (g1 or g2).geom_type in ('Polygon', 'MultiPolygon')
+        if not is_poly:
+            continue
+
+        total += 1
+        status, score = compare_polygons(g1, g2)
+        worst_score = max(worst_score, score)
+
+        if score > threshold:
+            failures.append((score, path, gid, status))
+
+    log.info(f"MVT polygons: {total} total, {len(failures)} failures, worst={worst_score:.6f}, threshold={threshold}")
+    if failures:
+        log.info("Worst 5 failures:")
+        for score, path, gid, status in sorted(failures, reverse=True)[:5]:
+            log.info(f"  {path} | {gid} | {score:.6f} | {status}")
+        raise AssertionError(f"MVT polygon comparison failed: {len(failures)}/{total} exceeded threshold {threshold}")

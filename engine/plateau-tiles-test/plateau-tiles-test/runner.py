@@ -3,7 +3,7 @@ import tomllib, zipfile
 from pathlib import Path
 from . import BASE_PATH, ENGINE_PATH, reset_dir, cleanup, log
 from .filter import filter_zip
-from .align_mvt import test_mvt_attributes
+from .align_mvt import test_mvt_attributes, test_mvt_lines, test_mvt_polygons
 from .align_3dtiles import test_3dtiles_attributes
 
 def extract_fme_output(fme_zip_path, fme_dir):
@@ -96,6 +96,10 @@ def run_testcase(path, stages):
             start_time = time.time()
             if test_name == "mvt_attributes":
                 test_mvt_attributes(fme_dir, output_dir / "flow", cfg)
+            elif test_name == "mvt_lines":
+                test_mvt_lines(fme_dir, output_dir / "flow", cfg)
+            elif test_name == "mvt_polygons":
+                test_mvt_polygons(fme_dir, output_dir / "flow", cfg)
             elif test_name == "3dtiles_attributes":
                 test_3dtiles_attributes(fme_dir, output_dir / "flow", cfg)
             else:
