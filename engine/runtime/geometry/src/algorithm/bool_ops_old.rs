@@ -30,7 +30,7 @@ pub trait BooleanOps: Sized {
 
     /// Clip a 1-D geometry with self.
     ///
-    /// Returns the portion of `ls` that lies within `self` (known as the set-theoeretic
+    /// Returns the portion of `ls` that lies within `self` (known as the set-theoretic
     /// intersection) if `invert` is false, and the difference (`ls - self`) otherwise.
     fn clip(
         &self,

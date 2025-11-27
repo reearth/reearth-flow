@@ -131,7 +131,7 @@ def test_mvt_polygons(fme_path, flow_path, cfg):
 
     for path, gid, g1, g2 in align_mvt(fme_path, flow_path, zmin, zmax):
         # Only test polygons
-        is_poly = (g1 or g2) and (g1 or g2).geom_type in ('Polygon', 'MultiPolygon')
+        is_poly = any(g is not None and g.geom_type in ('Polygon', 'MultiPolygon') for g in (g1, g2))
         if not is_poly:
             continue
 
