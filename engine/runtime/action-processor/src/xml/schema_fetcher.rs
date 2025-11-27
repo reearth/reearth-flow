@@ -11,7 +11,9 @@ pub(crate) trait SchemaFetcher: Send + Sync {
 
 /// HTTP/HTTPS schema fetcher implementation
 #[derive(Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct HttpSchemaFetcher {
+    #[cfg_attr(feature = "analyzer", data_size(skip))]
     client: Arc<Mutex<Option<reqwest::blocking::Client>>>,
     max_retries: usize,
     retry_delay: Duration,
@@ -149,6 +151,7 @@ impl Default for HttpSchemaFetcherWithFallback {
 /// Mock implementation for testing
 #[cfg(test)]
 #[derive(Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct MockSchemaFetcher {
     pub responses: std::collections::HashMap<String, Result<String>>,
     pub call_count: Arc<parking_lot::RwLock<std::collections::HashMap<String, usize>>>,

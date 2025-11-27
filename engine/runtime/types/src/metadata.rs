@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::lod::LodMask;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 #[serde(rename_all = "camelCase")]
 pub struct Metadata {
     pub feature_id: Option<String>,

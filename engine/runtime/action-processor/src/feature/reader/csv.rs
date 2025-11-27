@@ -15,6 +15,7 @@ use super::CompiledCommonReaderParam;
 /// Configuration for reading CSV data within feature processing workflows.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct CsvReaderParam {
     /// The offset of the first row to read
     offset: Option<usize>,

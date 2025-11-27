@@ -75,6 +75,7 @@ impl ProcessorFactory for ListIndexerFactory {
 /// Configuration for copying attributes from a specific list element to main feature attributes.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct ListIndexer {
     /// List attribute to read from
     list_attribute: Attribute,

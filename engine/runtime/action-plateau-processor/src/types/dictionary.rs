@@ -2,6 +2,7 @@ use serde::Deserialize;
 
 #[derive(Deserialize, Debug, PartialEq, Default)]
 #[serde(rename = "Dictionary")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct Dictionary {
     pub(crate) name: Name,
     #[serde(rename = "dictionaryEntry")]
@@ -10,6 +11,7 @@ pub(crate) struct Dictionary {
 
 #[derive(Deserialize, Debug, PartialEq, Default)]
 #[serde(rename = "dictionaryEntry")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct DictionaryEntry {
     #[serde(rename = "Definition")]
     pub(crate) definition: Definition,
@@ -17,6 +19,7 @@ pub(crate) struct DictionaryEntry {
 
 #[derive(Deserialize, Debug, PartialEq, Default, Clone)]
 #[serde(default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct Definition {
     #[serde(rename = "@id")]
     pub(crate) id: String,
@@ -26,6 +29,7 @@ pub(crate) struct Definition {
 
 #[derive(Deserialize, Debug, PartialEq, Default, Clone)]
 #[serde(rename = "description")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct Description {
     #[serde(rename = "$text")]
     pub(crate) value: String,
@@ -33,6 +37,7 @@ pub(crate) struct Description {
 
 #[derive(Deserialize, Debug, PartialEq, Default, Clone)]
 #[serde(rename = "name")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct Name {
     #[serde(rename = "$text")]
     pub(crate) value: String,

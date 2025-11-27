@@ -33,6 +33,7 @@ static EPSILON: f64 = 1e-10;
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub enum Geometry<T: CoordNum = f64, Z: CoordNum = f64> {
     CSG(Box<CSG<T, Z>>),
     Point(Point<T, Z>),

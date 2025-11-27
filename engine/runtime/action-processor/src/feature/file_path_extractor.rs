@@ -109,6 +109,7 @@ struct FeatureFilePathExtractorParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct FeatureFilePathExtractorCompiledParam {
     source_dataset: rhai::AST,
     extract_archive: bool,
@@ -116,6 +117,7 @@ struct FeatureFilePathExtractorCompiledParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct FeatureFilePathExtractor {
     params: FeatureFilePathExtractorCompiledParam,
     with: Option<HashMap<String, Value>>,

@@ -10,7 +10,12 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[features]
+default = []
+analyzer = ["reearth-flow-analyzer-core"]
+
 [dependencies]
+reearth-flow-analyzer-core = { workspace = true, optional = true }
 approx.workspace = true
 async-recursion.workspace = true
 async_zip.workspace = true

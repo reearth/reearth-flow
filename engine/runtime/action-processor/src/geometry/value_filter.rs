@@ -17,6 +17,7 @@ pub static GEOMETRY_3D_PORT: Lazy<Port> = Lazy::new(|| Port::new("geometry3d"));
 pub static CITY_GML_PORT: Lazy<Port> = Lazy::new(|| Port::new("cityGml"));
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct GeometryValueFilterFactory;
 
 impl ProcessorFactory for GeometryValueFilterFactory {
@@ -56,6 +57,7 @@ impl ProcessorFactory for GeometryValueFilterFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub enum GeometryValueFilterType {
     None,
     Geometry2D,
@@ -84,6 +86,7 @@ impl GeometryValueFilterType {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct GeometryValueFilter;
 
 impl Processor for GeometryValueFilter {

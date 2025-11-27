@@ -134,11 +134,13 @@ struct Mapper {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct CompiledAttributeMapperParam {
     mappers: Vec<CompiledMapper>,
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct CompiledMapper {
     attribute: Option<String>,
     expr: Option<rhai::AST>,
@@ -149,6 +151,7 @@ struct CompiledMapper {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct AttributeMapper {
     global_params: Option<HashMap<String, serde_json::Value>>,
     mapper: CompiledAttributeMapperParam,

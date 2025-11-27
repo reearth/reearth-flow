@@ -91,6 +91,7 @@ impl ProcessorFactory for FeatureFilterFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct FeatureFilter {
     global_params: Option<HashMap<String, serde_json::Value>>,
     conditions: Vec<CompiledCondition>,
@@ -116,6 +117,7 @@ struct Condition {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct CompiledCondition {
     expr: rhai::AST,
     output_port: Port,

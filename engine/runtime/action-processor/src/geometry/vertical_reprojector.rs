@@ -16,6 +16,7 @@ use serde_json::Value;
 use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct VerticalReprojectorFactory;
 
 impl ProcessorFactory for VerticalReprojectorFactory {
@@ -76,6 +77,7 @@ impl ProcessorFactory for VerticalReprojectorFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 enum VerticalReprojectorType {
     Jgd2011ToWgs84,
 }
@@ -84,6 +86,7 @@ enum VerticalReprojectorType {
 /// Configure the type of vertical datum conversion to apply
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct VerticalReprojectorParam {
     /// # Reprojector Type
     /// The type of vertical coordinate transformation to apply
@@ -93,6 +96,13 @@ pub struct VerticalReprojectorParam {
 #[derive(Debug, Clone)]
 pub struct VerticalReprojector {
     reprojector: Jgd2011ToWgs84,
+}
+#[cfg(feature = "analyzer")]
+impl reearth_flow_analyzer_core::DataSize for VerticalReprojector {
+    fn data_size(&self) -> usize {
+        // we define this to be zero as the reprojector holds only metadata and references
+        0
+    }
 }
 
 impl Processor for VerticalReprojector {

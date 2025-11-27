@@ -20,6 +20,7 @@ use super::no_value::NoValue;
 use super::traits::Elevation;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct MultiLineString<T: CoordNum = f64, Z: CoordNum = f64>(pub Vec<LineString<T, Z>>);
 
 pub type MultiLineString2D<T> = MultiLineString<T, NoValue>;

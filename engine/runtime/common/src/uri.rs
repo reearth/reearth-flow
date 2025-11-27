@@ -13,6 +13,7 @@ use url::Url;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 #[repr(u8)]
 pub enum Protocol {
     File = 1,
@@ -93,6 +94,7 @@ impl FromStr for Protocol {
 pub const PROTOCOL_SEPARATOR: &str = "://";
 
 #[derive(Clone, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct Uri {
     uri: String,
     protocol: Protocol,

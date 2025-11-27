@@ -42,7 +42,15 @@ impl Attribute {
     }
 }
 
+#[cfg(feature = "analyzer")]
+impl reearth_flow_analyzer_core::DataSize for Attribute {
+    fn data_size(&self) -> usize {
+        self.as_ref().len()
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 #[serde(untagged)]
 pub enum AttributeValue {
     Null,

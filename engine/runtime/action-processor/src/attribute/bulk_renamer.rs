@@ -88,6 +88,7 @@ impl ProcessorFactory for BulkAttributeRenamerFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct BulkAttributeRenamer {
     params: BulkAttributeRenamerParam,
     regex: Option<Regex>,
@@ -97,6 +98,7 @@ struct BulkAttributeRenamer {
 /// Configure how to rename feature attributes in bulk operations
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct BulkAttributeRenamerParam {
     /// # Which Attributes to Rename
     /// Choose whether to rename all attributes or only selected ones
@@ -116,6 +118,7 @@ struct BulkAttributeRenamerParam {
 }
 
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 enum RenameType {
     /// # All Attributes
     /// Rename all attributes in the feature
@@ -126,6 +129,7 @@ enum RenameType {
 }
 
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 enum RenameAction {
     /// # Add Prefix
     /// Add text to the beginning of attribute names

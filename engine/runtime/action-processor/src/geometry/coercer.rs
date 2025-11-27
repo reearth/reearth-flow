@@ -75,6 +75,7 @@ impl ProcessorFactory for GeometryCoercerFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 enum CoerceTarget {
     LineString,
     TriangularMesh,
@@ -85,6 +86,7 @@ enum CoerceTarget {
 /// Configuration for coercing geometries to specific target types.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct GeometryCoercer {
     /// Target geometry type to coerce features to (e.g., LineString)
     target_type: CoerceTarget,

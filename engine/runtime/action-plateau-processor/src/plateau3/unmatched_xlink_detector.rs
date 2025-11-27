@@ -105,6 +105,7 @@ struct XlinkGmlElement {
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct UnmatchedXlinkDetectorFactory;
 
 impl ProcessorFactory for UnmatchedXlinkDetectorFactory {
@@ -167,11 +168,13 @@ impl ProcessorFactory for UnmatchedXlinkDetectorFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct UnmatchedXlinkDetectorParam {
     attribute: Attribute,
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct UnmatchedXlinkDetector {
     params: UnmatchedXlinkDetectorParam,
 }

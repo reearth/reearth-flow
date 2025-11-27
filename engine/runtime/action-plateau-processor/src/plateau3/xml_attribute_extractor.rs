@@ -394,6 +394,7 @@ impl SummaryResponse {
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct XmlAttributeExtractorFactory;
 
 impl ProcessorFactory for XmlAttributeExtractorFactory {
@@ -473,6 +474,7 @@ impl ProcessorFactory for XmlAttributeExtractorFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct XmlAttributeExtractor {
     xpath_to_properties: HashMap<String, HashMap<String, SchemaFeature>>,
     except_feature_types: Vec<String>,
@@ -482,6 +484,7 @@ pub struct XmlAttributeExtractor {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct XmlAttributeExtractorParam {
     city_code: Option<String>,
     target_packages: Option<Vec<String>>,

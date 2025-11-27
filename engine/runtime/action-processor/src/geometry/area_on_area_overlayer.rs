@@ -131,6 +131,7 @@ struct AreaOnAreaOverlayerParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct AreaOnAreaOverlayer {
     group_by: Option<Vec<Attribute>>,
     output_attribute: Option<String>,
@@ -142,6 +143,7 @@ struct AreaOnAreaOverlayer {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub enum AccumulationMode {
     #[default]
     UseAttributesFromOneFeature,

@@ -114,6 +114,24 @@ impl ChannelManager {
                             edge_id: edge_id_clone,
                         });
 
+                        // Send feature size event if analyzer is enabled
+                        #[cfg(feature = "analyzer")]
+                        {
+                            let feature_size = crate::analyzer::estimate_size(&feature);
+                            self.event_hub.send(Event::EdgeFeature {
+                                edge_id: edge_id.to_string(),
+                                feature_id,
+                                feature_size_bytes: feature_size,
+                                source_node_id: self
+                                    .owner
+                                    .id
+                                    .clone()
+                                    .into_inner()
+                                    .parse()
+                                    .unwrap_or_default(),
+                            });
+                        }
+
                         self.runtime.block_on(async move {
                             let result = writer.write(&feature).await;
                             let node = node_handle.clone();

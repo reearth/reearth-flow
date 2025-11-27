@@ -105,6 +105,7 @@ struct LodCount {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct FeatureLodFilter {
     filter_key: Attribute,
     buffer_features: HashMap<AttributeValue, Vec<Feature>>,

@@ -10,7 +10,12 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[features]
+default = []
+analyzer = ["reearth-flow-analyzer-core"]
+
 [dependencies]
+reearth-flow-analyzer-core = { workspace = true, optional = true }
 reearth-flow-common.workspace = true
 
 flatgeom.workspace = true

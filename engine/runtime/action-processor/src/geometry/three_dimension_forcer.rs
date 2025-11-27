@@ -19,6 +19,7 @@ use serde_json::Value;
 use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ThreeDimensionForcerFactory;
 
 impl ProcessorFactory for ThreeDimensionForcerFactory {
@@ -94,6 +95,7 @@ impl ProcessorFactory for ThreeDimensionForcerFactory {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 #[derive(Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ThreeDimensionForcerParam {
     /// # Elevation
     /// The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified.
@@ -106,6 +108,7 @@ pub struct ThreeDimensionForcerParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ThreeDimensionForcer {
     global_params: Option<HashMap<String, serde_json::Value>>,
     elevation: Option<rhai::AST>,

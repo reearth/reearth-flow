@@ -46,6 +46,36 @@ pub enum Event {
         status: NodeStatus,
         feature_id: Option<uuid::Uuid>,
     },
+    /// Analyzer event: Memory usage for an action's process() call
+    #[cfg(feature = "analyzer")]
+    ActionMemory {
+        node_id: uuid::Uuid,
+        node_name: String,
+        thread_name: String,
+        current_memory_bytes: usize,
+        peak_memory_bytes: usize,
+        processing_time_ms: u64,
+    },
+    /// Analyzer event: Feature passed through an edge with size info
+    #[cfg(feature = "analyzer")]
+    EdgeFeature {
+        edge_id: String,
+        feature_id: uuid::Uuid,
+        feature_size_bytes: usize,
+        source_node_id: uuid::Uuid,
+    },
+    /// Analyzer event: Queue depth at a node (features waiting + processing)
+    #[cfg(feature = "analyzer")]
+    NodeQueueDepth {
+        node_id: uuid::Uuid,
+        node_name: String,
+        /// Total features waiting in input queues
+        features_waiting: u64,
+        /// Features currently being processed (in thread pool)
+        features_processing: u64,
+        /// Total bytes of data waiting (estimated)
+        bytes_waiting: u64,
+    },
 }
 
 #[derive(Debug)]

@@ -37,6 +37,7 @@ static LOD_TAG_PATTERN: Lazy<Regex> =
     Lazy::new(|| Regex::new(r".+:lod([0-4]).+").expect("Failed to compile LOD tag pattern"));
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct MissingAttributeDetectorFactory;
 
 impl ProcessorFactory for MissingAttributeDetectorFactory {
@@ -107,11 +108,13 @@ impl ProcessorFactory for MissingAttributeDetectorFactory {
 /// Configuration for detecting missing attributes in PLATEAU4 features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct MissingAttributeDetectorParam {
     package_attribute: Attribute,
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct MissingAttributeBuffer {
     // Subject Attributes, etc. to be created (except required)
     feature_types_to_target_attributes: HashMap<String, HashSet<String>>,
@@ -123,6 +126,7 @@ struct MissingAttributeBuffer {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct MissingAttributeDetector {
     package_attribute: Attribute,
     buffer: HashMap<String, MissingAttributeBuffer>,

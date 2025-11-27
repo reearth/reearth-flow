@@ -77,6 +77,7 @@ impl ProcessorFactory for FeatureTypeFilterFactory {
 /// Configuration for filtering features based on their feature type.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct FeatureTypeFilter {
     /// Target feature types
     target_types: Vec<String>,

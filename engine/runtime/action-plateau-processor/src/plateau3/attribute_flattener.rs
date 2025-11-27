@@ -91,6 +91,7 @@ static FLATTEN_PREFIXES: Lazy<HashSet<String>> = Lazy::new(|| {
 });
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct Flattener {
     risk_to_attr_defs: HashMap<String, HashMap<String, String>>,
 }
@@ -275,6 +276,7 @@ impl Flattener {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct CommonAttributeProcessor {
     max_lod: i64,
     gml_path_to_max_lod: HashMap<String, i64>,
@@ -390,6 +392,7 @@ impl CommonAttributeProcessor {
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct AttributeFlattenerFactory;
 
 impl ProcessorFactory for AttributeFlattenerFactory {
@@ -439,6 +442,7 @@ impl ProcessorFactory for AttributeFlattenerFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct AttributeFlattener {
     flattener: Flattener,
     common_processor: CommonAttributeProcessor,

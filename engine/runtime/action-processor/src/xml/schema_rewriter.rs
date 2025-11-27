@@ -7,7 +7,9 @@ use super::schema_resolver::SchemaResolutionResult;
 
 /// Handles schema rewriting and caching operations
 #[derive(Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct SchemaRewriter {
+    #[cfg_attr(feature = "analyzer", data_size(skip))]
     cache: Arc<dyn SchemaCache>,
 }
 

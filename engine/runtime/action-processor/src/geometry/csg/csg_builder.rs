@@ -31,6 +31,7 @@ static UNION_PORT: Lazy<Port> = Lazy::new(|| Port::new("union"));
 static DIFFERENCE_PORT: Lazy<Port> = Lazy::new(|| Port::new("difference"));
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct CSGBuilderFactory;
 
 impl ProcessorFactory for CSGBuilderFactory {
@@ -131,6 +132,7 @@ struct CSGBuilderParam {
 /// # CSG Builder
 /// Builds a CSG tree from two solid geometries. To create a mesh from the CSG tree, use CSGEvaluator.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct CSGBuilder {
     pair_id_attribute: Option<rhai::AST>,
     left_buffer: HashMap<AttributeValue, Feature>,

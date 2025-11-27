@@ -129,6 +129,7 @@ impl ProcessorFactory for UDXFolderExtractorFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct UDXFolderExtractor {
     global_params: Option<HashMap<String, serde_json::Value>>,
     city_gml_path: rhai::AST,
@@ -141,6 +142,7 @@ pub struct UDXFolderExtractor {
 /// Configuration for extracting UDX folder structure information from PLATEAU4 CityGML paths.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct UDXFolderExtractorParam {
     city_gml_path: Expr,
     codelists_path: Option<Attribute>,

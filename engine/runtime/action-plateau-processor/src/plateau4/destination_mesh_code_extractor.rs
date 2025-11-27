@@ -24,6 +24,7 @@ use serde_json::Number;
 use serde_json::Value;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct DestinationMeshCodeExtractorFactory;
 
 impl ProcessorFactory for DestinationMeshCodeExtractorFactory {
@@ -113,6 +114,7 @@ impl ProcessorFactory for DestinationMeshCodeExtractorFactory {
 /// Configure mesh code extraction for Japanese standard regional mesh
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct DestinationMeshCodeExtractorParam {
     /// # Mesh Type
     /// Japanese standard mesh type: 1=80km, 2=10km, 3=1km, 4=500m, 5=250m, 6=125m
@@ -153,6 +155,7 @@ fn default_epsg_code() -> Expr {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct DestinationMeshCodeExtractor {
     mesh_type: JPMeshType,
     meshcode_attr: String,

@@ -136,6 +136,7 @@ impl From<FileProperty> for HashMap<Attribute, AttributeValue> {
 /// Configuration for extracting file system properties from files.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct FilePropertyExtractor {
     /// Attribute name containing the file path to analyze for properties
     file_path_attribute: String,

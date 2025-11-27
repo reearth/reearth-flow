@@ -16,6 +16,7 @@ use serde_json::Value;
 use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ExtruderFactory;
 
 impl ProcessorFactory for ExtruderFactory {
@@ -82,6 +83,7 @@ impl ProcessorFactory for ExtruderFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct Extruder {
     global_params: Option<HashMap<String, serde_json::Value>>,
     distance: rhai::AST,
@@ -91,6 +93,7 @@ pub struct Extruder {
 /// Configure how to extrude 2D polygons into 3D solid geometries
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ExtruderParam {
     /// # Distance
     /// The vertical distance (height) to extrude the polygon. Can be a constant value or an expression

@@ -76,6 +76,7 @@ impl ProcessorFactory for AttributeDuplicateFilterFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct AttributeDuplicateFilter {
     params: AttributeDuplicateFilterParam,
     buffer: HashMap<String, Feature>,
@@ -84,6 +85,7 @@ struct AttributeDuplicateFilter {
 /// # AttributeDuplicateFilter Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct AttributeDuplicateFilterParam {
     /// # Filter Attributes
     /// Attributes used to identify duplicate features - features with identical values for these attributes will be deduplicated

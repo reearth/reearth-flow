@@ -103,10 +103,13 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
 type JoinHandle = Arc<parking_lot::Mutex<Receiver<Result<(), errors::FeatureProcessorError>>>>;
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct FeatureCityGmlReader {
     global_params: Option<HashMap<String, serde_json::Value>>,
     params: CompiledFeatureCityGmlReaderParam,
+    #[cfg_attr(feature = "analyzer", data_size(skip))]
     join_handles: Vec<JoinHandle>,
+    #[cfg_attr(feature = "analyzer", data_size(skip))]
     thread_pool: Arc<parking_lot::Mutex<rayon::ThreadPool>>,
 }
 
@@ -115,6 +118,7 @@ pub struct FeatureCityGmlReader {
 /// Configuration for reading and processing CityGML files as features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct FeatureCityGmlReaderParam {
     /// # Dataset
     /// Path or expression to the CityGML dataset file to be read
@@ -125,6 +129,7 @@ pub struct FeatureCityGmlReaderParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct CompiledFeatureCityGmlReaderParam {
     dataset: rhai::AST,
     original_dataset: Expr,

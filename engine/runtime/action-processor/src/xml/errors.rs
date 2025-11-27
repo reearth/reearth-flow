@@ -1,6 +1,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) enum XmlProcessorError {
     #[error("Xml Fragmenter Factory error: {0}")]
     FragmenterFactory(String),

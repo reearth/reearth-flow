@@ -1,3 +1,4 @@
+pub mod analyzer_handler;
 pub mod errors;
 pub mod executor;
 pub mod log_event_handler;

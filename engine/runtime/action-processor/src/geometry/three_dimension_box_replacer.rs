@@ -18,6 +18,7 @@ use serde_json::Value;
 use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ThreeDimensionBoxReplacerFactory;
 
 impl ProcessorFactory for ThreeDimensionBoxReplacerFactory {
@@ -77,6 +78,7 @@ impl ProcessorFactory for ThreeDimensionBoxReplacerFactory {
 /// Configure which attributes contain the minimum and maximum coordinates for creating a 3D box
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ThreeDimensionBoxReplacer {
     /// # Minimum X Attribute
     /// Name of attribute containing the minimum X coordinate

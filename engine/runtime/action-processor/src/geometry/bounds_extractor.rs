@@ -22,6 +22,7 @@ use std::fmt::Debug;
 use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct Bounds {
     pub min_x: f64,
     pub max_x: f64,
@@ -112,6 +113,7 @@ impl ProcessorFactory for BoundsExtractorFactory {
 /// # BoundsExtractor Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct BoundsExtractorParam {
     /// # Minimum X Attribute
     /// Attribute name for storing the minimum X coordinate (defaults to "xmin")
@@ -134,6 +136,7 @@ pub(crate) struct BoundsExtractorParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct BoundsExtractor {
     params: BoundsExtractorParam,
 }

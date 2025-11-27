@@ -20,6 +20,7 @@ use super::errors::GeometryProcessorError;
 pub static UNFILTERED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unfiltered"));
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct GeometryFilterFactory;
 
 impl ProcessorFactory for GeometryFilterFactory {
@@ -80,6 +81,7 @@ impl ProcessorFactory for GeometryFilterFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct GeometryFilter {
     params: GeometryFilterParam,
 }
@@ -87,6 +89,7 @@ pub struct GeometryFilter {
 /// # Geometry Filter Parameters
 /// Configure how to filter features based on their geometry type
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 #[serde(tag = "filterType", rename_all = "camelCase")]
 pub enum GeometryFilterParam {
     None,

@@ -29,6 +29,7 @@ struct Schema {
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct DictionariesInitiatorFactory;
 
 impl ProcessorFactory for DictionariesInitiatorFactory {
@@ -104,6 +105,7 @@ impl ProcessorFactory for DictionariesInitiatorFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct DictionariesInitiator {
     params: DictionariesInitiatorParam,
     xpath_to_properties: HashMap<String, HashMap<String, SchemaFeature>>,
@@ -113,6 +115,7 @@ pub struct DictionariesInitiator {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct DictionariesInitiatorParam {
     city_code: Option<String>,
     target_packages: Option<Vec<String>>,

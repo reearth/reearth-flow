@@ -41,6 +41,7 @@ static BASE_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
 });
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct AttributeFlattenerFactory;
 
 impl ProcessorFactory for AttributeFlattenerFactory {
@@ -83,6 +84,7 @@ impl ProcessorFactory for AttributeFlattenerFactory {
 type AttributeMap = HashMap<String, AttributeValue>;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(super) struct AttributeFlattener {
     existing_flatten_attributes: HashSet<String>,
     encountered_feature_types: HashSet<String>,

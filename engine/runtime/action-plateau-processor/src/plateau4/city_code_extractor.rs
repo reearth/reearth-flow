@@ -16,6 +16,7 @@ use serde_json::Value;
 use std::{collections::HashMap, str::FromStr};
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct CityCodeExtractorFactory;
 
 impl ProcessorFactory for CityCodeExtractorFactory {
@@ -80,6 +81,7 @@ impl ProcessorFactory for CityCodeExtractorFactory {
 /// Configuration for extracting PLATEAU4 city code information from codelists.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct CityCodeExtractorParam {
     /// Attribute containing the city code to look up in codelists
     city_code_attribute: Attribute,
@@ -88,6 +90,7 @@ pub(crate) struct CityCodeExtractorParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct CityCodeExtractor {
     city_code_attribute: Attribute,
     codelists_path_attribute: Attribute,

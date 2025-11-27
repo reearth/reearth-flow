@@ -24,6 +24,7 @@ use super::rect::Rect;
 use super::traits::Elevation;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct MultiPolygon<T: CoordNum = f64, Z: CoordNum = f64>(pub Vec<Polygon<T, Z>>);
 
 pub type MultiPolygon2D<T> = MultiPolygon<T, NoValue>;

@@ -37,6 +37,7 @@ use super::triangle::Triangle;
 use super::validation::Validation;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct Polygon<T: CoordNum = f64, Z: CoordNum = f64> {
     pub(crate) exterior: LineString<T, Z>,
     pub(crate) interiors: Vec<LineString<T, Z>>,

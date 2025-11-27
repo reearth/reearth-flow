@@ -15,6 +15,7 @@ use serde_json::Value;
 static NULL_PORT: Lazy<Port> = Lazy::new(|| Port::new("nullport"));
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct CSGEvaluatorFactory;
 
 impl ProcessorFactory for CSGEvaluatorFactory {
@@ -62,6 +63,7 @@ impl ProcessorFactory for CSGEvaluatorFactory {
 /// # CSG Evaluator
 /// Evaluates a CSG tree to produce a solid geometry mesh
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct CSGEvaluator {}
 
 impl Processor for CSGEvaluator {

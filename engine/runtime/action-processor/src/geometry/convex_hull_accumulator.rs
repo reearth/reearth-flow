@@ -20,6 +20,7 @@ use serde_json::Value;
 use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ConvexHullAccumulatorFactory;
 
 impl ProcessorFactory for ConvexHullAccumulatorFactory {
@@ -83,6 +84,7 @@ impl ProcessorFactory for ConvexHullAccumulatorFactory {
 /// # ConvexHullAccumulator Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ConvexHullAccumulatorParam {
     /// # Group By Attributes
     /// Attributes used to group features before creating convex hulls - each group gets its own hull
@@ -90,6 +92,7 @@ pub struct ConvexHullAccumulatorParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ConvexHullAccumulator {
     group_by: Option<Vec<Attribute>>,
     buffer: HashMap<AttributeValue, Vec<Feature>>,

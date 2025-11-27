@@ -27,6 +27,7 @@ pub static REMAINING_PORT: Lazy<Port> = Lazy::new(|| Port::new("remaining"));
 pub static UNTOUCHED_PORT: Lazy<Port> = Lazy::new(|| Port::new("untouched"));
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct GeometryPartExtractorFactory;
 
 impl ProcessorFactory for GeometryPartExtractorFactory {
@@ -87,6 +88,7 @@ impl ProcessorFactory for GeometryPartExtractorFactory {
 /// Configure which geometry parts to extract from 3D geometries
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct GeometryPartExtractorParam {
     /// # Part Type
     /// Type of geometry part to extract
@@ -104,6 +106,7 @@ impl Default for GeometryPartExtractorParam {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub enum GeometryPartType {
     /// Extract surfaces as separate features
     #[default]
@@ -111,6 +114,7 @@ pub enum GeometryPartType {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct GeometryPartExtractor {
     param: GeometryPartExtractorParam,
 }

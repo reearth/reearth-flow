@@ -25,6 +25,7 @@ use wait_timeout::ChildExt;
 
 #[derive(Debug, Error)]
 #[allow(clippy::enum_variant_names)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub enum PythonProcessorError {
     #[error("Factory error: {0}")]
     FactoryError(String),
@@ -37,6 +38,7 @@ pub enum PythonProcessorError {
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct PythonScriptProcessorFactory;
 
 impl ProcessorFactory for PythonScriptProcessorFactory {
@@ -114,11 +116,13 @@ impl ProcessorFactory for PythonScriptProcessorFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct PythonScriptProcessor {
     script: Option<Expr>,
     python_file: Option<Expr>,
     python_path: String,
     timeout_seconds: u64,
+    #[cfg_attr(feature = "analyzer", data_size(skip))]
     ctx: NodeContext,
 }
 

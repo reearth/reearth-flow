@@ -20,6 +20,7 @@ use serde_json::Value;
 use super::errors::PlateauProcessorError;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct TranXLinkCheckerFactory;
 
 impl ProcessorFactory for TranXLinkCheckerFactory {
@@ -60,6 +61,7 @@ impl ProcessorFactory for TranXLinkCheckerFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct TranXLinkChecker {}
 
 impl Processor for TranXLinkChecker {

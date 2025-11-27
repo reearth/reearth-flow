@@ -15,6 +15,7 @@ use serde_json::Value;
 use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct OffsetterFactory;
 
 impl ProcessorFactory for OffsetterFactory {
@@ -73,6 +74,7 @@ impl ProcessorFactory for OffsetterFactory {
 /// Configure the X, Y, and Z coordinate offsets to apply to all geometry coordinates
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct OffsetterParam {
     /// # X Offset
     /// Offset to add to all X coordinates (longitude)
@@ -86,6 +88,7 @@ pub struct OffsetterParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct Offsetter {
     params: OffsetterParam,
 }

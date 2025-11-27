@@ -1,0 +1,34 @@
+[package]
+name = "reearth-flow-analyzer-app"
+description = "Re:Earth Flow Analyzer Desktop Application"
+version = "0.0.1"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[build-dependencies]
+tauri-build = { version = "1.5.4", features = [] }
+
+[dependencies]
+reearth-flow-analyzer.workspace = true
+
+directories.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+tauri = { version = "1.6.8", features = [
+  "dialog-all",
+  "fs-read-dir",
+  "shell-open",
+] }
+tauri-plugin-log = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v1" }
+thiserror.workspace = true
+uuid.workspace = true
+log = "0.4"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

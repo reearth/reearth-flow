@@ -36,6 +36,7 @@ use crate::{all_attribute_keys, attribute::Attribute, geometry::Geometry, metada
 pub struct MetadataKey(String);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct Feature {
     pub id: uuid::Uuid,
     pub attributes: IndexMap<Attribute, AttributeValue>,

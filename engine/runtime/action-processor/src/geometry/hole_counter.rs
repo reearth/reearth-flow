@@ -16,6 +16,7 @@ use serde_json::Value;
 use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct HoleCounterFactory;
 
 impl ProcessorFactory for HoleCounterFactory {
@@ -76,6 +77,7 @@ impl ProcessorFactory for HoleCounterFactory {
 /// Configure where to store the count of holes found in polygon geometries
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct HoleCounterParam {
     /// # Output Attribute
     /// Name of the attribute where the hole count will be stored as a number
@@ -83,6 +85,7 @@ pub struct HoleCounterParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct HoleCounter {
     output_attribute: Attribute,
 }

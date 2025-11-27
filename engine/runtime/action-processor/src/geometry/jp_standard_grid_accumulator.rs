@@ -21,6 +21,7 @@ use reearth_flow_types::{Attribute, AttributeValue, GeometryValue};
 use serde_json::Value;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct JPStandardGridAccumulatorFactory;
 
 impl ProcessorFactory for JPStandardGridAccumulatorFactory {
@@ -60,6 +61,7 @@ impl ProcessorFactory for JPStandardGridAccumulatorFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct JPStandardGridAccumulator;
 
 impl Processor for JPStandardGridAccumulator {

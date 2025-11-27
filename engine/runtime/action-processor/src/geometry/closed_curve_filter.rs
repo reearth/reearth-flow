@@ -62,6 +62,7 @@ impl ProcessorFactory for ClosedCurveFilterFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct ClosedCurveFilter;
 
 impl Processor for ClosedCurveFilter {

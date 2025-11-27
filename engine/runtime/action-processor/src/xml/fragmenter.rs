@@ -19,6 +19,7 @@ use serde_json::Value;
 use super::errors::{Result, XmlProcessorError};
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct XmlFragmenterFactory;
 
 impl ProcessorFactory for XmlFragmenterFactory {
@@ -97,6 +98,7 @@ impl ProcessorFactory for XmlFragmenterFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct XmlFragmenter {
     global_params: Option<HashMap<String, serde_json::Value>>,
     params: XmlFragmenterParam,
@@ -106,6 +108,7 @@ pub struct XmlFragmenter {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct PropertySchema {
     pub(super) elements_to_match: Expr,
     pub(super) elements_to_exclude: Expr,
@@ -117,6 +120,7 @@ pub struct PropertySchema {
 /// Configuration for fragmenting XML documents into smaller pieces.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(tag = "source", rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub enum XmlFragmenterParam {
     #[serde(rename = "url")]
     /// URL-based source configuration for XML fragmenting
@@ -128,6 +132,7 @@ pub enum XmlFragmenterParam {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct XmlFragment {
     pub(super) xml_id: String,
     pub(super) fragment: String,

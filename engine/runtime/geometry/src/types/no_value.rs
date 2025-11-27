@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::algorithm::GeoNum;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, PartialOrd, Clone, Copy, Debug, Hash, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct NoValue;
 
 impl Add for NoValue {

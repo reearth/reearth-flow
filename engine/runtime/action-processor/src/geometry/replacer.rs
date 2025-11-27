@@ -16,6 +16,7 @@ use serde_json::Value;
 use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct GeometryReplacerFactory;
 
 impl ProcessorFactory for GeometryReplacerFactory {
@@ -75,6 +76,7 @@ impl ProcessorFactory for GeometryReplacerFactory {
 /// Configure which attribute contains the geometry data to replace the feature's current geometry
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct GeometryReplacer {
     /// # Source Attribute
     /// Name of the attribute containing the compressed geometry data to use as the new geometry

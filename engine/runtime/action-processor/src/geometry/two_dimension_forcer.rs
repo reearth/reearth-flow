@@ -12,6 +12,7 @@ use reearth_flow_types::GeometryValue;
 use serde_json::Value;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct TwoDimensionForcerFactory;
 
 impl ProcessorFactory for TwoDimensionForcerFactory {
@@ -51,6 +52,7 @@ impl ProcessorFactory for TwoDimensionForcerFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct TwoDimensionForcer;
 
 impl Processor for TwoDimensionForcer {

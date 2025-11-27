@@ -26,6 +26,7 @@ pub static AREA_PORT: Lazy<Port> = Lazy::new(|| Port::new("area"));
 /// Defines how attributes should be handled when dissolving multiple features into one
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub enum AttributeAccumulationStrategy {
     /// # Drop Incoming Attributes
     /// No attributes from any incoming features will be preserved in the output (except group_by attributes if specified)
@@ -40,6 +41,7 @@ pub enum AttributeAccumulationStrategy {
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct DissolverFactory;
 
 impl ProcessorFactory for DissolverFactory {
@@ -108,6 +110,7 @@ impl ProcessorFactory for DissolverFactory {
 /// Configure how to dissolve features by grouping them based on shared attributes
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct DissolverParam {
     /// # Group By Attributes
     /// List of attribute names to group features by before dissolving. Features with the same values for these attributes will be dissolved together
@@ -122,6 +125,7 @@ pub struct DissolverParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct Dissolver {
     group_by: Option<Vec<Attribute>>,
     tolerance: f64,

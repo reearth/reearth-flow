@@ -19,6 +19,7 @@ use super::traits::Elevation;
 use super::{no_value::NoValue, point::Point};
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Debug, Hash)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct Line<T: CoordNum = f64, Z: CoordNum = f64> {
     pub start: Coordinate<T, Z>,
     pub end: Coordinate<T, Z>,

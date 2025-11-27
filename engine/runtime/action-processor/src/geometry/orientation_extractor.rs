@@ -25,6 +25,7 @@ const CLOCKWISE_ORIENTATION: WindingOrderResult = "clockwise";
 const COUNTER_CLOCKWISE_ORIENTATION: WindingOrderResult = "counter_clockwise";
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct OrientationExtractorFactory;
 
 impl ProcessorFactory for OrientationExtractorFactory {
@@ -85,6 +86,7 @@ impl ProcessorFactory for OrientationExtractorFactory {
 /// Configure where to store the extracted polygon orientation information
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct OrientationExtractorParam {
     /// # Output Attribute
     /// Name of the attribute where the orientation (clockwise/counter_clockwise) will be stored
@@ -92,6 +94,7 @@ pub struct OrientationExtractorParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct OrientationExtractor {
     output_attribute: Attribute,
 }

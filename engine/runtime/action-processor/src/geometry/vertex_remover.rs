@@ -19,6 +19,7 @@ use serde_json::Value;
 const EPSILON: f64 = 0.0001;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct VertexRemoverFactory;
 
 impl ProcessorFactory for VertexRemoverFactory {
@@ -58,6 +59,7 @@ impl ProcessorFactory for VertexRemoverFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct VertexRemover;
 
 impl Processor for VertexRemover {

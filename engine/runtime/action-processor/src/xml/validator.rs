@@ -56,6 +56,7 @@ fn create_schema_fetcher() -> Arc<dyn SchemaFetcher> {
 static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct XmlValidatorFactory;
 
 impl ProcessorFactory for XmlValidatorFactory {
@@ -127,11 +128,16 @@ impl ProcessorFactory for XmlValidatorFactory {
 }
 
 #[derive(Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct XmlValidator {
     params: XmlValidatorParam,
+    #[cfg_attr(feature = "analyzer", data_size(skip))]
     schema_store: Arc<parking_lot::RwLock<SchemaStore>>,
+    #[cfg_attr(feature = "analyzer", data_size(skip))]
     schema_fetcher: Arc<dyn SchemaFetcher>,
+    #[cfg_attr(feature = "analyzer", data_size(skip))]
     schema_cache: Arc<dyn SchemaCache>,
+    #[cfg_attr(feature = "analyzer", data_size(skip))]
     schema_rewriter: SchemaRewriter,
 }
 

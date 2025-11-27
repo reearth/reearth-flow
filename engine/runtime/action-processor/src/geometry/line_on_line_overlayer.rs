@@ -31,6 +31,7 @@ pub static POINT_PORT: Lazy<Port> = Lazy::new(|| Port::new("point"));
 pub static LINE_PORT: Lazy<Port> = Lazy::new(|| Port::new("line"));
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct LineOnLineOverlayerFactory;
 
 impl ProcessorFactory for LineOnLineOverlayerFactory {
@@ -98,6 +99,7 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
 /// Configuration for finding intersection points between line features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct LineOnLineOverlayerParam {
     group_by: Option<Vec<Attribute>>,
     tolerance: f64,
@@ -107,6 +109,7 @@ pub struct LineOnLineOverlayerParam {
 
 #[allow(clippy::type_complexity)]
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct LineOnLineOverlayer {
     group_by: Option<Vec<Attribute>>,
     tolerance: f64,

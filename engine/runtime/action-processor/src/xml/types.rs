@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ValidationResult {
     pub error_type: String,
     pub message: String,
@@ -64,6 +65,7 @@ impl From<ValidationResult> for HashMap<String, AttributeValue> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub enum XmlInputType {
     File,
     Text,
@@ -71,6 +73,7 @@ pub enum XmlInputType {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub enum ValidationType {
     Syntax,
     SyntaxAndNamespace,
@@ -79,6 +82,7 @@ pub enum ValidationType {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct XmlValidatorParam {
     pub attribute: Attribute,
     pub input_type: XmlInputType,

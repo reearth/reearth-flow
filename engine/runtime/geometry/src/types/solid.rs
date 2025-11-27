@@ -10,11 +10,13 @@ use super::face::Face;
 use super::no_value::NoValue;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct Solid<T: CoordNum = f64, Z: CoordNum = f64> {
     boundary_surface: BoundarySurface<T, Z>,
 }
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub enum BoundarySurface<T: CoordNum = f64, Z: CoordNum = f64> {
     Faces(Vec<Face<T, Z>>),
     TriangularMesh(TriangularMesh<T, Z>),

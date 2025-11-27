@@ -10,6 +10,7 @@ use reearth_flow_runtime::{
 use serde_json::Value;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct EchoProcessorFactory;
 
 impl ProcessorFactory for EchoProcessorFactory {
@@ -49,6 +50,7 @@ impl ProcessorFactory for EchoProcessorFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct EchoProcessor;
 
 impl Processor for EchoProcessor {

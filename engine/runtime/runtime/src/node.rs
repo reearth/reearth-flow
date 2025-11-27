@@ -91,6 +91,12 @@ pub(super) struct NodeId(String);
     )
 )]
 pub struct Port(String);
+#[cfg(feature = "analyzer")]
+impl reearth_flow_analyzer_core::DataSize for Port {
+    fn data_size(&self) -> usize {
+        self.as_ref().len()
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct NodeType {
@@ -319,7 +325,28 @@ impl Clone for Box<dyn ProcessorFactory> {
     }
 }
 
+#[cfg(not(feature = "analyzer"))]
 pub trait Processor: Send + Sync + Debug + ProcessorClone {
+    fn initialize(&mut self, _ctx: NodeContext) -> Result<(), BoxedError> {
+        Ok(())
+    }
+    fn num_threads(&self) -> usize {
+        1
+    }
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError>;
+    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError>;
+
+    fn name(&self) -> &str;
+}
+
+#[cfg(feature = "analyzer")]
+use reearth_flow_analyzer_core::DataSize;
+#[cfg(feature = "analyzer")]
+pub trait Processor: Send + Sync + Debug + ProcessorClone + DataSize {
     fn initialize(&mut self, _ctx: NodeContext) -> Result<(), BoxedError> {
         Ok(())
     }
@@ -441,6 +468,7 @@ impl ProcessorFactory for InputRouterFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct InputRouter {
     routing_port: String,
 }
@@ -519,6 +547,7 @@ impl ProcessorFactory for OutputRouterFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct OutputRouter {
     routing_port: String,
 }

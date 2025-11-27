@@ -22,6 +22,7 @@ use std::vec;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct RefinerFactory;
 
 impl ProcessorFactory for RefinerFactory {
@@ -62,6 +63,7 @@ impl ProcessorFactory for RefinerFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct Refiner;
 
 impl Processor for Refiner {

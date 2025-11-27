@@ -73,6 +73,7 @@ impl ProcessorFactory for AttributeFlattenerFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct AttributeFlattener {
     params: AttributeFlattenerParam,
 }
@@ -80,6 +81,7 @@ struct AttributeFlattener {
 /// # AttributeFlattener Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct AttributeFlattenerParam {
     /// # Attributes to Flatten
     /// Map/object attributes that should be flattened - their nested properties will become top-level attributes

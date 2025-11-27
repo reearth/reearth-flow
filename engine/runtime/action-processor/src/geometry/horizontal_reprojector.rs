@@ -257,6 +257,7 @@ fn transform_geometry_3d(
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct HorizontalReprojectorFactory;
 
 impl ProcessorFactory for HorizontalReprojectorFactory {
@@ -321,6 +322,7 @@ impl ProcessorFactory for HorizontalReprojectorFactory {
 /// Configure the source and target coordinate systems for geometry reprojection
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct HorizontalReprojectorParam {
     /// # Source EPSG Code
     /// Source coordinate system EPSG code. If not provided, will use the EPSG code from the geometry.
@@ -336,6 +338,7 @@ pub struct HorizontalReprojectorParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct HorizontalReprojector {
     source_epsg_code: Option<EpsgCode>,
     target_epsg_code: EpsgCode,

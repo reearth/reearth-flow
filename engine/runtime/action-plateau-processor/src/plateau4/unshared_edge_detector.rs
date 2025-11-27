@@ -52,6 +52,7 @@ const FIXED_POINT_SCALE: f64 = 1_000_000.0;
 pub static UNSHARED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unshared"));
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct UnsharedEdgeDetectorFactory;
 
 impl ProcessorFactory for UnsharedEdgeDetectorFactory {
@@ -114,6 +115,7 @@ impl ProcessorFactory for UnsharedEdgeDetectorFactory {
 /// Configure unshared edge detection behavior
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct UnsharedEdgeDetectorParam {
     /// Tolerance for edge matching in meters (default: 0.1)
     /// Edges within this distance are considered the same edge
@@ -134,6 +136,7 @@ fn default_tolerance() -> f64 {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct UnsharedEdgeDetector {
     tolerance: f64,
     features: Vec<Feature>,

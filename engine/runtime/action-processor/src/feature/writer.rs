@@ -137,6 +137,7 @@ impl ProcessorFactory for FeatureWriterFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct FeatureWriter {
     global_params: Option<HashMap<String, serde_json::Value>>,
     params: CompiledFeatureWriterParam,
@@ -176,6 +177,7 @@ enum FeatureWriterParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 enum CompiledFeatureWriterParam {
     Csv {
         common_param: CompiledCommonWriterParam,
@@ -185,11 +187,13 @@ enum CompiledFeatureWriterParam {
     },
     Json {
         common_param: CompiledCommonWriterParam,
+        #[cfg_attr(feature = "analyzer", data_size(skip))]
         param: json::CompiledJsonWriterParam,
     },
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct CompiledCommonWriterParam {
     output: rhai::AST,
 }
