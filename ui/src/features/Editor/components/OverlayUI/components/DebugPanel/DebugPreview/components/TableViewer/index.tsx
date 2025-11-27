@@ -1,54 +1,39 @@
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback } from "react";
 
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
-import { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useT } from "@flow/lib/i18n";
 
 import FeatureDetailsOverlay from "./FeatureDetailsOverlay";
 
 type Props = {
   fileContent: any | null;
-  fileType: SupportedDataTypes | null;
   selectedFeature: any;
   onSingleClick?: (feature: any) => void;
   onDoubleClick?: (feature: any) => void;
   detectedGeometryType: string | null;
   totalFeatures: number;
+  detailsOverlayOpen: boolean;
+  detailsFeature: any;
+  columnizer: ReturnType<typeof useDataColumnizer>;
+  onCloseFeatureDetails: () => void;
 };
 
 const TableViewer: React.FC<Props> = memo(
   ({
     fileContent,
-    fileType,
     selectedFeature,
     onSingleClick,
     onDoubleClick,
     detectedGeometryType,
     totalFeatures,
+    detailsOverlayOpen,
+    detailsFeature,
+    columnizer,
+    onCloseFeatureDetails,
   }) => {
     const t = useT();
-    const [detailsOverlayOpen, setDetailsOverlayOpen] = useState(false);
-    const [detailsFeature, setDetailsFeature] = useState<any>(null);
-
-    // Use traditional columnizer for all data (streaming is now pre-transformed)
-    const columnizer = useDataColumnizer({
-      parsedData: fileContent,
-      type: fileType,
-    });
-
-    // Handle showing feature details
-    const handleShowFeatureDetails = useCallback((feature: any) => {
-      setDetailsFeature(feature);
-      setDetailsOverlayOpen(true);
-    }, []);
-
-    // Handle closing feature details
-    const handleCloseFeatureDetails = useCallback(() => {
-      setDetailsOverlayOpen(false);
-      setDetailsFeature(null);
-    }, []);
 
     // Handle row single click - select feature and show details
     const handleRowSingleClick = useCallback(
@@ -62,9 +47,8 @@ const TableViewer: React.FC<Props> = memo(
     const handleRowDoubleClick = useCallback(
       (feature: any) => {
         onDoubleClick?.(feature);
-        handleShowFeatureDetails(feature);
       },
-      [onDoubleClick, handleShowFeatureDetails],
+      [onDoubleClick],
     );
 
     // Loading state
@@ -123,15 +107,13 @@ const TableViewer: React.FC<Props> = memo(
 
         {/* Feature Details Overlay */}
 
-        <FeatureDetailsOverlay
-          feature={detailsFeature}
-          selectedFeature={selectedFeature}
-          columnizer={columnizer}
-          isOpen={detailsOverlayOpen}
-          detectedGeometryType={detectedGeometryType}
-          setDetailsFeature={setDetailsFeature}
-          onClose={handleCloseFeatureDetails}
-        />
+        {detailsOverlayOpen && (
+          <FeatureDetailsOverlay
+            feature={detailsFeature}
+            detectedGeometryType={detectedGeometryType}
+            onClose={onCloseFeatureDetails}
+          />
+        )}
       </div>
     );
   },

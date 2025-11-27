@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 
+import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useJob } from "@flow/lib/gql/job";
 import { useIndexedDB } from "@flow/lib/indexedDB";
@@ -20,26 +21,10 @@ export default () => {
   const [expanded, setExpanded] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const previousSelectedFeature = useRef<any>(null);
-
+  const [detailsOverlayOpen, setDetailsOverlayOpen] = useState(false);
+  const [detailsFeature, setDetailsFeature] = useState<any>(null);
   // const [enableClustering, setEnableClustering] = useState<boolean>(true);
   const [selectedFeature, setSelectedFeature] = useState<any>(null);
-  const handlePreviousSelectedFeature = useCallback((feature: any) => {
-    previousSelectedFeature.current = feature;
-  }, []);
-
-  const handleSelectedFeature = useCallback(
-    (feature: any) => {
-      const currId = selectedFeature?.id;
-      const prevId = previousSelectedFeature.current?.id;
-      if (currId !== feature?.id) {
-        setSelectedFeature(feature);
-      }
-      if (currId !== prevId) {
-        handlePreviousSelectedFeature(selectedFeature);
-      }
-    },
-    [selectedFeature, handlePreviousSelectedFeature],
-  );
 
   const [convertedSelectedFeature, setConvertedSelectedFeature] =
     useState(null);
@@ -422,6 +407,52 @@ export default () => {
     [streamingQuery.detectedGeometryType, cesiumViewerRef, mapRef],
   );
 
+  const columnizer = useDataColumnizer({
+    parsedData: selectedOutputData,
+    type: fileType,
+  });
+
+  const featureIdMap = useMemo(() => {
+    if (!columnizer.tableData) return null;
+
+    const map = new Map<string | number, any>();
+    columnizer.tableData.forEach((row: any) => {
+      const id = row.id;
+      if (id !== null && id !== undefined) {
+        map.set(id, row);
+      }
+    });
+    return map;
+  }, [columnizer.tableData]);
+
+  const handlePreviousSelectedFeature = useCallback((feature: any) => {
+    previousSelectedFeature.current = feature;
+  }, []);
+
+  const handleSelectedFeature = useCallback(
+    (feature: any) => {
+      const currId = selectedFeature?.id;
+      const prevId = previousSelectedFeature.current?.id;
+      if (currId !== feature?.id) {
+        setSelectedFeature(feature);
+        if (detailsOverlayOpen && feature) {
+          const matchingRow =
+            featureIdMap?.get(JSON.stringify(feature.id)) ?? selectedFeature;
+          setDetailsFeature(matchingRow);
+        }
+      }
+      if (currId !== prevId) {
+        handlePreviousSelectedFeature(selectedFeature);
+      }
+    },
+    [
+      selectedFeature,
+      featureIdMap,
+      detailsOverlayOpen,
+      handlePreviousSelectedFeature,
+    ],
+  );
+
   const handleRowSingleClick = useCallback(
     (value: any) => {
       // setEnableClustering(false);
@@ -435,13 +466,24 @@ export default () => {
       // setEnableClustering(false);
       handleSelectedFeature(value);
       handleFlyToSelectedFeature(convertedSelectedFeature);
+      const matchingRow =
+        featureIdMap?.get(JSON.stringify(value.id)) ?? selectedFeature;
+      setDetailsFeature(matchingRow);
+      setDetailsOverlayOpen(true);
     },
     [
       convertedSelectedFeature,
+      featureIdMap,
+      selectedFeature,
       handleFlyToSelectedFeature,
       handleSelectedFeature,
     ],
   );
+
+  const handleCloseFeatureDetails = useCallback(() => {
+    setDetailsOverlayOpen(false);
+    setDetailsFeature(null);
+  }, []);
 
   return {
     debugJobId,
@@ -459,6 +501,9 @@ export default () => {
     // enableClustering,
     selectedFeature,
     previousSelectedFeature,
+    detailsOverlayOpen,
+    detailsFeature,
+    columnizer,
     handleSelectedFeature,
     setConvertedSelectedFeature,
     // setEnableClustering,
@@ -470,6 +515,7 @@ export default () => {
     handleRowSingleClick,
     handleRowDoubleClick,
     handleFlyToSelectedFeature,
+    handleCloseFeatureDetails,
 
     // Data loading features (always available now)
     streamingQuery: streamingQuery,

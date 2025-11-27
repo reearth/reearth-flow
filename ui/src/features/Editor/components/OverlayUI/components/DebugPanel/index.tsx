@@ -47,6 +47,9 @@ const DebugPanel: React.FC = () => {
     outputDataForDownload,
     selectedOutputData,
     selectedFeature,
+    detailsOverlayOpen,
+    detailsFeature,
+    columnizer,
     setConvertedSelectedFeature,
     handleSelectedFeature,
     handleFullscreenExpand,
@@ -57,6 +60,7 @@ const DebugPanel: React.FC = () => {
     handleRowSingleClick,
     handleRowDoubleClick,
     handleFlyToSelectedFeature,
+    handleCloseFeatureDetails,
     // Data properties
     detectedGeometryType,
     visualizerType,
@@ -207,12 +211,15 @@ const DebugPanel: React.FC = () => {
                 <div className="min-h-0 flex-1">
                   <TableViewer
                     fileContent={selectedOutputData}
-                    fileType={fileType}
                     selectedFeature={selectedFeature}
                     onSingleClick={handleRowSingleClick}
                     onDoubleClick={handleRowDoubleClick}
                     detectedGeometryType={detectedGeometryType || undefined}
                     totalFeatures={totalFeatures || undefined}
+                    detailsOverlayOpen={detailsOverlayOpen}
+                    detailsFeature={detailsFeature}
+                    columnizer={columnizer}
+                    onCloseFeatureDetails={handleCloseFeatureDetails}
                   />
                 </div>
               </ResizablePanel>

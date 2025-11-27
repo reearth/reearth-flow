@@ -1,31 +1,19 @@
 import { ArrowLeftIcon } from "@phosphor-icons/react";
-import { ColumnDef } from "@tanstack/react-table";
-import { memo, useEffect, useMemo } from "react";
+import { memo, useMemo } from "react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 
 type Props = {
   feature: any;
-  isOpen: boolean;
-  selectedFeature?: any;
-  columnizer: {
-    tableData: any;
-    tableColumns: ColumnDef<any>[];
-  };
   onClose: () => void;
   handleShowFeatureDetails?: (feature: any) => void;
-  setDetailsFeature: (feature: any) => void;
   detectedGeometryType?: string | null;
 };
 
 const FeatureDetailsOverlay: React.FC<Props> = ({
   feature,
-  isOpen,
-  selectedFeature,
-  columnizer,
   onClose,
-  setDetailsFeature,
   detectedGeometryType,
 }) => {
   const t = useT();
@@ -33,7 +21,6 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
   // Process feature properties for display
   const processedFeature = useMemo(() => {
     if (!feature) return null;
-
     // Separate geometry and properties for better organization
     const { geometry, ...properties } = feature;
 
@@ -43,6 +30,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
         ([key]) => !key.startsWith("_") && key !== "id",
       ),
     );
+    console.log("LOCAL FEATURE DETAILS:", filteredProperties);
 
     return {
       id: feature.id,
@@ -51,30 +39,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
     };
   }, [feature]);
 
-  // Create a Map for O(1) feature lookup by ID
-  const featureIdMap = useMemo(() => {
-    if (!columnizer.tableData) return null;
-
-    const map = new Map<string | number, any>();
-    columnizer.tableData.forEach((row: any) => {
-      const id = row.id;
-      if (id !== null && id !== undefined) {
-        map.set(id, row);
-      }
-    });
-    return map;
-  }, [columnizer.tableData]);
-
-  useEffect(() => {
-    if (!selectedFeature || !featureIdMap) {
-      return;
-    }
-    const matchingRow =
-      featureIdMap.get(JSON.stringify(selectedFeature.id)) ?? selectedFeature;
-    setDetailsFeature(matchingRow);
-  }, [selectedFeature, featureIdMap, setDetailsFeature]);
-
-  if (!isOpen || !feature || !processedFeature) {
+  if (!feature || !processedFeature) {
     return null;
   }
 
@@ -87,7 +52,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
         return String(value);
       }
     }
-    return String(value);
+    return value;
   };
 
   return (
