@@ -258,6 +258,7 @@ export type CreateTriggerInput = {
   apiDriverInput?: InputMaybe<ApiDriverInput>;
   deploymentId: Scalars['ID']['input'];
   description: Scalars['String']['input'];
+  enabled?: InputMaybe<Scalars['Boolean']['input']>;
   timeDriverInput?: InputMaybe<TimeDriverInput>;
   variables?: InputMaybe<Scalars['JSON']['input']>;
   workspaceId: Scalars['ID']['input'];
@@ -394,6 +395,7 @@ export type Job = Node & {
   startedAt: Scalars['DateTime']['output'];
   status: JobStatus;
   userFacingLogsURL?: Maybe<Scalars['String']['output']>;
+  variables?: Maybe<Scalars['JSON']['output']>;
   workerLogsURL?: Maybe<Scalars['String']['output']>;
   workspace?: Maybe<Workspace>;
   workspaceId: Scalars['ID']['output'];
@@ -1197,6 +1199,7 @@ export type Trigger = Node & {
   deployment: Deployment;
   deploymentId: Scalars['ID']['output'];
   description: Scalars['String']['output'];
+  enabled?: Maybe<Scalars['Boolean']['output']>;
   eventSource: EventSourceType;
   id: Scalars['ID']['output'];
   lastTriggered?: Maybe<Scalars['DateTime']['output']>;
@@ -1298,6 +1301,7 @@ export type UpdateTriggerInput = {
   apiDriverInput?: InputMaybe<ApiDriverInput>;
   deploymentId?: InputMaybe<Scalars['ID']['input']>;
   description?: InputMaybe<Scalars['String']['input']>;
+  enabled?: InputMaybe<Scalars['Boolean']['input']>;
   timeDriverInput?: InputMaybe<TimeDriverInput>;
   triggerId: Scalars['ID']['input'];
   variables?: InputMaybe<Scalars['JSON']['input']>;

@@ -383,6 +383,8 @@ graphs:
         method: remove
       - attribute: gmlId
         method: remove
+      - attribute: gmlPropertyName
+        method: remove
       - attribute: fileIndex
         method: remove
       - attribute: root
@@ -450,6 +452,8 @@ graphs:
         method: rename
         value: _lod
       - attribute: gmlId
+        method: remove
+      - attribute: gmlPropertyName
         method: remove
       - attribute: fileIndex
         method: remove
@@ -543,6 +547,8 @@ graphs:
       - attribute: lod
         method: remove
       - attribute: gmlId
+        method: remove
+      - attribute: gmlPropertyName
         method: remove
       - attribute: fileIndex
         method: remove
