@@ -20,7 +20,13 @@ export default ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const t = useT();
   const { toast } = useToast();
-  const { useGetAssets, createAsset, updateAsset, deleteAsset } = useAsset();
+  const {
+    useGetAssets,
+    createAsset,
+    updateAsset,
+    deleteAsset,
+    isCreatingAsset,
+  } = useAsset();
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [currentOrderBy, setCurrentOrderBy] = useState<AssetOrderBy>(
     AssetOrderBy.CreatedAt,
@@ -209,6 +215,7 @@ export default ({
     sortOptions,
     searchTerm,
     layoutView,
+    isCreatingAsset,
     setAssetToBeDeleted,
     setAssetToBeEdited,
     setCurrentPage,
