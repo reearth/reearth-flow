@@ -5,11 +5,11 @@ workflow_path = "runtime/examples/fixture/workflow/data-convert/plateau4/02-tran
 # The geometry is tiny so we use a smaller threshold. If implementation changes this could break.
 # Adjust it with a visual inspection.
 
-# [tests.mvt_lines]
-# threshold = 0.005
+[tests.mvt_lines]
+threshold = 0.005
 
-# [tests.mvt_polygons]
-# threshold = 0.001
+[tests.mvt_polygons]
+threshold = 0.001
 
 [tests.mvt_attributes.casts]
 ".attributes" = "json"
