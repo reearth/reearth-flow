@@ -8,7 +8,7 @@ require (
 	github.com/k0kubun/pp/v3 v3.5.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/redis/go-redis/v9 v9.14.0
-	github.com/reearth/reearthx v0.0.0-20250923165051-5bd6f1c10f7a
+	github.com/reearth/reearthx v0.0.0-20251128044232-3067c04f34da
 	github.com/stretchr/testify v1.11.1
 	go.mongodb.org/mongo-driver v1.17.4
 	go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo v0.63.0
