@@ -125,6 +125,8 @@ graphs:
               method: remove
             - attribute: gmlId
               method: remove
+            - attribute: gmlPropertyName
+              method: remove
             - attribute: fileIndex
               method: remove
             - attribute: root
@@ -195,6 +197,8 @@ graphs:
               value: _lod
             - attribute: gmlId
               method: remove
+            - attribute: gmlPropertyName
+              method: remove
             - attribute: fileIndex
               method: remove
             - attribute: root
@@ -257,17 +261,16 @@ graphs:
         with:
           filterType: geometryType
 
-      # Dissolve polygons in MultiPolygon, due to the bug it is temporarily disabled
-      # - id: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
-      #   name: Dissolver
-      #   type: action
-      #   action: Dissolver
-      #   with:
-      #     groupBy:
-      #       - gml_id
-      #       - _udxDirs
-      #       - _lod
-      #     attributeAccumulationMode: useOne
+      - id: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
+        name: Dissolver
+        type: action
+        action: Dissolver
+        with:
+          groupBy:
+            - gml_id
+            - _udxDirs
+            - _lod
+          attributeAccumulationMode: useOne
 
       - id: b4c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
         name: FeatureSorterPreMVT
@@ -309,6 +312,8 @@ graphs:
             - attribute: lod
               method: remove
             - attribute: gmlId
+              method: remove
+            - attribute: gmlPropertyName
               method: remove
             - attribute: fileIndex
               method: remove
@@ -368,7 +373,7 @@ graphs:
           layerName: |
             env.get("__value").feature_type.split(":")[1]
           minZoom: 8
-          maxZoom: 16
+          maxZoom: 18
           output: |
             file::join_path(env.get("workerArtifactPath"), env.get("__value")._udxDirs + "_dm_geometric_attributes")
           skipUnderscorePrefix: true
@@ -459,14 +464,14 @@ graphs:
       # GeometryFilter (polygon) -> Dissolver (temporarily disabled)
       - id: 8d9e0f1a-2b3c-4d5e-6f7a-8b9c0d1e2f3a
         from: 6f7a8b9c-0d1e-2f3a-4b5c-6d7e8f9a0b1c
-      #   to: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
+        to: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
         fromPort: surface
-      #   toPort: default
-      # # Dissolver -> FeatureSorterPreMVT
-      # - id: 4d5e6f7a-8b9c-0d1e-2f3a-4b5c6d7e8f9a
-      #   from: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
+        toPort: default
+      # Dissolver -> FeatureSorterPreMVT
+      - id: 4d5e6f7a-8b9c-0d1e-2f3a-4b5c6d7e8f9a
+        from: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
         to: b4c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
-      #  fromPort: area
+        fromPort: area
         toPort: default
       # GeometryFilter (linestrings) -> FeatureSorterPreMVT
       - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
