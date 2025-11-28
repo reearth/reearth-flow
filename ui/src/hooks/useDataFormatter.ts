@@ -2,7 +2,6 @@ import { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useEffect, useState } from "react";
 
 import { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
-import { Polygon, PolygonCoordinateRing } from "@flow/types/gisTypes/geoJSON";
 
 // Helper function to format cell values with truncation
 function formatCellValue(value: any): string {
@@ -87,7 +86,16 @@ export default ({
               ) {
                 return [
                   `geometry${geometry}`,
-                  simplifyPolygonCoordinates(feature.geometry),
+                  formatCellValue(feature.geometry.coordinates || null),
+                ];
+              }
+              if (
+                geometry === "coordinates" &&
+                feature.geometry.type === "MultiPolygon"
+              ) {
+                return [
+                  `geometry${geometry}`,
+                  formatCellValue(feature.geometry.coordinates || null),
                 ];
               }
               if (
@@ -144,58 +152,3 @@ export default ({
     tableColumns: columns,
   };
 };
-
-// simplifyPolygonCoordinates: Simplify GeoJSON Polygon coordinates for display. Output looks like this:
-// [
-//   [
-//     [
-//       [100, 0],
-//       "...",
-//       [100, 0]
-//     ],
-//     [
-//       [100, 0],
-//       "...",
-//       [100, 0]
-//     ]
-//   ],
-//   "...",
-//   [
-//     [
-//       [100, 0],
-//       "...",
-//       [100, 0]
-//     ],
-//     [
-//       [100, 0],
-//       "...",
-//       [100, 0]
-//     ]
-//   ]
-// ]
-function simplifyPolygonCoordinates(polygon: Polygon) {
-  if (
-    !polygon ||
-    polygon.type !== "Polygon" ||
-    !Array.isArray(polygon.coordinates)
-  ) {
-    throw new Error("Invalid GeoJSON Polygon");
-  }
-
-  const rings = polygon.coordinates;
-  if (rings.length <= 4) {
-    return rings.map((ring) => simplifyRing(ring));
-  }
-
-  const firstTwo = rings.slice(0, 2).map((ring) => simplifyRing(ring));
-  const lastTwo = rings.slice(-2).map((ring) => simplifyRing(ring));
-
-  return [...firstTwo, "...", ...lastTwo];
-}
-
-function simplifyRing(ring: PolygonCoordinateRing) {
-  if (ring.length <= 4) {
-    return ring; // Keep as is if 4 or fewer points
-  }
-  return JSON.stringify([ring[0], "...", ring[ring.length - 1]]);
-}

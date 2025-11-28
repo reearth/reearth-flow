@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 
-import useDataColumnizer from "@flow/hooks/useDataColumnizer";
+import useDataFormatter from "@flow/hooks/useDataFormatter";
 import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useJob } from "@flow/lib/gql/job";
 import { useIndexedDB } from "@flow/lib/indexedDB";
@@ -407,23 +407,23 @@ export default () => {
     [streamingQuery.detectedGeometryType, cesiumViewerRef, mapRef],
   );
 
-  const columnizer = useDataColumnizer({
+  const formattedData = useDataFormatter({
     parsedData: selectedOutputData,
     type: fileType,
   });
 
   const featureIdMap = useMemo(() => {
-    if (!columnizer.tableData) return null;
+    if (!formattedData.tableData) return null;
 
     const map = new Map<string | number, any>();
-    columnizer.tableData.forEach((row: any) => {
+    formattedData.tableData.forEach((row: any) => {
       const id = row.id;
       if (id !== null && id !== undefined) {
         map.set(id, row);
       }
     });
     return map;
-  }, [columnizer.tableData]);
+  }, [formattedData.tableData]);
 
   const handlePreviousSelectedFeature = useCallback((feature: any) => {
     previousSelectedFeature.current = feature;
@@ -503,7 +503,7 @@ export default () => {
     previousSelectedFeature,
     detailsOverlayOpen,
     detailsFeature,
-    columnizer,
+    formattedData,
     handleSelectedFeature,
     setConvertedSelectedFeature,
     // setEnableClustering,

@@ -2,7 +2,7 @@ import { memo, useCallback } from "react";
 
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
-import useDataColumnizer from "@flow/hooks/useDataColumnizer";
+import useDataFormatter from "@flow/hooks/useDataFormatter";
 import { useT } from "@flow/lib/i18n";
 
 import FeatureDetailsOverlay from "./FeatureDetailsOverlay";
@@ -16,7 +16,7 @@ type Props = {
   totalFeatures: number;
   detailsOverlayOpen: boolean;
   detailsFeature: any;
-  columnizer: ReturnType<typeof useDataColumnizer>;
+  formattedData: ReturnType<typeof useDataFormatter>;
   onCloseFeatureDetails: () => void;
 };
 
@@ -30,7 +30,7 @@ const TableViewer: React.FC<Props> = memo(
     totalFeatures,
     detailsOverlayOpen,
     detailsFeature,
-    columnizer,
+    formattedData,
     onCloseFeatureDetails,
   }) => {
     const t = useT();
@@ -52,11 +52,11 @@ const TableViewer: React.FC<Props> = memo(
     );
 
     // Loading state
-    if (!fileContent || !columnizer.tableData) {
+    if (!fileContent || !formattedData.tableData) {
       return <BasicBoiler text={t("Loading data...")} className="h-full" />;
     }
     // No data state
-    if (!columnizer.tableData || columnizer.tableData.length === 0) {
+    if (!formattedData.tableData || formattedData.tableData.length === 0) {
       return (
         <BasicBoiler
           text={t("No data to display in table format")}
@@ -71,8 +71,8 @@ const TableViewer: React.FC<Props> = memo(
           {/* Table */}
           <div className="flex-1 overflow-hidden">
             <VirtualizedTable
-              columns={columnizer.tableColumns}
-              data={columnizer.tableData}
+              columns={formattedData.tableColumns}
+              data={formattedData.tableData}
               selectColumns={true}
               showFiltering={true}
               condensed={true}
@@ -88,7 +88,7 @@ const TableViewer: React.FC<Props> = memo(
             <div className="flex items-center gap-4">
               <span>
                 {t("Rows")}:{" "}
-                {(columnizer.tableData || []).length.toLocaleString()}
+                {(formattedData.tableData || []).length.toLocaleString()}
                 {totalFeatures !== undefined &&
                   totalFeatures > 0 &&
                   ` / ${totalFeatures.toLocaleString()} ${t("total")}`}
@@ -99,7 +99,7 @@ const TableViewer: React.FC<Props> = memo(
                 </span>
               )}
               <span>
-                {t("Columns")}: {(columnizer.tableColumns || []).length}
+                {t("Columns")}: {(formattedData.tableColumns || []).length}
               </span>
             </div>
           </div>

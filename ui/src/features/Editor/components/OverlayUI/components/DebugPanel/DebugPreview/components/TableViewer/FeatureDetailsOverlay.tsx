@@ -44,6 +44,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
 
   const formatValue = (value: any): string => {
     if (value == null || value == undefined) return "—";
+
     if (typeof value === "object") {
       try {
         return JSON.stringify(value, null, 2);
@@ -51,7 +52,38 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
         return String(value);
       }
     }
+
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value);
+        if (typeof parsed === "object" && parsed !== null) {
+          return JSON.stringify(parsed, null, 2);
+        }
+      } catch {
+        // Not valid JSON, return as-is
+      }
+    }
+
     return value;
+  };
+
+  const getValueType = (value: any): "array" | "object" | null => {
+    if (typeof value === "object" && value !== null) {
+      return Array.isArray(value) ? "array" : "object";
+    }
+
+    if (typeof value === "string") {
+      try {
+        const parsed = JSON.parse(value);
+        if (typeof parsed === "object" && parsed !== null) {
+          return Array.isArray(parsed) ? "array" : "object";
+        }
+      } catch {
+        // Not valid JSON, ignore
+      }
+    }
+
+    return null;
   };
 
   return (
@@ -108,27 +140,30 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
               </h4>
               <div className="space-y-3">
                 {Object.entries(processedFeature.properties).map(
-                  ([key, value]) => (
-                    <div key={key} className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-muted-foreground">
-                          {key
-                            .replace(/^attributes/, "")
-                            .replace(/^geometry/, "")}
-                        </span>
-                        {typeof value === "object" && (
-                          <span className="text-xs text-muted-foreground">
-                            {Array.isArray(value) ? "array" : "object"}
+                  ([key, value]) => {
+                    const valueType = getValueType(value);
+                    return (
+                      <div key={key} className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-muted-foreground">
+                            {key
+                              .replace(/^attributes/, "")
+                              .replace(/^geometry/, "")}
                           </span>
-                        )}
+                          {valueType && (
+                            <span className="text-xs text-muted-foreground">
+                              {valueType}
+                            </span>
+                          )}
+                        </div>
+                        <div className="rounded-md bg-muted/30 p-2">
+                          <pre className="text-xs break-all whitespace-pre-wrap">
+                            {formatValue(value)}
+                          </pre>
+                        </div>
                       </div>
-                      <div className="rounded-md bg-muted/30 p-2">
-                        <pre className="text-xs break-all whitespace-pre-wrap">
-                          {formatValue(value)}
-                        </pre>
-                      </div>
-                    </div>
-                  ),
+                    );
+                  },
                 )}
               </div>
             </div>
@@ -142,25 +177,28 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
               </h4>
               <div className="space-y-3">
                 {Object.entries(processedFeature.geometry).map(
-                  ([key, value]) => (
-                    <div key={key} className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-muted-foreground">
-                          {key}
-                        </span>
-                        {typeof value === "object" && (
-                          <span className="text-xs text-muted-foreground">
-                            {Array.isArray(value) ? "array" : "object"}
+                  ([key, value]) => {
+                    const valueType = getValueType(value);
+                    return (
+                      <div key={key} className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-muted-foreground">
+                            {key}
                           </span>
-                        )}
+                          {valueType && (
+                            <span className="text-xs text-muted-foreground">
+                              {valueType}
+                            </span>
+                          )}
+                        </div>
+                        <div className="rounded-md bg-muted/30 p-2">
+                          <pre className="text-xs break-all whitespace-pre-wrap">
+                            {formatValue(value)}
+                          </pre>
+                        </div>
                       </div>
-                      <div className="rounded-md bg-muted/30 p-2">
-                        <pre className="text-xs break-all whitespace-pre-wrap">
-                          {formatValue(value)}
-                        </pre>
-                      </div>
-                    </div>
-                  ),
+                    );
+                  },
                 )}
               </div>
             </div>

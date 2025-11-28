@@ -49,7 +49,7 @@ const DebugPanel: React.FC = () => {
     selectedFeature,
     detailsOverlayOpen,
     detailsFeature,
-    columnizer,
+    formattedData,
     setConvertedSelectedFeature,
     handleSelectedFeature,
     handleFullscreenExpand,
@@ -218,7 +218,7 @@ const DebugPanel: React.FC = () => {
                     totalFeatures={totalFeatures || undefined}
                     detailsOverlayOpen={detailsOverlayOpen}
                     detailsFeature={detailsFeature}
-                    columnizer={columnizer}
+                    formattedData={formattedData}
                     onCloseFeatureDetails={handleCloseFeatureDetails}
                   />
                 </div>
