@@ -20,7 +20,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.91" # Remember to update clippy.toml as well
-version = "0.0.192"
+version = "0.0.193"
 
 [profile.dev]
 opt-level = 0
@@ -124,6 +124,7 @@ glam = "0.30.9"
 gltf = "1.4"
 hashbrown = { version = "0.15.5", features = ["serde"] }
 home = "0.5.12"
+i_overlay = "4.1"
 image = { version = "0.25.9", default-features = false, features = [
   "jpeg",
   "png",
