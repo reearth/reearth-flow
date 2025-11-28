@@ -51,7 +51,7 @@ const DebugPanel: React.FC = () => {
     detailsFeature,
     formattedData,
     setConvertedSelectedFeature,
-    handleSelectedFeature,
+    handleFeatureSelect,
     handleFullscreenExpand,
     handleExpand,
     handleMinimize,
@@ -236,7 +236,7 @@ const DebugPanel: React.FC = () => {
                   mapRef={mapRef}
                   cesiumViewerRef={cesiumViewerRef}
                   onConvertedSelectedFeature={setConvertedSelectedFeature}
-                  onSelectedFeature={handleSelectedFeature}
+                  onSelectedFeature={handleFeatureSelect}
                   onFlyToSelectedFeature={handleFlyToSelectedFeature}
                   // Data detection props
                   detectedGeometryType={detectedGeometryType}

@@ -429,7 +429,7 @@ export default () => {
     previousSelectedFeature.current = feature;
   }, []);
 
-  const handleSelectedFeature = useCallback(
+  const handleFeatureSelect = useCallback(
     (feature: any) => {
       const currId = selectedFeature?.id;
       const prevId = previousSelectedFeature.current?.id;
@@ -456,15 +456,15 @@ export default () => {
   const handleRowSingleClick = useCallback(
     (value: any) => {
       // setEnableClustering(false);
-      handleSelectedFeature(value);
+      handleFeatureSelect(value);
     },
-    [handleSelectedFeature],
+    [handleFeatureSelect],
   );
 
   const handleRowDoubleClick = useCallback(
     (value: any) => {
       // setEnableClustering(false);
-      handleSelectedFeature(value);
+      handleFeatureSelect(value);
       handleFlyToSelectedFeature(convertedSelectedFeature);
       const matchingRow =
         featureIdMap?.get(JSON.stringify(value.id)) ?? selectedFeature;
@@ -476,7 +476,7 @@ export default () => {
       featureIdMap,
       selectedFeature,
       handleFlyToSelectedFeature,
-      handleSelectedFeature,
+      handleFeatureSelect,
     ],
   );
 
@@ -504,7 +504,7 @@ export default () => {
     detailsOverlayOpen,
     detailsFeature,
     formattedData,
-    handleSelectedFeature,
+    handleFeatureSelect,
     setConvertedSelectedFeature,
     // setEnableClustering,
     handleFullscreenExpand,
