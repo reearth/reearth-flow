@@ -1,5 +1,5 @@
 export function intermediateDataTransform(parsedData: any) {
-  let transformedData: {
+  const transformedData: {
     id: string;
     type: string;
     properties: any;
@@ -20,26 +20,21 @@ export function intermediateDataTransform(parsedData: any) {
     const isCityGml = "cityGmlGeometry" in parsedData.geometry.value;
 
     if (is2D) {
-      transformedData = {
-        ...transformedData,
-        geometry: handle2DGeometry(parsedData.geometry.value.flowGeometry2D),
-      };
+      transformedData.geometry = handle2DGeometry(
+        parsedData.geometry.value.flowGeometry2D,
+      );
     }
 
     if (is3D) {
-      transformedData = {
-        ...transformedData,
-        geometry: handle3DGeometry(parsedData.geometry.value.flowGeometry3D),
-      };
+      transformedData.geometry = handle3DGeometry(
+        parsedData.geometry.value.flowGeometry3D,
+      );
     }
 
     if (isCityGml) {
-      transformedData = {
-        ...transformedData,
-        geometry: handleCityGmlGeometry(
-          parsedData.geometry.value.cityGmlGeometry,
-        ),
-      };
+      transformedData.geometry = handleCityGmlGeometry(
+        parsedData.geometry.value.cityGmlGeometry,
+      );
     }
   }
 
