@@ -19,6 +19,7 @@ type TriggerDocument struct {
 	CreatedAt     time.Time         `bson:"createdat"`
 	UpdatedAt     time.Time         `bson:"updatedat"`
 	LastTriggered time.Time         `bson:"lasttriggered,omitempty"`
+	Enabled       *bool             `bson:"enabled,omitempty"`
 	Variables     map[string]string `bson:"variables,omitempty"`
 }
 
@@ -57,6 +58,9 @@ func NewTrigger(t *trigger.Trigger) (*TriggerDocument, string) {
 		doc.LastTriggered = *lastTriggered
 	}
 
+	e := t.Enabled()
+	doc.Enabled = &e
+
 	if variables := t.Variables(); variables != nil {
 		doc.Variables = variables
 	}
@@ -83,6 +87,11 @@ func (d *TriggerDocument) Model() (*trigger.Trigger, error) {
 	eventSource := trigger.EventSourceType(d.EventSource)
 	timeInterval := trigger.TimeInterval(d.TimeInterval)
 
+	enabled := true
+	if d.Enabled != nil {
+		enabled = *d.Enabled
+	}
+
 	b := trigger.New().
 		ID(tid).
 		Workspace(wid).
@@ -93,7 +102,8 @@ func (d *TriggerDocument) Model() (*trigger.Trigger, error) {
 		AuthToken(d.AuthToken).
 		CreatedAt(d.CreatedAt).
 		UpdatedAt(d.UpdatedAt).
-		LastTriggered(d.LastTriggered)
+		LastTriggered(d.LastTriggered).
+		Enabled(enabled)
 
 	if len(d.Variables) > 0 {
 		b = b.Variables(d.Variables)

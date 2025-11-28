@@ -1,0 +1,19 @@
+citygml_zip_name = "13115_suginami-ku_city_2024_citygml_1_op.zip"
+workflow_path = "runtime/examples/fixture/workflow/data-convert/plateau4/02-tran-rwy-trk-squr-wwy/workflow.yml"
+
+# This is for testing dissolver correctly merging polygons in a multipolygon of a feature.
+# The geometry is tiny so we use a smaller threshold. If implementation changes this could break.
+# Adjust it with a visual inspection.
+
+# [tests.mvt_lines]
+# threshold = 0.005
+
+# [tests.mvt_polygons]
+# threshold = 0.001
+
+[tests.mvt_attributes.casts]
+".attributes" = "json"
+
+[filter.tree]
+"" = ["codelists/", "schemas/"]
+"udx/tran/53394503_tran_6697_op.gml" = ["traf_e5ea50ce-7198-4879-a380-9d99f1c6491f"]
