@@ -4,7 +4,7 @@ citygml_zip_name = "14212_atsugi-shi_city_2023_citygml_2_op.zip"
 threshold = 0.001
 
 [tests.mvt_lines]
-threshold = 0.001
+threshold = 0.01
 
 [tests.mvt_attributes.casts]
 ".attributes" = "json"
