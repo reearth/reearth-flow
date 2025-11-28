@@ -1,53 +1,49 @@
 export function intermediateDataTransform(parsedData: any) {
+  let transformedData: {
+    id: string;
+    type: string;
+    properties: any;
+    geometry?: any;
+  } = {
+    id: parsedData.id,
+    type: "Feature",
+    properties: { ...parsedData.attributes },
+  };
+
   if (parsedData.geometry) {
     if (parsedData.geometry.value === "none") {
-      return {
-        id: parsedData.id,
-        type: "Feature",
-        properties: { ...parsedData.attributes },
-      };
+      return transformedData;
     }
 
     const is2D = "flowGeometry2D" in parsedData.geometry.value;
     const is3D = "flowGeometry3D" in parsedData.geometry.value;
     const isCityGml = "cityGmlGeometry" in parsedData.geometry.value;
-    const isUnknown = !is2D && !is3D && !isCityGml;
-
-    if (isUnknown) {
-      console.warn("Unknown geometry type detected. Displaying raw data.");
-      return parsedData;
-    }
 
     if (is2D) {
-      return {
-        id: parsedData.id,
-        type: "Feature",
-        properties: { ...parsedData.attributes },
+      transformedData = {
+        ...transformedData,
         geometry: handle2DGeometry(parsedData.geometry.value.flowGeometry2D),
       };
     }
 
     if (is3D) {
-      return {
-        id: parsedData.id,
-        type: "Feature",
-        properties: { ...parsedData.attributes },
+      transformedData = {
+        ...transformedData,
         geometry: handle3DGeometry(parsedData.geometry.value.flowGeometry3D),
       };
     }
 
     if (isCityGml) {
-      return {
-        id: parsedData.id,
-        type: "Feature",
-        properties: { ...parsedData.attributes },
+      transformedData = {
+        ...transformedData,
         geometry: handleCityGmlGeometry(
           parsedData.geometry.value.cityGmlGeometry,
         ),
       };
     }
   }
-  return parsedData;
+
+  return transformedData;
 }
 
 function buildClosedRing(coords: [number, number][]): [number, number][] {
