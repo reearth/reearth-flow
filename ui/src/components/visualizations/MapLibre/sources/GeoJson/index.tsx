@@ -1,3 +1,10 @@
+/**
+ * @remarks
+ * The component requires each feature to have an `_originalId` property for selection purposes.
+ * This is necessary because the normal `id` property is converted to a number by MapLibre,
+ * which can cause issues when using string-based IDs for feature selection and state management.
+ * See: https://github.com/maplibre/maplibre-gl-js/issues/1043#issuecomment-1069399508
+ */
 import type { Map } from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Source, Layer, LayerProps } from "react-map-gl/maplibre";

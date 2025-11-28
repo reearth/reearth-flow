@@ -119,15 +119,14 @@ const DebugPreview: React.FC<Props> = ({
         return feature;
       }
 
-      const featureId = feature.properties?._originalId ?? feature.id;
-      if (featureId === undefined) return null;
+      if (feature.id === undefined) return null;
 
-      let normalizedId = featureId;
-      if (typeof featureId === "string") {
+      let normalizedId = feature.id;
+      if (typeof feature.id === "string") {
         try {
-          normalizedId = JSON.parse(featureId);
+          normalizedId = JSON.parse(feature.id);
         } catch {
-          normalizedId = featureId;
+          normalizedId = feature.id;
         }
       }
 

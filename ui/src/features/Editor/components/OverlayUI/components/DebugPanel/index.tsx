@@ -47,8 +47,11 @@ const DebugPanel: React.FC = () => {
     outputDataForDownload,
     selectedOutputData,
     selectedFeature,
-    setSelectedFeature,
+    detailsOverlayOpen,
+    detailsFeature,
+    formattedData,
     setConvertedSelectedFeature,
+    handleFeatureSelect,
     handleFullscreenExpand,
     handleExpand,
     handleMinimize,
@@ -57,6 +60,7 @@ const DebugPanel: React.FC = () => {
     handleRowSingleClick,
     handleRowDoubleClick,
     handleFlyToSelectedFeature,
+    handleCloseFeatureDetails,
     // Data properties
     detectedGeometryType,
     visualizerType,
@@ -207,12 +211,15 @@ const DebugPanel: React.FC = () => {
                 <div className="min-h-0 flex-1">
                   <TableViewer
                     fileContent={selectedOutputData}
-                    fileType={fileType}
                     selectedFeature={selectedFeature}
                     onSingleClick={handleRowSingleClick}
                     onDoubleClick={handleRowDoubleClick}
                     detectedGeometryType={detectedGeometryType || undefined}
                     totalFeatures={totalFeatures || undefined}
+                    detailsOverlayOpen={detailsOverlayOpen}
+                    detailsFeature={detailsFeature}
+                    formattedData={formattedData}
+                    onCloseFeatureDetails={handleCloseFeatureDetails}
                   />
                 </div>
               </ResizablePanel>
@@ -229,7 +236,7 @@ const DebugPanel: React.FC = () => {
                   mapRef={mapRef}
                   cesiumViewerRef={cesiumViewerRef}
                   onConvertedSelectedFeature={setConvertedSelectedFeature}
-                  onSelectedFeature={setSelectedFeature}
+                  onSelectedFeature={handleFeatureSelect}
                   onFlyToSelectedFeature={handleFlyToSelectedFeature}
                   // Data detection props
                   detectedGeometryType={detectedGeometryType}
