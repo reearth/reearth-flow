@@ -1,6 +1,12 @@
 citygml_zip_name = "14212_atsugi-shi_city_2023_citygml_2_op.zip"
 workflow_path = "runtime/examples/fixture/workflow/data-convert/plateau4/02-tran-rwy-trk-squr-wwy/workflow.yml"
 
+[tests.mvt_polygons]
+threshold = 0.001
+
+[tests.mvt_lines]
+threshold = 0.001
+
 [tests.mvt_attributes.casts]
 ".attributes" = "json"
 
