@@ -1,0 +1,20 @@
+citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op.zip"
+
+[tests.mvt_attributes.casts]
+".attributes" = "json"
+
+[tests.mvt_polygons]
+threshold = 0.001
+
+[tests.mvt_lines]
+threshold = 0.01
+
+[filter.tree]
+"" = ["codelists/", "schemas/"]
+"udx/urf/534071_urf_6697_07_op.gml" = ["urf_0e6c149e-4090-4a94-a5d8-129d30bc3422"]
+"udx/urf/534071_urf_6697_08_op.gml" = ["urf_a9a122af-57aa-4269-9267-50637e2473ba"]
+"udx/urf/544000_urf_6697_08_op.gml" = [
+  "urf_d75c4e06-a404-4db1-b5cd-d31a8c6c6d24",
+  "urf_003bb5b0-abc2-401b-8662-e1c06bb10683",
+]
+"udx/urf/544010_urf_6697_05_op.gml" = ["urf_58ab8da8-4d19-4d34-92fc-dc1142f59219"]

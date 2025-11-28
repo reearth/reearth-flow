@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_e37e7586-23d7-4181-9cde-780f9a2eef22">
+ <gml:name>KeyValuePairAttribute_key106</gml:name>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="KeyValuePairAttribute_key106_10">
+   <gml:description>防火地域</gml:description>
+   <gml:name>10</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="KeyValuePairAttribute_key106_20">
+   <gml:description>準防火地域</gml:description>
+   <gml:name>20</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="KeyValuePairAttribute_key106_99">
+   <gml:description>不明</gml:description>
+   <gml:name>99</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+</gml:Dictionary>

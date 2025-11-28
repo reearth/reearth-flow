@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="Common_parkFacilityMainMaterial">
+	<!-- 主要部材 -->
+	<gml:name>Common_parkFacilityMainMaterial</gml:name>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_1">
+			<gml:description>アスファルト</gml:description>
+			<gml:name>1</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_2">
+			<gml:description>コンクリート</gml:description>
+			<gml:name>2</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_3">
+			<gml:description>レンガ</gml:description>
+			<gml:name>3</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_4">
+			<gml:description>タイル</gml:description>
+			<gml:name>4</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_5">
+			<gml:description>ブロック</gml:description>
+			<gml:name>5</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_6">
+			<gml:description>平板</gml:description>
+			<gml:name>6</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_7">
+			<gml:description>芝</gml:description>
+			<gml:name>7</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_8">
+			<gml:description>人工芝</gml:description>
+			<gml:name>8</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_9">
+			<gml:description>土</gml:description>
+			<gml:name>9</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_10">
+			<gml:description>植栽</gml:description>
+			<gml:name>10</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_11">
+			<gml:description>ＲＣ</gml:description>
+			<gml:name>11</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_12">
+			<gml:description>ＳＲＣ</gml:description>
+			<gml:name>12</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_13">
+			<gml:description>ＰＣ</gml:description>
+			<gml:name>13</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_14">
+			<gml:description>プレハブ</gml:description>
+			<gml:name>14</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_15">
+			<gml:description>スチール</gml:description>
+			<gml:name>15</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_16">
+			<gml:description>ステンレス</gml:description>
+			<gml:name>16</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_17">
+			<gml:description>アルミ</gml:description>
+			<gml:name>17</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_18">
+			<gml:description>木材</gml:description>
+			<gml:name>18</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_19">
+			<gml:description>石材</gml:description>
+			<gml:name>19</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_20">
+			<gml:description>樹脂</gml:description>
+			<gml:name>20</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_21">
+			<gml:description>再生木材</gml:description>
+			<gml:name>21</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_22">
+			<gml:description>ＦＲＰ</gml:description>
+			<gml:name>22</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_23">
+			<gml:description>テント生地</gml:description>
+			<gml:name>23</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_24">
+			<gml:description>ガラス</gml:description>
+			<gml:name>24</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_parkFacilityMainMaterial_25">
+			<gml:description>その他</gml:description>
+			<gml:name>25</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+</gml:Dictionary>

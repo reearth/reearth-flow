@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_e37e7586-23d7-4181-9cde-789f9a5eef99">
+ <gml:name>KeyValuePairAttribute_key103</gml:name>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="KeyValuePairAttribute_key103_0">
+   <gml:description>過年度修正なし</gml:description>
+   <gml:name>0</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="KeyValuePairAttribute_key103_1">
+   <gml:description>過年度修正あり</gml:description>
+   <gml:name>1</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="KeyValuePairAttribute_key103_9">
+   <gml:description>不明</gml:description>
+   <gml:name>9</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+</gml:Dictionary>

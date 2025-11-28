@@ -1,0 +1,172 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_e8e0aaa8-16d0-aad3-7c6f-cf1b36c36746">
+	<gml:name>RiverFloodingRiskAttribute_description</gml:name>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id1">
+			<gml:description>利根川水系利根川</gml:description>
+			<gml:name>1</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id2">
+			<gml:description>利根川水系江戸川</gml:description>
+			<gml:name>2</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id3">
+			<gml:description>利根川水系中川</gml:description>
+			<gml:name>3</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id4">
+			<gml:description>利根川水系綾瀬川</gml:description>
+			<gml:name>4</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id5">
+			<gml:description>荒川水系荒川</gml:description>
+			<gml:name>5</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id6">
+			<gml:description>荒川水系入間川</gml:description>
+			<gml:name>6</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id7">
+			<gml:description>多摩川水系多摩川・浅川・大栗川</gml:description>
+			<gml:name>7</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id8">
+			<gml:description>神田川流域</gml:description>
+			<gml:name>8</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id9">
+			<gml:description>荒川水系神田川・善福寺川・妙正寺川</gml:description>
+			<gml:name>9</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id10">
+			<gml:description>隅田川・新河岸川流域</gml:description>
+			<gml:name>10</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id11">
+			<gml:description>石神井川・白子川流域</gml:description>
+			<gml:name>11</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id12">
+			<gml:description>荒川水系石神井川</gml:description>
+			<gml:name>12</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id13">
+			<gml:description>荒川水系白子川</gml:description>
+			<gml:name>13</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id14">
+			<gml:description>城南地区河川流域</gml:description>
+			<gml:name>14</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id15">
+			<gml:description>古川水系渋谷川・古川・目黒川水系目黒川・呑川水系呑川</gml:description>
+			<gml:name>15</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id16">
+			<gml:description>江東内部河川流域</gml:description>
+			<gml:name>16</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id17">
+			<gml:description>野川・仙川・入間川・谷沢川・丸子川流域</gml:description>
+			<gml:name>17</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id18">
+			<gml:description>多摩川水系野川・仙川・入間川・谷沢川・丸子川</gml:description>
+			<gml:name>18</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id19">
+			<gml:description>黒目川・落合川・柳瀬川・空堀川・奈良橋川流域</gml:description>
+			<gml:name>19</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id20">
+			<gml:description>残堀川流域</gml:description>
+			<gml:name>20</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id21">
+			<gml:description>境川流域</gml:description>
+			<gml:name>21</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id22">
+			<gml:description>境川水系境川</gml:description>
+			<gml:name>22</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id23">
+			<gml:description>中川・綾瀬川圏域</gml:description>
+			<gml:name>23</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id24">
+			<gml:description>鶴見川流域</gml:description>
+			<gml:name>24</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id25">
+			<gml:description>鶴見川水系鶴見川・恩田川・真光寺川</gml:description>
+			<gml:name>25</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id26">
+			<gml:description>浅川圏域・大栗川・三沢川流域</gml:description>
+			<gml:name>26</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id27">
+			<gml:description>霞川・多摩川上流圏域</gml:description>
+			<gml:name>27</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition	gml:id="id28">
+			<gml:description>秋川・平井川流域</gml:description>
+			<gml:name>28</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+</gml:Dictionary>

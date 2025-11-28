@@ -1,0 +1,250 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_4a96e9ec-c72d-41d6-8956-ec2e32ec5237">
+ <gml:name>BuildingDetailAttribute_detailedUsage</gml:name>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_1">
+   <gml:description>不明</gml:description>
+   <gml:name>0</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_2">
+   <gml:description>不整合</gml:description>
+   <gml:name>90</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_3">
+   <gml:description>官公庁施設</gml:description>
+   <gml:name>1110</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_4">
+   <gml:description>教育施設</gml:description>
+   <gml:name>1121</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_5">
+   <gml:description>文化施設</gml:description>
+   <gml:name>1122</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_6">
+   <gml:description>宗教施設</gml:description>
+   <gml:name>1123</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_7">
+   <gml:description>医療施設</gml:description>
+   <gml:name>1131</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_8">
+   <gml:description>厚生施設</gml:description>
+   <gml:name>1132</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_9">
+   <gml:description>供給施設</gml:description>
+   <gml:name>1141</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_10">
+   <gml:description>処理施設</gml:description>
+   <gml:name>1142</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_11">
+   <gml:description>事務所建築物</gml:description>
+   <gml:name>1210</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_12">
+   <gml:description>商業施設</gml:description>
+   <gml:name>1221</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_13">
+   <gml:description>公衆浴場等</gml:description>
+   <gml:name>1222</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_14">
+   <gml:description>住商併用建物</gml:description>
+   <gml:name>1230</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_15">
+   <gml:description>宿泊施設</gml:description>
+   <gml:name>1241</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_16">
+   <gml:description>遊興施設</gml:description>
+   <gml:name>1242</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_17">
+   <gml:description>スポーツ施設</gml:description>
+   <gml:name>1251</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_18">
+   <gml:description>興行施設</gml:description>
+   <gml:name>1252</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_19">
+   <gml:description>独立住宅</gml:description>
+   <gml:name>1310</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_20">
+   <gml:description>集合住宅</gml:description>
+   <gml:name>1320</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_21">
+   <gml:description>専用工場</gml:description>
+   <gml:name>1410</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_22">
+   <gml:description>住居併用工場</gml:description>
+   <gml:name>1420</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_23">
+   <gml:description>運輸施設等</gml:description>
+   <gml:name>1431</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_24">
+   <gml:description>倉庫施設等</gml:description>
+   <gml:name>1432</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_25">
+   <gml:description>農林漁業施設</gml:description>
+   <gml:name>1500</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_26">
+   <gml:description>屋外利用地・仮設建物(太陽光発電)</gml:description>
+   <gml:name>2101</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_27">
+   <gml:description>屋外利用地・仮設建物(屋外駐車場)</gml:description>
+   <gml:name>2102</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_28">
+   <gml:description>屋外利用地・仮設建物(その他)</gml:description>
+   <gml:name>2103</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_29">
+   <gml:description>その他</gml:description>
+   <gml:name>2200</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_30">
+   <gml:description>公園、運動場等(ゴルフ場)</gml:description>
+   <gml:name>3001</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_31">
+   <gml:description>公園、運動場等(その他)</gml:description>
+   <gml:name>3002</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_32">
+   <gml:description>未利用地等</gml:description>
+   <gml:name>4000</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_33">
+   <gml:description>道路</gml:description>
+   <gml:name>5100</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_34">
+   <gml:description>鉄道・港湾等</gml:description>
+   <gml:name>5200</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_35">
+   <gml:description>田</gml:description>
+   <gml:name>6110</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_36">
+   <gml:description>畑</gml:description>
+   <gml:name>6120</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_37">
+   <gml:description>樹園地</gml:description>
+   <gml:name>6130</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_38">
+   <gml:description>採草放牧地</gml:description>
+   <gml:name>6200</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_39">
+   <gml:description>水面・河川・水路</gml:description>
+   <gml:name>7000</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_40">
+   <gml:description>原野</gml:description>
+   <gml:name>8000</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry>
+  <gml:Definition gml:id="BuildingDetailAttribute_detailedUsage_41">
+   <gml:description>森林</gml:description>
+   <gml:name>9000</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+</gml:Dictionary>

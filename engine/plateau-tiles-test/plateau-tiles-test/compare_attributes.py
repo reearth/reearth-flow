@@ -57,5 +57,4 @@ def analyze_attributes(gml_id, attr1, attr2, casts):
         for gid, k, v1, v2 in bads:
             print(f"MISMATCH gml_id={gid} key={k} v1={repr(v1)} v2={repr(v2)}")
         raise ValueError(f"Attribute mismatches found for gml_id: {gml_id}")
-    else:
-        log.debug(f"Attributes match for gml_id: {gml_id}")
+    # log.debug(f"Attributes match for gml_id: {gml_id}")

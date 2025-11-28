@@ -1,7 +1,13 @@
 import shapely
-from shapely.geometry import box, MultiLineString
+from shapely.geometry import box, MultiLineString, LineString
 
 CLIP_BOUNDS = box(0, 0, 1, 1)
+TILE_BOUNDARY = MultiLineString([
+    LineString([(0, 0), (1, 0)]),  # bottom edge
+    LineString([(1, 0), (1, 1)]),  # right edge
+    LineString([(1, 1), (0, 1)]),  # top edge
+    LineString([(0, 1), (0, 0)])   # left edge
+])
 
 def extract_lines(geom):
     if geom is None or geom.is_empty:
@@ -48,7 +54,7 @@ def compare_polygons(geom1, geom2):
     sym_diff = geom1.symmetric_difference(geom2)
     return ("compared", sym_diff.area if not sym_diff.is_empty else 0.0)
 
-def compare_lines(geom1, geom2):
+def compare_lines(geom1, geom2, threshold=0.0):
     lines1 = clip_geometry(extract_lines(geom1))
     lines2 = clip_geometry(extract_lines(geom2))
     if lines1 is None and lines2 is None:
@@ -56,9 +62,19 @@ def compare_lines(geom1, geom2):
     if lines1 is None or lines2 is None:
         single = lines2 if lines1 is None else lines1
         return ("only2" if lines1 is None else "only1", single.length)
-    return ("compared", shapely.hausdorff_distance(lines1, lines2, densify=0.01))
 
-def compare_3d_lines(geom1, geom2):
+    # Add tile boundary edges to both geometries to handle corner cases
+    lines1_combined = shapely.union_all([lines1, TILE_BOUNDARY])
+    lines2_combined = shapely.union_all([lines2, TILE_BOUNDARY])
+
+    # Segmentize with absolute interval (threshold/2) instead of relative densify
+    segment_length = threshold / 2 if threshold > 0 else 0.01
+    lines1_segmented = shapely.segmentize(lines1_combined, segment_length)
+    lines2_segmented = shapely.segmentize(lines2_combined, segment_length)
+
+    return ("compared", shapely.hausdorff_distance(lines1_segmented, lines2_segmented))
+
+def compare_3d_lines(geom1, geom2, threshold=0.0):
     """Compare 3D lines without clipping (for union geometries)."""
     lines1 = extract_lines(geom1)
     lines2 = extract_lines(geom2)
@@ -67,4 +83,10 @@ def compare_3d_lines(geom1, geom2):
     if lines1 is None or lines2 is None:
         single = lines2 if lines1 is None else lines1
         return ("only2" if lines1 is None else "only1", single.length)
-    return ("compared", shapely.hausdorff_distance(lines1, lines2, densify=0.01))
+
+    # Segmentize with absolute interval (threshold/2) instead of relative densify
+    segment_length = threshold / 2 if threshold > 0 else 0.01
+    lines1_segmented = shapely.segmentize(lines1, segment_length)
+    lines2_segmented = shapely.segmentize(lines2, segment_length)
+
+    return ("compared", shapely.hausdorff_distance(lines1_segmented, lines2_segmented))

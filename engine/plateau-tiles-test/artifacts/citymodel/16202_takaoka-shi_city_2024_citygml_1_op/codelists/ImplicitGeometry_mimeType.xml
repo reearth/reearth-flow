@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_a9fff5de-79f8-4682-9da8-614ef9bc924c">
+<gml:name>ImplicitGeometry_mimeType</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="ImplicitGeometry_mimeType_1">
+<gml:description>.gltf</gml:description>
+<gml:name>model/gltf+json</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="ImplicitGeometry_mimeType_2">
+<gml:description>.x3db, .x3d</gml:description>
+<gml:name>model/x3d+xml</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="ImplicitGeometry_mimeType_3">
+<gml:description>.x3dv, .x3dvz</gml:description>
+<gml:name>model/x3+vrml</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="ImplicitGeometry_mimeType_4">
+<gml:description>.obj</gml:description>
+<gml:name>model/obj</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>

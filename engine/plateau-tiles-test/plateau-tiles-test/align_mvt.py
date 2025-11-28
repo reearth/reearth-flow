@@ -106,8 +106,9 @@ def test_mvt_lines(fme_path, flow_path, cfg):
 
     for path, gid, g1, g2 in align_mvt(fme_path, flow_path, zmin, zmax):
         total += 1
-        status, score = compare_lines(g1, g2)
+        status, score = compare_lines(g1, g2, threshold)
         worst_score = max(worst_score, score)
+        # log.debug(f"Comparing MVT lines: {path} | {gid} | {worst_score:.6f} | {status}")
 
         if score > threshold:
             failures.append((score, path, gid, status))

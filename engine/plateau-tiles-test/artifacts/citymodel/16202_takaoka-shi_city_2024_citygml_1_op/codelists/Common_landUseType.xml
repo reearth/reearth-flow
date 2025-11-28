@@ -1,0 +1,16 @@
+﻿<?xml version='1.0' encoding='UTF-8'?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_ce3daa2c-e69f-41db-aff4-1d371f9482b1">
+  <gml:name>Common_landUseType</gml:name>
+  <gml:dictionaryEntry>
+    <gml:Definition gml:id="Common_landUseType_11">
+      <gml:description>道路用地（道路、駅前広場、私有地内に存在する沿道用途の「私道」または、私有地の一部分であるものの公共の通行に供されている土地の部分）</gml:description>
+      <gml:name>215</gml:name>
+    </gml:Definition>
+  </gml:dictionaryEntry>
+  <gml:dictionaryEntry>
+    <gml:Definition gml:id="Common_landUseType_11">
+      <gml:description>その他</gml:description>
+      <gml:name>999</gml:name>
+    </gml:Definition>
+  </gml:dictionaryEntry>
+</gml:Dictionary>
