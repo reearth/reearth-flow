@@ -216,27 +216,29 @@ const DebugPanel: React.FC = () => {
                   />
                 </div>
               </ResizablePanel>
-              {!minimized && (
+              {!minimized && detectedGeometryType && (
                 <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 mx-2 h-[30%] w-1 self-center rounded-md border border-accent bg-accent transition hover:border-transparent hover:bg-logo/70" />
               )}
-              <ResizablePanel defaultSize={40} minSize={20}>
-                <DebugPreview
-                  debugJobState={debugJobState}
-                  dataURLs={dataURLs}
-                  fileType={fileType}
-                  selectedOutputData={selectedOutputData}
-                  selectedFeature={selectedFeature}
-                  mapRef={mapRef}
-                  cesiumViewerRef={cesiumViewerRef}
-                  onConvertedSelectedFeature={setConvertedSelectedFeature}
-                  onSelectedFeature={setSelectedFeature}
-                  onFlyToSelectedFeature={handleFlyToSelectedFeature}
-                  // Data detection props
-                  detectedGeometryType={detectedGeometryType}
-                  visualizerType={visualizerType}
-                  isComplete={isComplete}
-                />
-              </ResizablePanel>
+              {detectedGeometryType && (
+                <ResizablePanel defaultSize={40} minSize={20}>
+                  <DebugPreview
+                    debugJobState={debugJobState}
+                    dataURLs={dataURLs}
+                    fileType={fileType}
+                    selectedOutputData={selectedOutputData}
+                    selectedFeature={selectedFeature}
+                    mapRef={mapRef}
+                    cesiumViewerRef={cesiumViewerRef}
+                    onConvertedSelectedFeature={setConvertedSelectedFeature}
+                    onSelectedFeature={setSelectedFeature}
+                    onFlyToSelectedFeature={handleFlyToSelectedFeature}
+                    // Data detection props
+                    detectedGeometryType={detectedGeometryType}
+                    visualizerType={visualizerType}
+                    isComplete={isComplete}
+                  />
+                </ResizablePanel>
+              )}
             </ResizablePanelGroup>
           </TabsContent>
         )}
