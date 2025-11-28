@@ -24,7 +24,7 @@ require (
 	github.com/ravilushqa/otelgqlgen v0.19.0
 	github.com/redis/go-redis/v9 v9.14.0
 	github.com/reearth/reearth-accounts/server v0.0.0-20251114040111-9b5f5f67a6c7
-	github.com/reearth/reearthx v0.0.0-20250923165051-5bd6f1c10f7a
+	github.com/reearth/reearthx v0.0.0-20251128044232-3067c04f34da
 	github.com/samber/lo v1.51.0
 	github.com/spf13/afero v1.15.0
 	github.com/square/mongo-lock v0.0.0-20230808145049-cfcf499f6bf0
