@@ -1,5 +1,14 @@
 export function intermediateDataTransform(parsedData: any) {
   if (parsedData.geometry) {
+    if (parsedData.geometry.value === "none") {
+      return {
+        id: parsedData.id,
+        type: "Feature",
+        properties: { ...parsedData.attributes },
+        geometry: parsedData.geometry,
+      };
+    }
+
     const is2D = "flowGeometry2D" in parsedData.geometry.value;
     const is3D = "flowGeometry3D" in parsedData.geometry.value;
     const isCityGml = "cityGmlGeometry" in parsedData.geometry.value;
