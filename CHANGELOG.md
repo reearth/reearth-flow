@@ -278,6 +278,7 @@ All notable changes to this project will be documented in this file.
 
 #### 🔧 Bug Fixes
 
+- Migrate reearth-flow to use reearth-proto[FLOW-BE-267] ([#1642](https://github.com/reearth/reearth-flow/pull/1642)) [`b22893`](https://github.com/reearth/reearth-flow/commit/b22893)
 - Trigger.createdAt is always the current time[FLOW-BE-272] ([#1643](https://github.com/reearth/reearth-flow/pull/1643)) [`ee2f0e`](https://github.com/reearth/reearth-flow/commit/ee2f0e)
 - Add alias to CreateWorkspaceInput ([#1638](https://github.com/reearth/reearth-flow/pull/1638)) [`e83a34`](https://github.com/reearth/reearth-flow/commit/e83a34)
 - Rename websocket thrift server URL environment variable for consistency ([#1625](https://github.com/reearth/reearth-flow/pull/1625)) [`03e800`](https://github.com/reearth/reearth-flow/commit/03e800)
@@ -720,7 +721,7 @@ All notable changes to this project will be documented in this file.
 
 #### 🔧 Bug Fixes
 
-- Fix boolean operations by replacing sweep algorithm with iOverlay ([#1692](https://github.com/reearth/reearth-flow/pull/1692)) [`1ccca1`](https://github.com/reearth/reearth-flow/commit/1ccca1)
+- Fix boolean operations by replacing sweep algorithm with iOverlay ([#1692](https://github.com/reearth/reearth-flow/pull/1692)) [`48d76d`](https://github.com/reearth/reearth-flow/commit/48d76d)
 - Remove duplicate &[#39](https://github.com/reearth/reearth-flow/pull/39);bldg&[#39](https://github.com/reearth/reearth-flow/pull/39); from output filename in conv-bldg workflow ([#1687](https://github.com/reearth/reearth-flow/pull/1687)) [`5b0c4f`](https://github.com/reearth/reearth-flow/commit/5b0c4f)
 - Plateau-gis-converter update, feature reader fix, feature sorter fix ([#1669](https://github.com/reearth/reearth-flow/pull/1669)) [`62e523`](https://github.com/reearth/reearth-flow/commit/62e523)
 - Clipper inside checking if a feature overlaps ALL boundaries ([#1663](https://github.com/reearth/reearth-flow/pull/1663)) [`95b6b7`](https://github.com/reearth/reearth-flow/commit/95b6b7)
@@ -892,6 +893,7 @@ All notable changes to this project will be documented in this file.
 
 #### 🚀 Features
 
+- Enhance CityGML processing for non-building features and add support for additional polygons ([#1694](https://github.com/reearth/reearth-flow/pull/1694)) [`cac3c1`](https://github.com/reearth/reearth-flow/commit/cac3c1)
 - Add geojson conversion module ([#439](https://github.com/reearth/reearth-flow/pull/439)) [`3b3957`](https://github.com/reearth/reearth-flow/commit/3b3957)
 - Add ClipperFactory and Clipper to handle geometry division ([#338](https://github.com/reearth/reearth-flow/pull/338)) [`bd810c`](https://github.com/reearth/reearth-flow/commit/bd810c)
 - Add check_coord_is_not_finite function ([#262](https://github.com/reearth/reearth-flow/pull/262)) [`1bcf29`](https://github.com/reearth/reearth-flow/commit/1bcf29)
