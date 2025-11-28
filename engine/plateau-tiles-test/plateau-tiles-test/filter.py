@@ -51,15 +51,7 @@ def should_include_path(path, tree):
 # "udx/squr/533912_squr_6697_op.gml": [gml_id1, gml_id2, ...]
 # "": ["codelists/", "schemas/"]
 def filter_zip(src_zip, dst_zip, tree):
-    """Filter a zip file based on tree structure.
-
-    Args:
-        src_zip: Path to source zip file
-        dst_zip: Path to destination zip file
-        tree: Dict mapping file paths to either:
-              - List of gml_ids (for GML files to filter)
-              - List of directory/file names to include entirely (when key is "")
-    """
+    """Filter a zip file based on tree structure."""
     # Get directories/files to include entirely from root
     include_paths = tree.get("", [])
 
@@ -80,3 +72,37 @@ def filter_zip(src_zip, dst_zip, tree):
             if should_include_path(path, tree):
                 log.debug(f"Including file by prefix match: {path}")
                 dst.writestr(item, src.read(path))
+
+def extract_zip_to_structure(src_zip, artifacts_base, testcase_dir, tree, zip_stem):
+    """Extract zip to artifacts (codelists/schemas) and testcase (filtered GML files)."""
+    artifact_dir = artifacts_base / zip_stem
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+
+    with zipfile.ZipFile(src_zip, 'r') as zf:
+        for item in zf.infolist():
+            path = item.filename
+
+            # Skip directories
+            if path.endswith('/'):
+                continue
+
+            # Extract codelists/ and schemas/ to artifacts
+            if path.startswith("codelists/") or path.startswith("schemas/"):
+                zf.extract(item, artifact_dir)
+                continue
+
+            # Extract and filter GML files to testcase/citymodel/
+            if path in tree and isinstance(tree[path], list):
+                gml_ids = tree[path]
+                content = zf.read(path)
+                filtered_content = filter_gml_content(content, gml_ids)
+                out_path = testcase_dir / "citymodel" / path
+                out_path.parent.mkdir(parents=True, exist_ok=True)
+                out_path.write_bytes(filtered_content)
+                continue
+
+            # Extract matching files to testcase/citymodel/
+            if should_include_path(path, tree) and not (path.startswith("codelists/") or path.startswith("schemas/")):
+                out_path = testcase_dir / "citymodel" / path
+                out_path.parent.mkdir(parents=True, exist_ok=True)
+                out_path.write_bytes(zf.read(path))

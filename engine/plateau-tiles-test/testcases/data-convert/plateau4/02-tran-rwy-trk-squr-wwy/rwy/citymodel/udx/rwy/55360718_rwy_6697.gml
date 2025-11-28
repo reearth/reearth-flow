@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='utf-8'?>
+<core:CityModel xmlns:core="http://www.opengis.net/citygml/2.0" xmlns:gml="http://www.opengis.net/gml" xmlns:tran="http://www.opengis.net/citygml/transportation/2.0" xmlns:uro="https://www.geospatial.jp/iur/uro/3.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.opengis.net/citygml/2.0 http://schemas.opengis.net/citygml/2.0/cityGMLBase.xsd http://www.opengis.net/citygml/profiles/base/2.0 http://schemas.opengis.net/citygml/profiles/base/2.0/CityGML.xsd https://www.geospatial.jp/iur/uro/3.1 ../../schemas/iur/uro/3.1/urbanObject.xsd https://www.geospatial.jp/iur/urf/3.1 ../../schemas/iur/urf/3.1/urbanFunction.xsd">
+<gml:boundedBy>
+<gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
+<gml:lowerCorner>36.662280696121286 136.97536766019635 0</gml:lowerCorner>
+<gml:upperCorner>36.6833092134794 136.9833983198483 0</gml:upperCorner>
+</gml:Envelope>
+</gml:boundedBy>
+<core:cityObjectMember>
+<tran:Railway gml:id="rwy_9b1548ee-cb98-43f1-850c-e568d08a3f3d"><gml:name>城端線</gml:name>
+<core:creationDate>2025-03-14</core:creationDate>
+<tran:class codeSpace="../../codelists/TransportationComplex_class.xml">1060</tran:class>
+<tran:function codeSpace="../../codelists/Railway_function.xml">01</tran:function>
+<tran:lod1MultiSurface><gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3"><gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.683305542614214 136.9833983198483 0 36.6833092134794 136.98338728500252 0 36.682526860962355 136.98298609610092 0 36.68165253494783 136.9825472752543 0 36.68139767321197 136.98243232992442 0 36.680948020853045 136.98225679141373 0 36.68032715448513 136.98202262948408 0 36.67893601000105 136.9814909068852 0 36.67871336024768 136.98140785749573 0 36.678034806676564 136.98115226352743 0 36.67581027191555 136.98030629158842 0 36.67376859732136 136.9795297343268 0 36.67183937650197 136.97880004587398 0 36.66868313156308 136.97759995110664 0 36.66813204939911 136.97738549692212 0 36.66765872381878 136.97720696079972 0 36.667337257939884 136.97709707599245 0 36.66697151497492 136.9769793551918 0 36.66651722533242 136.97685245160255 0 36.66610461332757 136.97675230043606 0 36.665785111394364 136.97668807036573 0 36.66541018349358 136.97661659691434 0 36.66531857774422 136.9766023740341 0 36.665012797966995 136.97656173231462 0 36.664696161935 136.97651597985325 0 36.66456378913555 136.97649585539838 0 36.66443881726242 136.97646856752425 0 36.66433928127393 136.97644480396355 0 36.66423654724021 136.9764123556439 0 36.664121995483335 136.9763696263503 0 36.66400351917839 136.97632167403583 0 36.66373449553721 136.97618831198827 0 36.663561135356275 136.97609560573522 0 36.66325657974073 136.97592579620206 0 36.662630126647464 136.9755657001695 0 36.66228472861112 136.97536766019635 0 36.662280696121286 136.97537849577495 0 36.66262608996415 136.97557653338902 0 36.66325258906784 136.97593665596014 0 36.66355726266852 136.9761065313206 0 36.663730809283145 136.97619933729575 0 36.66400024198754 136.97633290216558 0 36.664119120850025 136.97638101742925 0 36.66423397669834 136.97642386017 0 36.66433718568135 136.9764564585168 0 36.66443707604891 136.97648030669822 0 36.664562370674034 136.97650766506507 0 36.664695021479254 136.97652783180504 0 36.66501173010831 136.97657359480496 0 36.66531746901721 136.9766142311394 0 36.66540885665505 136.9766284201693 0 36.665783612873895 136.9766998609498 0 36.666102921538034 136.97676405221551 0 36.6665152466549 136.97686413380967 0 36.66696925199907 136.97699095805 0 36.66733477454081 136.9771086079583 0 36.66765604901426 136.97721842738633 0 36.668129213214385 136.977396902707 0 36.668680300290255 136.97761135874939 0 36.67183656708434 136.9788114622857 0 36.6737657875719 136.9795411508974 0 36.67580745525132 136.98031770583813 0 36.67803200252051 136.98116368286264 0 36.67871058086274 136.9814192862619 0 36.67893321184364 136.98150232868207 0 36.68032434226919 136.98203404611328 0 36.680945181075955 136.98226819773973 0 36.68139458792216 136.98244364047136 0 36.68164909029155 136.98255842376014 0 36.682523223535064 136.98299714798168 0 36.683305542614214 136.9833983198483 0</gml:posList>
+</gml:LinearRing>
+</gml:exterior>
+</gml:Polygon>
+</gml:surfaceMember>
+</gml:MultiSurface>
+</tran:lod1MultiSurface>
+<uro:tranDataQualityAttribute><uro:DataQualityAttribute><uro:geometrySrcDescLod1 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">000</uro:geometrySrcDescLod1>
+<uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">000</uro:thematicSrcDesc>
+  <uro:publicSurveyDataQualityAttribute><uro:PublicSurveyDataQualityAttribute><uro:srcScaleLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">1</uro:srcScaleLod1>
+      <uro:publicSurveySrcDescLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">005</uro:publicSurveySrcDescLod1>
+</uro:PublicSurveyDataQualityAttribute>
+</uro:publicSurveyDataQualityAttribute>
+</uro:DataQualityAttribute>
+</uro:tranDataQualityAttribute>
+<uro:railwayRouteAttribute><uro:RailwayRouteAttribute><uro:operatorType codeSpace="../../codelists/RailwayRouteAttribute_operatorType.xml">2</uro:operatorType>
+<uro:operator>西日本旅客鉄道株式会社</uro:operator>
+<uro:railwayType codeSpace="../../codelists/RailwayRouteAttribute_railwayType.xml">11</uro:railwayType>
+<uro:startStation>高岡</uro:startStation>
+<uro:endStation>城端</uro:endStation>
+</uro:RailwayRouteAttribute>
+</uro:railwayRouteAttribute>
+</tran:Railway>
+</core:cityObjectMember>
+</core:CityModel>

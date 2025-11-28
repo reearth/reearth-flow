@@ -1,0 +1,10 @@
+citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op.zip"
+
+# [tests.3d_lines]
+
+[tests.3dtiles_attributes.casts]
+".attributes" = "json"
+
+[filter.tree]
+"" = ["codelists/", "schemas/"]
+"udx/tran/" = ["54401008_tran_6697_op.gml", "54401018_tran_6697_op.gml"]

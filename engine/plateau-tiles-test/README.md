@@ -10,23 +10,40 @@ Testing framework for aligning flow outputs containing tile files, with FME outp
 
 ## Directory structure
 
-- `testcases/<name>`: store testing profiles.
-- `results`: store evaluation results and intermediate data
-  - `results/<name>/fme`: extracted fme outputs
-  - `results/<name>/flow`: flow outputs
-  - `results/<name>/runtime`: flow intermediate data
-  - tests should be small so these files are kept persistently.
-- `<name>` naming pattern: `<city_code>_<city_name>_<workflow>_<extra_description>.toml`
+- `artifacts/citymodel/{zip_stem}/` - Shared codelists and schemas extracted from source zips (tracked in git)
+  - `codelists/` - Shared codelist files
+  - `schemas/` - Shared schema files
+- `testcases/{workflow-path}/{desc}/` - Test-specific data (tracked in git)
+  - `{workflow-path}` is relative to `runtime/examples/fixture/workflow/` (e.g., `data-convert/plateau4/02-tran-rwy-trk-squr-wwy`)
+  - `{desc}` is the test description (e.g., `rwy`, `multipolygon`)
+  - `profile.toml` - Test configuration (`workflow_path` is optional, auto-derived from directory structure)
+  - `fme.zip` - Reference FME output
+  - `citymodel/udx/` - Test-specific GML files (filtered from source)
+- `results/{workflow-path}/{desc}/` - Runtime outputs (gitignored)
+  - `{zip_name}` - Packed citymodel zip (generated from artifacts + testcase)
+  - `fme/` - Extracted FME outputs
+  - `flow/` - Flow outputs
+  - `runtime/` - Flow intermediate data
 
 ## Steps to create a test
 
-1. prepare the original CityGML zip under `$CITYGML_SRCDIR`
-2. create `testcases/<name>/profile.toml`, create a filter to minimize features to be tested.
-3. `uv run python3 -m plateau-tiles-test <name> g` which generates the filtered zip, update `profile.toml` to use that zip.
-4. run FME with the filtered zip
-  - FME's uses 3dtiles v1.0 + draco compression which cannot be handled currently. The workaround is to modify FME workflows to export JSON files (csmapreprojector + coordinateswapper needed to match cesium processing result).
-  - rename `.mvt` -> `.pbf` if necessary.
-  - zip FME output to `testcases/<name>/fme.zip`
+1. Prepare the original CityGML zip under `$CITYGML_SRCDIR`
+2. Create `testcases/{workflow-path}/{desc}/profile.toml` with filter configuration
+3. Run `uv run python3 -m plateau-tiles-test {workflow-path}/{desc} g` to:
+   - Extract codelists/schemas to `artifacts/citymodel/{zip_stem}/`
+   - Extract filtered GML files to `testcases/{workflow-path}/{desc}/citymodel/udx/`
+   - Pack runtime zip to `results/{workflow-path}/{desc}/{zip_name}`
+4. Run FME with the packed zip from `results/{workflow-path}/{desc}/{zip_name}`
+   - FME uses 3dtiles v1.0 + draco compression. Workaround: modify FME workflows to export JSON files (csmapreprojector + coordinateswapper needed to match cesium processing)
+   - Rename `.mvt` -> `.pbf` if necessary
+   - Zip FME output to `testcases/{workflow-path}/{desc}/fme.zip`
+5. Run `uv run python3 -m plateau-tiles-test {workflow-path}/{desc} re` to test
+
+## Stages
+
+- `g` - Generate: Extract source zip to artifacts + testcase structure, pack runtime zip
+- `r` - Run: Pack runtime zip (if not exists) and execute workflow
+- `e` - Evaluate: Compare flow output with FME reference
 
 ## Todo
 
