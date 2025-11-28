@@ -26,9 +26,6 @@ describe("intermediateDataTransform", () => {
       id: "123",
       type: "Feature",
       properties: { name: "Test None" },
-      geometry: {
-        value: "none",
-      },
     };
 
     const result = intermediateDataTransform(data);

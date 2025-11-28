@@ -5,7 +5,6 @@ export function intermediateDataTransform(parsedData: any) {
         id: parsedData.id,
         type: "Feature",
         properties: { ...parsedData.attributes },
-        geometry: parsedData.geometry,
       };
     }
 
