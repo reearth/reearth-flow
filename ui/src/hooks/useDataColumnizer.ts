@@ -80,33 +80,6 @@ export default ({
           id: JSON.stringify(feature.id || index),
           ...Object.fromEntries(
             Array.from(allGeometry).map((geometry) => {
-              if (
-                geometry === "coordinates" &&
-                feature.geometry.type === "Polygon"
-              ) {
-                return [
-                  `geometry${geometry}`,
-                  formatCellValue(feature.geometry.coordinates || null),
-                ];
-              }
-              if (
-                geometry === "coordinates" &&
-                feature.geometry.type === "MultiPolygon"
-              ) {
-                return [
-                  `geometry${geometry}`,
-                  formatCellValue(feature.geometry.coordinates || null),
-                ];
-              }
-              if (
-                geometry === "coordinates" &&
-                feature.geometry.type === "LineString"
-              ) {
-                return [
-                  `geometry${geometry}`,
-                  formatCellValue(feature.geometry?.[geometry] || null),
-                ];
-              }
               return [
                 `geometry${geometry}`,
                 formatCellValue(feature.geometry?.[geometry] || null),

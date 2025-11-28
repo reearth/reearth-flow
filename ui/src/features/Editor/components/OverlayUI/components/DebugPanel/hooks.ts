@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 
-import useDataFormatter from "@flow/hooks/useDataFormatter";
+import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useJob } from "@flow/lib/gql/job";
 import { useIndexedDB } from "@flow/lib/indexedDB";
@@ -407,7 +407,7 @@ export default () => {
     [streamingQuery.detectedGeometryType, cesiumViewerRef, mapRef],
   );
 
-  const formattedData = useDataFormatter({
+  const formattedData = useDataColumnizer({
     parsedData: selectedOutputData,
     type: fileType,
   });

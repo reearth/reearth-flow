@@ -2,7 +2,7 @@ import { memo, useCallback } from "react";
 
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
-import useDataFormatter from "@flow/hooks/useDataFormatter";
+import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useT } from "@flow/lib/i18n";
 
 import FeatureDetailsOverlay from "./FeatureDetailsOverlay";
@@ -16,7 +16,7 @@ type Props = {
   totalFeatures: number;
   detailsOverlayOpen: boolean;
   detailsFeature: any;
-  formattedData: ReturnType<typeof useDataFormatter>;
+  formattedData: ReturnType<typeof useDataColumnizer>;
   onCloseFeatureDetails: () => void;
 };
 
