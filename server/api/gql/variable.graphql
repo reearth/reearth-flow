@@ -1,0 +1,11 @@
+type Variable {
+    key: String!
+    type: ParameterType!
+    value: Any!
+}
+
+input VariableInput {
+    key: String!
+    type: ParameterType!
+    value: Any!
+}
