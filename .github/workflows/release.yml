@@ -111,6 +111,18 @@ jobs:
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
         with:
           name: changelog-${{ needs.release.outputs.version }}
+      - name: Truncate changelog if too long
+        run: |
+          MAX_SIZE=120000
+          if [ -f CHANGELOG_latest.md ]; then
+            SIZE=$(wc -c < CHANGELOG_latest.md)
+            if [ $SIZE -gt $MAX_SIZE ]; then
+              echo "Changelog is $SIZE bytes, truncating to $MAX_SIZE..."
+              head -c $MAX_SIZE CHANGELOG_latest.md > CHANGELOG_truncated.md
+              echo -e "\n\n... (changelog truncated due to GitHub's 125,000 character limit)" >> CHANGELOG_truncated.md
+              mv CHANGELOG_truncated.md CHANGELOG_latest.md
+            fi
+          fi
       - name: Create GitHub release
         uses: ncipollo/release-action@440c8c1cb0ed28b9f43e4d1d670870f059653174 # v1.16.0
         with:
