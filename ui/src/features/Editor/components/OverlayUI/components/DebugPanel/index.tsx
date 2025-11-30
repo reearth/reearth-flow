@@ -11,6 +11,7 @@ import { memo, useEffect, useRef, useState } from "react";
 
 import {
   IconButton,
+  LoadingSkeleton,
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
@@ -61,13 +62,15 @@ const DebugPanel: React.FC = () => {
     detectedGeometryType,
     visualizerType,
     totalFeatures,
-    isComplete,
+    isLoadingData,
   } = useHooks();
   const t = useT();
   const [tabValue, setTabValue] = useState("debug-logs");
 
   const hasSwitchedToViewerRef = useRef(false);
   const debugJobIdRef = useRef(debugJobId);
+
+  const shouldShowVisualizerPanel = visualizerType || isLoadingData;
 
   useEffect(() => {
     if (debugJobId !== debugJobIdRef.current) {
@@ -216,27 +219,35 @@ const DebugPanel: React.FC = () => {
                   />
                 </div>
               </ResizablePanel>
-              {!minimized && visualizerType && (
+              {!minimized && shouldShowVisualizerPanel && (
                 <ResizableHandle className="data-resize-handle-[state=drag]:border-logo/70 mx-2 h-[30%] w-1 self-center rounded-md border border-accent bg-accent transition hover:border-transparent hover:bg-logo/70" />
               )}
-              {visualizerType && (
+              {shouldShowVisualizerPanel && (
                 <ResizablePanel defaultSize={40} minSize={20}>
-                  <DebugPreview
-                    debugJobState={debugJobState}
-                    dataURLs={dataURLs}
-                    fileType={fileType}
-                    selectedOutputData={selectedOutputData}
-                    selectedFeature={selectedFeature}
-                    mapRef={mapRef}
-                    cesiumViewerRef={cesiumViewerRef}
-                    onConvertedSelectedFeature={setConvertedSelectedFeature}
-                    onSelectedFeature={setSelectedFeature}
-                    onFlyToSelectedFeature={handleFlyToSelectedFeature}
-                    // Data detection props
-                    detectedGeometryType={detectedGeometryType}
-                    visualizerType={visualizerType}
-                    isComplete={isComplete}
-                  />
+                  {!visualizerType && isLoadingData ? (
+                    <div className="flex h-full items-center justify-center">
+                      <div className="text-center text-muted-foreground">
+                        <LoadingSkeleton className="mb-4" />
+                        <p className="text-sm">{t("Loading data...")}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <DebugPreview
+                      debugJobState={debugJobState}
+                      dataURLs={dataURLs}
+                      fileType={fileType}
+                      selectedOutputData={selectedOutputData}
+                      selectedFeature={selectedFeature}
+                      mapRef={mapRef}
+                      cesiumViewerRef={cesiumViewerRef}
+                      onConvertedSelectedFeature={setConvertedSelectedFeature}
+                      onSelectedFeature={setSelectedFeature}
+                      onFlyToSelectedFeature={handleFlyToSelectedFeature}
+                      // Data detection props
+                      detectedGeometryType={detectedGeometryType}
+                      visualizerType={visualizerType}
+                    />
+                  )}
                 </ResizablePanel>
               )}
             </ResizablePanelGroup>
