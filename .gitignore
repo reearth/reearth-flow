@@ -5,3 +5,6 @@
 reearth-flow-websocket/
 reearth-flow-websocket-rs/
 target/
+engine/*.geojson
+engine/projects/engine/jobs/*
+.gitignore

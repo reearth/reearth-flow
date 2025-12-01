@@ -31,3 +31,6 @@ tmp/
 example.yml
 logs/
 /*.sh
+.env
+output
+temp
