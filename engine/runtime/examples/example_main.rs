@@ -86,6 +86,8 @@ impl reearth_flow_runtime::event::EventHandler for EventHandler {
             reearth_flow_runtime::event::Event::NodeStatusChanged { .. } => {
                 // TODO: Implement this
             }
+            // Catch-all for analyzer events (ActionMemory, EdgeFeature, NodeQueueDepth)
+            _ => {}
         }
     }
 }

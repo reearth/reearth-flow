@@ -7,6 +7,7 @@ pub(crate) mod utils;
 pub(crate) mod writer;
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct BoundingVolume {
     pub min_lng: f64,
     pub max_lng: f64,

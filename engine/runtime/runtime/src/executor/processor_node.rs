@@ -379,10 +379,51 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         let channel_manager: &ProcessorChannelForwarder = &channel_manager_guard;
         let now = time::Instant::now();
 
+        // Start memory tracking for peak allocation during finish() call
+        #[cfg(feature = "analyzer")]
+        let start_timestamp_ms = crate::analyzer::AnalyzerEvent::now_ms();
+        #[cfg(feature = "analyzer")]
+        crate::analyzer::start_tracking();
+
         let result = processor
             .write()
             .finish(ctx.clone(), channel_manager)
             .map_err(|e| ExecutionError::CannotSendToChannel(format!("{e:?}")));
+
+        let elapsed = now.elapsed();
+
+        // Stop memory tracking and send final event with 0 current memory
+        // to indicate the action has terminated and released its resources
+        #[cfg(feature = "analyzer")]
+        {
+            let (_alloc_current, peak_memory) = crate::analyzer::stop_tracking();
+            let end_timestamp_ms = crate::analyzer::AnalyzerEvent::now_ms();
+            tracing::info!(
+                "Processor {} finish: sending ActionMemory event with current=0 (terminated), peak={}, time={}ms",
+                self.node_name,
+                peak_memory,
+                elapsed.as_millis()
+            );
+            self.event_hub.send(Event::ActionMemory {
+                node_id: self
+                    .node_handle
+                    .id
+                    .clone()
+                    .into_inner()
+                    .parse()
+                    .unwrap_or_default(),
+                node_name: self.node_name.clone(),
+                thread_name: std::thread::current()
+                    .name()
+                    .unwrap_or("unknown")
+                    .to_string(),
+                current_memory_bytes: 0, // Report 0 to show action has terminated
+                peak_memory_bytes: peak_memory,
+                processing_time_ms: elapsed.as_millis() as u64,
+                start_timestamp_ms,
+                end_timestamp_ms,
+            });
+        }
 
         let span = self.span.clone();
         self.event_hub.info_log_with_node_info(
@@ -392,7 +433,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             format!(
                 "{} finish process complete. elapsed = {:?}",
                 self.processor.read().name(),
-                now.elapsed()
+                elapsed
             ),
         );
 
@@ -427,6 +468,8 @@ fn process(
 
     // Start memory tracking for peak allocation during this process() call
     #[cfg(feature = "analyzer")]
+    let start_timestamp_ms = crate::analyzer::AnalyzerEvent::now_ms();
+    #[cfg(feature = "analyzer")]
     crate::analyzer::start_tracking();
 
     let result = processor.process(ctx, channel_manager);
@@ -437,6 +480,7 @@ fn process(
     {
         // Get peak memory from allocation tracking (peak NEW allocations during this process() call)
         let (_alloc_current, peak_memory) = crate::analyzer::stop_tracking();
+        let end_timestamp_ms = crate::analyzer::AnalyzerEvent::now_ms();
         // Get current memory from the processor's data_size() method
         // This gives us the actual size of data structures like buffers
         let current_memory = processor.data_size();
@@ -455,6 +499,8 @@ fn process(
             current_memory_bytes: current_memory,
             peak_memory_bytes: peak_memory,
             processing_time_ms: elapsed.as_millis() as u64,
+            start_timestamp_ms,
+            end_timestamp_ms,
         });
     }
 

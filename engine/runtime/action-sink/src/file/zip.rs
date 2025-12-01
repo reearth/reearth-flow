@@ -79,6 +79,7 @@ impl SinkFactory for ZipFileWriterFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct ZipFileWriter {
     output: Expr,
     buffer: Vec<Uri>,
@@ -89,6 +90,7 @@ struct ZipFileWriter {
 /// Configuration for creating ZIP archive files from features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct ZipFileWriterParam {
     /// Output path
     output: Expr,

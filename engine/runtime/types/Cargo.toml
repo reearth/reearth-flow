@@ -12,7 +12,7 @@ version.workspace = true
 
 [features]
 default = []
-analyzer = ["reearth-flow-analyzer-core"]
+analyzer = ["reearth-flow-analyzer-core", "reearth-flow-geometry/analyzer"]
 
 [dependencies]
 reearth-flow-analyzer-core = { workspace = true, optional = true }

@@ -3,7 +3,6 @@
 //! This module provides integration between the runtime and the analyzer crate
 //! when the `analyzer` feature is enabled.
 
-#[cfg(feature = "analyzer")]
 pub use reearth_flow_analyzer::{
     create_channel, default_reports_dir, disable_analyzer, enable_analyzer, estimate_size,
     generate_report_filename, get_current_memory, get_current_stats, is_analyzer_enabled,
@@ -13,9 +12,7 @@ pub use reearth_flow_analyzer::{
     DEFAULT_CHANNEL_CAPACITY,
 };
 
-#[cfg(feature = "analyzer")]
 use std::sync::Arc;
-#[cfg(feature = "analyzer")]
 use tokio::sync::Notify;
 
 /// Context for the analyzer, containing the event sender and configuration.
@@ -94,6 +91,7 @@ impl AnalyzerContext {
         current_memory_bytes: usize,
         peak_memory_bytes: usize,
         processing_time_ms: u64,
+        start_timestamp_ms: u64,
     ) {
         if !self.track_memory {
             return;
@@ -109,6 +107,7 @@ impl AnalyzerContext {
             current_memory_bytes,
             peak_memory_bytes,
             processing_time_ms,
+            start_timestamp_ms,
         });
     }
 
@@ -149,7 +148,6 @@ impl AnalyzerContext {
 }
 
 /// Create an analyzer context and sink for a workflow execution.
-#[cfg(feature = "analyzer")]
 pub fn create_analyzer(
     channel_capacity: usize,
 ) -> (AnalyzerContext, AnalyzerEventReceiver, Arc<Notify>) {
@@ -163,14 +161,11 @@ pub fn create_analyzer(
 /// Helper macro to conditionally compile analyzer code.
 #[macro_export]
 macro_rules! with_analyzer {
-    ($ctx:expr, $code:expr) => {
-        #[cfg(feature = "analyzer")]
-        {
-            if let Some(analyzer) = $ctx {
-                $code
-            }
+    ($ctx:expr, $code:expr) => {{
+        if let Some(analyzer) = $ctx {
+            $code
         }
-    };
+    }};
 }
 
 /// Helper struct for tracking memory during a process() call.
@@ -179,6 +174,7 @@ pub struct ProcessMemoryTracker {
     node_id: uuid::Uuid,
     node_name: String,
     start_time: std::time::Instant,
+    start_timestamp_ms: u64,
     context: Option<AnalyzerContext>,
 }
 
@@ -186,6 +182,7 @@ pub struct ProcessMemoryTracker {
 impl ProcessMemoryTracker {
     /// Start tracking memory for a process() call.
     pub fn start(node_id: uuid::Uuid, node_name: String, context: Option<AnalyzerContext>) -> Self {
+        let start_timestamp_ms = AnalyzerEvent::now_ms();
         if context.as_ref().map(|c| c.track_memory).unwrap_or(false) {
             start_tracking();
         }
@@ -193,6 +190,7 @@ impl ProcessMemoryTracker {
             node_id,
             node_name,
             start_time: std::time::Instant::now(),
+            start_timestamp_ms,
             context,
         }
     }
@@ -209,6 +207,7 @@ impl ProcessMemoryTracker {
                     current,
                     peak,
                     elapsed.as_millis() as u64,
+                    self.start_timestamp_ms,
                 );
             }
         }
@@ -228,7 +227,6 @@ impl ProcessMemoryTracker {
 }
 
 #[cfg(test)]
-#[cfg(feature = "analyzer")]
 mod tests {
     use super::*;
 

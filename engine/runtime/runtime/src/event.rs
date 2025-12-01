@@ -4,7 +4,7 @@ use tokio::sync::{
     broadcast::{Receiver, Sender},
     Notify,
 };
-use tracing::{error, info, Level, Span};
+use tracing::{error, info, warn, Level, Span};
 
 use crate::node::{EdgeId, NodeHandle, NodeStatus};
 
@@ -55,6 +55,10 @@ pub enum Event {
         current_memory_bytes: usize,
         peak_memory_bytes: usize,
         processing_time_ms: u64,
+        /// Unix timestamp in milliseconds when tracking started (before process()/finish())
+        start_timestamp_ms: u64,
+        /// Unix timestamp in milliseconds when tracking ended (after process()/finish())
+        end_timestamp_ms: u64,
     },
     /// Analyzer event: Feature passed through an edge with size info
     #[cfg(feature = "analyzer")]
@@ -266,25 +270,77 @@ pub async fn subscribe_event(
     notify: Arc<Notify>,
     event_handlers: &[Arc<dyn EventHandler>],
 ) {
+    // Normal event processing loop
     loop {
         tokio::select! {
             _ = notify.notified() => {
-                let shutdown_futures = event_handlers.iter()
-                    .map(|handler| handler.on_shutdown());
-                match tokio::time::timeout(
-                    std::time::Duration::from_secs(5),
-                    futures::future::join_all(shutdown_futures)
-                ).await {
-                    Ok(_) => info!("All handlers shut down successfully"),
-                    Err(_) => error!("Shutdown timed out for some handlers"),
-                }
-                return;
+                info!("Event subscription shutdown requested, draining remaining events...");
+                break; // Exit normal loop, start draining
             },
-            Ok(ev) = receiver.recv() => {
-                for handler in event_handlers.iter() {
-                    handler.on_event(&ev).await;
+            result = receiver.recv() => {
+                match result {
+                    Ok(ev) => {
+                        for handler in event_handlers.iter() {
+                            handler.on_event(&ev).await;
+                        }
+                    },
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                        warn!("Event handler lagged, missed {} events", n);
+                    },
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                        info!("Event channel closed");
+                        break;
+                    },
                 }
             },
         }
+    }
+
+    // Drain remaining events with timeout
+    info!("Draining remaining events from channel...");
+    let drain_timeout = std::time::Duration::from_secs(5);
+    let drain_start = std::time::Instant::now();
+    let mut drained_count = 0;
+
+    loop {
+        if drain_start.elapsed() > drain_timeout {
+            info!("Drain timeout reached after {} events", drained_count);
+            break;
+        }
+
+        // Use short timeout to check for remaining events
+        match tokio::time::timeout(std::time::Duration::from_millis(100), receiver.recv()).await {
+            Ok(Ok(ev)) => {
+                drained_count += 1;
+                for handler in event_handlers.iter() {
+                    handler.on_event(&ev).await;
+                }
+            }
+            Ok(Err(tokio::sync::broadcast::error::RecvError::Lagged(n))) => {
+                warn!("Event handler lagged during drain, missed {} events", n);
+            }
+            Ok(Err(tokio::sync::broadcast::error::RecvError::Closed)) => {
+                info!("Channel closed during drain after {} events", drained_count);
+                break;
+            }
+            Err(_) => {
+                // Timeout - no more events in channel
+                info!("No more events to drain after {} events", drained_count);
+                break;
+            }
+        }
+    }
+
+    // Shutdown handlers
+    info!("Shutting down event handlers");
+    let shutdown_futures = event_handlers.iter().map(|handler| handler.on_shutdown());
+    match tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        futures::future::join_all(shutdown_futures),
+    )
+    .await
+    {
+        Ok(_) => info!("All handlers shut down successfully"),
+        Err(_) => error!("Shutdown timed out for some handlers"),
     }
 }

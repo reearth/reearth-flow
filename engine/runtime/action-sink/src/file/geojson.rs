@@ -79,6 +79,7 @@ impl SinkFactory for GeoJsonWriterFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(super) struct GeoJsonWriter {
     pub(super) params: GeoJsonWriterParam,
     pub(super) buffer: HashMap<AttributeValue, Vec<Feature>>,
@@ -89,6 +90,7 @@ pub(super) struct GeoJsonWriter {
 /// Configuration for writing features to GeoJSON files.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(super) struct GeoJsonWriterParam {
     /// Output path or expression for the GeoJSON file to create
     pub(super) output: Expr,

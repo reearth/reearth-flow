@@ -1,3 +1,4 @@
+#[cfg(feature = "analyzer")]
 pub mod analyzer;
 pub mod builder_dag;
 pub mod dag_schemas;

@@ -46,6 +46,7 @@ impl SinkFactory for NoopSinkFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct NoopSink;
 
 impl Sink for NoopSink {

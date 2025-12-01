@@ -366,6 +366,58 @@ impl<K: DataSize, V: DataSize, S> DataSize for indexmap::IndexMap<K, V, S> {
     }
 }
 
+// nusamai_citygml::schema types
+impl DataSize for nusamai_citygml::schema::Schema {
+    fn data_size(&self) -> usize {
+        self.types.data_size()
+    }
+}
+
+impl DataSize for nusamai_citygml::schema::TypeDef {
+    fn data_size(&self) -> usize {
+        match self {
+            nusamai_citygml::schema::TypeDef::Feature(ft) => ft.data_size(),
+            nusamai_citygml::schema::TypeDef::Data(dt) => dt.data_size(),
+            nusamai_citygml::schema::TypeDef::Property(pt) => pt.data_size(),
+        }
+    }
+}
+
+impl DataSize for nusamai_citygml::schema::FeatureTypeDef {
+    fn data_size(&self) -> usize {
+        self.attributes.data_size()
+    }
+}
+
+impl DataSize for nusamai_citygml::schema::DataTypeDef {
+    fn data_size(&self) -> usize {
+        self.attributes.data_size()
+    }
+}
+
+impl DataSize for nusamai_citygml::schema::PropertyTypeDef {
+    fn data_size(&self) -> usize {
+        self.members.data_size()
+    }
+}
+
+impl DataSize for nusamai_citygml::schema::Attribute {
+    fn data_size(&self) -> usize {
+        self.type_ref.data_size() + self.original_name.data_size()
+    }
+}
+
+impl DataSize for nusamai_citygml::schema::TypeRef {
+    fn data_size(&self) -> usize {
+        match self {
+            nusamai_citygml::schema::TypeRef::JsonString(attr) => attr.data_size(),
+            nusamai_citygml::schema::TypeRef::Named(s) => s.data_size(),
+            // All other variants are unit variants with no heap allocation
+            _ => 0,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

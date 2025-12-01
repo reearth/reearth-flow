@@ -76,6 +76,7 @@ impl SinkFactory for JsonWriterFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(super) struct JsonWriter {
     pub(super) params: JsonWriterParam,
     pub(super) buffer: HashMap<Uri, Vec<Feature>>,
@@ -86,6 +87,7 @@ pub(super) struct JsonWriter {
 /// Configuration for writing features to JSON files.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(super) struct JsonWriterParam {
     /// Output path or expression for the JSON file to create
     pub(super) output: Expr,

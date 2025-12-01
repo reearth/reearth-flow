@@ -152,11 +152,21 @@ pub struct GltfWriter {
     draco_compression: bool,
 }
 
+#[cfg(feature = "analyzer")]
+impl reearth_flow_analyzer_core::DataSize for GltfWriter {
+    fn data_size(&self) -> usize {
+        // Estimate memory usage - Uri + estimated classified_features size
+        reearth_flow_analyzer_core::DataSize::data_size(&self.output)
+            + self.classified_features.len() * std::mem::size_of::<(String, ClassFeatures)>()
+    }
+}
+
 /// # GltfWriter Parameters
 ///
 /// Configuration for writing features to GLTF 3D format.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct GltfWriterParam {
     /// Output path or expression for the GLTF file to create
     output: Expr,

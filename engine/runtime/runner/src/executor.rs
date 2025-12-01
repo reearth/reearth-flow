@@ -73,7 +73,12 @@ pub fn run_dag_executor(
     let result = join_handle
         .join((*runtime).clone())
         .map_err(Error::ExecutionError);
-    std::thread::sleep(Duration::from_millis(1000));
+    tracing::info!("DAG execution complete, brief pause before initiating event handler shutdown");
+    // Brief pause to ensure final events are sent before shutdown notification
+    // Event draining will handle any remaining events
+    std::thread::sleep(Duration::from_millis(500));
+    tracing::info!("Notifying event handlers to shut down");
     join_handle.notify();
+    tracing::info!("Event handlers shut down complete");
     result
 }

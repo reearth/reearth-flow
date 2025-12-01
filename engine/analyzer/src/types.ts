@@ -1,7 +1,10 @@
 // Types matching the Rust backend
 
 export interface MemoryDataPoint {
+  /** Unix timestamp in milliseconds when tracking ended (after process()/finish()). */
   timestamp_ms: number;
+  /** Unix timestamp in milliseconds when tracking started (before process()/finish()). */
+  start_timestamp_ms: number;
   thread_name: string;
   current_memory_bytes: number;
   peak_memory_bytes: number;
@@ -32,6 +35,8 @@ export interface EdgeInfo {
 export interface NodeMemoryReport {
   info: NodeInfo;
   data_points: MemoryDataPoint[];
+  /** Quantized data points for efficient graphing. Only includes points where the quantized memory value changed. */
+  quantized_data_points: MemoryDataPoint[];
   total_peak_memory: number;
   avg_memory: number;
   total_processing_time_ms: number;
@@ -41,6 +46,8 @@ export interface NodeMemoryReport {
 export interface NodeQueueReport {
   info: NodeInfo;
   data_points: QueueDataPoint[];
+  /** Quantized data points for efficient graphing. Only includes points where the quantized queue depth changed. */
+  quantized_data_points: QueueDataPoint[];
   max_queue_depth: number;
   avg_queue_depth: number;
 }

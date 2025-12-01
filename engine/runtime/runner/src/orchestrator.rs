@@ -31,7 +31,7 @@ static EVENT_HUB_CAPACITY: Lazy<usize> = Lazy::new(|| {
     env::var("FLOW_RUNTIME_EVENT_HUB_CAPACITY")
         .ok()
         .and_then(|v| v.parse().ok())
-        .unwrap_or(8192)
+        .unwrap_or(32768)
 });
 
 static THREAD_POOL_SIZE: Lazy<usize> = Lazy::new(|| {

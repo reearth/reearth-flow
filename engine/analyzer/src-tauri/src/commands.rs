@@ -163,7 +163,7 @@ pub fn get_report_nodes(
         nodes.push(NodeSummary {
             node_id: node_id.clone(),
             node_name: mem_report.info.node_name.clone(),
-            has_memory_data: !mem_report.data_points.is_empty(),
+            has_memory_data: !mem_report.quantized_data_points.is_empty(),
             has_queue_data: report.queue_reports.contains_key(node_id),
             features_processed: mem_report.features_processed,
             total_peak_memory: mem_report.total_peak_memory,

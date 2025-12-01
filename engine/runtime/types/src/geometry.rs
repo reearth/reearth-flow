@@ -307,6 +307,7 @@ pub struct GmlGeometry {
     pub id: Option<String>,
     #[serde(rename = "type")]
     pub ty: GeometryType,
+    #[cfg_attr(feature = "analyzer", data_size(skip))] // skipping as this is very small
     pub gml_trait: Option<GmlGeometryTrait>,
     pub lod: Option<u8>,
     pub pos: u32,

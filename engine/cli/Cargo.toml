@@ -20,6 +20,10 @@ analyzer = [
     "reearth-flow-runtime/analyzer",
     "reearth-flow-runner/analyzer",
     "reearth-flow-action-processor/analyzer",
+    "reearth-flow-action-plateau-processor/analyzer",
+    "reearth-flow-action-python-processor/analyzer",
+    "reearth-flow-action-source/analyzer",
+    "reearth-flow-action-sink/analyzer",
     "dep:reearth-flow-analyzer",
 ]
 

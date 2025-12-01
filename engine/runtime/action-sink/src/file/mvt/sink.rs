@@ -114,12 +114,14 @@ type JoinHandle = Arc<parking_lot::Mutex<Receiver<Result<(), SinkError>>>>;
 type BufferValue = Vec<(Feature, String)>;
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct MVTWriter {
     pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
     pub(super) params: MVTWriterCompiledParam,
     /// (output, compress_output) -> Vec<(Feature, layer_name)>
     pub(super) buffer: HashMap<(Uri, Option<Uri>), BufferValue>,
     #[allow(clippy::type_complexity)]
+    #[cfg_attr(feature = "analyzer", data_size(skip))] // skipping as this is small
     pub(super) join_handles: Vec<JoinHandle>,
 }
 
@@ -128,6 +130,7 @@ pub struct MVTWriter {
 /// Configuration for writing features to Mapbox Vector Tiles (MVT) format.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct MVTWriterParam {
     /// # Output
     /// Output directory path or expression for the generated MVT tiles
@@ -156,6 +159,7 @@ pub struct MVTWriterParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct MVTWriterCompiledParam {
     pub(super) output: rhai::AST,
     pub(super) layer_name: rhai::AST,

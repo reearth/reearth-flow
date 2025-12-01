@@ -183,12 +183,14 @@ impl DagExecutorJoinHandle {
 
             if self.join_handles.is_empty() {
                 // All threads have completed, add a delay before returning
-                tracing::info!("Workflow complete, waiting for final events to be published...");
+                tracing::info!(
+                    "All workflow threads complete, waiting for final events to be published..."
+                );
 
                 // Enhanced delay approach - use improved flush with dynamic waiting
                 runtime.block_on(self.event_hub.enhanced_flush(5000));
 
-                tracing::info!("Proceeding with workflow termination");
+                tracing::info!("Enhanced flush complete, proceeding with workflow termination");
 
                 return Ok(());
             }

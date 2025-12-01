@@ -19,6 +19,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
+#[cfg(feature = "analyzer")]
+use reearth_flow_analyzer_core::DataSize;
+
 use crate::errors::SinkError;
 use crate::file::mvt::tileid::TileIdMethod;
 
@@ -112,6 +115,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
 type BufferKey = (Uri, String, Option<Uri>); // (output, feature_type, compress_output)
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct Cesium3DTilesWriter {
     pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
     pub(super) buffer: HashMap<BufferKey, Vec<Feature>>,
@@ -122,6 +126,7 @@ pub struct Cesium3DTilesWriter {
 /// # Cesium3DTilesWriter Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(DataSize))]
 pub struct Cesium3DTilesWriterParam {
     /// # Output Path
     /// Directory path where the 3D tiles will be written
@@ -147,6 +152,7 @@ pub struct Cesium3DTilesWriterParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) output: rhai::AST,
     pub(super) min_zoom: u8,

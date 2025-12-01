@@ -87,6 +87,7 @@ impl SinkFactory for ObjWriterFactory {
 /// Configure output settings for writing 3D features to Wavefront OBJ format
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ObjWriterParam {
     /// # Output Path
     /// Expression for the output file path where the OBJ file will be written
@@ -106,6 +107,7 @@ pub struct ObjWriterParam {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ObjWriter {
     output: AST,
     global_params: Option<HashMap<String, Value>>,
