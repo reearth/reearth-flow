@@ -3090,6 +3090,76 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
 * File
 * Database
 
+## GeoPackageWriter
+### Type
+* sink
+### Description
+Writes geographic features to GeoPackage (.gpkg) files with proper SQLite structure, spatial indexing, and metadata tables
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GeoPackageWriter Parameters",
+  "description": "Configuration for writing features to GeoPackage files.",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "createSpatialIndex": {
+      "description": "Create RTree spatial index (default: true)",
+      "default": true,
+      "type": "boolean"
+    },
+    "geometryColumn": {
+      "description": "Geometry column name (default: \"geom\")",
+      "default": "geom",
+      "type": "string"
+    },
+    "geometryType": {
+      "description": "Geometry type for table (Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, or GEOMETRY for mixed)",
+      "default": "GEOMETRY",
+      "type": "string"
+    },
+    "output": {
+      "description": "Output path for the GeoPackage file to create",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "overwrite": {
+      "description": "Overwrite existing file (default: false)",
+      "default": false,
+      "type": "boolean"
+    },
+    "srsId": {
+      "description": "Spatial Reference System ID (default: 4326 for WGS84)",
+      "default": 4326,
+      "type": "integer",
+      "format": "int32"
+    },
+    "tableName": {
+      "description": "Table name to create (default: \"features\")",
+      "default": "features",
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
+* Database
+
 ## GeometryCoercer
 ### Type
 * processor

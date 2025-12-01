@@ -2976,7 +2976,7 @@
     {
       "name": "GeoPackageReader",
       "type": "source",
-      "description": "Reads geographic features from GeoPackage (.gpkg) files with support for vector features, tiles, and metadata",
+      "description": "Lit les entités géographiques à partir de fichiers GeoPackage (.gpkg) avec prise en charge des entités vectorielles, des tuiles et des métadonnées",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GeoPackageReaderParam",
@@ -3096,7 +3096,7 @@
     {
       "name": "GeoPackageWriter",
       "type": "sink",
-      "description": "Writes geographic features to GeoPackage (.gpkg) files with proper SQLite structure, spatial indexing, and metadata tables",
+      "description": "Écrit des entités géographiques dans des fichiers GeoPackage (.gpkg) avec une structure SQLite appropriée, une indexation spatiale et des tables de métadonnées",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GeoPackageWriter Parameters",
