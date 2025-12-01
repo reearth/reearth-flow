@@ -113,7 +113,6 @@ const Canvas: React.FC<Props> = ({
     onPaste,
     onNodesDisable,
   });
-
   return (
     <ReactFlow
       ref={paneRef}
@@ -131,7 +130,9 @@ const Canvas: React.FC<Props> = ({
       nodes={nodes}
       nodeTypes={nodeTypes}
       edges={edges}
-      edgeTypes={edgeTypes}
+      edgeTypes={{
+        default: !readonly ? edgeTypes.default : edgeTypes.simpleEdge,
+      }}
       defaultEdgeOptions={defaultEdgeOptions}
       connectionLineComponent={CustomConnectionLine}
       connectionLineStyle={connectionLineStyle}
