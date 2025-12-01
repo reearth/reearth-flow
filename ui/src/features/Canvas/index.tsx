@@ -14,7 +14,8 @@ import type { Doc } from "yjs";
 import {
   isValidConnection,
   CustomConnectionLine,
-  edgeTypes,
+  fullEdgeTypes,
+  simpleEdgeTypes,
   connectionLineStyle,
   nodeTypes,
 } from "@flow/lib/reactFlow";
@@ -130,9 +131,7 @@ const Canvas: React.FC<Props> = ({
       nodes={nodes}
       nodeTypes={nodeTypes}
       edges={edges}
-      edgeTypes={{
-        default: !readonly ? edgeTypes.default : edgeTypes.simpleEdge,
-      }}
+      edgeTypes={readonly ? simpleEdgeTypes : fullEdgeTypes}
       defaultEdgeOptions={defaultEdgeOptions}
       connectionLineComponent={CustomConnectionLine}
       connectionLineStyle={connectionLineStyle}

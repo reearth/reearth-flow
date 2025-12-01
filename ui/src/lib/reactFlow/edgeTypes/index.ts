@@ -7,3 +7,11 @@ export const edgeTypes: EdgeTypes = {
   default: DefaultEdge,
   simpleEdge: SimpleEdge,
 };
+
+export const fullEdgeTypes: EdgeTypes = {
+  default: DefaultEdge,
+};
+
+export const simpleEdgeTypes: EdgeTypes = {
+  default: SimpleEdge,
+};
