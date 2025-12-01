@@ -67,6 +67,7 @@ schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 shapefile.workspace = true
+sqlx.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
 tinymvt.workspace = true

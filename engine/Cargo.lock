@@ -6248,6 +6248,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shapefile 0.7.0",
+ "sqlx",
  "tempfile",
  "thiserror 2.0.17",
  "tinymvt",

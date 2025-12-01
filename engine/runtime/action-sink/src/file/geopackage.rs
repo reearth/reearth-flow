@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -16,6 +17,7 @@ use reearth_flow_types::{AttributeValue, Expr, Feature, Geometry, GeometryValue}
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sqlx::Row;
 
 use crate::errors::SinkError;
 
@@ -114,6 +116,35 @@ pub(super) struct GeoPackageWriterParam {
     /// Overwrite existing file (default: false)
     #[serde(default)]
     pub(super) overwrite: bool,
+    /// Table handling mode (default: CreateIfNeeded)
+    /// - CreateIfNeeded: Create table if it doesn't exist, append if it does
+    /// - UseExisting: Append to existing table (fail if table doesn't exist)
+    /// - DropAndCreate: Drop existing table and recreate it
+    #[serde(default)]
+    pub(super) table_mode: TableMode,
+}
+
+/// Table handling mode for GeoPackage writer
+#[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum TableMode {
+    /// Create table if it doesn't exist, append if it does (default)
+    #[default]
+    CreateIfNeeded,
+    /// Append to existing table (fail if table doesn't exist)
+    UseExisting,
+    /// Drop existing table and recreate it
+    DropAndCreate,
+}
+
+impl fmt::Display for TableMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TableMode::CreateIfNeeded => write!(f, "createIfNeeded"),
+            TableMode::UseExisting => write!(f, "useExisting"),
+            TableMode::DropAndCreate => write!(f, "dropAndCreate"),
+        }
+    }
 }
 
 fn default_table_name() -> String {
@@ -136,16 +167,33 @@ fn default_create_spatial_index() -> bool {
     true
 }
 
-#[derive(Debug, Clone, PartialEq)]
+/// Attribute type for GeoPackage columns.
+///
+/// Type mapping from Flow AttributeValue to SQLite types:
+/// - Boolean → INTEGER (0/1)
+/// - Number (integer) → INTEGER
+/// - Number (float) → REAL
+/// - String → TEXT
+/// - Array/Map → TEXT (JSON serialized)
+/// - DateTime → TEXT (ISO 8601 format)
+/// - Bytes → BLOB
+/// - Null → preserves NULL (column type determined by non-null values)
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(super) enum AttributeType {
+    /// SQLite INTEGER type (also used for Boolean as 0/1)
     Integer,
+    /// SQLite REAL type (floating point)
     Real,
+    /// SQLite TEXT type (strings, JSON, datetime)
     Text,
+    /// SQLite BLOB type (binary data)
     Blob,
+    /// Boolean stored as INTEGER (0/1)
     Boolean,
 }
 
 impl AttributeType {
+    /// Convert to SQLite type name
     fn to_sql_type(&self) -> &'static str {
         match self {
             AttributeType::Integer => "INTEGER",
@@ -156,22 +204,79 @@ impl AttributeType {
         }
     }
 
-    fn from_attribute_value(value: &AttributeValue) -> Self {
+    /// Infer attribute type from a value
+    fn from_attribute_value(value: &AttributeValue) -> Option<Self> {
         match value {
-            AttributeValue::Bool(_) => AttributeType::Boolean,
+            AttributeValue::Bool(_) => Some(AttributeType::Boolean),
             AttributeValue::Number(n) => {
                 if n.is_i64() {
-                    AttributeType::Integer
+                    Some(AttributeType::Integer)
                 } else {
-                    AttributeType::Real
+                    Some(AttributeType::Real)
                 }
             }
-            AttributeValue::String(_) => AttributeType::Text,
-            AttributeValue::Array(_) | AttributeValue::Map(_) => AttributeType::Text,
-            AttributeValue::DateTime(_) => AttributeType::Text,
-            AttributeValue::Bytes(_) => AttributeType::Blob,
-            AttributeValue::Null => AttributeType::Text,
+            AttributeValue::String(_) => Some(AttributeType::Text),
+            AttributeValue::Array(_) | AttributeValue::Map(_) => Some(AttributeType::Text),
+            AttributeValue::DateTime(_) => Some(AttributeType::Text),
+            AttributeValue::Bytes(_) => Some(AttributeType::Blob),
+            // NULL doesn't determine type - return None to indicate unknown
+            AttributeValue::Null => None,
         }
+    }
+
+    /// Promote type when there's a conflict between two types.
+    /// Returns the more general type that can accommodate both.
+    ///
+    /// Type promotion rules:
+    /// - Integer + Real → Real (float can represent integers)
+    /// - Integer + Boolean → Integer (boolean is stored as 0/1)
+    /// - Any + Text → Text (text can represent anything)
+    /// - Any + Blob → Blob stays Blob (binary data)
+    /// - Same types → no change
+    fn promote_with(&self, other: &AttributeType) -> AttributeType {
+        if self == other {
+            return self.clone();
+        }
+
+        match (self, other) {
+            // Integer and Real - promote to Real
+            (AttributeType::Integer, AttributeType::Real)
+            | (AttributeType::Real, AttributeType::Integer) => AttributeType::Real,
+
+            // Boolean and Integer - promote to Integer (both stored as INTEGER in SQLite)
+            (AttributeType::Boolean, AttributeType::Integer)
+            | (AttributeType::Integer, AttributeType::Boolean) => AttributeType::Integer,
+
+            // Boolean and Real - promote to Real
+            (AttributeType::Boolean, AttributeType::Real)
+            | (AttributeType::Real, AttributeType::Boolean) => AttributeType::Real,
+
+            // Blob stays Blob when mixed with anything except Text
+            (AttributeType::Blob, _) | (_, AttributeType::Blob) => {
+                // If one is Text, promote to Text (can represent anything as string)
+                if *self == AttributeType::Text || *other == AttributeType::Text {
+                    AttributeType::Text
+                } else {
+                    AttributeType::Blob
+                }
+            }
+
+            // Text is the most general type - can represent anything
+            (AttributeType::Text, _) | (_, AttributeType::Text) => AttributeType::Text,
+
+            // Default fallback - use Text as most compatible
+            _ => AttributeType::Text,
+        }
+    }
+
+    /// Check if this type can be safely converted to another type
+    #[allow(dead_code)]
+    fn is_compatible_with(&self, other: &AttributeType) -> bool {
+        if self == other {
+            return true;
+        }
+        // Check if promotion would result in the target type
+        self.promote_with(other) == *other || self.promote_with(other) == *self
     }
 }
 
@@ -185,14 +290,29 @@ impl Sink for GeoPackageWriter {
 
         // Infer schema from ALL features to avoid data loss
         // Merge schema from each feature to capture all possible attributes
+        // Handle type conflicts by promoting to more general types
         for (key, value) in feature.attributes.iter() {
             let key_str = key.to_string();
             // Skip geometry column and common GeoPackage system columns
             if key_str != self.params.geometry_column && key_str != "fid" && key_str != "id" {
-                // Only add if not already in schema, or update type if needed
-                if !self.schema.contains_key(&key_str) {
-                    let attr_type = AttributeType::from_attribute_value(value);
-                    self.schema.insert(key_str, attr_type);
+                // Only infer type from non-null values
+                if let Some(new_type) = AttributeType::from_attribute_value(value) {
+                    if let Some(existing_type) = self.schema.get(&key_str) {
+                        // Type conflict detected - promote to more general type
+                        if existing_type != &new_type {
+                            let promoted_type = existing_type.promote_with(&new_type);
+                            self.schema.insert(key_str, promoted_type);
+                        }
+                    } else {
+                        // New attribute - add to schema
+                        self.schema.insert(key_str, new_type);
+                    }
+                } else {
+                    // NULL value - only add to schema if not already present
+                    // Use Text as default type for NULL-only columns
+                    if !self.schema.contains_key(&key_str) {
+                        self.schema.insert(key_str, AttributeType::Text);
+                    }
                 }
             }
         }
@@ -263,15 +383,22 @@ impl GeoPackageWriter {
             // Initialize GeoPackage structure
             self.init_geopackage_structure(&adapter).await?;
 
-            // Create feature table
-            self.create_feature_table(&adapter).await?;
+            // Handle table based on mode
+            self.handle_table_mode(&adapter).await?;
 
             // Insert features
             self.insert_features(&adapter).await?;
 
-            // Create spatial index if requested
+            // Create spatial index if requested (only for new tables or DropAndCreate)
             if self.params.create_spatial_index {
-                self.create_spatial_index(&adapter).await?;
+                // Check if we should create spatial index
+                // For UseExisting mode, spatial index might already exist
+                if self.params.table_mode != TableMode::UseExisting {
+                    self.create_spatial_index(&adapter).await?;
+                } else {
+                    // Try to create if it doesn't exist
+                    let _ = self.create_spatial_index(&adapter).await;
+                }
             }
 
             Ok::<(), BoxedError>(())
@@ -282,6 +409,160 @@ impl GeoPackageWriter {
             .map_err(|e| SinkError::GeoPackageWriter(format!("Failed to read temp file: {e}")))?;
 
         Ok(content)
+    }
+
+    /// Handle table creation/modification based on table mode
+    async fn handle_table_mode(&self, adapter: &SqlAdapter) -> Result<(), BoxedError> {
+        match self.params.table_mode {
+            TableMode::CreateIfNeeded => {
+                // Check if table exists
+                if self.table_exists(adapter).await? {
+                    // Table exists - verify schema compatibility and add missing columns
+                    self.verify_and_update_schema(adapter).await?;
+                } else {
+                    // Table doesn't exist - create it
+                    self.create_feature_table(adapter).await?;
+                }
+            }
+            TableMode::UseExisting => {
+                // Verify table exists
+                if !self.table_exists(adapter).await? {
+                    return Err(SinkError::GeoPackageWriter(format!(
+                        "Table '{}' does not exist. TableMode is UseExisting, which requires an existing table.",
+                        self.params.table_name
+                    ))
+                    .into());
+                }
+                // Verify schema compatibility
+                self.verify_and_update_schema(adapter).await?;
+            }
+            TableMode::DropAndCreate => {
+                // Drop table if exists
+                if self.table_exists(adapter).await? {
+                    self.drop_table(adapter).await?;
+                }
+                // Create fresh table
+                self.create_feature_table(adapter).await?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Check if the feature table exists
+    async fn table_exists(&self, adapter: &SqlAdapter) -> Result<bool, BoxedError> {
+        let query = format!(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='{}'",
+            self.params.table_name.replace('\'', "''")
+        );
+        let rows = adapter.fetch_many(&query).await.map_err(|e| {
+            SinkError::GeoPackageWriter(format!("Failed to check table existence: {e}"))
+        })?;
+        Ok(!rows.is_empty())
+    }
+
+    /// Drop the feature table and its metadata
+    async fn drop_table(&self, adapter: &SqlAdapter) -> Result<(), BoxedError> {
+        // Drop spatial index if exists
+        let rtree_table = format!(
+            "rtree_{}_{}",
+            self.params
+                .table_name
+                .replace(|c: char| !c.is_alphanumeric() && c != '_', "_"),
+            self.params
+                .geometry_column
+                .replace(|c: char| !c.is_alphanumeric() && c != '_', "_")
+        );
+        let drop_rtree = format!("DROP TABLE IF EXISTS {}", quote_identifier(&rtree_table));
+        let _ = adapter.execute(&drop_rtree).await;
+
+        // Delete from gpkg_extensions
+        let delete_ext = format!(
+            "DELETE FROM gpkg_extensions WHERE table_name = '{}'",
+            self.params.table_name.replace('\'', "''")
+        );
+        let _ = adapter.execute(&delete_ext).await;
+
+        // Delete from gpkg_geometry_columns
+        let delete_geom = format!(
+            "DELETE FROM gpkg_geometry_columns WHERE table_name = '{}'",
+            self.params.table_name.replace('\'', "''")
+        );
+        let _ = adapter.execute(&delete_geom).await;
+
+        // Delete from gpkg_contents
+        let delete_contents = format!(
+            "DELETE FROM gpkg_contents WHERE table_name = '{}'",
+            self.params.table_name.replace('\'', "''")
+        );
+        let _ = adapter.execute(&delete_contents).await;
+
+        // Drop the table
+        let drop_table = format!("DROP TABLE IF EXISTS {}", quote_identifier(&self.params.table_name));
+        adapter.execute(&drop_table).await.map_err(|e| {
+            SinkError::GeoPackageWriter(format!("Failed to drop table: {e}"))
+        })?;
+
+        Ok(())
+    }
+
+    /// Verify schema compatibility with existing table and add missing columns
+    async fn verify_and_update_schema(&self, adapter: &SqlAdapter) -> Result<(), BoxedError> {
+        // Get existing columns
+        let query = format!("PRAGMA table_info({})", quote_identifier(&self.params.table_name));
+        let rows = adapter.fetch_many(&query).await.map_err(|e| {
+            SinkError::GeoPackageWriter(format!("Failed to get table info: {e}"))
+        })?;
+
+        let mut existing_columns: HashMap<String, String> = HashMap::new();
+        for row in rows {
+            if let (Ok(name), Ok(col_type)) = (
+                row.try_get::<String, _>(1), // column name
+                row.try_get::<String, _>(2), // column type
+            ) {
+                existing_columns.insert(name.to_lowercase(), col_type.to_uppercase());
+            }
+        }
+
+        // Add missing columns from our schema
+        for (name, attr_type) in &self.schema {
+            let name_lower = name.to_lowercase();
+            if !existing_columns.contains_key(&name_lower) {
+                let add_column = format!(
+                    "ALTER TABLE {} ADD COLUMN {} {}",
+                    quote_identifier(&self.params.table_name),
+                    quote_identifier(name),
+                    attr_type.to_sql_type()
+                );
+                adapter.execute(&add_column).await.map_err(|e| {
+                    SinkError::GeoPackageWriter(format!(
+                        "Failed to add column '{}': {e}",
+                        name
+                    ))
+                })?;
+            }
+        }
+
+        // Update bounding box in gpkg_contents
+        let (min_x, min_y, max_x, max_y) = self.calculate_bbox();
+        let update_bbox = format!(
+            r#"
+            UPDATE gpkg_contents SET
+                min_x = MIN(COALESCE(min_x, {}), {}),
+                min_y = MIN(COALESCE(min_y, {}), {}),
+                max_x = MAX(COALESCE(max_x, {}), {}),
+                max_y = MAX(COALESCE(max_y, {}), {}),
+                last_change = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+            WHERE table_name = '{}'
+            "#,
+            min_x, min_x,
+            min_y, min_y,
+            max_x, max_x,
+            max_y, max_y,
+            self.params.table_name.replace('\'', "''")
+        );
+        let _ = adapter.execute(&update_bbox).await;
+
+        Ok(())
     }
 
     async fn init_geopackage_structure(&self, adapter: &SqlAdapter) -> Result<(), BoxedError> {
