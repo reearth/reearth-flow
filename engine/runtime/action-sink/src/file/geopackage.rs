@@ -496,10 +496,7 @@ impl GeoPackageWriter {
         let has_z = self
             .buffer
             .first()
-            .map(|f| match &f.geometry.value {
-                GeometryValue::FlowGeometry3D(_) => true,
-                _ => false,
-            })
+            .map(|f| matches!(&f.geometry.value, GeometryValue::FlowGeometry3D(_)))
             .unwrap_or(false);
 
         // Insert into gpkg_geometry_columns
