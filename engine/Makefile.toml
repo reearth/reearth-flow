@@ -33,7 +33,7 @@ cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-qual
 script = ['''
 #!/usr/bin/env bash -eux
 export FLOW_XML_SCHEMA_FETCHER_FALLBACK=true
-cargo test --workspace --all-targets --all-features --exclude plateau-gis-quality-checker
+cargo test --workspace --all-targets --all-features --exclude plateau-gis-quality-checker ${@:-}
 ''']
 
 [tasks.test-wf]
