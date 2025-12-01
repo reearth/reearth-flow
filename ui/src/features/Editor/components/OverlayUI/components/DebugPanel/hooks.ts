@@ -20,12 +20,12 @@ export default () => {
   const [fullscreenDebug, setFullscreenDebug] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [minimized, setMinimized] = useState(false);
-  const previousSelectedFeature = useRef<any>(null);
   const [detailsOverlayOpen, setDetailsOverlayOpen] = useState(false);
   const [detailsFeature, setDetailsFeature] = useState<any>(null);
   // const [enableClustering, setEnableClustering] = useState<boolean>(true);
-  const [selectedFeature, setSelectedFeature] = useState<any>(null);
-
+  const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(
+    null,
+  );
   const [convertedSelectedFeature, setConvertedSelectedFeature] =
     useState(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -425,38 +425,30 @@ export default () => {
     return map;
   }, [formattedData.tableData]);
 
-  const handlePreviousSelectedFeature = useCallback((feature: any) => {
-    previousSelectedFeature.current = feature;
-  }, []);
+  // Derive selectedFeature from selectedFeatureId
+  const selectedFeature = useMemo(() => {
+    if (!selectedFeatureId || !featureIdMap) return null;
+    return featureIdMap.get(selectedFeatureId);
+  }, [selectedFeatureId, featureIdMap]);
 
   const handleFeatureSelect = useCallback(
-    (feature: any) => {
-      const currId = selectedFeature?.id;
-      const prevId = previousSelectedFeature.current?.id;
-      if (currId !== feature?.id) {
-        setSelectedFeature(feature);
-        if (detailsOverlayOpen && feature) {
-          const matchingRow =
-            featureIdMap?.get(JSON.stringify(feature.id)) ?? selectedFeature;
+    (featureId: string | null) => {
+      const currId = selectedFeatureId;
+      if (currId !== featureId) {
+        setSelectedFeatureId(featureId);
+        if (detailsOverlayOpen && featureId) {
+          const matchingRow = featureIdMap?.get(JSON.stringify(featureId));
           setDetailsFeature(matchingRow);
         }
       }
-      if (currId !== prevId) {
-        handlePreviousSelectedFeature(selectedFeature);
-      }
     },
-    [
-      selectedFeature,
-      featureIdMap,
-      detailsOverlayOpen,
-      handlePreviousSelectedFeature,
-    ],
+    [featureIdMap, selectedFeatureId, detailsOverlayOpen],
   );
 
   const handleRowSingleClick = useCallback(
     (value: any) => {
       // setEnableClustering(false);
-      handleFeatureSelect(value);
+      handleFeatureSelect(value?.id ?? null);
     },
     [handleFeatureSelect],
   );
@@ -464,17 +456,15 @@ export default () => {
   const handleRowDoubleClick = useCallback(
     (value: any) => {
       // setEnableClustering(false);
-      handleFeatureSelect(value);
+      handleFeatureSelect(value?.id ?? null);
       handleFlyToSelectedFeature(convertedSelectedFeature);
-      const matchingRow =
-        featureIdMap?.get(JSON.stringify(value.id)) ?? selectedFeature;
+      const matchingRow = featureIdMap?.get(value?.id);
       setDetailsFeature(matchingRow);
       setDetailsOverlayOpen(true);
     },
     [
       convertedSelectedFeature,
       featureIdMap,
-      selectedFeature,
       handleFlyToSelectedFeature,
       handleFeatureSelect,
     ],
@@ -500,7 +490,7 @@ export default () => {
     selectedOutputData,
     // enableClustering,
     selectedFeature,
-    previousSelectedFeature,
+    selectedFeatureId,
     detailsOverlayOpen,
     detailsFeature,
     formattedData,

@@ -9,7 +9,7 @@ import FeatureDetailsOverlay from "./FeatureDetailsOverlay";
 
 type Props = {
   fileContent: any | null;
-  selectedFeature: any;
+  selectedFeatureId: string | null;
   onSingleClick?: (feature: any) => void;
   onDoubleClick?: (feature: any) => void;
   detectedGeometryType: string | null;
@@ -23,7 +23,7 @@ type Props = {
 const TableViewer: React.FC<Props> = memo(
   ({
     fileContent,
-    selectedFeature,
+    selectedFeatureId,
     onSingleClick,
     onDoubleClick,
     detectedGeometryType,
@@ -76,8 +76,7 @@ const TableViewer: React.FC<Props> = memo(
               selectColumns={true}
               showFiltering={true}
               condensed={true}
-              selectedRow={selectedFeature}
-              useStrictSelectedRow={true}
+              selectedFeatureId={selectedFeatureId}
               onRowClick={handleRowSingleClick}
               onRowDoubleClick={handleRowDoubleClick}
             />

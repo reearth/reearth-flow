@@ -46,7 +46,7 @@ const DebugPanel: React.FC = () => {
     dataURLs,
     outputDataForDownload,
     selectedOutputData,
-    selectedFeature,
+    selectedFeatureId,
     detailsOverlayOpen,
     detailsFeature,
     formattedData,
@@ -211,7 +211,7 @@ const DebugPanel: React.FC = () => {
                 <div className="min-h-0 flex-1">
                   <TableViewer
                     fileContent={selectedOutputData}
-                    selectedFeature={selectedFeature}
+                    selectedFeatureId={selectedFeatureId}
                     onSingleClick={handleRowSingleClick}
                     onDoubleClick={handleRowDoubleClick}
                     detectedGeometryType={detectedGeometryType || undefined}
@@ -232,7 +232,7 @@ const DebugPanel: React.FC = () => {
                   dataURLs={dataURLs}
                   fileType={fileType}
                   selectedOutputData={selectedOutputData}
-                  selectedFeature={selectedFeature}
+                  selectedFeatureId={selectedFeatureId}
                   mapRef={mapRef}
                   cesiumViewerRef={cesiumViewerRef}
                   onConvertedSelectedFeature={setConvertedSelectedFeature}

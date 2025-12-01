@@ -36,8 +36,7 @@ type DataTableProps<TData, TValue> = {
   showFiltering?: boolean;
   condensed?: boolean;
   searchTerm?: string;
-  selectedRow?: any;
-  useStrictSelectedRow?: boolean;
+  selectedFeatureId?: string | null;
   onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
   setSearchTerm?: (term: string) => void;
@@ -49,8 +48,7 @@ function VirtualizedTable<TData, TValue>({
   selectColumns = false,
   showFiltering = false,
   condensed,
-  selectedRow,
-  useStrictSelectedRow,
+  selectedFeatureId,
   onRowClick,
   onRowDoubleClick,
   setSearchTerm,
@@ -126,22 +124,26 @@ function VirtualizedTable<TData, TValue>({
   });
 
   const selectedRowIndex = useMemo(() => {
-    if (!selectedRow?.id || !data) return -1;
+    if (!selectedFeatureId || !data) return -1;
+    const normalizedSelectedId = String(selectedFeatureId).replace(
+      /[^a-zA-Z0-9]/g,
+      "",
+    );
     return data.findIndex(
       (row: any) =>
-        row.id?.replace(/[^a-zA-Z0-9]/g, "") ===
-        selectedRow.id?.replace(/[^a-zA-Z0-9]/g, ""),
+        String(row.id || "").replace(/[^a-zA-Z0-9]/g, "") ===
+        normalizedSelectedId,
     );
-  }, [selectedRow, data]);
+  }, [selectedFeatureId, data]);
 
   useEffect(() => {
-    if (selectedRowIndex !== -1 && selectedRow.id) {
+    if (selectedRowIndex !== -1 && selectedFeatureId) {
       virtualizer.scrollToIndex(selectedRowIndex, {
         align: "start",
         behavior: "auto",
       });
     }
-  }, [selectedRowIndex, selectedRow, virtualizer]);
+  }, [selectedRowIndex, selectedFeatureId, virtualizer]);
 
   return (
     <div className="flex h-full flex-col">
@@ -248,15 +250,7 @@ function VirtualizedTable<TData, TValue>({
                         height: `${virtualRow.size}px`,
                         transform: `translateY(${virtualRow.start - idx * virtualRow.size}px)`,
                       }}
-                      data-state={
-                        useStrictSelectedRow
-                          ? selectedRow && isSelected
-                            ? "selected"
-                            : undefined
-                          : row.getIsSelected()
-                            ? "selected"
-                            : undefined
-                      }
+                      data-state={isSelected ? "selected" : undefined}
                       onClick={() => {
                         row.toggleSelected();
                         onRowClick?.(row.original);
