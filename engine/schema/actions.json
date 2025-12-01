@@ -3106,6 +3106,13 @@
           "output"
         ],
         "properties": {
+          "batchSize": {
+            "description": "Batch size for transaction commits (default: 1000) Features are inserted in batches within transactions for better performance. Set to 0 to disable batching (commit after all features).",
+            "default": 1000,
+            "type": "integer",
+            "format": "uint",
+            "minimum": 0.0
+          },
           "createSpatialIndex": {
             "description": "Create RTree spatial index (default: true)",
             "default": true,
@@ -3121,6 +3128,18 @@
             "default": "GEOMETRY",
             "type": "string"
           },
+          "groupBy": {
+            "description": "Attribute name to use for grouping features into multiple tables. When specified, features will be written to separate tables based on this attribute's value. Table names will be \"{tableName}_{groupValue}\".",
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "output": {
             "description": "Output path for the GeoPackage file to create",
             "allOf": [
@@ -3134,21 +3153,111 @@
             "default": false,
             "type": "boolean"
           },
+          "primaryKey": {
+            "description": "Primary key column name (default: \"fid\") The column will be created as INTEGER PRIMARY KEY AUTOINCREMENT.",
+            "default": "fid",
+            "type": "string"
+          },
+          "primaryKeyAttribute": {
+            "description": "Use feature attribute as primary key instead of auto-generated. If specified, the attribute value must be unique across all features.",
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "srsId": {
             "description": "Spatial Reference System ID (default: 4326 for WGS84)",
             "default": 4326,
             "type": "integer",
             "format": "int32"
           },
+          "tableMode": {
+            "description": "Table handling mode (default: CreateIfNeeded) - CreateIfNeeded: Create table if it doesn't exist, append if it does - UseExisting: Append to existing table (fail if table doesn't exist) - DropAndCreate: Drop existing table and recreate it",
+            "default": "createIfNeeded",
+            "allOf": [
+              {
+                "$ref": "#/definitions/TableMode"
+              }
+            ]
+          },
           "tableName": {
             "description": "Table name to create (default: \"features\")",
             "default": "features",
             "type": "string"
+          },
+          "zMode": {
+            "description": "Z coordinate handling mode (default: Optional) - Optional: Preserve Z if present, don't add if missing - Required: Add Z=0 if missing, preserve if present - NotAllowed: Drop Z coordinates, force 2D output",
+            "default": "optional",
+            "allOf": [
+              {
+                "$ref": "#/definitions/ZCoordinateMode"
+              }
+            ]
           }
         },
         "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
           "Expr": {
             "type": "string"
+          },
+          "TableMode": {
+            "description": "Table handling mode for GeoPackage writer",
+            "oneOf": [
+              {
+                "description": "Create table if it doesn't exist, append if it does (default)",
+                "type": "string",
+                "enum": [
+                  "createIfNeeded"
+                ]
+              },
+              {
+                "description": "Append to existing table (fail if table doesn't exist)",
+                "type": "string",
+                "enum": [
+                  "useExisting"
+                ]
+              },
+              {
+                "description": "Drop existing table and recreate it",
+                "type": "string",
+                "enum": [
+                  "dropAndCreate"
+                ]
+              }
+            ]
+          },
+          "ZCoordinateMode": {
+            "description": "Z coordinate handling mode",
+            "oneOf": [
+              {
+                "description": "Preserve Z if present, don't add if missing (default)",
+                "type": "string",
+                "enum": [
+                  "optional"
+                ]
+              },
+              {
+                "description": "Add Z=0 if geometry doesn't have Z coordinates",
+                "type": "string",
+                "enum": [
+                  "required"
+                ]
+              },
+              {
+                "description": "Drop Z coordinates, force 2D output",
+                "type": "string",
+                "enum": [
+                  "notAllowed"
+                ]
+              }
+            ]
           }
         }
       },
