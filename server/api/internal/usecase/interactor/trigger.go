@@ -247,6 +247,13 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		return nil, err
 	}
 
+	// Update last triggered time
+	trigger.SetLastTriggered(time.Now())
+	if err := i.triggerRepo.Save(ctx, trigger); err != nil {
+		log.Errorf("Failed to update last triggered time for trigger %s: %v", trigger.ID(), err)
+		// Don't fail the job creation for this @pyshx
+	}
+
 	if err := i.job.StartMonitoring(ctx, j, p.NotificationURL); err != nil {
 		log.Errorf("Failed to start monitoring for job %s: %v", j.ID(), err)
 		return nil, err
