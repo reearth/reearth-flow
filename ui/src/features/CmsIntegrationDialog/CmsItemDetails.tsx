@@ -21,21 +21,28 @@ const CmsItemDetails: React.FC<Props> = ({
   onCmsItemValue,
 }) => {
   const t = useT();
-  const renderFieldValue = useCallback((value: any) => {
-    if (value === null || value === undefined) {
-      return <span className="text-muted-foreground">-</span>;
-    }
+  const renderFieldValue = useCallback(
+    (value: any, field?: CmsSchemaField, onSelect?: (url: string) => void) => {
+      if (value === null || value === undefined) {
+        return <span className="text-muted-foreground">-</span>;
+      }
 
-    if (typeof value === "object") {
-      return (
-        <pre className="max-h-40 overflow-auto rounded border bg-muted p-2 text-sm">
-          {JSON.stringify(value, null, 2)}
-        </pre>
-      );
-    }
+      if (field?.type === "asset") {
+        return <AssetValue value={value} onSelect={onSelect} />;
+      }
 
-    return <span className="break-words">{String(value)}</span>;
-  }, []);
+      if (typeof value === "object") {
+        return (
+          <pre className="max-h-40 overflow-auto rounded border bg-muted p-2 text-sm">
+            {JSON.stringify(value, null, 2)}
+          </pre>
+        );
+      }
+
+      return <span className="wrap-break-word">{String(value)}</span>;
+    },
+    [],
+  );
 
   return (
     <div className="flex h-[600px] flex-col gap-4 overflow-hidden">
@@ -98,7 +105,7 @@ const CmsItemDetails: React.FC<Props> = ({
                             {field.description}
                           </div>
                         )}
-                        <div>{renderFieldValue(value)}</div>
+                        <div>{renderFieldValue(value, field)}</div>
                       </div>
                       {field.type === "url" && value && (
                         <Button
@@ -121,25 +128,15 @@ const CmsItemDetails: React.FC<Props> = ({
 const AssetDetail: React.FC<{
   field: CmsSchemaField;
   value: any;
-  renderFieldValue: (value: any) => React.ReactNode;
+  renderFieldValue: (
+    value: any,
+    field?: CmsSchemaField,
+    onSelect?: (url: string) => void,
+  ) => React.ReactNode;
   onCmsItemValue?: (value: string) => void;
 }> = ({ field, value, renderFieldValue, onCmsItemValue }) => {
-  let arrayValue;
-  if (
-    field.type === "asset" &&
-    typeof value === "string" &&
-    value.startsWith("[") &&
-    value.endsWith("]")
-  ) {
-    const cleanedArray = value
-      .split(",")
-      .map((v: string) => v?.replace(/[[\]\s"]/g, ""))
-      .filter(Boolean);
-    arrayValue = cleanedArray;
-  }
-
   return (
-    <div className="flex justify-between space-y-2 rounded border p-4">
+    <div className="rounded border p-4">
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <div>
@@ -154,27 +151,44 @@ const AssetDetail: React.FC<{
             {field.description}
           </div>
         )}
-        <div>{renderFieldValue(value)}</div>
+        <div>{renderFieldValue(value, field, onCmsItemValue)}</div>
       </div>
-      {field.type === "asset" && value && !arrayValue && (
-        <AssetButton assetId={value} onSelect={onCmsItemValue} />
-      )}
-      {field.type === "asset" && arrayValue && (
-        <div className="flex flex-col justify-center gap-2">
-          {arrayValue.map((assetId: string) => (
-            <AssetButton
-              key={assetId}
-              assetId={assetId}
-              onSelect={onCmsItemValue}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 };
 
-const AssetButton: React.FC<{
+const AssetValue: React.FC<{
+  value: any;
+  onSelect?: (url: string) => void;
+}> = ({ value, onSelect }) => {
+  // Handle array of asset IDs
+  if (
+    typeof value === "string" &&
+    value.startsWith("[") &&
+    value.endsWith("]")
+  ) {
+    const cleanedArray = value
+      .split(",")
+      .map((v: string) => v?.replace(/[[\]\s"]/g, ""))
+      .filter(Boolean);
+
+    return (
+      <div className="flex flex-col gap-2">
+        {cleanedArray.map((assetId: string) => (
+          <AssetFilename key={assetId} assetId={assetId} onSelect={onSelect} />
+        ))}
+      </div>
+    );
+  }
+
+  if (value) {
+    return <AssetFilename assetId={value} onSelect={onSelect} />;
+  }
+
+  return <span className="text-muted-foreground">-</span>;
+};
+
+const AssetFilename: React.FC<{
   assetId: string;
   onSelect?: (url: string) => void;
 }> = ({ assetId, onSelect }) => {
@@ -182,21 +196,43 @@ const AssetButton: React.FC<{
   const { useGetCmsAsset } = useCms();
   const cleanedAssetId = assetId.replace(/[^a-zA-Z0-9]/g, "");
   const { cmsAsset, isLoading } = useGetCmsAsset(cleanedAssetId);
+
   const handleClick = () => {
     if (cmsAsset?.url) {
       onSelect?.(cmsAsset.url);
     }
   };
 
+  if (isLoading) {
+    return (
+      <span className="text-sm text-muted-foreground">{t("Loading...")}</span>
+    );
+  }
+
+  if (!cmsAsset) {
+    return <span className="text-sm wrap-break-word">{assetId}</span>;
+  }
+
   return (
-    <div className="flex items-center gap-2">
-      <span className="break-words">{cmsAsset?.filename}</span>
-      <Button
-        className="self-center"
-        onClick={handleClick}
-        disabled={isLoading || !cmsAsset?.url}>
-        {t("Select")}
-      </Button>
+    <div className="flex items-center">
+      {isLoading ? (
+        <span className="text-sm text-muted-foreground">{t("Loading...")}</span>
+      ) : (
+        <div className="flex flex-1 flex-col gap-1">
+          <span className="font-medium wrap-break-word">
+            {cmsAsset.filename}
+          </span>
+          <span className="font-mono text-xs wrap-break-word text-muted-foreground">
+            {assetId}
+          </span>
+        </div>
+      )}
+
+      {onSelect && (
+        <Button onClick={handleClick} disabled={isLoading || !cmsAsset?.url}>
+          {t("Select")}
+        </Button>
+      )}
     </div>
   );
 };
