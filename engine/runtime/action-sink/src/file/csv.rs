@@ -74,6 +74,7 @@ impl SinkFactory for CsvWriterFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(super) struct CsvWriter {
     pub(super) params: CsvWriterParam,
     pub(super) buffer: HashMap<Uri, Vec<Feature>>,
@@ -84,6 +85,7 @@ pub(super) struct CsvWriter {
 /// Configuration for writing features to CSV/TSV files.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(super) struct CsvWriterParam {
     /// Output path or expression for the CSV/TSV file to create
     pub(super) output: Expr,
@@ -97,6 +99,7 @@ pub(super) struct CsvWriterParam {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "lowercase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub enum CsvFormat {
     /// # CSV (Comma-Separated Values)
     /// File with comma-separated values

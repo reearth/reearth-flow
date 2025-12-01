@@ -15,7 +15,7 @@
 //! }
 //! ```
 
-mod data_size;
+pub mod data_size;
 
 pub use data_size::DataSize;
 pub use reearth_flow_analyzer_core_derive::DataSize;

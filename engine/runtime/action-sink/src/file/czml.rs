@@ -84,6 +84,7 @@ impl SinkFactory for CzmlWriterFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct CzmlWriter {
     pub(super) params: CzmlWriterParam,
     pub(super) buffer: HashMap<AttributeValue, Vec<Feature>>,
@@ -92,6 +93,7 @@ pub(crate) struct CzmlWriter {
 /// # CzmlWriter Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct CzmlWriterParam {
     /// # Output File Path
     /// Path where the CZML file will be written

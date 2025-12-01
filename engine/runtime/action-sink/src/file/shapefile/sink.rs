@@ -79,6 +79,7 @@ impl SinkFactory for ShapefileWriterFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct ShapefileWriter {
     pub(super) params: ShapefileWriterParam,
     pub(super) buffer: HashMap<AttributeValue, Vec<Feature>>,
@@ -89,6 +90,7 @@ pub(crate) struct ShapefileWriter {
 /// Configuration for writing features to ESRI Shapefile format.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(crate) struct ShapefileWriterParam {
     /// Output path or expression for the Shapefile to create
     pub(super) output: Expr,

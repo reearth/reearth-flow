@@ -75,6 +75,7 @@ impl SinkFactory for ExcelWriterFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(super) struct ExcelWriter {
     pub(super) params: ExcelWriterParam,
     pub(super) buffer: HashMap<Uri, Vec<Feature>>,
@@ -85,6 +86,7 @@ pub(super) struct ExcelWriter {
 /// Configuration for writing features to Microsoft Excel format.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct ExcelWriterParam {
     /// Output path or expression for the Excel file to create
     pub(super) output: Expr,

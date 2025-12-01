@@ -14,6 +14,7 @@ use std::fmt::Write as _;
 /// Configure how geometry data is written to CSV columns
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct GeometryExportConfig {
     /// # Geometry Mode
     /// Specify how geometry should be written to the CSV
@@ -23,6 +24,7 @@ pub struct GeometryExportConfig {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase", untagged)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub enum GeometryExportMode {
     /// # Coordinate Columns
     /// Write geometry as separate X, Y, (optional Z) columns

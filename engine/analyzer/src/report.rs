@@ -8,8 +8,11 @@ use crate::events::AnalyzerEvent;
 /// Memory data point for time-series graph.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryDataPoint {
-    /// Unix timestamp in milliseconds.
+    /// Unix timestamp in milliseconds when tracking ended (after process()/finish()).
     pub timestamp_ms: u64,
+    /// Unix timestamp in milliseconds when tracking started (before process()/finish()).
+    #[serde(default)]
+    pub start_timestamp_ms: u64,
     /// Name of the thread that processed the feature.
     pub thread_name: String,
     /// Current memory usage in bytes at end of process().
@@ -59,13 +62,20 @@ pub struct EdgeInfo {
     pub max_feature_size: usize,
 }
 
+/// Default quantization resolution (number of discrete levels).
+pub const DEFAULT_QUANTIZATION_RESOLUTION: usize = 100;
+
 /// Per-node memory report.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NodeMemoryReport {
     /// Node information.
     pub info: NodeInfo,
-    /// Time-series data points.
+    /// Time-series data points (raw, all collected events).
     pub data_points: Vec<MemoryDataPoint>,
+    /// Quantized data points for efficient graphing.
+    /// Only includes points where the quantized memory value changed.
+    #[serde(default)]
+    pub quantized_data_points: Vec<MemoryDataPoint>,
     /// Peak memory usage across all data points.
     pub total_peak_memory: usize,
     /// Average memory usage across all data points.
@@ -81,11 +91,71 @@ impl NodeMemoryReport {
         Self {
             info: NodeInfo { node_id, node_name },
             data_points: Vec::new(),
+            quantized_data_points: Vec::new(),
             total_peak_memory: 0,
             avg_memory: 0,
             total_processing_time_ms: 0,
             features_processed: 0,
         }
+    }
+
+    /// Quantize data points to reduce the number of points for efficient graphing.
+    ///
+    /// This method:
+    /// 1. Finds the maximum memory value across all data points
+    /// 2. Divides the range into `resolution` discrete levels
+    /// 3. Keeps only data points where the quantized value changes from the previous point
+    ///
+    /// This dramatically reduces the number of points while preserving the shape of the graph.
+    pub fn quantize(&mut self, resolution: usize) {
+        if self.data_points.is_empty() || resolution == 0 {
+            self.quantized_data_points = Vec::new();
+            return;
+        }
+
+        // Find max memory value
+        let max_memory = self
+            .data_points
+            .iter()
+            .map(|p| p.current_memory_bytes)
+            .max()
+            .unwrap_or(0);
+
+        // Handle edge case where all values are 0
+        if max_memory == 0 {
+            // Just keep first and last points
+            self.quantized_data_points = vec![self.data_points[0].clone()];
+            if self.data_points.len() > 1 {
+                self.quantized_data_points
+                    .push(self.data_points.last().unwrap().clone());
+            }
+            return;
+        }
+
+        // Calculate quantum size (each level represents this many bytes)
+        let quantum_size = max_memory.div_ceil(resolution);
+
+        let mut result = Vec::new();
+        let mut last_quantized_value: Option<usize> = None;
+
+        for point in &self.data_points {
+            let quantized_value = point.current_memory_bytes / quantum_size;
+
+            // Keep this point if the quantized value changed
+            if last_quantized_value.is_none() || last_quantized_value != Some(quantized_value) {
+                result.push(point.clone());
+                last_quantized_value = Some(quantized_value);
+            }
+        }
+
+        // Always include the last point to ensure the graph ends at the correct position
+        if let Some(last_point) = self.data_points.last() {
+            if result.last().map(|p| p.timestamp_ms) != Some(last_point.timestamp_ms) {
+                result.push(last_point.clone());
+            }
+        }
+
+        self.quantized_data_points = result;
     }
 }
 
@@ -94,8 +164,11 @@ impl NodeMemoryReport {
 pub struct NodeQueueReport {
     /// Node information.
     pub info: NodeInfo,
-    /// Time-series data points.
+    /// Time-series data points (raw, cleared after quantization).
     pub data_points: Vec<QueueDataPoint>,
+    /// Quantized data points for efficient graphing.
+    #[serde(default)]
+    pub quantized_data_points: Vec<QueueDataPoint>,
     /// Maximum queue depth observed.
     pub max_queue_depth: u64,
     /// Average queue depth.
@@ -110,9 +183,63 @@ impl NodeQueueReport {
                 node_name: String::new(),
             },
             data_points: Vec::new(),
+            quantized_data_points: Vec::new(),
             max_queue_depth: 0,
             avg_queue_depth: 0.0,
         }
+    }
+
+    /// Quantize queue data points to reduce the number of points for efficient graphing.
+    ///
+    /// Uses the total queue depth (features_waiting + features_processing) for quantization.
+    pub fn quantize(&mut self, resolution: usize) {
+        if self.data_points.is_empty() || resolution == 0 {
+            self.quantized_data_points = Vec::new();
+            return;
+        }
+
+        // Find max queue depth
+        let max_depth = self
+            .data_points
+            .iter()
+            .map(|p| p.features_waiting + p.features_processing)
+            .max()
+            .unwrap_or(0);
+
+        // Handle edge case where all values are 0
+        if max_depth == 0 {
+            self.quantized_data_points = vec![self.data_points[0].clone()];
+            if self.data_points.len() > 1 {
+                self.quantized_data_points
+                    .push(self.data_points.last().unwrap().clone());
+            }
+            return;
+        }
+
+        // Calculate quantum size
+        let quantum_size = max_depth.div_ceil(resolution as u64);
+
+        let mut result = Vec::new();
+        let mut last_quantized_value: Option<u64> = None;
+
+        for point in &self.data_points {
+            let total_depth = point.features_waiting + point.features_processing;
+            let quantized_value = total_depth / quantum_size;
+
+            if last_quantized_value.is_none() || last_quantized_value != Some(quantized_value) {
+                result.push(point.clone());
+                last_quantized_value = Some(quantized_value);
+            }
+        }
+
+        // Always include the last point
+        if let Some(last_point) = self.data_points.last() {
+            if result.last().map(|p| p.timestamp_ms) != Some(last_point.timestamp_ms) {
+                result.push(last_point.clone());
+            }
+        }
+
+        self.quantized_data_points = result;
     }
 }
 
@@ -199,6 +326,7 @@ impl AnalyzerReport {
                 current_memory_bytes,
                 peak_memory_bytes,
                 processing_time_ms,
+                start_timestamp_ms,
             } => {
                 let node_id_str = node_id.to_string();
                 let report = self
@@ -208,6 +336,7 @@ impl AnalyzerReport {
 
                 report.data_points.push(MemoryDataPoint {
                     timestamp_ms,
+                    start_timestamp_ms,
                     thread_name,
                     current_memory_bytes,
                     peak_memory_bytes,
@@ -290,7 +419,12 @@ impl AnalyzerReport {
 
     /// Finalize the report by calculating aggregated statistics.
     pub fn finalize(&mut self) {
-        // Calculate memory report statistics
+        self.finalize_with_quantization(DEFAULT_QUANTIZATION_RESOLUTION);
+    }
+
+    /// Finalize the report with a custom quantization resolution.
+    pub fn finalize_with_quantization(&mut self, quantization_resolution: usize) {
+        // Calculate memory report statistics and apply quantization
         for report in self.memory_reports.values_mut() {
             if !report.data_points.is_empty() {
                 report.features_processed = report.data_points.len() as u64;
@@ -314,6 +448,13 @@ impl AnalyzerReport {
                     .iter()
                     .map(|p| p.processing_time_ms)
                     .sum();
+
+                // Apply quantization for efficient graphing
+                report.quantize(quantization_resolution);
+
+                // Clear raw data points to reduce file size - we only need quantized for graphing
+                report.data_points.clear();
+                report.data_points.shrink_to_fit();
             }
         }
 
@@ -328,7 +469,7 @@ impl AnalyzerReport {
             }
         }
 
-        // Calculate queue report statistics
+        // Calculate queue report statistics and apply quantization
         for report in self.queue_reports.values_mut() {
             if !report.data_points.is_empty() {
                 report.max_queue_depth = report
@@ -344,6 +485,13 @@ impl AnalyzerReport {
                     .map(|p| p.features_waiting + p.features_processing)
                     .sum();
                 report.avg_queue_depth = sum as f64 / report.data_points.len() as f64;
+
+                // Apply quantization for efficient graphing
+                report.quantize(quantization_resolution);
+
+                // Clear raw data points to reduce file size
+                report.data_points.clear();
+                report.data_points.shrink_to_fit();
             }
         }
 
@@ -426,12 +574,14 @@ mod tests {
             current_memory_bytes: 1024,
             peak_memory_bytes: 2048,
             processing_time_ms: 50,
+            start_timestamp_ms: 950,
         });
 
         assert_eq!(report.memory_reports.len(), 1);
         let mem_report = report.memory_reports.get(&node_id.to_string()).unwrap();
         assert_eq!(mem_report.data_points.len(), 1);
         assert_eq!(mem_report.data_points[0].peak_memory_bytes, 2048);
+        assert_eq!(mem_report.data_points[0].start_timestamp_ms, 950);
     }
 
     #[test]
@@ -475,6 +625,7 @@ mod tests {
                 current_memory_bytes: 1000 + i as usize * 100,
                 peak_memory_bytes: 2000 + i as usize * 100,
                 processing_time_ms: 50,
+                start_timestamp_ms: 950 + i * 100,
             });
         }
 
@@ -512,5 +663,184 @@ mod tests {
         let loaded = AnalyzerReport::load_from_file(&file_path).unwrap();
 
         assert_eq!(loaded.workflow_name, Some("test_workflow".to_string()));
+    }
+
+    #[test]
+    fn test_quantization_basic() {
+        let mut mem_report = NodeMemoryReport::new("test_node".to_string(), "TestNode".to_string());
+
+        // Add 1000 data points with memory values that span from 0 to 10000
+        // With resolution 100, quantum size will be 100 (10000/100)
+        // So each step of 10 bytes won't trigger a new level, only every 100 bytes will
+        for i in 0..1000 {
+            mem_report.data_points.push(MemoryDataPoint {
+                timestamp_ms: 1000 + i * 10,
+                start_timestamp_ms: 999 + i * 10,
+                thread_name: "main".to_string(),
+                current_memory_bytes: i as usize * 10, // 0, 10, 20, ..., 9990
+                peak_memory_bytes: i as usize * 10,
+                processing_time_ms: 1,
+            });
+        }
+
+        mem_report.quantize(100);
+
+        // With max 9990 and resolution 100, quantum size = ceil(9990/100) = 100
+        // So we keep points where floor(memory/100) changes
+        // That's about 100 unique quantized levels out of 1000 points
+        assert!(
+            mem_report.quantized_data_points.len() < mem_report.data_points.len(),
+            "quantized points ({}) should be less than raw points ({})",
+            mem_report.quantized_data_points.len(),
+            mem_report.data_points.len()
+        );
+        // Should be around 100 quantized points (one per level) + last point
+        assert!(
+            mem_report.quantized_data_points.len() <= 150,
+            "Expected around 100 quantized points, got {}",
+            mem_report.quantized_data_points.len()
+        );
+    }
+
+    #[test]
+    fn test_quantization_reduces_similar_values() {
+        let mut mem_report = NodeMemoryReport::new("test_node".to_string(), "TestNode".to_string());
+
+        // Add many data points with the same memory value
+        // These should all be collapsed into just first and last
+        for i in 0..1000 {
+            mem_report.data_points.push(MemoryDataPoint {
+                timestamp_ms: 1000 + i,
+                start_timestamp_ms: 999 + i,
+                thread_name: "main".to_string(),
+                current_memory_bytes: 500, // All same value
+                peak_memory_bytes: 500,
+                processing_time_ms: 1,
+            });
+        }
+
+        mem_report.quantize(100);
+
+        // With all same values, should keep only first + last = 2 points
+        assert_eq!(
+            mem_report.quantized_data_points.len(),
+            2,
+            "Should keep only first and last point when all values are identical"
+        );
+        assert_eq!(mem_report.quantized_data_points[0].timestamp_ms, 1000);
+        assert_eq!(mem_report.quantized_data_points[1].timestamp_ms, 1999);
+    }
+
+    #[test]
+    fn test_quantization_preserves_changes() {
+        let mut mem_report = NodeMemoryReport::new("test_node".to_string(), "TestNode".to_string());
+
+        // Add data points with a clear step change
+        // First half at 100, second half at 1000
+        for i in 0..100 {
+            let memory = if i < 50 { 100 } else { 1000 };
+            mem_report.data_points.push(MemoryDataPoint {
+                timestamp_ms: 1000 + i * 10,
+                start_timestamp_ms: 999 + i * 10,
+                thread_name: "main".to_string(),
+                current_memory_bytes: memory,
+                peak_memory_bytes: memory,
+                processing_time_ms: 1,
+            });
+        }
+
+        mem_report.quantize(100);
+
+        // Should capture the transition point
+        // First point at 100, then point at 1000, then last point
+        assert!(
+            mem_report.quantized_data_points.len() >= 2,
+            "Should keep at least the change points"
+        );
+
+        // First point should be at 100
+        assert_eq!(
+            mem_report.quantized_data_points[0].current_memory_bytes,
+            100
+        );
+
+        // Should have a point at 1000
+        let has_high_point = mem_report
+            .quantized_data_points
+            .iter()
+            .any(|p| p.current_memory_bytes == 1000);
+        assert!(has_high_point, "Should preserve the high memory point");
+    }
+
+    #[test]
+    fn test_quantization_empty_data() {
+        let mut mem_report = NodeMemoryReport::new("test_node".to_string(), "TestNode".to_string());
+        mem_report.quantize(100);
+        assert!(mem_report.quantized_data_points.is_empty());
+    }
+
+    #[test]
+    fn test_quantization_single_point() {
+        let mut mem_report = NodeMemoryReport::new("test_node".to_string(), "TestNode".to_string());
+        mem_report.data_points.push(MemoryDataPoint {
+            timestamp_ms: 1000,
+            start_timestamp_ms: 999,
+            thread_name: "main".to_string(),
+            current_memory_bytes: 500,
+            peak_memory_bytes: 500,
+            processing_time_ms: 1,
+        });
+
+        mem_report.quantize(100);
+
+        assert_eq!(mem_report.quantized_data_points.len(), 1);
+        assert_eq!(
+            mem_report.quantized_data_points[0].current_memory_bytes,
+            500
+        );
+    }
+
+    #[test]
+    fn test_finalize_applies_quantization() {
+        let mut report = AnalyzerReport::new();
+        let node_id = Uuid::new_v4();
+
+        // Add many memory events with gradually increasing memory
+        for i in 0..1000 {
+            report.process_event(AnalyzerEvent::ActionMemory {
+                timestamp_ms: 1000 + i,
+                node_id,
+                node_name: "TestNode".to_string(),
+                thread_name: "main".to_string(),
+                current_memory_bytes: i as usize * 10,
+                peak_memory_bytes: i as usize * 10,
+                processing_time_ms: 1,
+                start_timestamp_ms: 999 + i,
+            });
+        }
+
+        report.finalize();
+
+        let mem_report = report.memory_reports.get(&node_id.to_string()).unwrap();
+
+        // Raw data should be cleared after finalization to save space
+        assert_eq!(
+            mem_report.data_points.len(),
+            0,
+            "Raw data points should be cleared after finalization"
+        );
+
+        // Quantized data should have the reduced points
+        assert!(
+            !mem_report.quantized_data_points.is_empty(),
+            "Quantized data points should not be empty"
+        );
+
+        // With default resolution of 100, we expect roughly 100 quantized points
+        assert!(
+            mem_report.quantized_data_points.len() <= 150,
+            "Expected roughly 100 quantized points with resolution 100, got {}",
+            mem_report.quantized_data_points.len()
+        );
     }
 }

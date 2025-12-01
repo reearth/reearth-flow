@@ -12,7 +12,7 @@ version.workspace = true
 
 [features]
 default = []
-analyzer = ["reearth-flow-runtime/analyzer", "reearth-flow-analyzer-core", "reearth-flow-types/analyzer"]
+analyzer = ["reearth-flow-runtime/analyzer", "reearth-flow-analyzer-core", "reearth-flow-types/analyzer", "reearth-flow-common/analyzer"]
 
 [dependencies]
 reearth-flow-action-log.workspace = true

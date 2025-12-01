@@ -40,7 +40,7 @@ impl std::fmt::Display for EdgeId {
 pub enum AnalyzerEvent {
     /// Memory usage report from an action's process() call.
     ActionMemory {
-        /// Unix timestamp in milliseconds.
+        /// Unix timestamp in milliseconds when tracking ended (after process()/finish()).
         timestamp_ms: u64,
         /// The node that processed the feature.
         node_id: Uuid,
@@ -54,6 +54,8 @@ pub enum AnalyzerEvent {
         peak_memory_bytes: usize,
         /// Time spent in process() in milliseconds.
         processing_time_ms: u64,
+        /// Unix timestamp in milliseconds when tracking started (before process()/finish()).
+        start_timestamp_ms: u64,
     },
 
     /// Feature passing through an edge.
@@ -152,6 +154,7 @@ mod tests {
             current_memory_bytes: 1024,
             peak_memory_bytes: 2048,
             processing_time_ms: 100,
+            start_timestamp_ms: 1234567790,
         };
 
         let json = serde_json::to_string(&event).unwrap();

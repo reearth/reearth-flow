@@ -52,16 +52,25 @@ impl EventHandler for AnalyzerEventHandler {
                 current_memory_bytes,
                 peak_memory_bytes,
                 processing_time_ms,
+                start_timestamp_ms,
+                end_timestamp_ms,
             } => {
+                tracing::debug!(
+                    "AnalyzerEventHandler received ActionMemory for node: {} (current={}, peak={})",
+                    node_name,
+                    current_memory_bytes,
+                    peak_memory_bytes
+                );
                 // Forward memory event to analyzer
                 self.context.send(AnalyzerEvent::ActionMemory {
-                    timestamp_ms: AnalyzerEvent::now_ms(),
+                    timestamp_ms: *end_timestamp_ms,
                     node_id: *node_id,
                     node_name: node_name.clone(),
                     thread_name: thread_name.clone(),
                     current_memory_bytes: *current_memory_bytes,
                     peak_memory_bytes: *peak_memory_bytes,
                     processing_time_ms: *processing_time_ms,
+                    start_timestamp_ms: *start_timestamp_ms,
                 });
             }
             Event::EdgeFeature {
@@ -131,7 +140,7 @@ impl EventHandler for AnalyzerEventHandler {
         // Workflow end event is sent explicitly in the runner based on result
         // This handler is just for cleanup
         tracing::info!(
-            "Analyzer: Shutting down for workflow {} ({})",
+            "AnalyzerEventHandler: on_shutdown called for workflow {} ({})",
             self.workflow_name,
             self.workflow_id
         );

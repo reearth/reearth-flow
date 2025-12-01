@@ -70,7 +70,7 @@ pub use events::{
 };
 pub use report::{
     AnalyzerReport, AnalyzerSummary, EdgeInfo, MemoryDataPoint, NodeInfo, NodeMemoryReport,
-    NodeQueueReport, QueueDataPoint,
+    NodeQueueReport, QueueDataPoint, DEFAULT_QUANTIZATION_RESOLUTION,
 };
 pub use sink::{default_reports_dir, generate_report_filename, AnalyzerSink, AnalyzerSinkBuilder};
 pub use size::estimate_size;

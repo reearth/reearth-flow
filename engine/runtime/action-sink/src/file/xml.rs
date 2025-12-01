@@ -75,6 +75,7 @@ impl SinkFactory for XmlWriterFactory {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(super) struct XmlWriter {
     pub(super) params: XmlWriterParam,
     pub(super) buffer: HashMap<Uri, Vec<Feature>>,
@@ -85,6 +86,7 @@ pub(super) struct XmlWriter {
 /// Configuration for writing features to XML files.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub(super) struct XmlWriterParam {
     /// Output path or expression for the XML file to create
     pub(super) output: Expr,
