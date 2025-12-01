@@ -15,18 +15,47 @@ enum ExpectedFiles {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(untagged)]
+enum CityGmlPath {
+    GmlFile(String),
+    Config(CityGmlPathConfig),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+enum CityGmlPathConfig {
+    File(FileSource),
+    Zip(ZipSource),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct FileSource {
+    source: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ZipSource {
+    source: String,
+    name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct WorkflowTestProfile {
     workflow_path: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     expected_output: Option<TestOutput>,
-    city_gml_path: String,
+    city_gml_path: CityGmlPath,
     #[serde(skip_serializing_if = "Option::is_none")]
     codelists: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     schemas: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    object_lists: Option<String>,
     #[serde(default)]
     intermediate_assertions: Vec<IntermediateAssertion>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -40,14 +69,12 @@ struct WorkflowTestProfile {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct TestOutput {
     #[serde(skip_serializing_if = "Option::is_none")]
     expected_file: Option<ExpectedFiles>,
     #[serde(skip_serializing_if = "Option::is_none")]
     expected_inline: Option<serde_json::Value>,
-    #[serde(default)]
-    comparison: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     except: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -55,20 +82,20 @@ struct TestOutput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct IntermediateAssertion {
     edge_id: String,
     expected_file: String,
-    #[serde(default)]
-    comparison: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     except: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    json_filter: Option<String>,
     #[serde(default)]
     partial_match: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct SummaryOutput {
     #[serde(skip_serializing_if = "Option::is_none")]
     error_count_summary: Option<ErrorCountSummaryValidation>,
@@ -77,7 +104,7 @@ struct SummaryOutput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct ErrorCountSummaryValidation {
     expected_file: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -85,11 +112,13 @@ struct ErrorCountSummaryValidation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct FileErrorSummaryValidation {
     expected_file: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     include_columns: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    exclude_columns: Option<Vec<String>>,
     #[serde(default = "default_key_columns")]
     key_columns: Vec<String>,
 }

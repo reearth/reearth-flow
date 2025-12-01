@@ -325,6 +325,7 @@ pub struct DomainOfDefinitionValidator {
     codelists: Option<HashMap<String, HashMap<String, String>>>,
 }
 
+#[allow(dead_code)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DomainOfDefinitionValidatorParam {

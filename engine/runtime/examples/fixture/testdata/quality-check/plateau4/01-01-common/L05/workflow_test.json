@@ -1,0 +1,19 @@
+{
+  "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
+  "description": "Test quality check for L05",
+  "cityGmlPath": "udx/bldg/54377074_bldg_6697_op.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "objectLists": "16211_city_2024_objectlist_op.xlsx",
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_common.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "01_共通.csv",
+      "excludeColumns": ["XML検証結果", "L02エラー"]
+    }
+  },
+  "expectResultOkFile": false,
+  "skip": false
+}

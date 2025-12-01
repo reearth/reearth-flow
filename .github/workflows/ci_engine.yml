@@ -36,7 +36,7 @@ jobs:
           remove-docker-images: 'true'
           remove-swapfile: 'true'
           remove-cached-tools: 'true'
-      - uses: dtolnay/rust-toolchain@1.88
+      - uses: dtolnay/rust-toolchain@1.91
         with:
           components: clippy, rustfmt
       - name: Cache cargo registry
@@ -47,7 +47,7 @@ jobs:
       - name: install required tools
         uses: taiki-e/install-action@v2
         with:
-          tool: taplo-cli,cargo-make,cargo-edit
+          tool: taplo-cli,cargo-make,cargo-edit,uv
       - name: install yaml-include
         run: cargo install yaml-include
       - name: Compare version with previous commit
@@ -103,3 +103,11 @@ jobs:
         run: cargo make check-generate-examples-cms-workflow
       - name: run tests
         run: cargo make test
+      - name: run plateau-tiles-test
+        working-directory: engine/plateau-tiles-test
+        env:
+          CLEANUP_AFTER_TEST: "1"
+          PLATEAU_TILES_TEST_VERBOSITY: "info"
+        run: |
+          sh setup.sh
+          uv run python3 -m plateau-tiles-test

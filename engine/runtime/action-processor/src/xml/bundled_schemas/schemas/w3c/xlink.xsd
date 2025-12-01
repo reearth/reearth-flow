@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema xmlns="http://www.w3.org/2001/XMLSchema"
+        targetNamespace="http://www.w3.org/1999/xlink"
+        xmlns:xlink="http://www.w3.org/1999/xlink">
+
+  <annotation>
+    <documentation>
+      This schema document provides attribute declarations and
+      attribute group definitions for the XLink attributes as defined in:
+      W3C Recommendation XLink 1.0, 27 June 2001
+      http://www.w3.org/TR/2001/REC-xlink-20010627/
+
+      This bundled version is used to avoid HTTP 429 errors when
+      fetching from w3.org during validation.
+    </documentation>
+  </annotation>
+
+  <attribute name="type" type="string"/>
+  <attribute name="href" type="anyURI"/>
+  <attribute name="role" type="anyURI"/>
+  <attribute name="arcrole" type="anyURI"/>
+  <attribute name="title" type="string"/>
+  <attribute name="show" type="string"/>
+  <attribute name="actuate" type="string"/>
+  <attribute name="label" type="NCName"/>
+  <attribute name="from" type="NCName"/>
+  <attribute name="to" type="NCName"/>
+
+  <attributeGroup name="simpleLink">
+    <annotation>
+      <documentation>
+        Attributes for simple links.
+      </documentation>
+    </annotation>
+    <attribute ref="xlink:type" fixed="simple"/>
+    <attribute ref="xlink:href"/>
+    <attribute ref="xlink:role"/>
+    <attribute ref="xlink:arcrole"/>
+    <attribute ref="xlink:title"/>
+    <attribute ref="xlink:show"/>
+    <attribute ref="xlink:actuate"/>
+  </attributeGroup>
+
+  <attributeGroup name="extendedLink">
+    <annotation>
+      <documentation>
+        Attributes for extended links.
+      </documentation>
+    </annotation>
+    <attribute ref="xlink:type" fixed="extended"/>
+    <attribute ref="xlink:role"/>
+    <attribute ref="xlink:title"/>
+  </attributeGroup>
+
+  <attributeGroup name="locatorLink">
+    <annotation>
+      <documentation>
+        Attributes for locator links.
+      </documentation>
+    </annotation>
+    <attribute ref="xlink:type" fixed="locator"/>
+    <attribute ref="xlink:href" use="required"/>
+    <attribute ref="xlink:role"/>
+    <attribute ref="xlink:title"/>
+    <attribute ref="xlink:label" use="required"/>
+  </attributeGroup>
+
+  <attributeGroup name="arcLink">
+    <annotation>
+      <documentation>
+        Attributes for arc links.
+      </documentation>
+    </annotation>
+    <attribute ref="xlink:type" fixed="arc"/>
+    <attribute ref="xlink:arcrole"/>
+    <attribute ref="xlink:title"/>
+    <attribute ref="xlink:show"/>
+    <attribute ref="xlink:actuate"/>
+    <attribute ref="xlink:from"/>
+    <attribute ref="xlink:to"/>
+  </attributeGroup>
+
+  <attributeGroup name="resourceLink">
+    <annotation>
+      <documentation>
+        Attributes for resource links.
+      </documentation>
+    </annotation>
+    <attribute ref="xlink:type" fixed="resource"/>
+    <attribute ref="xlink:role"/>
+    <attribute ref="xlink:title"/>
+    <attribute ref="xlink:label"/>
+  </attributeGroup>
+
+  <attributeGroup name="titleLink">
+    <annotation>
+      <documentation>
+        Attributes for title links.
+      </documentation>
+    </annotation>
+    <attribute ref="xlink:type" fixed="title"/>
+  </attributeGroup>
+
+  <attributeGroup name="emptyLink">
+    <annotation>
+      <documentation>
+        Attributes for empty links (no attributes beyond type).
+      </documentation>
+    </annotation>
+    <attribute ref="xlink:type" fixed="none"/>
+  </attributeGroup>
+
+</schema>

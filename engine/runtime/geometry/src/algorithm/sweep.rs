@@ -25,5 +25,5 @@ pub(crate) use vec_set::VecSet;
 mod proc;
 
 mod iter;
+pub(crate) use iter::Crossing;
 pub use iter::Intersections;
-pub(crate) use iter::{compare_crossings, Crossing, CrossingsIter};

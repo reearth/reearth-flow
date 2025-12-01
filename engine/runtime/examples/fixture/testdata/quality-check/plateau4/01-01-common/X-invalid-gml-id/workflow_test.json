@@ -4,6 +4,7 @@
   "cityGmlPath": "udx/bldg/54377074_bldg_6697_op.gml",
   "codelists": "codelists",
   "schemas": "schemas",
+  "objectLists": "16211_city_2024_objectlist_op.xlsx",
   "expectedOutput": {
     "expectedFile": "01_共通_GML_ID書式不正.csv"
   },
@@ -17,5 +18,6 @@
       "includeColumns": ["Index", "Folder", "Filename", "gml:id書式不正"]
     }
   },
-  "expectResultOkFile": false
+  "expectResultOkFile": false,
+  "skip": false
 }

@@ -13,9 +13,11 @@ with:
     - trk
     - squr
     - wwy
-  outputPath:
+  workerArtifactPath:
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/lod_splitter_with_dm.yml
+
   - id: 34bf873b-3364-46b0-8153-efeb9568bb3c
     name: entry_point
     nodes:
@@ -43,8 +45,7 @@ graphs:
         action: FeatureCityGmlReader
         with:
           format: citygml
-          # resolveCode: false
-          losslessMode: true
+          flatten: true
           dataset: |
             env.get("__value")["path"]
 
@@ -62,10 +63,10 @@ graphs:
             - attribute: gml_id
               method: create
               value: |
-                env.get("__feature_id")
-            - attribute: gmlName
-              method: rename
-              value: feature_type
+                env.get("__feature_id") ?? env.get("__value")["gmlId"]
+            - attribute: feature_type
+              method: create
+              value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
 
       - id: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         name: AttributeFlattener
@@ -73,11 +74,9 @@ graphs:
         action: PLATEAU4.AttributeFlattener
 
       - id: c32a279d-97be-4584-b282-4d65627b1132
-        name: FeatureLodFilter
-        type: action
-        action: FeatureLodFilter
-        with:
-          filterKey: path
+        name: LodSplitterWithDM
+        type: subGraph
+        subGraphId: 7e98d856-1438-4148-bdcb-91747ef2e405
 
       - id: 8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
         name: FeatureTypeFilterTrafficArea
@@ -110,33 +109,58 @@ graphs:
         action: AttributeManager
         with:
           operations:
-            - attribute: meshcode
-              method: create
-              value: |
-                let file = file::extract_filename(env.get("__value")["path"]);
-                file.split("_")[0]
-            - attribute: city_code
-              method: convert
-              value: |
-                env.get("__value").cityCode
-            - attribute: city_name
-              method: convert
-              value: |
-                env.get("__value").cityName
-            - attribute: gml_id
-              method: create
-              value: |
-                env.get("__feature_id")
-            - attribute: _lod
-              method: create
-              value: |
-                env.get("__lod")
+            - attribute: featureId
+              method: remove
+            - attribute: featureParentId
+              method: remove
+            - attribute: geometryName
+              method: remove
+            - attribute: cityCode
+              method: rename
+              value: city_code
+            - attribute: cityName
+              method: rename
+              value: city_name
+            - attribute: lod
+              method: remove
+            - attribute: gmlId
+              method: remove
+            - attribute: gmlPropertyName
+              method: remove
             - attribute: fileIndex
               method: remove
-            - attribute: uro:StationSquareAttribute_uro:areaPlanned
-              method: convert
-              value: |
-                env.get("__value")["uro:StationSquareAttribute_uro:areaPlanned"].to_string()
+            - attribute: root
+              method: remove
+            - attribute: cityGmlPath
+              method: remove
+            - attribute: admin
+              method: remove
+            - attribute: area
+              method: remove
+            - attribute: package
+              method: remove
+            - attribute: extension
+              method: remove
+            - attribute: dirRoot
+              method: remove
+            - attribute: gmlRootId
+              method: remove
+            - attribute: maxLod
+              method: remove
+            - attribute: dirSchemas
+              method: remove
+            - attribute: dirCodelists
+              method: remove
+            - attribute: path
+              method: remove
+            - attribute: name
+              method: remove
+            - attribute: udxDirs
+              method: remove
+            - attribute: featureType
+              method: remove
+            - attribute: gmlName
+              method: remove
 
       - id: 4f5a6b7c-8d9e-0f1a-2b3c-4d5e6f7a8b9c
         name: Cesium3DTilesWriterLod3
@@ -146,8 +170,9 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: false
+          dracoCompression: false
           output: |
-            file::join_path(env.get("outputPath"), "tran_lod3")
+            file::join_path(env.get("workerArtifactPath"), "tran_lod3")
 
       - id: 2ccf7b99-4123-446e-8ff7-049be1c604c7
         name: AttributeManagerByLod0-2
@@ -155,6 +180,12 @@ graphs:
         action: AttributeManager
         with:
           operations:
+            - attribute: featureId
+              method: remove
+            - attribute: featureParentId
+              method: remove
+            - attribute: geometryName
+              method: remove
             - attribute: cityCode
               method: rename
               value: city_code
@@ -165,6 +196,8 @@ graphs:
               method: rename
               value: _lod
             - attribute: gmlId
+              method: remove
+            - attribute: gmlPropertyName
               method: remove
             - attribute: fileIndex
               method: remove
@@ -197,6 +230,10 @@ graphs:
             - attribute: udxDirs
               method: rename
               value: _udxDirs
+            - attribute: featureType
+              method: remove
+            - attribute: gmlName
+              method: remove
 
       - id: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
         name: FeatureSorter
@@ -256,7 +293,89 @@ graphs:
           minZoom: 8
           maxZoom: 16
           output: |
-            file::join_path(env.get("outputPath"), env.get("__value")._udxDirs + "_lod" + env.get("__value")._lod)
+            file::join_path(env.get("workerArtifactPath"), env.get("__value")._udxDirs + "_lod" + env.get("__value")._lod)
+          skipUnderscorePrefix: true
+          colonToUnderscore: true
+
+      - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        name: AttributeManagerByDmGeometricAttribute
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: cityCode
+              method: rename
+              value: city_code
+            - attribute: cityName
+              method: rename
+              value: city_name
+            - attribute: lod
+              method: remove
+            - attribute: gmlId
+              method: remove
+            - attribute: gmlPropertyName
+              method: remove
+            - attribute: fileIndex
+              method: remove
+            - attribute: root
+              method: remove
+            - attribute: cityGmlPath
+              method: remove
+            - attribute: admin
+              method: remove
+            - attribute: area
+              method: remove
+            - attribute: package
+              method: remove
+            - attribute: extension
+              method: remove
+            - attribute: dirRoot
+              method: remove
+            - attribute: gmlRootId
+              method: remove
+            - attribute: maxLod
+              method: remove
+            - attribute: dirSchemas
+              method: remove
+            - attribute: dirCodelists
+              method: remove
+            - attribute: path
+              method: remove
+            - attribute: name
+              method: remove
+            - attribute: udxDirs
+              method: rename
+              value: _udxDirs
+            - attribute: featureType
+              method: remove
+            - attribute: gmlName
+              method: remove
+
+      - id: b2c3d4e5-f6a7-8901-bcde-f12345678901
+        name: FeatureSorterDmGeometricAttribute
+        type: action
+        action: FeatureSorter
+        with:
+          attributes:
+            - _udxDirs
+          order: ascending
+
+      - id: c3d4e5f6-a7b8-9012-cdef-123456789012
+        name: TwoDimensionForcerDmGeometricAttribute
+        type: action
+        action: TwoDimensionForcer
+
+      - id: d4e5f6a7-b8c9-0123-def1-234567890123
+        name: MVTWriterDmGeometricAttribute
+        type: action
+        action: MVTWriter
+        with:
+          layerName: |
+            env.get("__value").feature_type.split(":")[1]
+          minZoom: 8
+          maxZoom: 18
+          output: |
+            file::join_path(env.get("workerArtifactPath"), env.get("__value")._udxDirs + "_dm_geometric_attributes")
           skipUnderscorePrefix: true
           colonToUnderscore: true
 
@@ -289,17 +408,17 @@ graphs:
       - id: 90f518e2-3ca0-404f-821c-5dffe4e57597
         from: c32a279d-97be-4584-b282-4d65627b1132
         to: 2ccf7b99-4123-446e-8ff7-049be1c604c7
-        fromPort: up_to_lod0
+        fromPort: lod0
         toPort: default
       - id: 83c68df9-a61b-4cad-8f64-ea20186e9db1
         from: c32a279d-97be-4584-b282-4d65627b1132
         to: 2ccf7b99-4123-446e-8ff7-049be1c604c7
-        fromPort: up_to_lod1
+        fromPort: lod1
         toPort: default
       - id: 7303c673-ccf3-4075-9eec-97176ced4b86
         from: c32a279d-97be-4584-b282-4d65627b1132
         to: 8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
-        fromPort: up_to_lod2
+        fromPort: lod2
         toPort: default
       - id: 9a8b7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d
         from: 8f3a2b1c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
@@ -309,7 +428,7 @@ graphs:
       - id: 2b3c4d5e-6f7a-8b9c-0d1e-2f3a4b5c6d7e
         from: c32a279d-97be-4584-b282-4d65627b1132
         to: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
-        fromPort: up_to_lod3
+        fromPort: lod3
         toPort: default
       - id: 7d8e9f0a-1b2c-3d4e-5f6a-7b8c9d0e1f2a
         from: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
@@ -342,7 +461,7 @@ graphs:
         to: 6f7a8b9c-0d1e-2f3a-4b5c-6d7e8f9a0b1c
         fromPort: default
         toPort: default
-      # GeometryFilter (polygon) -> Dissolver
+      # GeometryFilter (polygon) -> Dissolver (temporarily disabled)
       - id: 8d9e0f1a-2b3c-4d5e-6f7a-8b9c0d1e2f3a
         from: 6f7a8b9c-0d1e-2f3a-4b5c-6d7e8f9a0b1c
         to: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f
@@ -364,5 +483,29 @@ graphs:
       - id: c1d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
         from: b4c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
         to: 7a17c4f9-dd4d-44b0-936c-50c394272016
+        fromPort: default
+        toPort: default
+      # DmGeometricAttribute flow: LodSplitterWithDM -> AttributeManagerByDmGeometricAttribute
+      - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
+        from: c32a279d-97be-4584-b282-4d65627b1132
+        to: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        fromPort: DmGeometricAttribute
+        toPort: default
+      # AttributeManagerByDmGeometricAttribute -> FeatureSorterDmGeometricAttribute
+      - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7c
+        from: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        to: b2c3d4e5-f6a7-8901-bcde-f12345678901
+        fromPort: default
+        toPort: default
+      # FeatureSorterDmGeometricAttribute -> TwoDimensionForcerDmGeometricAttribute
+      - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
+        from: b2c3d4e5-f6a7-8901-bcde-f12345678901
+        to: c3d4e5f6-a7b8-9012-cdef-123456789012
+        fromPort: default
+        toPort: default
+      # TwoDimensionForcerDmGeometricAttribute -> MVTWriterDmGeometricAttribute
+      - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9e
+        from: c3d4e5f6-a7b8-9012-cdef-123456789012
+        to: d4e5f6a7-b8c9-0123-def1-234567890123
         fromPort: default
         toPort: default

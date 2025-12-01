@@ -11,6 +11,7 @@ type Trigger implements Node {
     description: String!
     authToken: String
     timeInterval: TimeInterval
+    enabled: Boolean
     variables: JSON
 }
 
@@ -51,6 +52,7 @@ input CreateTriggerInput {
     description: String!
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
+    enabled: Boolean
     variables: JSON
 }
 
@@ -60,6 +62,7 @@ input UpdateTriggerInput {
     deploymentId: ID
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
+    enabled: Boolean
     variables: JSON
 }
 

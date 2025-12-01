@@ -246,13 +246,33 @@ impl AttributeValue {
             let nested = Self::process_attribute(key, &arr[0]);
             result.extend(nested);
         } else {
+            // Process each element individually, accumulating values
+            let mut values = Vec::new();
+            let mut codes = Vec::new();
+            let mut has_codes = false;
+
             for attr in arr.iter() {
-                if let nusamai_citygml::Value::Object(obj) = attr {
-                    Self::process_object_value(result, obj);
-                } else {
-                    // more skip logic to be implemented
-                    // tracing::warn!("Skip non-object in array for key: {} {:?}", key, attr);
+                match attr {
+                    nusamai_citygml::Value::Code(code) => {
+                        // Unzip Code types: collect values and codes separately
+                        values.push(AttributeValue::String(code.value().to_owned()));
+                        codes.push(AttributeValue::String(code.code().to_owned()));
+                        has_codes = true;
+                    }
+                    nusamai_citygml::Value::Object(obj) => {
+                        Self::process_object_value(result, obj);
+                    }
+                    _ => {
+                        // Skip non-object, non-code types in array
+                        tracing::warn!("Skip non-object in array for key: {} {:?}", key, attr);
+                    }
                 }
+            }
+
+            // If we collected any Code values, add them to result
+            if has_codes {
+                result.insert(key.to_string(), AttributeValue::Array(values));
+                result.insert(format!("{key}_code"), AttributeValue::Array(codes));
             }
         }
     }

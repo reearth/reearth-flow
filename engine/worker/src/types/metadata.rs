@@ -29,6 +29,7 @@ impl Asset {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Serialize, Deserialize, Debug, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetFile {

@@ -98,21 +98,20 @@ graphs:
             env.get("__value")["gmlPath"]
 
       - id: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
-        name: AttributeManager
+        name: AttributeMapperGmlPathAndFilename
         type: action
-        action: AttributeManager
+        action: AttributeMapper
         with:
-          operations:
-            # rename
-            - attribute: path
-              method: rename
-              value: gmlPath
-            - attribute: name
-              method: rename
-              value: gmlFilename
-            # remove
-            - attribute: cityGmlPath
-              method: remove
+          mappers:
+            - attribute: gmlPath
+              expr: |
+                env.get("__value").path
+            - attribute: gmlFilename
+              expr: |
+                env.get("__value").name
+            - attribute: fileIndex
+              expr: |
+                env.get("__value").fileIndex
 
       - id: a8a7e7f8-8d73-4078-9cff-4476924f2ad7
         name: FeatureSorter

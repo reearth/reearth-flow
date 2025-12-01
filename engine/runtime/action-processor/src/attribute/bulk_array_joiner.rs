@@ -214,7 +214,7 @@ mod test {
             assert_eq!(noop.send_features.lock().unwrap().len(), 1);
             let feature = noop.send_features.lock().unwrap().first().unwrap().clone();
             assert_eq!(feature.attributes.len(), 1);
-            let Some(AttributeValue::String(v)) = feature.get(&"test".to_string()) else {
+            let Some(AttributeValue::String(v)) = feature.get("test") else {
                 panic!();
             };
             assert_eq!(v, "fugafuga");
@@ -249,7 +249,7 @@ mod test {
             assert_eq!(noop.send_features.lock().unwrap().len(), 1);
             let feature = noop.send_features.lock().unwrap().first().unwrap().clone();
             assert_eq!(feature.attributes.len(), 1);
-            let Some(AttributeValue::String(v)) = feature.get(&"test".to_string()) else {
+            let Some(AttributeValue::String(v)) = feature.get("test") else {
                 panic!();
             };
             assert_eq!(v, "hogehoge,fugafuga");
