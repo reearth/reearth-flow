@@ -33,6 +33,7 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
     (): EditorContextType => ({
       onNodeSettings:
         handleNodeSettings as unknown as EditorContextType["onNodeSettings"],
+      readonly: true,
     }),
     [handleNodeSettings],
   );

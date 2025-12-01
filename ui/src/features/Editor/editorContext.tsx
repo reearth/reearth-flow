@@ -17,6 +17,7 @@ export type EditorContextType = {
     callback: () => void,
     originPrepend?: string,
   ) => void;
+  readonly?: boolean;
 };
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);
