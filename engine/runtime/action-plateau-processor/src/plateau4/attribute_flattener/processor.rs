@@ -160,10 +160,12 @@ impl AttributeFlattener {
             edit_citygml_attributes.insert("bldg:address".to_string(), address);
         }
 
-        feature.attributes.extend(
-            self.common_attribute_processor
-                .flatten_generic_attributes(&edit_citygml_attributes),
-        );
+        if self.should_flatten_generic_attributes(feature) {
+            feature.attributes.extend(
+                self.common_attribute_processor
+                    .flatten_generic_attributes(&edit_citygml_attributes),
+            );
+        }
 
         feature.attributes.extend(
             self.flattener
@@ -197,8 +199,7 @@ impl AttributeFlattener {
         feature: &Feature,
         citygml_attributes: &mut HashMap<String, AttributeValue>,
     ) {
-        // gml:id: use "gmlId" attribute (gml_id renaming happens after AttributeFlattener)
-        if let Some(gml_id) = feature.get("gmlId") {
+        if let Some(gml_id) = feature.get("gml_id").or_else(|| feature.get("gmlId")) {
             citygml_attributes.insert("gml:id".to_string(), gml_id.clone());
         }
 
@@ -496,6 +497,24 @@ impl AttributeFlattener {
             }
         }
         Ok(feature)
+    }
+
+    /// Determines whether generic attributes should be flattened for the given package and feature type.
+    ///
+    /// The flattening rules are defined in the following spreadsheet:
+    /// https://docs.google.com/spreadsheets/d/1c_sn2GkUR7f5zfXGxQdx9g22UlIGdyWP/edit?gid=1962278825
+    ///
+    /// However, looking at the FME workflow implementation, it appears that the bldg package
+    /// always flattens gen:genericAttribute, so the actual implementation does not necessarily
+    /// follow the definition strictly.
+    ///
+    /// For now, the bldg package always flattens generic attributes.
+    /// Support for other packages needs to be added later.
+    fn should_flatten_generic_attributes(&self, feature: &Feature) -> bool {
+        feature
+            .get("package")
+            .map(|package| package.as_string().as_deref() == Some("bldg"))
+            .unwrap_or(false)
     }
 }
 
