@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
+	"github.com/samber/lo"
 )
 
 func ToTrigger(t *trigger.Trigger) *Trigger {
@@ -28,6 +29,7 @@ func ToTrigger(t *trigger.Trigger) *Trigger {
 		EventSource:   ToEventSourceType(t.EventSource()),
 		AuthToken:     t.AuthToken(),
 		TimeInterval:  timeInterval,
+		Enabled:       lo.ToPtr(t.Enabled()),
 		Variables:     ToVariables(t.Variables()),
 	}
 }

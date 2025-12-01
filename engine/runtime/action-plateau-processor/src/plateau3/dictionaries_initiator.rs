@@ -20,6 +20,7 @@ use super::{
 
 static ADMIN_CODE_LIST: &str = "Common_localPublicAuthorities.xml";
 
+#[allow(dead_code)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 struct Schema {
