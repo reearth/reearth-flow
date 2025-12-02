@@ -9,10 +9,20 @@ import type { YWorkflow, YEdge, YNode, YNodesMap, YEdgesMap } from "../types";
 export const reassembleNode = (yNode: YNode): Node => {
   const id = yNode.get("id")?.toString() as string;
 
+  const positionMap = yNode.get("position") as Y.Map<any>;
   const position = {
-    x: (yNode.get("position") as Y.Map<any>).get("x"),
-    y: (yNode.get("position") as Y.Map<any>).get("y"),
+    x: positionMap?.get("x") ?? 0,
+    y: positionMap?.get("y") ?? 0,
   };
+
+  if (
+    positionMap &&
+    (positionMap.get("x") == null || positionMap.get("y") == null)
+  ) {
+    console.warn(
+      `Node ${yNode.get("id")} had null position, using default (0,0)`,
+    );
+  }
   const type = yNode.get("type")?.toString() as NodeType;
   const dragging = yNode.get("dragging") as boolean;
   const measured = {

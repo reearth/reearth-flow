@@ -13,11 +13,14 @@ import type {
 import type { Edge, Node } from "@flow/types";
 
 export const yNodeConstructor = (node: Node): YNode => {
+  const positionMap = new Y.Map<number>();
+  positionMap.set("x", node.position.x ?? 0);
+  positionMap.set("y", node.position.y ?? 0);
   const yNode = toYjsMap<YNodeValue>({
     id: toYjsText(node.id),
     type: toYjsText(node.type),
     dragging: false,
-    position: toYjsMap(node.position),
+    position: positionMap,
     measured: toYjsMap(node.measured),
     parentId: toYjsText(node.parentId),
     // Reference src/types/node.ts for the NodeData type
