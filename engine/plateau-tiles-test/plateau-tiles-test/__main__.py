@@ -4,14 +4,15 @@ from . import BASE_PATH, cleanup
 
 # tests when no arguments are given (for CI)
 default_tests = [
-    "13115_suginami-ku_conv-tran_multipolygon",
-    "14212_atsugi-shi_conv-tran_squr",
-    "08220_tsukuba-shi_conv-tran_dm",
-    "16202_takaoka-shi_conv-tran_rwy",
-    "22203_numazu-shi_conv-tran_wwy",
-    "08220_tsukuba-shi_conv-tran_3dtiles",
+    "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/multipolygon",
+    "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/squr",
+    "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/dm",
+    "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/rwy",
+    "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/wwy",
+    "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/3dtiles",
+    "data-convert/plateau4/06-area-urf/urf",
 ]
-default_stages = "re"
+default_stages = os.environ.get("PLATEAU_TILES_TEST_STAGES", "re")
 
 if len(sys.argv) > 1:
     name = sys.argv[1]
