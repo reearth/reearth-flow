@@ -121,6 +121,16 @@ impl HttpCallerFactory {
                 "URL parameter is required".to_string(),
             ));
         }
+
+        // Validate rate limit configuration to prevent division by zero
+        if let Some(rate_limit) = &params.rate_limit {
+            if rate_limit.requests == 0 {
+                return Err(HttpProcessorError::CallerFactory(
+                    "Rate limit 'requests' must be greater than 0".to_string(),
+                ));
+            }
+        }
+
         Ok(())
     }
 }
@@ -188,5 +198,49 @@ mod tests {
 
         let result = factory.validate_parameters(&params);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_parameters_zero_rate_limit_requests() {
+        use super::super::params::{RateLimitConfig, TimingStrategy};
+
+        let factory = HttpCallerFactory;
+        let params = HttpCallerParam {
+            url: Expr::new("https://example.com"),
+            method: super::super::params::HttpMethod::Get,
+            custom_headers: None,
+            query_parameters: None,
+            request_body: None,
+            content_type: None,
+            response_body_attribute: "_response_body".to_string(),
+            status_code_attribute: "_http_status_code".to_string(),
+            headers_attribute: "_headers".to_string(),
+            error_attribute: "_http_error".to_string(),
+            connection_timeout: None,
+            transfer_timeout: None,
+            authentication: None,
+            user_agent: None,
+            verify_ssl: None,
+            follow_redirects: None,
+            max_redirects: None,
+            response_handling: None,
+            max_response_size: None,
+            response_encoding: None,
+            auto_detect_encoding: None,
+            retry: None,
+            rate_limit: Some(RateLimitConfig {
+                requests: 0, // This should fail validation
+                interval_ms: 1000,
+                timing: TimingStrategy::Distributed,
+            }),
+            observability: None,
+        };
+
+        let result = factory.validate_parameters(&params);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("must be greater than 0"));
     }
 }
