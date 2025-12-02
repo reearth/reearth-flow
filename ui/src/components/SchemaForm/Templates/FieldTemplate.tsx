@@ -28,8 +28,9 @@ const FieldTemplate = <
     displayLabel,
     hidden,
     label,
-    onDropPropertyClick,
-    onKeyChange,
+    onRemoveProperty,
+    onKeyRename,
+    onKeyRenameBlur,
     readonly,
     required,
     errors,
@@ -55,8 +56,9 @@ const FieldTemplate = <
       disabled={disabled}
       id={id}
       label={label}
-      onDropPropertyClick={onDropPropertyClick}
-      onKeyChange={onKeyChange}
+      onKeyRename={onKeyRename}
+      onKeyRenameBlur={onKeyRenameBlur}
+      onRemoveProperty={onRemoveProperty}
       readonly={readonly}
       required={required}
       schema={schema}

@@ -20,23 +20,25 @@ nodes:
     subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
 
   - id: b1f5a9c3-7e2d-4a8c-9f6b-2d8e5c3a7b9f
-    name: AttributeManagerLod0InvalidSurface
+    name: AttributeMapperLod0InvalidSurface
     type: action
-    action: AttributeManager
+    action: AttributeMapper
     with:
-      operations:
-        - attribute: gmlFilename
-          method: rename
-          value: filename
-        - attribute: featureType
-          method: rename
-          value: feature_type
-        - attribute: gmlId
-          method: rename
-          value: gml_id
+      mappers:
+        - attribute: filename
+          expr: |
+            env.get("__value").gmlFilename
+        - attribute: feature_type
+          expr: |
+            env.get("__value").featureType
+        - attribute: gml_id
+          expr: |
+            env.get("__value").gmlId
+        - attribute: lod
+          expr: |
+            env.get("__value").lod
         - attribute: issue
-          method: create
-          value: |
+          expr: |
             let value = env.get("__value");
             if value.validationResult?.details != () {
               return value.validationResult.details[0][0];
@@ -166,23 +168,25 @@ nodes:
     subGraphId: 8a5b1c9d-2e4f-4a3b-9c5d-1e6f8a2b4c7d
 
   - id: c2e8f4a6-9b3d-4e7c-8a5f-1d9b6e4c7f2a
-    name: AttributeManagerLod1InvalidSurface
+    name: AttributeMapperLod1InvalidSurface
     type: action
-    action: AttributeManager
+    action: AttributeMapper
     with:
-      operations:
-        - attribute: gmlFilename
-          method: rename
-          value: filename
-        - attribute: featureType
-          method: rename
-          value: feature_type
-        - attribute: gmlId
-          method: rename
-          value: gml_id
+      mappers:
+        - attribute: filename
+          expr: |
+            env.get("__value").gmlFilename
+        - attribute: feature_type
+          expr: |
+            env.get("__value").featureType
+        - attribute: gml_id
+          expr: |
+            env.get("__value").gmlId
+        - attribute: lod
+          expr: |
+            env.get("__value").lod
         - attribute: issue
-          method: create
-          value: |
+          expr: |
             let value = env.get("__value");
             if value.validationResult?.details != () {
               return value.validationResult.details[0][0];
@@ -191,65 +195,6 @@ nodes:
               return value.issue;
             }
             "UnknownError"
-
-        # remove
-        - attribute: validationResult
-          method: remove
-        - attribute: surfaceId
-          method: remove
-        - attribute: dirCodelists
-          method: remove
-        - attribute: featureIndex
-          method: remove
-        - attribute: featureId
-          method: remove
-        - attribute: gmlPath
-          method: remove
-        - attribute: fileIndex
-          method: remove
-        - attribute: holeCount
-          method: remove
-        - attribute: maxLod
-          method: remove
-        - attribute: cityGmlAttributes
-          method: remove
-        - attribute: featureParentId
-          method: remove
-        - attribute: dumpGeometry
-          method: remove
-        - attribute: gmlName
-          method: remove
-        - attribute: geometryName
-          method: remove
-        - attribute: gmlRootId
-          method: remove
-        #
-        - attribute: baseCityCode
-          method: remove
-        - attribute: cityCode
-          method: remove
-        - attribute: extension
-          method: remove
-        - attribute: package
-          method: remove
-        - attribute: root
-          method: remove
-        - attribute: admin
-          method: remove
-        - attribute: area
-          method: remove
-        - attribute: dirRoot
-          method: remove
-        - attribute: udxDirs
-          method: remove
-        - attribute: codelists
-          method: remove
-        - attribute: dirSchemas
-          method: remove
-        - attribute: schemas
-          method: remove
-        - attribute: objectListPath
-          method: remove
 
   - id: d5a7b9f3-6e4c-4d8a-9f2b-3c7e8d5a6b9f
     name: FeatureWriterLod1InvalidSurface
@@ -310,23 +255,25 @@ nodes:
             if env.get("__value").lod == "4" { 1 } else { 0 }
 
   - id: 7f2a5c8d-4b9e-4c3a-9f6d-2e8b5c7a4f9d
-    name: AttributeManagerLod2-4InvalidSurface
+    name: AttributeMapperLod2-4InvalidSurface
     type: action
-    action: AttributeManager
+    action: AttributeMapper
     with:
-      operations:
-        - attribute: gmlFilename
-          method: rename
-          value: filename
-        - attribute: featureType
-          method: rename
-          value: feature_type
-        - attribute: gmlId
-          method: rename
-          value: gml_id
+      mappers:
+        - attribute: filename
+          expr: |
+            env.get("__value").gmlFilename
+        - attribute: feature_type
+          expr: |
+            env.get("__value").featureType
+        - attribute: gml_id
+          expr: |
+            env.get("__value").gmlId
+        - attribute: lod
+          expr: |
+            env.get("__value").lod
         - attribute: issue
-          method: create
-          value: |
+          expr: |
             let value = env.get("__value");
             if value.validationResult?.details != () {
               return value.validationResult.details[0][0];
@@ -335,65 +282,6 @@ nodes:
               return value.issue;
             }
             "UnknownError"
-
-        # remove
-        - attribute: validationResult
-          method: remove
-        - attribute: surfaceId
-          method: remove
-        - attribute: dirCodelists
-          method: remove
-        - attribute: featureIndex
-          method: remove
-        - attribute: featureId
-          method: remove
-        - attribute: gmlPath
-          method: remove
-        - attribute: fileIndex
-          method: remove
-        - attribute: holeCount
-          method: remove
-        - attribute: maxLod
-          method: remove
-        - attribute: cityGmlAttributes
-          method: remove
-        - attribute: featureParentId
-          method: remove
-        - attribute: dumpGeometry
-          method: remove
-        - attribute: gmlName
-          method: remove
-        - attribute: geometryName
-          method: remove
-        - attribute: gmlRootId
-          method: remove
-        #
-        - attribute: baseCityCode
-          method: remove
-        - attribute: cityCode
-          method: remove
-        - attribute: extension
-          method: remove
-        - attribute: package
-          method: remove
-        - attribute: root
-          method: remove
-        - attribute: admin
-          method: remove
-        - attribute: area
-          method: remove
-        - attribute: dirRoot
-          method: remove
-        - attribute: udxDirs
-          method: remove
-        - attribute: codelists
-          method: remove
-        - attribute: dirSchemas
-          method: remove
-        - attribute: schemas
-          method: remove
-        - attribute: objectListPath
-          method: remove
 
   - id: 9e3c6b8f-5a2d-4f7e-8c1a-4d9b6e3c8f5a
     name: FeatureWriterLod2-4InvalidSurface
@@ -431,7 +319,7 @@ nodes:
     type: action
     action: GeometryCoercer
     with:
-      coercerType: lineString
+      targetType: lineString
 
   - id: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1aa
     name: TwoDimensionForcer
@@ -644,69 +532,26 @@ nodes:
           outputPort: notClosed
 
   - id: e57bec12-7e6e-4edf-8ce2-14fbd12a7f92
-    name: AttributeManagerSolidBoundaryInvalidNotClosed
+    name: AttributeMapperSolidBoundaryInvalidNotClosed
     type: action
-    action: AttributeManager
+    action: AttributeMapper
     with:
-      operations:
-        - attribute: gmlFilename
-          method: rename
-          value: filename
-        - attribute: featureType
-          method: rename
-          value: feature_type
-        - attribute: gmlId
-          method: rename
-          value: gml_id
-        - attribute: issue
-          method: create
-          value: |
-            "Surface Not Closed"
-        # remove
-        - attribute: solid_boundary_issues
-          method: remove
-        - attribute: surfaceId
-          method: remove
-        - attribute: dirCodelists
-          method: remove
-        - attribute: featureIndex
-          method: remove
-        - attribute: dirSchemas
-          method: remove
-        - attribute: featureId
-          method: remove
-        - attribute: geometryName
-          method: remove
-        - attribute: featureParentId
-          method: remove
-        - attribute: root
-          method: remove
-        - attribute: gmlRootId
-          method: remove
-        - attribute: udxDirs
-          method: remove
-        - attribute: admin
-          method: remove
-        - attribute: cityGmlAttributes
-          method: remove
-        - attribute: package
-          method: remove
-        - attribute: area
-          method: remove
-        - attribute: fileIndex
-          method: remove
-        - attribute: dirRoot
-          method: remove
-        - attribute: gmlName
-          method: remove
-        - attribute: extension
-          method: remove
-        - attribute: maxLod
-          method: remove
+      mappers:
         - attribute: filename
-          method: remove
-        - attribute: gmlPath
-          method: remove
+          expr: |
+            env.get("__value").gmlFilename
+        - attribute: feature_type
+          expr: |
+            env.get("__value").featureType
+        - attribute: gml_id
+          expr: |
+            env.get("__value").gmlId
+        - attribute: lod
+          expr: |
+            env.get("__value").lod
+        - attribute: issue
+          expr: |
+            "Surface Not Closed"
 
   - id: 89712e8f-e0ac-4bb3-a92f-c5ff06fe4c96
     name: FeatureWriterL14-BoundaryNotClosed
@@ -746,69 +591,26 @@ nodes:
       routingPort: errorCountLod1NotClosedSolid
 
   - id: 64ff1eee-0d1a-42a1-b32d-fde94ffac693
-    name: AttributeManagerSolidBoundaryInvalidOtherIssues
+    name: AttributeMapperSolidBoundaryInvalidOtherIssues
     type: action
-    action: AttributeManager
+    action: AttributeMapper
     with:
-      operations:
-        - attribute: gmlFilename
-          method: rename
-          value: filename
-        - attribute: featureType
-          method: rename
-          value: feature_type
-        - attribute: gmlId
-          method: rename
-          value: gml_id
-        - attribute: issue
-          method: create
-          value: |
-            "InvalidSolidBoundaries"
-        # remove
-        - attribute: solid_boundary_issues
-          method: remove
-        - attribute: surfaceId
-          method: remove
-        - attribute: dirCodelists
-          method: remove
-        - attribute: featureIndex
-          method: remove
-        - attribute: dirSchemas
-          method: remove
-        - attribute: featureId
-          method: remove
-        - attribute: geometryName
-          method: remove
-        - attribute: featureParentId
-          method: remove
-        - attribute: root
-          method: remove
-        - attribute: gmlRootId
-          method: remove
-        - attribute: udxDirs
-          method: remove
-        - attribute: admin
-          method: remove
-        - attribute: cityGmlAttributes
-          method: remove
-        - attribute: package
-          method: remove
-        - attribute: area
-          method: remove
-        - attribute: fileIndex
-          method: remove
-        - attribute: dirRoot
-          method: remove
-        - attribute: gmlName
-          method: remove
-        - attribute: extension
-          method: remove
-        - attribute: maxLod
-          method: remove
+      mappers:
         - attribute: filename
-          method: remove
-        - attribute: gmlPath
-          method: remove
+          expr: |
+            env.get("__value").gmlFilename
+        - attribute: feature_type
+          expr: |
+            env.get("__value").featureType
+        - attribute: gml_id
+          expr: |
+            env.get("__value").gmlId
+        - attribute: lod
+          expr: |
+            env.get("__value").lod
+        - attribute: issue
+          expr: |
+            "InvalidSolidBoundaries"
 
   - id: 527087b4-0411-49bd-ae5f-c1c7f9a5ccb8
     name: FeatureWriterL14-BoundaryOtherIssues

@@ -6,6 +6,6 @@ export { default as useDnd } from "./useDnd";
 export { default as CustomConnectionLine } from "./CustomConnectionLine";
 export { connectionLineStyle } from "./CustomConnectionLine";
 export * from "./nodeTypes";
-export * from "./edgeTypes";
+export { edgeTypes, fullEdgeTypes, simpleEdgeTypes } from "./edgeTypes";
 export * from "./buildNewCanvasNode";
 export * from "./utils";

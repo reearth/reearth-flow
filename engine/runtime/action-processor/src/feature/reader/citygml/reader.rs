@@ -155,19 +155,6 @@ fn parse_tree_reader<R: BufRead>(
                 (v[0], v[1], v[2]) = (v[1], v[0], v[2]);
             });
         }
-        let attributes = AttributeValue::from_nusamai_cityml_value(&entity.root);
-        let attributes = AttributeValue::convert_array_attributes(&attributes);
-        let city_gml_attributes = match attributes.len() {
-            0 => AttributeValue::Null,
-            1 => attributes.values().next().unwrap().clone(),
-            _ => AttributeValue::Map(attributes),
-        };
-        let city_gml_attributes = city_gml_attributes.flatten();
-        let city_gml_attributes = if let AttributeValue::Map(map) = &city_gml_attributes {
-            AttributeValue::Map(AttributeValue::convert_array_attributes(map))
-        } else {
-            city_gml_attributes
-        };
         let gml_id = entity.root.id();
         let name = entity.root.typename();
         let lod = LodMask::find_lods_by_citygml_value(&entity.root);
@@ -177,9 +164,8 @@ fn parse_tree_reader<R: BufRead>(
             lod: Some(lod),
         };
         let mut attributes = HashMap::<Attribute, AttributeValue>::from([
-            (Attribute::new("cityGmlAttributes"), city_gml_attributes),
             (
-                Attribute::new("gmlName"),
+                Attribute::new("featureType"),
                 name.map(|s| AttributeValue::String(s.to_string()))
                     .unwrap_or(AttributeValue::Null),
             ),
@@ -197,12 +183,12 @@ fn parse_tree_reader<R: BufRead>(
         if let Some(max_lod) = lod.highest_lod() {
             attributes.insert(
                 Attribute::new("maxLod"),
-                AttributeValue::String(max_lod.to_string()),
+                AttributeValue::Number(serde_json::Number::from(max_lod)),
             );
             // Also add as "lod" attribute for StatisticsCalculator to use
             attributes.insert(
                 Attribute::new("lod"),
-                AttributeValue::String(max_lod.to_string()),
+                AttributeValue::Number(serde_json::Number::from(max_lod)),
             );
         }
         attributes.extend(base_attributes.clone());
@@ -212,50 +198,46 @@ fn parse_tree_reader<R: BufRead>(
             vec![entity]
         };
         for mut ent in entities {
-            // Calculate child LOD from GeometryRefs in geometry_store that match this child entity
-            // Also extract parent feature_id from GeometryRef if child doesn't have gml:id
-            let mut child_lod = LodMask::default();
-            let mut parent_feature_id: Option<String> = None;
-            if let nusamai_citygml::Value::Object(obj) = &ent.root {
-                if let nusamai_citygml::object::ObjectStereotype::Feature { geometries, .. } =
-                    &obj.stereotype
-                {
-                    for geom in geometries {
-                        child_lod.add_lod(geom.lod);
-                        // If child has no gml:id (None or empty string), use parent's feature_id from GeometryRef
-                        let has_id = ent.id.as_ref().is_some_and(|id| !id.is_empty());
-                        if !has_id && parent_feature_id.is_none() {
-                            parent_feature_id = geom.feature_id.clone();
-                        }
-                    }
-                }
-            }
-            transformer.transform(&mut ent);
             let nusamai_citygml::Value::Object(obj) = &ent.root else {
                 continue;
             };
-            let nusamai_citygml::object::ObjectStereotype::Feature { .. } = &obj.stereotype else {
+            // Calculate child LOD from GeometryRefs in geometry_store that match this child entity
+            // Also extract geom feature_id from GeometryRef if child doesn't have gml:id
+            let mut child_lod = LodMask::default();
+            let mut geom_feature_id: Option<String> = None;
+            if let nusamai_citygml::object::ObjectStereotype::Feature { geometries, .. } =
+                &obj.stereotype
+            {
+                for geom in geometries {
+                    child_lod.add_lod(geom.lod);
+                    // If child has no gml:id (None or empty string), use parent's feature_id from GeometryRef
+                    let has_id = ent.id.as_ref().is_some_and(|id| !id.is_empty());
+                    if !has_id && geom_feature_id.is_none() {
+                        geom_feature_id = geom.feature_id.clone();
+                    }
+                }
+            } else {
                 continue;
-            };
+            }
+            transformer.transform(&mut ent);
 
-            // Use entity's own gml:id if it has one (and not empty), otherwise use parent's feature_id from GeometryRef
-            let child_id = match &ent.id {
-                Some(id) if !id.is_empty() => Some(id.clone()),
-                _ => parent_feature_id,
-            };
+            // Use entity's own non-empty gml:id or None, toplevel id is stored in gmlId attribute
+            let child_id = ent.id.clone();
             let child_typename = ent.typename.clone();
             let mut attributes = attributes.clone();
             if flatten {
                 if let Some(typename) = &child_typename {
-                    attributes.insert(
-                        Attribute::new("featureType"),
-                        AttributeValue::String(typename.to_string()),
-                    );
-                    // Override gmlName with child's typename
-                    attributes.insert(
-                        Attribute::new("gmlName"),
-                        AttributeValue::String(typename.to_string()),
-                    );
+                    if typename != "uro:DmGeometricAttribute" {
+                        attributes.insert(
+                            Attribute::new("featureType"),
+                            AttributeValue::String(typename.to_string()),
+                        );
+                        // Override gmlName with child's typename
+                        attributes.insert(
+                            Attribute::new("gmlName"),
+                            AttributeValue::String(typename.to_string()),
+                        );
+                    }
                 }
                 // Add lod attribute for StatisticsCalculator to use
                 // Use child_lod if available, otherwise use parent lod
@@ -263,16 +245,20 @@ fn parse_tree_reader<R: BufRead>(
                 if let Some(max_lod) = effective_lod {
                     attributes.insert(
                         Attribute::new("lod"),
-                        AttributeValue::String(max_lod.to_string()),
+                        AttributeValue::Number(serde_json::Number::from(max_lod)),
                     );
                 }
             }
 
+            let citygml_attributes = AttributeValue::from_nusamai_citygml_value(&ent.root);
+            let citygml_attributes = AttributeValue::Map(citygml_attributes);
             let geometry: Geometry = ent.try_into().map_err(|e| {
                 crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
             })?;
             let mut feature: Feature = geometry.into();
             feature.extend(attributes);
+            // Insert child's own cityGmlAttributes
+            feature.insert("cityGmlAttributes", citygml_attributes);
             // When flatten is true, each child entity should have its own LOD and feature_type/feature_id
             // calculated from its geometries instead of inheriting from the parent
             let mut child_metadata = metadata.clone();

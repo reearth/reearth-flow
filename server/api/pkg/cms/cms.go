@@ -16,7 +16,7 @@ type Project struct {
 	WorkspaceID string
 	Topics      []string
 	Visibility  Visibility
-	StarCount   int32
+	StarCount   int64
 }
 
 type Visibility int

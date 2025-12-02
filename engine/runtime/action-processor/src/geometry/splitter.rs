@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -79,7 +80,23 @@ impl Processor for GeometrySplitter {
                     let mut feature = ctx.feature.clone();
                     feature.insert(
                         Attribute::new("geometryName"),
-                        AttributeValue::String(feature_geometry.name().to_string()),
+                        AttributeValue::String(
+                            feature_geometry
+                                .gml_trait
+                                .as_ref()
+                                .map(|trait_| trait_.gml_geometry_type.to_string())
+                                .unwrap_or("Unknown".to_string()),
+                        ),
+                    );
+                    feature.insert(
+                        Attribute::new("gmlPropertyName"),
+                        AttributeValue::String(
+                            feature_geometry
+                                .gml_trait
+                                .as_ref()
+                                .map(|trait_| trait_.property.to_string())
+                                .unwrap_or("Unknown".to_string()),
+                        ),
                     );
                     // Only set lod if feature_geometry has a lod value
                     // If feature_geometry.lod is None, preserve existing lod attribute from reader.rs
@@ -91,11 +108,11 @@ impl Processor for GeometrySplitter {
                     }
                     let feature_id = feature_geometry.feature_id.clone();
                     let parent_id = if let Some(feature_id) = feature_id {
-                        if let Some(AttributeValue::String(gml_id)) = feature.get(&"gmlId") {
+                        if let Some(AttributeValue::String(gml_id)) = feature.get("gmlId") {
                             let gml_id = gml_id.to_string();
                             if gml_id == feature_id {
                                 if let Some(AttributeValue::String(gml_root_id)) =
-                                    feature.get(&"gmlRootId")
+                                    feature.get("gmlRootId")
                                 {
                                     Some(gml_root_id.to_string())
                                 } else {
@@ -105,7 +122,7 @@ impl Processor for GeometrySplitter {
                                 Some(gml_id)
                             }
                         } else if let Some(AttributeValue::String(gml_root_id)) =
-                            feature.get(&"gmlRootId")
+                            feature.get("gmlRootId")
                         {
                             Some(gml_root_id.to_string())
                         } else {
@@ -130,7 +147,7 @@ impl Processor for GeometrySplitter {
                     );
                     // Only set featureType from geometry if it's not already set
                     // (reader.rs may have already set it to the child typename for flatten=true)
-                    if !feature.contains_key(&"featureType") {
+                    if !feature.contains_key("featureType") {
                         feature.insert(
                             Attribute::new("featureType"),
                             feature_geometry
@@ -153,7 +170,23 @@ impl Processor for GeometrySplitter {
                     };
                     attributes.insert(
                         Attribute::new("geometryName"),
-                        AttributeValue::String(geometry_feature.name().to_string()),
+                        AttributeValue::String(
+                            geometry_feature
+                                .gml_trait
+                                .as_ref()
+                                .map(|trait_| trait_.gml_geometry_type.to_string())
+                                .unwrap_or("Unknown".to_string()),
+                        ),
+                    );
+                    attributes.insert(
+                        Attribute::new("gmlPropertyName"),
+                        AttributeValue::String(
+                            geometry_feature
+                                .gml_trait
+                                .as_ref()
+                                .map(|trait_| trait_.property.to_string())
+                                .unwrap_or("Unknown".to_string()),
+                        ),
                     );
                     // Only set lod if geometry_feature has a lod value
                     // If geometry_feature.lod is None, preserve existing lod attribute from reader.rs
@@ -187,11 +220,11 @@ impl Processor for GeometrySplitter {
                     }
 
                     let parent_id = if let Some(feature_id) = &geometry_feature.feature_id {
-                        if let Some(AttributeValue::String(gml_id)) = feature.get(&"gmlId") {
+                        if let Some(AttributeValue::String(gml_id)) = feature.get("gmlId") {
                             let gml_id = gml_id.to_string();
                             if gml_id == feature_id.clone() {
                                 if let Some(AttributeValue::String(gml_root_id)) =
-                                    feature.get(&"gmlRootId")
+                                    feature.get("gmlRootId")
                                 {
                                     Some(gml_root_id.to_string())
                                 } else {
@@ -201,7 +234,7 @@ impl Processor for GeometrySplitter {
                                 Some(gml_id)
                             }
                         } else if let Some(AttributeValue::String(gml_root_id)) =
-                            feature.get(&"gmlRootId")
+                            feature.get("gmlRootId")
                         {
                             Some(gml_root_id.to_string())
                         } else {
@@ -227,7 +260,16 @@ impl Processor for GeometrySplitter {
                     ));
                 }
             }
-            _ => unimplemented!(),
+            GeometryValue::FlowGeometry2D(geometry) => {
+                self.process_flow_geometry_2d(geometry, &ctx, fw)?;
+            }
+            GeometryValue::FlowGeometry3D(geometry) => {
+                self.process_flow_geometry_3d(geometry, &ctx, fw)?;
+            }
+            GeometryValue::None => {
+                // Pass through empty geometry
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+            }
         }
         Ok(())
     }
@@ -238,5 +280,97 @@ impl Processor for GeometrySplitter {
 
     fn name(&self) -> &str {
         "GeometrySplitter"
+    }
+}
+
+impl GeometrySplitter {
+    fn process_flow_geometry_2d(
+        &self,
+        geometry: &Geometry2D,
+        ctx: &ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        match geometry {
+            Geometry2D::MultiPolygon(multi_polygon) => {
+                // Split MultiPolygon into individual Polygon features
+                let polygons: Vec<_> = multi_polygon.iter().cloned().collect();
+                // Multiple polygons - split into separate features
+                for (index, polygon) in polygons.into_iter().enumerate() {
+                    let mut new_feature = ctx.feature.clone();
+                    new_feature.insert(
+                        Attribute::new("_split_index"),
+                        AttributeValue::Number((index + 1).into()),
+                    );
+                    new_feature.geometry.value =
+                        GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon));
+                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                }
+            }
+            Geometry2D::MultiLineString(multi_line_string) => {
+                // Split MultiLineString into individual LineString features
+                let line_strings: Vec<_> = multi_line_string.iter().cloned().collect();
+                // Multiple line strings - split into separate features
+                for (index, line_string) in line_strings.into_iter().enumerate() {
+                    let mut new_feature = ctx.feature.clone();
+                    new_feature.insert(
+                        Attribute::new("_split_index"),
+                        AttributeValue::Number((index + 1).into()),
+                    );
+                    new_feature.geometry.value =
+                        GeometryValue::FlowGeometry2D(Geometry2D::LineString(line_string));
+                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                }
+            }
+            _ => {
+                // For non-multi geometries, pass through unchanged
+                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), DEFAULT_PORT.clone()));
+            }
+        }
+        Ok(())
+    }
+
+    fn process_flow_geometry_3d(
+        &self,
+        geometry: &Geometry3D,
+        ctx: &ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        match geometry {
+            Geometry3D::MultiPolygon(multi_polygon) => {
+                // Split MultiPolygon into individual Polygon features
+                let polygons: Vec<_> = multi_polygon.iter().cloned().collect();
+                // Multiple polygons - split into separate features
+                for (index, polygon) in polygons.into_iter().enumerate() {
+                    let mut new_feature = ctx.feature.clone();
+                    new_feature.insert(
+                        Attribute::new("_split_index"),
+                        AttributeValue::Number((index + 1).into()),
+                    );
+                    new_feature.geometry.value =
+                        GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon));
+                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                }
+            }
+            Geometry3D::MultiLineString(multi_line_string) => {
+                // Split MultiLineString into individual LineString features
+                let line_strings: Vec<_> = multi_line_string.iter().cloned().collect();
+                // Multiple line strings - split into separate features
+                for (index, line_string) in line_strings.into_iter().enumerate() {
+                    let mut new_feature = ctx.feature.clone();
+                    new_feature.insert(
+                        Attribute::new("_split_index"),
+                        AttributeValue::Number((index + 1).into()),
+                    );
+                    new_feature.geometry.value =
+                        GeometryValue::FlowGeometry3D(Geometry3D::LineString(line_string));
+                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                }
+            }
+            _ => {
+                // For non-multi geometries, pass through unchanged
+                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), DEFAULT_PORT.clone()));
+            }
+        }
+        Ok(())
     }
 }

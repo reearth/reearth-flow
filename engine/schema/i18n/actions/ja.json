@@ -181,6 +181,14 @@
       "description": "地物をGeoJSONファイルに書き出す"
     },
     {
+      "name": "GeoPackageReader",
+      "description": "GeoPackage（.gpkg）ファイルからベクター地物、タイル、メタデータを読み取る"
+    },
+    {
+      "name": "GeoPackageWriter",
+      "description": "地物をGeoPackage（.gpkg）ファイルに書き出す。SQLite構造、空間インデックス、メタデータテーブルを適切に作成"
+    },
+    {
       "name": "GeometryCoercer",
       "description": "地物のジオメトリを特定のジオメトリタイプに強制変換する"
     },

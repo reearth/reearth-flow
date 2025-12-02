@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_25884768-801b-11ec-a8a3-0242ac120002">
+	<gml:name>RiverFloodingRiskAttribute_description</gml:name>
+<gml:dictionaryEntry><gml:Definition gml:id="id1"><gml:description>庄川水系庄川</gml:description><gml:name>1</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+<gml:dictionaryEntry><gml:Definition gml:id="id2"><gml:description>小矢部川水系小矢部川</gml:description><gml:name>2</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+<gml:dictionaryEntry><gml:Definition gml:id="id3"><gml:description>庄川水系和田川</gml:description><gml:name>3</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+<gml:dictionaryEntry><gml:Definition gml:id="id4"><gml:description>庄川水系地久子川</gml:description><gml:name>4</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry><gml:Definition gml:id="id5"><gml:description>小矢部川水系祖父川</gml:description><gml:name>5</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry><gml:Definition gml:id="id6"><gml:description>小矢部川水系横江宮川</gml:description><gml:name>6</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry><gml:Definition gml:id="id7"><gml:description>小矢部川水系千保川</gml:description><gml:name>7</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry><gml:Definition gml:id="id8"><gml:description>小矢部川水系岸渡川</gml:description><gml:name>8</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry><gml:Definition gml:id="id9"><gml:description>小矢部川水系子撫川</gml:description><gml:name>9</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+ <gml:dictionaryEntry><gml:Definition gml:id="id10"><gml:description>小矢部川水系谷内川</gml:description><gml:name>10</gml:name>
+  </gml:Definition>
+ </gml:dictionaryEntry>
+</gml:Dictionary>

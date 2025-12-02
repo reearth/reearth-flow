@@ -30,6 +30,7 @@ type Job struct {
 	deployment        DeploymentID
 	id                ID
 	workspace         WorkspaceID
+	variables         map[string]string
 }
 
 func NewJob(id ID, deployment DeploymentID, workspace WorkspaceID, gcpJobID string) *Job {
@@ -132,6 +133,10 @@ func (j *Job) OutputURLs() []string {
 	return j.outputURLs
 }
 
+func (j *Job) Variables() map[string]string {
+	return j.variables
+}
+
 func (j *Job) SetID(id ID) {
 	j.id = id
 }
@@ -194,4 +199,8 @@ func (j *Job) SetBatchStatus(batchStatus Status) {
 
 func (j *Job) SetWorkerStatus(workerStatus Status) {
 	j.workerStatus = &workerStatus
+}
+
+func (j *Job) SetVariables(variables map[string]string) {
+	j.variables = variables
 }

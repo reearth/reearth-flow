@@ -24,6 +24,7 @@ pub trait SchemaCache: Send + Sync {
 }
 
 /// No-op implementation when cache is not available
+#[allow(dead_code)]
 pub struct NoOpSchemaCache;
 
 impl SchemaCache for NoOpSchemaCache {
@@ -103,6 +104,19 @@ impl SchemaCache for FileSystemSchemaCache {
             path.display()
         );
 
+        // Check if file already exists with correct content (avoid unnecessary writes)
+        if path.exists() {
+            if let Ok(existing_content) = std::fs::read(&path) {
+                if existing_content == content {
+                    tracing::debug!(
+                        "Schema already cached with correct content: {}",
+                        path.display()
+                    );
+                    return Ok(());
+                }
+            }
+        }
+
         // Create parent directories if needed
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).map_err(|e| {
@@ -112,9 +126,50 @@ impl SchemaCache for FileSystemSchemaCache {
             })?;
         }
 
-        std::fs::write(&path, content).map_err(|e| {
+        // Use atomic write pattern: write to temp file, then rename
+        // This prevents race conditions where multiple threads try to write the same file
+        use std::io::Write;
+        let temp_path = path.with_extension("tmp");
+
+        // Write to temporary file
+        let mut temp_file = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&temp_path)
+            .map_err(|e| {
+                super::errors::XmlProcessorError::Validator(format!(
+                    "Failed to create temp file {}: {e}",
+                    temp_path.display()
+                ))
+            })?;
+
+        temp_file.write_all(content).map_err(|e| {
             super::errors::XmlProcessorError::Validator(format!(
-                "Failed to write schema to {}: {e}",
+                "Failed to write to temp file {}: {e}",
+                temp_path.display()
+            ))
+        })?;
+
+        // Ensure all data is flushed to disk
+        temp_file.sync_all().map_err(|e| {
+            super::errors::XmlProcessorError::Validator(format!(
+                "Failed to sync temp file {}: {e}",
+                temp_path.display()
+            ))
+        })?;
+
+        // Close file handle before rename
+        drop(temp_file);
+
+        // Atomic rename (filesystem-level atomic operation)
+        // If the target file already exists, it will be replaced atomically
+        std::fs::rename(&temp_path, &path).map_err(|e| {
+            // Clean up temp file on error
+            let _ = std::fs::remove_file(&temp_path);
+            super::errors::XmlProcessorError::Validator(format!(
+                "Failed to rename temp file {} to {}: {e}",
+                temp_path.display(),
                 path.display()
             ))
         })?;

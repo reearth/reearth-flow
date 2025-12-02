@@ -30,7 +30,7 @@ reearth-flow-telemetry.workspace = true
 reearth-flow-types.workspace = true
 
 async-trait.workspace = true
-backon = "1.5.1"
+backon = "1.6.0"
 bytes.workspace = true
 chrono.workspace = true
 clap.workspace = true

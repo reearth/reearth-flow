@@ -206,60 +206,26 @@ nodes:
     action: PLATEAU4.BuildingUsageAttributeValidator
 
   - id: 8f2a1b3c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
-    name: AttributeManager-l-bldg-04-05-transform
+    name: AttributeMapper-l-bldg-04-05-transform
     type: action
-    action: AttributeManager
+    action: AttributeMapper
     with:
-      operations:
-        - attribute: gmlFilename
-          method: rename
-          value: Filename
-        - attribute: fileIndex
-          method: rename
-          value: Index
-        - attribute: gmlId
-          method: rename
-          value: gml_id
-        - attribute: errors
-          method: rename
-          value: Building Usage Attribute Error
-        - attribute: featureType
-          method: rename
-          value: Feature Type
-        - attribute: admin
-          method: remove
-        - attribute: maxLod
-          method: remove
-        - attribute: package
-          method: remove
-        - attribute: gmlRootId
-          method: remove
-        - attribute: gmlName
-          method: remove
-        - attribute: extension
-          method: remove
-        - attribute: area
-          method: remove
-        - attribute: root
-          method: remove
-        - attribute: dirSchemas
-          method: remove
-        - attribute: dirRoot
-          method: remove
-        - attribute: cityCodeError
-          method: remove
-        - attribute: featureIndex
-          method: remove
-        - attribute: gmlPath
-          method: remove
-        - attribute: dirCodelists
-          method: remove
-        - attribute: udxDirs
-          method: remove
-        - attribute: cityGmlAttributes
-          method: remove
-        - attribute: lod
-          method: remove
+      mappers:
+        - attribute: Filename
+          expr: |
+            env.get("__value").gmlFilename
+        - attribute: Index
+          expr: |
+            env.get("__value").fileIndex
+        - attribute: gml_id
+          expr: |
+            env.get("__value").gmlId
+        - attribute: Building Usage Attribute Error
+          expr: |
+            env.get("__value").errors
+        - attribute: Feature Type
+          expr: |
+            env.get("__value").featureType
 
   - id: 72b70428-0bb9-401b-a295-881556adc526
     name: FileTSVWriterLBDLG04-05
@@ -271,58 +237,26 @@ nodes:
         file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "02_建築物_L-bldg-04,05エラー.csv")
 
   - id: 5d8e7f4a-3b2c-4f1e-9a8d-6c5b4e3f2a1b
-    name: AttributeManager-city-code-error-transform
+    name: AttributeMapper-city-code-error-transform
     type: action
-    action: AttributeManager
+    action: AttributeMapper
     with:
-      operations:
-        - attribute: gmlFilename
-          method: rename
-          value: Filename
-        - attribute: fileIndex
-          method: rename
-          value: Index
-        - attribute: gmlId
-          method: rename
-          value: gml_id
-        - attribute: cityCodeError
-          method: rename
-          value: City Code Error
-        - attribute: featureType
-          method: rename
-          value: Feature Type
-        - attribute: package
-          method: remove
-        - attribute: dirRoot
-          method: remove
-        - attribute: maxLod
-          method: remove
-        - attribute: udxDirs
-          method: remove
-        - attribute: dirSchemas
-          method: remove
-        - attribute: root
-          method: remove
-        - attribute: area
-          method: remove
-        - attribute: gmlPath
-          method: remove
-        - attribute: gmlName
-          method: remove
-        - attribute: gmlRootId
-          method: remove
-        - attribute: admin
-          method: remove
-        - attribute: cityGmlAttributes
-          method: remove
-        - attribute: featureIndex
-          method: remove
-        - attribute: dirCodelists
-          method: remove
-        - attribute: extension
-          method: remove
-        - attribute: lod
-          method: remove
+      mappers:
+        - attribute: Filename
+          expr: |
+            env.get("__value").gmlFilename
+        - attribute: Index
+          expr: |
+            env.get("__value").fileIndex
+        - attribute: gml_id
+          expr: |
+            env.get("__value").gmlId
+        - attribute: City Code Error
+          expr: |
+            env.get("__value").cityCodeError
+        - attribute: Feature Type
+          expr: |
+            env.get("__value").featureType
 
   - id: ab3505ad-4e89-4442-ab36-c52ac29c332e
     name: FileTSVWriterCityCodeError
@@ -379,7 +313,7 @@ nodes:
       conditions:
         - expr: |
             let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
+            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
             let building_id = building_id_attribute["uro:buildingID"] ?? "";
             let branch_id = building_id_attribute["uro:branchID"]  ?? "";
             let part_id = building_id_attribute["uro:partID"] ?? "";
@@ -420,17 +354,17 @@ nodes:
         - attribute: "uro:buildingID"
           expr: |
             let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
+            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
             building_id_attribute["uro:buildingID"] ?? ""
         - attribute: "uro:branchID"
           expr: |
             let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
+            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
             building_id_attribute["uro:branchID"] ?? "（なし）"
         - attribute: "uro:partID"
           expr: |
             let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? #{};
+            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
             building_id_attribute["uro:partID"] ?? "（なし）"
 
   - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
@@ -451,17 +385,17 @@ nodes:
         - newAttribute: uroBuildingId
           attributeValue: |
             let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? [];
+            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
             building_id_attribute["uro:buildingID"] ?? ""
         - newAttribute: uroBranchId
           attributeValue: |
             let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? [];
+            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
             building_id_attribute["uro:branchID"] ?? ""
         - newAttribute: uroPartId
           attributeValue: |
             let attributes = env.get("__value").cityGmlAttributes ?? #{};
-            let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? [];
+            let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
             building_id_attribute["uro:partID"] ?? ""
       calculation: |
         1
@@ -476,7 +410,7 @@ nodes:
     with:
       requestorAttributeValue: |
         let attributes = env.get("__value").cityGmlAttributes ?? #{};
-        let building_id_attribute = attributes["uro:BuildingIDAttribute"] ?? [];
+        let building_id_attribute = (attributes["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
         (building_id_attribute["uro:buildingID"] ?? "") + "-" + (building_id_attribute["uro:branchID"] ?? "") + "-" + (building_id_attribute["uro:partID"] ?? "")
       supplierAttributeValue: |
         (env.get("__value").uroBuildingId ?? "") + "-" + (env.get("__value").uroBranchId ?? "") + "-" + (env.get("__value").uroPartId ?? "")
@@ -509,12 +443,12 @@ nodes:
         - attribute: UroBuildingId
           expr: |
             let city_gml_attrs = env.get("__value").cityGmlAttributes ?? #{};
-            let bldg_id_attr = city_gml_attrs["uro:BuildingIDAttribute"];
+            let bldg_id_attr = (city_gml_attrs["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
             bldg_id_attr["uro:buildingID"] ?? ""
         - attribute: UroBranchId
           expr: |
             let city_gml_attrs = env.get("__value").cityGmlAttributes ?? #{};
-            let bldg_id_attr = city_gml_attrs["uro:BuildingIDAttribute"];
+            let bldg_id_attr = (city_gml_attrs["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
             let branch_id = bldg_id_attr["uro:branchID"] ?? "";
             if (branch_id == "") {
               "（なし）"
@@ -525,7 +459,7 @@ nodes:
         - attribute: UroPartId
           expr: |
             let city_gml_attrs = env.get("__value").cityGmlAttributes ?? #{};
-            let bldg_id_attr = city_gml_attrs["uro:BuildingIDAttribute"] ?? #{};
+            let bldg_id_attr = (city_gml_attrs["uro:BuildingIDAttribute"] ?? []).get(0) ?? #{};
             let part_id = bldg_id_attr["uro:partID"] ?? "";
             if (part_id == "") {
               "（なし）"

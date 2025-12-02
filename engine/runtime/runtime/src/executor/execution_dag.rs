@@ -181,6 +181,10 @@ impl ExecutionDag {
         &self.event_hub
     }
 
+    pub fn feature_state(&self) -> Arc<State> {
+        Arc::clone(&self.ingress_state)
+    }
+
     pub fn ingress_state(&self) -> &Arc<State> {
         &self.ingress_state
     }
@@ -222,8 +226,21 @@ impl ExecutionDag {
         node_index: petgraph::graph::NodeIndex,
     ) -> HashMap<FeatureWriterKey, Vec<Box<dyn FeatureWriter>>> {
         let mut feature_writers = HashMap::<FeatureWriterKey, Vec<Box<dyn FeatureWriter>>>::new();
+
+        // Check if this node is a Source (Reader)
+        let is_source_node = self.graph[node_index].is_source;
+
         for edge in self.graph.edges(node_index) {
             let weight = edge.weight();
+
+            // Skip creating feature_writers for Source→Processor edges
+            // ProcessorNode handles Reader intermediate data writes directly
+            if is_source_node {
+                continue;
+            }
+
+            // Note: Despite the confusing names, weight.input_port is actually the SOURCE output port
+            // and weight.output_port is actually the DOWNSTREAM input port (see lines 91-92 where they're swapped)
             let writer_key =
                 FeatureWriterKey(weight.input_port.clone(), weight.output_port.clone());
             let edge_type = self

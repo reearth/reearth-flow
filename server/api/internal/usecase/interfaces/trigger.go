@@ -10,13 +10,14 @@ import (
 )
 
 type CreateTriggerParam struct {
-	Variables    map[string]string
+	WorkspaceID  id.WorkspaceID
+	DeploymentID id.DeploymentID
 	Description  string
 	EventSource  trigger.EventSourceType
 	TimeInterval trigger.TimeInterval
 	AuthToken    string
-	WorkspaceID  id.WorkspaceID
-	DeploymentID id.DeploymentID
+	Enabled      *bool
+	Variables    map[string]string
 }
 
 type ExecuteAPITriggerParam struct {
@@ -32,13 +33,14 @@ type ExecuteTimeDrivenTriggerParam struct {
 }
 
 type UpdateTriggerParam struct {
+	ID           id.TriggerID
 	DeploymentID *id.DeploymentID
 	Description  *string
-	Variables    map[string]string
 	EventSource  trigger.EventSourceType
 	TimeInterval trigger.TimeInterval
 	AuthToken    string
-	ID           id.TriggerID
+	Enabled      *bool
+	Variables    map[string]string
 }
 
 var (

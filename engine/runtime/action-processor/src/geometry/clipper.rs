@@ -1013,7 +1013,7 @@ mod tests {
 
         let (insides, outsides) = clip_polygon2d(&polygon, &[clip_region1, clip_region2]);
 
-        // With multiple clip regions, the result should be their intersection
+        // With multiple clip regions unioned, features overlapping ANY region go to inside
         assert!(
             !insides.is_empty() || !outsides.is_empty(),
             "Should have some results"
@@ -1097,6 +1097,7 @@ mod tests {
         let gml_geometry = GmlGeometry {
             id: Some("test_gml".to_string()),
             ty: GeometryType::Surface,
+            gml_trait: None,
             lod: Some(2),
             pos: 0,
             len: 1,
@@ -1159,6 +1160,7 @@ mod tests {
         let gml_clipper = GmlGeometry {
             id: Some("clipper_gml".to_string()),
             ty: GeometryType::Surface,
+            gml_trait: None,
             lod: Some(2),
             pos: 0,
             len: 1,
@@ -1222,6 +1224,7 @@ mod tests {
         let nested_gml = GmlGeometry {
             id: Some("nested_surface".to_string()),
             ty: GeometryType::Surface,
+            gml_trait: None,
             lod: Some(2),
             pos: 0,
             len: 1,
@@ -1236,6 +1239,7 @@ mod tests {
         let parent_gml = GmlGeometry {
             id: Some("parent_solid".to_string()),
             ty: GeometryType::Solid,
+            gml_trait: None,
             lod: Some(2),
             pos: 0,
             len: 2,
@@ -1305,6 +1309,7 @@ mod tests {
         let curve_gml = GmlGeometry {
             id: Some("curve_gml".to_string()),
             ty: GeometryType::Curve,
+            gml_trait: None,
             lod: Some(2),
             pos: 0,
             len: 1,
@@ -1367,6 +1372,7 @@ mod tests {
         let wall1 = GmlGeometry {
             id: Some("wall1".to_string()),
             ty: GeometryType::Surface,
+            gml_trait: None,
             lod: Some(2),
             pos: 0,
             len: 1,
@@ -1380,6 +1386,7 @@ mod tests {
         let wall2 = GmlGeometry {
             id: Some("wall2".to_string()),
             ty: GeometryType::Surface,
+            gml_trait: None,
             lod: Some(2),
             pos: 1,
             len: 1,
@@ -1394,6 +1401,7 @@ mod tests {
         let solid = GmlGeometry {
             id: Some("building_solid".to_string()),
             ty: GeometryType::Solid,
+            gml_trait: None,
             lod: Some(2),
             pos: 0,
             len: 2,

@@ -101,12 +101,19 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 		Deployment(param.DeploymentID).
 		Description(param.Description).
 		EventSource(param.EventSource).
+		CreatedAt(time.Now()).
 		UpdatedAt(time.Now())
 
 	if param.EventSource == "TIME_DRIVEN" {
 		t = t.TimeInterval(trigger.TimeInterval(param.TimeInterval))
 	} else if param.EventSource == "API_DRIVEN" {
 		t = t.AuthToken(param.AuthToken)
+	}
+
+	if param.Enabled != nil {
+		t = t.Enabled(*param.Enabled)
+	} else {
+		t = t.Enabled(true)
 	}
 
 	if len(param.Variables) > 0 {
@@ -155,6 +162,10 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		return nil, err
 	}
 
+	if !trigger.Enabled() {
+		return nil, fmt.Errorf("trigger is disabled")
+	}
+
 	if trigger.EventSource() == "API_DRIVEN" {
 		if p.AuthenticationToken != *trigger.AuthToken() {
 			return nil, fmt.Errorf("invalid auth token")
@@ -175,19 +186,13 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		projectParamsMap = projectParametersToMap(pls)
 	}
 
-	// TODO: Deployment.variables (to be implemented in Phase 2 of the task — Triggers Variables Support on Flow UI
-	var deploymentVars map[string]string
-	// if dv := deployment.Variables(); dv != nil {
-	// 	deploymentVars = dv
-	// }
-
 	triggerVars := trigger.Variables()
 	requestVars := normalizeRequestVars(p.Variables)
 
 	finalVars := resolveVariables(
 		ModeAPIDriven,
 		projectParamsMap,
-		deploymentVars,
+		nil, // TODO: Add deploymentVars here if deployment.variables are supported/needed.
 		triggerVars,
 		requestVars,
 	)
@@ -198,6 +203,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		Workspace(deployment.Workspace()).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
+		Variables(finalVars).
 		Build()
 	if err != nil {
 		return nil, err
@@ -263,6 +269,10 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		return nil, err
 	}
 
+	if !trigger.Enabled() {
+		return nil, fmt.Errorf("trigger is disabled")
+	}
+
 	if trigger.EventSource() != "TIME_DRIVEN" {
 		return nil, fmt.Errorf("trigger is not time-driven")
 	}
@@ -281,18 +291,12 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		projectParamsMap = projectParametersToMap(pls)
 	}
 
-	// TODO: Deployment.variables (to be implemented in Phase 2 of the task — Triggers Variables Support on Flow UI
-	var deploymentVars map[string]string
-	// if dv := deployment.Variables(); dv != nil {
-	// 	deploymentVars = dv
-	// }
-
 	triggerVars := trigger.Variables()
 
 	finalVars := resolveVariables(
 		ModeTimeDriven,
 		projectParamsMap,
-		deploymentVars,
+		nil, // TODO: Add deploymentVars here if deployment.variables are supported/needed.
 		triggerVars,
 		nil,
 	)
@@ -303,6 +307,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		Workspace(deployment.Workspace()).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
+		Variables(finalVars).
 		Build()
 	if err != nil {
 		return nil, err
@@ -322,7 +327,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		projectID = *deployment.Project()
 	}
 
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), finalVars, projectID, deployment.Workspace())
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), j.Variables(), projectID, deployment.Workspace())
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Time-driven job submission failed: %v\n", err)
 		return nil, interfaces.ErrJobCreationFailed
@@ -395,7 +400,13 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 		t.SetAuthToken(param.AuthToken)
 	}
 
-	t.SetVariables(param.Variables)
+	if param.Enabled != nil {
+		t.SetEnabled(*param.Enabled)
+	}
+
+	if param.Variables != nil {
+		t.SetVariables(param.Variables)
+	}
 
 	if err := i.triggerRepo.Save(ctx, t); err != nil {
 		return nil, err
