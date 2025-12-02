@@ -27,7 +27,7 @@
         },
         {
             "attribute": "bldg:measuredHeight",
-            "data_type": "int",
+            "data_type": "measure",
             "json_path": "bldg:measuredHeight"
         },
         {
@@ -87,22 +87,22 @@
         },
         {
             "attribute": "uro:BuildingDetailAttribute_uro:siteArea",
-            "data_type": "int",
+            "data_type": "measure",
             "json_path": "uro:BuildingDetailAttribute uro:siteArea"
         },
         {
             "attribute": "uro:BuildingDetailAttribute_uro:totalFloorArea",
-            "data_type": "int",
+            "data_type": "measure",
             "json_path": "uro:BuildingDetailAttribute uro:totalFloorArea"
         },
         {
             "attribute": "uro:BuildingDetailAttribute_uro:buildingFootprintArea",
-            "data_type": "int",
+            "data_type": "measure",
             "json_path": "uro:BuildingDetailAttribute uro:buildingFootprintArea"
         },
         {
             "attribute": "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea",
-            "data_type": "int",
+            "data_type": "measure",
             "json_path": "uro:BuildingDetailAttribute uro:buildingRoofEdgeArea"
         },
         {
@@ -182,7 +182,7 @@
         },
         {
             "attribute": "uro:BuildingDetailAttribute_uro:surveyYear",
-            "data_type": "string",
+            "data_type": "int",
             "json_path": "uro:BuildingDetailAttribute uro:surveyYear"
         },
         {
@@ -284,6 +284,16 @@
             "attribute": "uro:buildingDataQualityAttribute_uro:lod1HeightType_code",
             "data_type": "string",
             "json_path": "uro:buildingDataQualityAttribute uro:lod1HeightType_code"
+        },
+        {
+            "attribute": "uro:geometrySrcDescLod1",
+            "data_type": "string",
+            "json_path": "uro:DataQualityAttribute uro:geometrySrcDescLod1"
+        },
+        {
+            "attribute": "uro:lod1HeightType",
+            "data_type": "string",
+            "json_path": "uro:DataQualityAttribute uro:lod1HeightType"
         }
     ],
 	"rwy/tran:AuxiliaryTrafficArea": [

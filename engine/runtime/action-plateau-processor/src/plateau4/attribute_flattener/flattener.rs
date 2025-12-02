@@ -214,10 +214,17 @@ impl Flattener {
                 if attr_value.is_empty() {
                     continue;
                 }
-                result.insert(
-                    Attribute::new(attr_key.clone()),
-                    AttributeValue::String(attr_value.clone()),
-                );
+                let attr_value = match &value_type {
+                    AttributeValue::Number(_) => {
+                        if let Ok(n) = attr_value.parse::<i64>() {
+                            AttributeValue::Number(n.into())
+                        } else {
+                            AttributeValue::String(attr_value.clone())
+                        }
+                    }
+                    _ => AttributeValue::String(attr_value.clone()),
+                };
+                result.insert(Attribute::new(attr_key.clone()), attr_value);
                 self.risk_to_attribute_definitions
                     .entry("lsld".to_string())
                     .or_default()
@@ -225,6 +232,26 @@ impl Flattener {
             }
         }
         result
+    }
+
+    /// Extract bldg:address from core:Address nested structure
+    /// core:Address[0].xAL:AddressDetails[0].xAL:Country[0].xAL:Locality -> bldg:address
+    pub(super) fn extract_address(
+        attributes: &HashMap<String, AttributeValue>,
+    ) -> Option<AttributeValue> {
+        let address_array = attributes.get("core:Address")?;
+        let address_list = address_array.as_vec()?;
+        let address_obj = address_list.first()?.as_map()?;
+
+        let details_array = address_obj.get("xAL:AddressDetails")?;
+        let details_list = details_array.as_vec()?;
+        let details_obj = details_list.first()?.as_map()?;
+
+        let country_array = details_obj.get("xAL:Country")?;
+        let country_list = country_array.as_vec()?;
+        let country_obj = country_list.first()?.as_map()?;
+
+        country_obj.get("xAL:Locality").cloned()
     }
 }
 
@@ -299,9 +326,33 @@ impl CommonAttributeProcessor {
 
     pub(super) fn flatten_generic_attributes(
         &mut self,
-        attribute: &HashMap<String, AttributeValue>,
+        attributes: &HashMap<String, AttributeValue>,
     ) -> HashMap<Attribute, AttributeValue> {
-        self.flatten_generic_attribute(attribute, "")
+        let mut result = HashMap::new();
+
+        // Extract gen:genericAttribute array from the citygml attributes
+        let Some(generic_attrs) = attributes.get("gen:genericAttribute") else {
+            return result;
+        };
+
+        let generic_attrs = match generic_attrs {
+            AttributeValue::Array(arr) => arr,
+            AttributeValue::Map(map) => {
+                // Single attribute case
+                result.extend(self.flatten_generic_attribute(map, ""));
+                return result;
+            }
+            _ => return result,
+        };
+
+        // Process each generic attribute in the array
+        for attr in generic_attrs {
+            if let AttributeValue::Map(attr_map) = attr {
+                result.extend(self.flatten_generic_attribute(attr_map, ""));
+            }
+        }
+
+        result
     }
 
     #[allow(dead_code)]
