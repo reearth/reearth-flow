@@ -243,8 +243,8 @@ graphs:
     action: AttributeManager
     with:
       operations:
-      - attribute: feature_type
-        method: convert
+      - attribute: feature_type_without_prefix
+        method: create
         value: |
           env.get("__value").feature_type.split(":")[1]
   - id: b5c6d7e8-f9a0-1b2c-3d4e-5f6a7b8c9d0e
@@ -365,7 +365,7 @@ graphs:
         DID,DID
       rules:
       - featureFroms:
-        - feature_type
+        - feature_type_without_prefix
         featureTo: feature_type_ja
         conversionTableKeys:
         - name
@@ -380,7 +380,7 @@ graphs:
       converter: |
         #{
           urf: env.get("__features").map(|f| #{
-            name: f.feature_type,
+            name: f.feature_type_without_prefix,
             description: f.feature_type_ja
           })
         }

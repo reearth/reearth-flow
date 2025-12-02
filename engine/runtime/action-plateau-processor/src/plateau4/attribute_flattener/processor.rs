@@ -228,8 +228,9 @@ impl AttributeFlattener {
         lookup_key: &str,
     ) {
         let mut ancestors = vec![];
+        let feature_type = feature.feature_type().unwrap_or_default();
         let mut citygml_attributes =
-            if feature.feature_type().as_deref() == Some("uro:DmGeometricAttribute") {
+            if feature_type == "uro:DmGeometricAttribute" {
                 // get parent attributes before stripping parent info
                 let mut parent_attr = self.get_parent_attr(&citygml_attributes);
                 strip_parent_info(&mut citygml_attributes);
@@ -270,7 +271,11 @@ impl AttributeFlattener {
                     self.gmlid_to_citygml_attributes
                         .insert(feature_id, citygml_attributes.clone());
                 }
-                ancestors = self.build_ancestors_attribute(&citygml_attributes);
+                if feature_type.starts_with("urf:") {
+                    // skip ancestor building for urf features
+                } else {
+                    ancestors = self.build_ancestors_attribute(&citygml_attributes);
+                }
                 citygml_attributes
             };
         strip_parent_info(&mut citygml_attributes);
