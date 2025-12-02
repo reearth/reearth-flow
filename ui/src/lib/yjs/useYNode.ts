@@ -152,10 +152,19 @@ export default ({
             const existingYNode = yNodes.get(change.id);
 
             if (existingYNode && change.position) {
-              const newPosition = new Y.Map<unknown>();
-              newPosition.set("x", change.position.x);
-              newPosition.set("y", change.position.y);
-              existingYNode.set("position", newPosition);
+              const existingPosition = existingYNode.get(
+                "position",
+              ) as Y.Map<unknown>;
+
+              if (existingPosition) {
+                existingPosition.set("x", change.position.x);
+                existingPosition.set("y", change.position.y);
+              } else {
+                const newPosition = new Y.Map<unknown>();
+                newPosition.set("x", change.position.x);
+                newPosition.set("y", change.position.y);
+                existingYNode.set("position", newPosition);
+              }
             }
             break;
           }
@@ -172,16 +181,34 @@ export default ({
             const existingYNode = yNodes.get(change.id);
 
             if (existingYNode && change.dimensions) {
-              const newMeasured = new Y.Map<unknown>();
-              newMeasured.set("width", change.dimensions.width);
-              newMeasured.set("height", change.dimensions.height);
-              existingYNode?.set("measured", newMeasured);
+              const existingMeasured = existingYNode.get(
+                "measured",
+              ) as Y.Map<unknown>;
+
+              if (existingMeasured) {
+                existingMeasured.set("width", change.dimensions.width);
+                existingMeasured.set("height", change.dimensions.height);
+              } else {
+                const newMeasured = new Y.Map<unknown>();
+                newMeasured.set("width", change.dimensions.width);
+                newMeasured.set("height", change.dimensions.height);
+                existingYNode.set("measured", newMeasured);
+              }
 
               if (change.setAttributes) {
-                const newStyle = new Y.Map<unknown>();
-                newStyle.set("width", change.dimensions.width + "px");
-                newStyle.set("height", change.dimensions.height + "px");
-                existingYNode?.set("style", newStyle);
+                const existingStyle = existingYNode.get(
+                  "style",
+                ) as Y.Map<unknown>;
+
+                if (existingStyle) {
+                  existingStyle.set("width", change.dimensions.width + "px");
+                  existingStyle.set("height", change.dimensions.height + "px");
+                } else {
+                  const newStyle = new Y.Map<unknown>();
+                  newStyle.set("width", change.dimensions.width + "px");
+                  newStyle.set("height", change.dimensions.height + "px");
+                  existingYNode.set("style", newStyle);
+                }
               }
             }
             break;

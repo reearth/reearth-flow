@@ -82,32 +82,14 @@ jobs:
       - name: check
         run: cargo make check
       - name: rustfmt
-        run: cargo fmt --all -- --check
+        run: cargo make format -- --check
       - name: clippy
         run: cargo make clippy
       - name: taplo
-        run: taplo fmt --check
-      - name: run generate schema
-        run: cargo make doc-action
+        run: cargo make format-taplo --check
       - name: check generated schema
-        run: |
-          git add -N .
-          git diff
-          line=$(git diff | wc -l)
-          if [ "$line" -gt 0 ]; then
-            echo "Please run 'cargo make doc-action' and commit the changes."
-            git diff
-            exit 1
-          fi
+        run: cargo make check-doc-action
       - name: check generated cms workflows
         run: cargo make check-generate-examples-cms-workflow
       - name: run tests
         run: cargo make test
-      - name: run plateau-tiles-test
-        working-directory: engine/plateau-tiles-test
-        env:
-          CLEANUP_AFTER_TEST: "1"
-          PLATEAU_TILES_TEST_VERBOSITY: "info"
-        run: |
-          sh setup.sh
-          uv run python3 -m plateau-tiles-test

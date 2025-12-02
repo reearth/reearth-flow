@@ -284,17 +284,40 @@ impl AttributeValue {
         // Special handling for gen:genericAttribute to match reference implementation format
         if obj.typename == "gen:genericAttribute" {
             let generic_attrs = Self::convert_generic_attributes(&obj.attributes);
-            result.insert(
-                obj.typename.to_string(),
-                AttributeValue::Array(generic_attrs),
-            );
+            // Append to existing array if key exists, otherwise create new
+            Self::append_to_array(result, obj.typename.to_string(), generic_attrs);
         } else {
             // recursive process for other objects
             let attrs = Self::process_object_attributes(&obj.attributes);
-            result.insert(
-                obj.typename.to_string(),
-                AttributeValue::Array(vec![AttributeValue::Map(attrs)]),
-            );
+            let new_value = AttributeValue::Map(attrs);
+            // Append to existing array if key exists (e.g., multiple KeyValuePairAttribute)
+            Self::append_to_array(result, obj.typename.to_string(), vec![new_value]);
+        }
+    }
+
+    /// Helper to append values to an existing array or create a new one
+    fn append_to_array(
+        result: &mut HashMap<String, AttributeValue>,
+        key: String,
+        new_values: Vec<AttributeValue>,
+    ) {
+        match result.get_mut(&key) {
+            Some(AttributeValue::Array(existing)) => {
+                // Append to existing array
+                existing.extend(new_values);
+            }
+            Some(_) => {
+                // Key exists but is not an array - this shouldn't happen, but handle gracefully
+                tracing::warn!(
+                    "Expected array for key '{}' but found different type, replacing",
+                    key
+                );
+                result.insert(key, AttributeValue::Array(new_values));
+            }
+            None => {
+                // Create new array
+                result.insert(key, AttributeValue::Array(new_values));
+            }
         }
     }
 
