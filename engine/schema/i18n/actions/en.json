@@ -57,6 +57,10 @@
       "description": "Writes features to a file"
     },
     {
+      "name": "CityGmlWriter",
+      "description": "Writes features to CityGML 2.0 files with PLATEAU extension support"
+    },
+    {
       "name": "Clipper",
       "description": "Divides Candidate features using Clipper features, so that Candidates and parts of Candidates that are inside or outside of the Clipper features are output separately"
     },

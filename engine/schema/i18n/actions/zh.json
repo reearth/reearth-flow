@@ -57,6 +57,10 @@
       "description": "将实体写入文件"
     },
     {
+      "name": "CityGmlWriter",
+      "description": "将实体写入CityGML 2.0文件，支持PLATEAU扩展"
+    },
+    {
       "name": "Clipper",
       "description": "使用裁剪实体来分割候选实体，使内部或外部部分分别输出"
     },
@@ -383,6 +387,10 @@
     {
       "name": "TwoDimensionForcer",
       "description": "将几何强制为二维"
+    },
+    {
+      "name": "ThreeDimensionForcer",
+      "description": "通过添加Z坐标（高程）将2D几何转换为3D"
     },
     {
       "name": "VertexRemover",

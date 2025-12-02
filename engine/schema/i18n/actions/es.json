@@ -57,6 +57,10 @@
       "description": "Escribe las entidades en un archivo"
     },
     {
+      "name": "CityGmlWriter",
+      "description": "Escribe entidades en archivos CityGML 2.0 con soporte de extensiones PLATEAU"
+    },
+    {
       "name": "Clipper",
       "description": "Divide las entidades candidatas utilizando entidades recortadoras, de modo que las partes dentro o fuera de las recortadoras se produzcan por separado"
     },
@@ -383,6 +387,10 @@
     {
       "name": "TwoDimensionForcer",
       "description": "Fuerza una geometría a ser bidimensional."
+    },
+    {
+      "name": "ThreeDimensionForcer",
+      "description": "Convierte geometrías 2D a 3D añadiendo coordenadas Z (elevación)"
     },
     {
       "name": "VertexRemover",

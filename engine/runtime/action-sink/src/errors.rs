@@ -54,6 +54,10 @@ pub enum SinkError {
     JsonWriterFactory(String),
     #[error("Json Writer error: {0}")]
     JsonWriter(String),
+    #[error("CityGml Writer Factory error: {0}")]
+    CityGmlWriterFactory(String),
+    #[error("CityGml Writer error: {0}")]
+    CityGmlWriter(String),
     #[error("Geometry export error: {0}")]
     GeometryExport(#[from] GeometryExportError),
 }
@@ -93,6 +97,10 @@ impl SinkError {
 
     pub fn excel_writer<T: ToString>(message: T) -> Self {
         Self::ExcelWriter(message.to_string())
+    }
+
+    pub fn citygml_writer<T: ToString>(message: T) -> Self {
+        Self::CityGmlWriter(message.to_string())
     }
 }
 

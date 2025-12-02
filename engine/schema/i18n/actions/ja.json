@@ -57,6 +57,10 @@
       "description": "地物をファイルに書き出す"
     },
     {
+      "name": "CityGmlWriter",
+      "description": "地物をCityGML 2.0ファイルに書き出す（PLATEAU拡張対応）"
+    },
+    {
       "name": "Clipper",
       "description": "クリッパー地物を用いて候補地物を分割し、内部または外部の部分を別々に出力する"
     },
@@ -383,6 +387,10 @@
     {
       "name": "TwoDimensionForcer",
       "description": "ジオメトリを2次元に強制する"
+    },
+    {
+      "name": "ThreeDimensionForcer",
+      "description": "Z座標（標高）を追加して2Dジオメトリを3Dに変換する"
     },
     {
       "name": "VertexRemover",

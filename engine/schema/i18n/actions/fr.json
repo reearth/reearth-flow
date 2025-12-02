@@ -57,6 +57,10 @@
       "description": "Export Features as Cesium 3D Tiles for Web Visualization"
     },
     {
+      "name": "CityGmlWriter",
+      "description": "Writes features to CityGML 2.0 files with PLATEAU extension support"
+    },
+    {
       "name": "Clipper",
       "description": "Clip Features Using Boundary Shapes"
     },
@@ -383,6 +387,10 @@
     {
       "name": "TwoDimensionForcer",
       "description": "Force 3D Geometry to 2D by Removing Z-Coordinates"
+    },
+    {
+      "name": "ThreeDimensionForcer",
+      "description": "Converts 2D geometries to 3D by adding Z-coordinates (elevation)"
     },
     {
       "name": "VertexRemover",

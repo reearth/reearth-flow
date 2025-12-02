@@ -1235,6 +1235,98 @@ Reads 3D city models from CityGML files.
 ### Category
 * File
 
+## CityGmlWriter
+### Type
+* sink
+### Description
+Writes features to CityGML 2.0 files
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CityGmlWriterParam",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "codelistPath": {
+      "description": "Path prefix for codelist references (default: \"../../codelists/\")",
+      "default": "../../codelists/",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "epsgCode": {
+      "description": "EPSG code for coordinate reference system",
+      "default": null,
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "minimum": 0.0
+    },
+    "includePlateau": {
+      "description": "Whether to include PLATEAU extension namespaces (default: true)",
+      "default": true,
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "lodFilter": {
+      "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
+      "default": null,
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "integer",
+        "format": "uint8",
+        "minimum": 0.0
+      }
+    },
+    "output": {
+      "description": "Output file path expression",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "prettyPrint": {
+      "description": "Whether to format output with indentation (default: true)",
+      "default": true,
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "writeAttributes": {
+      "description": "Whether to write feature attributes (default: true)",
+      "default": true,
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
+
 ## Clipper
 ### Type
 * processor
