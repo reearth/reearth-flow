@@ -13,6 +13,7 @@ type Job implements Node {
   workspace: Workspace
   workspaceId: ID!
   logs(since: DateTime!): [Log]
+  variables: JSON
 }
 
 enum JobStatus {

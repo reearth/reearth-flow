@@ -36,7 +36,7 @@ jobs:
           remove-docker-images: 'true'
           remove-swapfile: 'true'
           remove-cached-tools: 'true'
-      - uses: dtolnay/rust-toolchain@1.88
+      - uses: dtolnay/rust-toolchain@1.91
         with:
           components: clippy, rustfmt
       - name: Cache cargo registry
@@ -47,7 +47,7 @@ jobs:
       - name: install required tools
         uses: taiki-e/install-action@v2
         with:
-          tool: taplo-cli,cargo-make,cargo-edit
+          tool: taplo-cli,cargo-make,cargo-edit,uv
       - name: install yaml-include
         run: cargo install yaml-include
       - name: Compare version with previous commit
@@ -82,23 +82,13 @@ jobs:
       - name: check
         run: cargo make check
       - name: rustfmt
-        run: cargo fmt --all -- --check
+        run: cargo make format -- --check
       - name: clippy
         run: cargo make clippy
       - name: taplo
-        run: taplo fmt --check
-      - name: run generate schema
-        run: cargo make doc-action
+        run: cargo make format-taplo --check
       - name: check generated schema
-        run: |
-          git add -N .
-          git diff
-          line=$(git diff | wc -l)
-          if [ "$line" -gt 0 ]; then
-            echo "Please run 'cargo make doc-action' and commit the changes."
-            git diff
-            exit 1
-          fi
+        run: cargo make check-doc-action
       - name: check generated cms workflows
         run: cargo make check-generate-examples-cms-workflow
       - name: run tests

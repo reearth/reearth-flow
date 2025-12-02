@@ -162,13 +162,7 @@ impl From<&Feature> for nusamai_citygml::schema::TypeDef {
             .iter()
             .filter(|(_, v)| v.convertible_nusamai_type_ref())
         {
-            if let AttributeValue::Number(value) = v {
-                attributes.insert(
-                    k.to_string(),
-                    AttributeValue::String(value.to_string()).into(),
-                );
-                continue;
-            }
+            // Use Number as-is without conversion (TypeRef::Integer/Double is auto-determined)
             attributes.insert(k.to_string(), v.clone().into());
         }
         nusamai_citygml::schema::TypeDef::Feature(nusamai_citygml::schema::FeatureTypeDef {
@@ -394,12 +388,12 @@ impl Feature {
         }
     }
 
-    pub fn contains_key<T: AsRef<str> + std::fmt::Display>(&self, key: &T) -> bool {
+    pub fn contains_key<T: AsRef<str> + std::fmt::Display>(&self, key: T) -> bool {
         self.attributes
             .contains_key(&Attribute::new(key.to_string()))
     }
 
-    pub fn get<T: AsRef<str> + std::fmt::Display>(&self, key: &T) -> Option<&AttributeValue> {
+    pub fn get<T: AsRef<str> + std::fmt::Display>(&self, key: T) -> Option<&AttributeValue> {
         self.attributes.get(&Attribute::new(key.to_string()))
     }
 
@@ -409,7 +403,7 @@ impl Feature {
     ) -> Option<AttributeValue> {
         let mut result = Vec::new();
         for key in keys {
-            if let Some(v) = self.get(&Attribute::new(key.to_string())) {
+            if let Some(v) = self.get(key) {
                 result.push(v.clone());
             }
         }
@@ -438,7 +432,7 @@ impl Feature {
             .extend(attributes.into_iter().map(|(k, v)| (Attribute::new(k), v)));
     }
 
-    pub fn remove<T: AsRef<str> + std::fmt::Display>(&mut self, key: &T) -> Option<AttributeValue> {
+    pub fn remove<T: AsRef<str> + std::fmt::Display>(&mut self, key: T) -> Option<AttributeValue> {
         self.attributes
             .swap_remove(&Attribute::new(key.to_string()))
     }
@@ -463,15 +457,24 @@ impl Feature {
         scope.set("__value", value);
         scope.set(
             "__feature_type",
-            serde_json::Value::String(self.feature_type().unwrap_or_default()),
+            self.feature_type().map_or(serde_json::Value::Null, |_| {
+                serde_json::Value::String(self.feature_type().unwrap_or_default())
+            }),
         );
         scope.set(
             "__feature_id",
-            serde_json::Value::String(self.feature_id().unwrap_or_default()),
+            self.feature_id().map_or(serde_json::Value::Null, |_| {
+                serde_json::Value::String(self.feature_id().unwrap_or_default())
+            }),
         );
         scope.set(
             "__lod",
-            serde_json::Value::String(self.lod().unwrap_or_default()),
+            self.metadata
+                .lod
+                .and_then(|lod| lod.highest_lod())
+                .map_or(serde_json::Value::Null, |lod| {
+                    serde_json::Value::Number(serde_json::Number::from(lod))
+                }),
         );
         if let Some(with) = with {
             for (k, v) in with {

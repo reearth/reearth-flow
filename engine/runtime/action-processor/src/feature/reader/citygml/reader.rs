@@ -165,7 +165,7 @@ fn parse_tree_reader<R: BufRead>(
         };
         let mut attributes = HashMap::<Attribute, AttributeValue>::from([
             (
-                Attribute::new("gmlName"),
+                Attribute::new("featureType"),
                 name.map(|s| AttributeValue::String(s.to_string()))
                     .unwrap_or(AttributeValue::Null),
             ),
@@ -183,12 +183,12 @@ fn parse_tree_reader<R: BufRead>(
         if let Some(max_lod) = lod.highest_lod() {
             attributes.insert(
                 Attribute::new("maxLod"),
-                AttributeValue::String(max_lod.to_string()),
+                AttributeValue::Number(serde_json::Number::from(max_lod)),
             );
             // Also add as "lod" attribute for StatisticsCalculator to use
             attributes.insert(
                 Attribute::new("lod"),
-                AttributeValue::String(max_lod.to_string()),
+                AttributeValue::Number(serde_json::Number::from(max_lod)),
             );
         }
         attributes.extend(base_attributes.clone());
@@ -221,24 +221,23 @@ fn parse_tree_reader<R: BufRead>(
             }
             transformer.transform(&mut ent);
 
-            // Use entity's own non-empty gml:id, otherwise use geometry id
-            let child_id = match &ent.id {
-                Some(id) if !id.is_empty() => Some(id.clone()),
-                _ => geom_feature_id.clone(),
-            };
+            // Use entity's own non-empty gml:id or None, toplevel id is stored in gmlId attribute
+            let child_id = ent.id.clone();
             let child_typename = ent.typename.clone();
             let mut attributes = attributes.clone();
             if flatten {
                 if let Some(typename) = &child_typename {
-                    attributes.insert(
-                        Attribute::new("featureType"),
-                        AttributeValue::String(typename.to_string()),
-                    );
-                    // Override gmlName with child's typename
-                    attributes.insert(
-                        Attribute::new("gmlName"),
-                        AttributeValue::String(typename.to_string()),
-                    );
+                    if typename != "uro:DmGeometricAttribute" {
+                        attributes.insert(
+                            Attribute::new("featureType"),
+                            AttributeValue::String(typename.to_string()),
+                        );
+                        // Override gmlName with child's typename
+                        attributes.insert(
+                            Attribute::new("gmlName"),
+                            AttributeValue::String(typename.to_string()),
+                        );
+                    }
                 }
                 // Add lod attribute for StatisticsCalculator to use
                 // Use child_lod if available, otherwise use parent lod
@@ -246,7 +245,7 @@ fn parse_tree_reader<R: BufRead>(
                 if let Some(max_lod) = effective_lod {
                     attributes.insert(
                         Attribute::new("lod"),
-                        AttributeValue::String(max_lod.to_string()),
+                        AttributeValue::Number(serde_json::Number::from(max_lod)),
                     );
                 }
             }

@@ -181,6 +181,14 @@
       "description": "Writes geographic features to GeoJSON files with optional grouping"
     },
     {
+      "name": "GeoPackageReader",
+      "description": "Lit les entités géographiques à partir de fichiers GeoPackage (.gpkg) avec prise en charge des entités vectorielles, des tuiles et des métadonnées"
+    },
+    {
+      "name": "GeoPackageWriter",
+      "description": "Écrit des entités géographiques dans des fichiers GeoPackage (.gpkg) avec une structure SQLite appropriée, une indexation spatiale et des tables de métadonnées"
+    },
+    {
       "name": "GeometryCoercer",
       "description": "Coerces and converts feature geometries to specified target geometry types"
     },

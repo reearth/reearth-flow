@@ -110,7 +110,7 @@ impl Sink for GeoJsonWriter {
             } else {
                 let key = group_by
                     .iter()
-                    .map(|k| feature.get(&k).cloned().unwrap_or(AttributeValue::Null))
+                    .map(|k| feature.get(k).cloned().unwrap_or(AttributeValue::Null))
                     .collect::<Vec<_>>();
                 AttributeValue::Array(key)
             }
