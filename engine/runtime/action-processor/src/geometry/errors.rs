@@ -147,6 +147,10 @@ pub(super) enum GeometryProcessorError {
     VertexCounterFactory(String),
     #[error("VertexCounter error: {0}")]
     VertexCounter(String),
+    #[error("NormalPolygon Factory error: {0}")]
+    NormalPolygonFactory(String),
+    #[error("NormalPolygon error: {0}")]
+    NormalPolygon(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;
