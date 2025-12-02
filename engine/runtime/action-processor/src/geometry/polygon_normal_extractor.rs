@@ -52,17 +52,17 @@ impl ProcessorFactory for PolygonNormalExtractorFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let normal_polygon: PolygonNormalExtractor = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                GeometryProcessorError::NormalPolygonFactory(format!(
+                GeometryProcessorError::PolygonNormalExtractorFactory(format!(
                     "Failed to serialize 'with' parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                GeometryProcessorError::NormalPolygonFactory(format!(
+                GeometryProcessorError::PolygonNormalExtractorFactory(format!(
                     "Failed to deserialize 'with' parameter: {e}"
                 ))
             })?
         } else {
-            return Err(GeometryProcessorError::NormalPolygonFactory(
+            return Err(GeometryProcessorError::PolygonNormalExtractorFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
@@ -71,7 +71,7 @@ impl ProcessorFactory for PolygonNormalExtractorFactory {
     }
 }
 
-/// # NormalPolygon Parameters
+/// # PolygonNormalExtractor Parameters
 ///
 /// Configuration for calculating normal vectors from polygon features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -153,7 +153,7 @@ impl Processor for PolygonNormalExtractor {
                                 Attribute::new("normalX".to_string()),
                                 AttributeValue::Number(
                                     Number::from_f64(normal_result.normal_x).ok_or_else(|| {
-                                        GeometryProcessorError::NormalPolygon(
+                                        GeometryProcessorError::PolygonNormalExtractor(
                                             "Failed to convert normalX to JSON number".to_string(),
                                         )
                                     })?,
@@ -165,7 +165,7 @@ impl Processor for PolygonNormalExtractor {
                                 Attribute::new("normalY".to_string()),
                                 AttributeValue::Number(
                                     Number::from_f64(normal_result.normal_y).ok_or_else(|| {
-                                        GeometryProcessorError::NormalPolygon(
+                                        GeometryProcessorError::PolygonNormalExtractor(
                                             "Failed to convert normalY to JSON number".to_string(),
                                         )
                                     })?,
@@ -177,7 +177,7 @@ impl Processor for PolygonNormalExtractor {
                                 Attribute::new("normalZ".to_string()),
                                 AttributeValue::Number(
                                     Number::from_f64(normal_result.normal_z).ok_or_else(|| {
-                                        GeometryProcessorError::NormalPolygon(
+                                        GeometryProcessorError::PolygonNormalExtractor(
                                             "Failed to convert normalZ to JSON number".to_string(),
                                         )
                                     })?,
@@ -190,7 +190,7 @@ impl Processor for PolygonNormalExtractor {
                                 AttributeValue::Number(
                                     Number::from_f64(normal_result.signed_area_2d).ok_or_else(
                                         || {
-                                            GeometryProcessorError::NormalPolygon(
+                                            GeometryProcessorError::PolygonNormalExtractor(
                                                 "Failed to convert signedArea2D to JSON number"
                                                     .to_string(),
                                             )
@@ -204,7 +204,7 @@ impl Processor for PolygonNormalExtractor {
                                 Attribute::new("Slope".to_string()),
                                 AttributeValue::Number(
                                     Number::from_f64(normal_result.slope).ok_or_else(|| {
-                                        GeometryProcessorError::NormalPolygon(
+                                        GeometryProcessorError::PolygonNormalExtractor(
                                             "Failed to convert slope to JSON number".to_string(),
                                         )
                                     })?,
@@ -216,7 +216,7 @@ impl Processor for PolygonNormalExtractor {
                                 Attribute::new("Azimuth".to_string()),
                                 AttributeValue::Number(
                                     Number::from_f64(normal_result.azimuth).ok_or_else(|| {
-                                        GeometryProcessorError::NormalPolygon(
+                                        GeometryProcessorError::PolygonNormalExtractor(
                                             "Failed to convert azimuth to JSON number".to_string(),
                                         )
                                     })?,
@@ -238,7 +238,7 @@ impl Processor for PolygonNormalExtractor {
                                     AttributeValue::Number(
                                         Number::from_f64(normal_result.normal_x).ok_or_else(
                                             || {
-                                                GeometryProcessorError::NormalPolygon(
+                                                GeometryProcessorError::PolygonNormalExtractor(
                                                     "Failed to convert normalX to JSON number"
                                                         .to_string(),
                                                 )
@@ -253,7 +253,7 @@ impl Processor for PolygonNormalExtractor {
                                     AttributeValue::Number(
                                         Number::from_f64(normal_result.normal_y).ok_or_else(
                                             || {
-                                                GeometryProcessorError::NormalPolygon(
+                                                GeometryProcessorError::PolygonNormalExtractor(
                                                     "Failed to convert normalY to JSON number"
                                                         .to_string(),
                                                 )
@@ -268,7 +268,7 @@ impl Processor for PolygonNormalExtractor {
                                     AttributeValue::Number(
                                         Number::from_f64(normal_result.normal_z).ok_or_else(
                                             || {
-                                                GeometryProcessorError::NormalPolygon(
+                                                GeometryProcessorError::PolygonNormalExtractor(
                                                     "Failed to convert normalZ to JSON number"
                                                         .to_string(),
                                                 )
@@ -283,7 +283,7 @@ impl Processor for PolygonNormalExtractor {
                                     AttributeValue::Number(
                                         Number::from_f64(normal_result.signed_area_2d).ok_or_else(
                                             || {
-                                                GeometryProcessorError::NormalPolygon(
+                                                GeometryProcessorError::PolygonNormalExtractor(
                                                     "Failed to convert signedArea2D to JSON number"
                                                         .to_string(),
                                                 )
@@ -297,7 +297,7 @@ impl Processor for PolygonNormalExtractor {
                                     Attribute::new("Slope".to_string()),
                                     AttributeValue::Number(
                                         Number::from_f64(normal_result.slope).ok_or_else(|| {
-                                            GeometryProcessorError::NormalPolygon(
+                                            GeometryProcessorError::PolygonNormalExtractor(
                                                 "Failed to convert slope to JSON number"
                                                     .to_string(),
                                             )
@@ -311,7 +311,7 @@ impl Processor for PolygonNormalExtractor {
                                     AttributeValue::Number(
                                         Number::from_f64(normal_result.azimuth).ok_or_else(
                                             || {
-                                                GeometryProcessorError::NormalPolygon(
+                                                GeometryProcessorError::PolygonNormalExtractor(
                                                     "Failed to convert azimuth to JSON number"
                                                         .to_string(),
                                                 )
@@ -345,7 +345,7 @@ impl Processor for PolygonNormalExtractor {
     }
 
     fn name(&self) -> &str {
-        "NormalPolygon"
+        "PolygonNormalExtractor"
     }
 }
 
