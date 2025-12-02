@@ -1,0 +1,20 @@
+citygml_zip_name = "36201_tokushima-shi_city_2023_citygml_2_op.zip"
+
+[tests.mvt_attributes.casts]
+".attributes" = "json"
+
+[tests.mvt_polygons]
+threshold = 0.005
+
+[tests.mvt_lines]
+threshold = 0.01
+
+[tests.json_attributes.dictionary]
+path = "dictionary.json"
+[tests.json_attributes.dictionary.casts.".urf"]
+comparator = "list_to_dict"
+key = ".name"
+
+[filter.tree]
+"" = ["codelists/", "schemas/"]
+"udx/urf/" = ["513404_urf_6697_12-4A_op.gml"]

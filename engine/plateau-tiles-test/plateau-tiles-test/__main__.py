@@ -11,6 +11,7 @@ default_tests = [
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/wwy",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/3dtiles",
     "data-convert/plateau4/06-area-urf/urf",
+    "data-convert/plateau4/06-area-urf/nested",
 ]
 default_stages = os.environ.get("PLATEAU_TILES_TEST_STAGES", "re")
 
