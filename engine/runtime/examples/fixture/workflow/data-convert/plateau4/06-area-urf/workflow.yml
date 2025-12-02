@@ -129,6 +129,55 @@ graphs:
           - attribute: gmlName
             method: remove
 
+      - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
+        name: StripFeatureTypePrefix
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+          - attribute: feature_type
+            method: convert
+            value: |
+              env.get("__value").feature_type.split(":")[1]
+
+      - id: b5c6d7e8-f9a0-1b2c-3d4e-5f6a7b8c9d0e
+        name: AttributeDuplicateFilter
+        type: action
+        action: AttributeDuplicateFilter
+        with:
+          filterBy:
+            - feature_type
+
+      - id: d1e2f3a4-b5c6-d7e8-f9a0-b1c2d3e4f5a6
+        name: AttributeConversionTable
+        type: action
+        action: AttributeConversionTable
+        with:
+          format: csv
+          inline: !include urf_japanese_converter.csv.txt
+          rules:
+          - featureFroms:
+            - feature_type
+            featureTo: feature_type_ja
+            conversionTableKeys:
+            - name
+            conversionTableTo: description
+
+      - id: c7d8e9f0-a1b2-c3d4-e5f6-a7b8c9d0e1f2
+        name: JsonWriter
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "dictionary.json")
+          converter: |
+            #{
+              urf: env.get("__features").map(|f| #{
+                name: f.feature_type,
+                description: f.feature_type_ja
+              })
+            }
+
       - id: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
         name: FeatureSorter
         type: action
@@ -178,6 +227,26 @@ graphs:
       - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
         from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        fromPort: default
+        toPort: default
+      - id: d8e9f0a1-b2c3-d4e5-f6a7-b8c9d0e1f2a3
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
+        fromPort: default
+        toPort: default
+      - id: e9f0a1b2-c3d4-e5f6-a7b8-c9d0e1f2a3b4
+        from: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
+        to: b5c6d7e8-f9a0-1b2c-3d4e-5f6a7b8c9d0e
+        fromPort: default
+        toPort: default
+      - id: f0a1b2c3-d4e5-f6a7-b8c9-d0e1f2a3b4c5
+        from: b5c6d7e8-f9a0-1b2c-3d4e-5f6a7b8c9d0e
+        to: d1e2f3a4-b5c6-d7e8-f9a0-b1c2d3e4f5a6
+        fromPort: default
+        toPort: default
+      - id: a1b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6
+        from: d1e2f3a4-b5c6-d7e8-f9a0-b1c2d3e4f5a6
+        to: c7d8e9f0-a1b2-c3d4-e5f6-a7b8c9d0e1f2
         fromPort: default
         toPort: default
       - id: 3c7d9e2f-4a5b-6c8d-9e0f-1a2b3c4d5e6f

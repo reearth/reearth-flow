@@ -111,9 +111,13 @@ struct Operation {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 enum Method {
+    /// Overwrites existing attribute value with expression result (skips if attribute doesn't exist)
     Convert,
+    /// Creates new attribute or overwrites existing with expression result
     Create,
+    /// Moves attribute to new name, removes old (skips if source missing or target exists)
     Rename,
+    /// Removes attribute (skips if doesn't exist)
     Remove,
 }
 
