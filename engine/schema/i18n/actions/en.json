@@ -181,6 +181,14 @@
       "description": "Writes features to a geojson file"
     },
     {
+      "name": "GeoPackageReader",
+      "description": "Reads geographic features from GeoPackage (.gpkg) files with support for vector features, tiles, and metadata"
+    },
+    {
+      "name": "GeoPackageWriter",
+      "description": "Writes geographic features to GeoPackage (.gpkg) files with proper SQLite structure, spatial indexing, and metadata tables"
+    },
+    {
       "name": "GeometryCoercer",
       "description": "Coerces the geometry of a feature to a specific geometry"
     },

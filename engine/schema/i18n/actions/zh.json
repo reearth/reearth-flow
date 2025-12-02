@@ -181,6 +181,14 @@
       "description": "将实体写入 GeoJSON 文件"
     },
     {
+      "name": "GeoPackageReader",
+      "description": "从GeoPackage（.gpkg）文件读取矢量要素、瓦片和元数据"
+    },
+    {
+      "name": "GeoPackageWriter",
+      "description": "将地理要素写入GeoPackage（.gpkg）文件，包含正确的SQLite结构、空间索引和元数据表"
+    },
+    {
       "name": "GeometryCoercer",
       "description": "强制将实体几何转换为特定几何类型"
     },

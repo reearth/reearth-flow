@@ -20,7 +20,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.91" # Remember to update clippy.toml as well
-version = "0.0.196"
+version = "0.0.197"
 
 [profile.dev]
 opt-level = 0
@@ -123,6 +123,7 @@ geojson = "0.24.2"
 glam = "0.30.9"
 gltf = "1.4"
 hashbrown = { version = "0.15.5", features = ["serde"] }
+hex = "0.4.3"
 home = "0.5.12"
 i_overlay = "4.1"
 image = { version = "0.25.9", default-features = false, features = [
@@ -227,13 +228,13 @@ tokio = { version = "1.48.0", features = ["full", "time"] }
 tokio-stream = { version = "0.1.17", features = ["sync"] }
 tokio-util = { version = "0.7.17", features = ["full"] }
 toml = "0.8.23"
-tracing = "0.1.41"
-tracing-appender = "0.2.3"
+tracing = "0.1.43"
+tracing-appender = "0.2.4"
 tracing-opentelemetry = { version = "0.29.0", default-features = false, features = [
   "metrics",
   "tracing-log",
 ] }
-tracing-subscriber = { version = "0.3.20", features = [
+tracing-subscriber = { version = "0.3.22", features = [
   "env-filter",
   "json",
   "std",

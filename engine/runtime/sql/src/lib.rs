@@ -50,4 +50,13 @@ impl SqlAdapter {
             .map_err(crate::errors::Error::fetch)?;
         Ok(result)
     }
+
+    pub async fn execute(&self, query: &str) -> crate::errors::Result<u64> {
+        let result = self
+            .pool
+            .execute(sqlx::query(query))
+            .await
+            .map_err(crate::errors::Error::fetch)?;
+        Ok(result.rows_affected())
+    }
 }
