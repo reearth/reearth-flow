@@ -99,7 +99,7 @@ pub(crate) fn build_request_body(
 
             Ok(BuiltBody {
                 content: BodyContent::Multipart(form),
-                content_type: None, // reqwest sets this automatically with boundary
+                content_type: None,
             })
         }
     }
