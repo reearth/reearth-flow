@@ -1,54 +1,39 @@
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback } from "react";
 
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTable";
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
-import { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useT } from "@flow/lib/i18n";
 
 import FeatureDetailsOverlay from "./FeatureDetailsOverlay";
 
 type Props = {
   fileContent: any | null;
-  fileType: SupportedDataTypes | null;
-  selectedFeature: any;
+  selectedFeatureId: string | null;
   onSingleClick?: (feature: any) => void;
   onDoubleClick?: (feature: any) => void;
   detectedGeometryType: string | null;
   totalFeatures: number;
+  detailsOverlayOpen: boolean;
+  detailsFeature: any;
+  formattedData: ReturnType<typeof useDataColumnizer>;
+  onCloseFeatureDetails: () => void;
 };
 
 const TableViewer: React.FC<Props> = memo(
   ({
     fileContent,
-    fileType,
-    selectedFeature,
+    selectedFeatureId,
     onSingleClick,
     onDoubleClick,
     detectedGeometryType,
     totalFeatures,
+    detailsOverlayOpen,
+    detailsFeature,
+    formattedData,
+    onCloseFeatureDetails,
   }) => {
     const t = useT();
-    const [detailsOverlayOpen, setDetailsOverlayOpen] = useState(false);
-    const [detailsFeature, setDetailsFeature] = useState<any>(null);
-
-    // Use traditional columnizer for all data (streaming is now pre-transformed)
-    const columnizer = useDataColumnizer({
-      parsedData: fileContent,
-      type: fileType,
-    });
-
-    // Handle showing feature details
-    const handleShowFeatureDetails = useCallback((feature: any) => {
-      setDetailsFeature(feature);
-      setDetailsOverlayOpen(true);
-    }, []);
-
-    // Handle closing feature details
-    const handleCloseFeatureDetails = useCallback(() => {
-      setDetailsOverlayOpen(false);
-      setDetailsFeature(null);
-    }, []);
 
     // Handle row single click - select feature and show details
     const handleRowSingleClick = useCallback(
@@ -62,18 +47,16 @@ const TableViewer: React.FC<Props> = memo(
     const handleRowDoubleClick = useCallback(
       (feature: any) => {
         onDoubleClick?.(feature);
-        handleShowFeatureDetails(feature);
       },
-      [onDoubleClick, handleShowFeatureDetails],
+      [onDoubleClick],
     );
 
     // Loading state
-    if (!fileContent || !columnizer.tableData) {
+    if (!fileContent || !formattedData.tableData) {
       return <BasicBoiler text={t("Loading data...")} className="h-full" />;
     }
-
     // No data state
-    if (!columnizer.tableData || columnizer.tableData.length === 0) {
+    if (!formattedData.tableData || formattedData.tableData.length === 0) {
       return (
         <BasicBoiler
           text={t("No data to display in table format")}
@@ -88,13 +71,12 @@ const TableViewer: React.FC<Props> = memo(
           {/* Table */}
           <div className="flex-1 overflow-hidden">
             <VirtualizedTable
-              columns={columnizer.tableColumns}
-              data={columnizer.tableData}
+              columns={formattedData.tableColumns}
+              data={formattedData.tableData}
               selectColumns={true}
               showFiltering={true}
               condensed={true}
-              selectedRow={selectedFeature}
-              useStrictSelectedRow={true}
+              selectedFeatureId={selectedFeatureId}
               onRowClick={handleRowSingleClick}
               onRowDoubleClick={handleRowDoubleClick}
             />
@@ -105,7 +87,7 @@ const TableViewer: React.FC<Props> = memo(
             <div className="flex items-center gap-4">
               <span>
                 {t("Rows")}:{" "}
-                {(columnizer.tableData || []).length.toLocaleString()}
+                {(formattedData.tableData || []).length.toLocaleString()}
                 {totalFeatures !== undefined &&
                   totalFeatures > 0 &&
                   ` / ${totalFeatures.toLocaleString()} ${t("total")}`}
@@ -116,19 +98,21 @@ const TableViewer: React.FC<Props> = memo(
                 </span>
               )}
               <span>
-                {t("Columns")}: {(columnizer.tableColumns || []).length}
+                {t("Columns")}: {(formattedData.tableColumns || []).length}
               </span>
             </div>
           </div>
         </div>
 
         {/* Feature Details Overlay */}
-        <FeatureDetailsOverlay
-          feature={detailsFeature}
-          isOpen={detailsOverlayOpen}
-          onClose={handleCloseFeatureDetails}
-          detectedGeometryType={detectedGeometryType}
-        />
+
+        {detailsOverlayOpen && (
+          <FeatureDetailsOverlay
+            feature={detailsFeature}
+            detectedGeometryType={detectedGeometryType}
+            onClose={onCloseFeatureDetails}
+          />
+        )}
       </div>
     );
   },
