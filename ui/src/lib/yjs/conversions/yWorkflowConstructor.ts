@@ -16,12 +16,17 @@ export const yNodeConstructor = (node: Node): YNode => {
   const positionMap = new Y.Map<number>();
   positionMap.set("x", node.position.x ?? 0);
   positionMap.set("y", node.position.y ?? 0);
+
+  const measuredMap = new Y.Map<number>();
+  measuredMap.set("width", node.measured?.width ?? 0);
+  measuredMap.set("height", node.measured?.height ?? 0);
+
   const yNode = toYjsMap<YNodeValue>({
     id: toYjsText(node.id),
     type: toYjsText(node.type),
     dragging: false,
     position: positionMap,
-    measured: toYjsMap(node.measured),
+    measured: measuredMap,
     parentId: toYjsText(node.parentId),
     // Reference src/types/node.ts for the NodeData type
     data: toYjsMap({

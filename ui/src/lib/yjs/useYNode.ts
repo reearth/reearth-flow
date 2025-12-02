@@ -192,7 +192,7 @@ export default ({
                 const newMeasured = new Y.Map<unknown>();
                 newMeasured.set("width", change.dimensions.width);
                 newMeasured.set("height", change.dimensions.height);
-                existingYNode?.set("measured", newMeasured);
+                existingYNode.set("measured", newMeasured);
               }
 
               if (change.setAttributes) {
@@ -207,7 +207,7 @@ export default ({
                   const newStyle = new Y.Map<unknown>();
                   newStyle.set("width", change.dimensions.width + "px");
                   newStyle.set("height", change.dimensions.height + "px");
-                  existingYNode?.set("style", newStyle);
+                  existingYNode.set("style", newStyle);
                 }
               }
             }
