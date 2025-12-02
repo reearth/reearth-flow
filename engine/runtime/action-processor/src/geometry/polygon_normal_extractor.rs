@@ -16,19 +16,19 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Number, Value};
 
 #[derive(Debug, Clone, Default)]
-pub(super) struct NormalPolygonFactory;
+pub(super) struct PolygonNormalExtractorFactory;
 
-impl ProcessorFactory for NormalPolygonFactory {
+impl ProcessorFactory for PolygonNormalExtractorFactory {
     fn name(&self) -> &str {
-        "NormalPolygon"
+        "PolygonNormalExtractor"
     }
 
     fn description(&self) -> &str {
-        "Calculates normal vectors and other properties for polygon features"
+        "Extract normal vectors and other properties for polygon features"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(NormalPolygon))
+        Some(schemars::schema_for!(PolygonNormalExtractor))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -50,7 +50,7 @@ impl ProcessorFactory for NormalPolygonFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let normal_polygon: NormalPolygon = if let Some(with) = with {
+        let normal_polygon: PolygonNormalExtractor = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::NormalPolygonFactory(format!(
                     "Failed to serialize 'with' parameter: {e}"
@@ -76,7 +76,7 @@ impl ProcessorFactory for NormalPolygonFactory {
 /// Configuration for calculating normal vectors from polygon features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-struct NormalPolygon {
+struct PolygonNormalExtractor {
     /// Whether to add normalX attribute (default: true)
     #[serde(default = "default_true")]
     add_normal_x: bool,
@@ -106,7 +106,7 @@ fn default_true() -> bool {
     true
 }
 
-impl Processor for NormalPolygon {
+impl Processor for PolygonNormalExtractor {
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -126,7 +126,7 @@ impl Processor for NormalPolygon {
             }
             GeometryValue::FlowGeometry2D(geos) => {
                 match geos {
-                    Geometry2D::Polygon(polygon) => {
+                    Geometry2D::Polygon(_polygon) => {
                         // Calculate normal properties for 2D polygons
                         // Just pass through since 2D polygons don't have meaningful 3D normals
                         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
@@ -360,7 +360,7 @@ struct NormalResult {
     azimuth: f64,
 }
 
-impl NormalPolygon {
+impl PolygonNormalExtractor {
     fn calculate_normal_properties_3d(&self, polygon: &Polygon3D<f64>) -> NormalResult {
         // Get the exterior ring of the polygon
         let exterior = polygon.exterior();
