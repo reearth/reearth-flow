@@ -11,7 +11,6 @@ use reearth_flow_types::Geometry;
 use serde_json::Value;
 
 #[derive(Debug, Clone, Default)]
-#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct GeometryRemoverFactory;
 
 impl ProcessorFactory for GeometryRemoverFactory {
@@ -51,7 +50,6 @@ impl ProcessorFactory for GeometryRemoverFactory {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct GeometryRemover;
 
 impl Processor for GeometryRemover {

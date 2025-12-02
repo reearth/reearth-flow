@@ -1,6 +1,22 @@
 {
   "actions": [
     {
+      "name": "AppearanceRemover",
+      "type": "processor",
+      "description": "Removes appearance information (materials, textures) from CityGML geometry",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "AreaOnAreaOverlayer",
       "type": "processor",
       "description": "Perform Area Overlay Analysis",
@@ -2874,6 +2890,23 @@
       ]
     },
     {
+      "name": "FootprintReplacer",
+      "type": "processor",
+      "description": "Projects 3D geometry to XY plane and computes the union footprint (supports solids, surfaces, and CityGML)",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "footprint",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "GeoJsonReader",
       "type": "source",
       "description": "Reads geographic features from GeoJSON files, supporting both single features and feature collections",
@@ -3375,6 +3408,22 @@
         "extracted",
         "remaining",
         "untouched"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "GeometryRemover",
+      "type": "processor",
+      "description": "Removes geometry from a feature",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
       ],
       "categories": [
         "Geometry"
@@ -5161,17 +5210,24 @@
     {
       "name": "PLATEAU4.SolidIntersectionTestPairCreator",
       "type": "processor",
-      "description": "Creates pairs of features that can possibly intersect based on bounding box overlap",
+      "description": "Creates pairs of features from AreaOnAreaOverlayer output for solid intersection testing",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "SolidIntersectionTestPairCreatorParam",
         "type": "object",
         "properties": {
-          "boundingBoxAttribute": {
-            "default": "bounding_box",
+          "gmlIdAttribute": {
+            "description": "Attribute name for the GML ID within the list items (default: \"gmlId\")",
+            "default": "gmlId",
+            "type": "string"
+          },
+          "listAttribute": {
+            "description": "Attribute name containing the list of overlapping features from AreaOnAreaOverlayer (default: \"list\")",
+            "default": "list",
             "type": "string"
           },
           "pairIdAttribute": {
+            "description": "Attribute name to store the pair ID (default: \"pair_id\")",
             "default": "pair_id",
             "type": "string"
           }
@@ -5876,55 +5932,6 @@
       ],
       "categories": [
         "Attribute"
-      ]
-    },
-    {
-      "name": "SurfaceFootprintReplacer",
-      "type": "processor",
-      "description": "Replace the geometry with its footprint",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "SurfaceFootprintReplacer Parameters",
-        "description": "Configuration for replacing geometry with its footprint projection.",
-        "type": "object",
-        "properties": {
-          "elevation": {
-            "type": [
-              "number",
-              "null"
-            ],
-            "format": "double"
-          },
-          "lightDirection": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "type": "number",
-              "format": "double"
-            },
-            "maxItems": 3,
-            "minItems": 3
-          },
-          "shadowMode": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "footprint",
-        "rejected"
-      ],
-      "categories": [
-        "Geometry"
       ]
     },
     {

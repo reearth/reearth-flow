@@ -24,7 +24,6 @@ use serde_json::Value;
 pub static FOOTPRINT_PORT: Lazy<Port> = Lazy::new(|| Port::new("footprint"));
 
 #[derive(Debug, Clone, Default)]
-#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct FootprintReplacerFactory;
 
 impl ProcessorFactory for FootprintReplacerFactory {
@@ -64,7 +63,6 @@ impl ProcessorFactory for FootprintReplacerFactory {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 pub struct FootprintReplacer;
 
 impl Processor for FootprintReplacer {

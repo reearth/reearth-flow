@@ -117,7 +117,6 @@ fn default_gml_id_attribute() -> String {
 
 /// Represents a pair of GML IDs in canonical order (smaller ID first)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "analyzer", derive(reearth_flow_analyzer_core::DataSize))]
 struct GmlIdPair(String, String);
 
 impl GmlIdPair {
