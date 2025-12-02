@@ -15,14 +15,6 @@ export const reassembleNode = (yNode: YNode): Node => {
     y: positionMap?.get("y") ?? 0,
   };
 
-  if (
-    positionMap &&
-    (positionMap.get("x") == null || positionMap.get("y") == null)
-  ) {
-    console.warn(
-      `Node ${yNode.get("id")} had null position, using default (0,0)`,
-    );
-  }
   const type = yNode.get("type")?.toString() as NodeType;
   const dragging = yNode.get("dragging") as boolean;
   const measured = {
