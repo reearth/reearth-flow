@@ -25,6 +25,7 @@ nusamai-citygml.workspace = true
 nusamai-plateau.workspace = true
 nusamai-projection.workspace = true
 
+flatgeom.workspace = true
 Inflector.workspace = true
 approx.workspace = true
 async-trait.workspace = true

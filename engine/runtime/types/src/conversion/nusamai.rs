@@ -31,7 +31,22 @@ impl TryFrom<Entity> for Geometry {
         let ObjectStereotype::Feature { id: _, geometries } = &obj.stereotype else {
             return Err(Error::unsupported_feature("no feature found"));
         };
+
+        // Collect polygon ranges for this feature (global indices in geometry store)
+        let polygon_ranges: Vec<(u32, u32)> = geometries
+            .iter()
+            .filter(|g| {
+                matches!(
+                    g.ty,
+                    GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle
+                )
+            })
+            .map(|g| (g.pos, g.pos + g.len))
+            .collect();
+
+        // Build gml_geometries with local pos/len (relative to this feature's polygon arrays)
         let mut gml_geometries = Vec::<GmlGeometry>::new();
+        let mut local_pos: u32 = 0;
         let operation = |geometry: &GeometryRef| -> Option<GmlGeometry> {
             match geometry.ty {
                 GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
@@ -70,7 +85,17 @@ impl TryFrom<Entity> for Geometry {
                 GeometryType::Point => unimplemented!(),
             }
         };
-        gml_geometries.extend(geometries.iter().flat_map(operation));
+        for geometry in geometries.iter() {
+            if let Some(mut gml_geo) = operation(geometry) {
+                // Update pos to be local (relative to this feature's arrays)
+                gml_geo.pos = local_pos;
+                local_pos += gml_geo.len;
+                gml_geometries.push(gml_geo);
+            }
+        }
+
+        // Calculate total polygon count for this feature
+        let total_polygons: usize = polygon_ranges.iter().map(|(s, e)| (e - s) as usize).sum();
 
         let mut geometry_entity = CityGmlGeometry::new(
             gml_geometries,
@@ -84,61 +109,67 @@ impl TryFrom<Entity> for Geometry {
         );
 
         if let Some(theme) = theme {
-            // find and apply materials
+            // find and apply materials (only for this feature's polygons)
             {
-                let mut poly_materials = vec![None; geoms.multipolygon.len()];
-                for surface in &geoms.surface_spans {
-                    if let Some(&mat) = theme.surface_id_to_material.get(&surface.id) {
-                        for idx in surface.start..surface.end {
-                            poly_materials[idx as usize] = Some(mat);
-                        }
+                let mut poly_materials = Vec::with_capacity(total_polygons);
+                for &(start, end) in &polygon_ranges {
+                    for global_idx in start..end {
+                        // Find material for this polygon via surface_spans
+                        let mat = geoms
+                            .surface_spans
+                            .iter()
+                            .find(|surface| global_idx >= surface.start && global_idx < surface.end)
+                            .and_then(|surface| theme.surface_id_to_material.get(&surface.id))
+                            .copied();
+                        poly_materials.push(mat);
                     }
                 }
                 geometry_entity.polygon_materials = poly_materials;
             }
-            // find and apply textures
+            // find and apply textures (only for this feature's polygons)
             {
-                let mut ring_id_iter = geoms.ring_ids.iter();
-                let mut poly_textures = Vec::with_capacity(geoms.multipolygon.len());
+                let mut poly_textures = Vec::with_capacity(total_polygons);
                 let mut poly_uvs = flatgeom::MultiPolygon::new();
 
-                for poly in &geoms.multipolygon {
-                    for (i, ring) in poly.rings().enumerate() {
-                        let tex = ring_id_iter
-                            .next()
-                            .unwrap()
-                            .clone()
-                            .and_then(|ring_id| theme.ring_id_to_texture.get(&ring_id));
+                for &(start, end) in &polygon_ranges {
+                    for global_idx in start..end {
+                        let poly = geoms.multipolygon.get(global_idx as usize);
+                        for (i, ring) in poly.rings().enumerate() {
+                            let ring_id = geoms.ring_ids.get(global_idx as usize);
+                            let tex = ring_id
+                                .and_then(|id| id.clone())
+                                .and_then(|id| theme.ring_id_to_texture.get(&id));
 
-                        let mut add_dummy_texture = || {
-                            let uv = [[0.0, 0.0]].into_iter().cycle().take(ring.len() + 1);
-                            if i == 0 {
-                                poly_textures.push(None);
-                                poly_uvs.add_exterior(uv);
-                            } else {
-                                poly_uvs.add_interior(uv);
-                            }
-                        };
-
-                        match tex {
-                            Some((idx, uv)) if ring.len() == uv.len() => {
-                                // texture found
+                            let mut add_dummy_texture = || {
+                                let uv = [[0.0, 0.0]].into_iter().cycle().take(ring.len() + 1);
                                 if i == 0 {
-                                    poly_textures.push(Some(*idx));
-                                    poly_uvs.add_exterior(uv.iter_closed());
+                                    poly_textures.push(None);
+                                    poly_uvs.add_exterior(uv);
                                 } else {
-                                    poly_uvs.add_interior(uv.iter_closed());
+                                    poly_uvs.add_interior(uv);
                                 }
-                            }
-                            Some((_, uv)) if uv.len() != ring.len() => {
-                                // invalid texture found
-                                add_dummy_texture();
-                            }
-                            _ => {
-                                // no texture found
-                                add_dummy_texture();
-                            }
-                        };
+                            };
+
+                            match tex {
+                                Some((idx, uv)) if ring.len() == uv.len() => {
+                                    // texture found
+                                    if i == 0 {
+                                        poly_textures.push(Some(*idx));
+                                        poly_uvs.add_exterior(uv.iter_closed());
+                                    } else {
+                                        poly_uvs.add_interior(uv.iter_closed());
+                                    }
+                                }
+                                Some((_, uv)) if uv.len() != ring.len() => {
+                                    // invalid texture found
+                                    add_dummy_texture();
+                                }
+                                _ => {
+                                    // no texture found
+                                    add_dummy_texture();
+                                }
+                            };
+                        }
                     }
                 }
                 // apply textures to polygons
@@ -147,16 +178,19 @@ impl TryFrom<Entity> for Geometry {
             }
         } else {
             // set 'null' appearance if no theme found
-            geometry_entity.polygon_materials = vec![None; geoms.multipolygon.len()];
-            geometry_entity.polygon_textures = vec![None; geoms.multipolygon.len()];
+            geometry_entity.polygon_materials = vec![None; total_polygons];
+            geometry_entity.polygon_textures = vec![None; total_polygons];
             let mut poly_uvs = flatgeom::MultiPolygon::new();
-            for poly in &geoms.multipolygon {
-                for (i, ring) in poly.rings().enumerate() {
-                    let uv = [[0.0, 0.0]].into_iter().cycle().take(ring.len() + 1);
-                    if i == 0 {
-                        poly_uvs.add_exterior(uv);
-                    } else {
-                        poly_uvs.add_interior(uv);
+            for &(start, end) in &polygon_ranges {
+                for global_idx in start..end {
+                    let poly = geoms.multipolygon.get(global_idx as usize);
+                    for (i, ring) in poly.rings().enumerate() {
+                        let uv = [[0.0, 0.0]].into_iter().cycle().take(ring.len() + 1);
+                        if i == 0 {
+                            poly_uvs.add_exterior(uv);
+                        } else {
+                            poly_uvs.add_interior(uv);
+                        }
                     }
                 }
             }
