@@ -323,6 +323,5 @@ mod tests {
         let result = build_request_body(&body, &engine, &scope, &storage_resolver);
 
         assert!(result.is_ok());
-        // Can't easily test Form internals, but we verify it doesn't error
     }
 }
