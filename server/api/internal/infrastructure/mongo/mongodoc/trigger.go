@@ -3,6 +3,7 @@ package mongodoc
 import (
 	"time"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"golang.org/x/exp/slices"
@@ -25,7 +26,7 @@ type TriggerDocument struct {
 
 type TriggerConsumer = Consumer[*TriggerDocument, *trigger.Trigger]
 
-func NewTriggerConsumer(workspaces []id.WorkspaceID) *TriggerConsumer {
+func NewTriggerConsumer(workspaces []accountsid.WorkspaceID) *TriggerConsumer {
 	return NewConsumer[*TriggerDocument, *trigger.Trigger](func(t *trigger.Trigger) bool {
 		return workspaces == nil || slices.Contains(workspaces, t.Workspace())
 	})
@@ -74,7 +75,7 @@ func (d *TriggerDocument) Model() (*trigger.Trigger, error) {
 		return nil, err
 	}
 
-	wid, err := id.WorkspaceIDFrom(d.WorkspaceID)
+	wid, err := accountsid.WorkspaceIDFrom(d.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}

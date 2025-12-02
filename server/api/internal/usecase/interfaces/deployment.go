@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -12,7 +13,7 @@ import (
 
 type CreateDeploymentParam struct {
 	Project     *id.ProjectID
-	Workspace   id.WorkspaceID
+	Workspace   accountsid.WorkspaceID
 	Workflow    *file.File
 	Description string
 }
@@ -37,10 +38,10 @@ var (
 type Deployment interface {
 	Fetch(context.Context, []id.DeploymentID) ([]*deployment.Deployment, error)
 	FindByProject(context.Context, id.ProjectID) (*deployment.Deployment, error)
-	FindByVersion(context.Context, id.WorkspaceID, *id.ProjectID, string) (*deployment.Deployment, error)
-	FindByWorkspace(context.Context, id.WorkspaceID, *PaginationParam, *string) ([]*deployment.Deployment, *PageBasedInfo, error)
-	FindHead(context.Context, id.WorkspaceID, *id.ProjectID) (*deployment.Deployment, error)
-	FindVersions(context.Context, id.WorkspaceID, *id.ProjectID) ([]*deployment.Deployment, error)
+	FindByVersion(context.Context, accountsid.WorkspaceID, *id.ProjectID, string) (*deployment.Deployment, error)
+	FindByWorkspace(context.Context, accountsid.WorkspaceID, *PaginationParam, *string) ([]*deployment.Deployment, *PageBasedInfo, error)
+	FindHead(context.Context, accountsid.WorkspaceID, *id.ProjectID) (*deployment.Deployment, error)
+	FindVersions(context.Context, accountsid.WorkspaceID, *id.ProjectID) ([]*deployment.Deployment, error)
 	Create(context.Context, CreateDeploymentParam) (*deployment.Deployment, error)
 	Update(context.Context, UpdateDeploymentParam) (*deployment.Deployment, error)
 	Delete(context.Context, id.DeploymentID) error

@@ -3,6 +3,7 @@ package mongodoc
 import (
 	"time"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"golang.org/x/exp/slices"
@@ -29,7 +30,7 @@ type AssetDocument struct {
 
 type AssetConsumer = Consumer[*AssetDocument, *asset.Asset]
 
-func NewAssetConsumer(workspaces []id.WorkspaceID) *AssetConsumer {
+func NewAssetConsumer(workspaces []accountsid.WorkspaceID) *AssetConsumer {
 	return NewConsumer[*AssetDocument, *asset.Asset](func(a *asset.Asset) bool {
 		return workspaces == nil || slices.Contains(workspaces, a.Workspace())
 	})
@@ -85,7 +86,7 @@ func (d *AssetDocument) Model() (*asset.Asset, error) {
 	if err != nil {
 		return nil, err
 	}
-	wid, err := id.WorkspaceIDFrom(d.Workspace)
+	wid, err := accountsid.WorkspaceIDFrom(d.Workspace)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +114,7 @@ func (d *AssetDocument) Model() (*asset.Asset, error) {
 	}
 
 	if d.User != nil {
-		uid, err := id.UserIDFrom(*d.User)
+		uid, err := accountsid.UserIDFrom(*d.User)
 		if err != nil {
 			return nil, err
 		}

@@ -4,11 +4,12 @@ import (
 	"context"
 	"testing"
 
+	gqlworkspace "github.com/reearth/reearth-accounts/server/pkg/gqlclient/workspace"
+	accountsworkspace "github.com/reearth/reearth-accounts/server/pkg/workspace"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
 	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/project"
-	"github.com/reearth/reearth-flow/api/pkg/workspace"
 	workspacemockrepo "github.com/reearth/reearth-flow/api/pkg/workspace/mockrepo"
 	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/rerror"
@@ -18,7 +19,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func setupProject(t *testing.T, permissionChecker *mockPermissionChecker, workspaceRepo workspace.Repo) *Project {
+func setupProject(t *testing.T, permissionChecker *mockPermissionChecker, workspaceRepo gqlworkspace.WorkspaceRepo) *Project {
 	t.Helper()
 
 	return &Project{
@@ -38,8 +39,8 @@ func TestProject_Create(t *testing.T) {
 		return true, nil
 	})
 
-	ws := factory.NewWorkspace(func(b *workspace.Builder) {})
-	wsid2 := workspace.NewID()
+	ws := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
+	wsid2 := accountsworkspace.NewID()
 
 	pId := project.NewID()
 	defer project.MockNewID(pId)()

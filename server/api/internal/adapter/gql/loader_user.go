@@ -3,10 +3,10 @@ package gql
 import (
 	"context"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqldataloader"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
-	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/util"
 )
 
@@ -21,7 +21,7 @@ func NewUserLoader(usecase interfaces.User) *UserLoader {
 }
 
 func (c *UserLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmodel.User, []error) {
-	uids, err := util.TryMap(ids, gqlmodel.ToID[id.User])
+	uids, err := util.TryMap(ids, gqlmodel.ToID[accountsid.User])
 	if err != nil {
 		return nil, []error{err}
 	}

@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo/mongodoc"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -68,7 +69,7 @@ func (r *Project) FindByIDs(ctx context.Context, ids id.ProjectIDList) ([]*proje
 	return filterProjects(ids, res), nil
 }
 
-func (r *Project) FindByWorkspace(ctx context.Context, id id.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string, includeArchived *bool) ([]*project.Project, *interfaces.PageBasedInfo, error) {
+func (r *Project) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string, includeArchived *bool) ([]*project.Project, *interfaces.PageBasedInfo, error) {
 	if !r.f.CanRead(id) {
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
@@ -154,7 +155,7 @@ func (r *Project) FindByPublicName(ctx context.Context, name string) (*project.P
 	return r.findOne(ctx, f, false)
 }
 
-func (r *Project) CountByWorkspace(ctx context.Context, ws id.WorkspaceID) (int, error) {
+func (r *Project) CountByWorkspace(ctx context.Context, ws accountsid.WorkspaceID) (int, error) {
 	if !r.f.CanRead(ws) {
 		return 0, repo.ErrOperationDenied
 	}
@@ -165,7 +166,7 @@ func (r *Project) CountByWorkspace(ctx context.Context, ws id.WorkspaceID) (int,
 	return int(count), err
 }
 
-func (r *Project) CountPublicByWorkspace(ctx context.Context, ws id.WorkspaceID) (int, error) {
+func (r *Project) CountPublicByWorkspace(ctx context.Context, ws accountsid.WorkspaceID) (int, error) {
 	if !r.f.CanRead(ws) {
 		return 0, repo.ErrOperationDenied
 	}
@@ -200,7 +201,7 @@ func (r *Project) find(ctx context.Context, filter interface{}) ([]*project.Proj
 }
 
 func (r *Project) findOne(ctx context.Context, filter any, filterByWorkspaces bool) (*project.Project, error) {
-	var f []id.WorkspaceID
+	var f []accountsid.WorkspaceID
 	if filterByWorkspaces {
 		f = r.f.Readable
 	}

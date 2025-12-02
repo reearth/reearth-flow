@@ -3,9 +3,9 @@ package http
 import (
 	"context"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
-	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearth-flow/api/pkg/user"
 	"golang.org/x/text/language"
 )
 
@@ -26,17 +26,17 @@ type PasswordResetInput struct {
 }
 
 type SignupInput struct {
-	Sub         *string         `json:"sub"`
-	Secret      *string         `json:"secret"`
-	UserID      *id.UserID      `json:"userId"`
-	WorkspaceID *id.WorkspaceID `json:"workspaceId"`
-	TeamID      *id.WorkspaceID `json:"teamId"` // TeamID is an alias of WorkspaceID
-	Name        string          `json:"name"`
-	Username    string          `json:"username"` // ysername is an alias of Name
-	Email       string          `json:"email"`
-	Password    string          `json:"password"`
-	Theme       *user.Theme     `json:"theme"`
-	Lang        *language.Tag   `json:"lang"`
+	Sub         *string                 `json:"sub"`
+	Secret      *string                 `json:"secret"`
+	UserID      *accountsid.UserID      `json:"userId"`
+	WorkspaceID *accountsid.WorkspaceID `json:"workspaceId"`
+	TeamID      *accountsid.WorkspaceID `json:"teamId"` // TeamID is an alias of WorkspaceID
+	Name        string                  `json:"name"`
+	Username    string                  `json:"username"` // ysername is an alias of Name
+	Email       string                  `json:"email"`
+	Password    string                  `json:"password"`
+	Theme       *accountsuser.Theme     `json:"theme"`
+	Lang        *language.Tag           `json:"lang"`
 }
 
 type CreateVerificationInput struct {

@@ -7,6 +7,7 @@ import (
 	batch "cloud.google.com/go/batch/apiv1"
 	batchpb "cloud.google.com/go/batch/apiv1/batchpb"
 	"github.com/googleapis/gax-go/v2"
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/stretchr/testify/assert"
@@ -70,7 +71,7 @@ func TestBatchRepo_SubmitJob(t *testing.T) {
 
 	jobID, _ := id.JobIDFrom("test-job-id")
 	projectID, _ := id.ProjectIDFrom("test-project-id")
-	workspaceID, _ := id.WorkspaceIDFrom("test-workspace-id")
+	workspaceID, _ := accountsid.WorkspaceIDFrom("test-workspace-id")
 	workflowURL := "gs://test-bucket/test-workflow.yaml"
 	metadataURL := "gs://test-bucket/test-metadata.json"
 	var variables map[string]string
@@ -79,7 +80,7 @@ func TestBatchRepo_SubmitJob(t *testing.T) {
 
 	mockClient.On("CreateJob", ctx, mock.AnythingOfType("*batchpb.CreateJobRequest")).Return(&batchpb.Job{Name: expectedJobName}, nil)
 
-	jobName, err := batchRepo.SubmitJob(ctx, jobID, workflowURL, metadataURL, variables, projectID, id.WorkspaceID(workspaceID))
+	jobName, err := batchRepo.SubmitJob(ctx, jobID, workflowURL, metadataURL, variables, projectID, accountsid.WorkspaceID(workspaceID))
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedJobName, jobName)

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/reearth/reearth-flow/api/pkg/id"
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -57,10 +57,10 @@ func TestUploadBuilderUUID(t *testing.T) {
 }
 
 func TestUploadBuilderWorkspace(t *testing.T) {
-	wid := id.NewWorkspaceID()
+	wid := accountsid.NewWorkspaceID()
 	tests := []struct {
 		name  string
-		input id.WorkspaceID
+		input accountsid.WorkspaceID
 		want  *UploadBuilder
 	}{
 		{
@@ -164,7 +164,7 @@ func TestUploadBuilderExpiresAt(t *testing.T) {
 
 func TestUploadBuilderBuild(t *testing.T) {
 	now := time.Now()
-	wid := id.NewWorkspaceID()
+	wid := accountsid.NewWorkspaceID()
 	ubWithData := &UploadBuilder{
 		u: &Upload{
 			uuid:          "1",

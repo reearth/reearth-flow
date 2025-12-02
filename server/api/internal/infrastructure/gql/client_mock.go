@@ -1,17 +1,18 @@
 package gql
 
 import (
-	userpkg "github.com/reearth/reearth-flow/api/pkg/user"
-	workspacepkg "github.com/reearth/reearth-flow/api/pkg/workspace"
+	"github.com/reearth/reearth-accounts/server/pkg/gqlclient"
+	gqluser "github.com/reearth/reearth-accounts/server/pkg/gqlclient/user"
+	gqlworkspace "github.com/reearth/reearth-accounts/server/pkg/gqlclient/workspace"
 )
 
 type MockClientParam struct {
-	UserRepo      userpkg.Repo
-	WorkspaceRepo workspacepkg.Repo
+	UserRepo      gqluser.UserRepo
+	WorkspaceRepo gqlworkspace.WorkspaceRepo
 }
 
-func NewMockClient(p *MockClientParam) *Client {
-	return &Client{
+func NewMockClient(p *MockClientParam) *gqlclient.Client {
+	return &gqlclient.Client{
 		UserRepo:      p.UserRepo,
 		WorkspaceRepo: p.WorkspaceRepo,
 	}

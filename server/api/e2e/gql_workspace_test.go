@@ -7,12 +7,12 @@ import (
 	"net/http"
 	"testing"
 
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
+	accountsworkspace "github.com/reearth/reearth-accounts/server/pkg/workspace"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
-	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
 	usermockrepo "github.com/reearth/reearth-flow/api/pkg/user/mockrepo"
-	pkgworkspace "github.com/reearth/reearth-flow/api/pkg/workspace"
 	workspacemockrepo "github.com/reearth/reearth-flow/api/pkg/workspace/mockrepo"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -22,13 +22,13 @@ func TestCreateWorkspace(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operatorID := pkguser.NewID()
-	operator := factory.NewUser(func(b *pkguser.Builder) {
+	operatorID := accountsuser.NewID()
+	operator := factory.NewUser(func(b *accountsuser.Builder) {
 		b.ID(operatorID)
 		b.Name("operator")
 		b.Email("operator@e2e.com")
 	})
-	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {
+	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {
 		b.Name("test")
 	})
 
@@ -70,10 +70,10 @@ func TestDeleteWorkspace(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operatorID := pkguser.NewID()
-	wid := pkgworkspace.NewID()
-	wid2 := pkgworkspace.NewID()
-	operator := factory.NewUser(func(b *pkguser.Builder) {
+	operatorID := accountsuser.NewID()
+	wid := accountsworkspace.NewID()
+	wid2 := accountsworkspace.NewID()
+	operator := factory.NewUser(func(b *accountsuser.Builder) {
 		b.ID(operatorID)
 		b.Name("operator")
 		b.Email("operator@e2e.com")
@@ -134,15 +134,15 @@ func TestUpdateWorkspace(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operatorID := pkguser.NewID()
-	wid := pkgworkspace.NewID()
-	wid2 := pkgworkspace.NewID()
-	operator := factory.NewUser(func(b *pkguser.Builder) {
+	operatorID := accountsuser.NewID()
+	wid := accountsworkspace.NewID()
+	wid2 := accountsworkspace.NewID()
+	operator := factory.NewUser(func(b *accountsuser.Builder) {
 		b.ID(operatorID)
 		b.Name("operator")
 		b.Email("operator@e2e.com")
 	})
-	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {
+	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {
 		b.Name("updated")
 	})
 
@@ -203,15 +203,15 @@ func TestAddMemberToWorkspace(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operatorID := pkguser.NewID()
-	wid := pkgworkspace.NewID()
-	uid := pkguser.NewID()
-	operator := factory.NewUser(func(b *pkguser.Builder) {
+	operatorID := accountsuser.NewID()
+	wid := accountsworkspace.NewID()
+	uid := accountsuser.NewID()
+	operator := factory.NewUser(func(b *accountsuser.Builder) {
 		b.ID(operatorID)
 		b.Name("operator")
 		b.Email("operator@e2e.com")
 	})
-	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 
 	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
@@ -269,15 +269,15 @@ func TestRemoveMemberFromWorkspace(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operatorID := pkguser.NewID()
-	wid := pkgworkspace.NewID()
-	uid := pkguser.NewID()
-	operator := factory.NewUser(func(b *pkguser.Builder) {
+	operatorID := accountsuser.NewID()
+	wid := accountsworkspace.NewID()
+	uid := accountsuser.NewID()
+	operator := factory.NewUser(func(b *accountsuser.Builder) {
 		b.ID(operatorID)
 		b.Name("operator")
 		b.Email("operator@e2e.com")
 	})
-	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 
 	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
@@ -326,17 +326,17 @@ func TestUpdateMemberOfWorkspace(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operatorID := pkguser.NewID()
-	wid := pkgworkspace.NewID()
-	wid2 := pkgworkspace.NewID()
-	uid := pkguser.NewID()
-	uid2 := pkguser.NewID()
-	operator := factory.NewUser(func(b *pkguser.Builder) {
+	operatorID := accountsuser.NewID()
+	wid := accountsworkspace.NewID()
+	wid2 := accountsworkspace.NewID()
+	uid := accountsuser.NewID()
+	uid2 := accountsuser.NewID()
+	operator := factory.NewUser(func(b *accountsuser.Builder) {
 		b.ID(operatorID)
 		b.Name("operator")
 		b.Email("operator@e2e.com")
 	})
-	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 
 	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)

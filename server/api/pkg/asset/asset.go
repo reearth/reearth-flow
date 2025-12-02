@@ -3,6 +3,7 @@ package asset
 import (
 	"time"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
 	reearthxasset "github.com/reearth/reearthx/asset/domain/asset"
@@ -83,7 +84,7 @@ func (b *Builder) Project(v id.ProjectID) *Builder {
 	return b
 }
 
-func (b *Builder) Workspace(v id.WorkspaceID) *Builder {
+func (b *Builder) Workspace(v accountsid.WorkspaceID) *Builder {
 	// TODO: after migration, remove this cast
 	b.rxBuilder = b.rxBuilder.Workspace(accountdomain.WorkspaceID(v))
 	// If no project is set yet, use a dummy project ID for workspace-based assets
@@ -100,7 +101,7 @@ func (b *Builder) CreatedAt(v time.Time) *Builder {
 	return b
 }
 
-func (b *Builder) CreatedByUser(v id.UserID) *Builder {
+func (b *Builder) CreatedByUser(v accountsid.UserID) *Builder {
 	// TODO: after migration, remove this cast
 	b.rxBuilder = b.rxBuilder.CreatedByUser(accountdomain.UserID(v))
 	return b

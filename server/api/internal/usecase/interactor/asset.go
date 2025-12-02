@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	gqlworkspace "github.com/reearth/reearth-accounts/server/pkg/gqlclient/workspace"
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -16,18 +18,17 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearth-flow/api/pkg/workspace"
 	"github.com/reearth/reearthx/rerror"
 )
 
 type Asset struct {
 	repos             *repo.Container
-	workspaceRepo     workspace.Repo
+	workspaceRepo     gqlworkspace.WorkspaceRepo
 	gateways          *gateway.Container
 	permissionChecker gateway.PermissionChecker
 }
 
-func NewAsset(r *repo.Container, g *gateway.Container, permissionChecker gateway.PermissionChecker, workspaceRepo workspace.Repo) interfaces.Asset {
+func NewAsset(r *repo.Container, g *gateway.Container, permissionChecker gateway.PermissionChecker, workspaceRepo gqlworkspace.WorkspaceRepo) interfaces.Asset {
 	return &Asset{
 		repos:             r,
 		workspaceRepo:     workspaceRepo,
@@ -48,7 +49,7 @@ func (i *Asset) Fetch(ctx context.Context, assets []id.AssetID) ([]*asset.Asset,
 	return i.repos.Asset.FindByIDs(ctx, assets)
 }
 
-func (i *Asset) FindByWorkspace(ctx context.Context, wid id.WorkspaceID, keyword *string, sort *asset.SortType, p *interfaces.PaginationParam) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
+func (i *Asset) FindByWorkspace(ctx context.Context, wid accountsid.WorkspaceID, keyword *string, sort *asset.SortType, p *interfaces.PaginationParam) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, nil, err
 	}

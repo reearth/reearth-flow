@@ -3,9 +3,9 @@ package adapter
 import (
 	"context"
 
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
-	"github.com/reearth/reearth-flow/api/pkg/user"
 	reearthxuser "github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/appx"
 	"golang.org/x/text/language"
@@ -40,7 +40,7 @@ func AttachReearthxUser(ctx context.Context, u *reearthxuser.User) context.Conte
 	return context.WithValue(ctx, contextUser, u)
 }
 
-func AttachUser(ctx context.Context, u *user.User) context.Context {
+func AttachUser(ctx context.Context, u *accountsuser.User) context.Context {
 	return context.WithValue(ctx, userKey{}, u)
 }
 
@@ -75,8 +75,8 @@ func ReearthxUser(ctx context.Context) *reearthxuser.User {
 	return nil
 }
 
-func User(ctx context.Context) *user.User {
-	u, _ := ctx.Value(userKey{}).(*user.User)
+func User(ctx context.Context) *accountsuser.User {
+	u, _ := ctx.Value(userKey{}).(*accountsuser.User)
 	return u
 }
 

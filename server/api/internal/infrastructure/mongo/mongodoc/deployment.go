@@ -3,6 +3,7 @@ package mongodoc
 import (
 	"time"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/rerror"
@@ -23,7 +24,7 @@ type DeploymentDocument struct {
 
 type DeploymentConsumer = Consumer[*DeploymentDocument, *deployment.Deployment]
 
-func NewDeploymentConsumer(workspaces []id.WorkspaceID) *DeploymentConsumer {
+func NewDeploymentConsumer(workspaces []accountsid.WorkspaceID) *DeploymentConsumer {
 	return NewConsumer[*DeploymentDocument, *deployment.Deployment](func(d *deployment.Deployment) bool {
 		return workspaces == nil || slices.Contains(workspaces, d.Workspace())
 	})
@@ -69,7 +70,7 @@ func (d *DeploymentDocument) Model() (*deployment.Deployment, error) {
 	if err != nil {
 		return nil, err
 	}
-	wid, err := id.WorkspaceIDFrom(d.WorkspaceID)
+	wid, err := accountsid.WorkspaceIDFrom(d.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}

@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
+	accountsworkspace "github.com/reearth/reearth-accounts/server/pkg/workspace"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
-	pkguser "github.com/reearth/reearth-flow/api/pkg/user"
 	usermockrepo "github.com/reearth/reearth-flow/api/pkg/user/mockrepo"
-	pkgworkspace "github.com/reearth/reearth-flow/api/pkg/workspace"
 	workspacemockrepo "github.com/reearth/reearth-flow/api/pkg/workspace/mockrepo"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -23,8 +23,8 @@ func TestProjectsPagination(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operator := factory.NewUser(func(b *pkguser.Builder) {})
-	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+	operator := factory.NewUser(func(b *accountsuser.Builder) {})
+	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
@@ -280,8 +280,8 @@ func TestJobsPagination(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operator := factory.NewUser(func(b *pkguser.Builder) {})
-	ws := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+	operator := factory.NewUser(func(b *accountsuser.Builder) {})
+	ws := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
@@ -695,8 +695,8 @@ func TestTriggersPagination(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	operator := factory.NewUser(func(b *pkguser.Builder) {})
-	w := factory.NewWorkspace(func(b *pkgworkspace.Builder) {})
+	operator := factory.NewUser(func(b *accountsuser.Builder) {})
+	w := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 	mockUserRepo := usermockrepo.NewMockUserRepo(ctrl)
 	mockWorkspaceRepo := workspacemockrepo.NewMockWorkspaceRepo(ctrl)
 	mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()

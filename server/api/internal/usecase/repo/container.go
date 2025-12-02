@@ -3,7 +3,7 @@ package repo
 import (
 	"errors"
 
-	"github.com/reearth/reearth-flow/api/pkg/id"
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 	"github.com/reearth/reearthx/authserver"
 	"github.com/reearth/reearthx/usecasex"
@@ -70,8 +70,8 @@ func (c *Container) Filtered(workspace WorkspaceFilter) *Container {
 }
 
 type WorkspaceFilter struct {
-	Readable id.WorkspaceIDList
-	Writable id.WorkspaceIDList
+	Readable accountsid.WorkspaceIDList
+	Writable accountsid.WorkspaceIDList
 }
 
 func (f WorkspaceFilter) Clone() WorkspaceFilter {
@@ -82,7 +82,7 @@ func (f WorkspaceFilter) Clone() WorkspaceFilter {
 }
 
 func (f WorkspaceFilter) Merge(g WorkspaceFilter) WorkspaceFilter {
-	var r, w id.WorkspaceIDList
+	var r, w accountsid.WorkspaceIDList
 	if f.Readable != nil || g.Readable != nil {
 		if f.Readable == nil {
 			r = g.Readable.Clone()
@@ -105,10 +105,10 @@ func (f WorkspaceFilter) Merge(g WorkspaceFilter) WorkspaceFilter {
 	}
 }
 
-func (f WorkspaceFilter) CanRead(id id.WorkspaceID) bool {
+func (f WorkspaceFilter) CanRead(id accountsid.WorkspaceID) bool {
 	return f.Readable == nil || f.Readable.Has(id)
 }
 
-func (f WorkspaceFilter) CanWrite(id id.WorkspaceID) bool {
+func (f WorkspaceFilter) CanWrite(id accountsid.WorkspaceID) bool {
 	return f.Writable == nil || f.Writable.Has(id)
 }

@@ -4,8 +4,8 @@ import (
 	"context"
 	"log"
 
+	"github.com/reearth/reearth-accounts/server/pkg/gqlclient"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
-	"github.com/reearth/reearth-flow/api/internal/infrastructure/gql"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/websocket"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -26,7 +26,7 @@ type ContainerConfig struct {
 
 func NewContainer(r *repo.Container, g *gateway.Container,
 	permissionChecker gateway.PermissionChecker,
-	GQLClient *gql.Client,
+	GQLClient *gqlclient.Client,
 	job interfaces.Job,
 	config ContainerConfig,
 ) interfaces.Container {

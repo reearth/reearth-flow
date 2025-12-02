@@ -3,10 +3,11 @@ package gql
 import (
 	"context"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqldataloader"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
-	"github.com/reearth/reearth-flow/api/pkg/id"
+
 	"github.com/reearth/reearthx/util"
 )
 
@@ -21,7 +22,7 @@ func NewWorkspaceLoader(usecase interfaces.Workspace) *WorkspaceLoader {
 }
 
 func (c *WorkspaceLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmodel.Workspace, []error) {
-	wids, err := util.TryMap(ids, gqlmodel.ToID[id.Workspace])
+	wids, err := util.TryMap(ids, gqlmodel.ToID[accountsid.Workspace])
 	if err != nil {
 		return nil, []error{err}
 	}
@@ -39,7 +40,7 @@ func (c *WorkspaceLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlm
 }
 
 func (c *WorkspaceLoader) FindByUser(ctx context.Context, uid gqlmodel.ID) ([]*gqlmodel.Workspace, error) {
-	userid, err := gqlmodel.ToID[id.User](uid)
+	userid, err := gqlmodel.ToID[accountsid.User](uid)
 	if err != nil {
 		return nil, err
 	}

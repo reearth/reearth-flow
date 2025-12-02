@@ -3,16 +3,16 @@ package gql
 import (
 	"context"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
-	"github.com/reearth/reearth-flow/api/pkg/id"
 )
 
 func (r *mutationResolver) Signup(ctx context.Context, input gqlmodel.SignupInput) (*gqlmodel.SignupPayload, error) {
 	u, err := usecases(ctx).User.SignupOIDC(ctx, interfaces.SignupOIDCParam{
-		UserID:      gqlmodel.ToIDRef[id.User](input.UserID),
+		UserID:      gqlmodel.ToIDRef[accountsid.User](input.UserID),
 		Lang:        input.Lang,
-		WorkspaceID: gqlmodel.ToIDRef[id.Workspace](input.WorkspaceID),
+		WorkspaceID: gqlmodel.ToIDRef[accountsid.Workspace](input.WorkspaceID),
 		Secret:      input.Secret,
 	})
 	if err != nil {
@@ -47,7 +47,7 @@ func (r *mutationResolver) RemoveMyAuth(ctx context.Context, input gqlmodel.Remo
 }
 
 func (r *mutationResolver) DeleteMe(ctx context.Context, input gqlmodel.DeleteMeInput) (*gqlmodel.DeleteMePayload, error) {
-	uid, err := gqlmodel.ToID[id.User](input.UserID)
+	uid, err := gqlmodel.ToID[accountsid.User](input.UserID)
 	if err != nil {
 		return nil, err
 	}

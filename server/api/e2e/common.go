@@ -9,6 +9,9 @@ import (
 
 	"github.com/gavv/httpexpect/v2"
 	"github.com/google/uuid"
+	"github.com/reearth/reearth-accounts/server/pkg/gqlclient"
+	gqluser "github.com/reearth/reearth-accounts/server/pkg/gqlclient/user"
+	gqlworkspace "github.com/reearth/reearth-accounts/server/pkg/gqlclient/workspace"
 	"github.com/reearth/reearth-flow/api/internal/app"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/fs"
@@ -17,8 +20,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
-	"github.com/reearth/reearth-flow/api/pkg/user"
-	"github.com/reearth/reearth-flow/api/pkg/workspace"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmongo"
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
@@ -29,8 +30,8 @@ import (
 )
 
 type TestMocks struct {
-	UserRepo      user.Repo
-	WorkspaceRepo workspace.Repo
+	UserRepo      gqluser.UserRepo
+	WorkspaceRepo gqlworkspace.WorkspaceRepo
 }
 
 func init() {
@@ -87,7 +88,7 @@ func StartServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Containe
 	mockPermissionChecker.Allow = allowPermission
 
 	// mockAccountGQLClient
-	var accountGQLClient *gql.Client
+	var accountGQLClient *gqlclient.Client
 	if mock != nil {
 		accountGQLClient = gql.NewMockClient(&gql.MockClientParam{
 			UserRepo:      mock.UserRepo,
@@ -162,7 +163,7 @@ func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Conta
 	mockPermissionChecker.Allow = allowPermission
 
 	// mockAccountGQLClient
-	var accountGQLClient *gql.Client
+	var accountGQLClient *gqlclient.Client
 	if mock != nil {
 		accountGQLClient = gql.NewMockClient(&gql.MockClientParam{
 			UserRepo:      mock.UserRepo,

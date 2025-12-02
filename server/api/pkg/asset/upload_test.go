@@ -4,13 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/reearth/reearth-flow/api/pkg/id"
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestUpload_Upload(t *testing.T) {
 	t.Parallel()
-	wid := id.NewWorkspaceID()
+	wid := accountsid.NewWorkspaceID()
 	timeNow := time.Now()
 	uploadWithData := &Upload{
 		uuid:          "1",

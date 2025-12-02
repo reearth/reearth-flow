@@ -3,6 +3,7 @@ package gql
 import (
 	"context"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqldataloader"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -39,7 +40,7 @@ func (c *DeploymentLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gql
 }
 
 func (c *DeploymentLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error) {
-	wID, err := gqlmodel.ToID[id.Workspace](wsID)
+	wID, err := gqlmodel.ToID[accountsid.Workspace](wsID)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +72,7 @@ func (c *DeploymentLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmode
 }
 
 func (c *DeploymentLoader) FindByVersion(ctx context.Context, input *gqlmodel.GetByVersionInput) (*gqlmodel.Deployment, error) {
-	wsID, err := gqlmodel.ToID[id.Workspace](input.WorkspaceID)
+	wsID, err := gqlmodel.ToID[accountsid.Workspace](input.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +95,7 @@ func (c *DeploymentLoader) FindByVersion(ctx context.Context, input *gqlmodel.Ge
 }
 
 func (c *DeploymentLoader) FindHead(ctx context.Context, input *gqlmodel.GetHeadInput) (*gqlmodel.Deployment, error) {
-	wsID, err := gqlmodel.ToID[id.Workspace](input.WorkspaceID)
+	wsID, err := gqlmodel.ToID[accountsid.Workspace](input.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +118,7 @@ func (c *DeploymentLoader) FindHead(ctx context.Context, input *gqlmodel.GetHead
 }
 
 func (c *DeploymentLoader) FindVersions(ctx context.Context, wsID gqlmodel.ID, pID *gqlmodel.ID) ([]*gqlmodel.Deployment, error) {
-	wID, err := gqlmodel.ToID[id.Workspace](wsID)
+	wID, err := gqlmodel.ToID[accountsid.Workspace](wsID)
 	if err != nil {
 		return nil, err
 	}
