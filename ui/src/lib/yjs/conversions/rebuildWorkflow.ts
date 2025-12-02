@@ -17,10 +17,14 @@ export const reassembleNode = (yNode: YNode): Node => {
 
   const type = yNode.get("type")?.toString() as NodeType;
   const dragging = yNode.get("dragging") as boolean;
+
+  const measuredMap = yNode.get("measured") as Y.Map<any>;
+
   const measured = {
-    width: (yNode.get("measured") as Y.Map<any>)?.get("width"),
-    height: (yNode.get("measured") as Y.Map<any>)?.get("height"),
+    width: measuredMap?.get("width") ?? 0,
+    height: measuredMap?.get("height") ?? 0,
   };
+
   const parentId = yNode.get("parentId")?.toString();
 
   const data: NodeData = {
