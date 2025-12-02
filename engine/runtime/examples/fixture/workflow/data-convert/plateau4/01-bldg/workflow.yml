@@ -119,7 +119,7 @@ graphs:
             - attribute: _lod_type
               method: create
               value: |
-                env.get("__lod_type") ?? "undefined"
+                env.get("__lod_type")
             - attribute: feature_type
               method: create
               value: |

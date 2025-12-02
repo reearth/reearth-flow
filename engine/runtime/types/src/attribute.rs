@@ -393,6 +393,12 @@ impl TryFrom<rhai::Dynamic> for AttributeValue {
     type Error = error::Error;
 
     fn try_from(value: rhai::Dynamic) -> std::result::Result<Self, Self::Error> {
+        // Skip UNIT (null) values - they should not create attributes
+        if value.is_unit() {
+            return Err(error::Error::internal_runtime(
+                "UNIT value cannot be converted to AttributeValue",
+            ));
+        }
         let value: serde_json::Value =
             from_dynamic(&value).map_err(error::Error::internal_runtime)?;
         let value: Self = value.into();
