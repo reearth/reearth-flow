@@ -10,7 +10,7 @@ with:
   targetPackages:
     - luse
     - lsld
-  outputPath:
+  workerArtifactPath:
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
   - id: 0e500d5a-7882-4835-9285-9763ba8b5b65
@@ -39,7 +39,7 @@ graphs:
       - id: ded2e272-e05c-4918-86b3-aa9f763da6e6
         name: FeatureReaderByCityGml
         type: action
-        action: FeatureReader
+        action: FeatureCityGmlReader
         with:
           format: citygml
           dataset: |
@@ -99,7 +99,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("outputPath"), "maxLod.csv")
+            file::join_path(env.get("workerArtifactPath"), "maxLod.csv")
 
       - id: 8510992d-2546-4e89-a09b-f31ff435bbb7
         name: FeatureFilterByPackage
@@ -144,9 +144,9 @@ graphs:
           minZoom: 8
           maxZoom: 16
           output: |
-            file::join_path(env.get("outputPath"), "luse")
+            file::join_path(env.get("workerArtifactPath"), "luse")
           compressOutput: |
-            file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_luse_mvt.zip")
+            file::join_path(env.get("workerArtifactPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_luse_mvt.zip")
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
