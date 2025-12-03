@@ -3,14 +3,21 @@ import type { Awareness } from "y-protocols/awareness";
 
 import { UserDebug } from "@flow/types";
 
-export default ({ yAwareness }: { yAwareness: Awareness }) => {
+export default ({
+  yAwareness,
+  projectId,
+}: {
+  yAwareness: Awareness;
+  projectId?: string;
+}) => {
   const [activeDebugRuns, setActiveDebugRuns] = useState<UserDebug[]>([]);
 
   const broadcastDebugRun = useCallback(
     (jobId: string | null) => {
-      if (jobId) {
+      if (jobId && projectId) {
         yAwareness.setLocalStateField("debugRun", {
           jobId,
+          projectId,
           startedAt: Date.now(),
         });
       } else {
@@ -21,23 +28,27 @@ export default ({ yAwareness }: { yAwareness: Awareness }) => {
         }
       }
     },
-    [yAwareness],
+    [yAwareness, projectId],
   );
 
   useEffect(() => {
     const handleChange = () => {
       const myClientId = yAwareness.clientID;
       const states = Array.from(yAwareness.getStates());
-      // Find all other users with active debug runs
+      // Find all other users with active debug runs in this project
       const otherDebugRuns = states
         .filter(
           ([clientId, state]) =>
-            state.debugRun && state.debugRun.jobId && clientId !== myClientId,
+            state.debugRun &&
+            state.debugRun.jobId &&
+            clientId !== myClientId &&
+            (!projectId || state.debugRun.projectId === projectId), // Filter by project
         )
         .map(([clientId, state]) => ({
           userId: String(clientId),
           userName: state.userName || "Unknown User",
           jobId: state.debugRun.jobId,
+          projectId: state.debugRun.projectId,
           startedAt: state.debugRun.startedAt || Date.now(),
         }));
 
@@ -52,7 +63,7 @@ export default ({ yAwareness }: { yAwareness: Awareness }) => {
     return () => {
       yAwareness.off("change", handleChange);
     };
-  }, [yAwareness]);
+  }, [yAwareness, projectId]);
 
   return {
     broadcastDebugRun,

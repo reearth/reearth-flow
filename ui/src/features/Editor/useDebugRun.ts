@@ -21,9 +21,12 @@ export default ({
   rawWorkflows: Workflow[];
   yAwareness: Awareness;
 }) => {
-  const { broadcastDebugRun } = useDebugAwareness({ yAwareness });
   const t = useT();
   const [currentProject] = useCurrentProject();
+  const { activeDebugRuns, broadcastDebugRun } = useDebugAwareness({
+    yAwareness,
+    projectId: currentProject?.id,
+  });
   const { useGetProjectVariables } = useProjectVariables();
   const { projectVariables } = useGetProjectVariables(currentProject?.id ?? "");
 
@@ -148,5 +151,6 @@ export default ({
     handleDebugRunStart,
     handleDebugRunStop,
     loadExternalDebugJob,
+    activeDebugRuns,
   };
 };

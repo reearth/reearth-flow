@@ -14,18 +14,35 @@ const DebugRunNotification: React.FC<Props> = ({ activeDebugRuns, onJoin }) => {
   const dismissedRef = useRef<Set<string>>(new Set());
   const t = useT();
   useEffect(() => {
+    const activeJobIds = new Set(activeDebugRuns.map((run) => run.jobId));
+    dismissedRef.current.forEach((jobId) => {
+      if (!activeJobIds.has(jobId)) {
+        dismissedRef.current.delete(jobId);
+      }
+    });
+
     activeDebugRuns.forEach((run) => {
       if (dismissedRef.current.has(run.jobId)) return;
 
       dismissedRef.current.add(run.jobId);
 
       const duration = Date.now() - run.startedAt;
-      const timeAgo =
-        duration < 60000 ? "just now" : `${Math.floor(duration / 60000)}m ago`;
+      let timeAgo;
+      if (duration < 60000) {
+        timeAgo = t("just now");
+      } else if (duration < 3600000) {
+        timeAgo = t("{{minutes}}m ago", {
+          minutes: Math.floor(duration / 60000),
+        });
+      } else {
+        timeAgo = t("{{hours}}h ago", {
+          hours: Math.floor(duration / 3600000),
+        });
+      }
 
       toast({
         title: `${run.userName} ${t("started a debug run")}`,
-        description: `${t("Started ")} ${timeAgo}`,
+        description: t("Started {{time}}", { time: timeAgo }),
         action: (
           <ToastAction
             altText="View debug run"

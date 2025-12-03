@@ -29,7 +29,6 @@ import { useCurrentProject } from "@flow/stores";
 import type { Algorithm, Direction, Edge, Node } from "@flow/types";
 
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
-import useDebugAwareness from "./useDebugAwareness";
 import useDebugRun from "./useDebugRun";
 import useDeployment from "./useDeployment";
 import useUIState from "./useUIState";
@@ -251,13 +250,15 @@ export default ({
     [fitView, handleYLayoutChange],
   );
 
-  const { handleDebugRunStart, handleDebugRunStop, loadExternalDebugJob } =
-    useDebugRun({
-      rawWorkflows,
-      yAwareness,
-    });
-
-  const { activeDebugRuns } = useDebugAwareness({ yAwareness });
+  const {
+    handleDebugRunStart,
+    handleDebugRunStop,
+    loadExternalDebugJob,
+    activeDebugRuns,
+  } = useDebugRun({
+    rawWorkflows,
+    yAwareness,
+  });
 
   const handleBeforeDeleteNodes = useCallback(
     ({ nodes: nodesToDelete }: { nodes: Node[] }) => {
