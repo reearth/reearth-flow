@@ -25,25 +25,34 @@ graphs:
         action: AttributeMapper
         with:
           mappers:
-            # for "AttributeRenamer_3", which rename attribute
             - attribute: 方位_出  
               valueAttribute: 方位[°]  
-            # for "SubstringExtractor_11", which add a new attribute "出_H" computed from "出"
-            - attribute: 出_H 
+            - attribute: 方位_入  
+              valueAttribute: 方位[°]00  
+            - attribute: 出 
               expr: |
-                env.get("__value")["出"].split(":")[0]  
-            # for "SubstringExtractor_12", which add a new attribute "出_M" computed from "出" 
-            - attribute: 出_M  
+                datetime::extract_second(env.get("出"))
+            - attribute: 入り 
               expr: |
-                env.get("__value")["出"].split(":")[1]  
-            # for "SubstringExtractor_13", which add a new attribute "入り_H" computed from "入り"
-            - attribute: 入り_H 
+                datetime::extract_second(env.get("入り"))
+            - attribute: 南中 
               expr: |
-                env.get("__value")["入り"].split(":")[0]  
-            # for "SubstringExtractor_14", which add a new attribute "入り_M" computed from "入り"
-            - attribute: 入り_M 
-              expr: |
-                env.get("__value")["入り"].split(":")[1]  
+                datetime::extract_second(env.get("南中"))
+        
+      - id: deeca816-d026-11f0-bcf9-7c70db10a7e3
+        name: solar-radiation-accumulator 
+        type: action 
+        action: AttributeManager 
+        with:
+          operations:
+          # (@Value(入り)/86400 - @Value(出)/86400) * 24 * @sin(@degToRad(@Value(高度[°]))) * (2/@pi())
+          - attribute: 日射量[kWh/m2]
+            method: create 
+            expr: | 
+              let input = env.get("入り") / 86400;
+              let output = env.get("出") / 86400;
+              let hight = env.get("高度[°]");
+              (input - output) * 24 * math::sin(math::to_radians(hight)) * (2/math::PI)
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: CsvWriter
