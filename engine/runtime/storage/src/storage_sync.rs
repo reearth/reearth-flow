@@ -59,8 +59,7 @@ impl Storage {
             .map_err(|err| format_object_store_error(err, p))?;
         w.write(bytes)
             .map_err(|err| format_object_store_error(err, p))?;
-        w.close()
-            .map_err(|err| format_object_store_error(err, p))?;
+        w.close().map_err(|err| format_object_store_error(err, p))?;
         Ok(())
     }
 

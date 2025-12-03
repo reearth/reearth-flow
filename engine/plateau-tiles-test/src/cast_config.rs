@@ -6,13 +6,12 @@ use std::collections::HashMap;
 #[serde(untagged)]
 pub enum CastConfigValue {
     Simple(String),
-    Complex {
-        comparator: String,
-        key: String,
-    },
+    Complex { comparator: String, key: String },
 }
 
-pub fn convert_casts(casts_cfg: &HashMap<String, CastConfigValue>) -> Result<HashMap<String, CastConfig>, String> {
+pub fn convert_casts(
+    casts_cfg: &HashMap<String, CastConfigValue>,
+) -> Result<HashMap<String, CastConfig>, String> {
     let mut casts = HashMap::new();
     for (key, value) in casts_cfg {
         let cast = match value {

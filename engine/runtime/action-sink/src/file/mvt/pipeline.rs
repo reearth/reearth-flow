@@ -314,8 +314,8 @@ pub(super) fn make_tile(
                         let [prev_x, prev_y] = prev;
                         let [next_x, next_y] = next;
                         if curr != next
-                            && ((next_y - prev_y) as i32 * (curr_x - prev_x) as i32).abs()
-                                == ((curr_y - prev_y) as i32 * (next_x - prev_x) as i32).abs()
+                            && ((next_y - prev_y) * (curr_x - prev_x)).abs()
+                                == ((curr_y - prev_y) * (next_x - prev_x)).abs()
                         {
                             continue;
                         }

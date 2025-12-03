@@ -36,10 +36,9 @@ fn init_logging(verbosity: &str) {
 
         tracing_subscriber::registry()
             .with(filter)
-            .with(
-                tracing_subscriber::fmt::layer()
-                    .with_timer(tracing_subscriber::fmt::time::ChronoLocal::new("%H:%M:%S".to_string()))
-            )
+            .with(tracing_subscriber::fmt::layer().with_timer(
+                tracing_subscriber::fmt::time::ChronoLocal::new("%H:%M:%S".to_string()),
+            ))
             .init();
     });
 }
@@ -66,8 +65,12 @@ struct Tests {
     cesium_attributes: Option<CesiumAttributesConfig>,
 }
 
-
-fn pack_citymodel_zip(zip_stem: &str, testcase_dir: &Path, artifacts_base: &Path, output_path: &Path) {
+fn pack_citymodel_zip(
+    zip_stem: &str,
+    testcase_dir: &Path,
+    artifacts_base: &Path,
+    output_path: &Path,
+) {
     let artifact_dir = artifacts_base.join(zip_stem);
     let testcase_citymodel = testcase_dir.join("citymodel");
 
@@ -125,11 +128,8 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/06-area-urf/nested",
 ];
 
-fn run_test<F>(
-    test_name: &str,
-    relative_path: &std::path::Display,
-    test_fn: F,
-) where
+fn run_test<F>(test_name: &str, relative_path: &std::path::Display, test_fn: F)
+where
     F: FnOnce() -> Result<(), String>,
 {
     info!("Starting test: {}/{}", relative_path, test_name);
@@ -140,7 +140,12 @@ fn run_test<F>(
     }
 
     let elapsed = start_time.elapsed();
-    info!("Completed test: {}/{} ({:.2}s)", relative_path, test_name, elapsed.as_secs_f64());
+    info!(
+        "Completed test: {}/{} ({:.2}s)",
+        relative_path,
+        test_name,
+        elapsed.as_secs_f64()
+    );
 }
 
 fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &str) {
@@ -194,7 +199,10 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
     if stages.contains('e') {
         let fme_output_path = test_path.join("fme.zip");
         if !fme_output_path.exists() {
-            panic!("FME output file not found in testcase: {}", fme_output_path.display());
+            panic!(
+                "FME output file not found in testcase: {}",
+                fme_output_path.display()
+            );
         }
 
         let fme_dir = output_dir.join("fme");
@@ -223,7 +231,10 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
 
         if let Some(cfg) = &tests.cesium_attributes {
             run_test("cesium_attributes", &relative_path_display, || {
-                test_cesium_attributes::test_cesium_attributes(&fme_dir, &output_dir.join("flow"), cfg)
+                // FME output is JSON export, Flow output is 3D tiles directory
+                let fme_json = fme_dir.join("export.json");
+                let flow_tiles = output_dir.join("flow").join("tran_lod3");
+                test_cesium_attributes::test_cesium_attributes(&fme_json, &flow_tiles, cfg)
             });
         }
 
@@ -266,7 +277,11 @@ fn extract_fme_output(fme_zip_path: &Path, fme_dir: &Path) {
         }
         fs::create_dir_all(fme_dir).unwrap();
 
-        tracing::debug!("Extracting FME output: {} -> {}", fme_zip_path.display(), fme_dir.display());
+        tracing::debug!(
+            "Extracting FME output: {} -> {}",
+            fme_zip_path.display(),
+            fme_dir.display()
+        );
 
         let file = fs::File::open(fme_zip_path).unwrap();
         let mut archive = zip::ZipArchive::new(file).unwrap();
@@ -289,7 +304,8 @@ fn extract_fme_output(fme_zip_path: &Path, fme_dir: &Path) {
 }
 
 fn main() {
-    let verbosity = env::var("PLATEAU_TILES_TEST_LOG_VERBOSITY").unwrap_or_else(|_| "1".to_string());
+    let verbosity =
+        env::var("PLATEAU_TILES_TEST_LOG_VERBOSITY").unwrap_or_else(|_| "1".to_string());
     init_logging(&verbosity);
 
     let testcases_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("testcases");

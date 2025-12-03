@@ -1,6 +1,6 @@
 use crate::cast_config::{convert_casts, CastConfigValue};
 use crate::compare_attributes::analyze_attributes;
-use reearth_flow_gltf::parse_gltf;
+use reearth_flow_gltf::{extract_feature_properties, parse_gltf};
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
@@ -13,7 +13,37 @@ pub struct CesiumAttributesConfig {
     pub casts: Option<HashMap<String, CastConfigValue>>,
 }
 
-/// Load all GLB attributes from a directory, keyed by feature ID
+/// Load attributes from FME JSON export, keyed by gml_id
+fn load_json_attr(json_path: &Path) -> Result<HashMap<String, Value>, String> {
+    let mut ret = HashMap::new();
+
+    let content = fs::read_to_string(json_path)
+        .map_err(|e| format!("Failed to read JSON file {:?}: {}", json_path, e))?;
+
+    let features: Vec<Value> = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse JSON from {:?}: {}", json_path, e))?;
+
+    for feature in features {
+        if let Some(obj) = feature.as_object() {
+            let gml_id = obj
+                .get("gml_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| format!("Feature missing gml_id: {:?}", feature))?;
+
+            // Create a copy of the feature without geometry fields
+            let mut props = obj.clone();
+            props.remove("json_geometry");
+            props.remove("json_ogc_wkt_crs");
+            props.remove("json_featuretype");
+
+            ret.insert(gml_id.to_string(), Value::Object(props));
+        }
+    }
+
+    Ok(ret)
+}
+
+/// Load all GLB attributes from a directory, keyed by gml_id
 fn load_glb_attr(dir: &Path) -> Result<HashMap<String, Value>, String> {
     let mut ret = HashMap::new();
 
@@ -27,51 +57,55 @@ fn load_glb_attr(dir: &Path) -> Result<HashMap<String, Value>, String> {
         let gltf = parse_gltf(&bytes::Bytes::from(content))
             .map_err(|e| format!("Failed to parse GLB: {}", e))?;
 
-        // Extract attributes from EXT_structural_metadata if present
-        if let Some(_metadata) = gltf.extension_value("EXT_structural_metadata") {
-            // TODO: Parse property tables and extract attributes
-            // For now, store minimal info
-            tracing::debug!("Found EXT_structural_metadata in {:?}", path);
-        }
+        // Extract feature properties using the gltf module
+        let features = extract_feature_properties(&gltf)
+            .map_err(|e| format!("Failed to extract features from {:?}: {}", path, e))?;
 
-        // For now, create a simple placeholder based on mesh names
-        for (mesh_idx, mesh) in gltf.meshes().enumerate() {
-            let mut props = serde_json::Map::new();
-            if let Some(name) = mesh.name() {
-                props.insert("mesh_name".to_string(), Value::String(name.to_string()));
-            }
-            props.insert("mesh_index".to_string(), Value::Number(mesh_idx.into()));
-
-            let key = format!("{}_{}", path.file_stem().unwrap().to_string_lossy(), mesh_idx);
-            ret.insert(key, Value::Object(props));
+        for (gml_id, props) in features {
+            ret.insert(gml_id, Value::Object(props));
         }
     }
 
     Ok(ret)
 }
 
-/// Align GLB attributes from two directories
-fn align_glb_attr(
-    dir1: &Path,
-    dir2: &Path,
-) -> Result<Vec<(String, Value, Value)>, String> {
-    let map1 = load_glb_attr(dir1)?;
-    let map2 = load_glb_attr(dir2)?;
+/// Align attributes from FME JSON export (dir1) and Flow GLB output (dir2)
+fn align_glb_attr(fme_json: &Path, flow_dir: &Path) -> Result<Vec<(String, Value, Value)>, String> {
+    // Load FME output from JSON export
+    let map1 = load_json_attr(fme_json)?;
+
+    // Load Flow output from GLB tiles
+    let map2 = load_glb_attr(flow_dir)?;
 
     tracing::debug!(
-        "Loaded GLB attributes: {} from {:?}, {} from {:?}",
+        "Loaded attributes: {} from FME JSON {:?}, {} from Flow GLBs {:?}",
         map1.len(),
-        dir1,
+        fme_json,
         map2.len(),
-        dir2
+        flow_dir
     );
 
-    let mut result = Vec::new();
-    let all_keys: HashSet<_> = map1.keys().chain(map2.keys()).collect();
+    // Validate that keys match exactly
+    let keys1: HashSet<_> = map1.keys().collect();
+    let keys2: HashSet<_> = map2.keys().collect();
 
-    for key in all_keys {
-        let attr1 = map1.get(key).cloned().unwrap_or(Value::Null);
-        let attr2 = map2.get(key).cloned().unwrap_or(Value::Null);
+    if keys1 != keys2 {
+        let only_in_fme: Vec<_> = keys1.difference(&keys2).collect();
+        let only_in_flow: Vec<_> = keys2.difference(&keys1).collect();
+
+        panic!(
+            "FME: {} keys, flow: {} keys, Only in FME: {:?}, Only in Flow: {:?}",
+            map1.len(),
+            map2.len(),
+            only_in_fme,
+            only_in_flow
+        );
+    }
+
+    let mut result = Vec::new();
+    for key in keys1 {
+        let attr1 = map1.get(key).cloned().unwrap();
+        let attr2 = map2.get(key).cloned().unwrap();
         result.push((key.clone(), attr1, attr2));
     }
 
@@ -79,9 +113,13 @@ fn align_glb_attr(
 }
 
 /// Tests Cesium 3D Tiles GLB attributes between FME and Flow outputs
+///
+/// FME output is expected to be a JSON export file (export.json) since
+/// there's no plan to support FME's b3dm output with Draco decoding.
+/// Flow output is a directory containing GLB tiles.
 pub fn test_cesium_attributes(
-    fme_path: &Path,
-    flow_path: &Path,
+    fme_json_path: &Path,
+    flow_tiles_dir: &Path,
     config: &CesiumAttributesConfig,
 ) -> Result<(), String> {
     let casts = if let Some(casts_cfg) = &config.casts {
@@ -90,7 +128,7 @@ pub fn test_cesium_attributes(
         HashMap::new()
     };
 
-    for (key, attr1, attr2) in align_glb_attr(fme_path, flow_path)? {
+    for (key, attr1, attr2) in align_glb_attr(fme_json_path, flow_tiles_dir)? {
         analyze_attributes(&key, &attr1, &attr2, casts.clone())?;
     }
 

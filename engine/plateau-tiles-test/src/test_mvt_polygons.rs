@@ -50,7 +50,9 @@ fn tinymvt_to_polygon(geom: Geometry, extent: u32) -> Option<MultiPolygon2D<f64>
                             }
                             let coords: Vec<Coordinate2D<f64>> = ring
                                 .iter()
-                                .map(|p| Coordinate2D::new_(p[0] as f64 * scale, p[1] as f64 * scale))
+                                .map(|p| {
+                                    Coordinate2D::new_(p[0] as f64 * scale, p[1] as f64 * scale)
+                                })
                                 .collect();
                             Some(LineString2D::new(coords))
                         })
@@ -172,8 +174,15 @@ fn align_mvt(
     dir2: &Path,
     zmin: Option<u32>,
     zmax: Option<u32>,
-) -> Result<Vec<(String, String, Option<MultiPolygon2D<f64>>, Option<MultiPolygon2D<f64>>)>, String>
-{
+) -> Result<
+    Vec<(
+        String,
+        String,
+        Option<MultiPolygon2D<f64>>,
+        Option<MultiPolygon2D<f64>>,
+    )>,
+    String,
+> {
     // Collect all .mvt files
     let mut files1: Vec<PathBuf> = WalkDir::new(dir1)
         .into_iter()
@@ -253,42 +262,42 @@ fn align_mvt(
         let features2 = tile2.map(|t| features_by_gml_id(&t)).unwrap_or_default();
 
         // Align by gml_id
-        let mut all_gml_ids: Vec<_> = features1
-            .keys()
-            .chain(features2.keys())
-            .cloned()
-            .collect();
+        let mut all_gml_ids: Vec<_> = features1.keys().chain(features2.keys()).cloned().collect();
         all_gml_ids.sort();
         all_gml_ids.dedup();
 
         for gml_id in all_gml_ids {
-            let geom1 = features1.get(&gml_id).and_then(|(geom_buf, geom_type, extent)| {
-                if *geom_type == 3 {
-                    // Polygon
-                    let mut decoder = GeometryDecoder::new(geom_buf);
-                    decoder
-                        .decode_polygons()
-                        .ok()
-                        .map(|polys| tinymvt_to_polygon(Geometry::Polygons(polys), *extent))
-                        .flatten()
-                } else {
-                    None
-                }
-            });
+            let geom1 = features1
+                .get(&gml_id)
+                .and_then(|(geom_buf, geom_type, extent)| {
+                    if *geom_type == 3 {
+                        // Polygon
+                        let mut decoder = GeometryDecoder::new(geom_buf);
+                        decoder
+                            .decode_polygons()
+                            .ok()
+                            .map(|polys| tinymvt_to_polygon(Geometry::Polygons(polys), *extent))
+                            .flatten()
+                    } else {
+                        None
+                    }
+                });
 
-            let geom2 = features2.get(&gml_id).and_then(|(geom_buf, geom_type, extent)| {
-                if *geom_type == 3 {
-                    // Polygon
-                    let mut decoder = GeometryDecoder::new(geom_buf);
-                    decoder
-                        .decode_polygons()
-                        .ok()
-                        .map(|polys| tinymvt_to_polygon(Geometry::Polygons(polys), *extent))
-                        .flatten()
-                } else {
-                    None
-                }
-            });
+            let geom2 = features2
+                .get(&gml_id)
+                .and_then(|(geom_buf, geom_type, extent)| {
+                    if *geom_type == 3 {
+                        // Polygon
+                        let mut decoder = GeometryDecoder::new(geom_buf);
+                        decoder
+                            .decode_polygons()
+                            .ok()
+                            .map(|polys| tinymvt_to_polygon(Geometry::Polygons(polys), *extent))
+                            .flatten()
+                    } else {
+                        None
+                    }
+                });
 
             result.push((rel_path.clone(), gml_id, geom1, geom2));
         }
@@ -319,7 +328,9 @@ pub fn test_mvt_polygons(
         }
 
         total += 1;
-        if gml_id != "urf_ed404ee8-8f1a-4a37-9491-586354ed823f" || !path.ends_with("/26163.mvt") {continue;}
+        if gml_id != "urf_ed404ee8-8f1a-4a37-9491-586354ed823f" || !path.ends_with("/26163.mvt") {
+            continue;
+        }
         let (status, score) = compare_polygons(geom1, geom2);
         worst_score = f64::max(worst_score, score);
 

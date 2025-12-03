@@ -14,7 +14,8 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 pub fn run_workflow(workflow_path: &Path, citygml_path: &Path, output_dir: &Path) {
-    let yaml_transformer = yaml_include::Transformer::new(workflow_path.to_path_buf(), false).unwrap();
+    let yaml_transformer =
+        yaml_include::Transformer::new(workflow_path.to_path_buf(), false).unwrap();
     let yaml_str = yaml_transformer.to_string();
 
     // Save workflow as JSON for reference

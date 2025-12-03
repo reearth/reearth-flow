@@ -28,8 +28,8 @@ fn load_mvt_attr(dir: &Path) -> Result<HashMap<String, Value>, String> {
         let path = entry.path();
         let data = fs::read(path).map_err(|e| format!("Failed to read MVT file: {}", e))?;
 
-        let tile = Tile::decode(&data[..])
-            .map_err(|e| format!("Failed to decode MVT protobuf: {}", e))?;
+        let tile =
+            Tile::decode(&data[..]).map_err(|e| format!("Failed to decode MVT protobuf: {}", e))?;
 
         for layer in tile.layers {
             let tags_decoder = TagsDecoder::new(&layer.keys, &layer.values);
@@ -97,10 +97,7 @@ fn tinymvt_value_to_json(value: &tinymvt::tag::Value) -> Value {
 }
 
 /// Aligns MVT attributes from two directories by gml_id
-fn align_mvt_attr(
-    dir1: &Path,
-    dir2: &Path,
-) -> Result<Vec<(String, Value, Value)>, String> {
+fn align_mvt_attr(dir1: &Path, dir2: &Path) -> Result<Vec<(String, Value, Value)>, String> {
     let map1 = load_mvt_attr(dir1)?;
     let map2 = load_mvt_attr(dir2)?;
 

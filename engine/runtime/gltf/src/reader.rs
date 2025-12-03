@@ -184,9 +184,9 @@ pub fn read_indices(
         gltf::accessor::DataType::U8 => {
             for i in 0..accessor.count() {
                 let offset = start + i * stride;
-                let idx = buffer.get(offset).ok_or_else(|| {
-                    GltfReaderError::Accessor("Index out of bounds".to_string())
-                })?;
+                let idx = buffer
+                    .get(offset)
+                    .ok_or_else(|| GltfReaderError::Accessor("Index out of bounds".to_string()))?;
                 indices.push(*idx as usize);
             }
         }
@@ -202,9 +202,9 @@ pub fn read_indices(
 }
 
 pub fn read_f32(buffer: &[u8], offset: usize) -> Result<f32, GltfReaderError> {
-    let bytes = buffer.get(offset..offset + 4).ok_or_else(|| {
-        GltfReaderError::Buffer("Buffer read out of bounds".to_string())
-    })?;
+    let bytes = buffer
+        .get(offset..offset + 4)
+        .ok_or_else(|| GltfReaderError::Buffer("Buffer read out of bounds".to_string()))?;
 
     let mut array = [0u8; 4];
     array.copy_from_slice(bytes);
@@ -212,9 +212,9 @@ pub fn read_f32(buffer: &[u8], offset: usize) -> Result<f32, GltfReaderError> {
 }
 
 pub fn read_u16(buffer: &[u8], offset: usize) -> Result<u16, GltfReaderError> {
-    let bytes = buffer.get(offset..offset + 2).ok_or_else(|| {
-        GltfReaderError::Buffer("Buffer read out of bounds".to_string())
-    })?;
+    let bytes = buffer
+        .get(offset..offset + 2)
+        .ok_or_else(|| GltfReaderError::Buffer("Buffer read out of bounds".to_string()))?;
 
     let mut array = [0u8; 2];
     array.copy_from_slice(bytes);
@@ -222,9 +222,9 @@ pub fn read_u16(buffer: &[u8], offset: usize) -> Result<u16, GltfReaderError> {
 }
 
 pub fn read_u32(buffer: &[u8], offset: usize) -> Result<u32, GltfReaderError> {
-    let bytes = buffer.get(offset..offset + 4).ok_or_else(|| {
-        GltfReaderError::Buffer("Buffer read out of bounds".to_string())
-    })?;
+    let bytes = buffer
+        .get(offset..offset + 4)
+        .ok_or_else(|| GltfReaderError::Buffer("Buffer read out of bounds".to_string()))?;
 
     let mut array = [0u8; 4];
     array.copy_from_slice(bytes);

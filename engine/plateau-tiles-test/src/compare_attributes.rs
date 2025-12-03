@@ -148,12 +148,8 @@ impl AttributeComparer {
                     return;
                 }
             }
-            self.mismatches.push((
-                self.identifier.clone(),
-                key.to_string(),
-                v1,
-                v2,
-            ));
+            self.mismatches
+                .push((self.identifier.clone(), key.to_string(), v1, v2));
             return;
         }
 
@@ -174,12 +170,8 @@ impl AttributeComparer {
             }
             (Value::Array(arr1), Value::Array(arr2)) => {
                 if arr1.len() != arr2.len() {
-                    self.mismatches.push((
-                        self.identifier.clone(),
-                        key.to_string(),
-                        v1,
-                        v2,
-                    ));
+                    self.mismatches
+                        .push((self.identifier.clone(), key.to_string(), v1, v2));
                     return;
                 }
                 for (idx, (val1, val2)) in arr1.iter().zip(arr2.iter()).enumerate() {
@@ -189,12 +181,8 @@ impl AttributeComparer {
             }
             _ => {
                 if v1 != v2 {
-                    self.mismatches.push((
-                        self.identifier.clone(),
-                        key.to_string(),
-                        v1,
-                        v2,
-                    ));
+                    self.mismatches
+                        .push((self.identifier.clone(), key.to_string(), v1, v2));
                 }
             }
         }
@@ -234,8 +222,9 @@ impl AttributeComparer {
     pub fn compare(&mut self, attr1: &Value, attr2: &Value) -> Result<(), String> {
         if attr1.is_null() || attr2.is_null() {
             return Err(format!(
-                "Missing attributes for identifier: {}",
-                self.identifier
+                "Missing attributes for gmlId: {} for {}",
+                self.identifier,
+                if attr1.is_null() { "FME" } else { "flow" }
             ));
         }
 
@@ -243,10 +232,7 @@ impl AttributeComparer {
 
         if !self.mismatches.is_empty() {
             for (gid, k, v1, v2) in &self.mismatches {
-                eprintln!(
-                    "MISMATCH gml_id={} key={} v1={:?} v2={:?}",
-                    gid, k, v1, v2
-                );
+                eprintln!("MISMATCH gml_id={} key={} v1={:?} v2={:?}", gid, k, v1, v2);
             }
             return Err(format!(
                 "Attribute mismatches found for identifier: {}",
@@ -324,9 +310,12 @@ mod tests {
     #[test]
     fn test_cast_list_to_dict_match() {
         let mut casts = HashMap::new();
-        casts.insert(".items".to_string(), CastConfig::ListToDict {
-            key: ".id".to_string()
-        });
+        casts.insert(
+            ".items".to_string(),
+            CastConfig::ListToDict {
+                key: ".id".to_string(),
+            },
+        );
 
         let v1 = json!({"items": [
             {"id": "a", "value": 1},
@@ -344,9 +333,12 @@ mod tests {
     #[test]
     fn test_cast_list_to_dict_mismatch() {
         let mut casts = HashMap::new();
-        casts.insert(".items".to_string(), CastConfig::ListToDict {
-            key: ".id".to_string()
-        });
+        casts.insert(
+            ".items".to_string(),
+            CastConfig::ListToDict {
+                key: ".id".to_string(),
+            },
+        );
 
         let v1 = json!({"items": [
             {"id": "a", "value": 1},
