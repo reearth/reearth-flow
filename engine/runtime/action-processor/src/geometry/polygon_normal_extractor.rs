@@ -145,7 +145,8 @@ impl Processor for PolygonNormalExtractor {
                 match geos {
                     Geometry3D::Polygon(polygon) => {
                         // Calculate normal properties for 3D polygons
-                        let normal_result = self.calculate_normal_properties_3d(polygon);
+                        let normal_result =
+                            PolygonNormalExtractor::calculate_normal_properties_3d(polygon);
 
                         // Add calculated attributes to the feature
                         if self.add_normal_x {
@@ -229,7 +230,10 @@ impl Processor for PolygonNormalExtractor {
                     Geometry3D::MultiPolygon(multi_polygon) => {
                         // Calculate normal for the first polygon in the multipolygon
                         if let Some(first_polygon) = multi_polygon.iter().next() {
-                            let normal_result = self.calculate_normal_properties_3d(first_polygon);
+                            let normal_result =
+                                PolygonNormalExtractor::calculate_normal_properties_3d(
+                                    first_polygon,
+                                );
 
                             // Add calculated attributes to the feature
                             if self.add_normal_x {
@@ -350,7 +354,7 @@ impl Processor for PolygonNormalExtractor {
 }
 
 // Structure to hold normal calculation results
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct NormalResult {
     normal_x: f64,
     normal_y: f64,
@@ -361,7 +365,8 @@ struct NormalResult {
 }
 
 impl PolygonNormalExtractor {
-    fn calculate_normal_properties_3d(&self, polygon: &Polygon3D<f64>) -> NormalResult {
+    // TODO: write unit test for this function for Polygon3D
+    fn calculate_normal_properties_3d(polygon: &Polygon3D<f64>) -> NormalResult {
         // Get the exterior ring of the polygon
         let exterior = polygon.exterior();
         let coords: Vec<_> = exterior.coords().collect();
@@ -446,11 +451,13 @@ impl PolygonNormalExtractor {
                 (0.0, 0.0, 0.0, 0.0)
             };
 
-        // Calculate slope (angle from normal to Z axis)
+        // Calculate slope (angle from normal to Z axis) - matching Python implementation
         let slope = if normalized_normal_z != 0.0 {
-            (normalized_normal_x * normalized_normal_x + normalized_normal_y * normalized_normal_y)
+            ((normalized_normal_x * normalized_normal_x
+                + normalized_normal_y * normalized_normal_y)
                 .sqrt()
-                .atan2(normalized_normal_z)
+                / normalized_normal_z)
+                .atan()
                 .to_degrees()
                 .abs()
         } else {
@@ -465,5 +472,52 @@ impl PolygonNormalExtractor {
             slope,
             azimuth,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use reearth_flow_geometry::types::coordinate::Coordinate3D;
+    use reearth_flow_geometry::types::line_string::LineString3D;
+
+    #[test]
+    fn case01_validate_polygon3d_normal() {
+        // Using the coordinates from the Python implementation
+        // Create the coordinate vector
+        let coordinates = vec![
+            Coordinate3D::new__(-310443.027642464, 42024.572164127916, 11.64245729), // First point
+            Coordinate3D::new__(-310443.2722657761, 42017.31538718905, 10.06246068),
+            Coordinate3D::new__(-310413.8126146904, 42016.32232996605, 10.06245526),
+            Coordinate3D::new__(-310413.567998781, 42023.57910553894, 11.64245187),
+            Coordinate3D::new__(-310443.027642464, 42024.572164127916, 11.64245729), // Last point (same as first to close the polygon)
+        ];
+
+        // Create the exterior ring as a LineString3D
+        let exterior = LineString3D::new(coordinates);
+        // Create the Polygon3D with the exterior ring (no interior rings)
+        let polygon = Polygon3D::new(exterior, vec![]);
+
+        let result = PolygonNormalExtractor::calculate_normal_properties_3d(&polygon);
+
+        // Expected values from the Python implementation
+        let expected_polygon_normal = NormalResult {
+            normal_x: -0.0071632345554907256,
+            normal_y: -0.21250690309836642,
+            normal_z: 0.9771333093320709,
+            slope: 12.282607611747856,
+            signed_area_2d: 214.02499108342454,
+            azimuth: 1.9306091257916358,
+        };
+
+        assert_eq!(expected_polygon_normal.normal_x, result.normal_x);
+        assert_eq!(expected_polygon_normal.normal_y, result.normal_y);
+        assert_eq!(expected_polygon_normal.normal_z, result.normal_z);
+        assert_eq!(
+            expected_polygon_normal.signed_area_2d,
+            result.signed_area_2d
+        );
+        assert_eq!(expected_polygon_normal.azimuth, result.azimuth);
+        assert!((result.slope - expected_polygon_normal.slope).abs() < 1e-2);
     }
 }
