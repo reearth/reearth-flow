@@ -23,8 +23,6 @@ graphs:
           output: |
             env.get("outputFilePath")
           prettyPrint: true
-          includePlateau: true
-          writeAttributes: true
     edges:
       - id: f4f94483-de11-7f4d-dde8-71f575d541fe
         from: a2b92281-bc99-5d2b-bbc6-59d353b329dc

@@ -114,26 +114,9 @@ pub struct CityGmlWriterParam {
     /// Whether to format output with indentation (default: true)
     #[serde(default = "default_pretty_print")]
     pub pretty_print: Option<bool>,
-    /// Whether to include PLATEAU extension namespaces (default: true)
-    #[serde(default = "default_true")]
-    pub include_plateau: Option<bool>,
-    /// Whether to write feature attributes (default: true)
-    #[serde(default = "default_true")]
-    pub write_attributes: Option<bool>,
-    /// Path prefix for codelist references (default: "../../codelists/")
-    #[serde(default = "default_codelist_path")]
-    pub codelist_path: Option<String>,
-}
-
-fn default_codelist_path() -> Option<String> {
-    Some("../../codelists/".to_string())
 }
 
 fn default_pretty_print() -> Option<bool> {
-    Some(true)
-}
-
-fn default_true() -> Option<bool> {
     Some(true)
 }
 
@@ -193,21 +176,13 @@ impl Sink for CityGmlWriterSink {
             .unwrap_or_else(|| "http://www.opengis.net/def/crs/EPSG/0/4326".to_string());
 
         let pretty = self.params.pretty_print.unwrap_or(true);
-        let include_plateau = self.params.include_plateau.unwrap_or(true);
-        let write_attributes = self.params.write_attributes.unwrap_or(true);
-        let codelist_path = self
-            .params
-            .codelist_path
-            .clone()
-            .unwrap_or_else(|| "../../codelists/".to_string());
 
         // Dynamic buffer sizing based on feature count (32KB min, 512KB max)
         let buffer_size = (self.buffer.len() * 4096).clamp(32 * 1024, 512 * 1024);
         let mut xml_buffer = Vec::with_capacity(buffer_size);
         {
             let buf_writer = BufWriter::with_capacity(buffer_size, &mut xml_buffer);
-            let mut xml_writer =
-                CityGmlXmlWriter::new(buf_writer, pretty, srs_name, include_plateau, codelist_path);
+            let mut xml_writer = CityGmlXmlWriter::new(buf_writer, pretty, srs_name);
 
             xml_writer.write_header(self.envelope.as_ref())?;
 
@@ -228,7 +203,7 @@ impl Sink for CityGmlWriterSink {
                     continue;
                 }
 
-                xml_writer.write_city_object(feature, city_type, &geometries, write_attributes)?;
+                xml_writer.write_city_object(city_type, &geometries)?;
             }
 
             xml_writer.write_footer()?;

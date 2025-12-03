@@ -39,67 +39,9 @@ fn test_citygml_writer_simple() {
         "Output should contain LOD0 RoofEdge geometry"
     );
 
-    // Verify PLATEAU extension attributes
-    assert!(
-        content.contains("buildingIDAttribute") || content.contains("BuildingIDAttribute"),
-        "Output should contain buildingIDAttribute"
-    );
-    assert!(
-        content.contains("TEST-BLDG-001"),
-        "Output should contain building ID value"
-    );
-    assert!(
-        content.contains("buildingDetailAttribute") || content.contains("BuildingDetailAttribute"),
-        "Output should contain buildingDetailAttribute"
-    );
-    assert!(
-        content.contains("totalFloorArea"),
-        "Output should contain totalFloorArea"
-    );
-
     // Print output for manual verification
     println!("=== CityGML Writer Output ===");
     println!("{}", content);
-    println!("=== End Output ===");
-}
-
-#[test]
-fn test_citygml_writer_full_plateau() {
-    let tempdir = execute("file/writer/citygml", vec!["input.gml"]).unwrap();
-
-    let storage_resolver = Arc::new(StorageResolver::new());
-    let output_path = tempdir.path().join("result.json");
-    let uri = Uri::for_test(output_path.to_str().unwrap());
-    let storage = storage_resolver.resolve(&uri).unwrap();
-
-    let result = storage.get_sync(uri.path().as_path());
-    assert!(result.is_ok(), "Output file should exist");
-
-    let content = String::from_utf8(result.unwrap().to_vec()).unwrap();
-
-    // Verify two buildings present
-    let building_count = content.matches("bldg:Building").count();
-    assert!(
-        building_count >= 2,
-        "Output should contain at least 2 buildings, found {}",
-        building_count
-    );
-
-    // Verify PLATEAU attributes preserved
-    assert!(
-        content.contains("1621-bldg-77") || content.contains("16211-bldg-78"),
-        "Output should contain building IDs from input"
-    );
-
-    // Verify codelists preserved
-    assert!(
-        content.contains("codeSpace") || content.contains("codelists"),
-        "Output should preserve codelist references"
-    );
-
-    // Print for verification
-    println!("=== Full PLATEAU Output (first 5000 chars) ===");
-    println!("{}", &content[..content.len().min(5000)]);
     println!("=== End Output ===");
 }
 

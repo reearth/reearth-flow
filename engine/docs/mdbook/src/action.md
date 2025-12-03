@@ -1250,14 +1250,6 @@ Writes features to CityGML 2.0 files
     "output"
   ],
   "properties": {
-    "codelistPath": {
-      "description": "Path prefix for codelist references (default: \"../../codelists/\")",
-      "default": "../../codelists/",
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "epsgCode": {
       "description": "EPSG code for coordinate reference system",
       "default": null,
@@ -1267,14 +1259,6 @@ Writes features to CityGML 2.0 files
       ],
       "format": "uint32",
       "minimum": 0.0
-    },
-    "includePlateau": {
-      "description": "Whether to include PLATEAU extension namespaces (default: true)",
-      "default": true,
-      "type": [
-        "boolean",
-        "null"
-      ]
     },
     "lodFilter": {
       "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
@@ -1299,14 +1283,6 @@ Writes features to CityGML 2.0 files
     },
     "prettyPrint": {
       "description": "Whether to format output with indentation (default: true)",
-      "default": true,
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
-    "writeAttributes": {
-      "description": "Whether to write feature attributes (default: true)",
       "default": true,
       "type": [
         "boolean",
