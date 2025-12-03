@@ -1,5 +1,5 @@
 import { useReactFlow } from "@xyflow/react";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import type { Awareness } from "y-protocols/awareness";
 
 import { useProject, useProjectVariables } from "@flow/lib/gql";
@@ -125,45 +125,58 @@ export default ({
     async (jobId: string, userName: string) => {
       if (!currentProject) return;
 
-      // Read fresh value from IndexedDB
-      const existingJobs = debugRunState?.jobs || [];
-
-      // If we already have this job, do nothing
-      if (existingJobs.some((j) => j.jobId === jobId)) return;
-
-      // Clear any existing debug run that is currently loaded
-      const filteredJobs = existingJobs.filter(
-        (job) => job.projectId !== currentProject.id,
-      );
-
-      const newJobs = [
-        ...filteredJobs,
-        {
-          projectId: currentProject.id,
-          jobId,
-          status: "running" as JobState["status"],
-        },
-      ];
-
-      await updateValue({ jobs: newJobs });
-
-      toast({
-        title: t("Now viewing {{userName}}'s debug run", {
-          userName,
-        }),
-        description: t("You're now viewing {{userName}}'s debug session", {
-          userName,
-        }),
+      let jobWasAdded = false;
+      await updateValue((prevState) => {
+        const existingJobs = prevState?.jobs || [];
+        // If we already have this job, do nothing
+        if (existingJobs.some((j) => j.jobId === jobId)) {
+          return prevState;
+        }
+        // Clear any existing debug run that is currently loaded
+        const filteredJobs = existingJobs.filter(
+          (job) => job.projectId !== currentProject.id,
+        );
+        const newJobs = [
+          ...filteredJobs,
+          {
+            projectId: currentProject.id,
+            jobId,
+            status: "running" as JobState["status"],
+          },
+        ];
+        jobWasAdded = true;
+        return { ...prevState, jobs: newJobs };
       });
+      if (jobWasAdded) {
+        toast({
+          title: t("Now viewing {{userName}}'s debug run", {
+            userName,
+          }),
+          description: t("You're now viewing {{userName}}'s debug session", {
+            userName,
+          }),
+        });
+      }
     },
-    // Intentionally omit debugRunState to read fresh value on each call
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [t, currentProject, updateValue],
   );
+
+  useEffect(() => {
+    return () => {
+      broadcastDebugRun(null);
+    };
+  }, [broadcastDebugRun]);
+
+  const currentUserJobIds =
+    debugRunState?.jobs
+      ?.filter((job) => job.projectId === currentProject?.id)
+      .map((job) => job.jobId) || [];
+
   return {
     handleDebugRunStart,
     handleDebugRunStop,
     loadExternalDebugJob,
     activeDebugRuns,
+    currentUserJobIds,
   };
 };

@@ -49,6 +49,7 @@ export default function Editor({
     spotlightUserClientId,
     spotlightUser,
     activeDebugRuns,
+    currentUserJobIds,
     loadExternalDebugJob,
     handleWorkflowAdd,
     handleWorkflowDeployment,
@@ -184,6 +185,7 @@ export default function Editor({
             />
           )}
           <DebugRunNotification
+            currentUserJobIds={currentUserJobIds}
             activeDebugRuns={activeDebugRuns}
             onJoin={loadExternalDebugJob}
           />

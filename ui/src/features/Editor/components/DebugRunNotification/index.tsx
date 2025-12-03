@@ -7,10 +7,15 @@ import { UserDebug } from "@flow/types";
 
 type Props = {
   activeDebugRuns: UserDebug[];
+  currentUserJobIds: string[];
   onJoin: (jobId: string, userName: string) => void;
 };
 
-const DebugRunNotification: React.FC<Props> = ({ activeDebugRuns, onJoin }) => {
+const DebugRunNotification: React.FC<Props> = ({
+  activeDebugRuns,
+  currentUserJobIds,
+  onJoin,
+}) => {
   const dismissedRef = useRef<Set<string>>(new Set());
   const t = useT();
   useEffect(() => {
@@ -22,11 +27,15 @@ const DebugRunNotification: React.FC<Props> = ({ activeDebugRuns, onJoin }) => {
     });
 
     activeDebugRuns.forEach((run) => {
-      if (dismissedRef.current.has(run.jobId)) return;
+      if (
+        dismissedRef.current.has(run.jobId) ||
+        currentUserJobIds.includes(run.jobId)
+      )
+        return;
 
       dismissedRef.current.add(run.jobId);
 
-      const duration = Date.now() - run.startedAt;
+      const duration = Math.max(0, Date.now() - run.startedAt);
       let timeAgo;
       if (duration < 60000) {
         timeAgo = t("just now");
@@ -54,7 +63,7 @@ const DebugRunNotification: React.FC<Props> = ({ activeDebugRuns, onJoin }) => {
         ),
       });
     });
-  }, [t, activeDebugRuns, onJoin]);
+  }, [t, activeDebugRuns, currentUserJobIds, onJoin]);
 
   return null;
 };

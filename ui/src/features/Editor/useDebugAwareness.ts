@@ -48,7 +48,6 @@ export default ({
           userId: String(clientId),
           userName: state.userName || "Unknown User",
           jobId: state.debugRun.jobId,
-          projectId: state.debugRun.projectId,
           startedAt: state.debugRun.startedAt || Date.now(),
         }));
 
