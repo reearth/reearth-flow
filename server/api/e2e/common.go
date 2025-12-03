@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/http"
 	"net/url"
@@ -107,7 +108,7 @@ func StartServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Containe
 
 	ch := make(chan error)
 	go func() {
-		if err := srv.Serve(l); err != http.ErrServerClosed {
+		if err := srv.Serve(l); !errors.Is(err, http.ErrServerClosed) {
 			ch <- err
 		}
 		close(ch)
