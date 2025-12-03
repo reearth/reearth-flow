@@ -23,6 +23,7 @@ export default ({
 }) => {
   const t = useT();
   const [currentProject] = useCurrentProject();
+
   const { activeDebugRuns, broadcastDebugRun } = useDebugAwareness({
     yAwareness,
     projectId: currentProject?.id,
@@ -122,18 +123,28 @@ export default ({
 
   const loadExternalDebugJob = useCallback(
     async (jobId: string, userName: string) => {
-      const jobs: JobState[] = debugRunState?.jobs || [];
       if (!currentProject) return;
-      if (jobs.some((j) => j.jobId === jobId)) return;
+
+      // Read fresh value from IndexedDB
+      const existingJobs = debugRunState?.jobs || [];
+
+      // If we already have this job, do nothing
+      if (existingJobs.some((j) => j.jobId === jobId)) return;
+
+      // Clear any existing debug run that is currently loaded
+      const filteredJobs = existingJobs.filter(
+        (job) => job.projectId !== currentProject.id,
+      );
 
       const newJobs = [
-        ...jobs,
+        ...filteredJobs,
         {
           projectId: currentProject.id,
           jobId,
           status: "running" as JobState["status"],
         },
       ];
+
       await updateValue({ jobs: newJobs });
 
       toast({
@@ -145,7 +156,9 @@ export default ({
         }),
       });
     },
-    [t, currentProject, debugRunState?.jobs, updateValue],
+    // Intentionally omit debugRunState to read fresh value on each call
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t, currentProject, updateValue],
   );
   return {
     handleDebugRunStart,
