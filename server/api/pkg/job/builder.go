@@ -4,22 +4,22 @@ import (
 	"time"
 )
 
-type JobBuilder struct {
+type Builder struct {
 	j *Job
 }
 
-func New() *JobBuilder {
-	return &JobBuilder{j: &Job{}}
+func New() *Builder {
+	return &Builder{j: &Job{}}
 }
 
-func (b *JobBuilder) Build() (*Job, error) {
+func (b *Builder) Build() (*Job, error) {
 	if b.j.id.IsNil() {
 		return nil, ErrInvalidID
 	}
 	return b.j, nil
 }
 
-func (b *JobBuilder) MustBuild() *Job {
+func (b *Builder) MustBuild() *Job {
 	r, err := b.Build()
 	if err != nil {
 		panic(err)
@@ -27,87 +27,87 @@ func (b *JobBuilder) MustBuild() *Job {
 	return r
 }
 
-func (b *JobBuilder) BatchStatus(batchStatus *Status) *JobBuilder {
+func (b *Builder) BatchStatus(batchStatus *Status) *Builder {
 	b.j.batchStatus = batchStatus
 	return b
 }
 
-func (b *JobBuilder) ID(id ID) *JobBuilder {
+func (b *Builder) ID(id ID) *Builder {
 	b.j.id = id
 	return b
 }
 
-func (b *JobBuilder) NewID() *JobBuilder {
+func (b *Builder) NewID() *Builder {
 	b.j.id = NewID()
 	return b
 }
 
-func (b *JobBuilder) Debug(debug *bool) *JobBuilder {
+func (b *Builder) Debug(debug *bool) *Builder {
 	b.j.debug = debug
 	return b
 }
 
-func (b *JobBuilder) Deployment(deployment DeploymentID) *JobBuilder {
+func (b *Builder) Deployment(deployment DeploymentID) *Builder {
 	b.j.deployment = deployment
 	return b
 }
 
-func (b *JobBuilder) Workspace(workspace WorkspaceID) *JobBuilder {
+func (b *Builder) Workspace(workspace WorkspaceID) *Builder {
 	b.j.workspace = workspace
 	return b
 }
 
-func (b *JobBuilder) GCPJobID(gcpJobID string) *JobBuilder {
+func (b *Builder) GCPJobID(gcpJobID string) *Builder {
 	b.j.gcpJobID = gcpJobID
 	return b
 }
 
-func (b *JobBuilder) Status(status Status) *JobBuilder {
+func (b *Builder) Status(status Status) *Builder {
 	b.j.status = status
 	return b
 }
 
-func (b *JobBuilder) StartedAt(startedAt time.Time) *JobBuilder {
+func (b *Builder) StartedAt(startedAt time.Time) *Builder {
 	b.j.startedAt = startedAt
 	return b
 }
 
-func (b *JobBuilder) CompletedAt(completedAt *time.Time) *JobBuilder {
+func (b *Builder) CompletedAt(completedAt *time.Time) *Builder {
 	b.j.completedAt = completedAt
 	return b
 }
 
-func (b *JobBuilder) MetadataURL(metadataURL string) *JobBuilder {
+func (b *Builder) MetadataURL(metadataURL string) *Builder {
 	b.j.metadataURL = metadataURL
 	return b
 }
 
-func (b *JobBuilder) OutputURLs(outputURLs []string) *JobBuilder {
+func (b *Builder) OutputURLs(outputURLs []string) *Builder {
 	b.j.outputURLs = outputURLs
 	return b
 }
 
-func (b *JobBuilder) LogsURL(logsURL string) *JobBuilder {
+func (b *Builder) LogsURL(logsURL string) *Builder {
 	b.j.logsURL = logsURL
 	return b
 }
 
-func (b *JobBuilder) WorkerLogsURL(workerLogsURL string) *JobBuilder {
+func (b *Builder) WorkerLogsURL(workerLogsURL string) *Builder {
 	b.j.workerLogsURL = workerLogsURL
 	return b
 }
 
-func (b *JobBuilder) UserFacingLogsURL(userFacingLogsURL string) *JobBuilder {
+func (b *Builder) UserFacingLogsURL(userFacingLogsURL string) *Builder {
 	b.j.userFacingLogsURL = userFacingLogsURL
 	return b
 }
 
-func (b *JobBuilder) WorkerStatus(workerStatus *Status) *JobBuilder {
+func (b *Builder) WorkerStatus(workerStatus *Status) *Builder {
 	b.j.workerStatus = workerStatus
 	return b
 }
 
-func (b *JobBuilder) Variables(variables map[string]string) *JobBuilder {
+func (b *Builder) Variables(variables map[string]string) *Builder {
 	b.j.variables = variables
 	return b
 }
