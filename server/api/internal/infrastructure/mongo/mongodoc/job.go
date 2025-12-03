@@ -9,8 +9,13 @@ import (
 )
 
 type JobDocument struct {
-	ID                string            `bson:"id"`
+	StartedAt         time.Time         `bson:"startedat"`
 	Debug             *bool             `bson:"debug"`
+	BatchStatus       *string           `bson:"batchstatus,omitempty"`
+	WorkerStatus      *string           `bson:"workerstatus,omitempty"`
+	CompletedAt       *time.Time        `bson:"completedat"`
+	Variables         map[string]string `bson:"variables,omitempty"`
+	ID                string            `bson:"id"`
 	DeploymentID      string            `bson:"deploymentid"`
 	WorkspaceID       string            `bson:"workspaceid"`
 	GCPJobID          string            `bson:"gcpjobid"`
@@ -18,13 +23,8 @@ type JobDocument struct {
 	WorkerLogsURL     string            `bson:"workerlogsurl"`
 	UserFacingLogsURL string            `bson:"userfacinglogsurl"`
 	Status            string            `bson:"status"`
-	BatchStatus       *string           `bson:"batchstatus,omitempty"`
-	WorkerStatus      *string           `bson:"workerstatus,omitempty"`
-	StartedAt         time.Time         `bson:"startedat"`
-	CompletedAt       *time.Time        `bson:"completedat"`
 	MetadataURL       string            `bson:"metadataurl"`
 	OutputURLs        []string          `bson:"outputurls"`
-	Variables         map[string]string `bson:"variables,omitempty"`
 }
 
 type JobConsumer = Consumer[*JobDocument, *job.Job]

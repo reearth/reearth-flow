@@ -29,13 +29,13 @@ type Trigger struct {
 	lastTriggered *time.Time
 	authToken     *string
 	timeInterval  *TimeInterval
-	enabled       bool
 	variables     map[string]string
 	description   string
 	eventSource   EventSourceType
 	id            ID
 	workspaceId   WorkspaceID
 	deploymentId  DeploymentID
+	enabled       bool
 }
 
 func (t *Trigger) ID() ID {

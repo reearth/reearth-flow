@@ -18,19 +18,19 @@ type Job struct {
 	startedAt         time.Time
 	completedAt       *time.Time
 	debug             *bool
+	batchStatus       *Status
+	workerStatus      *Status
+	variables         map[string]string
 	gcpJobID          string
 	logsURL           string
 	workerLogsURL     string
 	userFacingLogsURL string
 	metadataURL       string
 	status            Status
-	batchStatus       *Status
-	workerStatus      *Status
 	outputURLs        []string
 	deployment        DeploymentID
 	id                ID
 	workspace         WorkspaceID
-	variables         map[string]string
 }
 
 func NewJob(id ID, deployment DeploymentID, workspace WorkspaceID, gcpJobID string) *Job {
