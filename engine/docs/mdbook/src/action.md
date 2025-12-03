@@ -1,5 +1,19 @@
 # Actions
 
+## AppearanceRemover
+### Type
+* processor
+### Description
+Removes appearance information (materials, textures) from CityGML geometry
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
+
 ## AreaOnAreaOverlayer
 ### Type
 * processor
@@ -2867,6 +2881,21 @@ Extracts file system properties (type, size, timestamps) from files
 ### Category
 * File
 
+## FootprintReplacer
+### Type
+* processor
+### Description
+Projects 3D geometry to XY plane and computes the union footprint (supports solids, surfaces, and CityGML)
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* footprint
+* rejected
+### Category
+* Geometry
+
 ## GeoJsonReader
 ### Type
 * source
@@ -3375,6 +3404,20 @@ Extract geometry parts (surfaces) from 3D geometries as separate features
 * extracted
 * remaining
 * untouched
+### Category
+* Geometry
+
+## GeometryRemover
+### Type
+* processor
+### Description
+Removes geometry from a feature
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
 ### Category
 * Geometry
 
@@ -6144,7 +6187,7 @@ Extract object list
 ### Type
 * processor
 ### Description
-Creates pairs of features that can possibly intersect based on bounding box overlap
+Creates pairs of features from AreaOnAreaOverlayer output for solid intersection testing
 ### Parameters
 ```json
 {
@@ -6152,11 +6195,18 @@ Creates pairs of features that can possibly intersect based on bounding box over
   "title": "SolidIntersectionTestPairCreatorParam",
   "type": "object",
   "properties": {
-    "boundingBoxAttribute": {
-      "default": "bounding_box",
+    "gmlIdAttribute": {
+      "description": "Attribute name for the GML ID within the list items (default: \"gmlId\")",
+      "default": "gmlId",
+      "type": "string"
+    },
+    "listAttribute": {
+      "description": "Attribute name containing the list of overlapping features from AreaOnAreaOverlayer (default: \"list\")",
+      "default": "list",
       "type": "string"
     },
     "pairIdAttribute": {
+      "description": "Attribute name to store the pair ID (default: \"pair_id\")",
       "default": "pair_id",
       "type": "string"
     }
@@ -6854,55 +6904,6 @@ Calculates statistical aggregations on feature attributes with customizable expr
 * complete
 ### Category
 * Attribute
-
-## SurfaceFootprintReplacer
-### Type
-* processor
-### Description
-Replace the geometry with its footprint
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "SurfaceFootprintReplacer Parameters",
-  "description": "Configuration for replacing geometry with its footprint projection.",
-  "type": "object",
-  "properties": {
-    "elevation": {
-      "type": [
-        "number",
-        "null"
-      ],
-      "format": "double"
-    },
-    "lightDirection": {
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "type": "number",
-        "format": "double"
-      },
-      "maxItems": 3,
-      "minItems": 3
-    },
-    "shadowMode": {
-      "type": [
-        "string",
-        "null"
-      ]
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* footprint
-* rejected
-### Category
-* Geometry
 
 ## ThreeDimensionBoxReplacer
 ### Type
