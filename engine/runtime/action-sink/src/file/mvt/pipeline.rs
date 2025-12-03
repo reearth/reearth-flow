@@ -228,7 +228,7 @@ pub(super) fn tile_writing_stage(
             let (zoom, x, y) = tile_id_conv.id_to_zxy(tile_id);
 
             let path = output_path
-                .join(Path::new(&format!("{zoom}/{x}/{y}.pbf")))
+                .join(Path::new(&format!("{zoom}/{x}/{y}.mvt")))
                 .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
             for detail in (min_detail..=default_detail).rev() {
                 // Make a MVT tile binary
@@ -284,14 +284,14 @@ pub(super) fn make_tile(
             })?;
 
         let mpoly = feature.multi_polygons;
-        let mut int_mpoly = NMultiPolygon::<[i16; 2]>::new();
+        let mut int_mpoly = NMultiPolygon::<[i32; 2]>::new();
 
         for poly in &mpoly {
             for (ri, ring) in poly.rings().enumerate() {
                 int_ring_buf.clear();
                 int_ring_buf.extend(ring.into_iter().map(|[x, y]| {
-                    let x = (x * extent as f64 + 0.5) as i16;
-                    let y = (y * extent as f64 + 0.5) as i16;
+                    let x = (x * extent as f64 + 0.5) as i32;
+                    let y = (y * extent as f64 + 0.5) as i32;
                     [x, y]
                 }));
 
@@ -334,15 +334,15 @@ pub(super) fn make_tile(
             }
         }
 
-        let mut int_line_string = NMultiLineString::<[i16; 2]>::new();
+        let mut int_line_string = NMultiLineString::<[i32; 2]>::new();
         let mline_string = feature.multi_line_strings;
 
         let mut int_line_string_buf = Vec::new();
         for line_string in &mline_string {
             int_line_string_buf.clear();
             int_line_string_buf.extend(line_string.into_iter().map(|[x, y]| {
-                let x = (x * extent as f64 + 0.5) as i16;
-                let y = (y * extent as f64 + 0.5) as i16;
+                let x = (x * extent as f64 + 0.5) as i32;
+                let y = (y * extent as f64 + 0.5) as i32;
                 [x, y]
             }));
             int_line_string.add_linestring(&LineString2::from_raw(

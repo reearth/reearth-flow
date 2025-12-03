@@ -5340,6 +5340,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "plateau-tiles-test"
+version = "0.1.0"
+dependencies = [
+ "prost",
+ "reearth-flow-action-log",
+ "reearth-flow-action-plateau-processor",
+ "reearth-flow-action-processor",
+ "reearth-flow-action-sink",
+ "reearth-flow-action-source",
+ "reearth-flow-common",
+ "reearth-flow-geometry",
+ "reearth-flow-runner",
+ "reearth-flow-runtime",
+ "reearth-flow-state",
+ "reearth-flow-storage",
+ "reearth-flow-types",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tinymvt",
+ "tokio",
+ "toml 0.8.23",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+ "walkdir",
+ "yaml-include",
+ "zip 2.4.2",
+]
+
+[[package]]
 name = "plist"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8730,7 +8761,7 @@ dependencies = [
 [[package]]
 name = "tinymvt"
 version = "0.0.1"
-source = "git+https://github.com/reearth/tinymvt.git?tag=v0.0.2#874cba43dca3d0852eb08d140eedd8146b93bd58"
+source = "git+https://github.com/reearth/tinymvt.git?branch=feat%2Fdecode#a933d35d14efa5235f82df71f037b62e087406bf"
 dependencies = [
  "ahash 0.8.12",
  "indexmap 2.12.1",
@@ -9149,6 +9180,7 @@ version = "0.3.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f30143827ddab0d256fd843b7a66d164e9f271cfa0dde49142c5ca0ca291f1e"
 dependencies = [
+ "chrono",
  "matchers",
  "nu-ansi-term",
  "once_cell",

@@ -58,7 +58,10 @@ impl Storage {
             .call()
             .map_err(|err| format_object_store_error(err, p))?;
         w.write(bytes)
-            .map_err(|err| format_object_store_error(err, p))
+            .map_err(|err| format_object_store_error(err, p))?;
+        w.close()
+            .map_err(|err| format_object_store_error(err, p))?;
+        Ok(())
     }
 
     pub fn get_sync(&self, location: &Path) -> Result<Bytes> {
