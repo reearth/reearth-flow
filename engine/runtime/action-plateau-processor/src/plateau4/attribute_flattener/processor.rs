@@ -228,51 +228,55 @@ impl AttributeFlattener {
         lookup_key: &str,
     ) {
         let mut ancestors = vec![];
-        let mut citygml_attributes =
-            if feature.feature_type().as_deref() == Some("uro:DmGeometricAttribute") {
-                // get parent attributes before stripping parent info
-                let mut parent_attr = self.get_parent_attr(&citygml_attributes);
-                strip_parent_info(&mut citygml_attributes);
-                // extract attributes to toplevel
-                for (key, value) in citygml_attributes.iter() {
-                    let key = key.replace("uro:", "dm_");
-                    feature
-                        .attributes
-                        .insert(Attribute::new(key.clone()), value.clone());
-                }
-                let dm_attributes_value = AttributeValue::Map(citygml_attributes);
-                let json_string =
-                    serde_json::to_string(&serde_json::Value::from(dm_attributes_value)).unwrap();
+        let feature_type = feature.feature_type().unwrap_or_default();
+        let mut citygml_attributes = if feature_type == "uro:DmGeometricAttribute" {
+            // get parent attributes before stripping parent info
+            let mut parent_attr = self.get_parent_attr(&citygml_attributes);
+            strip_parent_info(&mut citygml_attributes);
+            // extract attributes to toplevel
+            for (key, value) in citygml_attributes.iter() {
+                let key = key.replace("uro:", "dm_");
+                feature
+                    .attributes
+                    .insert(Attribute::new(key.clone()), value.clone());
+            }
+            let dm_attributes_value = AttributeValue::Map(citygml_attributes);
+            let json_string =
+                serde_json::to_string(&serde_json::Value::from(dm_attributes_value)).unwrap();
+            feature.attributes.insert(
+                Attribute::new("dm_attributes".to_string()),
+                AttributeValue::String(json_string),
+            );
+            if let Some(feature_type) = feature.metadata.feature_type.as_ref() {
                 feature.attributes.insert(
-                    Attribute::new("dm_attributes".to_string()),
-                    AttributeValue::String(json_string),
+                    Attribute::new("dm_feature_type".to_string()),
+                    AttributeValue::String(
+                        feature_type
+                            .strip_prefix("uro:")
+                            .unwrap_or(feature_type)
+                            .to_string(),
+                    ),
                 );
-                if let Some(feature_type) = feature.metadata.feature_type.as_ref() {
-                    feature.attributes.insert(
-                        Attribute::new("dm_feature_type".to_string()),
-                        AttributeValue::String(
-                            feature_type
-                                .strip_prefix("uro:")
-                                .unwrap_or(feature_type)
-                                .to_string(),
-                        ),
-                    );
-                }
-                // DmGeometricAttribute uses parent attributes (the real feature) as inner attributes
-                // add common attributes AFTER swapping with parent attributes
-                Self::insert_common_attributes(feature, &mut parent_attr);
-                parent_attr
+            }
+            // DmGeometricAttribute uses parent attributes (the real feature) as inner attributes
+            // add common attributes AFTER swapping with parent attributes
+            Self::insert_common_attributes(feature, &mut parent_attr);
+            parent_attr
+        } else {
+            // add common attributes BEFORE caching and building ancestors
+            Self::insert_common_attributes(feature, &mut citygml_attributes);
+            // attribute must be cached BEFORE inserting ancestors, AFTER inserting common attributes
+            if let Some(feature_id) = feature.feature_id() {
+                self.gmlid_to_citygml_attributes
+                    .insert(feature_id, citygml_attributes.clone());
+            }
+            if feature_type.starts_with("urf:") {
+                // skip ancestor building for urf features
             } else {
-                // add common attributes BEFORE caching and building ancestors
-                Self::insert_common_attributes(feature, &mut citygml_attributes);
-                // attribute must be cached BEFORE inserting ancestors, AFTER inserting common attributes
-                if let Some(feature_id) = feature.feature_id() {
-                    self.gmlid_to_citygml_attributes
-                        .insert(feature_id, citygml_attributes.clone());
-                }
                 ancestors = self.build_ancestors_attribute(&citygml_attributes);
-                citygml_attributes
-            };
+            }
+            citygml_attributes
+        };
         strip_parent_info(&mut citygml_attributes);
 
         if !ancestors.is_empty() {

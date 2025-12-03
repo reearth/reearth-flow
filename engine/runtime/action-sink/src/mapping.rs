@@ -8,9 +8,10 @@ use crate::{
     file::{
         cesium3dtiles::sink::Cesium3DTilesSinkFactory, citygml::CityGmlWriterFactory,
         csv::CsvWriterFactory, czml::CzmlWriterFactory, excel_writer::ExcelWriterFactory,
-        geojson::GeoJsonWriterFactory, gltf::GltfWriterSinkFactory, json::JsonWriterFactory,
-        mvt::sink::MVTSinkFactory, obj::ObjWriterFactory, shapefile::ShapefileWriterFactory,
-        xml::XmlWriterFactory, zip::ZipFileWriterFactory,
+        geojson::GeoJsonWriterFactory, geopackage::GeoPackageWriterFactory,
+        gltf::GltfWriterSinkFactory, json::JsonWriterFactory, mvt::sink::MVTSinkFactory,
+        obj::ObjWriterFactory, shapefile::ShapefileWriterFactory, xml::XmlWriterFactory,
+        zip::ZipFileWriterFactory,
     },
     noop::NoopSinkFactory,
 };
@@ -24,6 +25,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<ExcelWriterFactory>::default(),
         Box::<JsonWriterFactory>::default(),
         Box::<NoopSinkFactory>::default(),
+        Box::<GeoPackageWriterFactory>::default(),
         Box::<GeoJsonWriterFactory>::default(),
         Box::<MVTSinkFactory>::default(),
         Box::<GltfWriterSinkFactory>::default(),

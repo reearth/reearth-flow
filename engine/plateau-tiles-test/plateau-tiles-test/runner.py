@@ -5,6 +5,7 @@ from . import BASE_PATH, ENGINE_PATH, reset_dir, cleanup, log
 from .filter import filter_zip, extract_zip_to_structure
 from .align_mvt import test_mvt_attributes, test_mvt_lines, test_mvt_polygons
 from .align_3dtiles import test_3dtiles_attributes
+from .compare_attributes import test_json_attributes
 
 def pack_citymodel_zip(zip_stem, testcase_dir, artifacts_base, output_path):
     """Pack zip from artifacts (codelists/schemas) + testcase citymodel/ overrides."""
@@ -147,6 +148,8 @@ def run_testcase(path, stages):
                 test_mvt_polygons(fme_dir, output_dir / "flow", cfg)
             elif test_name == "3dtiles_attributes":
                 test_3dtiles_attributes(fme_dir, output_dir / "flow", cfg)
+            elif test_name == "json_attributes":
+                test_json_attributes(fme_dir, output_dir / "flow", cfg)
             else:
                 raise ValueError(f"Unknown test type: {test_name}")
             elapsed = time.time() - start_time
