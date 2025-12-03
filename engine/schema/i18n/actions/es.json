@@ -58,7 +58,7 @@
     },
     {
       "name": "CityGmlWriter",
-      "description": "Escribe entidades en archivos CityGML 2.0 con soporte de extensiones PLATEAU"
+      "description": "Escribe entidades en archivos CityGML 2.0"
     },
     {
       "name": "Clipper",

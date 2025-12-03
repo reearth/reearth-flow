@@ -58,7 +58,7 @@
     },
     {
       "name": "CityGmlWriter",
-      "description": "地物をCityGML 2.0ファイルに書き出す（PLATEAU拡張対応）"
+      "description": "地物をCityGML 2.0ファイルに書き出す"
     },
     {
       "name": "Clipper",

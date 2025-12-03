@@ -1256,7 +1256,7 @@
     {
       "name": "CityGmlWriter",
       "type": "sink",
-      "description": "将实体写入CityGML 2.0文件，支持PLATEAU扩展",
+      "description": "将实体写入CityGML 2.0文件",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriterParam",

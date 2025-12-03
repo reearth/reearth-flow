@@ -1256,7 +1256,7 @@
     {
       "name": "CityGmlWriter",
       "type": "sink",
-      "description": "Writes features to CityGML 2.0 files with PLATEAU extension support",
+      "description": "Writes features to CityGML 2.0 files",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriterParam",

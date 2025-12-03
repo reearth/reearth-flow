@@ -58,7 +58,7 @@
     },
     {
       "name": "CityGmlWriter",
-      "description": "将实体写入CityGML 2.0文件，支持PLATEAU扩展"
+      "description": "将实体写入CityGML 2.0文件"
     },
     {
       "name": "Clipper",

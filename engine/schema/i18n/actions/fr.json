@@ -58,7 +58,7 @@
     },
     {
       "name": "CityGmlWriter",
-      "description": "Writes features to CityGML 2.0 files with PLATEAU extension support"
+      "description": "Writes features to CityGML 2.0 files"
     },
     {
       "name": "Clipper",
