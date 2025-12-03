@@ -34,10 +34,15 @@ Testing framework for aligning flow outputs containing tile files, with FME outp
    - Extract filtered GML files to `testcases/{workflow-path}/{desc}/citymodel/udx/`
    - Pack runtime zip to `results/{workflow-path}/{desc}/{zip_name}`
 4. Run FME with the packed zip from `results/{workflow-path}/{desc}/{zip_name}`
-   - FME uses 3dtiles v1.0 + draco compression. Workaround: modify FME workflows to export JSON files (csmapreprojector + coordinateswapper needed to match cesium processing)
    - Rename `.mvt` -> `.pbf` if necessary
    - Zip FME output to `testcases/{workflow-path}/{desc}/fme.zip`
 5. Run `uv run python3 -m plateau-tiles-test {workflow-path}/{desc} re` to test
+
+## Caveats
+
+- draco decoding not supported (TODO), disable it in workflow to test.
+- FME outputs 3D tiles v1.0 `.b3dm` files which is not supported. Manually edit FME workflows by replacing FME 3d tiles writer with `<CsmapReprojector> -> <CoordinateSwapper> -> <JSON FeatureWriter>`
+- FME's MVT writer split features with `aggregate` type of geometry into multiple features. Use `GeometryRefiner` to merge them before export.
 
 ## Implemented tests
 
@@ -53,7 +58,3 @@ Testing framework for aligning flow outputs containing tile files, with FME outp
 - `g` - Generate: Extract source zip to artifacts + testcase structure, pack runtime zip
 - `r` - Run: Pack runtime zip (if not exists) and execute workflow
 - `e` - Evaluate: Compare flow output with FME reference
-
-## Todo
-
-- support draco decoding for 3dtiles v1.1

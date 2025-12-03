@@ -1,6 +1,7 @@
 mod cast_config;
 mod compare_attributes;
 mod runner;
+mod test_cesium_attributes;
 mod test_json_attributes;
 mod test_mvt_attributes;
 mod test_mvt_polygons;
@@ -11,6 +12,7 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Once;
+use test_cesium_attributes::CesiumAttributesConfig;
 use test_json_attributes::JsonFileConfig;
 use test_mvt_attributes::MvtAttributesConfig;
 use test_mvt_polygons::MvtPolygonsConfig;
@@ -60,6 +62,8 @@ struct Tests {
     mvt_polygons: Option<MvtPolygonsConfig>,
     #[serde(default)]
     mvt_lines: Option<serde_json::Value>,
+    #[serde(default)]
+    cesium_attributes: Option<CesiumAttributesConfig>,
 }
 
 
@@ -121,6 +125,24 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/06-area-urf/nested",
 ];
 
+fn run_test<F>(
+    test_name: &str,
+    relative_path: &std::path::Display,
+    test_fn: F,
+) where
+    F: FnOnce() -> Result<(), String>,
+{
+    info!("Starting test: {}/{}", relative_path, test_name);
+    let start_time = std::time::Instant::now();
+
+    if let Err(e) = test_fn() {
+        panic!("Test failed: {}/{} - {}", relative_path, test_name, e);
+    }
+
+    let elapsed = start_time.elapsed();
+    info!("Completed test: {}/{} ({:.2}s)", relative_path, test_name, elapsed.as_secs_f64());
+}
+
 fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &str) {
     let test_path = testcases_dir.join(name);
     let profile_path = test_path.join("profile.toml");
@@ -179,44 +201,30 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         extract_fme_output(&fme_output_path, &fme_dir);
 
         let tests = &profile.tests;
+        let relative_path_display = relative_path.display();
 
         if let Some(cfg) = &tests.json_attributes {
-            let test_name = "json_attributes";
-            info!("Starting test: {}/{}", relative_path.display(), test_name);
-            let start_time = std::time::Instant::now();
-
-            if let Err(e) = test_json_attributes::test_json_attributes(&fme_dir, &output_dir.join("flow"), cfg) {
-                panic!("Test failed: {}/{} - {}", relative_path.display(), test_name, e);
-            }
-
-            let elapsed = start_time.elapsed();
-            info!("Completed test: {}/{} ({:.2}s)", relative_path.display(), test_name, elapsed.as_secs_f64());
+            run_test("json_attributes", &relative_path_display, || {
+                test_json_attributes::test_json_attributes(&fme_dir, &output_dir.join("flow"), cfg)
+            });
         }
 
         if let Some(cfg) = &tests.mvt_attributes {
-            let test_name = "mvt_attributes";
-            info!("Starting test: {}/{}", relative_path.display(), test_name);
-            let start_time = std::time::Instant::now();
-
-            if let Err(e) = test_mvt_attributes::test_mvt_attributes(&fme_dir, &output_dir.join("flow"), cfg) {
-                panic!("Test failed: {}/{} - {}", relative_path.display(), test_name, e);
-            }
-
-            let elapsed = start_time.elapsed();
-            info!("Completed test: {}/{} ({:.2}s)", relative_path.display(), test_name, elapsed.as_secs_f64());
+            run_test("mvt_attributes", &relative_path_display, || {
+                test_mvt_attributes::test_mvt_attributes(&fme_dir, &output_dir.join("flow"), cfg)
+            });
         }
 
         if let Some(cfg) = &tests.mvt_polygons {
-            let test_name = "mvt_polygons";
-            info!("Starting test: {}/{}", relative_path.display(), test_name);
-            let start_time = std::time::Instant::now();
+            run_test("mvt_polygons", &relative_path_display, || {
+                test_mvt_polygons::test_mvt_polygons(&fme_dir, &output_dir.join("flow"), cfg)
+            });
+        }
 
-            if let Err(e) = test_mvt_polygons::test_mvt_polygons(&fme_dir, &output_dir.join("flow"), cfg) {
-                panic!("Test failed: {}/{} - {}", relative_path.display(), test_name, e);
-            }
-
-            let elapsed = start_time.elapsed();
-            info!("Completed test: {}/{} ({:.2}s)", relative_path.display(), test_name, elapsed.as_secs_f64());
+        if let Some(cfg) = &tests.cesium_attributes {
+            run_test("cesium_attributes", &relative_path_display, || {
+                test_cesium_attributes::test_cesium_attributes(&fme_dir, &output_dir.join("flow"), cfg)
+            });
         }
 
         if tests.mvt_lines.is_some() {
@@ -291,13 +299,25 @@ fn main() {
     let default_stages = env::var("PLATEAU_TILES_TEST_STAGES").unwrap_or_else(|_| "re".to_string());
 
     if args.len() > 1 {
-        let name = &args[1];
+        let input = &args[1];
         let stages = if args.len() > 2 {
             &args[2]
         } else {
             &default_stages
         };
-        run_testcase(&testcases_dir, &results_dir, name, stages);
+
+        // Check if input is a profile.toml path
+        let test_name = if input.ends_with("profile.toml") {
+            let profile_path = fs::canonicalize(PathBuf::from(input)).unwrap();
+            let test_dir = profile_path.parent().unwrap();
+            let relative = test_dir.strip_prefix(&testcases_dir).unwrap();
+            relative.to_string_lossy().to_string()
+        } else {
+            input.to_string()
+        };
+        eprintln!("test_name: {}", test_name);
+
+        run_testcase(&testcases_dir, &results_dir, &test_name, stages);
     } else {
         for name in DEFAULT_TESTS {
             run_testcase(&testcases_dir, &results_dir, name, &default_stages);
