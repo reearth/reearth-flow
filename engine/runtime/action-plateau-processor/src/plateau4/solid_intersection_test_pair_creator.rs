@@ -11,7 +11,7 @@ use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap};
 
 static PORT_A: Lazy<Port> = Lazy::new(|| Port::new("A"));
 static PORT_B: Lazy<Port> = Lazy::new(|| Port::new("B"));
@@ -69,7 +69,7 @@ impl ProcessorFactory for SolidIntersectionTestPairCreatorFactory {
             pair_id_attribute: params.pair_id_attribute,
             list_attribute: params.list_attribute,
             gml_id_attribute: params.gml_id_attribute,
-            seen_pairs: HashSet::new(),
+            seen_pairs: BTreeSet::new(),
             feature_cache: HashMap::new(),
             next_pair_id: 1,
         };
@@ -116,7 +116,7 @@ fn default_gml_id_attribute() -> String {
 }
 
 /// Represents a pair of GML IDs in canonical order (smaller ID first)
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 struct GmlIdPair(String, String);
 
 impl GmlIdPair {
@@ -135,7 +135,7 @@ pub struct SolidIntersectionTestPairCreator {
     list_attribute: String,
     gml_id_attribute: String,
     /// Set of seen GML ID pairs to avoid duplicates
-    seen_pairs: HashSet<GmlIdPair>,
+    seen_pairs: BTreeSet<GmlIdPair>,
     /// Cache of features by GML ID for lookup when creating pairs
     feature_cache: HashMap<String, Feature>,
     next_pair_id: u64,
@@ -261,11 +261,6 @@ impl Processor for SolidIntersectionTestPairCreator {
     }
 
     fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
-        println!(
-            "SolidIntersectionTestPairCreator: Created {} unique pairs from {} cached features",
-            self.next_pair_id - 1,
-            self.feature_cache.len()
-        );
         Ok(())
     }
 

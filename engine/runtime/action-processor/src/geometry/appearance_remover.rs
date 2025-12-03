@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::GeometryValue;
+use reearth_flow_types::{Feature, GeometryValue};
 use serde_json::Value;
 
 #[derive(Debug, Clone, Default)]
@@ -71,9 +71,12 @@ impl Processor for AppearanceRemover {
 
                 let mut geometry = feature.geometry.clone();
                 geometry.value = GeometryValue::CityGmlGeometry(gml);
-                let mut feature = feature.clone();
-                feature.geometry = geometry;
-                feature
+                Feature {
+                    geometry,
+                    attributes: feature.attributes.clone(),
+                    metadata: feature.metadata.clone(),
+                    id: feature.id,
+                }
             }
             // For non-CityGML geometry, pass through unchanged
             _ => feature.clone(),
