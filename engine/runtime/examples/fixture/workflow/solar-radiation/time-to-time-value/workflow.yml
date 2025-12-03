@@ -1,0 +1,51 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 697b3412-d017-11f0-9e7b-7c70db10a7e3
+name: "Solar Radiation time to TIMEVALUE workflow"
+entryGraphId: 78ce67ea-d017-11f0-99c4-7c70db10a7e3
+with:
+  inputCsvPath:
+  outputCsvPath:
+  # Solar parameters (adjust per location/date)
+graphs:
+  - id: 78ce67ea-d017-11f0-99c4-7c70db10a7e3
+    name: entry_point
+    nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: FeatureReader
+        type: action
+        action: FeatureReader
+        with:
+          format: csv
+          dataset: |
+            env.get("inputCsvPath")
+
+      - id: d2b4977d-e218-4628-96f2-d26407aeea14
+        name: AttributeMapper
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: 方位_出  # Output attribute name
+              valueAttribute: 方位[°]  # Input attribute name (mapping "方位[°]" to "方位_出")
+
+      - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        name: CsvWriter
+        type: action
+        action: CsvWriter
+        with:
+          format: csv
+          output: |
+            env.get("outputCsvPath")
+
+    edges:
+      - id: c064cf52-705f-443a-b2de-6795266c540d
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: d2b4977d-e218-4628-96f2-d26407aeea14
+        fromPort: default
+        toPort: default
+
+      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb7
+        from: d2b4977d-e218-4628-96f2-d26407aeea14
+        to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        fromPort: default
+        toPort: default
