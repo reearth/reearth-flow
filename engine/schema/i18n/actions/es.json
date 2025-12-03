@@ -181,6 +181,14 @@
       "description": "Escribe entidades en un archivo GeoJSON"
     },
     {
+      "name": "GeoPackageReader",
+      "description": "Lee características geográficas de archivos GeoPackage (.gpkg) con soporte para características vectoriales, mosaicos y metadatos"
+    },
+    {
+      "name": "GeoPackageWriter",
+      "description": "Escribe características geográficas en archivos GeoPackage (.gpkg) con estructura SQLite adecuada, indexación espacial y tablas de metadatos"
+    },
+    {
       "name": "GeometryCoercer",
       "description": "Fuerza la geometría de una entidad a una geometría específica"
     },

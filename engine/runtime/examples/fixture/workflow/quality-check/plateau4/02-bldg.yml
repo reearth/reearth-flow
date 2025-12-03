@@ -850,6 +850,10 @@ graphs:
     action: InputRouter
     with:
       routingPort: default
+  - id: 4a05d084-a43b-4b25-b252-c4fe5e047991
+    name: GeometryRemoverForFormatChecks
+    type: action
+    action: GeometryRemover
   - id: 793ebebf-6903-4691-bed5-5913d3062a39
     name: SurfaceValidationC02
     type: action
@@ -1320,8 +1324,13 @@ graphs:
     with:
       routingPort: fileOutput
   edges:
-  - id: 63110e28-8d45-46a7-afa8-8a1877d1739a
+  - id: 1acf360f-3edb-435c-b6fd-0f233bbd999b
     from: cbe26f1a-d39d-48e1-9d42-a9e0b61962ba
+    fromPort: default
+    to: 4a05d084-a43b-4b25-b252-c4fe5e047991
+    toPort: default
+  - id: 63110e28-8d45-46a7-afa8-8a1877d1739a
+    from: 4a05d084-a43b-4b25-b252-c4fe5e047991
     fromPort: default
     to: 793ebebf-6903-4691-bed5-5913d3062a39
     toPort: default
@@ -1341,7 +1350,7 @@ graphs:
     to: 99c7d8e9-0f1a-2b3c-4d5e-6f7a8b9c0d1e
     toPort: default
   - id: 6546098c-dca0-4a81-8342-c993c28d36f6
-    from: cbe26f1a-d39d-48e1-9d42-a9e0b61962ba
+    from: 4a05d084-a43b-4b25-b252-c4fe5e047991
     fromPort: default
     to: 80b7d9fd-6514-49d0-88e6-a87c3c1d36c9
     toPort: default
@@ -2462,10 +2471,53 @@ graphs:
     action: OutputRouter
     with:
       routingPort: errorCountLod1SolidIssues
+  - id: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+    name: GeometryExtractorSolidIntersection
+    type: action
+    action: GeometryExtractor
+    with:
+      outputAttribute: _solid_geometry
+  - id: f2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d
+    name: FootprintReplacerSolidIntersection
+    type: action
+    action: FootprintReplacer
+  - id: f3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e
+    name: AreaOnAreaOverlayerSolidIntersection
+    type: action
+    action: AreaOnAreaOverlayer
+    with:
+      accumulationMode: dropIncomingAttributes
+      outputAttribute: overlap
+      generateList: list
+  - id: f4d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f
+    name: FeatureFilterSolidIntersectionOverlap
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value").overlap > 1
+        outputPort: overlapping
   - id: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
     name: PLATEAU4.SolidIntersectionTestPairCreator
     type: action
     action: PLATEAU4.SolidIntersectionTestPairCreator
+    with:
+      listAttribute: list
+      gmlIdAttribute: gmlId
+      pairIdAttribute: pair_id
+  - id: f5e6f7a8-b9c0-4d1e-2f3a-4b5c6d7e8f9a
+    name: GeometryReplacerSolidIntersectionA
+    type: action
+    action: GeometryReplacer
+    with:
+      sourceAttribute: _solid_geometry
+  - id: f6f7a8b9-c0d1-4e2f-3a4b-5c6d7e8f9a0b
+    name: GeometryReplacerSolidIntersectionB
+    type: action
+    action: GeometryReplacer
+    with:
+      sourceAttribute: _solid_geometry
   - id: dfd0a1f5-b49e-4eb0-b1f0-6375fac58a54
     name: CSGBuilder
     type: action
@@ -2917,33 +2969,63 @@ graphs:
     toPort: default
   - id: 82f70cb1-eff7-4c90-82dc-6bf5568d69d6
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
     fromPort: lod1
     toPort: default
   - id: 93f81dc2-f008-5db1-93ed-7cf6679e7ae7
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
     fromPort: lod2
     toPort: default
   - id: a4f92ed3-f119-6ec2-a4fe-8df7789e8bf8
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
     fromPort: lod3
     toPort: default
   - id: b5fa3fe4-f22a-7fd3-b5ff-9ef889af9cf9
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
     fromPort: lod4
     toPort: default
-  - id: dcaf752a-215c-45af-aa7e-891499cd9442
+  - id: f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c
+    from: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+    to: f2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d
+    fromPort: default
+    toPort: default
+  - id: f7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1d
+    from: f2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d
+    to: f3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e
+    fromPort: footprint
+    toPort: default
+  - id: f8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2e
+    from: f3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e
+    to: f4d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f
+    fromPort: area
+    toPort: default
+  - id: f9d0e1f2-a3b4-4c5d-6e7f-8a9b0c1d2e3f
+    from: f4d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f
+    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    fromPort: overlapping
+    toPort: default
+  - id: fae1f2a3-b4c5-4d6e-7f8a-9b0c1d2e3f4a
     from: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
-    to: dfd0a1f5-b49e-4eb0-b1f0-6375fac58a54
+    to: f5e6f7a8-b9c0-4d1e-2f3a-4b5c6d7e8f9a
     fromPort: A
+    toPort: default
+  - id: fbf2a3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b
+    from: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    to: f6f7a8b9-c0d1-4e2f-3a4b-5c6d7e8f9a0b
+    fromPort: B
+    toPort: default
+  - id: dcaf752a-215c-45af-aa7e-891499cd9442
+    from: f5e6f7a8-b9c0-4d1e-2f3a-4b5c6d7e8f9a
+    to: dfd0a1f5-b49e-4eb0-b1f0-6375fac58a54
+    fromPort: default
     toPort: left
   - id: 540094e9-bf1e-441b-81a6-6dc100dcce64
-    from: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    from: f6f7a8b9-c0d1-4e2f-3a4b-5c6d7e8f9a0b
     to: dfd0a1f5-b49e-4eb0-b1f0-6375fac58a54
-    fromPort: B
+    fromPort: default
     toPort: right
   - id: 4da64202-0338-46ad-845e-218ed18ccffe
     from: dfd0a1f5-b49e-4eb0-b1f0-6375fac58a54
@@ -3159,6 +3241,22 @@ graphs:
     with:
       countStart: 0
       outputAttribute: featureIndex
+  - id: 00e04196-60a5-4e0e-8389-74d2d0fad6e1
+    name: AppearanceRemover
+    type: action
+    action: AppearanceRemover
+  - id: e51ebef4-2a0f-4c67-abdc-1583db29a72b
+    name: AttributeManagerRemoveUnusedAttributesForGeometryChecks
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: gmlPath
+        method: remove
+      - attribute: cityGmlAttributes
+        method: remove
+      - attribute: gmlName
+        method: remove
   - id: 2b8c4e7a-9f1d-4a3b-c6e8-5d2a7b9c1e4f
     name: FeatureFilterBuildingPart
     type: action
@@ -3194,6 +3292,10 @@ graphs:
       - attribute: filename
         expr: |
           env.get("__value").gmlFilename
+  - id: 4712539b-5103-41ee-9359-0333eefb82ef
+    name: GeometryRemoverForErrorSummary
+    type: action
+    action: GeometryRemover
   - id: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
     name: ErrorSummaryMerger
     type: action
@@ -3572,6 +3674,16 @@ graphs:
     toPort: default
   - id: 525487a5-0a23-4fa8-9767-41d429b87e9d
     from: 5a7b1469-217a-4d4b-bb01-971a9f9140d8
+    to: 00e04196-60a5-4e0e-8389-74d2d0fad6e1
+    fromPort: default
+    toPort: default
+  - id: aa652fa2-038c-4450-ab59-cdfa09b68f4b
+    from: 00e04196-60a5-4e0e-8389-74d2d0fad6e1
+    to: e51ebef4-2a0f-4c67-abdc-1583db29a72b
+    fromPort: default
+    toPort: default
+  - id: 9a358b62-c289-4ca5-bb4f-bdf69deec04d
+    from: e51ebef4-2a0f-4c67-abdc-1583db29a72b
     to: 2b8c4e7a-9f1d-4a3b-c6e8-5d2a7b9c1e4f
     fromPort: default
     toPort: default
@@ -3602,148 +3714,153 @@ graphs:
     toPort: requestor
   - id: aa9b0c1d-2e3f-4a5b-6c7d-8e9f0a1b2c3d
     from: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: featureInstanceCountC02
-    toPort: supplier
+    toPort: default
   - id: d9e0f1a2-3b4c-5d6e-7f8a-9b0c1d2e3f4a
     from: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountCityCode
-    toPort: supplier
+    toPort: default
   - id: e9f0a1b2-4c5d-6e7f-8a9b-0c1d2e3f4a5b
     from: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLbldg02
-    toPort: supplier
+    toPort: default
   - id: a3b4c5d6-8e9f-0a1b-2c3d-4e5f6a7b8c9d
     from: 3e9f7c2a-8b4d-4e1f-a9c5-6b8e2c4a7d9f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLod01BuildingPart
-    toPort: supplier
+    toPort: default
   - id: f0a1b2c3-5d6e-7f8a-9b0c-1d2e3f4a5b6c
     from: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountL0405Bldg
-    toPort: supplier
+    toPort: default
   - id: a1b2c3d4-6e7f-8a9b-0c1d-2e3f4a5b6c7d
     from: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountCBldg01
-    toPort: supplier
+    toPort: default
   - id: b2c3d4e5-7f8a-9b0c-1d2e-3f4a5b6c7d8e
     from: 7f3a8d2c-4e6b-4d9a-b1c5-3e8f2a7d9c4b
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountMissingBuildingId
-    toPort: supplier
+    toPort: default
   - id: c3d4e5f6-8a9b-0c1d-2e3f-4a5b6c7d8e9f
     from: 7a561c34-2e94-4883-91e4-4026b09c2f8a
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountInvalidBldgInstGeomType
-    toPort: supplier
+    toPort: default
   - id: d4e5f6a7-9b0c-1d2e-3f4a-5b6c7d8e9f0a
     from: 7a561c34-2e94-4883-91e4-4026b09c2f8a
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLbldg06
-    toPort: supplier
+    toPort: default
   - id: e5f6a7b8-0c1d-2e3f-4a5b-6c7d8e9f0a1b
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLod0IncorrectOrientation
-    toPort: supplier
+    toPort: default
   - id: f6a7b8c9-1d2e-3f4a-5b6c-7d8e9f0a1b2c
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLod0InvalidSurface
-    toPort: supplier
+    toPort: default
   - id: a7b8c9d0-2e3f-4a5b-6c7d-8e9f0a1b2c3d
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLod0SurfaceIntersection
-    toPort: supplier
+    toPort: default
   - id: b8c9d0e1-3f4a-5b6c-7d8e-9f0a1b2c3d4e
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLod1InvalidSurface
-    toPort: supplier
+    toPort: default
   - id: c9d0e1f2-4a5b-6c7d-8e9f-0a1b2c3d4e5f
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLod1NotClosedSolid
-    toPort: supplier
+    toPort: default
   - id: d0e1f2a3-5b6c-7d8e-9f0a-1b2c3d4e5f6a
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLod1SolidIssues
-    toPort: supplier
+    toPort: default
   - id: e1f2a3b4-6c7d-8e9f-0a1b-2c3d4e5f6a7b
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLod2InvalidSurface
-    toPort: supplier
+    toPort: default
   - id: e2f3a4b5-7c8d-9e0f-1a2b-3c4d5e6f7a8b
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLod3InvalidSurface
-    toPort: supplier
+    toPort: default
   - id: e3f4a5b6-8c9d-0e1f-2a3b-4c5d6e7f8a9b
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLod4InvalidSurface
-    toPort: supplier
+    toPort: default
   - id: f3a4b5c6-8d9e-0f1a-2b3c-4d5e6f7a8b9c
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLod2NotClosedSolid
-    toPort: supplier
+    toPort: default
   - id: f4a5b6c7-9d0e-1f2a-3b4c-5d6e7f8a9b0c
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLod3NotClosedSolid
-    toPort: supplier
+    toPort: default
   - id: f5a6b7c8-0e1f-2a3b-4c5d-6e7f8a9b0c1d
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLod4NotClosedSolid
-    toPort: supplier
+    toPort: default
   - id: f6a7b8c9-1f2a-3b4c-5d6e-7f8a9b0c1d2e
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLod2SolidIssues
-    toPort: supplier
+    toPort: default
   - id: f7a8b9c0-2f3a-4b5c-6d7e-8f9a0b1c2d3e
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLod3SolidIssues
-    toPort: supplier
+    toPort: default
   - id: f8a9b0c1-3f4a-5b6c-7d8e-9f0a1b2c3d4e
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLod4SolidIssues
-    toPort: supplier
+    toPort: default
   - id: f2a3b4c5-7d8e-9f0a-1b2c-3d4e5f6a7b8c
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountIncorrectMeshcode
-    toPort: supplier
+    toPort: default
   - id: a9b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLod1SolidIntersection
-    toPort: supplier
+    toPort: default
   - id: b0c1d2e3-4f5a-6b7c-8d9e-0f1a2b3c4d5e
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLod2SolidIntersection
-    toPort: supplier
+    toPort: default
   - id: c1d2e3f4-5a6b-7c8d-9e0f-1a2b3c4d5e6f
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLod3SolidIntersection
-    toPort: supplier
+    toPort: default
   - id: d2e3f4a5-6b7c-8d9e-0f1a-2b3c4d5e6f7a
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    to: 4712539b-5103-41ee-9359-0333eefb82ef
     fromPort: errorCountLod4SolidIntersection
+    toPort: default
+  - id: b2d5f9dd-b4ab-4db5-9255-7ca5a12c8fa9
+    from: 4712539b-5103-41ee-9359-0333eefb82ef
+    to: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
+    fromPort: default
     toPort: supplier
   - id: e0f1a2b3-4c5d-6e7f-8a9b-0c1d2e3f4a5b
     from: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f

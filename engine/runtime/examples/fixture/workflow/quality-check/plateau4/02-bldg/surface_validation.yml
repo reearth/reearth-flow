@@ -730,10 +730,61 @@ nodes:
       routingPort: errorCountLod1SolidIssues
 
   # Solid Intersection Test
+  - id: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+    name: GeometryExtractorSolidIntersection
+    type: action
+    action: GeometryExtractor
+    with:
+      outputAttribute: _solid_geometry
+
+  - id: f2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d
+    name: FootprintReplacerSolidIntersection
+    type: action
+    action: FootprintReplacer
+
+  - id: f3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e
+    name: AreaOnAreaOverlayerSolidIntersection
+    type: action
+    action: AreaOnAreaOverlayer
+    with:
+      accumulationMode: dropIncomingAttributes
+      outputAttribute: overlap
+      generateList: list
+
+  - id: f4d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f
+    name: FeatureFilterSolidIntersectionOverlap
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr: |
+            env.get("__value").overlap > 1
+          outputPort: overlapping
+
   - id: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
     name: PLATEAU4.SolidIntersectionTestPairCreator
     type: action
     action: PLATEAU4.SolidIntersectionTestPairCreator
+    with:
+      listAttribute: list
+      gmlIdAttribute: gmlId
+      pairIdAttribute: pair_id
+
+  # Step 6a: Restore original solid geometry from attribute (for port A)
+  - id: f5e6f7a8-b9c0-4d1e-2f3a-4b5c6d7e8f9a
+    name: GeometryReplacerSolidIntersectionA
+    type: action
+    action: GeometryReplacer
+    with:
+      sourceAttribute: _solid_geometry
+
+  # Step 6b: Restore original solid geometry from attribute (for port B)
+  - id: f6f7a8b9-c0d1-4e2f-3a4b-5c6d7e8f9a0b
+    name: GeometryReplacerSolidIntersectionB
+    type: action
+    action: GeometryReplacer
+    with:
+      sourceAttribute: _solid_geometry
 
   - id: dfd0a1f5-b49e-4eb0-b1f0-6375fac58a54
     name: CSGBuilder
@@ -1272,46 +1323,86 @@ edges:
     fromPort: default
     toPort: default
 
-  # Solid Intersection Test - 
-  # LODSplitterWithDM lod1 port to PairCreator
+  # Solid Intersection Test -
+  # LODSplitterWithDM lod1-4 ports to GeometryExtractor
   - id: 82f70cb1-eff7-4c90-82dc-6bf5568d69d6
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
     fromPort: lod1
     toPort: default
 
-  # LODSplitterWithDM lod2 port to PairCreator
   - id: 93f81dc2-f008-5db1-93ed-7cf6679e7ae7
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
     fromPort: lod2
     toPort: default
 
-  # LODSplitterWithDM lod3 port to PairCreator
   - id: a4f92ed3-f119-6ec2-a4fe-8df7789e8bf8
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
     fromPort: lod3
     toPort: default
 
-  # LODSplitterWithDM lod4 port to PairCreator
   - id: b5fa3fe4-f22a-7fd3-b5ff-9ef889af9cf9
     from: e9f2c5b8-3a7d-4c1e-8b6f-2d9a5c8e1b4f
-    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
     fromPort: lod4
     toPort: default
 
-  # PairCreator to CSGBuilder
-  - id: dcaf752a-215c-45af-aa7e-891499cd9442
+  # GeometryExtractor to FootprintReplacer
+  - id: f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c
+    from: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+    to: f2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d
+    fromPort: default
+    toPort: default
+
+  # FootprintReplacer to AreaOnAreaOverlayer
+  - id: f7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1d
+    from: f2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d
+    to: f3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e
+    fromPort: footprint
+    toPort: default
+
+  # AreaOnAreaOverlayer to FeatureFilter
+  - id: f8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2e
+    from: f3c4d5e6-f7a8-4b9c-0d1e-2f3a4b5c6d7e
+    to: f4d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f
+    fromPort: area
+    toPort: default
+
+  # FeatureFilter to PairCreator
+  - id: f9d0e1f2-a3b4-4c5d-6e7f-8a9b0c1d2e3f
+    from: f4d5e6f7-a8b9-4c0d-1e2f-3a4b5c6d7e8f
+    to: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    fromPort: overlapping
+    toPort: default
+
+  # PairCreator A to GeometryReplacerA
+  - id: fae1f2a3-b4c5-4d6e-7f8a-9b0c1d2e3f4a
     from: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
-    to: dfd0a1f5-b49e-4eb0-b1f0-6375fac58a54
+    to: f5e6f7a8-b9c0-4d1e-2f3a-4b5c6d7e8f9a
     fromPort: A
+    toPort: default
+
+  # PairCreator B to GeometryReplacerB
+  - id: fbf2a3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5b
+    from: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    to: f6f7a8b9-c0d1-4e2f-3a4b-5c6d7e8f9a0b
+    fromPort: B
+    toPort: default
+
+  # GeometryReplacerA to CSGBuilder left
+  - id: dcaf752a-215c-45af-aa7e-891499cd9442
+    from: f5e6f7a8-b9c0-4d1e-2f3a-4b5c6d7e8f9a
+    to: dfd0a1f5-b49e-4eb0-b1f0-6375fac58a54
+    fromPort: default
     toPort: left
 
+  # GeometryReplacerB to CSGBuilder right
   - id: 540094e9-bf1e-441b-81a6-6dc100dcce64
-    from: 5e6a0a7a-5dfe-483b-9a45-7da7a5ea7641
+    from: f6f7a8b9-c0d1-4e2f-3a4b-5c6d7e8f9a0b
     to: dfd0a1f5-b49e-4eb0-b1f0-6375fac58a54
-    fromPort: B
+    fromPort: default
     toPort: right
 
   # CSGBuilder to CSGEvaluator

@@ -1,0 +1,465 @@
+id: cd93ce74-eff8-479c-abec-f8a1bc24cbda
+name: PLATEAU4-DataConvert-06-urf-area-workflow
+entryGraphId: 6f9f1383-8a50-4a22-b815-5d06a9f9398a
+with:
+  cityGmlPath: null
+  cityCode: null
+  codelistsPath: null
+  schemasPath: null
+  targetPackages:
+  - urf
+  - area
+  workerArtifactPath: null
+graphs:
+- id: c6863b71-953b-4d15-af56-396fc93fc617
+  name: FolderAndfilePathReader
+  nodes:
+  - id: 35038d96-5e81-4a21-a0e0-72f67eb71db5
+    name: InputRouter
+    type: action
+    action: InputRouter
+    with:
+      routingPort: default
+  - id: c7315341-26b3-4405-9d02-039d721cd225
+    name: DirectoryDecompressor
+    type: action
+    action: DirectoryDecompressor
+    with:
+      archiveAttributes:
+      - codelists
+      - schemas
+  - id: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
+    name: FeatureFilePathExtractor
+    type: action
+    action: FeatureFilePathExtractor
+    with:
+      destPrefix: udx
+      sourceDataset: |
+        env.get("__value").cityGmlPath
+      extractArchive: true
+  - id: 9d04983e-e84e-4622-b0c6-827d7afad720
+    name: FeatureFilter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          env.get("__value").extension == "gml"
+        outputPort: default
+  - id: 712e4c72-950d-466d-9598-19f299668e7e
+    name: PLATEAU4.UDXFolderExtractor
+    type: action
+    action: PLATEAU4.UDXFolderExtractor
+    with:
+      cityGmlPath: |
+        env.get("__value")["path"]
+      codelistsPath: codelists
+      schemasPath: schemas
+  - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+    name: FeatureFilterByPackage
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+        outputPort: default
+  - id: f3465c78-59fa-4307-bc02-67c46c2ddd98
+    name: FeatureCounterByUdxDirs
+    type: action
+    action: FeatureCounter
+    with:
+      countStart: 1
+      groupBy:
+      - udxDirs
+      outputAttribute: fileIndex
+  - id: 7bad5b43-6e59-4f6b-95c4-b3043d2b950d
+    name: CityCodeExtractor
+    type: action
+    action: PLATEAU4.CityCodeExtractor
+    with:
+      codelistsPathAttribute: dirCodelists
+      cityCodeAttribute: cityCode
+  - id: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
+    name: OutputRouter
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: default
+  edges:
+  - id: 5d700a9c-1537-442e-bfb2-0728a9e1ec9c
+    from: 35038d96-5e81-4a21-a0e0-72f67eb71db5
+    to: c7315341-26b3-4405-9d02-039d721cd225
+    fromPort: default
+    toPort: default
+  - id: 749d8e90-dbc3-4fc9-bfee-046344f5f5b9
+    from: c7315341-26b3-4405-9d02-039d721cd225
+    to: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
+    fromPort: default
+    toPort: default
+  - id: 1379a497-9e4e-40fb-8361-d2eeeb491762
+    from: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
+    to: 9d04983e-e84e-4622-b0c6-827d7afad720
+    fromPort: default
+    toPort: default
+  - id: 2379a497-9e4e-40fb-8361-d2eeeb491763
+    from: 9d04983e-e84e-4622-b0c6-827d7afad720
+    to: 712e4c72-950d-466d-9598-19f299668e7e
+    fromPort: default
+    toPort: default
+  - id: 2379a497-9e4e-40fb-8361-d2eeeb491764
+    from: 712e4c72-950d-466d-9598-19f299668e7e
+    to: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+    fromPort: default
+    toPort: default
+  - id: 2379a497-9e4e-40fb-8361-d2eeeb491766
+    from: a1554a74-3caa-4880-a4a3-6dc4ab526a13
+    to: f3465c78-59fa-4307-bc02-67c46c2ddd98
+    fromPort: default
+    toPort: default
+  - id: 0f43aebf-caf7-4f07-be97-f23b9c2c585f
+    from: f3465c78-59fa-4307-bc02-67c46c2ddd98
+    to: 7bad5b43-6e59-4f6b-95c4-b3043d2b950d
+    fromPort: default
+    toPort: default
+  - id: 80462b53-a06a-4e0b-bed8-07dcda744a55
+    from: 7bad5b43-6e59-4f6b-95c4-b3043d2b950d
+    to: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
+    fromPort: default
+    toPort: default
+- id: 6f9f1383-8a50-4a22-b815-5d06a9f9398a
+  name: entry_point
+  nodes:
+  - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+    name: FeatureCreator
+    type: action
+    action: FeatureCreator
+    with:
+      creator: |
+        [
+          #{
+            cityGmlPath: env.get("cityGmlPath"),
+            cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+          },
+        ]
+  - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+    name: FolderAndFilePathReader
+    type: subGraph
+    subGraphId: c6863b71-953b-4d15-af56-396fc93fc617
+  - id: ded2e272-e05c-4918-86b3-aa9f763da6e6
+    name: FeatureReaderByCityGml
+    type: action
+    action: FeatureCityGmlReader
+    with:
+      format: citygml
+      flatten: true
+      dataset: |
+        env.get("__value")["path"]
+  - id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e
+    name: AttributeManagerPreFlattener
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: meshcode
+        method: create
+        value: |
+          let file = file::extract_filename(env.get("__value")["path"]);
+          file.split("_")[0]
+      - attribute: gml_id
+        method: create
+        value: |
+          env.get("__feature_id") ?? env.get("__value")["gmlId"]
+      - attribute: feature_type
+        method: create
+        value: env.get("__value")["featureType"] ?? env.get("__value")["gmlName"]
+  - id: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+    name: AttributeFlattener
+    type: action
+    action: PLATEAU4.AttributeFlattener
+  - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+    name: AttributeManager
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: featureId
+        method: remove
+      - attribute: featureParentId
+        method: remove
+      - attribute: geometryName
+        method: remove
+      - attribute: cityCode
+        method: rename
+        value: city_code
+      - attribute: cityName
+        method: rename
+        value: city_name
+      - attribute: lod
+        method: rename
+        value: _lod
+      - attribute: gmlId
+        method: remove
+      - attribute: gmlPropertyName
+        method: remove
+      - attribute: fileIndex
+        method: remove
+      - attribute: root
+        method: remove
+      - attribute: cityGmlPath
+        method: remove
+      - attribute: admin
+        method: remove
+      - attribute: area
+        method: remove
+      - attribute: package
+        method: remove
+      - attribute: extension
+        method: remove
+      - attribute: dirRoot
+        method: remove
+      - attribute: gmlRootId
+        method: remove
+      - attribute: maxLod
+        method: remove
+      - attribute: dirSchemas
+        method: remove
+      - attribute: dirCodelists
+        method: remove
+      - attribute: path
+        method: remove
+      - attribute: name
+        method: remove
+      - attribute: udxDirs
+        method: rename
+        value: _udxDirs
+      - attribute: featureType
+        method: remove
+      - attribute: gmlName
+        method: remove
+  - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
+    name: StripFeatureTypePrefix
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: feature_type_without_prefix
+        method: create
+        value: |
+          env.get("__value").feature_type.split(":")[1]
+  - id: b5c6d7e8-f9a0-1b2c-3d4e-5f6a7b8c9d0e
+    name: AttributeDuplicateFilter
+    type: action
+    action: AttributeDuplicateFilter
+    with:
+      filterBy:
+      - feature_type
+  - id: d1e2f3a4-b5c6-d7e8-f9a0-b1c2d3e4f5a6
+    name: AttributeConversionTable
+    type: action
+    action: AttributeConversionTable
+    with:
+      format: csv
+      inline: |
+        name,description
+        UrbanPlanningArea,都市計画区域
+        QuasiUrbanPlanningArea,準都市計画区域
+        AreaClassification,区域区分
+        DistrictsAndZones,地域地区
+        UseDistrict,用途地域
+        SpecialUseDistrict,特別用途地区
+        SpecialUseRestrictionDistrict,特定用途制限地域
+        ExceptionalFloorAreaRateDistrict,特例容積率適用地区
+        HighRiseResidentialAttractionDistrict,高層住居誘導地区
+        HeightControlDistrict,高度地区
+        HighLevelUseDistrict,高度利用地区
+        SpecifiedBlock,特定街区
+        SpecialUrbanRenaissanceDistrict,都市再生特別地区
+        HousingControlArea,居住調整地域
+        ResidentialEnvironmentImprovementDistrict,居住環境向上用途誘導地区
+        SpecialUseAttractionDistrict,特定用途誘導地区
+        FirePreventionDistrict,防火地域又は準防火地域
+        SpecifiedDisasterPreventionBlockImprovementZone,特定防災街区整備地区
+        LandscapeZone,景観地区
+        ScenicDistrict,風致地区
+        ParkingPlaceDevelopmentZone,駐車場整備地区
+        PortZone,臨港地区
+        SpecialZoneForPreservationOfHistoricalLandscape,歴史的風土特別保存地区
+        ZoneForPreservationOfHistoricalLandscape,第一種歴史的風土保存地区又は第二種歴史的風土保存地区
+        GreenSpaceConservationDistrict,緑地保全地域
+        SpecialGreenSpaceConservationDistrict,特別緑地保全地域
+        TreePlantingDistrict,緑化地域
+        DistributionBusinessZone,流通業務地区
+        ProductiveGreenZone,生産緑地地区
+        ConservationZoneForClustersOfTraditionalStructures,伝統的建造物群保存地区
+        AircraftNoiseControlZone,航空機騒音障害防止地区又は航空機騒音障害防止特別地区
+        ProjectPromotionArea,促進区域
+        UrbanRedevelopmentPromotionArea,市街地再開発促進区域
+        LandReadjustmentPromotionArea,土地区画整理促進区域
+        ResidentialBlockConstructionPromotionAreas,住宅街区整備促進区域
+        LandReadjustmentPromotionAreasForCoreBusinessUrbanDevelopment,拠点業務市街地整備土地区画整理促進区域
+        UnusedLandUsePromotionArea,遊休土地転換利用促進地区
+        UrbanDisasterRecoveryPromotionArea,被災市街地復興推進地域
+        UrbanFacility,都市施設
+        TrafficFacility,交通施設
+        OpenSpaceForPublicUse,公共空地
+        SupplyFacility,供給施設
+        TreatmentFacility,処理施設
+        Waterway,水路
+        EducationalAndCulturalFacility,教育文化施設
+        MedicalFacility,医療施設
+        SocialWelfareFacility,社会福祉施設
+        MarketsSlaughterhousesCrematoria,市場、と畜場、火葬場
+        CollectiveHousingFacilities,一団地の住宅施設
+        CollectiveGovernmentAndPublicOfficeFacilities,一団地の官公庁施設
+        DistributionBusinessPark,流通業務団地
+        CollectiveFacilitiesForTsunamiDisasterPrevention,一団地の津波防災拠点市街地形成施設
+        CollectiveFacilitiesForReconstructionAndRevitalization,一団地の復興再生拠点市街地形成施設
+        CollectiveFacilitiesForReconstruction,一団地の復興拠点市街地形成施設
+        CollectiveUrbanDisasterPreventionFacilities,一団地の都市安全確保拠点施設
+        UrbanFacilityStipulatedByCabinetOrder,政令で定める都市施設
+        TelecommunicationFacility,電気通信施設
+        WindProtectionFacility,防風施設
+        FireProtectionFacility,防火施設
+        TideFacility,防潮施設
+        FloodPreventionFacility,防水施設
+        SnowProtectionFacility,防雪施設
+        SandControlFacility,防砂施設
+        UrbanDevelopmentProject,市街地開発事業
+        LandReadjustmentProject,土地区画整理事業
+        NewHousingAndUrbanDevelopmentProject,新住宅市街地開発事業
+        IndustrialParkDevelopmentProject,工業団地造成事業
+        UrbanRedevelopmentProject,市街地再開発事業
+        NewUrbanInfrastructureProject,新都市基盤整備事業
+        ResidentialBlockConstructionProject,住宅街区整備事業
+        DisasterPreventionBlockImprovementProject,防災街区整備事業
+        UrbanRenewalProject,市街地改造事業
+        ScheduledAreaForUrbanDevelopmentProject,予定区域
+        ScheduledAreaForNewHousingAndUrbanDevelopmentProjects,新住宅市街地開発事業の予定区域
+        ScheduledAreaForIndustrialParkDevelopmentProjects,工業団地造成事業の予定区域
+        ScheduledAreaForNewUrbanInfrastructureProjects,新都市基盤整備事業の予定区域
+        ScheduledAreaForCollectiveHousingFacilities,一団地の住宅施設の予定区域
+        ScheduledAreaForCollectiveGovernmentAndPublicOfficeFacilities,一団地の官公庁施設の予定区域
+        ScheduledAreaForDistributionBusinessPark,流通業務団地の予定区域
+        DistrictPlan,地区計画
+        RoadsideDistrictPlan,沿道地区計画
+        RuralDistrictPlan,集落地区計画
+        HistoricSceneryMaintenanceAndImprovementDistrictPlan,歴史的風致維持向上地区計画
+        DisasterPreventionBlockImprovementZonePlan,防災街区整備地区計画
+        DistrictDevelopmentPlan,地区整備計画
+        SpecifiedBuildingZoneImprovementPlan,特定建築物地区整備計画
+        DistrictImprovementPlanForDisasterPreventionBlockImprovementZonePlan,防災街区整備地区整備計画
+        RoadsideDistrictImprovementPlan,沿道地区整備計画
+        RuralDistrictImprovementPlan,集落地区整備計画
+        DistrictImprovementPlanForHistoricSceneryMaintenanceAndImprovementDistrict,歴史的風致維持向上地区整備計画
+        PromotionDistrict,促進区
+        District,地区
+        DistrictFacility,地区施設
+        RoadsideDistrictFacility,沿道地区施設
+        RuralDistrictFacility,集落地区施設
+        ZonalDisasterPreventionFacility,地区防災施設
+        UrbanFunctionAttractionArea,都市機能誘導区域
+        ResidenceAttractionArea,居住誘導区域
+        UnclassifiedBlankArea,非線引き用途白地
+        UnclassifiedUseDistrict,非線引き用途地域
+        DID,DID
+      rules:
+      - featureFroms:
+        - feature_type_without_prefix
+        featureTo: feature_type_ja
+        conversionTableKeys:
+        - name
+        conversionTableTo: description
+  - id: c7d8e9f0-a1b2-c3d4-e5f6-a7b8c9d0e1f2
+    name: JsonWriter
+    type: action
+    action: JsonWriter
+    with:
+      output: |
+        file::join_path(env.get("workerArtifactPath"), "dictionary.json")
+      converter: |
+        #{
+          urf: env.get("__features").map(|f| #{
+            name: f.feature_type_without_prefix,
+            description: f.feature_type_ja
+          })
+        }
+  - id: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
+    name: FeatureSorter
+    type: action
+    action: FeatureSorter
+    with:
+      attributes:
+      - feature_type
+      order: ascending
+  - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
+    name: MvtWriter
+    type: action
+    action: MVTWriter
+    with:
+      layerName: |
+        env.get("__value").feature_type.split(":")[1]
+      minZoom: 8
+      maxZoom: 16
+      skipUnderscorePrefix: true
+      colonToUnderscore: true
+      output: |
+        let feature_type = env.get("__value").feature_type;
+        feature_type.replace(":", "_");
+        file::join_path(env.get("workerArtifactPath"), feature_type)
+  edges:
+  - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
+    from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+    to: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+    fromPort: default
+    toPort: default
+  - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
+    from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+    to: ded2e272-e05c-4918-86b3-aa9f763da6e6
+    fromPort: default
+    toPort: default
+  - id: cf845867-6ffc-4b83-9fd5-e376a22470e2
+    from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+    to: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e
+    fromPort: default
+    toPort: default
+  - id: 7e8f9a0b-1c2d-3e4f-5a6b-7c8d9e0f1a2b
+    from: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e
+    to: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+    fromPort: default
+    toPort: default
+  - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
+    from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+    to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+    fromPort: default
+    toPort: default
+  - id: d8e9f0a1-b2c3-d4e5-f6a7-b8c9d0e1f2a3
+    from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+    to: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
+    fromPort: default
+    toPort: default
+  - id: e9f0a1b2-c3d4-e5f6-a7b8-c9d0e1f2a3b4
+    from: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
+    to: b5c6d7e8-f9a0-1b2c-3d4e-5f6a7b8c9d0e
+    fromPort: default
+    toPort: default
+  - id: f0a1b2c3-d4e5-f6a7-b8c9-d0e1f2a3b4c5
+    from: b5c6d7e8-f9a0-1b2c-3d4e-5f6a7b8c9d0e
+    to: d1e2f3a4-b5c6-d7e8-f9a0-b1c2d3e4f5a6
+    fromPort: default
+    toPort: default
+  - id: a1b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6
+    from: d1e2f3a4-b5c6-d7e8-f9a0-b1c2d3e4f5a6
+    to: c7d8e9f0-a1b2-c3d4-e5f6-a7b8c9d0e1f2
+    fromPort: default
+    toPort: default
+  - id: 3c7d9e2f-4a5b-6c8d-9e0f-1a2b3c4d5e6f
+    from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+    to: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
+    fromPort: default
+    toPort: default
+  - id: e862f11a-88a6-4c1b-a743-ba80253039df
+    from: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
+    to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
+    fromPort: default
+    toPort: default
