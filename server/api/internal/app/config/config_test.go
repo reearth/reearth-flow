@@ -9,10 +9,10 @@ import (
 func TestReadConfig(t *testing.T) {
 	// Set environment variables for testing
 	t.Setenv("REEARTH_FLOW_HOST", "http://example.com")
-	t.Setenv("REEARTH_FLOW_HOST_WEB", "http://web.example.com")
+	t.Setenv("REEARTH_FLOW_HOSTWEB", "http://web.example.com")
 	t.Setenv("REEARTH_FLOW_DB", "mongodb://testdb")
-	t.Setenv("REEARTH_FLOW_AUTH_ISS", "http://auth.example.com")
-	t.Setenv("REEARTH_FLOW_AUTH_AUD", "audience1,audience2")
+	t.Setenv("REEARTH_FLOW_AUTHISS", "http://auth.example.com")
+	t.Setenv("REEARTH_FLOW_AUTHAUD", "audience1,audience2")
 
 	// Test with debug mode enabled
 	config, err := ReadConfig(true)

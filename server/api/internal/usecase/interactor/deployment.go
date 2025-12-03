@@ -379,6 +379,10 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		return nil, err
 	}
 
+	if i.batch == nil {
+		return nil, fmt.Errorf("batch gateway is not configured")
+	}
+
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), j.Variables(), projectID, d.Workspace())
 	if err != nil {
 		return nil, interfaces.ErrJobCreationFailed
