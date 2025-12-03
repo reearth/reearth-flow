@@ -5365,6 +5365,59 @@ Filter Features by Geometry Planarity
 ### Category
 * Geometry
 
+## PolygonNormalExtractor
+### Type
+* processor
+### Description
+Extract normal vectors and other properties for polygon features
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PolygonNormalExtractor Parameters",
+  "description": "Configuration for calculating normal vectors from polygon features.",
+  "type": "object",
+  "properties": {
+    "addAzimuth": {
+      "description": "Whether to add Azimuth attribute (default: true)",
+      "default": true,
+      "type": "boolean"
+    },
+    "addNormalX": {
+      "description": "Whether to add normalX attribute (default: true)",
+      "default": true,
+      "type": "boolean"
+    },
+    "addNormalY": {
+      "description": "Whether to add normalY attribute (default: true)",
+      "default": true,
+      "type": "boolean"
+    },
+    "addNormalZ": {
+      "description": "Whether to add normalZ attribute (default: true)",
+      "default": true,
+      "type": "boolean"
+    },
+    "addSignedArea2d": {
+      "description": "Whether to add signedArea2D attribute (default: true)",
+      "default": true,
+      "type": "boolean"
+    },
+    "addSlope": {
+      "description": "Whether to add Slope attribute (default: true)",
+      "default": true,
+      "type": "boolean"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Geometry
+
 ## PythonScriptProcessor
 ### Type
 * processor
