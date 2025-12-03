@@ -6,6 +6,7 @@ import Canvas from "@flow/features/Canvas";
 import { YWorkflow } from "@flow/lib/yjs/types";
 
 import { OverlayUI, ParamsDialog, NodeDeletionDialog } from "./components";
+import DebugRunNotification from "./components/DebugRunNotification";
 import { EditorContextType, EditorProvider } from "./editorContext";
 import useHooks from "./hooks";
 
@@ -47,6 +48,8 @@ export default function Editor({
     isSaving,
     spotlightUserClientId,
     spotlightUser,
+    activeDebugRuns,
+    loadExternalDebugJob,
     handleWorkflowAdd,
     handleWorkflowDeployment,
     handleProjectShare,
@@ -180,6 +183,10 @@ export default function Editor({
               onDialogClose={handleDeleteDialogClose}
             />
           )}
+          <DebugRunNotification
+            activeDebugRuns={activeDebugRuns}
+            onJoin={loadExternalDebugJob}
+          />
         </div>
       </EditorProvider>
     </div>

@@ -48,3 +48,10 @@ export type AwarenessUser = {
   currentWorkflowId?: string;
   openWorkflowIds?: string[];
 };
+
+export type UserDebug = {
+  userId: string;
+  userName: string;
+  jobId: string;
+  startedAt: number;
+};

@@ -1,5 +1,6 @@
 import { useReactFlow } from "@xyflow/react";
 import { useCallback } from "react";
+import type { Awareness } from "y-protocols/awareness";
 
 import { useProject, useProjectVariables } from "@flow/lib/gql";
 import { useJob } from "@flow/lib/gql/job";
@@ -8,7 +9,19 @@ import { JobState, useCurrentProject } from "@flow/stores";
 import type { Workflow } from "@flow/types";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";
 
-export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
+import { toast } from "../NotificationSystem/useToast";
+
+import useDebugAwareness from "./useDebugAwareness";
+
+export default ({
+  rawWorkflows,
+  yAwareness,
+}: {
+  rawWorkflows: Workflow[];
+  yAwareness: Awareness;
+}) => {
+  const { broadcastDebugRun } = useDebugAwareness({ yAwareness });
+
   const [currentProject] = useCurrentProject();
   const { useGetProjectVariables } = useProjectVariables();
   const { projectVariables } = useGetProjectVariables(currentProject?.id ?? "");
@@ -66,6 +79,7 @@ export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
         });
       }
       await updateValue({ jobs });
+      broadcastDebugRun(data.job.id); // NEW
 
       fitView({ duration: 400, padding: 0.5 });
     }
@@ -73,6 +87,7 @@ export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
     currentProject,
     projectVariables,
     rawWorkflows,
+    broadcastDebugRun,
     debugRunState?.jobs,
     fitView,
     updateValue,
@@ -91,11 +106,35 @@ export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
         debugRunState?.jobs?.filter((j) => j.projectId !== currentProject.id) ||
         [];
       await updateValue({ jobs });
+      broadcastDebugRun(null);
     }
-  }, [currentProject?.id, debugRunState?.jobs, updateValue, useJobCancel]);
+  }, [
+    currentProject?.id,
+    debugRunState?.jobs,
+    updateValue,
+    useJobCancel,
+    broadcastDebugRun,
+  ]);
 
+  const loadExternalDebugJob = useCallback(
+    async (jobId: string, userName: string) => {
+      const jobs: JobState[] = debugRunState?.jobs || [];
+      if (!currentProject) return;
+      if (jobs.some((j) => j.jobId === jobId)) return;
+
+      jobs.push({ projectId: currentProject.id, jobId, status: "running" });
+      await updateValue({ jobs });
+
+      toast({
+        title: `Viewing ${userName}'s debug run`,
+        description: "You're now following their debug session",
+      });
+    },
+    [currentProject, debugRunState, updateValue],
+  );
   return {
     handleDebugRunStart,
     handleDebugRunStop,
+    loadExternalDebugJob,
   };
 };
