@@ -35,17 +35,17 @@ const DebugRunNotification: React.FC<Props> = ({
 
       dismissedRef.current.add(run.jobId);
 
-      const duration = Math.max(0, Date.now() - run.startedAt);
+      const timeSinceStart = Math.max(0, Date.now() - run.startedAt);
       let timeAgo;
-      if (duration < 60000) {
+      if (timeSinceStart < 60000) {
         timeAgo = t("just now");
-      } else if (duration < 3600000) {
+      } else if (timeSinceStart < 3600000) {
         timeAgo = t("{{minutes}}m ago", {
-          minutes: Math.floor(duration / 60000),
+          minutes: Math.floor(timeSinceStart / 60000),
         });
       } else {
         timeAgo = t("{{hours}}h ago", {
-          hours: Math.floor(duration / 3600000),
+          hours: Math.floor(timeSinceStart / 3600000),
         });
       }
 

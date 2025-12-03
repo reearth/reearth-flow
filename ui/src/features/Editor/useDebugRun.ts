@@ -125,47 +125,56 @@ export default ({
     async (jobId: string, userName: string) => {
       if (!currentProject) return;
 
-      let jobWasAdded = false;
-      await updateValue((prevState) => {
-        const existingJobs = prevState?.jobs || [];
-        // If we already have this job, do nothing
-        if (existingJobs.some((j) => j.jobId === jobId)) {
-          return prevState;
-        }
-        // Clear any existing debug run that is currently loaded
-        const filteredJobs = existingJobs.filter(
-          (job) => job.projectId !== currentProject.id,
-        );
-        const newJobs = [
-          ...filteredJobs,
-          {
-            projectId: currentProject.id,
-            jobId,
-            status: "running" as JobState["status"],
-          },
-        ];
-        jobWasAdded = true;
-        return { ...prevState, jobs: newJobs };
-      });
-      if (jobWasAdded) {
-        toast({
-          title: t("Now viewing {{userName}}'s debug run", {
-            userName,
-          }),
-          description: t("You're now viewing {{userName}}'s debug session", {
-            userName,
-          }),
-        });
+      // Check if job already exists before updating
+      const existingJobs = debugRunState?.jobs || [];
+      if (existingJobs.some((j) => j.jobId === jobId)) {
+        return; // Already viewing this job, so need to update
       }
+
+      // Clear any existing debug run that the user has run
+      const filteredJobs = existingJobs.filter(
+        (job) => job.projectId !== currentProject.id,
+      );
+
+      // Add the new external debug job
+      const newJobs = [
+        ...filteredJobs,
+        {
+          projectId: currentProject.id,
+          jobId,
+          status: "running" as JobState["status"],
+        },
+      ];
+
+      await updateValue({ jobs: newJobs });
+
+      // Show toast after successful update
+      toast({
+        title: t("Now viewing {{userName}}'s debug run", {
+          userName,
+        }),
+        description: t("You're now viewing {{userName}}'s debug session", {
+          userName,
+        }),
+      });
     },
+    // Intentionally omit debugRunState?.jobs to read fresh value on each call
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [t, currentProject, updateValue],
   );
 
+  // Cleanup: Clear broadcast when component unmounts
   useEffect(() => {
     return () => {
-      broadcastDebugRun(null);
+      // Clear debug run from awareness directly to avoid dependency issues
+      const state = yAwareness.getLocalState();
+      if (state?.debugRun) {
+        yAwareness.setLocalStateField("debugRun", null);
+      }
     };
-  }, [broadcastDebugRun]);
+    // Only run on unmount, not when yAwareness changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const currentUserJobIds =
     debugRunState?.jobs

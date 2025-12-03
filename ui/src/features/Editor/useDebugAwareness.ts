@@ -23,8 +23,7 @@ export default ({
       } else {
         const state = yAwareness.getLocalState();
         if (state?.debugRun) {
-          const { debugRun, ...rest } = state;
-          yAwareness.setLocalState(rest);
+          yAwareness.setLocalStateField("debugRun", null);
         }
       }
     },
