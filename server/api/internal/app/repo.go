@@ -48,15 +48,15 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 		log.Fatalf("mongo error: %+v\n", err)
 	}
 
-	accountDatabase := conf.DB_Account
+	accountDatabase := conf.DbAccount
 	accountRepoCompat := false
 	if accountDatabase == "" {
 		accountDatabase = accountDatabaseName
 		accountRepoCompat = true
 	}
 
-	accountUsers := make([]accountrepo.User, 0, len(conf.DB_Users))
-	for _, u := range conf.DB_Users {
+	accountUsers := make([]accountrepo.User, 0, len(conf.DbUsers))
+	for _, u := range conf.DbUsers {
 		c, err := mongo.Connect(ctx, options.Client().ApplyURI(u.URI).SetMonitor(otelmongo.NewMonitor()))
 		if err != nil {
 			log.Fatalf("mongo error: %+v\n", err)
@@ -118,7 +118,7 @@ func initFile(ctx context.Context, conf *config.Config) (fileRepo gateway.File) 
 }
 
 func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batch) {
-	if conf.Worker_ImageURL == "" {
+	if conf.WorkerImageurl == "" {
 		return nil
 	}
 
@@ -129,50 +129,50 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		log.Fatal("GCP region is required")
 	}
 
-	bootDiskSize, err := strconv.Atoi(conf.Worker_BootDiskSizeGB)
+	bootDiskSize, err := strconv.Atoi(conf.WorkerBootdisksizegb)
 	if err != nil {
 		log.Fatalf("invalid boot disk size: %v", err)
 	}
 
-	computeCpuMilli, err := strconv.Atoi(conf.Worker_ComputeCpuMilli)
+	computeCpuMilli, err := strconv.Atoi(conf.WorkerComputecpumilli)
 	if err != nil {
 		log.Fatalf("invalid boot disk size: %v", err)
 	}
 
-	computeMemoryMib, err := strconv.Atoi(conf.Worker_ComputeMemoryMib)
+	computeMemoryMib, err := strconv.Atoi(conf.WorkerComputememorymib)
 	if err != nil {
 		log.Fatalf("invalid task count: %v", err)
 	}
 
-	taskCount, err := strconv.Atoi(conf.Worker_TaskCount)
+	taskCount, err := strconv.Atoi(conf.WorkerTaskcount)
 	if err != nil {
 		log.Fatalf("invalid task count: %v", err)
 	}
 
 	config := gcpbatch.BatchConfig{
-		AllowedLocations:                conf.Worker_AllowedLocations,
-		BinaryPath:                      conf.Worker_BinaryPath,
+		AllowedLocations:                conf.WorkerAllowedlocations,
+		BinaryPath:                      conf.WorkerBinarypath,
 		BootDiskSizeGB:                  bootDiskSize,
-		BootDiskType:                    conf.Worker_BootDiskType,
-		ChannelBufferSize:               conf.Worker_ChannelBufferSize,
+		BootDiskType:                    conf.WorkerBootdisktype,
+		ChannelBufferSize:               conf.WorkerChannelbuffersize,
 		ComputeCpuMilli:                 computeCpuMilli,
 		ComputeMemoryMib:                computeMemoryMib,
-		FeatureFlushThreshold:           conf.Worker_FeatureFlushThreshold,
-		ImageURI:                        conf.Worker_ImageURL,
-		MachineType:                     conf.Worker_MachineType,
-		NodeStatusPropagationDelayMS:    conf.Worker_NodeStatusPropagationDelayMS,
-		PubSubEdgePassThroughEventTopic: conf.Worker_PubSubEdgePassThroughEventTopic,
-		PubSubLogStreamTopic:            conf.Worker_PubSubLogStreamTopic,
-		PubSubJobCompleteTopic:          conf.Worker_PubSubJobCompleteTopic,
-		PubSubNodeStatusTopic:           conf.Worker_PubSubNodeStatusTopic,
-		PubSubUserFacingLogTopic:        conf.Worker_PubSubUserFacingLogTopic,
+		FeatureFlushThreshold:           conf.WorkerFeatureflushthreshold,
+		ImageURI:                        conf.WorkerImageurl,
+		MachineType:                     conf.WorkerMachinetype,
+		NodeStatusPropagationDelayMS:    conf.WorkerNodestatuspropagationdelayms,
+		PubSubEdgePassThroughEventTopic: conf.WorkerPubsubedgepassthrougheventtopic,
+		PubSubLogStreamTopic:            conf.WorkerPubsublogstreamtopic,
+		PubSubJobCompleteTopic:          conf.WorkerPubsubjobcompletetopic,
+		PubSubNodeStatusTopic:           conf.WorkerPubsubnodestatustopic,
+		PubSubUserFacingLogTopic:        conf.WorkerPubsubuserfacinglogtopic,
 		ProjectID:                       conf.GCPProject,
 		Region:                          conf.GCPRegion,
-		RustLog:                         conf.Worker_RustLog,
-		SAEmail:                         conf.Worker_BatchSAEmail,
+		RustLog:                         conf.WorkerRustlog,
+		SAEmail:                         conf.WorkerBatchsaemail,
 		TaskCount:                       taskCount,
-		ThreadPoolSize:                  conf.Worker_ThreadPoolSize,
-		CompressIntermediateData:        conf.Worker_CompressIntermediateData,
+		ThreadPoolSize:                  conf.WorkerThreadpoolsize,
+		CompressIntermediateData:        conf.WorkerCompressintermediatedata,
 	}
 
 	batchRepo, err = gcpbatch.NewBatch(ctx, config)
@@ -184,12 +184,12 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 }
 
 func initRedis(ctx context.Context, conf *config.Config) gateway.Redis {
-	if conf.Redis_URL == "" {
+	if conf.RedisUrl == "" {
 		return nil
 	}
 
-	log.Infofc(ctx, "log: redis storage is used: %s\n", conf.Redis_URL)
-	opt, err := redis.ParseURL(conf.Redis_URL)
+	log.Infofc(ctx, "log: redis storage is used: %s\n", conf.RedisUrl)
+	opt, err := redis.ParseURL(conf.RedisUrl)
 	if err != nil {
 		log.Fatalf("failed to parse redis url: %s\n", err.Error())
 	}
@@ -224,21 +224,21 @@ func initScheduler(ctx context.Context, conf *config.Config) gateway.Scheduler {
 }
 
 func initCMS(ctx context.Context, conf *config.Config) gateway.CMS {
-	if conf.CMS_Endpoint == "" {
+	if conf.CmsEndpoint == "" {
 		log.Info("CMS disabled: endpoint not configured")
 		return nil
 	}
 
-	if conf.CMS_Token == "" {
+	if conf.CmsToken == "" {
 		log.Warn("CMS: no authentication token provided")
 	}
 
-	cmsClient, err := cms.NewGRPCClient(conf.CMS_Endpoint, conf.CMS_Token, conf.CMS_UseTLS)
+	cmsClient, err := cms.NewGRPCClient(conf.CmsEndpoint, conf.CmsToken, conf.CmsUsetls)
 	if err != nil {
 		log.Errorf("failed to create CMS client: %v", err)
 		return nil
 	}
 
-	log.Infofc(ctx, "CMS enabled: endpoint=%s", conf.CMS_Endpoint)
+	log.Infofc(ctx, "CMS enabled: endpoint=%s", conf.CmsEndpoint)
 	return cmsClient
 }

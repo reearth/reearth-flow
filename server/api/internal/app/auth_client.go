@@ -25,7 +25,7 @@ const (
 // attachOpMiddleware attaches the operator and user to the context
 func attachOpMiddleware(cfg *ServerConfig) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		multiUser := accountinteractor.NewMultiUser(cfg.AccountRepos, cfg.AccountGateways, cfg.Config.SignupSecret, cfg.Config.Host_Web, cfg.AccountRepos.Users)
+		multiUser := accountinteractor.NewMultiUser(cfg.AccountRepos, cfg.AccountGateways, cfg.Config.SignupSecret, cfg.Config.HostWeb, cfg.AccountRepos.Users)
 		return func(c echo.Context) error {
 			ctx := c.Request().Context()
 			u, err := getUser(ctx, c, multiUser, cfg)

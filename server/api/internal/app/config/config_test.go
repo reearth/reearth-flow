@@ -20,10 +20,10 @@ func TestReadConfig(t *testing.T) {
 	assert.NotNil(t, config)
 	assert.Equal(t, true, config.Dev)
 	assert.Equal(t, "http://example.com", config.Host)
-	assert.Equal(t, "http://web.example.com", config.Host_Web)
+	assert.Equal(t, "http://web.example.com", config.HostWeb)
 	assert.Equal(t, "mongodb://testdb", config.DB)
-	assert.Equal(t, "http://auth.example.com", config.Auth_ISS)
-	assert.Equal(t, "audience1,audience2", config.Auth_AUD)
+	assert.Equal(t, "http://auth.example.com", config.AuthIss)
+	assert.Equal(t, "audience1,audience2", config.AuthAud)
 
 	// Test with debug mode disabled
 	config, err = ReadConfig(false)
@@ -31,10 +31,10 @@ func TestReadConfig(t *testing.T) {
 	assert.NotNil(t, config)
 	assert.Equal(t, false, config.Dev)
 	assert.Equal(t, "http://example.com", config.Host)
-	assert.Equal(t, "http://web.example.com", config.Host_Web)
+	assert.Equal(t, "http://web.example.com", config.HostWeb)
 	assert.Equal(t, "mongodb://testdb", config.DB)
-	assert.Equal(t, "http://auth.example.com", config.Auth_ISS)
-	assert.Equal(t, "audience1,audience2", config.Auth_AUD)
+	assert.Equal(t, "http://auth.example.com", config.AuthIss)
+	assert.Equal(t, "audience1,audience2", config.AuthAud)
 }
 
 func Test_AddHTTPScheme(t *testing.T) {
