@@ -33,7 +33,6 @@ const (
 )
 
 func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*repo.Container, *gateway.Container, *accountrepo.Container, *accountgateway.Container) {
-
 	gateways := &gateway.Container{}
 	acGateways := &accountgateway.Container{}
 

@@ -23,6 +23,7 @@ func ThemeFrom(s string) Theme {
 func (t Theme) Ref() *Theme {
 	return &t
 }
+
 func (t Theme) Valid() bool {
 	switch t {
 	case ThemeDark, ThemeLight, ThemeDefault:
