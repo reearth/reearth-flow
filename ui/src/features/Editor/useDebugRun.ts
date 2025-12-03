@@ -4,6 +4,7 @@ import type { Awareness } from "y-protocols/awareness";
 
 import { useProject, useProjectVariables } from "@flow/lib/gql";
 import { useJob } from "@flow/lib/gql/job";
+import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { JobState, useCurrentProject } from "@flow/stores";
 import type { Workflow } from "@flow/types";
@@ -21,7 +22,7 @@ export default ({
   yAwareness: Awareness;
 }) => {
   const { broadcastDebugRun } = useDebugAwareness({ yAwareness });
-
+  const t = useT();
   const [currentProject] = useCurrentProject();
   const { useGetProjectVariables } = useProjectVariables();
   const { projectVariables } = useGetProjectVariables(currentProject?.id ?? "");
@@ -122,15 +123,26 @@ export default ({
       if (!currentProject) return;
       if (jobs.some((j) => j.jobId === jobId)) return;
 
-      jobs.push({ projectId: currentProject.id, jobId, status: "running" });
-      await updateValue({ jobs });
+      const newJobs = [
+        ...jobs,
+        {
+          projectId: currentProject.id,
+          jobId,
+          status: "running" as JobState["status"],
+        },
+      ];
+      await updateValue({ jobs: newJobs });
 
       toast({
-        title: `Viewing ${userName}'s debug run`,
-        description: "You're now following their debug session",
+        title: t("Now viewing {{userName}}'s debug run", {
+          userName,
+        }),
+        description: t("You're now viewing {{userName}}'s debug session", {
+          userName,
+        }),
       });
     },
-    [currentProject, debugRunState, updateValue],
+    [t, currentProject, debugRunState?.jobs, updateValue],
   );
   return {
     handleDebugRunStart,

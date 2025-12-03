@@ -8,8 +8,6 @@ export default ({ yAwareness }: { yAwareness: Awareness }) => {
 
   const broadcastDebugRun = useCallback(
     (jobId: string | null) => {
-      if (!yAwareness) return;
-
       if (jobId) {
         yAwareness.setLocalStateField("debugRun", {
           jobId,
@@ -30,6 +28,7 @@ export default ({ yAwareness }: { yAwareness: Awareness }) => {
     const handleChange = () => {
       const myClientId = yAwareness.clientID;
       const states = Array.from(yAwareness.getStates());
+      // Find all other users with active debug runs
       const otherDebugRuns = states
         .filter(
           ([clientId, state]) =>
