@@ -7,11 +7,11 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry};
+use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 
 static PORT_A: Lazy<Port> = Lazy::new(|| Port::new("A"));
 static PORT_B: Lazy<Port> = Lazy::new(|| Port::new("B"));
@@ -25,7 +25,7 @@ impl ProcessorFactory for SolidIntersectionTestPairCreatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Creates pairs of features that can possibly intersect based on bounding box overlap"
+        "Creates pairs of features from AreaOnAreaOverlayer output for solid intersection testing"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -67,8 +67,10 @@ impl ProcessorFactory for SolidIntersectionTestPairCreatorFactory {
         };
         let processor = SolidIntersectionTestPairCreator {
             pair_id_attribute: params.pair_id_attribute,
-            bounding_box_attribute: params.bounding_box_attribute,
-            features: Vec::new(),
+            list_attribute: params.list_attribute,
+            gml_id_attribute: params.gml_id_attribute,
+            seen_pairs: BTreeSet::new(),
+            feature_cache: HashMap::new(),
             next_pair_id: 1,
         };
         Ok(Box::new(processor))
@@ -78,17 +80,25 @@ impl ProcessorFactory for SolidIntersectionTestPairCreatorFactory {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SolidIntersectionTestPairCreatorParam {
+    /// Attribute name to store the pair ID (default: "pair_id")
     #[serde(default = "default_pair_id_attribute")]
     pair_id_attribute: String,
-    #[serde(default = "default_bounding_box_attribute")]
-    bounding_box_attribute: String,
+
+    /// Attribute name containing the list of overlapping features from AreaOnAreaOverlayer (default: "list")
+    #[serde(default = "default_list_attribute")]
+    list_attribute: String,
+
+    /// Attribute name for the GML ID within the list items (default: "gmlId")
+    #[serde(default = "default_gml_id_attribute")]
+    gml_id_attribute: String,
 }
 
 impl Default for SolidIntersectionTestPairCreatorParam {
     fn default() -> Self {
         Self {
             pair_id_attribute: default_pair_id_attribute(),
-            bounding_box_attribute: default_bounding_box_attribute(),
+            list_attribute: default_list_attribute(),
+            gml_id_attribute: default_gml_id_attribute(),
         }
     }
 }
@@ -97,42 +107,37 @@ fn default_pair_id_attribute() -> String {
     "pair_id".to_string()
 }
 
-fn default_bounding_box_attribute() -> String {
-    "bounding_box".to_string()
+fn default_list_attribute() -> String {
+    "list".to_string()
 }
 
-#[derive(Debug, Clone)]
-struct FeatureWithBBox {
-    feature: Feature,
-    bbox: BBox,
+fn default_gml_id_attribute() -> String {
+    "gmlId".to_string()
 }
 
-#[derive(Debug, Clone)]
-struct BBox {
-    min_x: f64,
-    max_x: f64,
-    min_y: f64,
-    max_y: f64,
-    min_z: f64,
-    max_z: f64,
-}
+/// Represents a pair of GML IDs in canonical order (smaller ID first)
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+struct GmlIdPair(String, String);
 
-impl BBox {
-    fn overlaps(&self, other: &BBox) -> bool {
-        !(self.max_x < other.min_x
-            || self.min_x > other.max_x
-            || self.max_y < other.min_y
-            || self.min_y > other.max_y
-            || self.max_z < other.min_z
-            || self.min_z > other.max_z)
+impl GmlIdPair {
+    fn new(id1: String, id2: String) -> Self {
+        if id1 <= id2 {
+            Self(id1, id2)
+        } else {
+            Self(id2, id1)
+        }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct SolidIntersectionTestPairCreator {
     pair_id_attribute: String,
-    bounding_box_attribute: String,
-    features: Vec<FeatureWithBBox>,
+    list_attribute: String,
+    gml_id_attribute: String,
+    /// Set of seen GML ID pairs to avoid duplicates
+    seen_pairs: BTreeSet<GmlIdPair>,
+    /// Cache of features by GML ID for lookup when creating pairs
+    feature_cache: HashMap<String, Feature>,
     next_pair_id: u64,
 }
 
@@ -140,194 +145,126 @@ impl Processor for SolidIntersectionTestPairCreator {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        _fw: &ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let mut feature = ctx.feature.clone();
+        let feature = &ctx.feature;
 
-        // Calculate bounding box if not present
-        let bbox = if let Some(bbox_attr) = feature
+        // Get the list attribute from the AreaOnAreaOverlayer output
+        let list_attr = feature
             .attributes
-            .get(&Attribute::new(&self.bounding_box_attribute))
-        {
-            // Parse existing bounding box from attribute
-            if let AttributeValue::Map(map) = bbox_attr {
-                BBox {
-                    min_x: extract_number_from_string_map(map, "min_x")?,
-                    max_x: extract_number_from_string_map(map, "max_x")?,
-                    min_y: extract_number_from_string_map(map, "min_y")?,
-                    max_y: extract_number_from_string_map(map, "max_y")?,
-                    min_z: extract_number_from_string_map(map, "min_z")?,
-                    max_z: extract_number_from_string_map(map, "max_z")?,
-                }
-            } else {
-                calculate_bounding_box(&feature.geometry)?
+            .get(&Attribute::new(&self.list_attribute))
+            .ok_or_else(|| {
+                PlateauProcessorError::SolidIntersectionTestPairCreator(format!(
+                    "Missing '{}' attribute. This processor expects input from AreaOnAreaOverlayer with generateList configured.",
+                    self.list_attribute
+                ))
+            })?;
+
+        let list = match list_attr {
+            AttributeValue::Array(arr) => arr,
+            _ => {
+                return Err(
+                    PlateauProcessorError::SolidIntersectionTestPairCreator(format!(
+                        "'{}' attribute must be an array",
+                        self.list_attribute
+                    ))
+                    .into(),
+                );
             }
-        } else {
-            let bbox = calculate_bounding_box(&feature.geometry)?;
-
-            // Add bounding box as an attribute
-            let mut bbox_map = HashMap::new();
-            bbox_map.insert(
-                "min_x".to_string(),
-                AttributeValue::Number(serde_json::Number::from_f64(bbox.min_x).unwrap()),
-            );
-            bbox_map.insert(
-                "max_x".to_string(),
-                AttributeValue::Number(serde_json::Number::from_f64(bbox.max_x).unwrap()),
-            );
-            bbox_map.insert(
-                "min_y".to_string(),
-                AttributeValue::Number(serde_json::Number::from_f64(bbox.min_y).unwrap()),
-            );
-            bbox_map.insert(
-                "max_y".to_string(),
-                AttributeValue::Number(serde_json::Number::from_f64(bbox.max_y).unwrap()),
-            );
-            bbox_map.insert(
-                "min_z".to_string(),
-                AttributeValue::Number(serde_json::Number::from_f64(bbox.min_z).unwrap()),
-            );
-            bbox_map.insert(
-                "max_z".to_string(),
-                AttributeValue::Number(serde_json::Number::from_f64(bbox.max_z).unwrap()),
-            );
-
-            feature.attributes.insert(
-                Attribute::new(&self.bounding_box_attribute),
-                AttributeValue::Map(bbox_map),
-            );
-
-            bbox
         };
 
-        // Store the feature with its bounding box
-        self.features.push(FeatureWithBBox { feature, bbox });
+        // Extract GML IDs from the list
+        let gml_ids: Vec<String> = list
+            .iter()
+            .filter_map(|item| {
+                if let AttributeValue::Map(map) = item {
+                    map.get(&self.gml_id_attribute).and_then(|v| {
+                        if let AttributeValue::String(s) = v {
+                            Some(s.clone())
+                        } else {
+                            None
+                        }
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
 
-        Ok(())
-    }
+        // Need at least 2 features to create a pair
+        if gml_ids.len() < 2 {
+            return Ok(());
+        }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
-        let mut next_pair_id = self.next_pair_id;
-
-        // Create pairs for all features that have overlapping bounding boxes
-        for i in 0..self.features.len() {
-            for j in (i + 1)..self.features.len() {
-                if self.features[i].bbox.overlaps(&self.features[j].bbox) {
-                    // Create a pair
-                    let pair_id = AttributeValue::Number(serde_json::Number::from(next_pair_id));
-                    next_pair_id += 1;
-
-                    // Clone features and add pair_id attribute
-                    let mut feature_a = self.features[i].feature.clone();
-                    let mut feature_b = self.features[j].feature.clone();
-
-                    feature_a
-                        .attributes
-                        .insert(Attribute::new(&self.pair_id_attribute), pair_id.clone());
-                    feature_b
-                        .attributes
-                        .insert(Attribute::new(&self.pair_id_attribute), pair_id);
-
-                    // Send features to respective ports
-                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                        &ctx,
-                        feature_a,
-                        PORT_A.clone(),
-                    ));
-                    fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                        &ctx,
-                        feature_b,
-                        PORT_B.clone(),
-                    ));
+        // Cache features for later lookup - extract feature data from the list
+        for item in list {
+            if let AttributeValue::Map(map) = item {
+                if let Some(AttributeValue::String(gml_id)) = map.get(&self.gml_id_attribute) {
+                    if !self.feature_cache.contains_key(gml_id) {
+                        // Create a feature from the map data
+                        let mut cached_feature = Feature::new();
+                        for (key, value) in map {
+                            cached_feature
+                                .attributes
+                                .insert(Attribute::new(key), value.clone());
+                        }
+                        // Copy geometry from the original overlay feature (it's the intersection area)
+                        // Note: For solid intersection test, we need the original solid geometries,
+                        // which should be stored in the list item attributes or retrieved separately
+                        self.feature_cache.insert(gml_id.clone(), cached_feature);
+                    }
                 }
             }
         }
 
+        // Create pairs for all combinations
+        for i in 0..gml_ids.len() {
+            for j in (i + 1)..gml_ids.len() {
+                let pair = GmlIdPair::new(gml_ids[i].clone(), gml_ids[j].clone());
+
+                // Skip if we've already seen this pair
+                if self.seen_pairs.contains(&pair) {
+                    continue;
+                }
+
+                // Mark this pair as seen
+                self.seen_pairs.insert(pair.clone());
+
+                // Get features for the pair
+                let feature_a = self.feature_cache.get(&pair.0);
+                let feature_b = self.feature_cache.get(&pair.1);
+
+                if let (Some(feat_a), Some(feat_b)) = (feature_a, feature_b) {
+                    let pair_id =
+                        AttributeValue::Number(serde_json::Number::from(self.next_pair_id));
+                    self.next_pair_id += 1;
+
+                    // Clone features and add pair_id attribute
+                    let mut output_a = feat_a.clone();
+                    let mut output_b = feat_b.clone();
+
+                    output_a
+                        .attributes
+                        .insert(Attribute::new(&self.pair_id_attribute), pair_id.clone());
+                    output_b
+                        .attributes
+                        .insert(Attribute::new(&self.pair_id_attribute), pair_id);
+
+                    // Send features to respective ports
+                    fw.send(ctx.new_with_feature_and_port(output_a, PORT_A.clone()));
+                    fw.send(ctx.new_with_feature_and_port(output_b, PORT_B.clone()));
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 
     fn name(&self) -> &str {
         "SolidIntersectionTestPairCreator"
-    }
-}
-
-fn extract_number_from_string_map(
-    map: &HashMap<String, AttributeValue>,
-    key: &str,
-) -> Result<f64, BoxedError> {
-    map.get(key)
-        .and_then(|v| {
-            if let AttributeValue::Number(n) = v {
-                n.as_f64()
-            } else {
-                None
-            }
-        })
-        .ok_or_else(|| {
-            PlateauProcessorError::SolidIntersectionTestPairCreator(format!(
-                "Failed to extract {key} from bounding box"
-            ))
-            .into()
-        })
-}
-
-fn calculate_bounding_box(geometry: &Geometry) -> Result<BBox, BoxedError> {
-    use reearth_flow_geometry::algorithm::bounding_rect::BoundingRect;
-    use reearth_flow_geometry::types::no_value::NoValue;
-    use reearth_flow_geometry::types::rect::Rect;
-    use reearth_flow_types::GeometryValue;
-
-    match &geometry.value {
-        GeometryValue::FlowGeometry2D(geom) => {
-            let rect_opt: Option<Rect<f64, NoValue>> = geom.bounding_rect();
-            if let Some(rect) = rect_opt {
-                Ok(BBox {
-                    min_x: rect.min().x,
-                    max_x: rect.max().x,
-                    min_y: rect.min().y,
-                    max_y: rect.max().y,
-                    min_z: 0.0,
-                    max_z: 0.0,
-                })
-            } else {
-                Err(PlateauProcessorError::SolidIntersectionTestPairCreator(
-                    "Failed to calculate 2D bounding box".to_string(),
-                )
-                .into())
-            }
-        }
-        GeometryValue::FlowGeometry3D(geom) => {
-            let rect_opt: Option<Rect<f64, f64>> = geom.bounding_rect();
-            if let Some(rect) = rect_opt {
-                Ok(BBox {
-                    min_x: rect.min().x,
-                    max_x: rect.max().x,
-                    min_y: rect.min().y,
-                    max_y: rect.max().y,
-                    min_z: rect.min().z,
-                    max_z: rect.max().z,
-                })
-            } else {
-                Err(PlateauProcessorError::SolidIntersectionTestPairCreator(
-                    "Failed to calculate 3D bounding box".to_string(),
-                )
-                .into())
-            }
-        }
-        GeometryValue::CityGmlGeometry(cg) => {
-            let max_min = cg.max_min_vertice();
-            Ok(BBox {
-                min_x: max_min.min_lng,
-                max_x: max_min.max_lng,
-                min_y: max_min.min_lat,
-                max_y: max_min.max_lat,
-                min_z: max_min.min_height,
-                max_z: max_min.max_height,
-            })
-        }
-        GeometryValue::None => Err(PlateauProcessorError::SolidIntersectionTestPairCreator(
-            "No geometry present".to_string(),
-        )
-        .into()),
     }
 }

@@ -119,10 +119,10 @@ pub(super) enum GeometryProcessorError {
     JPStandardGridAccumulatorFactory(String),
     #[error("JPStandardGridAccumulator error: {0}")]
     JPStandardGridAccumulator(String),
-    #[error("SurfaceFootprintReplacer Factory error: {0}")]
-    SurfaceFootprintReplacerFactory(String),
-    #[error("SurfaceFootprintReplacer error: {0}")]
-    SurfaceFootprintReplacer(String),
+    #[error("FootprintReplacer Factory error: {0}")]
+    FootprintReplacerFactory(String),
+    #[error("FootprintReplacer error: {0}")]
+    FootprintReplacer(String),
     #[error("BoundsExtractor Factory error: {0}")]
     BoundsExtractorFactory(String),
     #[error("BoundsExtractor error: {0}")]
