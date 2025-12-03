@@ -5312,7 +5312,7 @@ checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
 
 [[package]]
 name = "plateau-gis-quality-checker"
-version = "0.0.193"
+version = "0.0.191"
 dependencies = [
  "directories",
  "log",
@@ -5337,39 +5337,6 @@ dependencies = [
  "tauri-plugin-log",
  "thiserror 2.0.17",
  "uuid",
-]
-
-[[package]]
-name = "plateau-tiles-test"
-version = "0.1.1"
-dependencies = [
- "bytes",
- "prost",
- "reearth-flow-action-log",
- "reearth-flow-action-plateau-processor",
- "reearth-flow-action-processor",
- "reearth-flow-action-sink",
- "reearth-flow-action-source",
- "reearth-flow-common",
- "reearth-flow-geometry",
- "reearth-flow-gltf",
- "reearth-flow-runner",
- "reearth-flow-runtime",
- "reearth-flow-state",
- "reearth-flow-storage",
- "reearth-flow-types",
- "serde",
- "serde_json",
- "serde_yaml",
- "tinymvt",
- "tokio",
- "toml 0.8.23",
- "tracing",
- "tracing-subscriber",
- "uuid",
- "walkdir",
- "yaml-include",
- "zip 2.4.2",
 ]
 
 [[package]]
@@ -6095,7 +6062,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-log"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "futures",
  "once_cell",
@@ -6115,7 +6082,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-plateau-processor"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "approx",
  "async-trait",
@@ -6158,7 +6125,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-processor"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "Inflector",
  "approx",
@@ -6206,7 +6173,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-python-processor"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "indexmap 2.12.1",
  "once_cell",
@@ -6227,7 +6194,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-sink"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "ahash 0.8.12",
  "async-trait",
@@ -6294,7 +6261,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-source"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "async-trait",
  "async_zip",
@@ -6320,7 +6287,6 @@ dependencies = [
  "reearth-flow-common",
  "reearth-flow-eval-expr",
  "reearth-flow-geometry",
- "reearth-flow-gltf",
  "reearth-flow-runtime",
  "reearth-flow-sql",
  "reearth-flow-state",
@@ -6345,7 +6311,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-cli"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "bytes",
  "clap",
@@ -6383,7 +6349,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-common"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "approx",
  "async-recursion",
@@ -6420,7 +6386,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-eval-expr"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "chrono",
  "futures",
@@ -6434,7 +6400,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-examples"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "async-trait",
  "bytes",
@@ -6463,7 +6429,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-geometry"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "approx",
  "bytes",
@@ -6489,7 +6455,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-gltf"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "ahash 0.8.12",
  "base64 0.22.1",
@@ -6521,7 +6487,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-macros"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6530,7 +6496,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runner"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "async-trait",
  "bytes",
@@ -6560,7 +6526,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runtime"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -6593,7 +6559,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sevenz"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "bit-set",
  "byteorder",
@@ -6610,7 +6576,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sql"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "futures-util",
  "once_cell",
@@ -6622,7 +6588,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-state"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "bytes",
  "reearth-flow-common",
@@ -6637,7 +6603,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-storage"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "bytes",
  "futures",
@@ -6655,7 +6621,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-telemetry"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "once_cell",
  "opentelemetry",
@@ -6669,7 +6635,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-tests"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "bytes",
  "directories",
@@ -6697,7 +6663,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-types"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "ahash 0.8.12",
  "bytes",
@@ -6734,7 +6700,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-worker"
-version = "0.0.206"
+version = "0.0.200"
 dependencies = [
  "async-trait",
  "backon",
@@ -8767,7 +8733,7 @@ dependencies = [
 [[package]]
 name = "tinymvt"
 version = "0.0.1"
-source = "git+https://github.com/reearth/tinymvt.git?tag=v0.0.3#ca8dde1bdebd5106793203941b488b1b69119f01"
+source = "git+https://github.com/reearth/tinymvt.git?tag=v0.0.2#874cba43dca3d0852eb08d140eedd8146b93bd58"
 dependencies = [
  "ahash 0.8.12",
  "indexmap 2.12.1",
@@ -9186,7 +9152,6 @@ version = "0.3.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2f30143827ddab0d256fd843b7a66d164e9f271cfa0dde49142c5ca0ca291f1e"
 dependencies = [
- "chrono",
  "matchers",
  "nu-ansi-term",
  "once_cell",
@@ -10414,7 +10379,7 @@ dependencies = [
 
 [[package]]
 name = "workflow-tests"
-version = "0.1.96"
+version = "0.1.95"
 dependencies = [
  "anyhow",
  "csv",
