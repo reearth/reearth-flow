@@ -25,8 +25,25 @@ graphs:
         action: AttributeMapper
         with:
           mappers:
-            - attribute: 方位_出  # Output attribute name
-              valueAttribute: 方位[°]  # Input attribute name (mapping "方位[°]" to "方位_出")
+            # for "AttributeRenamer_3", which rename attribute
+            - attribute: 方位_出  
+              valueAttribute: 方位[°]  
+            # for "SubstringExtractor_11", which add a new attribute "出_H" computed from "出"
+            - attribute: 出_H 
+              expr: |
+                env.get("__value")["出"].split(":")[0]  
+            # for "SubstringExtractor_12", which add a new attribute "出_M" computed from "出" 
+            - attribute: 出_M  
+              expr: |
+                env.get("__value")["出"].split(":")[1]  
+            # for "SubstringExtractor_13", which add a new attribute "入り_H" computed from "入り"
+            - attribute: 入り_H 
+              expr: |
+                env.get("__value")["入り"].split(":")[0]  
+            # for "SubstringExtractor_14", which add a new attribute "入り_M" computed from "入り"
+            - attribute: 入り_M 
+              expr: |
+                env.get("__value")["入り"].split(":")[1]  
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: CsvWriter
