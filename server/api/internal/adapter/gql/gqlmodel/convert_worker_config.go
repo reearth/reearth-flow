@@ -10,7 +10,7 @@ func ToWorkerConfig(cfg *workerconfig.WorkerConfig) *WorkerConfig {
 	}
 
 	return &WorkerConfig{
-		Workspace:                       IDFrom(cfg.Workspace()),
+		ID:                              IDFrom(cfg.Workspace()),
 		MachineType:                     cfg.MachineType(),
 		ComputeCPUMilli:                 cfg.ComputeCpuMilli(),
 		ComputeMemoryMib:                cfg.ComputeMemoryMib(),

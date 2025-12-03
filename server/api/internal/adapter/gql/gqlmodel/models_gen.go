@@ -719,7 +719,7 @@ type UserMetadata struct {
 }
 
 type WorkerConfig struct {
-	Workspace                       ID        `json:"workspace"`
+	ID                              ID        `json:"id"`
 	MachineType                     *string   `json:"machineType,omitempty"`
 	ComputeCPUMilli                 *int      `json:"computeCpuMilli,omitempty"`
 	ComputeMemoryMib                *int      `json:"computeMemoryMib,omitempty"`
@@ -735,13 +735,12 @@ type WorkerConfig struct {
 }
 
 type Workspace struct {
-	Assets       *AssetConnection   `json:"assets"`
-	ID           ID                 `json:"id"`
-	Members      []*WorkspaceMember `json:"members"`
-	Name         string             `json:"name"`
-	Personal     bool               `json:"personal"`
-	Projects     *ProjectConnection `json:"projects"`
-	WorkerConfig *WorkerConfig      `json:"workerConfig,omitempty"`
+	Assets   *AssetConnection   `json:"assets"`
+	ID       ID                 `json:"id"`
+	Members  []*WorkspaceMember `json:"members"`
+	Name     string             `json:"name"`
+	Personal bool               `json:"personal"`
+	Projects *ProjectConnection `json:"projects"`
 }
 
 func (Workspace) IsNode()        {}

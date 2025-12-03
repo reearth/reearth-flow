@@ -299,8 +299,6 @@ github.com/redis/go-redis/v9 v9.14.0 h1:u4tNCjXOyzfgeLN+vAZaW1xUooqWDqVEsZN0U01j
 github.com/redis/go-redis/v9 v9.14.0/go.mod h1:huWgSWd8mW6+m0VPhJjSSQ+d6Nh1VICQ6Q5lHuCH/Iw=
 github.com/reearth/reearth-accounts/server v0.0.0-20251114040111-9b5f5f67a6c7 h1:FZveEozMmcnkb4GQpjy+WVXVmUihh2wQdoMh/NsVOF0=
 github.com/reearth/reearth-accounts/server v0.0.0-20251114040111-9b5f5f67a6c7/go.mod h1:Sb7QPlYvqtsm8dXynRs5mezChJaKGzbtD9Cmssd6rP0=
-github.com/reearth/reearthx v0.0.0-20250923165051-5bd6f1c10f7a h1:hgUpBIrjpdwSTr94OamMqP4TpQK10KBLNJ6Gtij68Yk=
-github.com/reearth/reearthx v0.0.0-20250923165051-5bd6f1c10f7a/go.mod h1:z4JjOCy4MZZglLSrJx+btJ1ZLltESDZfSWJCnONwRS4=
 github.com/reearth/reearthx v0.0.0-20251128044232-3067c04f34da h1:eolcPfhTG4aTAi6yoBpDlE1yyrnHUGDf8D7lIxg7dZQ=
 github.com/reearth/reearthx v0.0.0-20251128044232-3067c04f34da/go.mod h1:z4JjOCy4MZZglLSrJx+btJ1ZLltESDZfSWJCnONwRS4=
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
@@ -364,8 +362,6 @@ github.com/vektah/dataloaden v0.3.0 h1:ZfVN2QD6swgvp+tDqdH/OIT/wu3Dhu0cus0k5gIZS
 github.com/vektah/dataloaden v0.3.0/go.mod h1:/HUdMve7rvxZma+2ZELQeNh88+003LL7Pf/CZ089j8U=
 github.com/vektah/gqlparser/v2 v2.5.30 h1:EqLwGAFLIzt1wpx1IPpY67DwUujF1OfzgEyDsLrN6kE=
 github.com/vektah/gqlparser/v2 v2.5.30/go.mod h1:D1/VCZtV3LPnQrcPBeR/q5jkSQIPti0uYCP/RI0gIeo=
-github.com/vikstrous/dataloadgen v0.0.10 h1:x07XAeEjIWXohvcjRvE72KY8pV5A3sTbKEFmxcj9RNM=
-github.com/vikstrous/dataloadgen v0.0.10/go.mod h1:8vuQVpBH0ODbMKAPUdCAPcOGezoTIhgAjgex51t4vbg=
 github.com/xdg-go/pbkdf2 v1.0.0 h1:Su7DPu48wXMwC3bs7MCNG+z4FhcyEuz5dlvchbq0B0c=
 github.com/xdg-go/pbkdf2 v1.0.0/go.mod h1:jrpuAogTd400dnrH08LKmI/xc1MbPOebTwRqcT5RDeI=
 github.com/xdg-go/scram v1.0.2/go.mod h1:1WAq6h33pAW+iRreB34OORO2Nf7qel3VV3fjBj+hCSs=
