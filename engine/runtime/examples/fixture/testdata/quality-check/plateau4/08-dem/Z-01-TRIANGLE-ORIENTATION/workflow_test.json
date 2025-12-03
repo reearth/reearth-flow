@@ -1,0 +1,26 @@
+{
+  "workflowPath": "quality-check/plateau4/08-dem/workflow.yml",
+  "description": "Test for plateau4 08 triangle orientation error.",
+  "intermediateAssertions": [
+    {
+      "edgeId": "94146a90-4765-4656-ad45-d81a2fc3fc4f",
+      "expectedFile": "intermediate_orientation.jsonl",
+      "jsonFilter": "{attributes}"
+    }
+  ],
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_dem.json",
+      "includeFields": ["三角形の向き不正"]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "08_地形_検査結果一覧.csv",
+      "includeColumns": ["三角形の向き不正"]
+    }
+  },
+  "cityGmlPath": "udx/dem/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectResultOkFile": false,
+  "skip": false
+}

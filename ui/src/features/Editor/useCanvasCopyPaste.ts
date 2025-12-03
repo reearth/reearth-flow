@@ -365,7 +365,7 @@ export default ({
         return toast({
           title: t("Readers/Writers not allowed"),
           description: t(
-            "Reader and Writer nodes cannot be pasted into subworkflows.",
+            "Reader and Writer actions cannot be pasted into subworkflows.",
           ),
         });
       }

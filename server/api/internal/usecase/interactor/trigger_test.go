@@ -16,6 +16,7 @@ import (
 	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/mongox/mongotest"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -65,6 +66,7 @@ func TestTrigger_Create(t *testing.T) {
 		Description:  "Daily trigger",
 		EventSource:  "TIME_DRIVEN",
 		TimeInterval: "EVERY_DAY",
+		Enabled:      lo.ToPtr(true),
 		Variables:    testVars,
 	}
 
@@ -76,7 +78,10 @@ func TestTrigger_Create(t *testing.T) {
 	assert.Equal(t, "Daily trigger", got.Description())
 	assert.Equal(t, trigger.EventSourceTypeTimeDriven, got.EventSource())
 	assert.Equal(t, trigger.TimeIntervalEveryDay, *got.TimeInterval())
+	assert.True(t, got.Enabled())
 	assert.Equal(t, testVars, got.Variables())
+	assert.False(t, got.CreatedAt().IsZero())
+	assert.False(t, got.UpdatedAt().IsZero())
 
 	param = interfaces.CreateTriggerParam{
 		WorkspaceID:  wid,
@@ -84,6 +89,7 @@ func TestTrigger_Create(t *testing.T) {
 		Description:  "API trigger",
 		EventSource:  "API_DRIVEN",
 		AuthToken:    "token123",
+		Enabled:      lo.ToPtr(false),
 		Variables:    testVars,
 	}
 
@@ -94,6 +100,7 @@ func TestTrigger_Create(t *testing.T) {
 	assert.Equal(t, trigger.EventSourceTypeAPIDriven, got.EventSource())
 	assert.Equal(t, "token123", *got.AuthToken())
 	assert.Equal(t, testVars, got.Variables())
+	assert.False(t, got.Enabled())
 
 	param.DeploymentID = id.NewDeploymentID()
 	got, err = i.Create(ctx, param)
@@ -119,6 +126,7 @@ func TestTrigger_Update(t *testing.T) {
 	newDid := id.NewDeploymentID()
 	initialVars := map[string]string{"INIT_KEY": "initial_value"}
 
+	createdTime := time.Now()
 	_, _ = c.Collection("trigger").InsertOne(ctx, bson.M{
 		"id":           tid.String(),
 		"workspaceid":  wid.String(),
@@ -126,8 +134,10 @@ func TestTrigger_Update(t *testing.T) {
 		"description":  "Original trigger",
 		"eventsource":  "TIME_DRIVEN",
 		"timeinterval": "EVERY_DAY",
+		"enabled":      true,
 		"variables":    initialVars,
-		"createdat":    time.Now(),
+		"createdat":    createdTime,
+		"updatedat":    createdTime,
 	})
 
 	_, _ = c.Collection("deployment").InsertMany(ctx, []any{
@@ -175,7 +185,10 @@ func TestTrigger_Update(t *testing.T) {
 	assert.Equal(t, trigger.EventSourceTypeAPIDriven, got.EventSource())
 	assert.Equal(t, "newtoken", *got.AuthToken())
 	assert.Nil(t, got.TimeInterval())
+	assert.True(t, got.Enabled())
 	assert.Equal(t, updateVars, got.Variables())
+	assert.Equal(t, createdTime, got.CreatedAt())
+	assert.True(t, got.UpdatedAt().After(createdTime))
 
 	// Test updating deployment
 	param = interfaces.UpdateTriggerParam{
@@ -183,6 +196,7 @@ func TestTrigger_Update(t *testing.T) {
 		DeploymentID: &newDid,
 		EventSource:  "TIME_DRIVEN",
 		TimeInterval: "EVERY_HOUR",
+		Enabled:      lo.ToPtr(false),
 		Variables:    nil,
 	}
 
@@ -190,7 +204,10 @@ func TestTrigger_Update(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, newDid, got.Deployment())
 	assert.Equal(t, trigger.TimeIntervalEveryHour, *got.TimeInterval())
+	assert.False(t, got.Enabled())
 	assert.Equal(t, updateVars, got.Variables())
+	assert.Equal(t, createdTime, got.CreatedAt())
+	assert.True(t, got.UpdatedAt().After(createdTime))
 
 	// Test updating with invalid trigger ID
 	param.ID = id.NewTriggerID()
@@ -225,6 +242,7 @@ func TestTrigger_Fetch(t *testing.T) {
 	wid := id.NewWorkspaceID()
 	did := id.NewDeploymentID()
 	testVars := map[string]string{"FETCH_VAR": "fetched_value"}
+	createdTime := time.Now()
 
 	_, _ = c.Collection("trigger").InsertMany(ctx, []any{
 		bson.M{
@@ -234,7 +252,9 @@ func TestTrigger_Fetch(t *testing.T) {
 			"description":  "Daily trigger",
 			"eventsource":  "TIME_DRIVEN",
 			"timeinterval": "EVERY_DAY",
-			"createdat":    time.Now(),
+			"createdat":    createdTime,
+			"updatedat":    createdTime,
+			"enabled":      true,
 			"variables":    testVars,
 		},
 		bson.M{
@@ -244,7 +264,9 @@ func TestTrigger_Fetch(t *testing.T) {
 			"description":  "API trigger",
 			"eventsource":  "API_DRIVEN",
 			"authtoken":    "token123",
-			"createdat":    time.Now(),
+			"createdat":    createdTime,
+			"updatedat":    createdTime,
+			"enabled":      false,
 			"variables":    testVars,
 		},
 	})
@@ -264,10 +286,16 @@ func TestTrigger_Fetch(t *testing.T) {
 	assert.Equal(t, 2, len(got))
 	assert.Equal(t, tid1, got[0].ID())
 	assert.Equal(t, "Daily trigger", got[0].Description())
+	assert.True(t, got[0].Enabled())
 	assert.Equal(t, testVars, got[0].Variables())
+	assert.Equal(t, createdTime, got[0].CreatedAt())
+	assert.Equal(t, createdTime, got[0].UpdatedAt())
 	assert.Equal(t, tid2, got[1].ID())
 	assert.Equal(t, "API trigger", got[1].Description())
+	assert.False(t, got[1].Enabled())
 	assert.Equal(t, testVars, got[1].Variables())
+	assert.Equal(t, createdTime, got[1].CreatedAt())
+	assert.Equal(t, createdTime, got[1].UpdatedAt())
 }
 
 func TestTrigger_Delete(t *testing.T) {
@@ -316,4 +344,104 @@ func TestTrigger_Delete(t *testing.T) {
 
 	err = i.Delete(ctx, id.NewTriggerID())
 	assert.NoError(t, err)
+}
+
+func TestTrigger_ExecuteAPITrigger_Disabled(t *testing.T) {
+	mockAuthInfo := &appx.AuthInfo{
+		Token: "token",
+	}
+	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+
+	ctx := context.Background()
+	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
+	ctx = adapter.AttachUser(ctx, mockUser)
+
+	c := mongotest.Connect(t)(t)
+
+	tid := id.NewTriggerID()
+	wid := id.NewWorkspaceID()
+	did := id.NewDeploymentID()
+
+	_, _ = c.Collection("trigger").InsertOne(ctx, bson.M{
+		"id":           tid.String(),
+		"workspaceid":  wid.String(),
+		"deploymentid": did.String(),
+		"description":  "Disabled API trigger",
+		"eventsource":  "API_DRIVEN",
+		"authtoken":    "token123",
+		"enabled":      false,
+		"createdat":    time.Now(),
+	})
+
+	repo := repo.Container{
+		Trigger: mongo.NewTrigger(mongox.NewClientWithDatabase(c)),
+	}
+	gateway := &gateway.Container{}
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+		return true, nil
+	})
+	job := NewJob(&repo, gateway, mockPermissionCheckerTrue)
+	i := NewTrigger(&repo, gateway, job, mockPermissionCheckerTrue)
+
+	res, err := i.ExecuteAPITrigger(ctx, interfaces.ExecuteAPITriggerParam{
+		AuthenticationToken: "token123",
+		TriggerID:           tid,
+		NotificationURL:     nil,
+		Variables: map[string]interface{}{
+			"FOO": "bar",
+		},
+	})
+
+	assert.Error(t, err)
+	assert.Nil(t, res)
+	assert.Contains(t, err.Error(), "disabled")
+}
+
+func TestTrigger_ExecuteTimeDrivenTrigger_Disabled(t *testing.T) {
+	mockAuthInfo := &appx.AuthInfo{
+		Token: "token",
+	}
+	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+
+	ctx := context.Background()
+	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
+	ctx = adapter.AttachUser(ctx, mockUser)
+
+	c := mongotest.Connect(t)(t)
+
+	tid := id.NewTriggerID()
+	wid := id.NewWorkspaceID()
+	did := id.NewDeploymentID()
+
+	_, _ = c.Collection("trigger").InsertOne(ctx, bson.M{
+		"id":           tid.String(),
+		"workspaceid":  wid.String(),
+		"deploymentid": did.String(),
+		"description":  "Disabled time trigger",
+		"eventsource":  "TIME_DRIVEN",
+		"timeinterval": "EVERY_DAY",
+		"enabled":      false,
+		"createdat":    time.Now(),
+	})
+
+	repo := repo.Container{
+		Trigger: mongo.NewTrigger(mongox.NewClientWithDatabase(c)),
+	}
+	gateway := &gateway.Container{}
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+		return true, nil
+	})
+	job := NewJob(&repo, gateway, mockPermissionCheckerTrue)
+	i := NewTrigger(&repo, gateway, job, mockPermissionCheckerTrue)
+
+	res, err := i.ExecuteTimeDrivenTrigger(ctx, interfaces.ExecuteTimeDrivenTriggerParam{
+		TriggerID: tid,
+		Variables: map[string]string{
+			"FOO": "bar",
+		},
+	})
+
+	assert.Error(t, err)
+	assert.Nil(t, res)
+	assert.Contains(t, err.Error(), "disabled")
 }

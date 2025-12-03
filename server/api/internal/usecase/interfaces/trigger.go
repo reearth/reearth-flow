@@ -16,6 +16,7 @@ type CreateTriggerParam struct {
 	EventSource  trigger.EventSourceType
 	TimeInterval trigger.TimeInterval
 	AuthToken    string
+	Enabled      *bool
 	Variables    map[string]string
 }
 
@@ -38,6 +39,7 @@ type UpdateTriggerParam struct {
 	EventSource  trigger.EventSourceType
 	TimeInterval trigger.TimeInterval
 	AuthToken    string
+	Enabled      *bool
 	Variables    map[string]string
 }
 

@@ -149,7 +149,7 @@ impl Processor for FeatureCounter {
         if let Some(group_by) = &self.params.group_by {
             let key = group_by
                 .iter()
-                .map(|k| feature.get(&k).map(|v| v.to_string()).unwrap_or_default())
+                .map(|k| feature.get(k).map(|v| v.to_string()).unwrap_or_default())
                 .collect::<Vec<_>>()
                 .join(",");
             let count = self.counter.increment(&key);

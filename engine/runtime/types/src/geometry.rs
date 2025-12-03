@@ -1,6 +1,7 @@
 use std::fmt::Display;
 use std::hash::Hash;
 
+use nusamai_citygml::{GmlGeometryType, PropertyType};
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use reearth_flow_geometry::types::coordinate::Coordinate3D;
 use reearth_flow_geometry::types::coordnum::CoordNum;
@@ -289,6 +290,7 @@ pub struct GmlGeometry {
     pub id: Option<String>,
     #[serde(rename = "type")]
     pub ty: GeometryType,
+    pub gml_trait: Option<GmlGeometryTrait>,
     pub lod: Option<u8>,
     pub pos: u32,
     pub len: u32,
@@ -412,6 +414,10 @@ impl From<nusamai_citygml::geometry::GeometryRef> for GmlGeometry {
         Self {
             id,
             ty: geometry.ty.into(),
+            gml_trait: GmlGeometryTrait::maybe_new(
+                geometry.property_name,
+                geometry.gml_geometry_type,
+            ),
             lod: Some(geometry.lod),
             pos: geometry.pos,
             len: geometry.len,
@@ -420,6 +426,27 @@ impl From<nusamai_citygml::geometry::GeometryRef> for GmlGeometry {
             feature_id: geometry.feature_id,
             feature_type: geometry.feature_type,
             composite_surfaces: Vec::new(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct GmlGeometryTrait {
+    pub property: PropertyType,
+    pub gml_geometry_type: GmlGeometryType,
+}
+
+impl GmlGeometryTrait {
+    pub fn maybe_new(
+        property: Option<PropertyType>,
+        gml_geometry_type: Option<GmlGeometryType>,
+    ) -> Option<Self> {
+        match (property, gml_geometry_type) {
+            (Some(prop), Some(ty)) => Some(Self {
+                property: prop,
+                gml_geometry_type: ty,
+            }),
+            _ => None,
         }
     }
 }

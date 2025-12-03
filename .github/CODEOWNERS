@@ -1,5 +1,7 @@
-*              @reearth/flow-admin
-/engine/       @n4to4
-/ui/           @KaWaite
-/server/       @pyshx
-/server/api/   @akiyatomohiro @pyshx
+*                   @reearth/flow-admin
+/engine/            @n4to4
+/ui/                @KaWaite
+/server/            @pyshx
+/server/api/        @akiyatomohiro @pyshx
+/server/subscriber/ @akiyatomohiro @pyshx
+/go.work*           @akiyatomohiro @pyshx

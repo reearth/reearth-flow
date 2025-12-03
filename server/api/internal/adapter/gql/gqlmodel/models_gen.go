@@ -196,6 +196,7 @@ type CreateTriggerInput struct {
 	Description     string           `json:"description"`
 	TimeDriverInput *TimeDriverInput `json:"timeDriverInput,omitempty"`
 	APIDriverInput  *APIDriverInput  `json:"apiDriverInput,omitempty"`
+	Enabled         *bool            `json:"enabled,omitempty"`
 	Variables       JSON             `json:"variables,omitempty"`
 }
 
@@ -315,6 +316,7 @@ type Job struct {
 	Workspace         *Workspace  `json:"workspace,omitempty"`
 	WorkspaceID       ID          `json:"workspaceId"`
 	Logs              []*Log      `json:"logs,omitempty"`
+	Variables         JSON        `json:"variables,omitempty"`
 }
 
 func (Job) IsNode()        {}
@@ -560,6 +562,7 @@ type Trigger struct {
 	Description   string          `json:"description"`
 	AuthToken     *string         `json:"authToken,omitempty"`
 	TimeInterval  *TimeInterval   `json:"timeInterval,omitempty"`
+	Enabled       *bool           `json:"enabled,omitempty"`
 	Variables     JSON            `json:"variables,omitempty"`
 }
 
@@ -647,6 +650,7 @@ type UpdateTriggerInput struct {
 	DeploymentID    *ID              `json:"deploymentId,omitempty"`
 	TimeDriverInput *TimeDriverInput `json:"timeDriverInput,omitempty"`
 	APIDriverInput  *APIDriverInput  `json:"apiDriverInput,omitempty"`
+	Enabled         *bool            `json:"enabled,omitempty"`
 	Variables       JSON             `json:"variables,omitempty"`
 }
 

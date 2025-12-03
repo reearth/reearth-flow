@@ -106,6 +106,7 @@ export const toTrigger = (trigger: TriggerFragment): Trigger => ({
   authToken: trigger.authToken ?? undefined,
   timeInterval: trigger.timeInterval ?? undefined,
   description: trigger.description ?? undefined,
+  variables: trigger.variables ?? undefined,
 });
 
 export const toNodeExecution = (

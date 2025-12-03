@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use indexmap::IndexMap;
-use reearth_flow_geometry::types::{multi_polygon::MultiPolygon3D, polygon::Polygon3D};
+use reearth_flow_geometry::types::{
+    multi_polygon::{MultiPolygon2D, MultiPolygon3D},
+    polygon::{Polygon2D, Polygon3D},
+};
 use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryType, GeometryValue};
 use shapefile::{
     dbase::{FieldName, FieldValue, Record, TableWriterBuilder},
@@ -9,34 +12,150 @@ use shapefile::{
 };
 
 pub(super) fn feature_to_shape(feature: &Feature) -> crate::errors::Result<shapefile::Shape> {
-    let mut mpoly = MultiPolygon3D::<f64>::default();
-    let GeometryValue::CityGmlGeometry(geometry) = &feature.geometry.value else {
-        return Err(crate::errors::SinkError::ShapefileWriter(format!(
-            "Unsupported geometry type: {:?}",
-            feature.geometry.value
-        )));
-    };
-
-    geometry
-        .gml_geometries
-        .iter()
-        .for_each(|entry| match entry.ty {
-            GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
-                entry.polygons.iter().for_each(|poly| {
-                    mpoly.push(poly.clone());
+    match &feature.geometry.value {
+        GeometryValue::CityGmlGeometry(geometry) => {
+            let mut mpoly = MultiPolygon3D::<f64>::default();
+            geometry
+                .gml_geometries
+                .iter()
+                .for_each(|entry| match entry.ty {
+                    GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
+                        entry.polygons.iter().for_each(|poly| {
+                            mpoly.push(poly.clone());
+                        });
+                    }
+                    GeometryType::Curve => unimplemented!(),
+                    GeometryType::Point => unimplemented!(),
                 });
+            if !mpoly.is_empty() {
+                let shape = shapefile::Shape::PolygonZ(multipolygons_to_shape(&mpoly));
+                Ok(shape)
+            } else {
+                Ok(shapefile::Shape::NullShape)
             }
-            GeometryType::Curve => unimplemented!(),
-            GeometryType::Point => unimplemented!(),
-        });
-
-    if !mpoly.is_empty() {
-        let shape = shapefile::Shape::PolygonZ(multipolygons_to_shape(&mpoly));
-
-        return Ok(shape);
+        }
+        GeometryValue::FlowGeometry2D(geometry) => {
+            use reearth_flow_geometry::types::geometry::Geometry2D;
+            match geometry {
+                Geometry2D::Point(point) => {
+                    let shape =
+                        shapefile::Shape::Point(shapefile::Point::new(point.x(), point.y()));
+                    Ok(shape)
+                }
+                Geometry2D::MultiPoint(multi_point) => {
+                    let points: Vec<shapefile::Point> = multi_point
+                        .iter()
+                        .map(|p| shapefile::Point::new(p.x(), p.y()))
+                        .collect();
+                    Ok(shapefile::Shape::Multipoint(shapefile::Multipoint::new(
+                        points,
+                    )))
+                }
+                Geometry2D::LineString(line_string) => {
+                    let points: Vec<shapefile::Point> = line_string
+                        .iter()
+                        .map(|coord| shapefile::Point::new(coord.x, coord.y))
+                        .collect();
+                    Ok(shapefile::Shape::Polyline(shapefile::Polyline::new(points)))
+                }
+                Geometry2D::MultiLineString(multi_line_string) => {
+                    let mut all_parts = Vec::new();
+                    for line_string in multi_line_string.iter() {
+                        let points: Vec<shapefile::Point> = line_string
+                            .iter()
+                            .map(|coord| shapefile::Point::new(coord.x, coord.y))
+                            .collect();
+                        all_parts.extend(points);
+                    }
+                    Ok(shapefile::Shape::Polyline(shapefile::Polyline::new(
+                        all_parts,
+                    )))
+                }
+                Geometry2D::Polygon(polygon) => {
+                    let mpoly = MultiPolygon2D::new(vec![polygon.clone()]);
+                    let shape = shapefile::Shape::Polygon(multipolygons_2d_to_shape(&mpoly));
+                    Ok(shape)
+                }
+                Geometry2D::MultiPolygon(multi_polygon) => {
+                    if !multi_polygon.is_empty() {
+                        let shape =
+                            shapefile::Shape::Polygon(multipolygons_2d_to_shape(multi_polygon));
+                        Ok(shape)
+                    } else {
+                        Ok(shapefile::Shape::NullShape)
+                    }
+                }
+                _ => Err(crate::errors::SinkError::ShapefileWriter(format!(
+                    "Unsupported 2D geometry type: {}",
+                    geometry.name()
+                ))),
+            }
+        }
+        GeometryValue::FlowGeometry3D(geometry) => {
+            use reearth_flow_geometry::types::geometry::Geometry3D;
+            match geometry {
+                Geometry3D::Point(point) => {
+                    let shape = shapefile::Shape::PointZ(shapefile::PointZ::new(
+                        point.x(),
+                        point.y(),
+                        point.z(),
+                        NO_DATA,
+                    ));
+                    Ok(shape)
+                }
+                Geometry3D::MultiPoint(multi_point) => {
+                    let points: Vec<shapefile::PointZ> = multi_point
+                        .iter()
+                        .map(|p| shapefile::PointZ::new(p.x(), p.y(), p.z(), NO_DATA))
+                        .collect();
+                    Ok(shapefile::Shape::MultipointZ(shapefile::MultipointZ::new(
+                        points,
+                    )))
+                }
+                Geometry3D::LineString(line_string) => {
+                    let points: Vec<shapefile::PointZ> = line_string
+                        .iter()
+                        .map(|coord| shapefile::PointZ::new(coord.x, coord.y, coord.z, NO_DATA))
+                        .collect();
+                    Ok(shapefile::Shape::PolylineZ(shapefile::PolylineZ::new(
+                        points,
+                    )))
+                }
+                Geometry3D::MultiLineString(multi_line_string) => {
+                    let mut all_parts = Vec::new();
+                    for line_string in multi_line_string.iter() {
+                        let points: Vec<shapefile::PointZ> = line_string
+                            .iter()
+                            .map(|coord| shapefile::PointZ::new(coord.x, coord.y, coord.z, NO_DATA))
+                            .collect();
+                        all_parts.extend(points);
+                    }
+                    Ok(shapefile::Shape::PolylineZ(shapefile::PolylineZ::new(
+                        all_parts,
+                    )))
+                }
+                Geometry3D::Polygon(polygon) => {
+                    let mpoly = MultiPolygon3D::new(vec![polygon.clone()]);
+                    let shape = shapefile::Shape::PolygonZ(multipolygons_to_shape(&mpoly));
+                    Ok(shape)
+                }
+                Geometry3D::MultiPolygon(multi_polygon) => {
+                    if !multi_polygon.is_empty() {
+                        let shape =
+                            shapefile::Shape::PolygonZ(multipolygons_to_shape(multi_polygon));
+                        Ok(shape)
+                    } else {
+                        Ok(shapefile::Shape::NullShape)
+                    }
+                }
+                _ => Err(crate::errors::SinkError::ShapefileWriter(format!(
+                    "Unsupported 3D geometry type: {}",
+                    geometry.name()
+                ))),
+            }
+        }
+        GeometryValue::None => Ok(shapefile::Shape::NullShape),
     }
-
-    Ok(shapefile::Shape::NullShape)
 }
 
 pub fn multipolygons_to_shape(mpoly: &MultiPolygon3D<f64>) -> shapefile::PolygonZ {
@@ -46,6 +165,41 @@ pub fn multipolygons_to_shape(mpoly: &MultiPolygon3D<f64>) -> shapefile::Polygon
         .collect::<Vec<_>>();
 
     shapefile::PolygonZ::with_rings(all_rings)
+}
+
+pub fn multipolygons_2d_to_shape(mpoly: &MultiPolygon2D<f64>) -> shapefile::Polygon {
+    let all_rings = mpoly
+        .iter()
+        .flat_map(polygon_2d_to_shape_rings)
+        .collect::<Vec<_>>();
+
+    shapefile::Polygon::with_rings(all_rings)
+}
+
+fn polygon_2d_to_shape_rings(
+    poly: &Polygon2D<f64>,
+) -> Vec<shapefile::PolygonRing<shapefile::Point>> {
+    let outer_points = poly
+        .exterior()
+        .iter()
+        .map(|coords| shapefile::Point::new(coords.x, coords.y))
+        .collect::<Vec<shapefile::Point>>();
+    let outer_ring = shapefile::PolygonRing::Outer(outer_points);
+
+    let inner_rings = poly
+        .interiors()
+        .iter()
+        .map(|ring| {
+            ring.iter()
+                .map(|coords| shapefile::Point::new(coords.x, coords.y))
+                .collect::<Vec<shapefile::Point>>()
+        })
+        .map(shapefile::PolygonRing::Inner)
+        .collect::<Vec<shapefile::PolygonRing<shapefile::Point>>>();
+
+    let mut all_rings = vec![outer_ring];
+    all_rings.extend(inner_rings);
+    all_rings
 }
 
 fn polygon_to_shape_rings(poly: &Polygon3D<f64>) -> Vec<shapefile::PolygonRing<shapefile::PointZ>> {

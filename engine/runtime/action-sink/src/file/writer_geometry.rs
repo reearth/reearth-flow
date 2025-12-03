@@ -2,7 +2,11 @@ use crate::errors::GeometryExportError;
 use indexmap::IndexMap;
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_types::{Geometry, GeometryValue};
-use schemars::JsonSchema;
+use schemars::{
+    gen::SchemaGenerator,
+    schema::{InstanceType, Metadata, ObjectValidation, Schema, SchemaObject, SubschemaValidation},
+    JsonSchema,
+};
 use serde::{Deserialize, Serialize};
 use std::fmt::Write as _;
 
@@ -17,16 +21,9 @@ pub struct GeometryExportConfig {
     pub mode: GeometryExportMode,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(rename_all = "camelCase", tag = "geometryMode")]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase", untagged)]
 pub enum GeometryExportMode {
-    /// # WKT Column
-    /// Write geometry as Well-Known Text in a single column
-    Wkt {
-        /// # WKT Column Name
-        /// Name of the column to write WKT geometry
-        column: String,
-    },
     /// # Coordinate Columns
     /// Write geometry as separate X, Y, (optional Z) columns
     /// Note: Only supports Point geometries. Non-point geometries will be skipped with a warning.
@@ -45,6 +42,114 @@ pub enum GeometryExportMode {
         #[serde(skip_serializing_if = "Option::is_none")]
         z_column: Option<String>,
     },
+    /// # WKT Column
+    /// Write geometry as Well-Known Text in a single column
+    Wkt {
+        /// # WKT Column Name
+        /// Name of the column to write WKT geometry
+        column: String,
+    },
+}
+
+// Custom JsonSchema implementation to hide the redundant geometryMode field from UI
+impl JsonSchema for GeometryExportMode {
+    fn schema_name() -> String {
+        "GeometryExportMode".to_string()
+    }
+
+    fn json_schema(_gen: &mut SchemaGenerator) -> Schema {
+        // WKT variant schema without geometryMode field
+        let wkt_schema = SchemaObject {
+            instance_type: Some(InstanceType::Object.into()),
+            metadata: Some(Box::new(Metadata {
+                title: Some("WKT Column".to_string()),
+                description: Some(
+                    "Write geometry as Well-Known Text in a single column".to_string(),
+                ),
+                ..Default::default()
+            })),
+            object: Some(Box::new(ObjectValidation {
+                properties: {
+                    let mut props = schemars::Map::new();
+                    props.insert(
+                        "column".to_string(),
+                        SchemaObject {
+                            instance_type: Some(InstanceType::String.into()),
+                            metadata: Some(Box::new(Metadata {
+                                title: Some("WKT Column Name".to_string()),
+                                description: Some(
+                                    "Name of the column to write WKT geometry".to_string(),
+                                ),
+                                ..Default::default()
+                            })),
+                            ..Default::default()
+                        }
+                        .into(),
+                    );
+                    props
+                },
+                required: ["column".to_string()].into_iter().collect(),
+                ..Default::default()
+            })),
+            ..Default::default()
+        };
+
+        // Coordinates variant schema without geometryMode field
+        let coordinates_schema = SchemaObject {
+            instance_type: Some(InstanceType::Object.into()),
+            metadata: Some(Box::new(Metadata {
+                title: Some("Coordinate Columns".to_string()),
+                description: Some("Write geometry as separate X, Y, (optional Z) columns\nNote: Only supports Point geometries. Non-point geometries will be skipped with a warning.".to_string()),
+                ..Default::default()
+            })),
+            object: Some(Box::new(ObjectValidation {
+                properties: {
+                    let mut props = schemars::Map::new();
+                    props.insert("xColumn".to_string(), SchemaObject {
+                        instance_type: Some(InstanceType::String.into()),
+                        metadata: Some(Box::new(Metadata {
+                            title: Some("X Column Name".to_string()),
+                            description: Some("Name of the column for X coordinate (longitude)".to_string()),
+                            ..Default::default()
+                        })),
+                        ..Default::default()
+                    }.into());
+                    props.insert("yColumn".to_string(), SchemaObject {
+                        instance_type: Some(InstanceType::String.into()),
+                        metadata: Some(Box::new(Metadata {
+                            title: Some("Y Column Name".to_string()),
+                            description: Some("Name of the column for Y coordinate (latitude)".to_string()),
+                            ..Default::default()
+                        })),
+                        ..Default::default()
+                    }.into());
+                    props.insert("zColumn".to_string(), SchemaObject {
+                        instance_type: Some(vec![InstanceType::String, InstanceType::Null].into()),
+                        metadata: Some(Box::new(Metadata {
+                            title: Some("Z Column Name".to_string()),
+                            description: Some("Optional name of the column for Z coordinate (elevation)".to_string()),
+                            ..Default::default()
+                        })),
+                        ..Default::default()
+                    }.into());
+                    props
+                },
+                required: ["xColumn".to_string(), "yColumn".to_string()].into_iter().collect(),
+                ..Default::default()
+            })),
+            ..Default::default()
+        };
+
+        // Combine into oneOf
+        SchemaObject {
+            subschemas: Some(Box::new(SubschemaValidation {
+                one_of: Some(vec![wkt_schema.into(), coordinates_schema.into()]),
+                ..Default::default()
+            })),
+            ..Default::default()
+        }
+        .into()
+    }
 }
 
 /// Get the names of columns that will be used for geometry output
@@ -214,9 +319,10 @@ fn geometry_2d_to_wkt(geom: &Geometry2D) -> Result<String, GeometryExportError> 
         | Geometry2D::Rect(_)
         | Geometry2D::Triangle(_)
         | Geometry2D::Solid(_)
-        | Geometry2D::CSG(_) => Err(GeometryExportError::UnsupportedGeometryType(format!(
-            "{geom:?}"
-        ))),
+        | Geometry2D::CSG(_)
+        | Geometry2D::TriangularMesh(_) => Err(GeometryExportError::UnsupportedGeometryType(
+            format!("{geom:?}"),
+        )),
     }
 }
 
@@ -326,9 +432,10 @@ fn geometry_3d_to_wkt(geom: &Geometry3D) -> Result<String, GeometryExportError> 
         | Geometry3D::Rect(_)
         | Geometry3D::Triangle(_)
         | Geometry3D::Solid(_)
-        | Geometry3D::CSG(_) => Err(GeometryExportError::UnsupportedGeometryType(format!(
-            "{geom:?}"
-        ))),
+        | Geometry3D::CSG(_)
+        | Geometry3D::TriangularMesh(_) => Err(GeometryExportError::UnsupportedGeometryType(
+            format!("{geom:?}"),
+        )),
     }
 }
 

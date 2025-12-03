@@ -1,0 +1,22 @@
+{
+  "workflowPath": "quality-check/plateau4/07-lsld/workflow.yml",
+  "description": "Test for plateau4 07 surface error.",
+  "expectedOutput": {
+    "expectedFile": "07_土砂災害警戒区域_面のエラー.csv"
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_lsld.json",
+      "includeFields": ["面のエラー"]
+    },
+    "fileErrorSummary": {
+      "expectedFile": "07_土砂災害警戒区域_検査結果一覧.csv",
+      "includeColumns": ["面のエラー"]
+    }
+  },
+  "cityGmlPath": "udx/lsld/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectResultOkFile": false,
+  "skip": false
+}

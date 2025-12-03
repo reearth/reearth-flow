@@ -6,6 +6,7 @@ use std::{
 
 use bytes::Bytes;
 use indexmap::IndexMap;
+use nusamai_projection::crs::EpsgCode;
 use reearth_flow_geometry::types::{
     coordinate::Coordinate,
     geometry::{Geometry2D, Geometry3D},
@@ -221,14 +222,16 @@ async fn read_shapefile(
     params: &ShapefileReaderParam,
     sender: Sender<(Port, IngestionMessage)>,
 ) -> Result<(), crate::errors::SourceError> {
-    let shapes_and_records = if is_zip_file(content) {
+    let (shapes_and_records, epsg_code) = if is_zip_file(content) {
         read_shapefile_from_zip(content, &params.encoding)?
     } else {
         return Err(ShapefileError::DirectBytesNotSupported.into());
     };
 
     for (shape, record) in shapes_and_records {
-        let geometry = convert_shape_to_geometry(shape, params.force_2d)?;
+        let mut geometry = convert_shape_to_geometry(shape, params.force_2d)?;
+        // Set EPSG code from .prj file if available
+        geometry.epsg = epsg_code;
         let attributes = convert_record_to_attributes(record);
 
         let feature = Feature {
@@ -266,6 +269,99 @@ fn parse_cpg_encoding(cpg_data: &[u8]) -> Option<String> {
         None
     } else {
         Some(trimmed.to_string())
+    }
+}
+
+/// Parse .prj file to extract EPSG code
+///
+/// .prj files contain WKT (Well-Known Text) coordinate reference system definitions.
+/// We use the proj crate to parse the WKT and extract the EPSG code if available.
+fn parse_prj_epsg(prj_data: &[u8]) -> Option<EpsgCode> {
+    let wkt_string = String::from_utf8_lossy(prj_data);
+    let trimmed = wkt_string.trim();
+
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    // Method 1: Parse WKT directly for AUTHORITY["EPSG","code"]
+    // This handles standard OGC WKT format
+    if let Some(authority_start) = trimmed.find("AUTHORITY[\"EPSG\",\"") {
+        let after_prefix = &trimmed[authority_start + 19..];
+        if let Some(quote_end) = after_prefix.find('\"') {
+            let code_str = &after_prefix[..quote_end];
+            if let Ok(code) = code_str.parse::<u16>() {
+                tracing::info!("Extracted EPSG code from WKT AUTHORITY tag: {}", code);
+                return Some(code);
+            }
+        }
+    }
+
+    // Method 2: Name-based lookup for common ESRI WKT formats
+    // ESRI shapefiles often use PROJCS names without AUTHORITY tags
+    // Extract the PROJCS name from the WKT
+    if let Some(start) = trimmed.find("PROJCS[\"") {
+        let after_start = &trimmed[start + 8..];
+        if let Some(end) = after_start.find('\"') {
+            let projcs_name = &after_start[..end];
+
+            // Common ESRI projection names mapped to EPSG codes
+            let esri_name_mapping: &[(&str, u16)] = &[
+                // New Zealand
+                ("NZGD_2000_New_Zealand_Transverse_Mercator", 2193),
+                ("NZGD_2000", 2193),
+                ("NZTM", 2193),
+                ("NZGD2000", 2193),
+                // WGS84 / Web Mercator
+                ("WGS_1984_Web_Mercator_Auxiliary_Sphere", 3857),
+                ("WGS_1984_Web_Mercator", 3857),
+                ("WGS_84_Pseudo_Mercator", 3857),
+                // WGS84 Geographic
+                ("GCS_WGS_1984", 4326),
+                ("WGS_1984", 4326),
+                ("WGS_84", 4326),
+                // Note: UTM zones require zone number parsing - not implemented yet
+                // Examples: NAD_1983_UTM_Zone_NN, ETRS_1989_UTM_Zone_NN
+            ];
+
+            for (name_pattern, epsg) in esri_name_mapping {
+                if projcs_name.eq_ignore_ascii_case(name_pattern) {
+                    tracing::info!(
+                        "Identified EPSG code from ESRI WKT name '{}': {}",
+                        projcs_name,
+                        epsg
+                    );
+                    return Some(*epsg);
+                }
+            }
+
+            tracing::debug!("Unrecognized PROJCS name: {}", projcs_name);
+        }
+    }
+
+    // Method 3: Try PROJ library to parse WKT
+    // This may work for some WKT formats where PROJ can identify the CRS
+    match proj::Proj::new(trimmed) {
+        Ok(proj_obj) => {
+            // Try to get EPSG from PROJ definition string
+            if let Ok(info) = proj_obj.def() {
+                for part in info.split_whitespace() {
+                    if let Some(epsg_str) = part.strip_prefix("+init=epsg:") {
+                        if let Ok(code) = epsg_str.parse::<u16>() {
+                            tracing::info!("Extracted EPSG code from PROJ definition: {}", code);
+                            return Some(code);
+                        }
+                    }
+                }
+            }
+
+            tracing::debug!("PROJ could not identify EPSG code from WKT");
+            None
+        }
+        Err(e) => {
+            tracing::warn!("Failed to parse .prj WKT with PROJ library: {}", e);
+            None
+        }
     }
 }
 
@@ -329,10 +425,15 @@ fn create_dbase_reader<T: std::io::Read + std::io::Seek>(
     }
 }
 
+type ShapefileData = (
+    Vec<(shapefile::Shape, shapefile::dbase::Record)>,
+    Option<EpsgCode>,
+);
+
 fn read_shapefile_from_zip(
     content: &Bytes,
     encoding_param: &Option<String>,
-) -> Result<Vec<(shapefile::Shape, shapefile::dbase::Record)>, crate::errors::SourceError> {
+) -> Result<ShapefileData, crate::errors::SourceError> {
     let cursor = Cursor::new(content.as_ref());
     let mut archive = zip::ZipArchive::new(cursor)
         .map_err(|e| SourceError::shapefile_reader(format!("Failed to read ZIP archive: {e}")))?;
@@ -410,14 +511,35 @@ fn read_shapefile_from_zip(
     // Resolve encoding from parameter, .cpg file, or default (fail fast if unsupported)
     let encoding = resolve_encoding(encoding_param, components.cpg.as_ref())?;
 
+    // Parse .prj file to extract EPSG code if available
+    let epsg_code = components.prj.as_ref().and_then(|prj| parse_prj_epsg(prj));
+
+    if let Some(code) = epsg_code {
+        tracing::info!("Shapefile CRS detected: EPSG:{}", code);
+    } else {
+        tracing::warn!("No EPSG code found in .prj file, geometries will have no CRS information");
+    }
+
     let shp_data = components.shp.unwrap();
     let dbf_data = components.dbf.unwrap();
 
     let shp_cursor = Cursor::new(shp_data);
     let dbf_cursor = Cursor::new(dbf_data);
-    let shape_reader = shapefile::ShapeReader::new(shp_cursor).map_err(|e| {
-        SourceError::shapefile_reader(format!("Failed to create shape reader: {e}"))
-    })?;
+
+    // Use .shx index file if available to ensure correct shape parsing
+    let shape_reader = if let Some(shx_data) = components.shx {
+        let shx_cursor = Cursor::new(shx_data);
+        shapefile::ShapeReader::with_shx(shp_cursor, shx_cursor).map_err(|e| {
+            SourceError::shapefile_reader(format!("Failed to create shape reader with index: {e}"))
+        })?
+    } else {
+        tracing::warn!(
+            "No .shx index file found, parsing without index (may be slower or less accurate)"
+        );
+        shapefile::ShapeReader::new(shp_cursor).map_err(|e| {
+            SourceError::shapefile_reader(format!("Failed to create shape reader: {e}"))
+        })?
+    };
 
     // Create dbase reader with type-safe encoding enum
     let dbase_reader = create_dbase_reader(dbf_cursor, encoding)?;
@@ -432,7 +554,7 @@ fn read_shapefile_from_zip(
         shapes_and_records.push((shape, record));
     }
 
-    Ok(shapes_and_records)
+    Ok((shapes_and_records, epsg_code))
 }
 
 type PolygonData2D = Vec<(
@@ -644,13 +766,9 @@ fn convert_shape_to_geometry(
 
     let geometry_value = match shape {
         Shape::Point(point) => {
-            if force_2d {
-                let p = Point2D::from([point.x, point.y]);
-                GeometryValue::FlowGeometry2D(Geometry2D::Point(p))
-            } else {
-                let p = Point3D::from([point.x, point.y, 0.0]);
-                GeometryValue::FlowGeometry3D(Geometry3D::Point(p))
-            }
+            // 2D shapefile points should always create 2D geometry
+            let p = Point2D::from([point.x, point.y]);
+            GeometryValue::FlowGeometry2D(Geometry2D::Point(p))
         }
         Shape::PointZ(point) => {
             if force_2d {
@@ -662,48 +780,24 @@ fn convert_shape_to_geometry(
             }
         }
         Shape::Polyline(polyline) => {
-            if force_2d {
-                let lines: Vec<LineString2D<f64>> = polyline
-                    .parts()
-                    .iter()
-                    .map(|part| {
-                        let coords: Vec<_> =
-                            part.iter().map(|p| Point2D::from([p.x, p.y]).0).collect();
-                        LineString2D::new(coords)
-                    })
-                    .collect();
+            // 2D shapefile polylines should always create 2D geometry
+            let lines: Vec<LineString2D<f64>> = polyline
+                .parts()
+                .iter()
+                .map(|part| {
+                    let coords: Vec<_> = part.iter().map(|p| Point2D::from([p.x, p.y]).0).collect();
+                    LineString2D::new(coords)
+                })
+                .collect();
 
-                if lines.len() == 1 {
-                    GeometryValue::FlowGeometry2D(Geometry2D::LineString(
-                        lines.into_iter().next().unwrap(),
-                    ))
-                } else {
-                    GeometryValue::FlowGeometry2D(Geometry2D::MultiLineString(
-                        MultiLineString2D::new(lines),
-                    ))
-                }
+            if lines.len() == 1 {
+                GeometryValue::FlowGeometry2D(Geometry2D::LineString(
+                    lines.into_iter().next().unwrap(),
+                ))
             } else {
-                let lines: Vec<LineString3D<f64>> = polyline
-                    .parts()
-                    .iter()
-                    .map(|part| {
-                        let coords: Vec<_> = part
-                            .iter()
-                            .map(|p| Point3D::from([p.x, p.y, 0.0]).0)
-                            .collect();
-                        LineString3D::new(coords)
-                    })
-                    .collect();
-
-                if lines.len() == 1 {
-                    GeometryValue::FlowGeometry3D(Geometry3D::LineString(
-                        lines.into_iter().next().unwrap(),
-                    ))
-                } else {
-                    GeometryValue::FlowGeometry3D(Geometry3D::MultiLineString(
-                        MultiLineString3D::new(lines),
-                    ))
-                }
+                GeometryValue::FlowGeometry2D(Geometry2D::MultiLineString(MultiLineString2D::new(
+                    lines,
+                )))
             }
         }
         Shape::PolylineZ(polyline) => {
@@ -754,21 +848,13 @@ fn convert_shape_to_geometry(
         Shape::Polygon(polygon) => convert_polygon_to_geometry(polygon)?,
         Shape::PolygonZ(polygon) => convert_polygonz_to_geometry(polygon, force_2d)?,
         Shape::Multipoint(multipoint) => {
-            if force_2d {
-                let points: Vec<Point2D<f64>> = multipoint
-                    .points()
-                    .iter()
-                    .map(|p| Point2D::from([p.x, p.y]))
-                    .collect();
-                GeometryValue::FlowGeometry2D(Geometry2D::MultiPoint(MultiPoint2D::new(points)))
-            } else {
-                let points: Vec<Point3D<f64>> = multipoint
-                    .points()
-                    .iter()
-                    .map(|p| Point3D::from([p.x, p.y, 0.0]))
-                    .collect();
-                GeometryValue::FlowGeometry3D(Geometry3D::MultiPoint(MultiPoint3D::new(points)))
-            }
+            // 2D shapefile multipoints should always create 2D geometry
+            let points: Vec<Point2D<f64>> = multipoint
+                .points()
+                .iter()
+                .map(|p| Point2D::from([p.x, p.y]))
+                .collect();
+            GeometryValue::FlowGeometry2D(Geometry2D::MultiPoint(MultiPoint2D::new(points)))
         }
         Shape::MultipointZ(multipoint) => {
             if force_2d {

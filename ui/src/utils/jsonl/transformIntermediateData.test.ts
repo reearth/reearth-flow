@@ -12,28 +12,34 @@ describe("intermediateDataTransform", () => {
     vi.restoreAllMocks();
   });
 
-  it("should return the original data if no geometry is present", () => {
-    const data = { id: "123", attributes: { name: "Test" } };
-    expect(intermediateDataTransform(data)).toEqual(data);
-  });
-
-  it("should return the original data with a warning for unknown geometry type", () => {
+  it("should handle 'none' geometry value correctly", () => {
     const data = {
       id: "123",
-      attributes: { name: "Test" },
+      type: "Feature",
+      attributes: { name: "Test None" },
       geometry: {
-        value: {
-          someUnknownGeometry: {},
-        },
+        value: "none",
       },
     };
 
-    const result = intermediateDataTransform(data);
+    const expected = {
+      id: "123",
+      type: "Feature",
+      properties: { name: "Test None" },
+    };
 
-    expect(result).toEqual(data);
-    expect(console.warn).toHaveBeenCalledWith(
-      "Unknown geometry type detected. Displaying raw data.",
-    );
+    const result = intermediateDataTransform(data);
+    expect(result).toEqual(expected);
+  });
+
+  it("should return the transformed data with type 'Feature' and properties if no geometry is present", () => {
+    const data = { id: "123", attributes: { name: "Test" } };
+    const expected = {
+      id: "123",
+      type: "Feature",
+      properties: { name: "Test" },
+    };
+    expect(intermediateDataTransform(data)).toEqual(expected);
   });
 
   it("should transform 3D geometry correctly", () => {

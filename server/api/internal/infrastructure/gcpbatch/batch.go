@@ -234,6 +234,7 @@ func (b *BatchRepo) SubmitJob(
 	}
 
 	labels := map[string]string{
+		"app":         "flow",
 		"project_id":  projectID.String(),
 		"original_id": jobID.String(),
 	}

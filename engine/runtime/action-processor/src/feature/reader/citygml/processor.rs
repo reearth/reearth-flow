@@ -173,7 +173,11 @@ impl Processor for FeatureCityGmlReader {
 
         for (i, join) in self.join_handles.iter().enumerate() {
             match join.lock().recv_timeout(timeout) {
-                Ok(_) => continue,
+                Ok(result) => {
+                    if let Err(e) = result {
+                        errors.push(format!("Worker thread {i} failed: {e}"));
+                    }
+                }
                 Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
                     errors.push(format!("Worker thread {i} timed out after {timeout:?}"));
                 }

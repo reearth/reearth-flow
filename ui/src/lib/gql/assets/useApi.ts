@@ -207,12 +207,15 @@ export const useAsset = () => {
     },
     [createAssetWithStandardUpload, createAssetWithDirectUpload],
   );
-
+  const isCreatingAsset =
+    createAssetWithStandardUploadMutation.isPending ||
+    createAssetDirectUploadMutation.isPending;
   return {
     useGetAssets,
     createAsset,
     createAssetUploadUrl,
     createAssetWithDirectUpload,
+    isCreatingAsset,
     updateAsset,
     deleteAsset,
   };
