@@ -43,6 +43,8 @@ func main() {
 	// Initialize OpenTelemetry
 	tel, err := telemetry.New(ctx, telemetry.Config{
 		Enabled:      conf.TelemetryEnabled,
+		TracerType:   conf.TracerType,
+		GCPProjectID: conf.GCPProject,
 		OTLPEndpoint: conf.OTLPEndpoint,
 		Insecure:     conf.OTLPInsecure,
 	})
@@ -57,7 +59,15 @@ func main() {
 		}
 	}()
 	if conf.TelemetryEnabled {
-		log.Printf("[subscriber] OpenTelemetry enabled, exporting to %s", conf.OTLPEndpoint)
+		tracerType := conf.TracerType
+		if tracerType == "" {
+			if conf.GCPProject != "" {
+				tracerType = "gcp (auto)"
+			} else {
+				tracerType = "otlp (auto)"
+			}
+		}
+		log.Printf("[subscriber] OpenTelemetry enabled, tracer type: %s", tracerType)
 	} else {
 		log.Println("[subscriber] OpenTelemetry disabled")
 	}
