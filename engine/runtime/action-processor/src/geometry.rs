@@ -27,6 +27,7 @@ pub(crate) mod mapping;
 pub(crate) mod offsetter;
 pub(crate) mod orientation_extractor;
 pub(crate) mod planarity_filter;
+pub(crate) mod polygon_normal_extractor;
 pub(crate) mod refiner;
 pub(crate) mod remover;
 pub(crate) mod replacer;
