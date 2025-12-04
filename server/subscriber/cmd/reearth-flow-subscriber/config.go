@@ -27,6 +27,11 @@ type Config struct {
 	Port                        string `envconfig:"PORT" default:"8080"`
 	RedisURL                    string `envconfig:"REDIS_URL" default:"redis://localhost:6379"`
 	UserFacingLogSubscriptionID string `envconfig:"USER_FACING_LOG_SUBSCRIPTION_ID" default:"flow-user-facing-log-main"`
+
+	TracerType       string `envconfig:"OTEL_TRACER_TYPE" default:"" pp:",omitempty"` // "gcp" or "otlp"
+	OTLPEndpoint     string `envconfig:"OTEL_EXPORTER_OTLP_ENDPOINT" pp:",omitempty"`
+	OTLPInsecure     bool   `envconfig:"OTEL_EXPORTER_OTLP_INSECURE" default:"false"`
+	TelemetryEnabled bool   `envconfig:"OTEL_ENABLED" default:"false"`
 }
 
 func ReadConfig(debug bool) (*Config, error) {

@@ -22,7 +22,7 @@ func (r *RedisStorage) SaveUserFacingLogToRedis(ctx context.Context, event *user
 	}
 
 	serialized := string(serializedBytes)
-	if err := r.client.Set(ctx, key, serialized, 12*time.Hour).Err(); err != nil {
+	if err := r.tracedSet(ctx, key, serialized, 12*time.Hour); err != nil {
 		return fmt.Errorf("failed to save user facing log to redis: %w", err)
 	}
 

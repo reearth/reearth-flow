@@ -18,7 +18,7 @@ func (r *RedisStorage) SaveLogToRedis(ctx context.Context, event *domainLog.LogE
 		return fmt.Errorf("failed to marshal event: %w", err)
 	}
 	serialized := string(serializedBytes)
-	if err := r.client.Set(ctx, key, serialized, 12*time.Hour).Err(); err != nil {
+	if err := r.tracedSet(ctx, key, serialized, 12*time.Hour); err != nil {
 		return err
 	}
 	return nil

@@ -18,8 +18,7 @@ func (r *RedisStorage) SaveToRedis(ctx context.Context, event *job.JobCompleteEv
 		return fmt.Errorf("failed to marshal job complete event: %w", err)
 	}
 
-	// Store with 24 hour expiration (job monitoring polls every 5 seconds, so this is plenty)
-	if err := r.client.Set(ctx, key, data, 24*time.Hour).Err(); err != nil {
+	if err := r.tracedSet(ctx, key, data, 24*time.Hour); err != nil {
 		log.Printf("ERROR: Failed to save job complete event to Redis: %v", err)
 		return fmt.Errorf("failed to save to Redis: %w", err)
 	}
