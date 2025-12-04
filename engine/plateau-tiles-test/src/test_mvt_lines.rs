@@ -48,7 +48,15 @@ enum ComparisonStatus {
 }
 
 /// Wu's line drawing algorithm - draws an anti-aliased line on a raster
-fn draw_wu_line(raster: &mut [f32], width: usize, height: usize, x0: f64, y0: f64, x1: f64, y1: f64) {
+fn draw_wu_line(
+    raster: &mut [f32],
+    width: usize,
+    height: usize,
+    x0: f64,
+    y0: f64,
+    x1: f64,
+    y1: f64,
+) {
     let mut x0 = x0;
     let mut y0 = y0;
     let mut x1 = x1;
@@ -86,7 +94,12 @@ fn draw_wu_line(raster: &mut [f32], width: usize, height: usize, x0: f64, y0: f6
     let xpxl1 = xend as i32;
     let ypxl1 = yend.floor() as i32;
 
-    set_pixel(raster, xpxl1, ypxl1, (1.0 - yend.fract()) as f32 * xgap as f32);
+    set_pixel(
+        raster,
+        xpxl1,
+        ypxl1,
+        (1.0 - yend.fract()) as f32 * xgap as f32,
+    );
     set_pixel(raster, xpxl1, ypxl1 + 1, yend.fract() as f32 * xgap as f32);
 
     let mut intery = yend + gradient;
@@ -98,7 +111,12 @@ fn draw_wu_line(raster: &mut [f32], width: usize, height: usize, x0: f64, y0: f6
     let xpxl2 = xend as i32;
     let ypxl2 = yend.floor() as i32;
 
-    set_pixel(raster, xpxl2, ypxl2, (1.0 - yend.fract()) as f32 * xgap as f32);
+    set_pixel(
+        raster,
+        xpxl2,
+        ypxl2,
+        (1.0 - yend.fract()) as f32 * xgap as f32,
+    );
     set_pixel(raster, xpxl2, ypxl2 + 1, yend.fract() as f32 * xgap as f32);
 
     // Main loop
@@ -131,7 +149,8 @@ fn rasterize_lines(geom: &MultiLineString2D<f64>, raster: &mut [f32]) {
 
 // abs distance with threshold
 fn compare_rasters(raster1: &[f32], raster2: &[f32]) -> f64 {
-    let sum_sq: f64 = raster1.iter()
+    let sum_sq: f64 = raster1
+        .iter()
         .zip(raster2.iter())
         .map(|(a, b)| {
             let diff = ((*a as f64) - (*b as f64)).abs();
@@ -242,7 +261,12 @@ pub fn test_mvt_lines(
         worst_score = f64::max(worst_score, score);
 
         if score > threshold {
-            failures.push((score, feature.tile_path, feature.gml_id, format!("{:?}", status)));
+            failures.push((
+                score,
+                feature.tile_path,
+                feature.gml_id,
+                format!("{:?}", status),
+            ));
         }
     }
 
@@ -268,7 +292,12 @@ pub fn test_mvt_lines(
         worst_score = f64::max(worst_score, score);
 
         if score > threshold {
-            failures.push((score, feature.tile_path, feature.gml_id, format!("{:?}", status)));
+            failures.push((
+                score,
+                feature.tile_path,
+                feature.gml_id,
+                format!("{:?}", status),
+            ));
         }
     }
 
@@ -322,10 +351,18 @@ mod tests {
 
         // Middle pixels: intery = 10.0, fract = 0.0, so (1-0.0) = 1.0 at y=10, 0.0 at y=11
         for x in 11..20 {
-            assert_eq!(raster[raster_idx(x, 10, size)], 1.0,
-                "Middle pixel at ({}, 10)", x);
-            assert_eq!(raster[raster_idx(x, 11, size)], 0.0,
-                "Middle pixel at ({}, 11)", x);
+            assert_eq!(
+                raster[raster_idx(x, 10, size)],
+                1.0,
+                "Middle pixel at ({}, 10)",
+                x
+            );
+            assert_eq!(
+                raster[raster_idx(x, 11, size)],
+                0.0,
+                "Middle pixel at ({}, 11)",
+                x
+            );
         }
 
         // Last endpoint at x=20: xgap = (20.0 + 0.5).fract() = 0.5
@@ -357,10 +394,20 @@ mod tests {
         // Middle pixels: gradient = 1.0, intery starts at 6.0 (integer)
         // fract = 0.0, so (1-0.0) = 1.0 at y, 0.0 at y+1
         for i in 6..15 {
-            assert_eq!(raster[raster_idx(i, i, size)], 1.0,
-                "Middle pixel at ({}, {})", i, i);
-            assert_eq!(raster[raster_idx(i, i + 1, size)], 0.0,
-                "Middle pixel at ({}, {})", i, i + 1);
+            assert_eq!(
+                raster[raster_idx(i, i, size)],
+                1.0,
+                "Middle pixel at ({}, {})",
+                i,
+                i
+            );
+            assert_eq!(
+                raster[raster_idx(i, i + 1, size)],
+                0.0,
+                "Middle pixel at ({}, {})",
+                i,
+                i + 1
+            );
         }
 
         // Last endpoint at x=15: xgap = (15.0 + 0.5).fract() = 0.5
@@ -393,7 +440,11 @@ mod tests {
         assert!(matches!(status, ComparisonStatus::Compared));
         // After clipping, both should represent the same line segment (0,0) to (0.5,0.5)
         // RMS should be very small (near zero)
-        assert!(rms < 1e-6, "RMS should be near zero for equivalent clipped lines, got {}", rms);
+        assert!(
+            rms < 1e-6,
+            "RMS should be near zero for equivalent clipped lines, got {}",
+            rms
+        );
     }
 
     #[test]
@@ -424,7 +475,11 @@ mod tests {
         // The main diagonal is ~800 pixels long, the extra line is ~30 pixels
         // Over 1024*1024 pixels, this should be a small RMS value
         println!("RMS with small additional line: {}", rms);
-        assert!(rms < 0.01, "RMS should be small for minor additional geometry, got {}", rms);
+        assert!(
+            rms < 0.01,
+            "RMS should be small for minor additional geometry, got {}",
+            rms
+        );
     }
 
     #[test]
@@ -464,7 +519,11 @@ mod tests {
         // Missing a whole line should produce significant RMS difference
         // Each line is ~800 pixels long, missing one means ~800 pixels different
         println!("RMS with missing line: {}", rms);
-        assert!(rms > 0.02, "RMS should be significant for missing line, got {}", rms);
+        assert!(
+            rms > 0.02,
+            "RMS should be significant for missing line, got {}",
+            rms
+        );
     }
 
     #[test]
@@ -483,7 +542,10 @@ mod tests {
 
         let (status, rms) = compare_lines(Some(line), None);
         assert!(matches!(status, ComparisonStatus::Only1));
-        assert!(rms > 0.0, "RMS should be non-zero when only one geometry exists");
+        assert!(
+            rms > 0.0,
+            "RMS should be non-zero when only one geometry exists"
+        );
     }
 
     #[test]
@@ -495,6 +557,9 @@ mod tests {
 
         let (status, rms) = compare_lines(None, Some(line));
         assert!(matches!(status, ComparisonStatus::Only2));
-        assert!(rms > 0.0, "RMS should be non-zero when only one geometry exists");
+        assert!(
+            rms > 0.0,
+            "RMS should be non-zero when only one geometry exists"
+        );
     }
 }

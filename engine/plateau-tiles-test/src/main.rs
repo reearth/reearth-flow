@@ -186,7 +186,11 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             pack_citymodel_zip(zip_stem, &test_path, &artifacts_base, &citygml_path);
         }
 
-        info!("Starting run: {} to {}", relative_path.display(), output_dir.display());
+        info!(
+            "Starting run: {} to {}",
+            relative_path.display(),
+            output_dir.display()
+        );
         let start_time = std::time::Instant::now();
 
         fs::create_dir_all(&output_dir).unwrap();
@@ -329,11 +333,7 @@ fn main() {
 
     if args.len() > 1 {
         let input = &args[1];
-        let stages = if args.len() > 2 {
-            &args[2]
-        } else {
-            "re"
-        };
+        let stages = if args.len() > 2 { &args[2] } else { "re" };
 
         // Check if input is a profile.toml path
         let test_name = if input.ends_with("profile.toml") {

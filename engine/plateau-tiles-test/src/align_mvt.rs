@@ -23,10 +23,7 @@ pub enum GeometryType {
 /// Aligned geometry pair - can be polygon or linestring
 #[derive(Debug)]
 pub enum AlignedGeometry {
-    Polygon(
-        Option<MultiPolygon2D<f64>>,
-        Option<MultiPolygon2D<f64>>,
-    ),
+    Polygon(Option<MultiPolygon2D<f64>>, Option<MultiPolygon2D<f64>>),
     LineString(
         Option<MultiLineString2D<f64>>,
         Option<MultiLineString2D<f64>>,

@@ -14,7 +14,6 @@ pub struct MvtPolygonsConfig {
     pub zoom: Option<(u32, u32)>,
 }
 
-
 /// Clips geometry to [0,1] x [0,1] bounds
 fn clip_geometry(geom: &MultiPolygon2D<f64>) -> Option<MultiPolygon2D<f64>> {
     // Create clip bounds as a polygon [0,1] x [0,1]
@@ -73,7 +72,6 @@ fn compare_polygons(
     }
 }
 
-
 /// Tests MVT polygons between FME and Flow outputs
 pub fn test_mvt_polygons(
     fme_path: &Path,
@@ -108,7 +106,12 @@ pub fn test_mvt_polygons(
         worst_score = f64::max(worst_score, score);
 
         if score > threshold {
-            failures.push((score, feature.tile_path, feature.gml_id, format!("{:?}", status)));
+            failures.push((
+                score,
+                feature.tile_path,
+                feature.gml_id,
+                format!("{:?}", status),
+            ));
         }
     }
 
