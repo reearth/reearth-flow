@@ -146,43 +146,47 @@ func projectParametersToMap(pl *parameter.ParameterList) map[string]variable.Var
 	return out
 }
 
-func normalizeRequestVars(vars map[string]interface{}) map[string]variable.Variable {
+func normalizeRequestVars(
+	vars map[string]interface{},
+	schema map[string]variable.Variable,
+) map[string]variable.Variable {
 	if len(vars) == 0 {
 		return nil
 	}
+
 	out := map[string]variable.Variable{}
 	for k, v := range vars {
-		switch x := v.(type) {
-		case nil:
+		if v == nil {
 			continue
-		case bool:
-			out[k] = variable.Variable{Key: k, Type: parameter.TypeYesNo, Value: x}
-		case float64, float32,
-			int, int8, int16, int32, int64,
-			uint, uint8, uint16, uint32, uint64:
-			out[k] = variable.Variable{Key: k, Type: parameter.TypeNumber, Value: x}
-		case string:
-			if b, err := strconv.ParseBool(x); err == nil {
-				out[k] = variable.Variable{Key: k, Type: parameter.TypeYesNo, Value: b}
+		}
+
+		// Prioritize schema
+		if s, ok := schema[k]; ok {
+			coerced, ok2 := coerceValue(v, s.Type)
+			if !ok2 {
+				// If type coercion fails, default to text
+				out[k] = variable.Variable{
+					Key:   k,
+					Type:  parameter.TypeText,
+					Value: fmt.Sprintf("%v", v),
+				}
 				continue
 			}
-			if n, err := strconv.ParseFloat(x, 64); err == nil {
-				out[k] = variable.Variable{Key: k, Type: parameter.TypeNumber, Value: n}
-				continue
+			out[k] = variable.Variable{
+				Key:   k,
+				Type:  s.Type,
+				Value: coerced,
 			}
-			if t, err := time.Parse(time.RFC3339, x); err == nil {
-				out[k] = variable.Variable{Key: k, Type: parameter.TypeDatetime, Value: t}
-				continue
-			}
-			var any any
-			if json.Unmarshal([]byte(x), &any) == nil {
-				out[k] = variable.Variable{Key: k, Type: parameter.TypeArray, Value: any}
-				continue
-			}
-			out[k] = variable.Variable{Key: k, Type: parameter.TypeText, Value: x}
-		default:
-			out[k] = variable.Variable{Key: k, Type: parameter.TypeArray, Value: x}
+			continue
+		}
+
+		// If no schema, default to text
+		out[k] = variable.Variable{
+			Key:   k,
+			Type:  parameter.TypeText,
+			Value: fmt.Sprintf("%v", v),
 		}
 	}
+
 	return out
 }

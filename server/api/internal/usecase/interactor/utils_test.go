@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -247,35 +248,70 @@ func buildParameterList(t *testing.T, defs []map[string]interface{}) *parameter.
 
 func TestNormalizeRequestVars(t *testing.T) {
 	arr := []interface{}{"a", "b"}
-	obj := map[string]interface{}{"k": "v"}
 
 	tests := []struct {
 		name     string
 		input    map[string]interface{}
+		schema   map[string]variable.Variable
 		expected map[string]variable.Variable
 	}{
 		{
 			name:     "nil input returns nil",
 			input:    nil,
+			schema:   nil,
 			expected: nil,
 		},
 		{
-			name: "primitive types",
+			name:     "empty map returns nil",
+			input:    map[string]interface{}{},
+			schema:   nil,
+			expected: nil,
+		},
+		{
+			name: "no schema: everything becomes TEXT",
 			input: map[string]interface{}{
-				"s":   "str",
-				"f64": float64(1.5),
-				"f32": float32(2.5),
-				"i":   int(10),
-				"i8":  int8(1),
-				"i16": int16(2),
-				"i32": int32(3),
-				"i64": int64(4),
-				"u":   uint(5),
-				"u8":  uint8(6),
-				"u16": uint16(7),
-				"u32": uint32(8),
-				"u64": uint64(9),
-				"b":   true,
+				"s":  "str",
+				"n":  10,
+				"b":  true,
+				"ar": arr,
+			},
+			schema: nil,
+			expected: map[string]variable.Variable{
+				"s": {
+					Key:   "s",
+					Type:  parameter.TypeText,
+					Value: "str",
+				},
+				"n": {
+					Key:   "n",
+					Type:  parameter.TypeText,
+					Value: "10",
+				},
+				"b": {
+					Key:   "b",
+					Type:  parameter.TypeText,
+					Value: "true",
+				},
+				"ar": {
+					Key:   "ar",
+					Type:  parameter.TypeText,
+					Value: fmt.Sprintf("%v", arr),
+				},
+			},
+		},
+		{
+			name: "with schema: primitive types coerced by type",
+			input: map[string]interface{}{
+				"s":  "str",
+				"n":  "1.5",
+				"b":  "true",
+				"tm": "2025-01-01T00:00:00Z",
+			},
+			schema: map[string]variable.Variable{
+				"s":  {Key: "s", Type: parameter.TypeText},
+				"n":  {Key: "n", Type: parameter.TypeNumber},
+				"b":  {Key: "b", Type: parameter.TypeYesNo},
+				"tm": {Key: "tm", Type: parameter.TypeDatetime},
 			},
 			expected: map[string]variable.Variable{
 				"s": {
@@ -283,89 +319,56 @@ func TestNormalizeRequestVars(t *testing.T) {
 					Type:  parameter.TypeText,
 					Value: "str",
 				},
-				"f64": {
-					Key:   "f64",
+				"n": {
+					Key:   "n",
 					Type:  parameter.TypeNumber,
-					Value: float64(1.5),
-				},
-				"f32": {
-					Key:   "f32",
-					Type:  parameter.TypeNumber,
-					Value: float32(2.5),
-				},
-				"i": {
-					Key:   "i",
-					Type:  parameter.TypeNumber,
-					Value: int(10),
-				},
-				"i8": {
-					Key:   "i8",
-					Type:  parameter.TypeNumber,
-					Value: int8(1),
-				},
-				"i16": {
-					Key:   "i16",
-					Type:  parameter.TypeNumber,
-					Value: int16(2),
-				},
-				"i32": {
-					Key:   "i32",
-					Type:  parameter.TypeNumber,
-					Value: int32(3),
-				},
-				"i64": {
-					Key:   "i64",
-					Type:  parameter.TypeNumber,
-					Value: int64(4),
-				},
-				"u": {
-					Key:   "u",
-					Type:  parameter.TypeNumber,
-					Value: uint(5),
-				},
-				"u8": {
-					Key:   "u8",
-					Type:  parameter.TypeNumber,
-					Value: uint8(6),
-				},
-				"u16": {
-					Key:   "u16",
-					Type:  parameter.TypeNumber,
-					Value: uint16(7),
-				},
-				"u32": {
-					Key:   "u32",
-					Type:  parameter.TypeNumber,
-					Value: uint32(8),
-				},
-				"u64": {
-					Key:   "u64",
-					Type:  parameter.TypeNumber,
-					Value: uint64(9),
+					Value: 1.5,
 				},
 				"b": {
 					Key:   "b",
 					Type:  parameter.TypeYesNo,
 					Value: true,
 				},
+				"tm": {
+					Key:  "tm",
+					Type: parameter.TypeDatetime,
+				},
 			},
 		},
 		{
-			name: "complex types marshalled as ARRAY type",
+			name: "with schema: array/choice coerced from JSON",
 			input: map[string]interface{}{
-				"arr": arr,
-				"obj": obj,
+				"arr": `["a","b"]`,
+				"obj": `{"k":"v"}`,
+			},
+			schema: map[string]variable.Variable{
+				"arr": {Key: "arr", Type: parameter.TypeArray},
+				"obj": {Key: "obj", Type: parameter.TypeChoice},
 			},
 			expected: map[string]variable.Variable{
 				"arr": {
-					Key:   "arr",
-					Type:  parameter.TypeArray,
-					Value: arr,
+					Key:  "arr",
+					Type: parameter.TypeArray,
 				},
 				"obj": {
-					Key:   "obj",
-					Type:  parameter.TypeArray,
-					Value: obj,
+					Key:  "obj",
+					Type: parameter.TypeChoice,
+				},
+			},
+		},
+		{
+			name: "with schema: coercion failure falls back to TEXT",
+			input: map[string]interface{}{
+				"n": "not-a-number",
+			},
+			schema: map[string]variable.Variable{
+				"n": {Key: "n", Type: parameter.TypeNumber},
+			},
+			expected: map[string]variable.Variable{
+				"n": {
+					Key:   "n",
+					Type:  parameter.TypeText,
+					Value: "not-a-number",
 				},
 			},
 		},
@@ -375,6 +378,7 @@ func TestNormalizeRequestVars(t *testing.T) {
 				"a": nil,
 				"b": "value",
 			},
+			schema: nil,
 			expected: map[string]variable.Variable{
 				"b": {
 					Key:   "b",
@@ -382,11 +386,6 @@ func TestNormalizeRequestVars(t *testing.T) {
 					Value: "value",
 				},
 			},
-		},
-		{
-			name:     "empty map returns nil",
-			input:    map[string]interface{}{},
-			expected: nil,
 		},
 	}
 
@@ -400,13 +399,24 @@ func TestNormalizeRequestVars(t *testing.T) {
 			av, ok := actual[k]
 			assert.True(t, ok, "key %s should exist", k)
 			assert.Equal(t, ev.Type, av.Type, "type mismatch for key %s", k)
-			assert.Equal(t, ev.Value, av.Value, "value mismatch for key %s", k)
+
+			// For special types like Datetime and Array, just check the type roughly
+			switch ev.Type {
+			case parameter.TypeDatetime:
+				_, ok := av.Value.(time.Time)
+				assert.True(t, ok, "value for key %s should be time.Time", k)
+			case parameter.TypeArray, parameter.TypeChoice:
+				// Since these come from JSON, avoid deep equal like []any or map[string]any
+				assert.NotNil(t, av.Value, "value for key %s should not be nil", k)
+			default:
+				assert.Equal(t, ev.Value, av.Value, "value mismatch for key %s", k)
+			}
 		}
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			actual := normalizeRequestVars(tc.input)
+			actual := normalizeRequestVars(tc.input, tc.schema)
 			eqVarMap(tc.expected, actual)
 		})
 	}

@@ -3,6 +3,7 @@ package interactor
 import (
 	"context"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/rbac"
@@ -176,13 +177,13 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		return nil, err
 	}
 
-	var projectParamsMap map[string]variable.Variable
+	var projectParams map[string]variable.Variable
 	if deployment.Project() != nil {
 		pls, err := i.paramRepo.FindByProject(ctx, *deployment.Project())
 		if err != nil {
 			return nil, err
 		}
-		projectParamsMap = projectParametersToMap(pls)
+		projectParams = projectParametersToMap(pls)
 	}
 
 	var triggerVars map[string]variable.Variable
@@ -190,11 +191,15 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		triggerVars = variable.SliceToMap(tvs)
 	}
 
-	requestVars := normalizeRequestVars(p.Variables)
+	schema := map[string]variable.Variable{}
+	maps.Copy(schema, projectParams)
+	maps.Copy(schema, triggerVars)
+
+	requestVars := normalizeRequestVars(p.Variables, schema)
 
 	finalVarMap, err := resolveVariables(
 		ModeAPIDriven,
-		projectParamsMap,
+		projectParams,
 		triggerVars,
 		requestVars,
 	)
@@ -283,13 +288,13 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		return nil, err
 	}
 
-	var projectParamsMap map[string]variable.Variable
+	var projectParams map[string]variable.Variable
 	if deployment.Project() != nil {
 		pls, err := i.paramRepo.FindByProject(ctx, *deployment.Project())
 		if err != nil {
 			return nil, err
 		}
-		projectParamsMap = projectParametersToMap(pls)
+		projectParams = projectParametersToMap(pls)
 	}
 
 	var triggerVars map[string]variable.Variable
@@ -299,7 +304,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 
 	finalVarMap, err := resolveVariables(
 		ModeTimeDriven,
-		projectParamsMap,
+		projectParams,
 		triggerVars,
 		nil,
 	)
