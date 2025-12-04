@@ -26,7 +26,6 @@ const VersionDialog: React.FC<Props> = ({
   const t = useT();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [animate, setAnimate] = useState<boolean>(false);
-
   const {
     history,
     latestProjectSnapshotVersion,
@@ -65,9 +64,19 @@ const VersionDialog: React.FC<Props> = ({
   useEffect(() => {
     setAnimate(true);
     const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+
+      const isDropdownClick = target?.closest?.(
+        '[data-slot="dropdown-menu-content"]',
+      );
+
+      const isDialogClick = target?.closest?.("#dialog-content");
+
       if (
         dialogRef.current &&
+        !isDialogClick &&
         !dialogRef.current.contains(event.target as Node) &&
+        !isDropdownClick &&
         !openVersionConfirmationDialog
       ) {
         handleDialogClose();

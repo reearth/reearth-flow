@@ -29,7 +29,7 @@ use super::schema_composer::{
     generate_catalog, generate_catalog_cache_key, generate_composite_cache_key,
     generate_wrapper_schema,
 };
-use super::schema_fetcher::{HttpSchemaFetcher, SchemaFetcher};
+use super::schema_fetcher::{HttpSchemaFetcher, HttpSchemaFetcherWithFallback, SchemaFetcher};
 use super::schema_resolver::XmlSchemaResolver;
 use super::schema_rewriter::SchemaRewriter;
 use super::types::{
@@ -37,6 +37,22 @@ use super::types::{
 };
 
 static SUCCESS_PORT: Lazy<Port> = Lazy::new(|| Port::new("success"));
+
+/// Create schema fetcher based on environment configuration
+///
+/// If `FLOW_XML_SCHEMA_FETCHER_FALLBACK` is set to "true", returns a fetcher with
+/// bundled schema fallback. Otherwise, returns a standard fetcher that only does HTTP requests.
+fn create_schema_fetcher() -> Arc<dyn SchemaFetcher> {
+    let use_fallback = std::env::var("FLOW_XML_SCHEMA_FETCHER_FALLBACK")
+        .map(|v| v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+
+    if use_fallback {
+        Arc::new(HttpSchemaFetcherWithFallback::new())
+    } else {
+        Arc::new(HttpSchemaFetcher::new())
+    }
+}
 static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
 
 #[derive(Debug, Clone, Default)]
@@ -92,7 +108,7 @@ impl ProcessorFactory for XmlValidatorFactory {
             .into());
         };
 
-        let schema_fetcher = Arc::new(HttpSchemaFetcher::new());
+        let schema_fetcher = create_schema_fetcher();
 
         // TODO: replace it with node_cache in ctx
         // let schema_cache = create_schema_cache(ctx.node_cache());

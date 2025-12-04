@@ -1,0 +1,20 @@
+citygml_zip_name = "22203_numazu-shi_city_2023_citygml_3_op.zip"
+
+# [tests.mvt_lines]
+# threshold = 0.01
+# 
+# [tests.mvt_polygons]
+# threshold = 0.01
+
+[tests.mvt_attributes.casts]
+".attributes" = "json"
+
+[filter.tree]
+"" = ["codelists/", "schemas/"]
+"udx/wwy/" = [
+  "52383661_wwy_6697_op.gml",
+  "52384698_wwy_6697_op.gml",
+  "52384760_wwy_6697_op.gml",
+  "52384770_wwy_6697_op.gml",
+  "52385608_wwy_6697_op.gml",
+]

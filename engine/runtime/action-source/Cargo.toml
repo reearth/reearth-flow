@@ -32,12 +32,15 @@ base64.workspace = true
 byteorder.workspace = true
 bytes.workspace = true
 csv.workspace = true
+encoding_rs.workspace = true
 futures.workspace = true
+geo-types.workspace = true
 geojson.workspace = true
 gltf.workspace = true
 indexmap.workspace = true
 once_cell.workspace = true
 petgraph.workspace = true
+proj.workspace = true
 quick-xml.workspace = true
 regex.workspace = true
 rhai.workspace = true
@@ -52,6 +55,7 @@ tokio.workspace = true
 tracing.workspace = true
 url.workspace = true
 uuid.workspace = true
+wkt.workspace = true
 zip.workspace = true
 
 [dev-dependencies]

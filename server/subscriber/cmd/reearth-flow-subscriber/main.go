@@ -165,6 +165,27 @@ func main() {
 		log.Println("User facing log subscription ID not provided, user facing log subscriber will not be started")
 	}
 
+	if conf.JobCompleteSubscriptionID != "" {
+		jobStorage := infrastructure.NewJobStorageImpl(redisStorage)
+		jobSub := pubsubClient.Subscriber(conf.JobCompleteSubscriptionID)
+		jobSubAdapter := flow_pubsub.NewRealSubscription(jobSub)
+		jobSubscriberUC := interactor.NewJobSubscriberUseCase(jobStorage)
+		jobSubscriber := flow_pubsub.NewJobSubscriber(jobSubAdapter, jobSubscriberUC)
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			log.Println("[subscriber] Starting job complete subscriber...")
+			if err := jobSubscriber.StartListening(ctx); err != nil {
+				log.Printf("[subscriber] Job complete subscriber error: %v", err)
+				cancel()
+			}
+			log.Println("[subscriber] Job complete subscriber stopped")
+		}()
+	} else {
+		log.Println("Job complete subscription ID not provided, job subscriber will not be started")
+	}
+
 	// Set up HTTP server
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := fmt.Fprintf(w, "Subscriber is running"); err != nil {

@@ -173,20 +173,20 @@
       "description": "提取文件的属性"
     },
     {
-      "name": "FileReader",
-      "description": "从文件中读取实体"
-    },
-    {
-      "name": "FileWriter",
-      "description": "将实体写入文件"
-    },
-    {
       "name": "GeoJsonReader",
       "description": "从GeoJSON文件读取要素"
     },
     {
       "name": "GeoJsonWriter",
       "description": "将实体写入 GeoJSON 文件"
+    },
+    {
+      "name": "GeoPackageReader",
+      "description": "从GeoPackage（.gpkg）文件读取矢量要素、瓦片和元数据"
+    },
+    {
+      "name": "GeoPackageWriter",
+      "description": "将地理要素写入GeoPackage（.gpkg）文件，包含正确的SQLite结构、空间索引和元数据表"
     },
     {
       "name": "GeometryCoercer",

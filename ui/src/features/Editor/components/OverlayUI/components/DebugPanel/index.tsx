@@ -192,7 +192,7 @@ const DebugPanel: React.FC = () => {
                     defaultValue={dataURLs[0].key}
                     value={selectedDataURL}
                     onValueChange={handleSelectedDataChange}>
-                    <SelectTrigger className="h-[26px] w-auto max-w-[250px] text-xs font-bold">
+                    <SelectTrigger className="h-[26px] w-auto max-w-[300px] text-xs font-bold">
                       <SelectValue placeholder={t("Select Data to Preview")} />
                     </SelectTrigger>
                     <SelectContent>

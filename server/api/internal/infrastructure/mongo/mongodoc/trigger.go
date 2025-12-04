@@ -9,16 +9,18 @@ import (
 )
 
 type TriggerDocument struct {
-	ID            string    `bson:"id"`
-	WorkspaceID   string    `bson:"workspaceid"`
-	DeploymentID  string    `bson:"deploymentid"`
-	Description   string    `bson:"description"`
-	EventSource   string    `bson:"eventsource"`
-	TimeInterval  string    `bson:"timeinterval,omitempty"`
-	AuthToken     string    `bson:"authtoken,omitempty"`
-	CreatedAt     time.Time `bson:"createdat"`
-	UpdatedAt     time.Time `bson:"updatedat"`
-	LastTriggered time.Time `bson:"lasttriggered,omitempty"`
+	ID            string            `bson:"id"`
+	WorkspaceID   string            `bson:"workspaceid"`
+	DeploymentID  string            `bson:"deploymentid"`
+	Description   string            `bson:"description"`
+	EventSource   string            `bson:"eventsource"`
+	TimeInterval  string            `bson:"timeinterval,omitempty"`
+	AuthToken     string            `bson:"authtoken,omitempty"`
+	CreatedAt     time.Time         `bson:"createdat"`
+	UpdatedAt     time.Time         `bson:"updatedat"`
+	LastTriggered time.Time         `bson:"lasttriggered,omitempty"`
+	Enabled       *bool             `bson:"enabled,omitempty"`
+	Variables     map[string]string `bson:"variables,omitempty"`
 }
 
 type TriggerConsumer = Consumer[*TriggerDocument, *trigger.Trigger]
@@ -56,6 +58,13 @@ func NewTrigger(t *trigger.Trigger) (*TriggerDocument, string) {
 		doc.LastTriggered = *lastTriggered
 	}
 
+	e := t.Enabled()
+	doc.Enabled = &e
+
+	if variables := t.Variables(); variables != nil {
+		doc.Variables = variables
+	}
+
 	return doc, tid
 }
 
@@ -78,7 +87,12 @@ func (d *TriggerDocument) Model() (*trigger.Trigger, error) {
 	eventSource := trigger.EventSourceType(d.EventSource)
 	timeInterval := trigger.TimeInterval(d.TimeInterval)
 
-	return trigger.New().
+	enabled := true
+	if d.Enabled != nil {
+		enabled = *d.Enabled
+	}
+
+	b := trigger.New().
 		ID(tid).
 		Workspace(wid).
 		Deployment(did).
@@ -86,7 +100,14 @@ func (d *TriggerDocument) Model() (*trigger.Trigger, error) {
 		EventSource(eventSource).
 		TimeInterval(timeInterval).
 		AuthToken(d.AuthToken).
+		CreatedAt(d.CreatedAt).
 		UpdatedAt(d.UpdatedAt).
 		LastTriggered(d.LastTriggered).
-		Build()
+		Enabled(enabled)
+
+	if len(d.Variables) > 0 {
+		b = b.Variables(d.Variables)
+	}
+
+	return b.Build()
 }

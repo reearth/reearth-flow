@@ -23,7 +23,7 @@ pub fn write_gltf_glb<W: Write>(
     primitives: Primitives,
     num_features: usize,
     metadata_encoder: MetadataEncoder,
-    draco_compression_enabled: bool,
+    draco_compression: bool,
 ) -> crate::errors::Result<()> {
     use nusamai_gltf::nusamai_gltf_json::*;
 
@@ -284,8 +284,7 @@ pub fn write_gltf_glb<W: Write>(
     };
 
     // Write glb to the writer
-    let compression_options = draco_compression_enabled;
-    if compression_options {
+    if draco_compression {
         let mut tmp_buffer = Vec::new();
         let indirect_writer = IndirectWriter {
             buffer: &mut tmp_buffer,

@@ -67,6 +67,7 @@ fragment Trigger on Trigger {
   authToken
   timeInterval
   description
+  variables
 }
 
 fragment NodeExecution on NodeExecution {

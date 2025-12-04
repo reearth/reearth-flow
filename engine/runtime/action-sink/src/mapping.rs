@@ -8,8 +8,8 @@ use crate::{
     file::{
         cesium3dtiles::sink::Cesium3DTilesSinkFactory, csv::CsvWriterFactory,
         czml::CzmlWriterFactory, excel_writer::ExcelWriterFactory, geojson::GeoJsonWriterFactory,
-        gltf::GltfWriterSinkFactory, json::JsonWriterFactory, mvt::sink::MVTSinkFactory,
-        obj::ObjWriterFactory, shapefile::ShapefileWriterFactory, writer::FileWriterSinkFactory,
+        geopackage::GeoPackageWriterFactory, gltf::GltfWriterSinkFactory, json::JsonWriterFactory,
+        mvt::sink::MVTSinkFactory, obj::ObjWriterFactory, shapefile::ShapefileWriterFactory,
         xml::XmlWriterFactory, zip::ZipFileWriterFactory,
     },
     noop::NoopSinkFactory,
@@ -17,13 +17,13 @@ use crate::{
 
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn SinkFactory>> = vec![
-        Box::<FileWriterSinkFactory>::default(),
         Box::<Cesium3DTilesSinkFactory>::default(),
         Box::<CsvWriterFactory>::default(),
         Box::<EchoSinkFactory>::default(),
         Box::<ExcelWriterFactory>::default(),
         Box::<JsonWriterFactory>::default(),
         Box::<NoopSinkFactory>::default(),
+        Box::<GeoPackageWriterFactory>::default(),
         Box::<GeoJsonWriterFactory>::default(),
         Box::<MVTSinkFactory>::default(),
         Box::<GltfWriterSinkFactory>::default(),

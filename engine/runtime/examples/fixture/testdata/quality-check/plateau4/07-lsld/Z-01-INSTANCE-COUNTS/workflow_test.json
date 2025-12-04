@@ -1,0 +1,12 @@
+{
+  "workflowPath": "quality-check/plateau4/07-lsld/workflow.yml",
+  "description": "Test for plateau4 instance counts inspection.",
+  "expectedOutput": {
+    "expectedFile": "07_土砂災害警戒区域_地物インスタンス数.csv"
+  },
+  "cityGmlPath": "udx/lsld/input.gml",
+  "codelists": "codelists",
+  "schemas": "schemas",
+  "expectResultOkFile": true,
+  "skip": false
+}

@@ -21,6 +21,7 @@ type Config struct {
 	Dev                         bool   `pp:",omitempty"`
 	GCPProject                  string `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
 	GCSBucket                   string `envconfig:"GCS_BUCKET" pp:",omitempty"`
+	JobCompleteSubscriptionID   string `envconfig:"JOB_COMPLETE_SUBSCRIPTION_ID" default:"flow-job-complete-main"`
 	LogSubscriptionID           string `envconfig:"LOG_SUBSCRIPTION_ID" default:"flow-log-stream-main"`
 	NodeSubscriptionID          string `envconfig:"NODE_STATUS_SUBSCRIPTION_ID" default:"flow-node-status-main"`
 	Port                        string `envconfig:"PORT" default:"8080"`

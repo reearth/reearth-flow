@@ -62,7 +62,7 @@ const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
 }) => {
   return (
     <div
-      className={`flex items-center justify-between rounded-sm px-2 py-1.5 text-xs ${destructive ? "text-destructive" : ""} ${
+      className={`flex items-center justify-between gap-1 rounded-sm px-2 py-1.5 text-xs ${destructive ? "text-destructive" : ""} ${
         disabled
           ? "pointer-events-none text-muted-foreground opacity-50"
           : "cursor-pointer hover:bg-accent"

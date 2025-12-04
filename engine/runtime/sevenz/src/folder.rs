@@ -49,7 +49,7 @@ impl Folder {
         self.unpack_sizes.get(index).cloned().unwrap_or_default()
     }
 
-    pub fn ordered_coder_iter(&self) -> OrderedCoderIter {
+    pub fn ordered_coder_iter(&'_ self) -> OrderedCoderIter<'_> {
         OrderedCoderIter::new(self)
     }
 }

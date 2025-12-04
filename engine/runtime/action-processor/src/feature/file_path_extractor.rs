@@ -194,16 +194,27 @@ impl Processor for FeatureFilePathExtractor {
             for entry in entries {
                 let attribute_value =
                     AttributeValue::try_from(FilePath::try_from(entry).unwrap_or_default())?;
-                fw.send(ctx.new_with_feature_and_port(
-                    Feature::from(attribute_value),
-                    DEFAULT_PORT.clone(),
-                ));
+                let mut feature = Feature::from(attribute_value);
+                feature.extend(
+                    base_attributes
+                        .iter()
+                        .filter(|(k, _)| !feature.contains_key(k))
+                        .map(|(k, v)| (k.clone(), v.clone()))
+                        .collect::<HashMap<_, _>>(),
+                );
+                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
             }
         } else {
             let attribute_value = AttributeValue::try_from(FilePath::try_from(source_dataset)?)?;
-            fw.send(
-                ctx.new_with_feature_and_port(Feature::from(attribute_value), DEFAULT_PORT.clone()),
+            let mut feature = Feature::from(attribute_value);
+            feature.extend(
+                base_attributes
+                    .iter()
+                    .filter(|(k, _)| !feature.contains_key(k))
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect::<HashMap<_, _>>(),
             );
+            fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         }
         Ok(())
     }

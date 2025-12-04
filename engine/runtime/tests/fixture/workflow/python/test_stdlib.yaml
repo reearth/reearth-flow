@@ -105,11 +105,10 @@ graphs:
             properties['stdlib_test_complete'] = True
 
       - id: writer
-        name: FileWriter
+        name: JsonWriter
         type: action
-        action: FileWriter
+        action: JsonWriter
         with:
-          format: json
           output: |
             env.get("outputFilePath")
 

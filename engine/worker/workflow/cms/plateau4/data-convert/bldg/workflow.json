@@ -326,7 +326,7 @@
           "id": "65074ffc-9113-4fbf-8957-9ba1de4c56ab",
           "name": "FileWriterTsvFilePath",
           "type": "action",
-          "action": "FileWriter",
+          "action": "CsvWriter",
           "with": {
             "format": "csv",
             "output": "file::join_path(env.get(\"workerArtifactPath\"), \"maxLod.csv\")\n"

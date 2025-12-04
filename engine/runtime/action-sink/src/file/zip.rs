@@ -101,7 +101,7 @@ impl Sink for ZipFileWriter {
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let Some(AttributeValue::String(file_path)) = feature.get(&"filePath") else {
+        let Some(AttributeValue::String(file_path)) = feature.get("filePath") else {
             return Ok(());
         };
         let file_path = Uri::from_str(file_path.as_str())?;

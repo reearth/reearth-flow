@@ -1,0 +1,68 @@
+W3C SOFTWARE AND DOCUMENT NOTICE AND LICENSE
+
+This work is being provided by the copyright holders under the following license.
+
+License
+-------
+
+By obtaining and/or copying this work, you (the licensee) agree that you have
+read, understood, and will comply with the following terms and conditions.
+
+Permission to copy, modify, and distribute this work, with or without
+modification, for any purpose and without fee or royalty is hereby granted,
+provided that you include the following on ALL copies of the work or portions
+thereof, including modifications:
+
+  * The full text of this NOTICE in a location viewable to users of the
+    redistributed or derivative work.
+
+  * Any pre-existing intellectual property disclaimers, notices, or terms and
+    conditions. If none exist, the W3C Software and Document Short Notice
+    should be included.
+
+  * Notice of any changes or modifications, in the form of a log or other
+    documentation, to the original files indicating when the changes were made
+    and the nature of the changes.
+
+Disclaimers
+-----------
+
+THIS WORK IS PROVIDED "AS IS," AND COPYRIGHT HOLDERS MAKE NO REPRESENTATIONS
+OR WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO, WARRANTIES OF
+MERCHANTABILITY OR FITNESS FOR ANY PARTICULAR PURPOSE OR THAT THE USE OF THE
+SOFTWARE OR DOCUMENT WILL NOT INFRINGE ANY THIRD PARTY PATENTS, COPYRIGHTS,
+TRADEMARKS OR OTHER RIGHTS.
+
+COPYRIGHT HOLDERS WILL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, SPECIAL OR
+CONSEQUENTIAL DAMAGES ARISING OUT OF ANY USE OF THE SOFTWARE OR DOCUMENT.
+
+The name and trademarks of copyright holders may NOT be used in advertising or
+publicity pertaining to the work without specific, written prior permission.
+Title to copyright in this work will at all times remain with copyright holders.
+
+Notes
+-----
+
+This version: https://www.w3.org/copyright/software-license-2023/
+
+This license is based on the W3C Software and Document Notice and License
+(2023-05-26 version). The schemas in this directory (xml.xsd and xlink.xsd)
+are copyright by the World Wide Web Consortium (W3C) and are redistributed
+under the terms of this license.
+
+For more information about W3C licenses, see: https://www.w3.org/copyright/
+
+Original Sources
+----------------
+
+xml.xsd:   https://www.w3.org/2001/xml.xsd
+xlink.xsd: From W3C XLink 1.0 Recommendation (27 June 2001)
+           http://www.w3.org/TR/2001/REC-xlink-20010627/
+
+Modifications
+-------------
+
+These schemas have been bundled for offline use to avoid network latency and
+HTTP 429 errors during XML validation. Minor documentation comments have been
+added to indicate the bundling purpose. No modifications to the schema
+definitions themselves have been made.

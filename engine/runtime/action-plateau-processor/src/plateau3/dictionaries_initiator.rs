@@ -20,6 +20,7 @@ use super::{
 
 static ADMIN_CODE_LIST: &str = "Common_localPublicAuthorities.xml";
 
+#[allow(dead_code)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 struct Schema {
@@ -129,7 +130,7 @@ impl Processor for DictionariesInitiator {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         // Codelist dictionary creation
-        let dir_codelists = match feature.get(&Attribute::new("dirCodelists")) {
+        let dir_codelists = match feature.get("dirCodelists") {
             Some(AttributeValue::String(dir)) => dir,
             v => {
                 return Err(PlateauProcessorError::DictionariesInitiator(format!(

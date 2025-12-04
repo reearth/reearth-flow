@@ -173,20 +173,20 @@
       "description": "Extracts properties from a file"
     },
     {
-      "name": "FileReader",
-      "description": "Reads features from a file"
-    },
-    {
-      "name": "FileWriter",
-      "description": "Writes features to a file"
-    },
-    {
       "name": "GeoJsonReader",
       "description": "Reads features from a GeoJSON file"
     },
     {
       "name": "GeoJsonWriter",
       "description": "Writes features to a geojson file"
+    },
+    {
+      "name": "GeoPackageReader",
+      "description": "Reads geographic features from GeoPackage (.gpkg) files with support for vector features, tiles, and metadata"
+    },
+    {
+      "name": "GeoPackageWriter",
+      "description": "Writes geographic features to GeoPackage (.gpkg) files with proper SQLite structure, spatial indexing, and metadata tables"
     },
     {
       "name": "GeometryCoercer",
@@ -393,8 +393,12 @@
       "description": "Forces a geometry to be two dimensional."
     },
     {
+      "name": "ThreeDimensionForcer",
+      "description": "Converts 2D geometries to 3D by adding Z-coordinates (elevation)"
+    },
+    {
       "name": "VertexRemover",
-      "description": "Removes specific vertices from a feature’s geometry"
+      "description": "Removes specific vertices from a feature's geometry"
     },
     {
       "name": "VerticalReprojector",
