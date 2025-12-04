@@ -93,24 +93,32 @@ impl Storage {
                 path: format!("{location:?}").into(),
             },
         })?;
-        let meta = self
-            .inner
-            .stat(p)
-            .await
-            .map_err(|err| format_object_store_error(err, p))?;
 
-        let meta = ObjectMeta {
-            location: object_store::path::Path::parse(p)?,
-            last_modified: meta.last_modified().unwrap_or_default(),
-            size: meta.content_length(),
-            e_tag: meta.etag().map(|x| x.to_string()),
-            version: None,
-        };
+        let meta_result = self.inner.stat(p).await;
+
         let r = self
             .inner
             .read(p)
             .await
             .map_err(|err| format_object_store_error(err, p))?;
+
+        let meta = match meta_result {
+            Ok(m) => ObjectMeta {
+                location: object_store::path::Path::parse(p)?,
+                last_modified: m.last_modified().unwrap_or_default(),
+                size: m.content_length(),
+                e_tag: m.etag().map(|x| x.to_string()),
+                version: None,
+            },
+            Err(_) => ObjectMeta {
+                location: object_store::path::Path::parse(p)?,
+                last_modified: Default::default(),
+                size: 0,
+                e_tag: None,
+                version: None,
+            },
+        };
+
         Ok(GetResult {
             payload: GetResultPayload::Stream(Box::pin(OpendalReader { inner: r })),
             range: (0..meta.size),
@@ -297,6 +305,8 @@ mod tests {
     use reearth_flow_common::uri::Uri;
     use std::path::Path;
 
+    const TEST_SERVER_URL: &str = "http://127.0.0.1:3000";
+
     async fn create_test_object_store() -> Storage {
         let op = Operator::new(services::Memory::default()).unwrap().finish();
         let object_store = Storage::new(Uri::for_test("ram://"), op);
@@ -309,6 +319,12 @@ mod tests {
         let bytes = Bytes::from_static(b"hello, world! I am nested.");
         object_store.put(path, bytes).await.unwrap();
         object_store
+    }
+
+    fn get_test_storage() -> Storage {
+        let uri = Uri::for_test(&format!("{}/", TEST_SERVER_URL));
+        let op = crate::operator::resolve_operator(&uri).unwrap();
+        Storage::new(uri, op)
     }
 
     #[tokio::test]
@@ -350,5 +366,65 @@ mod tests {
         let p2 = Uri::for_test("ram:///data/test.txt");
         let expected_files = vec![&p1, &p2];
         assert_eq!(locations, expected_files);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_http_get_with_head_support() {
+        let storage = get_test_storage();
+        let result = storage.get(Path::new("/data.geojson")).await.unwrap();
+
+        let expected_data = b"Hello from real HTTP server! This is test GeoJSON data.";
+
+        assert_eq!(result.meta.size, expected_data.len() as u64);
+        assert_eq!(result.meta.e_tag, Some("\"abc123\"".to_string()));
+
+        let bytes = result.bytes().await.unwrap();
+        assert_eq!(bytes.as_ref(), expected_data);
+    }
+
+    #[tokio::test]
+    async fn test_http_get_without_head_support() {
+        let storage = get_test_storage();
+        let result = storage.get(Path::new("/no-head.json")).await.unwrap();
+
+        assert_eq!(result.meta.size, 0);
+        assert_eq!(result.meta.e_tag, None);
+
+        let bytes = result.bytes().await.unwrap();
+        let expected_data = b"Server without HEAD support";
+        assert_eq!(bytes.as_ref(), expected_data);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_http_get_head_not_found_but_get_succeeds() {
+        let storage = get_test_storage();
+        let result = storage.get(Path::new("/head-404.json")).await.unwrap();
+
+        let bytes = result.bytes().await.unwrap();
+        let expected_data = b"GET succeeds even though HEAD returns 404";
+        assert_eq!(bytes.as_ref(), expected_data);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_http_get_head_error_but_get_succeeds() {
+        let storage = get_test_storage();
+        let result = storage.get(Path::new("/head-error.json")).await.unwrap();
+
+        let bytes = result.bytes().await.unwrap();
+        let expected_data = b"GET succeeds even though HEAD returns 500";
+        assert_eq!(bytes.as_ref(), expected_data);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_http_head_method_still_works() {
+        let storage = get_test_storage();
+        let meta = storage.head(Path::new("/data.geojson")).await.unwrap();
+
+        let expected_size = b"Hello from real HTTP server! This is test GeoJSON data.".len() as u64;
+        assert_eq!(meta.size, expected_size);
     }
 }
