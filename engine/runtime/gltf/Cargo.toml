@@ -23,8 +23,8 @@ nusamai-gltf.workspace = true
 
 ahash.workspace = true
 base64.workspace = true
-bytes.workspace = true
 byteorder.workspace = true
+bytes.workspace = true
 chrono.workspace = true
 draco-oxide.workspace = true
 gltf.workspace = true
