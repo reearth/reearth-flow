@@ -1,11 +1,12 @@
 package gqlmodel
 
 import (
-	"github.com/reearth/reearth-flow/api/pkg/user"
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
+
 	"github.com/samber/lo"
 )
 
-func ToUser(u *user.User) *User {
+func ToUser(u *accountsuser.User) *User {
 	if u == nil {
 		return nil
 	}
@@ -14,14 +15,20 @@ func ToUser(u *user.User) *User {
 		ID:       IDFrom(u.ID()),
 		Name:     u.Name(),
 		Email:    u.Email(),
-		Host:     u.Host(),
+		Host:     lo.EmptyableToPtr(u.Host()),
 		Metadata: ToUserMetadata(u.Metadata()),
 	}
 }
 
-func ToMe(u *user.User) *Me {
+func ToMe(u *accountsuser.User) *Me {
 	if u == nil {
 		return nil
+	}
+
+	auths := u.Auths()
+	authStrs := make([]string, 0, len(auths))
+	for _, a := range auths {
+		authStrs = append(authStrs, a.String())
 	}
 
 	return &Me{
@@ -29,12 +36,16 @@ func ToMe(u *user.User) *Me {
 		Name:          u.Name(),
 		Email:         u.Email(),
 		Lang:          u.Metadata().Lang(),
-		MyWorkspaceID: IDFrom(u.MyWorkspaceID()),
-		Auths:         u.Auths(),
+		MyWorkspaceID: IDFrom(u.Workspace()),
+		Auths:         authStrs,
 	}
 }
 
-func ToUserMetadata(m user.Metadata) *UserMetadata {
+func ToUserMetadata(m *accountsuser.Metadata) *UserMetadata {
+	if m == nil {
+		return nil
+	}
+
 	return &UserMetadata{
 		Description: lo.EmptyableToPtr(m.Description()),
 		Website:     lo.EmptyableToPtr(m.Website()),

@@ -3,7 +3,7 @@ package asset
 import (
 	"time"
 
-	"github.com/reearth/reearth-flow/api/pkg/id"
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 )
 
 type UploadBuilder struct {
@@ -21,7 +21,7 @@ func (b *UploadBuilder) UUID(uuid string) *UploadBuilder {
 	return b
 }
 
-func (b *UploadBuilder) Workspace(workspace id.WorkspaceID) *UploadBuilder {
+func (b *UploadBuilder) Workspace(workspace accountsid.WorkspaceID) *UploadBuilder {
 	b.u.workspace = workspace
 	return b
 }

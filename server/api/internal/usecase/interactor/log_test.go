@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -14,7 +16,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/log"
-	"github.com/reearth/reearth-flow/api/pkg/user"
 	"github.com/reearth/reearth-flow/api/pkg/userfacinglog"
 	"github.com/reearth/reearthx/appx"
 	"github.com/stretchr/testify/assert"
@@ -64,7 +65,7 @@ func (m *mockJobRepo) FindByIDs(ctx context.Context, jobIDs id.JobIDList) ([]*jo
 	panic("unimplemented")
 }
 
-func (m *mockJobRepo) FindByWorkspace(ctx context.Context, workspaceID id.WorkspaceID, p *interfaces.PaginationParam, keyword *string) ([]*job.Job, *interfaces.PageBasedInfo, error) {
+func (m *mockJobRepo) FindByWorkspace(ctx context.Context, workspaceID accountsid.WorkspaceID, p *interfaces.PaginationParam, keyword *string) ([]*job.Job, *interfaces.PageBasedInfo, error) {
 	panic("unimplemented")
 }
 
@@ -96,7 +97,7 @@ func TestLogInteractor_GetLogs(t *testing.T) {
 	mockAuthInfo := &appx.AuthInfo{
 		Token: "token",
 	}
-	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+	mockUser := accountsuser.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
@@ -160,7 +161,7 @@ func TestLogInteractor_SubscribeInitialLogs(t *testing.T) {
 	mockAuthInfo := &appx.AuthInfo{
 		Token: "token",
 	}
-	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+	mockUser := accountsuser.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
@@ -195,7 +196,7 @@ func TestLogInteractor_Unsubscribe(t *testing.T) {
 	mockAuthInfo := &appx.AuthInfo{
 		Token: "token",
 	}
-	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+	mockUser := accountsuser.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
@@ -224,7 +225,7 @@ func TestLogInteractor_StopsMonitoringWhenJobCompleted(t *testing.T) {
 	completedJob, err := job.New().
 		NewID().
 		Deployment(id.NewDeploymentID()).
-		Workspace(id.WorkspaceID(id.NewWorkspaceID())).
+		Workspace(accountsid.WorkspaceID(accountsid.NewWorkspaceID())).
 		Status(job.StatusCompleted).
 		StartedAt(time.Now()).
 		Build()
@@ -251,7 +252,7 @@ func TestLogInteractor_StopsMonitoringWhenJobCompleted(t *testing.T) {
 	mockAuthInfo := &appx.AuthInfo{
 		Token: "token",
 	}
-	mockUser := user.New().NewID().Name("test").Email("test@example.com").MustBuild()
+	mockUser := accountsuser.New().NewID().Name("test").Email("test@example.com").MustBuild()
 
 	ctx := context.Background()
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)

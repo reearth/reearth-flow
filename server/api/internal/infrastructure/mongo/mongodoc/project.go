@@ -3,6 +3,7 @@ package mongodoc
 import (
 	"time"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"golang.org/x/exp/slices"
@@ -44,7 +45,7 @@ type ProjectDocument struct {
 
 type ProjectConsumer = Consumer[*ProjectDocument, *project.Project]
 
-func NewProjectConsumer(workspaces []id.WorkspaceID) *ProjectConsumer {
+func NewProjectConsumer(workspaces []accountsid.WorkspaceID) *ProjectConsumer {
 	return NewConsumer[*ProjectDocument](func(a *project.Project) bool {
 		return workspaces == nil || slices.Contains(workspaces, a.Workspace())
 	})
@@ -79,7 +80,7 @@ func (d *ProjectDocument) Model() (*project.Project, error) {
 		return nil, err
 	}
 
-	tid, err := id.WorkspaceIDFrom(d.Workspace)
+	tid, err := accountsid.WorkspaceIDFrom(d.Workspace)
 	if err != nil {
 		return nil, err
 	}

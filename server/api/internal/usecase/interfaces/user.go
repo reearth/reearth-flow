@@ -3,9 +3,9 @@ package interfaces
 import (
 	"context"
 
-	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearth-flow/api/pkg/user"
-	"github.com/reearth/reearth-flow/api/pkg/workspace"
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
+	accountsworkspace "github.com/reearth/reearth-accounts/server/pkg/workspace"
 	"golang.org/x/text/language"
 )
 
@@ -23,32 +23,32 @@ type SignupParam struct {
 	Password    string
 	Secret      *string
 	Lang        *language.Tag
-	Theme       *user.Theme
-	UserID      *user.ID
-	WorkspaceID *workspace.ID
+	Theme       *accountsuser.Theme
+	UserID      *accountsuser.ID
+	WorkspaceID *accountsworkspace.ID
 	MockAuth    bool
 }
 
 type SignupOIDCParam struct {
-	UserID      *id.UserID
+	UserID      *accountsid.UserID
 	Name        *string
 	Email       *string
 	Sub         *string
 	Lang        *language.Tag
-	WorkspaceID *id.WorkspaceID
+	WorkspaceID *accountsid.WorkspaceID
 	Secret      *string
 }
 
 type User interface {
-	FindByIDs(context.Context, id.UserIDList) (user.List, error)
-	UserByNameOrEmail(context.Context, string) (*user.User, error)
-	UpdateMe(context.Context, UpdateMeParam) (*user.User, error)
-	Signup(context.Context, SignupParam) (*user.User, error)
-	SignupOIDC(context.Context, SignupOIDCParam) (*user.User, error)
-	RemoveMyAuth(context.Context, string) (*user.User, error)
-	DeleteMe(context.Context, id.UserID) error
+	FindByIDs(context.Context, accountsid.UserIDList) (accountsuser.List, error)
+	UserByNameOrEmail(context.Context, string) (*accountsuser.User, error)
+	UpdateMe(context.Context, UpdateMeParam) (*accountsuser.User, error)
+	Signup(context.Context, SignupParam) (*accountsuser.User, error)
+	SignupOIDC(context.Context, SignupOIDCParam) (*accountsuser.User, error)
+	RemoveMyAuth(context.Context, string) (*accountsuser.User, error)
+	DeleteMe(context.Context, accountsid.UserID) error
 	CreateVerification(context.Context, string) error
-	VerifyUser(context.Context, string) (*user.User, error)
+	VerifyUser(context.Context, string) (*accountsuser.User, error)
 	StartPasswordReset(context.Context, string) error
 	PasswordReset(context.Context, string, string) error
 }

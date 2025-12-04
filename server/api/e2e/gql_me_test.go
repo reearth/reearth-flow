@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"testing"
 
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
-	"github.com/reearth/reearth-flow/api/pkg/user"
 	usermockrepo "github.com/reearth/reearth-flow/api/pkg/user/mockrepo"
 	"go.uber.org/mock/gomock"
 )
@@ -17,7 +17,7 @@ func TestMe(t *testing.T) {
 
 	workspace := factory.NewWorkspace()
 	testUserSubject := "auth0|test-user"
-	userEntity := factory.NewUser(func(b *user.Builder) {
+	userEntity := factory.NewUser(func(b *accountsuser.Builder) {
 		b.MyWorkspaceID(workspace.ID())
 		b.Auths([]string{testUserSubject})
 	})

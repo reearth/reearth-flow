@@ -7,13 +7,14 @@ import (
 	"testing"
 	"time"
 
+	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/graph"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/log"
-	"github.com/reearth/reearth-flow/api/pkg/user"
+
 	"github.com/reearth/reearth-flow/api/pkg/userfacinglog"
 	"github.com/reearth/reearthx/appx"
 	"github.com/stretchr/testify/assert"
@@ -66,7 +67,7 @@ func TestUserFacingLogInteractor_GetUserFacingLogs(t *testing.T) {
 	since := time.Now().Add(-1 * time.Hour)
 
 	// Setup auth info
-	u := user.New().NewID().Email("test@example.com").Name("test").MustBuild()
+	u := accountsuser.New().NewID().Email("test@example.com").Name("test").MustBuild()
 	ctx = adapter.AttachUser(ctx, u)
 	ctx = adapter.AttachAuthInfo(ctx, &appx.AuthInfo{})
 
@@ -128,7 +129,7 @@ func TestUserFacingLogInteractor_Subscribe(t *testing.T) {
 	jobID := id.NewJobID()
 
 	// Setup auth info
-	u := user.New().NewID().Email("test@example.com").Name("test").MustBuild()
+	u := accountsuser.New().NewID().Email("test@example.com").Name("test").MustBuild()
 	ctx = adapter.AttachUser(ctx, u)
 	ctx = adapter.AttachAuthInfo(ctx, &appx.AuthInfo{})
 
@@ -171,7 +172,7 @@ func TestUserFacingLogInteractor_Unsubscribe(t *testing.T) {
 	jobID := id.NewJobID()
 
 	// Setup auth info
-	u := user.New().NewID().Email("test@example.com").Name("test").MustBuild()
+	u := accountsuser.New().NewID().Email("test@example.com").Name("test").MustBuild()
 	ctx = adapter.AttachUser(ctx, u)
 	ctx = adapter.AttachAuthInfo(ctx, &appx.AuthInfo{})
 

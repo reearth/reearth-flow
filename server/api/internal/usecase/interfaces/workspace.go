@@ -3,17 +3,17 @@ package interfaces
 import (
 	"context"
 
-	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearth-flow/api/pkg/workspace"
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+	accountsworkspace "github.com/reearth/reearth-accounts/server/pkg/workspace"
 )
 
 type Workspace interface {
-	FindByIDs(context.Context, id.WorkspaceIDList) (workspace.List, error)
-	FindByUser(context.Context, id.UserID) (workspace.List, error)
-	Create(context.Context, string) (*workspace.Workspace, error)
-	Update(context.Context, id.WorkspaceID, string) (*workspace.Workspace, error)
-	Delete(context.Context, id.WorkspaceID) error
-	AddUserMember(context.Context, id.WorkspaceID, map[id.UserID]workspace.Role) (*workspace.Workspace, error)
-	UpdateUserMember(context.Context, id.WorkspaceID, id.UserID, workspace.Role) (*workspace.Workspace, error)
-	RemoveUserMember(context.Context, id.WorkspaceID, id.UserID) (*workspace.Workspace, error)
+	FindByIDs(context.Context, accountsid.WorkspaceIDList) (accountsworkspace.List, error)
+	FindByUser(context.Context, accountsid.UserID) (accountsworkspace.List, error)
+	Create(context.Context, string) (*accountsworkspace.Workspace, error)
+	Update(context.Context, accountsid.WorkspaceID, string) (*accountsworkspace.Workspace, error)
+	Delete(context.Context, accountsid.WorkspaceID) error
+	AddUserMember(context.Context, accountsid.WorkspaceID, map[accountsid.UserID]accountsworkspace.Role) (*accountsworkspace.Workspace, error)
+	UpdateUserMember(context.Context, accountsid.WorkspaceID, accountsid.UserID, accountsworkspace.Role) (*accountsworkspace.Workspace, error)
+	RemoveUserMember(context.Context, accountsid.WorkspaceID, accountsid.UserID) (*accountsworkspace.Workspace, error)
 }
