@@ -1,9 +1,8 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Sub};
 
 use super::errors::GeometryProcessorError;
-use reearth_flow_geometry::types::coordinate::Coordinate3D;
-use reearth_flow_geometry::types::geometry::Geometry3D;
 use reearth_flow_geometry::types::polygon::Polygon3D;
+use reearth_flow_geometry::types::{coordinate::Coordinate3D, geometry::Geometry3D};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -13,7 +12,6 @@ use reearth_flow_runtime::{
 };
 use reearth_flow_types::Feature;
 use reearth_flow_types::{Attribute, AttributeValue, GeometryValue};
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Number, Value};
 
@@ -30,7 +28,7 @@ impl ProcessorFactory for PolygonNormalExtractorFactory {
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(PolygonNormalExtractor))
+        None
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -73,17 +71,9 @@ impl ProcessorFactory for PolygonNormalExtractorFactory {
     }
 }
 
-/// # PolygonNormalExtractor Parameters
-///
-/// Configuration for calculating normal vectors from polygon features.
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 struct PolygonNormalExtractor {}
-
-#[allow(unused)]
-fn default_true() -> bool {
-    true
-}
 
 impl Processor for PolygonNormalExtractor {
     fn process(
@@ -146,7 +136,7 @@ impl Processor for PolygonNormalExtractor {
             }
             GeometryValue::CityGmlGeometry(_) => {
                 return Err(Box::new(GeometryProcessorError::PolygonNormalExtractor(
-                    "Only support simple Polygon normal extraction".to_string(),
+                    "Only support simple 3D Polygon normal extraction for now.".to_string(),
                 )));
             }
         }
@@ -211,21 +201,18 @@ impl PolygonNormalExtractor {
             // coords2 is the point after
             let coords2 = &coords[after];
 
-            let x1 = coords0.x;
             let x2 = coords1.x;
             let x3 = coords2.x;
 
-            let y1 = coords0.y;
             let y2 = coords1.y;
             let y3 = coords2.y;
 
-            let z1 = coords0.z;
-            let z2 = coords1.z;
-            let z3 = coords2.z;
-
             // Calculate normal using cross product of vectors (coords1 - coords0) and (coords2 - coords0)
-            let v1 = Coordinate3D::new__(x2 - x1, y2 - y1, z2 - z1);
-            let v2 = Coordinate3D::new__(x3 - x1, y3 - y1, z3 - z1);
+            // Coordinate3D::new__(x2 - x1, y2 - y1, z2 - z1);
+            let v1 = coords1.sub(**coords0);
+
+            // Coordinate3D::new__(x3 - x1, y3 - y1, z3 - z1);
+            let v2 = coords2.sub(**coords0);
             let cross_product = v1.cross(&v2);
 
             normal_x += cross_product.x;
@@ -234,36 +221,26 @@ impl PolygonNormalExtractor {
 
             // Polygon area (Gauss area formula)
             let area_tri = ((y2 + y3) * (x2 - x3)) / 2.0;
+
             signed_area_2d += area_tri;
         }
 
         // Normalize the vector
-        let length = (normal_x * normal_x + normal_y * normal_y + normal_z * normal_z).sqrt();
+        let normal_v = Coordinate3D::new__(normal_x, normal_y, normal_z).normalize();
+        let (normalized_normal_x, normalized_normal_y, normalized_normal_z) =
+            (normal_v.x, normal_v.y, normal_v.z);
 
-        let (normalized_normal_x, normalized_normal_y, normalized_normal_z, azimuth) =
-            if length != 0.0 {
-                let normalized_normal_x = normal_x / length;
-                let normalized_normal_y = normal_y / length;
-                let normalized_normal_z = normal_z / length;
-                // Calculate azimuth (angle in horizontal plane)
-                let azimuth = (-normalized_normal_x)
-                    .atan2(-normalized_normal_y)
-                    .to_degrees();
-                // Ensure azimuth is in the range [0, 360)
-                let azimuth = if azimuth < 0.0 {
-                    azimuth + 360.0
-                } else {
-                    azimuth
-                };
-                (
-                    normalized_normal_x,
-                    normalized_normal_y,
-                    normalized_normal_z,
-                    azimuth,
-                )
-            } else {
-                (0.0, 0.0, 0.0, 0.0)
-            };
+        // Calculate azimuth (angle in horizontal plane)
+        let azimuth = (-normalized_normal_x)
+            .atan2(-normalized_normal_y)
+            .to_degrees();
+
+        // Ensure azimuth is in the range [0, 360)
+        let azimuth = if azimuth < 0.0 {
+            azimuth + 360.0
+        } else {
+            azimuth
+        };
 
         // Calculate slope (angle from normal to Z axis) - matching Python implementation
         let slope = if normalized_normal_z != 0.0 {
