@@ -375,7 +375,6 @@ mod tests {
 
         let result = PolygonNormalExtractor::calculate_normal_properties_3d(&polygon);
 
-        // Expected values from the Python implementation
         let expected_polygon_normal = NormalResult {
             normal_x: -0.0071632345554907256,
             normal_y: -0.21250690309836642,
