@@ -4423,6 +4423,16 @@ Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping
         }
       ]
     },
+    "extent": {
+      "title": "Extent",
+      "description": "MVT tile resolution. Default is 4096.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "minimum": 0.0
+    },
     "layerName": {
       "title": "Layer Name",
       "description": "Name of the layer within the MVT tiles",
