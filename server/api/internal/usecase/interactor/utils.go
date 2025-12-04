@@ -113,9 +113,7 @@ func coerceValue(v any, t parameter.Type) (any, bool) {
 		if s, ok := v.(string); ok {
 			var a any
 			if json.Unmarshal([]byte(s), &a) == nil {
-				if arr, ok := a.([]interface{}); ok {
-					return arr, true
-				}
+				return a, true
 			}
 		}
 		return nil, false
