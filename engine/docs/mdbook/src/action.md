@@ -5457,14 +5457,7 @@ Filter Features by Geometry Planarity
 ### Description
 Extract normal vectors and other properties for polygon features
 ### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "PolygonNormalExtractor Parameters",
-  "description": "Configuration for calculating normal vectors from polygon features.",
-  "type": "object"
-}
-```
+* No parameters
 ### Input Ports
 * default
 ### Output Ports
